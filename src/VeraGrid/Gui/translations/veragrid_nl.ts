@@ -638,519 +638,519 @@ li.checked::markering { content: &quot;\2612&quot;; }&lt;/style&gt;&lt;/head&gt;
     <name>ContextMenu</name>
     <message>
         <source>3w-Transformer</source>
-        <translation type="vanished">3-wikkeltransformator</translation>
+        <translation>3-wikkeltransformator</translation>
     </message>
     <message>
         <source>Active</source>
-        <translation type="vanished">Actief</translation>
+        <translation>Actief</translation>
     </message>
     <message>
         <source>Add</source>
-        <translation type="vanished">Toevoegen</translation>
+        <translation>Toevoegen</translation>
     </message>
     <message>
         <source>Add Equation</source>
-        <translation type="vanished">Vergelijking toevoegen</translation>
+        <translation>Vergelijking toevoegen</translation>
     </message>
     <message>
         <source>Add Parameter</source>
-        <translation type="vanished">Parameter toevoegen</translation>
+        <translation>Parameter toevoegen</translation>
     </message>
     <message>
         <source>Add Variable</source>
-        <translation type="vanished">Variabele toevoegen</translation>
+        <translation>Variabele toevoegen</translation>
     </message>
     <message>
         <source>Add bus</source>
-        <translation type="vanished">Bus toevoegen</translation>
+        <translation>Bus toevoegen</translation>
     </message>
     <message>
         <source>Add child scenario</source>
-        <translation type="vanished">Onderliggend scenario toevoegen</translation>
+        <translation>Onderliggend scenario toevoegen</translation>
     </message>
     <message>
         <source>Add point</source>
-        <translation type="vanished">Punt toevoegen</translation>
+        <translation>Punt toevoegen</translation>
     </message>
     <message>
         <source>Add to catalogue</source>
-        <translation type="vanished">Toevoegen aan catalogus</translation>
+        <translation>Toevoegen aan catalogus</translation>
     </message>
     <message>
         <source>Add to current diagram</source>
-        <translation type="vanished">Voeg toe aan huidig ​​diagram</translation>
+        <translation>Voeg toe aan huidig ​​diagram</translation>
     </message>
     <message>
         <source>Add voltage level</source>
-        <translation type="vanished">Voeg spanningsniveau toe</translation>
+        <translation>Voeg spanningsniveau toe</translation>
     </message>
     <message>
         <source>Arrange</source>
-        <translation type="vanished">Regelen</translation>
+        <translation>Regelen</translation>
     </message>
     <message>
         <source>Assign active state to profile</source>
-        <translation type="vanished">Wijs actieve status toe aan profiel</translation>
+        <translation>Wijs actieve status toe aan profiel</translation>
     </message>
     <message>
         <source>Assign rate to profile</source>
-        <translation type="vanished">Wijs tarief toe aan profiel</translation>
+        <translation>Wijs tarief toe aan profiel</translation>
     </message>
     <message>
         <source>Assign to profile</source>
-        <translation type="vanished">Toewijzen aan profiel</translation>
+        <translation>Toewijzen aan profiel</translation>
     </message>
     <message>
         <source>Battery</source>
-        <translation type="vanished">Batterij</translation>
+        <translation>Batterij</translation>
     </message>
     <message>
         <source>Bus</source>
-        <translation type="vanished">Bus</translation>
+        <translation>Bus</translation>
     </message>
     <message>
         <source>Calculate total length</source>
-        <translation type="vanished">Bereken de totale lengte</translation>
+        <translation>Bereken de totale lengte</translation>
     </message>
     <message>
         <source>Change Color</source>
-        <translation type="vanished">Verander kleur</translation>
+        <translation>Verander kleur</translation>
     </message>
     <message>
         <source>Change bus</source>
-        <translation type="vanished">Bus wijzigen</translation>
+        <translation>Bus wijzigen</translation>
     </message>
     <message>
         <source>Change bus connection for the generator</source>
-        <translation type="vanished">Busaansluiting van de generator wijzigen</translation>
+        <translation>Busaansluiting van de generator wijzigen</translation>
     </message>
     <message>
         <source>Change substation connection of the line</source>
-        <translation type="vanished">Wijzig de onderstationaansluiting van de lijn</translation>
+        <translation>Wijzig de onderstationaansluiting van de lijn</translation>
     </message>
     <message>
         <source>Colour branches like this</source>
-        <translation type="vanished">Kleur takken zo</translation>
+        <translation>Kleur takken zo</translation>
     </message>
     <message>
         <source>Commit scenario</source>
-        <translation type="vanished">Commit-scenario</translation>
+        <translation>Commit-scenario</translation>
     </message>
     <message>
         <source>Connect line to selected substation (T-joint) at this waypoint</source>
-        <translation type="vanished">Sluit de lijn aan op het geselecteerde onderstation (T-verbinding) op dit tussenpunt</translation>
+        <translation>Sluit de lijn aan op het geselecteerde onderstation (T-verbinding) op dit tussenpunt</translation>
     </message>
     <message>
         <source>Consolidate coordinates</source>
-        <translation type="vanished">Consolideer coördinaten</translation>
+        <translation>Consolideer coördinaten</translation>
     </message>
     <message>
         <source>Consolidate selected objects coordinates</source>
-        <translation type="vanished">Consolideer de coördinaten van geselecteerde objecten</translation>
+        <translation>Consolideer de coördinaten van geselecteerde objecten</translation>
     </message>
     <message>
         <source>Control V AC from AC</source>
-        <translation type="vanished">Bedien V AC vanuit AC</translation>
+        <translation>Bedien V AC vanuit AC</translation>
     </message>
     <message>
         <source>Control V AC from DC+</source>
-        <translation type="vanished">Besturing V AC vanuit DC+</translation>
+        <translation>Besturing V AC vanuit DC+</translation>
     </message>
     <message>
         <source>Control V from</source>
-        <translation type="vanished">Controle V van</translation>
+        <translation>Controle V van</translation>
     </message>
     <message>
         <source>Control V to</source>
-        <translation type="vanished">Controle V tot</translation>
+        <translation>Controle V tot</translation>
     </message>
     <message>
         <source>Controllable shunt</source>
-        <translation type="vanished">Regelbare shunt</translation>
+        <translation>Regelbare shunt</translation>
     </message>
     <message>
         <source>Convert to</source>
-        <translation type="vanished">Converteren naar</translation>
+        <translation>Converteren naar</translation>
     </message>
     <message>
         <source>Convert to VSC multi-terminal</source>
-        <translation type="vanished">Converteren naar VSC multi-terminal</translation>
+        <translation>Converteren naar VSC multi-terminal</translation>
     </message>
     <message>
         <source>Convert to battery</source>
-        <translation type="vanished">Omzetten naar batterij</translation>
+        <translation>Omzetten naar batterij</translation>
     </message>
     <message>
         <source>Convert to impedances circuit</source>
-        <translation type="vanished">Converteren naar impedantiecircuit</translation>
+        <translation>Converteren naar impedantiecircuit</translation>
     </message>
     <message>
         <source>Convert to line</source>
-        <translation type="vanished">Converteren naar lijn</translation>
+        <translation>Converteren naar lijn</translation>
     </message>
     <message>
         <source>Convert to voltage level</source>
-        <translation type="vanished">Converteren naar spanningsniveau</translation>
+        <translation>Converteren naar spanningsniveau</translation>
     </message>
     <message>
         <source>Copy</source>
-        <translation type="vanished">Kopiëren</translation>
+        <translation>Kopiëren</translation>
     </message>
     <message>
         <source>Copy idtag</source>
-        <translation type="vanished">Kopieer idtag</translation>
+        <translation>Kopieer idtag</translation>
     </message>
     <message>
         <source>Copy table</source>
-        <translation type="vanished">Kopieer tabel</translation>
+        <translation>Kopieer tabel</translation>
     </message>
     <message>
         <source>Create line from here</source>
-        <translation type="vanished">Maak een lijn vanaf hier</translation>
+        <translation>Maak een lijn vanaf hier</translation>
     </message>
     <message>
         <source>Crop model to buses selection</source>
-        <translation type="vanished">Model bijsnijden op busselectie</translation>
+        <translation>Model bijsnijden op busselectie</translation>
     </message>
     <message>
         <source>Current injection</source>
-        <translation type="vanished">Stroominjectie</translation>
+        <translation>Stroominjectie</translation>
     </message>
     <message>
         <source>Delete</source>
-        <translation type="vanished">Verwijderen</translation>
+        <translation>Verwijderen</translation>
     </message>
     <message>
         <source>Delete all the connections</source>
-        <translation type="vanished">Verwijder alle verbindingen</translation>
+        <translation>Verwijder alle verbindingen</translation>
     </message>
     <message>
         <source>Draw labels</source>
-        <translation type="vanished">Teken etiketten</translation>
+        <translation>Teken etiketten</translation>
     </message>
     <message>
         <source>Duplicate</source>
-        <translation type="vanished">Duplicaat</translation>
+        <translation>Duplicaat</translation>
     </message>
     <message>
         <source>Duplicate object</source>
-        <translation type="vanished">Dubbel object</translation>
+        <translation>Dubbel object</translation>
     </message>
     <message>
         <source>EMT Editor</source>
-        <translation type="vanished">EMT Editor</translation>
+        <translation>EMT Editor</translation>
     </message>
     <message>
         <source>Edit</source>
-        <translation type="vanished">Bewerking</translation>
+        <translation>Bewerking</translation>
     </message>
     <message>
         <source>Edit tap changer</source>
-        <translation type="vanished">Aftakschakelaar bewerken</translation>
+        <translation>Aftakschakelaar bewerken</translation>
     </message>
     <message>
         <source>Editor</source>
-        <translation type="vanished">Editor</translation>
+        <translation>Editor</translation>
     </message>
     <message>
         <source>Enable/Disable</source>
-        <translation type="vanished">Inschakelen/Uitschakelen</translation>
+        <translation>Inschakelen/Uitschakelen</translation>
     </message>
     <message>
         <source>Expand schematic</source>
-        <translation type="vanished">Schema uitvouwen</translation>
+        <translation>Schema uitvouwen</translation>
     </message>
     <message>
         <source>External grid</source>
-        <translation type="vanished">Extern net</translation>
+        <translation>Extern net</translation>
     </message>
     <message>
         <source>Flip</source>
-        <translation type="vanished">Omdraaien</translation>
+        <translation>Omdraaien</translation>
     </message>
     <message>
         <source>Fluid node</source>
-        <translation type="vanished">Vloeibaar knooppunt</translation>
+        <translation>Vloeibaar knooppunt</translation>
     </message>
     <message>
         <source>FluidPath</source>
-        <translation type="vanished">Vloeistofpad</translation>
+        <translation>Vloeistofpad</translation>
     </message>
     <message>
         <source>Generator</source>
-        <translation type="vanished">Generator</translation>
+        <translation>Generator</translation>
     </message>
     <message>
         <source>Grid reduction</source>
-        <translation type="vanished">Netreductie</translation>
+        <translation>Netreductie</translation>
     </message>
     <message>
         <source>HVDC</source>
-        <translation type="vanished">HVDC</translation>
+        <translation>HVDC</translation>
     </message>
     <message>
         <source>HVDC line</source>
-        <translation type="vanished">HVDC-lijn</translation>
+        <translation>HVDC-lijn</translation>
     </message>
     <message>
         <source>Highlight based on property</source>
-        <translation type="vanished">Markeer op basis van eigendom</translation>
+        <translation>Markeer op basis van eigendom</translation>
     </message>
     <message>
         <source>Highlight buses selection</source>
-        <translation type="vanished">Busselectie markeren</translation>
+        <translation>Busselectie markeren</translation>
     </message>
     <message>
         <source>Is a DC bus</source>
-        <translation type="vanished">Is een DC-bus</translation>
+        <translation>Is een DC-bus</translation>
     </message>
     <message>
         <source>Line</source>
-        <translation type="vanished">Lijn</translation>
+        <translation>Lijn</translation>
     </message>
     <message>
         <source>Load</source>
-        <translation type="vanished">Laden</translation>
+        <translation>Laden</translation>
     </message>
     <message>
         <source>Load profile wizard</source>
-        <translation type="vanished">Profielwizard laden</translation>
+        <translation>Profielwizard laden</translation>
     </message>
     <message>
         <source>Merge</source>
-        <translation type="vanished">Samenvoegen</translation>
+        <translation>Samenvoegen</translation>
     </message>
     <message>
         <source>Merge children into scenario</source>
-        <translation type="vanished">Voeg kinderen samen in een scenario</translation>
+        <translation>Voeg kinderen samen in een scenario</translation>
     </message>
     <message>
         <source>Merge selected lines</source>
-        <translation type="vanished">Geselecteerde lijnen samenvoegen</translation>
+        <translation>Geselecteerde lijnen samenvoegen</translation>
     </message>
     <message>
         <source>Merge selected substations here</source>
-        <translation type="vanished">Voeg hier geselecteerde onderstations samen</translation>
+        <translation>Voeg hier geselecteerde onderstations samen</translation>
     </message>
     <message>
         <source>Move behind converter</source>
-        <translation type="vanished">Ga achter de omvormer staan</translation>
+        <translation>Ga achter de omvormer staan</translation>
     </message>
     <message>
         <source>New diagram from selection</source>
-        <translation type="vanished">Nieuw diagram uit selectie</translation>
+        <translation>Nieuw diagram uit selectie</translation>
     </message>
     <message>
         <source>New map</source>
-        <translation type="vanished">Nieuwe kaart</translation>
+        <translation>Nieuwe kaart</translation>
     </message>
     <message>
         <source>New map from selection</source>
-        <translation type="vanished">Nieuwe kaart uit selectie</translation>
+        <translation>Nieuwe kaart uit selectie</translation>
     </message>
     <message>
         <source>New schematic</source>
-        <translation type="vanished">Nieuw schema</translation>
+        <translation>Nieuw schema</translation>
     </message>
     <message>
         <source>New schematic from selection</source>
-        <translation type="vanished">Nieuw schema uit selectie</translation>
+        <translation>Nieuw schema uit selectie</translation>
     </message>
     <message>
         <source>New vicinity diagram</source>
-        <translation type="vanished">Nieuw omgevingsdiagram</translation>
+        <translation>Nieuw omgevingsdiagram</translation>
     </message>
     <message>
         <source>Open in Street view</source>
-        <translation type="vanished">Openen in Street View</translation>
+        <translation>Openen in Street View</translation>
     </message>
     <message>
         <source>Open in street view</source>
-        <translation type="vanished">Openen in Street View</translation>
+        <translation>Openen in Street View</translation>
     </message>
     <message>
         <source>P2X</source>
-        <translation type="vanished">P2X</translation>
+        <translation>P2X</translation>
     </message>
     <message>
         <source>Plot</source>
-        <translation type="vanished">Verhaallijn</translation>
+        <translation>Verhaallijn</translation>
     </message>
     <message>
         <source>Plot electrical profiles</source>
-        <translation type="vanished">Elektrische profielen uitzetten</translation>
+        <translation>Elektrische profielen uitzetten</translation>
     </message>
     <message>
         <source>Plot fluid profiles</source>
-        <translation type="vanished">Vloeiende profielen plotten</translation>
+        <translation>Vloeiende profielen plotten</translation>
     </message>
     <message>
         <source>Plot profiles</source>
-        <translation type="vanished">Profielen plotten</translation>
+        <translation>Profielen plotten</translation>
     </message>
     <message>
         <source>Power2X</source>
-        <translation type="vanished">&lt;xp2xwoord/&gt;</translation>
+        <translation>&lt;xp2xwoord/&gt;</translation>
     </message>
     <message>
         <source>Pump</source>
-        <translation type="vanished">Pomp</translation>
+        <translation>Pomp</translation>
     </message>
     <message>
         <source>Qcurve edit</source>
-        <translation type="vanished">Qcurve bewerken</translation>
+        <translation>Qcurve bewerken</translation>
     </message>
     <message>
         <source>RMS Editor</source>
-        <translation type="vanished">RMS Editor</translation>
+        <translation>RMS Editor</translation>
     </message>
     <message>
         <source>Reload</source>
-        <translation type="vanished">Herladen</translation>
+        <translation>Herladen</translation>
     </message>
     <message>
         <source>Remove</source>
-        <translation type="vanished">Verwijderen</translation>
+        <translation>Verwijderen</translation>
     </message>
     <message>
         <source>Remove Selected</source>
-        <translation type="vanished">Geselecteerde verwijderen</translation>
+        <translation>Geselecteerde verwijderen</translation>
     </message>
     <message>
         <source>Remove scenario</source>
-        <translation type="vanished">Scenario verwijderen</translation>
+        <translation>Scenario verwijderen</translation>
     </message>
     <message>
         <source>Remove substation</source>
-        <translation type="vanished">Onderstation verwijderen</translation>
+        <translation>Onderstation verwijderen</translation>
     </message>
     <message>
         <source>Rename scenario</source>
-        <translation type="vanished">Scenario hernoemen</translation>
+        <translation>Scenario hernoemen</translation>
     </message>
     <message>
         <source>Reticular</source>
-        <translation type="vanished">Reticulair</translation>
+        <translation>Reticulair</translation>
     </message>
     <message>
         <source>Rotate 90</source>
-        <translation type="vanished">Draai 90</translation>
+        <translation>Draai 90</translation>
     </message>
     <message>
         <source>Series reactance</source>
-        <translation type="vanished">Serie-reactantie</translation>
+        <translation>Serie-reactantie</translation>
     </message>
     <message>
         <source>Set Control dev 1</source>
-        <translation type="vanished">Stel Controle-ontwikkelaar 1 in</translation>
+        <translation>Stel Controle-ontwikkelaar 1 in</translation>
     </message>
     <message>
         <source>Set Control dev 2</source>
-        <translation type="vanished">Stel Controle-ontwikkelaar 2 in</translation>
+        <translation>Stel Controle-ontwikkelaar 2 in</translation>
     </message>
     <message>
         <source>Set as current scenario</source>
-        <translation type="vanished">Instellen als huidig ​​scenario</translation>
+        <translation>Instellen als huidig ​​scenario</translation>
     </message>
     <message>
         <source>Set coordinates to DB</source>
-        <translation type="vanished">Stel de coördinaten in op DB</translation>
+        <translation>Stel de coördinaten in op DB</translation>
     </message>
     <message>
         <source>Set regulation bus</source>
-        <translation type="vanished">Regelbus instellen</translation>
+        <translation>Regelbus instellen</translation>
     </message>
     <message>
         <source>Set value to column</source>
-        <translation type="vanished">Stel de waarde in op kolom</translation>
+        <translation>Stel de waarde in op kolom</translation>
     </message>
     <message>
         <source>Shunt</source>
-        <translation type="vanished">Shunt</translation>
+        <translation>Shunt</translation>
     </message>
     <message>
         <source>Solar photovoltaic wizard</source>
-        <translation type="vanished">Fotovoltaïsche wizard op zonne-energie</translation>
+        <translation>Fotovoltaïsche wizard op zonne-energie</translation>
     </message>
     <message>
         <source>Split line</source>
-        <translation type="vanished">Gesplitste lijn</translation>
+        <translation>Gesplitste lijn</translation>
     </message>
     <message>
         <source>Split line to selected substation (In-Out)</source>
-        <translation type="vanished">Gesplitste lijn naar geselecteerd onderstation (in-uit)</translation>
+        <translation>Gesplitste lijn naar geselecteerd onderstation (in-uit)</translation>
     </message>
     <message>
         <source>Split line with in/out</source>
-        <translation type="vanished">Gesplitste lijn met in/uit</translation>
+        <translation>Gesplitste lijn met in/uit</translation>
     </message>
     <message>
         <source>Static generator</source>
-        <translation type="vanished">Statische generator</translation>
+        <translation>Statische generator</translation>
     </message>
     <message>
         <source>Straight</source>
-        <translation type="vanished">Direct</translation>
+        <translation>Direct</translation>
     </message>
     <message>
         <source>Substation diagram</source>
-        <translation type="vanished">Onderstationdiagram</translation>
+        <translation>Onderstationdiagram</translation>
     </message>
     <message>
         <source>Switch</source>
-        <translation type="vanished">Schakelaar</translation>
+        <translation>Schakelaar</translation>
     </message>
     <message>
         <source>Tap changer</source>
-        <translation type="vanished">Aftakschakelaar</translation>
+        <translation>Aftakschakelaar</translation>
     </message>
     <message>
         <source>Tap down</source>
-        <translation type="vanished">Trap omlaag</translation>
+        <translation>Trap omlaag</translation>
     </message>
     <message>
         <source>Tap up</source>
-        <translation type="vanished">Trap omhoog</translation>
+        <translation>Trap omhoog</translation>
     </message>
     <message>
         <source>Transform waypoint into substation</source>
-        <translation type="vanished">Transformeer het waypoint naar een onderstation</translation>
+        <translation>Transformeer het waypoint naar een onderstation</translation>
     </message>
     <message>
         <source>Transformer</source>
-        <translation type="vanished">Transformator</translation>
+        <translation>Transformator</translation>
     </message>
     <message>
         <source>Transformer NW</source>
-        <translation type="vanished">Transformator NW</translation>
+        <translation>Transformator NW</translation>
     </message>
     <message>
         <source>Turbine</source>
-        <translation type="vanished">Turbine</translation>
+        <translation>Turbine</translation>
     </message>
     <message>
         <source>UPFC</source>
-        <translation type="vanished">UPFC</translation>
+        <translation>UPFC</translation>
     </message>
     <message>
         <source>VSC</source>
-        <translation type="vanished">VSC</translation>
+        <translation>VSC</translation>
     </message>
     <message>
         <source>Vicinity diagram from here</source>
-        <translation type="vanished">Omgevingsdiagram vanaf hier</translation>
+        <translation>Omgevingsdiagram vanaf hier</translation>
     </message>
     <message>
         <source>Wind farm wizard</source>
-        <translation type="vanished">Tovenaar van het windpark</translation>
+        <translation>Tovenaar van het windpark</translation>
     </message>
     <message>
         <source>Winding</source>
-        <translation type="vanished">Wikkeling</translation>
+        <translation>Wikkeling</translation>
     </message>
     <message>
         <source>add Short circuit</source>
-        <translation type="vanished">kortsluiting toevoegen</translation>
+        <translation>kortsluiting toevoegen</translation>
     </message>
 </context>
 <context>

@@ -638,519 +638,519 @@ li.checked::marker { content: &quot;\2612&quot;; }&lt;/style&gt;&lt;/head&gt;&lt
     <name>ContextMenu</name>
     <message>
         <source>3w-Transformer</source>
-        <translation type="vanished">Μετασχηματιστής 3 τυλιγμάτων</translation>
+        <translation>Μετασχηματιστής 3 τυλιγμάτων</translation>
     </message>
     <message>
         <source>Active</source>
-        <translation type="vanished">Ενεργός</translation>
+        <translation>Ενεργός</translation>
     </message>
     <message>
         <source>Add</source>
-        <translation type="vanished">Προσθέτω</translation>
+        <translation>Προσθέτω</translation>
     </message>
     <message>
         <source>Add Equation</source>
-        <translation type="vanished">Προσθήκη εξίσωσης</translation>
+        <translation>Προσθήκη εξίσωσης</translation>
     </message>
     <message>
         <source>Add Parameter</source>
-        <translation type="vanished">Προσθήκη παραμέτρου</translation>
+        <translation>Προσθήκη παραμέτρου</translation>
     </message>
     <message>
         <source>Add Variable</source>
-        <translation type="vanished">Προσθήκη μεταβλητής</translation>
+        <translation>Προσθήκη μεταβλητής</translation>
     </message>
     <message>
         <source>Add bus</source>
-        <translation type="vanished">Προσθήκη ζυγού</translation>
+        <translation>Προσθήκη ζυγού</translation>
     </message>
     <message>
         <source>Add child scenario</source>
-        <translation type="vanished">Προσθήκη παιδικού σεναρίου</translation>
+        <translation>Προσθήκη παιδικού σεναρίου</translation>
     </message>
     <message>
         <source>Add point</source>
-        <translation type="vanished">Προσθήκη σημείου</translation>
+        <translation>Προσθήκη σημείου</translation>
     </message>
     <message>
         <source>Add to catalogue</source>
-        <translation type="vanished">Προσθήκη στον κατάλογο</translation>
+        <translation>Προσθήκη στον κατάλογο</translation>
     </message>
     <message>
         <source>Add to current diagram</source>
-        <translation type="vanished">Προσθήκη στο τρέχον διάγραμμα</translation>
+        <translation>Προσθήκη στο τρέχον διάγραμμα</translation>
     </message>
     <message>
         <source>Add voltage level</source>
-        <translation type="vanished">Προσθέστε επίπεδο τάσης</translation>
+        <translation>Προσθέστε επίπεδο τάσης</translation>
     </message>
     <message>
         <source>Arrange</source>
-        <translation type="vanished">Κανονίζω</translation>
+        <translation>Κανονίζω</translation>
     </message>
     <message>
         <source>Assign active state to profile</source>
-        <translation type="vanished">Αντιστοιχίστε την ενεργή κατάσταση στο προφίλ</translation>
+        <translation>Αντιστοιχίστε την ενεργή κατάσταση στο προφίλ</translation>
     </message>
     <message>
         <source>Assign rate to profile</source>
-        <translation type="vanished">Εκχώρηση ποσοστού στο προφίλ</translation>
+        <translation>Εκχώρηση ποσοστού στο προφίλ</translation>
     </message>
     <message>
         <source>Assign to profile</source>
-        <translation type="vanished">Αντιστοίχιση στο προφίλ</translation>
+        <translation>Αντιστοίχιση στο προφίλ</translation>
     </message>
     <message>
         <source>Battery</source>
-        <translation type="vanished">Μπαταρία</translation>
+        <translation>Μπαταρία</translation>
     </message>
     <message>
         <source>Bus</source>
-        <translation type="vanished">Ζυγός</translation>
+        <translation>Ζυγός</translation>
     </message>
     <message>
         <source>Calculate total length</source>
-        <translation type="vanished">Υπολογίστε το συνολικό μήκος</translation>
+        <translation>Υπολογίστε το συνολικό μήκος</translation>
     </message>
     <message>
         <source>Change Color</source>
-        <translation type="vanished">Αλλαγή χρώματος</translation>
+        <translation>Αλλαγή χρώματος</translation>
     </message>
     <message>
         <source>Change bus</source>
-        <translation type="vanished">Αλλαγή ζυγού</translation>
+        <translation>Αλλαγή ζυγού</translation>
     </message>
     <message>
         <source>Change bus connection for the generator</source>
-        <translation type="vanished">Αλλαγή σύνδεσης ζυγού για τη γεννήτρια</translation>
+        <translation>Αλλαγή σύνδεσης ζυγού για τη γεννήτρια</translation>
     </message>
     <message>
         <source>Change substation connection of the line</source>
-        <translation type="vanished">Αλλαγή σύνδεσης υποσταθμού της γραμμής</translation>
+        <translation>Αλλαγή σύνδεσης υποσταθμού της γραμμής</translation>
     </message>
     <message>
         <source>Colour branches like this</source>
-        <translation type="vanished">Χρωματίστε τα κλαδιά όπως αυτό</translation>
+        <translation>Χρωματίστε τα κλαδιά όπως αυτό</translation>
     </message>
     <message>
         <source>Commit scenario</source>
-        <translation type="vanished">Σενάριο δέσμευσης</translation>
+        <translation>Σενάριο δέσμευσης</translation>
     </message>
     <message>
         <source>Connect line to selected substation (T-joint) at this waypoint</source>
-        <translation type="vanished">Συνδέστε τη γραμμή στον επιλεγμένο υποσταθμό (T-joint) σε αυτό το σημείο</translation>
+        <translation>Συνδέστε τη γραμμή στον επιλεγμένο υποσταθμό (T-joint) σε αυτό το σημείο</translation>
     </message>
     <message>
         <source>Consolidate coordinates</source>
-        <translation type="vanished">Ενοποίηση συντεταγμένων</translation>
+        <translation>Ενοποίηση συντεταγμένων</translation>
     </message>
     <message>
         <source>Consolidate selected objects coordinates</source>
-        <translation type="vanished">Ενοποίηση επιλεγμένων συντεταγμένων αντικειμένων</translation>
+        <translation>Ενοποίηση επιλεγμένων συντεταγμένων αντικειμένων</translation>
     </message>
     <message>
         <source>Control V AC from AC</source>
-        <translation type="vanished">Έλεγχος V AC από AC</translation>
+        <translation>Έλεγχος V AC από AC</translation>
     </message>
     <message>
         <source>Control V AC from DC+</source>
-        <translation type="vanished">Έλεγχος V AC από DC+</translation>
+        <translation>Έλεγχος V AC από DC+</translation>
     </message>
     <message>
         <source>Control V from</source>
-        <translation type="vanished">Έλεγχος V από</translation>
+        <translation>Έλεγχος V από</translation>
     </message>
     <message>
         <source>Control V to</source>
-        <translation type="vanished">Έλεγχος V σε</translation>
+        <translation>Έλεγχος V σε</translation>
     </message>
     <message>
         <source>Controllable shunt</source>
-        <translation type="vanished">Ελεγχόμενο Shunt</translation>
+        <translation>Ελεγχόμενο Shunt</translation>
     </message>
     <message>
         <source>Convert to</source>
-        <translation type="vanished">Μετατροπή σε</translation>
+        <translation>Μετατροπή σε</translation>
     </message>
     <message>
         <source>Convert to VSC multi-terminal</source>
-        <translation type="vanished">Μετατροπή σε πολυτερματικό VSC</translation>
+        <translation>Μετατροπή σε πολυτερματικό VSC</translation>
     </message>
     <message>
         <source>Convert to battery</source>
-        <translation type="vanished">Μετατροπή σε μπαταρία</translation>
+        <translation>Μετατροπή σε μπαταρία</translation>
     </message>
     <message>
         <source>Convert to impedances circuit</source>
-        <translation type="vanished">Μετατροπή σε κύκλωμα σύνθετης αντίστασης</translation>
+        <translation>Μετατροπή σε κύκλωμα σύνθετης αντίστασης</translation>
     </message>
     <message>
         <source>Convert to line</source>
-        <translation type="vanished">Μετατροπή σε γραμμή</translation>
+        <translation>Μετατροπή σε γραμμή</translation>
     </message>
     <message>
         <source>Convert to voltage level</source>
-        <translation type="vanished">Μετατροπή σε επίπεδο τάσης</translation>
+        <translation>Μετατροπή σε επίπεδο τάσης</translation>
     </message>
     <message>
         <source>Copy</source>
-        <translation type="vanished">Αντίγραφο</translation>
+        <translation>Αντίγραφο</translation>
     </message>
     <message>
         <source>Copy idtag</source>
-        <translation type="vanished">Αντιγράψτε το idtag</translation>
+        <translation>Αντιγράψτε το idtag</translation>
     </message>
     <message>
         <source>Copy table</source>
-        <translation type="vanished">Αντιγραφή πίνακα</translation>
+        <translation>Αντιγραφή πίνακα</translation>
     </message>
     <message>
         <source>Create line from here</source>
-        <translation type="vanished">Δημιουργήστε γραμμή από εδώ</translation>
+        <translation>Δημιουργήστε γραμμή από εδώ</translation>
     </message>
     <message>
         <source>Crop model to buses selection</source>
-        <translation type="vanished">Περικοπή μοντέλου στην επιλογή ζυγών</translation>
+        <translation>Περικοπή μοντέλου στην επιλογή ζυγών</translation>
     </message>
     <message>
         <source>Current injection</source>
-        <translation type="vanished">Έγχυση ρεύματος</translation>
+        <translation>Έγχυση ρεύματος</translation>
     </message>
     <message>
         <source>Delete</source>
-        <translation type="vanished">Διαγράφω</translation>
+        <translation>Διαγράφω</translation>
     </message>
     <message>
         <source>Delete all the connections</source>
-        <translation type="vanished">Διαγράψτε όλες τις συνδέσεις</translation>
+        <translation>Διαγράψτε όλες τις συνδέσεις</translation>
     </message>
     <message>
         <source>Draw labels</source>
-        <translation type="vanished">Σχεδιάστε ετικέτες</translation>
+        <translation>Σχεδιάστε ετικέτες</translation>
     </message>
     <message>
         <source>Duplicate</source>
-        <translation type="vanished">Αντίγραφο</translation>
+        <translation>Αντίγραφο</translation>
     </message>
     <message>
         <source>Duplicate object</source>
-        <translation type="vanished">Διπλότυπο αντικείμενο</translation>
+        <translation>Διπλότυπο αντικείμενο</translation>
     </message>
     <message>
         <source>EMT Editor</source>
-        <translation type="vanished">EMT Επεξεργαστής</translation>
+        <translation>EMT Επεξεργαστής</translation>
     </message>
     <message>
         <source>Edit</source>
-        <translation type="vanished">Εκδίδω</translation>
+        <translation>Εκδίδω</translation>
     </message>
     <message>
         <source>Edit tap changer</source>
-        <translation type="vanished">Επεξεργασία αλλαγέα λήψεων</translation>
+        <translation>Επεξεργασία αλλαγέα λήψεων</translation>
     </message>
     <message>
         <source>Editor</source>
-        <translation type="vanished">Συντάκτης</translation>
+        <translation>Συντάκτης</translation>
     </message>
     <message>
         <source>Enable/Disable</source>
-        <translation type="vanished">Ενεργοποίηση/Απενεργοποίηση</translation>
+        <translation>Ενεργοποίηση/Απενεργοποίηση</translation>
     </message>
     <message>
         <source>Expand schematic</source>
-        <translation type="vanished">Αναπτύξτε το σχηματικό</translation>
+        <translation>Αναπτύξτε το σχηματικό</translation>
     </message>
     <message>
         <source>External grid</source>
-        <translation type="vanished">Εξωτερικό δίκτυο</translation>
+        <translation>Εξωτερικό δίκτυο</translation>
     </message>
     <message>
         <source>Flip</source>
-        <translation type="vanished">Αναρρίπτω</translation>
+        <translation>Αναρρίπτω</translation>
     </message>
     <message>
         <source>Fluid node</source>
-        <translation type="vanished">Ρευστός κόμβος</translation>
+        <translation>Ρευστός κόμβος</translation>
     </message>
     <message>
         <source>FluidPath</source>
-        <translation type="vanished">FluidPath</translation>
+        <translation>FluidPath</translation>
     </message>
     <message>
         <source>Generator</source>
-        <translation type="vanished">Γεννήτρια</translation>
+        <translation>Γεννήτρια</translation>
     </message>
     <message>
         <source>Grid reduction</source>
-        <translation type="vanished">Μείωση πλέγματος</translation>
+        <translation>Μείωση πλέγματος</translation>
     </message>
     <message>
         <source>HVDC</source>
-        <translation type="vanished">HVDC</translation>
+        <translation>HVDC</translation>
     </message>
     <message>
         <source>HVDC line</source>
-        <translation type="vanished">γραμμή HVDC</translation>
+        <translation>γραμμή HVDC</translation>
     </message>
     <message>
         <source>Highlight based on property</source>
-        <translation type="vanished">Επισήμανση με βάση την ιδιοκτησία</translation>
+        <translation>Επισήμανση με βάση την ιδιοκτησία</translation>
     </message>
     <message>
         <source>Highlight buses selection</source>
-        <translation type="vanished">Επισήμανση επιλογής ζυγών</translation>
+        <translation>Επισήμανση επιλογής ζυγών</translation>
     </message>
     <message>
         <source>Is a DC bus</source>
-        <translation type="vanished">Είναι ζυγός DC</translation>
+        <translation>Είναι ζυγός DC</translation>
     </message>
     <message>
         <source>Line</source>
-        <translation type="vanished">Γραμμή</translation>
+        <translation>Γραμμή</translation>
     </message>
     <message>
         <source>Load</source>
-        <translation type="vanished">Φορτίο</translation>
+        <translation>Φορτίο</translation>
     </message>
     <message>
         <source>Load profile wizard</source>
-        <translation type="vanished">Οδηγός φόρτωσης προφίλ</translation>
+        <translation>Οδηγός φόρτωσης προφίλ</translation>
     </message>
     <message>
         <source>Merge</source>
-        <translation type="vanished">Συγχώνευση</translation>
+        <translation>Συγχώνευση</translation>
     </message>
     <message>
         <source>Merge children into scenario</source>
-        <translation type="vanished">Συγχωνεύστε τα παιδιά στο σενάριο</translation>
+        <translation>Συγχωνεύστε τα παιδιά στο σενάριο</translation>
     </message>
     <message>
         <source>Merge selected lines</source>
-        <translation type="vanished">Συγχώνευση επιλεγμένων γραμμών</translation>
+        <translation>Συγχώνευση επιλεγμένων γραμμών</translation>
     </message>
     <message>
         <source>Merge selected substations here</source>
-        <translation type="vanished">Συγχώνευση επιλεγμένων υποσταθμών εδώ</translation>
+        <translation>Συγχώνευση επιλεγμένων υποσταθμών εδώ</translation>
     </message>
     <message>
         <source>Move behind converter</source>
-        <translation type="vanished">Μετακινηθείτε πίσω από τον μετατροπέα</translation>
+        <translation>Μετακινηθείτε πίσω από τον μετατροπέα</translation>
     </message>
     <message>
         <source>New diagram from selection</source>
-        <translation type="vanished">Νέο διάγραμμα από την επιλογή</translation>
+        <translation>Νέο διάγραμμα από την επιλογή</translation>
     </message>
     <message>
         <source>New map</source>
-        <translation type="vanished">Νέος χάρτης</translation>
+        <translation>Νέος χάρτης</translation>
     </message>
     <message>
         <source>New map from selection</source>
-        <translation type="vanished">Νέος χάρτης από την επιλογή</translation>
+        <translation>Νέος χάρτης από την επιλογή</translation>
     </message>
     <message>
         <source>New schematic</source>
-        <translation type="vanished">Νέο σχηματικό</translation>
+        <translation>Νέο σχηματικό</translation>
     </message>
     <message>
         <source>New schematic from selection</source>
-        <translation type="vanished">Νέο σχηματικό από την επιλογή</translation>
+        <translation>Νέο σχηματικό από την επιλογή</translation>
     </message>
     <message>
         <source>New vicinity diagram</source>
-        <translation type="vanished">Νέο διάγραμμα γειτνίασης</translation>
+        <translation>Νέο διάγραμμα γειτνίασης</translation>
     </message>
     <message>
         <source>Open in Street view</source>
-        <translation type="vanished">Άνοιγμα στο Street View</translation>
+        <translation>Άνοιγμα στο Street View</translation>
     </message>
     <message>
         <source>Open in street view</source>
-        <translation type="vanished">Άνοιγμα στο Street View</translation>
+        <translation>Άνοιγμα στο Street View</translation>
     </message>
     <message>
         <source>P2X</source>
-        <translation type="vanished">P2X</translation>
+        <translation>P2X</translation>
     </message>
     <message>
         <source>Plot</source>
-        <translation type="vanished">Οικόπεδο</translation>
+        <translation>Οικόπεδο</translation>
     </message>
     <message>
         <source>Plot electrical profiles</source>
-        <translation type="vanished">Οικόπεδο ηλεκτρικών προφίλ</translation>
+        <translation>Οικόπεδο ηλεκτρικών προφίλ</translation>
     </message>
     <message>
         <source>Plot fluid profiles</source>
-        <translation type="vanished">Σχεδιάστε προφίλ ρευστού</translation>
+        <translation>Σχεδιάστε προφίλ ρευστού</translation>
     </message>
     <message>
         <source>Plot profiles</source>
-        <translation type="vanished">Προφίλ οικοπέδου</translation>
+        <translation>Προφίλ οικοπέδου</translation>
     </message>
     <message>
         <source>Power2X</source>
-        <translation type="vanished">Power2X</translation>
+        <translation>Power2X</translation>
     </message>
     <message>
         <source>Pump</source>
-        <translation type="vanished">Αντλία</translation>
+        <translation>Αντλία</translation>
     </message>
     <message>
         <source>Qcurve edit</source>
-        <translation type="vanished">Qcurve επεξεργασία</translation>
+        <translation>Qcurve επεξεργασία</translation>
     </message>
     <message>
         <source>RMS Editor</source>
-        <translation type="vanished">RMS Επεξεργαστής</translation>
+        <translation>RMS Επεξεργαστής</translation>
     </message>
     <message>
         <source>Reload</source>
-        <translation type="vanished">Γεμίζω πάλι</translation>
+        <translation>Γεμίζω πάλι</translation>
     </message>
     <message>
         <source>Remove</source>
-        <translation type="vanished">Αφαιρώ</translation>
+        <translation>Αφαιρώ</translation>
     </message>
     <message>
         <source>Remove Selected</source>
-        <translation type="vanished">Αφαίρεση επιλεγμένων</translation>
+        <translation>Αφαίρεση επιλεγμένων</translation>
     </message>
     <message>
         <source>Remove scenario</source>
-        <translation type="vanished">Κατάργηση σεναρίου</translation>
+        <translation>Κατάργηση σεναρίου</translation>
     </message>
     <message>
         <source>Remove substation</source>
-        <translation type="vanished">Αφαιρέστε τον υποσταθμό</translation>
+        <translation>Αφαιρέστε τον υποσταθμό</translation>
     </message>
     <message>
         <source>Rename scenario</source>
-        <translation type="vanished">Μετονομασία σεναρίου</translation>
+        <translation>Μετονομασία σεναρίου</translation>
     </message>
     <message>
         <source>Reticular</source>
-        <translation type="vanished">Δικτυωτή</translation>
+        <translation>Δικτυωτή</translation>
     </message>
     <message>
         <source>Rotate 90</source>
-        <translation type="vanished">Περιστροφή 90</translation>
+        <translation>Περιστροφή 90</translation>
     </message>
     <message>
         <source>Series reactance</source>
-        <translation type="vanished">Αντίδραση σειράς</translation>
+        <translation>Αντίδραση σειράς</translation>
     </message>
     <message>
         <source>Set Control dev 1</source>
-        <translation type="vanished">Ρυθμίστε το Control dev 1</translation>
+        <translation>Ρυθμίστε το Control dev 1</translation>
     </message>
     <message>
         <source>Set Control dev 2</source>
-        <translation type="vanished">Ρυθμίστε το Control dev 2</translation>
+        <translation>Ρυθμίστε το Control dev 2</translation>
     </message>
     <message>
         <source>Set as current scenario</source>
-        <translation type="vanished">Ορισμός ως τρέχον σενάριο</translation>
+        <translation>Ορισμός ως τρέχον σενάριο</translation>
     </message>
     <message>
         <source>Set coordinates to DB</source>
-        <translation type="vanished">Ορίστε τις συντεταγμένες σε DB</translation>
+        <translation>Ορίστε τις συντεταγμένες σε DB</translation>
     </message>
     <message>
         <source>Set regulation bus</source>
-        <translation type="vanished">Ορισμός ζυγού ρύθμισης</translation>
+        <translation>Ορισμός ζυγού ρύθμισης</translation>
     </message>
     <message>
         <source>Set value to column</source>
-        <translation type="vanished">Ορίστε την τιμή στη στήλη</translation>
+        <translation>Ορίστε την τιμή στη στήλη</translation>
     </message>
     <message>
         <source>Shunt</source>
-        <translation type="vanished">Shunt</translation>
+        <translation>Shunt</translation>
     </message>
     <message>
         <source>Solar photovoltaic wizard</source>
-        <translation type="vanished">Οδηγός ηλιακών φωτοβολταϊκών</translation>
+        <translation>Οδηγός ηλιακών φωτοβολταϊκών</translation>
     </message>
     <message>
         <source>Split line</source>
-        <translation type="vanished">Διαίρεση γραμμής</translation>
+        <translation>Διαίρεση γραμμής</translation>
     </message>
     <message>
         <source>Split line to selected substation (In-Out)</source>
-        <translation type="vanished">Διαίρεση γραμμής σε επιλεγμένο υποσταθμό (In-Out)</translation>
+        <translation>Διαίρεση γραμμής σε επιλεγμένο υποσταθμό (In-Out)</translation>
     </message>
     <message>
         <source>Split line with in/out</source>
-        <translation type="vanished">Χωριστή γραμμή με μέσα/έξω</translation>
+        <translation>Χωριστή γραμμή με μέσα/έξω</translation>
     </message>
     <message>
         <source>Static generator</source>
-        <translation type="vanished">Στατική γεννήτρια</translation>
+        <translation>Στατική γεννήτρια</translation>
     </message>
     <message>
         <source>Straight</source>
-        <translation type="vanished">Ευθεία</translation>
+        <translation>Ευθεία</translation>
     </message>
     <message>
         <source>Substation diagram</source>
-        <translation type="vanished">Διάγραμμα υποσταθμού</translation>
+        <translation>Διάγραμμα υποσταθμού</translation>
     </message>
     <message>
         <source>Switch</source>
-        <translation type="vanished">Διακόπτης</translation>
+        <translation>Διακόπτης</translation>
     </message>
     <message>
         <source>Tap changer</source>
-        <translation type="vanished">Αλλαγέας λήψεων</translation>
+        <translation>Αλλαγέας λήψεων</translation>
     </message>
     <message>
         <source>Tap down</source>
-        <translation type="vanished">Μείωση λήψης</translation>
+        <translation>Μείωση λήψης</translation>
     </message>
     <message>
         <source>Tap up</source>
-        <translation type="vanished">Αύξηση λήψης</translation>
+        <translation>Αύξηση λήψης</translation>
     </message>
     <message>
         <source>Transform waypoint into substation</source>
-        <translation type="vanished">Μετατροπή σημείου σε υποσταθμό</translation>
+        <translation>Μετατροπή σημείου σε υποσταθμό</translation>
     </message>
     <message>
         <source>Transformer</source>
-        <translation type="vanished">Μετασχηματιστής</translation>
+        <translation>Μετασχηματιστής</translation>
     </message>
     <message>
         <source>Transformer NW</source>
-        <translation type="vanished">Μετασχηματιστής ΒΔ</translation>
+        <translation>Μετασχηματιστής ΒΔ</translation>
     </message>
     <message>
         <source>Turbine</source>
-        <translation type="vanished">Τουρμπίνα</translation>
+        <translation>Τουρμπίνα</translation>
     </message>
     <message>
         <source>UPFC</source>
-        <translation type="vanished">UPFC</translation>
+        <translation>UPFC</translation>
     </message>
     <message>
         <source>VSC</source>
-        <translation type="vanished">VSC</translation>
+        <translation>VSC</translation>
     </message>
     <message>
         <source>Vicinity diagram from here</source>
-        <translation type="vanished">Διάγραμμα γειτονιάς από εδώ</translation>
+        <translation>Διάγραμμα γειτονιάς από εδώ</translation>
     </message>
     <message>
         <source>Wind farm wizard</source>
-        <translation type="vanished">Μάγος αιολικού πάρκου</translation>
+        <translation>Μάγος αιολικού πάρκου</translation>
     </message>
     <message>
         <source>Winding</source>
-        <translation type="vanished">Τύλιγμα</translation>
+        <translation>Τύλιγμα</translation>
     </message>
     <message>
         <source>add Short circuit</source>
-        <translation type="vanished">προσθήκη βραχυκυκλώματος</translation>
+        <translation>προσθήκη βραχυκυκλώματος</translation>
     </message>
 </context>
 <context>

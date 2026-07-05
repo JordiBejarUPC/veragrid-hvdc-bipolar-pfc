@@ -638,519 +638,519 @@ li.checked::marker { content: &quot;\2612&quot;; }&lt;/style&gt;&lt;/head&gt;&lt
     <name>ContextMenu</name>
     <message>
         <source>3w-Transformer</source>
-        <translation type="vanished">محول ثلاثي اللفات</translation>
+        <translation>محول ثلاثي اللفات</translation>
     </message>
     <message>
         <source>Active</source>
-        <translation type="vanished">نشيط</translation>
+        <translation>نشيط</translation>
     </message>
     <message>
         <source>Add</source>
-        <translation type="vanished">يضيف</translation>
+        <translation>يضيف</translation>
     </message>
     <message>
         <source>Add Equation</source>
-        <translation type="vanished">أضف المعادلة</translation>
+        <translation>أضف المعادلة</translation>
     </message>
     <message>
         <source>Add Parameter</source>
-        <translation type="vanished">إضافة المعلمة</translation>
+        <translation>إضافة المعلمة</translation>
     </message>
     <message>
         <source>Add Variable</source>
-        <translation type="vanished">إضافة متغير</translation>
+        <translation>إضافة متغير</translation>
     </message>
     <message>
         <source>Add bus</source>
-        <translation type="vanished">إضافة قضيب</translation>
+        <translation>إضافة قضيب</translation>
     </message>
     <message>
         <source>Add child scenario</source>
-        <translation type="vanished">إضافة سيناريو فرعي</translation>
+        <translation>إضافة سيناريو فرعي</translation>
     </message>
     <message>
         <source>Add point</source>
-        <translation type="vanished">أضف نقطة</translation>
+        <translation>أضف نقطة</translation>
     </message>
     <message>
         <source>Add to catalogue</source>
-        <translation type="vanished">أضف إلى الكتالوج</translation>
+        <translation>أضف إلى الكتالوج</translation>
     </message>
     <message>
         <source>Add to current diagram</source>
-        <translation type="vanished">أضف إلى الرسم البياني الحالي</translation>
+        <translation>أضف إلى الرسم البياني الحالي</translation>
     </message>
     <message>
         <source>Add voltage level</source>
-        <translation type="vanished">إضافة مستوى الجهد</translation>
+        <translation>إضافة مستوى الجهد</translation>
     </message>
     <message>
         <source>Arrange</source>
-        <translation type="vanished">يرتب</translation>
+        <translation>يرتب</translation>
     </message>
     <message>
         <source>Assign active state to profile</source>
-        <translation type="vanished">تعيين الحالة النشطة إلى الملف الشخصي</translation>
+        <translation>تعيين الحالة النشطة إلى الملف الشخصي</translation>
     </message>
     <message>
         <source>Assign rate to profile</source>
-        <translation type="vanished">تعيين معدل للملف الشخصي</translation>
+        <translation>تعيين معدل للملف الشخصي</translation>
     </message>
     <message>
         <source>Assign to profile</source>
-        <translation type="vanished">تعيين إلى الملف الشخصي</translation>
+        <translation>تعيين إلى الملف الشخصي</translation>
     </message>
     <message>
         <source>Battery</source>
-        <translation type="vanished">بطارية</translation>
+        <translation>بطارية</translation>
     </message>
     <message>
         <source>Bus</source>
-        <translation type="vanished">قضيب</translation>
+        <translation>قضيب</translation>
     </message>
     <message>
         <source>Calculate total length</source>
-        <translation type="vanished">حساب الطول الإجمالي</translation>
+        <translation>حساب الطول الإجمالي</translation>
     </message>
     <message>
         <source>Change Color</source>
-        <translation type="vanished">تغيير اللون</translation>
+        <translation>تغيير اللون</translation>
     </message>
     <message>
         <source>Change bus</source>
-        <translation type="vanished">تغيير القضيب</translation>
+        <translation>تغيير القضيب</translation>
     </message>
     <message>
         <source>Change bus connection for the generator</source>
-        <translation type="vanished">تغيير توصيل القضيب للمولد</translation>
+        <translation>تغيير توصيل القضيب للمولد</translation>
     </message>
     <message>
         <source>Change substation connection of the line</source>
-        <translation type="vanished">تغيير اتصال المحطة الفرعية للخط</translation>
+        <translation>تغيير اتصال المحطة الفرعية للخط</translation>
     </message>
     <message>
         <source>Colour branches like this</source>
-        <translation type="vanished">فروع اللون مثل هذا</translation>
+        <translation>فروع اللون مثل هذا</translation>
     </message>
     <message>
         <source>Commit scenario</source>
-        <translation type="vanished">سيناريو الالتزام</translation>
+        <translation>سيناريو الالتزام</translation>
     </message>
     <message>
         <source>Connect line to selected substation (T-joint) at this waypoint</source>
-        <translation type="vanished">قم بتوصيل الخط بالمحطة الفرعية المحددة (مفصل T) عند نقطة الطريق هذه</translation>
+        <translation>قم بتوصيل الخط بالمحطة الفرعية المحددة (مفصل T) عند نقطة الطريق هذه</translation>
     </message>
     <message>
         <source>Consolidate coordinates</source>
-        <translation type="vanished">توحيد الإحداثيات</translation>
+        <translation>توحيد الإحداثيات</translation>
     </message>
     <message>
         <source>Consolidate selected objects coordinates</source>
-        <translation type="vanished">دمج إحداثيات الكائنات المحددة</translation>
+        <translation>دمج إحداثيات الكائنات المحددة</translation>
     </message>
     <message>
         <source>Control V AC from AC</source>
-        <translation type="vanished">التحكم في التيار المتردد V من التيار المتردد</translation>
+        <translation>التحكم في التيار المتردد V من التيار المتردد</translation>
     </message>
     <message>
         <source>Control V AC from DC+</source>
-        <translation type="vanished">التحكم في التيار المتردد V من DC+</translation>
+        <translation>التحكم في التيار المتردد V من DC+</translation>
     </message>
     <message>
         <source>Control V from</source>
-        <translation type="vanished">التحكم V من</translation>
+        <translation>التحكم V من</translation>
     </message>
     <message>
         <source>Control V to</source>
-        <translation type="vanished">السيطرة على الخامس ل</translation>
+        <translation>السيطرة على الخامس ل</translation>
     </message>
     <message>
         <source>Controllable shunt</source>
-        <translation type="vanished">Shunt قابل للتحكم</translation>
+        <translation>Shunt قابل للتحكم</translation>
     </message>
     <message>
         <source>Convert to</source>
-        <translation type="vanished">تحويل إلى</translation>
+        <translation>تحويل إلى</translation>
     </message>
     <message>
         <source>Convert to VSC multi-terminal</source>
-        <translation type="vanished">تحويل إلى محطة متعددة VSC</translation>
+        <translation>تحويل إلى محطة متعددة VSC</translation>
     </message>
     <message>
         <source>Convert to battery</source>
-        <translation type="vanished">تحويل إلى بطارية</translation>
+        <translation>تحويل إلى بطارية</translation>
     </message>
     <message>
         <source>Convert to impedances circuit</source>
-        <translation type="vanished">تحويل إلى دائرة الممانعات</translation>
+        <translation>تحويل إلى دائرة الممانعات</translation>
     </message>
     <message>
         <source>Convert to line</source>
-        <translation type="vanished">تحويل إلى خط</translation>
+        <translation>تحويل إلى خط</translation>
     </message>
     <message>
         <source>Convert to voltage level</source>
-        <translation type="vanished">تحويل إلى مستوى الجهد</translation>
+        <translation>تحويل إلى مستوى الجهد</translation>
     </message>
     <message>
         <source>Copy</source>
-        <translation type="vanished">ينسخ</translation>
+        <translation>ينسخ</translation>
     </message>
     <message>
         <source>Copy idtag</source>
-        <translation type="vanished">انسخ idtag</translation>
+        <translation>انسخ idtag</translation>
     </message>
     <message>
         <source>Copy table</source>
-        <translation type="vanished">نسخ الجدول</translation>
+        <translation>نسخ الجدول</translation>
     </message>
     <message>
         <source>Create line from here</source>
-        <translation type="vanished">إنشاء خط من هنا</translation>
+        <translation>إنشاء خط من هنا</translation>
     </message>
     <message>
         <source>Crop model to buses selection</source>
-        <translation type="vanished">قص النموذج إلى اختيار القضبان</translation>
+        <translation>قص النموذج إلى اختيار القضبان</translation>
     </message>
     <message>
         <source>Current injection</source>
-        <translation type="vanished">حقن التيار</translation>
+        <translation>حقن التيار</translation>
     </message>
     <message>
         <source>Delete</source>
-        <translation type="vanished">يمسح</translation>
+        <translation>يمسح</translation>
     </message>
     <message>
         <source>Delete all the connections</source>
-        <translation type="vanished">حذف كافة الاتصالات</translation>
+        <translation>حذف كافة الاتصالات</translation>
     </message>
     <message>
         <source>Draw labels</source>
-        <translation type="vanished">رسم التسميات</translation>
+        <translation>رسم التسميات</translation>
     </message>
     <message>
         <source>Duplicate</source>
-        <translation type="vanished">ينسخ</translation>
+        <translation>ينسخ</translation>
     </message>
     <message>
         <source>Duplicate object</source>
-        <translation type="vanished">كائن مكرر</translation>
+        <translation>كائن مكرر</translation>
     </message>
     <message>
         <source>EMT Editor</source>
-        <translation type="vanished">محرر EMT</translation>
+        <translation>محرر EMT</translation>
     </message>
     <message>
         <source>Edit</source>
-        <translation type="vanished">يحرر</translation>
+        <translation>يحرر</translation>
     </message>
     <message>
         <source>Edit tap changer</source>
-        <translation type="vanished">تحرير مغير المآخذ</translation>
+        <translation>تحرير مغير المآخذ</translation>
     </message>
     <message>
         <source>Editor</source>
-        <translation type="vanished">محرر</translation>
+        <translation>محرر</translation>
     </message>
     <message>
         <source>Enable/Disable</source>
-        <translation type="vanished">تمكين/تعطيل</translation>
+        <translation>تمكين/تعطيل</translation>
     </message>
     <message>
         <source>Expand schematic</source>
-        <translation type="vanished">قم بتوسيع التخطيطي</translation>
+        <translation>قم بتوسيع التخطيطي</translation>
     </message>
     <message>
         <source>External grid</source>
-        <translation type="vanished">شبكة خارجية</translation>
+        <translation>شبكة خارجية</translation>
     </message>
     <message>
         <source>Flip</source>
-        <translation type="vanished">نقف</translation>
+        <translation>نقف</translation>
     </message>
     <message>
         <source>Fluid node</source>
-        <translation type="vanished">عقدة السوائل</translation>
+        <translation>عقدة السوائل</translation>
     </message>
     <message>
         <source>FluidPath</source>
-        <translation type="vanished">مسار السوائل</translation>
+        <translation>مسار السوائل</translation>
     </message>
     <message>
         <source>Generator</source>
-        <translation type="vanished">مولد</translation>
+        <translation>مولد</translation>
     </message>
     <message>
         <source>Grid reduction</source>
-        <translation type="vanished">تخفيض الشبكة</translation>
+        <translation>تخفيض الشبكة</translation>
     </message>
     <message>
         <source>HVDC</source>
-        <translation type="vanished">HVDC</translation>
+        <translation>HVDC</translation>
     </message>
     <message>
         <source>HVDC line</source>
-        <translation type="vanished">خط HVDC</translation>
+        <translation>خط HVDC</translation>
     </message>
     <message>
         <source>Highlight based on property</source>
-        <translation type="vanished">تسليط الضوء على أساس الملكية</translation>
+        <translation>تسليط الضوء على أساس الملكية</translation>
     </message>
     <message>
         <source>Highlight buses selection</source>
-        <translation type="vanished">إبراز اختيار القضبان</translation>
+        <translation>إبراز اختيار القضبان</translation>
     </message>
     <message>
         <source>Is a DC bus</source>
-        <translation type="vanished">هو قضيب تيار مستمر</translation>
+        <translation>هو قضيب تيار مستمر</translation>
     </message>
     <message>
         <source>Line</source>
-        <translation type="vanished">خط</translation>
+        <translation>خط</translation>
     </message>
     <message>
         <source>Load</source>
-        <translation type="vanished">حمولة</translation>
+        <translation>حمولة</translation>
     </message>
     <message>
         <source>Load profile wizard</source>
-        <translation type="vanished">تحميل معالج الملف الشخصي</translation>
+        <translation>تحميل معالج الملف الشخصي</translation>
     </message>
     <message>
         <source>Merge</source>
-        <translation type="vanished">دمج</translation>
+        <translation>دمج</translation>
     </message>
     <message>
         <source>Merge children into scenario</source>
-        <translation type="vanished">دمج الأطفال في السيناريو</translation>
+        <translation>دمج الأطفال في السيناريو</translation>
     </message>
     <message>
         <source>Merge selected lines</source>
-        <translation type="vanished">دمج الخطوط المحددة</translation>
+        <translation>دمج الخطوط المحددة</translation>
     </message>
     <message>
         <source>Merge selected substations here</source>
-        <translation type="vanished">دمج المحطات الفرعية المحددة هنا</translation>
+        <translation>دمج المحطات الفرعية المحددة هنا</translation>
     </message>
     <message>
         <source>Move behind converter</source>
-        <translation type="vanished">التحرك خلف المحول</translation>
+        <translation>التحرك خلف المحول</translation>
     </message>
     <message>
         <source>New diagram from selection</source>
-        <translation type="vanished">رسم تخطيطي جديد من التحديد</translation>
+        <translation>رسم تخطيطي جديد من التحديد</translation>
     </message>
     <message>
         <source>New map</source>
-        <translation type="vanished">خريطة جديدة</translation>
+        <translation>خريطة جديدة</translation>
     </message>
     <message>
         <source>New map from selection</source>
-        <translation type="vanished">خريطة جديدة من التحديد</translation>
+        <translation>خريطة جديدة من التحديد</translation>
     </message>
     <message>
         <source>New schematic</source>
-        <translation type="vanished">تخطيطي جديد</translation>
+        <translation>تخطيطي جديد</translation>
     </message>
     <message>
         <source>New schematic from selection</source>
-        <translation type="vanished">تخطيطي جديد من التحديد</translation>
+        <translation>تخطيطي جديد من التحديد</translation>
     </message>
     <message>
         <source>New vicinity diagram</source>
-        <translation type="vanished">مخطط محيط جديد</translation>
+        <translation>مخطط محيط جديد</translation>
     </message>
     <message>
         <source>Open in Street view</source>
-        <translation type="vanished">افتح في Street View</translation>
+        <translation>افتح في Street View</translation>
     </message>
     <message>
         <source>Open in street view</source>
-        <translation type="vanished">افتح في Street View</translation>
+        <translation>افتح في Street View</translation>
     </message>
     <message>
         <source>P2X</source>
-        <translation type="vanished">P2X</translation>
+        <translation>P2X</translation>
     </message>
     <message>
         <source>Plot</source>
-        <translation type="vanished">حبكة</translation>
+        <translation>حبكة</translation>
     </message>
     <message>
         <source>Plot electrical profiles</source>
-        <translation type="vanished">رسم الملامح الكهربائية</translation>
+        <translation>رسم الملامح الكهربائية</translation>
     </message>
     <message>
         <source>Plot fluid profiles</source>
-        <translation type="vanished">رسم ملامح السوائل</translation>
+        <translation>رسم ملامح السوائل</translation>
     </message>
     <message>
         <source>Plot profiles</source>
-        <translation type="vanished">ملفات تعريف المؤامرة</translation>
+        <translation>ملفات تعريف المؤامرة</translation>
     </message>
     <message>
         <source>Power2X</source>
-        <translation type="vanished">Power2X</translation>
+        <translation>Power2X</translation>
     </message>
     <message>
         <source>Pump</source>
-        <translation type="vanished">مضخة</translation>
+        <translation>مضخة</translation>
     </message>
     <message>
         <source>Qcurve edit</source>
-        <translation type="vanished">تحرير Qcurve</translation>
+        <translation>تحرير Qcurve</translation>
     </message>
     <message>
         <source>RMS Editor</source>
-        <translation type="vanished">محرر RMS</translation>
+        <translation>محرر RMS</translation>
     </message>
     <message>
         <source>Reload</source>
-        <translation type="vanished">إعادة تحميل</translation>
+        <translation>إعادة تحميل</translation>
     </message>
     <message>
         <source>Remove</source>
-        <translation type="vanished">يزيل</translation>
+        <translation>يزيل</translation>
     </message>
     <message>
         <source>Remove Selected</source>
-        <translation type="vanished">إزالة المحدد</translation>
+        <translation>إزالة المحدد</translation>
     </message>
     <message>
         <source>Remove scenario</source>
-        <translation type="vanished">إزالة السيناريو</translation>
+        <translation>إزالة السيناريو</translation>
     </message>
     <message>
         <source>Remove substation</source>
-        <translation type="vanished">إزالة المحطة الفرعية</translation>
+        <translation>إزالة المحطة الفرعية</translation>
     </message>
     <message>
         <source>Rename scenario</source>
-        <translation type="vanished">إعادة تسمية السيناريو</translation>
+        <translation>إعادة تسمية السيناريو</translation>
     </message>
     <message>
         <source>Reticular</source>
-        <translation type="vanished">شبكي</translation>
+        <translation>شبكي</translation>
     </message>
     <message>
         <source>Rotate 90</source>
-        <translation type="vanished">تدوير 90</translation>
+        <translation>تدوير 90</translation>
     </message>
     <message>
         <source>Series reactance</source>
-        <translation type="vanished">مفاعلة السلسلة</translation>
+        <translation>مفاعلة السلسلة</translation>
     </message>
     <message>
         <source>Set Control dev 1</source>
-        <translation type="vanished">ضبط التحكم في التطوير 1</translation>
+        <translation>ضبط التحكم في التطوير 1</translation>
     </message>
     <message>
         <source>Set Control dev 2</source>
-        <translation type="vanished">ضبط التحكم ديف 2</translation>
+        <translation>ضبط التحكم ديف 2</translation>
     </message>
     <message>
         <source>Set as current scenario</source>
-        <translation type="vanished">تعيين كسيناريو حالي</translation>
+        <translation>تعيين كسيناريو حالي</translation>
     </message>
     <message>
         <source>Set coordinates to DB</source>
-        <translation type="vanished">تعيين الإحداثيات إلى DB</translation>
+        <translation>تعيين الإحداثيات إلى DB</translation>
     </message>
     <message>
         <source>Set regulation bus</source>
-        <translation type="vanished">تعيين قضيب التنظيم</translation>
+        <translation>تعيين قضيب التنظيم</translation>
     </message>
     <message>
         <source>Set value to column</source>
-        <translation type="vanished">اضبط القيمة على العمود</translation>
+        <translation>اضبط القيمة على العمود</translation>
     </message>
     <message>
         <source>Shunt</source>
-        <translation type="vanished">Shunt</translation>
+        <translation>Shunt</translation>
     </message>
     <message>
         <source>Solar photovoltaic wizard</source>
-        <translation type="vanished">معالج الطاقة الشمسية الكهروضوئية</translation>
+        <translation>معالج الطاقة الشمسية الكهروضوئية</translation>
     </message>
     <message>
         <source>Split line</source>
-        <translation type="vanished">خط الانقسام</translation>
+        <translation>خط الانقسام</translation>
     </message>
     <message>
         <source>Split line to selected substation (In-Out)</source>
-        <translation type="vanished">تقسيم الخط إلى المحطة الفرعية المحددة (داخل-خارج)</translation>
+        <translation>تقسيم الخط إلى المحطة الفرعية المحددة (داخل-خارج)</translation>
     </message>
     <message>
         <source>Split line with in/out</source>
-        <translation type="vanished">خط مقسم مع داخل/خارج</translation>
+        <translation>خط مقسم مع داخل/خارج</translation>
     </message>
     <message>
         <source>Static generator</source>
-        <translation type="vanished">مولد ثابت</translation>
+        <translation>مولد ثابت</translation>
     </message>
     <message>
         <source>Straight</source>
-        <translation type="vanished">مستقيم</translation>
+        <translation>مستقيم</translation>
     </message>
     <message>
         <source>Substation diagram</source>
-        <translation type="vanished">مخطط المحطة الفرعية</translation>
+        <translation>مخطط المحطة الفرعية</translation>
     </message>
     <message>
         <source>Switch</source>
-        <translation type="vanished">مفتاح</translation>
+        <translation>مفتاح</translation>
     </message>
     <message>
         <source>Tap changer</source>
-        <translation type="vanished">مغير المآخذ</translation>
+        <translation>مغير المآخذ</translation>
     </message>
     <message>
         <source>Tap down</source>
-        <translation type="vanished">خفض المأخذ</translation>
+        <translation>خفض المأخذ</translation>
     </message>
     <message>
         <source>Tap up</source>
-        <translation type="vanished">رفع المأخذ</translation>
+        <translation>رفع المأخذ</translation>
     </message>
     <message>
         <source>Transform waypoint into substation</source>
-        <translation type="vanished">تحويل نقطة الطريق إلى محطة فرعية</translation>
+        <translation>تحويل نقطة الطريق إلى محطة فرعية</translation>
     </message>
     <message>
         <source>Transformer</source>
-        <translation type="vanished">محول</translation>
+        <translation>محول</translation>
     </message>
     <message>
         <source>Transformer NW</source>
-        <translation type="vanished">محول نو</translation>
+        <translation>محول نو</translation>
     </message>
     <message>
         <source>Turbine</source>
-        <translation type="vanished">توربين</translation>
+        <translation>توربين</translation>
     </message>
     <message>
         <source>UPFC</source>
-        <translation type="vanished">UPFC</translation>
+        <translation>UPFC</translation>
     </message>
     <message>
         <source>VSC</source>
-        <translation type="vanished">VSC</translation>
+        <translation>VSC</translation>
     </message>
     <message>
         <source>Vicinity diagram from here</source>
-        <translation type="vanished">مخطط الجوار من هنا</translation>
+        <translation>مخطط الجوار من هنا</translation>
     </message>
     <message>
         <source>Wind farm wizard</source>
-        <translation type="vanished">معالج مزرعة الرياح</translation>
+        <translation>معالج مزرعة الرياح</translation>
     </message>
     <message>
         <source>Winding</source>
-        <translation type="vanished">ملف</translation>
+        <translation>ملف</translation>
     </message>
     <message>
         <source>add Short circuit</source>
-        <translation type="vanished">إضافة ماس كهربائى</translation>
+        <translation>إضافة ماس كهربائى</translation>
     </message>
 </context>
 <context>

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -40,6 +41,41 @@ def _get_translation_source_files(translations_dir: Path) -> list[Path]:
     return ts_files
 
 
+def _reactivate_context_menu_translations(ts_file: Path) -> None:
+    """
+    Restore runtime context-menu translations after ``lupdate`` marks them vanished.
+
+    :param ts_file: Translation source file to patch.
+    :returns: Nothing.
+    """
+    contents: str = ts_file.read_text(encoding="utf-8")
+    context_match: re.Match[str] | None = re.search(
+        r"<context>\s*<name>ContextMenu</name>.*?</context>",
+        contents,
+        re.DOTALL,
+    )
+
+    if context_match is None:
+        return
+    else:
+        pass
+
+    original_block: str = context_match.group(0)
+    updated_block: str = original_block.replace('<translation type="vanished">', "<translation>")
+
+    if updated_block == original_block:
+        return
+    else:
+        pass
+
+    # Only the ContextMenu block is rewritten so translator-managed formatting
+    # outside that runtime catalog remains untouched.
+    ts_file.write_text(
+        contents.replace(original_block, updated_block, 1),
+        encoding="utf-8",
+    )
+
+
 def update_translations() -> None:
     """
     Refresh every application ``.ts`` file and compile matching ``.qm`` outputs.
@@ -69,8 +105,11 @@ def update_translations() -> None:
         ) + [str(ts_file) for ts_file in ts_files]
     )
 
-    # Compile each catalog to the qm file with the same stem in the same folder.
     ts_file: Path
+    for ts_file in ts_files:
+        _reactivate_context_menu_translations(ts_file=ts_file)
+
+    # Compile each catalog to the qm file with the same stem in the same folder.
     for ts_file in ts_files:
         qm_file: Path = ts_file.with_suffix(".qm")
         _run_command(

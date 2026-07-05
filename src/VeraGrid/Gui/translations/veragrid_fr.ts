@@ -640,519 +640,519 @@ li.checked :: marqueur { content: &quot;\2612&quot;; }
     <name>ContextMenu</name>
     <message>
         <source>3w-Transformer</source>
-        <translation type="vanished">Transformateur à 3 enroulements</translation>
+        <translation>Transformateur à 3 enroulements</translation>
     </message>
     <message>
         <source>Active</source>
-        <translation type="vanished">Actif</translation>
+        <translation>Actif</translation>
     </message>
     <message>
         <source>Add</source>
-        <translation type="vanished">Ajouter</translation>
+        <translation>Ajouter</translation>
     </message>
     <message>
         <source>Add Equation</source>
-        <translation type="vanished">Ajouter une équation</translation>
+        <translation>Ajouter une équation</translation>
     </message>
     <message>
         <source>Add Parameter</source>
-        <translation type="vanished">Ajouter un paramètre</translation>
+        <translation>Ajouter un paramètre</translation>
     </message>
     <message>
         <source>Add Variable</source>
-        <translation type="vanished">Ajouter une variable</translation>
+        <translation>Ajouter une variable</translation>
     </message>
     <message>
         <source>Add bus</source>
-        <translation type="vanished">Ajouter un bus</translation>
+        <translation>Ajouter un bus</translation>
     </message>
     <message>
         <source>Add child scenario</source>
-        <translation type="vanished">Ajouter un scénario enfant</translation>
+        <translation>Ajouter un scénario enfant</translation>
     </message>
     <message>
         <source>Add point</source>
-        <translation type="vanished">Ajouter un point</translation>
+        <translation>Ajouter un point</translation>
     </message>
     <message>
         <source>Add to catalogue</source>
-        <translation type="vanished">Ajouter au catalogue</translation>
+        <translation>Ajouter au catalogue</translation>
     </message>
     <message>
         <source>Add to current diagram</source>
-        <translation type="vanished">Ajouter au diagramme actuel</translation>
+        <translation>Ajouter au diagramme actuel</translation>
     </message>
     <message>
         <source>Add voltage level</source>
-        <translation type="vanished">Ajouter un niveau de tension</translation>
+        <translation>Ajouter un niveau de tension</translation>
     </message>
     <message>
         <source>Arrange</source>
-        <translation type="vanished">Organiser</translation>
+        <translation>Organiser</translation>
     </message>
     <message>
         <source>Assign active state to profile</source>
-        <translation type="vanished">Attribuer un état actif au profil</translation>
+        <translation>Attribuer un état actif au profil</translation>
     </message>
     <message>
         <source>Assign rate to profile</source>
-        <translation type="vanished">Attribuer un taux au profil</translation>
+        <translation>Attribuer un taux au profil</translation>
     </message>
     <message>
         <source>Assign to profile</source>
-        <translation type="vanished">Attribuer au profil</translation>
+        <translation>Attribuer au profil</translation>
     </message>
     <message>
         <source>Battery</source>
-        <translation type="vanished">Batterie</translation>
+        <translation>Batterie</translation>
     </message>
     <message>
         <source>Bus</source>
-        <translation type="vanished">Bus</translation>
+        <translation>Bus</translation>
     </message>
     <message>
         <source>Calculate total length</source>
-        <translation type="vanished">Calculer la longueur totale</translation>
+        <translation>Calculer la longueur totale</translation>
     </message>
     <message>
         <source>Change Color</source>
-        <translation type="vanished">Changer la couleur</translation>
+        <translation>Changer la couleur</translation>
     </message>
     <message>
         <source>Change bus</source>
-        <translation type="vanished">Changer de bus</translation>
+        <translation>Changer de bus</translation>
     </message>
     <message>
         <source>Change bus connection for the generator</source>
-        <translation type="vanished">Changer la connexion du bus du générateur</translation>
+        <translation>Changer la connexion du bus du générateur</translation>
     </message>
     <message>
         <source>Change substation connection of the line</source>
-        <translation type="vanished">Changer la connexion du poste de la ligne</translation>
+        <translation>Changer la connexion du poste de la ligne</translation>
     </message>
     <message>
         <source>Colour branches like this</source>
-        <translation type="vanished">Colorer les branches comme ça</translation>
+        <translation>Colorer les branches comme ça</translation>
     </message>
     <message>
         <source>Commit scenario</source>
-        <translation type="vanished">Scénario de validation</translation>
+        <translation>Scénario de validation</translation>
     </message>
     <message>
         <source>Connect line to selected substation (T-joint) at this waypoint</source>
-        <translation type="vanished">Connectez la ligne à la sous-station sélectionnée (joint en T) à ce waypoint</translation>
+        <translation>Connectez la ligne à la sous-station sélectionnée (joint en T) à ce waypoint</translation>
     </message>
     <message>
         <source>Consolidate coordinates</source>
-        <translation type="vanished">Consolider les coordonnées</translation>
+        <translation>Consolider les coordonnées</translation>
     </message>
     <message>
         <source>Consolidate selected objects coordinates</source>
-        <translation type="vanished">Consolider les coordonnées des objets sélectionnés</translation>
+        <translation>Consolider les coordonnées des objets sélectionnés</translation>
     </message>
     <message>
         <source>Control V AC from AC</source>
-        <translation type="vanished">Contrôler V AC à partir de AC</translation>
+        <translation>Contrôler V AC à partir de AC</translation>
     </message>
     <message>
         <source>Control V AC from DC+</source>
-        <translation type="vanished">Contrôle V AC à partir de DC+</translation>
+        <translation>Contrôle V AC à partir de DC+</translation>
     </message>
     <message>
         <source>Control V from</source>
-        <translation type="vanished">Contrôler V depuis</translation>
+        <translation>Contrôler V depuis</translation>
     </message>
     <message>
         <source>Control V to</source>
-        <translation type="vanished">Contrôler V pour</translation>
+        <translation>Contrôler V pour</translation>
     </message>
     <message>
         <source>Controllable shunt</source>
-        <translation type="vanished">Shunt contrôlable</translation>
+        <translation>Shunt contrôlable</translation>
     </message>
     <message>
         <source>Convert to</source>
-        <translation type="vanished">Convertir en</translation>
+        <translation>Convertir en</translation>
     </message>
     <message>
         <source>Convert to VSC multi-terminal</source>
-        <translation type="vanished">Convertir en multi-terminal VSC</translation>
+        <translation>Convertir en multi-terminal VSC</translation>
     </message>
     <message>
         <source>Convert to battery</source>
-        <translation type="vanished">Convertir en batterie</translation>
+        <translation>Convertir en batterie</translation>
     </message>
     <message>
         <source>Convert to impedances circuit</source>
-        <translation type="vanished">Convertir en circuit d&apos;impédances</translation>
+        <translation>Convertir en circuit d&apos;impédances</translation>
     </message>
     <message>
         <source>Convert to line</source>
-        <translation type="vanished">Convertir en ligne</translation>
+        <translation>Convertir en ligne</translation>
     </message>
     <message>
         <source>Convert to voltage level</source>
-        <translation type="vanished">Convertir en niveau de tension</translation>
+        <translation>Convertir en niveau de tension</translation>
     </message>
     <message>
         <source>Copy</source>
-        <translation type="vanished">Copie</translation>
+        <translation>Copie</translation>
     </message>
     <message>
         <source>Copy idtag</source>
-        <translation type="vanished">Copier idtag</translation>
+        <translation>Copier idtag</translation>
     </message>
     <message>
         <source>Copy table</source>
-        <translation type="vanished">Copier le tableau</translation>
+        <translation>Copier le tableau</translation>
     </message>
     <message>
         <source>Create line from here</source>
-        <translation type="vanished">Créer une ligne à partir d&apos;ici</translation>
+        <translation>Créer une ligne à partir d&apos;ici</translation>
     </message>
     <message>
         <source>Crop model to buses selection</source>
-        <translation type="vanished">Rogner le modèle à la sélection de bus</translation>
+        <translation>Rogner le modèle à la sélection de bus</translation>
     </message>
     <message>
         <source>Current injection</source>
-        <translation type="vanished">Injection de courant</translation>
+        <translation>Injection de courant</translation>
     </message>
     <message>
         <source>Delete</source>
-        <translation type="vanished">Supprimer</translation>
+        <translation>Supprimer</translation>
     </message>
     <message>
         <source>Delete all the connections</source>
-        <translation type="vanished">Supprimer toutes les connexions</translation>
+        <translation>Supprimer toutes les connexions</translation>
     </message>
     <message>
         <source>Draw labels</source>
-        <translation type="vanished">Dessiner des étiquettes</translation>
+        <translation>Dessiner des étiquettes</translation>
     </message>
     <message>
         <source>Duplicate</source>
-        <translation type="vanished">Double</translation>
+        <translation>Double</translation>
     </message>
     <message>
         <source>Duplicate object</source>
-        <translation type="vanished">Objet en double</translation>
+        <translation>Objet en double</translation>
     </message>
     <message>
         <source>EMT Editor</source>
-        <translation type="vanished">EMT Éditeur</translation>
+        <translation>EMT Éditeur</translation>
     </message>
     <message>
         <source>Edit</source>
-        <translation type="vanished">Modifier</translation>
+        <translation>Modifier</translation>
     </message>
     <message>
         <source>Edit tap changer</source>
-        <translation type="vanished">Modifier le changeur de prises</translation>
+        <translation>Modifier le changeur de prises</translation>
     </message>
     <message>
         <source>Editor</source>
-        <translation type="vanished">Éditeur</translation>
+        <translation>Éditeur</translation>
     </message>
     <message>
         <source>Enable/Disable</source>
-        <translation type="vanished">Activer/Désactiver</translation>
+        <translation>Activer/Désactiver</translation>
     </message>
     <message>
         <source>Expand schematic</source>
-        <translation type="vanished">Développer le schéma</translation>
+        <translation>Développer le schéma</translation>
     </message>
     <message>
         <source>External grid</source>
-        <translation type="vanished">Réseau externe</translation>
+        <translation>Réseau externe</translation>
     </message>
     <message>
         <source>Flip</source>
-        <translation type="vanished">Retourner</translation>
+        <translation>Retourner</translation>
     </message>
     <message>
         <source>Fluid node</source>
-        <translation type="vanished">Nœud fluide</translation>
+        <translation>Nœud fluide</translation>
     </message>
     <message>
         <source>FluidPath</source>
-        <translation type="vanished">Chemin Fluide</translation>
+        <translation>Chemin Fluide</translation>
     </message>
     <message>
         <source>Generator</source>
-        <translation type="vanished">Générateur</translation>
+        <translation>Générateur</translation>
     </message>
     <message>
         <source>Grid reduction</source>
-        <translation type="vanished">Réduction du réseau</translation>
+        <translation>Réduction du réseau</translation>
     </message>
     <message>
         <source>HVDC</source>
-        <translation type="vanished">HVDC</translation>
+        <translation>HVDC</translation>
     </message>
     <message>
         <source>HVDC line</source>
-        <translation type="vanished">Ligne HVDC</translation>
+        <translation>Ligne HVDC</translation>
     </message>
     <message>
         <source>Highlight based on property</source>
-        <translation type="vanished">Highlight basé sur la propriété</translation>
+        <translation>Highlight basé sur la propriété</translation>
     </message>
     <message>
         <source>Highlight buses selection</source>
-        <translation type="vanished">Mettre en évidence la sélection de bus</translation>
+        <translation>Mettre en évidence la sélection de bus</translation>
     </message>
     <message>
         <source>Is a DC bus</source>
-        <translation type="vanished">Est un bus CC</translation>
+        <translation>Est un bus CC</translation>
     </message>
     <message>
         <source>Line</source>
-        <translation type="vanished">Ligne</translation>
+        <translation>Ligne</translation>
     </message>
     <message>
         <source>Load</source>
-        <translation type="vanished">Charger</translation>
+        <translation>Charger</translation>
     </message>
     <message>
         <source>Load profile wizard</source>
-        <translation type="vanished">Assistant de chargement de profil</translation>
+        <translation>Assistant de chargement de profil</translation>
     </message>
     <message>
         <source>Merge</source>
-        <translation type="vanished">Fusionner</translation>
+        <translation>Fusionner</translation>
     </message>
     <message>
         <source>Merge children into scenario</source>
-        <translation type="vanished">Fusionner les enfants dans le scénario</translation>
+        <translation>Fusionner les enfants dans le scénario</translation>
     </message>
     <message>
         <source>Merge selected lines</source>
-        <translation type="vanished">Fusionner les lignes sélectionnées</translation>
+        <translation>Fusionner les lignes sélectionnées</translation>
     </message>
     <message>
         <source>Merge selected substations here</source>
-        <translation type="vanished">Fusionner les sous-stations sélectionnées ici</translation>
+        <translation>Fusionner les sous-stations sélectionnées ici</translation>
     </message>
     <message>
         <source>Move behind converter</source>
-        <translation type="vanished">Se déplacer derrière le convertisseur</translation>
+        <translation>Se déplacer derrière le convertisseur</translation>
     </message>
     <message>
         <source>New diagram from selection</source>
-        <translation type="vanished">Nouveau diagramme issu de la sélection</translation>
+        <translation>Nouveau diagramme issu de la sélection</translation>
     </message>
     <message>
         <source>New map</source>
-        <translation type="vanished">Nouvelle carte</translation>
+        <translation>Nouvelle carte</translation>
     </message>
     <message>
         <source>New map from selection</source>
-        <translation type="vanished">Nouvelle carte issue de la sélection</translation>
+        <translation>Nouvelle carte issue de la sélection</translation>
     </message>
     <message>
         <source>New schematic</source>
-        <translation type="vanished">Nouveau schéma</translation>
+        <translation>Nouveau schéma</translation>
     </message>
     <message>
         <source>New schematic from selection</source>
-        <translation type="vanished">Nouveau schéma issu de la sélection</translation>
+        <translation>Nouveau schéma issu de la sélection</translation>
     </message>
     <message>
         <source>New vicinity diagram</source>
-        <translation type="vanished">Nouveau diagramme de voisinage</translation>
+        <translation>Nouveau diagramme de voisinage</translation>
     </message>
     <message>
         <source>Open in Street view</source>
-        <translation type="vanished">Ouvrir dans Street View</translation>
+        <translation>Ouvrir dans Street View</translation>
     </message>
     <message>
         <source>Open in street view</source>
-        <translation type="vanished">Ouvrir dans Street View</translation>
+        <translation>Ouvrir dans Street View</translation>
     </message>
     <message>
         <source>P2X</source>
-        <translation type="vanished">P2X</translation>
+        <translation>P2X</translation>
     </message>
     <message>
         <source>Plot</source>
-        <translation type="vanished">Terrain</translation>
+        <translation>Terrain</translation>
     </message>
     <message>
         <source>Plot electrical profiles</source>
-        <translation type="vanished">Tracer des profils électriques</translation>
+        <translation>Tracer des profils électriques</translation>
     </message>
     <message>
         <source>Plot fluid profiles</source>
-        <translation type="vanished">Tracer des profils de fluides</translation>
+        <translation>Tracer des profils de fluides</translation>
     </message>
     <message>
         <source>Plot profiles</source>
-        <translation type="vanished">Profils de tracé</translation>
+        <translation>Profils de tracé</translation>
     </message>
     <message>
         <source>Power2X</source>
-        <translation type="vanished">Power2X</translation>
+        <translation>Power2X</translation>
     </message>
     <message>
         <source>Pump</source>
-        <translation type="vanished">Pompe</translation>
+        <translation>Pompe</translation>
     </message>
     <message>
         <source>Qcurve edit</source>
-        <translation type="vanished">Qcurve modifier</translation>
+        <translation>Qcurve modifier</translation>
     </message>
     <message>
         <source>RMS Editor</source>
-        <translation type="vanished">Éditeur RMS</translation>
+        <translation>Éditeur RMS</translation>
     </message>
     <message>
         <source>Reload</source>
-        <translation type="vanished">Recharger</translation>
+        <translation>Recharger</translation>
     </message>
     <message>
         <source>Remove</source>
-        <translation type="vanished">Retirer</translation>
+        <translation>Retirer</translation>
     </message>
     <message>
         <source>Remove Selected</source>
-        <translation type="vanished">Supprimer la sélection</translation>
+        <translation>Supprimer la sélection</translation>
     </message>
     <message>
         <source>Remove scenario</source>
-        <translation type="vanished">Supprimer le scénario</translation>
+        <translation>Supprimer le scénario</translation>
     </message>
     <message>
         <source>Remove substation</source>
-        <translation type="vanished">Supprimer la sous-station</translation>
+        <translation>Supprimer la sous-station</translation>
     </message>
     <message>
         <source>Rename scenario</source>
-        <translation type="vanished">Renommer le scénario</translation>
+        <translation>Renommer le scénario</translation>
     </message>
     <message>
         <source>Reticular</source>
-        <translation type="vanished">Réticulaire</translation>
+        <translation>Réticulaire</translation>
     </message>
     <message>
         <source>Rotate 90</source>
-        <translation type="vanished">Rotation 90</translation>
+        <translation>Rotation 90</translation>
     </message>
     <message>
         <source>Series reactance</source>
-        <translation type="vanished">Réactance série</translation>
+        <translation>Réactance série</translation>
     </message>
     <message>
         <source>Set Control dev 1</source>
-        <translation type="vanished">Définir le développement de contrôle&#xa0;1</translation>
+        <translation>Définir le développement de contrôle&#xa0;1</translation>
     </message>
     <message>
         <source>Set Control dev 2</source>
-        <translation type="vanished">Définir le développement de contrôle 2</translation>
+        <translation>Définir le développement de contrôle 2</translation>
     </message>
     <message>
         <source>Set as current scenario</source>
-        <translation type="vanished">Définir comme scénario actuel</translation>
+        <translation>Définir comme scénario actuel</translation>
     </message>
     <message>
         <source>Set coordinates to DB</source>
-        <translation type="vanished">Définir les coordonnées sur DB</translation>
+        <translation>Définir les coordonnées sur DB</translation>
     </message>
     <message>
         <source>Set regulation bus</source>
-        <translation type="vanished">Définir le bus de régulation</translation>
+        <translation>Définir le bus de régulation</translation>
     </message>
     <message>
         <source>Set value to column</source>
-        <translation type="vanished">Définir la valeur sur la colonne</translation>
+        <translation>Définir la valeur sur la colonne</translation>
     </message>
     <message>
         <source>Shunt</source>
-        <translation type="vanished">Shunt</translation>
+        <translation>Shunt</translation>
     </message>
     <message>
         <source>Solar photovoltaic wizard</source>
-        <translation type="vanished">Assistant solaire photovoltaïque</translation>
+        <translation>Assistant solaire photovoltaïque</translation>
     </message>
     <message>
         <source>Split line</source>
-        <translation type="vanished">Ligne divisée</translation>
+        <translation>Ligne divisée</translation>
     </message>
     <message>
         <source>Split line to selected substation (In-Out)</source>
-        <translation type="vanished">Ligne divisée vers la sous-station sélectionnée (Entrée-Sortie)</translation>
+        <translation>Ligne divisée vers la sous-station sélectionnée (Entrée-Sortie)</translation>
     </message>
     <message>
         <source>Split line with in/out</source>
-        <translation type="vanished">Ligne divisée avec entrée/sortie</translation>
+        <translation>Ligne divisée avec entrée/sortie</translation>
     </message>
     <message>
         <source>Static generator</source>
-        <translation type="vanished">Générateur statique</translation>
+        <translation>Générateur statique</translation>
     </message>
     <message>
         <source>Straight</source>
-        <translation type="vanished">Droit</translation>
+        <translation>Droit</translation>
     </message>
     <message>
         <source>Substation diagram</source>
-        <translation type="vanished">Schéma de la sous-station</translation>
+        <translation>Schéma de la sous-station</translation>
     </message>
     <message>
         <source>Switch</source>
-        <translation type="vanished">Interrupteur</translation>
+        <translation>Interrupteur</translation>
     </message>
     <message>
         <source>Tap changer</source>
-        <translation type="vanished">Changeur de prises</translation>
+        <translation>Changeur de prises</translation>
     </message>
     <message>
         <source>Tap down</source>
-        <translation type="vanished">Abaisser la prise</translation>
+        <translation>Abaisser la prise</translation>
     </message>
     <message>
         <source>Tap up</source>
-        <translation type="vanished">Relever la prise</translation>
+        <translation>Relever la prise</translation>
     </message>
     <message>
         <source>Transform waypoint into substation</source>
-        <translation type="vanished">Transformez le waypoint en sous-station</translation>
+        <translation>Transformez le waypoint en sous-station</translation>
     </message>
     <message>
         <source>Transformer</source>
-        <translation type="vanished">Transformateur</translation>
+        <translation>Transformateur</translation>
     </message>
     <message>
         <source>Transformer NW</source>
-        <translation type="vanished">Transformateur NW</translation>
+        <translation>Transformateur NW</translation>
     </message>
     <message>
         <source>Turbine</source>
-        <translation type="vanished">Turbine</translation>
+        <translation>Turbine</translation>
     </message>
     <message>
         <source>UPFC</source>
-        <translation type="vanished">UPFC</translation>
+        <translation>UPFC</translation>
     </message>
     <message>
         <source>VSC</source>
-        <translation type="vanished">CSV</translation>
+        <translation>CSV</translation>
     </message>
     <message>
         <source>Vicinity diagram from here</source>
-        <translation type="vanished">Diagramme des environs d&apos;ici</translation>
+        <translation>Diagramme des environs d&apos;ici</translation>
     </message>
     <message>
         <source>Wind farm wizard</source>
-        <translation type="vanished">Assistant de parc éolien</translation>
+        <translation>Assistant de parc éolien</translation>
     </message>
     <message>
         <source>Winding</source>
-        <translation type="vanished">Enroulement</translation>
+        <translation>Enroulement</translation>
     </message>
     <message>
         <source>add Short circuit</source>
-        <translation type="vanished">ajouter un court-circuit</translation>
+        <translation>ajouter un court-circuit</translation>
     </message>
 </context>
 <context>

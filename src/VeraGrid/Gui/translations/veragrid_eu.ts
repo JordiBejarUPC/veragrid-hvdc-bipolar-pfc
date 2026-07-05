@@ -640,519 +640,519 @@ li.checked::marker { content: &quot;\2612&quot;; }
     <name>ContextMenu</name>
     <message>
         <source>3w-Transformer</source>
-        <translation type="vanished">3 harilkadun transformadorea</translation>
+        <translation>3 harilkadun transformadorea</translation>
     </message>
     <message>
         <source>Active</source>
-        <translation type="vanished">Aktiboa</translation>
+        <translation>Aktiboa</translation>
     </message>
     <message>
         <source>Add</source>
-        <translation type="vanished">Gehitu</translation>
+        <translation>Gehitu</translation>
     </message>
     <message>
         <source>Add Equation</source>
-        <translation type="vanished">Gehitu ekuazioa</translation>
+        <translation>Gehitu ekuazioa</translation>
     </message>
     <message>
         <source>Add Parameter</source>
-        <translation type="vanished">Gehitu parametroa</translation>
+        <translation>Gehitu parametroa</translation>
     </message>
     <message>
         <source>Add Variable</source>
-        <translation type="vanished">Gehitu aldagaia</translation>
+        <translation>Gehitu aldagaia</translation>
     </message>
     <message>
         <source>Add bus</source>
-        <translation type="vanished">Busa gehitu</translation>
+        <translation>Busa gehitu</translation>
     </message>
     <message>
         <source>Add child scenario</source>
-        <translation type="vanished">Gehitu haur eszenatokia</translation>
+        <translation>Gehitu haur eszenatokia</translation>
     </message>
     <message>
         <source>Add point</source>
-        <translation type="vanished">Gehitu puntua</translation>
+        <translation>Gehitu puntua</translation>
     </message>
     <message>
         <source>Add to catalogue</source>
-        <translation type="vanished">Gehitu katalogora</translation>
+        <translation>Gehitu katalogora</translation>
     </message>
     <message>
         <source>Add to current diagram</source>
-        <translation type="vanished">Gehitu uneko diagramari</translation>
+        <translation>Gehitu uneko diagramari</translation>
     </message>
     <message>
         <source>Add voltage level</source>
-        <translation type="vanished">Gehitu tentsio maila</translation>
+        <translation>Gehitu tentsio maila</translation>
     </message>
     <message>
         <source>Arrange</source>
-        <translation type="vanished">Antolatu</translation>
+        <translation>Antolatu</translation>
     </message>
     <message>
         <source>Assign active state to profile</source>
-        <translation type="vanished">Esleitu egoera aktiboa profilari</translation>
+        <translation>Esleitu egoera aktiboa profilari</translation>
     </message>
     <message>
         <source>Assign rate to profile</source>
-        <translation type="vanished">Esleitu tarifa profilari</translation>
+        <translation>Esleitu tarifa profilari</translation>
     </message>
     <message>
         <source>Assign to profile</source>
-        <translation type="vanished">Esleitu profilari</translation>
+        <translation>Esleitu profilari</translation>
     </message>
     <message>
         <source>Battery</source>
-        <translation type="vanished">Bateria</translation>
+        <translation>Bateria</translation>
     </message>
     <message>
         <source>Bus</source>
-        <translation type="vanished">Bus</translation>
+        <translation>Bus</translation>
     </message>
     <message>
         <source>Calculate total length</source>
-        <translation type="vanished">Kalkulatu luzera osoa</translation>
+        <translation>Kalkulatu luzera osoa</translation>
     </message>
     <message>
         <source>Change Color</source>
-        <translation type="vanished">Kolorea aldatu</translation>
+        <translation>Kolorea aldatu</translation>
     </message>
     <message>
         <source>Change bus</source>
-        <translation type="vanished">Busa aldatu</translation>
+        <translation>Busa aldatu</translation>
     </message>
     <message>
         <source>Change bus connection for the generator</source>
-        <translation type="vanished">Sorgailuaren bus-konexioa aldatu</translation>
+        <translation>Sorgailuaren bus-konexioa aldatu</translation>
     </message>
     <message>
         <source>Change substation connection of the line</source>
-        <translation type="vanished">Aldatu linearen azpiestazio konexioa</translation>
+        <translation>Aldatu linearen azpiestazio konexioa</translation>
     </message>
     <message>
         <source>Colour branches like this</source>
-        <translation type="vanished">Koloreztatu honelako adarrak</translation>
+        <translation>Koloreztatu honelako adarrak</translation>
     </message>
     <message>
         <source>Commit scenario</source>
-        <translation type="vanished">Konprometitu eszenatokia</translation>
+        <translation>Konprometitu eszenatokia</translation>
     </message>
     <message>
         <source>Connect line to selected substation (T-joint) at this waypoint</source>
-        <translation type="vanished">Konektatu linea hautatutako azpiestazioarekin (T-juntura) bide-puntu honetan</translation>
+        <translation>Konektatu linea hautatutako azpiestazioarekin (T-juntura) bide-puntu honetan</translation>
     </message>
     <message>
         <source>Consolidate coordinates</source>
-        <translation type="vanished">Koordenatuak finkatu</translation>
+        <translation>Koordenatuak finkatu</translation>
     </message>
     <message>
         <source>Consolidate selected objects coordinates</source>
-        <translation type="vanished">Hautatutako objektuen koordenatuak finkatu</translation>
+        <translation>Hautatutako objektuen koordenatuak finkatu</translation>
     </message>
     <message>
         <source>Control V AC from AC</source>
-        <translation type="vanished">Kontrolatu V AC AC-tik</translation>
+        <translation>Kontrolatu V AC AC-tik</translation>
     </message>
     <message>
         <source>Control V AC from DC+</source>
-        <translation type="vanished">Kontrolatu V AC DC+-tik</translation>
+        <translation>Kontrolatu V AC DC+-tik</translation>
     </message>
     <message>
         <source>Control V from</source>
-        <translation type="vanished">Kontrol V-tik</translation>
+        <translation>Kontrol V-tik</translation>
     </message>
     <message>
         <source>Control V to</source>
-        <translation type="vanished">Kontrol V to</translation>
+        <translation>Kontrol V to</translation>
     </message>
     <message>
         <source>Controllable shunt</source>
-        <translation type="vanished">Shunt kontrolagarria</translation>
+        <translation>Shunt kontrolagarria</translation>
     </message>
     <message>
         <source>Convert to</source>
-        <translation type="vanished">Bihurtu</translation>
+        <translation>Bihurtu</translation>
     </message>
     <message>
         <source>Convert to VSC multi-terminal</source>
-        <translation type="vanished">Bihurtu VSC terminal anitzeko</translation>
+        <translation>Bihurtu VSC terminal anitzeko</translation>
     </message>
     <message>
         <source>Convert to battery</source>
-        <translation type="vanished">Bihurtu bateriara</translation>
+        <translation>Bihurtu bateriara</translation>
     </message>
     <message>
         <source>Convert to impedances circuit</source>
-        <translation type="vanished">Inpedantzia zirkuitu bihurtzea</translation>
+        <translation>Inpedantzia zirkuitu bihurtzea</translation>
     </message>
     <message>
         <source>Convert to line</source>
-        <translation type="vanished">Bihurtu lerrora</translation>
+        <translation>Bihurtu lerrora</translation>
     </message>
     <message>
         <source>Convert to voltage level</source>
-        <translation type="vanished">Bihurtu tentsio mailara</translation>
+        <translation>Bihurtu tentsio mailara</translation>
     </message>
     <message>
         <source>Copy</source>
-        <translation type="vanished">Kopiatu</translation>
+        <translation>Kopiatu</translation>
     </message>
     <message>
         <source>Copy idtag</source>
-        <translation type="vanished">Kopiatu idtag</translation>
+        <translation>Kopiatu idtag</translation>
     </message>
     <message>
         <source>Copy table</source>
-        <translation type="vanished">Kopiatu taula</translation>
+        <translation>Kopiatu taula</translation>
     </message>
     <message>
         <source>Create line from here</source>
-        <translation type="vanished">Sortu lerroa hemendik</translation>
+        <translation>Sortu lerroa hemendik</translation>
     </message>
     <message>
         <source>Crop model to buses selection</source>
-        <translation type="vanished">Moztu eredua bus-hautapenera</translation>
+        <translation>Moztu eredua bus-hautapenera</translation>
     </message>
     <message>
         <source>Current injection</source>
-        <translation type="vanished">Uneko injekzioa</translation>
+        <translation>Uneko injekzioa</translation>
     </message>
     <message>
         <source>Delete</source>
-        <translation type="vanished">Ezabatu</translation>
+        <translation>Ezabatu</translation>
     </message>
     <message>
         <source>Delete all the connections</source>
-        <translation type="vanished">Ezabatu konexio guztiak</translation>
+        <translation>Ezabatu konexio guztiak</translation>
     </message>
     <message>
         <source>Draw labels</source>
-        <translation type="vanished">Marraztu etiketak</translation>
+        <translation>Marraztu etiketak</translation>
     </message>
     <message>
         <source>Duplicate</source>
-        <translation type="vanished">Bikoiztu</translation>
+        <translation>Bikoiztu</translation>
     </message>
     <message>
         <source>Duplicate object</source>
-        <translation type="vanished">Objektu bikoiztua</translation>
+        <translation>Objektu bikoiztua</translation>
     </message>
     <message>
         <source>EMT Editor</source>
-        <translation type="vanished">EMT Editorea</translation>
+        <translation>EMT Editorea</translation>
     </message>
     <message>
         <source>Edit</source>
-        <translation type="vanished">Editatu</translation>
+        <translation>Editatu</translation>
     </message>
     <message>
         <source>Edit tap changer</source>
-        <translation type="vanished">Editatu tap changer</translation>
+        <translation>Editatu tap changer</translation>
     </message>
     <message>
         <source>Editor</source>
-        <translation type="vanished">Editorea</translation>
+        <translation>Editorea</translation>
     </message>
     <message>
         <source>Enable/Disable</source>
-        <translation type="vanished">Gaitu/Desgaitu</translation>
+        <translation>Gaitu/Desgaitu</translation>
     </message>
     <message>
         <source>Expand schematic</source>
-        <translation type="vanished">Zabaldu eskema</translation>
+        <translation>Zabaldu eskema</translation>
     </message>
     <message>
         <source>External grid</source>
-        <translation type="vanished">Kanpoko sarea</translation>
+        <translation>Kanpoko sarea</translation>
     </message>
     <message>
         <source>Flip</source>
-        <translation type="vanished">Irauli</translation>
+        <translation>Irauli</translation>
     </message>
     <message>
         <source>Fluid node</source>
-        <translation type="vanished">Fluido nodoa</translation>
+        <translation>Fluido nodoa</translation>
     </message>
     <message>
         <source>FluidPath</source>
-        <translation type="vanished">FluidPath</translation>
+        <translation>FluidPath</translation>
     </message>
     <message>
         <source>Generator</source>
-        <translation type="vanished">Sorgailua</translation>
+        <translation>Sorgailua</translation>
     </message>
     <message>
         <source>Grid reduction</source>
-        <translation type="vanished">Sarearen murrizketa</translation>
+        <translation>Sarearen murrizketa</translation>
     </message>
     <message>
         <source>HVDC</source>
-        <translation type="vanished">HVDC</translation>
+        <translation>HVDC</translation>
     </message>
     <message>
         <source>HVDC line</source>
-        <translation type="vanished">HVDC lerroa</translation>
+        <translation>HVDC lerroa</translation>
     </message>
     <message>
         <source>Highlight based on property</source>
-        <translation type="vanished">Nabarmendu jabetzan oinarrituta</translation>
+        <translation>Nabarmendu jabetzan oinarrituta</translation>
     </message>
     <message>
         <source>Highlight buses selection</source>
-        <translation type="vanished">Nabarmendu bus-hautapena</translation>
+        <translation>Nabarmendu bus-hautapena</translation>
     </message>
     <message>
         <source>Is a DC bus</source>
-        <translation type="vanished">DC bus bat da</translation>
+        <translation>DC bus bat da</translation>
     </message>
     <message>
         <source>Line</source>
-        <translation type="vanished">Lerroa</translation>
+        <translation>Lerroa</translation>
     </message>
     <message>
         <source>Load</source>
-        <translation type="vanished">Kargatu</translation>
+        <translation>Kargatu</translation>
     </message>
     <message>
         <source>Load profile wizard</source>
-        <translation type="vanished">Kargatu profilaren morroia</translation>
+        <translation>Kargatu profilaren morroia</translation>
     </message>
     <message>
         <source>Merge</source>
-        <translation type="vanished">Batu</translation>
+        <translation>Batu</translation>
     </message>
     <message>
         <source>Merge children into scenario</source>
-        <translation type="vanished">Batu haurrak eszenatokian</translation>
+        <translation>Batu haurrak eszenatokian</translation>
     </message>
     <message>
         <source>Merge selected lines</source>
-        <translation type="vanished">Bateratu hautatutako lerroak</translation>
+        <translation>Bateratu hautatutako lerroak</translation>
     </message>
     <message>
         <source>Merge selected substations here</source>
-        <translation type="vanished">Batu hautatutako azpiestak hemen</translation>
+        <translation>Batu hautatutako azpiestak hemen</translation>
     </message>
     <message>
         <source>Move behind converter</source>
-        <translation type="vanished">Bihurgailuaren atzetik mugitu</translation>
+        <translation>Bihurgailuaren atzetik mugitu</translation>
     </message>
     <message>
         <source>New diagram from selection</source>
-        <translation type="vanished">Hautaketaren diagrama berria</translation>
+        <translation>Hautaketaren diagrama berria</translation>
     </message>
     <message>
         <source>New map</source>
-        <translation type="vanished">Mapa berria</translation>
+        <translation>Mapa berria</translation>
     </message>
     <message>
         <source>New map from selection</source>
-        <translation type="vanished">Hautapenetik mapa berria</translation>
+        <translation>Hautapenetik mapa berria</translation>
     </message>
     <message>
         <source>New schematic</source>
-        <translation type="vanished">Eskema berria</translation>
+        <translation>Eskema berria</translation>
     </message>
     <message>
         <source>New schematic from selection</source>
-        <translation type="vanished">Hautaketaren eskema berria</translation>
+        <translation>Hautaketaren eskema berria</translation>
     </message>
     <message>
         <source>New vicinity diagram</source>
-        <translation type="vanished">Inguruko diagrama berria</translation>
+        <translation>Inguruko diagrama berria</translation>
     </message>
     <message>
         <source>Open in Street view</source>
-        <translation type="vanished">Ireki Street View-n</translation>
+        <translation>Ireki Street View-n</translation>
     </message>
     <message>
         <source>Open in street view</source>
-        <translation type="vanished">Ireki Street View-n</translation>
+        <translation>Ireki Street View-n</translation>
     </message>
     <message>
         <source>P2X</source>
-        <translation type="vanished">P2X</translation>
+        <translation>P2X</translation>
     </message>
     <message>
         <source>Plot</source>
-        <translation type="vanished">Lursaila</translation>
+        <translation>Lursaila</translation>
     </message>
     <message>
         <source>Plot electrical profiles</source>
-        <translation type="vanished">Trazatu profil elektrikoak</translation>
+        <translation>Trazatu profil elektrikoak</translation>
     </message>
     <message>
         <source>Plot fluid profiles</source>
-        <translation type="vanished">Marraztu fluidoen profilak</translation>
+        <translation>Marraztu fluidoen profilak</translation>
     </message>
     <message>
         <source>Plot profiles</source>
-        <translation type="vanished">Trazatu profilak</translation>
+        <translation>Trazatu profilak</translation>
     </message>
     <message>
         <source>Power2X</source>
-        <translation type="vanished">Power2X</translation>
+        <translation>Power2X</translation>
     </message>
     <message>
         <source>Pump</source>
-        <translation type="vanished">Ponpa</translation>
+        <translation>Ponpa</translation>
     </message>
     <message>
         <source>Qcurve edit</source>
-        <translation type="vanished">Qcurve editatu</translation>
+        <translation>Qcurve editatu</translation>
     </message>
     <message>
         <source>RMS Editor</source>
-        <translation type="vanished">RMS Editorea</translation>
+        <translation>RMS Editorea</translation>
     </message>
     <message>
         <source>Reload</source>
-        <translation type="vanished">Berriz kargatu</translation>
+        <translation>Berriz kargatu</translation>
     </message>
     <message>
         <source>Remove</source>
-        <translation type="vanished">Kendu</translation>
+        <translation>Kendu</translation>
     </message>
     <message>
         <source>Remove Selected</source>
-        <translation type="vanished">Kendu Hautatuak</translation>
+        <translation>Kendu Hautatuak</translation>
     </message>
     <message>
         <source>Remove scenario</source>
-        <translation type="vanished">Kendu eszenatokia</translation>
+        <translation>Kendu eszenatokia</translation>
     </message>
     <message>
         <source>Remove substation</source>
-        <translation type="vanished">Kendu azpiestazioa</translation>
+        <translation>Kendu azpiestazioa</translation>
     </message>
     <message>
         <source>Rename scenario</source>
-        <translation type="vanished">Agertokiaren izena aldatu</translation>
+        <translation>Agertokiaren izena aldatu</translation>
     </message>
     <message>
         <source>Reticular</source>
-        <translation type="vanished">Erretikularrak</translation>
+        <translation>Erretikularrak</translation>
     </message>
     <message>
         <source>Rotate 90</source>
-        <translation type="vanished">Biratu 90</translation>
+        <translation>Biratu 90</translation>
     </message>
     <message>
         <source>Series reactance</source>
-        <translation type="vanished">Serie erreaktantzia</translation>
+        <translation>Serie erreaktantzia</translation>
     </message>
     <message>
         <source>Set Control dev 1</source>
-        <translation type="vanished">Ezarri Kontrol-garapena 1</translation>
+        <translation>Ezarri Kontrol-garapena 1</translation>
     </message>
     <message>
         <source>Set Control dev 2</source>
-        <translation type="vanished">Ezarri Kontrol-garapena 2</translation>
+        <translation>Ezarri Kontrol-garapena 2</translation>
     </message>
     <message>
         <source>Set as current scenario</source>
-        <translation type="vanished">Ezarri uneko eszenatoki gisa</translation>
+        <translation>Ezarri uneko eszenatoki gisa</translation>
     </message>
     <message>
         <source>Set coordinates to DB</source>
-        <translation type="vanished">Ezarri koordenatuak DBri</translation>
+        <translation>Ezarri koordenatuak DBri</translation>
     </message>
     <message>
         <source>Set regulation bus</source>
-        <translation type="vanished">Ezarri erregulazio-busa</translation>
+        <translation>Ezarri erregulazio-busa</translation>
     </message>
     <message>
         <source>Set value to column</source>
-        <translation type="vanished">Ezarri balioa zutabean</translation>
+        <translation>Ezarri balioa zutabean</translation>
     </message>
     <message>
         <source>Shunt</source>
-        <translation type="vanished">Shunt</translation>
+        <translation>Shunt</translation>
     </message>
     <message>
         <source>Solar photovoltaic wizard</source>
-        <translation type="vanished">Eguzki fotovoltaiko morroia</translation>
+        <translation>Eguzki fotovoltaiko morroia</translation>
     </message>
     <message>
         <source>Split line</source>
-        <translation type="vanished">Zatitutako lerroa</translation>
+        <translation>Zatitutako lerroa</translation>
     </message>
     <message>
         <source>Split line to selected substation (In-Out)</source>
-        <translation type="vanished">Zatitu linea hautatutako azpiestaziora (Sartu-Irteera)</translation>
+        <translation>Zatitu linea hautatutako azpiestaziora (Sartu-Irteera)</translation>
     </message>
     <message>
         <source>Split line with in/out</source>
-        <translation type="vanished">Zatitu lerroa sartu/irtenarekin</translation>
+        <translation>Zatitu lerroa sartu/irtenarekin</translation>
     </message>
     <message>
         <source>Static generator</source>
-        <translation type="vanished">Sorgailu estatikoa</translation>
+        <translation>Sorgailu estatikoa</translation>
     </message>
     <message>
         <source>Straight</source>
-        <translation type="vanished">Zuzena</translation>
+        <translation>Zuzena</translation>
     </message>
     <message>
         <source>Substation diagram</source>
-        <translation type="vanished">Azpiestazio-diagrama</translation>
+        <translation>Azpiestazio-diagrama</translation>
     </message>
     <message>
         <source>Switch</source>
-        <translation type="vanished">Etengailua</translation>
+        <translation>Etengailua</translation>
     </message>
     <message>
         <source>Tap changer</source>
-        <translation type="vanished">Tap changer</translation>
+        <translation>Tap changer</translation>
     </message>
     <message>
         <source>Tap down</source>
-        <translation type="vanished">Tap down</translation>
+        <translation>Tap down</translation>
     </message>
     <message>
         <source>Tap up</source>
-        <translation type="vanished">Tap up</translation>
+        <translation>Tap up</translation>
     </message>
     <message>
         <source>Transform waypoint into substation</source>
-        <translation type="vanished">Bide-puntua azpiestazio bihurtu</translation>
+        <translation>Bide-puntua azpiestazio bihurtu</translation>
     </message>
     <message>
         <source>Transformer</source>
-        <translation type="vanished">Transformadorea</translation>
+        <translation>Transformadorea</translation>
     </message>
     <message>
         <source>Transformer NW</source>
-        <translation type="vanished">Transformadorea NW</translation>
+        <translation>Transformadorea NW</translation>
     </message>
     <message>
         <source>Turbine</source>
-        <translation type="vanished">Turbina</translation>
+        <translation>Turbina</translation>
     </message>
     <message>
         <source>UPFC</source>
-        <translation type="vanished">UPFC</translation>
+        <translation>UPFC</translation>
     </message>
     <message>
         <source>VSC</source>
-        <translation type="vanished">VSC</translation>
+        <translation>VSC</translation>
     </message>
     <message>
         <source>Vicinity diagram from here</source>
-        <translation type="vanished">Inguruko diagrama hemendik</translation>
+        <translation>Inguruko diagrama hemendik</translation>
     </message>
     <message>
         <source>Wind farm wizard</source>
-        <translation type="vanished">Parke eolikoen morroia</translation>
+        <translation>Parke eolikoen morroia</translation>
     </message>
     <message>
         <source>Winding</source>
-        <translation type="vanished">Harilkadura</translation>
+        <translation>Harilkadura</translation>
     </message>
     <message>
         <source>add Short circuit</source>
-        <translation type="vanished">gehitu Zirkuitu laburra</translation>
+        <translation>gehitu Zirkuitu laburra</translation>
     </message>
 </context>
 <context>

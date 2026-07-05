@@ -640,519 +640,519 @@ li.checked::标记 { content: &quot;\2612&quot;; }
     <name>ContextMenu</name>
     <message>
         <source>3w-Transformer</source>
-        <translation type="vanished">三绕组变压器</translation>
+        <translation>三绕组变压器</translation>
     </message>
     <message>
         <source>Active</source>
-        <translation type="vanished">积极的</translation>
+        <translation>积极的</translation>
     </message>
     <message>
         <source>Add</source>
-        <translation type="vanished">添加</translation>
+        <translation>添加</translation>
     </message>
     <message>
         <source>Add Equation</source>
-        <translation type="vanished">添加方程</translation>
+        <translation>添加方程</translation>
     </message>
     <message>
         <source>Add Parameter</source>
-        <translation type="vanished">添加参数</translation>
+        <translation>添加参数</translation>
     </message>
     <message>
         <source>Add Variable</source>
-        <translation type="vanished">添加变量</translation>
+        <translation>添加变量</translation>
     </message>
     <message>
         <source>Add bus</source>
-        <translation type="vanished">添加母线</translation>
+        <translation>添加母线</translation>
     </message>
     <message>
         <source>Add child scenario</source>
-        <translation type="vanished">添加子场景</translation>
+        <translation>添加子场景</translation>
     </message>
     <message>
         <source>Add point</source>
-        <translation type="vanished">添加点</translation>
+        <translation>添加点</translation>
     </message>
     <message>
         <source>Add to catalogue</source>
-        <translation type="vanished">添加到目录</translation>
+        <translation>添加到目录</translation>
     </message>
     <message>
         <source>Add to current diagram</source>
-        <translation type="vanished">添加到当前图表</translation>
+        <translation>添加到当前图表</translation>
     </message>
     <message>
         <source>Add voltage level</source>
-        <translation type="vanished">添加电压等级</translation>
+        <translation>添加电压等级</translation>
     </message>
     <message>
         <source>Arrange</source>
-        <translation type="vanished">安排</translation>
+        <translation>安排</translation>
     </message>
     <message>
         <source>Assign active state to profile</source>
-        <translation type="vanished">将活动状态分配给配置文件</translation>
+        <translation>将活动状态分配给配置文件</translation>
     </message>
     <message>
         <source>Assign rate to profile</source>
-        <translation type="vanished">为配置文件分配费率</translation>
+        <translation>为配置文件分配费率</translation>
     </message>
     <message>
         <source>Assign to profile</source>
-        <translation type="vanished">分配给个人资料</translation>
+        <translation>分配给个人资料</translation>
     </message>
     <message>
         <source>Battery</source>
-        <translation type="vanished">电池</translation>
+        <translation>电池</translation>
     </message>
     <message>
         <source>Bus</source>
-        <translation type="vanished">母线</translation>
+        <translation>母线</translation>
     </message>
     <message>
         <source>Calculate total length</source>
-        <translation type="vanished">计算总长度</translation>
+        <translation>计算总长度</translation>
     </message>
     <message>
         <source>Change Color</source>
-        <translation type="vanished">改变颜色</translation>
+        <translation>改变颜色</translation>
     </message>
     <message>
         <source>Change bus</source>
-        <translation type="vanished">更改母线</translation>
+        <translation>更改母线</translation>
     </message>
     <message>
         <source>Change bus connection for the generator</source>
-        <translation type="vanished">更改发电机的母线连接</translation>
+        <translation>更改发电机的母线连接</translation>
     </message>
     <message>
         <source>Change substation connection of the line</source>
-        <translation type="vanished">更改线路的变电站连接</translation>
+        <translation>更改线路的变电站连接</translation>
     </message>
     <message>
         <source>Colour branches like this</source>
-        <translation type="vanished">像这样给树枝上色</translation>
+        <translation>像这样给树枝上色</translation>
     </message>
     <message>
         <source>Commit scenario</source>
-        <translation type="vanished">提交场景</translation>
+        <translation>提交场景</translation>
     </message>
     <message>
         <source>Connect line to selected substation (T-joint) at this waypoint</source>
-        <translation type="vanished">在此路点将线路连接到选定的变电站（T 形接头）</translation>
+        <translation>在此路点将线路连接到选定的变电站（T 形接头）</translation>
     </message>
     <message>
         <source>Consolidate coordinates</source>
-        <translation type="vanished">合并坐标</translation>
+        <translation>合并坐标</translation>
     </message>
     <message>
         <source>Consolidate selected objects coordinates</source>
-        <translation type="vanished">合并选定对象的坐标</translation>
+        <translation>合并选定对象的坐标</translation>
     </message>
     <message>
         <source>Control V AC from AC</source>
-        <translation type="vanished">从 AC 控制 V AC</translation>
+        <translation>从 AC 控制 V AC</translation>
     </message>
     <message>
         <source>Control V AC from DC+</source>
-        <translation type="vanished">从 DC+ 控制 V AC</translation>
+        <translation>从 DC+ 控制 V AC</translation>
     </message>
     <message>
         <source>Control V from</source>
-        <translation type="vanished">控制V从</translation>
+        <translation>控制V从</translation>
     </message>
     <message>
         <source>Control V to</source>
-        <translation type="vanished">控制 V 至</translation>
+        <translation>控制 V 至</translation>
     </message>
     <message>
         <source>Controllable shunt</source>
-        <translation type="vanished">可控 Shunt</translation>
+        <translation>可控 Shunt</translation>
     </message>
     <message>
         <source>Convert to</source>
-        <translation type="vanished">转换为</translation>
+        <translation>转换为</translation>
     </message>
     <message>
         <source>Convert to VSC multi-terminal</source>
-        <translation type="vanished">转换为VSC多终端</translation>
+        <translation>转换为VSC多终端</translation>
     </message>
     <message>
         <source>Convert to battery</source>
-        <translation type="vanished">转换为电池</translation>
+        <translation>转换为电池</translation>
     </message>
     <message>
         <source>Convert to impedances circuit</source>
-        <translation type="vanished">转换为阻抗电路</translation>
+        <translation>转换为阻抗电路</translation>
     </message>
     <message>
         <source>Convert to line</source>
-        <translation type="vanished">转换为线</translation>
+        <translation>转换为线</translation>
     </message>
     <message>
         <source>Convert to voltage level</source>
-        <translation type="vanished">转换为电压电平</translation>
+        <translation>转换为电压电平</translation>
     </message>
     <message>
         <source>Copy</source>
-        <translation type="vanished">复制</translation>
+        <translation>复制</translation>
     </message>
     <message>
         <source>Copy idtag</source>
-        <translation type="vanished">复制idtag</translation>
+        <translation>复制idtag</translation>
     </message>
     <message>
         <source>Copy table</source>
-        <translation type="vanished">复制表</translation>
+        <translation>复制表</translation>
     </message>
     <message>
         <source>Create line from here</source>
-        <translation type="vanished">从这里创建线路</translation>
+        <translation>从这里创建线路</translation>
     </message>
     <message>
         <source>Crop model to buses selection</source>
-        <translation type="vanished">按母线选择裁剪模型</translation>
+        <translation>按母线选择裁剪模型</translation>
     </message>
     <message>
         <source>Current injection</source>
-        <translation type="vanished">电流注入</translation>
+        <translation>电流注入</translation>
     </message>
     <message>
         <source>Delete</source>
-        <translation type="vanished">删除</translation>
+        <translation>删除</translation>
     </message>
     <message>
         <source>Delete all the connections</source>
-        <translation type="vanished">删除所有连接</translation>
+        <translation>删除所有连接</translation>
     </message>
     <message>
         <source>Draw labels</source>
-        <translation type="vanished">绘制标签</translation>
+        <translation>绘制标签</translation>
     </message>
     <message>
         <source>Duplicate</source>
-        <translation type="vanished">复制</translation>
+        <translation>复制</translation>
     </message>
     <message>
         <source>Duplicate object</source>
-        <translation type="vanished">重复对象</translation>
+        <translation>重复对象</translation>
     </message>
     <message>
         <source>EMT Editor</source>
-        <translation type="vanished">EMT编辑器</translation>
+        <translation>EMT编辑器</translation>
     </message>
     <message>
         <source>Edit</source>
-        <translation type="vanished">编辑</translation>
+        <translation>编辑</translation>
     </message>
     <message>
         <source>Edit tap changer</source>
-        <translation type="vanished">编辑分接开关</translation>
+        <translation>编辑分接开关</translation>
     </message>
     <message>
         <source>Editor</source>
-        <translation type="vanished">编辑</translation>
+        <translation>编辑</translation>
     </message>
     <message>
         <source>Enable/Disable</source>
-        <translation type="vanished">启用/禁用</translation>
+        <translation>启用/禁用</translation>
     </message>
     <message>
         <source>Expand schematic</source>
-        <translation type="vanished">展开原理图</translation>
+        <translation>展开原理图</translation>
     </message>
     <message>
         <source>External grid</source>
-        <translation type="vanished">外部电网</translation>
+        <translation>外部电网</translation>
     </message>
     <message>
         <source>Flip</source>
-        <translation type="vanished">翻动</translation>
+        <translation>翻动</translation>
     </message>
     <message>
         <source>Fluid node</source>
-        <translation type="vanished">流体节点</translation>
+        <translation>流体节点</translation>
     </message>
     <message>
         <source>FluidPath</source>
-        <translation type="vanished">流体路径</translation>
+        <translation>流体路径</translation>
     </message>
     <message>
         <source>Generator</source>
-        <translation type="vanished">发电机</translation>
+        <translation>发电机</translation>
     </message>
     <message>
         <source>Grid reduction</source>
-        <translation type="vanished">网格缩减</translation>
+        <translation>网格缩减</translation>
     </message>
     <message>
         <source>HVDC</source>
-        <translation type="vanished">HVDC</translation>
+        <translation>HVDC</translation>
     </message>
     <message>
         <source>HVDC line</source>
-        <translation type="vanished">HVDC线路</translation>
+        <translation>HVDC线路</translation>
     </message>
     <message>
         <source>Highlight based on property</source>
-        <translation type="vanished">根据属性突出显示</translation>
+        <translation>根据属性突出显示</translation>
     </message>
     <message>
         <source>Highlight buses selection</source>
-        <translation type="vanished">高亮母线选择</translation>
+        <translation>高亮母线选择</translation>
     </message>
     <message>
         <source>Is a DC bus</source>
-        <translation type="vanished">是直流母线</translation>
+        <translation>是直流母线</translation>
     </message>
     <message>
         <source>Line</source>
-        <translation type="vanished">线</translation>
+        <translation>线</translation>
     </message>
     <message>
         <source>Load</source>
-        <translation type="vanished">加载</translation>
+        <translation>加载</translation>
     </message>
     <message>
         <source>Load profile wizard</source>
-        <translation type="vanished">加载配置文件向导</translation>
+        <translation>加载配置文件向导</translation>
     </message>
     <message>
         <source>Merge</source>
-        <translation type="vanished">合并</translation>
+        <translation>合并</translation>
     </message>
     <message>
         <source>Merge children into scenario</source>
-        <translation type="vanished">将子项合并到场景中</translation>
+        <translation>将子项合并到场景中</translation>
     </message>
     <message>
         <source>Merge selected lines</source>
-        <translation type="vanished">合并选定的行</translation>
+        <translation>合并选定的行</translation>
     </message>
     <message>
         <source>Merge selected substations here</source>
-        <translation type="vanished">在此合并选定的变电站</translation>
+        <translation>在此合并选定的变电站</translation>
     </message>
     <message>
         <source>Move behind converter</source>
-        <translation type="vanished">移至转换器后面</translation>
+        <translation>移至转换器后面</translation>
     </message>
     <message>
         <source>New diagram from selection</source>
-        <translation type="vanished">选择的新图表</translation>
+        <translation>选择的新图表</translation>
     </message>
     <message>
         <source>New map</source>
-        <translation type="vanished">新地图</translation>
+        <translation>新地图</translation>
     </message>
     <message>
         <source>New map from selection</source>
-        <translation type="vanished">新地图选择</translation>
+        <translation>新地图选择</translation>
     </message>
     <message>
         <source>New schematic</source>
-        <translation type="vanished">新原理图</translation>
+        <translation>新原理图</translation>
     </message>
     <message>
         <source>New schematic from selection</source>
-        <translation type="vanished">选择的新原理图</translation>
+        <translation>选择的新原理图</translation>
     </message>
     <message>
         <source>New vicinity diagram</source>
-        <translation type="vanished">新的邻近图</translation>
+        <translation>新的邻近图</translation>
     </message>
     <message>
         <source>Open in Street view</source>
-        <translation type="vanished">在 Street View 中打开</translation>
+        <translation>在 Street View 中打开</translation>
     </message>
     <message>
         <source>Open in street view</source>
-        <translation type="vanished">在 Street View 中打开</translation>
+        <translation>在 Street View 中打开</translation>
     </message>
     <message>
         <source>P2X</source>
-        <translation type="vanished">P2X</translation>
+        <translation>P2X</translation>
     </message>
     <message>
         <source>Plot</source>
-        <translation type="vanished">情节</translation>
+        <translation>情节</translation>
     </message>
     <message>
         <source>Plot electrical profiles</source>
-        <translation type="vanished">绘制电气剖面图</translation>
+        <translation>绘制电气剖面图</translation>
     </message>
     <message>
         <source>Plot fluid profiles</source>
-        <translation type="vanished">绘制流体剖面图</translation>
+        <translation>绘制流体剖面图</translation>
     </message>
     <message>
         <source>Plot profiles</source>
-        <translation type="vanished">地块剖面图</translation>
+        <translation>地块剖面图</translation>
     </message>
     <message>
         <source>Power2X</source>
-        <translation type="vanished">Power2X</translation>
+        <translation>Power2X</translation>
     </message>
     <message>
         <source>Pump</source>
-        <translation type="vanished">泵</translation>
+        <translation>泵</translation>
     </message>
     <message>
         <source>Qcurve edit</source>
-        <translation type="vanished">Qcurve编辑</translation>
+        <translation>Qcurve编辑</translation>
     </message>
     <message>
         <source>RMS Editor</source>
-        <translation type="vanished">RMS编辑器</translation>
+        <translation>RMS编辑器</translation>
     </message>
     <message>
         <source>Reload</source>
-        <translation type="vanished">重新加载</translation>
+        <translation>重新加载</translation>
     </message>
     <message>
         <source>Remove</source>
-        <translation type="vanished">消除</translation>
+        <translation>消除</translation>
     </message>
     <message>
         <source>Remove Selected</source>
-        <translation type="vanished">删除所选内容</translation>
+        <translation>删除所选内容</translation>
     </message>
     <message>
         <source>Remove scenario</source>
-        <translation type="vanished">删除场景</translation>
+        <translation>删除场景</translation>
     </message>
     <message>
         <source>Remove substation</source>
-        <translation type="vanished">拆除变电站</translation>
+        <translation>拆除变电站</translation>
     </message>
     <message>
         <source>Rename scenario</source>
-        <translation type="vanished">重命名场景</translation>
+        <translation>重命名场景</translation>
     </message>
     <message>
         <source>Reticular</source>
-        <translation type="vanished">网状</translation>
+        <translation>网状</translation>
     </message>
     <message>
         <source>Rotate 90</source>
-        <translation type="vanished">旋转 90</translation>
+        <translation>旋转 90</translation>
     </message>
     <message>
         <source>Series reactance</source>
-        <translation type="vanished">串联电抗</translation>
+        <translation>串联电抗</translation>
     </message>
     <message>
         <source>Set Control dev 1</source>
-        <translation type="vanished">设置控制开发 1</translation>
+        <translation>设置控制开发 1</translation>
     </message>
     <message>
         <source>Set Control dev 2</source>
-        <translation type="vanished">设置控制开发 2</translation>
+        <translation>设置控制开发 2</translation>
     </message>
     <message>
         <source>Set as current scenario</source>
-        <translation type="vanished">设置为当前场景</translation>
+        <translation>设置为当前场景</translation>
     </message>
     <message>
         <source>Set coordinates to DB</source>
-        <translation type="vanished">将坐标设置为 DB</translation>
+        <translation>将坐标设置为 DB</translation>
     </message>
     <message>
         <source>Set regulation bus</source>
-        <translation type="vanished">设置调节母线</translation>
+        <translation>设置调节母线</translation>
     </message>
     <message>
         <source>Set value to column</source>
-        <translation type="vanished">将值设置为列</translation>
+        <translation>将值设置为列</translation>
     </message>
     <message>
         <source>Shunt</source>
-        <translation type="vanished">Shunt</translation>
+        <translation>Shunt</translation>
     </message>
     <message>
         <source>Solar photovoltaic wizard</source>
-        <translation type="vanished">太阳能光伏精灵</translation>
+        <translation>太阳能光伏精灵</translation>
     </message>
     <message>
         <source>Split line</source>
-        <translation type="vanished">分割线</translation>
+        <translation>分割线</translation>
     </message>
     <message>
         <source>Split line to selected substation (In-Out)</source>
-        <translation type="vanished">分割线路到选定的变电站（输入-输出）</translation>
+        <translation>分割线路到选定的变电站（输入-输出）</translation>
     </message>
     <message>
         <source>Split line with in/out</source>
-        <translation type="vanished">带输入/输出的分割线</translation>
+        <translation>带输入/输出的分割线</translation>
     </message>
     <message>
         <source>Static generator</source>
-        <translation type="vanished">静态发电机</translation>
+        <translation>静态发电机</translation>
     </message>
     <message>
         <source>Straight</source>
-        <translation type="vanished">直</translation>
+        <translation>直</translation>
     </message>
     <message>
         <source>Substation diagram</source>
-        <translation type="vanished">变电站图</translation>
+        <translation>变电站图</translation>
     </message>
     <message>
         <source>Switch</source>
-        <translation type="vanished">开关</translation>
+        <translation>开关</translation>
     </message>
     <message>
         <source>Tap changer</source>
-        <translation type="vanished">分接开关</translation>
+        <translation>分接开关</translation>
     </message>
     <message>
         <source>Tap down</source>
-        <translation type="vanished">降低分接</translation>
+        <translation>降低分接</translation>
     </message>
     <message>
         <source>Tap up</source>
-        <translation type="vanished">升高分接</translation>
+        <translation>升高分接</translation>
     </message>
     <message>
         <source>Transform waypoint into substation</source>
-        <translation type="vanished">将路点转变为变电站</translation>
+        <translation>将路点转变为变电站</translation>
     </message>
     <message>
         <source>Transformer</source>
-        <translation type="vanished">变压器</translation>
+        <translation>变压器</translation>
     </message>
     <message>
         <source>Transformer NW</source>
-        <translation type="vanished">变压器西北</translation>
+        <translation>变压器西北</translation>
     </message>
     <message>
         <source>Turbine</source>
-        <translation type="vanished">涡轮机</translation>
+        <translation>涡轮机</translation>
     </message>
     <message>
         <source>UPFC</source>
-        <translation type="vanished">UPFC</translation>
+        <translation>UPFC</translation>
     </message>
     <message>
         <source>VSC</source>
-        <translation type="vanished">VSC</translation>
+        <translation>VSC</translation>
     </message>
     <message>
         <source>Vicinity diagram from here</source>
-        <translation type="vanished">附近图来自这里</translation>
+        <translation>附近图来自这里</translation>
     </message>
     <message>
         <source>Wind farm wizard</source>
-        <translation type="vanished">风电场向导</translation>
+        <translation>风电场向导</translation>
     </message>
     <message>
         <source>Winding</source>
-        <translation type="vanished">绕组</translation>
+        <translation>绕组</translation>
     </message>
     <message>
         <source>add Short circuit</source>
-        <translation type="vanished">添加短路</translation>
+        <translation>添加短路</translation>
     </message>
 </context>
 <context>

@@ -638,519 +638,519 @@ li.checked::マーカー { content: &quot;\2612&quot;; }&lt;/style&gt;&lt;/head&
     <name>ContextMenu</name>
     <message>
         <source>3w-Transformer</source>
-        <translation type="vanished">3巻線変圧器</translation>
+        <translation>3巻線変圧器</translation>
     </message>
     <message>
         <source>Active</source>
-        <translation type="vanished">アクティブ</translation>
+        <translation>アクティブ</translation>
     </message>
     <message>
         <source>Add</source>
-        <translation type="vanished">追加</translation>
+        <translation>追加</translation>
     </message>
     <message>
         <source>Add Equation</source>
-        <translation type="vanished">方程式を追加</translation>
+        <translation>方程式を追加</translation>
     </message>
     <message>
         <source>Add Parameter</source>
-        <translation type="vanished">パラメータの追加</translation>
+        <translation>パラメータの追加</translation>
     </message>
     <message>
         <source>Add Variable</source>
-        <translation type="vanished">変数の追加</translation>
+        <translation>変数の追加</translation>
     </message>
     <message>
         <source>Add bus</source>
-        <translation type="vanished">母線を追加</translation>
+        <translation>母線を追加</translation>
     </message>
     <message>
         <source>Add child scenario</source>
-        <translation type="vanished">子シナリオの追加</translation>
+        <translation>子シナリオの追加</translation>
     </message>
     <message>
         <source>Add point</source>
-        <translation type="vanished">ポイントを追加</translation>
+        <translation>ポイントを追加</translation>
     </message>
     <message>
         <source>Add to catalogue</source>
-        <translation type="vanished">カタログに追加</translation>
+        <translation>カタログに追加</translation>
     </message>
     <message>
         <source>Add to current diagram</source>
-        <translation type="vanished">現在の図に追加</translation>
+        <translation>現在の図に追加</translation>
     </message>
     <message>
         <source>Add voltage level</source>
-        <translation type="vanished">電圧レベルを追加</translation>
+        <translation>電圧レベルを追加</translation>
     </message>
     <message>
         <source>Arrange</source>
-        <translation type="vanished">整える</translation>
+        <translation>整える</translation>
     </message>
     <message>
         <source>Assign active state to profile</source>
-        <translation type="vanished">アクティブ状態をプロファイルに割り当てる</translation>
+        <translation>アクティブ状態をプロファイルに割り当てる</translation>
     </message>
     <message>
         <source>Assign rate to profile</source>
-        <translation type="vanished">プロファイルにレートを割り当てる</translation>
+        <translation>プロファイルにレートを割り当てる</translation>
     </message>
     <message>
         <source>Assign to profile</source>
-        <translation type="vanished">プロファイルに割り当てる</translation>
+        <translation>プロファイルに割り当てる</translation>
     </message>
     <message>
         <source>Battery</source>
-        <translation type="vanished">バッテリー</translation>
+        <translation>バッテリー</translation>
     </message>
     <message>
         <source>Bus</source>
-        <translation type="vanished">母線</translation>
+        <translation>母線</translation>
     </message>
     <message>
         <source>Calculate total length</source>
-        <translation type="vanished">全長を計算する</translation>
+        <translation>全長を計算する</translation>
     </message>
     <message>
         <source>Change Color</source>
-        <translation type="vanished">色の変更</translation>
+        <translation>色の変更</translation>
     </message>
     <message>
         <source>Change bus</source>
-        <translation type="vanished">母線を変更</translation>
+        <translation>母線を変更</translation>
     </message>
     <message>
         <source>Change bus connection for the generator</source>
-        <translation type="vanished">発電機の母線接続を変更</translation>
+        <translation>発電機の母線接続を変更</translation>
     </message>
     <message>
         <source>Change substation connection of the line</source>
-        <translation type="vanished">線路の変電所接続を変更する</translation>
+        <translation>線路の変電所接続を変更する</translation>
     </message>
     <message>
         <source>Colour branches like this</source>
-        <translation type="vanished">こんな感じで枝に色を付けます</translation>
+        <translation>こんな感じで枝に色を付けます</translation>
     </message>
     <message>
         <source>Commit scenario</source>
-        <translation type="vanished">コミットシナリオ</translation>
+        <translation>コミットシナリオ</translation>
     </message>
     <message>
         <source>Connect line to selected substation (T-joint) at this waypoint</source>
-        <translation type="vanished">このウェイポイントで選択した変電所 (T ジョイント) に線を接続します</translation>
+        <translation>このウェイポイントで選択した変電所 (T ジョイント) に線を接続します</translation>
     </message>
     <message>
         <source>Consolidate coordinates</source>
-        <translation type="vanished">座標を統合する</translation>
+        <translation>座標を統合する</translation>
     </message>
     <message>
         <source>Consolidate selected objects coordinates</source>
-        <translation type="vanished">選択したオブジェクトの座標を統合します</translation>
+        <translation>選択したオブジェクトの座標を統合します</translation>
     </message>
     <message>
         <source>Control V AC from AC</source>
-        <translation type="vanished">ACからV AC を制御</translation>
+        <translation>ACからV AC を制御</translation>
     </message>
     <message>
         <source>Control V AC from DC+</source>
-        <translation type="vanished">DC+からV AC を制御</translation>
+        <translation>DC+からV AC を制御</translation>
     </message>
     <message>
         <source>Control V from</source>
-        <translation type="vanished">からのコントロールV</translation>
+        <translation>からのコントロールV</translation>
     </message>
     <message>
         <source>Control V to</source>
-        <translation type="vanished">コントロールVで</translation>
+        <translation>コントロールVで</translation>
     </message>
     <message>
         <source>Controllable shunt</source>
-        <translation type="vanished">制御可能なシャント</translation>
+        <translation>制御可能なシャント</translation>
     </message>
     <message>
         <source>Convert to</source>
-        <translation type="vanished">に変換</translation>
+        <translation>に変換</translation>
     </message>
     <message>
         <source>Convert to VSC multi-terminal</source>
-        <translation type="vanished">VSC マルチターミナルに変換</translation>
+        <translation>VSC マルチターミナルに変換</translation>
     </message>
     <message>
         <source>Convert to battery</source>
-        <translation type="vanished">バッテリーに変換する</translation>
+        <translation>バッテリーに変換する</translation>
     </message>
     <message>
         <source>Convert to impedances circuit</source>
-        <translation type="vanished">インピーダンス変換回路</translation>
+        <translation>インピーダンス変換回路</translation>
     </message>
     <message>
         <source>Convert to line</source>
-        <translation type="vanished">線に変換</translation>
+        <translation>線に変換</translation>
     </message>
     <message>
         <source>Convert to voltage level</source>
-        <translation type="vanished">電圧レベルに変換</translation>
+        <translation>電圧レベルに変換</translation>
     </message>
     <message>
         <source>Copy</source>
-        <translation type="vanished">コピー</translation>
+        <translation>コピー</translation>
     </message>
     <message>
         <source>Copy idtag</source>
-        <translation type="vanished">idtag をコピーします</translation>
+        <translation>idtag をコピーします</translation>
     </message>
     <message>
         <source>Copy table</source>
-        <translation type="vanished">テーブルのコピー</translation>
+        <translation>テーブルのコピー</translation>
     </message>
     <message>
         <source>Create line from here</source>
-        <translation type="vanished">ここからラインを作成</translation>
+        <translation>ここからラインを作成</translation>
     </message>
     <message>
         <source>Crop model to buses selection</source>
-        <translation type="vanished">母線選択に合わせてモデルを切り抜く</translation>
+        <translation>母線選択に合わせてモデルを切り抜く</translation>
     </message>
     <message>
         <source>Current injection</source>
-        <translation type="vanished">電流注入</translation>
+        <translation>電流注入</translation>
     </message>
     <message>
         <source>Delete</source>
-        <translation type="vanished">消去</translation>
+        <translation>消去</translation>
     </message>
     <message>
         <source>Delete all the connections</source>
-        <translation type="vanished">すべての接続を削除します</translation>
+        <translation>すべての接続を削除します</translation>
     </message>
     <message>
         <source>Draw labels</source>
-        <translation type="vanished">ラベルを描画する</translation>
+        <translation>ラベルを描画する</translation>
     </message>
     <message>
         <source>Duplicate</source>
-        <translation type="vanished">重複</translation>
+        <translation>重複</translation>
     </message>
     <message>
         <source>Duplicate object</source>
-        <translation type="vanished">オブジェクトの複製</translation>
+        <translation>オブジェクトの複製</translation>
     </message>
     <message>
         <source>EMT Editor</source>
-        <translation type="vanished">EMT 編集者</translation>
+        <translation>EMT 編集者</translation>
     </message>
     <message>
         <source>Edit</source>
-        <translation type="vanished">編集</translation>
+        <translation>編集</translation>
     </message>
     <message>
         <source>Edit tap changer</source>
-        <translation type="vanished">タップ切換器を編集</translation>
+        <translation>タップ切換器を編集</translation>
     </message>
     <message>
         <source>Editor</source>
-        <translation type="vanished">エディタ</translation>
+        <translation>エディタ</translation>
     </message>
     <message>
         <source>Enable/Disable</source>
-        <translation type="vanished">有効化/無効化</translation>
+        <translation>有効化/無効化</translation>
     </message>
     <message>
         <source>Expand schematic</source>
-        <translation type="vanished">回路図を展開する</translation>
+        <translation>回路図を展開する</translation>
     </message>
     <message>
         <source>External grid</source>
-        <translation type="vanished">外部系統</translation>
+        <translation>外部系統</translation>
     </message>
     <message>
         <source>Flip</source>
-        <translation type="vanished">フリップ</translation>
+        <translation>フリップ</translation>
     </message>
     <message>
         <source>Fluid node</source>
-        <translation type="vanished">流体ノード</translation>
+        <translation>流体ノード</translation>
     </message>
     <message>
         <source>FluidPath</source>
-        <translation type="vanished">流体パス</translation>
+        <translation>流体パス</translation>
     </message>
     <message>
         <source>Generator</source>
-        <translation type="vanished">ジェネレータ</translation>
+        <translation>ジェネレータ</translation>
     </message>
     <message>
         <source>Grid reduction</source>
-        <translation type="vanished">グリッド削減</translation>
+        <translation>グリッド削減</translation>
     </message>
     <message>
         <source>HVDC</source>
-        <translation type="vanished">HVDC</translation>
+        <translation>HVDC</translation>
     </message>
     <message>
         <source>HVDC line</source>
-        <translation type="vanished">HVDC 線路</translation>
+        <translation>HVDC 線路</translation>
     </message>
     <message>
         <source>Highlight based on property</source>
-        <translation type="vanished">プロパティに基づいたハイライト</translation>
+        <translation>プロパティに基づいたハイライト</translation>
     </message>
     <message>
         <source>Highlight buses selection</source>
-        <translation type="vanished">母線選択を強調表示</translation>
+        <translation>母線選択を強調表示</translation>
     </message>
     <message>
         <source>Is a DC bus</source>
-        <translation type="vanished">DC母線である</translation>
+        <translation>DC母線である</translation>
     </message>
     <message>
         <source>Line</source>
-        <translation type="vanished">ライン</translation>
+        <translation>ライン</translation>
     </message>
     <message>
         <source>Load</source>
-        <translation type="vanished">負荷</translation>
+        <translation>負荷</translation>
     </message>
     <message>
         <source>Load profile wizard</source>
-        <translation type="vanished">プロファイルのロードウィザード</translation>
+        <translation>プロファイルのロードウィザード</translation>
     </message>
     <message>
         <source>Merge</source>
-        <translation type="vanished">マージ</translation>
+        <translation>マージ</translation>
     </message>
     <message>
         <source>Merge children into scenario</source>
-        <translation type="vanished">子をシナリオに結合する</translation>
+        <translation>子をシナリオに結合する</translation>
     </message>
     <message>
         <source>Merge selected lines</source>
-        <translation type="vanished">選択した行を結合</translation>
+        <translation>選択した行を結合</translation>
     </message>
     <message>
         <source>Merge selected substations here</source>
-        <translation type="vanished">選択した変電所をここに結合します</translation>
+        <translation>選択した変電所をここに結合します</translation>
     </message>
     <message>
         <source>Move behind converter</source>
-        <translation type="vanished">コンバーターの後ろに移動</translation>
+        <translation>コンバーターの後ろに移動</translation>
     </message>
     <message>
         <source>New diagram from selection</source>
-        <translation type="vanished">選択範囲からの新しい図</translation>
+        <translation>選択範囲からの新しい図</translation>
     </message>
     <message>
         <source>New map</source>
-        <translation type="vanished">新しい地図</translation>
+        <translation>新しい地図</translation>
     </message>
     <message>
         <source>New map from selection</source>
-        <translation type="vanished">選択範囲からの新しいマップ</translation>
+        <translation>選択範囲からの新しいマップ</translation>
     </message>
     <message>
         <source>New schematic</source>
-        <translation type="vanished">新しい回路図</translation>
+        <translation>新しい回路図</translation>
     </message>
     <message>
         <source>New schematic from selection</source>
-        <translation type="vanished">選択したものからの新しい回路図</translation>
+        <translation>選択したものからの新しい回路図</translation>
     </message>
     <message>
         <source>New vicinity diagram</source>
-        <translation type="vanished">新しい周辺図</translation>
+        <translation>新しい周辺図</translation>
     </message>
     <message>
         <source>Open in Street view</source>
-        <translation type="vanished">Street View で開く</translation>
+        <translation>Street View で開く</translation>
     </message>
     <message>
         <source>Open in street view</source>
-        <translation type="vanished">Street View で開く</translation>
+        <translation>Street View で開く</translation>
     </message>
     <message>
         <source>P2X</source>
-        <translation type="vanished">P2X</translation>
+        <translation>P2X</translation>
     </message>
     <message>
         <source>Plot</source>
-        <translation type="vanished">プロット</translation>
+        <translation>プロット</translation>
     </message>
     <message>
         <source>Plot electrical profiles</source>
-        <translation type="vanished">電気的プロファイルをプロットする</translation>
+        <translation>電気的プロファイルをプロットする</translation>
     </message>
     <message>
         <source>Plot fluid profiles</source>
-        <translation type="vanished">流体プロファイルのプロット</translation>
+        <translation>流体プロファイルのプロット</translation>
     </message>
     <message>
         <source>Plot profiles</source>
-        <translation type="vanished">プロファイルをプロットする</translation>
+        <translation>プロファイルをプロットする</translation>
     </message>
     <message>
         <source>Power2X</source>
-        <translation type="vanished">Power2X</translation>
+        <translation>Power2X</translation>
     </message>
     <message>
         <source>Pump</source>
-        <translation type="vanished">ポンプ</translation>
+        <translation>ポンプ</translation>
     </message>
     <message>
         <source>Qcurve edit</source>
-        <translation type="vanished">Qcurve 編集</translation>
+        <translation>Qcurve 編集</translation>
     </message>
     <message>
         <source>RMS Editor</source>
-        <translation type="vanished">RMS エディター</translation>
+        <translation>RMS エディター</translation>
     </message>
     <message>
         <source>Reload</source>
-        <translation type="vanished">リロード</translation>
+        <translation>リロード</translation>
     </message>
     <message>
         <source>Remove</source>
-        <translation type="vanished">取り除く</translation>
+        <translation>取り除く</translation>
     </message>
     <message>
         <source>Remove Selected</source>
-        <translation type="vanished">選択したものを削除</translation>
+        <translation>選択したものを削除</translation>
     </message>
     <message>
         <source>Remove scenario</source>
-        <translation type="vanished">シナリオの削除</translation>
+        <translation>シナリオの削除</translation>
     </message>
     <message>
         <source>Remove substation</source>
-        <translation type="vanished">変電所を削除する</translation>
+        <translation>変電所を削除する</translation>
     </message>
     <message>
         <source>Rename scenario</source>
-        <translation type="vanished">シナリオ名の変更</translation>
+        <translation>シナリオ名の変更</translation>
     </message>
     <message>
         <source>Reticular</source>
-        <translation type="vanished">網状</translation>
+        <translation>網状</translation>
     </message>
     <message>
         <source>Rotate 90</source>
-        <translation type="vanished">90度回転</translation>
+        <translation>90度回転</translation>
     </message>
     <message>
         <source>Series reactance</source>
-        <translation type="vanished">直列リアクタンス</translation>
+        <translation>直列リアクタンス</translation>
     </message>
     <message>
         <source>Set Control dev 1</source>
-        <translation type="vanished">コントロール開発 1 を設定</translation>
+        <translation>コントロール開発 1 を設定</translation>
     </message>
     <message>
         <source>Set Control dev 2</source>
-        <translation type="vanished">コントロール開発 2 を設定</translation>
+        <translation>コントロール開発 2 を設定</translation>
     </message>
     <message>
         <source>Set as current scenario</source>
-        <translation type="vanished">現在のシナリオとして設定</translation>
+        <translation>現在のシナリオとして設定</translation>
     </message>
     <message>
         <source>Set coordinates to DB</source>
-        <translation type="vanished">DBに座標を設定</translation>
+        <translation>DBに座標を設定</translation>
     </message>
     <message>
         <source>Set regulation bus</source>
-        <translation type="vanished">調整母線を設定</translation>
+        <translation>調整母線を設定</translation>
     </message>
     <message>
         <source>Set value to column</source>
-        <translation type="vanished">列に値を設定します</translation>
+        <translation>列に値を設定します</translation>
     </message>
     <message>
         <source>Shunt</source>
-        <translation type="vanished">シャント</translation>
+        <translation>シャント</translation>
     </message>
     <message>
         <source>Solar photovoltaic wizard</source>
-        <translation type="vanished">太陽光発電ウィザード</translation>
+        <translation>太陽光発電ウィザード</translation>
     </message>
     <message>
         <source>Split line</source>
-        <translation type="vanished">分割線</translation>
+        <translation>分割線</translation>
     </message>
     <message>
         <source>Split line to selected substation (In-Out)</source>
-        <translation type="vanished">選択した変電所への分割線 (In-Out)</translation>
+        <translation>選択した変電所への分割線 (In-Out)</translation>
     </message>
     <message>
         <source>Split line with in/out</source>
-        <translation type="vanished">イン/アウト付きのスプリットライン</translation>
+        <translation>イン/アウト付きのスプリットライン</translation>
     </message>
     <message>
         <source>Static generator</source>
-        <translation type="vanished">静的発電機</translation>
+        <translation>静的発電機</translation>
     </message>
     <message>
         <source>Straight</source>
-        <translation type="vanished">真っ直ぐ</translation>
+        <translation>真っ直ぐ</translation>
     </message>
     <message>
         <source>Substation diagram</source>
-        <translation type="vanished">変電所の図</translation>
+        <translation>変電所の図</translation>
     </message>
     <message>
         <source>Switch</source>
-        <translation type="vanished">開閉器</translation>
+        <translation>開閉器</translation>
     </message>
     <message>
         <source>Tap changer</source>
-        <translation type="vanished">タップ切換器</translation>
+        <translation>タップ切換器</translation>
     </message>
     <message>
         <source>Tap down</source>
-        <translation type="vanished">タップ下げ</translation>
+        <translation>タップ下げ</translation>
     </message>
     <message>
         <source>Tap up</source>
-        <translation type="vanished">タップ上げ</translation>
+        <translation>タップ上げ</translation>
     </message>
     <message>
         <source>Transform waypoint into substation</source>
-        <translation type="vanished">ウェイポイントを変電所に変える</translation>
+        <translation>ウェイポイントを変電所に変える</translation>
     </message>
     <message>
         <source>Transformer</source>
-        <translation type="vanished">トランス</translation>
+        <translation>トランス</translation>
     </message>
     <message>
         <source>Transformer NW</source>
-        <translation type="vanished">トランスNW</translation>
+        <translation>トランスNW</translation>
     </message>
     <message>
         <source>Turbine</source>
-        <translation type="vanished">タービン</translation>
+        <translation>タービン</translation>
     </message>
     <message>
         <source>UPFC</source>
-        <translation type="vanished">UPFC</translation>
+        <translation>UPFC</translation>
     </message>
     <message>
         <source>VSC</source>
-        <translation type="vanished">VSC</translation>
+        <translation>VSC</translation>
     </message>
     <message>
         <source>Vicinity diagram from here</source>
-        <translation type="vanished">周辺図はこちらから</translation>
+        <translation>周辺図はこちらから</translation>
     </message>
     <message>
         <source>Wind farm wizard</source>
-        <translation type="vanished">風力発電所の魔法使い</translation>
+        <translation>風力発電所の魔法使い</translation>
     </message>
     <message>
         <source>Winding</source>
-        <translation type="vanished">巻線</translation>
+        <translation>巻線</translation>
     </message>
     <message>
         <source>add Short circuit</source>
-        <translation type="vanished">短絡回路を追加</translation>
+        <translation>短絡回路を追加</translation>
     </message>
 </context>
 <context>
