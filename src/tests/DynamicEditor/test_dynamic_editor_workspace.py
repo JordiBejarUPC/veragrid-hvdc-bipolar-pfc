@@ -30,6 +30,17 @@ def _build_load_entry():
     return circuit, load, entry
 
 
+def _build_dc_load_entry():
+    circuit = gce.MultiCircuit(Sbase=100, fbase=50.0)
+    bus = gce.Bus(name="DC Bus 1", Vnom=10.0, is_dc=True)
+    circuit.add_bus(bus)
+    load = gce.Load()
+    circuit.add_load(bus=bus, api_obj=load)
+    entry = build_dynamic_editor_entry(load, circuit)
+    assert entry is not None
+    return circuit, load, entry
+
+
 def _build_workspace() -> DynamicEditorWorkspaceWindow:
     session = DynamicEditorWorkspaceSession()
     return DynamicEditorWorkspaceWindow(session=session)
@@ -187,5 +198,23 @@ def test_workspace_detaches_and_reattaches_tabs_between_windows() -> None:
 
     assert workspace.workspace_for_page(emt_page) is workspace
     assert workspace.ui.editorTabs.count() == 2
+
+    _reset_dynamic_editor_workspaces()
+
+
+def test_workspace_opens_rms_editor_for_dc_bus_load() -> None:
+    _get_app()
+    _reset_dynamic_editor_workspaces()
+    circuit, load, _entry = _build_dc_load_entry()
+    workspace = _build_workspace()
+
+    rms_page = workspace.open_dynamic_editor_for(
+        load,
+        circuit,
+        preferred_mode=DynamicSimulationMode.RMS,
+    )
+
+    assert rms_page is not None
+    assert workspace.get_current_block_editor() is not None
 
     _reset_dynamic_editor_workspaces()

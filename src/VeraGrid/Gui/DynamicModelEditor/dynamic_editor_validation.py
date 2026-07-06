@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Optional
+import re
+from typing import Optional, TYPE_CHECKING
 
 from PySide6 import QtGui, QtWidgets
 from PySide6.QtCore import QObject, Qt
@@ -11,6 +12,9 @@ from PySide6.QtWidgets import QDialog, QDialogButtonBox, QLabel, QScrollArea, QT
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic import Var
 from VeraGridEngine.enumerations import VarPowerFlowReferenceType
+
+if TYPE_CHECKING:
+    from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI
 
 
 def collect_block_tree(root_block: Block) -> list[Block]:
@@ -473,27 +477,114 @@ class ValidationRow:
     Row of validation output associated with one block.
     """
 
-    __slots__ = ("_block_label", "_details", "_ok")
+    __slots__ = ("_block_label", "_details", "_ok", "_highlight_ports", "_highlight_port_refs", "_highlight_block")
 
     def __init__(self, block_label: str) -> None:
+        """
+        Build one validation row.
+
+        :param block_label: Human-readable block label.
+        :return: None.
+        """
         self._block_label: str = block_label
         self._details: list[str] = list()
         self._ok: bool = False
+        self._highlight_ports: set[str] = set()
+        self._highlight_port_refs: set[VarPowerFlowReferenceType] = set()
+        self._highlight_block: bool = False
 
     def get_block_label(self) -> str:
+        """
+        Return the user-facing block label.
+
+        :return: Block label.
+        """
         return self._block_label
 
     def get_details(self) -> list[str]:
+        """
+        Return the row detail lines.
+
+        :return: Detail lines.
+        """
         return self._details
 
     def add_detail(self, detail: str) -> None:
+        """
+        Append one validation detail line.
+
+        :param detail: Detail text to append.
+        :return: None.
+        """
         self._details.append(detail)
 
     def set_ok(self, val: bool) -> None:
+        """
+        Store the row status.
+
+        :param val: Whether the row is informationally correct.
+        :return: None.
+        """
         self._ok = val
 
     def is_ok(self) -> bool:
+        """
+        Return whether the row is informationally correct.
+
+        :return: Stored row status.
+        """
         return self._ok
+
+    def set_highlight_block(self, val: bool) -> None:
+        """
+        Store whether the owning block should be highlighted.
+
+        :param val: Whether to highlight the whole block.
+        :return: None.
+        """
+        self._highlight_block = val
+
+    def get_highlight_block(self) -> bool:
+        """
+        Return whether the owning block should be highlighted.
+
+        :return: Block highlight flag.
+        """
+        return self._highlight_block
+
+    def add_highlight_port_name(self, port_name: str) -> None:
+        """
+        Register one port name that should be highlighted.
+
+        :param port_name: Visible port variable name.
+        :return: None.
+        """
+        self._highlight_ports.add(port_name)
+
+    def get_highlight_port_names(self) -> set[str]:
+        """
+        Return the port names that should be highlighted.
+
+        :return: Highlighted port names.
+        """
+        return self._highlight_ports
+
+    def add_highlight_port_ref(self, port_ref: VarPowerFlowReferenceType) -> None:
+        """
+        Register one port reference type that should be highlighted.
+
+        :param port_ref: Semantic power-flow reference.
+        :return: None.
+        """
+        self._highlight_port_refs.add(port_ref)
+
+    def get_highlight_port_refs(self) -> set[VarPowerFlowReferenceType]:
+        """
+        Return the port reference types that should be highlighted.
+
+        :return: Highlighted port references.
+        """
+        return self._highlight_port_refs
 
 
 class ValidationSection:
@@ -504,21 +595,49 @@ class ValidationSection:
     __slots__ = ("_title", "_rows", "_first_column_title", "_show_issue_label")
 
     def __init__(self, title: str, first_column_title: str = "Block", show_issue_label: bool = True) -> None:
+        """
+        Build one validation section.
+
+        :param title: Section title.
+        :param first_column_title: First table-column title.
+        :param show_issue_label: Whether to show the section issue summary label.
+        :return: None.
+        """
         self._title: str = title
         self._rows: list[ValidationRow] = list()
         self._first_column_title: str = first_column_title
         self._show_issue_label: bool = show_issue_label
 
     def get_title(self) -> str:
+        """
+        Return the section title.
+
+        :return: Title text.
+        """
         return self._title
 
     def get_rows(self) -> list[ValidationRow]:
+        """
+        Return the section rows.
+
+        :return: Ordered validation rows.
+        """
         return self._rows
 
     def get_first_column_title(self) -> str:
+        """
+        Return the first table-column title.
+
+        :return: First column title.
+        """
         return self._first_column_title
 
     def get_show_issue_label(self) -> bool:
+        """
+        Return whether the section should show its issue label.
+
+        :return: Issue-label visibility flag.
+        """
         return self._show_issue_label
 
     def get_or_create_row(self, block_label: str) -> ValidationRow:
@@ -646,12 +765,58 @@ def add_validation_status_detail(section: ValidationSection, block_label: str, d
     row.set_ok(val=ok)
 
 
+def add_validation_port_detail(
+        section: ValidationSection,
+        block_label: str,
+        detail: str,
+        input_names: list[str],
+        output_names: list[str],
+        input_refs: list[VarPowerFlowReferenceType] | None = None,
+        output_refs: list[VarPowerFlowReferenceType] | None = None,
+) -> None:
+    """
+    Append one port-connectivity detail and store the exact port names to highlight.
+
+    :param section: Mutable validation section.
+    :param block_label: Human-readable block identifier.
+    :param detail: One validation detail for that block.
+    :param input_names: Missing input port names.
+    :param output_names: Missing output port names.
+    :param input_refs: Missing input port references.
+    :param output_refs: Missing output port references.
+    :return: None.
+    """
+    row: ValidationRow = section.get_or_create_row(block_label=block_label)
+    row.add_detail(detail=detail)
+
+    port_name: str
+    for port_name in input_names:
+        row.add_highlight_port_name(port_name=port_name)
+
+    for port_name in output_names:
+        row.add_highlight_port_name(port_name=port_name)
+
+    if input_refs is not None:
+        port_ref: VarPowerFlowReferenceType
+        for port_ref in input_refs:
+            row.add_highlight_port_ref(port_ref=port_ref)
+    else:
+        pass
+
+    if output_refs is not None:
+        port_ref: VarPowerFlowReferenceType
+        for port_ref in output_refs:
+            row.add_highlight_port_ref(port_ref=port_ref)
+    else:
+        pass
+
+
 class ValidationSectionDialog(QDialog):
     """
     Dialog showing model-consistency results grouped by validation section.
     """
 
-    __slots__ = ("_section_results",)
+    __slots__ = ("_section_results", "_show_issues_button")
 
     def __init__(self, section_results: list[ValidationSection], parent: Optional[QtWidgets.QWidget] = None) -> None:
         """
@@ -703,6 +868,13 @@ class ValidationSectionDialog(QDialog):
         scroll_layout.addStretch(1)
 
         button_box: QDialogButtonBox = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok, self)
+        self._show_issues_button: QtWidgets.QPushButton = button_box.addButton(
+            "Show Issues",
+            QDialogButtonBox.ButtonRole.ActionRole,
+        )
+        self._show_issues_button.setToolTip("Show issues in the model")
+        self._show_issues_button.setEnabled(self._has_any_issue_rows())
+        self._show_issues_button.clicked.connect(self._show_issues_in_model)
         button_box.accepted.connect(self.accept)
         layout.addWidget(button_box)
 
@@ -833,6 +1005,32 @@ class ValidationSectionDialog(QDialog):
         layout.addWidget(section_content_widget)
         layout.addSpacing(1)
 
+    def get_section_results(self) -> list[ValidationSection]:
+        """
+        Return the rendered validation sections.
+
+        :return: Ordered validation sections.
+        """
+        return self._section_results
+
+    def _has_any_issue_rows(self) -> bool:
+        """
+        Return whether the dialog contains at least one issue row.
+
+        :return: ``True`` when any section contains one issue row.
+        """
+        section: ValidationSection
+
+        # The action button is only useful when the validation pipeline found at
+        # least one row that can be projected back onto the visible scene.
+        for section in self._section_results:
+            if len(section.get_rows()) > 0:
+                return True
+            else:
+                pass
+
+        return False
+
     def _update_section_toggle_arrow(self, expanded: bool) -> None:
         """
         Update one section-header arrow to match its expanded state.
@@ -851,6 +1049,79 @@ class ValidationSectionDialog(QDialog):
                 sender_button.setArrowType(Qt.ArrowType.RightArrow)
         else:
             pass
+
+    def _show_issues_in_model(self) -> None:
+        """
+        Request issue highlighting on the owning dynamic editor.
+
+        :return: None.
+        """
+        parent_widget: QObject | None = self.parent()
+
+        # The dialog is created by the dynamic editor itself. The call remains
+        # guarded so the action safely becomes a no-op if the parent changes.
+        from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI
+
+        if isinstance(parent_widget, DynamicBlockEditorGUI):
+            parent_widget.show_validation_issues_in_model(section_results=self.get_section_results())
+            self.accept()
+        else:
+            pass
+
+
+def extract_port_names_from_validation_detail(detail: str) -> set[str]:
+    """
+    Extract the visible port names referenced by one connectivity detail line.
+
+    :param detail: Validation detail string.
+    :return: Port names referenced by the message.
+    """
+    port_names: set[str] = set()
+    match_text: str
+
+    # Connectivity details are rendered as comma-separated input/output labels.
+    # The highlighter parses those labels so the same validation report can be
+    # projected back onto the scene without adding a parallel data structure.
+    for match_text in re.findall(r"(?:Inputs|Outputs):\s*([^|]+)", detail):
+        raw_name: str
+        for raw_name in match_text.split(","):
+            cleaned_name: str = raw_name.strip()
+            if len(cleaned_name) > 0:
+                port_names.add(cleaned_name)
+            else:
+                pass
+
+    return port_names
+
+
+def build_validation_row_highlight_metadata(section_results: list[ValidationSection]) -> None:
+    """
+    Populate per-row scene-highlight metadata from the rendered section details.
+
+    :param section_results: Validation sections to annotate.
+    :return: None.
+    """
+    section: ValidationSection
+    for section in section_results:
+        row: ValidationRow
+        for row in section.get_rows():
+            detail: str
+            port_names: set[str] = set()
+
+            # Port-connectivity problems map to concrete ports, while all other
+            # reported issues are shown at block granularity with a red border.
+            if section.get_title() == "Port Connectivity":
+                for detail in row.get_details():
+                    port_names.update(extract_port_names_from_validation_detail(detail=detail))
+
+                if len(port_names) > 0:
+                    port_name: str
+                    for port_name in port_names:
+                        row.add_highlight_port_name(port_name=port_name)
+                else:
+                    row.set_highlight_block(val=True)
+            else:
+                row.set_highlight_block(val=True)
 
 
 def get_emt_phase_group(reference: VarPowerFlowReferenceType | None) -> str | None:
