@@ -62,7 +62,7 @@ class MultiCircuitRaiyan(gce.MultiCircuit):
     def add_generator(self, bus, gen):
         if bus.is_dc:
             #make sure that control2 of the generator is None
-            assert gen.control2 is None, "DC generator cannot have 2 controls"
+            assert gen.control2_int is None, "DC generator cannot have 2 controls"
         super().add_generator(bus, gen)
         self.GENinstances[gen] = bus
 

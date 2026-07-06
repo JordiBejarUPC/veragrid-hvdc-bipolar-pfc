@@ -2,13 +2,9 @@
 
 from __future__ import annotations
 
-import cProfile as profile
-
-import numpy as np
 import time
-from matplotlib import pyplot as plt
 
-from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DynamicIntegrationMethod, RmsInitializationMethod
+from VeraGridEngine.enumerations import VarPowerFlowReferenceType, DynamicIntegrationMethod, RmsInitializationMethod
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.Devices.Injections.generator import Generator
 from VeraGridEngine.Devices.Branches.line import Line
@@ -22,8 +18,7 @@ from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complet
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 
 from VeraGridEngine.Templates.Rms.load_rms_template import get_load_rms_template
-from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms
-from VeraGridEngine.Templates.templates_common_functions import set_rms_model
+from VeraGridEngine.Utils.Symbolic.bus_rms_template import initialize_bus_rms
 
 from VeraGridEngine.Utils.Symbolic import Block
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowOptions
@@ -297,30 +292,54 @@ def rms_kundur():
     gen1 = Generator(
         name="Gen1", P=10.0, vset=1.03, Snom=900.0,
         x1=xd_1, r1=ra_1, freq=fn_1,
-        tm0=6.999999999999999, vf=1.1410480598099169,
-        M=M_1, D=D_1, omega_ref=omega_ref_1, Kp=Kp_1, Ki=Ki_1
-    )
+           )
 
     gen2 = Generator(
         name="Gen2", P=10.0, vset=1.01, Snom=900.0,
         x1=xd_2, r1=ra_2, freq=fn_2,
-        tm0=6.999999999999998, vf=1.1801018702912192,
-        M=M_2, D=D_2, omega_ref=omega_ref_2, Kp=Kp_2, Ki=Ki_2
+
     )
 
     gen3 = Generator(
         name="Gen3", P=10.0, vset=1.03, Snom=900.0,
         x1=xd_3, r1=ra_3, freq=fn_3,
-        tm0=7.331838148595014, vf=1.15513088317088697,
-        M=M_3, D=D_3, omega_ref=omega_ref_3, Kp=Kp_3, Ki=Ki_3
+
     )
 
     gen4 = Generator(
         name="Gen4", P=10.0, vset=1.01, Snom=900.0,
         x1=xd_4, r1=ra_4, freq=fn_4,
-        tm0=6.999999999999998, vf=1.2028207647478641,
-        M=M_4, D=D_4, omega_ref=omega_ref_4, Kp=Kp_4, Ki=Ki_4
+
     )
+
+    grid.add_load(bus=bus7, api_obj=load1)
+    grid.add_load(bus=bus9, api_obj=load2)
+
+    grid.add_generator(bus=bus1, api_obj=gen1)
+    grid.add_generator(bus=bus2, api_obj=gen2)
+    grid.add_generator(bus=bus3, api_obj=gen3)
+    grid.add_generator(bus=bus4, api_obj=gen4)
+
+    grid.add_line(line0)
+    grid.add_line(line1)
+    grid.add_line(line2)
+    grid.add_line(line3)
+    grid.add_line(line4)
+    grid.add_line(line5)
+    grid.add_line(line6)
+    grid.add_line(line7)
+    grid.add_line(line8)
+    grid.add_line(line9)
+    grid.add_line(line10)
+    grid.add_line(line11)
+    grid.add_line(line12)
+    grid.add_line(line13)
+    grid.add_line(trafo_G1)
+    grid.add_line(trafo_G2)
+    grid.add_line(trafo_G3)
+    grid.add_line(trafo_G4)
+
+    gce.save_file(grid=grid, filename="kundur_static_grid.veragrid")
 
 
 
@@ -369,6 +388,8 @@ def rms_kundur():
 
     load2_mdl.set_parameter_in_model(var_name="Pl0", new_value=-0.0999999)
     load2_mdl.set_parameter_in_model(var_name="Ql0", new_value=-0.009999999862208533)
+
+
 
     # # add rms models to api objects
     # set_rms_model(device=line0, model=line0_mdl)
@@ -539,17 +560,17 @@ def rms_kundur():
     big_gen3 = Block(children=[genqec_mdl3])
     big_gen4 = Block(children=[genqec_mdl4])
 
-    big_gen1.external_mapping.update({VarPowerFlowRefferenceType.P: genqec_mdl1.out_vars[0]})
-    big_gen1.external_mapping.update({VarPowerFlowRefferenceType.Q: genqec_mdl1.out_vars[1]})
+    big_gen1.external_mapping.update({VarPowerFlowReferenceType.P: genqec_mdl1.out_vars[0]})
+    big_gen1.external_mapping.update({VarPowerFlowReferenceType.Q: genqec_mdl1.out_vars[1]})
 
-    big_gen2.external_mapping.update({VarPowerFlowRefferenceType.P: genqec_mdl2.out_vars[0]})
-    big_gen2.external_mapping.update({VarPowerFlowRefferenceType.Q: genqec_mdl2.out_vars[1]})
+    big_gen2.external_mapping.update({VarPowerFlowReferenceType.P: genqec_mdl2.out_vars[0]})
+    big_gen2.external_mapping.update({VarPowerFlowReferenceType.Q: genqec_mdl2.out_vars[1]})
 
-    big_gen3.external_mapping.update({VarPowerFlowRefferenceType.P: genqec_mdl3.out_vars[0]})
-    big_gen3.external_mapping.update({VarPowerFlowRefferenceType.Q: genqec_mdl3.out_vars[1]})
+    big_gen3.external_mapping.update({VarPowerFlowReferenceType.P: genqec_mdl3.out_vars[0]})
+    big_gen3.external_mapping.update({VarPowerFlowReferenceType.Q: genqec_mdl3.out_vars[1]})
 
-    big_gen4.external_mapping.update({VarPowerFlowRefferenceType.P: genqec_mdl4.out_vars[0]})
-    big_gen4.external_mapping.update({VarPowerFlowRefferenceType.Q: genqec_mdl4.out_vars[1]})
+    big_gen4.external_mapping.update({VarPowerFlowReferenceType.P: genqec_mdl4.out_vars[0]})
+    big_gen4.external_mapping.update({VarPowerFlowReferenceType.Q: genqec_mdl4.out_vars[1]})
 
     # attach rms models to Veragrid objects
     gen1.rms_model = big_gen1

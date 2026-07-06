@@ -7,33 +7,34 @@ import numpy as np
 from typing import Callable, Dict
 import VeraGridEngine.Utils.Symbolic.symbolic as sym
 from VeraGridEngine.Utils.Symbolic.compiled_functions import SymbolicJacobian
+from VeraGridEngine.Utils.Symbolic.jit_compiler import SubexpressionAnalyzer
 from VeraGridEngine.Utils.Symbolic.block import Block
-from VeraGridEngine.Utils.Symbolic.symbolic_io import duplicate_block
+from VeraGridEngine.Utils.Symbolic.symbolic_io import duplicate_block, expr_to_dict, parse_expr
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 
 # -----------------------------------------------------------------------------
 # Atomic & basic operations
 # -----------------------------------------------------------------------------
 
-def test_const_eval():
+def test_const_eval() -> None:
     assert sym.Const(42).eval() == 42
 
 
-def test_var_eval():
+def test_var_eval() -> None:
     x = sym.Var("x")
     assert x.eval(x=3.14) == 3.14
     with pytest.raises(ValueError):
         x.eval()  # missing binding
 
 
-def test_binary_arithmetic():
+def test_binary_arithmetic() -> None:
     x, y = sym.Var("x1"), sym.Var("y")
     expr = 2 * x + y / 4 - 1
     result = expr.eval(x1=8, y=20)  # 2*8 + 20/4 - 1 = 16 + 5 - 1 = 20
     assert result == 20
 
 
-def test_unary_neg_pow():
+def test_unary_neg_pow() -> None:
     x = sym.Var("x")
     expr = -(x ** 2)
     assert expr.eval(x=3) == -9
@@ -42,7 +43,7 @@ def test_unary_neg_pow():
 # Functional expressions (sin, cos, tan, exp)
 # -----------------------------------------------------------------------------
 
-def test_trig_and_exp():
+def test_trig_and_exp() -> None:
     x = sym.Var("x")
     expr = sym.sin(x) + sym.exp(2 * x)
     val = expr.eval(x=0)
@@ -52,17 +53,25 @@ def test_trig_and_exp():
 # UID behaviour
 # -----------------------------------------------------------------------------
 
-def test_uid_uniqueness():
+def test_uid_uniqueness() -> None:
     a, b = sym.Var("x"), sym.Var("x")
     assert a.uid != b.uid
     expr = a + b
     assert len({a.uid, b.uid, expr.uid}) == 3  # all distinct
 
+
+def test_subexpression_analyzer_distinguishes_duplicate_names_by_uid() -> None:
+    a = sym.Var("x")
+    b = sym.Var("x")
+    analyzer = SubexpressionAnalyzer()
+
+    assert analyzer.hash_expr(a + sym.Const(1.0)) != analyzer.hash_expr(b + sym.Const(1.0))
+
 # -----------------------------------------------------------------------------
 # JSON round‑trip
 # -----------------------------------------------------------------------------
 
-def test_serialisation_roundtrip():
+def test_serialisation_roundtrip() -> None:
     x, y = sym.Var("x"), sym.Var("y")
     expr = sym.sin(x) * (y + 3)
 
@@ -72,6 +81,33 @@ def test_serialisation_roundtrip():
     assert expr.eval(x=0.5, y=2) == clone.eval(x=0.5, y=2)
     # ensure UIDs are preserved
     assert expr.uid == json.loads(blob)["uid"]
+
+
+def test_symbolic_io_func2_roundtrip() -> None:
+    x: sym.Var = sym.Var("x")
+    y: sym.Var = sym.Var("y")
+    expr: sym.Expr = sym.atan2(x + sym.Const(1.0), y * sym.Const(2.0))
+    const_dict: Dict[int, sym.Const] = dict()
+    var_dict: Dict[int, sym.Var] = {x.uid: x, y.uid: y}
+    diff_var_dict: Dict[int, sym.Var] = dict()
+
+    payload: Dict[str, object] = expr_to_dict(expr=expr,
+                                              const_dict=const_dict,
+                                              var_dict=var_dict,
+                                              diff_var_dict=diff_var_dict)
+    restored: sym.Expr = parse_expr(data=payload,
+                                    const_dict=const_dict,
+                                    var_dict=var_dict,
+                                    diff_var_dict=diff_var_dict)
+    payload_roundtrip: Dict[str, object] = expr_to_dict(expr=restored,
+                                                        const_dict=const_dict,
+                                                        var_dict=var_dict,
+                                                        diff_var_dict=diff_var_dict)
+
+    assert isinstance(restored, sym.Func2)
+    assert restored.name == "atan2"
+    assert payload_roundtrip == payload
+    assert math.isclose(restored.eval(x=1.5, y=0.25), expr.eval(x=1.5, y=0.25), rel_tol=1.0e-12)
 
 # -----------------------------------------------------------------------------
 # Immutability guarantees
@@ -86,7 +122,7 @@ def test_serialisation_roundtrip():
 # String representations (non‑critical, but nice to see)
 # -----------------------------------------------------------------------------
 
-def test_str_roundtrip():
+def test_str_roundtrip() -> None:
     x = sym.Var("x")
     expr = (2 * x) / 5 - sym.cos(x)
     s = str(expr)
@@ -105,7 +141,7 @@ def _numdiff(f: Callable[[float], float], x: float, h: float = 1e-6) -> float:
 # 1. Constant & variable evaluation
 # -----------------------------------------------------------------------------
 
-def test_constant_and_variable_eval():
+def test_constant_and_variable_eval() -> None:
     c = sym.Const(7)
     assert c.eval() == 7
 
@@ -118,7 +154,7 @@ def test_constant_and_variable_eval():
 # 2. UID‑based evaluation for duplicate names
 # -----------------------------------------------------------------------------
 
-def test_eval_uid_duplicate_names():
+def test_eval_uid_duplicate_names() -> None:
     x1, x2 = sym.Var("x"), sym.Var("x")
     expr = x1 + 2 * x2
     # name‑based → same value for both
@@ -146,7 +182,9 @@ def test_eval_uid_duplicate_names():
         (sym.cosh, math.cosh, 0.3),
     ],
 )
-def test_elementary_functions(sym_func, math_func, point):
+def test_elementary_functions(sym_func: Callable[[sym.Expr], sym.Expr],
+                              math_func: Callable[[float], float],
+                              point: float) -> None:
     x = sym.Var("x")
     expr = sym_func(x)
     # value
@@ -171,7 +209,7 @@ def test_elementary_functions(sym_func, math_func, point):
 # 5. Higher‑order derivatives & simplification
 # -----------------------------------------------------------------------------
 
-def test_higher_order_derivatives():
+def test_higher_order_derivatives() -> None:
     x = sym.Var("x")
     expr = x ** 3
     second = sym.diff(expr, x, 2).simplify()
@@ -184,7 +222,7 @@ def test_higher_order_derivatives():
 # 6. Simplification rules
 # -----------------------------------------------------------------------------
 
-def test_simplification_identities():
+def test_simplification_identities() -> None:
     x = sym.Var("x")
     assert ((x + sym.Const(0)).simplify()).__str__() == "x"
     assert ((sym.Const(0) * x).simplify()).eval(x=99) == 0
@@ -194,7 +232,7 @@ def test_simplification_identities():
 # 7. Substitution mechanics
 # -----------------------------------------------------------------------------
 
-def test_substitution():
+def test_substitution() -> None:
     x, y = sym.Var("x"), sym.Var("y")
     expr = x ** 2 + y
     replaced = expr.subs({x: y + 1})
@@ -204,7 +242,7 @@ def test_substitution():
 # 8. JSON round‑trip with UID preservation
 # -----------------------------------------------------------------------------
 
-def test_json_roundtrip_uid():
+def test_json_roundtrip_uid() -> None:
     x = sym.Var("x")
     expr = sym.sin(x) + sym.sqrt(x)
     clone = sym.Expr.from_json(expr.to_json())
@@ -212,7 +250,7 @@ def test_json_roundtrip_uid():
     assert expr.eval(x=0.9) == clone.eval(x=0.9)
 
 
-def test_symbolic_jacobian_nonlinear_5x5():
+def test_symbolic_jacobian_nonlinear_5x5() -> None:
     # -----------------------------
     # Variables
     # --------sym.---------------------
@@ -323,10 +361,10 @@ def test_var_factory_deepcopy_keeps_copied_diff_links_internal() -> None:
     dx: sym.Var = vf.add_diff_var("dx", base_var=x)
 
     copied_vf: VarFactory = copy.deepcopy(vf)
-    copied_x_or_none: sym.Var | None = copied_vf.get_var(x.uid)
+    copied_x_or_none: sym.Var | None = copied_vf.get_var(x.non_mutable_uid)
     assert copied_x_or_none is not None
     copied_x: sym.Var = copied_x_or_none
-    copied_dx: sym.Var = copied_vf.get_diff_var(dx.uid)
+    copied_dx: sym.Var = copied_vf.get_diff_var(dx.non_mutable_uid)
 
     assert x.diff_var is dx
     assert dx.base_var is x
@@ -407,8 +445,8 @@ def test_duplicate_block_preserves_parent_child_variable_links_with_new_uids() -
     assert copied_dx.base_var is copied_x
     assert copied_child.state_eqs[0].left is copied_dx
     assert copied_child.state_eqs[0].right is copied_x
-    assert target_vf.get_var(copied_x.uid) is copied_x
-    assert target_vf.get_diff_var(copied_dx.uid) is copied_dx
+    assert target_vf.get_var(copied_x.non_mutable_uid) is copied_x
+    assert target_vf.get_diff_var(copied_dx.non_mutable_uid) is copied_dx
 
 
 # -----------------------------------------------------------------------------

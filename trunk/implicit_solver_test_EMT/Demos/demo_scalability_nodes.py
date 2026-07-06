@@ -145,7 +145,12 @@ def run_backend(
 
     t_setup_start: float = time.perf_counter()
 
-    problem: GenericEmtProblem = GenericEmtProblem(sys_block=block, glob_time=t_sym)
+    static_parameter_values_mapping: Dict[Var, Const] = dict(block.parameters)
+    problem: GenericEmtProblem = GenericEmtProblem(
+        sys_block=block,
+        glob_time=t_sym,
+        static_parameter_values_mapping=static_parameter_values_mapping,
+    )
     setup_initial_condition(problem, block, n_nodes)
 
     x0: np.ndarray = problem.get_x0()

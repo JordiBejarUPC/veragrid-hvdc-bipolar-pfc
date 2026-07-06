@@ -6,8 +6,7 @@
 from __future__ import annotations
 
 import math
-from typing import Any, List, Sequence, Tuple, cast
-from unittest.mock import patch
+from typing import Any, List, Sequence, Tuple, cast, Dict
 
 import numpy as np
 import pytest
@@ -57,8 +56,9 @@ class DummyProblem(EmtProblemTemplate):
         sys_block.parameters = {}
         sys_block.event_dict = {}
         sys_block.mode_dict = {}
+        static_parameter_values_mapping: Dict[Var, Const] = dict()
 
-        super().__init__(sys_block=sys_block, glob_time=glob_time)
+        super().__init__(sys_block=sys_block, static_parameter_values_mapping=static_parameter_values_mapping, glob_time=glob_time)
 
         self._x0: np.ndarray = np.array([1.234], dtype=np.float64)
         self._dx0: np.ndarray = np.array([0.0], dtype=np.float64)
@@ -197,7 +197,7 @@ def _dummy_fused_residual(
     ],
 )
 def test_force_step_alignment_is_used_by_all_three_solvers(
-    monkeypatch: pytest.MonkeyPatch,
+    override_attrs,
     solver_kind: EmtSolverTypes,
     expected_updates: Sequence[float],
 ) -> None:
@@ -231,15 +231,15 @@ def test_force_step_alignment_is_used_by_all_three_solvers(
 
         solver.jit_kernels[integration_method] = [_dummy_kernel]
         solver.jit_jacobian_symbolic[f"{integration_method}_{False}"] = cast(Any, DummyJacobian())
-
-        with patch.object(JitSymbolicSolver, "build_jit_kernel", lambda self, method: None), patch.object(
+        override_attrs.setattr(JitSymbolicSolver, "build_jit_kernel", lambda self, method: None)
+        override_attrs.setattr(
             JitSymbolicSolver,
             "_build_jit_symbolic_hybrid",
             lambda self, method, use_sparse: None,
-        ):
-            t, y, dy, _, _ = solver.simulate(
-                boundary_updater=cast(BoundaryUpdateWrapper, cast(object, updater))
-            )
+        )
+        t, y, dy, _, _ = solver.simulate(
+            boundary_updater=cast(BoundaryUpdateWrapper, cast(object, updater))
+        )
 
     elif solver_kind == EmtSolverTypes.Automatic:
         solver = JitAdSolver(

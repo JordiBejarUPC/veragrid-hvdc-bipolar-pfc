@@ -4,10 +4,23 @@
 # SPDX-License-Identifier: MPL-2.0
 
 import math
-from VeraGridEngine.enumerations import DeviceType, VarPowerFlowRefferenceType, ParamPowerFlowRefferenceType
+from VeraGridEngine.Templates.template_definition import TemplateDefinition, TemplateProp
+from VeraGridEngine.enumerations import DeviceType, VarPowerFlowReferenceType, ParamPowerFlowReferenceType
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Utils.Symbolic.block import Block
+
+
+class ShuntTemplate(TemplateDefinition):
+
+    def __init__(self, vf):
+        super().__init__(vf, params=[
+            TemplateProp(name="phasor", units="", descr="Select the phasor shunt model when True.", tpe=bool),
+            TemplateProp(name="name", units="", descr="Name of the rms model.", tpe=str),
+        ])
+
+    def eval(self) -> RmsModelTemplate:
+        return get_shunt_template(self.vf, self.get_value("name"), self.get_value("phasor"))
 
 
 def ShuntLoadBuild(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
@@ -39,15 +52,19 @@ def ShuntLoadBuild(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
         init_eqs={
             P: vfactory.add_const(0.0),
             Q: vfactory.add_const(0.1),
+        },
+        api_obj_mapping={
+            ParamPowerFlowReferenceType.g: g,
+            ParamPowerFlowReferenceType.b: b,
         }
     )
 
     res_block.event_dict = events_dict
     res_block.external_mapping = {
-        VarPowerFlowRefferenceType.Vm: inputs[0],
-        VarPowerFlowRefferenceType.Va: inputs[1],
-        VarPowerFlowRefferenceType.P: P,
-        VarPowerFlowRefferenceType.Q: Q,
+        VarPowerFlowReferenceType.Vm: inputs[0],
+        VarPowerFlowReferenceType.Va: inputs[1],
+        VarPowerFlowReferenceType.P: P,
+        VarPowerFlowReferenceType.Q: Q,
     }
     res_block.in_vars = inputs
 
@@ -82,18 +99,18 @@ def ShuntPhasorBuild(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
         ],
         algebraic_vars=[Ir, Ii],
         external_mapping={
-            VarPowerFlowRefferenceType.Vr: inputs[0],
-            VarPowerFlowRefferenceType.Vi: inputs[1],
-            VarPowerFlowRefferenceType.Ir: Ir,
-            VarPowerFlowRefferenceType.Ii: Ii,
+            VarPowerFlowReferenceType.Vr: inputs[0],
+            VarPowerFlowReferenceType.Vi: inputs[1],
+            VarPowerFlowReferenceType.Ir: Ir,
+            VarPowerFlowReferenceType.Ii: Ii,
             },
         init_eqs={
             Ir: -(g*Vr - b*Vi),
             Ii: -(g*Vi + b*Vr),
         },
         api_obj_mapping={
-            ParamPowerFlowRefferenceType.g: g,
-            ParamPowerFlowRefferenceType.b: b,
+            ParamPowerFlowReferenceType.g: g,
+            ParamPowerFlowReferenceType.b: b,
         }
     )
 

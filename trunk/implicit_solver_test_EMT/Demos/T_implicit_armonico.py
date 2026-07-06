@@ -73,7 +73,12 @@ def run_test() -> None:
     glob_time = vf.add_var("t_glob")
 
     # 2. Setup Problem
-    problem: GenericEmtProblem = GenericEmtProblem(sys_block, glob_time)
+    static_parameter_values_mapping: Dict[Var, Const] = dict(sys_block.parameters)
+    problem: GenericEmtProblem = GenericEmtProblem(
+        sys_block=sys_block,
+        glob_time=glob_time,
+        static_parameter_values_mapping=static_parameter_values_mapping,
+    )
 
     idx_x: int = problem.get_var_idx(var_x)
     idx_v: int = problem.get_var_idx(var_v)

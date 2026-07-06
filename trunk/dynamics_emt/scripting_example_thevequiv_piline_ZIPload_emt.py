@@ -11,7 +11,6 @@ from time import perf_counter
 from typing import Any, cast, Dict, List, Optional, Tuple
 
 import os
-import matplotlib.pyplot as plt
 from trunk.dynamics_emt.support.emt_plot_exports import (
     extract_three_phase_matrix,
     get_plot_results_directory,
@@ -36,13 +35,13 @@ from VeraGridEngine.Utils.Symbolic.block import Block, find_name_in_block as fin
 
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_dae import EmtProblemDae
-from VeraGridEngine.Simulations.PowerFlow.power_flow_driver_3ph import PowerFlowDriver3Ph
+from VeraGridEngine.Simulations.PowerFlow3ph.power_flow_driver_3ph import PowerFlowDriver3Ph
 
 
 from VeraGridEngine.Templates.Emt.pi_line_emt_template import get_pi_line_emt_template
 from VeraGridEngine.Templates.Emt.load_zip_emt_template import get_load_ZIP_emt_template
-from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template
-from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_template
+from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template_with_ref
+from VeraGridEngine.Utils.Symbolic.bus_emt_template import get_bus_emt_template
 
 from VeraGridEngine.Simulations.EMT.solvers.jit_symbolic_solver import JitSymbolicSolver
 from VeraGridEngine.Simulations.EMT.solvers.solver_AD import JitAdSolver
@@ -51,9 +50,8 @@ from VeraGridEngine.Simulations.EMT.solvers.structural_compiled_solver import St
 
 from VeraGridEngine.Utils.Symbolic.diagnostic import NewtonTraceCollector
 from VeraGridEngine.enumerations import (BranchImpedanceMode, DynamicIntegrationMethod, EmtInitializationMethod,
-                                         EmtSolverTypes, ShuntConnectionType, SolverType,
-                                         VarPowerFlowRefferenceType)
-from VeraGridEngine.Templates.templates_common_functions import set_emt_model
+                                         EmtSolverTypes, ShuntConnectionType, SolverType)
+from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_emt_model
 
 ###########################################################################################################################
 # Build VeraGrid object
@@ -127,7 +125,7 @@ for bus in grid.buses:
 # Build EMT models
 ######################################################################################################
 # generator
-gen_mdl = get_generator_thevenin_rl_emt_template(vf=grid.var_factory).block
+gen_mdl = get_generator_thevenin_rl_emt_template_with_ref(vf=grid.var_factory).block
 
 # line
 line_mdl = get_pi_line_emt_template(vf = grid.var_factory, phN = False, phA = True, phB = True, phC = True).block
@@ -251,7 +249,7 @@ BENCHMARK_COMPILED_COLD_WARM = read_env_flag("VERAGRID_EMT_BENCHMARK_COMPILED_CO
 BENCHMARK_ALL_SOLVERS_COLD_WARM = read_env_flag("VERAGRID_EMT_BENCHMARK_ALL_SOLVERS_COLD_WARM", False)
 DENSE_THRESHOLD = 0
 SOLVER_VERBOSE = read_env_flag("VERAGRID_EMT_SOLVER_VERBOSE", False)
-CHOSEN_INIT_METHOD = os.environ.get("VERAGRID_EMT_INIT_METHOD", "AUTO").strip().upper()
+CHOSEN_INIT_METHOD = os.environ.get("VERAGRID_EMT_INIT_METHOD", "PSEUDOTRANSIENT").strip().upper()
 PLOT_CASE_NAME = "thevequiv_piline_zipload"
 
 SOLVER_TYPE_MAP = {

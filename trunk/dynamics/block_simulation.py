@@ -17,10 +17,7 @@ from typing import Callable, List, Tuple, Optional, Dict
 
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Utils.Symbolic.block import Block
-from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const
-from VeraGridEngine.Templates.predefined_blocks import (
-    gain, adder, substract, integrator, constant
-)
+from VeraGridEngine.Utils.Symbolic.symbolic import Var
 
 
 def simulate_single_block(
@@ -251,7 +248,6 @@ def create_first_order_block(vf: VarFactory, K: float = 1.0, tau: float = 1.0, n
     tau_const = vf.add_const(tau)
     
     # dx/dt = (K*u - x) / tau
-    from VeraGridEngine.Utils.Symbolic.symbolic import Const
     state_eq = (K_const * u - x) / tau_const
     
     # Output equation: y = x
@@ -345,7 +341,6 @@ def create_gain_block(vf: VarFactory, K: float = 1.0, name: str = "gain") -> Tup
     
     # Gain: y = K * u
     K_const = vf.add_const(K)
-    from VeraGridEngine.Utils.Symbolic.symbolic import Const
     output_eq = y - K_const * u
     
     block = Block(

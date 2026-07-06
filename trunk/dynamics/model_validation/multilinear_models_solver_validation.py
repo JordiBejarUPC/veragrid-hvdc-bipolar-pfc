@@ -2,7 +2,6 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
-import math
 import cProfile as profile
 import numpy as np
 from matplotlib import pyplot as plt
@@ -12,24 +11,18 @@ import os
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'src')))
 
-from VeraGridEngine.Utils.Symbolic.symbolic import Const, Var, cos, sin, piecewise
 from VeraGridEngine.Utils.Symbolic.block import Block
-from VeraGridEngine.Utils.Symbolic.symbolic_io import block_deep_copy
-import VeraGridEngine.Utils.Symbolic.symbolic_ml as sym_ml
-from VeraGridEngine.Templates.Rms.generation_tensygrid_ml import GenqecBuild, GovernorBuild, ExciterBuild, \
-    StabilizerBuild, get_complete_generator_template
+from VeraGridEngine.Templates.Rms.generation_tensygrid_ml import get_complete_generator_template
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.Templates.Rms.load_rms_template import get_load_rms_template
-from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms
-from VeraGridEngine.Simulations.Rms.problems.rms_problem_dae import RmsProblemDae
+from VeraGridEngine.Utils.Symbolic.bus_rms_template import initialize_bus_rms
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
-from VeraGridEngine.Simulations.Rms.numerical.back_euler_fx import BackEulerImplicitIntegration
 from VeraGridEngine.Simulations.Rms.problems.rms_problem_tensygrid import RmsProblemTensygrid
 from VeraGridEngine.Simulations.Rms.numerical.back_euler_ts import BackEulerImplicitTensygrid
 
 from VeraGridEngine.enumerations import DynamicIntegrationMethod, RmsInitializationMethod
 from VeraGridEngine.Devices.Events.rms_event import RmsEvent
-from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
+from VeraGridEngine.enumerations import VarPowerFlowReferenceType
 import VeraGridEngine.api as gce
 
 ###########################################################################################################################
@@ -119,8 +112,8 @@ load_mdl.connect([load_mdl.in_vars[1]], [bus1.rms_model.out_vars[1]])
 
 # external mapping
 big_gen1 = Block(children=[genqec1_mdl])
-big_gen1.external_mapping.update({VarPowerFlowRefferenceType.P: genqec1_mdl.out_vars[0]})
-big_gen1.external_mapping.update({VarPowerFlowRefferenceType.Q: genqec1_mdl.out_vars[1]})
+big_gen1.external_mapping.update({VarPowerFlowReferenceType.P: genqec1_mdl.out_vars[0]})
+big_gen1.external_mapping.update({VarPowerFlowReferenceType.Q: genqec1_mdl.out_vars[1]})
 
 # attach rms models to Veragrid objects
 line0.rms_model = line0_mdl

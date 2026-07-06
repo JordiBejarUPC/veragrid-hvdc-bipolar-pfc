@@ -9,12 +9,13 @@ from typing import TYPE_CHECKING
 from PySide6 import QtWidgets
 from PySide6.QtCore import QPointF
 from PySide6.QtGui import QPolygonF
-from VeraGrid.Gui.gui_functions import add_menu_entry
+from VeraGrid.Gui.gui_functions import add_menu_entry, translate_context_menu_text
 from VeraGrid.Gui.profile_wizard_utils import fill_substation_weather_profiles
 from VeraGrid.Gui.Diagrams.generic_graphics import Polygon
 from VeraGrid.Gui.Diagrams.SchematicWidget.Injections.injections_template_graphics import InjectionTemplateGraphicItem
 from VeraGridEngine.Devices.Injections.load import Load
 from VeraGrid.Gui.DeviceEditors.LoadDesigner.load_designer import LoadDesigner
+from VeraGrid.Gui.DeviceEditors.LoadDesigner.load_device_editor import LoadDeviceEditorDialog
 
 if TYPE_CHECKING:  # Only imports the below statements during type checking
     from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import SchematicWidget
@@ -22,7 +23,7 @@ if TYPE_CHECKING:  # Only imports the below statements during type checking
 
 class LoadGraphicItem(InjectionTemplateGraphicItem):
 
-    def __init__(self, parent, api_obj: Load, editor: SchematicWidget):
+    def __init__(self, parent, api_obj: Load, editor: SchematicWidget, draw_labels: bool = True):
         """
 
         :param parent:
@@ -35,7 +36,8 @@ class LoadGraphicItem(InjectionTemplateGraphicItem):
                                               editor=editor,
                                               device_type_name='load',
                                               w=20,
-                                              h=20)
+                                              h=20,
+                                              draw_labels=draw_labels)
 
         # triangle
         self.set_glyph(glyph=Polygon(
@@ -50,6 +52,18 @@ class LoadGraphicItem(InjectionTemplateGraphicItem):
     def api_object(self) -> Load:
         return self._api_object
 
+    def open_device_editor(self) -> bool:
+        """
+        Open the load editor.
+
+        :return: ``True`` when the editor was opened.
+        """
+        dlg = LoadDeviceEditorDialog(api_object=self.api_object, circuit=self.editor.circuit)
+        if dlg.exec():
+            return True
+        else:
+            return True
+
     def contextMenuEvent(self, event: QtWidgets.QGraphicsSceneContextMenuEvent):
         """
         Display context menu
@@ -58,10 +72,10 @@ class LoadGraphicItem(InjectionTemplateGraphicItem):
         """
         if self.api_object is not None:
             menu = self.get_base_context_menu()
-            menu.addSection("Load")
+            menu.addSection(translate_context_menu_text("Load"))
 
             add_menu_entry(menu=menu,
-                           text="Load profile wizard",
+                           text=translate_context_menu_text("Load profile wizard"),
                            function_ptr=self.load_profile_wizard,
                            icon_path=":/Icons/icons/load_wizard.png")
 

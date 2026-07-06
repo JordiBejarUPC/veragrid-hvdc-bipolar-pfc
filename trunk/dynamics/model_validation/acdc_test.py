@@ -2,7 +2,6 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
-import math
 import cProfile as profile
 import numpy as np
 from matplotlib import pyplot as plt
@@ -12,23 +11,18 @@ import os
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
-from VeraGridEngine.Utils.Symbolic.symbolic import Const, Var, cos, sin, piecewise
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic_io import block_deep_copy
 from VeraGridEngine.Templates.Rms.load_zip_template import ZIPLoadBuild
-from VeraGridEngine.Templates.Rms.load_exponential_template import ExponentialLoadBuild
-from VeraGridEngine.Templates.Rms.load_motor_template import MotorLoadBuild
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
-from VeraGridEngine.Templates.Rms.vsc_template import VscControlledPV, VSCShuntBuild, VSCShuntBuild2, PVCellBuild, PVControlBuild2
-from VeraGridEngine.Templates.Rms.load_rms_template import get_load_rms_template
+from VeraGridEngine.Templates.Rms.vsc_template import VSCShuntBuild2, PVCellBuild, PVControlBuild2
 from VeraGridEngine.Templates.Rms.genrow1_rms_template import get_genrow1_rms_template
-from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms
+from VeraGridEngine.Utils.Symbolic.bus_rms_template import initialize_bus_rms
 from VeraGridEngine.Simulations.Rms.problems.rms_problem_dae import RmsProblemDae
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
 from VeraGridEngine.Simulations.Rms.numerical.back_euler_fx import BackEulerImplicitIntegration
 
-from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DynamicIntegrationMethod, RmsInitializationMethod
-from VeraGridEngine.Devices.Events.rms_event import RmsEvent
+from VeraGridEngine.enumerations import VarPowerFlowReferenceType, DynamicIntegrationMethod, RmsInitializationMethod
 from VeraGridEngine.enumerations import ConverterControlType
 import VeraGridEngine.api as gce
 
@@ -127,36 +121,36 @@ vsc_mdl        =  block_deep_copy(VSCShuntBuild2().block, grid.var_factory)
 pv_control_block       =  block_deep_copy(PVControlBuild2().block, grid.var_factory)
 pv_cell_block  =  block_deep_copy(PVCellBuild().block, grid.var_factory)
 
-genrow_mdl1.connect([genrow_mdl1.in_vars[0]], [bus1.rms_model.out_vars[0]])
-genrow_mdl1.connect([genrow_mdl1.in_vars[1]], [bus1.rms_model.out_vars[1]])
+grid.var_factory.add_connections([genrow_mdl1.in_vars[0]], [bus1.rms_model.out_vars[0]])
+grid.var_factory.add_connections([genrow_mdl1.in_vars[1]], [bus1.rms_model.out_vars[1]])
 
-load_mdl.connect([load_mdl.in_vars[0]], [bus2.rms_model.out_vars[0]])
+grid.var_factory.add_connections([load_mdl.in_vars[0]], [bus2.rms_model.out_vars[0]])
 
-line12_mdl.connect([line12_mdl.in_vars[0]], [bus1.rms_model.out_vars[0]])
-line12_mdl.connect([line12_mdl.in_vars[1]], [bus1.rms_model.out_vars[1]])
+grid.var_factory.add_connections([line12_mdl.in_vars[0]], [bus1.rms_model.out_vars[0]])
+grid.var_factory.add_connections([line12_mdl.in_vars[1]], [bus1.rms_model.out_vars[1]])
 
-line12_mdl.connect([line12_mdl.in_vars[2]], [bus2.rms_model.out_vars[0]])
-line12_mdl.connect([line12_mdl.in_vars[3]], [bus2.rms_model.out_vars[1]]) 
+grid.var_factory.add_connections([line12_mdl.in_vars[2]], [bus2.rms_model.out_vars[0]])
+grid.var_factory.add_connections([line12_mdl.in_vars[3]], [bus2.rms_model.out_vars[1]])
 
-vsc_mdl.connect([vsc_mdl.in_vars[0]], [bus2.rms_model.out_vars[0]])
-vsc_mdl.connect([vsc_mdl.in_vars[1]], [bus2.rms_model.out_vars[1]])
+grid.var_factory.add_connections([vsc_mdl.in_vars[0]], [bus2.rms_model.out_vars[0]])
+grid.var_factory.add_connections([vsc_mdl.in_vars[1]], [bus2.rms_model.out_vars[1]])
 
-vsc_mdl.connect([vsc_mdl.in_vars[2]], [bus3.rms_model.out_vars[0]])
+grid.var_factory.add_connections([vsc_mdl.in_vars[2]], [bus3.rms_model.out_vars[0]])
 
-#vsc_mdl.connect([vsc_mdl.in_vars[3]], [bus3.rms_model.out_vars[1]]) 
+#grid.var_factory.add_connections([vsc_mdl.in_vars[3]], [bus3.rms_model.out_vars[1]])
 
-pv_cell_block.connect([pv_cell_block.in_vars[0]], [bus3.rms_model.out_vars[0]])
+grid.var_factory.add_connections([pv_cell_block.in_vars[0]], [bus3.rms_model.out_vars[0]])
 
-pv_control_block.connect([pv_control_block.in_vars[0]], [bus2.rms_model.out_vars[0]])
-pv_control_block.connect([pv_control_block.in_vars[1]], [bus3.rms_model.out_vars[0]])
-pv_control_block.connect([pv_control_block.in_vars[2]], [vsc_mdl.out_vars[2]])
-pv_control_block.connect([pv_control_block.in_vars[3]], [vsc_mdl.out_vars[3]])
-pv_control_block.connect([pv_control_block.in_vars[4]], [pv_cell_block.out_vars[0]])
+grid.var_factory.add_connections([pv_control_block.in_vars[0]], [bus2.rms_model.out_vars[0]])
+grid.var_factory.add_connections([pv_control_block.in_vars[1]], [bus3.rms_model.out_vars[0]])
+grid.var_factory.add_connections([pv_control_block.in_vars[2]], [vsc_mdl.out_vars[2]])
+grid.var_factory.add_connections([pv_control_block.in_vars[3]], [vsc_mdl.out_vars[3]])
+grid.var_factory.add_connections([pv_control_block.in_vars[4]], [pv_cell_block.out_vars[0]])
 
 # external mapping
 big_gen1 = Block(children=[genrow_mdl1])
-big_gen1.external_mapping.update({VarPowerFlowRefferenceType.P: genrow_mdl1.out_vars[0]})
-big_gen1.external_mapping.update({VarPowerFlowRefferenceType.Q: genrow_mdl1.out_vars[1]})
+big_gen1.external_mapping.update({VarPowerFlowReferenceType.P: genrow_mdl1.out_vars[0]})
+big_gen1.external_mapping.update({VarPowerFlowReferenceType.Q: genrow_mdl1.out_vars[1]})
 
 # attach rms models to Veragrid objects
 line12.rms_model = line12_mdl

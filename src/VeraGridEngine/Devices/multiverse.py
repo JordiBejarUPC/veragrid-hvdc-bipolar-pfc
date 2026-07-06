@@ -341,12 +341,20 @@ class MultiVerse:
         """
         Persist edits made to the currently active scenario.
 
-        - **Root**: no-op — ``root.data`` is the authoritative circuit and is edited in-place.
+        - **Root**: no structural delta is computed because ``root.data`` is authoritative
+          and edited in-place. We only synchronize scenario-owned diagrams.
         - **Non-root**: computes ``differentiate_circuits(current_model, parent_composed)``
           and stores the result back into ``node.data``, replacing the previous delta.
           The scenario name is preserved on the new delta.
         """
         if self._current_node is None:
+            return
+
+        if self._current_node.parent is None:
+            # Keep root node diagram snapshots aligned with in-place edits without running
+            # the expensive root storage/diff path.
+            self._current_node.diagrams = copy_diagrams(self._current_model.diagrams)
+            self._base_model = self._current_node.circuit
             return
 
         self._store_composed_node_data(node=self._current_node, composed=self._current_model)
@@ -451,7 +459,8 @@ class MultiVerse:
         node_diagrams: list[Any] | None = None
         if parent_id is not None:
             parent = self.get_node(parent_id)
-            node_diagrams = copy_diagrams(parent.diagrams)
+            # ScenarioNode performs the deep copy; avoid copying twice here.
+            node_diagrams = parent.diagrams
 
         node: ScenarioNode = ScenarioNode(
             node_id=self._generate_id(),
@@ -476,6 +485,9 @@ class MultiVerse:
 
     def roots_number(self):
         return len(self._root_nodes)
+
+    def check_node(self, node_id: int) -> bool:
+        return node_id in self._nodes_by_id
 
     def get_node(self, node_id: int) -> ScenarioNode:
         """
@@ -757,31 +769,36 @@ class MultiVerse:
                 position_raw = record.get("position", None)
                 position = None if position_raw is None else int(position_raw)
 
-                node = ScenarioNode(
-                    node_id=node_id,
-                    data=diffs_dict[circuit_idtag],
-                    diagrams=diffs_dict[circuit_idtag].diagrams,
-                    parent=parent,
-                )
+                data = diffs_dict.get(circuit_idtag, None)
 
-                if parent is None:
-                    if position is None:
-                        self._root_nodes.append(node)
+                if data is not None:
+                    node = ScenarioNode(
+                        node_id=node_id,
+                        data=data,
+                        diagrams=data.diagrams,
+                        parent=parent,
+                    )
+
+                    if parent is None:
+                        if position is None:
+                            self._root_nodes.append(node)
+                        else:
+                            self._root_nodes.insert(position, node)
                     else:
-                        self._root_nodes.insert(position, node)
+                        if position is None:
+                            parent.append_child(node)
+                        else:
+                            parent.insert_child(position, node)
+
+                    self.set_node(node_id, node)
+                    built_nodes[node_id] = node
+                    del pending[metadata_node_id]
+                    progressed = True
+
+                    if node_id > max_id:
+                        max_id = node_id
                 else:
-                    if position is None:
-                        parent.append_child(node)
-                    else:
-                        parent.insert_child(position, node)
-
-                self.set_node(node_id, node)
-                built_nodes[node_id] = node
-                del pending[metadata_node_id]
-                progressed = True
-
-                if node_id > max_id:
-                    max_id = node_id
+                    pass
 
             if not progressed:
                 unresolved = ", ".join(str(node_id) for node_id in pending.keys())

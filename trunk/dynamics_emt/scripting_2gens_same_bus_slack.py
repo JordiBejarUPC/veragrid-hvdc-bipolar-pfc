@@ -9,6 +9,34 @@ import sys
 from pathlib import Path
 from typing import Any, List, Optional, Tuple
 
+
+def configure_repo_python_path() -> None:
+    """
+    Add repository source folders to ``sys.path`` before local imports.
+
+    :return: None.
+    """
+    current_file: Path = Path(__file__).resolve()
+    repo_root: Path = current_file.parent.parent.parent
+    src_root: Path = repo_root / "src"
+    repo_root_text: str = str(repo_root)
+    src_root_text: str = str(src_root)
+
+    # The script may be executed as a loose file, so the repository roots must
+    # be available before importing any local package.
+    if src_root_text in sys.path:
+        pass
+    else:
+        sys.path.insert(0, src_root_text)
+
+    if repo_root_text in sys.path:
+        pass
+    else:
+        sys.path.insert(0, repo_root_text)
+
+
+configure_repo_python_path()
+
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -23,11 +51,11 @@ from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_dae import EmtProblemDae
 from VeraGridEngine.Simulations.EMT.solvers.jit_symbolic_solver import JitSymbolicSolver
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowDriver, PowerFlowOptions
-from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_template
+from VeraGridEngine.Utils.Symbolic.bus_emt_template import get_bus_emt_template
 from VeraGridEngine.Templates.Emt.load_RLC_emt_template import get_shunt_r_emt_template
 from VeraGridEngine.Templates.Emt.pi_line_emt_template import get_pi_line_emt_template
 from VeraGridEngine.Templates.Emt.simple_generator_emt_template import get_simple_generator_emt_template
-from VeraGridEngine.Templates.templates_common_functions import set_emt_model
+from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_emt_model
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic import Var
 from VeraGridEngine.enumerations import (
@@ -38,31 +66,6 @@ from VeraGridEngine.enumerations import (
     ShuntConnectionType,
     SolverType,
 )
-
-
-def configure_repo_python_path() -> None:
-    """
-    Add repository source folders to ``sys.path`` when the file is run as a loose script.
-
-    :return: None.
-    """
-    current_file: Path = Path(__file__).resolve()
-    repo_root: Path = current_file.parent.parent
-    src_root: Path = repo_root / "src"
-    repo_root_text: str = str(repo_root)
-    src_root_text: str = str(src_root)
-
-    if src_root_text in sys.path:
-        pass
-    else:
-        sys.path.insert(0, src_root_text)
-
-    if repo_root_text in sys.path:
-        pass
-    else:
-        sys.path.insert(0, repo_root_text)
-
-
 def find_name_in_block(name: str, block: Block) -> Optional[Var]:
     """
     Search one symbolic variable by name inside one block hierarchy.
@@ -130,7 +133,7 @@ def build_emt_options() -> EmtOptions:
     """
     options: EmtOptions = EmtOptions(
         time_step=5e-6,
-        simulation_time=0.1,
+        simulation_time=0.2,
         tolerance=1e-8,
         solver_type=EmtSolverTypes.Symbolic,
         initialization_method=EmtInitializationMethod.Auto,

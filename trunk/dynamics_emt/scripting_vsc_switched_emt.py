@@ -58,6 +58,10 @@ from dynamics_emt.support.switched_converter_handover_case import (
 )
 
 
+SCRIPT_FILTER_R_EQ_PU: float = 0.04
+SCRIPT_FILTER_L_EQ_PU: float = 1.5
+
+
 def build_script_emt_options() -> EmtOptions:
     """
     Build the recommended EMT options for the switched VSC scripting case.
@@ -99,6 +103,8 @@ def run_switched_vsc_case(
         open_saved_plot=open_saved_plot,
         plot_file_name="switched_converter_handover_scripting.png",
         emt_options=resolved_emt_options,
+        r_eq_pu=SCRIPT_FILTER_R_EQ_PU,
+        l_eq_pu=SCRIPT_FILTER_L_EQ_PU,
     )
     return trace
 

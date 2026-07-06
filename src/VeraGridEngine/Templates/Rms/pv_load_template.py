@@ -4,10 +4,24 @@
 # SPDX-License-Identifier: MPL-2.0
 
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
-from VeraGridEngine.enumerations import ParamPowerFlowRefferenceType, VarPowerFlowRefferenceType, DeviceType
+from VeraGridEngine.Templates.template_definiton import TemplateDefinition, TemplateProp
+from VeraGridEngine.enumerations import ParamPowerFlowReferenceType, VarPowerFlowReferenceType, DeviceType
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Utils.Symbolic.block import Block
 import VeraGridEngine.Utils.Symbolic.symbolic as sym
+
+
+class PvLoadRmsTemplate(TemplateDefinition):
+
+    def __init__(self, vf):
+        super().__init__(vf, params=[
+            TemplateProp(name="Pg0_val", units="pu", descr="Initial active power.", tpe=float),
+            TemplateProp(name="Vg0_val", units="pu", descr="Initial voltage reference.", tpe=float),
+            TemplateProp(name="name", units="", descr="Name of the rms model.", tpe=str),
+        ])
+
+    def eval(self) -> RmsModelTemplate:
+        return PVLoadBuild(self.vf, self.get_value("name"), self.get_value("Pg0_val"), self.get_value("Vg0_val"))
 
 
 def PVLoadBuild(vfactory: VarFactory, name: str = "", Pg0_val=1.0, Vg0_val=1.0) -> RmsModelTemplate:
@@ -84,13 +98,13 @@ def PVLoadBuild(vfactory: VarFactory, name: str = "", Pg0_val=1.0, Vg0_val=1.0) 
     
     templ.block.name = 'PV Load'
     templ.block.external_mapping = {
-        VarPowerFlowRefferenceType.P: P,
-        VarPowerFlowRefferenceType.Q: Q,
-        VarPowerFlowRefferenceType.Vm: inputs[0],
+        VarPowerFlowReferenceType.P: P,
+        VarPowerFlowReferenceType.Q: Q,
+        VarPowerFlowReferenceType.Vm: inputs[0],
     }
     
     templ.block.api_obj_mapping = {
-        ParamPowerFlowRefferenceType.Pl0: Pg0,
+        ParamPowerFlowReferenceType.Pl0: Pg0,
     }
     
     templ.block.in_vars = inputs

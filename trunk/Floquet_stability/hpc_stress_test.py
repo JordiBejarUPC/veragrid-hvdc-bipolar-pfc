@@ -20,7 +20,7 @@ from VeraGridEngine.enumerations import DynamicIntegrationMethod, SmallSignalEmt
 from VeraGridEngine.Simulations.SmallSignalStabilityEmt.small_signal_stability_emt_driver import \
     SmallSignalStabilityEmtDriver
 from VeraGridEngine.Simulations.SmallSignalStabilityEmt.small_signal_stability_emt_options import \
-    EmtSmallSignalStabilityOptions
+    SmallSignalStabilityEmtOptions
 
 
 class _MockVar:
@@ -174,7 +174,7 @@ class EmtProblemDaeMockIntermediate:
 
 
 def _run(driver_cls: type, problem: EmtProblemDaeMockIntermediate, emt_opts: EmtOptions,
-         floquet_opts: EmtSmallSignalStabilityOptions) -> tuple:
+         floquet_opts: SmallSignalStabilityEmtOptions) -> tuple:
     """
     Helper function to instantiate, inject, and execute the specified driver.
     """
@@ -197,14 +197,14 @@ def main():
     )
 
     # --- 1. Standard Arnoldi Configuration ---
-    opts_std = EmtSmallSignalStabilityOptions(
+    opts_std = SmallSignalStabilityEmtOptions(
         k=6, target_period=0.02, max_krylov_dim=80, verbose=0, max_restarts=3,
         build_type=SmallSignalEmtBuildTypes.Arnoldi
     )
     d_std, t_std = _run(SmallSignalStabilityEmtDriver, problem, emt_options, opts_std)
 
     # --- 2. Hybrid Block-Arnoldi Configuration ---
-    opts_hyb = EmtSmallSignalStabilityOptions(
+    opts_hyb = SmallSignalStabilityEmtOptions(
         k=6, target_period=0.02, max_krylov_dim=80, verbose=0, max_restarts=3,
         prefer_ak_operator=True, use_numba_kernels=True,
         build_type=SmallSignalEmtBuildTypes.HybridArnoldi

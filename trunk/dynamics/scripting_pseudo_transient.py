@@ -2,313 +2,210 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
-import math
 
-import numpy as np
-from matplotlib import pyplot as plt
-
-import sys
 import os
-
-from VeraGridEngine.Devices.multi_circuit import MultiCircuit
-from VeraGridEngine.Devices.Substation.bus import Bus
-from VeraGridEngine.Devices.Injections.generator import Generator
-from VeraGridEngine.Devices.Injections.load import Load
-from VeraGridEngine.Devices.Branches.line import Line
-from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowResults, PowerFlowOptions
-
-from VeraGridEngine import VarPowerFlowRefferenceType, power_flow, DynamicIntegrationMethod
-from VeraGridEngine.Utils.Symbolic.block_solver import BlockSolver
-
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+import sys
 
 
-from VeraGridEngine.Utils.Symbolic.symbolic import Const, Var, cos, sin, piecewise
-from VeraGridEngine.Utils.Symbolic.block import Block
-from VeraGridEngine.Utils.Symbolic.block_solver_no_diff import BlockSolverNoDiff
-from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_genqec_rms, get_governor_rms, get_exciter_rms, get_stabilizer_rms
+ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+SRC_DIR = os.path.join(ROOT_DIR, "src")
+if SRC_DIR not in sys.path:
+    sys.path.insert(0, SRC_DIR)
+
+import VeraGridEngine.api as gce
+import numpy as np
+from VeraGridEngine.Utils.Symbolic.bus_rms_template import initialize_bus_rms
+from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template_rms
+from VeraGridEngine.Templates.Rms.genrow_rms_template import get_genrow_rms_template
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.Templates.Rms.load_rms_template import get_load_rms_template
-# from VeraGridEngine.Simulations.Rms.initialization import initialize_rms
-from VeraGridEngine.enumerations import DynamicIntegrationMethod
+from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_rms_model
+from VeraGridEngine.Utils.Symbolic.block_helpers import to_explicit, to_implicit
 from VeraGridEngine.enumerations import RmsInitializationMethod
-from VeraGridEngine.Devices.Aggregation import RmsEvent
-import VeraGridEngine.api as gce
-
-###########################################################################################################################
-# Build VeraGrid object
-###########################################################################################################################
-
-def find_name_in_block(name: str, block: Block):
-    for var in block.algebraic_vars + block.state_vars + list(block.event_dict.keys()):
-        if name == var.name:
-            return var
-        
-    for mdl in block.children:
-        res = find_name_in_block(name, mdl)
-        if res is not None:
-            return res
-
-
-grid = gce.MultiCircuit(Sbase=100, fbase=50.0)
-
-# Buses
-bus0 = gce.Bus(name="Bus0", Vnom=10, is_slack=True)
-bus1 = gce.Bus(name="Bus1", Vnom=10)
-
-bus0.initialize_rms()
-bus1.initialize_rms()
-
-grid.add_bus(bus0)
-grid.add_bus(bus1)
-
-
-# Lines
-line0 = gce.Line(name="line 0-2", bus_from=bus0, bus_to=bus1, r=0.029585798816568046, x=0.07100591715976332, b=0.03, rate=900.0)
-
-grid.add_line(line0)
-
-
-
-# load
-load = gce.Load(P= 9.999999, Q= 0.999999)
-load_mdl = load.rms_model
-grid.add_load(bus=bus1, api_obj=load)
-
-# Generators
-gen0 = gce.Generator(name="Gen0", P=10, vset=1.0, Snom = 900,
-                    x1=0.86138701, r1=0.3, freq=50.0,
-                    M=10.0,
-                    D=1.0,
-                    omega_ref=1.0,
-                    Kp=1.0,
-                    Ki=10.0,
-                    )
-
-
-grid.add_generator(bus=bus0, api_obj=gen0)
-
-
-######################################################################################################
-# Build Rms models
-######################################################################################################
-# generator
-genqec1_mdl = get_genqec_rms().block
-
-
-exc1_mdl = get_exciter_rms().block
-
-
-gov1_mdl = get_governor_rms().block
-
-
-stabil1_mdl = get_stabilizer_rms().block
-
-
-
-
-#line
-line0_mdl = get_line_rms_template().block
-
-
-#load
-load_mdl = get_load_rms_template().block
-
-
-## Build big generators by connecting elements
-
-genqec1_mdl.connect([genqec1_mdl.in_vars[3]], [exc1_mdl.out_vars[0]])
-exc1_mdl.connect([exc1_mdl.in_vars[0]], [genqec1_mdl.out_vars[3]])
-
-
-
-stabil1_mdl.connect([stabil1_mdl.in_vars[0]], [genqec1_mdl.out_vars[2]])
-
-
-exc1_mdl.connect([exc1_mdl.in_vars[2]], [stabil1_mdl.out_vars[0]])
-
-
-genqec1_mdl.connect([genqec1_mdl.in_vars[2]], [gov1_mdl.out_vars[0]])
-
-
-gov1_mdl.connect([gov1_mdl.in_vars[0]], [genqec1_mdl.out_vars[2]])
-
-#Te connection
-gov1_mdl.connect([gov1_mdl.in_vars[1]], [genqec1_mdl.out_vars[4]])
-
-
-# connection with buses
-
-genqec1_mdl.connect([genqec1_mdl.in_vars[0]], [bus0.rms_model.out_vars[0]])
-genqec1_mdl.connect([genqec1_mdl.in_vars[1]], [bus0.rms_model.out_vars[1]])
-
-
-
-exc1_mdl.connect([exc1_mdl.in_vars[1]], [bus0.rms_model.out_vars[0]])
-
-
-line0_mdl.connect([line0_mdl.in_vars[0]], [bus0.rms_model.out_vars[0]])
-line0_mdl.connect([line0_mdl.in_vars[1]], [bus0.rms_model.out_vars[1]])
-
-line0_mdl.connect([line0_mdl.in_vars[2]], [bus1.rms_model.out_vars[0]])
-line0_mdl.connect([line0_mdl.in_vars[3]], [bus1.rms_model.out_vars[1]])
-
-u_gov = find_name_in_block("u_gov1", gov1_mdl)
-
-load_mdl.connect([load_mdl.in_vars[0]], [bus1.rms_model.out_vars[0]])
-load_mdl.connect([load_mdl.in_vars[1]], [bus1.rms_model.out_vars[1]])
-
-
-big_gen1 = Block(children = [genqec1_mdl, exc1_mdl, gov1_mdl, stabil1_mdl])
-
-
-big_gen1.external_mapping.update({VarPowerFlowRefferenceType.P: genqec1_mdl.out_vars[0]})
-big_gen1.external_mapping.update({VarPowerFlowRefferenceType.Q: genqec1_mdl.out_vars[1]})
-
-
-# external mapping
-
-
-# attach rms models to Veragrid objects
-gen0.rms_model = big_gen1
-
-
-line0.rms_model = line0_mdl
-
-
-load.rms_model = load_mdl
-
-Pl0 = find_name_in_block('Pl0', load_mdl)
-event = RmsEvent(device=load, parameter=Pl0, time=.5, value=-0.12)
-grid.add_rms_event(event)
-
-options = gce.PowerFlowOptions(
-    solver_type=gce.SolverType.NR,
-    retry_with_other_methods=False,
-    verbose=0,
-    initialize_with_existing_solution=True,
-    tolerance=1e-6,
-    max_iter=25,
-    control_q=False,
-    control_taps_modules=True,
-    control_taps_phase=True,
-    control_remote_voltage=True,
-    orthogonalize_controls=True,
-    apply_temperature_correction=True,
-    branch_impedance_tolerance_mode=gce.BranchImpedanceMode.Specified,
-    distributed_slack=False,
-    ignore_single_node_islands=False,
-    trust_radius=1.0,
-    backtracking_parameter=0.05,
-    use_stored_guess=False,
-    initialize_angles=False,
-    generate_report=False,
-)
-res = gce.power_flow(grid, options=options)
-
-print(f"Converged: {res.converged}")
-print(res.get_bus_df())
-print(res.get_branch_df())
-
-params_mapping = dict()
-
-sim_time, ss, init_guess = initialize_rms(grid, res, use_init_values=False, method = RmsInitializationMethod.PseudoTransient)
-
-slv = BlockSolver(ss, sim_time)
-
-x0 = slv.build_init_vars_vector_from_uid(init_guess)
-
-dx0 = np.zeros(len(slv._diff_vars))
-Vm = find_name_in_block("Vm", slv.block_system)
-
-xlim = 15.0
-t, y, _ = slv.simulate(
-    t0=0,
-    t_end=xlim,
-    h=0.001,
-    x0=x0,
-    dx0=dx0,
-    method=DynamicIntegrationMethod.DaeBackEuler,
-    newton_tol = 1e-8,
-    newton_max_iter = 1000,
-    followed_vars = None,
-    initialized = False,
-    verbose = False,
-
-)
-
-
-omega = genqec1_mdl.out_vars[2]
-Pg = genqec1_mdl.out_vars[0]
-Qg = genqec1_mdl.out_vars[1]
-Ir = genqec1_mdl.out_vars[3]
-Efd = genqec1_mdl.in_vars[3]
-Te = genqec1_mdl.out_vars[4]
-
-u_gov1 = find_name_in_block("u_gov1", gov1_mdl)
-y_subexciter = find_name_in_block("y_subexciter1", exc1_mdl)
-y_exciter1 = find_name_in_block("y_exciter1", exc1_mdl)
-y_exciter4 = find_name_in_block("y_exciter4", exc1_mdl)
-Efe = find_name_in_block("Efe", exc1_mdl)
-delta = find_name_in_block("delta", genqec1_mdl)
-
-
-# Generator state variables
-plt.plot(t, y[:, slv.get_var_idx(omega)], label="omega (pu)")
-plt.plot(t, y[:, slv.get_var_idx(delta)], label="delta (pu)")
-plt.plot(t, y[:, slv.get_var_idx(Vm)], label="Vm (pu)")
-plt.plot(t, y[:, slv.get_var_idx(Pg)], label="P (pu)")
-plt.plot(t, y[:, slv.get_var_idx(Qg)], label="Q (pu)")
-plt.plot(t, y[:, slv.get_var_idx(Ir)], label="Ir (pu)")
-
-plt.legend(loc='upper right', ncol=2)
-plt.xlabel("Time (s)")
-plt.ylabel("Values (pu)")
-plt.xlim([0, xlim])
-# plt.ylim([0.85, 1.15])
-plt.grid(True)
-plt.tight_layout()
-plt.show()
-
-
-Eq_prime = find_name_in_block("Eq_prime", genqec1_mdl)
-Ed_prime = find_name_in_block("Ed_prime", genqec1_mdl)
-Psiq_prime = find_name_in_block("Psiq_prime", genqec1_mdl)
-Psid_prime = find_name_in_block("Psid_prime", genqec1_mdl)
-
-Ed1 = find_name_in_block("Ed1", genqec1_mdl)
-Eq1 = find_name_in_block("Eq1", genqec1_mdl)
-
-# Generator state variables
-plt.plot(t, y[:, slv.get_var_idx(Eq_prime)], label="Eq_prime (pu)")
-plt.plot(t, y[:, slv.get_var_idx(Ed_prime)], label="Ed_prime (pu)")
-plt.plot(t, y[:, slv.get_var_idx(Psiq_prime)], label="Eq_2prime (pu)")
-plt.plot(t, y[:, slv.get_var_idx(Psid_prime)], label="Ed_2prime (pu)")
-
-plt.plot(t, y[:, slv.get_var_idx(Ed1)], label="Ed1 (pu)")
-plt.plot(t, y[:, slv.get_var_idx(Eq1)], label="Eq1 (pu)")
-plt.legend(loc='upper right', ncol=2)
-plt.xlabel("Time (s)")
-plt.ylabel("Values (pu)")
-plt.xlim([0, xlim])
-# plt.ylim([0.85, 1.15])
-plt.grid(True)
-plt.tight_layout()
-plt.show()
-
-Tm = gov1_mdl.out_vars[0]
-# Generator state variables
-plt.plot(t, y[:, slv.get_var_idx(u_gov1)], label="u_gov1 (pu)")
-plt.plot(t, y[:, slv.get_var_idx(y_subexciter)], label="y_subexciter (pu)")
-plt.plot(t, y[:, slv.get_var_idx(Efe)], label="Efe (pu)")
-plt.plot(t, y[:, slv.get_var_idx(y_exciter1)], label="y_exciter1 (pu)")
-plt.plot(t, y[:, slv.get_var_idx(y_exciter4)], label="y_exciter4 (pu)")
-
-plt.legend(loc='upper right', ncol=2)
-plt.xlabel("Time (s)")
-plt.ylabel("Values (pu)")
-plt.xlim([0, xlim])
-# plt.ylim([0.85, 1.15])
-plt.grid(True)
-plt.tight_layout()
-plt.show()
+from VeraGridEngine.Simulations.Rms.rms_driver import RmsSimulationDriver
+
+
+def build_grid() -> gce.MultiCircuit:
+    grid = gce.MultiCircuit(Sbase=100.0, fbase=50.0)
+
+    bus0 = gce.Bus(name="Bus0", Vnom=90.0, is_slack=True)
+    bus1 = gce.Bus(name="Bus1", Vnom=90.0)
+    initialize_bus_rms(bus0, vf=grid.var_factory)
+    initialize_bus_rms(bus1, vf=grid.var_factory)
+    grid.add_bus(bus0)
+    grid.add_bus(bus1)
+
+    line = gce.Line(
+        name="Line0-1",
+        bus_from=bus0,
+        bus_to=bus1,
+        r=0.029585798816568046,
+        x=0.07100591715976332,
+        b=0.03,
+        rate=900.0,
+    )
+    grid.add_line(line)
+
+    load = gce.Load(name="Load1", P=10, Q=1)
+    grid.add_load(bus=bus1, api_obj=load)
+
+    gen = gce.Generator(
+        name="Gen0",
+        P=100.0,
+        vset=1.0,
+        Snom=900.0,
+        r1=0.3,
+        x1=0.86138701,
+        freq=50.0,
+    )
+    grid.add_generator(bus=bus0, api_obj=gen)
+
+    if line.rms_model.empty():
+        set_rms_model(device=line, model=get_line_rms_template(grid.var_factory, name=line.name).block, var_factory=grid.var_factory)
+    if load.rms_model.empty():
+        set_rms_model(device=load, model=get_load_rms_template(grid.var_factory, name=load.name).block, var_factory=grid.var_factory)
+    if gen.rms_model.empty():
+        gen_model = get_complete_generator_template_rms(grid.var_factory, name=gen.name).block
+        #gen_model = get_genrow_rms_template(grid.var_factory, name=gen.name).block
+        gen_model = to_explicit(gen_model, grid.var_factory)
+        set_rms_model(
+            device=gen,
+            model=gen_model,
+            var_factory=grid.var_factory,
+        )
+
+    group = gce.RmsEventsGroup(name="BaseCase")
+    grid.add_rms_events_group(group)
+
+    return grid
+
+
+def run_validation() -> None:
+    grid = build_grid()
+
+    pf_options = gce.PowerFlowOptions(
+        solver_type=gce.SolverType.NR,
+        retry_with_other_methods=False,
+        verbose=0,
+        tolerance=1e-6,
+        max_iter=25,
+        control_q=False,
+        distributed_slack=False,
+    )
+    pf_results = gce.power_flow(grid, options=pf_options)
+
+    print(f"Power flow converged: {pf_results.converged}")
+
+    rms_options = gce.RmsOptions(
+        time_step=0.01,
+        simulation_time=1.0,
+        integration_method=gce.DynamicIntegrationMethod.DaeBackEuler,
+        initialization_method=gce.RmsInitializationMethod.Explicit,
+        max_iter=1000,
+        tolerance=1e-8,
+        verbose=True,
+    )
+
+    def _run_init(method: RmsInitializationMethod) -> tuple[np.ndarray, list[str], dict[str, float]]:
+        rms_options.initialization_method = method
+        rms_driver = RmsSimulationDriver(
+            grid=grid,
+            options=rms_options,
+            pf_results=pf_results,
+        )
+        rms_driver.run()
+        problem = rms_driver.problem
+        if problem is None:
+            raise RuntimeError(f"{method.value} initialization did not build an RMS problem")
+
+        x0_local = problem.get_x0()
+        if x0_local.size == 0:
+            raise RuntimeError(f"{method.value} initialization produced an empty state vector")
+        if not np.all(np.isfinite(x0_local)):
+            raise RuntimeError(f"{method.value} initialization produced non-finite values")
+
+        all_vars = list(getattr(problem, "_state_vars", [])) + list(getattr(problem, "_algebraic_vars", []))
+        var_names = [str(v.name) for v in all_vars]
+        event_params0 = problem.get_eventparams0()
+        var_params = list(getattr(problem, "variable_parameters", []))
+        event_param_map: dict[str, float] = {}
+        for i, p in enumerate(var_params):
+            if i < event_params0.size:
+                event_param_map[str(p.name)] = float(event_params0[i])
+        print(f"{method.value} initialized variable count: {x0_local.size}")
+        print(f"{method.value} x0 infinity norm: {np.linalg.norm(x0_local, np.inf):.3e}")
+        return x0_local, var_names, event_param_map
+
+    def _pick_reference_seed(x: np.ndarray, names: list[str], event_map: dict[str, float], candidates: tuple[str, ...]) -> float:
+        for name in candidates:
+            if name in event_map:
+                return float(event_map[name])
+        for name in candidates:
+            for i, nm in enumerate(names):
+                if nm == name and i < x.size:
+                    return float(x[i])
+        raise RuntimeError(f"Could not find any reference variable in {candidates}")
+
+    x0_explicit, names_explicit, event_map_explicit = _run_init(RmsInitializationMethod.PseudoTransient)
+    pref_seed = _pick_reference_seed(x0_explicit, names_explicit, event_map_explicit, ("Pm_ref", "Pref", "P_ref"))
+    vref_seed = _pick_reference_seed(x0_explicit, names_explicit, event_map_explicit, ("UsRefPu", "Vref", "V_ref", "U_ref"))
+    print(f"Explicit reference seeds: Pref={pref_seed:.12g}, UsRefPu={vref_seed:.12g}")
+
+    prev_pref_env = os.environ.get("VERAGRID_INIT_PREF")
+    prev_vref_env = os.environ.get("VERAGRID_INIT_VREF")
+    os.environ["VERAGRID_INIT_PREF"] = repr(pref_seed)
+    os.environ["VERAGRID_INIT_VREF"] = repr(vref_seed)
+    print(
+        "Running PseudoTransient using explicit reference seeds: "
+        f"VERAGRID_INIT_PREF={os.environ['VERAGRID_INIT_PREF']}, "
+        f"VERAGRID_INIT_VREF={os.environ['VERAGRID_INIT_VREF']}"
+    )
+
+    try:
+        x0_pseudo, names_pseudo, _ = _run_init(RmsInitializationMethod.PseudoTransient)
+    finally:
+        if prev_pref_env is None:
+            os.environ.pop("VERAGRID_INIT_PREF", None)
+        else:
+            os.environ["VERAGRID_INIT_PREF"] = prev_pref_env
+
+        if prev_vref_env is None:
+            os.environ.pop("VERAGRID_INIT_VREF", None)
+        else:
+            os.environ["VERAGRID_INIT_VREF"] = prev_vref_env
+
+    if x0_explicit.size != x0_pseudo.size:
+        raise RuntimeError(
+            f"Initialization vector size mismatch: explicit={x0_explicit.size}, pseudo={x0_pseudo.size}"
+        )
+
+    names = names_pseudo if len(names_pseudo) == x0_pseudo.size else names_explicit
+    delta = np.abs(x0_pseudo - x0_explicit)
+    top_n = min(20, delta.size)
+    top_idx = np.argsort(-delta)[:top_n]
+    print(f"Largest init deltas |PseudoTransient-Explicit| (top {top_n}):")
+    for idx in top_idx:
+        d = float(delta[idx])
+        if d <= 0.0:
+            continue
+        nm = names[idx] if idx < len(names) else f"x[{idx}]"
+        print(
+            f"  - {nm}: explicit={float(x0_explicit[idx]):+.6e}, "
+            f"pseudo={float(x0_pseudo[idx]):+.6e}, |delta|={d:.6e}"
+        )
+
+    ref_names = {"Pm_ref", "Pref", "P_ref", "UsRefPu", "Vref", "V_ref", "U_ref"}
+    print("Reference comparison (Explicit vs PseudoTransient):")
+    for idx, nm in enumerate(names):
+        if nm in ref_names:
+            d = abs(float(x0_pseudo[idx]) - float(x0_explicit[idx]))
+            print(
+                f"  - {nm}: explicit={float(x0_explicit[idx]):+.6e}, "
+                f"pseudo={float(x0_pseudo[idx]):+.6e}, |delta|={d:.6e}"
+            )
+
+    print("Pseudo-transient initialization validation passed")
+
+
+if __name__ == "__main__":
+    run_validation()

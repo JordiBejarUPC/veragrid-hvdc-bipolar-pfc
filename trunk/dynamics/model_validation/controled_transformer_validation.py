@@ -11,13 +11,13 @@ import os
 # Ensure the library can be found
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src')))
 
-from VeraGridEngine import VarPowerFlowRefferenceType
+from VeraGridEngine import VarPowerFlowReferenceType
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic_io import block_deep_copy
 from VeraGridEngine.Templates.Rms.load_zip_template import ZIPLoadBuild
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.Templates.Rms.genrow1_rms_template import get_genrow1_rms_template
-from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms
+from VeraGridEngine.Utils.Symbolic.bus_rms_template import initialize_bus_rms
 from VeraGridEngine.Simulations.Rms.problems.rms_problem_dae import RmsProblemDae
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
 from VeraGridEngine.Simulations.Rms.numerical.back_euler_fx import BackEulerImplicitIntegration
@@ -223,21 +223,21 @@ else:
     
 genrow_mdl1 = block_deep_copy(get_genrow1_rms_template(grid.var_factory).block)
 
-genrow_mdl1.connect([genrow_mdl1.in_vars[0]], [bus1.rms_model.out_vars[0]])
-genrow_mdl1.connect([genrow_mdl1.in_vars[1]], [bus1.rms_model.out_vars[1]])
+grid.var_factory.add_connections([genrow_mdl1.in_vars[0]], [bus1.rms_model.out_vars[0]])
+grid.var_factory.add_connections([genrow_mdl1.in_vars[1]], [bus1.rms_model.out_vars[1]])
 
-load_mdl.connect([load_mdl.in_vars[0]], [bus3.rms_model.out_vars[0]])
+grid.var_factory.add_connections([load_mdl.in_vars[0]], [bus3.rms_model.out_vars[0]])
 
-line12_mdl.connect([line12_mdl.in_vars[0]], [bus1.rms_model.out_vars[0]])
-line12_mdl.connect([line12_mdl.in_vars[1]], [bus1.rms_model.out_vars[1]])
+grid.var_factory.add_connections([line12_mdl.in_vars[0]], [bus1.rms_model.out_vars[0]])
+grid.var_factory.add_connections([line12_mdl.in_vars[1]], [bus1.rms_model.out_vars[1]])
 
-line12_mdl.connect([line12_mdl.in_vars[2]], [bus2.rms_model.out_vars[0]])
-line12_mdl.connect([line12_mdl.in_vars[3]], [bus2.rms_model.out_vars[1]])
+grid.var_factory.add_connections([line12_mdl.in_vars[2]], [bus2.rms_model.out_vars[0]])
+grid.var_factory.add_connections([line12_mdl.in_vars[3]], [bus2.rms_model.out_vars[1]])
 
 # external mapping
 big_gen1 = Block(children=[genrow_mdl1])
-big_gen1.external_mapping.update({VarPowerFlowRefferenceType.P: genrow_mdl1.out_vars[0]})
-big_gen1.external_mapping.update({VarPowerFlowRefferenceType.Q: genrow_mdl1.out_vars[1]})
+big_gen1.external_mapping.update({VarPowerFlowReferenceType.P: genrow_mdl1.out_vars[0]})
+big_gen1.external_mapping.update({VarPowerFlowReferenceType.Q: genrow_mdl1.out_vars[1]})
 
 # attach rms models to Veragrid objects
 line12.rms_model = line12_mdl
@@ -346,9 +346,9 @@ exit()
         #     }
         # )
         # block.external_mapping = {
-        #     VarPowerFlowRefferenceType.Pf: Pf,
-        #     VarPowerFlowRefferenceType.Pt: Pt,
-        #     VarPowerFlowRefferenceType.Qf: Qf,
-        #     VarPowerFlowRefferenceType.Qt: Qt,
+        #     VarPowerFlowReferenceType.Pf: Pf,
+        #     VarPowerFlowReferenceType.Pt: Pt,
+        #     VarPowerFlowReferenceType.Qf: Qf,
+        #     VarPowerFlowReferenceType.Qt: Qt,
         # }
     

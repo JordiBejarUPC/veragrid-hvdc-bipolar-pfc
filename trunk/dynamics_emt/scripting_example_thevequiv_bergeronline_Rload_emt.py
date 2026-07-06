@@ -28,19 +28,19 @@ from VeraGridEngine.Utils.Symbolic.block import Block
 
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_dae import EmtProblemDae
-from VeraGridEngine.Simulations.PowerFlow.power_flow_driver_3ph import PowerFlowDriver3Ph
+from VeraGridEngine.Simulations.PowerFlow3ph.power_flow_driver_3ph import PowerFlowDriver3Ph
 
 
 from VeraGridEngine.Templates.Emt.bergeron_line_emt_template import get_bergeron_line_emt_template
 from VeraGridEngine.Templates.Emt.load_RLC_emt_template import get_shunt_r_emt_template
-from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template
-from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_template
+from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template_with_ref
+from VeraGridEngine.Utils.Symbolic.bus_emt_template import get_bus_emt_template
 
 from VeraGridEngine.Simulations.EMT.solvers.jit_symbolic_solver import JitSymbolicSolver
 from VeraGridEngine.Simulations.EMT.solvers.solver_AD import JitAdSolver
 from VeraGridEngine.Simulations.EMT.solvers.StructuralVectorizedSolver import StructuralVectorizedSolver
 from VeraGridEngine.Simulations.EMT.solvers.structural_compiled_solver import StructuralCompiledSolver
-from VeraGridEngine.Templates.templates_common_functions import set_emt_model
+from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_emt_model
 
 from VeraGridEngine.Utils.Symbolic.diagnostic import NewtonTraceCollector
 from VeraGridEngine.enumerations import EmtInitializationMethod, DynamicIntegrationMethod, EmtSolverTypes, ShuntConnectionType
@@ -122,7 +122,7 @@ for bus in grid.buses:
 # Build dynamic_model_host
 
 # generator
-gen_mdl = get_generator_thevenin_rl_emt_template(vf = grid.var_factory).block
+gen_mdl = get_generator_thevenin_rl_emt_template_with_ref(vf = grid.var_factory).block
 
 # line
 line_mdl = get_bergeron_line_emt_template(vf = grid.var_factory, phN = False, phA = True, phB = True, phC = True).block
@@ -155,8 +155,8 @@ set_emt_model(device=load, model=load_mdl, var_factory= grid.var_factory)
 # # external mapping
 # big_gen1 = Block(children=[gen_mdl])
 #
-# big_gen1.external_mapping.update({VarPowerFlowRefferenceType.P: gen_mdl.out_vars[0]})
-# big_gen1.external_mapping.update({VarPowerFlowRefferenceType.Q: gen_mdl.out_vars[1]})
+# big_gen1.external_mapping.update({VarPowerFlowReferenceType.P: gen_mdl.out_vars[0]})
+# big_gen1.external_mapping.update({VarPowerFlowReferenceType.Q: gen_mdl.out_vars[1]})
 #
 # # attach emt models to Veragrid objects
 # line0.emt_model= line_mdl
@@ -626,9 +626,9 @@ i_A_gen_plt = y[:, problem.get_var_idx(i_A_gen)]
 i_B_gen_plt = y[:, problem.get_var_idx(i_B_gen)]
 i_C_gen_plt = y[:, problem.get_var_idx(i_C_gen)]
 
-i_A_load = find_name_in_block("i_A_Shunt_R_3ph", load_mdl)
-i_B_load = find_name_in_block("i_B_Shunt_R_3ph", load_mdl)
-i_C_load = find_name_in_block("i_C_Shunt_R_3ph", load_mdl)
+i_A_load = find_name_in_block("i_A_R_shunt_3ph", load_mdl)
+i_B_load = find_name_in_block("i_B_R_shunt_3ph", load_mdl)
+i_C_load = find_name_in_block("i_C_R_shunt_3ph", load_mdl)
 i_A_load_plt = y[:, problem.get_var_idx(i_A_load)]
 i_B_load_plt = y[:, problem.get_var_idx(i_B_load)]
 i_C_load_plt = y[:, problem.get_var_idx(i_C_load)]

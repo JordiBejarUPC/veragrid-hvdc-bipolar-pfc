@@ -27,7 +27,7 @@ def initialize_grid2_rms_models_power_limited(grid2, pf_results):
     if dc_gen is None:
         return
 
-    vdc = dc_gen.bus.rms_model.external_mapping[base.VarPowerFlowRefferenceType.Vdc]
+    vdc = dc_gen.bus.rms_model.external_mapping[base.VarPowerFlowReferenceType.Vdc]
     dc_gen.rms_model = DCPowerLimitedSource(vfactory=vf, Vdc=vdc, name=dc_gen.name).block
 
     c_var = base.find_name_in_block('C', dc_gen.rms_model)

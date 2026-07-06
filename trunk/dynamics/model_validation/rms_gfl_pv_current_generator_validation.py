@@ -24,15 +24,15 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_options import SolverType
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Devices.Events.rms_events_group import RmsEventsGroup
 from VeraGridEngine.Devices.Events.rms_event import RmsEvent
-from VeraGridEngine.enumerations import DynamicIntegrationMethod, RmsInitializationMethod, VarPowerFlowRefferenceType, ConverterControlType
-from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms
+from VeraGridEngine.enumerations import DynamicIntegrationMethod, RmsInitializationMethod, VarPowerFlowReferenceType, ConverterControlType
+from VeraGridEngine.Utils.Symbolic.bus_rms_template import initialize_bus_rms
 from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template_rms
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.Templates.Rms.load_zip_template import ZIPLoadBuild
 from VeraGridEngine.Templates.Rms.vsc_gfl import TrafoGflBuild
 from VeraGridEngine.Templates.Rms.vsc_gfl_dclinked import build_vsc_rms
 from VeraGridEngine.Templates.Rms.dc_voltage_source import DCPVSourceAveraged
-from VeraGridEngine.Templates.templates_common_functions import set_rms_model
+from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_rms_model
 
 
 def find_name_in_block(name: str, block: Block):
@@ -56,9 +56,65 @@ def set_event_in_block(var, value, vf, block: Block) -> bool:
     return False
 
 
+def set_init_in_block(var, value, block: Block) -> bool:
+    if (
+        var in block.algebraic_vars
+        or var in block.state_vars
+        or var in block.in_vars
+        or var in block.out_vars
+        or var in block.event_dict
+        or var in block.init_eqs
+    ):
+        block.init_eqs[var] = sym.Const(value)
+        return True
+    for mdl in block.children:
+        if set_init_in_block(var, value, mdl):
+            return True
+    return False
+
+
+def patch_missing_vm_va_init_deps(model: Block, vm0: float, va0: float, vdc0: float) -> int:
+    vm_names = {"Vm"}
+    va_names = {"Va"}
+    vdc_names = {"Vdc"}
+    for v in model.in_vars:
+        if v.ref == VarPowerFlowReferenceType.Vm:
+            vm_names.add(v.name)
+        elif v.ref == VarPowerFlowReferenceType.Va:
+            va_names.add(v.name)
+        elif v.ref == VarPowerFlowReferenceType.Vdc:
+            vdc_names.add(v.name)
+    for v in model.out_vars:
+        if v.ref == VarPowerFlowReferenceType.Vdc:
+            vdc_names.add(v.name)
+        if v.name.startswith("Vdc_"):
+            vdc_names.add(v.name)
+
+    if not vm_names and not va_names:
+        return 0
+
+    patched_eqs = 0
+
+    for key, expr in list(model.init_eqs.items()):
+        mapping = {}
+        for dep in get_expression_vars(expr):
+            if dep.name in vm_names:
+                mapping[dep] = sym.Const(vm0)
+            elif dep.name in va_names:
+                mapping[dep] = sym.Const(va0)
+            elif dep.name in vdc_names:
+                mapping[dep] = sym.Const(vdc0)
+
+        if mapping:
+            model.init_eqs[key] = expr.subs(mapping)
+            patched_eqs += 1
+
+    return patched_eqs
+
+
 def build_pv_current_injection_model(vf, name: str) -> Block:
-    vm = vf.add_var(f"Vm_{name}", VarPowerFlowRefferenceType.Vm)
-    va = vf.add_var(f"Va_{name}", VarPowerFlowRefferenceType.Va)
+    vm = vf.add_var(f"Vm_{name}", VarPowerFlowReferenceType.Vm)
+    va = vf.add_var(f"Va_{name}", VarPowerFlowReferenceType.Va)
     vdc = vf.add_var(f"Vdc_{name}")
 
     ir = vf.add_var(f"Ir_{name}")
@@ -75,31 +131,31 @@ def build_pv_current_injection_model(vf, name: str) -> Block:
     vsc_block = build_vsc_rms(vfactory=vf, name=f"{name}_vsc").block
     pv_block = DCPVSourceAveraged(vfactory=vf, Vdc=vdc, name=f"{name}_pv").block
 
-    vm_f = trafo_block.external_mapping[VarPowerFlowRefferenceType.Vmf]
-    va_f = trafo_block.external_mapping[VarPowerFlowRefferenceType.Vaf]
-    vm_t = trafo_block.external_mapping[VarPowerFlowRefferenceType.Vmt]
-    va_t = trafo_block.external_mapping[VarPowerFlowRefferenceType.Vat]
-    vdc_t = trafo_block.external_mapping[VarPowerFlowRefferenceType.Vdc]
-    pf_t = trafo_block.external_mapping[VarPowerFlowRefferenceType.Pf]
-    pt_t = trafo_block.external_mapping[VarPowerFlowRefferenceType.Pt]
-    qt_t = trafo_block.external_mapping[VarPowerFlowRefferenceType.Qt]
+    vm_f = trafo_block.external_mapping[VarPowerFlowReferenceType.Vmf]
+    va_f = trafo_block.external_mapping[VarPowerFlowReferenceType.Vaf]
+    vm_t = trafo_block.external_mapping[VarPowerFlowReferenceType.Vmt]
+    va_t = trafo_block.external_mapping[VarPowerFlowReferenceType.Vat]
+    vdc_t = trafo_block.external_mapping[VarPowerFlowReferenceType.Vdc]
+    pf_t = trafo_block.external_mapping[VarPowerFlowReferenceType.Pf]
+    pt_t = trafo_block.external_mapping[VarPowerFlowReferenceType.Pt]
+    qt_t = trafo_block.external_mapping[VarPowerFlowReferenceType.Qt]
 
-    vm_vsc = vsc_block.external_mapping[VarPowerFlowRefferenceType.Vm]
-    pf_vsc = vsc_block.external_mapping[VarPowerFlowRefferenceType.Pf]
-    pt_vsc = vsc_block.external_mapping[VarPowerFlowRefferenceType.Pt]
+    vm_vsc = vsc_block.external_mapping[VarPowerFlowReferenceType.Vm]
+    pf_vsc = vsc_block.external_mapping[VarPowerFlowReferenceType.Pf]
+    pt_vsc = vsc_block.external_mapping[VarPowerFlowReferenceType.Pt]
 
-    pdc = pv_block.external_mapping[VarPowerFlowRefferenceType.P]
+    pdc = pv_block.external_mapping[VarPowerFlowReferenceType.P]
     qt_ref = find_name_in_block("Qt_ref", vsc_block)
 
-    trafo_block.connect([vm_f, va_f, vm_t, va_t, vdc_t], [vm, va, vm, va, vdc])
-    vsc_block.connect([vm_vsc], [vm])
+    grid.var_factory.add_connections([vm_f, va_f, vm_t, va_t, vdc_t], [vm, va, vm, va, vdc])
+    grid.var_factory.add_connections([vm_vsc], [vm])
 
     vm_inner = find_name_in_block("Vm", trafo_block)
     va_inner = find_name_in_block("Va", trafo_block)
     if vm_inner is not None:
-        trafo_block.connect([vm_inner], [vm])
+        grid.var_factory.add_connections([vm_inner], [vm])
     if va_inner is not None:
-        trafo_block.connect([va_inner], [va])
+        grid.var_factory.add_connections([va_inner], [va])
 
     algebraic_eqs = [
         p + pt_t,
@@ -129,15 +185,15 @@ def build_pv_current_injection_model(vf, name: str) -> Block:
 
     model = Block(
         children=[trafo_block, vsc_block, pv_block],
-        algebraic_vars=[ir, ii, p, q] + extra_vars,
+        algebraic_vars=[ir, ii, p, q, vdc] + extra_vars,
         algebraic_eqs=algebraic_eqs,
         in_vars=[vm, va],
         out_vars=[p, q, ir, ii, vdc],
         external_mapping={
-            VarPowerFlowRefferenceType.Vm: vm,
-            VarPowerFlowRefferenceType.Va: va,
-            VarPowerFlowRefferenceType.P: p,
-            VarPowerFlowRefferenceType.Q: q,
+            VarPowerFlowReferenceType.Vm: vm,
+            VarPowerFlowReferenceType.Va: va,
+            VarPowerFlowReferenceType.P: p,
+            VarPowerFlowReferenceType.Q: q,
         },
     )
     model.unify_blocks()
@@ -239,10 +295,17 @@ def initialize_rms_models(grid: vge.MultiCircuit, pf_results):
     print(f"  + Slack generator RMS model: {slack_gen.name}")
 
     pv_gen = grid.generators[1]
+    bus_idx = list(grid.buses).index(pv_gen.bus)
+    vm0 = float(np.abs(pf_results.voltage[bus_idx]))
+    va0 = float(np.angle(pf_results.voltage[bus_idx]))
+    vdc0 = max(vm0, 0.2)
+
     pv_model = build_pv_current_injection_model(vf=vf, name=pv_gen.name.replace(" ", "_"))
     set_rms_model(device=pv_gen, model=pv_model, var_factory=vf)
+    n_patched = patch_missing_vm_va_init_deps(pv_gen.rms_model, vm0=vm0, va0=va0, vdc0=vdc0)
+    if n_patched:
+        print(f"  + Patched {n_patched} missing Vm/Va init dependencies")
 
-    bus_idx = list(grid.buses).index(pv_gen.bus)
     if hasattr(pf_results, "Sbus") and len(pf_results.Sbus) > bus_idx:
         s0 = complex(pf_results.Sbus[bus_idx]) / grid.Sbase
     else:
@@ -250,6 +313,8 @@ def initialize_rms_models(grid: vge.MultiCircuit, pf_results):
 
     p0 = float(np.real(s0))
     q0 = float(np.imag(s0))
+    ir0 = (p0 * np.cos(va0) - q0 * np.sin(va0)) / max(vm0, 1e-6)
+    ii0 = (p0 * np.sin(va0) + q0 * np.cos(va0)) / max(vm0, 1e-6)
 
     q_ref = find_name_in_block("Q_ref", pv_gen.rms_model)
     if q_ref is not None:
@@ -272,6 +337,7 @@ def initialize_rms_models(grid: vge.MultiCircuit, pf_results):
     vmp0 = max(0.8 * vdc0, min(0.98 * vdc0, vdc0 - 1e-3))
     ratio = max(vmp0 / (vdc0 + 1e-6), 1e-3)
     isc0 = max(pdc0 / (eta0 * ratio + 1e-6), 1e-4)
+    duty0 = float(np.clip(1.0 - (vmp0 / (vdc0 + 1e-6)), 0.0, 1.0))
 
     cdc = find_name_in_block("Cdc", pv_gen.rms_model)
     eta = find_name_in_block("eta_boost", pv_gen.rms_model)
@@ -294,6 +360,19 @@ def initialize_rms_models(grid: vge.MultiCircuit, pf_results):
         set_event_in_block(g, 1000.0, vf, pv_gen.rms_model)
     if t is not None:
         set_event_in_block(t, 25.0, vf, pv_gen.rms_model)
+
+    for var_name, var_value in [
+        (f"P_{pv_gen.name.replace(' ', '_')}", p0),
+        (f"Q_{pv_gen.name.replace(' ', '_')}", q0),
+        (f"Ir_{pv_gen.name.replace(' ', '_')}", ir0),
+        (f"Ii_{pv_gen.name.replace(' ', '_')}", ii0),
+        (f"Vdc_{pv_gen.name.replace(' ', '_')}", vdc0),
+        ("Vpv_ref", vmp0),
+        ("duty", duty0),
+    ]:
+        vr = find_name_in_block(var_name, pv_gen.rms_model)
+        if vr is not None:
+            set_init_in_block(vr, float(var_value), pv_gen.rms_model)
 
     print(f"  + Aggregated PV RMS model: {pv_gen.name} (P0={p0:.6f}, Q0={q0:.6f})")
 

@@ -26,14 +26,14 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..",
 
 import VeraGridEngine.api as gce
 from VeraGridEngine.Utils.Symbolic.block import Block
-from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms
+from VeraGridEngine.Utils.Symbolic.bus_rms_template import initialize_bus_rms
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.Templates.Rms.load_zip_template import ZIPLoadBuild
 from VeraGridEngine.Templates.Rms.genrow1_rms_template import get_genrow1_rms_template
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
 from VeraGridEngine.Simulations.Rms.problems.rms_problem_dae import RmsProblemDae
 from VeraGridEngine.Simulations.Rms.numerical.back_euler_fx import BackEulerImplicitIntegration
-from VeraGridEngine.enumerations import DynamicIntegrationMethod, RmsInitializationMethod, VarPowerFlowRefferenceType
+from VeraGridEngine.enumerations import DynamicIntegrationMethod, RmsInitializationMethod, VarPowerFlowReferenceType
 from VeraGridEngine.Devices.Events.rms_events_group import RmsEventsGroup
 
 
@@ -84,13 +84,13 @@ def setup_rms_models(grid: gce.MultiCircuit) -> None:
 
     for gen in grid.get_generators():
         gen_mdl = get_genrow1_rms_template(grid.var_factory, name=f"Gen_{gen.name}").block
-        gen_mdl.connect([gen_mdl.in_vars[0]], [gen.bus.rms_model.out_vars[0]])
-        gen_mdl.connect([gen_mdl.in_vars[1]], [gen.bus.rms_model.out_vars[1]])
+        grid.var_factory.add_connections([gen_mdl.in_vars[0]], [gen.bus.rms_model.out_vars[0]])
+        grid.var_factory.add_connections([gen_mdl.in_vars[1]], [gen.bus.rms_model.out_vars[1]])
         gen_mdl.unify_blocks()
 
         wrapper = Block(children=[gen_mdl])
-        wrapper.external_mapping.update({VarPowerFlowRefferenceType.P: gen_mdl.out_vars[0]})
-        wrapper.external_mapping.update({VarPowerFlowRefferenceType.Q: gen_mdl.out_vars[1]})
+        wrapper.external_mapping.update({VarPowerFlowReferenceType.P: gen_mdl.out_vars[0]})
+        wrapper.external_mapping.update({VarPowerFlowReferenceType.Q: gen_mdl.out_vars[1]})
         wrapper.unify_blocks()
         gen.rms_model = wrapper
 
@@ -101,16 +101,16 @@ def setup_rms_models(grid: gce.MultiCircuit) -> None:
         for var, const in load_mdl.event_dict.items():
             if var.name == "V0" and const.value is None:
                 const.value = 1.0
-        load_mdl.connect([load_mdl.in_vars[0]], [load.bus.rms_model.out_vars[0]])
+        grid.var_factory.add_connections([load_mdl.in_vars[0]], [load.bus.rms_model.out_vars[0]])
         load_mdl.unify_blocks()
         load.rms_model = load_mdl
 
     for line in grid.lines:
         line_mdl = get_line_rms_template(grid.var_factory, name=f"Line_{line.name}").block
-        line_mdl.connect([line_mdl.in_vars[0]], [line.bus_from.rms_model.out_vars[0]])
-        line_mdl.connect([line_mdl.in_vars[1]], [line.bus_from.rms_model.out_vars[1]])
-        line_mdl.connect([line_mdl.in_vars[2]], [line.bus_to.rms_model.out_vars[0]])
-        line_mdl.connect([line_mdl.in_vars[3]], [line.bus_to.rms_model.out_vars[1]])
+        grid.var_factory.add_connections([line_mdl.in_vars[0]], [line.bus_from.rms_model.out_vars[0]])
+        grid.var_factory.add_connections([line_mdl.in_vars[1]], [line.bus_from.rms_model.out_vars[1]])
+        grid.var_factory.add_connections([line_mdl.in_vars[2]], [line.bus_to.rms_model.out_vars[0]])
+        grid.var_factory.add_connections([line_mdl.in_vars[3]], [line.bus_to.rms_model.out_vars[1]])
         line_mdl.unify_blocks()
         line.rms_model = line_mdl
 

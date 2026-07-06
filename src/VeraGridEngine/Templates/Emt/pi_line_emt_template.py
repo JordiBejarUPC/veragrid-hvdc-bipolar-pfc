@@ -6,10 +6,33 @@
 from typing import Dict
 import numpy as np
 
-from VeraGridEngine.enumerations import DeviceType, VarPowerFlowRefferenceType, ParamPowerFlowRefferenceType, EmtLineTypes
+from VeraGridEngine.enumerations import DeviceType, VarPowerFlowReferenceType, ParamPowerFlowReferenceType, EmtLineTypes
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
+from VeraGridEngine.Templates.template_definition import TemplateDefinition, TemplateProp
 from VeraGridEngine.Utils.Symbolic.block import Var, Expr
+
+
+class PiLineEmtTemplate(TemplateDefinition):
+
+    def __init__(self, vf):
+        super().__init__(vf, params=[
+            TemplateProp(name="phN", units="", descr="Bool. True if the line has neutral, else False.", tpe=bool),
+            TemplateProp(name="phA", units="", descr="Bool. True if the line has phase A, else False.", tpe=bool),
+            TemplateProp(name="phB", units="", descr="Bool. True if the line has phase B, else False.", tpe=bool),
+            TemplateProp(name="phC", units="", descr="Bool. True if the line has phase C, else False.", tpe=bool),
+            TemplateProp(name="name", units="", descr="Name of the emt model.", tpe=str),
+        ])
+
+    def eval(self) -> EmtModelTemplate:
+        return get_pi_line_emt_template(
+            self.vf,
+            self.get_value("phN"),
+            self.get_value("phA"),
+            self.get_value("phB"),
+            self.get_value("phC"),
+            self.get_value("name"),
+        )
 
 def get_pi_line_emt_template(vf: VarFactory,
                              phN: bool = False,
@@ -34,10 +57,11 @@ def get_pi_line_emt_template(vf: VarFactory,
     :return: EMT pi-line model template.
     :raises ValueError: If the line has no active phases.
     """
+
     templ = EmtModelTemplate()
     templ.tpe = DeviceType.LineDevice
-    templ.name = name
 
+    templ.name = name
     templ.block.name = EmtLineTypes.PI.value
 
     c0 = vf.add_const(0.0)
@@ -70,56 +94,56 @@ def get_pi_line_emt_template(vf: VarFactory,
     # -----------------------------
     r_enums = list([
         list([
-            ParamPowerFlowRefferenceType.Rnn, ParamPowerFlowRefferenceType.Rna,
-            ParamPowerFlowRefferenceType.Rnb, ParamPowerFlowRefferenceType.Rnc,
+            ParamPowerFlowReferenceType.Rnn, ParamPowerFlowReferenceType.Rna,
+            ParamPowerFlowReferenceType.Rnb, ParamPowerFlowReferenceType.Rnc,
         ]),
         list([
-            ParamPowerFlowRefferenceType.Ran, ParamPowerFlowRefferenceType.Raa,
-            ParamPowerFlowRefferenceType.Rab, ParamPowerFlowRefferenceType.Rac,
+            ParamPowerFlowReferenceType.Ran, ParamPowerFlowReferenceType.Raa,
+            ParamPowerFlowReferenceType.Rab, ParamPowerFlowReferenceType.Rac,
         ]),
         list([
-            ParamPowerFlowRefferenceType.Rbn, ParamPowerFlowRefferenceType.Rba,
-            ParamPowerFlowRefferenceType.Rbb, ParamPowerFlowRefferenceType.Rbc,
+            ParamPowerFlowReferenceType.Rbn, ParamPowerFlowReferenceType.Rba,
+            ParamPowerFlowReferenceType.Rbb, ParamPowerFlowReferenceType.Rbc,
         ]),
         list([
-            ParamPowerFlowRefferenceType.Rcn, ParamPowerFlowRefferenceType.Rca,
-            ParamPowerFlowRefferenceType.Rcb, ParamPowerFlowRefferenceType.Rcc,
+            ParamPowerFlowReferenceType.Rcn, ParamPowerFlowReferenceType.Rca,
+            ParamPowerFlowReferenceType.Rcb, ParamPowerFlowReferenceType.Rcc,
         ]),
     ])
     linv_enums = list([
         list([
-            ParamPowerFlowRefferenceType.Linv_nn, ParamPowerFlowRefferenceType.Linv_na,
-            ParamPowerFlowRefferenceType.Linv_nb, ParamPowerFlowRefferenceType.Linv_nc,
+            ParamPowerFlowReferenceType.Linv_nn, ParamPowerFlowReferenceType.Linv_na,
+            ParamPowerFlowReferenceType.Linv_nb, ParamPowerFlowReferenceType.Linv_nc,
         ]),
         list([
-            ParamPowerFlowRefferenceType.Linv_an, ParamPowerFlowRefferenceType.Linv_aa,
-            ParamPowerFlowRefferenceType.Linv_ab, ParamPowerFlowRefferenceType.Linv_ac,
+            ParamPowerFlowReferenceType.Linv_an, ParamPowerFlowReferenceType.Linv_aa,
+            ParamPowerFlowReferenceType.Linv_ab, ParamPowerFlowReferenceType.Linv_ac,
         ]),
         list([
-            ParamPowerFlowRefferenceType.Linv_bn, ParamPowerFlowRefferenceType.Linv_ba,
-            ParamPowerFlowRefferenceType.Linv_bb, ParamPowerFlowRefferenceType.Linv_bc,
+            ParamPowerFlowReferenceType.Linv_bn, ParamPowerFlowReferenceType.Linv_ba,
+            ParamPowerFlowReferenceType.Linv_bb, ParamPowerFlowReferenceType.Linv_bc,
         ]),
         list([
-            ParamPowerFlowRefferenceType.Linv_cn, ParamPowerFlowRefferenceType.Linv_ca,
-            ParamPowerFlowRefferenceType.Linv_cb, ParamPowerFlowRefferenceType.Linv_cc,
+            ParamPowerFlowReferenceType.Linv_cn, ParamPowerFlowReferenceType.Linv_ca,
+            ParamPowerFlowReferenceType.Linv_cb, ParamPowerFlowReferenceType.Linv_cc,
         ]),
     ])
     c_enums = list([
         list([
-            ParamPowerFlowRefferenceType.Cnn, ParamPowerFlowRefferenceType.Cna,
-            ParamPowerFlowRefferenceType.Cnb, ParamPowerFlowRefferenceType.Cnc,
+            ParamPowerFlowReferenceType.Cnn, ParamPowerFlowReferenceType.Cna,
+            ParamPowerFlowReferenceType.Cnb, ParamPowerFlowReferenceType.Cnc,
         ]),
         list([
-            ParamPowerFlowRefferenceType.Can, ParamPowerFlowRefferenceType.Caa,
-            ParamPowerFlowRefferenceType.Cab, ParamPowerFlowRefferenceType.Cac,
+            ParamPowerFlowReferenceType.Can, ParamPowerFlowReferenceType.Caa,
+            ParamPowerFlowReferenceType.Cab, ParamPowerFlowReferenceType.Cac,
         ]),
         list([
-            ParamPowerFlowRefferenceType.Cbn, ParamPowerFlowRefferenceType.Cba,
-            ParamPowerFlowRefferenceType.Cbb, ParamPowerFlowRefferenceType.Cbc,
+            ParamPowerFlowReferenceType.Cbn, ParamPowerFlowReferenceType.Cba,
+            ParamPowerFlowReferenceType.Cbb, ParamPowerFlowReferenceType.Cbc,
         ]),
         list([
-            ParamPowerFlowRefferenceType.Ccn, ParamPowerFlowRefferenceType.Cca,
-            ParamPowerFlowRefferenceType.Ccb, ParamPowerFlowRefferenceType.Ccc,
+            ParamPowerFlowReferenceType.Ccn, ParamPowerFlowReferenceType.Cca,
+            ParamPowerFlowReferenceType.Ccb, ParamPowerFlowReferenceType.Ccc,
         ]),
     ])
 
@@ -133,19 +157,22 @@ def get_pi_line_emt_template(vf: VarFactory,
         for j in range(4):
             var_r = vf.add_var(f"R{phases[i]}{phases[j]}_{name}")
             templ.block.api_obj_mapping[r_enums[i][j]] = var_r
+            templ.block.parameters[var_r] = vf.add_const(0.0)
 
             var_l = vf.add_var(f"Linv_{phases[i]}{phases[j]}_{name}")
             templ.block.api_obj_mapping[linv_enums[i][j]] = var_l
+            templ.block.parameters[var_l] = vf.add_const(0.0)
 
             var_c = vf.add_var(f"C{phases[i]}{phases[j]}_{name}")
             templ.block.api_obj_mapping[c_enums[i][j]] = var_c
+            templ.block.parameters[var_c] = vf.add_const(0.0)
 
     # -----------------------------
     # Reduce the full mapped matrices using the physical line phase mask.
     # This cleanly separates topology from parameters: line.ys chooses the
     # active equations, while api_obj_mapping supplies the electrical values.
     # -----------------------------
-    api_mapping: Dict[ParamPowerFlowRefferenceType, Var] = templ.block.api_obj_mapping
+    api_mapping: Dict[ParamPowerFlowReferenceType, Var] = templ.block.api_obj_mapping
     r_full: list[list[Var]] = list()
     linv_full: list[list[Var]] = list()
     c_full: list[list[Var]] = list()
@@ -172,16 +199,28 @@ def get_pi_line_emt_template(vf: VarFactory,
     # Create ONLY active terminal voltage input vars
     # -----------------------------
     vf_keys = dict({
-        "N": VarPowerFlowRefferenceType.vf_N,
-        "A": VarPowerFlowRefferenceType.vf_A,
-        "B": VarPowerFlowRefferenceType.vf_B,
-        "C": VarPowerFlowRefferenceType.vf_C,
+        "N": VarPowerFlowReferenceType.vf_N,
+        "A": VarPowerFlowReferenceType.vf_A,
+        "B": VarPowerFlowReferenceType.vf_B,
+        "C": VarPowerFlowReferenceType.vf_C,
     })
     vt_keys = dict({
-        "N": VarPowerFlowRefferenceType.vt_N,
-        "A": VarPowerFlowRefferenceType.vt_A,
-        "B": VarPowerFlowRefferenceType.vt_B,
-        "C": VarPowerFlowRefferenceType.vt_C,
+        "N": VarPowerFlowReferenceType.vt_N,
+        "A": VarPowerFlowReferenceType.vt_A,
+        "B": VarPowerFlowReferenceType.vt_B,
+        "C": VarPowerFlowReferenceType.vt_C,
+    })
+    if_keys = dict({
+        "N": VarPowerFlowReferenceType.if_N,
+        "A": VarPowerFlowReferenceType.if_A,
+        "B": VarPowerFlowReferenceType.if_B,
+        "C": VarPowerFlowReferenceType.if_C,
+    })
+    it_keys = dict({
+        "N": VarPowerFlowReferenceType.it_N,
+        "A": VarPowerFlowReferenceType.it_A,
+        "B": VarPowerFlowReferenceType.it_B,
+        "C": VarPowerFlowReferenceType.it_C,
     })
 
     vf_vars = [vf.add_var(name=f"vf_{ph_label}_{name}", reference=vf_keys[ph_label]) for ph_label in active_ph]
@@ -204,8 +243,8 @@ def get_pi_line_emt_template(vf: VarFactory,
 
     i_cap_f = [vf.add_var(name=f"i_cap_f_{name}_{ph_label}") for ph_label in active_ph]
     i_cap_t = [vf.add_var(name=f"i_cap_t_{name}_{ph_label}") for ph_label in active_ph]
-    if_act = [vf.add_var(name=f"if_{name}_{ph_label}") for ph_label in active_ph]
-    it_act = [vf.add_var(name=f"it_{name}_{ph_label}") for ph_label in active_ph]
+    if_act = [vf.add_var(name=f"if_{name}_{ph_label}", reference=if_keys[ph_label]) for ph_label in active_ph]
+    it_act = [vf.add_var(name=f"it_{name}_{ph_label}", reference=it_keys[ph_label]) for ph_label in active_ph]
 
     # -----------------------------
     # Build block
@@ -268,22 +307,14 @@ def get_pi_line_emt_template(vf: VarFactory,
     # -----------------------------
     # External mapping
     # -----------------------------
-    if_keys = dict({"N": VarPowerFlowRefferenceType.if_N, "A": VarPowerFlowRefferenceType.if_A, "B": VarPowerFlowRefferenceType.if_B, "C": VarPowerFlowRefferenceType.if_C})
-    it_keys = dict({"N": VarPowerFlowRefferenceType.it_N, "A": VarPowerFlowRefferenceType.it_A, "B": VarPowerFlowRefferenceType.it_B, "C": VarPowerFlowRefferenceType.it_C})
-    Sf_keys = dict({"A": VarPowerFlowRefferenceType.Sf_A, "B": VarPowerFlowRefferenceType.Sf_B, "C": VarPowerFlowRefferenceType.Sf_C})
-    St_keys = dict({"A": VarPowerFlowRefferenceType.St_A, "B": VarPowerFlowRefferenceType.St_B, "C": VarPowerFlowRefferenceType.St_C})
-    d_vf_keys = dict({"N": VarPowerFlowRefferenceType.d_v_N_f, "A": VarPowerFlowRefferenceType.d_v_A_f, "B": VarPowerFlowRefferenceType.d_v_B_f, "C": VarPowerFlowRefferenceType.d_v_C_f})
-    d_vt_keys = dict({"N": VarPowerFlowRefferenceType.d_v_N_t, "A": VarPowerFlowRefferenceType.d_v_A_t, "B": VarPowerFlowRefferenceType.d_v_B_t, "C": VarPowerFlowRefferenceType.d_v_C_t})
+    if_keys = dict({"N": VarPowerFlowReferenceType.if_N, "A": VarPowerFlowReferenceType.if_A, "B": VarPowerFlowReferenceType.if_B, "C": VarPowerFlowReferenceType.if_C})
+    it_keys = dict({"N": VarPowerFlowReferenceType.it_N, "A": VarPowerFlowReferenceType.it_A, "B": VarPowerFlowReferenceType.it_B, "C": VarPowerFlowReferenceType.it_C})
 
-    mapping: Dict[VarPowerFlowRefferenceType, Var | None] = dict({
+    mapping: Dict[VarPowerFlowReferenceType, Var | None] = dict({
         if_keys["N"]: None, if_keys["A"]: None, if_keys["B"]: None, if_keys["C"]: None,
         it_keys["N"]: None, it_keys["A"]: None, it_keys["B"]: None, it_keys["C"]: None,
         vf_keys["N"]: None, vf_keys["A"]: None, vf_keys["B"]: None, vf_keys["C"]: None,
         vt_keys["N"]: None, vt_keys["A"]: None, vt_keys["B"]: None, vt_keys["C"]: None,
-        Sf_keys["A"]: None, Sf_keys["B"]: None, Sf_keys["C"]: None,
-        St_keys["A"]: None, St_keys["B"]: None, St_keys["C"]: None,
-        d_vf_keys["N"]: None, d_vf_keys["A"]: None, d_vf_keys["B"]: None, d_vf_keys["C"]: None,
-        d_vt_keys["N"]: None, d_vt_keys["A"]: None, d_vt_keys["B"]: None, d_vt_keys["C"]: None,
     })
 
     for k, phase_label in enumerate(active_ph):
@@ -291,8 +322,6 @@ def get_pi_line_emt_template(vf: VarFactory,
         mapping[vt_keys[phase_label]] = vt_vars[k]
         mapping[if_keys[phase_label]] = if_act[k]
         mapping[it_keys[phase_label]] = it_act[k]
-        # mapping[d_vf_keys[phase_label]] = d_vf_vars[k]
-        # mapping[d_vt_keys[phase_label]] = d_vt_vars[k]
 
     templ.block.external_mapping = mapping
 

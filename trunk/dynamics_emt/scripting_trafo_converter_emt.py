@@ -5,7 +5,6 @@
 import cProfile
 import pstats
 import numpy as np
-from time import perf_counter
 from typing import Any, cast
 
 import sys
@@ -28,15 +27,15 @@ from VeraGridEngine.Utils.Symbolic.block import Block
 
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_dae import EmtProblemDae
-from VeraGridEngine.Simulations.PowerFlow.power_flow_driver_3ph import PowerFlowDriver3Ph
+from VeraGridEngine.Simulations.PowerFlow3ph.power_flow_driver_3ph import PowerFlowDriver3Ph
 
 
 from VeraGridEngine.Templates.Emt.transformer_emt_template import get_transformer_emt_template
 from VeraGridEngine.Templates.Emt.dc_load_emt_template import get_dc_load_emt_template
 from VeraGridEngine.Templates.Emt.converter_emt_template import get_emt_ideal_converter
-from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template
-from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_template
-from VeraGridEngine.Templates.templates_common_functions import set_emt_model
+from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template_with_ref
+from VeraGridEngine.Utils.Symbolic.bus_emt_template import get_bus_emt_template
+from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_emt_model
 
 from VeraGridEngine.Simulations.EMT.solvers.jit_symbolic_solver import JitSymbolicSolver
 from VeraGridEngine.Simulations.EMT.solvers.solver_AD import JitAdSolver
@@ -44,7 +43,8 @@ from VeraGridEngine.Simulations.EMT.solvers.StructuralVectorizedSolver import St
 from VeraGridEngine.Simulations.EMT.solvers.structural_compiled_solver import StructuralCompiledSolver
 
 from VeraGridEngine.Utils.Symbolic.diagnostic import NewtonTraceCollector
-from VeraGridEngine.enumerations import EmtInitializationMethod, DynamicIntegrationMethod, EmtSolverTypes, ShuntConnectionType, ConverterControlType, SolverType
+from VeraGridEngine.enumerations import EmtInitializationMethod, DynamicIntegrationMethod, EmtSolverTypes, \
+    ConverterControlType, SolverType
 import VeraGridEngine.api as gce
 
 ###########################################################################################################################
@@ -146,7 +146,7 @@ for bus in circuit.buses:
 # =====================================================================
 
 # Generator model (Thevenin equivalent)
-gen_mdl = get_generator_thevenin_rl_emt_template(vf = circuit.var_factory).block
+gen_mdl = get_generator_thevenin_rl_emt_template_with_ref(vf = circuit.var_factory).block
 
 # Transformer model (series RL with ideal transformer)
 trafo_mdl = get_transformer_emt_template(vf=circuit.var_factory, name=transformer.name).block
