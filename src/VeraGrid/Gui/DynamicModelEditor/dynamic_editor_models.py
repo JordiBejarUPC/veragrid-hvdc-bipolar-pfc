@@ -344,17 +344,31 @@ def refresh_row_search_cache(row: BlockParameterRow) -> None:
 
 
 class BlockValueDelegate(QtWidgets.QStyledItemDelegate):
+
     def createEditor(self,
                      parent: QtWidgets.QWidget,
                      option: QtWidgets.QStyleOptionViewItem,
                      index: QtCore.QModelIndex) -> QtWidgets.QWidget | None:
+        """
+
+        :param parent:
+        :param option:
+        :param index:
+        :return:
+        """
         model = index.model()
         if isinstance(model, QtCore.QSortFilterProxyModel):
             source_index = model.mapToSource(index)
             source_model = model.sourceModel()
-            row = source_model.get_row(source_index.row()) if hasattr(source_model, "get_row") else None
+            if isinstance(source_model, WrappableBlockTableModel):
+                row = source_model.get_row(source_index.row())
+            else:
+                row = None
         else:
-            row = model.get_row(index.row()) if hasattr(model, "get_row") else None
+            if isinstance(model, WrappableBlockTableModel):
+                row = model.get_row(index.row())
+            else:
+                row = None
         if row is None:
             return QLineEdit(parent)
 
@@ -520,6 +534,15 @@ class WrappableBlockTableModel(WrappableTableModel):
                  block_search_role: int,
                  api_object: ALL_DEV_TYPES = None,
                  parent: Optional[QtCore.QObject] = None):
+        """
+
+        :param var_factory:
+        :param parameter_value_type_role:
+        :param parameter_editable_role:
+        :param block_search_role:
+        :param api_object:
+        :param parent:
+        """
         super().__init__(parent)
         self._table_view = parent
         self.var_factory = var_factory
@@ -535,6 +558,11 @@ class WrappableBlockTableModel(WrappableTableModel):
         self._block_search_role: int = block_search_role
 
     def set_mode(self, mode: DynamicTableModelMode) -> None:
+        """
+
+        :param mode:
+        :return:
+        """
         self.mode = mode
         if mode == DynamicTableModelMode.VARIABLES:
             self.headers = ["Type", "Name", "Init Equation"]
@@ -548,10 +576,19 @@ class WrappableBlockTableModel(WrappableTableModel):
         self.rebuild()
 
     def set_block(self, block: Block | None) -> None:
+        """
+
+        :param block:
+        :return:
+        """
         self.block = block
         self.rebuild()
 
     def rebuild(self) -> None:
+        """
+
+        :return:
+        """
         self.beginResetModel()
         self.rows.clear()
         if self.block is not None:
@@ -564,12 +601,28 @@ class WrappableBlockTableModel(WrappableTableModel):
         self.endResetModel()
 
     def rowCount(self, parent=QtCore.QModelIndex()) -> int:
+        """
+
+        :param parent:
+        :return:
+        """
         return len(self.rows)
 
     def columnCount(self, parent=QtCore.QModelIndex()) -> int:
+        """
+
+        :param parent:
+        :return:
+        """
         return 2 if self.mode == DynamicTableModelMode.EQUATIONS else 3
 
     def data(self, index, role=QtCore.Qt.ItemDataRole.DisplayRole):
+        """
+
+        :param index:
+        :param role:
+        :return:
+        """
         if not index.isValid() or self.block is None:
             return None
         row = self.rows[index.row()]
@@ -616,6 +669,13 @@ class WrappableBlockTableModel(WrappableTableModel):
             return None
 
     def setData(self, index, value, role=QtCore.Qt.ItemDataRole.EditRole):
+        """
+
+        :param index:
+        :param value:
+        :param role:
+        :return:
+        """
         if not index.isValid() or role != QtCore.Qt.ItemDataRole.EditRole:
             return False
         row = self.rows[index.row()]
@@ -671,6 +731,11 @@ class WrappableBlockTableModel(WrappableTableModel):
             return False
 
     def flags(self, index):
+        """
+
+        :param index:
+        :return:
+        """
         if not index.isValid():
             return QtCore.Qt.ItemFlag.NoItemFlags
         elif index.row() < 0 or index.row() >= len(self.rows):
@@ -696,6 +761,13 @@ class WrappableBlockTableModel(WrappableTableModel):
         return flags
 
     def headerData(self, section, orientation, role=QtCore.Qt.ItemDataRole.DisplayRole):
+        """
+
+        :param section:
+        :param orientation:
+        :param role:
+        :return:
+        """
         if role == QtCore.Qt.ItemDataRole.DisplayRole and orientation == QtCore.Qt.Orientation.Horizontal:
             if section < len(self.headers):
                 return self.headers[section]
@@ -705,12 +777,21 @@ class WrappableBlockTableModel(WrappableTableModel):
             return None
 
     def get_row(self, row_index: int) -> BlockParameterRow | None:
+        """
+
+        :param row_index:
+        :return:
+        """
         if 0 <= row_index < len(self.rows):
             return self.rows[row_index]
         else:
             return None
 
     def set_delegates(self) -> None:
+        """
+
+        :return:
+        """
         if self._table_view is None:
             return
         view = self._table_view
@@ -740,6 +821,12 @@ class WrappableBlockTableModel(WrappableTableModel):
             pass
 
     def set_init_eq(self, row_index: int, init_eq: Expr) -> None:
+        """
+
+        :param row_index:
+        :param init_eq:
+        :return:
+        """
         if 0 <= row_index < len(self.rows):
             row = self.rows[row_index]
             row.init_eq = init_eq
@@ -753,6 +840,12 @@ class WrappableBlockTableModel(WrappableTableModel):
             pass
 
     def set_value_from_expression(self, row_index: int, expr: Expr) -> None:
+        """
+
+        :param row_index:
+        :param expr:
+        :return:
+        """
         if 0 <= row_index < len(self.rows):
             row = self.rows[row_index]
             row.value = expr
@@ -765,6 +858,13 @@ class WrappableBlockTableModel(WrappableTableModel):
             pass
 
     def add_variable_at_end_of_type(self, name: str, category: str, parameter_value: float = 0.0) -> None:
+        """
+
+        :param name:
+        :param category:
+        :param parameter_value:
+        :return:
+        """
         if self.block is None:
             raise ValueError("No block is currently selected.")
         new_var = self.var_factory.add_var(name=name)
@@ -782,6 +882,11 @@ class WrappableBlockTableModel(WrappableTableModel):
         self.block_updated.emit(self.block.uid)
 
     def get_last_index_of_type(self, var_type: str) -> int:
+        """
+
+        :param var_type:
+        :return:
+        """
         if var_type == "state":
             return len(self.block.state_vars) - 1 if self.block and self.block.state_vars else -1
         elif var_type == "algebraic":
@@ -791,6 +896,11 @@ class WrappableBlockTableModel(WrappableTableModel):
 
     @staticmethod
     def get_python_value_type(value) -> type:
+        """
+
+        :param value:
+        :return:
+        """
         if isinstance(value, int):
             return int
         elif isinstance(value, float):
@@ -1233,4 +1343,3 @@ def add_variable_to_block(block: Block,
         block.mode_dict[var] = Const(parameter_value, name=var.name)
     else:
         raise ValueError(f"Unknown var_type {var_type}")
-

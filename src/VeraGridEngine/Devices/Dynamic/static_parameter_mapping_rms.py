@@ -2005,17 +2005,12 @@ def assign_load_static_api_mapping(
     )
 
     if load.bus.is_dc:
-        # DC loads use the historical EMT convention: explicit conductance is
-        # used when available; otherwise active power is represented as an
-        # equivalent conductance on the DC base.
+        # DC loads follow the same ZIP semantics as the generic load device.
+        # The constant-power term stays in ``Pl0`` and the impedance term stays
+        # in ``g`` so the EMT and RMS representations preserve the user-declared
+        # physical meaning instead of silently rewriting one term into another.
         dc_p_value: float = float(load.P) / sbase
         dc_g_value: float = float(load.G) / sbase
-
-        if dc_g_value == 0.0:
-            dc_p_value = 0.0
-            dc_g_value = float(load.P) / sbase
-        else:
-            pass
 
         assign_api_mapping_value_if_present(
             mdl=mdl,
