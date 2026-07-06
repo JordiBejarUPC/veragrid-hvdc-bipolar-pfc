@@ -451,9 +451,12 @@ class RosetaExplorerGUI(QMainWindow):
         context_menu = QtWidgets.QMenu(parent=self.ui.propertiesTableView)
 
         add_menu_entry(menu=context_menu,
-                       text="Copy",
+                       text=self.tr("Copy"),
                        icon_path=":/Icons/icons/copy.png",
                        function_ptr=self.copy_table_to_clipboard)
+
+        mapped_pos: QtCore.QPoint = self.ui.propertiesTableView.viewport().mapToGlobal(pos)
+        context_menu.exec(mapped_pos)
 
     def copy_table_to_clipboard(self) -> None:
         """

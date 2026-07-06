@@ -54,7 +54,6 @@ def get_trafo_grid_connection_G4L(vf: VarFactory, name: str = "G4L_transformer")
     X_ser_pu = PU_Z_TO_EMT * (1.0 / 10.0)  # 0.30
 
     R_ser = vf.add_const(R_ser_pu)
-    X_ser = vf.add_const(X_ser_pu)
     Linv = vf.add_const(omega_base / X_ser_pu)
 
     # Simulink C_f gives standard susceptance B = 1/15 pu.

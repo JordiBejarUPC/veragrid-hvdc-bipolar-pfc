@@ -349,8 +349,8 @@
                            <rect>
                             <x>0</x>
                             <y>0</y>
-                            <width>262</width>
-                            <height>362</height>
+                            <width>382</width>
+                            <height>360</height>
                            </rect>
                           </property>
                           <attribute name="icon">
@@ -744,8 +744,8 @@
                            <rect>
                             <x>0</x>
                             <y>0</y>
-                            <width>174</width>
-                            <height>240</height>
+                            <width>396</width>
+                            <height>322</height>
                            </rect>
                           </property>
                           <attribute name="icon">
@@ -895,8 +895,8 @@
                            <rect>
                             <x>0</x>
                             <y>0</y>
-                            <width>124</width>
-                            <height>244</height>
+                            <width>396</width>
+                            <height>322</height>
                            </rect>
                           </property>
                           <attribute name="icon">
@@ -2425,7 +2425,7 @@
                 <rect>
                  <x>0</x>
                  <y>0</y>
-                 <width>86</width>
+                 <width>98</width>
                  <height>88</height>
                 </rect>
                </property>
@@ -3587,8 +3587,14 @@
                 <property name="text">
                  <string>General settings</string>
                 </property>
+                <property name="textFormat">
+                 <enum>Qt::TextFormat::PlainText</enum>
+                </property>
                 <property name="alignment">
                  <set>Qt::AlignmentFlag::AlignBottom|Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft</set>
+                </property>
+                <property name="wordWrap">
+                 <bool>true</bool>
                 </property>
                </widget>
               </item>
@@ -3796,6 +3802,16 @@
                  <string>Engine</string>
                 </property>
                </widget>
+              </item>
+              <item row="8" column="0" colspan="2">
+               <widget class="QLabel" name="language_label">
+                <property name="text">
+                 <string>Language</string>
+                </property>
+               </widget>
+              </item>
+              <item row="8" column="2">
+               <widget class="QComboBox" name="language_combo_box"/>
               </item>
               <item row="9" column="0" colspan="2">
                <widget class="QCheckBox" name="dark_mode_checkBox">
@@ -4315,7 +4331,7 @@
                 <widget class="QPushButton" name="find_automatic_precission_Button">
                  <property name="maximumSize">
                   <size>
-                   <width>50</width>
+                   <width>30</width>
                    <height>16777215</height>
                   </size>
                  </property>
@@ -4323,7 +4339,11 @@
                   <string>Find the tolerance that best represents the load values for power flow</string>
                  </property>
                  <property name="text">
-                  <string>Find</string>
+                  <string/>
+                 </property>
+                 <property name="icon">
+                  <iconset resource="../Icons/icons.qrc">
+                   <normaloff>:/Icons/icons/calculator.png</normaloff>:/Icons/icons/calculator.png</iconset>
                  </property>
                 </widget>
                </item>
@@ -10916,6 +10936,7 @@ QProgressBar::chunk{
     <addaction name="actionSmaller_nodes"/>
     <addaction name="actionAutoatic_layout"/>
     <addaction name="actionTry_to_fix_buses_location"/>
+    <addaction name="actionRepair_diagram"/>
     <addaction name="actionRotate"/>
     <addaction name="menuBranches_drawing_style"/>
     <addaction name="actionDisable_all_results_tags"/>
@@ -12856,6 +12877,18 @@ QProgressBar::chunk{
    </property>
    <property name="menuRole">
     <enum>QAction::MenuRole::NoRole</enum>
+   </property>
+  </action>
+  <action name="actionRepair_diagram">
+   <property name="icon">
+    <iconset resource="../Icons/icons.qrc">
+     <normaloff>:/Icons/icons/fix.png</normaloff>:/Icons/icons/fix.png</iconset>
+   </property>
+   <property name="text">
+    <string>Repair diagram</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+S</string>
    </property>
   </action>
  </widget>

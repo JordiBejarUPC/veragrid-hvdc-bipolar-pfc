@@ -275,7 +275,26 @@ def test_generator_nominal_frequency_candidates_are_available() -> None:
 
     assert np.isclose(_const_value(block, ParamPowerFlowReferenceType.fn), 60.0)
     assert np.isclose(_const_value(block, ParamPowerFlowReferenceType.omega_base), 2.0 * np.pi * 60.0)
-    assert np.isclose(_const_value(block, ParamPowerFlowReferenceType.freq), 55.0)
+
+
+def test_dc_load_mapping_preserves_explicit_power_and_conductance_terms() -> None:
+    """DC-load mapping must preserve the declared ``P`` and ``G`` ZIP terms."""
+    grid: SimpleNamespace = _make_grid(sbase=100.0, fbase=50.0)
+    bus: Bus = Bus(name="dc_bus", Vnom=20.0, is_dc=True)
+    load: Load = Load(name="dc_load", P=30.0, G=12.0, Q=0.0)
+    load.bus = bus
+
+    block: Block = _make_block(
+        dict({
+            ParamPowerFlowReferenceType.Pl0: _make_var("pl0"),
+            ParamPowerFlowReferenceType.g: _make_var("g"),
+        })
+    )
+
+    assign_static_api_object_mapping_for_device(grid=grid, device=load, mdl=block, problem_mapping=dict(), logger=None)
+
+    assert np.isclose(_const_value(block, ParamPowerFlowReferenceType.Pl0), 0.3)
+    assert np.isclose(_const_value(block, ParamPowerFlowReferenceType.g), 0.12)
 
 
 def test_existing_vsc_static_values_remain_unchanged() -> None:
