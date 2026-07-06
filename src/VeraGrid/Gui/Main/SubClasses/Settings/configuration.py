@@ -349,6 +349,8 @@ class ConfigurationMain(ResultsMain):
                 if isinstance(diagram, SchematicWidget):
                     diagram.set_dark_mode()
 
+            self.dynamic_editor_workspace_session.set_dark_mode()
+
             self.colour_diagrams()
 
         else:
@@ -361,6 +363,8 @@ class ConfigurationMain(ResultsMain):
             for diagram in self.diagram_widgets_list:
                 if isinstance(diagram, SchematicWidget):
                     diagram.set_light_mode()
+
+            self.dynamic_editor_workspace_session.set_light_mode()
 
             self.colour_diagrams()
 

@@ -6514,6 +6514,22 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             event.ignore()
 
+    def set_dark_mode(self):
+        """
+        Set the dark mode
+        :return:
+        """
+        # TODO: implement dark mode for ALL of the widgets in the scene
+        pass
+
+    def set_light_mode(self):
+        """
+        Set the dark mode
+        :return:
+        """
+        # TODO: implement light mode for ALL of the widgets in the scene
+        pass
+
 
 if __name__ == "__main__":
     import sys

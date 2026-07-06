@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Iterator
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
@@ -643,6 +643,12 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
         else:
             return None
 
+    def pages_iter(self) -> Iterator[DynamicBlockEditorGUI]:
+        for index in range(self.editor_tabs.count()):
+            page = self.editor_tabs.widget(index)
+            if isinstance(page, DynamicBlockEditorGUI):
+                yield page
+
     def current_page(self) -> DynamicBlockEditorGUI | None:
         """
         Return the currently selected tab page.
@@ -740,3 +746,20 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
 
         current_title = self.editor_tabs.tabText(self.editor_tabs.currentIndex())
         self.setWindowTitle(self.tr("Dynamic Editor - {title}").format(title=current_title))
+
+    def set_dark_mode(self):
+        """
+        Set the dark mode
+        :return:
+        """
+        for page in self.pages_iter():
+            page.set_dark_mode()
+
+    def set_light_mode(self):
+        """
+        Set the dark mode
+        :return:
+        """
+        for page in self.pages_iter():
+            page.set_light_mode()
+
