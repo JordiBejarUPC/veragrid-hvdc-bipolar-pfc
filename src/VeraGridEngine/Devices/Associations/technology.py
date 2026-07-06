@@ -11,7 +11,7 @@ from VeraGridEngine.Devices.Parents.editable_device import EditableDevice, Devic
 
 
 class Technology(EditableDevice):
-    __slots__ = ('name2', 'name3', 'name4', 'color', 'reference_cost', '_reference_cost_prof')
+    __slots__ = ('name2', 'name3', 'name4', 'color', '_reference_cost', '_reference_cost_prof')
 
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
         GCProp(
@@ -74,8 +74,23 @@ class Technology(EditableDevice):
 
         self.color = color if color is not None else self.rnd_color()
 
-        self.reference_cost = reference_cost
-        self._reference_cost_prof = ProfileFloat(default_value=self.reference_cost)
+        self._reference_cost = float(reference_cost)
+        self._reference_cost_prof = ProfileFloat(default_value=self._reference_cost)
+
+    @property
+    def reference_cost(self) -> float:
+        """
+        Reference cost
+        :return: float
+        """
+        return self._reference_cost
+
+    @reference_cost.setter
+    def reference_cost(self, val: float):
+        if isinstance(val, float):
+            self._reference_cost_prof = val
+        else:
+            raise Exception(str(type(val)) + 'not supported to be set into a _reference_cost')
 
     @property
     def reference_cost_prof(self) -> ProfileFloat:
@@ -92,7 +107,7 @@ class Technology(EditableDevice):
         elif isinstance(val, np.ndarray):
             self._reference_cost_prof.set(arr=val)
         else:
-            raise Exception(str(type(val)) + 'not supported to be set into a active_prof')
+            raise Exception(str(type(val)) + 'not supported to be set into a reference_cost_prof')
 
     def get_reference_cost_at(self, t: int | None) -> float:
         """
