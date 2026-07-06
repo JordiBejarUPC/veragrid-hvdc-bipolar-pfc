@@ -3985,3 +3985,22 @@ class MultiCircuit(Assets):
             self.delete_line(line)
 
         return line1, line2
+
+    def apply_technology_reference_costs(self):
+        """
+        This applies the reference cost set by the technology to the injection device
+        """
+        nt = self.get_time_number()
+        for inj in self.get_injection_devices_iter():
+
+            # Compute the weighted summation of the technology reference costs
+            cost = 0.0
+            cost_profile = np.zeros(nt, dtype=float)
+            for _, val in inj.technologies.data.items():
+                if isinstance(val.api_object, dev.Technology):
+                    cost += val.value * val.api_object.reference_cost
+                    cost_profile += val.value * val.api_object.reference_cost_prof.toarray()
+
+            # Assign the cost
+            inj.Cost = cost
+            inj.Cost_prof = cost_profile

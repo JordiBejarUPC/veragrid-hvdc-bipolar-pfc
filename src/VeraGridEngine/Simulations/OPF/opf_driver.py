@@ -232,16 +232,11 @@ class OptimalPowerFlowDriver(TimeSeriesDriverTemplate):
                 force_charge_if_low=True
             )
 
-            # AC optimal power flow
-            # Pl, Pg = run_simple_dispatch(grid=self.grid,
-            #                              text_prog=self.report_text,
-            #                              prog_func=self.report_progress)
-
             self.results.generator_power = gen_dispatch[0, :]
             self.results.generator_shedding = ndg_curtailment_per_gen[0, :]
 
             self.results.battery_power = batt_dispatch[0, :]
-            self.results.battery_energy = batt_energy[0, :]
+            #self.results.battery_energy = batt_energy[0, :]
 
             self.results.load_shedding = load_shedding[0, :]
 
