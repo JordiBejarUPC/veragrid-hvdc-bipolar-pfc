@@ -9,10 +9,12 @@ from typing import Optional
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 import uvicorn
 
 app = FastAPI(title="TenSyGrid Stability Monitor")
+app.mount("/resources", StaticFiles(directory=Path(__file__).parent / "resources"), name="resources")
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 TENSYGRID_DIR = Path(__file__).resolve().parents[1]
