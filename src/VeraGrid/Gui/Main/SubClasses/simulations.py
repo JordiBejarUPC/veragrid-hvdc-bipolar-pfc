@@ -21,6 +21,7 @@ from VeraGrid.Gui.Main.SubClasses.Model.time_events import TimeEventsMain
 from VeraGrid.Gui.SigmaAnalysis.sigma_analysis_dialogue import SigmaAnalysisGUI
 from VeraGrid.Gui.ProceduralGrid.procedural_grid import ProceduralGridWindow
 from VeraGrid.Gui.ProceduralGrid.map_warning import MapWarningDialog
+from VeraGrid.Gui.CandidateInvestments.candidate_investments import CandidateInvestmentsWindow
 from VeraGrid.Session.server_driver import RemoteJobDriver
 from VeraGrid.Gui.dynamic_events_editor_dialog import create_dynamic_events_group_with_dialog
 
@@ -355,6 +356,7 @@ class SimulationsMain(TimeEventsMain):
         self.ui.actionRun_Small_Signal_RMS_Simulation.triggered.connect(self.rms_small_signal_dispatcher)
         self.ui.actionRun_Dynamic_EMT_Simulation.triggered.connect(self.emt_dispatcher)
         self.ui.actionRun_Small_Signal_EMT_Simulation.triggered.connect(self.emt_small_signal_dispatcher)
+        self.ui.actionCandidate_investment_generator.triggered.connect(self.candidate_investment_generator)
         self.ui.actionProcedural_grid_expansion.triggered.connect(self.procedural_grid_expansion)
         self.ui.actionCatalogue_element_optimization.triggered.connect(self.catalogue_element_optimization)
 
@@ -4302,6 +4304,31 @@ class SimulationsMain(TimeEventsMain):
         current_mip_framework = self.opf_mip_framework_dict[self.ui.mip_framework_comboBox.currentText()]
         mip_solvers = get_available_mip_solvers(tpe=current_mip_framework)
         self.ui.mip_solver_comboBox.setModel(gf.get_list_model(mip_solvers))
+
+    def candidate_investment_generator(self):
+        """
+        Handler for the "Candidate investment generator" menu action.
+
+        Runs the transmission-expansion candidate generator (AC PF -> LODF N-1 screening ->
+        PTDF-ranked reinforcements -> shortlist -> AC PF verification) and lets the user pick
+        which candidates to materialise as investments. Requires a selected diagram, mirroring
+        the procedural grid expansion flow.
+
+        :return:
+        """
+        if not self.circuit.valid_for_simulation():
+            return
+
+        # A diagram must be selected so the generated candidates can be drawn/attached, just
+        # like the procedural grid expansion flow.
+        current_diagram = self.get_selected_diagram_widget()
+        if current_diagram is None:
+            self.map_warning = MapWarningDialog(parent=self)
+            self.map_warning.exec()
+            return
+
+        self.candidate_investments_window = CandidateInvestmentsWindow(app=self)
+        self.candidate_investments_window.exec()
 
     def procedural_grid_expansion(self):
         """

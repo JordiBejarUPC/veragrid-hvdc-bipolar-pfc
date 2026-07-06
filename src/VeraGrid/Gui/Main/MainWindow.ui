@@ -10898,6 +10898,7 @@ QProgressBar::chunk{
     <addaction name="actionFuse_devices"/>
     <addaction name="actionSet_model_x_y_based_on_lat_lon"/>
     <addaction name="actionGrid_reduction"/>
+    <addaction name="actionCandidate_investment_generator"/>
     <addaction name="actionProcedural_grid_expansion"/>
     <addaction name="actionRestore_investments"/>
     <addaction name="actionre_index_time"/>
@@ -12714,6 +12715,18 @@ QProgressBar::chunk{
    </property>
    <property name="menuRole">
     <enum>QAction::MenuRole::NoRole</enum>
+   </property>
+  </action>
+  <action name="actionCandidate_investment_generator">
+   <property name="icon">
+    <iconset resource="../Icons/icons.qrc">
+     <normaloff>:/Icons/icons/schematic.png</normaloff>:/Icons/icons/schematic.png</iconset>
+   </property>
+   <property name="text">
+    <string>Candidate investment generator</string>
+   </property>
+   <property name="toolTip">
+    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Candidate investment generator&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Generate candidate reinforcements (new lines and upgrades) for N-1 violations via LODF/PTDF screening&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
    </property>
   </action>
   <action name="actionProcedural_grid_expansion">
