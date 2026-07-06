@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 from PySide6.QtWidgets import QGraphicsSceneContextMenuEvent
 from VeraGridEngine.Devices.Injections.battery import Battery
-from VeraGrid.Gui.gui_functions import add_menu_entry
+from VeraGrid.Gui.gui_functions import add_menu_entry, translate_context_menu_text
 from VeraGrid.Gui.DeviceEditors.GeneratorEditor.generator_editor import GeneratorEditorDialog
 from VeraGrid.Gui.DeviceEditors.GeneratorEditor.generator_editor import GeneratorQCurveEditor
 from VeraGrid.Gui.Diagrams.MapWidget.Injections.map_injections_template_graphics import MapInjectionTemplateGraphicItem
@@ -66,20 +66,20 @@ class MapBatteryGraphicItem(MapInjectionTemplateGraphicItem):
         """
         menu = self.get_base_context_menu()
 
-        menu.addSection("Battery")
+        menu.addSection(translate_context_menu_text("Battery"))
 
         add_menu_entry(menu=menu,
-                       text="RMS Editor",
+                       text=translate_context_menu_text("RMS Editor"),
                        function_ptr=self.edit_rms,
                        icon_path=":/Icons/icons/dyn_edit.png")
 
         add_menu_entry(menu=menu,
-                       text="EMT Editor",
+                       text=translate_context_menu_text("EMT Editor"),
                        function_ptr=self.edit_emt,
                        icon_path=":/Icons/icons/dyn_emt_edit.png")
 
         add_menu_entry(menu=menu,
-                       text="Qcurve edit",
+                       text=translate_context_menu_text("Qcurve edit"),
                        function_ptr=self.edit_q_curve,
                        icon_path=":/Icons/icons/edit.png")
 

@@ -28,6 +28,8 @@ class ApplicationLanguage(Enum):
     DUTCH = "nl_NL"
     CATALAN = "ca_ES"
     CHINESE = "zh_CN"
+    HINDI = "hi_IN"
+    CANTONESE = "yue_HK"
     GERMAN = "de_DE"
     FRENCH = "fr_FR"
     PORTUGUESE = "pt_PT"
@@ -396,16 +398,22 @@ def get_language_flag_icon_path(language: ApplicationLanguage) -> str:
                                             if language == ApplicationLanguage.CHINESE:
                                                 return ":/Icons/icons/flag_zh.png"
                                             else:
-                                                if language == ApplicationLanguage.GERMAN:
-                                                    return ":/Icons/icons/flag_de.png"
+                                                if language == ApplicationLanguage.HINDI:
+                                                    return ":/Icons/icons/flag_hi.png"
                                                 else:
-                                                    if language == ApplicationLanguage.FRENCH:
-                                                        return ":/Icons/icons/flag_fr.png"
+                                                    if language == ApplicationLanguage.CANTONESE:
+                                                        return ":/Icons/icons/flag_zh.png"
                                                     else:
-                                                        if language == ApplicationLanguage.PORTUGUESE:
-                                                            return ":/Icons/icons/flag_pt.png"
+                                                        if language == ApplicationLanguage.GERMAN:
+                                                            return ":/Icons/icons/flag_de.png"
                                                         else:
-                                                            return ":/Icons/icons/flag_es.png"
+                                                            if language == ApplicationLanguage.FRENCH:
+                                                                return ":/Icons/icons/flag_fr.png"
+                                                            else:
+                                                                if language == ApplicationLanguage.PORTUGUESE:
+                                                                    return ":/Icons/icons/flag_pt.png"
+                                                                else:
+                                                                    return ":/Icons/icons/flag_es.png"
 
 
 def load_translator(prefix: str, directory: str, candidates: list[str]) -> QTranslator | None:
@@ -482,19 +490,25 @@ def language_from_name(name_text: str | None) -> ApplicationLanguage:
                                         if normalized_name == ApplicationLanguage.CHINESE.name:
                                             return ApplicationLanguage.CHINESE
                                         else:
-                                            if normalized_name == ApplicationLanguage.GERMAN.name:
-                                                return ApplicationLanguage.GERMAN
+                                            if normalized_name == ApplicationLanguage.HINDI.name:
+                                                return ApplicationLanguage.HINDI
                                             else:
-                                                if normalized_name == ApplicationLanguage.FRENCH.name:
-                                                    return ApplicationLanguage.FRENCH
+                                                if normalized_name == ApplicationLanguage.CANTONESE.name:
+                                                    return ApplicationLanguage.CANTONESE
                                                 else:
-                                                    if normalized_name == ApplicationLanguage.PORTUGUESE.name:
-                                                        return ApplicationLanguage.PORTUGUESE
+                                                    if normalized_name == ApplicationLanguage.GERMAN.name:
+                                                        return ApplicationLanguage.GERMAN
                                                     else:
-                                                        if normalized_name == ApplicationLanguage.SPANISH.name:
-                                                            return ApplicationLanguage.SPANISH
+                                                        if normalized_name == ApplicationLanguage.FRENCH.name:
+                                                            return ApplicationLanguage.FRENCH
                                                         else:
-                                                            return ApplicationLanguage.SYSTEM
+                                                            if normalized_name == ApplicationLanguage.PORTUGUESE.name:
+                                                                return ApplicationLanguage.PORTUGUESE
+                                                            else:
+                                                                if normalized_name == ApplicationLanguage.SPANISH.name:
+                                                                    return ApplicationLanguage.SPANISH
+                                                                else:
+                                                                    return ApplicationLanguage.SYSTEM
 
 
 def read_saved_language() -> ApplicationLanguage:

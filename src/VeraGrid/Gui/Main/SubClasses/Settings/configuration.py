@@ -175,6 +175,8 @@ class ConfigurationMain(ResultsMain):
                 ApplicationLanguage.DUTCH,
                 ApplicationLanguage.CATALAN,
                 ApplicationLanguage.CHINESE,
+                ApplicationLanguage.HINDI,
+                ApplicationLanguage.CANTONESE,
                 ApplicationLanguage.GERMAN,
                 ApplicationLanguage.FRENCH,
                 ApplicationLanguage.PORTUGUESE,
@@ -220,18 +222,24 @@ class ConfigurationMain(ResultsMain):
                                                     display_text = self.tr("Catalan")
                                                 else:
                                                     if language == ApplicationLanguage.CHINESE:
-                                                        display_text = self.tr("Chinese")
+                                                        display_text = self.tr("Mandarin")
                                                     else:
-                                                        if language == ApplicationLanguage.GERMAN:
-                                                            display_text = self.tr("German")
+                                                        if language == ApplicationLanguage.HINDI:
+                                                            display_text = self.tr("Hindi")
                                                         else:
-                                                            if language == ApplicationLanguage.FRENCH:
-                                                                display_text = self.tr("French")
+                                                            if language == ApplicationLanguage.CANTONESE:
+                                                                display_text = self.tr("Cantonese")
                                                             else:
-                                                                if language == ApplicationLanguage.PORTUGUESE:
-                                                                    display_text = self.tr("Portuguese")
+                                                                if language == ApplicationLanguage.GERMAN:
+                                                                    display_text = self.tr("German")
                                                                 else:
-                                                                    display_text = self.tr("Español")
+                                                                    if language == ApplicationLanguage.FRENCH:
+                                                                        display_text = self.tr("French")
+                                                                    else:
+                                                                        if language == ApplicationLanguage.PORTUGUESE:
+                                                                            display_text = self.tr("Portuguese")
+                                                                        else:
+                                                                            display_text = self.tr("Español")
 
             # The selector stores the stable enum in item data and only decorates the row with a flag icon.
             self.language_combo_box.addItem(
@@ -341,6 +349,8 @@ class ConfigurationMain(ResultsMain):
                 if isinstance(diagram, SchematicWidget):
                     diagram.set_dark_mode()
 
+            self.dynamic_editor_workspace_session.set_dark_mode()
+
             self.colour_diagrams()
 
         else:
@@ -353,6 +363,8 @@ class ConfigurationMain(ResultsMain):
             for diagram in self.diagram_widgets_list:
                 if isinstance(diagram, SchematicWidget):
                     diagram.set_light_mode()
+
+            self.dynamic_editor_workspace_session.set_light_mode()
 
             self.colour_diagrams()
 
@@ -635,7 +647,7 @@ class ConfigurationMain(ResultsMain):
         self.ui.menuplugins.clear()
 
         add_menu_entry(menu=self.ui.menuplugins,
-                       text="Reload",
+                       text=self.tr("Reload"),
                        icon_path=":/Icons/icons/undo.png",
                        function_ptr=self.add_plugins)
 

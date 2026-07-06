@@ -21,6 +21,20 @@ if TYPE_CHECKING:
     from VeraGrid.Gui.object_model import ObjectsModel
 
 
+def translate_context_menu_text(text: str) -> str:
+    """
+    Translate one runtime-created context-menu label.
+
+    :param text: Source label.
+    :return: Translated label or the original text when no catalog entry exists.
+    """
+    if text == "":
+        return text
+
+    translated_text: str = QtCore.QCoreApplication.translate("ContextMenu", text)
+    return translated_text if translated_text != "" else text
+
+
 class TreeDelegate(QtWidgets.QItemDelegate):
     """
     A delegate that places a fully functioning QComboBox in every
@@ -1242,7 +1256,7 @@ def add_sub_menu(menu: QtWidgets.QMenu,
                  text: str,
                  icon_path: str = "",
                  icon_pixmap: QtGui.QPixmap = None, ):
-    entry = menu.addMenu(text)
+    entry = menu.addMenu(translate_context_menu_text(text))
 
     if icon_pixmap is None:
         if len(icon_path) > 0:
@@ -1279,7 +1293,7 @@ def add_menu_entry(menu: QtWidgets.QMenu,
     :return:
     """
 
-    entry: QtGui.QAction = menu.addAction(text)
+    entry: QtGui.QAction = menu.addAction(translate_context_menu_text(text))
 
     font = QtGui.QFont()
     font.setPointSize(font_size)

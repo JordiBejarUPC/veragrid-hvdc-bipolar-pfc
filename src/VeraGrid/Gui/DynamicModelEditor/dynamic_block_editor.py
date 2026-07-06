@@ -86,7 +86,6 @@ from VeraGrid.Gui.DynamicModelEditor.ElementDialogues.lookup_table_dialog import
 from VeraGrid.Gui.DynamicModelEditor.ElementDialogues.jmarti_line_emt_dialog import JMartiLineEmtDialog
 from VeraGrid.Gui.DynamicModelEditor.ElementDialogues.shunt_component_emt_dialog import ShuntComponentEmtDialog
 
-
 from VeraGrid.Gui.messages import yes_no_question
 from VeraGrid.Gui.toast_widget import ToastManager
 from VeraGridEngine.Utils.Symbolic.symbolic import (symbolic_to_string, string_to_symbolic,
@@ -103,6 +102,7 @@ from VeraGridEngine.Simulations.EMT.JMARTI_Sim.jmarti_runtime import set_jmarti_
 from VeraGridEngine.Simulations.EMT.JMARTI_Sim.jmarti_runtime import set_jmarti_block_runtime_data
 from VeraGrid.Gui.DynamicModelEditor.dyn_template_editor_dialogue import DynTemplatesEditorDialog
 from dataclasses import dataclass
+
 
 def _iter_child_blocks(block: Block) -> List[Block]:
     """
@@ -452,7 +452,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         self.blocktype2templatebuilder = get_blocktype2template_builder_dict()
 
-
         self.devices_static_params_mapping: Dict[DeviceType, List[ParamPowerFlowReferenceType]] = (
             self.circuit.get_devices_static_params_mapping()
         )
@@ -493,7 +492,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.library_find_shortcut = QtGui.QShortcut(QtGui.QKeySequence.StandardKey.Find, self)
         self.library_find_shortcut.activated.connect(self.focus_library_search)
         self.reset_library_tree_expansion()
-
 
         # Build variables table
         self.variables_model = WrappableBlockTableModel(
@@ -651,6 +649,29 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             pass
         self.rebuild_scene_from_diagram()
 
+    @staticmethod
+    def new_editor(var_factory: VarFactory,
+                   block: Block,
+                   api_object: ALL_DEV_TYPES,
+                   circuit: MultiCircuit,
+                   mode: DynamicSimulationMode):
+        """
+        Function to create a new instance of this class.
+        :param var_factory:
+        :param block:
+        :param api_object:
+        :param circuit:
+        :param mode:
+        :return:
+        """
+        return DynamicBlockEditorGUI(
+            var_factory=var_factory,
+            block=block,
+            api_object=api_object,
+            circuit=circuit,
+            mode=mode,
+        )
+
     def changeEvent(self, event: QtCore.QEvent) -> None:
         """
         Refresh runtime-owned editor strings after a Qt language change.
@@ -684,6 +705,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             else:
                 pass
         self.scene.update()
+
     # Todo: remove this function when all the dialogs are unified
     def set_modal_template_metadata(self, block: Block,
                                     kind: str,
@@ -751,7 +773,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             self.reset_library_tree_expansion()
 
-
     def get_library_payload_from_mime_data(self,
                                            mime_data: QtCore.QMimeData) -> BlockType | BasicBlockTemplateDescriptor | RmsModelTemplate | EmtModelTemplate | FmuTemplate | None:
         """
@@ -767,7 +788,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             drag_token = bytes(mime_data.data(self.mime_type)).decode("utf-8")
             payload = self.library.library_model.get_drag_payload(drag_token)
 
-            if isinstance(payload, (BlockType, BasicBlockTemplateDescriptor, RmsModelTemplate, EmtModelTemplate, FmuTemplate)):
+            if isinstance(payload,
+                          (BlockType, BasicBlockTemplateDescriptor, RmsModelTemplate, EmtModelTemplate, FmuTemplate)):
                 return payload
             else:
                 return None
@@ -785,16 +807,15 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         return BlockPositionChangedCallback(self, block_uid)
 
     def create_item_from_blocktype(self,
-                                    blocktype: BlockType,
-                                    x_pos: float,
-                                    y_pos: float) -> GenericBlockItem | RoundBaseArithmeticOpItem | RectBaseArithmeticOpItem | None:
+                                   blocktype: BlockType,
+                                   x_pos: float,
+                                   y_pos: float) -> GenericBlockItem | RoundBaseArithmeticOpItem | RectBaseArithmeticOpItem | None:
         """
         Materialize one library payload on the diagram scene.
         """
 
         count: int = self.block_counters.get(blocktype, 0) + 1
         item_name: str = f"{blocktype.name}_{count}"
-
 
         template_builder_class = self.blocktype2templatebuilder.get(blocktype, None)
         template_builder = template_builder_class(self.var_factory)
@@ -806,13 +827,15 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             template = template_builder.eval()
             block_model = template.block
 
-        block_item: GenericBlockItem = GenericBlockItem(editor=self, var_factory=self.var_factory,
-                                                        subsys=block_model,
-                                                        api_object=self.api_object,
-                                                        mode=self.mode,
-                                                        name=item_name,
-                                                        position_changed_callback=self._build_position_changed_callback(
-                                                            block_model.uid))
+        block_item: GenericBlockItem = GenericBlockItem(
+            editor=self,
+            var_factory=self.var_factory,
+            subsys=block_model,
+            api_object=self.api_object,
+            mode=self.mode,
+            name=item_name,
+            position_changed_callback=self._build_position_changed_callback(block_model.uid)
+        )
 
         self.block_counters[blocktype] = count
         block_item.set_subsystem(block_model)
@@ -831,10 +854,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.mark_unapplied_changes()
         return block_item
 
-
-
-
-
     def create_generic_block_item(self, block_type: BlockType, x_pos, y_pos) -> GenericBlockItem | None:
         """
         Create and place a generic block item.
@@ -851,14 +870,15 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
             model = create_generic_block(self.var_factory, inputs, outputs, name)
             self.main_block.add(model)
-            item = GenericBlockItem(editor=self,
-                                    var_factory=self.var_factory,
-                                    subsys=model,
-                                    api_object=self.api_object,
-                                    mode=self.mode,
-                                    name=model.name,
-                                    position_changed_callback=self._build_position_changed_callback(model.uid)
-                                    )
+            item = GenericBlockItem(
+                editor=self,
+                var_factory=self.var_factory,
+                subsys=model,
+                api_object=self.api_object,
+                mode=self.mode,
+                name=model.name,
+                position_changed_callback=self._build_position_changed_callback(model.uid)
+            )
 
             item.setPos(QtCore.QPointF(x_pos, y_pos))
             self.scene.addItem(item)
@@ -977,13 +997,15 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                                                   var_factory=self.var_factory,
                                                   block_type=block_type,
                                                   item_name=item_name)
-            block_item: GenericBlockItem = GenericBlockItem(editor=self, var_factory=self.var_factory,
-                                                            subsys=block_model,
-                                                            api_object=self.api_object,
-                                                            mode=self.mode,
-                                                            name=item_name,
-                                                            position_changed_callback=self._build_position_changed_callback(
-                                                                block_model.uid))
+            block_item: GenericBlockItem = GenericBlockItem(
+                editor=self,
+                var_factory=self.var_factory,
+                subsys=block_model,
+                api_object=self.api_object,
+                mode=self.mode,
+                name=item_name,
+                position_changed_callback=self._build_position_changed_callback(block_model.uid)
+            )
 
             if block_model is not None:
                 self.set_modal_template_metadata(
@@ -1025,13 +1047,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 return None
         else:
             return None
-
-
-
-
-
-
-
 
     @staticmethod
     def _extract_jmarti_phase_tuple(modal_config: Dict[str, Any]) -> tuple[bool, bool, bool, bool]:
@@ -1372,13 +1387,15 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             block_type=BlockType.EMT_JMARTI_LINE,
             item_name=item_name,
         )
-        block_item: GenericBlockItem = GenericBlockItem(editor=self, var_factory=self.var_factory,
-                                                        subsys=block_model,
-                                                        api_object=self.api_object,
-                                                        mode=self.mode,
-                                                        name=item_name,
-                                                        position_changed_callback=self._build_position_changed_callback(
-                                                            block_model.uid))
+        block_item: GenericBlockItem = GenericBlockItem(
+            editor=self,
+            var_factory=self.var_factory,
+            subsys=block_model,
+            api_object=self.api_object,
+            mode=self.mode,
+            name=item_name,
+            position_changed_callback=self._build_position_changed_callback(block_model.uid)
+        )
 
         if block_model is None:
             return None
@@ -1439,14 +1456,15 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         # no we have the name and the block
         if block_model is not None:
             self.main_block.add(block_model)
-            item = GenericBlockItem(editor=self,
-                                    var_factory=self.var_factory,
-                                    subsys=block_model,
-                                    api_object=self.api_object,
-                                    mode=self.mode,
-                                    name=block_model.name,
-                                    position_changed_callback=self._build_position_changed_callback(block_model.uid)
-                                    )
+            item = GenericBlockItem(
+                editor=self,
+                var_factory=self.var_factory,
+                subsys=block_model,
+                api_object=self.api_object,
+                mode=self.mode,
+                name=block_model.name,
+                position_changed_callback=self._build_position_changed_callback(block_model.uid)
+            )
 
             item.setPos(QtCore.QPointF(x_pos, y_pos))
             self.scene.addItem(item)
@@ -1646,14 +1664,15 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         item_name: str = f"{block_model.name}"
 
         if block_model is not None:
-            item = GenericBlockItem(editor=self,
-                                    var_factory=self.var_factory,
-                                    subsys=block_model,
-                                    api_object=self.api_object,
-                                    mode=self.mode,
-                                    name=item_name,
-                                    position_changed_callback=self._build_position_changed_callback(block_model.uid)
-                                    )
+            item = GenericBlockItem(
+                editor=self,
+                var_factory=self.var_factory,
+                subsys=block_model,
+                api_object=self.api_object,
+                mode=self.mode,
+                name=item_name,
+                position_changed_callback=self._build_position_changed_callback(block_model.uid)
+            )
 
             # The symbolic block has to be attached first so the graphics item can build its ports from it.
 
@@ -1783,15 +1802,15 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         item_name: str = template.name
         block_model: Block = duplicate_block(template.block, var_factory=self.var_factory)
         self.main_block.add(block_model)
-        item: GenericBlockItem = GenericBlockItem(editor=self,
-                                                  var_factory=self.var_factory,
-                                                  subsys=block_model,
-                                                  api_object=self.api_object,
-                                                  mode=self.mode,
-                                                  name=item_name,
-                                                  position_changed_callback=self._build_position_changed_callback(
-                                                      block_model.uid)
-                                                  )
+        item: GenericBlockItem = GenericBlockItem(
+            editor=self,
+            var_factory=self.var_factory,
+            subsys=block_model,
+            api_object=self.api_object,
+            mode=self.mode,
+            name=item_name,
+            position_changed_callback=self._build_position_changed_callback(block_model.uid)
+        )
 
         if item_name:
             block_model.name = item_name
@@ -1857,15 +1876,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         )
         return self.create_template_block_item(template=template, x_pos=x_pos, y_pos=y_pos)
 
-
-
-
-
-
-
-
-
-
     # TODO: create PV power plant block item
 
     def create_shunt_component_emt_block_item(self,
@@ -1899,13 +1909,15 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         block_model = emt_templates.get_shunt_rlc_combo_emt_template(vf=self.var_factory,
                                                                      name=item_name,
                                                                      **template_kwargs).block
-        block_item: GenericBlockItem = GenericBlockItem(editor=self, var_factory=self.var_factory,
-                                                        subsys=block_model,
-                                                        api_object=self.api_object,
-                                                        mode=self.mode,
-                                                        name=item_name,
-                                                        position_changed_callback=self._build_position_changed_callback(
-                                                            block_model.uid))
+        block_item: GenericBlockItem = GenericBlockItem(
+            editor=self,
+            var_factory=self.var_factory,
+            subsys=block_model,
+            api_object=self.api_object,
+            mode=self.mode,
+            name=item_name,
+            position_changed_callback=self._build_position_changed_callback(block_model.uid)
+        )
 
         self.set_modal_template_metadata(block_model, kind="shunt_component_emt",
                                          config=dict(shunt_config, block_type=block_type.name))
@@ -1934,8 +1946,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         )
         self.mark_unapplied_changes()
         return block_item
-
-
 
     def create_nonlinear_resistor_emt_block_item(self, x_pos: float, y_pos: float) -> GenericBlockItem | None:
         """
@@ -1968,13 +1978,14 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             current_points=current_points,
             name=item_name,
         ).block
-        block_item: GenericBlockItem = GenericBlockItem(editor=self, var_factory=self.var_factory,
-                                                        subsys=block_model,
-                                                        api_object=self.api_object,
-                                                        mode=self.mode,
-                                                        name=item_name,
-                                                        position_changed_callback=self._build_position_changed_callback(
-                                                            block_model.uid))
+        block_item: GenericBlockItem = GenericBlockItem(
+            editor=self, var_factory=self.var_factory,
+            subsys=block_model,
+            api_object=self.api_object,
+            mode=self.mode,
+            name=item_name,
+            position_changed_callback=self._build_position_changed_callback(block_model.uid)
+        )
 
         self.set_modal_template_metadata(
             block_model,
@@ -2001,7 +2012,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         )
         self.mark_unapplied_changes()
         return block_item
-
 
     def _build_shunt_component_emt_dialog(self,
                                           block_type: BlockType,
@@ -2040,9 +2050,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             base_power_mva=base_power_mva,
             base_frequency_hz=base_frequency_hz,
         )
-
-
-
 
     def _annotate_internal_grounding_link_blocks(self, block_model: Block) -> None:
         """
@@ -2272,7 +2279,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             "connection_type": modal_config.get("connection_type", ShuntConnectionType.GroundedStar),
         })
         return template_kwargs
-
 
     def _append_emt_branch_side_connection_specs(
             self,
@@ -6252,15 +6258,15 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                         else:
                             signal_out_items[suffix] = item
                     else:
-                        item = GenericBlockItem(editor=self,
-                                                var_factory=self.var_factory,
-                                                subsys=block_model,
-                                                api_object=self.api_object,
-                                                mode=self.mode,
-                                                name=block_model.name,
-                                                position_changed_callback=self._build_position_changed_callback(
-                                                    block_model.uid)
-                                                )
+                        item = GenericBlockItem(
+                            editor=self,
+                            var_factory=self.var_factory,
+                            subsys=block_model,
+                            api_object=self.api_object,
+                            mode=self.mode,
+                            name=block_model.name,
+                            position_changed_callback=self._build_position_changed_callback(block_model.uid)
+                        )
                     self.scene.addItem(item)
                     item.setPos(QPointF(node.x, node.y))
 
@@ -6507,6 +6513,22 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 event.ignore()
         else:
             event.ignore()
+
+    def set_dark_mode(self):
+        """
+        Set the dark mode
+        :return:
+        """
+        # TODO: implement dark mode for ALL of the widgets in the scene
+        pass
+
+    def set_light_mode(self):
+        """
+        Set the dark mode
+        :return:
+        """
+        # TODO: implement light mode for ALL of the widgets in the scene
+        pass
 
 
 if __name__ == "__main__":
