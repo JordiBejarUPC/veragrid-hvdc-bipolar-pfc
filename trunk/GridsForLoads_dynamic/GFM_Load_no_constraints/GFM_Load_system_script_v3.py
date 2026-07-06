@@ -210,7 +210,7 @@ def sanitize_file_name(name: str) -> str:
 
 def get_plot_output_folder(selected_test_name: str) -> Path:
     base_folder = Path(REPO_ROOT) / "trunk" / "GridsForLoads_dynamic" / "generated_plots"
-    return base_folder / f"GFM_Load_no_constraints_{sanitize_file_name(selected_test_name)}_v3"
+    return base_folder / f"GFM_Load_no_constraints_{sanitize_file_name(selected_test_name)}_v3_2pref"
 
 
 def save_selected_figures(output_folder: Path, figures: list[tuple[str, plt.Figure]]) -> None:
