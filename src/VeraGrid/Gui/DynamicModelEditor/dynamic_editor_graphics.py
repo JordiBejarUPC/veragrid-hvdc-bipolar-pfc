@@ -969,59 +969,101 @@ class GenericBlockItem(QGraphicsRectItem):
         self.resize_handle = ResizeHandle(self)
         self.resize_to_content()
 
-    def mouseDoubleClickEvent(self, event):
-        if self.editor_window is None and self.subsys.children:
-            # if self.editor is None:
-            #     return
-            # else:
-            #     pass
-            # from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI
-            # self.editor_window = DynamicBlockEditorGUI(
-            #     var_factory=self.var_factory,
-            #     block=self.subsys,
-            #     api_object=self.api_object,
-            #     circuit=self.editor.circuit,
-            #     mode=self.mode,
-            # )
-            self.editor_window = self.editor.new_editor(
-                    var_factory=self.var_factory,
-                    block=self.subsys,
-                    api_object=self.api_object,
-                    circuit=self.editor.circuit,
-                    mode=self.mode,
-            )
+    def mousePressEvent(self, event):
+        # check if ctrl + click
+        if (
+                event.button() == Qt.MouseButton.LeftButton
+                and event.modifiers() & Qt.KeyboardModifier.ControlModifier
+        ):
+            if self.editor_window is None and self.subsys.is_eq_decomposable():
+                self.editor_window = self.editor.new_editor(
+                                    var_factory=self.var_factory,
+                                    block=self.subsys,
+                                    api_object=self.api_object,
+                                    circuit=self.editor.circuit,
+                                    mode=self.mode,
+                )
+                if self.editor_window is not None:
+                    self.editor_window.decompose_block_in_place(self.subsys)
+                    self.editor_window.diagram = self.subsys.diagram
+                    self.editor_window.main_block = self.subsys
+                    self.editor_window.rebuild_scene_from_diagram()
+                    self.editor_window.show()
 
-        elif self.editor_window is None and self.subsys.is_eq_decomposable():
-            # if self.editor is None:
-            #     return
-            # else:
-            #     pass
-            # from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI
-            # self.editor_window = DynamicBlockEditorGUI(
-            #     var_factory=self.var_factory,
-            #     block=self.subsys,
-            #     api_object=self.api_object,
-            #     circuit=self.editor.circuit,
-            #     mode=self.mode,
-            # )
-            self.editor_window = self.editor.new_editor(
-                var_factory=self.var_factory,
-                block=self.subsys,
-                api_object=self.api_object,
-                circuit=self.editor.circuit,
-                mode=self.mode,
-            )
-            self.editor_window.decompose_block_in_place(self.subsys)
-            self.editor_window.diagram = self.subsys.diagram
-            self.editor_window.main_block = self.subsys
-            self.editor_window.rebuild_scene_from_diagram()
-        else:
-            pass
+            elif self.editor_window is None:
+                self.editor_window = self.editor.new_editor(
+                                    var_factory=self.var_factory,
+                                    block=self.subsys,
+                                    api_object=self.api_object,
+                                    circuit=self.editor.circuit,
+                                    mode=self.mode,
+                )
+                if self.editor_window is not None:
+                    self.editor_window.show()
 
-        if self.editor_window is not None:
-            self.editor_window.show()
-        else:
-            pass
+            elif self.editor_window is not None:
+                self.editor_window.show()
+            else:
+                pass
+            event.accept()
+            return
+
+        # fall back to normal behaviour of mousepressevent
+        super().mousePressEvent(event)
+
+    # def mouseDoubleClickEvent(self, event):
+    #     if self.editor_window is None and self.subsys.children:
+    #         # if self.editor is None:
+    #         #     return
+    #         # else:
+    #         #     pass
+    #         # from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI
+    #         # self.editor_window = DynamicBlockEditorGUI(
+    #         #     var_factory=self.var_factory,
+    #         #     block=self.subsys,
+    #         #     api_object=self.api_object,
+    #         #     circuit=self.editor.circuit,
+    #         #     mode=self.mode,
+    #         # )
+    #         self.editor_window = self.editor.new_editor(
+    #                 var_factory=self.var_factory,
+    #                 block=self.subsys,
+    #                 api_object=self.api_object,
+    #                 circuit=self.editor.circuit,
+    #                 mode=self.mode,
+    #         )
+    #
+    #     elif self.editor_window is None and self.subsys.is_eq_decomposable():
+    #         # if self.editor is None:
+    #         #     return
+    #         # else:
+    #         #     pass
+    #         # from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI
+    #         # self.editor_window = DynamicBlockEditorGUI(
+    #         #     var_factory=self.var_factory,
+    #         #     block=self.subsys,
+    #         #     api_object=self.api_object,
+    #         #     circuit=self.editor.circuit,
+    #         #     mode=self.mode,
+    #         # )
+    #         self.editor_window = self.editor.new_editor(
+    #             var_factory=self.var_factory,
+    #             block=self.subsys,
+    #             api_object=self.api_object,
+    #             circuit=self.editor.circuit,
+    #             mode=self.mode,
+    #         )
+    #         self.editor_window.decompose_block_in_place(self.subsys)
+    #         self.editor_window.diagram = self.subsys.diagram
+    #         self.editor_window.main_block = self.subsys
+    #         self.editor_window.rebuild_scene_from_diagram()
+    #     else:
+    #         pass
+    #
+    #     if self.editor_window is not None:
+    #         self.editor_window.show()
+    #     else:
+    #         pass
 
     def close_editor_window(self) -> None:
         """

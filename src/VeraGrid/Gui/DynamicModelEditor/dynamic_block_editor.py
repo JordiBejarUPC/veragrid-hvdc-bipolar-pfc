@@ -102,6 +102,8 @@ from VeraGridEngine.Simulations.EMT.JMARTI_Sim.jmarti_runtime import set_jmarti_
 from VeraGridEngine.Simulations.EMT.JMARTI_Sim.jmarti_runtime import set_jmarti_block_runtime_data
 from VeraGrid.Gui.DynamicModelEditor.dyn_template_editor_dialogue import DynTemplatesEditorDialog
 from VeraGridEngine.enumerations import BlockType
+from VeraGridEngine.Devices.Diagrams.block_diagram import BlockDiagram
+from VeraGridEngine.Utils.Symbolic.symbolic import Var, Expr, BinOp, UnOp
 from dataclasses import dataclass
 
 
