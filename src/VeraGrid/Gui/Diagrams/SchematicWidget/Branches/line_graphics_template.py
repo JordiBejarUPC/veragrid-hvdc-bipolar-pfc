@@ -28,6 +28,7 @@ from VeraGrid.Gui.Diagrams.SchematicWidget.terminal_item import BarTerminalItem,
 from VeraGrid.Gui.Diagrams.SchematicWidget.Substation.bus_graphics import BusGraphicItem
 from VeraGrid.Gui.Diagrams.SchematicWidget.Fluid.fluid_node_graphics import FluidNodeGraphicItem
 from VeraGrid.Gui.messages import yes_no_question
+from VeraGrid.Gui.gui_functions import translate_context_menu_text
 
 from VeraGridEngine.Devices.Diagrams.schematic_layout import build_default_branch_route
 from VeraGridEngine.Devices.Substation.bus import Bus
@@ -45,6 +46,7 @@ from VeraGridEngine.Devices.Fluid.fluid_node import FluidNode
 from VeraGridEngine.Devices.Fluid.fluid_path import FluidPath
 from VeraGridEngine.Devices.types import BRANCH_TYPES
 from VeraGridEngine.enumerations import SchematicAutoRouteStyle, SchematicRouteKind, SwitchGraphicType
+
 
 if TYPE_CHECKING:  # Only imports the below statements during type checking
     from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import SchematicWidget
