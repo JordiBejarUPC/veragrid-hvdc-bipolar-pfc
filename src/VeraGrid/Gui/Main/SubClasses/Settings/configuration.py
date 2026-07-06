@@ -15,6 +15,7 @@ from VeraGrid.Gui.Diagrams.generic_graphics import set_dark_mode, set_light_mode
 from VeraGrid.Gui.i18n import (
     ApplicationLanguage,
     ApplicationTranslator,
+    get_language_display_text,
     get_language_flag_icon_path,
     language_from_name,
 )
@@ -191,55 +192,7 @@ class ConfigurationMain(ResultsMain):
         language: ApplicationLanguage
 
         for language in available_languages:
-            if language == ApplicationLanguage.SYSTEM:
-                display_text: str = self.tr("System default")
-            else:
-                if language == ApplicationLanguage.ENGLISH:
-                    display_text = self.tr("English")
-                else:
-                    if language == ApplicationLanguage.JAPANESE:
-                        display_text = self.tr("Japanese")
-                    else:
-                        if language == ApplicationLanguage.BASQUE:
-                            display_text = self.tr("Basque")
-                        else:
-                            if language == ApplicationLanguage.GALICIAN:
-                                display_text = self.tr("Galician")
-                            else:
-                                if language == ApplicationLanguage.ARABIC:
-                                    display_text = self.tr("Arabic")
-                                else:
-                                    if language == ApplicationLanguage.ITALIAN:
-                                        display_text = self.tr("Italian")
-                                    else:
-                                        if language == ApplicationLanguage.GREEK:
-                                            display_text = self.tr("Greek")
-                                        else:
-                                            if language == ApplicationLanguage.DUTCH:
-                                                display_text = self.tr("Dutch")
-                                            else:
-                                                if language == ApplicationLanguage.CATALAN:
-                                                    display_text = self.tr("Catalan")
-                                                else:
-                                                    if language == ApplicationLanguage.CHINESE:
-                                                        display_text = self.tr("Mandarin")
-                                                    else:
-                                                        if language == ApplicationLanguage.HINDI:
-                                                            display_text = self.tr("Hindi")
-                                                        else:
-                                                            if language == ApplicationLanguage.CANTONESE:
-                                                                display_text = self.tr("Cantonese")
-                                                            else:
-                                                                if language == ApplicationLanguage.GERMAN:
-                                                                    display_text = self.tr("German")
-                                                                else:
-                                                                    if language == ApplicationLanguage.FRENCH:
-                                                                        display_text = self.tr("French")
-                                                                    else:
-                                                                        if language == ApplicationLanguage.PORTUGUESE:
-                                                                            display_text = self.tr("Portuguese")
-                                                                        else:
-                                                                            display_text = self.tr("Español")
+            display_text: str = get_language_display_text(language, self.tr)
 
             # The selector stores the stable enum in item data and only decorates the row with a flag icon.
             self.language_combo_box.addItem(
@@ -643,7 +596,7 @@ class ConfigurationMain(ResultsMain):
         self.ui.menuplugins.clear()
 
         add_menu_entry(menu=self.ui.menuplugins,
-                       text=self.tr("Reload"),
+                       text=QtCore.QCoreApplication.translate("ContextMenu", "Reload"),
                        icon_path=":/Icons/icons/undo.png",
                        function_ptr=self.add_plugins)
 

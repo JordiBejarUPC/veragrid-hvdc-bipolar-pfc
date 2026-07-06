@@ -64,6 +64,38 @@
             <translation>लाइसेंस</translation>
         </message>
         <message>
+            <source>Name</source>
+            <translation>नाम</translation>
+        </message>
+        <message>
+            <source>supported version</source>
+            <translation>समर्थित संस्करण</translation>
+        </message>
+        <message>
+            <source>licensed</source>
+            <translation>लाइसेंस प्राप्त</translation>
+        </message>
+        <message>
+            <source>Not installed</source>
+            <translation>स्थापित नहीं है</translation>
+        </message>
+        <message>
+            <source>Package</source>
+            <translation>पैकेज</translation>
+        </message>
+        <message>
+            <source>Version</source>
+            <translation>संस्करण</translation>
+        </message>
+        <message>
+            <source>Installation Path</source>
+            <translation>स्थापना पथ</translation>
+        </message>
+        <message>
+            <source>Dependencies</source>
+            <translation>निर्भरताएँ</translation>
+        </message>
+        <message>
             <location filename="../AboutDialogue/about_gui.ui" line="270" />
             <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align="justify"&gt;This program comes with absolutelly no warranty. This is free software, and you are welcome to redistribute it under the conditions set by the license. VeraGrid is licensed under the &lt;a href="https://www.mozilla.org/en-US/MPL/2.0/"&gt;&lt;span style=" text-decoration: underline; color:#26a269;"&gt;Mozilla Public License V2&lt;/span&gt;&lt;/a&gt;.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
             <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align="justify"&gt;यह प्रोग्राम बिल्कुल बिना किसी वारंटी के आता है। यह मुक्त सॉफ़्टवेयर है, और आप लाइसेंस में निर्धारित शर्तों के अनुसार इसे पुनर्वितरित कर सकते हैं। VeraGrid &lt;a href="https://www.mozilla.org/en-US/MPL/2.0/"&gt;&lt;span style=" text-decoration: underline; color:#26a269;"&gt;Mozilla Public License V2&lt;/span&gt;&lt;/a&gt; के अंतर्गत लाइसेंस प्राप्त है।&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
@@ -1197,6 +1229,78 @@ li.checked::marker { content: "\2612"; }
             <location filename="../Analysis/analysis_gui.ui" line="140" />
             <source>Grid Health Dashboard</source>
             <translation>ग्रिड स्वास्थ्य डैशबोर्ड</translation>
+        </message>
+        <message>
+            <source>Unnamed grid</source>
+            <translation>अनाम ग्रिड</translation>
+        </message>
+        <message>
+            <source>{grid_name}  •  {bus_count} buses  •  {line_count} lines  •  {transformer_count} transformers</source>
+            <translation>{grid_name}  •  {bus_count} बसें  •  {line_count} लाइनें  •  {transformer_count} ट्रांसफॉर्मर</translation>
+        </message>
+        <message>
+            <source>Item</source>
+            <translation>आइटम</translation>
+        </message>
+        <message>
+            <source>Property</source>
+            <translation>गुण</translation>
+        </message>
+        <message>
+            <source>Lower</source>
+            <translation>निम्न</translation>
+        </message>
+        <message>
+            <source>Value</source>
+            <translation>मान</translation>
+        </message>
+        <message>
+            <source>Upper</source>
+            <translation>उच्च</translation>
+        </message>
+        <message>
+            <source>Index</source>
+            <translation>सूचकांक</translation>
+        </message>
+        <message>
+            <source>Auto-fix</source>
+            <translation>स्वचालित सुधार</translation>
+        </message>
+        <message>
+            <source>Balance Explorer</source>
+            <translation>संतुलन अन्वेषक</translation>
+        </message>
+        <message>
+            <source>Aggregation</source>
+            <translation>समूहीकरण</translation>
+        </message>
+        <message>
+            <source>Top N</source>
+            <translation>शीर्ष N</translation>
+        </message>
+        <message>
+            <source>Inputs analysis pending.</source>
+            <translation>इनपुट विश्लेषण लंबित है।</translation>
+        </message>
+        <message>
+            <source>All severities</source>
+            <translation>सभी गंभीरताएँ</translation>
+        </message>
+        <message>
+            <source>Divergence</source>
+            <translation>अपसरण</translation>
+        </message>
+        <message>
+            <source>All object types</source>
+            <translation>सभी ऑब्जेक्ट प्रकार</translation>
+        </message>
+        <message>
+            <source>VoltageLevel</source>
+            <translation>वोल्टेज स्तर</translation>
+        </message>
+        <message>
+            <source>Municipality</source>
+            <translation>नगरपालिका</translation>
         </message>
         <message>
             <location filename="../Analysis/analysis_gui.ui" line="133" />
@@ -5751,6 +5855,38 @@ li.checked::marker { content: "\2612"; }
         <message>
             <source>Question</source>
             <translation>प्रश्न</translation>
+        </message>
+    </context>
+
+    <context>
+        <name>SimulationsMain</name>
+        <message>
+            <source>Model v. {model_version}</source>
+            <translation>मॉडल सं. {model_version}</translation>
+        </message>
+        <message>
+            <source>idtag. {idtag}</source>
+            <translation>आईडीटैग. {idtag}</translation>
+        </message>
+        <message>
+            <source>User: {user_name}</source>
+            <translation>उपयोगकर्ता: {user_name}</translation>
+        </message>
+        <message>
+            <source>Compiling the grid...</source>
+            <translation>ग्रिड को संकलित किया जा रहा है...</translation>
+        </message>
+        <message>
+            <source>Running power flow...</source>
+            <translation>पावर फ्लो चल रहा है...</translation>
+        </message>
+    </context>
+
+    <context>
+        <name>ContextMenu</name>
+        <message>
+            <source>Reload</source>
+            <translation>पुनः लोड करें</translation>
         </message>
     </context>
 </TS>
