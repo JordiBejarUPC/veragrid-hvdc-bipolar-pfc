@@ -831,8 +831,8 @@ def get_VSM_GFL(vf: VarFactory, name: str = "G4L_VSM") -> EmtModelTemplate:
     k_p = vf.add_var(name=f"k_p_{name}")
 
     event_dict = {
-        # P_ref: vf.add_const(-0.8),
-        P_ref: vf.add_const(-0.2),
+        P_ref: vf.add_const(-0.8),
+        # P_ref: vf.add_const(-0.2),
         k_d: vf.add_const(kP * (C_pu / 2 * (1 / Zaparent) * omega_expr)),
         omega_ref: vf.add_const(omega_expr),
         H: vf.add_const(C_pu / (kH * 4)),

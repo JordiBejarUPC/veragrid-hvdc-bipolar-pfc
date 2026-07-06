@@ -430,6 +430,7 @@ class PortItem(QGraphicsPolygonItem):
         self.index: int = index
         self.total: int = total
         self.base_var: Var | None = None
+        self._validation_highlighted: bool = False
 
         self.setPos(0, 0)
 
@@ -450,6 +451,24 @@ class PortItem(QGraphicsPolygonItem):
             self.setVisible(False)
         else:
             self.setVisible(True)
+
+    def set_validation_highlighted(self, val: bool) -> None:
+        """
+        Toggle the validation overlay state for this port.
+
+        :param val: Whether the port should be shown as a validation issue.
+        :return: None.
+        """
+        self._validation_highlighted = val
+
+        # The validation overlay uses a red fill and border so missing port
+        # connections remain visible even when the section stays collapsed.
+        if self._validation_highlighted:
+            self.setBrush(QBrush(QColor("#b42318")))
+            self.setPen(QPen(QColor("#b42318"), 1.2))
+        else:
+            self.setBrush(QBrush(QColor("#40FE9F")))
+            self.setPen(QPen(QColor("#202124"), 1.2))
 
 
 class BranchingItem(QGraphicsEllipseItem):
@@ -944,6 +963,7 @@ class GenericBlockItem(QGraphicsRectItem):
         self.resize_handle: ResizeHandle | None = None
         self.resizing_from_handle = False
         self._suppress_resize: bool = False
+        self._validation_highlighted: bool = False
         self.setBrush(QBrush(editor_constants.DEFAULT_BLOCK_FILL))
         self.setPen(QPen(Qt.GlobalColor.transparent, 0))
         self.setFlags(
@@ -1150,11 +1170,14 @@ class GenericBlockItem(QGraphicsRectItem):
 
         editor_constants = _get_editor_constants(self.editor)
 
-        border_color: QColor = (
-            editor_constants.BLOCK_BORDER_SELECTED
-            if self.isSelected()
-            else editor_constants.BLOCK_BORDER
-        )
+        if self._validation_highlighted:
+            border_color: QColor = QColor("#b42318")
+        else:
+            border_color = (
+                editor_constants.BLOCK_BORDER_SELECTED
+                if self.isSelected()
+                else editor_constants.BLOCK_BORDER
+            )
 
         fill_color: QColor = self.brush().color()
 
@@ -1170,6 +1193,16 @@ class GenericBlockItem(QGraphicsRectItem):
         painter.setPen(QPen(border_color, 1.6))
         painter.setBrush(Qt.BrushStyle.NoBrush)
         painter.drawRoundedRect(body_rect, radius, radius)
+
+    def set_validation_highlighted(self, val: bool) -> None:
+        """
+        Toggle the validation overlay state for this block.
+
+        :param val: Whether the block should be outlined as a validation issue.
+        :return: None.
+        """
+        self._validation_highlighted = val
+        self.update()
 
     def _set_rect_internal(self, w, h):
         QGraphicsRectItem.setRect(self, 0, 0, w, h)
@@ -1624,6 +1657,7 @@ class BlockItem(QGraphicsRectItem):
         self.outputs: List[PortItem] = list()
         self.input_labels: List[QGraphicsTextItem] = list()
         self.output_labels: List[QGraphicsTextItem] = list()
+        self._validation_highlighted: bool = False
 
         self.setFlags(
             QGraphicsItem.GraphicsItemFlag.ItemIsMovable |
@@ -1767,9 +1801,24 @@ class BlockItem(QGraphicsRectItem):
         painter.drawRoundedRect(body_rect, radius, radius)
 
         # border
-        painter.setPen(QPen(QColor("#202124"), 1.6))
+        if self._validation_highlighted:
+            border_color: QColor = QColor("#b42318")
+        else:
+            border_color = QColor("#202124")
+
+        painter.setPen(QPen(border_color, 1.6))
         painter.setBrush(Qt.BrushStyle.NoBrush)
         painter.drawRoundedRect(body_rect, radius, radius)
+
+    def set_validation_highlighted(self, val: bool) -> None:
+        """
+        Toggle the validation overlay state for this compact block item.
+
+        :param val: Whether the block should be outlined as a validation issue.
+        :return: None.
+        """
+        self._validation_highlighted = val
+        self.update()
 
     def resize_block(self, width: float, height: float) -> None:
         pass

@@ -3,19 +3,20 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" type="image/x-icon" href="/resources/tensygrid_icon.png">
 <title>TenSyGrid — Stability Monitor</title>
 <style>
 :root {
-  --bg: #f1f5f9;
+  --bg: #EEF2F5;
   --panel: #ffffff;
-  --border: #e2e8f0;
-  --text: #0f172a;
-  --muted: #64748b;
-  --green: #10b981;
-  --yellow: #f59e0b;
-  --red: #ef4444;
-  --blue: #3b82f6;
-  --blue-dark: #2563eb;
+  --border: #D6E2EA;
+  --text: #1C3F52;
+  --muted: #A6BBC8;
+  --green: #179C7D;
+  --yellow: #B2D235;
+  --red: #E3001A;
+  --blue: #008598;
+  --blue-dark: #005B7F;
 }
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
@@ -55,10 +56,11 @@ header .meta { color: var(--muted); font-size: 13px; }
   font-size: 14px;
   white-space: nowrap;
   transition: all 0.15s;
-  color: var(--muted);
+  color: var(--text);
+  opacity: 0.7;
 }
-.tab:hover { color: var(--text); background: rgba(59,130,246,0.04); }
-.tab.active { border-bottom-color: var(--blue); color: var(--blue); }
+.tab:hover { color: var(--text); opacity: 0.9; background: rgba(0,133,152,0.04); }
+.tab.active { border-bottom-color: var(--blue); color: var(--blue); opacity: 1; }
 .content { padding: 28px 32px; max-width: 1600px; margin: 0 auto; }
 .tab-content { display: none; }
 .tab-content.active { display: block; }
@@ -109,17 +111,17 @@ header .meta { color: var(--muted); font-size: 13px; }
   opacity: 1;
   box-shadow: 0 0 24px currentColor;
 }
-.semaphore-light.green { background: var(--green); color: var(--green); }
-.semaphore-light.yellow { background: var(--yellow); color: var(--yellow); }
-.semaphore-light.red { background: var(--red); color: var(--red); }
+.semaphore-light.green { background: #10b981; color: #10b981; }
+.semaphore-light.yellow { background: #f59e0b; color: #f59e0b; }
+.semaphore-light.red { background: #ef4444; color: #ef4444; }
 .status-text {
   font-size: 28px;
   font-weight: 800;
   letter-spacing: 2px;
 }
-.status-text.stable { color: var(--green); }
-.status-text.marginal { color: var(--yellow); }
-.status-text.unstable { color: var(--red); }
+.status-text.stable { color: #10b981; }
+.status-text.marginal { color: #f59e0b; }
+.status-text.unstable { color: #ef4444; }
 .metric {
   text-align: center;
   padding: 14px 8px;
@@ -162,7 +164,7 @@ td {
   border-bottom: 1px solid var(--border);
 }
 tr:last-child td { border-bottom: none; }
-tr:hover { background: rgba(59,130,246,0.03); }
+tr:hover { background: rgba(0,133,152,0.03); }
 .badge {
   display: inline-block;
   padding: 3px 10px;
@@ -175,7 +177,7 @@ tr:hover { background: rgba(59,130,246,0.03); }
 .badge.green { background: rgba(16,185,129,0.12); color: #059669; }
 .badge.yellow { background: rgba(245,158,11,0.12); color: #d97706; }
 .badge.red { background: rgba(239,68,68,0.12); color: #dc2626; }
-.badge.blue { background: rgba(59,130,246,0.12); color: var(--blue); }
+.badge.blue { background: rgba(0,133,152,0.12); color: var(--blue); }
 canvas {
   width: 100%;
   background: var(--bg);
@@ -242,13 +244,13 @@ canvas {
 .info-btn:hover {
   border-color: var(--blue);
   color: var(--blue);
-  background: rgba(59,130,246,0.08);
+  background: rgba(0,133,152,0.08);
 }
 
 .info-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(15,23,42,0.4);
+  background: rgba(28,63,82,0.4);
   z-index: 999;
   display: none;
   align-items: center;
@@ -375,11 +377,11 @@ canvas {
 }
 .result-item:hover {
   border-color: var(--blue);
-  box-shadow: 0 0 0 3px rgba(59,130,246,0.08);
+  box-shadow: 0 0 0 3px rgba(0,133,152,0.08);
 }
 .result-item.selected {
   border-color: var(--blue);
-  background: rgba(59,130,246,0.04);
+  background: rgba(0,133,152,0.04);
 }
 .result-info {
   flex: 1;
@@ -408,19 +410,19 @@ canvas {
   font-size: 13px;
 }
 .status-indicator.running {
-  background: rgba(59,130,246,0.1);
+  background: rgba(0,133,152,0.1);
   color: var(--blue);
 }
 .status-indicator.idle {
-  background: rgba(100,116,139,0.1);
+  background: rgba(166,187,200,0.1);
   color: var(--muted);
 }
 .status-indicator.completed {
-  background: rgba(16,185,129,0.1);
+  background: rgba(23,156,125,0.1);
   color: var(--green);
 }
 .status-indicator.failed {
-  background: rgba(239,68,68,0.1);
+  background: rgba(227,0,26,0.1);
   color: var(--red);
 }
 
@@ -458,8 +460,8 @@ canvas {
 }
 
 .log-output {
-  background: #0f172a;
-  color: #94a3b8;
+  background: #1C3F52;
+  color: #A6BBC8;
   padding: 16px;
   border-radius: 8px;
   font-family: 'Monaco', 'Menlo', monospace;
@@ -475,7 +477,10 @@ canvas {
 <body>
 
 <header>
-  <h1>TENSYGRID <span style="color:var(--muted);font-weight:400">/ Stability Monitor</span></h1>
+  <div style="display:flex;align-items:center;gap:8px;min-width:280px">
+    <img src="/resources/tensygrid_logo_cropped.jpg" alt="TenSyGrid" style="height:36px">
+    <span style="color:var(--muted);font-weight:400;font-size:18px; padding-top: 10px">/ Stability Monitor</span>
+  </div>
   <div class="meta">
     <span id="grid-name">—</span>
     <span id="timestamp" style="margin-left:16px">—</span>
@@ -562,7 +567,7 @@ canvas {
             <div class="card-title">Key Metrics</div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
               <div class="metric">
-                <div id="margin-value" class="metric-value" style="color:var(--green)">—</div>
+                <div id="margin-value" class="metric-value" style="color:#10b981">—</div>
                 <div class="metric-label">Stability Margin</div>
               </div>
               <div class="metric">
@@ -697,7 +702,7 @@ canvas {
             <select id="contingency-type" style="flex:0.3">
               <option value="generator">Generator</option>
               <option value="line">Line</option>
-              <option value="load">Load</option>
+              <option value="transformer">Transformer</option>
             </select>
             <select id="contingency-element" style="flex:0.5">
               <option value="">-- Select element --</option>
@@ -752,7 +757,7 @@ canvas {
 </div>
 
 <script>
-const COLORS = ['#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6','#ec4899','#06b6d4','#84cc16','#f97316'];
+const COLORS = ['#008598','#179C7D','#B2D235','#E3001A','#8b5cf6','#ec4899','#06b6d4','#84cc16','#f97316'];
 let currentData = null;
 let eigZoom = { level: 1 };
 let eigZoomFull = { level: 1 };
@@ -992,11 +997,11 @@ function displayResults(data) {
   
   const mv = document.getElementById('margin-value');
   mv.textContent = data.margin.toExponential(4);
-  mv.style.color = data.margin < -0.001 ? 'var(--green)' : data.margin < 0.001 ? 'var(--yellow)' : 'var(--red)';
+  mv.style.color = data.margin < -0.001 ? '#10b981' : data.margin < 0.001 ? '#f59e0b' : '#ef4444';
   
   const critCount = (data.critical_modes || []).filter(m => m.critical).length;
   document.getElementById('n-critical').textContent = critCount;
-  document.getElementById('n-critical').style.color = critCount > 0 ? 'var(--red)' : 'var(--green)';
+  document.getElementById('n-critical').style.color = critCount > 0 ? '#ef4444' : '#10b981';
   
   document.getElementById('n-eigs').textContent = data.n_eigenvalues;
   document.getElementById('n-states').textContent = data.n_state_vars;
@@ -1029,19 +1034,19 @@ function displayResults(data) {
   
   if (unstableCount > 0) {
     assessmentHTML += `
-      <div style="padding:12px;background:rgba(239,68,68,0.1);border-radius:6px;border-left:4px solid var(--red)">
+      <div style="padding:12px;background:rgba(227,0,26,0.1);border-radius:6px;border-left:4px solid var(--red)">
         <strong style="color:var(--red)">⚠ Warning:</strong> ${unstableCount} eigenvalue(s) have positive real parts, indicating potential instability.
       </div>
     `;
   } else if (critCount > 0) {
     assessmentHTML += `
-      <div style="padding:12px;background:rgba(245,158,11,0.1);border-radius:6px;border-left:4px solid var(--yellow)">
+      <div style="padding:12px;background:rgba(178,210,53,0.1);border-radius:6px;border-left:4px solid var(--yellow)">
         <strong style="color:var(--yellow)">⚠ Caution:</strong> ${critCount} mode(s) have low damping (ζ < 0.05).
       </div>
     `;
   } else {
     assessmentHTML += `
-      <div style="padding:12px;background:rgba(16,185,129,0.1);border-radius:6px;border-left:4px solid var(--green)">
+      <div style="padding:12px;background:rgba(23,156,125,0.1);border-radius:6px;border-left:4px solid var(--green)">
         <strong style="color:var(--green)">✓ Good:</strong> All modes are stable with adequate damping.
       </div>
     `;
@@ -1086,12 +1091,12 @@ function renderEigenvalues(eigs, canvasId, zoomState) {
   const cx = W / 2, cy = H / 2;
   const sx = (W - 60) / (2 * reMax), sy = (H - 60) / (2 * imMax);
   
-  ctx.strokeStyle = '#cbd5e1';
+  ctx.strokeStyle = '#D6E2EA';
   ctx.lineWidth = 1;
   ctx.beginPath(); ctx.moveTo(0, cy); ctx.lineTo(W, cy); ctx.stroke();
   ctx.beginPath(); ctx.moveTo(cx, 0); ctx.lineTo(cx, H); ctx.stroke();
   
-  ctx.fillStyle = '#64748b';
+  ctx.fillStyle = '#A6BBC8';
   ctx.font = '10px sans-serif';
   const reStep = Math.ceil(reMax / 5);
   for (let i = -Math.floor(reMax); i <= Math.floor(reMax); i += reStep) {
@@ -1108,14 +1113,14 @@ function renderEigenvalues(eigs, canvasId, zoomState) {
     ctx.fillText(i.toString(), cx + 8, y + 3);
   }
   
-  ctx.strokeStyle = 'rgba(239,68,68,0.4)';
+  ctx.strokeStyle = 'rgba(227,0,26,0.4)';
   ctx.setLineDash([6, 6]);
   ctx.lineWidth = 2;
   ctx.beginPath(); ctx.moveTo(cx, 0); ctx.lineTo(cx, H); ctx.stroke();
   ctx.setLineDash([]);
   
   const dampingRatios = [0.05, 0.1, 0.2];
-  ctx.strokeStyle = 'rgba(100,116,139,0.3)';
+  ctx.strokeStyle = 'rgba(166,187,200,0.3)';
   ctx.setLineDash([4, 4]);
   ctx.lineWidth = 1.5;
   dampingRatios.forEach(zeta => {
@@ -1131,7 +1136,7 @@ function renderEigenvalues(eigs, canvasId, zoomState) {
     ctx.moveTo(cx - dx * sx, cy + dy * sy);
     ctx.lineTo(cx, cy);
     ctx.stroke();
-    ctx.fillStyle = 'rgba(100,116,139,0.6)';
+    ctx.fillStyle = 'rgba(166,187,200,0.6)';
     ctx.font = '10px sans-serif';
     const labelX = cx - Math.min(dx * sx, W / 2 - 30);
     const labelY = cy - Math.min(dy * sy, H / 2 - 20);
@@ -1139,7 +1144,7 @@ function renderEigenvalues(eigs, canvasId, zoomState) {
   });
   ctx.setLineDash([]);
   
-  ctx.fillStyle = '#64748b';
+  ctx.fillStyle = '#A6BBC8';
   ctx.font = '12px sans-serif';
   ctx.fillText('Re', W - 25, cy - 8);
   ctx.fillText('Im', cx + 8, 18);
@@ -1150,13 +1155,13 @@ function renderEigenvalues(eigs, canvasId, zoomState) {
     const y = cy - e.im * sy;
     const unstable = e.re > 0.001;
     
-    ctx.fillStyle = unstable ? '#ef4444' : '#3b82f6';
+    ctx.fillStyle = unstable ? '#E3001A' : '#008598';
     ctx.beginPath();
     ctx.arc(x, y, 6, 0, Math.PI * 2);
     ctx.fill();
     
     if (unstable) {
-      ctx.strokeStyle = 'rgba(239,68,68,0.5)';
+      ctx.strokeStyle = 'rgba(227,0,26,0.5)';
       ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.arc(x, y, 11, 0, Math.PI * 2);
@@ -1202,11 +1207,11 @@ function renderDampingFreq(eigs, zoomLevel = 1) {
   const sx = plotW / freqMax;
   const sy = plotH / (dampMaxZ - dampMinZ);
   
-  ctx.strokeStyle = '#cbd5e1';
+  ctx.strokeStyle = '#D6E2EA';
   ctx.lineWidth = 1;
   ctx.beginPath(); ctx.moveTo(ox, oy); ctx.lineTo(ox, H - 25); ctx.lineTo(W - 15, H - 25); ctx.stroke();
   
-  ctx.fillStyle = '#64748b';
+  ctx.fillStyle = '#A6BBC8';
   ctx.font = '10px sans-serif';
   const freqStep = Math.ceil(freqMax / 8);
   for (let f = 0; f <= freqMax; f += freqStep) {
@@ -1227,7 +1232,7 @@ function renderDampingFreq(eigs, zoomLevel = 1) {
   
   const zeroY = oy + (dampMaxZ - 0) * sy;
   if (zeroY > oy && zeroY < H - 25) {
-    ctx.strokeStyle = 'rgba(239,68,68,0.4)';
+    ctx.strokeStyle = 'rgba(227,0,26,0.4)';
     ctx.setLineDash([4, 4]);
     ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.moveTo(ox, zeroY); ctx.lineTo(W - 15, zeroY); ctx.stroke();
@@ -1236,11 +1241,11 @@ function renderDampingFreq(eigs, zoomLevel = 1) {
   
   const criticalY = oy + (dampMaxZ - 0.05) * sy;
   if (criticalY > oy && criticalY < H - 25) {
-    ctx.strokeStyle = 'rgba(245,158,11,0.4)';
+    ctx.strokeStyle = 'rgba(178,210,53,0.4)';
     ctx.setLineDash([4, 4]);
     ctx.beginPath(); ctx.moveTo(ox, criticalY); ctx.lineTo(W - 15, criticalY); ctx.stroke();
     ctx.setLineDash([]);
-    ctx.fillStyle = 'rgba(245,158,11,0.6)';
+    ctx.fillStyle = 'rgba(178,210,53,0.6)';
     ctx.fillText('ζ=0.05', W - 50, criticalY - 5);
   }
   
@@ -1250,13 +1255,13 @@ function renderDampingFreq(eigs, zoomLevel = 1) {
     const unstable = m.damping < 0;
     const critical = m.damping >= 0 && m.damping < 0.05;
     
-    ctx.fillStyle = unstable ? '#ef4444' : critical ? '#f59e0b' : '#10b981';
+    ctx.fillStyle = unstable ? '#E3001A' : critical ? '#B2D235' : '#179C7D';
     ctx.beginPath();
     ctx.arc(x, y, 5, 0, Math.PI * 2);
     ctx.fill();
     
     if (unstable || critical) {
-      ctx.strokeStyle = unstable ? 'rgba(239,68,68,0.5)' : 'rgba(245,158,11,0.5)';
+      ctx.strokeStyle = unstable ? 'rgba(227,0,26,0.5)' : 'rgba(178,210,53,0.5)';
       ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.arc(x, y, 9, 0, Math.PI * 2);
@@ -1274,7 +1279,7 @@ function renderEigenvalueTable(eigs) {
     const freq = _freqHz(e.im);
     const unstable = e.re > 0.001;
     const critical = Math.abs(damping) < 0.05;
-    const rowStyle = unstable ? 'background:rgba(239,68,68,0.05)' : critical ? 'background:rgba(245,158,11,0.05)' : '';
+    const rowStyle = unstable ? 'background:rgba(227,0,26,0.05)' : critical ? 'background:rgba(178,210,53,0.05)' : '';
     const dampColor = unstable ? 'color:var(--red);font-weight:700' : critical ? 'color:var(--yellow);font-weight:700' : '';
     return `<tr style="${rowStyle}">
       <td>${i + 1}</td>
@@ -1295,7 +1300,7 @@ function renderModes(modes) {
   tbody.innerHTML = modes.map((m, idx) => {
     const unstable = m.re > 0.001;
     const critical = m.damping >= 0 && m.damping < 0.05;
-    const rowStyle = unstable ? 'background:rgba(239,68,68,0.05)' : critical ? 'background:rgba(245,158,11,0.05)' : '';
+    const rowStyle = unstable ? 'background:rgba(227,0,26,0.05)' : critical ? 'background:rgba(178,210,53,0.05)' : '';
     const dampColor = unstable ? 'color:var(--red);font-weight:700' : critical ? 'color:var(--yellow);font-weight:700' : '';
     const pf = m.participation_factors || {};
     const pfEntries = Object.entries(pf);
@@ -1304,7 +1309,7 @@ function renderModes(modes) {
     const pfRowsHtml = hasParticipation 
       ? `<tr class="pf-row" id="pf-row-${idx}" style="display:none">
            <td colspan="6" style="padding:0">
-             <div style="padding:16px 24px 16px 60px;background:#f8fafc;border-left:4px solid var(--blue)">
+             <div style="padding:16px 24px 16px 60px;background:#EEF2F5;border-left:4px solid var(--blue)">
                <div style="font-size:13px;font-weight:700;color:var(--muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.5px">
                  Participation Factors
                </div>
@@ -1323,7 +1328,7 @@ function renderModes(modes) {
                        <td style="padding:6px 16px">${v.toFixed(4)}</td>
                        <td style="padding:6px 16px">
                          <div style="display:flex;align-items:center;gap:10px">
-                           <div style="width:160px;height:8px;background:#e2e8f0;border-radius:4px;overflow:hidden">
+                           <div style="width:160px;height:8px;background:#D6E2EA;border-radius:4px;overflow:hidden">
                              <div style="width:${Math.abs(v) * 100}%;height:100%;background:var(--blue);border-radius:4px"></div>
                            </div>
                            <span style="font-size:12px;color:var(--muted);min-width:36px">${(Math.abs(v) * 100).toFixed(1)}%</span>
@@ -1491,10 +1496,10 @@ function updateElementList() {
     for (let i = 0; i < n; i++) {
       elements.push({ value: `line_${i}`, label: `Line ${i}` });
     }
-  } else if (type === 'load') {
-    const n = currentData.grid_info?.n_loads || 0;
+  } else if (type === 'transformer') {
+    const n = currentData.grid_info?.n_transformers || 0;
     for (let i = 0; i < n; i++) {
-      elements.push({ value: `load_${i}`, label: `Load ${i}` });
+      elements.push({ value: `transformer_${i}`, label: `Transformer ${i}` });
     }
   }
   
@@ -1627,8 +1632,8 @@ function displayContingencyResults() {
 }
 
 function renderStatusCard(data) {
-  const statusColor = data.status === 'STABLE' ? 'var(--green)' :
-                      data.status === 'MARGINAL' ? 'var(--yellow)' : 'var(--red)';
+  const statusColor = data.status === 'STABLE' ? '#10b981' :
+                      data.status === 'MARGINAL' ? '#f59e0b' : '#ef4444';
   const statusBadge = data.status === 'STABLE' ? 'green' :
                       data.status === 'MARGINAL' ? 'yellow' : 'red';
   const unstableCount = (data.eigenvalues || []).filter(e => e.re > 0.001).length;
@@ -1653,11 +1658,11 @@ function renderStatusCard(data) {
         <div class="metric-label">Eigenvalues</div>
       </div>
       <div class="metric">
-        <div class="metric-value" style="color:${unstableCount > 0 ? 'var(--red)' : 'var(--green)'};font-size:22px">${unstableCount}</div>
+        <div class="metric-value" style="color:${unstableCount > 0 ? '#ef4444' : '#10b981'};font-size:22px">${unstableCount}</div>
         <div class="metric-label">Unstable</div>
       </div>
       <div class="metric">
-        <div class="metric-value" style="color:${criticalCount > 0 ? 'var(--yellow)' : 'var(--green)'};font-size:22px">${criticalCount}</div>
+        <div class="metric-value" style="color:${criticalCount > 0 ? '#f59e0b' : '#10b981'};font-size:22px">${criticalCount}</div>
         <div class="metric-label">Critical</div>
       </div>
     </div>
@@ -1675,8 +1680,8 @@ function generateRecommendations(before, after) {
   
   if (after.status === 'UNSTABLE' && before.status !== 'UNSTABLE') {
     html += `
-      <div style="padding:16px;background:rgba(239,68,68,0.1);border-radius:6px;border-left:4px solid var(--red);margin-bottom:16px">
-        <strong style="color:var(--red)">⚠ System became UNSTABLE</strong>
+      <div style="padding:16px;background:rgba(239,68,68,0.1);border-radius:6px;border-left:4px solid #ef4444;margin-bottom:16px">
+        <strong style="color:#ef4444">⚠ System became UNSTABLE</strong>
         <p style="margin-top:8px;color:var(--text)">This contingency causes the system to lose stability.</p>
         <div style="margin-top:12px">
           <strong>Recommended actions:</strong>
@@ -1691,8 +1696,8 @@ function generateRecommendations(before, after) {
     `;
   } else if (afterCritical > beforeCritical) {
     html += `
-      <div style="padding:16px;background:rgba(245,158,11,0.1);border-radius:6px;border-left:4px solid var(--yellow);margin-bottom:16px">
-        <strong style="color:var(--yellow)">⚠ Damping degraded</strong>
+      <div style="padding:16px;background:rgba(245,158,11,0.1);border-radius:6px;border-left:4px solid #f59e0b;margin-bottom:16px">
+        <strong style="color:#f59e0b">⚠ Damping degraded</strong>
         <p style="margin-top:8px;color:var(--text)">Critical modes increased from ${beforeCritical} to ${afterCritical}.</p>
         <div style="margin-top:12px">
           <strong>Recommended actions:</strong>
@@ -1709,8 +1714,8 @@ function generateRecommendations(before, after) {
     const marginChange = after.margin - before.margin;
     if (marginChange < -0.1) {
       html += `
-        <div style="padding:16px;background:rgba(245,158,11,0.1);border-radius:6px;border-left:4px solid var(--yellow);margin-bottom:16px">
-          <strong style="color:var(--yellow)">⚠ Stability margin reduced</strong>
+        <div style="padding:16px;background:rgba(245,158,11,0.1);border-radius:6px;border-left:4px solid #f59e0b;margin-bottom:16px">
+          <strong style="color:#f59e0b">⚠ Stability margin reduced</strong>
           <p style="margin-top:8px;color:var(--text)">Margin decreased by ${Math.abs(marginChange).toExponential(2)}.</p>
           <div style="margin-top:12px">
             <strong>Recommended actions:</strong>
@@ -1724,8 +1729,8 @@ function generateRecommendations(before, after) {
       `;
     } else {
       html += `
-        <div style="padding:16px;background:rgba(16,185,129,0.1);border-radius:6px;border-left:4px solid var(--green);margin-bottom:16px">
-          <strong style="color:var(--green)">✓ System remains stable</strong>
+        <div style="padding:16px;background:rgba(16,185,129,0.1);border-radius:6px;border-left:4px solid #10b981;margin-bottom:16px">
+          <strong style="color:#10b981">✓ System remains stable</strong>
           <p style="margin-top:8px;color:var(--text)">This contingency does not significantly affect system stability.</p>
         </div>
       `;
@@ -1912,8 +1917,8 @@ const INFO_CONTENT = {
       </ul>
       <p><strong>Colour coding:</strong></p>
       <ul>
-        <li><span style="background:rgba(239,68,68,0.12);padding:2px 8px;border-radius:4px;color:var(--red);font-weight:700">Red row</span> — unstable eigenvalue (Re &gt; 0).</li>
-        <li><span style="background:rgba(245,158,11,0.12);padding:2px 8px;border-radius:4px;color:var(--yellow);font-weight:700">Yellow row</span> — critically low damping (|ζ| &lt; 0.05).</li>
+        <li><span style="background:rgba(227,0,26,0.12);padding:2px 8px;border-radius:4px;color:var(--red);font-weight:700">Red row</span> — unstable eigenvalue (Re &gt; 0).</li>
+        <li><span style="background:rgba(178,210,53,0.12);padding:2px 8px;border-radius:4px;color:var(--yellow);font-weight:700">Yellow row</span> — critically low damping (|ζ| &lt; 0.05).</li>
       </ul>
       <p><strong>Why it matters:</strong> The table gives exact numerical values for every mode, complementing the graphical views and enabling precise reporting or comparison between operating points.</p>
     `
