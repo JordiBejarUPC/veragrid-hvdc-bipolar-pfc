@@ -53,7 +53,7 @@ class _EditorGraphicsDefaults:
     BLOCK_COMPACT_PORT_SECTION_PADDING: float = 6.0
 
 
-def _get_editor_constants(editor: "DynamicBlockEditorGUI | None") -> type[_EditorGraphicsDefaults] | "DynamicBlockEditorGUI":
+def _get_editor_constants(editor: DynamicBlockEditorGUI | None) -> type[_EditorGraphicsDefaults] | DynamicBlockEditorGUI:
     if editor is not None:
         return editor
     else:
@@ -897,16 +897,26 @@ class ElbowItem(QGraphicsEllipseItem):
 
 class GenericBlockItem(QGraphicsRectItem):
     def __init__(self,
+                 editor: DynamicBlockEditorGUI,
                  var_factory: VarFactory,
                  subsys: Block,
                  api_object,
                  mode: DynamicSimulationMode,
                  name: str,
-                 position_changed_callback=None,
-                 editor: "DynamicBlockEditorGUI | None" = None):
+                 position_changed_callback=None):
+        """
+
+        :param editor:
+        :param var_factory:
+        :param subsys:
+        :param api_object:
+        :param mode:
+        :param name:
+        :param position_changed_callback:
+        """
         super().__init__(0, 0, 100, 60)
 
-        self.editor: DynamicBlockEditorGUI | None = editor
+        self.editor: DynamicBlockEditorGUI = editor
         self.var_factory = var_factory
         self.subsys = subsys
         self.mode = mode
@@ -960,25 +970,40 @@ class GenericBlockItem(QGraphicsRectItem):
 
     def mouseDoubleClickEvent(self, event):
         if self.editor_window is None and self.subsys.children:
-            if self.editor is None:
-                return
-            else:
-                pass
-            from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI
-            self.editor_window = DynamicBlockEditorGUI(
-                var_factory=self.var_factory,
-                block=self.subsys,
-                api_object=self.api_object,
-                circuit=self.editor.circuit,
-                mode=self.mode,
+            # if self.editor is None:
+            #     return
+            # else:
+            #     pass
+            # from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI
+            # self.editor_window = DynamicBlockEditorGUI(
+            #     var_factory=self.var_factory,
+            #     block=self.subsys,
+            #     api_object=self.api_object,
+            #     circuit=self.editor.circuit,
+            #     mode=self.mode,
+            # )
+            self.editor_window = self.editor.new_editor(
+                    var_factory=self.var_factory,
+                    block=self.subsys,
+                    api_object=self.api_object,
+                    circuit=self.editor.circuit,
+                    mode=self.mode,
             )
+
         elif self.editor_window is None and self.subsys.is_eq_decomposable():
-            if self.editor is None:
-                return
-            else:
-                pass
-            from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI
-            self.editor_window = DynamicBlockEditorGUI(
+            # if self.editor is None:
+            #     return
+            # else:
+            #     pass
+            # from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI
+            # self.editor_window = DynamicBlockEditorGUI(
+            #     var_factory=self.var_factory,
+            #     block=self.subsys,
+            #     api_object=self.api_object,
+            #     circuit=self.editor.circuit,
+            #     mode=self.mode,
+            # )
+            self.editor_window = self.editor.new_editor(
                 var_factory=self.var_factory,
                 block=self.subsys,
                 api_object=self.api_object,
