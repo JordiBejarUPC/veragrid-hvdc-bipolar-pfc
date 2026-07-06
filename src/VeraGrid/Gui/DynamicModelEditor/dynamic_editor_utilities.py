@@ -108,7 +108,8 @@ def create_block_of_type(var_factory: VarFactory,
 
     # SUM / ADDER (2 inputs)
     elif block_type == BlockType.SUM:
-        blk = adder(var_factory, item_name)
+        blk = adder(var_factory = var_factory,
+                    name=item_name)
         blk.name = item_name
         return blk
 
