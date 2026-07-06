@@ -65,7 +65,10 @@ def get_blocktype2template_builder_dict():
         BlockType.ZIP_LOAD_EMT: emt_templates.LoadZIPEmtTemplate,
 
         BlockType.TRAFO_EMT: emt_templates.TransformerEmtTemplate,
-        BlockType.XFMR_TRANSFORMER: emt_templates.XfmrEmtTemplate
+        BlockType.XFMR_TRANSFORMER: emt_templates.XfmrEmtTemplate,
+
+        BlockType.EMT_PI_LINE: emt_templates.PiLineEmtTemplate,
+        BlockType.EMT_BERGERON_LINE: emt_templates.BergeronLineEmtTemplate,
 
     }
 

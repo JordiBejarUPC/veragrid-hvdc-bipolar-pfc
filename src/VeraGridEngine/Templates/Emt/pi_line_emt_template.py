@@ -16,22 +16,26 @@ from VeraGridEngine.Utils.Symbolic.block import Var, Expr
 class PiLineEmtTemplate(TemplateDefinition):
 
     def __init__(self, vf):
-        super().__init__(vf, params=[
-            TemplateProp(name="phN", units="", descr="Bool. True if the line has neutral, else False.", tpe=bool),
-            TemplateProp(name="phA", units="", descr="Bool. True if the line has phase A, else False.", tpe=bool),
-            TemplateProp(name="phB", units="", descr="Bool. True if the line has phase B, else False.", tpe=bool),
-            TemplateProp(name="phC", units="", descr="Bool. True if the line has phase C, else False.", tpe=bool),
-            TemplateProp(name="name", units="", descr="Name of the emt model.", tpe=str),
-        ])
+        super().__init__(
+            vf,
+            params=[
+                TemplateProp(name="phN", units="", descr="Whether neutral is active.", tpe=bool, value=False),
+                TemplateProp(name="phA", units="", descr="Whether phase A is active.", tpe=bool, value=True),
+                TemplateProp(name="phB", units="", descr="Whether phase B is active.", tpe=bool, value=True),
+                TemplateProp(name="phC", units="", descr="Whether phase C is active.", tpe=bool, value=True),
+                TemplateProp(name="name", units="", descr="Symbolic block name.", tpe=str, value="Pi"),
+            ]
+        )
 
     def eval(self) -> EmtModelTemplate:
+        phN: bool = self.get_value("phN")
+        phA: bool = self.get_value("phA")
+        phB: bool = self.get_value("phB")
+        phC: bool = self.get_value("phC")
+        name: str = self.get_value("name")
+
         return get_pi_line_emt_template(
-            self.vf,
-            self.get_value("phN"),
-            self.get_value("phA"),
-            self.get_value("phB"),
-            self.get_value("phC"),
-            self.get_value("name"),
+            self.vf, phN, phA, phB, phC, name,
         )
 
 def get_pi_line_emt_template(vf: VarFactory,

@@ -77,3 +77,5 @@ from VeraGridEngine.Templates.Emt.transient_source_emt_template import StepVolta
 from VeraGridEngine.Templates.Emt.fault_emt_template import FaultEmtTemplate
 from VeraGridEngine.Templates.Emt.transformer_emt_template import TransformerEmtTemplate, get_transformer_emt_template
 from VeraGridEngine.Templates.Emt.xfmr_emt_template import XfmrEmtTemplate, get_xfmr_emt_template
+from VeraGridEngine.Templates.Emt.bergeron_line_emt_template import BergeronLineEmtTemplate
+from VeraGridEngine.Templates.Emt.pi_line_emt_template import PiLineEmtTemplate

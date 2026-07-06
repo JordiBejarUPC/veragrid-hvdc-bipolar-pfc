@@ -10,6 +10,7 @@ from VeraGridEngine.Utils.Symbolic.block import Block, Var
 from VeraGridEngine.enumerations import DeviceType, EmtLineTypes, VarPowerFlowReferenceType
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
+from VeraGridEngine.Templates.template_definition import TemplateDefinition, TemplateProp
 
 
 def _build_symmetric_abc_matrix_from_sequence_values(positive_sequence_value: complex,
@@ -136,6 +137,32 @@ def _build_line_parameter_matrices_from_template_or_balanced_data(line: Any,
     l_full = np.imag(z_full) / w
     c_full = np.imag(y_full) / w
     return r_full, l_full, c_full
+
+class BergeronLineEmtTemplate(TemplateDefinition):
+
+    def __init__(self, vf):
+        super().__init__(
+            vf,
+            params=[
+                TemplateProp(name="phN", units="", descr="Whether neutral is active.", tpe=bool, value=False),
+                TemplateProp(name="phA", units="", descr="Whether phase A is active.", tpe=bool, value=True),
+                TemplateProp(name="phB", units="", descr="Whether phase B is active.", tpe=bool, value=True),
+                TemplateProp(name="phC", units="", descr="Whether phase C is active.", tpe=bool, value=True),
+                TemplateProp(name="name", units="", descr="Symbolic block name.", tpe=str, value="Bergeron"),
+            ]
+        )
+
+    def eval(self) -> EmtModelTemplate:
+        phN: bool = self.get_value("phN")
+        phA: bool = self.get_value("phA")
+        phB: bool = self.get_value("phB")
+        phC: bool = self.get_value("phC")
+        name: str = self.get_value("name")
+
+        return get_bergeron_line_emt_template(
+            self.vf, phN, phA, phB, phC, name,
+        )
+
 
 def get_bergeron_line_emt_template(
     vf: VarFactory,

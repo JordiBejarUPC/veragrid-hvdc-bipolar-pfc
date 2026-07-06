@@ -3327,84 +3327,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         return None
 
-    def create_emt_wizard_block_item(self, block_type: BlockType, x_pos, y_pos) -> GenericBlockItem | None:
-        """
-        Create and place a generic block item.
-
-        :param block_type:
-        :param x_pos:
-        :param y_pos:
-        :return:
-        """
-
-        dialog = EmtTemplateWizardDialog(self)
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            phase_n, phase_a, phase_b, phase_c = dialog.get_values()
-            count: int = self.block_counters.get(block_type, 0) + 1
-            item_name: str = f"{block_type.name}_{count}"
-            block_model = create_emt_wizard_block(phase_n=phase_n,
-                                                  phase_a=phase_a,
-                                                  phase_b=phase_b,
-                                                  phase_c=phase_c,
-                                                  var_factory=self.var_factory,
-                                                  block_type=block_type,
-                                                  item_name=item_name)
-            block_item: GenericBlockItem = GenericBlockItem(var_factory=self.var_factory,
-                                                            subsys=block_model,
-                                                            circuit=self.circuit,
-                                                            api_object=self.api_object,
-                                                            mode=self.mode,
-                                                            name=item_name,
-                                                            position_changed_callback=self._build_position_changed_callback(
-                                                                block_model.uid))
-
-            if block_model is not None:
-                self.set_modal_template_metadata(
-                    block_model,
-                    kind="emt_phase_wizard",
-                    config=dict({
-                        "block_type": block_type.name,
-                        "phase_n": phase_n,
-                        "phase_a": phase_a,
-                        "phase_b": phase_b,
-                        "phase_c": phase_c,
-                    }),
-                )
-
-                # The symbolic block has to be attached first so the graphics item can build its ports from it.
-                self.block_counters[block_type] = count
-                block_item.set_subsystem(block_model)
-                block_item.position_changed_callback = self._build_position_changed_callback(block_model.uid)
-                block_item.build_item()
-
-                # The editor block is the authoritative model container for later save/rebuild steps.
-                self.main_block.add(block_model)
-                self.scene.addItem(block_item)
-                block_item.setPos(QtCore.QPointF(x_pos, y_pos))
-
-                # Keep the diagram synchronized so later features can rebuild from the same data source.
-                self.diagram.add_node(
-                    name=item_name,
-                    x=x_pos,
-                    y=y_pos,
-                    tpe=block_type.name,
-                    device_uid=block_model.uid
-                )
-
-                self.mark_unapplied_changes()
-
-                return block_item
-            else:
-                return None
-        else:
-            return None
-
-
-
-
-
-
-
 
     @staticmethod
     def _extract_jmarti_phase_tuple(modal_config: Dict[str, Any]) -> tuple[bool, bool, bool, bool]:
@@ -4927,14 +4849,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         elif isinstance(payload, BlockType) and payload == BlockType.NONLINEAR_RESISTOR_EMT:
             return self.create_nonlinear_resistor_emt_block_item(x_pos=x_pos, y_pos=y_pos)
-
-        elif isinstance(payload, BlockType) and payload in {
-            BlockType.EMT_PI_LINE,
-            BlockType.EMT_BERGERON_LINE,
-            BlockType.EMT_JMARTI_LINE
-        }:
-
-            return self.create_emt_wizard_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
 
         elif isinstance(payload, BlockType) and payload in {
             BlockType.R_LOAD_EMT,
