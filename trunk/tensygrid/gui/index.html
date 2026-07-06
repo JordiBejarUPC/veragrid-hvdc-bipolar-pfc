@@ -697,7 +697,7 @@ canvas {
             <select id="contingency-type" style="flex:0.3">
               <option value="generator">Generator</option>
               <option value="line">Line</option>
-              <option value="load">Load</option>
+              <option value="transformer">Transformer</option>
             </select>
             <select id="contingency-element" style="flex:0.5">
               <option value="">-- Select element --</option>
@@ -1491,10 +1491,10 @@ function updateElementList() {
     for (let i = 0; i < n; i++) {
       elements.push({ value: `line_${i}`, label: `Line ${i}` });
     }
-  } else if (type === 'load') {
-    const n = currentData.grid_info?.n_loads || 0;
+  } else if (type === 'transformer') {
+    const n = currentData.grid_info?.n_transformers || 0;
     for (let i = 0; i < n; i++) {
-      elements.push({ value: `load_${i}`, label: `Load ${i}` });
+      elements.push({ value: `transformer_${i}`, label: `Transformer ${i}` });
     }
   }
   
