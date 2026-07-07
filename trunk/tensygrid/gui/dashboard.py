@@ -21,7 +21,8 @@ TENSYGRID_DIR = Path(__file__).resolve().parents[1]
 GRIDS_DIR = PROJECT_ROOT / "Grids_and_profiles" / "grids"
 PRECOMPUTED_DIR = TENSYGRID_DIR / "precomputed_builds"
 SCRIPT_PATH = TENSYGRID_DIR / "small_signal_multilinear.py"
-CONTINGENCY_SCRIPT_PATH = TENSYGRID_DIR / "run_contingency.py"
+#CONTINGENCY_SCRIPT_PATH = TENSYGRID_DIR / "run_contingency.py"
+CONTINGENCY_SCRIPT_PATH = TENSYGRID_DIR / "run_contingency_tensygrid.py"
 
 
 def _find_venv_python() -> Path:
@@ -116,6 +117,7 @@ def get_precomputed_results() -> list[dict]:
                     'margin': data.get('margin'),
                     'n_eigenvalues': data.get('n_eigenvalues', 0),
                     'modified': f.stat().st_mtime,
+                    'elapsed_seconds': data.get('elapsed_seconds'),
                 })
             except Exception as e:
                 results.append({
@@ -149,6 +151,7 @@ def load_result(filename: str) -> dict:
             'matches': data.get('matches', 0),
             'op_hash': data.get('op_hash', ''),
             'timestamp': filepath.stat().st_mtime,
+            'elapsed_seconds': data.get('elapsed_seconds'),
         }
         
         if result['stable']:

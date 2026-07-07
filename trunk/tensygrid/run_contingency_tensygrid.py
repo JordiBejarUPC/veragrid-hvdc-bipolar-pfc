@@ -28,101 +28,72 @@ from small_signal_multilinear import build_problems, run_small_signal_from_drive
 
 
 def create_contingency_problem(base_problem, element_to_trip):
-    """
-    Creates a new problem representing a contingency by modifying the Phi matrix
-    of a base problem, rather than rebuilding the model from scratch.
+    contingency_problem = copy.deepcopy(base_problem)
+    contingency_problem.grid = copy.deepcopy(base_problem.grid)
+    contingency_problem._algebraic_eqs = list(base_problem._algebraic_eqs)
+    contingency_problem._state_eqs = list(base_problem._state_eqs)
 
-    This is much faster than re-parsing and re-building for each case.
-
-    Args:
-        base_problem: The fully-built RmsProblemMultilinear for the base case.
-        element_to_trip: The grid device object (e.g., a generator or line) to be tripped.
-
-    Returns:
-        A new RmsProblemMultilinear instance representing the contingency.
-    """
-    # 1. Create a copy of the problem to avoid modifying the original.
-    contingency_problem = copy.copy(base_problem)  # Shallow copy is enough
-    contingency_problem.grid = copy.deepcopy(base_problem.grid)  # Deepcopy grid state
-
-    # Find the corresponding element in the *newly copied* grid and deactivate it there.
-    # This is critical to avoid modifying the original `base_problem`'s grid state.
-    contingent_element = contingency_problem.grid.get_device_by_id(element_to_trip.idtag)
-    if contingent_element:
-        contingent_element.active = False
-    else:
-        # This case should ideally not be reached if deepcopy is successful.
-        raise RuntimeError(f"Failed to find element {element_to_trip.idtag} in the copied grid for contingency.")
-
-    # 2. Get the live matrices and maps from the new problem.
-    # We will modify a copy of the Phi matrix.
-    phi = base_problem._phi.copy().tolil()  # Use LIL format for efficient row-wise changes
-    all_vars_map = base_problem._all_vars_map
-    all_eqs_map = base_problem._all_eqs_map
-    monomial_map = base_problem._monomial_map
-
-    # 3. Identify the algebraic variables that should be forced to zero.
-    vars_to_zero = []
-    model = element_to_trip.rms_model
     if isinstance(element_to_trip, vge.Generator):
-        # A tripped generator has zero output current.
-        # These variables are part of the generator's internal model.
-        if 'Ir' in model.vars: vars_to_zero.append(str(model.vars['Ir']))
-        if 'Ii' in model.vars: vars_to_zero.append(str(model.vars['Ii']))
+        original_collection = list(base_problem.grid.generators)
+        copied_collection = list(contingency_problem.grid.generators)
     elif isinstance(element_to_trip, vge.Line):
-        # A tripped line has zero current flow.
-        if 'Irf' in model.vars: vars_to_zero.append(str(model.vars['Irf']))
-        if 'Iif' in model.vars: vars_to_zero.append(str(model.vars['Iif']))
-        if 'Irt' in model.vars: vars_to_zero.append(str(model.vars['Irt']))
-        if 'Iit' in model.vars: vars_to_zero.append(str(model.vars['Iit']))
+        original_collection = list(base_problem.grid.lines)
+        copied_collection = list(contingency_problem.grid.lines)
+    elif isinstance(element_to_trip, vge.Transformer2W):
+        original_collection = list(base_problem.grid.transformers2w)
+        copied_collection = list(contingency_problem.grid.transformers2w)
+    else:
+        raise ValueError(f"Unsupported device type: {type(element_to_trip)}")
 
-    if not vars_to_zero:
+    try:
+        idx = original_collection.index(element_to_trip)
+    except ValueError:
+        raise RuntimeError(f"Element {element_to_trip.idtag} not found in original grid")
+
+    if idx >= len(copied_collection):
+        raise RuntimeError(f"Index {idx} out of range in copied grid")
+
+    copied_collection[idx].active = False
+
+    model = element_to_trip.rms_model
+    vars_to_zero = []
+    
+    if isinstance(element_to_trip, vge.Generator):
+        patterns = ('Irg_', 'Iig_')
+    elif isinstance(element_to_trip, (vge.Line, vge.Transformer2W)):
+        patterns = ('Irf_', 'Iif_', 'Irt_', 'Iit_')
+    else:
         raise NotImplementedError(f"Contingency logic for device type {type(element_to_trip)} is not implemented.")
 
-    # 4. For each variable, transform its defining equation to `var = 0`.
-    for var_name in vars_to_zero:
-        # Find the symbolic equation that defines this variable.
-        # This relies on the convention that each algebraic variable has one
-        # clear defining equation of the form `var - expression = 0`.
-        var_sym = model.vars[var_name.split('_')[-1]]  # Get the symbolic object
-        defining_eq_sym = None
-        for eq in model.algebraic_eqs:
-            if eq.has(var_sym):
-                # A simple check: does it look like `var - ...`?
-                if isinstance(eq, vge.BinOp) and eq.op == '-' and str(eq.a) == str(var_sym):
-                    defining_eq_sym = eq
-                    break
+    for var in model.algebraic_vars:
+        if any(var.name.startswith(p) for p in patterns):
+            vars_to_zero.append(var)
 
-        if defining_eq_sym is None:
-            print(f"Warning: Could not find a simple defining equation for '{var_name}'. Skipping transformation.",
-                  file=sys.stderr)
+    if not vars_to_zero:
+        raise RuntimeError(f"No current variables found for {type(element_to_trip).__name__} '{element_to_trip.name}'")
+
+    model_eqs = list(model.algebraic_eqs)
+    for var_sym in vars_to_zero:
+        defining_eq = None
+        for eq in model_eqs:
+            if eq.contains_var(var_sym):
+                defining_eq = eq
+                break
+
+        if defining_eq is None:
+            print(f"Warning: No equation found for '{var_sym.name}'. Skipping.", file=sys.stderr)
             continue
 
-        # Get the index of this equation in the global DAE system.
-        # This is the key step that requires the `_all_eqs_map`.
-        if defining_eq_sym not in all_eqs_map:
-            print(f"Warning: Equation '{defining_eq_sym}' for '{var_name}' not in map. Skipping.", file=sys.stderr)
-            continue
-        eq_idx = all_eqs_map[defining_eq_sym]
+        try:
+            eq_idx = contingency_problem._algebraic_eqs.index(defining_eq)
+        except ValueError:
+            try:
+                eq_idx = next(i for i, e in enumerate(contingency_problem._algebraic_eqs) if e is defining_eq)
+            except StopIteration:
+                print(f"Warning: Equation for '{var_sym.name}' not in problem. Skipping.", file=sys.stderr)
+                continue
 
-        # Get the index of the monomial for the single variable `var_name`.
-        # The monomial for a single variable `v` is `((v_idx, 1.0),)`.
-        var_idx = all_vars_map[var_name]
-        var_monomial = ((var_idx, 1.0),)
-        if var_monomial not in monomial_map:
-            print(f"Warning: Monomial for '{var_name}' not in map. Skipping.", file=sys.stderr)
-            continue
-        monomial_idx = monomial_map[var_monomial]
-
-        # --- Perform the Matrix Surgery ---
-        # a. Zero out the entire row in Phi, erasing the original equation.
-        phi[eq_idx, :] = 0.0
-        # b. Set the coefficient for the `var_name` monomial to 1.0.
-        phi[eq_idx, monomial_idx] = 1.0
-        # The equation at this row is now effectively `var_name = 0`.
-
-    # 5. Assign the modified Phi matrix to the new problem object.
-    contingency_problem._phi = phi.tocsc()  # Convert back to CSC format for performance
+        contingency_problem._algebraic_eqs[eq_idx] = var_sym
 
     return contingency_problem
 
@@ -171,7 +142,7 @@ def main():
         # The power flow of the base case is no longer valid for the post-contingency state.
         # We must re-solve the power flow for the new topology.
         print("Re-solving power flow for N-1 topology...", file=sys.stderr)
-        pf_results = vge.PowerFlow.calculate(problem_ml.grid)
+        pf_results = vge.power_flow(problem_ml.grid, vge.PowerFlowOptions(tolerance=1e-5))
 
         # Use the options from the base build
         rms_options_ml = base_rms_options_ml
