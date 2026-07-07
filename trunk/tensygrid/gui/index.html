@@ -513,6 +513,7 @@ canvas {
           <span id="sim-status" class="status-indicator idle">
             <span>Idle</span>
           </span>
+          <span id="sim-timer" style="display:none;font-size:13px;font-variant-numeric:tabular-nums;color:var(--muted);margin-left:10px;white-space:nowrap"></span>
         </div>
       </div>
     </div>
@@ -581,6 +582,10 @@ canvas {
               <div class="metric">
                 <div id="n-states" class="metric-value">—</div>
                 <div class="metric-label">State Variables</div>
+              </div>
+              <div class="metric">
+                <div id="elapsed-time" class="metric-value">—</div>
+                <div class="metric-label">Computation Time</div>
               </div>
             </div>
           </div>
@@ -713,6 +718,7 @@ canvas {
           <div id="contingency-status" class="status-indicator idle">
             <span>Ready</span>
           </div>
+          <span id="contingency-timer" style="display:none;font-size:13px;font-variant-numeric:tabular-nums;color:var(--muted);margin-left:10px;white-space:nowrap"></span>
         </div>
       </div>
 
@@ -819,12 +825,18 @@ async function loadResults() {
                          r.margin < 0.001 ? '<span class="badge yellow">MARGINAL</span>' :
                          '<span class="badge red">UNSTABLE</span>';
       const date = new Date(r.modified * 1000).toLocaleString();
+      const elapsed = r.elapsed_seconds != null 
+        ? (r.elapsed_seconds >= 60 
+            ? `${Math.floor(r.elapsed_seconds/60)}m ${Math.round(r.elapsed_seconds%60)}s` 
+            : `${r.elapsed_seconds.toFixed(1)}s`)
+        : '';
+      const elapsedPart = elapsed ? ` · ${elapsed}` : '';
       return `
         <div class="result-item" onclick="loadResult('${r.filename}', event)">
           <div class="result-info">
             <div class="result-name">${r.grid_name}</div>
             <div class="result-meta">
-              ${r.n_eigenvalues || 0} eigenvalues · Margin: ${r.margin?.toExponential(2) || 'N/A'} · ${date}
+              ${r.n_eigenvalues || 0} eigenvalues · Margin: ${r.margin?.toExponential(2) || 'N/A'}${elapsedPart} · ${date}
             </div>
           </div>
           <div class="result-actions">
@@ -852,6 +864,19 @@ async function loadResult(filename, event) {
     }
     
     document.querySelector('[data-tab="status"]').click();
+    
+    stopContingencyTimer();
+    stopSimulationTimer();
+    document.getElementById('contingency-timer').style.display = 'none';
+    document.getElementById('contingency-timer').textContent = '';
+    document.getElementById('sim-timer').style.display = 'none';
+    document.getElementById('sim-timer').textContent = '';
+    contingencyTimerStart = 0;
+    simTimerStart = 0;
+    
+    document.getElementById('after-contingency-card').style.display = 'none';
+    document.getElementById('contingency-recommendations-card').style.display = 'none';
+    document.getElementById('after-element-label').textContent = '';
   } catch (e) {
     console.error('Error loading result:', e);
     alert('Error loading result: ' + e.message);
@@ -884,6 +909,7 @@ async function runSimulation() {
   cancelBtn.style.display = 'inline-flex';
   statusEl.className = 'status-indicator running';
   statusEl.innerHTML = '<span class="spinner"></span><span>Running simulation...</span>';
+  startSimulationTimer();
   
   document.getElementById('log-card').style.display = 'block';
   document.getElementById('log-output').textContent = 'Starting simulation...\n';
@@ -902,6 +928,7 @@ async function runSimulation() {
     
     pollStatus();
   } catch (e) {
+    stopSimulationTimer();
     statusEl.className = 'status-indicator failed';
     statusEl.innerHTML = '<span>Failed: ' + e.message + '</span>';
     btn.disabled = false;
@@ -922,6 +949,7 @@ async function cancelSimulation() {
   cancelBtn.style.display = 'none';
   statusEl.className = 'status-indicator idle';
   statusEl.innerHTML = '<span>Cancelled</span>';
+  stopSimulationTimer();
 }
 
 async function pollStatus() {
@@ -937,6 +965,7 @@ async function pollStatus() {
     if (status.status === 'running') {
       setTimeout(pollStatus, 1000);
     } else if (status.status === 'completed') {
+      stopSimulationTimer();
       statusEl.className = 'status-indicator completed';
       statusEl.innerHTML = '<span>Completed</span>';
       btn.disabled = false;
@@ -955,8 +984,9 @@ async function pollStatus() {
         await loadResult(latestResult.filename, null);
       }
     } else if (status.status === 'failed') {
+      stopSimulationTimer();
       statusEl.className = 'status-indicator failed';
-      statusEl.innerHTML = '<span>Failed</span>';
+      statusEl.innerHTML = '<span>Failed: ' + (status.stderr || 'Unknown error') + '</span>';
       btn.disabled = false;
       cancelBtn.style.display = 'none';
       
@@ -1005,6 +1035,14 @@ function displayResults(data) {
   
   document.getElementById('n-eigs').textContent = data.n_eigenvalues;
   document.getElementById('n-states').textContent = data.n_state_vars;
+  
+  const elapsedEl = document.getElementById('elapsed-time');
+  if (data.elapsed_seconds != null) {
+    const s = data.elapsed_seconds;
+    elapsedEl.textContent = s >= 60 ? `${Math.floor(s/60)}m ${Math.round(s%60)}s` : `${s.toFixed(1)}s`;
+  } else {
+    elapsedEl.textContent = '—';
+  }
   
   const infoContainer = document.getElementById('grid-info-container');
   const info = data.grid_info || {};
@@ -1453,6 +1491,10 @@ function renderVoltages(buses) {
 
 let contingencyBeforeData = null;
 let contingencyAfterData = null;
+let contingencyTimerInterval = null;
+let contingencyTimerStart = 0;
+let simTimerInterval = null;
+let simTimerStart = 0;
 
 function loadContingencyElements() {
   if (!currentData) return;
@@ -1507,6 +1549,58 @@ function updateElementList() {
     elements.map(e => `<option value="${e.value}">${e.label}</option>`).join('');
 }
 
+function formatElapsed(ms) {
+  const s = Math.floor(ms / 1000);
+  const m = Math.floor(s / 60);
+  const sec = s % 60;
+  const frac = Math.floor((ms % 1000) / 100);
+  return m > 0 ? `${m}:${String(sec).padStart(2,'0')}.${frac}` : `${sec}.${frac}s`;
+}
+
+function startContingencyTimer() {
+  stopContingencyTimer();
+  const el = document.getElementById('contingency-timer');
+  contingencyTimerStart = Date.now();
+  el.style.display = 'inline';
+  el.textContent = formatElapsed(0);
+  contingencyTimerInterval = setInterval(() => {
+    el.textContent = formatElapsed(Date.now() - contingencyTimerStart);
+  }, 100);
+}
+
+function stopContingencyTimer() {
+  if (contingencyTimerInterval) {
+    clearInterval(contingencyTimerInterval);
+    contingencyTimerInterval = null;
+  }
+  const el = document.getElementById('contingency-timer');
+  if (el && contingencyTimerStart) {
+    el.textContent = formatElapsed(Date.now() - contingencyTimerStart);
+  }
+}
+
+function startSimulationTimer() {
+  stopSimulationTimer();
+  const el = document.getElementById('sim-timer');
+  simTimerStart = Date.now();
+  el.style.display = 'inline';
+  el.textContent = formatElapsed(0);
+  simTimerInterval = setInterval(() => {
+    el.textContent = formatElapsed(Date.now() - simTimerStart);
+  }, 100);
+}
+
+function stopSimulationTimer() {
+  if (simTimerInterval) {
+    clearInterval(simTimerInterval);
+    simTimerInterval = null;
+  }
+  const el = document.getElementById('sim-timer');
+  if (el && simTimerStart) {
+    el.textContent = formatElapsed(Date.now() - simTimerStart);
+  }
+}
+
 async function runContingency() {
   const type = document.getElementById('contingency-type').value;
   const element = document.getElementById('contingency-element').value;
@@ -1529,6 +1623,7 @@ async function runContingency() {
   cancelBtn.style.display = 'inline-flex';
   statusEl.className = 'status-indicator running';
   statusEl.innerHTML = '<span class="spinner"></span><span>Starting contingency simulation...</span>';
+  startContingencyTimer();
   
   contingencyBeforeData = currentData;
   
@@ -1571,6 +1666,7 @@ async function cancelContingency() {
   cancelBtn.style.display = 'none';
   statusEl.className = 'status-indicator idle';
   statusEl.innerHTML = '<span>Cancelled</span>';
+  stopContingencyTimer();
 }
 
 async function pollContingencyStatus() {
@@ -1586,6 +1682,7 @@ async function pollContingencyStatus() {
       statusEl.innerHTML = '<span class="spinner"></span><span>Running contingency simulation...</span>';
       setTimeout(pollContingencyStatus, 1000);
     } else if (status.status === 'completed') {
+      stopContingencyTimer();
       contingencyAfterData = status.data;
       displayContingencyResults();
       statusEl.className = 'status-indicator completed';
@@ -1593,8 +1690,13 @@ async function pollContingencyStatus() {
       btn.disabled = false;
       cancelBtn.style.display = 'none';
     } else if (status.status === 'failed') {
+      stopContingencyTimer();
       statusEl.className = 'status-indicator failed';
       statusEl.innerHTML = '<span>Failed: ' + (status.stderr || 'Unknown error') + '</span>';
+      btn.disabled = false;
+      cancelBtn.style.display = 'none';
+    } else if (status.status === 'idle') {
+      stopContingencyTimer();
       btn.disabled = false;
       cancelBtn.style.display = 'none';
     }
