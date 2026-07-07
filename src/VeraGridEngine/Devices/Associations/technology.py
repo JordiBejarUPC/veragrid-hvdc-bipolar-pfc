@@ -88,7 +88,7 @@ class Technology(EditableDevice):
     @reference_cost.setter
     def reference_cost(self, val: float):
         if isinstance(val, float):
-            self._reference_cost_prof = val
+            self._reference_cost = val
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a _reference_cost')
 
