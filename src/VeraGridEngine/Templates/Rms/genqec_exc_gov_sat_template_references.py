@@ -33,45 +33,45 @@ def get_genqec_rms(vfactory: VarFactory, name: str = "Genqec rms template") -> R
     # Vf: excitation voltage (from exciter)
 
 
-    inputs = [vfactory.add_var("Vm_" + name, reference=VarPowerFlowReferenceType.Vm, network_conn= True),
-              vfactory.add_var("Va_" + name, reference=VarPowerFlowReferenceType.Va, network_conn= True),
-              vfactory.add_var("Tm_" + name, shared_reference = 'tm_reference'),
-              vfactory.add_var("Vf_" + name, shared_reference = 'vf_reference')]
+    inputs = [vfactory.add_var("Vm", reference=VarPowerFlowReferenceType.Vm, network_conn= True),
+              vfactory.add_var("Va", reference=VarPowerFlowReferenceType.Va, network_conn= True),
+              vfactory.add_var("Tm", shared_reference = 'tm_reference'),
+              vfactory.add_var("Vf", shared_reference = 'vf_reference')]
 
     # ______________________________________________________________________________________
     #                                    variables
     # ______________________________________________________________________________________
 
     # State variables
-    delta = vfactory.add_var("delta" + name)  # rotor angle
-    omega = vfactory.add_var("omega" + name, 'omega_reference')  # rotor electrical speed
-    Eq1 = vfactory.add_var("Eq1" + name)  # internal emf behind Xd'
-    Ed1 = vfactory.add_var("Ed1" + name)
-    Eq_prime = vfactory.add_var("Eq_prime" + name)  # transient voltage q-axis
-    Ed_prime = vfactory.add_var("Ed_prime" + name)  # transient voltage d-axis
-    Psid_prime = vfactory.add_var("Psid_prime" + name)  # transient voltage d-axis
-    Psiq_prime = vfactory.add_var("Psiq_prime" + name)  # transient voltage d-axis
+    delta = vfactory.add_var("delta")  # rotor angle
+    omega = vfactory.add_var("omega", 'omega_reference')  # rotor electrical speed
+    Eq1 = vfactory.add_var("Eq1")  # internal emf behind Xd'
+    Ed1 = vfactory.add_var("Ed1")
+    Eq_prime = vfactory.add_var("Eq_prime")  # transient voltage q-axis
+    Ed_prime = vfactory.add_var("Ed_prime")  # transient voltage d-axis
+    Psid_prime = vfactory.add_var("Psid_prime")  # transient voltage d-axis
+    Psiq_prime = vfactory.add_var("Psiq_prime")  # transient voltage d-axis
 
     # Algebraic variables
-    Pg = vfactory.add_var('Pg' + name, 'p_reference')
-    Qg = vfactory.add_var('Qg' + name, 'q_reference')
-    Id = vfactory.add_var("Id" + name)
-    Iq = vfactory.add_var("Iq" + name)
-    Vd = vfactory.add_var("Vd" + name)
-    Vq = vfactory.add_var("Vq" + name)
-    Psid = vfactory.add_var("Psid" + name)
-    Psiq = vfactory.add_var("Psiq" + name)
-    Te = vfactory.add_var("Te" + name, 'te_reference')
-    IRPu = vfactory.add_var("IRPu" + name, 'irpu_reference')
+    Pg = vfactory.add_var('Pg', 'p_reference')
+    Qg = vfactory.add_var('Qg', 'q_reference')
+    Id = vfactory.add_var("Id")
+    Iq = vfactory.add_var("Iq")
+    Vd = vfactory.add_var("Vd")
+    Vq = vfactory.add_var("Vq")
+    Psid = vfactory.add_var("Psid")
+    Psiq = vfactory.add_var("Psiq")
+    Te = vfactory.add_var("Te", 'te_reference')
+    IRPu = vfactory.add_var("IRPu", 'irpu_reference')
 
     # Saturated resistances
-    Xd_2prime_sat = vfactory.add_var('Xd_2prime_sat' + name)
-    Xq_2prime_sat = vfactory.add_var('Xq_2prime_sat' + name)
-    Sa = vfactory.add_var('Sa' + name)
-    Sat = vfactory.add_var('Sat' + name)
-    V_qag = vfactory.add_var('V_qag' + name)
-    V_dag = vfactory.add_var('V_dag' + name)
-    Psi_ag = vfactory.add_var('Psi_ag' + name)
+    Xd_2prime_sat = vfactory.add_var('Xd_2prime_sat')
+    Xq_2prime_sat = vfactory.add_var('Xq_2prime_sat')
+    Sa = vfactory.add_var('Sa')
+    Sat = vfactory.add_var('Sat')
+    V_qag = vfactory.add_var('V_qag')
+    V_dag = vfactory.add_var('V_dag')
+    Psi_ag = vfactory.add_var('Psi_ag')
 
     # ______________________________________________________________________________________
     #                                    parameters

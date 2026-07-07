@@ -19,8 +19,8 @@ def get_load_phasor_rms_template(vfactory: VarFactory, name="Load phasor rms tem
 
     # Phasor inputs: Vr, Vi
     inputs = [
-        vfactory.add_var("Vr_" + name),
-        vfactory.add_var("Vi_" + name)
+        vfactory.add_var("Vr"),
+        vfactory.add_var("Vi")
     ]
 
     Pl0 = vfactory.add_var("Pl0")
