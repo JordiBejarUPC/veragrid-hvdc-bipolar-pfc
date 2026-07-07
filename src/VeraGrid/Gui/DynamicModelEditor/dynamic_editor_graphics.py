@@ -23,21 +23,13 @@ if TYPE_CHECKING:
     from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI
 
 
-class _EditorGraphicsDefaults:
-    BLOCK_BORDER: QColor = QColor("#202124")
+class EditorGraphicsDefaultsDark:
+    BLOCK_BORDER: QColor = QColor("white")
     BLOCK_BORDER_SELECTED: QColor = QColor("#cc6f2c")
     BLOCK_TITLE: QColor = QColor("#173042")
-    BLOCK_SHADOW: QColor = QColor(24, 42, 56, 45)
-    INPUT_PORT_FILL: QColor = QColor("#2d7dd2")
-    OUTPUT_PORT_FILL: QColor = QColor("#2a9d6f")
-    PORT_BORDER: QColor = QColor("#173042")
-    WIRE_COLOR: QColor = QColor("#202124")
-    WIRE_HOVER_COLOR: QColor = QColor("#cc6f2c")
+    WIRE_COLOR: QColor = QColor("white")
     HANDLE_FILL: QColor = QColor("#36536b")
-    DEFAULT_BLOCK_FILL: QColor = QColor("#f5fdff")
-    PAIRED_ITEM_FILL: QColor = QColor("#9fa8da")
-    BLOCK_FILL_ALL_CONNECTED: QColor = QColor("#a5d6a7")
-    BLOCK_FILL_DISCONNECTED: QColor = QColor("#ffe082")
+    BLOCK_FILL: QColor = QColor("#f5fdff")
     PORT_LABEL_COLOR: QColor = QColor("#173042")
     WIRE_ELBOW_OFFSET: float = 36.0
     PORT_LABEL_MAX_CHARS: int = 12
@@ -53,12 +45,39 @@ class _EditorGraphicsDefaults:
     BLOCK_COMPACT_PORT_SECTION_PADDING: float = 6.0
 
 
-def _get_editor_constants(editor: DynamicBlockEditorGUI | None) -> type[_EditorGraphicsDefaults] | DynamicBlockEditorGUI:
-    if editor is not None:
-        return editor
-    else:
-        return _EditorGraphicsDefaults
+class EditorGraphicsDefaultsLight:
+    BLOCK_BORDER: QColor = QColor("#202124")
+    BLOCK_BORDER_SELECTED: QColor = QColor("#cc6f2c")
+    BLOCK_TITLE: QColor = QColor("#173042")
+    WIRE_COLOR: QColor = QColor("black")
+    HANDLE_FILL: QColor = QColor("#36536b")
+    BLOCK_FILL: QColor = QColor("#f5fdff")
+    PORT_LABEL_COLOR: QColor = QColor("#173042")
+    WIRE_ELBOW_OFFSET: float = 36.0
+    PORT_LABEL_MAX_CHARS: int = 12
+    BLOCK_HEADER_HEIGHT: float = 30.0
+    BLOCK_PORT_ROW_HEIGHT: float = 20.0
+    BLOCK_PORT_SECTION_PADDING: float = 10.0
+    BLOCK_MIN_WIDTH: float = 160.0
+    BLOCK_MIN_HEIGHT: float = 70.0
+    BLOCK_COMPACT_MIN_WIDTH: float = 100.0
+    BLOCK_COMPACT_MIN_HEIGHT: float = 40.0
+    BLOCK_COMPACT_HEADER_HEIGHT: float = 20.0
+    BLOCK_COMPACT_PORT_ROW_HEIGHT: float = 14.0
+    BLOCK_COMPACT_PORT_SECTION_PADDING: float = 6.0
 
+
+def _get_editor_constants() -> type[EditorGraphicsDefaultsLight] | type[EditorGraphicsDefaultsDark] | DynamicBlockEditorGUI:
+
+    try:
+        is_dark = darkdetect.theme() == "Dark"
+    except ImportError:
+        is_dark = False
+
+    if is_dark:
+        return EditorGraphicsDefaultsDark
+    else:
+        return EditorGraphicsDefaultsLight
 
 def _new_uid() -> int:
     return uuid.uuid4().int
@@ -368,7 +387,7 @@ class Node:
 class ResizeHandle(QGraphicsRectItem):
     def __init__(self, block_item: "BlockItem | PairedItem", size: int = 10):
         super().__init__(0, 0, size, size, block_item)
-        editor_constants = _get_editor_constants(block_item.editor)
+        editor_constants = _get_editor_constants()
         self.setBrush(QBrush(editor_constants.HANDLE_FILL))
         self.setPen(QPen(QColor("#ffffff"), 1))
         self.setCursor(Qt.CursorShape.SizeFDiagCursor)
@@ -476,7 +495,7 @@ class BranchingItem(QGraphicsEllipseItem):
                  index: int,
                  radius: int = 6):
         super().__init__(-radius, -radius, 2 * radius, 2 * radius)
-        editor_constants = _get_editor_constants(subsystem.editor)
+        editor_constants = _get_editor_constants()
         fill_color: QColor = editor_constants.OUTPUT_PORT_FILL
         self.setBrush(QBrush(fill_color))
         self.setPen(QPen(editor_constants.PORT_BORDER, 1.5))
@@ -541,12 +560,15 @@ class ConnectionItem(QGraphicsPathItem):
         if isinstance(self.target_port, PortItem):
             self.target_port._update_port_visibility()
 
-        editor_constants = _get_editor_constants(self.editor)
-        self.setPen(QPen(editor_constants.WIRE_COLOR,
-                         1.5,
-                         Qt.PenStyle.SolidLine,
-                         Qt.PenCapStyle.RoundCap,
-                         Qt.PenJoinStyle.RoundJoin))
+        try:
+            is_dark = darkdetect.theme() == "Dark"
+        except ImportError:
+            is_dark = False
+
+        if is_dark:
+            self.set_dark_mode()
+        else:
+            self.set_light_mode()
         self.setAcceptHoverEvents(True)
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable, False)
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable, True)
@@ -569,6 +591,20 @@ class ConnectionItem(QGraphicsPathItem):
                 elbow_points=[(pt.x(), pt.y()) for pt in self.elbow_points]
             )
 
+    def set_dark_mode(self):
+        editor_constants = _get_editor_constants()
+        pen = self.pen()
+        pen.setColor(editor_constants.WIRE_COLOR)
+        self.setPen(pen)
+        self.update()
+
+    def set_light_mode(self):
+        editor_constants = _get_editor_constants()
+        pen = self.pen()
+        pen.setColor(editor_constants.WIRE_COLOR)
+        self.setPen(pen)
+        self.update()
+
     def update_path(self) -> None:
         path: QPainterPath = QPainterPath(self.source_port.scenePos())
 
@@ -580,7 +616,7 @@ class ConnectionItem(QGraphicsPathItem):
             path = build_orthogonal_connection_path(
                 self.source_port.scenePos(),
                 self.target_port.scenePos(),
-                _get_editor_constants(self.editor).WIRE_ELBOW_OFFSET,
+                _get_editor_constants().WIRE_ELBOW_OFFSET,
             )
 
         path.lineTo(self.target_port.scenePos())
@@ -869,14 +905,14 @@ class ConnectionItem(QGraphicsPathItem):
     def hoverEnterEvent(self, event: QtWidgets.QGraphicsSceneHoverEvent) -> None:
         QApplication.setOverrideCursor(Qt.CursorShape.PointingHandCursor)
         pen: QPen = self.pen()
-        pen.setColor(_get_editor_constants(self.editor).WIRE_HOVER_COLOR)
+        # pen.setColor(_get_editor_constants(self.editor).WIRE_HOVER_COLOR)
         pen.setWidthF(3.5)
         self.setPen(pen)
 
     def hoverLeaveEvent(self, event: QtWidgets.QGraphicsSceneHoverEvent) -> None:
         QApplication.restoreOverrideCursor()
         pen: QPen = self.pen()
-        pen.setColor(_get_editor_constants(self.editor).WIRE_COLOR)
+        # pen.setColor(_get_editor_constants(self.editor).WIRE_COLOR)
         pen.setWidthF(1.5)
         self.setPen(pen)
 
@@ -887,7 +923,7 @@ class ElbowItem(QGraphicsEllipseItem):
         super().__init__(-radius, -radius, radius * 2, radius * 2)
         self.connection_item = connection_item
         self.index = index
-        editor_constants = _get_editor_constants(connection_item.editor)
+        editor_constants = _get_editor_constants()
         self.setBrush(QBrush(editor_constants.WIRE_COLOR))
         self.setPen(QPen(QColor("#173042"), 1.5))
         self.setZValue(2)
@@ -944,8 +980,17 @@ class GenericBlockItem(QGraphicsRectItem):
         self.position_changed_callback = position_changed_callback
 
         self.name_item = QGraphicsTextItem(self.subsys.name, self)
-        editor_constants = _get_editor_constants(self.editor)
-        self.name_item.setDefaultTextColor(editor_constants.BLOCK_TITLE)
+
+        try:
+            is_dark = darkdetect.theme() == "Dark"
+        except ImportError:
+            is_dark = False
+
+        if is_dark:
+            self.set_dark_mode()
+        else:
+            self.set_light_mode()
+
         name_font: QtGui.QFont = QtGui.QFont("DejaVu Sans", 9)
         name_font.setBold(True)
         self.name_item.setFont(name_font)
@@ -956,15 +1001,13 @@ class GenericBlockItem(QGraphicsRectItem):
         self.input_labels: List[QGraphicsTextItem] = list()
         self.output_labels: List[QGraphicsTextItem] = list()
 
-        self.name_item.setDefaultTextColor(editor_constants.BLOCK_TITLE)
+
 
         self.editor_window: DynamicBlockEditorGUI | None = None
         self.resize_handle: ResizeHandle | None = None
         self.resizing_from_handle = False
         self._suppress_resize: bool = False
         self._validation_highlighted: bool = False
-        self.setBrush(QBrush(editor_constants.DEFAULT_BLOCK_FILL))
-        self.setPen(QPen(Qt.GlobalColor.transparent, 0))
         self.setFlags(
             QGraphicsItem.GraphicsItemFlag.ItemIsMovable |
             QGraphicsItem.GraphicsItemFlag.ItemIsSelectable |
@@ -987,6 +1030,18 @@ class GenericBlockItem(QGraphicsRectItem):
         self.refresh_port_metadata()
         self.resize_handle = ResizeHandle(self)
         self.resize_to_content()
+
+    def set_dark_mode(self):
+        editor_constants = _get_editor_constants()
+        self.name_item.setDefaultTextColor(editor_constants.BLOCK_TITLE)
+        self.setBrush(QBrush(editor_constants.BLOCK_FILL))
+        self.setPen(QPen(editor_constants.BLOCK_BORDER, 1))
+
+    def set_light_mode(self):
+        editor_constants = _get_editor_constants()
+        self.name_item.setDefaultTextColor(editor_constants.BLOCK_TITLE)
+        self.setBrush(QBrush(editor_constants.BLOCK_FILL))
+        self.setPen(QPen(editor_constants.BLOCK_BORDER, 1))
 
     def mousePressEvent(self, event):
         # check if ctrl + click
@@ -1109,7 +1164,7 @@ class GenericBlockItem(QGraphicsRectItem):
     def build_item(self) -> None:
         if self.subsys is not None:
             self.name_item = QGraphicsTextItem(self.name, self)
-            editor_constants = _get_editor_constants(self.editor)
+            editor_constants = _get_editor_constants()
             self.name_item.setDefaultTextColor(editor_constants.BLOCK_TITLE)
             name_font: QtGui.QFont = QtGui.QFont("DejaVu Sans", 9)
             name_font.setBold(True)
@@ -1167,7 +1222,7 @@ class GenericBlockItem(QGraphicsRectItem):
         shadow_rect: QtCore.QRectF = outer_rect.translated(2.5, 3.0)
         body_rect: QtCore.QRectF = outer_rect
 
-        editor_constants = _get_editor_constants(self.editor)
+        editor_constants = _get_editor_constants()
 
         if self._validation_highlighted:
             border_color: QColor = QColor("#b42318")
@@ -1215,7 +1270,7 @@ class GenericBlockItem(QGraphicsRectItem):
             pass
 
     def get_minimum_block_size(self) -> tuple[float, float]:
-        editor_constants = _get_editor_constants(self.editor)
+        editor_constants = _get_editor_constants()
         port_rows: int = max(len(self.inputs), len(self.outputs), 1)
         min_height: float = max(
             editor_constants.BLOCK_MIN_HEIGHT,
@@ -1254,7 +1309,7 @@ class GenericBlockItem(QGraphicsRectItem):
         label_item: QGraphicsTextItem = QGraphicsTextItem("", self)
         label_font: QtGui.QFont = QtGui.QFont("DejaVu Sans", 9)
         label_item.setFont(label_font)
-        label_item.setDefaultTextColor(_get_editor_constants(self.editor).PORT_LABEL_COLOR)
+        label_item.setDefaultTextColor(_get_editor_constants().PORT_LABEL_COLOR)
         label_item.setZValue(4)
         return label_item
 
@@ -1272,7 +1327,7 @@ class GenericBlockItem(QGraphicsRectItem):
                 variable_name = self.subsys.in_vars[i].name
                 port.setToolTip(_build_port_tooltip("Input", i, variable_name))
                 label_item = self.input_labels[i]
-                label_item.setPlainText(truncate_port_label(variable_name, _get_editor_constants(self.editor).PORT_LABEL_MAX_CHARS))
+                label_item.setPlainText(truncate_port_label(variable_name, _get_editor_constants().PORT_LABEL_MAX_CHARS))
 
             for i, port in enumerate(self.outputs):
                 if port.base_var is None:
@@ -1282,7 +1337,7 @@ class GenericBlockItem(QGraphicsRectItem):
                 variable_name = self.subsys.out_vars[i].name
                 port.setToolTip(_build_port_tooltip("Output", i, variable_name))
                 label_item = self.output_labels[i]
-                label_item.setPlainText(truncate_port_label(variable_name, _get_editor_constants(self.editor).PORT_LABEL_MAX_CHARS))
+                label_item.setPlainText(truncate_port_label(variable_name, _get_editor_constants().PORT_LABEL_MAX_CHARS))
         else:
             pass
 
@@ -1367,16 +1422,23 @@ class PairedItem(QGraphicsPolygonItem):
         self._is_signal_in: bool = bool(self.subsys.in_vars) and not bool(self.subsys.out_vars)
 
         self.name_item = QGraphicsTextItem(self.subsys.name, self)
-        editor_constants = _get_editor_constants(self.editor)
-        self.name_item.setDefaultTextColor(editor_constants.BLOCK_TITLE)
+
+        try:
+            is_dark = darkdetect.theme() == "Dark"
+        except ImportError:
+            is_dark = False
+
+        if is_dark:
+            self.set_dark_mode()
+        else:
+            self.set_light_mode()
+
         name_font: QtGui.QFont = QtGui.QFont("DejaVu Sans", 7)
         name_font.setBold(True)
         self.name_item.setFont(name_font)
 
         self.inputs: List[PortItem] = list()
         self.outputs: List[PortItem] = list()
-        self.setBrush(QBrush(editor_constants.DEFAULT_BLOCK_FILL))
-        self.setPen(QPen(Qt.GlobalColor.transparent, 0))
         self.setFlags(
             QGraphicsItem.GraphicsItemFlag.ItemIsMovable |
             QGraphicsItem.GraphicsItemFlag.ItemIsSelectable |
@@ -1391,6 +1453,18 @@ class PairedItem(QGraphicsPolygonItem):
 
         self.refresh_port_metadata()
         self._build_polygon()
+
+    def set_dark_mode(self):
+        editor_constants = _get_editor_constants()
+        self.name_item.setDefaultTextColor(editor_constants.BLOCK_TITLE)
+        self.setBrush(QBrush(editor_constants.BLOCK_FILL))
+        self.setPen(QPen(editor_constants.BLOCK_BORDER, 1))
+
+    def set_light_mode(self):
+        editor_constants = _get_editor_constants()
+        self.name_item.setDefaultTextColor(editor_constants.BLOCK_TITLE)
+        self.setBrush(QBrush(editor_constants.BLOCK_FILL))
+        self.setPen(QPen(editor_constants.BLOCK_BORDER, 1))
 
     def rect(self) -> QtCore.QRectF:
         return self.polygon().boundingRect()
@@ -1466,12 +1540,12 @@ class PairedItem(QGraphicsPolygonItem):
             self._is_signal_in = bool(self.subsys.in_vars) and not bool(self.subsys.out_vars)
 
             self.name_item = QGraphicsTextItem(self.name, self)
-            editor_constants = _get_editor_constants(self.editor)
+            editor_constants = _get_editor_constants()
             self.name_item.setDefaultTextColor(editor_constants.BLOCK_TITLE)
             name_font: QtGui.QFont = QtGui.QFont("DejaVu Sans", 7)
             name_font.setBold(True)
             self.name_item.setFont(name_font)
-            self.setBrush(QBrush(editor_constants.DEFAULT_BLOCK_FILL))
+            self.setBrush(QBrush(editor_constants.BLOCK_FILL))
 
             n_inputs: int = len(self.subsys.in_vars)
             n_outputs: int = len(self.subsys.out_vars)
@@ -1493,7 +1567,7 @@ class PairedItem(QGraphicsPolygonItem):
               option: QtWidgets.QStyleOptionGraphicsItem,
               widget: Optional[QWidget] = None) -> None:
         polygon: QtGui.QPolygonF = self.polygon()
-        editor_constants = _get_editor_constants(self.editor)
+        editor_constants = _get_editor_constants()
         border_color: QColor = editor_constants.BLOCK_BORDER_SELECTED if self.isSelected() else editor_constants.BLOCK_BORDER
         fill_color: QColor = self.brush().color()
 
@@ -1652,6 +1726,17 @@ class BlockItem(QGraphicsRectItem):
         self.subsys: Block | None = None
         self.editor_window: DynamicBlockEditorGUI | None = None
         self.name_item: QGraphicsTextItem | None = None
+
+        try:
+            is_dark = darkdetect.theme() == "Dark"
+        except ImportError:
+            is_dark = False
+
+        if is_dark:
+            self.set_dark_mode()
+        else:
+            self.set_light_mode()
+
         self.inputs: List[PortItem] = list()
         self.outputs: List[PortItem] = list()
         self.input_labels: List[QGraphicsTextItem] = list()
@@ -1677,13 +1762,27 @@ class BlockItem(QGraphicsRectItem):
             )
         )
 
+    def set_dark_mode(self):
+        editor_constants = _get_editor_constants()
+        if self.name_item is not None:
+            self.name_item.setDefaultTextColor(editor_constants.BLOCK_TITLE)
+        self.setBrush(QBrush(editor_constants.BLOCK_FILL))
+        self.setPen(QPen(editor_constants.BLOCK_BORDER, 1))
+
+    def set_light_mode(self):
+        editor_constants = _get_editor_constants()
+        if self.name_item is not None:
+            self.name_item.setDefaultTextColor(editor_constants.BLOCK_TITLE)
+        self.setBrush(QBrush(editor_constants.BLOCK_FILL))
+        self.setPen(QPen(editor_constants.BLOCK_BORDER, 1))
+
     def set_subsystem(self, block: Block) -> None:
         self.subsys = block
 
     def build_item(self) -> None:
         if self.subsys is not None:
             self.name_item = QGraphicsTextItem(self.name, self)
-            editor_constants = _get_editor_constants(self.editor)
+            editor_constants = _get_editor_constants()
             self.name_item.setDefaultTextColor(editor_constants.BLOCK_TITLE)
             name_font: QtGui.QFont = QtGui.QFont("DejaVu Sans", 7)
             name_font.setBold(True)
@@ -1705,12 +1804,12 @@ class BlockItem(QGraphicsRectItem):
         label_item: QGraphicsTextItem = QGraphicsTextItem("", self)
         label_font: QtGui.QFont = QtGui.QFont("DejaVu Sans", 7)
         label_item.setFont(label_font)
-        label_item.setDefaultTextColor(_get_editor_constants(self.editor).PORT_LABEL_COLOR)
+        label_item.setDefaultTextColor(_get_editor_constants().PORT_LABEL_COLOR)
         label_item.setZValue(4)
         return label_item
 
     def get_minimum_block_size(self) -> tuple[float, float]:
-        editor_constants = _get_editor_constants(self.editor)
+        editor_constants = _get_editor_constants()
         port_rows: int = max(len(self.inputs), len(self.outputs), 1)
         min_height: float = max(
             editor_constants.BLOCK_COMPACT_MIN_HEIGHT,
@@ -1931,6 +2030,16 @@ class RoundBaseArithmeticOpItem(QGraphicsEllipseItem):
         self.input_labels: List[QGraphicsTextItem] = list()
         self._input_signs: List[str] = list()
 
+        try:
+            is_dark = darkdetect.theme() == "Dark"
+        except ImportError:
+            is_dark = False
+
+        if is_dark:
+            self.set_dark_mode()
+        else:
+            self.set_light_mode()
+
         n_inputs = len(self.subsys.in_vars)
         if n_inputs > 3:
             raise ValueError("SumItem only supports up to 3 input ports")
@@ -1961,6 +2070,18 @@ class RoundBaseArithmeticOpItem(QGraphicsEllipseItem):
             QGraphicsItem.GraphicsItemFlag.ItemSendsScenePositionChanges
         )
         self.setAcceptHoverEvents(True)
+
+    def set_dark_mode(self):
+        editor_constants = _get_editor_constants()
+        self.name_item.setDefaultTextColor(editor_constants.BLOCK_TITLE)
+        self.setBrush(QBrush(editor_constants.BLOCK_BORDER))
+        self.setPen(QPen(editor_constants.BLOCK_FILL, 1))
+
+    def set_light_mode(self):
+        editor_constants = _get_editor_constants()
+        self.name_item.setDefaultTextColor(editor_constants.BLOCK_TITLE)
+        self.setBrush(QBrush(editor_constants.BLOCK_BORDER))
+        self.setPen(QPen(editor_constants.BLOCK_FILL, 1))
 
     def _walk_sum_expr(self, expr: Expr, sign: int, result: Dict[int, int]) -> None:
         if isinstance(expr, Var):
@@ -2141,6 +2262,12 @@ class RectBaseArithmeticOpItem(QGraphicsRectItem):
             QGraphicsItem.GraphicsItemFlag.ItemSendsScenePositionChanges
         )
         self.setAcceptHoverEvents(True)
+
+    def set_dark_mode(self):
+        pass
+
+    def set_light_mode(self):
+        pass
 
     def _walk_sum_expr(self, expr: Expr, sign: int, result: Dict[int, int]) -> None:
         if isinstance(expr, Var):

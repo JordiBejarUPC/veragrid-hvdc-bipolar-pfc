@@ -6918,16 +6918,22 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         Set the dark mode
         :return:
         """
-        # TODO: implement dark mode for ALL of the widgets in the scene
-        pass
+        for item in self.scene.items():
+            if isinstance(item, (GenericBlockItem, PairedItem, ConnectionItem, RectBaseArithmeticOpItem, RoundBaseArithmeticOpItem)):
+                item.set_dark_mode()
+
+
+
 
     def set_light_mode(self):
         """
         Set the dark mode
         :return:
         """
-        # TODO: implement light mode for ALL of the widgets in the scene
-        pass
+        for item in self.scene.items():
+            if isinstance(item, (GenericBlockItem, PairedItem, ConnectionItem, RectBaseArithmeticOpItem,RoundBaseArithmeticOpItem)):
+                item.set_light_mode()
+
 
 
 if __name__ == "__main__":
