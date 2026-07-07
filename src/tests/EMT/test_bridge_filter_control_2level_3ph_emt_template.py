@@ -29,10 +29,10 @@ def test_bridge_filter_control_2level_3ph_template_builds_and_exposes_expected_b
     templ = get_bridge_filter_control_2level_3ph_emt_template(vf=vf, name="bridge_filter_control_case")
     problem = GenericEmtProblem(sys_block=templ.block, glob_time=vf.add_var("t_bridge_filter_control_case"),static_parameter_values_mapping=static_parameter_values_mapping)
 
-    assert find_name_in_block("gate_a_bridge_filter_control_case_plant_bridge", templ.block) is not None
-    assert find_name_in_block("i_A_bridge_filter_control_case_plant", templ.block) is not None
-    assert find_name_in_block("theta_pll_bridge_filter_control_case", templ.block) is not None
-    assert find_name_in_block("v_cmd_d_bridge_filter_control_case", templ.block) is not None
+    assert find_name_in_block("gate_a", templ.block) is not None
+    assert find_name_in_block("i_A", templ.block) is not None
+    assert find_name_in_block("theta_pll", templ.block) is not None
+    assert find_name_in_block("v_cmd_d", templ.block) is not None
     assert len(problem.get_runtime_mode_parameters()) == 3
 
 
@@ -48,9 +48,9 @@ def test_bridge_filter_control_2level_3ph_template_exposes_bridge_pwm_variables(
     problem = GenericEmtProblem(sys_block=templ.block, glob_time=vf.add_var("t_bridge_filter_control_case_pwm"),static_parameter_values_mapping=static_parameter_values_mapping)
     mode_names = [var.name for var in problem.get_runtime_mode_parameters()]
 
-    assert find_name_in_block("m_a_bridge_filter_control_case_plant_bridge", problem.sys_block) is not None
-    assert find_name_in_block("m_b_bridge_filter_control_case_plant_bridge", problem.sys_block) is not None
-    assert find_name_in_block("m_c_bridge_filter_control_case_plant_bridge", problem.sys_block) is not None
-    assert "gate_a_mode_bridge_filter_control_case_plant_bridge" in mode_names
-    assert "gate_b_mode_bridge_filter_control_case_plant_bridge" in mode_names
-    assert "gate_c_mode_bridge_filter_control_case_plant_bridge" in mode_names
+    assert find_name_in_block("m_a", problem.sys_block) is not None
+    assert find_name_in_block("m_b", problem.sys_block) is not None
+    assert find_name_in_block("m_c", problem.sys_block) is not None
+    assert "gate_a_mode" in mode_names
+    assert "gate_b_mode" in mode_names
+    assert "gate_c_mode" in mode_names

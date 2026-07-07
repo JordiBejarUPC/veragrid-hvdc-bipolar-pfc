@@ -559,16 +559,16 @@ plt.show()
 
 
 #
-v_A_0 = find_name_in_block("v_A_Bus0_emt_template", bus0.emt_model)
-v_B_0 = find_name_in_block("v_B_Bus0_emt_template", bus0.emt_model)
-v_C_0 = find_name_in_block("v_C_Bus0_emt_template", bus0.emt_model)
+v_A_0 = find_name_in_block("v_A", bus0.emt_model)
+v_B_0 = find_name_in_block("v_B", bus0.emt_model)
+v_C_0 = find_name_in_block("v_C", bus0.emt_model)
 v_A_0_plt = y[:, problem.get_var_idx(v_A_0)]
 v_B_0_plt = y[:, problem.get_var_idx(v_B_0)]
 v_C_0_plt = y[:, problem.get_var_idx(v_C_0)]
 
-v_A_1 = find_name_in_block("v_A_Bus1_emt_template", bus1.emt_model)
-v_B_1 = find_name_in_block("v_B_Bus1_emt_template", bus1.emt_model)
-v_C_1 = find_name_in_block("v_C_Bus1_emt_template", bus1.emt_model)
+v_A_1 = find_name_in_block("v_A", bus1.emt_model)
+v_B_1 = find_name_in_block("v_B", bus1.emt_model)
+v_C_1 = find_name_in_block("v_C", bus1.emt_model)
 v_A_1_plt = y[:, problem.get_var_idx(v_A_1)]
 v_B_1_plt = y[:, problem.get_var_idx(v_B_1)]
 v_C_1_plt = y[:, problem.get_var_idx(v_C_1)]
@@ -601,7 +601,7 @@ plt.tight_layout()
 print("Generating plots...")
 plt.show()
 
-theta = find_name_in_block("theta_emt_thevenin_eq_generator_template", gen_mdl)
+theta = find_name_in_block("theta", gen_mdl)
 theta_plt = y[:, problem.get_var_idx(theta)]
 
 plt.figure(figsize=(12, 8))
@@ -619,16 +619,16 @@ plt.tight_layout()
 print("Generating plots...")
 plt.show()
 
-i_A_gen = find_name_in_block("i_A_emt_thevenin_eq_generator_template", gen_mdl)
-i_B_gen = find_name_in_block("i_B_emt_thevenin_eq_generator_template", gen_mdl)
-i_C_gen = find_name_in_block("i_C_emt_thevenin_eq_generator_template", gen_mdl)
+i_A_gen = find_name_in_block("i_A", gen_mdl)
+i_B_gen = find_name_in_block("i_B", gen_mdl)
+i_C_gen = find_name_in_block("i_C", gen_mdl)
 i_A_gen_plt = y[:, problem.get_var_idx(i_A_gen)]
 i_B_gen_plt = y[:, problem.get_var_idx(i_B_gen)]
 i_C_gen_plt = y[:, problem.get_var_idx(i_C_gen)]
 
-i_A_load = find_name_in_block("i_A_R_shunt_3ph", load_mdl)
-i_B_load = find_name_in_block("i_B_R_shunt_3ph", load_mdl)
-i_C_load = find_name_in_block("i_C_R_shunt_3ph", load_mdl)
+i_A_load = find_name_in_block("i_A", load_mdl)
+i_B_load = find_name_in_block("i_B", load_mdl)
+i_C_load = find_name_in_block("i_C", load_mdl)
 i_A_load_plt = y[:, problem.get_var_idx(i_A_load)]
 i_B_load_plt = y[:, problem.get_var_idx(i_B_load)]
 i_C_load_plt = y[:, problem.get_var_idx(i_C_load)]

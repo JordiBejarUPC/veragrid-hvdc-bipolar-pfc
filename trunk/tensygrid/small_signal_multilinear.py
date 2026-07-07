@@ -282,6 +282,9 @@ def _hash_operating_point(x: np.ndarray) -> str:
 
 
 def main() -> None:
+    import time
+    t_start = time.perf_counter()
+    
     grid_filename = sys.argv[1] if len(sys.argv) > 1 else "IEEE 9 Bus.gridcal"
     problem_ml, problem_ph, pf_results, rms_options_ml, rms_options_ph = build_problems(grid_filename=grid_filename)
     x = problem_ml.get_x0()
@@ -393,6 +396,7 @@ def main() -> None:
         'grid_info': grid_info,
         'n_eigenvalues': len(fin_drv_ml),
         'n_state_vars': len(x),
+        'elapsed_seconds': round(time.perf_counter() - t_start, 2),
     }
     
     output_dir = Path('precomputed_builds')

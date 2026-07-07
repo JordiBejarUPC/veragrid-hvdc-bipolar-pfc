@@ -20,14 +20,14 @@ def test_jmarti_line_emt_template_exposes_active_phase_terminal_voltages_and_his
 
     assert templ.block.name == EmtLineTypes.J_Marti.value
     assert input_names == [
-        "vf_A_JMartiCase",
-        "vf_B_JMartiCase",
-        "vt_A_JMartiCase",
-        "vt_B_JMartiCase",
+        "vf_A",
+        "vf_B",
+        "vt_A",
+        "vt_B",
     ]
     assert history_names == [
-        "Ih_f_JMartiCase_A",
-        "Ih_f_JMartiCase_B",
-        "Ih_t_JMartiCase_A",
-        "Ih_t_JMartiCase_B",
+        "Ih_f_A",
+        "Ih_f_B",
+        "Ih_t_A",
+        "Ih_t_B",
     ]

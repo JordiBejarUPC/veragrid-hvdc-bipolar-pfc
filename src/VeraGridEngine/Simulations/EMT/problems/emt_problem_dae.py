@@ -5652,18 +5652,18 @@ class EmtProblemDae(EmtProblemTemplate):
         else:
             pass
 
-        if find_name_in_block(f"i_f_A_{mdl.name}", mdl) is not None:
-            self.set_internal_init_if_exists(mdl, f"i_f_A_{mdl.name}", from_phase_currents_inst.get("A", 0.0))
-            self.set_internal_init_if_exists(mdl, f"i_f_B_{mdl.name}", from_phase_currents_inst.get("B", 0.0))
-            self.set_internal_init_if_exists(mdl, f"i_f_C_{mdl.name}", from_phase_currents_inst.get("C", 0.0))
-            self.set_internal_init_if_exists(mdl, f"i_t_A_{mdl.name}", to_phase_currents_inst.get("A", 0.0))
-            self.set_internal_init_if_exists(mdl, f"i_t_B_{mdl.name}", to_phase_currents_inst.get("B", 0.0))
-            self.set_internal_init_if_exists(mdl, f"i_t_C_{mdl.name}", to_phase_currents_inst.get("C", 0.0))
+        if find_name_in_block("i_f_A", mdl) is not None:
+            self.set_internal_init_if_exists(mdl, "i_f_A", from_phase_currents_inst.get("A", 0.0))
+            self.set_internal_init_if_exists(mdl, "i_f_B", from_phase_currents_inst.get("B", 0.0))
+            self.set_internal_init_if_exists(mdl, "i_f_C", from_phase_currents_inst.get("C", 0.0))
+            self.set_internal_init_if_exists(mdl, "i_t_A", to_phase_currents_inst.get("A", 0.0))
+            self.set_internal_init_if_exists(mdl, "i_t_B", to_phase_currents_inst.get("B", 0.0))
+            self.set_internal_init_if_exists(mdl, "i_t_C", to_phase_currents_inst.get("C", 0.0))
         else:
-            if find_name_in_block(f"i_ser_A_{mdl.name}", mdl) is not None:
-                self.set_internal_init_if_exists(mdl, f"i_ser_A_{mdl.name}", from_phase_currents_inst.get("A", 0.0))
-                self.set_internal_init_if_exists(mdl, f"i_ser_B_{mdl.name}", from_phase_currents_inst.get("B", 0.0))
-                self.set_internal_init_if_exists(mdl, f"i_ser_C_{mdl.name}", from_phase_currents_inst.get("C", 0.0))
+            if find_name_in_block("i_ser_A", mdl) is not None:
+                self.set_internal_init_if_exists(mdl, "i_ser_A", from_phase_currents_inst.get("A", 0.0))
+                self.set_internal_init_if_exists(mdl, "i_ser_B", from_phase_currents_inst.get("B", 0.0))
+                self.set_internal_init_if_exists(mdl, "i_ser_C", from_phase_currents_inst.get("C", 0.0))
             else:
                 pass
 
@@ -6933,7 +6933,7 @@ class EmtProblemDae(EmtProblemTemplate):
                     model_name: str = _get_block_name(mdl)
                     seed_from_pf: float = _get_internal_runtime_default(
                         mdl,
-                        f"switch_seed_from_pf_{model_name}",
+                        "switch_seed_from_pf",
                         1.0,
                     )
 
@@ -6942,11 +6942,11 @@ class EmtProblemDae(EmtProblemTemplate):
                     else:
                         initial_closed = _get_internal_mode_default(
                             mdl,
-                            f"switch_closed_mode_{model_name}",
+                            "switch_closed_mode",
                             1.0,
                         )
 
-                    self.set_internal_mode_if_exists(mdl, f"switch_closed_mode_{model_name}", initial_closed)
+                    self.set_internal_mode_if_exists(mdl, "switch_closed_mode", initial_closed)
             else:
                 pass
 

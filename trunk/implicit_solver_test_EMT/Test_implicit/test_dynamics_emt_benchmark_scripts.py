@@ -957,9 +957,9 @@ def build_zipload_temporal_series(bundle: SolverTrajectoryBundle) -> List[Tempor
                 problem,
                 y_values,
                 (
-                    zipload_script.find_name_in_block("i_A_ZIP_Load_EMT_3ph", zipload_script.load_mdl),
-                    zipload_script.find_name_in_block("i_B_ZIP_Load_EMT_3ph", zipload_script.load_mdl),
-                    zipload_script.find_name_in_block("i_C_ZIP_Load_EMT_3ph", zipload_script.load_mdl),
+                    zipload_script.find_name_in_block("i_A", zipload_script.load_mdl),
+                    zipload_script.find_name_in_block("i_B", zipload_script.load_mdl),
+                    zipload_script.find_name_in_block("i_C", zipload_script.load_mdl),
                 ),
             ),
             9.0e-2,
@@ -968,7 +968,7 @@ def build_zipload_temporal_series(bundle: SolverTrajectoryBundle) -> List[Tempor
     traces.append(
         TemporalTraceSeries(
             "generator_theta",
-            y_values[:, problem.get_var_idx(zipload_script.find_name_in_block("theta_emt_thevenin_eq_generator_template", zipload_script.gen_mdl))],
+            y_values[:, problem.get_var_idx(zipload_script.find_name_in_block("theta", zipload_script.gen_mdl))],
             8.0e-2,
         )
     )
@@ -997,9 +997,9 @@ def build_rload_temporal_series(bundle: SolverTrajectoryBundle) -> List[Temporal
                 problem,
                 y_values,
                 (
-                    rload_script.find_name_in_block("i_A_Shunt_R_3ph", rload_script.load_mdl),
-                    rload_script.find_name_in_block("i_B_Shunt_R_3ph", rload_script.load_mdl),
-                    rload_script.find_name_in_block("i_C_Shunt_R_3ph", rload_script.load_mdl),
+                    rload_script.find_name_in_block("i_A", rload_script.load_mdl),
+                    rload_script.find_name_in_block("i_B", rload_script.load_mdl),
+                    rload_script.find_name_in_block("i_C", rload_script.load_mdl),
                 ),
             ),
             5.0e-2,
@@ -1030,9 +1030,9 @@ def build_event_temporal_series(bundle: SolverTrajectoryBundle) -> List[Temporal
                 problem,
                 y_values,
                 (
-                    emt_event_script.find_name_in_block("i_A_Shunt_R_3ph", emt_event_script.load_mdl),
-                    emt_event_script.find_name_in_block("i_B_Shunt_R_3ph", emt_event_script.load_mdl),
-                    emt_event_script.find_name_in_block("i_C_Shunt_R_3ph", emt_event_script.load_mdl),
+                    emt_event_script.find_name_in_block("i_A", emt_event_script.load_mdl),
+                    emt_event_script.find_name_in_block("i_B", emt_event_script.load_mdl),
+                    emt_event_script.find_name_in_block("i_C", emt_event_script.load_mdl),
                 ),
             ),
             7.0e-2,

@@ -6,7 +6,7 @@ import os
 import sys
 import chardet
 import subprocess
-from PySide6 import QtWidgets
+from PySide6 import QtCore, QtWidgets
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QClipboard
 from typing import List
@@ -99,6 +99,18 @@ def sanitize_tsv_field(text: str) -> str:
     return text.strip()
 
 
+def translate_about_dialog(source_text: str, disambiguation: str | None = None, n: int = -1) -> str:
+    """
+    Translate one runtime About dialog string through the generated UI context.
+
+    :param source_text: Source string to translate.
+    :param disambiguation: Optional Qt disambiguation text.
+    :param n: Optional plural parameter.
+    :return: Translated text.
+    """
+    return QtCore.QCoreApplication.translate("AboutDialog", source_text, disambiguation, n)
+
+
 class AboutDialogueGuiGUI(QtWidgets.QDialog):
     """
     AboutDialogueGuiGUI
@@ -162,6 +174,17 @@ class AboutDialogueGuiGUI(QtWidgets.QDialog):
         self.ui.copyLibsButton.clicked.connect(self.copy_libs)
 
         self.show_license()
+
+    def tr(self, source_text: str, disambiguation: str | None = None, n: int = -1) -> str:
+        """
+        Translate runtime strings through the ``AboutDialog`` catalog context.
+
+        :param source_text: Source string to translate.
+        :param disambiguation: Optional Qt disambiguation text.
+        :param n: Optional plural parameter.
+        :return: Translated text.
+        """
+        return translate_about_dialog(source_text, disambiguation, n)
 
     def fill_optional_libs(self):
         """

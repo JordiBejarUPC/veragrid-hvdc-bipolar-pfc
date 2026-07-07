@@ -232,8 +232,8 @@ def get_ground_emt_template(vf: VarFactory, name: str = "ground_emt") -> EmtMode
     templ.name = name
     templ.block.name = name
 
-    neutral_voltage_var: Var = vf.add_var(f"v_N_{name}")
-    ground_current_var: Var = vf.add_var(f"i_N_{name}")
+    neutral_voltage_var: Var = vf.add_var(f"v_N")
+    ground_current_var: Var = vf.add_var(f"i_N")
 
     templ.block.in_vars = [neutral_voltage_var]
     templ.block.algebraic_vars = [ground_current_var]
@@ -333,9 +333,9 @@ def get_grounding_link_emt_template(
     templ.name = name
     templ.block.name = name
 
-    node_voltage_var: Var = vf.add_var(name=f"v_N_{name}", reference=VarPowerFlowReferenceType.v_N)
-    current_var: Var = vf.add_var(name=f"i_N_{name}", reference=VarPowerFlowReferenceType.i_N)
-    ground_node_var: Var = vf.add_var(name=f"v_gnd_{name}")
+    node_voltage_var: Var = vf.add_var(name=f"v_N", reference=VarPowerFlowReferenceType.v_N)
+    current_var: Var = vf.add_var(name=f"i_N", reference=VarPowerFlowReferenceType.i_N)
+    ground_node_var: Var = vf.add_var(name=f"v_gnd")
     ground_template: EmtModelTemplate = get_ground_emt_template(vf=vf, name=name + "_ground")
     vf.add_connections(ground_template.block.in_vars, [ground_node_var])
     ground_current_var: Var = ground_template.block.out_vars[0]
@@ -359,16 +359,16 @@ def get_grounding_link_emt_template(
         pass
 
     if include_r:
-        resistance_var: Var = vf.add_var(f"R_{name}")
+        resistance_var: Var = vf.add_var(f"R")
         templ.block.event_dict[resistance_var] = vf.add_const(float(direct_r_value), name=resistance_var.name)
         current_expr = current_expr + voltage_drop / resistance_var
     else:
         pass
 
     if include_l:
-        inductance_var: Var = vf.add_var(f"L_{name}")
-        inductive_current_var: Var = vf.add_var(f"iL_{name}")
-        inductive_diff_var: Var = vf.add_diff_var(name=f"d_iL_{name}", base_var=inductive_current_var)
+        inductance_var: Var = vf.add_var(f"L")
+        inductive_current_var: Var = vf.add_var(f"iL")
+        inductive_diff_var: Var = vf.add_diff_var(name=f"d_iL", base_var=inductive_current_var)
         templ.block.event_dict[inductance_var] = vf.add_const(float(direct_l_value), name=inductance_var.name)
         templ.block.state_vars.append(inductive_current_var)
         templ.block.diff_vars.append(inductive_diff_var)
@@ -379,9 +379,9 @@ def get_grounding_link_emt_template(
         pass
 
     if include_c:
-        capacitance_var: Var = vf.add_var(f"C_{name}")
-        capacitor_voltage_var: Var = vf.add_var(f"vCap_{name}")
-        capacitor_voltage_diff_var: Var = vf.add_diff_var(name=f"dvCap_{name}", base_var=capacitor_voltage_var)
+        capacitance_var: Var = vf.add_var(f"C")
+        capacitor_voltage_var: Var = vf.add_var(f"vCap")
+        capacitor_voltage_diff_var: Var = vf.add_diff_var(name=f"dvCap", base_var=capacitor_voltage_var)
         templ.block.event_dict[capacitance_var] = vf.add_const(float(direct_c_value), name=capacitance_var.name)
         templ.block.state_vars.append(capacitor_voltage_var)
         templ.block.diff_vars.append(capacitor_voltage_diff_var)
@@ -601,12 +601,12 @@ def wrap_ground_referenced_load_emt_template(
     grounding_link_block: Block | None = None
 
     if connection_type in {ShuntConnectionType.NeutralStar, ShuntConnectionType.GroundedStar}:
-        neutral_voltage_var = vf.add_var(name=f"v_N_{name}", reference=VarPowerFlowReferenceType.v_N)
+        neutral_voltage_var = vf.add_var(name=f"v_N", reference=VarPowerFlowReferenceType.v_N)
         in_vars.append(neutral_voltage_var)
-        neutral_voltage_derivative_var = vf.add_var(name=f"d_v_N_{name}")
+        neutral_voltage_derivative_var = vf.add_var(name=f"d_v_N")
         wrapped_template.block.event_dict[neutral_voltage_derivative_var] = vf.add_const(None)
     else:
-        neutral_voltage_var = vf.add_var(name=f"v_N_internal_{name}")
+        neutral_voltage_var = vf.add_var(name=f"v_N_internal")
         algebraic_vars.append(neutral_voltage_var)
 
     if connection_type == ShuntConnectionType.GroundedStar:
@@ -628,13 +628,13 @@ def wrap_ground_referenced_load_emt_template(
 
     for phase_label in active_phases:
         voltage_var: Var = vf.add_var(
-            name=f"v_{phase_label}_{name}",
+            name=f"v_{phase_label}",
             reference=_get_voltage_reference(phase_label),
         )
-        voltage_derivative_var: Var = vf.add_var(name=f"d_v_{phase_label}_{name}")
-        phase_drop_var: Var = vf.add_var(name=f"v_drop_{phase_label}_{name}")
+        voltage_derivative_var: Var = vf.add_var(name=f"d_v_{phase_label}")
+        phase_drop_var: Var = vf.add_var(name=f"v_drop_{phase_label}")
         current_var: Var = vf.add_var(
-            name=f"i_{phase_label}_{name}",
+            name=f"i_{phase_label}",
             reference=_get_current_reference(phase_label),
         )
 
@@ -672,7 +672,7 @@ def wrap_ground_referenced_load_emt_template(
         algebraic_eqs.append(total_current_vars[phase_label] - child_block.out_vars[phase_index])
 
     if connection_type in {ShuntConnectionType.NeutralStar, ShuntConnectionType.GroundedStar}:
-        neutral_current_var = vf.add_var(name=f"i_N_{name}", reference=VarPowerFlowReferenceType.i_N)
+        neutral_current_var = vf.add_var(name=f"i_N", reference=VarPowerFlowReferenceType.i_N)
         algebraic_vars.append(neutral_current_var)
         out_vars.insert(0, neutral_current_var)
 
@@ -782,12 +782,12 @@ def wrap_delta_referenced_load_emt_template(
 
     for phase_label in active_phases:
         voltage_var: Var = vf.add_var(
-            name=f"v_{phase_label}_{name}",
+            name=f"v_{phase_label}",
             reference=_get_voltage_reference(phase_label),
         )
-        voltage_derivative_var: Var = vf.add_var(name=f"d_v_{phase_label}_{name}")
+        voltage_derivative_var: Var = vf.add_var(name=f"d_v_{phase_label}")
         current_var: Var = vf.add_var(
-            name=f"i_{phase_label}_{name}",
+            name=f"i_{phase_label}",
             reference=_get_current_reference(phase_label),
         )
         phase_voltage_vars[phase_label] = voltage_var
@@ -800,7 +800,7 @@ def wrap_delta_referenced_load_emt_template(
         out_vars.append(current_var)
 
     for branch_label, phase_from, phase_to in branch_specs:
-        branch_voltage_var: Var = vf.add_var(name=f"v_delta_{branch_label}_{name}")
+        branch_voltage_var: Var = vf.add_var(name=f"v_delta_{branch_label}")
         branch_voltage_vars[branch_label] = branch_voltage_var
         algebraic_vars.append(branch_voltage_var)
         algebraic_eqs.append(branch_voltage_var - (phase_voltage_vars[phase_from] - phase_voltage_vars[phase_to]))
@@ -975,11 +975,11 @@ def _get_delta_shunt_rlc_combo_emt_template(
 
     for phase_label in active_phases:
         voltage_var: Var = vf.add_var(
-            name=f"v_{phase_label}_{name}",
+            name=f"v_{phase_label}",
             reference=_get_voltage_reference(phase_label),
         )
         current_var: Var = vf.add_var(
-            name=f"i_{phase_label}_{name}",
+            name=f"i_{phase_label}",
             reference=_get_current_reference(phase_label),
         )
         phase_voltage_vars[phase_label] = voltage_var
@@ -993,7 +993,7 @@ def _get_delta_shunt_rlc_combo_emt_template(
         voltage_drop: Expr = phase_voltage_vars[phase_from] - phase_voltage_vars[phase_to]
 
         if include_r:
-            resistance_var: Var = vf.add_var(f"R_{branch_label}_{name}")
+            resistance_var: Var = vf.add_var(f"R_{branch_label}")
             templ.block.event_dict[resistance_var] = vf.add_const(float(direct_r_value), name=resistance_var.name)
             branch_current_expr: Expr = voltage_drop / resistance_var
             phase_current_exprs[phase_from] = phase_current_exprs[phase_from] + branch_current_expr
@@ -1002,9 +1002,9 @@ def _get_delta_shunt_rlc_combo_emt_template(
             pass
 
         if include_l:
-            inductance_var: Var = vf.add_var(f"L_{branch_label}_{name}")
-            inductive_current_var: Var = vf.add_var(f"iL_{branch_label}_{name}")
-            inductive_diff_var: Var = vf.add_diff_var(name=f"d_iL_{branch_label}_{name}", base_var=inductive_current_var)
+            inductance_var: Var = vf.add_var(f"L_{branch_label}")
+            inductive_current_var: Var = vf.add_var(f"iL_{branch_label}")
+            inductive_diff_var: Var = vf.add_diff_var(name=f"d_iL_{branch_label}", base_var=inductive_current_var)
             templ.block.event_dict[inductance_var] = vf.add_const(float(direct_l_value), name=inductance_var.name)
             state_vars.append(inductive_current_var)
             diff_vars.append(inductive_diff_var)
@@ -1016,11 +1016,11 @@ def _get_delta_shunt_rlc_combo_emt_template(
             pass
 
         if include_c:
-            capacitance_var: Var = vf.add_var(f"C_{branch_label}_{name}")
-            capacitor_current_var: Var = vf.add_var(f"iC_{branch_label}_{name}")
-            capacitor_voltage_var: Var = vf.add_var(f"vCap{branch_label}_{name}")
+            capacitance_var: Var = vf.add_var(f"C_{branch_label}")
+            capacitor_current_var: Var = vf.add_var(f"iC_{branch_label}")
+            capacitor_voltage_var: Var = vf.add_var(f"vCap{branch_label}")
             capacitor_voltage_diff_var: Var = vf.add_diff_var(
-                name=f"dvCap{branch_label}_{name}",
+                name=f"dvCap{branch_label}",
                 base_var=capacitor_voltage_var,
             )
             templ.block.event_dict[capacitance_var] = vf.add_const(float(direct_c_value), name=capacitance_var.name)
@@ -1151,7 +1151,7 @@ def get_shunt_r_emt_template(
     for phase_label in active_phases:
         # Each active phase gets its own voltage input and electrical parameters.
         voltage_var: Var = vf.add_var(
-            name=f"v_{phase_label}_{resolved_name}",
+            name=f"v_{phase_label}",
             reference=_get_voltage_reference(phase_label),
         )
         in_vars.append(voltage_var)
@@ -1161,7 +1161,7 @@ def get_shunt_r_emt_template(
         templ.block.event_dict[resistance_var] = vf.add_const(None)
         resistance_vars[phase_label] = resistance_var
 
-        pl0_var: Var = vf.add_var(f"Pl0_{phase_label}_{resolved_name}")
+        pl0_var: Var = vf.add_var(f"Pl0_{phase_label}")
         templ.block.parameters[pl0_var] = vf.add_const(None)
         pl0_vars[phase_label] = pl0_var
 
@@ -1170,7 +1170,7 @@ def get_shunt_r_emt_template(
         templ.block.event_dict[resistance_var] = vnom_var ** 2 / pl0_var
 
         current_var: Var = vf.add_var(
-            name=f"i_{phase_label}_{resolved_name}",
+            name=f"i_{phase_label}",
             reference=_get_current_reference(phase_label),
         )
         current_vars[phase_label] = current_var
@@ -1234,24 +1234,24 @@ def get_shunt_l_emt_template(
         # Each active phase gets one terminal input, one current state, and one
         # inductance computed from the same API-level reactive-power contract.
         voltage_var: Var = vf.add_var(
-            name=f"v_{phase_label}_{resolved_name}",
+            name=f"v_{phase_label}",
             reference=_get_voltage_reference(phase_label),
         )
         in_vars.append(voltage_var)
         voltage_vars[phase_label] = voltage_var
 
-        inductance_var: Var = vf.add_var(f"L_{phase_label}_{resolved_name}")
+        inductance_var: Var = vf.add_var(f"L_{phase_label}")
         inductance_vars[phase_label] = inductance_var
 
-        ql0_var: Var = vf.add_var(f"Ql0_{phase_label}_{resolved_name}")
+        ql0_var: Var = vf.add_var(f"Ql0_{phase_label}")
         ql0_vars[phase_label] = ql0_var
         templ.block.event_dict[inductance_var] = vnom_var ** 2 / (ql0_var * omega_base_var)
 
-        current_var: Var = vf.add_var(f"i_{phase_label}_{resolved_name}")
+        current_var: Var = vf.add_var(f"i_{phase_label}")
         current_vars[phase_label] = current_var
         state_vars.append(current_var)
 
-        diff_var: Var = vf.add_diff_var(name=f"d_i_{phase_label}_{resolved_name}", base_var=current_var)
+        diff_var: Var = vf.add_diff_var(name=f"d_i_{phase_label}", base_var=current_var)
         diff_vars.append(diff_var)
         templ.block.diff_init_eqs[diff_var] = vf.add_const(0.0)
 
@@ -1317,28 +1317,28 @@ def get_shunt_c_emt_template(
         # Each active phase gets one bus voltage input, one capacitor voltage
         # state, one state derivative, and one injected current algebraic output.
         voltage_var: Var = vf.add_var(
-            name=f"v_{phase_label}_{resolved_name}",
+            name=f"v_{phase_label}",
             reference=_get_voltage_reference(phase_label),
         )
         in_vars.append(voltage_var)
         voltage_vars[phase_label] = voltage_var
 
-        capacitance_var: Var = vf.add_var(f"C_{phase_label}_{resolved_name}")
+        capacitance_var: Var = vf.add_var(f"C_{phase_label}")
         capacitance_vars[phase_label] = capacitance_var
 
-        ql0_var: Var = vf.add_var(f"Ql0_{phase_label}_{resolved_name}")
+        ql0_var: Var = vf.add_var(f"Ql0_{phase_label}")
         ql0_vars[phase_label] = ql0_var
         templ.block.event_dict[capacitance_var] = ql0_var / (vnom_var ** 2 * omega_base_var)
 
-        current_var: Var = vf.add_var(f"i_{phase_label}_{resolved_name}")
+        current_var: Var = vf.add_var(f"i_{phase_label}")
         current_vars[phase_label] = current_var
         algebraic_vars.append(current_var)
 
-        capacitor_voltage_var: Var = vf.add_var(f"vCap{phase_label}_{resolved_name}")
+        capacitor_voltage_var: Var = vf.add_var(f"vCap{phase_label}")
         state_vars.append(capacitor_voltage_var)
 
         capacitor_voltage_diff_var: Var = vf.add_diff_var(
-            name=f"dvCap{phase_label}_{resolved_name}",
+            name=f"dvCap{phase_label}",
             base_var=capacitor_voltage_var,
         )
         diff_vars.append(capacitor_voltage_diff_var)
@@ -1494,10 +1494,10 @@ def get_shunt_rlc_combo_emt_template(
     grounding_link_block: Block | None = None
 
     if connection_type in {ShuntConnectionType.NeutralStar, ShuntConnectionType.GroundedStar}:
-        neutral_voltage_var = vf.add_var(name=f"v_N_{name}", reference=VarPowerFlowReferenceType.v_N)
+        neutral_voltage_var = vf.add_var(name=f"v_N", reference=VarPowerFlowReferenceType.v_N)
         in_vars.append(neutral_voltage_var)
     else:
-        neutral_voltage_var = vf.add_var(name=f"v_N_internal_{name}")
+        neutral_voltage_var = vf.add_var(name=f"v_N_internal")
         algebraic_vars.append(neutral_voltage_var)
 
     if connection_type == ShuntConnectionType.GroundedStar:
@@ -1519,7 +1519,7 @@ def get_shunt_rlc_combo_emt_template(
 
     for phase_label in active_phases:
         voltage_var: Var = vf.add_var(
-            name=f"v_{phase_label}_{name}",
+            name=f"v_{phase_label}",
             reference=_get_voltage_reference(phase_label),
         )
         phase_voltage_vars[phase_label] = voltage_var
@@ -1547,7 +1547,7 @@ def get_shunt_rlc_combo_emt_template(
 
     for phase_label in active_phases:
         total_current_var: Var = vf.add_var(
-            name=f"i_{phase_label}_{name}",
+            name=f"i_{phase_label}",
             reference=_get_current_reference(phase_label),
         )
         total_current_vars[phase_label] = total_current_var
@@ -1558,9 +1558,9 @@ def get_shunt_rlc_combo_emt_template(
         phase_current_expr: Expr = total_current_var
 
         if include_r:
-            resistance_var: Var = vf.add_var(f"R_{phase_label}_{name}")
+            resistance_var: Var = vf.add_var(f"R_{phase_label}")
             if direct_r_value is None:
-                pl0_var: Var = vf.add_var(f"Pl0_{phase_label}_{name}")
+                pl0_var: Var = vf.add_var(f"Pl0_{phase_label}")
                 templ.block.api_obj_mapping[_get_pl0_reference(phase_label)] = pl0_var
                 if vnom_var is None:
                     raise ValueError("Missing nominal-voltage variable for EMT RLC resistor initialization")
@@ -1575,9 +1575,9 @@ def get_shunt_rlc_combo_emt_template(
             pass
 
         if include_l:
-            inductance_var: Var = vf.add_var(f"L_{phase_label}_{name}")
+            inductance_var: Var = vf.add_var(f"L_{phase_label}")
             if direct_l_value is None:
-                ql0_var: Var = vf.add_var(f"Ql0_{phase_label}_{name}")
+                ql0_var: Var = vf.add_var(f"Ql0_{phase_label}")
                 templ.block.api_obj_mapping[_get_ql0_reference(phase_label)] = ql0_var
                 if vnom_var is None or omega_base_var is None:
                     raise ValueError("Missing base variables for EMT RLC inductive initialization")
@@ -1587,8 +1587,8 @@ def get_shunt_rlc_combo_emt_template(
             else:
                 templ.block.event_dict[inductance_var] = vf.add_const(float(direct_l_value), name=inductance_var.name)
 
-            inductive_current_var: Var = vf.add_var(f"iL_{phase_label}_{name}")
-            inductive_diff_var: Var = vf.add_diff_var(name=f"d_iL_{phase_label}_{name}", base_var=inductive_current_var)
+            inductive_current_var: Var = vf.add_var(f"iL_{phase_label}")
+            inductive_diff_var: Var = vf.add_diff_var(name=f"d_iL_{phase_label}", base_var=inductive_current_var)
             state_vars.append(inductive_current_var)
             diff_vars.append(inductive_diff_var)
             templ.block.diff_init_eqs[inductive_diff_var] = vf.add_const(0.0)
@@ -1598,9 +1598,9 @@ def get_shunt_rlc_combo_emt_template(
             pass
 
         if include_c:
-            capacitance_var: Var = vf.add_var(f"C_{phase_label}_{name}")
+            capacitance_var: Var = vf.add_var(f"C_{phase_label}")
             if direct_c_value is None:
-                ql0_var = vf.add_var(f"Ql0_{phase_label}_{name}")
+                ql0_var = vf.add_var(f"Ql0_{phase_label}")
                 templ.block.api_obj_mapping[_get_ql0_reference(phase_label)] = ql0_var
                 if vnom_var is None or omega_base_var is None:
                     raise ValueError("Missing base variables for EMT RLC capacitive initialization")
@@ -1610,9 +1610,9 @@ def get_shunt_rlc_combo_emt_template(
             else:
                 templ.block.event_dict[capacitance_var] = vf.add_const(float(direct_c_value), name=capacitance_var.name)
 
-            capacitor_voltage_var: Var = vf.add_var(f"vCap{phase_label}_{name}")
+            capacitor_voltage_var: Var = vf.add_var(f"vCap{phase_label}")
             capacitor_voltage_diff_var: Var = vf.add_diff_var(
-                name=f"dvCap{phase_label}_{name}",
+                name=f"dvCap{phase_label}",
                 base_var=capacitor_voltage_var,
             )
             state_vars.append(capacitor_voltage_var)
@@ -1631,7 +1631,7 @@ def get_shunt_rlc_combo_emt_template(
             neutral_kcl = neutral_kcl + total_current_vars[phase_label]
         algebraic_eqs.append(neutral_kcl)
     elif connection_type in {ShuntConnectionType.NeutralStar, ShuntConnectionType.GroundedStar}:
-        neutral_current_var = vf.add_var(name=f"i_N_{name}", reference=VarPowerFlowReferenceType.i_N)
+        neutral_current_var = vf.add_var(name=f"i_N", reference=VarPowerFlowReferenceType.i_N)
         algebraic_vars.append(neutral_current_var)
         out_vars.insert(0, neutral_current_var)
 

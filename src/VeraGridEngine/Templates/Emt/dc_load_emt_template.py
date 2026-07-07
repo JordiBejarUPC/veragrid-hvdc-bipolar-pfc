@@ -41,15 +41,15 @@ def get_dc_load_emt_template(
 
     templ.block.name = name
 
-    p_dc_static = vf.add_var(name=f"Pl0_{name}")
-    g_dc_static = vf.add_var(name=f"g_{name}")
+    p_dc_static = vf.add_var(name=f"Pl0")
+    g_dc_static = vf.add_var(name=f"g")
     templ.block.parameters[p_dc_static] = vf.add_const(0.0)
     templ.block.parameters[g_dc_static] = vf.add_const(0.0)
 
-    v_dc = vf.add_var(name=f"v_dc_{name}", reference=VarPowerFlowReferenceType.Vdc)
+    v_dc = vf.add_var(name=f"v_dc", reference=VarPowerFlowReferenceType.Vdc)
 
-    i_dc = vf.add_var(name=f"i_dc_{name}", reference=VarPowerFlowReferenceType.Idc)
-    p_dc = vf.add_var(name=f"p_dc_{name}", reference=VarPowerFlowReferenceType.P)
+    i_dc = vf.add_var(name=f"i_dc", reference=VarPowerFlowReferenceType.Idc)
+    p_dc = vf.add_var(name=f"p_dc", reference=VarPowerFlowReferenceType.P)
 
     templ.block.in_vars = [v_dc]
     templ.block.algebraic_vars = [i_dc, p_dc]

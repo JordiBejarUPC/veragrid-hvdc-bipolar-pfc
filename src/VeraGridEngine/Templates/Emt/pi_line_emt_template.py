@@ -159,15 +159,15 @@ def get_pi_line_emt_template(vf: VarFactory,
     phases = list(["n", "a", "b", "c"])
     for i in range(4):
         for j in range(4):
-            var_r = vf.add_var(f"R{phases[i]}{phases[j]}_{name}")
+            var_r = vf.add_var(f"R{phases[i]}{phases[j]}")
             templ.block.api_obj_mapping[r_enums[i][j]] = var_r
             templ.block.parameters[var_r] = vf.add_const(0.0)
 
-            var_l = vf.add_var(f"Linv_{phases[i]}{phases[j]}_{name}")
+            var_l = vf.add_var(f"Linv_{phases[i]}{phases[j]}")
             templ.block.api_obj_mapping[linv_enums[i][j]] = var_l
             templ.block.parameters[var_l] = vf.add_const(0.0)
 
-            var_c = vf.add_var(f"C{phases[i]}{phases[j]}_{name}")
+            var_c = vf.add_var(f"C{phases[i]}{phases[j]}")
             templ.block.api_obj_mapping[c_enums[i][j]] = var_c
             templ.block.parameters[var_c] = vf.add_const(0.0)
 
@@ -227,28 +227,28 @@ def get_pi_line_emt_template(vf: VarFactory,
         "C": VarPowerFlowReferenceType.it_C,
     })
 
-    vf_vars = [vf.add_var(name=f"vf_{ph_label}_{name}", reference=vf_keys[ph_label]) for ph_label in active_ph]
-    vt_vars = [vf.add_var(name=f"vt_{ph_label}_{name}", reference=vt_keys[ph_label]) for ph_label in active_ph]
+    vf_vars = [vf.add_var(name=f"vf_{ph_label}", reference=vf_keys[ph_label]) for ph_label in active_ph]
+    vt_vars = [vf.add_var(name=f"vt_{ph_label}", reference=vt_keys[ph_label]) for ph_label in active_ph]
 
-    # d_vf_vars = [vf.add_diff_var(name=f"d_vf_{ph_label}_{name}", base_var=v_base) for ph_label, v_base in zip(active_ph, vf_vars)]
-    # d_vt_vars = [vf.add_diff_var(name=f"d_vt_{ph_label}_{name}", base_var=v_base) for ph_label, v_base in zip(active_ph, vt_vars)]
+    # d_vf_vars = [vf.add_diff_var(name=f"d_vf_{ph_label}", base_var=v_base) for ph_label, v_base in zip(active_ph, vf_vars)]
+    # d_vt_vars = [vf.add_diff_var(name=f"d_vt_{ph_label}", base_var=v_base) for ph_label, v_base in zip(active_ph, vt_vars)]
 
 
     # -----------------------------
     # Create model vars
     # -----------------------------
-    i_ser = [vf.add_var(name=f"i_ser_{name}_{ph_label}") for ph_label in active_ph]
-    q_f = [vf.add_var(name=f"q_f_{name}_{ph_label}") for ph_label in active_ph]
-    q_t = [vf.add_var(name=f"q_t_{name}_{ph_label}") for ph_label in active_ph]
+    i_ser = [vf.add_var(name=f"i_ser_{ph_label}") for ph_label in active_ph]
+    q_f = [vf.add_var(name=f"q_f_{ph_label}") for ph_label in active_ph]
+    q_t = [vf.add_var(name=f"q_t_{ph_label}") for ph_label in active_ph]
 
-    di_ser = [vf.add_diff_var(name=f"di_ser_{name}_{ph_label}", base_var=i_ser[k]) for k, ph_label  in enumerate(active_ph)]
-    dq_f = [vf.add_diff_var(name=f"dq_f_{name}_{ph_label}", base_var=q_f[k]) for k, ph_label  in enumerate(active_ph)]
-    dq_t = [vf.add_diff_var(name=f"dq_t_{name}_{ph_label}", base_var=q_t[k]) for k, ph_label  in enumerate(active_ph)]
+    di_ser = [vf.add_diff_var(name=f"di_ser_{ph_label}", base_var=i_ser[k]) for k, ph_label  in enumerate(active_ph)]
+    dq_f = [vf.add_diff_var(name=f"dq_f_{ph_label}", base_var=q_f[k]) for k, ph_label  in enumerate(active_ph)]
+    dq_t = [vf.add_diff_var(name=f"dq_t_{ph_label}", base_var=q_t[k]) for k, ph_label  in enumerate(active_ph)]
 
-    i_cap_f = [vf.add_var(name=f"i_cap_f_{name}_{ph_label}") for ph_label in active_ph]
-    i_cap_t = [vf.add_var(name=f"i_cap_t_{name}_{ph_label}") for ph_label in active_ph]
-    if_act = [vf.add_var(name=f"if_{name}_{ph_label}", reference=if_keys[ph_label]) for ph_label in active_ph]
-    it_act = [vf.add_var(name=f"it_{name}_{ph_label}", reference=it_keys[ph_label]) for ph_label in active_ph]
+    i_cap_f = [vf.add_var(name=f"i_cap_f_{ph_label}") for ph_label in active_ph]
+    i_cap_t = [vf.add_var(name=f"i_cap_t_{ph_label}") for ph_label in active_ph]
+    if_act = [vf.add_var(name=f"if_{ph_label}", reference=if_keys[ph_label]) for ph_label in active_ph]
+    it_act = [vf.add_var(name=f"it_{ph_label}", reference=it_keys[ph_label]) for ph_label in active_ph]
 
     # -----------------------------
     # Build block
