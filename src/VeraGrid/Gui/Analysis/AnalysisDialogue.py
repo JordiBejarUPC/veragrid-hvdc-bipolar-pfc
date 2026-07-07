@@ -31,6 +31,18 @@ from VeraGridEngine.Simulations.SigmaAnalysis.sigma_analysis_driver import Sigma
 from VeraGridEngine.enumerations import LogSeverity, ResultTypes
 
 
+def translate_analysis_dialog(source_text: str, disambiguation: str | None = None, n: int = -1) -> str:
+    """
+    Translate one runtime dashboard string through the generated UI context.
+
+    :param source_text: Source string to translate.
+    :param disambiguation: Optional Qt disambiguation text.
+    :param n: Optional plural parameter.
+    :return: Translated text.
+    """
+    return QtCore.QCoreApplication.translate("MainWindow", source_text, disambiguation, n)
+
+
 class IssueEntry:
     """
     Lightweight record containing one normalized dashboard issue row.
@@ -100,7 +112,7 @@ class IssueEntry:
         :return: True when the row should remain visible
         """
         severity_matches: bool = False
-        if severity_filter_text == QtCore.QCoreApplication.translate("AnalysisDialogue", "All severities"):
+        if severity_filter_text == translate_analysis_dialog("All severities"):
             severity_matches = True
         else:
             if severity_filter_text == severity_to_text(self.severity):
@@ -109,7 +121,7 @@ class IssueEntry:
                 severity_matches = False
 
         object_type_matches: bool = False
-        if object_type_filter_text == QtCore.QCoreApplication.translate("AnalysisDialogue", "All object types"):
+        if object_type_filter_text == translate_analysis_dialog("All object types"):
             object_type_matches = True
         else:
             if object_type_filter_text == self.object_type:
@@ -253,15 +265,15 @@ def severity_to_text(severity: LogSeverity) -> str:
     :return: Display label
     """
     if severity == LogSeverity.Error:
-        return QtCore.QCoreApplication.translate("AnalysisDialogue", "Error")
+        return translate_analysis_dialog("Error")
     else:
         if severity == LogSeverity.Warning:
-            return QtCore.QCoreApplication.translate("AnalysisDialogue", "Warning")
+            return translate_analysis_dialog("Warning")
         else:
             if severity == LogSeverity.Information:
-                return QtCore.QCoreApplication.translate("AnalysisDialogue", "Information")
+                return translate_analysis_dialog("Information")
             else:
-                return QtCore.QCoreApplication.translate("AnalysisDialogue", "Divergence")
+                return translate_analysis_dialog("Divergence")
 
 
 def severity_sort_weight(severity: LogSeverity) -> int:
@@ -506,6 +518,17 @@ class GridAnalysisGUI(QtWidgets.QMainWindow):
 
         # Run the first analysis immediately so the dashboard opens populated.
         self.analyze_all()
+
+    def tr(self, source_text: str, disambiguation: str | None = None, n: int = -1) -> str:
+        """
+        Translate runtime strings through the ``MainWindow`` catalog context.
+
+        :param source_text: Source string to translate.
+        :param disambiguation: Optional Qt disambiguation text.
+        :param n: Optional plural parameter.
+        :return: Translated text.
+        """
+        return translate_analysis_dialog(source_text, disambiguation, n)
 
     def configure_window(self) -> None:
         """
