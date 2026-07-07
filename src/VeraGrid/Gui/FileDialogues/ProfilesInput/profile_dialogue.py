@@ -20,7 +20,7 @@ matplotlib.use('QtAgg')  # Or 'Qt5Agg' — depending on your matplotlib version
 from matplotlib import pyplot as plt
 
 from VeraGrid.Gui.general_dialogues import LogsDialogue
-from VeraGrid.Gui.gui_functions import get_list_model
+from VeraGrid.Gui.gui_functions import ComboModel, get_list_model
 from VeraGrid.Gui.FileDialogues.ProfilesInput.profiles_from_data_gui import Ui_Dialog
 from VeraGrid.Gui.FileDialogues.ProfilesInput.excel_dialog import ExcelDialog
 from VeraGrid.Gui.messages import error_msg, info_msg
@@ -439,7 +439,7 @@ class ProfileInputGUI(QtWidgets.QDialog):
         self.units['y'] = 1e-24
 
         relevant_units = ['T', 'G', 'M', 'k', '-', 'm']
-        self.ui.units_combobox.addItems(relevant_units)
+        self.ui.units_combobox.setModel(ComboModel(text_items=[(unit, unit) for unit in relevant_units]))
         self.ui.units_combobox.setCurrentIndex(2)
 
         # initialize associations
@@ -461,7 +461,9 @@ class ProfileInputGUI(QtWidgets.QDialog):
             StringSubstitutions.PSSeBusGenerator.value: StringSubstitutions.PSSeBusGenerator,
             StringSubstitutions.PSSeBusLoad.value: StringSubstitutions.PSSeBusLoad
         }
-        self.ui.nameTransformationComboBox.setModel(get_list_model(list(self.transformations.keys())))
+        self.ui.nameTransformationComboBox.setModel(
+            ComboModel(text_items=[(name, transformation) for name, transformation in self.transformations.items()])
+        )
 
         self.original_data_frame: pd.DataFrame | None = None
         self.fig = None
@@ -492,7 +494,7 @@ class ProfileInputGUI(QtWidgets.QDialog):
         Gets the necessary multiplier to pass the profile units to Mega
         Remember that the power units in VeraGrid are the MVA
         """
-        unit = self.ui.units_combobox.currentText()
+        unit = self.ui.units_combobox.currentData()
         return self.units[unit] / self.units['M']
 
     def import_profile(self) -> None:
@@ -940,8 +942,7 @@ class ProfileInputGUI(QtWidgets.QDialog):
         :return:
         """
         if self.original_data_frame is not None:
-            mode_txt = self.ui.nameTransformationComboBox.currentText()
-            mode = self.transformations[mode_txt]
+            mode = self.ui.nameTransformationComboBox.currentData()
 
             if mode == StringSubstitutions.PSSeBranchName:
 

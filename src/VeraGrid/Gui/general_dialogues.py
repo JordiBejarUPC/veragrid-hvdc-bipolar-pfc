@@ -16,7 +16,7 @@ from PySide6.QtWidgets import (QApplication, QDialog, QTableView, QVBoxLayout, Q
 from PySide6.QtCore import Qt, QAbstractTableModel, QModelIndex
 from VeraGridEngine.basic_structures import Logger, IntVec
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
-from VeraGrid.Gui.gui_functions import get_list_model, get_checked_indices, get_chck_list_model
+from VeraGrid.Gui.gui_functions import ComboModel, get_list_model, get_checked_indices, get_chck_list_model
 from VeraGrid.Gui.object_model import ObjectsModel
 from VeraGridEngine.enumerations import FaultType, MethodShortCircuit, PhasesShortCircuit, FileType, CGMESVersions
 
@@ -80,7 +80,7 @@ class NewProfilesStructureDialogue(CenteredDialog):
 
         # units combo box
         self.units = QtWidgets.QComboBox()
-        self.units.setModel(get_list_model(['h', 'm', 's']))
+        self.units.setModel(ComboModel(text_items=[(unit, unit) for unit in ['h', 'm', 's']]))
 
         # accept button
         self.accept_btn = QtWidgets.QPushButton()
@@ -116,7 +116,7 @@ class NewProfilesStructureDialogue(CenteredDialog):
 
         step_length = self.step_length.value()
 
-        step_unit = self.units.currentText()
+        step_unit = self.units.currentData()
 
         time_base = self.calendar.dateTime()
 
@@ -411,7 +411,7 @@ class TimeReIndexDialogue(CenteredDialog):
 
         # units combo box
         self.units = QtWidgets.QComboBox()
-        self.units.setModel(get_list_model(['h', 'm', 's']))
+        self.units.setModel(ComboModel(text_items=[(unit, unit) for unit in ['h', 'm', 's']]))
 
         # accept button
         self.accept_btn = QtWidgets.QPushButton()

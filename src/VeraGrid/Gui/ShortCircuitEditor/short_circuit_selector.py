@@ -154,7 +154,7 @@ class ShortCircuitSelector(QtWidgets.QDialog):
         self.was_accepted = False
 
         self.ui.btn_accept.clicked.connect(self.accept_clicked)
-        self.ui.cb_method.currentTextChanged.connect(self.update_view)
+        self.ui.cb_method.currentIndexChanged.connect(self.update_view)
         self.ui.cb_fault.currentIndexChanged.connect(self.update_logic)
         self.ui.cb_type.currentIndexChanged.connect(self.update_r_x)
 
@@ -168,7 +168,7 @@ class ShortCircuitSelector(QtWidgets.QDialog):
         if isinstance(data, FaultType):
             return data
         else:
-            return FaultType(self.ui.cb_fault.currentText())
+            raise TypeError(f"Unexpected fault combo data: {data!r}")
 
     def _current_method(self) -> MethodShortCircuit:
         """
@@ -180,7 +180,7 @@ class ShortCircuitSelector(QtWidgets.QDialog):
         if isinstance(data, MethodShortCircuit):
             return data
         else:
-            return MethodShortCircuit(self.ui.cb_method.currentText())
+            raise TypeError(f"Unexpected method combo data: {data!r}")
 
     def _current_phase(self) -> PhasesShortCircuit:
         """
@@ -192,7 +192,7 @@ class ShortCircuitSelector(QtWidgets.QDialog):
         if isinstance(data, PhasesShortCircuit):
             return data
         else:
-            return PhasesShortCircuit(self.ui.cb_phases.currentText())
+            raise TypeError(f"Unexpected phases combo data: {data!r}")
 
     def update_view(self):
         """

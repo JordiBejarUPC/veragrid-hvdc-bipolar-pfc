@@ -2,8 +2,11 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
+from __future__ import annotations
+
 import json
 import os
+from enum import Enum
 from typing import Dict, Union, Any
 from PySide6 import QtCore, QtGui, QtWidgets
 
@@ -20,7 +23,85 @@ from VeraGrid.Gui.i18n import (
     language_from_name,
 )
 from VeraGrid.plugins import PluginsInfo, PluginFunction
-from VeraGrid.Gui.gui_functions import add_menu_entry
+from VeraGrid.Gui.gui_functions import ComboModel, ComboStableKey, add_menu_entry
+
+
+def get_combo_box_config_value(combo_box: QtWidgets.QComboBox) -> Any:
+    """
+    Return a stable value for combo-box settings when item data is available.
+
+    :param combo_box: Combo box to serialize.
+    :return: Serializable combo value.
+    """
+    stable_key: ComboStableKey = combo_box.currentData(ComboModel.StableKeyRole)
+    if stable_key is None:
+        runtime_data: Any = combo_box.currentData()
+        if isinstance(runtime_data, Enum):
+            return str(runtime_data.value)
+        elif isinstance(runtime_data, (str, int, float, bool)):
+            return runtime_data
+        else:
+            return combo_box.currentText()
+    else:
+        return stable_key
+
+
+def set_combo_box_config_value(combo_box: QtWidgets.QComboBox, value: Any) -> None:
+    """
+    Restore a combo-box setting using item data first, then legacy text.
+
+    :param combo_box: Combo box to restore.
+    :param value: Stored setting value.
+    :return: Nothing.
+    """
+    index: int = combo_box.findData(value, role=ComboModel.StableKeyRole)
+    if index < 0:
+        index = combo_box.findData(str(value), role=ComboModel.StableKeyRole)
+    else:
+        pass
+
+    if index < 0:
+        index = combo_box.findData(value)
+    else:
+        pass
+
+    if index < 0:
+        index = combo_box.findData(str(value))
+    else:
+        pass
+
+    if index < 0:
+        for i in range(combo_box.count()):
+            runtime_data: Any = combo_box.itemData(i)
+            if isinstance(runtime_data, Enum):
+                if str(runtime_data.value) == str(value):
+                    index = i
+                    break
+                else:
+                    pass
+            else:
+                pass
+    else:
+        pass
+
+    if index < 0:
+        for i in range(combo_box.count()):
+            item_data: ComboStableKey = combo_box.itemData(i, ComboModel.StableKeyRole)
+            if str(item_data) == str(value):
+                index = i
+                break
+            else:
+                pass
+
+    if index < 0:
+        index = combo_box.findText(str(value))
+    else:
+        pass
+
+    if -1 < index < combo_box.count():
+        combo_box.setCurrentIndex(index)
+    else:
+        pass
 
 
 def gui_struct_to_data(data_: Dict[str, Union[float, int, str, bool, Dict[str, Union[float, int, str, bool, Dict]]]],
@@ -35,7 +116,7 @@ def gui_struct_to_data(data_: Dict[str, Union[float, int, str, bool, Dict[str, U
             data_[key] = dict()
             gui_struct_to_data(data_[key], value)
         elif isinstance(value, QtWidgets.QComboBox):
-            data_[key] = value.currentText()
+            data_[key] = get_combo_box_config_value(value)
         elif isinstance(value, QtWidgets.QDoubleSpinBox):
             data_[key] = value.value()
         elif isinstance(value, QtWidgets.QSpinBox):
@@ -76,15 +157,19 @@ def config_data_to_struct(data_: Dict[str, Union[Dict[str, Any], str, Any]],
                 config_data_to_struct(corresponding_data, object_to_set)
 
             elif isinstance(object_to_set, QtWidgets.QComboBox):
-                index = object_to_set.findText(str(corresponding_data))
-                if -1 < index < object_to_set.count():
-                    object_to_set.setCurrentIndex(index)
+                set_combo_box_config_value(combo_box=object_to_set, value=corresponding_data)
 
             elif isinstance(object_to_set, QtWidgets.QDoubleSpinBox):
-                object_to_set.setValue(float(corresponding_data))
+                if isinstance(corresponding_data, (int, float)):
+                    object_to_set.setValue(float(corresponding_data))
+                else:
+                    pass
 
             elif isinstance(object_to_set, QtWidgets.QSpinBox):
-                object_to_set.setValue(int(corresponding_data))
+                if isinstance(corresponding_data, (int, float)):
+                    object_to_set.setValue(int(corresponding_data))
+                else:
+                    pass
 
             elif isinstance(object_to_set, QtWidgets.QCheckBox):
                 object_to_set.setChecked(bool(corresponding_data))
@@ -167,21 +252,21 @@ class ConfigurationMain(ResultsMain):
             [
                 ApplicationLanguage.SYSTEM,
                 ApplicationLanguage.ENGLISH,
-                ApplicationLanguage.JAPANESE,
+                ApplicationLanguage.SPANISH,
+                ApplicationLanguage.CATALAN,
                 ApplicationLanguage.BASQUE,
                 ApplicationLanguage.GALICIAN,
-                ApplicationLanguage.ARABIC,
                 ApplicationLanguage.ITALIAN,
-                ApplicationLanguage.GREEK,
-                ApplicationLanguage.DUTCH,
-                ApplicationLanguage.CATALAN,
-                ApplicationLanguage.CHINESE,
-                ApplicationLanguage.HINDI,
-                ApplicationLanguage.CANTONESE,
-                ApplicationLanguage.GERMAN,
-                ApplicationLanguage.FRENCH,
                 ApplicationLanguage.PORTUGUESE,
-                ApplicationLanguage.SPANISH,
+                ApplicationLanguage.FRENCH,
+                ApplicationLanguage.GERMAN,
+                ApplicationLanguage.DUTCH,
+                ApplicationLanguage.GREEK,
+                ApplicationLanguage.CHINESE,
+                ApplicationLanguage.CANTONESE,
+                ApplicationLanguage.JAPANESE,
+                ApplicationLanguage.HINDI,
+                ApplicationLanguage.ARABIC,
             ]
         )
 
@@ -235,7 +320,7 @@ class ConfigurationMain(ResultsMain):
 
         :returns: Selected application language.
         """
-        combo_data: object = self.language_combo_box.currentData()
+        combo_data: ApplicationLanguage | None = self.language_combo_box.currentData()
 
         if isinstance(combo_data, ApplicationLanguage):
             return combo_data
@@ -352,6 +437,12 @@ class ConfigurationMain(ResultsMain):
                 "plotting_style": self.ui.plt_style_comboBox,
                 "video_fps": self.ui.fps_spinBox
             },
+            "general": {
+                "base_power": self.ui.sbase_doubleSpinBox,
+                "frequency": self.ui.fbase_doubleSpinBox,
+                "default_bus_voltage": self.ui.defaultBusVoltageSpinBox,
+                "engine": self.ui.engineComboBox
+            },
             "machine_learning": {
                 "clustering": {
                     "cluster_number": self.ui.cluster_number_spinBox,
@@ -376,7 +467,7 @@ class ConfigurationMain(ResultsMain):
                 },
                 "reliability": {
                     "method": self.ui.reliability_method_comboBox,
-                    "number_of_samples": self.ui.reliability_method_comboBox
+                    "number_of_samples": self.ui.max_iterations_reliability_spinBox
                 },
             },
             "linear": {
@@ -420,6 +511,7 @@ class ConfigurationMain(ResultsMain):
                 "method": self.ui.lpf_solver_comboBox,
                 "time_grouping": self.ui.opf_time_grouping_comboBox,
                 "zone_grouping": self.ui.opfZonalGroupByComboBox,
+                "mip_framework": self.ui.mip_framework_comboBox,
                 "mip_solver": self.ui.mip_solver_comboBox,
                 "contingency_tolerance": self.ui.opfContingencyToleranceSpinBox,
                 "skip_generation_limits": self.ui.skipOpfGenerationLimitsCheckBox,
@@ -470,12 +562,6 @@ class ConfigurationMain(ResultsMain):
             "nodal_hosting_capacity": {
                 "method": self.ui.nodal_capacity_method_comboBox,
                 "sense": self.ui.nodal_capacity_sense_SpinBox
-            },
-            "general": {
-                "base_power": self.ui.sbase_doubleSpinBox,
-                "frequency": self.ui.fbase_doubleSpinBox,
-                "default_bus_voltage": self.ui.defaultBusVoltageSpinBox,
-                "engine": self.ui.engineComboBox
             },
             "contingencies": {
                 "contingencies_engine": self.ui.contingencyEngineComboBox,

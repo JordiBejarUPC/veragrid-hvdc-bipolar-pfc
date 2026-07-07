@@ -67,10 +67,12 @@ class CgmesExportDialogue(QtWidgets.QDialog):
 
         :return: None.
         """
-        self.ui.cgmes_version_comboBox.setModel(gf.get_list_model(list(self.cgmes_version_dict.keys())))
+        self.ui.cgmes_version_comboBox.setModel(
+            gf.ComboModel(enum_values=list(self.cgmes_version_dict.values()), translate=self.tr)
+        )
 
         for export_mode in self.cgmes_export_modes:
-            self.ui.cgmes_export_mode_comboBox.addItem(str(export_mode))
+            self.ui.cgmes_export_mode_comboBox.addItem(self.tr(str(export_mode)), export_mode)
 
     def _configure_time_slot_widgets(self) -> None:
         """
@@ -98,7 +100,7 @@ class CgmesExportDialogue(QtWidgets.QDialog):
         """
         self.ui.selectCGMESBoundarySetButton.clicked.connect(self.select_cgmes_boundary_set)
         self.ui.exportButton.clicked.connect(self.export)
-        self.ui.cgmes_version_comboBox.currentTextChanged.connect(self.cgmes_version_change)
+        self.ui.cgmes_version_comboBox.currentIndexChanged.connect(self.cgmes_version_change)
         self.ui.time_slot_slider.valueChanged.connect(self.update_time_slot_text)
         self.ui.cgmes_export_mode_comboBox.currentIndexChanged.connect(self.update_mode_dependent_widgets)
 
@@ -108,8 +110,7 @@ class CgmesExportDialogue(QtWidgets.QDialog):
 
         :return: Selected CGMES export mode.
         """
-        combo_index: int = self.ui.cgmes_export_mode_comboBox.currentIndex()
-        return self.cgmes_export_modes[combo_index]
+        return self.ui.cgmes_export_mode_comboBox.currentData()
 
     def get_selected_t_idx(self) -> int | None:
         """
@@ -174,7 +175,7 @@ class CgmesExportDialogue(QtWidgets.QDialog):
 
         :return: None.
         """
-        cgmes_version: CGMESVersions = self.cgmes_version_dict[self.ui.cgmes_version_comboBox.currentText()]
+        cgmes_version: CGMESVersions = self.ui.cgmes_version_comboBox.currentData()
         available_profiles: dict[str, list[str]] = get_available_cgmes_profiles(cgmes_version=cgmes_version)
 
         self.cgmes_profiles_dict = {
@@ -273,7 +274,7 @@ class CgmesExportDialogue(QtWidgets.QDialog):
         :return: None.
         """
         export_mode: CgmesExportMode = self.get_selected_export_mode()
-        cgmes_version: CGMESVersions = self.cgmes_version_dict[self.ui.cgmes_version_comboBox.currentText()]
+        cgmes_version: CGMESVersions = self.ui.cgmes_version_comboBox.currentData()
         cgmes_profiles_txt: list[str] = gf.get_checked_values(mdl=self.ui.cgmes_profiles_listView.model())
         cgmes_profiles: list[CgmesProfileType] = [self.cgmes_profiles_dict[e] for e in cgmes_profiles_txt]
         cgmes_one_file_per_profile: bool = self.ui.cgmes_single_profile_per_file_checkBox.isChecked()
