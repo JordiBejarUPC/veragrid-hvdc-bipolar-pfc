@@ -5753,4 +5753,12 @@ li.checked::標記 { content: "\2612"; }
             <translation>問題</translation>
         </message>
     </context>
+
+    <context>
+        <name>ContextMenu</name>
+        <message>
+            <source>Reload</source>
+            <translation>重新載入</translation>
+        </message>
+    </context>
 </TS>

@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from enum import Enum
 from pathlib import Path
-from typing import Iterable
+from typing import Callable, Iterable
 
 from PySide6.QtCore import QObject, QLibraryInfo, QLocale, QTranslator
 from PySide6.QtGui import QAction, QKeySequence
@@ -358,6 +358,50 @@ def get_requested_language_code(
         return normalize_language_code(str(language.value))
 
 
+def get_language_display_text(
+    language: ApplicationLanguage,
+    translate: Callable[[str], str] | None = None,
+) -> str:
+    """
+    Return the visible label for one language selector entry.
+
+    ``SYSTEM`` remains translatable because it describes an application mode.
+    Concrete languages use stable endonyms so the selector does not depend on
+    per-locale catalog coverage.
+
+    :param language: Language shown in the selector.
+    :param translate: Optional callback used for translatable labels.
+    :returns: Visible selector text.
+    """
+    if translate is None:
+        translate = lambda source_text: source_text
+    else:
+        pass
+
+    if language == ApplicationLanguage.SYSTEM:
+        return translate("System default")
+    else:
+        endonyms: dict[ApplicationLanguage, str] = {
+            ApplicationLanguage.ENGLISH: "English",
+            ApplicationLanguage.JAPANESE: "日本語",
+            ApplicationLanguage.BASQUE: "Euskara",
+            ApplicationLanguage.GALICIAN: "Galego",
+            ApplicationLanguage.ARABIC: "عربي",
+            ApplicationLanguage.ITALIAN: "Italiano",
+            ApplicationLanguage.GREEK: "Ελληνικά",
+            ApplicationLanguage.DUTCH: "Nederlands",
+            ApplicationLanguage.CATALAN: "Català",
+            ApplicationLanguage.CHINESE: "普通话",
+            ApplicationLanguage.HINDI: "हिंदी",
+            ApplicationLanguage.CANTONESE: "廣東話",
+            ApplicationLanguage.GERMAN: "Deutsch",
+            ApplicationLanguage.FRENCH: "Français",
+            ApplicationLanguage.PORTUGUESE: "Português",
+            ApplicationLanguage.SPANISH: "Español",
+        }
+        return endonyms.get(language, "English")
+
+
 def get_language_flag_icon_path(language: ApplicationLanguage) -> str:
     """
     Return the Qt resource path for one language selector flag icon.
@@ -446,6 +490,202 @@ def get_gui_config_file_path() -> Path:
     return Path(get_create_veragrid_folder()) / "gui_config.json"
 
 
+LEGACY_LANGUAGE_ALIASES: dict[ApplicationLanguage, set[str]] = {
+    ApplicationLanguage.SYSTEM: {
+        "الافتراضي للنظام",
+        "Sistema predeterminat",
+        "Systemstandard",
+        "Προεπιλογή συστήματος",
+        "Valor predeterminado del sistema",
+        "Sistema lehenetsia",
+        "Valeur par défaut du système",
+        "Sistema predeterminado",
+        "Predefinito del sistema",
+        "システムのデフォルト",
+        "Systeemstandaard",
+        "Padrão do sistema",
+        "系统默认",
+    },
+    ApplicationLanguage.ENGLISH: {
+        "إنجليزي",
+        "Anglès",
+        "Englisch",
+        "Αγγλικός",
+        "Inglés",
+        "Ingelesa",
+        "Anglais",
+        "Inglese",
+        "英語",
+        "Engels",
+        "Inglês",
+        "英语",
+    },
+    ApplicationLanguage.JAPANESE: {
+        "يابانية",
+        "Japonès",
+        "Japanisch",
+        "Ιαπωνικά",
+        "Japonés",
+        "Japoniarra",
+        "Japonais",
+        "Xaponés",
+        "Giapponese",
+        "Japanse",
+        "Japonês",
+    },
+    ApplicationLanguage.BASQUE: {
+        "الباسك",
+        "Basc",
+        "Baskisch",
+        "Βάσκος",
+        "Vasco",
+        "Basque",
+        "Basco",
+        "バスク語",
+        "Baskisch",
+        "Basco",
+        "巴斯克",
+    },
+    ApplicationLanguage.GALICIAN: {
+        "الجاليكية",
+        "Gallec",
+        "Galizisch",
+        "Γαλικιανός",
+        "Gallego",
+        "Galegoa",
+        "Galicien",
+        "Galiziano",
+        "ガリシア語",
+        "Galicisch",
+        "加利西亚语",
+    },
+    ApplicationLanguage.ARABIC: {
+        "Àrab",
+        "Arabisch",
+        "Αραβικός",
+        "Árabe",
+        "Arabiera",
+        "Arabe",
+        "Arabo",
+        "アラビア語",
+        "阿拉伯",
+    },
+    ApplicationLanguage.ITALIAN: {
+        "ايطالي",
+        "Italià",
+        "Italienisch",
+        "Ιταλικά",
+        "Italian",
+        "Italiarra",
+        "Italien",
+        "Italiano",
+        "イタリア語",
+        "Italiaans",
+        "意大利语",
+    },
+    ApplicationLanguage.GREEK: {
+        "اليونانية",
+        "Grec",
+        "Griechisch",
+        "Griego",
+        "Grekoa",
+        "Greco",
+        "Grego",
+        "ギリシャ語",
+        "Grieks",
+        "希腊语",
+    },
+    ApplicationLanguage.DUTCH: {
+        "هولندي",
+        "Holandès",
+        "Ολλανδός",
+        "Holandés",
+        "Holandarra",
+        "Néerlandais",
+        "Niederländisch",
+        "Olandese",
+        "オランダ語",
+        "Holandês",
+        "荷兰语",
+    },
+    ApplicationLanguage.CATALAN: {
+        "الكاتالونية",
+        "Katalanisch",
+        "Καταλανικά",
+        "Catalán",
+        "Katalana",
+        "Catalan",
+        "Catalano",
+        "カタルーニャ語",
+        "Catalaans",
+        "Catalão",
+        "加泰罗尼亚语",
+    },
+    ApplicationLanguage.CHINESE: {
+        "Mandarín",
+        "मंदारिन",
+        "普通話",
+    },
+    ApplicationLanguage.HINDI: {
+        "印地语",
+        "印地語",
+    },
+    ApplicationLanguage.CANTONESE: {
+        "Cantonés",
+        "कैंटोनीज़",
+    },
+    ApplicationLanguage.GERMAN: {
+        "الألمانية",
+        "Alemany",
+        "Γερμανός",
+        "Alemán",
+        "Alemana",
+        "Allemand",
+        "Tedesco",
+        "ドイツ語",
+        "Duits",
+        "Alemão",
+        "德语",
+    },
+    ApplicationLanguage.FRENCH: {
+        "فرنسي",
+        "Französisch",
+        "Francès",
+        "Francês",
+        "Γάλλος",
+        "Francés",
+        "Frantsesa",
+        "Francese",
+        "フランス語",
+        "Frans",
+        "法语",
+    },
+    ApplicationLanguage.PORTUGUESE: {
+        "البرتغالية",
+        "Portuguès",
+        "Portugiesisch",
+        "Πορτογάλος",
+        "Portugués",
+        "Portugesa",
+        "Portugais",
+        "Portoghese",
+        "ポルトガル語",
+        "Portugees",
+        "葡萄牙语",
+    },
+    ApplicationLanguage.SPANISH: {
+        "الاسبانية",
+        "Espanyol",
+        "Spanisch",
+        "Espagnol",
+        "スペイン語",
+        "Spaans",
+        "Espanhol",
+        "西班牙语",
+    },
+}
+
+
 def language_from_name(name_text: str | None) -> ApplicationLanguage:
     """
     Parse one persisted language name into the corresponding enum value.
@@ -459,56 +699,43 @@ def language_from_name(name_text: str | None) -> ApplicationLanguage:
         pass
 
     normalized_name: str = str(name_text).strip()
+    english_aliases: dict[ApplicationLanguage, str] = {
+        ApplicationLanguage.SYSTEM: "System default",
+        ApplicationLanguage.ENGLISH: "English",
+        ApplicationLanguage.JAPANESE: "Japanese",
+        ApplicationLanguage.BASQUE: "Basque",
+        ApplicationLanguage.GALICIAN: "Galician",
+        ApplicationLanguage.ARABIC: "Arabic",
+        ApplicationLanguage.ITALIAN: "Italian",
+        ApplicationLanguage.GREEK: "Greek",
+        ApplicationLanguage.DUTCH: "Dutch",
+        ApplicationLanguage.CATALAN: "Catalan",
+        ApplicationLanguage.CHINESE: "Mandarin",
+        ApplicationLanguage.HINDI: "Hindi",
+        ApplicationLanguage.CANTONESE: "Cantonese",
+        ApplicationLanguage.GERMAN: "German",
+        ApplicationLanguage.FRENCH: "French",
+        ApplicationLanguage.PORTUGUESE: "Portuguese",
+        ApplicationLanguage.SPANISH: "Español",
+    }
 
-    if normalized_name == ApplicationLanguage.ENGLISH.name:
-        return ApplicationLanguage.ENGLISH
-    else:
-        if normalized_name == ApplicationLanguage.JAPANESE.name:
-            return ApplicationLanguage.JAPANESE
+    language: ApplicationLanguage
+    accepted_names: set[str]
+
+    for language in ApplicationLanguage:
+        accepted_names = {
+            language.name,
+            str(language.value),
+            get_language_display_text(language),
+            english_aliases[language],
+        }
+        accepted_names.update(LEGACY_LANGUAGE_ALIASES.get(language, set()))
+        if normalized_name in accepted_names:
+            return language
         else:
-            if normalized_name == ApplicationLanguage.BASQUE.name:
-                return ApplicationLanguage.BASQUE
-            else:
-                if normalized_name == ApplicationLanguage.GALICIAN.name:
-                    return ApplicationLanguage.GALICIAN
-                else:
-                    if normalized_name == ApplicationLanguage.ARABIC.name:
-                        return ApplicationLanguage.ARABIC
-                    else:
-                        if normalized_name == ApplicationLanguage.ITALIAN.name:
-                            return ApplicationLanguage.ITALIAN
-                        else:
-                            if normalized_name == ApplicationLanguage.GREEK.name:
-                                return ApplicationLanguage.GREEK
-                            else:
-                                if normalized_name == ApplicationLanguage.DUTCH.name:
-                                    return ApplicationLanguage.DUTCH
-                                else:
-                                    if normalized_name == ApplicationLanguage.CATALAN.name:
-                                        return ApplicationLanguage.CATALAN
-                                    else:
-                                        if normalized_name == ApplicationLanguage.CHINESE.name:
-                                            return ApplicationLanguage.CHINESE
-                                        else:
-                                            if normalized_name == ApplicationLanguage.HINDI.name:
-                                                return ApplicationLanguage.HINDI
-                                            else:
-                                                if normalized_name == ApplicationLanguage.CANTONESE.name:
-                                                    return ApplicationLanguage.CANTONESE
-                                                else:
-                                                    if normalized_name == ApplicationLanguage.GERMAN.name:
-                                                        return ApplicationLanguage.GERMAN
-                                                    else:
-                                                        if normalized_name == ApplicationLanguage.FRENCH.name:
-                                                            return ApplicationLanguage.FRENCH
-                                                        else:
-                                                            if normalized_name == ApplicationLanguage.PORTUGUESE.name:
-                                                                return ApplicationLanguage.PORTUGUESE
-                                                            else:
-                                                                if normalized_name == ApplicationLanguage.SPANISH.name:
-                                                                    return ApplicationLanguage.SPANISH
-                                                                else:
-                                                                    return ApplicationLanguage.SYSTEM
+            pass
+
+    return ApplicationLanguage.SYSTEM
 
 
 def read_saved_language() -> ApplicationLanguage:

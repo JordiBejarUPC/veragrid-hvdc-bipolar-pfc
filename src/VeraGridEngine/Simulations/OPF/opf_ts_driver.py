@@ -10,7 +10,7 @@ from typing import Union
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.enumerations import SolverType, TimeGrouping, EngineType, SimulationTypes
 from VeraGridEngine.Simulations.OPF.opf_options import OptimalPowerFlowOptions
-from VeraGridEngine.Simulations.OPF.Formulations.linear_opf_ts import run_linear_opf_ts
+from VeraGridEngine.Simulations.OPF.Formulations.linear_opf_ts import run_linear_opf_ts, SystemVars
 from VeraGridEngine.Simulations.OPF.simple_dispatch_ts import run_greedy_dispatch_ts
 from VeraGridEngine.Simulations.OPF.ac_opf_worker import run_nonlinear_opf
 from VeraGridEngine.Simulations.OPF.opf_ts_results import OptimalPowerFlowTimeSeriesResults
@@ -270,7 +270,7 @@ class OptimalPowerFlowTimeSeriesDriver(TimeSeriesDriverTemplate):
         # AC optimal power flow
         (load_profile, gen_dispatch,
          batt_dispatch, battery_energy,
-         load_shedding, gen_curtailment) = run_greedy_dispatch_ts(
+         load_shedding, gen_curtailment, greedy_inpts) = run_greedy_dispatch_ts(
             grid=self.grid,
             time_indices=self.time_indices,
             text_prog=self.report_text,
@@ -288,6 +288,31 @@ class OptimalPowerFlowTimeSeriesDriver(TimeSeriesDriverTemplate):
 
         self.results.converged[self.time_indices] = True
 
+        gen_emissions_rates_matrix = self.grid.get_gen_emission_rates_sparse_matrix()
+        gen_fuel_rates_matrix = self.grid.get_gen_fuel_rates_sparse_matrix()
+        gen_tech_shares_matrix = self.grid.get_gen_technology_connectivity_matrix()
+        batt_tech_shares_matrix = self.grid.get_batt_technology_connectivity_matrix()
+
+        gen_cost = gen_dispatch * greedy_inpts.gen_cost
+        shedding_cost = load_shedding * greedy_inpts.load_shedding_cost
+
+        sys_calc = SystemVars(nt=len(self.time_indices))
+        sys_calc.compute(gen_emissions_rates_matrix=gen_emissions_rates_matrix,
+                    gen_fuel_rates_matrix=gen_fuel_rates_matrix,
+                    gen_tech_shares_matrix=gen_tech_shares_matrix,
+                    batt_tech_shares_matrix=batt_tech_shares_matrix,
+                    gen_p=gen_dispatch,
+                    batt_p=batt_dispatch,
+                    gen_cost=gen_cost,
+                    shedding_cost=shedding_cost)
+
+        self.results.system_fuel[self.time_indices, :] = sys_calc.system_fuel
+        self.results.system_emissions[self.time_indices, :] = sys_calc.system_emissions
+        self.results.system_energy_cost[self.time_indices] = sys_calc.system_unit_energy_cost
+        self.results.system_total_energy_cost[self.time_indices] = sys_calc.system_total_energy_cost
+        self.results.power_by_technology[self.time_indices, :] = sys_calc.power_by_technology
+
+
     def run_greedy_dispatch_indices(self, time_indices: IntVec):
         """
 
@@ -297,7 +322,7 @@ class OptimalPowerFlowTimeSeriesDriver(TimeSeriesDriverTemplate):
         # Greedy dispatch
         (load_profile, gen_dispatch,
          batt_dispatch, battery_energy,
-         load_shedding, gen_curtailment) = run_greedy_dispatch_ts(
+         load_shedding, gen_curtailment, greedy_inpts) = run_greedy_dispatch_ts(
             grid=self.grid,
             time_indices=time_indices,
             text_prog=self.report_text,
@@ -314,6 +339,30 @@ class OptimalPowerFlowTimeSeriesDriver(TimeSeriesDriverTemplate):
         self.results.load_power[time_indices, :] = load_profile
 
         self.results.converged[time_indices] = True
+
+        gen_emissions_rates_matrix = self.grid.get_gen_emission_rates_sparse_matrix()
+        gen_fuel_rates_matrix = self.grid.get_gen_fuel_rates_sparse_matrix()
+        gen_tech_shares_matrix = self.grid.get_gen_technology_connectivity_matrix()
+        batt_tech_shares_matrix = self.grid.get_batt_technology_connectivity_matrix()
+
+        gen_cost = gen_dispatch * greedy_inpts.gen_cost
+        shedding_cost = load_shedding * greedy_inpts.load_shedding_cost
+
+        sys_calc = SystemVars(nt=len(time_indices))
+        sys_calc.compute(gen_emissions_rates_matrix=gen_emissions_rates_matrix,
+                         gen_fuel_rates_matrix=gen_fuel_rates_matrix,
+                         gen_tech_shares_matrix=gen_tech_shares_matrix,
+                         batt_tech_shares_matrix=batt_tech_shares_matrix,
+                         gen_p=gen_dispatch,
+                         batt_p=batt_dispatch,
+                         gen_cost=gen_cost,
+                         shedding_cost=shedding_cost)
+
+        self.results.system_fuel[time_indices, :] = sys_calc.system_fuel
+        self.results.system_emissions[time_indices, :] = sys_calc.system_emissions
+        self.results.system_energy_cost[time_indices] = sys_calc.system_unit_energy_cost
+        self.results.system_total_energy_cost[time_indices] = sys_calc.system_total_energy_cost
+        self.results.power_by_technology[time_indices, :] = sys_calc.power_by_technology
 
     def run_non_linear_opf(self):
         """
@@ -635,10 +684,10 @@ class OptimalPowerFlowTimeSeriesDriver(TimeSeriesDriverTemplate):
                 self.report_text('Running Linear OPF with Newton...')
 
                 gslv_res = newton_pa_linear_opf(circuit=self.grid,
-                                               opf_options=self.options,
-                                               pf_opt=PowerFlowOptions(),
-                                               time_series=use_time_series,
-                                               time_indices=self.time_indices)
+                                                opf_options=self.options,
+                                                pf_opt=PowerFlowOptions(),
+                                                time_series=use_time_series,
+                                                time_indices=self.time_indices)
 
                 self.results.voltage[ti, :] = gslv_res.voltage_module * np.exp(1j * gslv_res.voltage_angle)
                 self.results.bus_shadow_prices[ti, :] = gslv_res.nodal_shadow_prices
@@ -669,10 +718,10 @@ class OptimalPowerFlowTimeSeriesDriver(TimeSeriesDriverTemplate):
 
                 # pack the results
                 gslv_res = newton_pa_nonlinear_opf(circuit=self.grid,
-                                                  pf_opt=self.pf_options,
-                                                  opf_opt=self.options,
-                                                  time_series=use_time_series,
-                                                  time_indices=self.time_indices)
+                                                   pf_opt=self.pf_options,
+                                                   opf_opt=self.options,
+                                                   time_series=use_time_series,
+                                                   time_indices=self.time_indices)
 
                 self.results.voltage[ti, :] = gslv_res.voltage
                 self.results.Sbus[ti, :] = gslv_res.Scalc
@@ -714,10 +763,10 @@ class OptimalPowerFlowTimeSeriesDriver(TimeSeriesDriverTemplate):
                 self.report_text('Running Linear OPF with GSLV...')
 
                 gslv_res = gslv.gslv_opf(circuit=self.grid,
-                                        opf_options=self.options,
-                                        time_series=use_time_series,
-                                        time_indices=self.time_indices,
-                                        logger=self.logger)
+                                         opf_options=self.options,
+                                         time_series=use_time_series,
+                                         time_indices=self.time_indices,
+                                         logger=self.logger)
 
                 self.results.voltage[result_time_indices, :] = gslv_res.voltage[source_time_indices, :]
                 self.results.Sbus[result_time_indices, :] = gslv_res.Sbus[source_time_indices, :].real
