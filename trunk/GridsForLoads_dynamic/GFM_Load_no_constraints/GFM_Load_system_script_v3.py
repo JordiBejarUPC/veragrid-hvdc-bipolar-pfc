@@ -247,7 +247,6 @@ X_trf_pu = 1.0 / 10.0
 # The EMT template implements the shunt only on the "to" side, while the
 # VeraGrid static line ``b`` is a symmetric pi-line susceptance used for PF
 # and EMT initialization. Keep the matching total susceptance here.
-# B_sh_pu = 2.0 / 15.0
 B_sh_pu = 1.0 / 15.0
 line0 = gce.Line(name="line0", bus_from=bus0, bus_to=bus1, r=R_trf_pu, x=X_trf_pu, b=B_sh_pu, rate=Sb)
 
@@ -263,7 +262,6 @@ i_C0 = -0.34355869914723824
 P_loss_f_pu = R_f_pu * (i_A0*i_A0 + i_B0*i_B0 + i_C0*i_C0)
 
 P_load_pu = P_dc_pu + P_loss_f_pu
-# P_target = P_load_pu * 2.0  # MW, because Sb = 2 MVA
 P_target = 1.6
 load = gce.Load(name="load",P = P_target, P1= P_target/3, P2= P_target/3, P3= P_target/3, Q =0.0, Q1= 0.0, Q2= 0.0, Q3= 0.0)
 load.conn = ShuntConnectionType.GroundedStar
@@ -951,11 +949,11 @@ else:
 fig_si_overview, axes_si_overview = plt.subplots(3, 2, figsize=(16, 12), sharex=True)
 axes_si_overview = axes_si_overview.ravel()
 
-plot_scaled_with_tracking(axes_si_overview[0], t_arr, problem, y_arr, "v_A_Bus1_emt_template",
+plot_scaled_with_tracking(axes_si_overview[0], t_arr, problem, y_arr, "v_A",
                           V_phase_rms_base / 1000.0, "v_A_Bus1 [kV]")
-plot_scaled_with_tracking(axes_si_overview[0], t_arr, problem, y_arr, "v_B_Bus1_emt_template",
+plot_scaled_with_tracking(axes_si_overview[0], t_arr, problem, y_arr, "v_B",
                           V_phase_rms_base / 1000.0, "v_B_Bus1 [kV]")
-plot_scaled_with_tracking(axes_si_overview[0], t_arr, problem, y_arr, "v_C_Bus1_emt_template",
+plot_scaled_with_tracking(axes_si_overview[0], t_arr, problem, y_arr, "v_C",
                           V_phase_rms_base / 1000.0, "v_C_Bus1 [kV]")
 axes_si_overview[0].set_title("Grid-Side AC Voltages [kV phase-to-neutral instantaneous]")
 axes_si_overview[0].set_ylabel("Voltage [kV]")
@@ -1310,18 +1308,18 @@ def add_csv_array(column_name: str, series):
     if series is not None:
         csv_columns[column_name] = series
 
-add_csv_series("vA_Bus0_kV", "v_A_Bus0_emt_template", V_phase_rms_base / 1000.0)
-add_csv_series("vB_Bus0_kV", "v_B_Bus0_emt_template", V_phase_rms_base / 1000.0)
-add_csv_series("vC_Bus0_kV", "v_C_Bus0_emt_template", V_phase_rms_base / 1000.0)
+add_csv_series("vA_Bus0_kV", "v_A", V_phase_rms_base / 1000.0)
+add_csv_series("vB_Bus0_kV", "v_B", V_phase_rms_base / 1000.0)
+add_csv_series("vC_Bus0_kV", "v_C", V_phase_rms_base / 1000.0)
 add_csv_series("iA_Bus0_A", "i_A_emt_thevenin_eq_generator_template", Ibase_vg)
 add_csv_series("iB_Bus0_A", "i_B_emt_thevenin_eq_generator_template", Ibase_vg)
 add_csv_series("iC_Bus0_A", "i_C_emt_thevenin_eq_generator_template", Ibase_vg)
-add_csv_series("vA_Bus1_kV", "v_A_Bus1_emt_template", V_phase_rms_base / 1000.0)
-add_csv_series("vB_Bus1_kV", "v_B_Bus1_emt_template", V_phase_rms_base / 1000.0)
-add_csv_series("vC_Bus1_kV", "v_C_Bus1_emt_template", V_phase_rms_base / 1000.0)
-add_csv_series("vA_conv_kV", "v_A_Bus1_emt_template", V_phase_rms_base / 1000.0)
-add_csv_series("vB_conv_kV", "v_B_Bus1_emt_template", V_phase_rms_base / 1000.0)
-add_csv_series("vC_conv_kV", "v_C_Bus1_emt_template", V_phase_rms_base / 1000.0)
+add_csv_series("vA_Bus1_kV", "v_A", V_phase_rms_base / 1000.0)
+add_csv_series("vB_Bus1_kV", "v_B", V_phase_rms_base / 1000.0)
+add_csv_series("vC_Bus1_kV", "v_C", V_phase_rms_base / 1000.0)
+add_csv_series("vA_conv_kV", "v_A", V_phase_rms_base / 1000.0)
+add_csv_series("vB_conv_kV", "v_B", V_phase_rms_base / 1000.0)
+add_csv_series("vC_conv_kV", "v_C", V_phase_rms_base / 1000.0)
 add_csv_series("iA_grid_A_sim_sign", "i_f_A_G4L_grid_side_converter", Ibase_vg, negate=True)
 add_csv_series("iB_grid_A_sim_sign", "i_f_B_G4L_grid_side_converter", Ibase_vg, negate=True)
 add_csv_series("iC_grid_A_sim_sign", "i_f_C_G4L_grid_side_converter", Ibase_vg, negate=True)

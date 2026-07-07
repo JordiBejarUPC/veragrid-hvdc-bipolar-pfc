@@ -45,7 +45,7 @@ class BusEmtTemplate(EmtModelTemplate):
         self._block.name = name
         if is_dc:
             # For a DC bus in EMT, we track the instantaneous DC voltage.
-            self.v_DC = vf.add_var(name=f"v_DC_{name}", reference=VarPowerFlowReferenceType.Vdc)
+            self.v_DC = vf.add_var(name=f"v_DC", reference=VarPowerFlowReferenceType.Vdc)
 
             self._block = Block(
                 algebraic_vars=[self.v_DC],
@@ -67,10 +67,10 @@ class BusEmtTemplate(EmtModelTemplate):
             }
 
         else:
-            self.v_N = vf.add_var(name=f"v_N_{name}", reference=VarPowerFlowReferenceType.v_N) if mask[0] else None
-            self.v_A = vf.add_var(name=f"v_A_{name}", reference=VarPowerFlowReferenceType.v_A) if mask[1] else None
-            self.v_B = vf.add_var(name=f"v_B_{name}", reference=VarPowerFlowReferenceType.v_B) if mask[2] else None
-            self.v_C = vf.add_var(name=f"v_C_{name}", reference=VarPowerFlowReferenceType.v_C) if mask[3] else None
+            self.v_N = vf.add_var(name=f"v_N", reference=VarPowerFlowReferenceType.v_N) if mask[0] else None
+            self.v_A = vf.add_var(name=f"v_A", reference=VarPowerFlowReferenceType.v_A) if mask[1] else None
+            self.v_B = vf.add_var(name=f"v_B", reference=VarPowerFlowReferenceType.v_B) if mask[2] else None
+            self.v_C = vf.add_var(name=f"v_C", reference=VarPowerFlowReferenceType.v_C) if mask[3] else None
 
             v_list = [v for v in (self.v_N, self.v_A, self.v_B, self.v_C) if v is not None]
             if not v_list:

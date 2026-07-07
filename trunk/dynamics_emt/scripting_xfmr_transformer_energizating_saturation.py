@@ -509,9 +509,9 @@ def build_grid_and_run(event_time: float) -> dict[str, Any]:
     xfmr_mdl.set_parameter_in_model(var_name="xfmr_core_b_prime_xfmr_sat_test", new_value=0.15) # 0.25
 
     # Secondary almost open.
-    load_mdl.set_parameter_in_model(var_name="R_A_Shunt_R_3ph", new_value=1e9)
-    load_mdl.set_parameter_in_model(var_name="R_B_Shunt_R_3ph", new_value=1e9)
-    load_mdl.set_parameter_in_model(var_name="R_C_Shunt_R_3ph", new_value=1e9)
+    load_mdl.set_parameter_in_model(var_name="R_A", new_value=1e9)
+    load_mdl.set_parameter_in_model(var_name="R_B", new_value=1e9)
+    load_mdl.set_parameter_in_model(var_name="R_C", new_value=1e9)
 
     ##################################################################################################
     # Generator breaker-less energization
@@ -618,13 +618,13 @@ def build_grid_and_run(event_time: float) -> dict[str, Any]:
     ##################################################################################################
     # Extract trajectories
     ##################################################################################################
-    vA_hv = get_series(problem, y, "v_A_Bus_HV_emt_template")
-    vB_hv = get_series(problem, y, "v_B_Bus_HV_emt_template")
-    vC_hv = get_series(problem, y, "v_C_Bus_HV_emt_template")
+    vA_hv = get_series(problem, y, "v_A")
+    vB_hv = get_series(problem, y, "v_B")
+    vC_hv = get_series(problem, y, "v_C")
 
-    vA_lv = get_series(problem, y, "v_A_Bus_LV_emt_template")
-    vB_lv = get_series(problem, y, "v_B_Bus_LV_emt_template")
-    vC_lv = get_series(problem, y, "v_C_Bus_LV_emt_template")
+    vA_lv = get_series(problem, y, "v_A")
+    vB_lv = get_series(problem, y, "v_B")
+    vC_lv = get_series(problem, y, "v_C")
 
     ifA = get_series(problem, y, "if_A_xfmr_sat_test")
     ifB = get_series(problem, y, "if_B_xfmr_sat_test")

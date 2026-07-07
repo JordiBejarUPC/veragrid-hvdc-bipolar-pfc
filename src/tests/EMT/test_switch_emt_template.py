@@ -42,8 +42,8 @@ def test_switch_emt_template_builds_signal_controlled_with_command_input() -> No
     input_names = [var.name for var in templ.block.in_vars]
     mode_names = [var.name for var in templ.block.mode_dict.keys()]
 
-    assert any(name.startswith("switch_cmd_") for name in input_names)
-    assert any(name.startswith("switch_closed_mode_") for name in mode_names)
+    assert "switch_cmd" in input_names
+    assert "switch_closed_mode" in mode_names
     assert len(templ.block.procedural_logic) == 1
 
 
@@ -94,7 +94,7 @@ def test_switch_emt_problem_seeds_closed_mode_from_switch_active_state() -> None
 
     switch.active = False
     problem = EmtProblemDae(grid=grid, options=_get_default_emt_options(), pf_results=None, pf_results_3ph=pf_res_3ph)
-    mode_var = next(var for var in problem.get_runtime_mode_parameters() if var.name == "switch_closed_mode_SW")
+    mode_var = next(var for var in problem.get_runtime_mode_parameters() if var.name == "switch_closed_mode")
     runtime_idx = problem.uid2idx_event_params[mode_var.uid]
 
     assert float(problem.event_params_values[runtime_idx]) == 0.0

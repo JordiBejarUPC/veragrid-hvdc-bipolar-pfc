@@ -31,11 +31,11 @@ from VeraGridEngine.enumerations import VarPowerFlowReferenceType, DeviceType, P
 #     # --------------------------------------------------------------------------------------
 #     # Inputs: instantaneous abc terminal voltages in pu (at bus)
 #     # --------------------------------------------------------------------------------------
-#     v_A = vf.add_var(name=f"v_A_{name}", reference= VarPowerFlowReferenceType.v_A)
-#     v_B = vf.add_var(name=f"v_B_{name}", reference= VarPowerFlowReferenceType.v_B)
-#     v_C = vf.add_var(name=f"v_C_{name}", reference= VarPowerFlowReferenceType.v_C)
-#     Tm = vf.add_var(name=f"Tm_{name}")
-#     v_f = vf.add_var(name=f"v_f_{name}")
+#     v_A = vf.add_var(name=f"v_A", reference= VarPowerFlowReferenceType.v_A)
+#     v_B = vf.add_var(name=f"v_B", reference= VarPowerFlowReferenceType.v_B)
+#     v_C = vf.add_var(name=f"v_C", reference= VarPowerFlowReferenceType.v_C)
+#     Tm = vf.add_var(name=f"Tm")
+#     v_f = vf.add_var(name=f"v_f")
 #
 #     # to connect complete block with gen block
 #     Ipk = vf.add_var(name="Ipk", reference= VarPowerFlowReferenceType.Ipk)
@@ -48,7 +48,7 @@ from VeraGridEngine.enumerations import VarPowerFlowReferenceType, DeviceType, P
 #     # --------------------------------------------------------------------------------------
 #
 #     theta = vf.add_var("theta_" + name)  # electrical angle [rad]
-#     omega = vf.add_var(name=f"omega_{name}")  # speed [pu]
+#     omega = vf.add_var(name=f"omega")  # speed [pu]
 #     psi_d = vf.add_var("psi_d_" + name)  # flux linkages [pu] on psi_base = Vbase/omega_base
 #     psi_q = vf.add_var("psi_q_" + name)
 #     psi_f = vf.add_var("psi_f_" + name)
@@ -57,20 +57,20 @@ from VeraGridEngine.enumerations import VarPowerFlowReferenceType, DeviceType, P
 #
 #
 #     # Diff vars (derivatives)
-#     d_omega = vf.add_diff_var(name = f"d_omega_{name}", base_var=omega)
-#     d_theta = vf.add_diff_var(name = f"d_theta_{name}", base_var=theta)
-#     d_psi_d = vf.add_diff_var(name = f"d_psi_d_{name}", base_var=psi_d)
-#     d_psi_q = vf.add_diff_var(name = f"d_psi_q_{name}", base_var=psi_q)
-#     d_psi_0 = vf.add_diff_var(name = f"d_psi_0_{name}", base_var=psi_0)
-#     d_psi_f = vf.add_diff_var(name = f"d_psi_f_{name}", base_var=psi_f)
-#     d_et    = vf.add_diff_var(name = f"d_et_{name}", base_var=et)
+#     d_omega = vf.add_diff_var(name = f"d_omega", base_var=omega)
+#     d_theta = vf.add_diff_var(name = f"d_theta", base_var=theta)
+#     d_psi_d = vf.add_diff_var(name = f"d_psi_d", base_var=psi_d)
+#     d_psi_q = vf.add_diff_var(name = f"d_psi_q", base_var=psi_q)
+#     d_psi_0 = vf.add_diff_var(name = f"d_psi_0", base_var=psi_0)
+#     d_psi_f = vf.add_diff_var(name = f"d_psi_f", base_var=psi_f)
+#     d_et    = vf.add_diff_var(name = f"d_et", base_var=et)
 #
 #     # --------------------------------------------------------------------------------------
 #     # Algebraic eqs
 #     # --------------------------------------------------------------------------------------
-#     i_A = vf.add_var(name=f"i_A_{name}", reference= VarPowerFlowReferenceType.i_A)
-#     i_B = vf.add_var(name=f"i_B_{name}", reference= VarPowerFlowReferenceType.i_B)
-#     i_C = vf.add_var(name=f"i_C_{name}", reference= VarPowerFlowReferenceType.i_C)
+#     i_A = vf.add_var(name=f"i_A", reference= VarPowerFlowReferenceType.i_A)
+#     i_B = vf.add_var(name=f"i_B", reference= VarPowerFlowReferenceType.i_B)
+#     i_C = vf.add_var(name=f"i_C", reference= VarPowerFlowReferenceType.i_C)
 #
 #     # dq0 voltages
 #     v_d = vf.add_var("v_d_" + name)
@@ -83,7 +83,7 @@ from VeraGridEngine.enumerations import VarPowerFlowReferenceType, DeviceType, P
 #     i_0 = vf.add_var("i_0_" + name)
 #
 #     # field
-#     i_f = vf.add_var(name=f"i_f_{name}")
+#     i_f = vf.add_var(name=f"i_f")
 #
 #     # powers/torques
 #     Te = vf.add_var("Te_" + name)
@@ -324,28 +324,28 @@ def get_simple_generator_emt_template(vf: VarFactory, name: str = "simple_emt_ty
     # --------------------------------------------------------------------------------------
     # Inputs: instantaneous abc terminal voltages in pu (at bus)
     # --------------------------------------------------------------------------------------
-    v_A = vf.add_var(name=f"v_A_{name}", reference= VarPowerFlowReferenceType.v_A)
-    v_B = vf.add_var(name=f"v_B_{name}", reference= VarPowerFlowReferenceType.v_B)
-    v_C = vf.add_var(name=f"v_C_{name}", reference= VarPowerFlowReferenceType.v_C)
-    Tm = vf.add_var(name=f"Tm_{name}")
-    v_f = vf.add_var(name=f"v_f_{name}")
+    v_A = vf.add_var(name=f"v_A", reference= VarPowerFlowReferenceType.v_A)
+    v_B = vf.add_var(name=f"v_B", reference= VarPowerFlowReferenceType.v_B)
+    v_C = vf.add_var(name=f"v_C", reference= VarPowerFlowReferenceType.v_C)
+    Tm = vf.add_var(name=f"Tm")
+    v_f = vf.add_var(name=f"v_f")
 
-    d_v_A = vf.add_var(name=f"d_v_A_{name}", reference=VarPowerFlowReferenceType.d_v_A)
-    d_v_B = vf.add_var(name=f"d_v_B_{name}", reference=VarPowerFlowReferenceType.d_v_B)
-    d_v_C = vf.add_var(name=f"d_v_C_{name}", reference=VarPowerFlowReferenceType.d_v_C)
-    p_A = vf.add_var(name=f"P_A_{name}", reference=VarPowerFlowReferenceType.P_A)
-    q_A = vf.add_var(name=f"Q_A_{name}", reference=VarPowerFlowReferenceType.Q_A)
-    p_B = vf.add_var(name=f"P_B_{name}", reference=VarPowerFlowReferenceType.P_B)
-    q_B = vf.add_var(name=f"Q_B_{name}", reference=VarPowerFlowReferenceType.Q_B)
-    p_C = vf.add_var(name=f"P_C_{name}", reference=VarPowerFlowReferenceType.P_C)
-    q_C = vf.add_var(name=f"Q_C_{name}", reference=VarPowerFlowReferenceType.Q_C)
+    d_v_A = vf.add_var(name=f"d_v_A", reference=VarPowerFlowReferenceType.d_v_A)
+    d_v_B = vf.add_var(name=f"d_v_B", reference=VarPowerFlowReferenceType.d_v_B)
+    d_v_C = vf.add_var(name=f"d_v_C", reference=VarPowerFlowReferenceType.d_v_C)
+    p_A = vf.add_var(name=f"P_A", reference=VarPowerFlowReferenceType.P_A)
+    q_A = vf.add_var(name=f"Q_A", reference=VarPowerFlowReferenceType.Q_A)
+    p_B = vf.add_var(name=f"P_B", reference=VarPowerFlowReferenceType.P_B)
+    q_B = vf.add_var(name=f"Q_B", reference=VarPowerFlowReferenceType.Q_B)
+    p_C = vf.add_var(name=f"P_C", reference=VarPowerFlowReferenceType.P_C)
+    q_C = vf.add_var(name=f"Q_C", reference=VarPowerFlowReferenceType.Q_C)
     inputs = [v_A, v_B, v_C]
     # --------------------------------------------------------------------------------------
     # States (pu, except theta [rad])
     # --------------------------------------------------------------------------------------
 
     theta = vf.add_var("theta_" + name)  # electrical angle [rad]
-    omega = vf.add_var(name=f"omega_{name}")  # speed [pu]
+    omega = vf.add_var(name=f"omega")  # speed [pu]
     psi_d = vf.add_var("psi_d_" + name)  # flux linkages [pu] on psi_base = Vbase/omega_base
     psi_q = vf.add_var("psi_q_" + name)
     psi_f = vf.add_var("psi_f_" + name)
@@ -354,20 +354,20 @@ def get_simple_generator_emt_template(vf: VarFactory, name: str = "simple_emt_ty
 
 
     # Diff vars (derivatives)
-    d_omega = vf.add_diff_var(name = f"d_omega_{name}", base_var=omega)
-    d_theta = vf.add_diff_var(name = f"d_theta_{name}", base_var=theta)
-    d_psi_d = vf.add_diff_var(name = f"d_psi_d_{name}", base_var=psi_d)
-    d_psi_q = vf.add_diff_var(name = f"d_psi_q_{name}", base_var=psi_q)
-    d_psi_0 = vf.add_diff_var(name = f"d_psi_0_{name}", base_var=psi_0)
-    d_psi_f = vf.add_diff_var(name = f"d_psi_f_{name}", base_var=psi_f)
-    d_et    = vf.add_diff_var(name = f"d_et_{name}", base_var=et)
+    d_omega = vf.add_diff_var(name = f"d_omega", base_var=omega)
+    d_theta = vf.add_diff_var(name = f"d_theta", base_var=theta)
+    d_psi_d = vf.add_diff_var(name = f"d_psi_d", base_var=psi_d)
+    d_psi_q = vf.add_diff_var(name = f"d_psi_q", base_var=psi_q)
+    d_psi_0 = vf.add_diff_var(name = f"d_psi_0", base_var=psi_0)
+    d_psi_f = vf.add_diff_var(name = f"d_psi_f", base_var=psi_f)
+    d_et    = vf.add_diff_var(name = f"d_et", base_var=et)
 
     # --------------------------------------------------------------------------------------
     # Algebraic eqs
     # --------------------------------------------------------------------------------------
-    i_A = vf.add_var(name=f"i_A_{name}", reference= VarPowerFlowReferenceType.i_A)
-    i_B = vf.add_var(name=f"i_B_{name}", reference= VarPowerFlowReferenceType.i_B)
-    i_C = vf.add_var(name=f"i_C_{name}", reference= VarPowerFlowReferenceType.i_C)
+    i_A = vf.add_var(name=f"i_A", reference= VarPowerFlowReferenceType.i_A)
+    i_B = vf.add_var(name=f"i_B", reference= VarPowerFlowReferenceType.i_B)
+    i_C = vf.add_var(name=f"i_C", reference= VarPowerFlowReferenceType.i_C)
 
     # dq0 voltages
     v_d = vf.add_var("v_d_" + name)
@@ -380,7 +380,7 @@ def get_simple_generator_emt_template(vf: VarFactory, name: str = "simple_emt_ty
     i_0 = vf.add_var("i_0_" + name)
 
     # field
-    i_f = vf.add_var(name=f"i_f_{name}")
+    i_f = vf.add_var(name=f"i_f")
 
     # powers/torques
     Te = vf.add_var("Te_" + name)

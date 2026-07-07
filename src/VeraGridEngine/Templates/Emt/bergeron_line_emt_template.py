@@ -214,14 +214,14 @@ def get_bergeron_line_emt_template(
         "C": VarPowerFlowReferenceType.vt_C,
     })
 
-    vf_vars = [vf.add_var(name=f"vf_{ph_label}_{name}", reference=vf_keys[ph_label]) for ph_label in active_ph]
-    vt_vars = [vf.add_var(name=f"vt_{ph_label}_{name}", reference=vt_keys[ph_label]) for ph_label in active_ph]
+    vf_vars = [vf.add_var(name=f"vf_{ph_label}", reference=vf_keys[ph_label]) for ph_label in active_ph]
+    vt_vars = [vf.add_var(name=f"vt_{ph_label}", reference=vt_keys[ph_label]) for ph_label in active_ph]
 
     templ.block.in_vars = vf_vars + vt_vars
 
 
-    ih_f = [vf.add_var(f"Ih_f_{name}_{ph}") for ph in active_ph]
-    ih_t = [vf.add_var(f"Ih_t_{name}_{ph}") for ph in active_ph]
+    ih_f = [vf.add_var(f"Ih_f_{ph}") for ph in active_ph]
+    ih_t = [vf.add_var(f"Ih_t_{ph}") for ph in active_ph]
 
     # I history
     templ.block.event_dict = {p: vf.add_const(0.0) for p in (ih_f + ih_t)}

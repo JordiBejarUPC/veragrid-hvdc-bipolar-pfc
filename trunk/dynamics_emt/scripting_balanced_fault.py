@@ -442,12 +442,12 @@ def _plot_results(problem: EmtProblemDae,
     fault_apply_time_s: float = 0.04
     fault_clear_time_s: float = 0.08
     tme: np.ndarray = np.asarray(solver_results["t"], dtype=float)
-    v_a_source_var: Any = _find_required_var(f"v_A_{bus_source.name}_emt_template", bus_source.emt_model)
-    v_b_source_var: Any = _find_required_var(f"v_B_{bus_source.name}_emt_template", bus_source.emt_model)
-    v_c_source_var: Any = _find_required_var(f"v_C_{bus_source.name}_emt_template", bus_source.emt_model)
-    v_a_remote_var: Any = _find_required_var(f"v_A_{bus_remote.name}_emt_template", bus_remote.emt_model)
-    v_b_remote_var: Any = _find_required_var(f"v_B_{bus_remote.name}_emt_template", bus_remote.emt_model)
-    v_c_remote_var: Any = _find_required_var(f"v_C_{bus_remote.name}_emt_template", bus_remote.emt_model)
+    v_a_source_var: Any = _find_required_var("v_A", bus_source.emt_model)
+    v_b_source_var: Any = _find_required_var("v_B", bus_source.emt_model)
+    v_c_source_var: Any = _find_required_var("v_C", bus_source.emt_model)
+    v_a_remote_var: Any = _find_required_var("v_A", bus_remote.emt_model)
+    v_b_remote_var: Any = _find_required_var("v_B", bus_remote.emt_model)
+    v_c_remote_var: Any = _find_required_var("v_C", bus_remote.emt_model)
     i_ser_a_var: Any = _find_required_var("i_ser_faulted_pi_line_A", line_composite_mdl)
     i_ser_b_var: Any = _find_required_var("i_ser_faulted_pi_line_B", line_composite_mdl)
     i_ser_c_var: Any = _find_required_var("i_ser_faulted_pi_line_C", line_composite_mdl)

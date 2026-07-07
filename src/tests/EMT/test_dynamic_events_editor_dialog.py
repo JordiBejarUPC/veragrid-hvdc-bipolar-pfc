@@ -291,7 +291,7 @@ def test_switch_sequence_dialog_builds_open_close_event_sequence() -> None:
     circuit.add_emt_events_group(group)
 
     vf = VarFactory()
-    mode_var = vf.add_var("switch_closed_mode_SW")
+    mode_var = vf.add_var("switch_closed_mode")
 
     dialog = SwitchSequenceDialog(mode_parameters=[mode_var], events_groups=circuit.emt_events_groups)
     dialog.rows[0].set_data(0.3, 1.0)

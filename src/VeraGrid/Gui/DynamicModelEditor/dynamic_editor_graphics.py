@@ -10,7 +10,6 @@ from PySide6.QtGui import QColor, QBrush, QPainter, QPainterPath, QPen, QAction,
 from PySide6.QtWidgets import QApplication, QColorDialog, QGraphicsEllipseItem, QGraphicsItem, \
     QGraphicsPathItem, QGraphicsPolygonItem, QGraphicsRectItem, QGraphicsScene, QGraphicsTextItem, \
     QGraphicsView, QMenu, QWidget
-from pygslv import MultiCircuit
 
 import VeraGrid.ThirdParty.darkdetect as darkdetect
 from VeraGridEngine.Devices.Diagrams.block_diagram import BlockDiagram

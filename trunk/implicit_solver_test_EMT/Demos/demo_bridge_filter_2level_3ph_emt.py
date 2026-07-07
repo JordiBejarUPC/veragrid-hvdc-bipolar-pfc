@@ -177,9 +177,9 @@ def build_bridge_filter_problem() -> Tuple[GenericEmtProblem, dict[str, Var]]:
         static_parameter_values_mapping=static_parameter_values_mapping,
     )
 
-    tracked_vars["i_A"] = find_name_in_block(f"i_A_{block_name}", problem.sys_block)
-    tracked_vars["i_B"] = find_name_in_block(f"i_B_{block_name}", problem.sys_block)
-    tracked_vars["i_C"] = find_name_in_block(f"i_C_{block_name}", problem.sys_block)
+    tracked_vars["i_A"] = find_name_in_block("i_A", problem.sys_block)
+    tracked_vars["i_B"] = find_name_in_block("i_B", problem.sys_block)
+    tracked_vars["i_C"] = find_name_in_block("i_C", problem.sys_block)
     tracked_vars["gate_a"] = find_name_in_block(f"gate_a_{block_name}_bridge", problem.sys_block)
     tracked_vars["gate_b"] = find_name_in_block(f"gate_b_{block_name}_bridge", problem.sys_block)
     tracked_vars["gate_c"] = find_name_in_block(f"gate_c_{block_name}_bridge", problem.sys_block)

@@ -21,22 +21,16 @@ def test_arbitrary_waveform_current_source_template_exposes_time_state_and_looku
     )
     resolved_name: str = "ArbCurrentCase_2ph"
 
-    assert [var.name for var in templ.block.in_vars] == [
-        f"v_A_{resolved_name}",
-        f"v_C_{resolved_name}",
-    ]
-    assert [var.name for var in templ.block.out_vars] == [
-        f"i_A_{resolved_name}",
-        f"i_C_{resolved_name}",
-    ]
-    assert [var.name for var in templ.block.state_vars] == [f"t_src_{resolved_name}"]
+    assert [var.name for var in templ.block.in_vars] == ["v_A", "v_C"]
+    assert [var.name for var in templ.block.out_vars] == ["i_A", "i_C"]
+    assert [var.name for var in templ.block.state_vars] == ["t_src"]
     assert sorted(var.name for var in templ.block.event_dict.keys()) == [
-        f"arr_x1_{resolved_name}",
-        f"arr_x2_{resolved_name}",
-        f"arr_x3_{resolved_name}",
-        f"arr_y1_{resolved_name}",
-        f"arr_y2_{resolved_name}",
-        f"arr_y3_{resolved_name}",
+        "arr_x1",
+        "arr_x2",
+        "arr_x3",
+        "arr_y1",
+        "arr_y2",
+        "arr_y3",
     ]
 
 
@@ -55,21 +49,15 @@ def test_arbitrary_waveform_voltage_source_template_exposes_conductance_and_look
     )
     resolved_name: str = "ArbVoltageCase_2ph"
 
-    assert [var.name for var in templ.block.in_vars] == [
-        f"v_A_{resolved_name}",
-        f"v_B_{resolved_name}",
-    ]
-    assert [var.name for var in templ.block.out_vars] == [
-        f"i_A_{resolved_name}",
-        f"i_B_{resolved_name}",
-    ]
-    assert [var.name for var in templ.block.state_vars] == [f"t_src_{resolved_name}"]
+    assert [var.name for var in templ.block.in_vars] == ["v_A", "v_B"]
+    assert [var.name for var in templ.block.out_vars] == ["i_A", "i_B"]
+    assert [var.name for var in templ.block.state_vars] == ["t_src"]
     assert sorted(var.name for var in templ.block.event_dict.keys()) == [
-        f"arr_x1_{resolved_name}",
-        f"arr_x2_{resolved_name}",
-        f"arr_x3_{resolved_name}",
-        f"arr_y1_{resolved_name}",
-        f"arr_y2_{resolved_name}",
-        f"arr_y3_{resolved_name}",
-        f"g_src_{resolved_name}",
+        "arr_x1",
+        "arr_x2",
+        "arr_x3",
+        "arr_y1",
+        "arr_y2",
+        "arr_y3",
+        "g_src",
     ]

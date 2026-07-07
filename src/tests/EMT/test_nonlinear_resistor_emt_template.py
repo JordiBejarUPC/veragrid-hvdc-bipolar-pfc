@@ -25,5 +25,5 @@ def test_nonlinear_resistor_emt_template_builds_grounded_vi_curve_block() -> Non
     assert templ.block.out_vars[0].ref == VarPowerFlowReferenceType.i_N
     assert templ.block.out_vars[0] in templ.block.init_eqs
     assert any(child.name.endswith("_ground") for child in templ.block.children)
-    assert "arr_v1_nlr_case" in event_names
-    assert "arr_i3_nlr_case" in event_names
+    assert "arr_v1" in event_names
+    assert "arr_i3" in event_names

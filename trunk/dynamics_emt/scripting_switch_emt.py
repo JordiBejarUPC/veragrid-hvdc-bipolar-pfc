@@ -110,10 +110,10 @@ def run_switch_emt_case(enable_plots: bool = True) -> Dict[str, object]:
     grid, _gen, switch, _load = _build_switch_demo_grid()
     pf_res_3ph = _run_power_flow(grid)
 
-    switch_mode_var = find_name_in_block("switch_closed_mode_SW", switch.emt_model)
+    switch_mode_var = find_name_in_block("switch_closed_mode", switch.emt_model)
     if switch_mode_var is None:
         for candidate_var in switch.emt_model.mode_dict.keys():
-            if candidate_var.name == "switch_closed_mode_SW":
+            if candidate_var.name == "switch_closed_mode":
                 switch_mode_var = candidate_var
                 break
             else:
@@ -165,11 +165,11 @@ def run_switch_emt_case(enable_plots: bool = True) -> Dict[str, object]:
             event_cursor += 1
         mode_trace[sample_index] = current_mode_value
 
-    bus1_var = find_name_in_block("v_A_Bus1_emt_template", problem.sys_block)
+    bus1_var = find_name_in_block("v_A", problem.sys_block)
     if bus1_var is None:
         raise KeyError("Bus1 phase-A voltage was not found")
 
-    current_var = find_name_in_block("if_A_SW", problem.sys_block)
+    current_var = find_name_in_block("if_A", problem.sys_block)
     if current_var is None:
         raise KeyError("Switch phase-A current was not found")
 

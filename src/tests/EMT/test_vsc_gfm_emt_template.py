@@ -88,38 +88,38 @@ def _build_pf_consistent_bindings(name: str) -> Dict[str, float]:
     Qe: float = 1.5 * Vpk * Ipk * np.sin(phi)
 
     return {
-        f"v_A_{name}": v_A,
-        f"v_B_{name}": v_B,
-        f"v_C_{name}": v_C,
-        f"v_dc_{name}": v_dc,
-        f"i_A_{name}": i_A,
-        f"i_B_{name}": i_B,
-        f"i_C_{name}": i_C,
-        f"theta_{name}": theta,
-        f"e_A_{name}": e_A,
-        f"e_B_{name}": e_B,
-        f"e_C_{name}": e_C,
-        f"Pe_{name}": Pe,
-        f"Qe_{name}": Qe,
-        f"i_dc_{name}": -Pe / v_dc,
-        f"omega_{name}": 1.0,
-        f"Epk_{name}": Epk_init,
-        f"omega_base_{name}": omega_base,
-        f"R_s_{name}": R_s,
-        f"X_s_{name}": X_s,
-        f"Kdp_{name}": Kdp,
-        f"Kdq_{name}": Kdq,
-        f"tau_omega_{name}": tau_omega,
-        f"tau_v_{name}": tau_v,
-        f"omega_ref_{name}": 1.0,
-        f"Qf_{name}": 0.0,
-        f"Vpk_ref_{name}": Vpk,
-        f"phi_v_ref_{name}": phi_v,
-        f"Ipk_ref_{name}": Ipk,
-        f"phi_ref_{name}": phi,
-        f"P_ref_{name}": Pe,
-        f"Q_ref_{name}": Qe,
-        f"V_ref_{name}": Epk_init,
+        "v_A": v_A,
+        "v_B": v_B,
+        "v_C": v_C,
+        "v_dc": v_dc,
+        "i_A": i_A,
+        "i_B": i_B,
+        "i_C": i_C,
+        "theta": theta,
+        "e_A": e_A,
+        "e_B": e_B,
+        "e_C": e_C,
+        "Pe": Pe,
+        "Qe": Qe,
+        "i_dc": -Pe / v_dc,
+        "omega": 1.0,
+        "Epk": Epk_init,
+        "omega_base": omega_base,
+        "R_s": R_s,
+        "X_s": X_s,
+        "Kdp": Kdp,
+        "Kdq": Kdq,
+        "tau_omega": tau_omega,
+        "tau_v": tau_v,
+        "omega_ref": 1.0,
+        "Qf": 0.0,
+        "Vpk_ref": Vpk,
+        "phi_v_ref": phi_v,
+        "Ipk_ref": Ipk,
+        "phi_ref": phi,
+        "P_ref": Pe,
+        "Q_ref": Qe,
+        "V_ref": Epk_init,
     }
 
 
@@ -135,41 +135,31 @@ def test_vsc_gfm_emt_template_exposes_expected_structure() -> None:
     templ = get_gfm_emt_template(vf=vf, name="G1")
 
     assert templ.tpe == DeviceType.VscDevice
-    assert [var.name for var in templ.block.in_vars] == [
-        "v_A_G1",
-        "v_B_G1",
-        "v_C_G1",
-        "v_dc_G1",
-    ]
-    assert [var.name for var in templ.block.out_vars] == [
-        "i_A_G1",
-        "i_B_G1",
-        "i_C_G1",
-        "i_dc_G1",
-    ]
+    assert [var.name for var in templ.block.in_vars] == ["v_A", "v_B", "v_C", "v_dc"]
+    assert [var.name for var in templ.block.out_vars] == ["i_A", "i_B", "i_C", "i_dc"]
     assert [var.name for var in templ.block.state_vars] == [
-        "i_A_G1",
-        "i_B_G1",
-        "i_C_G1",
-        "theta_G1",
-        "omega_G1",
-        "Epk_G1",
+        "i_A",
+        "i_B",
+        "i_C",
+        "theta",
+        "omega",
+        "Epk",
     ]
     expected_algebraic: List[str] = [
-        "e_A_G1",
-        "e_B_G1",
-        "e_C_G1",
-        "Pe_G1",
-        "Qe_G1",
-        "i_dc_G1",
+        "e_A",
+        "e_B",
+        "e_C",
+        "Pe",
+        "Qe",
+        "i_dc",
     ]
     assert [var.name for var in templ.block.algebraic_vars] == expected_algebraic
 
-    for net_var in ["v_A_G1", "v_B_G1", "v_C_G1", "i_A_G1", "i_B_G1", "i_C_G1", "v_dc_G1"]:
+    for net_var in ["v_A", "v_B", "v_C", "i_A", "i_B", "i_C", "v_dc"]:
         assert find_name_in_block(net_var, templ.block) is not None
 
-    assert templ.block.external_mapping[VarPowerFlowReferenceType.Vdc].name == "v_dc_G1"
-    assert templ.block.external_mapping[VarPowerFlowReferenceType.Qf].name == "Qf_G1"
+    assert templ.block.external_mapping[VarPowerFlowReferenceType.Vdc].name == "v_dc"
+    assert templ.block.external_mapping[VarPowerFlowReferenceType.Qf].name == "Qf"
 
 
 def test_vsc_gfm_emt_template_can_be_loaded_into_generic_problem() -> None:
@@ -189,7 +179,7 @@ def test_vsc_gfm_emt_template_can_be_loaded_into_generic_problem() -> None:
     )
     runtime_parameter_names = [var.name for var in problem.get_variable_parameters()]
 
-    for expected in ["omega_base_VSC", "R_s_VSC", "X_s_VSC", "Kdp_VSC", "Kdq_VSC"]:
+    for expected in ["omega_base", "R_s", "X_s", "Kdp", "Kdq"]:
         assert expected in runtime_parameter_names
 
 
@@ -218,6 +208,6 @@ def test_vsc_gfm_emt_template_init_residual_is_small() -> None:
             f"init_eqs[{var.name}] gives {init_value:.6e} but binding is {binding_value:.6e}"
         )
 
-    d_theta_var = next(v for v in templ.block.diff_vars if v.name == "d_theta_G1")
-    omega_base_val: float = bindings["omega_base_G1"]
+    d_theta_var = next(v for v in templ.block.diff_vars if v.name == "d_theta")
+    omega_base_val: float = bindings["omega_base"]
     assert abs(float(templ.block.diff_init_eqs[d_theta_var].eval(**bindings)) - omega_base_val) < 1.0e-9

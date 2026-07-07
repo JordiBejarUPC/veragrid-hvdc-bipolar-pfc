@@ -124,9 +124,9 @@ def attach_emt_models(
     # ``a = 2`` reproduces an impedance-like active-power dependence. This keeps the
     # example aligned with the original resistive load while exercising the new EMT
     # exponential-load initialization chain.
-    load_mdl.set_parameter_in_model(var_name="a_EXP_Load_EMT_3ph", new_value=2.0)
-    load_mdl.set_parameter_in_model(var_name="b_EXP_Load_EMT_3ph", new_value=2.0)
-    load_mdl.set_parameter_in_model(var_name="V0_EXP_Load_EMT_3ph", new_value=float(np.sqrt(2.0)))
+    load_mdl.set_parameter_in_model(var_name="a", new_value=2.0)
+    load_mdl.set_parameter_in_model(var_name="b", new_value=2.0)
+    load_mdl.set_parameter_in_model(var_name="V0", new_value=float(np.sqrt(2.0)))
 
     set_emt_model(device=generator, model=gen_mdl, var_factory=grid.var_factory)
     set_emt_model(device=line0, model=line_mdl, var_factory=grid.var_factory)
@@ -297,12 +297,12 @@ def build_plot_data(
     """
     data: Dict[str, np.ndarray] = dict()
 
-    data["v_bus0_a"] = get_signal(problem, bus0.emt_model, "v_A_Bus0_emt_template", y)
-    data["v_bus0_b"] = get_signal(problem, bus0.emt_model, "v_B_Bus0_emt_template", y)
-    data["v_bus0_c"] = get_signal(problem, bus0.emt_model, "v_C_Bus0_emt_template", y)
-    data["v_bus1_a"] = get_signal(problem, bus1.emt_model, "v_A_Bus1_emt_template", y)
-    data["v_bus1_b"] = get_signal(problem, bus1.emt_model, "v_B_Bus1_emt_template", y)
-    data["v_bus1_c"] = get_signal(problem, bus1.emt_model, "v_C_Bus1_emt_template", y)
+    data["v_bus0_a"] = get_signal(problem, bus0.emt_model, "v_A", y)
+    data["v_bus0_b"] = get_signal(problem, bus0.emt_model, "v_B", y)
+    data["v_bus0_c"] = get_signal(problem, bus0.emt_model, "v_C", y)
+    data["v_bus1_a"] = get_signal(problem, bus1.emt_model, "v_A", y)
+    data["v_bus1_b"] = get_signal(problem, bus1.emt_model, "v_B", y)
+    data["v_bus1_c"] = get_signal(problem, bus1.emt_model, "v_C", y)
 
     data["i_gen_a"] = get_signal(problem, gen_mdl, "i_A_emt_thevenin_eq_generator_template", y)
     data["i_line_f_a"] = get_signal(problem, line_mdl, "if_Pi_A", y)

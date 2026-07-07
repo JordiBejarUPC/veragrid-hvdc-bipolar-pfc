@@ -834,7 +834,7 @@ def test_simple_r_emt_shunt_block_supports_delta_configuration(override_attrs) -
     assert modal_config["connection_type"] == ShuntConnectionType.Delta
     assert modal_config["use_static_device_values"] is False
     assert not any(node.tpe == BlockType.GROUNDING_LINK_EMT.name for node in block_item.subsys.diagram.node_data.values())
-    assert _find_prefixed_event_constant(block_item.subsys, "R_AB_") == pytest.approx(25.0)
+    assert _find_prefixed_event_constant(block_item.subsys, "R_AB") == pytest.approx(25.0)
     assert load.conn == ShuntConnectionType.Delta
 
     editor.has_unapplied_changes = False

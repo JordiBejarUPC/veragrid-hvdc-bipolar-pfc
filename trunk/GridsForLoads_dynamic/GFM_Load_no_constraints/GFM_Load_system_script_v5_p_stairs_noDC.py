@@ -962,11 +962,11 @@ else:
 fig_si_overview, axes_si_overview = plt.subplots(3, 2, figsize=(16, 12), sharex=True)
 axes_si_overview = axes_si_overview.ravel()
 
-plot_scaled_with_tracking(axes_si_overview[0], t_arr, problem, y_arr, "v_A_Bus1_emt_template",
+plot_scaled_with_tracking(axes_si_overview[0], t_arr, problem, y_arr, "v_A",
                           V_phase_rms_base / 1000.0, "v_A_Bus1 [kV]")
-plot_scaled_with_tracking(axes_si_overview[0], t_arr, problem, y_arr, "v_B_Bus1_emt_template",
+plot_scaled_with_tracking(axes_si_overview[0], t_arr, problem, y_arr, "v_B",
                           V_phase_rms_base / 1000.0, "v_B_Bus1 [kV]")
-plot_scaled_with_tracking(axes_si_overview[0], t_arr, problem, y_arr, "v_C_Bus1_emt_template",
+plot_scaled_with_tracking(axes_si_overview[0], t_arr, problem, y_arr, "v_C",
                           V_phase_rms_base / 1000.0, "v_C_Bus1 [kV]")
 axes_si_overview[0].set_title("Grid-Side AC Voltages [kV phase-to-neutral instantaneous]")
 axes_si_overview[0].set_ylabel("Voltage [kV]")
@@ -1321,18 +1321,18 @@ def add_csv_array(column_name: str, series):
     if series is not None:
         csv_columns[column_name] = series
 
-add_csv_series("vA_Bus0_kV", "v_A_Bus0_emt_template", V_phase_rms_base / 1000.0)
-add_csv_series("vB_Bus0_kV", "v_B_Bus0_emt_template", V_phase_rms_base / 1000.0)
-add_csv_series("vC_Bus0_kV", "v_C_Bus0_emt_template", V_phase_rms_base / 1000.0)
+add_csv_series("vA_Bus0_kV", "v_A", V_phase_rms_base / 1000.0)
+add_csv_series("vB_Bus0_kV", "v_B", V_phase_rms_base / 1000.0)
+add_csv_series("vC_Bus0_kV", "v_C", V_phase_rms_base / 1000.0)
 add_csv_series("iA_Bus0_A", "i_A_emt_thevenin_eq_generator_template", Ibase_vg)
 add_csv_series("iB_Bus0_A", "i_B_emt_thevenin_eq_generator_template", Ibase_vg)
 add_csv_series("iC_Bus0_A", "i_C_emt_thevenin_eq_generator_template", Ibase_vg)
-add_csv_series("vA_Bus1_kV", "v_A_Bus1_emt_template", V_phase_rms_base / 1000.0)
-add_csv_series("vB_Bus1_kV", "v_B_Bus1_emt_template", V_phase_rms_base / 1000.0)
-add_csv_series("vC_Bus1_kV", "v_C_Bus1_emt_template", V_phase_rms_base / 1000.0)
-add_csv_series("vA_conv_kV", "v_A_Bus1_emt_template", V_phase_rms_base / 1000.0)
-add_csv_series("vB_conv_kV", "v_B_Bus1_emt_template", V_phase_rms_base / 1000.0)
-add_csv_series("vC_conv_kV", "v_C_Bus1_emt_template", V_phase_rms_base / 1000.0)
+add_csv_series("vA_Bus1_kV", "v_A", V_phase_rms_base / 1000.0)
+add_csv_series("vB_Bus1_kV", "v_B", V_phase_rms_base / 1000.0)
+add_csv_series("vC_Bus1_kV", "v_C", V_phase_rms_base / 1000.0)
+add_csv_series("vA_conv_kV", "v_A", V_phase_rms_base / 1000.0)
+add_csv_series("vB_conv_kV", "v_B", V_phase_rms_base / 1000.0)
+add_csv_series("vC_conv_kV", "v_C", V_phase_rms_base / 1000.0)
 add_csv_series("iA_grid_A_sim_sign", "i_f_A_G4L_grid_side_converter", Ibase_vg, negate=True)
 add_csv_series("iB_grid_A_sim_sign", "i_f_B_G4L_grid_side_converter", Ibase_vg, negate=True)
 add_csv_series("iC_grid_A_sim_sign", "i_f_C_G4L_grid_side_converter", Ibase_vg, negate=True)

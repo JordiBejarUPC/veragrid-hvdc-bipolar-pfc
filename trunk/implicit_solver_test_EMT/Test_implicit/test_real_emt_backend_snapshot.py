@@ -92,11 +92,11 @@ def build_two_bus_real_emt_case(
         r_c_pu = (v_phase_pu ** 2) / load.Pc / z_base
 
         for var in load_mdl.event_dict.keys():
-            if var.name == "R_A_Shunt_R_3ph":
+            if var.name == "R_A":
                 load_mdl.event_dict[var] = Const(r_a_pu)
-            elif var.name == "R_B_Shunt_R_3ph":
+            elif var.name == "R_B":
                 load_mdl.event_dict[var] = Const(r_b_pu)
-            elif var.name == "R_C_Shunt_R_3ph":
+            elif var.name == "R_C":
                 load_mdl.event_dict[var] = Const(r_c_pu)
             else:
                 load_mdl.event_dict[var] = load_mdl.event_dict[var]
