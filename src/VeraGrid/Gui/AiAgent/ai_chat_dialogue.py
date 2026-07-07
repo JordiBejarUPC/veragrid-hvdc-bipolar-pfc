@@ -24,6 +24,7 @@ from typing import Any, Optional, TYPE_CHECKING
 import numpy as np
 from PySide6 import QtCore, QtGui, QtWidgets
 
+from VeraGridEngine.enumerations import EngineType, LogSeverity
 from VeraGrid.Gui.AiAgent.ai_backend import ApprovalPolicy
 from VeraGrid.Gui.AiAgent.ai_backend import ChatMessage
 from VeraGrid.Gui.AiAgent.ai_backend import ConversationOrchestrator
@@ -562,7 +563,11 @@ def build_grid_error_log_entries(error_log: GridErrorLog) -> list[dict[str, obje
 
         while message_index < len(message_entries):
             entry: list[object] = message_entries[message_index]
-            severity_text: str = str(entry[3].value) if hasattr(entry[3], "value") else str(entry[3])
+            severity_value: object = entry[3]
+            if isinstance(severity_value, LogSeverity):
+                severity_text: str = severity_value.value
+            else:
+                severity_text = str(severity_value)
             entries.append(
                 {
                     "message": str(message_text),
@@ -3949,7 +3954,8 @@ def get_current_study_name_from_app(app: "SimulationsMain") -> Optional[str]:
     :param app: VeraGrid main window.
     :returns: Study name or None.
     """
-    study_name_text: str = app.ui.available_results_to_color_comboBox.currentText().strip()
+    study_name_data: str | None = app.ui.available_results_to_color_comboBox.currentData()
+    study_name_text: str = str(study_name_data) if study_name_data is not None else ""
 
     if len(study_name_text) > 0:
         return study_name_text
@@ -3964,7 +3970,8 @@ def get_current_solver_name_from_app(app: "SimulationsMain") -> Optional[str]:
     :param app: VeraGrid main window.
     :returns: Solver name or None.
     """
-    solver_name_text: str = app.ui.engineComboBox.currentText().strip()
+    solver_data: EngineType | None = app.ui.engineComboBox.currentData()
+    solver_name_text: str = solver_data.value if isinstance(solver_data, EngineType) else ""
 
     if len(solver_name_text) > 0:
         return solver_name_text
@@ -4288,10 +4295,7 @@ def summarize_power_flow_time_series_results(
     summary["ignored_loading_value_count"] = int(loading_abs_values.size - valid_loading_values.size)
     summary["ignored_branch_count"] = int(np.size(valid_rate_mask) - int(np.sum(valid_rate_mask)))
 
-    if hasattr(results, "converged_values"):
-        summary["converged_time_step_count"] = int(np.sum(results.converged_values))
-    else:
-        pass
+    summary["converged_time_step_count"] = int(np.sum(results.converged_values))
 
     if valid_voltage_values.size > 0:
         summary["min_voltage_pu"] = float(np.min(valid_voltage_values))

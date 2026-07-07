@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 
 from PySide6 import QtWidgets
 
+import VeraGrid.Gui.gui_functions as gf
 import VeraGrid.Session.file_handler as filedrv
 from VeraGrid.Gui.FileDialogues.PsseDialogue.psse_export_gui import Ui_PsseExportDialog
 from VeraGrid.Gui.general_dialogues import LogsDialogue
@@ -64,12 +65,15 @@ class PsseExportDialogue(QtWidgets.QDialog):
         :return: None.
         """
         for export_mode in self.psse_export_modes:
-            self.ui.psse_export_mode_comboBox.addItem(str(export_mode))
+            self.ui.psse_export_mode_comboBox.addItem(self.tr(str(export_mode)), export_mode)
 
-        for file_tpe in self.psse_file_types:
-            self.ui.psse_file_format_comboBox.addItem(file_tpe.value)
+        self.ui.psse_file_format_comboBox.setModel(
+            gf.ComboModel(enum_values=self.psse_file_types, translate=self.tr)
+        )
 
-        self.ui.raw_export_version_comboBox.addItems(["33", "34", "35", "36"])
+        self.ui.raw_export_version_comboBox.setModel(
+            gf.ComboModel(text_items=[(version, version) for version in ["33", "34", "35", "36"]])
+        )
         self.ui.node_breaker_checkbox.setChecked(False)
 
     def _configure_time_slot_widgets(self) -> None:
@@ -106,8 +110,7 @@ class PsseExportDialogue(QtWidgets.QDialog):
 
         :return: Selected PSSE export mode.
         """
-        combo_index: int = self.ui.psse_export_mode_comboBox.currentIndex()
-        return self.psse_export_modes[combo_index]
+        return self.ui.psse_export_mode_comboBox.currentData()
 
     def get_selected_file_type(self) -> FileType:
         """
@@ -115,8 +118,7 @@ class PsseExportDialogue(QtWidgets.QDialog):
 
         :return: Selected PSSE file type.
         """
-        combo_index: int = self.ui.psse_file_format_comboBox.currentIndex()
-        return self.psse_file_types[combo_index]
+        return self.ui.psse_file_format_comboBox.currentData()
 
     def get_selected_t_idx(self) -> int | None:
         """
@@ -231,7 +233,7 @@ class PsseExportDialogue(QtWidgets.QDialog):
 
         :return: None.
         """
-        raw_version: str = self.ui.raw_export_version_comboBox.currentText()
+        raw_version: str = self.ui.raw_export_version_comboBox.currentData()
         export_mode: PsseExportMode = self.get_selected_export_mode()
         file_tpe: FileType = self.get_selected_file_type()
 

@@ -174,8 +174,8 @@ class BaseDiagramWidget(QSplitter):
         # change_font_size(self.object_editor_table.horizontalHeader(), 9)
 
         self.filter_combo = QComboBox()
-        self.prop_filter_dict, prop_filter_mdl = gf.enums_to_icons_model(
-            [
+        prop_filter_mdl = gf.ComboModel(
+            icon_enum_values=[
                 (PrpCat.All,":/Icons/icons/edit.png"),
                 (PrpCat.TP,":/Icons/icons/automatic_layout.png"),
                 (PrpCat.PF,":/Icons/icons/pf.png"),
@@ -188,7 +188,8 @@ class BaseDiagramWidget(QSplitter):
                 (PrpCat.INV,":/Icons/icons/expansion_planning.png"),
                 (PrpCat.RMS,":/Icons/icons/dyn.png"),
                 (PrpCat.EMT,":/Icons/icons/dyn_emt.png"),
-            ]
+            ],
+            translate=self.tr
         )
         self.filter_combo.setModel(prop_filter_mdl)
 
@@ -569,7 +570,7 @@ class BaseDiagramWidget(QSplitter):
         """
         template_elm, dictionary_of_lists = self.circuit.get_dictionary_of_lists(api_object.device_type)
 
-        filter_prop = self.prop_filter_dict[self.filter_combo.currentText()]
+        filter_prop = self.filter_combo.currentData()
         self.api_object = api_object
 
         mdl = ObjectsModel(
