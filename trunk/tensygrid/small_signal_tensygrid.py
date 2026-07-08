@@ -70,11 +70,10 @@ from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_rms_mod
     "IEEE 118.xlsx"
 """
 grid_folder = project_base / "Grids_and_profiles" / "grids"
-# GRID = "IEEE 118.xlsx"
-GRID = "IEEE_9_Christoph.gridcal"
+GRID = sys.argv[1] if len(sys.argv) > 1 else "IEEE25.gridcal"
 
 if GRID == "IEEE_9_Christoph.gridcal":
-    CHRISTOPH_COMPARISON = True
+    CHRISTOPH_COMPARISON = False
 else:
     CHRISTOPH_COMPARISON = False
 
@@ -210,7 +209,7 @@ def define_problem_with_path(grid_path):
             print(f"    Buses: {len(grid.buses)}, Vm[min/avg/max]=({vm.min():.4f}/{vm.mean():.4f}/{vm.max():.4f}) pu")
     else:
         print("  ✗ Power flow failed")
-        return False
+        return False, None, None
 
 
     if CHRISTOPH_COMPARISON:
@@ -271,7 +270,7 @@ def define_problem_with_path(grid_path):
             f"well_initialized={well_initialized}, converged={converged}, "
             f"final|x|={np.linalg.norm(y_dyn[-1, :]):.4e}"
         )
-    return phasor_problem
+    return phasor_problem, pf_results, grid
 
 
 def ensure_problem_event_api(problem):
@@ -546,14 +545,31 @@ def run_small_signal_driver(problem: vge.RmsProblemPhasor) -> None:
 
         print(f"  mode={i + 1} ev={np.real(ev):.6f}+{np.imag(ev):.6f}j dominant={dominant_state} PF={pf_val:.3f}")
 
+def _hash_operating_point(x: np.ndarray) -> str:
+    import hashlib
+    return hashlib.sha256(x.tobytes()).hexdigest()
+
+
+def _damping(re: float, im: float) -> float:
+    mag = np.sqrt(re * re + im * im)
+    return -re / mag if mag > 1e-12 else 0.0
+
+
+def _freq_hz(im: float) -> float:
+    return abs(im) / (2 * np.pi)
+
+
 def main():
     # --- START CHRONO ---
     start_time = time.perf_counter()
 
+    grid_filename = GRID
     grid_path = FAST_GRID_PATH if FAST_MODE else FULL_GRID_PATH
     print(f"[FAST_MODE={FAST_MODE}] Using grid: {grid_path}")
 
     problem = None
+    pf_results = None
+    grid = None
     calculated_evs = []
 
     # 1. Check whether the builder cache exists BEFORE creating the problem
@@ -561,16 +577,16 @@ def main():
         print(f"\n[⏩] File '{BUILDER_CACHE_FILE}' found.")
         print("[⏩] Skipping Phasor Problem creation...")
         # Keep problem as None. solve_problem will load the .pkl internally.
-        res, _ = solve_problem(problem=problem)
+        res, pf_map = solve_problem(problem=problem)
         calculated_evs = res[0]
     else:
         # 2. If there is no cache, run the normal heavy simulation
-        problem = define_problem_with_path(grid_path)
+        problem, pf_results, grid = define_problem_with_path(grid_path)
         if problem:
             if RUN_SMALL_SIGNAL_DRIVER:
                 run_small_signal_driver(problem)
             # Pass the newly created problem so it can be linearized and cached
-            res, _ = solve_problem(problem=problem)
+            res, pf_map = solve_problem(problem=problem)
             calculated_evs = res[0]
 
     # --- END CHRONO ---
@@ -580,6 +596,108 @@ def main():
     print(f"\n========================================")
     print(f"EXECUTION TIME: {total_duration:.4f} seconds")
     print(f"========================================")
+
+    # --- GENERATE .tensygrid FILE FOR GUI ---
+    if problem is not None and pf_results is not None and grid is not None:
+        print("\n[5] Generating .tensygrid file for GUI...")
+        
+        # Extract eigenvalues
+        finite_evs = calculated_evs[np.isfinite(calculated_evs) & (np.abs(calculated_evs) < 1e6)] if len(calculated_evs) > 0 else np.array([])
+        stable = bool(res[4]) if len(res) > 4 else False
+        margin = float(res[5]) if len(res) > 5 and res[5] is not None else 0.0
+        
+        eigenvalues_list = [
+            {'re': float(np.real(ev)), 'im': float(np.imag(ev))}
+            for ev in finite_evs
+        ]
+        
+        # Extract critical modes with participation factors
+        critical_modes = []
+        for i, ev in enumerate(finite_evs):
+            re, im = float(np.real(ev)), float(np.imag(ev))
+            if abs(im) > 0.1:
+                damping = float(_damping(re, im))
+                
+                participation = {}
+                if pf_map and ev in pf_map:
+                    for var_name, pf_val in pf_map[ev]:
+                        participation[str(var_name)] = float(pf_val)
+                
+                top_participation = dict(sorted(participation.items(), key=lambda x: abs(x[1]), reverse=True)[:5])
+                
+                critical_modes.append({
+                    'mode': i,
+                    're': re,
+                    'im': im,
+                    'damping': damping,
+                    'freq_hz': float(_freq_hz(im)),
+                    'critical': bool(abs(damping) < 0.05),
+                    'participation_factors': top_participation,
+                })
+        critical_modes.sort(key=lambda m: m['damping'])
+        
+        # Extract bus voltages
+        bus_voltages = []
+        voltages = pf_results.voltage
+        bus_names = pf_results.bus_names
+        bus_types = pf_results.bus_types
+        
+        for i, bus in enumerate(grid.buses):
+            v_complex = voltages[i] if i < len(voltages) else 1.0 + 0j
+            vm = float(abs(v_complex))
+            theta = float(np.angle(v_complex))
+            bus_type = str(bus_types[i]) if i < len(bus_types) else 'Unknown'
+            bus_name = str(bus_names[i]) if i < len(bus_names) else str(bus.name)
+            
+            bus_voltages.append({
+                'id': bus.idtag if hasattr(bus, 'idtag') else str(i),
+                'name': bus_name,
+                'type': bus_type,
+                'vm_pu': round(vm, 4),
+                'theta_deg': round(float(np.degrees(theta)), 2),
+            })
+        
+        # Extract grid info
+        grid_info = {
+            'n_buses': len(list(grid.buses)),
+            'n_generators': len(list(grid.generators)),
+            'n_lines': len(list(grid.lines)),
+            'n_loads': len(list(grid.loads)),
+            'n_transformers': len(list(grid.transformers2w)),
+        }
+        
+        # Get operating point for hash
+        try:
+            x = problem.get_x0()
+            op_hash = _hash_operating_point(x)
+            n_state_vars = len(x)
+        except:
+            op_hash = "unknown"
+            n_state_vars = problem.get_states_number()
+        
+        # Build results dictionary
+        results = {
+            'grid_name': grid_filename,
+            'stable': stable,
+            'margin': margin,
+            'matches': 0,  # Not applicable for tensygrid method
+            'op_hash': op_hash,
+            'eigenvalues': eigenvalues_list,
+            'critical_modes': critical_modes[:10],
+            'bus_voltages': bus_voltages,
+            'grid_info': grid_info,
+            'n_eigenvalues': len(finite_evs),
+            'n_state_vars': n_state_vars,
+            'elapsed_seconds': round(total_duration, 2),
+        }
+        
+        # Save to .tensygrid file
+        output_dir = Path('precomputed_builds')
+        output_dir.mkdir(exist_ok=True)
+        output_path = output_dir / f"{Path(grid_filename).stem}_{results['op_hash'][:6]}.tensygrid"
+        with open(output_path, 'wb') as f:
+            pickle.dump(results, f)
+        print(f"  ✓ Results saved to {output_path}")
 
     if not ENABLE_POST_COMPARE_PLOT:
         print("[FAST_MODE] Skipping eigenvalue reference matching and plotting")
