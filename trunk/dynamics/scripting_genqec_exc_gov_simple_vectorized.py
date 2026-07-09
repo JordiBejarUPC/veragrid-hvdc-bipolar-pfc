@@ -262,15 +262,13 @@ t, y, well_initialized, converged = solver.simulate()
 #
 xlim = options.simulation_time
 
-# The complete generator model stores the machine variables with the
-# ``Genqec_rms_template`` suffix because they come from the nested generator
-# block. We therefore query the real exposed variable names here.
-omega = find_name_in_block("omegaGenqec_rms_template", genqec0_mdl)
+# The complete generator model now exposes stable machine variable names.
+omega = find_name_in_block("omega", genqec0_mdl)
 Pg = genqec0_mdl.out_vars[0]
 Qg = genqec0_mdl.out_vars[1]
-Ir = find_name_in_block("IRPuGenqec_rms_template", genqec0_mdl)
+Ir = find_name_in_block("IRPu", genqec0_mdl)
 Efd = find_name_in_block("Vf", genqec0_mdl)
-Te = find_name_in_block("TeGenqec_rms_template", genqec0_mdl)
+Te = find_name_in_block("Te", genqec0_mdl)
 Vm = genqec0_mdl.in_vars[0]
 
 u_gov1 = find_name_in_block("u_gov1", genqec0_mdl)
@@ -278,7 +276,7 @@ y_subexciter = find_name_in_block("y_subexciter1", genqec0_mdl)
 y_exciter1 = find_name_in_block("y_exciter1", genqec0_mdl)
 y_exciter4 = find_name_in_block("y_exciter4", genqec0_mdl)
 Efe = find_name_in_block("Efe", genqec0_mdl)
-delta = find_name_in_block("deltaGenqec_rms_template", genqec0_mdl)
+delta = find_name_in_block("delta", genqec0_mdl)
 
 
 
@@ -300,13 +298,13 @@ plt.tight_layout()
 plt.show()
 
 
-Eq_prime = find_name_in_block("Eq_primeGenqec_rms_template", genqec0_mdl)
-Ed_prime = find_name_in_block("Ed_primeGenqec_rms_template", genqec0_mdl)
-Psiq_prime = find_name_in_block("Psiq_primeGenqec_rms_template", genqec0_mdl)
-Psid_prime = find_name_in_block("Psid_primeGenqec_rms_template", genqec0_mdl)
+Eq_prime = find_name_in_block("Eq_prime", genqec0_mdl)
+Ed_prime = find_name_in_block("Ed_prime", genqec0_mdl)
+Psiq_prime = find_name_in_block("Psiq_prime", genqec0_mdl)
+Psid_prime = find_name_in_block("Psid_prime", genqec0_mdl)
 
-Ed1 = find_name_in_block("Ed1Genqec_rms_template", genqec0_mdl)
-Eq1 = find_name_in_block("Eq1Genqec_rms_template", genqec0_mdl)
+Ed1 = find_name_in_block("Ed1", genqec0_mdl)
+Eq1 = find_name_in_block("Eq1", genqec0_mdl)
 
 # Generator state variables
 plt.plot(t, y[:, problem.get_var_idx(Eq_prime)], label="Eq_prime (pu)")

@@ -38,8 +38,8 @@ def get_load_rms_template(
     templ.name = name
 
     inputs = [
-        vfactory.add_var("Vm_" + name, reference=VarPowerFlowReferenceType.Vm),
-        vfactory.add_var("Va_" + name, reference=VarPowerFlowReferenceType.Va)
+        vfactory.add_var("Vm", reference=VarPowerFlowReferenceType.Vm),
+        vfactory.add_var("Va", reference=VarPowerFlowReferenceType.Va)
     ]
 
     Pl0 = vfactory.add_var("Pl0")

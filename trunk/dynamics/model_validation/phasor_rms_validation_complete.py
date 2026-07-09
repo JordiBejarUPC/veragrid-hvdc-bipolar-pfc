@@ -248,13 +248,13 @@ def test_phasor_validation():
     print("\n[8] Comparing results...")
 
     
-    # For phasor: find omega in genqec_phasor (name is "omegaGen0")
-    omega_var_phasor = find_name_in_block("omegaGen0", genqec_phasor)
+    # For phasor: find omega in genqec_phasor using the stable symbolic name.
+    omega_var_phasor = find_name_in_block("omega", genqec_phasor)
     omega_idx_phasor = problem_phasor.get_var_idx(omega_var_phasor)
     omega_phasor = y_phasor[:, omega_idx_phasor]
 
-    # For phasor: find delta in genqec_phasor (name is "deltaGen0")
-    delta_var_phasor = find_name_in_block("deltaGen0", genqec_phasor)
+    # For phasor: find delta in genqec_phasor using the stable symbolic name.
+    delta_var_phasor = find_name_in_block("delta", genqec_phasor)
     delta_idx_phasor = problem_phasor.get_var_idx(delta_var_phasor)
     delta_phasor = y_phasor[:, delta_idx_phasor]
     

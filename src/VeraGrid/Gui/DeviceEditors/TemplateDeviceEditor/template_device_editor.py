@@ -275,8 +275,8 @@ class TemplateDeviceEditor(QtWidgets.QDialog):
         self.ui.setupUi(self)
         self.setWindowTitle("Device editor")
 
-        self.prop_filter_dict, prop_filter_mdl = gf.enums_to_icons_model(
-            [
+        prop_filter_mdl = gf.ComboModel(
+            icon_enum_values=[
                 (PrpCat.All,":/Icons/icons/edit.png"),
                 (PrpCat.TP,":/Icons/icons/automatic_layout.png"),
                 (PrpCat.PF,":/Icons/icons/pf.png"),
@@ -289,7 +289,8 @@ class TemplateDeviceEditor(QtWidgets.QDialog):
                 (PrpCat.INV,":/Icons/icons/expansion_planning.png"),
                 (PrpCat.RMS,":/Icons/icons/dyn.png"),
                 (PrpCat.EMT,":/Icons/icons/dyn_emt.png"),
-            ]
+            ],
+            translate=self.tr
         )
         self.ui.filterComboBox.setModel(prop_filter_mdl)
 
@@ -411,7 +412,7 @@ class TemplateDeviceEditor(QtWidgets.QDialog):
         :return: Configured ``ObjectsModel``.
         """
         property_list: list[GCProp] = list(self.api_object.property_list)
-        filter_prop = self.prop_filter_dict[self.ui.filterComboBox.currentText()]
+        filter_prop = self.ui.filterComboBox.currentData()
         model: ObjectsModel = ObjectsModel(
             objects=[self.api_object],
             property_list=property_list,

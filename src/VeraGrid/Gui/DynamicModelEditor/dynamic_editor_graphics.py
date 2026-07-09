@@ -2493,10 +2493,11 @@ class DiagramScene(QGraphicsScene):
                 if not item.is_input:
                     self.source_port = item
                     path: QPainterPath = QPainterPath(item.scenePos())
-                    # try:
-                    #     is_dark = darkdetect.theme() == "Dark"
-                    # except ImportError:
-                    #     is_dark = False
+                    try:
+                        is_dark = darkdetect.theme() == "Dark"
+                    except ImportError:
+                        is_dark = False
+                    print(is_dark)
                     #
                     # pen: QPen = QPen(QColor("white"), 1, Qt.PenStyle.DashLine) if is_dark else QPen(
                     #     QColor("black"), 1, Qt.PenStyle.DashLine)

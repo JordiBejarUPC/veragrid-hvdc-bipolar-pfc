@@ -44,10 +44,10 @@ def get_line_complex_rms_template(vfactory: VarFactory, name="Line_complex_rms_t
     # Inputs: complex voltages at from and to buses
     # We use separate real/imaginary inputs for compilation,
     # but conceptually they form complex voltages Vf and Vt
-    inputs: List[Var] = [vfactory.add_var("Vrf_" + name),   # From bus real
-                         vfactory.add_var("Vif_" + name),   # From bus imag
-                         vfactory.add_var("Vrt_" + name),   # To bus real
-                         vfactory.add_var("Vit_" + name)]   # To bus imag
+    inputs: List[Var] = [vfactory.add_var("Vrf"),   # From bus real
+                         vfactory.add_var("Vif"),   # From bus imag
+                         vfactory.add_var("Vrt"),   # To bus real
+                         vfactory.add_var("Vit")]   # To bus imag
 
     # Complex current outputs (from and to buses)
     # These are calculated using LINEAR equations

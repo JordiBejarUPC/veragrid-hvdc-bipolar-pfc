@@ -71,10 +71,10 @@ class DataBaseTableMain(DiagramsMain):
         # setup the tree for compiled arrays
         self.setup_compiled_arrays_tree()
 
-        (self.ts_search_points_dict,
-         ts_search_points_mdl) = gf.enums_to_model(
-            [TimeSeriesSearchPoint.HighestLoad,
-             TimeSeriesSearchPoint.LowestLoad]
+        ts_search_points_mdl = gf.ComboModel(
+            enum_values=[TimeSeriesSearchPoint.HighestLoad,
+                         TimeSeriesSearchPoint.LowestLoad],
+            translate=self.tr
         )
         self.ui.goToTsPointComboBox.setModel(ts_search_points_mdl)
 
@@ -82,8 +82,8 @@ class DataBaseTableMain(DiagramsMain):
             self.tr("Type the object name or a smart filter expression ...")
         )
 
-        self.prop_filter_dict, prop_filter_mdl = gf.enums_to_icons_model(
-            [
+        prop_filter_mdl = gf.ComboModel(
+            icon_enum_values=[
                 (PrpCat.All,":/Icons/icons/edit.png"),
                 (PrpCat.TP,":/Icons/icons/automatic_layout.png"),
                 (PrpCat.PF,":/Icons/icons/pf.png"),
@@ -96,7 +96,8 @@ class DataBaseTableMain(DiagramsMain):
                 (PrpCat.INV,":/Icons/icons/expansion_planning.png"),
                 (PrpCat.RMS,":/Icons/icons/dyn.png"),
                 (PrpCat.EMT,":/Icons/icons/dyn_emt.png"),
-            ]
+            ],
+            translate=self.tr
         )
         self.ui.dbFilterComboBox.setModel(prop_filter_mdl)
 
@@ -137,7 +138,7 @@ class DataBaseTableMain(DiagramsMain):
 
         # combobox change
         self.ui.associationsComboBox.currentTextChanged.connect(self.on_associations_combo_box_change)
-        self.ui.dbFilterComboBox.currentTextChanged.connect(self.view_objects_data)
+        self.ui.dbFilterComboBox.currentIndexChanged.connect(self.view_objects_data)
 
     def setup_objects_tree(self):
         """
@@ -171,7 +172,7 @@ class DataBaseTableMain(DiagramsMain):
         """
         template_elm, dictionary_of_lists = self.circuit.get_dictionary_of_lists(elm_type=elm_type)
 
-        filter_prop = self.prop_filter_dict[self.ui.dbFilterComboBox.currentText()]
+        filter_prop = self.ui.dbFilterComboBox.currentData()
 
         mdl = ObjectsModel(
             objects=elements,
@@ -359,7 +360,10 @@ class DataBaseTableMain(DiagramsMain):
             source_model = proxy_model.sourceModel()
 
             sel_idx = self.ui.dataStructureTableView.selectedIndexes()
-            objects: List[ALL_DEV_TYPES] = source_model.objects if hasattr(source_model, 'objects') else []
+            if isinstance(source_model, ObjectsModel):
+                objects: List[ALL_DEV_TYPES] = source_model.objects
+            else:
+                objects = list()
 
             if len(objects) > 0:
 
@@ -593,8 +597,7 @@ class DataBaseTableMain(DiagramsMain):
                 self.show_warning_toast("No substations to draw...")
                 return
 
-            cmap_text = self.ui.palette_comboBox.currentText()
-            cmap = self.cmap_dict[cmap_text]
+            cmap = self.ui.palette_comboBox.currentData()
             subgrid = self.circuit.slice_buses(buses=list(selected_buses))
 
             diagram = generate_map_diagram(
@@ -631,7 +634,7 @@ class DataBaseTableMain(DiagramsMain):
                 default_bus_voltage=self.ui.defaultBusVoltageSpinBox.value()
             )
 
-            default_tile_source = self.tile_name_dict[self.ui.tile_provider_comboBox.currentText()]
+            default_tile_source = self.ui.tile_provider_comboBox.currentData()
             tile_source = self.tile_name_dict.get(diagram.tile_source, default_tile_source)
 
             diagram_widget = GridMapWidget(
@@ -1621,8 +1624,7 @@ class DataBaseTableMain(DiagramsMain):
         Search time step point
         """
 
-        txt = self.ui.goToTsPointComboBox.currentText()
-        mode: TimeSeriesSearchPoint = self.ts_search_points_dict[txt]
+        mode: TimeSeriesSearchPoint = self.ui.goToTsPointComboBox.currentData()
 
         if mode == TimeSeriesSearchPoint.LowestLoad:
 
