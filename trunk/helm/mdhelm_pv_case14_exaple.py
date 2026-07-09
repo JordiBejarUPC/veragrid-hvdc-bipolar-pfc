@@ -21,6 +21,7 @@ local injection changes around the germ.
 from __future__ import annotations
 
 import math
+import os
 from pathlib import Path
 from typing import Optional, Sequence
 
@@ -40,56 +41,53 @@ class MultiIndexTable:
         Number of independent embedding dimensions.
     max_order:
         Maximum total polynomial order.
-    orders:
-        Multi-indices grouped by total order.
-    alphas:
-        Flat list of all multi-indices up to ``max_order``.
-    alpha_to_position:
-        Lookup table from multi-index to row position in coefficient arrays.
+    order_offsets:
+        Prefix offsets such that rows of order ``k`` occupy
+        ``[order_offsets[k], order_offsets[k + 1])``.
+    alphas_array:
+        Dense integer exponent matrix with shape ``(n_terms, dims)``.
     minus_e_position:
         Matrix whose row ``k`` and column ``d`` stores the coefficient position
         of ``alpha_k - e_d``. A value of ``-1`` means that subtraction is not
         possible because the corresponding exponent is zero.
-    proper_sub_index_left:
-        For each coefficient position, left indices used in known convolution
-        sums. These exclude the zero term and the current term.
-    proper_sub_index_right:
-        For each coefficient position, right indices paired with
-        ``proper_sub_index_left``.
+    proper_sub_offsets:
+        Prefix offsets into the flat convolution index arrays.
+    proper_sub_left_flat:
+        Flat left indices used in known convolution sums.
+    proper_sub_right_flat:
+        Flat right indices paired with ``proper_sub_left_flat``.
     """
 
     __slots__ = (
         "_dims",
         "_max_order",
-        "_orders",
-        "_alphas",
+        "_order_offsets",
         "_alphas_array",
-        "_alpha_to_position",
         "_minus_e_position",
-        "_proper_sub_index_left",
-        "_proper_sub_index_right",
+        "_proper_sub_offsets",
+        "_proper_sub_left_flat",
+        "_proper_sub_right_flat",
     )
 
     def __init__(
         self,
         dims: int,
         max_order: int,
-        orders: list[list[tuple[int, ...]]],
-        alphas: list[tuple[int, ...]],
-        alpha_to_position: dict[tuple[int, ...], int],
+        order_offsets: np.ndarray,
+        alphas_array: np.ndarray,
         minus_e_position: np.ndarray,
-        proper_sub_index_left: list[np.ndarray],
-        proper_sub_index_right: list[np.ndarray],
+        proper_sub_offsets: np.ndarray,
+        proper_sub_left_flat: np.ndarray,
+        proper_sub_right_flat: np.ndarray,
     ) -> None:
         self._dims: int = dims
         self._max_order: int = max_order
-        self._orders: list[list[tuple[int, ...]]] = orders
-        self._alphas: list[tuple[int, ...]] = alphas
-        self._alphas_array: np.ndarray = build_alpha_array(dims=dims, alphas=alphas)
-        self._alpha_to_position: dict[tuple[int, ...], int] = alpha_to_position
+        self._order_offsets: np.ndarray = order_offsets
+        self._alphas_array: np.ndarray = alphas_array
         self._minus_e_position: np.ndarray = minus_e_position
-        self._proper_sub_index_left: list[np.ndarray] = proper_sub_index_left
-        self._proper_sub_index_right: list[np.ndarray] = proper_sub_index_right
+        self._proper_sub_offsets: np.ndarray = proper_sub_offsets
+        self._proper_sub_left_flat: np.ndarray = proper_sub_left_flat
+        self._proper_sub_right_flat: np.ndarray = proper_sub_right_flat
 
     def get_dims(self) -> int:
         """
@@ -113,27 +111,16 @@ class MultiIndexTable:
         """
         return self._max_order
 
-    def get_orders(self) -> list[list[tuple[int, ...]]]:
+    def get_order_offsets(self) -> np.ndarray:
         """
-        Get the multi-indices grouped by total order.
+        Get the prefix offsets of each total-order block.
 
         Returns
         -------
-        list[list[tuple[int, ...]]]
-            Multi-indices grouped by order.
+        numpy.ndarray
+            Prefix offsets with shape ``(max_order + 2,)``.
         """
-        return self._orders
-
-    def get_alphas(self) -> list[tuple[int, ...]]:
-        """
-        Get the flat list of multi-indices.
-
-        Returns
-        -------
-        list[tuple[int, ...]]
-            Flat multi-index list.
-        """
-        return self._alphas
+        return self._order_offsets
 
     def get_alphas_array(self) -> np.ndarray:
         """
@@ -146,16 +133,48 @@ class MultiIndexTable:
         """
         return self._alphas_array
 
-    def get_alpha_to_position(self) -> dict[tuple[int, ...], int]:
+    def get_terms_count(self) -> int:
         """
-        Get the multi-index lookup table.
+        Get the total number of coefficient rows.
 
         Returns
         -------
-        dict[tuple[int, ...], int]
-            Lookup table from multi-index to coefficient row.
+        int
+            Number of coefficient rows.
         """
-        return self._alpha_to_position
+        return int(self._alphas_array.shape[0])
+
+    def get_order_start(self, order_index: int) -> int:
+        """
+        Get the first coefficient position for one total order.
+
+        Parameters
+        ----------
+        order_index:
+            Total order.
+
+        Returns
+        -------
+        int
+            First coefficient position.
+        """
+        return int(self._order_offsets[order_index])
+
+    def get_order_stop(self, order_index: int) -> int:
+        """
+        Get the exclusive stop coefficient position for one total order.
+
+        Parameters
+        ----------
+        order_index:
+            Total order.
+
+        Returns
+        -------
+        int
+            Exclusive stop coefficient position.
+        """
+        return int(self._order_offsets[order_index + 1])
 
     def get_minus_e_position(self) -> np.ndarray:
         """
@@ -182,7 +201,9 @@ class MultiIndexTable:
         numpy.ndarray
             Left coefficient positions.
         """
-        return self._proper_sub_index_left[position]
+        start: int = int(self._proper_sub_offsets[position])
+        stop: int = int(self._proper_sub_offsets[position + 1])
+        return self._proper_sub_left_flat[start:stop]
 
     def get_right_convolution_positions(self, position: int) -> np.ndarray:
         """
@@ -198,7 +219,9 @@ class MultiIndexTable:
         numpy.ndarray
             Right coefficient positions.
         """
-        return self._proper_sub_index_right[position]
+        start: int = int(self._proper_sub_offsets[position])
+        stop: int = int(self._proper_sub_offsets[position + 1])
+        return self._proper_sub_right_flat[start:stop]
 
 
 class MDHEMPVMap:
@@ -608,7 +631,7 @@ class SparseLinearSolver:
     Parameters
     ----------
     factorization:
-        Callable object returned by SciPy sparse factorization.
+        SciPy sparse LU factorization object.
     """
 
     __slots__ = ("_factorization",)
@@ -618,19 +641,19 @@ class SparseLinearSolver:
 
     def solve(self, rhs: np.ndarray) -> np.ndarray:
         """
-        Solve the sparse linear system for one right-hand side.
+        Solve the sparse linear system for one or many right-hand sides.
 
         Parameters
         ----------
         rhs:
-            Right-hand-side vector.
+            Right-hand-side vector or dense right-hand-side matrix.
 
         Returns
         -------
         numpy.ndarray
-            Solution vector.
+            Solution vector or dense solution matrix.
         """
-        solution: np.ndarray = np.asarray(self._factorization(rhs), dtype=np.float64)
+        solution: np.ndarray = np.asarray(self._factorization.solve(rhs), dtype=np.float64)
         return solution
 
 
@@ -715,37 +738,814 @@ class VeraGridCaseData:
         self.newton_error: float = newton_error
 
 
-def append_compositions(total: int, dims: int, prefix: tuple[int, ...], output: list[tuple[int, ...]]) -> None:
+def create_binomial_table(max_n: int, max_k: int) -> np.ndarray:
     """
-    Append all non-negative compositions of ``total`` into ``dims`` parts.
+    Create a dense Pascal-triangle table used by the rank kernels.
+
+    Parameters
+    ----------
+    max_n:
+        Largest ``n`` needed in ``C(n, k)``.
+    max_k:
+        Largest ``k`` needed in ``C(n, k)``.
+
+    Returns
+    -------
+    numpy.ndarray
+        Dense ``int64`` binomial table.
+    """
+    binomial_table: np.ndarray = np.zeros((max_n + 1, max_k + 1), dtype=np.int64)
+    n_index: int
+
+    # The table is built once per multi-index structure so every later rank
+    # lookup becomes a direct array access instead of a Python ``math.comb``
+    # call inside the inner loops.
+    for n_index in range(max_n + 1):
+        upper_k: int = min(n_index, max_k)
+        binomial_table[n_index, 0] = 1
+        k_index: int
+        for k_index in range(1, upper_k + 1):
+            if k_index == n_index:
+                binomial_table[n_index, k_index] = 1
+            else:
+                binomial_table[n_index, k_index] = (
+                    binomial_table[n_index - 1, k_index - 1]
+                    + binomial_table[n_index - 1, k_index]
+                )
+
+    return binomial_table
+
+
+def format_byte_count(byte_count: int) -> str:
+    """
+    Format a byte count with binary prefixes.
+
+    Parameters
+    ----------
+    byte_count:
+        Raw byte count.
+
+    Returns
+    -------
+    str
+        Human-readable byte count.
+    """
+    units: tuple[str, ...] = ("B", "KiB", "MiB", "GiB", "TiB", "PiB", "EiB")
+    value: float = float(byte_count)
+    unit_index: int = 0
+
+    while value >= 1024.0 and unit_index < len(units) - 1:
+        value = value / 1024.0
+        unit_index = unit_index + 1
+
+    return f"{value:.2f} {units[unit_index]}"
+
+
+def get_physical_memory_bytes() -> Optional[int]:
+    """
+    Read the host physical memory size when the platform exposes it.
+
+    Returns
+    -------
+    Optional[int]
+        Physical memory in bytes, or ``None`` when unavailable.
+    """
+    try:
+        page_size: int = int(os.sysconf("SC_PAGE_SIZE"))
+        page_count: int = int(os.sysconf("SC_PHYS_PAGES"))
+        if page_size > 0 and page_count > 0:
+            return page_size * page_count
+        else:
+            return None
+    except (ValueError, OSError, AttributeError):
+        return None
+
+
+def estimate_multi_index_table_bytes(total_terms: int, dims: int) -> int:
+    """
+    Estimate the minimum dense storage required by the multi-index table.
+
+    Parameters
+    ----------
+    total_terms:
+        Number of coefficient rows.
+    dims:
+        Number of embedding dimensions.
+
+    Returns
+    -------
+    int
+        Lower-bound byte estimate for the mandatory dense integer arrays.
+    """
+    alpha_bytes: int = total_terms * dims * np.dtype(np.int64).itemsize
+    minus_e_bytes: int = total_terms * dims * np.dtype(np.int64).itemsize
+    count_bytes: int = total_terms * np.dtype(np.int64).itemsize
+    offset_bytes: int = (total_terms + 1) * np.dtype(np.int64).itemsize
+
+    # This is intentionally a lower bound. If even the mandatory arrays do not
+    # fit, the full table is already impossible before counting convolution
+    # pair storage or any coefficient tensors built on top of it.
+    return alpha_bytes + minus_e_bytes + count_bytes + offset_bytes
+
+
+def should_use_parallel_table_build(total_terms: int, dims: int) -> bool:
+    """
+    Decide whether the multi-index table build is large enough for threading.
+
+    Parameters
+    ----------
+    total_terms:
+        Number of coefficient rows.
+    dims:
+        Number of embedding dimensions.
+
+    Returns
+    -------
+    bool
+        ``True`` when the table build should use Numba parallel kernels.
+    """
+    operation_scale: int = total_terms * max(dims, 1)
+
+    # ponytail: thread startup is pure overhead on small cases like IEEE14, so
+    # only switch to the parallel kernels when the dense table work is clearly
+    # large enough to amortize it.
+    if operation_scale >= 200_000:
+        return True
+    else:
+        return False
+
+
+def should_use_parallel_monomial_weights(term_count: int, dimension_count: int) -> bool:
+    """
+    Decide whether monomial evaluation is large enough for threaded execution.
+
+    Parameters
+    ----------
+    term_count:
+        Number of polynomial terms.
+    dimension_count:
+        Number of embedding dimensions.
+
+    Returns
+    -------
+    bool
+        ``True`` when the parallel monomial kernel should be used.
+    """
+    operation_scale: int = term_count * max(dimension_count, 1)
+
+    # The online query path is latency-sensitive. Small artifacts should stay
+    # on one thread, while large ones benefit from splitting the term loop.
+    if operation_scale >= 100_000:
+        return True
+    else:
+        return False
+
+
+def should_use_parallel_convolution(pair_count: int, vector_width: int) -> bool:
+    """
+    Decide whether one dense convolution accumulation should use threading.
+
+    Parameters
+    ----------
+    pair_count:
+        Number of beta/gamma pairs in the convolution sum.
+    vector_width:
+        Number of buses or PV buses updated by the sum.
+
+    Returns
+    -------
+    bool
+        ``True`` when the parallel convolution kernel should be used.
+    """
+    operation_scale: int = pair_count * max(vector_width, 1)
+
+    # The HELM training loop calls these kernels many times. A low threshold
+    # would slow the small recurring calls, so the gate is deliberately higher.
+    if operation_scale >= 20_000:
+        return True
+    else:
+        return False
+
+
+def determine_rhs_block_columns(unknown_count: int, target_block_bytes: int) -> int:
+    """
+    Choose a dense multi-RHS block width for the repeated sparse solves.
+
+    Parameters
+    ----------
+    unknown_count:
+        Number of rows in the constant MDHEM linear system.
+    target_block_bytes:
+        Approximate memory budget for one dense RHS block and its solution.
+
+    Returns
+    -------
+    int
+        Number of RHS columns to solve together.
+    """
+    bytes_per_column: int
+
+    # Each column exists twice during the block solve: once in the RHS matrix
+    # and once in the solution matrix. Both are dense float64 arrays.
+    if unknown_count > 0:
+        bytes_per_column = 16 * unknown_count
+        return max(1, target_block_bytes // bytes_per_column)
+    else:
+        return 1
+
+
+@nb.njit(cache=True)
+def fill_compositions_array(total: int, dims: int, output: np.ndarray, row_start: int) -> int:
+    """
+    Fill one dense alpha-array block with all compositions of one total order.
 
     Parameters
     ----------
     total:
         Total order to distribute.
     dims:
-        Remaining number of dimensions.
-    prefix:
-        Prefix already assigned by the recursion.
+        Number of dimensions.
     output:
-        Output list receiving the generated multi-indices.
+        Dense alpha matrix receiving the filled rows.
+    row_start:
+        First row of the block.
+
+    Returns
+    -------
+    int
+        First row after the filled block.
+    """
+    row_index: int = row_start
+
+    if dims == 1:
+        output[row_index, 0] = total
+        row_index = row_index + 1
+    else:
+        separator_count: int = dims - 1
+        separator_slots: int = total + dims - 1
+        separators: np.ndarray = np.arange(separator_count, dtype=np.int64)
+
+        # The stars-and-bars representation generates the same lexicographic
+        # order as the old composition builder, but it writes
+        # directly into the preallocated dense alpha array.
+        while True:
+            previous_separator: int = -1
+            separator_index: int
+            for separator_index in range(separator_count):
+                current_separator: int = int(separators[separator_index])
+                output[row_index, separator_index] = current_separator - previous_separator - 1
+                previous_separator = current_separator
+            output[row_index, dims - 1] = separator_slots - previous_separator - 1
+            row_index = row_index + 1
+
+            separator_index = separator_count - 1
+            while separator_index >= 0:
+                max_value: int = separator_slots - separator_count + separator_index
+                if separators[separator_index] < max_value:
+                    separators[separator_index] = separators[separator_index] + 1
+                    next_index: int = separator_index + 1
+                    while next_index < separator_count:
+                        separators[next_index] = separators[next_index - 1] + 1
+                        next_index = next_index + 1
+                    break
+                separator_index = separator_index - 1
+
+            if separator_index < 0:
+                break
+
+    return row_index
+
+
+@nb.njit(cache=True)
+def compute_alpha_rank_numba(alpha: np.ndarray, binomial_table: np.ndarray) -> int:
+    """
+    Compute the lexicographic rank of one composition inside its order block.
+
+    Parameters
+    ----------
+    alpha:
+        Dense multi-index row.
+    binomial_table:
+        Dense lookup table for binomial coefficients.
+
+    Returns
+    -------
+    int
+        Zero-based rank in the fixed-total-order block.
+    """
+    remaining_total: int = 0
+    rank: int = 0
+    dimension_count: int = int(alpha.size)
+    dimension_index: int
+
+    # The rank is the number of compositions that would appear before the
+    # current one in the stars-and-bars order generated above.
+    for dimension_index in range(dimension_count):
+        remaining_total = remaining_total + int(alpha[dimension_index])
+
+    for dimension_index in range(dimension_count - 1):
+        current_value: int = int(alpha[dimension_index])
+        suffix_dims: int = dimension_count - dimension_index - 2
+        candidate_value: int
+        for candidate_value in range(current_value):
+            rank = rank + int(
+                binomial_table[remaining_total - candidate_value + suffix_dims, suffix_dims]
+            )
+        remaining_total = remaining_total - current_value
+
+    return rank
+
+
+@nb.njit(cache=True)
+def compute_alpha_position_numba(
+    alpha: np.ndarray,
+    order_offsets: np.ndarray,
+    binomial_table: np.ndarray,
+) -> int:
+    """
+    Compute the global coefficient position of one dense multi-index.
+
+    Parameters
+    ----------
+    alpha:
+        Dense multi-index row.
+    order_offsets:
+        Prefix offsets of the total-order blocks.
+    binomial_table:
+        Dense lookup table for binomial coefficients.
+
+    Returns
+    -------
+    int
+        Global coefficient position.
+    """
+    total_order: int = 0
+    dimension_index: int
+
+    for dimension_index in range(alpha.size):
+        total_order = total_order + int(alpha[dimension_index])
+
+    return int(order_offsets[total_order] + compute_alpha_rank_numba(alpha, binomial_table))
+
+
+@nb.njit(cache=True)
+def fill_minus_e_position_numba(
+    alphas_array: np.ndarray,
+    order_offsets: np.ndarray,
+    binomial_table: np.ndarray,
+    minus_e_position: np.ndarray,
+) -> None:
+    """
+    Fill the ``alpha - e_d`` lookup matrix in compiled code.
+
+    Parameters
+    ----------
+    alphas_array:
+        Dense exponent matrix.
+    order_offsets:
+        Prefix offsets of the total-order blocks.
+    binomial_table:
+        Dense lookup table for binomial coefficients.
+    minus_e_position:
+        Output lookup matrix.
 
     Returns
     -------
     None
-        The function mutates ``output`` in place.
+        The output array is filled in place.
     """
-    if dims == 1:
-        output.append(prefix + (total,))
-    else:
-        value: int
-        for value in range(total + 1):
-            append_compositions(total=total - value, dims=dims - 1, prefix=prefix + (value,), output=output)
+    term_count: int = int(alphas_array.shape[0])
+    dimension_count: int = int(alphas_array.shape[1])
+    position: int
+
+    # Each ``alpha - e_d`` position can be ranked directly from the current row
+    # without materializing a copied temporary vector for every dimension.
+    for position in range(term_count):
+        total_order: int = 0
+        dimension_index: int
+        for dimension_index in range(dimension_count):
+            total_order = total_order + int(alphas_array[position, dimension_index])
+
+        for dimension_index in range(dimension_count):
+            exponent: int = int(alphas_array[position, dimension_index])
+            if exponent > 0:
+                shifted_total: int = total_order - 1
+                remaining_total: int = shifted_total
+                rank: int = 0
+                alpha_index: int
+                for alpha_index in range(dimension_count - 1):
+                    current_value: int = int(alphas_array[position, alpha_index])
+                    if alpha_index == dimension_index:
+                        current_value = current_value - 1
+                    else:
+                        current_value = current_value
+                    suffix_dims: int = dimension_count - alpha_index - 2
+                    candidate_value: int
+                    for candidate_value in range(current_value):
+                        rank = rank + int(
+                            binomial_table[remaining_total - candidate_value + suffix_dims, suffix_dims]
+                        )
+                    remaining_total = remaining_total - current_value
+                minus_e_position[position, dimension_index] = int(order_offsets[shifted_total] + rank)
+            else:
+                minus_e_position[position, dimension_index] = -1
+
+
+@nb.njit(cache=True, parallel=True)
+def fill_minus_e_position_parallel_numba(
+    alphas_array: np.ndarray,
+    order_offsets: np.ndarray,
+    binomial_table: np.ndarray,
+    minus_e_position: np.ndarray,
+) -> None:
+    """
+    Fill the ``alpha - e_d`` lookup matrix with parallel row updates.
+
+    Parameters
+    ----------
+    alphas_array:
+        Dense exponent matrix.
+    order_offsets:
+        Prefix offsets of the total-order blocks.
+    binomial_table:
+        Dense lookup table for binomial coefficients.
+    minus_e_position:
+        Output lookup matrix.
+
+    Returns
+    -------
+    None
+        The output array is filled in place.
+    """
+    term_count: int = int(alphas_array.shape[0])
+    dimension_count: int = int(alphas_array.shape[1])
+    position: int
+
+    # Each row writes to a disjoint slice of ``minus_e_position``, so the
+    # outer loop is embarrassingly parallel across coefficient rows.
+    for position in nb.prange(term_count):
+        total_order: int = 0
+        dimension_index: int
+        for dimension_index in range(dimension_count):
+            total_order = total_order + int(alphas_array[position, dimension_index])
+
+        for dimension_index in range(dimension_count):
+            exponent: int = int(alphas_array[position, dimension_index])
+            if exponent > 0:
+                shifted_total: int = total_order - 1
+                remaining_total: int = shifted_total
+                rank: int = 0
+                alpha_index: int
+                for alpha_index in range(dimension_count - 1):
+                    current_value: int = int(alphas_array[position, alpha_index])
+                    if alpha_index == dimension_index:
+                        current_value = current_value - 1
+                    else:
+                        current_value = current_value
+                    suffix_dims: int = dimension_count - alpha_index - 2
+                    candidate_value: int
+                    for candidate_value in range(current_value):
+                        rank = rank + int(
+                            binomial_table[remaining_total - candidate_value + suffix_dims, suffix_dims]
+                        )
+                    remaining_total = remaining_total - current_value
+                minus_e_position[position, dimension_index] = int(order_offsets[shifted_total] + rank)
+            else:
+                minus_e_position[position, dimension_index] = -1
+
+
+@nb.njit(cache=True)
+def count_proper_sub_counts_numba(alphas_array: np.ndarray) -> np.ndarray:
+    """
+    Count non-trivial ``beta + gamma = alpha`` pairs for every coefficient row.
+
+    Parameters
+    ----------
+    alphas_array:
+        Dense exponent matrix.
+
+    Returns
+    -------
+    numpy.ndarray
+        Flat counts per coefficient row.
+    """
+    term_count: int = int(alphas_array.shape[0])
+    dimension_count: int = int(alphas_array.shape[1])
+    proper_sub_counts: np.ndarray = np.zeros(term_count, dtype=np.int64)
+    position: int
+
+    # The mixed-radix product gives the number of ways to split each exponent
+    # coordinate independently. Removing the all-zero and all-alpha splits
+    # leaves the non-trivial convolution pairs.
+    for position in range(term_count):
+        pair_count: int = 1
+        has_nonzero: bool = False
+        dimension_index: int
+        for dimension_index in range(dimension_count):
+            exponent: int = int(alphas_array[position, dimension_index])
+            if exponent > 0:
+                has_nonzero = True
+                pair_count = pair_count * (exponent + 1)
+            else:
+                pair_count = pair_count * 1
+
+        if has_nonzero and pair_count >= 2:
+            proper_sub_counts[position] = pair_count - 2
+        else:
+            proper_sub_counts[position] = 0
+
+    return proper_sub_counts
+
+
+@nb.njit(cache=True, parallel=True)
+def count_proper_sub_counts_parallel_numba(alphas_array: np.ndarray) -> np.ndarray:
+    """
+    Count non-trivial ``beta + gamma = alpha`` pairs with parallel row updates.
+
+    Parameters
+    ----------
+    alphas_array:
+        Dense exponent matrix.
+
+    Returns
+    -------
+    numpy.ndarray
+        Flat counts per coefficient row.
+    """
+    term_count: int = int(alphas_array.shape[0])
+    dimension_count: int = int(alphas_array.shape[1])
+    proper_sub_counts: np.ndarray = np.zeros(term_count, dtype=np.int64)
+    position: int
+
+    # Every row count is independent, which makes this pass a clean threading
+    # target once the table grows beyond the small test cases.
+    for position in nb.prange(term_count):
+        pair_count: int = 1
+        has_nonzero: bool = False
+        dimension_index: int
+        for dimension_index in range(dimension_count):
+            exponent: int = int(alphas_array[position, dimension_index])
+            if exponent > 0:
+                has_nonzero = True
+                pair_count = pair_count * (exponent + 1)
+            else:
+                pair_count = pair_count * 1
+
+        if has_nonzero and pair_count >= 2:
+            proper_sub_counts[position] = pair_count - 2
+        else:
+            proper_sub_counts[position] = 0
+
+    return proper_sub_counts
+
+
+@nb.njit(cache=True)
+def fill_proper_sub_arrays_numba(
+    alphas_array: np.ndarray,
+    order_offsets: np.ndarray,
+    binomial_table: np.ndarray,
+    proper_sub_offsets: np.ndarray,
+    left_positions: np.ndarray,
+    right_positions: np.ndarray,
+) -> None:
+    """
+    Fill the flat beta/gamma convolution lookup arrays in compiled code.
+
+    Parameters
+    ----------
+    alphas_array:
+        Dense exponent matrix.
+    order_offsets:
+        Prefix offsets of the total-order blocks.
+    binomial_table:
+        Dense lookup table for binomial coefficients.
+    proper_sub_offsets:
+        Prefix offsets into the flat outputs.
+    left_positions:
+        Flat output array receiving left positions.
+    right_positions:
+        Flat output array receiving right positions.
+
+    Returns
+    -------
+    None
+        The output arrays are filled in place.
+    """
+    term_count: int = int(alphas_array.shape[0])
+    dimension_count: int = int(alphas_array.shape[1])
+    position: int
+
+    # The same mixed-radix counter used by the Python version is kept, but the
+    # heavy enumeration and ranking now stay inside one compiled kernel.
+    for position in range(term_count):
+        output_position: int = int(proper_sub_offsets[position])
+        combination_count: int = 1
+        dimension_index: int
+        for dimension_index in range(dimension_count):
+            combination_count = combination_count * (int(alphas_array[position, dimension_index]) + 1)
+
+        beta_values: np.ndarray = np.zeros(dimension_count, dtype=np.int64)
+        gamma_values: np.ndarray = np.zeros(dimension_count, dtype=np.int64)
+        radix_sizes: np.ndarray = np.zeros(dimension_count, dtype=np.int64)
+        for dimension_index in range(dimension_count):
+            radix_sizes[dimension_index] = int(alphas_array[position, dimension_index]) + 1
+
+        combination_index: int
+        for combination_index in range(combination_count):
+            remainder: int = combination_index
+            any_beta: bool = False
+            all_equal: bool = True
+            reverse_index: int
+
+            for reverse_index in range(dimension_count - 1, -1, -1):
+                radix: int = int(radix_sizes[reverse_index])
+                digit: int = remainder % radix
+                remainder = remainder // radix
+                beta_values[reverse_index] = digit
+                gamma_values[reverse_index] = int(alphas_array[position, reverse_index]) - digit
+                if digit != 0:
+                    any_beta = True
+                else:
+                    any_beta = any_beta
+                if digit != int(alphas_array[position, reverse_index]):
+                    all_equal = False
+                else:
+                    all_equal = all_equal
+
+            if any_beta:
+                if all_equal:
+                    pass
+                else:
+                    left_positions[output_position] = compute_alpha_position_numba(
+                        alpha=beta_values,
+                        order_offsets=order_offsets,
+                        binomial_table=binomial_table,
+                    )
+                    right_positions[output_position] = compute_alpha_position_numba(
+                        alpha=gamma_values,
+                        order_offsets=order_offsets,
+                        binomial_table=binomial_table,
+                    )
+                    output_position = output_position + 1
+            else:
+                pass
+
+
+@nb.njit(cache=True, parallel=True)
+def fill_proper_sub_arrays_parallel_numba(
+    alphas_array: np.ndarray,
+    order_offsets: np.ndarray,
+    binomial_table: np.ndarray,
+    proper_sub_offsets: np.ndarray,
+    left_positions: np.ndarray,
+    right_positions: np.ndarray,
+) -> None:
+    """
+    Fill the flat beta/gamma convolution arrays with parallel row updates.
+
+    Parameters
+    ----------
+    alphas_array:
+        Dense exponent matrix.
+    order_offsets:
+        Prefix offsets of the total-order blocks.
+    binomial_table:
+        Dense lookup table for binomial coefficients.
+    proper_sub_offsets:
+        Prefix offsets into the flat outputs.
+    left_positions:
+        Flat output array receiving left positions.
+    right_positions:
+        Flat output array receiving right positions.
+
+    Returns
+    -------
+    None
+        The output arrays are filled in place.
+    """
+    term_count: int = int(alphas_array.shape[0])
+    dimension_count: int = int(alphas_array.shape[1])
+    position: int
+
+    # Each coefficient row owns a disjoint slice in the flat output arrays, so
+    # the outer loop can be threaded without synchronization.
+    for position in nb.prange(term_count):
+        output_position: int = int(proper_sub_offsets[position])
+        combination_count: int = 1
+        dimension_index: int
+        for dimension_index in range(dimension_count):
+            combination_count = combination_count * (int(alphas_array[position, dimension_index]) + 1)
+
+        beta_values: np.ndarray = np.zeros(dimension_count, dtype=np.int64)
+        gamma_values: np.ndarray = np.zeros(dimension_count, dtype=np.int64)
+        radix_sizes: np.ndarray = np.zeros(dimension_count, dtype=np.int64)
+        for dimension_index in range(dimension_count):
+            radix_sizes[dimension_index] = int(alphas_array[position, dimension_index]) + 1
+
+        combination_index: int
+        for combination_index in range(combination_count):
+            remainder: int = combination_index
+            any_beta: bool = False
+            all_equal: bool = True
+            reverse_index: int
+
+            for reverse_index in range(dimension_count - 1, -1, -1):
+                radix: int = int(radix_sizes[reverse_index])
+                digit: int = remainder % radix
+                remainder = remainder // radix
+                beta_values[reverse_index] = digit
+                gamma_values[reverse_index] = int(alphas_array[position, reverse_index]) - digit
+                if digit != 0:
+                    any_beta = True
+                else:
+                    any_beta = any_beta
+                if digit != int(alphas_array[position, reverse_index]):
+                    all_equal = False
+                else:
+                    all_equal = all_equal
+
+            if any_beta:
+                if all_equal:
+                    pass
+                else:
+                    left_positions[output_position] = compute_alpha_position_numba(
+                        alpha=beta_values,
+                        order_offsets=order_offsets,
+                        binomial_table=binomial_table,
+                    )
+                    right_positions[output_position] = compute_alpha_position_numba(
+                        alpha=gamma_values,
+                        order_offsets=order_offsets,
+                        binomial_table=binomial_table,
+                    )
+                    output_position = output_position + 1
+            else:
+                pass
+
+
+def compute_alpha_rank(alpha: np.ndarray) -> int:
+    """
+    Compute the lexicographic rank of one composition within its total-order block.
+
+    Parameters
+    ----------
+    alpha:
+        Dense multi-index row.
+
+    Returns
+    -------
+    int
+        Zero-based rank within the block of fixed total order.
+    """
+    alpha_array: np.ndarray = np.asarray(alpha, dtype=np.int64)
+    total_order: int = int(np.sum(alpha_array))
+    dimension_count: int = int(alpha_array.size)
+    binomial_table: np.ndarray = create_binomial_table(
+        max_n=total_order + dimension_count,
+        max_k=dimension_count,
+    )
+
+    # The public wrapper keeps a simple Python API while delegating the actual
+    # combinatorial counting to the compiled kernel used by the artifact build.
+    return int(compute_alpha_rank_numba(alpha=alpha_array, binomial_table=binomial_table))
+
+
+def compute_alpha_position(alpha: np.ndarray, order_offsets: np.ndarray) -> int:
+    """
+    Compute the global row position of one dense multi-index.
+
+    Parameters
+    ----------
+    alpha:
+        Dense multi-index row.
+    order_offsets:
+        Prefix offsets of the total-order blocks.
+
+    Returns
+    -------
+    int
+        Global coefficient row position.
+    """
+    alpha_array: np.ndarray = np.asarray(alpha, dtype=np.int64)
+    order_offsets_array: np.ndarray = np.asarray(order_offsets, dtype=np.int64)
+    total_order: int = int(np.sum(alpha_array))
+    dimension_count: int = int(alpha_array.size)
+    binomial_table: np.ndarray = create_binomial_table(
+        max_n=total_order + dimension_count,
+        max_k=dimension_count,
+    )
+    return int(
+        compute_alpha_position_numba(
+            alpha=alpha_array,
+            order_offsets=order_offsets_array,
+            binomial_table=binomial_table,
+        )
+    )
 
 
 def create_multi_index_table(dims: int, max_order: int) -> MultiIndexTable:
     """
-    Create the multi-index table needed by the MDHEM coefficient recursion.
+    Create the multi-index table needed by the MDHEM coefficient recurrence.
 
     Parameters
     ----------
@@ -759,153 +1559,91 @@ def create_multi_index_table(dims: int, max_order: int) -> MultiIndexTable:
     MultiIndexTable
         Multi-index table and convolution lookup structure.
     """
-    orders: list[list[tuple[int, ...]]] = list()
-    alphas: list[tuple[int, ...]] = list()
-    order_index: int
+    order_offsets: np.ndarray = np.zeros(max_order + 2, dtype=np.int64)
+    total_terms: int
     if dims > 0 and max_order >= 0:
         for order_index in range(max_order + 1):
-            current_order: list[tuple[int, ...]] = list()
-            append_compositions(total=order_index, dims=dims, prefix=tuple(), output=current_order)
-            orders.append(current_order)
-            alphas.extend(current_order)
+            order_count: int = math.comb(order_index + dims - 1, dims - 1)
+            order_offsets[order_index + 1] = order_offsets[order_index] + order_count
     else:
-        current_order = list()
-        current_order.append(tuple())
-        orders.append(current_order)
-        alphas.extend(current_order)
+        order_offsets[1] = 1
 
-    alpha_to_position: dict[tuple[int, ...], int] = dict()
-    position: int
-    for position in range(len(alphas)):
-        alpha_to_position[alphas[position]] = position
+    total_terms = int(order_offsets[max_order + 1])
+    binomial_table: np.ndarray = create_binomial_table(
+        max_n=max_order + dims,
+        max_k=dims,
+    )
+    alphas_array: np.ndarray = np.zeros((total_terms, dims), dtype=np.int64)
+    order_index: int
 
-    minus_e_position: np.ndarray = -np.ones((len(alphas), dims), dtype=np.int64)
-    for position in range(len(alphas)):
-        alpha: tuple[int, ...] = alphas[position]
-        dimension_index: int
-        for dimension_index in range(dims):
-            if alpha[dimension_index] > 0:
-                previous_alpha_list: list[int] = list(alpha)
-                previous_alpha_list[dimension_index] = previous_alpha_list[dimension_index] - 1
-                minus_e_position[position, dimension_index] = alpha_to_position[tuple(previous_alpha_list)]
+    if dims > 0 and max_order >= 0:
+        for order_index in range(max_order + 1):
+            next_row: int = fill_compositions_array(
+                total=order_index,
+                dims=dims,
+                output=alphas_array,
+                row_start=int(order_offsets[order_index]),
+            )
+            if next_row == int(order_offsets[order_index + 1]):
+                pass
             else:
-                minus_e_position[position, dimension_index] = -1
+                raise RuntimeError("Composition fill count mismatch")
+    else:
+        pass
 
-    proper_left: list[np.ndarray] = list()
-    proper_right: list[np.ndarray] = list()
-    zero_alpha: tuple[int, ...] = tuple(0 for _ in range(dims))
-    for position in range(len(alphas)):
-        alpha = alphas[position]
-        left_positions: list[int] = list()
-        right_positions: list[int] = list()
-        append_proper_sub_indices(
-            alpha=alpha,
-            current_dimension=0,
-            current_values=list(),
-            zero_alpha=zero_alpha,
-            alpha_to_position=alpha_to_position,
-            left_positions=left_positions,
-            right_positions=right_positions,
+    minus_e_position: np.ndarray = -np.ones((total_terms, dims), dtype=np.int64)
+    use_parallel_table_build: bool = should_use_parallel_table_build(total_terms=total_terms, dims=dims)
+
+    if use_parallel_table_build:
+        fill_minus_e_position_parallel_numba(
+            alphas_array=alphas_array,
+            order_offsets=order_offsets,
+            binomial_table=binomial_table,
+            minus_e_position=minus_e_position,
         )
-        proper_left.append(np.asarray(left_positions, dtype=np.int64))
-        proper_right.append(np.asarray(right_positions, dtype=np.int64))
+        proper_sub_counts: np.ndarray = count_proper_sub_counts_parallel_numba(alphas_array=alphas_array)
+    else:
+        fill_minus_e_position_numba(
+            alphas_array=alphas_array,
+            order_offsets=order_offsets,
+            binomial_table=binomial_table,
+            minus_e_position=minus_e_position,
+        )
+        proper_sub_counts = count_proper_sub_counts_numba(alphas_array=alphas_array)
+
+    proper_sub_offsets: np.ndarray = np.zeros(total_terms + 1, dtype=np.int64)
+    proper_sub_offsets[1:] = np.cumsum(proper_sub_counts)
+    proper_sub_left_flat: np.ndarray = np.zeros(int(proper_sub_offsets[-1]), dtype=np.int64)
+    proper_sub_right_flat: np.ndarray = np.zeros(int(proper_sub_offsets[-1]), dtype=np.int64)
+    if use_parallel_table_build:
+        fill_proper_sub_arrays_parallel_numba(
+            alphas_array=alphas_array,
+            order_offsets=order_offsets,
+            binomial_table=binomial_table,
+            proper_sub_offsets=proper_sub_offsets,
+            left_positions=proper_sub_left_flat,
+            right_positions=proper_sub_right_flat,
+        )
+    else:
+        fill_proper_sub_arrays_numba(
+            alphas_array=alphas_array,
+            order_offsets=order_offsets,
+            binomial_table=binomial_table,
+            proper_sub_offsets=proper_sub_offsets,
+            left_positions=proper_sub_left_flat,
+            right_positions=proper_sub_right_flat,
+        )
 
     return MultiIndexTable(
         dims=dims,
         max_order=max_order,
-        orders=orders,
-        alphas=alphas,
-        alpha_to_position=alpha_to_position,
+        order_offsets=order_offsets,
+        alphas_array=alphas_array,
         minus_e_position=minus_e_position,
-        proper_sub_index_left=proper_left,
-        proper_sub_index_right=proper_right,
+        proper_sub_offsets=proper_sub_offsets,
+        proper_sub_left_flat=proper_sub_left_flat,
+        proper_sub_right_flat=proper_sub_right_flat,
     )
-
-
-def append_proper_sub_indices(
-    alpha: tuple[int, ...],
-    current_dimension: int,
-    current_values: list[int],
-    zero_alpha: tuple[int, ...],
-    alpha_to_position: dict[tuple[int, ...], int],
-    left_positions: list[int],
-    right_positions: list[int],
-) -> None:
-    """
-    Append non-trivial beta/gamma pairs satisfying ``beta + gamma = alpha``.
-
-    Parameters
-    ----------
-    alpha:
-        Current multi-index.
-    current_dimension:
-        Recursive dimension counter.
-    current_values:
-        Current beta under construction.
-    zero_alpha:
-        Zero multi-index.
-    alpha_to_position:
-        Lookup table from multi-index to coefficient position.
-    left_positions:
-        Left coefficient positions receiving beta.
-    right_positions:
-        Right coefficient positions receiving gamma.
-
-    Returns
-    -------
-    None
-        The function mutates ``left_positions`` and ``right_positions``.
-    """
-    if current_dimension == len(alpha):
-        beta: tuple[int, ...] = tuple(current_values)
-        if beta != zero_alpha:
-            if beta != alpha:
-                gamma: tuple[int, ...] = tuple(alpha[index] - beta[index] for index in range(len(alpha)))
-                left_positions.append(alpha_to_position[beta])
-                right_positions.append(alpha_to_position[gamma])
-            else:
-                pass
-        else:
-            pass
-    else:
-        value: int
-        for value in range(alpha[current_dimension] + 1):
-            current_values.append(value)
-            append_proper_sub_indices(
-                alpha=alpha,
-                current_dimension=current_dimension + 1,
-                current_values=current_values,
-                zero_alpha=zero_alpha,
-                alpha_to_position=alpha_to_position,
-                left_positions=left_positions,
-                right_positions=right_positions,
-            )
-            current_values.pop()
-
-
-def build_alpha_array(dims: int, alphas: list[tuple[int, ...]]) -> np.ndarray:
-    """
-    Build a dense integer exponent matrix from the Python tuple list.
-
-    Parameters
-    ----------
-    dims:
-        Number of embedding dimensions.
-    alphas:
-        Multi-index list.
-
-    Returns
-    -------
-    numpy.ndarray
-        Integer exponent matrix with shape ``(n_terms, dims)``.
-    """
-    alpha_array: np.ndarray = np.zeros((len(alphas), dims), dtype=np.int64)
-    position: int
-    for position in range(len(alphas)):
-        dimension_index: int
-        for dimension_index in range(dims):
-            alpha_array[position, dimension_index] = int(alphas[position][dimension_index])
-    return alpha_array
 
 
 @nb.njit(cache=True)
@@ -945,6 +1683,43 @@ def calculate_monomial_weights_numba(alphas_array: np.ndarray, values: np.ndarra
     return weights
 
 
+@nb.njit(cache=True, parallel=True)
+def calculate_monomial_weights_parallel_numba(alphas_array: np.ndarray, values: np.ndarray) -> np.ndarray:
+    """
+    Evaluate all monomials with threaded term-wise updates.
+
+    Parameters
+    ----------
+    alphas_array:
+        Dense exponent matrix.
+    values:
+        Complex evaluation point.
+
+    Returns
+    -------
+    numpy.ndarray
+        Complex monomial weights.
+    """
+    term_count: int = alphas_array.shape[0]
+    dimension_count: int = alphas_array.shape[1]
+    weights: np.ndarray = np.ones(term_count, dtype=np.complex128)
+    term_index: int
+
+    # Each monomial row is independent, so the outer loop can be distributed
+    # across threads for large artifacts without changing the recurrence logic.
+    for term_index in nb.prange(term_count):
+        weight_value: complex = complex(1.0, 0.0)
+        dimension_index: int
+        for dimension_index in range(dimension_count):
+            exponent: int = int(alphas_array[term_index, dimension_index])
+            power_index: int
+            for power_index in range(exponent):
+                weight_value = weight_value * values[dimension_index]
+        weights[term_index] = weight_value
+
+    return weights
+
+
 def calculate_monomial_weights(alphas: np.ndarray, values: np.ndarray) -> np.ndarray:
     """
     Calculate monomial weights for a multivariate polynomial evaluation.
@@ -967,7 +1742,13 @@ def calculate_monomial_weights(alphas: np.ndarray, values: np.ndarray) -> np.nda
     # The conversion to dense NumPy arrays is kept in Python because the table
     # construction phase is object-heavy, but the inner numerical work is
     # delegated to the compiled kernel above.
-    return calculate_monomial_weights_numba(alphas_array=alpha_array, values=value_array)
+    if should_use_parallel_monomial_weights(
+        term_count=int(alpha_array.shape[0]),
+        dimension_count=int(alpha_array.shape[1]),
+    ):
+        return calculate_monomial_weights_parallel_numba(alphas_array=alpha_array, values=value_array)
+    else:
+        return calculate_monomial_weights_numba(alphas_array=alpha_array, values=value_array)
 
 
 def count_coefficients(dims: int, max_order: int) -> int:
@@ -1140,6 +1921,63 @@ def create_per_bus_basis(
     return basis, dimension_bus, dimension_local, dimension_is_pv
 
 
+@nb.njit(cache=True)
+def calculate_rhs_power_numba(
+    minus_e_row: np.ndarray,
+    basis_conjugate: np.ndarray,
+    x_coefficients: np.ndarray,
+    pv_local: np.ndarray,
+    qx_known: np.ndarray,
+) -> np.ndarray:
+    """
+    Assemble the complex power-balance RHS contribution for one coefficient.
+
+    Parameters
+    ----------
+    minus_e_row:
+        One row of the ``alpha - e_d`` lookup table.
+    basis_conjugate:
+        Conjugated scheduled-power basis.
+    x_coefficients:
+        Reciprocal-voltage coefficients.
+    pv_local:
+        PV positions in local non-slack order.
+    qx_known:
+        Known ``Q * X`` convolution term for the PV buses.
+
+    Returns
+    -------
+    numpy.ndarray
+        Complex RHS-power vector in local non-slack order.
+    """
+    dimension_count: int = int(basis_conjugate.shape[0])
+    n_no_slack: int = int(basis_conjugate.shape[1])
+    rhs_power: np.ndarray = np.zeros(n_no_slack, dtype=np.complex128)
+    dimension_index: int
+
+    # The MDHEM power RHS is a sum over dimensions. Keeping the whole loop in
+    # compiled code avoids allocating one temporary dense vector per dimension.
+    for dimension_index in range(dimension_count):
+        previous_position: int = int(minus_e_row[dimension_index])
+        if previous_position >= 0:
+            local_index: int
+            for local_index in range(n_no_slack):
+                rhs_power[local_index] = rhs_power[local_index] + (
+                    basis_conjugate[dimension_index, local_index] * x_coefficients[previous_position, local_index]
+                )
+        else:
+            pass
+
+    # The PV unknowns enter the power equation through the known ``Q * X``
+    # convolution term, which only touches the PV local rows.
+    pv_index: int
+    for pv_index in range(pv_local.size):
+        local_index = int(pv_local[pv_index])
+        rhs_power[local_index] = rhs_power[local_index] - 1j * qx_known[pv_index]
+
+    return rhs_power
+
+
 def build_system_matrix(
     yred: scipy.sparse.csc_matrix,
     c_germ: np.ndarray,
@@ -1171,9 +2009,11 @@ def build_system_matrix(
     n_no_slack: int = yred.shape[0]
     n_pv: int = pv_local.size
     unknown_count: int = 4 * n_no_slack + n_pv
-    row_indices: list[int] = list()
-    column_indices: list[int] = list()
-    data: list[float] = list()
+    max_entries: int = 4 * int(yred.nnz) + 12 * n_no_slack + 4 * n_pv
+    row_indices: np.ndarray = np.zeros(max_entries, dtype=np.int64)
+    column_indices: np.ndarray = np.zeros(max_entries, dtype=np.int64)
+    data: np.ndarray = np.zeros(max_entries, dtype=np.float64)
+    entry_count: int = 0
 
     yred_coo: scipy.sparse.coo_matrix = yred.tocoo()
     entry_index: int
@@ -1181,49 +2021,83 @@ def build_system_matrix(
         row_index: int = int(yred_coo.row[entry_index])
         column_index: int = int(yred_coo.col[entry_index])
         value: complex = complex(yred_coo.data[entry_index])
-        append_sparse_value(row_indices, column_indices, data, row_index, column_index, value.real)
-        append_sparse_value(row_indices, column_indices, data, row_index, n_no_slack + column_index, -value.imag)
-        append_sparse_value(row_indices, column_indices, data, n_no_slack + row_index, column_index, value.imag)
-        append_sparse_value(row_indices, column_indices, data, n_no_slack + row_index, n_no_slack + column_index, value.real)
+        entry_count = append_sparse_value(row_indices, column_indices, data, entry_count, row_index, column_index, value.real)
+        entry_count = append_sparse_value(
+            row_indices, column_indices, data, entry_count, row_index, n_no_slack + column_index, -value.imag
+        )
+        entry_count = append_sparse_value(
+            row_indices, column_indices, data, entry_count, n_no_slack + row_index, column_index, value.imag
+        )
+        entry_count = append_sparse_value(
+            row_indices, column_indices, data, entry_count, n_no_slack + row_index, n_no_slack + column_index, value.real
+        )
 
     local_index: int
     for local_index in range(n_no_slack):
         c_value: complex = complex(c_germ[local_index])
-        append_sparse_value(row_indices, column_indices, data, local_index, 2 * n_no_slack + local_index, -c_value.real)
-        append_sparse_value(row_indices, column_indices, data, local_index, 3 * n_no_slack + local_index, c_value.imag)
-        append_sparse_value(row_indices, column_indices, data, n_no_slack + local_index, 2 * n_no_slack + local_index, -c_value.imag)
-        append_sparse_value(row_indices, column_indices, data, n_no_slack + local_index, 3 * n_no_slack + local_index, -c_value.real)
+        entry_count = append_sparse_value(
+            row_indices, column_indices, data, entry_count, local_index, 2 * n_no_slack + local_index, -c_value.real
+        )
+        entry_count = append_sparse_value(
+            row_indices, column_indices, data, entry_count, local_index, 3 * n_no_slack + local_index, c_value.imag
+        )
+        entry_count = append_sparse_value(
+            row_indices, column_indices, data, entry_count, n_no_slack + local_index, 2 * n_no_slack + local_index, -c_value.imag
+        )
+        entry_count = append_sparse_value(
+            row_indices, column_indices, data, entry_count, n_no_slack + local_index, 3 * n_no_slack + local_index, -c_value.real
+        )
 
     pv_index: int
     for pv_index in range(n_pv):
         local_index = int(pv_local[pv_index])
         x_value: complex = complex(x_zero[local_index])
-        append_sparse_value(row_indices, column_indices, data, local_index, 4 * n_no_slack + pv_index, -x_value.imag)
-        append_sparse_value(row_indices, column_indices, data, n_no_slack + local_index, 4 * n_no_slack + pv_index, x_value.real)
+        entry_count = append_sparse_value(
+            row_indices, column_indices, data, entry_count, local_index, 4 * n_no_slack + pv_index, -x_value.imag
+        )
+        entry_count = append_sparse_value(
+            row_indices, column_indices, data, entry_count, n_no_slack + local_index, 4 * n_no_slack + pv_index, x_value.real
+        )
 
     for local_index in range(n_no_slack):
         x_value = complex(x_zero[local_index])
         u_value: complex = complex(u_zero[local_index])
         reciprocal_real_row: int = 2 * n_no_slack + local_index
         reciprocal_imag_row: int = 3 * n_no_slack + local_index
-        append_sparse_value(row_indices, column_indices, data, reciprocal_real_row, local_index, x_value.real)
-        append_sparse_value(row_indices, column_indices, data, reciprocal_real_row, n_no_slack + local_index, x_value.imag)
-        append_sparse_value(row_indices, column_indices, data, reciprocal_real_row, 2 * n_no_slack + local_index, u_value.real)
-        append_sparse_value(row_indices, column_indices, data, reciprocal_real_row, 3 * n_no_slack + local_index, u_value.imag)
-        append_sparse_value(row_indices, column_indices, data, reciprocal_imag_row, local_index, x_value.imag)
-        append_sparse_value(row_indices, column_indices, data, reciprocal_imag_row, n_no_slack + local_index, -x_value.real)
-        append_sparse_value(row_indices, column_indices, data, reciprocal_imag_row, 2 * n_no_slack + local_index, -u_value.imag)
-        append_sparse_value(row_indices, column_indices, data, reciprocal_imag_row, 3 * n_no_slack + local_index, u_value.real)
+        entry_count = append_sparse_value(row_indices, column_indices, data, entry_count, reciprocal_real_row, local_index, x_value.real)
+        entry_count = append_sparse_value(
+            row_indices, column_indices, data, entry_count, reciprocal_real_row, n_no_slack + local_index, x_value.imag
+        )
+        entry_count = append_sparse_value(
+            row_indices, column_indices, data, entry_count, reciprocal_real_row, 2 * n_no_slack + local_index, u_value.real
+        )
+        entry_count = append_sparse_value(
+            row_indices, column_indices, data, entry_count, reciprocal_real_row, 3 * n_no_slack + local_index, u_value.imag
+        )
+        entry_count = append_sparse_value(
+            row_indices, column_indices, data, entry_count, reciprocal_imag_row, local_index, x_value.imag
+        )
+        entry_count = append_sparse_value(
+            row_indices, column_indices, data, entry_count, reciprocal_imag_row, n_no_slack + local_index, -x_value.real
+        )
+        entry_count = append_sparse_value(
+            row_indices, column_indices, data, entry_count, reciprocal_imag_row, 2 * n_no_slack + local_index, -u_value.imag
+        )
+        entry_count = append_sparse_value(
+            row_indices, column_indices, data, entry_count, reciprocal_imag_row, 3 * n_no_slack + local_index, u_value.real
+        )
 
     for pv_index in range(n_pv):
         local_index = int(pv_local[pv_index])
         u_value = complex(u_zero[local_index])
         voltage_row: int = 4 * n_no_slack + pv_index
-        append_sparse_value(row_indices, column_indices, data, voltage_row, local_index, 2.0 * u_value.real)
-        append_sparse_value(row_indices, column_indices, data, voltage_row, n_no_slack + local_index, 2.0 * u_value.imag)
+        entry_count = append_sparse_value(row_indices, column_indices, data, entry_count, voltage_row, local_index, 2.0 * u_value.real)
+        entry_count = append_sparse_value(
+            row_indices, column_indices, data, entry_count, voltage_row, n_no_slack + local_index, 2.0 * u_value.imag
+        )
 
     matrix_coo: scipy.sparse.coo_matrix = scipy.sparse.coo_matrix(
-        (np.asarray(data, dtype=np.float64), (np.asarray(row_indices, dtype=np.int64), np.asarray(column_indices, dtype=np.int64))),
+        (data[0:entry_count], (row_indices[0:entry_count], column_indices[0:entry_count])),
         shape=(unknown_count, unknown_count),
     )
     matrix_csc: scipy.sparse.csc_matrix = matrix_coo.tocsc()
@@ -1231,24 +2105,27 @@ def build_system_matrix(
 
 
 def append_sparse_value(
-    row_indices: list[int],
-    column_indices: list[int],
-    data: list[float],
+    row_indices: np.ndarray,
+    column_indices: np.ndarray,
+    data: np.ndarray,
+    entry_count: int,
     row_index: int,
     column_index: int,
     value: float,
-) -> None:
+) -> int:
     """
     Append a sparse matrix entry when it is numerically non-zero.
 
     Parameters
     ----------
     row_indices:
-        Sparse row index list.
+        Preallocated sparse row index array.
     column_indices:
-        Sparse column index list.
+        Preallocated sparse column index array.
     data:
-        Sparse value list.
+        Preallocated sparse value array.
+    entry_count:
+        Next free entry position.
     row_index:
         Row index.
     column_index:
@@ -1258,15 +2135,17 @@ def append_sparse_value(
 
     Returns
     -------
-    None
-        The function mutates the sparse-entry lists in place.
+    int
+        Updated free-entry position.
     """
     if value != 0.0:
-        row_indices.append(row_index)
-        column_indices.append(column_index)
-        data.append(value)
+        row_indices[entry_count] = row_index
+        column_indices[entry_count] = column_index
+        data[entry_count] = value
+        entry_count = entry_count + 1
     else:
         pass
+    return entry_count
 
 
 def calculate_known_reciprocal_convolution(
@@ -1299,12 +2178,23 @@ def calculate_known_reciprocal_convolution(
 
     # The table object stays in Python, but once the index lists are extracted
     # the dense coefficient accumulation becomes a pure numerical kernel.
-    return calculate_known_reciprocal_convolution_numba(
-        left_positions=left_positions,
-        right_positions=right_positions,
-        u_coefficients=u_coefficients,
-        x_coefficients=x_coefficients,
-    )
+    if should_use_parallel_convolution(
+        pair_count=int(left_positions.size),
+        vector_width=int(u_coefficients.shape[1]),
+    ):
+        return calculate_known_reciprocal_convolution_parallel_numba(
+            left_positions=left_positions,
+            right_positions=right_positions,
+            u_coefficients=u_coefficients,
+            x_coefficients=x_coefficients,
+        )
+    else:
+        return calculate_known_reciprocal_convolution_numba(
+            left_positions=left_positions,
+            right_positions=right_positions,
+            u_coefficients=u_coefficients,
+            x_coefficients=x_coefficients,
+        )
 
 
 @nb.njit(cache=True)
@@ -1346,6 +2236,50 @@ def calculate_known_reciprocal_convolution_numba(
     return known
 
 
+@nb.njit(cache=True, parallel=True)
+def calculate_known_reciprocal_convolution_parallel_numba(
+    left_positions: np.ndarray,
+    right_positions: np.ndarray,
+    u_coefficients: np.ndarray,
+    x_coefficients: np.ndarray,
+) -> np.ndarray:
+    """
+    Accumulate the known ``conj(U) * X`` convolution terms with parallel buses.
+
+    Parameters
+    ----------
+    left_positions:
+        Left coefficient positions.
+    right_positions:
+        Right coefficient positions.
+    u_coefficients:
+        Voltage coefficients.
+    x_coefficients:
+        Reciprocal-voltage coefficients.
+
+    Returns
+    -------
+    numpy.ndarray
+        Known convolution vector.
+    """
+    local_count: int = int(u_coefficients.shape[1])
+    known: np.ndarray = np.zeros(local_count, dtype=np.complex128)
+    local_index: int
+
+    # Each local bus accumulates into its own output slot, so threading across
+    # buses avoids any reduction conflict between worker threads.
+    for local_index in nb.prange(local_count):
+        pair_index: int
+        value: complex = complex(0.0, 0.0)
+        for pair_index in range(left_positions.size):
+            left_position: int = int(left_positions[pair_index])
+            right_position: int = int(right_positions[pair_index])
+            value = value + (np.conj(u_coefficients[left_position, local_index]) * x_coefficients[right_position, local_index])
+        known[local_index] = value
+
+    return known
+
+
 def calculate_known_voltage_convolution(
     table: MultiIndexTable,
     position: int,
@@ -1376,12 +2310,23 @@ def calculate_known_voltage_convolution(
 
     # The PV magnitude constraint only depends on dense coefficient slices and
     # the local PV positions, so it is also a good Numba target.
-    return calculate_known_voltage_convolution_numba(
-        left_positions=left_positions,
-        right_positions=right_positions,
-        u_coefficients=u_coefficients,
-        pv_local=pv_local,
-    )
+    if should_use_parallel_convolution(
+        pair_count=int(left_positions.size),
+        vector_width=int(pv_local.size),
+    ):
+        return calculate_known_voltage_convolution_parallel_numba(
+            left_positions=left_positions,
+            right_positions=right_positions,
+            u_coefficients=u_coefficients,
+            pv_local=pv_local,
+        )
+    else:
+        return calculate_known_voltage_convolution_numba(
+            left_positions=left_positions,
+            right_positions=right_positions,
+            u_coefficients=u_coefficients,
+            pv_local=pv_local,
+        )
 
 
 @nb.njit(cache=True)
@@ -1424,6 +2369,53 @@ def calculate_known_voltage_convolution_numba(
     return known
 
 
+@nb.njit(cache=True, parallel=True)
+def calculate_known_voltage_convolution_parallel_numba(
+    left_positions: np.ndarray,
+    right_positions: np.ndarray,
+    u_coefficients: np.ndarray,
+    pv_local: np.ndarray,
+) -> np.ndarray:
+    """
+    Accumulate the known ``U * conj(U)`` PV terms with parallel PV updates.
+
+    Parameters
+    ----------
+    left_positions:
+        Left coefficient positions.
+    right_positions:
+        Right coefficient positions.
+    u_coefficients:
+        Voltage coefficients.
+    pv_local:
+        PV positions in local non-slack order.
+
+    Returns
+    -------
+    numpy.ndarray
+        Known real convolution vector.
+    """
+    pv_count: int = int(pv_local.size)
+    known: np.ndarray = np.zeros(pv_count, dtype=np.float64)
+    pv_index: int
+
+    # Each PV constraint writes to its own output slot, so the outer PV loop is
+    # the safe way to expose parallelism without cross-thread reductions.
+    for pv_index in nb.prange(pv_count):
+        local_index: int = int(pv_local[pv_index])
+        pair_index: int
+        value: float = 0.0
+        for pair_index in range(left_positions.size):
+            left_position: int = int(left_positions[pair_index])
+            right_position: int = int(right_positions[pair_index])
+            value = value + (
+                u_coefficients[left_position, local_index] * np.conj(u_coefficients[right_position, local_index])
+            ).real
+        known[pv_index] = value
+
+    return known
+
+
 def calculate_known_qx_convolution(
     table: MultiIndexTable,
     position: int,
@@ -1457,13 +2449,25 @@ def calculate_known_qx_convolution(
 
     # The PV power balance uses a dense Q/X accumulation, so this wrapper hands
     # the raw arrays to a compiled kernel for the expensive inner loops.
-    return calculate_known_qx_convolution_numba(
-        left_positions=left_positions,
-        right_positions=right_positions,
-        q_coefficients=q_coefficients,
-        x_coefficients=x_coefficients,
-        pv_local=pv_local,
-    )
+    if should_use_parallel_convolution(
+        pair_count=int(left_positions.size),
+        vector_width=int(pv_local.size),
+    ):
+        return calculate_known_qx_convolution_parallel_numba(
+            left_positions=left_positions,
+            right_positions=right_positions,
+            q_coefficients=q_coefficients,
+            x_coefficients=x_coefficients,
+            pv_local=pv_local,
+        )
+    else:
+        return calculate_known_qx_convolution_numba(
+            left_positions=left_positions,
+            right_positions=right_positions,
+            q_coefficients=q_coefficients,
+            x_coefficients=x_coefficients,
+            pv_local=pv_local,
+        )
 
 
 @nb.njit(cache=True)
@@ -1506,6 +2510,54 @@ def calculate_known_qx_convolution_numba(
             known[pv_index] = known[pv_index] + (
                 q_coefficients[left_position, pv_index] * x_coefficients[right_position, local_index]
             )
+    return known
+
+
+@nb.njit(cache=True, parallel=True)
+def calculate_known_qx_convolution_parallel_numba(
+    left_positions: np.ndarray,
+    right_positions: np.ndarray,
+    q_coefficients: np.ndarray,
+    x_coefficients: np.ndarray,
+    pv_local: np.ndarray,
+) -> np.ndarray:
+    """
+    Accumulate the known ``Q * X`` PV terms with parallel PV updates.
+
+    Parameters
+    ----------
+    left_positions:
+        Left coefficient positions.
+    right_positions:
+        Right coefficient positions.
+    q_coefficients:
+        PV reactive-power coefficients.
+    x_coefficients:
+        Reciprocal-voltage coefficients.
+    pv_local:
+        PV positions in local non-slack order.
+
+    Returns
+    -------
+    numpy.ndarray
+        Known complex convolution vector.
+    """
+    pv_count: int = int(pv_local.size)
+    known: np.ndarray = np.zeros(pv_count, dtype=np.complex128)
+    pv_index: int
+
+    # Each PV equation contributes to one independent output slot, which is
+    # the natural grain for threading this dense accumulation.
+    for pv_index in nb.prange(pv_count):
+        local_index: int = int(pv_local[pv_index])
+        pair_index: int
+        value: complex = complex(0.0, 0.0)
+        for pair_index in range(left_positions.size):
+            left_position: int = int(left_positions[pair_index])
+            right_position: int = int(right_positions[pair_index])
+            value = value + (q_coefficients[left_position, pv_index] * x_coefficients[right_position, local_index])
+        known[pv_index] = value
+
     return known
 
 
@@ -1560,7 +2612,7 @@ def solve_mdhelm_pv(
     n_no_slack: int = no_slack.size
     n_pv: int = pv.size
     table: MultiIndexTable = create_multi_index_table(dims=n_no_slack, max_order=max_order)
-    n_terms: int = len(table.get_alphas())
+    n_terms: int = table.get_terms_count()
     u_coefficients: np.ndarray = np.zeros((n_terms, n_no_slack), dtype=np.complex128)
     x_coefficients: np.ndarray = np.zeros((n_terms, n_no_slack), dtype=np.complex128)
     q_coefficients: np.ndarray = np.zeros((n_terms, n_pv), dtype=np.float64)
@@ -1587,6 +2639,7 @@ def solve_mdhelm_pv(
     x_zero: np.ndarray = 1.0 / np.conj(u_zero)
     scheduled_power_germ: np.ndarray = np.array(germ_calculated_power, dtype=np.complex128)
     c_germ: np.ndarray = np.conj(scheduled_power_germ[no_slack])
+    basis_conjugate: np.ndarray = np.conj(basis)
     zero_position: int = 0
     u_coefficients[zero_position, :] = u_zero
     x_coefficients[zero_position, :] = x_zero
@@ -1600,59 +2653,81 @@ def solve_mdhelm_pv(
         x_zero=x_zero,
         pv_local=pv_local,
     )
-    linear_solver: SparseLinearSolver = SparseLinearSolver(factorization=scipy.sparse.linalg.factorized(system_matrix))
+    linear_solver: SparseLinearSolver = SparseLinearSolver(factorization=scipy.sparse.linalg.splu(system_matrix))
     minus_e_position: np.ndarray = table.get_minus_e_position()
+    unknown_count: int = 4 * n_no_slack + n_pv
+    rhs_block_columns: int = determine_rhs_block_columns(
+        unknown_count=unknown_count,
+        target_block_bytes=64 * 1024 * 1024,
+    )
 
     order_index: int
     for order_index in range(1, max_order + 1):
-        current_order: list[tuple[int, ...]] = table.get_orders()[order_index]
-        alpha_index: int
-        for alpha_index in range(len(current_order)):
-            alpha: tuple[int, ...] = current_order[alpha_index]
-            position: int = table.get_alpha_to_position()[alpha]
-            rhs_power: np.ndarray = np.zeros(n_no_slack, dtype=np.complex128)
-            dimension_index: int
-            for dimension_index in range(n_no_slack):
-                previous_position: int = int(minus_e_position[position, dimension_index])
-                if previous_position >= 0:
-                    rhs_power = rhs_power + np.conj(basis[dimension_index, :]) * x_coefficients[previous_position, :]
-                else:
-                    pass
+        order_start: int = table.get_order_start(order_index)
+        order_stop: int = table.get_order_stop(order_index)
+        block_start: int = order_start
 
-            qx_known: np.ndarray = calculate_known_qx_convolution(
-                table=table,
-                position=position,
-                q_coefficients=q_coefficients,
-                x_coefficients=x_coefficients,
-                pv_local=pv_local,
-            )
-            for pv_index in range(n_pv):
-                local_index = int(pv_local[pv_index])
-                rhs_power[local_index] = rhs_power[local_index] - 1j * qx_known[pv_index]
+        # All coefficients of the same total order depend only on already
+        # solved lower orders, so one sparse LU factorization can solve a whole
+        # block of right-hand sides together.
+        while block_start < order_stop:
+            block_stop: int = min(order_stop, block_start + rhs_block_columns)
+            block_size: int = block_stop - block_start
+            rhs_block: np.ndarray = np.zeros((unknown_count, block_size), dtype=np.float64)
+            block_offset: int
 
-            reciprocal_known: np.ndarray = calculate_known_reciprocal_convolution(
-                table=table,
-                position=position,
-                u_coefficients=u_coefficients,
-                x_coefficients=x_coefficients,
-            )
-            voltage_known: np.ndarray = calculate_known_voltage_convolution(
-                table=table,
-                position=position,
-                u_coefficients=u_coefficients,
-                pv_local=pv_local,
-            )
-            rhs: np.ndarray = np.zeros(4 * n_no_slack + n_pv, dtype=np.float64)
-            rhs[0:n_no_slack] = rhs_power.real
-            rhs[n_no_slack:2 * n_no_slack] = rhs_power.imag
-            rhs[2 * n_no_slack:3 * n_no_slack] = -reciprocal_known.real
-            rhs[3 * n_no_slack:4 * n_no_slack] = -reciprocal_known.imag
-            rhs[4 * n_no_slack:4 * n_no_slack + n_pv] = -voltage_known
+            for block_offset in range(block_size):
+                position: int = block_start + block_offset
+                qx_known: np.ndarray = calculate_known_qx_convolution(
+                    table=table,
+                    position=position,
+                    q_coefficients=q_coefficients,
+                    x_coefficients=x_coefficients,
+                    pv_local=pv_local,
+                )
+                rhs_power: np.ndarray = calculate_rhs_power_numba(
+                    minus_e_row=minus_e_position[position, :],
+                    basis_conjugate=basis_conjugate,
+                    x_coefficients=x_coefficients,
+                    pv_local=pv_local,
+                    qx_known=qx_known,
+                )
+                reciprocal_known: np.ndarray = calculate_known_reciprocal_convolution(
+                    table=table,
+                    position=position,
+                    u_coefficients=u_coefficients,
+                    x_coefficients=x_coefficients,
+                )
+                voltage_known: np.ndarray = calculate_known_voltage_convolution(
+                    table=table,
+                    position=position,
+                    u_coefficients=u_coefficients,
+                    pv_local=pv_local,
+                )
+                rhs_block[0:n_no_slack, block_offset] = rhs_power.real
+                rhs_block[n_no_slack:2 * n_no_slack, block_offset] = rhs_power.imag
+                rhs_block[2 * n_no_slack:3 * n_no_slack, block_offset] = -reciprocal_known.real
+                rhs_block[3 * n_no_slack:4 * n_no_slack, block_offset] = -reciprocal_known.imag
+                rhs_block[4 * n_no_slack:4 * n_no_slack + n_pv, block_offset] = -voltage_known
 
-            solution: np.ndarray = linear_solver.solve(rhs=rhs)
-            u_coefficients[position, :] = solution[0:n_no_slack] + 1j * solution[n_no_slack:2 * n_no_slack]
-            x_coefficients[position, :] = solution[2 * n_no_slack:3 * n_no_slack] + 1j * solution[3 * n_no_slack:4 * n_no_slack]
-            q_coefficients[position, :] = solution[4 * n_no_slack:4 * n_no_slack + n_pv]
+            solution_block: np.ndarray = linear_solver.solve(rhs=rhs_block)
+
+            for block_offset in range(block_size):
+                position = block_start + block_offset
+                u_coefficients[position, :] = (
+                    solution_block[0:n_no_slack, block_offset]
+                    + 1j * solution_block[n_no_slack:2 * n_no_slack, block_offset]
+                )
+                x_coefficients[position, :] = (
+                    solution_block[2 * n_no_slack:3 * n_no_slack, block_offset]
+                    + 1j * solution_block[3 * n_no_slack:4 * n_no_slack, block_offset]
+                )
+                q_coefficients[position, :] = solution_block[
+                    4 * n_no_slack:4 * n_no_slack + n_pv,
+                    block_offset,
+                ]
+
+            block_start = block_stop
 
     return MDHEMPVMap(
         ybus=ybus_csc,

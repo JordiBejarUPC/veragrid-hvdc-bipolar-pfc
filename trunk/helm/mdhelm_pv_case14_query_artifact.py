@@ -37,12 +37,14 @@ import scipy.sparse.linalg
 from mdhelm_pv_case14_exaple import MultiIndexTable
 from mdhelm_pv_case14_exaple import SparseLinearSolver
 from mdhelm_pv_case14_exaple import build_system_matrix
+from mdhelm_pv_case14_exaple import calculate_rhs_power_numba
 from mdhelm_pv_case14_exaple import calculate_known_qx_convolution
 from mdhelm_pv_case14_exaple import calculate_known_reciprocal_convolution
 from mdhelm_pv_case14_exaple import calculate_known_voltage_convolution
 from mdhelm_pv_case14_exaple import calculate_monomial_weights
 from mdhelm_pv_case14_exaple import create_full_to_local_lookup
 from mdhelm_pv_case14_exaple import create_multi_index_table
+from mdhelm_pv_case14_exaple import determine_rhs_block_columns
 
 if TYPE_CHECKING:
     from VeraGridEngine.Devices.multi_circuit import MultiCircuit
@@ -550,16 +552,16 @@ class MDHEMPVQueryArtifact:
         """
         return np.asarray(self._scheduled_basis, dtype=np.complex128)
 
-    def get_multi_index_alphas(self) -> list[tuple[int, ...]]:
+    def get_multi_index_alphas(self) -> np.ndarray:
         """
-        Get the multivariate exponent list.
+        Get the multivariate exponent matrix.
 
         Returns
         -------
-        list[tuple[int, ...]]
-            Multi-index list in coefficient-row order.
+        numpy.ndarray
+            Integer exponent matrix with shape ``(n_terms, n_dims)``.
         """
-        return list(self._table.get_alphas())
+        return np.asarray(self._table.get_alphas_array(), dtype=np.int64)
 
     def split_sbus_input(self, s_bus: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """
@@ -1639,7 +1641,7 @@ def solve_mdhelm_query_artifact(
         no_slack=input_data.no_slack,
     )
     table: MultiIndexTable = create_multi_index_table(dims=basis.shape[0], max_order=max_order)
-    n_terms: int = len(table.get_alphas())
+    n_terms: int = table.get_terms_count()
     u_coefficients: np.ndarray = np.zeros((n_terms, n_no_slack), dtype=np.complex128)
     x_coefficients: np.ndarray = np.zeros((n_terms, n_no_slack), dtype=np.complex128)
     q_coefficients: np.ndarray = np.zeros((n_terms, n_pv), dtype=np.float64)
@@ -1651,6 +1653,7 @@ def solve_mdhelm_query_artifact(
     u_zero: np.ndarray = germ_voltage[input_data.no_slack].copy()
     x_zero: np.ndarray = 1.0 / np.conj(u_zero)
     c_germ: np.ndarray = np.conj(germ_power[input_data.no_slack])
+    basis_conjugate: np.ndarray = np.conj(basis)
     zero_position: int = 0
     u_coefficients[zero_position, :] = u_zero
     x_coefficients[zero_position, :] = x_zero
@@ -1669,64 +1672,81 @@ def solve_mdhelm_query_artifact(
         pv_local=pv_local,
     )
     linear_solver: SparseLinearSolver = SparseLinearSolver(
-        factorization=scipy.sparse.linalg.factorized(system_matrix)
+        factorization=scipy.sparse.linalg.splu(system_matrix)
     )
     minus_e_position: np.ndarray = table.get_minus_e_position()
+    unknown_count: int = 4 * n_no_slack + n_pv
+    rhs_block_columns: int = determine_rhs_block_columns(
+        unknown_count=unknown_count,
+        target_block_bytes=64 * 1024 * 1024,
+    )
     order_index: int
 
     # Each coefficient uses the same constant sparse matrix, while only the
     # right-hand side changes through the multivariate convolutions.
     for order_index in range(1, max_order + 1):
-        current_order: list[tuple[int, ...]] = table.get_orders()[order_index]
-        alpha_index: int
+        order_start: int = table.get_order_start(order_index)
+        order_stop: int = table.get_order_stop(order_index)
+        block_start: int = order_start
 
-        for alpha_index in range(len(current_order)):
-            alpha: tuple[int, ...] = current_order[alpha_index]
-            position: int = table.get_alpha_to_position()[alpha]
-            rhs_power: np.ndarray = np.zeros(n_no_slack, dtype=np.complex128)
-            dimension_index: int
+        while block_start < order_stop:
+            block_stop: int = min(order_stop, block_start + rhs_block_columns)
+            block_size: int = block_stop - block_start
+            rhs_block: np.ndarray = np.zeros((unknown_count, block_size), dtype=np.float64)
+            block_offset: int
 
-            for dimension_index in range(basis.shape[0]):
-                previous_position: int = int(minus_e_position[position, dimension_index])
-                if previous_position >= 0:
-                    rhs_power = rhs_power + np.conj(basis[dimension_index, :]) * x_coefficients[previous_position, :]
-                else:
-                    pass
+            for block_offset in range(block_size):
+                position: int = block_start + block_offset
+                qx_known: np.ndarray = calculate_known_qx_convolution(
+                    table=table,
+                    position=position,
+                    q_coefficients=q_coefficients,
+                    x_coefficients=x_coefficients,
+                    pv_local=pv_local,
+                )
+                rhs_power: np.ndarray = calculate_rhs_power_numba(
+                    minus_e_row=minus_e_position[position, :],
+                    basis_conjugate=basis_conjugate,
+                    x_coefficients=x_coefficients,
+                    pv_local=pv_local,
+                    qx_known=qx_known,
+                )
+                reciprocal_known: np.ndarray = calculate_known_reciprocal_convolution(
+                    table=table,
+                    position=position,
+                    u_coefficients=u_coefficients,
+                    x_coefficients=x_coefficients,
+                )
+                voltage_known: np.ndarray = calculate_known_voltage_convolution(
+                    table=table,
+                    position=position,
+                    u_coefficients=u_coefficients,
+                    pv_local=pv_local,
+                )
+                rhs_block[0:n_no_slack, block_offset] = rhs_power.real
+                rhs_block[n_no_slack:2 * n_no_slack, block_offset] = rhs_power.imag
+                rhs_block[2 * n_no_slack:3 * n_no_slack, block_offset] = -reciprocal_known.real
+                rhs_block[3 * n_no_slack:4 * n_no_slack, block_offset] = -reciprocal_known.imag
+                rhs_block[4 * n_no_slack:4 * n_no_slack + n_pv, block_offset] = -voltage_known
 
-            qx_known: np.ndarray = calculate_known_qx_convolution(
-                table=table,
-                position=position,
-                q_coefficients=q_coefficients,
-                x_coefficients=x_coefficients,
-                pv_local=pv_local,
-            )
+            solution_block: np.ndarray = linear_solver.solve(rhs=rhs_block)
 
-            for pv_index in range(n_pv):
-                local_index: int = int(pv_local[pv_index])
-                rhs_power[local_index] = rhs_power[local_index] - 1j * qx_known[pv_index]
+            for block_offset in range(block_size):
+                position = block_start + block_offset
+                u_coefficients[position, :] = (
+                    solution_block[0:n_no_slack, block_offset]
+                    + 1j * solution_block[n_no_slack:2 * n_no_slack, block_offset]
+                )
+                x_coefficients[position, :] = (
+                    solution_block[2 * n_no_slack:3 * n_no_slack, block_offset]
+                    + 1j * solution_block[3 * n_no_slack:4 * n_no_slack, block_offset]
+                )
+                q_coefficients[position, :] = solution_block[
+                    4 * n_no_slack:4 * n_no_slack + n_pv,
+                    block_offset,
+                ]
 
-            reciprocal_known: np.ndarray = calculate_known_reciprocal_convolution(
-                table=table,
-                position=position,
-                u_coefficients=u_coefficients,
-                x_coefficients=x_coefficients,
-            )
-            voltage_known: np.ndarray = calculate_known_voltage_convolution(
-                table=table,
-                position=position,
-                u_coefficients=u_coefficients,
-                pv_local=pv_local,
-            )
-            rhs: np.ndarray = np.zeros(4 * n_no_slack + n_pv, dtype=np.float64)
-            rhs[0:n_no_slack] = rhs_power.real
-            rhs[n_no_slack:2 * n_no_slack] = rhs_power.imag
-            rhs[2 * n_no_slack:3 * n_no_slack] = -reciprocal_known.real
-            rhs[3 * n_no_slack:4 * n_no_slack] = -reciprocal_known.imag
-            rhs[4 * n_no_slack:4 * n_no_slack + n_pv] = -voltage_known
-            solution: np.ndarray = linear_solver.solve(rhs=rhs)
-            u_coefficients[position, :] = solution[0:n_no_slack] + 1j * solution[n_no_slack:2 * n_no_slack]
-            x_coefficients[position, :] = solution[2 * n_no_slack:3 * n_no_slack] + 1j * solution[3 * n_no_slack:4 * n_no_slack]
-            q_coefficients[position, :] = solution[4 * n_no_slack:4 * n_no_slack + n_pv]
+            block_start = block_stop
 
     return MDHEMPVQueryArtifact(
         ybus=input_data.ybus,

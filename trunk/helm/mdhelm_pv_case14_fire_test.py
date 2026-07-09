@@ -23,15 +23,15 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from mdhelm_pv_case14_query_artifact import MDHEMQueryResult
-from mdhelm_pv_case14_query_artifact import MDHEMPVQueryArtifact
-from mdhelm_pv_case14_query_artifact import VeraGridQueryCaseData
-from mdhelm_pv_case14_query_artifact import build_artifact_from_case
-from mdhelm_pv_case14_query_artifact import import_veragrid_engine_modules
-from mdhelm_pv_case14_query_artifact import load_multicircuit_from_file
-from mdhelm_pv_case14_query_artifact import load_query_artifact
-from mdhelm_pv_case14_query_artifact import create_mdhelm_inputs
-from mdhelm_pv_case14_query_artifact import save_query_artifact
+from mdhelm import MDHEMQueryResult
+from mdhelm import MDHEMPVQueryArtifact
+from mdhelm import VeraGridQueryCaseData
+from mdhelm import build_artifact_from_case
+from mdhelm import create_mdhelm_inputs
+from mdhelm import import_veragrid_engine_modules
+from mdhelm import load_multicircuit_from_file
+from mdhelm import load_query_artifact
+from mdhelm import save_query_artifact
 
 if TYPE_CHECKING:
     from VeraGridEngine.Devices.Injections.generator import Generator
