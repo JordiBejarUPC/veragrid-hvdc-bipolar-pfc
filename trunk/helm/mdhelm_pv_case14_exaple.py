@@ -24,6 +24,7 @@ import math
 from pathlib import Path
 from typing import Optional, Sequence
 
+import numba as nb
 import numpy as np
 import scipy.sparse
 import scipy.sparse.linalg
@@ -62,6 +63,7 @@ class MultiIndexTable:
         "_max_order",
         "_orders",
         "_alphas",
+        "_alphas_array",
         "_alpha_to_position",
         "_minus_e_position",
         "_proper_sub_index_left",
@@ -83,6 +85,7 @@ class MultiIndexTable:
         self._max_order: int = max_order
         self._orders: list[list[tuple[int, ...]]] = orders
         self._alphas: list[tuple[int, ...]] = alphas
+        self._alphas_array: np.ndarray = build_alpha_array(dims=dims, alphas=alphas)
         self._alpha_to_position: dict[tuple[int, ...], int] = alpha_to_position
         self._minus_e_position: np.ndarray = minus_e_position
         self._proper_sub_index_left: list[np.ndarray] = proper_sub_index_left
@@ -131,6 +134,17 @@ class MultiIndexTable:
             Flat multi-index list.
         """
         return self._alphas
+
+    def get_alphas_array(self) -> np.ndarray:
+        """
+        Get the flat list of multi-indices as a dense integer array.
+
+        Returns
+        -------
+        numpy.ndarray
+            Integer exponent array with shape ``(n_terms, dims)``.
+        """
+        return self._alphas_array
 
     def get_alpha_to_position(self) -> dict[tuple[int, ...], int]:
         """
@@ -457,8 +471,12 @@ class MDHEMPVMap:
         deviation_array: np.ndarray = np.asarray(deviation, dtype=np.complex128)
         expected_shape: tuple[int, ...] = (self.get_dimensions_count(),)
         if deviation_array.shape == expected_shape:
+            # The online query path is dominated by monomial evaluation, so the
+            # Python tuple-based multi-index list is replaced here by the dense
+            # integer matrix precomputed in ``MultiIndexTable`` and consumed by
+            # a compiled Numba kernel.
             weights: np.ndarray = calculate_monomial_weights(
-                alphas=self._table.get_alphas(),
+                alphas=self._table.get_alphas_array(),
                 values=deviation_array,
             )
             voltage: np.ndarray = np.zeros(self._ybus.shape[0], dtype=np.complex128)
@@ -865,14 +883,76 @@ def append_proper_sub_indices(
             current_values.pop()
 
 
-def calculate_monomial_weights(alphas: list[tuple[int, ...]], values: np.ndarray) -> np.ndarray:
+def build_alpha_array(dims: int, alphas: list[tuple[int, ...]]) -> np.ndarray:
+    """
+    Build a dense integer exponent matrix from the Python tuple list.
+
+    Parameters
+    ----------
+    dims:
+        Number of embedding dimensions.
+    alphas:
+        Multi-index list.
+
+    Returns
+    -------
+    numpy.ndarray
+        Integer exponent matrix with shape ``(n_terms, dims)``.
+    """
+    alpha_array: np.ndarray = np.zeros((len(alphas), dims), dtype=np.int64)
+    position: int
+    for position in range(len(alphas)):
+        dimension_index: int
+        for dimension_index in range(dims):
+            alpha_array[position, dimension_index] = int(alphas[position][dimension_index])
+    return alpha_array
+
+
+@nb.njit(cache=True)
+def calculate_monomial_weights_numba(alphas_array: np.ndarray, values: np.ndarray) -> np.ndarray:
+    """
+    Evaluate all monomials of the multivariate series at one query point.
+
+    Parameters
+    ----------
+    alphas_array:
+        Dense exponent matrix.
+    values:
+        Complex evaluation point.
+
+    Returns
+    -------
+    numpy.ndarray
+        Complex monomial weights.
+    """
+    term_count: int = alphas_array.shape[0]
+    dimension_count: int = alphas_array.shape[1]
+    weights: np.ndarray = np.ones(term_count, dtype=np.complex128)
+    term_index: int
+
+    # Each row in ``alphas_array`` describes one monomial. The compiled kernel
+    # walks all exponents explicitly so query evaluation avoids Python loops.
+    for term_index in range(term_count):
+        weight_value: complex = complex(1.0, 0.0)
+        dimension_index: int
+        for dimension_index in range(dimension_count):
+            exponent: int = int(alphas_array[term_index, dimension_index])
+            power_index: int
+            for power_index in range(exponent):
+                weight_value = weight_value * values[dimension_index]
+        weights[term_index] = weight_value
+
+    return weights
+
+
+def calculate_monomial_weights(alphas: np.ndarray, values: np.ndarray) -> np.ndarray:
     """
     Calculate monomial weights for a multivariate polynomial evaluation.
 
     Parameters
     ----------
     alphas:
-        Multi-indices of the polynomial terms.
+        Dense integer exponent matrix of the polynomial terms.
     values:
         Evaluation point.
 
@@ -881,18 +961,13 @@ def calculate_monomial_weights(alphas: list[tuple[int, ...]], values: np.ndarray
     numpy.ndarray
         Complex monomial weights.
     """
-    weights: np.ndarray = np.ones(len(alphas), dtype=np.complex128)
-    position: int
-    for position in range(len(alphas)):
-        alpha: tuple[int, ...] = alphas[position]
-        dimension_index: int
-        for dimension_index in range(values.size):
-            exponent: int = alpha[dimension_index]
-            if exponent > 0:
-                weights[position] = weights[position] * (values[dimension_index] ** exponent)
-            else:
-                pass
-    return weights
+    alpha_array: np.ndarray = np.asarray(alphas, dtype=np.int64)
+    value_array: np.ndarray = np.asarray(values, dtype=np.complex128)
+
+    # The conversion to dense NumPy arrays is kept in Python because the table
+    # construction phase is object-heavy, but the inner numerical work is
+    # delegated to the compiled kernel above.
+    return calculate_monomial_weights_numba(alphas_array=alpha_array, values=value_array)
 
 
 def count_coefficients(dims: int, max_order: int) -> int:
@@ -935,11 +1010,32 @@ def create_full_to_local_lookup(nbus: int, no_slack: np.ndarray) -> np.ndarray:
     numpy.ndarray
         Lookup vector. Slack or absent buses have value ``-1``.
     """
+    # This helper is called repeatedly while building the artifact, so even
+    # this small indexing loop is compiled to remove Python overhead.
+    return create_full_to_local_lookup_numba(nbus=nbus, no_slack=no_slack)
+
+
+@nb.njit(cache=True)
+def create_full_to_local_lookup_numba(nbus: int, no_slack: np.ndarray) -> np.ndarray:
+    """
+    Build the full-bus to local-bus lookup with compiled loops.
+
+    Parameters
+    ----------
+    nbus:
+        Number of buses.
+    no_slack:
+        Non-slack bus indices.
+
+    Returns
+    -------
+    numpy.ndarray
+        Lookup vector.
+    """
     full_to_local: np.ndarray = -np.ones(nbus, dtype=np.int64)
     local_index: int
     for local_index in range(no_slack.size):
-        full_index: int = int(no_slack[local_index])
-        full_to_local[full_index] = local_index
+        full_to_local[int(no_slack[local_index])] = local_index
     return full_to_local
 
 
@@ -960,6 +1056,29 @@ def create_local_pv_lookup(no_slack: np.ndarray, pv: np.ndarray) -> np.ndarray:
         PV positions in the local non-slack order.
     """
     full_to_local: np.ndarray = create_full_to_local_lookup(nbus=int(np.max(no_slack)) + 1, no_slack=no_slack)
+
+    # The lookup stage itself is simple but repeated often enough during HELM
+    # preparation that compiling it is still worthwhile.
+    return create_local_pv_lookup_numba(full_to_local=full_to_local, pv=pv)
+
+
+@nb.njit(cache=True)
+def create_local_pv_lookup_numba(full_to_local: np.ndarray, pv: np.ndarray) -> np.ndarray:
+    """
+    Translate PV full indices into local non-slack indices.
+
+    Parameters
+    ----------
+    full_to_local:
+        Full-bus to local-bus lookup.
+    pv:
+        PV full bus indices.
+
+    Returns
+    -------
+    numpy.ndarray
+        PV positions in local non-slack order.
+    """
     pv_local: np.ndarray = np.zeros(pv.size, dtype=np.int64)
     pv_index: int
     for pv_index in range(pv.size):
@@ -1177,12 +1296,53 @@ def calculate_known_reciprocal_convolution(
     """
     left_positions: np.ndarray = table.get_left_convolution_positions(position)
     right_positions: np.ndarray = table.get_right_convolution_positions(position)
+
+    # The table object stays in Python, but once the index lists are extracted
+    # the dense coefficient accumulation becomes a pure numerical kernel.
+    return calculate_known_reciprocal_convolution_numba(
+        left_positions=left_positions,
+        right_positions=right_positions,
+        u_coefficients=u_coefficients,
+        x_coefficients=x_coefficients,
+    )
+
+
+@nb.njit(cache=True)
+def calculate_known_reciprocal_convolution_numba(
+    left_positions: np.ndarray,
+    right_positions: np.ndarray,
+    u_coefficients: np.ndarray,
+    x_coefficients: np.ndarray,
+) -> np.ndarray:
+    """
+    Accumulate the known ``conj(U) * X`` convolution terms with compiled loops.
+
+    Parameters
+    ----------
+    left_positions:
+        Left coefficient positions.
+    right_positions:
+        Right coefficient positions.
+    u_coefficients:
+        Voltage coefficients.
+    x_coefficients:
+        Reciprocal-voltage coefficients.
+
+    Returns
+    -------
+    numpy.ndarray
+        Known convolution vector.
+    """
     known: np.ndarray = np.zeros(u_coefficients.shape[1], dtype=np.complex128)
     pair_index: int
     for pair_index in range(left_positions.size):
         left_position: int = int(left_positions[pair_index])
         right_position: int = int(right_positions[pair_index])
-        known = known + np.conj(u_coefficients[left_position, :]) * x_coefficients[right_position, :]
+        local_index: int
+        for local_index in range(u_coefficients.shape[1]):
+            known[local_index] = known[local_index] + (
+                np.conj(u_coefficients[left_position, local_index]) * x_coefficients[right_position, local_index]
+            )
     return known
 
 
@@ -1213,6 +1373,43 @@ def calculate_known_voltage_convolution(
     """
     left_positions: np.ndarray = table.get_left_convolution_positions(position)
     right_positions: np.ndarray = table.get_right_convolution_positions(position)
+
+    # The PV magnitude constraint only depends on dense coefficient slices and
+    # the local PV positions, so it is also a good Numba target.
+    return calculate_known_voltage_convolution_numba(
+        left_positions=left_positions,
+        right_positions=right_positions,
+        u_coefficients=u_coefficients,
+        pv_local=pv_local,
+    )
+
+
+@nb.njit(cache=True)
+def calculate_known_voltage_convolution_numba(
+    left_positions: np.ndarray,
+    right_positions: np.ndarray,
+    u_coefficients: np.ndarray,
+    pv_local: np.ndarray,
+) -> np.ndarray:
+    """
+    Accumulate the known ``U * conj(U)`` PV-magnitude terms with compiled loops.
+
+    Parameters
+    ----------
+    left_positions:
+        Left coefficient positions.
+    right_positions:
+        Right coefficient positions.
+    u_coefficients:
+        Voltage coefficients.
+    pv_local:
+        PV positions in local non-slack order.
+
+    Returns
+    -------
+    numpy.ndarray
+        Known real convolution vector.
+    """
     known: np.ndarray = np.zeros(pv_local.size, dtype=np.float64)
     pair_index: int
     for pair_index in range(left_positions.size):
@@ -1257,6 +1454,47 @@ def calculate_known_qx_convolution(
     """
     left_positions: np.ndarray = table.get_left_convolution_positions(position)
     right_positions: np.ndarray = table.get_right_convolution_positions(position)
+
+    # The PV power balance uses a dense Q/X accumulation, so this wrapper hands
+    # the raw arrays to a compiled kernel for the expensive inner loops.
+    return calculate_known_qx_convolution_numba(
+        left_positions=left_positions,
+        right_positions=right_positions,
+        q_coefficients=q_coefficients,
+        x_coefficients=x_coefficients,
+        pv_local=pv_local,
+    )
+
+
+@nb.njit(cache=True)
+def calculate_known_qx_convolution_numba(
+    left_positions: np.ndarray,
+    right_positions: np.ndarray,
+    q_coefficients: np.ndarray,
+    x_coefficients: np.ndarray,
+    pv_local: np.ndarray,
+) -> np.ndarray:
+    """
+    Accumulate the known ``Q * X`` PV terms with compiled loops.
+
+    Parameters
+    ----------
+    left_positions:
+        Left coefficient positions.
+    right_positions:
+        Right coefficient positions.
+    q_coefficients:
+        PV reactive-power coefficients.
+    x_coefficients:
+        Reciprocal-voltage coefficients.
+    pv_local:
+        PV positions in local non-slack order.
+
+    Returns
+    -------
+    numpy.ndarray
+        Known complex convolution vector.
+    """
     known: np.ndarray = np.zeros(pv_local.size, dtype=np.complex128)
     pair_index: int
     for pair_index in range(left_positions.size):
@@ -1265,7 +1503,9 @@ def calculate_known_qx_convolution(
         pv_index: int
         for pv_index in range(pv_local.size):
             local_index: int = int(pv_local[pv_index])
-            known[pv_index] = known[pv_index] + q_coefficients[left_position, pv_index] * x_coefficients[right_position, local_index]
+            known[pv_index] = known[pv_index] + (
+                q_coefficients[left_position, pv_index] * x_coefficients[right_position, local_index]
+            )
     return known
 
 

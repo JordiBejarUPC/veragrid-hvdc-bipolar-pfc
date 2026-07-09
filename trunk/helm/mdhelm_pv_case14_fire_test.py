@@ -30,7 +30,7 @@ from mdhelm_pv_case14_query_artifact import build_artifact_from_case
 from mdhelm_pv_case14_query_artifact import import_veragrid_engine_modules
 from mdhelm_pv_case14_query_artifact import load_multicircuit_from_file
 from mdhelm_pv_case14_query_artifact import load_query_artifact
-from mdhelm_pv_case14_query_artifact import load_veragrid_case_data
+from mdhelm_pv_case14_query_artifact import create_mdhelm_inputs
 from mdhelm_pv_case14_query_artifact import save_query_artifact
 
 if TYPE_CHECKING:
@@ -680,7 +680,7 @@ def run_newton_reference(
         scenario=scenario,
     )
 
-    modified_case_data: VeraGridQueryCaseData = load_veragrid_case_data(grid=grid_copy)
+    modified_case_data: VeraGridQueryCaseData = create_mdhelm_inputs(grid=grid_copy)
     nr_results: "PowerFlowResults" = vg.power_flow(
         grid=grid_copy,
         options=create_nr_options(vg=vg),

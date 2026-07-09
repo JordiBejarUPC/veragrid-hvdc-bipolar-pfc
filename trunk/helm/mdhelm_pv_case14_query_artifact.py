@@ -612,6 +612,10 @@ class MDHEMPVQueryArtifact:
         numpy.ndarray
             Internal deviation vector used by the multivariate series.
         """
+        # The public API speaks in absolute bus powers because that is how the
+        # VeraGrid integration layer naturally thinks about scenarios. The
+        # polynomial, however, is built around a germ point, so each input must
+        # be translated into the scaled local coordinate used by the series.
         pq_active_array: np.ndarray = np.asarray(pq_active_power, dtype=np.float64)
         pq_reactive_array: np.ndarray = np.asarray(pq_reactive_power, dtype=np.float64)
         pv_active_array: np.ndarray = np.asarray(pv_active_power, dtype=np.float64)
@@ -620,6 +624,10 @@ class MDHEMPVQueryArtifact:
 
         if pq_active_array.shape == (self._pq.size,):
             for pq_index in range(self._pq.size):
+                # Each PQ active-power dimension uses the difference from the
+                # germ power, normalized by the basis scaling stored in the
+                # artifact. That is what keeps the polynomial coordinates small
+                # even when the physical power values are not.
                 dimension_index: int = int(self._pq_active_dimension[pq_index])
                 local_index: int = int(self._dimension_local[dimension_index])
                 active_reference: float = float(self._scheduled_basis[dimension_index, local_index].real)
@@ -630,6 +638,10 @@ class MDHEMPVQueryArtifact:
 
         if pq_reactive_array.shape == (self._pq.size,):
             for pq_index in range(self._pq.size):
+                # The reactive-power coordinates follow the same logic as the
+                # active ones, but their scaling is stored on the imaginary part
+                # of the basis row because that is the physical component the
+                # corresponding dimension controls.
                 dimension_index = int(self._pq_reactive_dimension[pq_index])
                 local_index = int(self._dimension_local[dimension_index])
                 reactive_reference: float = float(self._scheduled_basis[dimension_index, local_index].imag)
@@ -641,6 +653,9 @@ class MDHEMPVQueryArtifact:
         if pv_active_array.shape == (self._pv.size,):
             pv_index: int
             for pv_index in range(self._pv.size):
+                # PV buses only expose active power at the query boundary. The
+                # missing reactive component is later reconstructed by the Q
+                # series when the multivariate polynomial is evaluated.
                 dimension_index = int(self._pv_active_dimension[pv_index])
                 local_index = int(self._dimension_local[dimension_index])
                 pv_active_reference: float = float(self._scheduled_basis[dimension_index, local_index].real)
@@ -673,7 +688,7 @@ class MDHEMPVQueryArtifact:
             # weights so the online step is a dense dot product instead of a
             # fresh power-flow solve.
             weights: np.ndarray = calculate_monomial_weights(
-                alphas=self._table.get_alphas(),
+                alphas=self._table.get_alphas_array(),
                 values=deviation_array,
             )
             voltage: np.ndarray = np.zeros(self._ybus.shape[0], dtype=np.complex128)
@@ -714,6 +729,8 @@ class MDHEMPVQueryArtifact:
         dimension_index: int
 
         # Each dimension contributes one physical power component to one bus.
+        # The basis row carries the physical scaling of that dimension, while
+        # the evaluated deviation carries the scenario-specific coordinate.
         for dimension_index in range(self.get_dimensions_count()):
             local_index: int = int(self._dimension_local[dimension_index])
             local_power[local_index] = local_power[local_index] + (
@@ -1501,35 +1518,45 @@ def solve_physical_germ_step(state_guess: np.ndarray, context: PhysicalGermConte
     return root_result
 
 
-def solve_physical_germ(grid: "MultiCircuit", case_data: VeraGridQueryCaseData) -> tuple[np.ndarray, np.ndarray, float]:
+def solve_physical_germ(
+    grid: "MultiCircuit",
+    case_data: VeraGridQueryCaseData,
+    germ_seed_results: Optional["PowerFlowResults"],
+) -> tuple[np.ndarray, np.ndarray, float]:
     """
     Solve the practical artifact germ for the given case.
 
     The paper-style zero-PQ continuation was producing a mathematically valid
     but numerically useless branch on case14, with PV reactive powers around
     ``1e10`` at zero order. The artifact is queried around the original case,
-    so the robust choice is to use VeraGrid's HELM operating point as the germ
-    and expand local deltas around it. This keeps the artifact build free of
-    Newton-Raphson so NR is only used later for external validation.
+    so the robust choice is to use a physically meaningful operating point as
+    the germ and expand local deltas around it. By default that operating point
+    is obtained internally with VeraGrid HELM. If the caller provides a
+    converged ``PowerFlowResults`` object, that operating point is used
+    instead.
 
-    Parameters
-    ----------
-    grid:
-        VeraGrid circuit used by the HELM solve.
-    case_data:
+    :param grid:
+        VeraGrid circuit used by the internal HELM solve when no external seed
+        is provided.
+    :param case_data:
         VeraGrid network data.
-
-    Returns
-    -------
-    tuple[numpy.ndarray, numpy.ndarray, float]
+    :param germ_seed_results:
+        Optional converged VeraGrid power-flow result used as the artifact
+        germ. When ``None``, the germ is obtained internally with VeraGrid
+        HELM.
+    :return:
         Germ voltage, germ scheduled power and residual norm.
     """
-    vg: object
-    cf: object
-    vg, cf = import_veragrid_engine_modules()
-    _ = cf
+    power_flow_results: object
 
-    try:
+    if germ_seed_results is None:
+        # The default path keeps artifact training HELM-only. No Newton-Raphson
+        # enters the artifact construction unless the caller explicitly injects
+        # an external seed result.
+        vg: object
+        cf: object
+        vg, cf = import_veragrid_engine_modules()
+        _ = cf
         power_flow_options: object = vg.PowerFlowOptions(
             solver_type=vg.SolverType.HELM,
             retry_with_other_methods=False,
@@ -1540,26 +1567,39 @@ def solve_physical_germ(grid: "MultiCircuit", case_data: VeraGridQueryCaseData) 
             use_stored_guess=False,
             tolerance=1e-10,
         )
-    except TypeError:
-        power_flow_options = vg.PowerFlowOptions(vg.SolverType.HELM, verbose=False)
-
-    power_flow_results: object = vg.power_flow(
-        grid=grid,
-        options=power_flow_options,
-    )
+        power_flow_results = vg.power_flow(
+            grid=grid,
+            options=power_flow_options,
+        )
+    else:
+        # This optional input is the only sanctioned path to center the
+        # artifact around an externally computed solution such as NR.
+        power_flow_results = germ_seed_results
 
     if bool(power_flow_results.converged):
-        germ_voltage: np.ndarray = np.asarray(power_flow_results.voltage, dtype=np.complex128)
-        germ_power: np.ndarray = compute_power_from_ybus(ybus=case_data.ybus, voltage=germ_voltage)
-        germ_error: float = float(power_flow_results.error)
+        voltage_shape: tuple[int, ...] = (case_data.ybus.shape[0],)
+
+        if np.asarray(power_flow_results.voltage).shape == voltage_shape:
+            # The artifact stores the operating point as voltage plus the
+            # corresponding power implied by the artifact admittance matrix.
+            # Recomputing the power here keeps the internal state independent
+            # from the exact source of the seed result.
+            germ_voltage: np.ndarray = np.asarray(power_flow_results.voltage, dtype=np.complex128)
+            germ_power: np.ndarray = compute_power_from_ybus(ybus=case_data.ybus, voltage=germ_voltage)
+            germ_error: float = float(power_flow_results.error)
+        else:
+            raise ValueError("germ_seed_results voltage shape does not match the case bus count")
     else:
-        raise RuntimeError(f"HELM germ solve failed with error {float(power_flow_results.error):.6e}")
+        # The failure text stays neutral because the seed may come either from
+        # the internal HELM path or from an explicitly supplied external
+        # ``PowerFlowResults`` object such as a Newton-Raphson solution.
+        raise RuntimeError(f"Artifact germ seed solve failed with error {float(power_flow_results.error):.6e}")
 
     return germ_voltage, germ_power, germ_error
 
 
 def solve_mdhelm_query_artifact(
-    case_data: VeraGridQueryCaseData,
+    input_data: VeraGridQueryCaseData,
     germ_voltage: np.ndarray,
     germ_power: np.ndarray,
     max_order: int,
@@ -1569,7 +1609,7 @@ def solve_mdhelm_query_artifact(
 
     Parameters
     ----------
-    case_data:
+    input_data:
         VeraGrid network data.
     germ_voltage:
         Physical-germ voltage vector.
@@ -1583,8 +1623,8 @@ def solve_mdhelm_query_artifact(
     MDHEMPVQueryArtifact
         Persistent query artifact.
     """
-    n_no_slack: int = case_data.no_slack.size
-    n_pv: int = case_data.pv.size
+    n_no_slack: int = input_data.no_slack.size
+    n_pv: int = input_data.pv.size
     basis: np.ndarray
     dimension_kind_codes: np.ndarray
     dimension_bus: np.ndarray
@@ -1593,10 +1633,10 @@ def solve_mdhelm_query_artifact(
     pq_reactive_dimension: np.ndarray
     pv_active_dimension: np.ndarray
     basis, dimension_kind_codes, dimension_bus, dimension_local, pq_active_dimension, pq_reactive_dimension, pv_active_dimension = build_query_basis(
-        base_power=case_data.base_power,
-        pq=case_data.pq,
-        pv=case_data.pv,
-        no_slack=case_data.no_slack,
+        base_power=input_data.base_power,
+        pq=input_data.pq,
+        pv=input_data.pv,
+        no_slack=input_data.no_slack,
     )
     table: MultiIndexTable = create_multi_index_table(dims=basis.shape[0], max_order=max_order)
     n_terms: int = len(table.get_alphas())
@@ -1604,13 +1644,13 @@ def solve_mdhelm_query_artifact(
     x_coefficients: np.ndarray = np.zeros((n_terms, n_no_slack), dtype=np.complex128)
     q_coefficients: np.ndarray = np.zeros((n_terms, n_pv), dtype=np.float64)
     pv_local: np.ndarray = convert_full_indices_to_local(
-        full_to_local=create_full_to_local_lookup(nbus=case_data.ybus.shape[0], no_slack=case_data.no_slack),
-        full_indices=case_data.pv,
+        full_to_local=create_full_to_local_lookup(nbus=input_data.ybus.shape[0], no_slack=input_data.no_slack),
+        full_indices=input_data.pv,
     )
-    yred: scipy.sparse.csc_matrix = case_data.ybus[np.ix_(case_data.no_slack, case_data.no_slack)].tocsc()
-    u_zero: np.ndarray = germ_voltage[case_data.no_slack].copy()
+    yred: scipy.sparse.csc_matrix = input_data.ybus[np.ix_(input_data.no_slack, input_data.no_slack)].tocsc()
+    u_zero: np.ndarray = germ_voltage[input_data.no_slack].copy()
     x_zero: np.ndarray = 1.0 / np.conj(u_zero)
-    c_germ: np.ndarray = np.conj(germ_power[case_data.no_slack])
+    c_germ: np.ndarray = np.conj(germ_power[input_data.no_slack])
     zero_position: int = 0
     u_coefficients[zero_position, :] = u_zero
     x_coefficients[zero_position, :] = x_zero
@@ -1619,7 +1659,7 @@ def solve_mdhelm_query_artifact(
     # The zero-order PV reactive powers come from the physical germ, because
     # that is the point where the multivariate expansion starts.
     for pv_index in range(n_pv):
-        q_coefficients[zero_position, pv_index] = germ_power[int(case_data.pv[pv_index])].imag
+        q_coefficients[zero_position, pv_index] = germ_power[int(input_data.pv[pv_index])].imag
 
     system_matrix: scipy.sparse.csc_matrix = build_system_matrix(
         yred=yred,
@@ -1689,15 +1729,15 @@ def solve_mdhelm_query_artifact(
             q_coefficients[position, :] = solution[4 * n_no_slack:4 * n_no_slack + n_pv]
 
     return MDHEMPVQueryArtifact(
-        ybus=case_data.ybus,
-        yf=case_data.yf,
-        yt=case_data.yt,
-        slack=case_data.slack,
-        pq=case_data.pq,
-        pv=case_data.pv,
-        no_slack=case_data.no_slack,
-        slack_voltage=case_data.slack_voltage,
-        voltage_setpoint=case_data.voltage_setpoint,
+        ybus=input_data.ybus,
+        yf=input_data.yf,
+        yt=input_data.yt,
+        slack=input_data.slack,
+        pq=input_data.pq,
+        pv=input_data.pv,
+        no_slack=input_data.no_slack,
+        slack_voltage=input_data.slack_voltage,
+        voltage_setpoint=input_data.voltage_setpoint,
         scheduled_power_germ=germ_power,
         scheduled_basis=basis,
         table=table,
@@ -1710,11 +1750,11 @@ def solve_mdhelm_query_artifact(
         pq_active_dimension=pq_active_dimension,
         pq_reactive_dimension=pq_reactive_dimension,
         pv_active_dimension=pv_active_dimension,
-        bus_names=case_data.bus_names,
-        branch_from_indices=case_data.branch_from_indices,
-        branch_to_indices=case_data.branch_to_indices,
-        branch_rates=case_data.branch_rates,
-        sbase=case_data.sbase,
+        bus_names=input_data.bus_names,
+        branch_from_indices=input_data.branch_from_indices,
+        branch_to_indices=input_data.branch_to_indices,
+        branch_rates=input_data.branch_rates,
+        sbase=input_data.sbase,
     )
 
 
@@ -1740,7 +1780,7 @@ def load_multicircuit_from_file(matpower_path: Path) -> "MultiCircuit":
     return grid
 
 
-def load_veragrid_case_data(grid: "MultiCircuit") -> VeraGridQueryCaseData:
+def create_mdhelm_inputs(grid: "MultiCircuit") -> VeraGridQueryCaseData:
     """
     Load the VeraGrid numerical data required by the artifact builder.
 
@@ -1792,34 +1832,43 @@ def load_veragrid_case_data(grid: "MultiCircuit") -> VeraGridQueryCaseData:
     )
 
 
-def build_artifact_from_case(grid: "MultiCircuit", max_order: int) -> tuple[VeraGridQueryCaseData, MDHEMPVQueryArtifact, float]:
+def build_artifact_from_case(
+    grid: "MultiCircuit",
+    max_order: int,
+    germ_seed_results: Optional["PowerFlowResults"] = None,
+) -> tuple[VeraGridQueryCaseData, MDHEMPVQueryArtifact, float]:
     """
     Build the persistent MDHEM artifact from one VeraGrid ``MultiCircuit``.
 
-    Parameters
-    ----------
-    grid:
+    :param grid:
         VeraGrid grid object.
-    max_order:
+    :param max_order:
         Maximum total polynomial order.
-
-    Returns
-    -------
-    tuple[VeraGridQueryCaseData, MDHEMPVQueryArtifact, float]
+    :param germ_seed_results:
+        Optional converged VeraGrid ``PowerFlowResults`` used as the artifact
+        germ. When omitted, the germ is obtained internally with VeraGrid
+        HELM.
+    :return:
         Case data, built artifact and the physical-germ residual norm.
     """
-    case_data: VeraGridQueryCaseData = load_veragrid_case_data(grid=grid)
+    input_data: VeraGridQueryCaseData = create_mdhelm_inputs(grid=grid)
     germ_voltage: np.ndarray
     germ_power: np.ndarray
     germ_error: float
-    germ_voltage, germ_power, germ_error = solve_physical_germ(grid=grid, case_data=case_data)
+
+    germ_voltage, germ_power, germ_error = solve_physical_germ(
+        grid=grid,
+        case_data=input_data,
+        germ_seed_results=germ_seed_results,
+    )
+
     artifact: MDHEMPVQueryArtifact = solve_mdhelm_query_artifact(
-        case_data=case_data,
+        input_data=input_data,
         germ_voltage=germ_voltage,
         germ_power=germ_power,
         max_order=max_order,
     )
-    return case_data, artifact, germ_error
+    return input_data, artifact, germ_error
 
 
 def store_csc_matrix(entries: dict[str, np.ndarray], prefix: str, matrix: scipy.sparse.csc_matrix) -> None:
