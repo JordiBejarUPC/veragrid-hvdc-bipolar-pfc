@@ -32,6 +32,7 @@ from mdhelm import import_veragrid_engine_modules
 from mdhelm import load_multicircuit_from_file
 from mdhelm import load_query_artifact
 from mdhelm import save_query_artifact
+from mdhelm import validate_multi_index_table_shape
 
 if TYPE_CHECKING:
     from VeraGridEngine.Devices.multi_circuit import MultiCircuit
@@ -82,6 +83,11 @@ def print_full_space_preflight(case_data: VeraGridQueryCaseData, max_order: int)
     print(f"Embedding dimensions:         {dimension_count}")
     print(f"Maximum order:                {max_order}")
     print(f"Expected coefficient count:   {expected_coefficients}")
+    validate_multi_index_table_shape(
+        dims=dimension_count,
+        max_order=max_order,
+        total_terms=expected_coefficients,
+    )
 
 
 def query_base_case(
@@ -164,7 +170,11 @@ def run_activsg2000_full_artifact_demo() -> None:
     use_nr_seed: bool = True
     grid: "MultiCircuit" = load_multicircuit_from_file(matpower_path=case_path)
     case_data: VeraGridQueryCaseData = create_mdhelm_inputs(grid=grid)
-    print_full_space_preflight(case_data=case_data, max_order=max_order)
+    try:
+        print_full_space_preflight(case_data=case_data, max_order=max_order)
+    except MemoryError as exc:
+        print(str(exc))
+        return
     germ_seed_results: "PowerFlowResults | None"
 
     # The full-space artifact build is left exactly as requested. The only
