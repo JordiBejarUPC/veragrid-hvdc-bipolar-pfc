@@ -2048,6 +2048,8 @@ class ProtectedConnectionBlockItem(BlockItem):
 
 
 class RoundBaseArithmeticOpItem(QGraphicsEllipseItem):
+    LABEL_OUTSET: float = 3.5
+
     def __init__(self,
                  subsys: Block,
                  var_factory: VarFactory,
@@ -2180,6 +2182,18 @@ class RoundBaseArithmeticOpItem(QGraphicsEllipseItem):
             for var in self.subsys.in_vars:
                 self._input_signs.append(label_map.get(var.uid, "x"))
 
+    def _get_label_outset_offset(self, port: PortItem) -> QPointF:
+        rect = self.rect()
+        cx = rect.center().x()
+        cy = rect.center().y()
+        dx = port.pos().x() - cx
+        dy = port.pos().y() - cy
+        length = math.sqrt(dx * dx + dy * dy)
+        if length < 1e-6:
+            return QPointF(0, 0)
+        return QPointF(dx / length * self.LABEL_OUTSET,
+                       dy / length * self.LABEL_OUTSET)
+
     def update_ports(self) -> None:
         rect = self.rect()
         cx = rect.center().x()
@@ -2220,19 +2234,28 @@ class RoundBaseArithmeticOpItem(QGraphicsEllipseItem):
             th = label.boundingRect().height()
 
             if n_inputs == 1:
-                label.setPos(port.pos().x(), port.pos().y() - th / 2)
+                base_x = port.pos().x()
+                base_y = port.pos().y() - th / 2
             elif n_inputs == 2:
                 if i == 0:
-                    label.setPos(port.pos().x() - tw / 2, port.pos().y())
+                    base_x = port.pos().x() - tw / 2
+                    base_y = port.pos().y()
                 else:
-                    label.setPos(port.pos().x(), port.pos().y() - th / 2)
+                    base_x = port.pos().x()
+                    base_y = port.pos().y() - th / 2
             elif n_inputs == 3:
                 if i == 0:
-                    label.setPos(port.pos().x() - tw / 2, port.pos().y())
+                    base_x = port.pos().x() - tw / 2
+                    base_y = port.pos().y()
                 elif i == 1:
-                    label.setPos(port.pos().x(), port.pos().y() - th / 2)
+                    base_x = port.pos().x()
+                    base_y = port.pos().y() - th / 2
                 else:
-                    label.setPos(port.pos().x() - tw / 2, port.pos().y() - th)
+                    base_x = port.pos().x() - tw / 2
+                    base_y = port.pos().y() - th
+
+            offset = self._get_label_outset_offset(port)
+            label.setPos(base_x + offset.x(), base_y + offset.y())
 
     def paint(self,
               painter: QPainter,
