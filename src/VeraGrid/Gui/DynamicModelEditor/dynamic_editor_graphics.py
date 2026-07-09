@@ -45,7 +45,7 @@ class EditorGraphicsDefaultsDark:
     # BLOCK_COMPACT_PORT_SECTION_PADDING: float = 6.0
 
     BLOCK_BORDER: QColor = QColor("#202124")
-    BLOCK_BORDER_SELECTED: QColor = QColor("#cc6f2c")
+    BLOCK_BORDER_SELECTED: QColor = QColor("#00bbff")
     BLOCK_TITLE: QColor = QColor("#173042")
     WIRE_COLOR: QColor = QColor("black")
     HANDLE_FILL: QColor = QColor("#36536b")
@@ -1927,17 +1927,25 @@ class BlockItem(QGraphicsRectItem):
         body_rect: QtCore.QRectF = outer_rect
         radius: float = body_rect.height() / 2.0
 
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+        editor_constants = _get_editor_constants()
 
-        # body
-        painter.setBrush(QBrush(QColor("#f5fdff")))
-        painter.drawRoundedRect(body_rect, radius, radius)
-
-        # border
         if self._validation_highlighted:
             border_color: QColor = QColor("#b42318")
         else:
-            border_color = QColor("#202124")
+            border_color = (
+                editor_constants.BLOCK_BORDER_SELECTED
+                if self.isSelected()
+                else editor_constants.BLOCK_BORDER
+            )
+
+        fill_color: QColor = self.brush().color()
+
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+
+        # body
+        painter.setBrush(QBrush(fill_color))
+        painter.drawRoundedRect(body_rect, radius, radius)
+
 
         painter.setPen(QPen(border_color, 1.6))
         painter.setBrush(Qt.BrushStyle.NoBrush)
