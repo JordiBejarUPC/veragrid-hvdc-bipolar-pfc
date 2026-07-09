@@ -1317,12 +1317,11 @@ class GenericBlockItem(QGraphicsRectItem):
         for label in self.output_labels:
             output_label_width = max(output_label_width, label.boundingRect().width())
 
-        name_width = self.name_item.boundingRect().width()
         padding = 28.0
 
         min_width = max(
             editor_constants.BLOCK_MIN_WIDTH,
-            input_label_width + output_label_width + name_width + padding
+            input_label_width + output_label_width + padding
         )
         return min_width, min_height
 
@@ -1610,7 +1609,7 @@ class PairedItem(QGraphicsPolygonItem):
         painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
         shadow_poly = polygon.translated(2.5, 3.0)
         painter.setPen(Qt.PenStyle.NoPen)
-        painter.setBrush(QBrush(editor_constants.BLOCK_SHADOW))
+        painter.setBrush(QBrush(editor_constants.BLOCK_FILL))
         painter.drawPolygon(shadow_poly)
         painter.setBrush(QBrush(fill_color))
         painter.drawPolygon(polygon)
@@ -2055,7 +2054,7 @@ class RoundBaseArithmeticOpItem(QGraphicsEllipseItem):
                  block_type: BlockType, 
                  editor: "DynamicBlockEditorGUI | None" = None,
                  position_changed_callback = None):
-        size = 48.0
+        size = 35.0
         super().__init__(-size / 2, -size / 2, size, size)
         self.block_type: BlockType = block_type
         self.subsys: Block = subsys
@@ -2080,13 +2079,15 @@ class RoundBaseArithmeticOpItem(QGraphicsEllipseItem):
         if n_inputs > 3:
             raise ValueError("SumItem only supports up to 3 input ports")
         n_outputs = len(self.subsys.out_vars)
+        editor_constants = _get_editor_constants()
+
         for i in range(n_inputs):
             port = PortItem(self, True, i, n_inputs)
             self.inputs.append(port)
             label = QGraphicsTextItem("", self)
             label_font = QtGui.QFont("DejaVu Sans", 8)
             label.setFont(label_font)
-            label.setDefaultTextColor(QColor("#173042"))
+            label.setDefaultTextColor(editor_constants.BLOCK_TITLE)
             self.input_labels.append(label)
 
         for i in range(n_outputs):
@@ -2109,13 +2110,15 @@ class RoundBaseArithmeticOpItem(QGraphicsEllipseItem):
 
     def set_dark_mode(self):
         editor_constants = _get_editor_constants()
-        self.name_item.setDefaultTextColor(editor_constants.BLOCK_TITLE)
+        for label in self.input_labels:
+            label.setDefaultTextColor(editor_constants.BLOCK_TITLE)
         self.setBrush(QBrush(editor_constants.BLOCK_BORDER))
         self.setPen(QPen(editor_constants.BLOCK_FILL, 1))
 
     def set_light_mode(self):
         editor_constants = _get_editor_constants()
-        self.name_item.setDefaultTextColor(editor_constants.BLOCK_TITLE)
+        for label in self.input_labels:
+            label.setDefaultTextColor(editor_constants.BLOCK_TITLE)
         self.setBrush(QBrush(editor_constants.BLOCK_BORDER))
         self.setPen(QPen(editor_constants.BLOCK_FILL, 1))
 
@@ -2498,7 +2501,7 @@ class DiagramScene(QGraphicsScene):
         self.editor: DynamicBlockEditorGUI = editor
         self.temp_line: QGraphicsPathItem | None = None
         self.source_port: PortItem | BranchingItem | None = None
-        self.context_item: BlockItem | ConnectionItem | None = None
+        self.context_item: BlockItem | GenericBlockItem | ConnectionItem | RoundBaseArithmeticOpItem | RectBaseArithmeticOpItem | PairedItem | None = None
 
     def get_modal_template_metadata(self, block: Block | None) -> tuple[str | None, Dict[str, Any] | None]:
         return self.editor.get_modal_template_metadata(block)
@@ -2550,7 +2553,7 @@ class DiagramScene(QGraphicsScene):
     def contextMenuEvent(self, event: QtWidgets.QGraphicsSceneContextMenuEvent) -> None:
         item: QGraphicsItem
         for item in self.items(event.scenePos()):
-            if isinstance(item, (GenericBlockItem, ConnectionItem, RoundBaseArithmeticOpItem, RectBaseArithmeticOpItem)):
+            if isinstance(item, (GenericBlockItem, ConnectionItem, RoundBaseArithmeticOpItem, RectBaseArithmeticOpItem | PairedItem)):
                 menu: QMenu = QMenu()
                 if item is not None:
                     self.context_item = item
