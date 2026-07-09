@@ -30,30 +30,30 @@ from typing import TYPE_CHECKING
 import numpy as np
 import scipy.sparse
 
-from mdhelm_pv_case14_exaple import MultiIndexTable
-from mdhelm_pv_case14_exaple import SparseLinearSolver
-from mdhelm_pv_case14_exaple import build_system_matrix
-from mdhelm_pv_case14_exaple import calculate_rhs_power_numba
-from mdhelm_pv_case14_exaple import calculate_known_qx_convolution
-from mdhelm_pv_case14_exaple import calculate_known_reciprocal_convolution
-from mdhelm_pv_case14_exaple import calculate_known_voltage_convolution
-from mdhelm_pv_case14_exaple import calculate_monomial_weights
-from mdhelm_pv_case14_exaple import create_full_to_local_lookup
-from mdhelm_pv_case14_exaple import create_multi_index_table
-from mdhelm_pv_case14_exaple import determine_rhs_block_columns
-from mdhelm_pv_case14_query_artifact import MDHEMQueryResult
-from mdhelm_pv_case14_query_artifact import VeraGridQueryCaseData
-from mdhelm_pv_case14_query_artifact import calculate_branch_results
-from mdhelm_pv_case14_query_artifact import calculate_pv_voltage_error
-from mdhelm_pv_case14_query_artifact import calculate_query_mismatch_norm
-from mdhelm_pv_case14_query_artifact import compute_power_from_ybus
-from mdhelm_pv_case14_query_artifact import create_mdhelm_inputs
-from mdhelm_pv_case14_query_artifact import extract_slack_voltage_values
-from mdhelm_pv_case14_query_artifact import import_veragrid_engine_modules
-from mdhelm_pv_case14_query_artifact import load_multicircuit_from_file
-from mdhelm_pv_case14_query_artifact import restore_csc_matrix
-from mdhelm_pv_case14_query_artifact import solve_physical_germ
-from mdhelm_pv_case14_query_artifact import store_csc_matrix
+from mdhelm import MDHEMQueryResult
+from mdhelm import MultiIndexTable
+from mdhelm import SparseLinearSolver
+from mdhelm import VeraGridQueryCaseData
+from mdhelm import build_system_matrix
+from mdhelm import calculate_branch_results
+from mdhelm import calculate_known_qx_convolution
+from mdhelm import calculate_known_reciprocal_convolution
+from mdhelm import calculate_known_voltage_convolution
+from mdhelm import calculate_monomial_weights_from_table
+from mdhelm import calculate_pv_voltage_error
+from mdhelm import calculate_query_mismatch_norm
+from mdhelm import calculate_rhs_power_numba
+from mdhelm import compute_power_from_ybus
+from mdhelm import create_full_to_local_lookup
+from mdhelm import create_mdhelm_inputs
+from mdhelm import create_multi_index_table
+from mdhelm import determine_rhs_block_columns
+from mdhelm import extract_slack_voltage_values
+from mdhelm import import_veragrid_engine_modules
+from mdhelm import load_multicircuit_from_file
+from mdhelm import restore_csc_matrix
+from mdhelm import solve_physical_germ
+from mdhelm import store_csc_matrix
 from mdhelm_pv_case14_fire_test import DeviceBusMapping
 from mdhelm_pv_case14_fire_test import build_device_bus_mapping
 from mdhelm_pv_case14_fire_test import calculate_distribution_weights
@@ -427,8 +427,8 @@ class MDHEMReducedSubspacePVArtifact:
             # The online stage stays cheap because the artifact is queried in a
             # low-dimensional coordinate space and the precomputed coefficient
             # tensor is collapsed by one dense weighted sum.
-            weights: np.ndarray = calculate_monomial_weights(
-                alphas=self._table.get_alphas_array(),
+            weights: np.ndarray = calculate_monomial_weights_from_table(
+                table=self._table,
                 values=coordinate_array,
             )
             voltage: np.ndarray = np.zeros(self._ybus.shape[0], dtype=np.complex128)
@@ -744,7 +744,7 @@ def solve_reduced_subspace_artifact(
         raise ValueError("scheduled_basis must have shape (dims, n_no_slack)")
 
     table: MultiIndexTable = create_multi_index_table(dims=n_dimensions, max_order=max_order)
-    n_terms: int = len(table.get_alphas())
+    n_terms: int = table.get_terms_count()
     u_coefficients: np.ndarray = np.zeros((n_terms, n_no_slack), dtype=np.complex128)
     x_coefficients: np.ndarray = np.zeros((n_terms, n_no_slack), dtype=np.complex128)
     q_coefficients: np.ndarray = np.zeros((n_terms, n_pv), dtype=np.float64)
@@ -779,7 +779,6 @@ def solve_reduced_subspace_artifact(
     linear_solver: SparseLinearSolver = SparseLinearSolver(
         factorization=scipy.sparse.linalg.splu(system_matrix)
     )
-    minus_e_position: np.ndarray = table.get_minus_e_position()
     unknown_count: int = 4 * n_no_slack + n_pv
     rhs_block_columns: int = determine_rhs_block_columns(
         unknown_count=unknown_count,
@@ -802,6 +801,8 @@ def solve_reduced_subspace_artifact(
 
             for block_offset in range(block_size):
                 position: int = block_start + block_offset
+                active_dims_row: np.ndarray = table.get_active_dimension_positions(position)
+                minus_e_previous_row: np.ndarray = table.get_minus_e_previous_positions(position)
                 qx_known: np.ndarray = calculate_known_qx_convolution(
                     table=table,
                     position=position,
@@ -810,7 +811,8 @@ def solve_reduced_subspace_artifact(
                     pv_local=pv_local,
                 )
                 rhs_power: np.ndarray = calculate_rhs_power_numba(
-                    minus_e_row=minus_e_position[position, :],
+                    active_dims_row=active_dims_row,
+                    minus_e_previous_row=minus_e_previous_row,
                     basis_conjugate=basis_conjugate,
                     x_coefficients=x_coefficients,
                     pv_local=pv_local,
