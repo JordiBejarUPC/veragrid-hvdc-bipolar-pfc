@@ -11,17 +11,6 @@ This script creates the phasor problem manually and injects it into the SmallSig
 
 import sys
 from pathlib import Path
-import pickle
-
-project_base = Path(__file__).resolve().parents[2]
-src_path = project_base / "src"
-if src_path.exists():
-    if str(src_path) not in sys.path:
-        sys.path.insert(0, str(src_path))
-else:
-    print(f"[ERROR] Engine not found: {src_path}")
-    sys.exit(1)
-
 import time, pickle, os
 import multiprocessing as mp
 from typing import Tuple, Any, List
@@ -59,25 +48,18 @@ from scipy.optimize import linear_sum_assignment
 from types import MethodType
 from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_rms_model
 
-# GRID = "Texas 2000 + VSC"
-# GRID = "IEEE 14.xlsx"
-# GRID = "case_ACTIVSg2000.matpower"
-"""GRIDS: 
-    "IEEE 14.xlsx"
-    "case_ACTIVSg2000.matpower"
-    "Texas 2000 + VSC"
-    "IEEE39.gridcal"
-    "IEEE 118.xlsx"
-"""
-grid_folder = project_base / "Grids_and_profiles" / "grids"
-GRID = sys.argv[1] if len(sys.argv) > 1 else "IEEE25.gridcal"
 
-if GRID == "IEEE_9_Christoph.gridcal":
-    CHRISTOPH_COMPARISON = False
+project_base = Path(__file__).resolve().parents[2]
+src_path = project_base / "src"
+if src_path.exists():
+    if str(src_path) not in sys.path:
+        sys.path.insert(0, str(src_path))
 else:
-    CHRISTOPH_COMPARISON = False
+    print(f"[ERROR] Engine not found: {src_path}")
+    sys.exit(1)
 
-
+grid_folder = project_base / "Grids_and_profiles" / "grids"
+GRID = sys.argv[1] if len(sys.argv) > 1 else "IEEE 9 Bus.gridcal"
 USE_CACHED_BUILDER = False
 BUILDER_CACHE_FILE = f'trunk/tensygrid/precomputed_builds/{GRID}.pkl'
 
@@ -107,25 +89,13 @@ EXEC_METRICS = {
 }
 
 
-def debug_input(input_bool):
-    """
-    Function to debug
-    """
-    EXEC_METRICS["stops"] = EXEC_METRICS["stops"] + 1
-    if input_bool:
-        input(f"Hola, ens quedem parats {EXEC_METRICS['stops']} vegades")
-    else:
-        print(f"Hola, ens quedem parats {EXEC_METRICS['stops']} vegades")
-
-
 def define_problem_with_path(grid_path):
     """Creates the grid, runs the power flow, and returns the phasor problem."""
     print("\n[1] Creating phasor grid_path...")
     grid = vge.open_file(grid_path)
     ensure_unique_device_names(grid)
 
-    # Build RMS models
-    # Things we need to add: buses, branches, generators, transformers, loads, shunts
+    # Build models
 
     ## BUSES:
     for bus in grid.buses:
@@ -211,10 +181,6 @@ def define_problem_with_path(grid_path):
         print("  ✗ Power flow failed")
         return False, None, None
 
-
-    if CHRISTOPH_COMPARISON:
-        with open("Christoph_PF.pkl", "rb") as f:
-            pf_results = pickle.load(f)
 
     if RUN_PF_LINE_EQ_CHECK:
         check_pf_line_equations(grid=grid, pf_results=pf_results)
