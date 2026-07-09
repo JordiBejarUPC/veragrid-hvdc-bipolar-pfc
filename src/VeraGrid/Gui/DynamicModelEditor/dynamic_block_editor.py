@@ -329,6 +329,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
     BLOCK_COMPACT_PORT_ROW_HEIGHT: float = 14.0
     BLOCK_COMPACT_PORT_SECTION_PADDING: float = 6.0
     TEMPLATE_NODE_TYPE: str = "TEMPLATE"
+    INITIAL_LAYOUT_SCALE: float = 0.60
+    INITIAL_VIEW_SCALE: float = 1.3
+    _LAYOUT_MARGIN: float = 40.0
     PARAMETER_VALUE_TYPE_ROLE: int = int(QtCore.Qt.ItemDataRole.UserRole) + 500
     PARAMETER_EDITABLE_ROLE: int = int(QtCore.Qt.ItemDataRole.UserRole) + 501
     LIBRARY_SEARCH_TEXT_ROLE: int = int(QtCore.Qt.ItemDataRole.UserRole) + 502
@@ -2864,6 +2867,42 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
     #
     #     self._materialize_connection_specs(specs)
     #
+    def _compact_initial_layout(self) -> QtCore.QRectF | None:
+        interface_items: list[ProtectedConnectionBlockItem] = [
+            item for item in self.scene.items()
+            if isinstance(item, ProtectedConnectionBlockItem)
+        ]
+
+        if not interface_items:
+            return None
+
+        bounding_rect = QtCore.QRectF()
+        for item in interface_items:
+            br = item.sceneBoundingRect()
+            bounding_rect = br if bounding_rect.isNull() else bounding_rect.united(br)
+
+        center = bounding_rect.center()
+
+        for item in interface_items:
+            offset = item.pos() - center
+            item.setPos(center + offset * self.INITIAL_LAYOUT_SCALE)
+
+        for node in self.diagram.node_data.values():
+            if node.tpe in {BlockType.INPUT_CONN.name, BlockType.OUTPUT_CONN.name}:
+                for item in interface_items:
+                    if item.subsys.uid == node.device_uid:
+                        node.x = item.pos().x()
+                        node.y = item.pos().y()
+                        break
+
+        new_br = QtCore.QRectF()
+        for item in interface_items:
+            br = item.sceneBoundingRect()
+            new_br = br if new_br.isNull() else new_br.united(br)
+
+        return new_br.adjusted(-self._LAYOUT_MARGIN, -self._LAYOUT_MARGIN,
+                               self._LAYOUT_MARGIN, self._LAYOUT_MARGIN)
+
     def add_connection_items(self, blocks_list: List[BlockItem] | None = None):
         """
         for every input and output var in the main block of the editor we build a block item to connect connection variables
@@ -2904,7 +2943,12 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             self.create_connection_block_item(outvar, BlockType.OUTPUT_CONN, x_pos, y_pos, blocks_list)
 
         self.scene.setSceneRect(0, 0, SCENE_WIDTH, SCENE_HEIGHT)
-        self.view.fitInView(self.scene.sceneRect(), QtCore.Qt.AspectRatioMode.KeepAspectRatio)
+        fit_rect = self._compact_initial_layout()
+        if fit_rect is not None:
+            self.view.fitInView(fit_rect, QtCore.Qt.AspectRatioMode.KeepAspectRatio)
+            self.view.scale(self.INITIAL_VIEW_SCALE, self.INITIAL_VIEW_SCALE)
+        else:
+            self.view.fitInView(self.scene.sceneRect(), QtCore.Qt.AspectRatioMode.KeepAspectRatio)
 
     def _ensure_emt_bus_model(self, bus: Any) -> None:
         """
