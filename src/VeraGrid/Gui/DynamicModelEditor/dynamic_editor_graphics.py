@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional, TYPE_CHECKING, cast
 from PySide6 import QtCore, QtGui, QtWidgets
 from PySide6.QtCore import QPointF, Qt
 from PySide6.QtGui import QColor, QBrush, QPainter, QPainterPath, QPen, QAction, QPolygonF
-from PySide6.QtWidgets import QApplication, QColorDialog, QGraphicsEllipseItem, QGraphicsItem, \
+from PySide6.QtWidgets import QAbstractGraphicsShapeItem, QApplication, QColorDialog, QGraphicsEllipseItem, QGraphicsItem, \
     QGraphicsPathItem, QGraphicsPolygonItem, QGraphicsRectItem, QGraphicsScene, QGraphicsTextItem, \
     QGraphicsView, QMenu, QWidget
 
@@ -24,10 +24,30 @@ if TYPE_CHECKING:
 
 
 class EditorGraphicsDefaultsDark:
-    BLOCK_BORDER: QColor = QColor("white")
+    # BLOCK_BORDER: QColor = QColor("white")
+    # BLOCK_BORDER_SELECTED: QColor = QColor("#cc6f2c")
+    # BLOCK_TITLE: QColor = QColor("#173042")
+    # WIRE_COLOR: QColor = QColor("white")
+    # HANDLE_FILL: QColor = QColor("#36536b")
+    # BLOCK_FILL: QColor = QColor("#f5fdff")
+    # PORT_LABEL_COLOR: QColor = QColor("#173042")
+    # WIRE_ELBOW_OFFSET: float = 36.0
+    # PORT_LABEL_MAX_CHARS: int = 12
+    # BLOCK_HEADER_HEIGHT: float = 30.0
+    # BLOCK_PORT_ROW_HEIGHT: float = 20.0
+    # BLOCK_PORT_SECTION_PADDING: float = 10.0
+    # BLOCK_MIN_WIDTH: float = 160.0
+    # BLOCK_MIN_HEIGHT: float = 70.0
+    # BLOCK_COMPACT_MIN_WIDTH: float = 100.0
+    # BLOCK_COMPACT_MIN_HEIGHT: float = 40.0
+    # BLOCK_COMPACT_HEADER_HEIGHT: float = 20.0
+    # BLOCK_COMPACT_PORT_ROW_HEIGHT: float = 14.0
+    # BLOCK_COMPACT_PORT_SECTION_PADDING: float = 6.0
+
+    BLOCK_BORDER: QColor = QColor("#202124")
     BLOCK_BORDER_SELECTED: QColor = QColor("#cc6f2c")
     BLOCK_TITLE: QColor = QColor("#173042")
-    WIRE_COLOR: QColor = QColor("white")
+    WIRE_COLOR: QColor = QColor("black")
     HANDLE_FILL: QColor = QColor("#36536b")
     BLOCK_FILL: QColor = QColor("#f5fdff")
     PORT_LABEL_COLOR: QColor = QColor("#173042")
@@ -43,6 +63,7 @@ class EditorGraphicsDefaultsDark:
     BLOCK_COMPACT_HEADER_HEIGHT: float = 20.0
     BLOCK_COMPACT_PORT_ROW_HEIGHT: float = 14.0
     BLOCK_COMPACT_PORT_SECTION_PADDING: float = 6.0
+    PORT_ITEM_COLOR: QColor = QColor("#819ba7")
 
 
 class EditorGraphicsDefaultsLight:
@@ -414,36 +435,26 @@ class ResizeHandle(QGraphicsRectItem):
             return super().itemChange(change, value)
 
 
-class PortItem(QGraphicsPolygonItem):
+class PortItem(QAbstractGraphicsShapeItem):
+    _CORNER_RADIUS: float = 2.0
+
     def __init__(self,
                  subsystem: "BlockItem | GenericBlockItem | PairedItem | RoundBaseArithmeticOpItem | RectBaseArithmeticOpItem",
                  is_input: bool,
                  index: int,
                  total: int,
-                 size: int = 12):
-        width = size
-        height = int(size * 0.83)
+                 size: int = 10):
+        super().__init__(subsystem)
+        self._size: int = size
+        self.is_input: bool = is_input
+        self._path: QPainterPath = QPainterPath()
+        self._build_path()
 
-        if is_input:
-            polygon = QPolygonF([
-                QPointF(0, 0),
-                QPointF(-width, height / 2),
-                QPointF(-width, -height / 2),
-            ])
-        else:
-            polygon = QPolygonF([
-                QPointF(0, -height / 2),
-                QPointF(0, height / 2),
-                QPointF(width, 0),
-            ])
-
-        super().__init__(polygon, subsystem)
-        self.setBrush(QBrush(QColor("#40FE9F")))
-        self.setPen(QPen(QColor("#202124"), 1.2))
+        self.setBrush(QBrush(QColor("#819ba7")))
+        self.setPen(QPen(Qt.PenStyle.NoPen))
         self.setZValue(3)
         self.setAcceptHoverEvents(True)
         self.subsystem: "BlockItem | GenericBlockItem | PairedItem | RoundBaseArithmeticOpItem | RectBaseArithmeticOpItem" = subsystem
-        self.is_input: bool = is_input
         self.connections: List["ConnectionItem"] | None = None
         self.index: int = index
         self.total: int = total
@@ -452,11 +463,84 @@ class PortItem(QGraphicsPolygonItem):
 
         self.setPos(0, 0)
 
+    # --- geometry helpers ---
+
+    @staticmethod
+    def _unit(p1: QPointF, p2: QPointF) -> QPointF:
+        dx = p2.x() - p1.x()
+        dy = p2.y() - p1.y()
+        length = math.sqrt(dx * dx + dy * dy)
+        if length < 1e-10:
+            return QPointF(0, 0)
+        return QPointF(dx / length, dy / length)
+
+    @staticmethod
+    def _build_rounded_triangle(v0: QPointF, v1: QPointF, v2: QPointF, radius: float) -> QPainterPath:
+        d01 = PortItem._unit(v0, v1)
+        s0 = v0 + radius * d01
+        e0 = v1 - radius * d01
+
+        d12 = PortItem._unit(v1, v2)
+        s1 = v1 + radius * d12
+        e1 = v2 - radius * d12
+
+        d20 = PortItem._unit(v2, v0)
+        s2 = v2 + radius * d20
+        e2 = v0 - radius * d20
+
+        path = QPainterPath()
+        path.moveTo(s0)
+        path.lineTo(e0)
+        path.quadTo(v1, s1)
+        path.lineTo(e1)
+        path.quadTo(v2, s2)
+        path.lineTo(e2)
+        path.quadTo(v0, s0)
+        path.closeSubpath()
+        return path
+
+    def _build_path(self) -> None:
+        side = self._size
+        h = math.sqrt(3) / 2 * side
+        r = self._CORNER_RADIUS
+
+        if self.is_input:
+            v0 = QPointF(0, 0)
+            v1 = QPointF(-h, -side / 2)
+            v2 = QPointF(-h, side / 2)
+        else:
+            v0 = QPointF(0, 0)
+            v1 = QPointF(h, -side / 2)
+            v2 = QPointF(h, side / 2)
+
+        self._path = self._build_rounded_triangle(v0, v1, v2, r)
+
+    # --- QGraphicsItem interface ---
+
+    def boundingRect(self) -> QtCore.QRectF:
+        return self._path.boundingRect().adjusted(-0.5, -0.5, 0.5, 0.5)
+
+    def shape(self) -> QPainterPath:
+        return self._path
+
+    def paint(self,
+              painter: QPainter,
+              option: QtWidgets.QStyleOptionGraphicsItem,
+              widget: Optional[QWidget] = None) -> None:
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.setBrush(self.brush())
+        painter.setPen(self.pen())
+        painter.drawPath(self._path)
+
+    # --- events ---
+
     def hoverEnterEvent(self, event: QtWidgets.QGraphicsSceneHoverEvent) -> None:
         QApplication.setOverrideCursor(Qt.CursorShape.PointingHandCursor)
 
     def hoverLeaveEvent(self, event: QtWidgets.QGraphicsSceneHoverEvent) -> None:
         QApplication.restoreOverrideCursor()
+
+    # --- connection helpers ---
 
     def is_connected(self) -> bool:
         if self.connections is not None:
@@ -470,6 +554,8 @@ class PortItem(QGraphicsPolygonItem):
         else:
             self.setVisible(True)
 
+    # --- validation ---
+
     def set_validation_highlighted(self, val: bool) -> None:
         """
         Toggle the validation overlay state for this port.
@@ -479,14 +565,10 @@ class PortItem(QGraphicsPolygonItem):
         """
         self._validation_highlighted = val
 
-        # The validation overlay uses a red fill and border so missing port
-        # connections remain visible even when the section stays collapsed.
         if self._validation_highlighted:
             self.setBrush(QBrush(QColor("#b42318")))
-            self.setPen(QPen(QColor("#b42318"), 1.2))
         else:
-            self.setBrush(QBrush(QColor("#40FE9F")))
-            self.setPen(QPen(QColor("#202124"), 1.2))
+            self.setBrush(QBrush(QColor("#819ba7")))
 
 
 class BranchingItem(QGraphicsEllipseItem):
@@ -1303,12 +1385,17 @@ class GenericBlockItem(QGraphicsRectItem):
         label_item: QGraphicsTextItem
         for i, label_item in enumerate(self.input_labels):
             port = self.inputs[i]
-            label_item.setPos(14.0, port.pos().y() - 8.0)
+            label_item.setPos(14.0, port.pos().y() - label_item.boundingRect().height() / 2)
 
         for i, label_item in enumerate(self.output_labels):
             port = self.outputs[i]
-            label_width: float = label_item.boundingRect().width()
-            label_item.setPos(self.rect().width() - label_width - 14.0, port.pos().y() - 8.0)
+            label_width = label_item.boundingRect().width()
+            label_height = label_item.boundingRect().height()
+
+            label_item.setPos(
+                self.rect().width() - label_width - 14.0,
+                port.pos().y() - label_height / 2
+            )
 
         self.update_handle_position()
         for port in self.inputs + self.outputs:
