@@ -326,7 +326,7 @@ def get_bus_data(bus_data: BusData,
         bus_data.angle_min[i] = bus.angle_min
         bus_data.angle_max[i] = bus.angle_max
 
-        if bus.is_slack:
+        if bus.get_is_slack_at(t=t_idx):
             # bus_data.bus_types[i] = BusMode.Slack_tpe.value  # VD
             bus_data.set_bus_mode(i, BusMode.Slack_tpe)
 

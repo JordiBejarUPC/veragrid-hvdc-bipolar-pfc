@@ -423,6 +423,22 @@ def build_fixable_properties(fixable_error: FIXABLE_ERROR_TYPES) -> List[str]:
     return properties
 
 
+def is_fixable_issue(element_name: str, property_name: str, fixable_keys: set[str]) -> bool:
+    """
+    Match one dashboard row against the auto-fix lookup set.
+
+    :param element_name: Element display name in the dashboard row
+    :param property_name: Property name in the dashboard row
+    :param fixable_keys: Lookup set built from fixable errors
+    :return: True when the row is fixable
+    """
+    compound_key: str = f"{element_name}|{property_name}"
+    if compound_key in fixable_keys:
+        return True
+    else:
+        return False
+
+
 class GridAnalysisGUI(QtWidgets.QMainWindow):
     """
     Modern dashboard window merging grid analysis and sigma analysis.
@@ -1364,7 +1380,7 @@ QWidget#overviewPage QProgressBar::chunk {{
                 lower: str = display_text(raw_entry[5])
                 value: str = display_text(raw_entry[6])
                 upper: str = display_text(raw_entry[7])
-                fixable: bool = self.is_fixable_issue(element_name=element_name,
+                fixable: bool = is_fixable_issue(element_name=element_name,
                                                       property_name=property_name,
                                                       fixable_keys=fixable_keys)
 
@@ -1481,21 +1497,6 @@ QWidget#overviewPage QProgressBar::chunk {{
 
         return keys
 
-    def is_fixable_issue(self, element_name: str, property_name: str, fixable_keys: set[str]) -> bool:
-        """
-        Match one dashboard row against the auto-fix lookup set.
-
-        :param element_name: Element display name in the dashboard row
-        :param property_name: Property name in the dashboard row
-        :param fixable_keys: Lookup set built from fixable errors
-        :return: True when the row is fixable
-        """
-        compound_key: str = f"{element_name}|{property_name}"
-        if compound_key in fixable_keys:
-            return True
-        else:
-            return False
-
     def run_sigma_analysis(self) -> Tuple[Optional[SigmaAnalysisResults], str]:
         """
         Execute sigma analysis with the current power-flow options.
@@ -1536,7 +1537,7 @@ QWidget#overviewPage QProgressBar::chunk {{
 
     def build_summary(self, sigma_status_text: str) -> DashboardSummary:
         """
-        Synthesize the dashboard score and the main summary metrics.
+        Synthesise the dashboard score and the main summary metrics.
 
         :param sigma_status_text: Human-readable sigma status
         :return: Dashboard summary record

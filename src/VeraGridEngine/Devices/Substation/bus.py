@@ -16,6 +16,7 @@ from VeraGridEngine.Devices.Substation.busbar import BusBar
 from VeraGridEngine.Devices.Substation.voltage_level import VoltageLevel
 from VeraGridEngine.Devices.Profiles import ProfileBool, ProfileFloat
 from VeraGridEngine.Devices.Parents.editable_device import get_at, GCProp
+from VeraGridEngine.basic_structures import BoolVec
 
 
 class Bus(DynamicBusDevice):
@@ -44,6 +45,7 @@ class Bus(DynamicBusDevice):
         '_voltage_level',
         '_bus_type',
         '_is_slack',
+        '_is_slack_prof',
         '_is_dc',
         '_x',
         '_y',
@@ -70,7 +72,7 @@ class Bus(DynamicBusDevice):
             units='',
             tpe=bool,
             definition='Force the bus to be of slack type.',
-            profile_name='',
+            profile_name='is_slack_prof',
             cat=[PrpCat.TP, PrpCat.PF, PrpCat.PF3],
         ),
         GCProp(
@@ -416,6 +418,7 @@ class Bus(DynamicBusDevice):
 
         # Flag to determine if the bus is a slack bus or not
         self._is_slack = bool(is_slack)
+        self._is_slack_prof = ProfileBool(default_value=self.is_slack)
 
         # determined if this bus is an AC or DC bus
         self._is_dc = bool(is_dc)
@@ -529,7 +532,7 @@ class Bus(DynamicBusDevice):
             raise Exception(f'{type(val)} not supported to be set into a '
                             f'voltage_level of type Union[VoltageLevel, None]')
 
-    def determine_bus_type(self) -> BusMode:
+    def determine_snapshot_bus_type(self) -> BusMode:
         """
         Infer the bus type from the devices attached to it
         @return: BusMode
@@ -543,6 +546,17 @@ class Bus(DynamicBusDevice):
             return BusMode.Slack_tpe
 
         return BusMode.PQ_tpe
+
+    @property
+    def bus_type(self) -> BusMode:
+        return self._bus_type
+
+    @bus_type.setter
+    def bus_type(self, val: BusMode):
+        if isinstance(val, BusMode):
+            self._bus_type = val
+        else:
+            raise Exception(f"Invalid bus_type value={val}")
 
     def get_country(self) -> Country | None:
         """
@@ -827,6 +841,48 @@ class Bus(DynamicBusDevice):
         :return: None
         """
         self._is_slack = bool(val)
+
+        if self.auto_update_enabled:
+            # This is to ease out the difficulty imposed by being able to update the slack
+            self.is_slack_prof.fill(self.is_slack)
+
+    @property
+    def is_slack_prof(self) -> ProfileBool:
+        """
+        Get ``is_slack``.
+
+        :return: bool
+        """
+        return self._is_slack_prof
+
+    @is_slack_prof.setter
+    def is_slack_prof(self, val: ProfileBool | BoolVec) -> None:
+        """
+        Set ``is_slack``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        if isinstance(val, ProfileBool):
+            self._is_slack_prof = val
+        elif isinstance(val, np.ndarray):
+            self._is_slack_prof.set(arr=val)
+        else:
+            raise Exception(str(type(val)) + 'not supported to be set into a active_prof')
+
+    def get_is_slack_at(self, t: int | None) -> bool:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.is_slack, self.is_slack_prof, t)
+
+    def set_is_slack_at(self, t: int | None, val: bool):
+
+        if t is None:
+            self.is_slack = val
+        else:
+            self.is_slack_prof[t] = val
 
     @property
     def is_dc(self) -> bool:
