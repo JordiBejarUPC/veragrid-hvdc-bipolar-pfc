@@ -19,7 +19,7 @@ from VeraGridEngine.Utils.Symbolic.block import Block, Const
 from VeraGridEngine.Templates.Emt.pi_line_emt_template import get_pi_line_emt_template
 from VeraGridEngine.Templates.Emt.vsc_gfl_emt import VscGflEmtBuild
 from VeraGridEngine.Utils.Symbolic.bus_emt_template import get_bus_emt_template
-from VeraGridEngine.Templates.Emt.dc_source_emt_template import get_dc_voltage_source_emt_template
+from VeraGridEngine.Templates.Emt.dc_load_emt_template import get_dc_load_emt_template
 from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template_with_ref
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_dae import EmtProblemDae
 from VeraGridEngine.Simulations.EMT.initialization_emt import _compute_missing_dx0
@@ -275,7 +275,7 @@ def seed_vsc_theta_dx0(problem, vsc_model: Block) -> None:
 
 def print_vsc_control_inputs(problem, vsc_model: Block) -> None:
     print("Initial VSC control/reference inputs:")
-    for name in ("P_ref", "Q_ref", "Vdc_ref", "Vm_ac_ref", "Kp_pol", "Ki_pol", "Kp_pll", "Ki_pll", "Pt_vsc", "Qt_vsc", "P", "Q"):
+    for name in ("P_ref", "Q_ref", "Vm_ac_ref", "Kp_pol", "Ki_pol", "Kp_pll", "Ki_pll", "Pt_vsc", "Qt_vsc", "P", "Q"):
         var = find_name_in_block(name, vsc_model)
         if var is None:
             print(f"  {name}: not found")
@@ -452,14 +452,14 @@ def build_gfl_vsc_first_step_guess(problem, vsc_model: Block, measurement_bus: g
     xi_pll_old = old_x_value("xi_PLL")
     for _ in range(8):
         vg_d_iter, _ = park_dq(theta)
-        pll_error_iter = vg_d_iter
+        pll_error_iter = -vg_d_iter
         f1 = theta - theta_old - h * omega_base * omega
         f2 = omega - (1.0 + pll_kp * pll_error_iter + pll_ki * (xi_pll_old + h * pll_error_iter))
         if max(abs(f1), abs(f2)) < 1.0e-14:
             break
         eps = 1.0e-7
         vg_d_eps, _ = park_dq(theta + eps)
-        pll_error_eps = vg_d_eps
+        pll_error_eps = -vg_d_eps
         df1_dtheta = 1.0
         df1_domega = -h * omega_base
         df2_dtheta = -(pll_kp + h * pll_ki) * (pll_error_eps - pll_error_iter) / eps
@@ -505,10 +505,7 @@ def build_gfl_vsc_first_step_guess(problem, vsc_model: Block, measurement_bus: g
         active_ctrl_ki = runtime_or_default("Ki_pol", 1.0)
         active_ctrl_kp = runtime_or_default("Kp_pol", 0.05)
     else:
-        active_ctrl_input_name = "u_Vdc_ctrl"
-        active_ctrl_input = runtime_or_x("Vdc_ref") - value(find_name_in_block("v_DC", bus_dc.emt_model))
-        active_ctrl_ki = runtime_or_default("Ki_vdc", 2.0)
-        active_ctrl_kp = runtime_or_default("Kp_vdc", 0.1)
+        raise ValueError("GFL VSC validation expects Pac or Pdc active-power control.")
 
     if var("u_Qac_ctrl") is not None:
         reactive_ctrl_input_name = "u_Qac_ctrl"
@@ -539,7 +536,7 @@ def build_gfl_vsc_first_step_guess(problem, vsc_model: Block, measurement_bus: g
     set_value("vg_q", vg_q)
     d_vg_d = (vg_d - x_old[problem.get_var_idx(var("vg_d"))]) / h
     d_vg_q = (vg_q - x_old[problem.get_var_idx(var("vg_q"))]) / h
-    pll_error = vg_d
+    pll_error = -vg_d
     set_value("u_PLL_pi", pll_error)
     set_value("xi_PLL", xi_pll_old + h * pll_error)
     set_derivative("vg_d", d_vg_d)
@@ -647,29 +644,36 @@ line23 = gce.Line(name="line 2-3", bus_from=bus2, bus_to=bus3,
 vsc_filter_l = line12.X
 
 # Select control modes for the VSC
-PF_CONTROL1_MODE = ConverterControlType.Vm_dc
+PF_CONTROL1_MODE = ConverterControlType.Pac
 CONTROL1_MODE = ConverterControlType.Pac
 CONTROL2_MODE = ConverterControlType.Qac
 FREEZE_VSC_VOLTAGE_SOURCE = False
 DEBUG_PI_LINE_INIT = False
-Q_CONTROL_KP_POL = 0.02
-Q_CONTROL_KI_POL = 0.3
-CURRENT_CONTROL_KP_ICL = 1.0
-CURRENT_CONTROL_KI_ICL = 20.0
-PLL_KP = 0.01
-PLL_KI = 0.05
+COARSE_TO_FINE_DIAGNOSTIC = False
+COARSE_TO_FINE_SWITCH_TIME = 0.1
+COARSE_TO_FINE_COARSE_STEP = 1.0e-3
+COARSE_TO_FINE_FINE_STEP = 1.0e-5
+COARSE_TO_FINE_FINE_DURATION = 1.0e-5
+Q_CONTROL_KP_POL = float(os.environ.get("VERAGRID_GFL_EMT_KP_POL", "0.02"))
+Q_CONTROL_KI_POL = float(os.environ.get("VERAGRID_GFL_EMT_KI_POL", "0.3"))
+CURRENT_CONTROL_KP_ICL = float(os.environ.get("VERAGRID_GFL_EMT_KP_ICL", "1.0"))
+CURRENT_CONTROL_KI_ICL = float(os.environ.get("VERAGRID_GFL_EMT_KI_ICL", "20.0"))
+PLL_KP = float(os.environ.get("VERAGRID_GFL_EMT_KP_PLL", "0.01"))
+PLL_KI = float(os.environ.get("VERAGRID_GFL_EMT_KI_PLL", "0.05"))
 
 # Define VSCs with the selected control modes
 vsc1 = gce.VSC(name='VSC1', bus_from=bus_dc, bus_to=bus1, rate=100, alpha1=0.0, alpha2=0.0, alpha3=0.0,
                control1=PF_CONTROL1_MODE, control2=CONTROL2_MODE,
-               control1_val=1.03, control2_val=1.001)
+               control1_val=3.0, control2_val=1.001)
 
-# Define generators
-gen1 = gce.Generator(name='Gen1', P=5.0, vset=1.00, Snom=grid.Sbase, freq=50.0, r1=0.001, x1=1.7)
+# Define a minimal Thevenin slack source for the EMT grid. The power-flow slack
+# supplies the converter losses, but the EMT model is the Thevenin template below.
+gen1 = gce.Generator(name='Gen_Thev', vset=1.00, Snom=grid.Sbase, freq=50.0, r1=0.001, x1=0.04)
 
-# DC source feeding the VSC DC bus.
-gen3 = gce.Generator(name='DC Source', P=3.0, vset=1.03)
-grid.add_generator(bus=bus_dc, api_obj=gen3)
+# DC load matches the working pseudo-EMT example: PF establishes a non-zero
+# converter transfer, then EMT starts from that seeded operating point.
+dc_load = gce.Load(name='DC_R_Load', P=3.0, Q=0.0)
+grid.add_load(bus_dc, dc_load)
 
 ###############
 # Add to the grid
@@ -680,26 +684,15 @@ grid.add_generator(bus=bus3, api_obj=gen1)
 
 #########
 options = gce.PowerFlowOptions(
-    solver_type=gce.SolverType.NR,
-    retry_with_other_methods=False,
-    verbose=0,
-    initialize_with_existing_solution=True,
+    solver_type=gce.SolverType.LM,
+    retry_with_other_methods=True,
+    verbose=False,
     tolerance=1e-6,
-    max_iter=25,
-    control_q=False,
-    control_taps_modules=True,
-    control_taps_phase=True,
-    control_remote_voltage=True,
-    orthogonalize_controls=True,
-    apply_temperature_correction=True,
-    branch_impedance_tolerance_mode=gce.BranchImpedanceMode.Specified,
-    distributed_slack=False,
-    ignore_single_node_islands=False,
-    trust_radius=1.0,
-    backtracking_parameter=0.05,
-    use_stored_guess=False,
-    initialize_angles=False,
-    generate_report=False,
+    max_iter=100,
+    control_q=True,
+    control_taps_modules=False,
+    control_taps_phase=False,
+    orthogonalize_controls=False,
 )
 
 res = gce.power_flow(grid, options=options)
@@ -725,17 +718,16 @@ vsc_mdl = VscGflEmtBuild(
     control2=CONTROL2_MODE,
     frozen_voltage_source=FREEZE_VSC_VOLTAGE_SOURCE,
 ).block
-dc_source = get_dc_voltage_source_emt_template(
+dc_load_mdl = get_dc_load_emt_template(
     vf=grid.var_factory,
-    source_voltage_value=1.03,
-    name="dc_voltage_source",
+    name="dc_r_load_emt",
 ).block
 
 # Attach EMT models and let the current helper create bus/device connections.
 set_emt_model(device=line12, model=line12_mdl, var_factory=grid.var_factory)
 set_emt_model(device=line23, model=line23_mdl, var_factory=grid.var_factory)
 set_emt_model(device=gen1, model=genrow_mdl1, var_factory=grid.var_factory)
-set_emt_model(device=gen3, model=dc_source, var_factory=grid.var_factory)
+set_emt_model(device=dc_load, model=dc_load_mdl, var_factory=grid.var_factory)
 set_emt_model(device=vsc1, model=vsc_mdl, var_factory=grid.var_factory)
 
 grid.var_factory.add_connections(
@@ -752,7 +744,6 @@ grid.var_factory.add_connections(
     [find_name_in_block('it_Pi12_A', line12_mdl), find_name_in_block('it_Pi12_B', line12_mdl), find_name_in_block('it_Pi12_C', line12_mdl)],
 )
 
-set_event_value_in_block('Vdc_ref', vsc_mdl, abs(res.voltage[grid.buses.index(vsc1.bus_from)]))
 vm_ac_ref_bus = bus1 if FREEZE_VSC_VOLTAGE_SOURCE else bus2
 set_event_value_in_block('Vm_ac_ref', vsc_mdl, np.sqrt(2.0) * abs(res.voltage[grid.buses.index(vm_ac_ref_bus)]))
 line12_idx = grid.lines.index(line12)
@@ -820,28 +811,27 @@ set_event_value_in_block('Kp_pll', vsc_mdl, PLL_KP)
 set_event_value_in_block('Ki_pll', vsc_mdl, PLL_KI)
 set_event_value_in_block('L', vsc_mdl, vsc_filter_l)
 
-V_src = find_name_in_block('V_src_dc_voltage_source', gen3.emt_model)
-
 # Find appropriate reference variable based on control mode
-if CONTROL1_MODE == ConverterControlType.Vm_dc:
-    ref_var = find_name_in_block('Vdc_ref', vsc_mdl)
-    print(f"Using Vdc_ref for control mode {CONTROL1_MODE}")
-elif CONTROL1_MODE in [ConverterControlType.Pac, ConverterControlType.Pdc]:
+if CONTROL1_MODE in [ConverterControlType.Pac, ConverterControlType.Pdc]:
     ref_var = find_name_in_block('P_ref', vsc_mdl)
     print(f"Using P_ref for control mode {CONTROL1_MODE}")
 else:
-    ref_var = find_name_in_block('P_ref', vsc_mdl)
-    print(f"Using P_ref for control mode {CONTROL1_MODE}")
+    raise ValueError("GFL VSC validation expects Pac or Pdc active-power control.")
 
-#event1 = EmtEvent(device=gen3, parameter=V_src, time=.2, value=0.3)
-#event2 = EmtEvent(device=vsc1, parameter=ref_var, time=.2, value=0.1)
-#event3 = EmtEvent(device=vsc1, parameter=ref_var, time=.25, value=1.03)
-#grid.add_emt_event(event1)
-#grid.add_emt_event(event2)
-#grid.add_emt_event(event3)
+P_REF_EVENT_ENABLED = os.environ.get("VERAGRID_GFL_EMT_PREF_EVENT", "1") != "0"
+P_REF_EVENT_TIME = float(os.environ.get("VERAGRID_GFL_EMT_PREF_EVENT_TIME", "0.2"))
+P_REF_EVENT_DELTA = float(os.environ.get("VERAGRID_GFL_EMT_PREF_EVENT_DELTA", "0.005"))
+if P_REF_EVENT_ENABLED:
+    p_ref_event_value = p_ref0 + P_REF_EVENT_DELTA
+    grid.add_emt_event(EmtEvent(device=vsc1, parameter=ref_var, time=P_REF_EVENT_TIME, value=p_ref_event_value))
+    print(
+        "Added P_ref EMT event: "
+        f"t={P_REF_EVENT_TIME:g}, initial={p_ref0:.9e}, value={p_ref_event_value:.9e}, "
+        f"delta={P_REF_EVENT_DELTA:.9e}"
+    )
 
-options = EmtOptions(time_step=0.0001,  # EMT requires smaller time step
-                     simulation_time=7.0,
+options = EmtOptions(time_step=1e-5,
+                     simulation_time=0.2,
                      tolerance=1e-6,
                      integration_method=DynamicIntegrationMethod.DaeBackEuler,
                      solver_type=EmtSolverTypes.StructuralAD,
@@ -878,6 +868,15 @@ def seed_gfl_vsc_initial_guess(problem, vsc, pf_results, converter_bus, grid_bus
         problem._runtime_parameter_eqs0[idx] = const_value
         if hasattr(problem, "_runtime_all_eqs_source"):
             problem._runtime_all_eqs_source[idx] = const_value
+
+    def set_diff_value(base_name, value):
+        base_var = find_name_in_block(base_name, vsc_working_model)
+        if base_var is not None and getattr(base_var, 'diff_var', None) is not None:
+            problem.diff_init_guess[base_var.diff_var.uid] = float(value)
+            return
+        diff_var = find_name_in_block(f'dt_1_{base_name}', vsc_working_model)
+        if diff_var is not None:
+            problem.diff_init_guess[diff_var.uid] = float(value)
 
     v_a_var = find_name_in_block('v_A', grid_bus.emt_model)
     v_b_var = find_name_in_block('v_B', grid_bus.emt_model)
@@ -994,9 +993,8 @@ def seed_gfl_vsc_initial_guess(problem, vsc, pf_results, converter_bus, grid_bus
         'u_Pac_ctrl': 0.0,
         'u_Pdc_ctrl': 0.0,
         'u_Qac_ctrl': 0.0,
-        'u_Vdc_ctrl': 0.0,
         'u_Vac_ctrl': 0.0,
-        'u_PLL_pi': vd0,
+        'u_PLL_pi': -vd0,
         'u_vd_hat': 0.0,
         'u_vq_hat': 0.0,
     }
@@ -1005,17 +1003,24 @@ def seed_gfl_vsc_initial_guess(problem, vsc, pf_results, converter_bus, grid_bus
         if var is not None:
             problem.init_guess[var.uid] = float(value)
 
-    dc_source_values = {
-        'i_dc_dc_voltage_source': i_dc0,
-        'V_src_dc_voltage_source': vdc0 + i_dc0 / 100.0,
-    }
-    for name, value in dc_source_values.items():
-        var = find_name_in_block(name, dc_source)
-        if var is not None:
-            if var.uid in problem._uid2idx_vars:
-                problem.init_guess[var.uid] = float(value)
-            elif var.uid in problem.uid2idx_event_params:
-                problem.event_params_values[problem.uid2idx_event_params[var.uid]] = float(value)
+    # Keep the explicit derivative seed consistent with the overwritten GFL
+    # state seed. This mirrors the pseudo-EMT template's diff_init_eqs instead
+    # of leaving controller/PLL differential variables at stale defaults.
+    set_diff_value('theta', 2.0 * np.pi * grid.fBase * omega0)
+    for name in (
+        'xi_PLL',
+        'u_Pac_ctrl',
+        'u_Pdc_ctrl',
+        'u_Qac_ctrl',
+        'u_Vac_ctrl',
+        'i_q_ref',
+        'i_d_ref',
+        'u_vd_hat',
+        'u_vq_hat',
+        'y_vd_hat',
+        'y_vq_hat',
+    ):
+        set_diff_value(name, 0.0)
 
     theta_var = find_name_in_block('theta', vsc_working_model)
     if theta_var is not None and theta_var.diff_var is not None:
@@ -1031,7 +1036,6 @@ def seed_gfl_vsc_initial_guess(problem, vsc, pf_results, converter_bus, grid_bus
         if 'theta' in state_var.name and state_var.diff_var is not None:
             problem.diff_init_guess[state_var.diff_var.uid] = 2.0 * np.pi * grid.fBase * omega0
 
-    set_runtime_value('Vdc_ref', float(abs(pf_results.voltage[bus_names.index(vsc.bus_from.name)])))
     set_runtime_value('Vm_ac_ref', vq0)
     set_runtime_value('P_ref', p0)
     set_runtime_value('Q_ref', q0)
@@ -1045,7 +1049,19 @@ def seed_gfl_vsc_initial_guess(problem, vsc, pf_results, converter_bus, grid_bus
     return None
 
 
+def seed_thevenin_current_from_terminal_line(problem, generator_model: Block, terminal_line_model: Block) -> None:
+    """Make the Thevenin current states satisfy the connected bus KCL at t=0."""
+    x0 = problem.get_x0()
+    for phase in ("A", "B", "C"):
+        gen_i = find_name_in_block(f"i_{phase}_emt_thevenin_eq_generator_template", generator_model)
+        line_it = find_name_in_block(f"it_Pi23_{phase}", terminal_line_model)
+        if gen_i is None or line_it is None:
+            continue
+        problem.init_guess[gen_i.uid] = float(x0[problem.get_var_idx(line_it)])
+
+
 seed_gfl_vsc_initial_guess(problem, vsc1, res, bus1, bus2)
+seed_thevenin_current_from_terminal_line(problem, gen1.emt_model, line23_mdl)
 problem.set_events_group(None)
 refresh_initial_derivatives_from_residuals(problem)
 seed_vsc_theta_dx0(problem, vsc_mdl)
@@ -1071,7 +1087,6 @@ for line_name, line_mdl in (("line12", line12_mdl), ("line23", line23_mdl)):
                 value = problem.event_params_values[idx] if idx is not None else None
                 parts.append(f"d_v{side}_{phase}={value: .6e}" if value is not None else f"d_v{side}_{phase}=None")
     print(f"  {line_name}: " + ", ".join(parts))
-
 
 def print_pi_line_initial_consistency(problem, line, line_mdl, pf_results, label):
     x0 = problem.get_x0()
@@ -1188,8 +1203,8 @@ solver = build_emt_solver(
     options=options,
     problem=problem,
     t0=0.0,
-    t_end=options.simulation_time,
-    h=options.time_step,
+    t_end=COARSE_TO_FINE_SWITCH_TIME if COARSE_TO_FINE_DIAGNOSTIC else options.simulation_time,
+    h=COARSE_TO_FINE_COARSE_STEP if COARSE_TO_FINE_DIAGNOSTIC else options.time_step,
     method=options.integration_method,
 )
 
@@ -1205,7 +1220,39 @@ print_vsc_residuals_at_t0(
     vsc_mdl,
 )
 
-t, y, dy, well_initialized, converged = solver.simulate()
+if COARSE_TO_FINE_DIAGNOSTIC:
+    print(
+        "Running coarse-to-fine diagnostic: "
+        f"h={COARSE_TO_FINE_COARSE_STEP:g} until t={COARSE_TO_FINE_SWITCH_TIME:g}, "
+        f"then h={COARSE_TO_FINE_FINE_STEP:g} for {COARSE_TO_FINE_FINE_DURATION:g} s"
+    )
+    t_coarse, y_coarse, dy_coarse, well_initialized, converged = solver.simulate()
+    fine_solver = build_emt_solver(
+        options=options,
+        problem=problem,
+        t0=float(t_coarse[-1]),
+        t_end=float(t_coarse[-1] + COARSE_TO_FINE_FINE_DURATION),
+        h=COARSE_TO_FINE_FINE_STEP,
+        method=options.integration_method,
+    )
+    t_fine, y_fine, dy_fine, well_initialized_fine, converged_fine = fine_solver.simulate(
+        x0=y_coarse[-1].copy(),
+        dx0=dy_coarse[-1].copy(),
+        params0=problem.event_params_values.copy(),
+    )
+    t = np.concatenate((t_coarse, t_fine[1:]))
+    y = np.vstack((y_coarse, y_fine[1:]))
+    dy = np.vstack((dy_coarse, dy_fine[1:]))
+    well_initialized = well_initialized and well_initialized_fine
+    converged = converged and converged_fine
+    print(
+        "Coarse-to-fine first fine step deltas: "
+        f"max|dx|={np.max(np.abs(y_fine[1] - y_fine[0])):.6e}, "
+        f"max|dP|={abs(y_fine[1, problem.get_var_idx(find_name_in_block('P', vsc_mdl))] - y_fine[0, problem.get_var_idx(find_name_in_block('P', vsc_mdl))]):.6e}, "
+        f"max|dQ|={abs(y_fine[1, problem.get_var_idx(find_name_in_block('Q', vsc_mdl))] - y_fine[0, problem.get_var_idx(find_name_in_block('Q', vsc_mdl))]):.6e}"
+    )
+else:
+    t, y, dy, well_initialized, converged = solver.simulate()
 
 print("First Newton diagnostics:")
 for record in newton_trace.records[:10]:
@@ -1263,13 +1310,11 @@ v_d_c_vsc = find_name_in_block('v_d_c', vsc_mdl)
 v_q_c_vsc = find_name_in_block('v_q_c', vsc_mdl)
 y_vd_hat_vsc = find_name_in_block('y_vd_hat', vsc_mdl)
 y_vq_hat_vsc = find_name_in_block('y_vq_hat', vsc_mdl)
-u_vdc_ctrl = find_name_in_block('u_Vdc_ctrl', vsc_mdl)
 u_pac_ctrl = find_name_in_block('u_Pac_ctrl', vsc_mdl)
 u_pdc_ctrl = find_name_in_block('u_Pdc_ctrl', vsc_mdl)
 u_vac_ctrl = find_name_in_block('u_Vac_ctrl', vsc_mdl)
 u_qac_ctrl = find_name_in_block('u_Qac_ctrl', vsc_mdl)
 reactive_outer_error = u_vac_ctrl if u_vac_ctrl is not None else u_qac_ctrl
-vdc_ref_var = find_name_in_block('Vdc_ref', vsc_mdl)
 p_ref_var = find_name_in_block('P_ref', vsc_mdl)
 vm_ac_ref_var = find_name_in_block('Vm_ac_ref', vsc_mdl)
 q_ref_var = find_name_in_block('Q_ref', vsc_mdl)
@@ -1404,7 +1449,7 @@ if np.any(pre_event):
             row_values.append(f"{value:12.5e}")
         print(" ".join(row_values))
 
-    for label, var in [("Vdc", Vdc), ("Vdc_ref", vdc_ref_var), ("Vm_ac_ref", vm_ac_ref_var), ("Q_ref", q_ref_var), ("u_Vdc_ctrl", u_vdc_ctrl), ("u_Vac_ctrl", u_vac_ctrl), ("u_Qac_ctrl", u_qac_ctrl), ("P", P), ("Q", Q), ("theta", theta_vsc), ("omega", omega_vsc), ("v_d_g", v_d_g), ("v_q_g", v_q_g), ("i_d", i_d_vsc), ("i_q", i_q_vsc), ("i_d_ref", i_d_ref_vsc), ("i_q_ref", i_q_ref_vsc), ("v_d_c", v_d_c_vsc), ("v_q_c", v_q_c_vsc)]:
+    for label, var in [("Vdc", Vdc), ("Vm_ac_ref", vm_ac_ref_var), ("Q_ref", q_ref_var), ("u_Vac_ctrl", u_vac_ctrl), ("u_Qac_ctrl", u_qac_ctrl), ("P", P), ("Q", Q), ("theta", theta_vsc), ("omega", omega_vsc), ("v_d_g", v_d_g), ("v_q_g", v_q_g), ("i_d", i_d_vsc), ("i_q", i_q_vsc), ("i_d_ref", i_d_ref_vsc), ("i_q_ref", i_q_ref_vsc), ("v_d_c", v_d_c_vsc), ("v_q_c", v_q_c_vsc)]:
         full_trace = trace_or_runtime_constant(var)
         if full_trace is None:
             print(f"Skipping {label}: not a solved variable")
@@ -1694,7 +1739,7 @@ save_and_show_or_close_plot("vsc_power_model_vs_abc.png")
 plt.figure(figsize=(10, 6))
 plt.plot(t, y[:, problem.get_var_idx(i_d_ref_vsc)], label="i_d_ref from Qac loop", color='tab:blue')
 plt.plot(t, y[:, problem.get_var_idx(i_d_vsc)], label="i_d actual", color='tab:blue', linestyle='--')
-plt.plot(t, y[:, problem.get_var_idx(i_q_ref_vsc)], label="i_q_ref from Vdc loop", color='tab:red')
+plt.plot(t, y[:, problem.get_var_idx(i_q_ref_vsc)], label="i_q_ref from active-power loop", color='tab:red')
 plt.plot(t, y[:, problem.get_var_idx(i_q_vsc)], label="i_q actual", color='tab:red', linestyle='--')
 plt.legend(loc='upper right', ncol=2)
 plt.xlabel("Time (s)")
@@ -1706,17 +1751,10 @@ plt.title(f'VSC Outer-Loop Current References: {CONTROL1_MODE.value} + {CONTROL2
 save_and_show_or_close_plot("vsc_outer_loop_current_refs.png")
 
 # Plot 7: VSC outer-loop errors and controlled quantities
-vdc_ref_trace = trace_or_runtime_constant(vdc_ref_var)
 p_ref_trace = trace_or_runtime_constant(p_ref_var)
 vm_ac_ref_trace = trace_or_runtime_constant(vm_ac_ref_var)
 fig, axes = plt.subplots(2, 1, figsize=(10, 8), sharex=True)
-if u_vdc_ctrl is not None:
-    axes[0].plot(t, y[:, problem.get_var_idx(Vdc)], label="Vdc measured", color='tab:red')
-    if vdc_ref_trace is not None:
-        axes[0].plot(t, vdc_ref_trace, label="Vdc_ref", color='tab:red', linestyle='--')
-    axes[0].plot(t, y[:, problem.get_var_idx(u_vdc_ctrl)], label="u_Vdc_ctrl = Vdc_ref - Vdc", color='tab:orange')
-    axes[0].set_ylabel("DC voltage / error")
-elif u_pac_ctrl is not None or u_pdc_ctrl is not None:
+if u_pac_ctrl is not None or u_pdc_ctrl is not None:
     active_ctrl = u_pac_ctrl if u_pac_ctrl is not None else u_pdc_ctrl
     active_name = "u_Pac_ctrl" if u_pac_ctrl is not None else "u_Pdc_ctrl"
     axes[0].plot(t, y[:, problem.get_var_idx(P)], label="P measured", color='tab:red')
@@ -1880,5 +1918,3 @@ print("  - Pac + Qac: Active and reactive power control")
 print("  - Pac + Vm_ac: Active power and AC voltage control")
 print("  - Pdc + Qac: DC power and reactive power control")
 print("  - Pdc + Vm_ac: DC power and AC voltage control")
-print("  - Vm_dc + Qac: DC voltage and reactive power control")
-print("  - Vm_dc + Vm_ac: DC voltage and AC voltage control")

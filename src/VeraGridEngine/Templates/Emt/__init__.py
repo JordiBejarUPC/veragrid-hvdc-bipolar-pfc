@@ -10,11 +10,16 @@ from VeraGridEngine.Templates.Emt.load_RLC_emt_template import (get_shunt_c_emt_
                                                                  get_shunt_r_emt_template,
                                                                  get_shunt_rlc_combo_emt_template, )
 from VeraGridEngine.Templates.Emt.generator_emt_type_template import (get_simple_generator_emt_template,
-                                                                      get_generator_sauer_pai_type_emt_template,
-                                                                      get_exciter_emt,
-                                                                      get_governor_emt,
-                                                                      get_stabilizer_emt,
-                                                                      get_complete_generator_template_emt)
+                                                                       get_generator_sauer_pai_type_emt_template,
+                                                                       get_exciter_emt,
+                                                                       get_governor_emt,
+                                                                       get_stabilizer_emt,
+                                                                       get_complete_generator_template_emt)
+from VeraGridEngine.Templates.Emt.stamp_synchronous_generator_emt_template import (get_stamp_synchronous_generator_emt_template,
+                                                                                   get_stamp_synchronous_machine_6th_order_emt_template,
+                                                                                   get_stamp_ac4a_exciter_emt,
+                                                                                   get_stamp_ieeeg1_governor_emt,
+                                                                                   get_stamp_pss2a_emt)
 from VeraGridEngine.Templates.Emt.load_exponential_emt_template import get_exponential_load_emt
 from VeraGridEngine.Templates.Emt.load_zip_emt_template import get_load_ZIP_emt_template
 from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template_with_ref
@@ -63,4 +68,3 @@ from VeraGridEngine.Templates.Emt.pv_emt_template import (get_pv_grid_following_
                                                           get_pv_avm_grid_following_emt_template,
                                                           get_pv_avm_boost_grid_following_emt_template)
 from VeraGridEngine.Templates.Emt.vsc_gfm_emt import get_gfm_emt_template
-

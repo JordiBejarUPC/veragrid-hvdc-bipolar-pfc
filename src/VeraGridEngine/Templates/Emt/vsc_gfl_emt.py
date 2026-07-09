@@ -137,7 +137,7 @@ def pll_transform(vfactory: VarFactory, v_abc, multilinear:bool = False, name:st
         state_vars=[theta, xi_pll],
         diff_vars=[d_theta, d_xi_pll],
         init_eqs={
-            pll_error: v_d,
+            pll_error: vfactory.add_const(0.0) - v_d,
             xi_pll: vfactory.add_const(0.0),
             omega: one,
         },
@@ -184,7 +184,7 @@ def build_gfl_converter_model_emt(vfactory: VarFactory, inputs,
     i_a_line = inputs[6]
     i_b_line = inputs[7]
     i_c_line = inputs[8]
-    v_dc   = inputs[9]  # DC voltage for DC voltage control mode
+    v_dc   = inputs[9]
     Pt_vsc = inputs[10]  # Power flow initial values
     Qt_vsc = inputs[11]
     Vpk_ref = inputs[12]
@@ -219,8 +219,6 @@ def build_gfl_converter_model_emt(vfactory: VarFactory, inputs,
     Ki_icl = vfactory.add_var('Ki_icl')     # integral gain for inner current loop
     Kp_pol = vfactory.add_var('Kp_pol')     # proportional gain for outer power loop
     Ki_pol = vfactory.add_var('Ki_pol')     # integral gain for outer power loop
-    Kp_vdc = vfactory.add_var('Kp_vdc')     # proportional gain for DC voltage control
-    Ki_vdc = vfactory.add_var('Ki_vdc')     # integral gain for DC voltage control
     Kp_vac = vfactory.add_var('Kp_vac')     # proportional gain for AC voltage control
     Ki_vac = vfactory.add_var('Ki_vac')     # integral gain for AC voltage control
     L = vfactory.add_var('L') 
@@ -238,7 +236,6 @@ def build_gfl_converter_model_emt(vfactory: VarFactory, inputs,
     Q_ref = vfactory.add_var('Q_ref') 
     
     # Voltage references for control modes
-    Vdc_ref = vfactory.add_var('Vdc_ref')
     Vm_ac_ref = vfactory.add_var('Vm_ac_ref')
     
     v_d_c = vfactory.add_var('v_d_c')
@@ -251,14 +248,11 @@ def build_gfl_converter_model_emt(vfactory: VarFactory, inputs,
         Ki_icl: vfactory.add_const(1.0),
         Kp_pol: vfactory.add_const(0.05),
         Ki_pol: vfactory.add_const(1.0),
-        Kp_vdc: vfactory.add_const(0.1),
-        Ki_vdc: vfactory.add_const(2.0),
         Kp_vac: vfactory.add_const(0.1),
         Ki_vac: vfactory.add_const(2.0),
         L: vfactory.add_const(0.1),
         P_ref: vfactory.add_const(0.0),
         Q_ref: vfactory.add_const(0.0),
-        Vdc_ref: vfactory.add_const(1.0),
         Vm_ac_ref: vfactory.add_const(1.0),
     }
     if frozen_voltage_source:
@@ -301,7 +295,7 @@ def build_gfl_converter_model_emt(vfactory: VarFactory, inputs,
 
     else:
         raise ValueError(f"Control1 type {control1} not supported for GFL converter. "
-                        f"Supported: Pac, Pdc, Vm_dc")
+                        f"Supported: Pac, Pdc")
 
     # ==============================
     # CONTROL 2: Reactive Power Axis (i_d_ref)
@@ -390,11 +384,7 @@ def build_gfl_converter_model_emt(vfactory: VarFactory, inputs,
     # Add control-specific initialization
     if control1 in [ConverterControlType.Pac, ConverterControlType.Pdc]:
         init_eqs[P_ref] = P
-    elif control1 == ConverterControlType.Vm_dc:
-        init_eqs[Vdc_ref] = v_dc
-        # For DC voltage control, initialize i_q_ref based on initial power flow
-        init_eqs[i_q_ref] = vfactory.add_const(2.0) * P / v_q_g
-    
+
     if control2 == ConverterControlType.Qac:
         init_eqs[Q_ref] = Q
     elif control2 == ConverterControlType.Vm_ac:
@@ -437,7 +427,7 @@ def VscGflEmtBuild(vfactory: VarFactory, name: str = "",
     
     Args:
         name: Model name
-        control1: First control mode (Pac, Pdc, or Vm_dc)
+        control1: First control mode (Pac or Pdc)
         control2: Second control mode (Qac or Vm_ac)
     
     Supported control combinations:
@@ -445,8 +435,6 @@ def VscGflEmtBuild(vfactory: VarFactory, name: str = "",
         - Pac + Vm_ac: Active power and AC voltage control
         - Pdc + Qac: DC power and reactive power control
         - Pdc + Vm_ac: DC power and AC voltage control
-        - Vm_dc + Qac: DC voltage and reactive power control
-        - Vm_dc + Vm_ac: DC voltage and AC voltage control
     """
     templ = EmtModelTemplate()
     templ.tpe = DeviceType.VscDevice

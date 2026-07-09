@@ -908,17 +908,16 @@ else:
     ref_var = find_name_in_block('P_ref', vsc_mdl)
     print(f"Using P_ref for control mode {CONTROL1_MODE}")
 
-event1 = None if V_src is None else EmtEvent(device=gen3, parameter=V_src, time=.2, value=0.3)
-event2 = EmtEvent(device=vsc1, parameter=ref_var, time=.2, value=0.1)
-event3 = EmtEvent(device=vsc1, parameter=ref_var, time=.25, value=1.03)
-#grid.add_emt_event(event1)
-# Keep inherited GFL disturbance events disabled by default. In STATCOM mode,
-# event2 would step Vdc_ref from 1.03 pu to 0.1 pu and excite a large DC-link transient.
-#grid.add_emt_event(event2)
+event1 = None if V_src is None else EmtEvent(device=gen3, parameter=V_src, time=1, value=0.3)
+event2 = EmtEvent(device=vsc1, parameter=ref_var, time=1, value=0.1)
+event3 = EmtEvent(device=vsc1, parameter=ref_var, time=1, value=1.03)
+if event1 is not None:
+    grid.add_emt_event(event1)
+grid.add_emt_event(event2)
 #grid.add_emt_event(event3)
 
 options = EmtOptions(time_step=0.0001,  # EMT requires smaller time step
-                     simulation_time=0.5,
+                     simulation_time=3.0,
                      tolerance=1e-6,
                      integration_method=DynamicIntegrationMethod.DaeBackEuler,
                      solver_type=EmtSolverTypes.StructuralAD,
