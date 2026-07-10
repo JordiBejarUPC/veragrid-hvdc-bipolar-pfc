@@ -44,10 +44,10 @@ class EditorGraphicsDefaultsDark:
     # BLOCK_COMPACT_PORT_ROW_HEIGHT: float = 14.0
     # BLOCK_COMPACT_PORT_SECTION_PADDING: float = 6.0
 
-    BLOCK_BORDER: QColor = QColor("#202124")
+    BLOCK_BORDER: QColor = QColor("#022633")
     BLOCK_BORDER_SELECTED: QColor = QColor("#00bbff")
     BLOCK_TITLE: QColor = QColor("#173042")
-    WIRE_COLOR: QColor = QColor("black")
+    WIRE_COLOR: QColor = QColor("#022633")
     HANDLE_FILL: QColor = QColor("#36536b")
     BLOCK_FILL: QColor = QColor("#f5fdff")
     PORT_LABEL_COLOR: QColor = QColor("#173042")
@@ -405,18 +405,37 @@ class Node:
         node.parent = self
 
 
-class ResizeHandle(QGraphicsRectItem):
+class ResizeHandle(QGraphicsItem):
     def __init__(self, block_item: "BlockItem | PairedItem", size: int = 10):
-        super().__init__(0, 0, size, size, block_item)
-        editor_constants = _get_editor_constants()
-        self.setBrush(QBrush(editor_constants.HANDLE_FILL))
-        self.setPen(QPen(QColor("#ffffff"), 1))
+        super().__init__(block_item)
+        self._size = size
         self.setCursor(Qt.CursorShape.SizeFDiagCursor)
         self.setZValue(2)
         self.block: BlockItem | PairedItem = block_item
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable)
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemSendsScenePositionChanges)
         self.setAcceptHoverEvents(True)
+
+    def boundingRect(self) -> QtCore.QRectF:
+        return QtCore.QRectF(0, 0, 13, 13)
+
+    def shape(self) -> QPainterPath:
+        path = QPainterPath()
+        path.addRect(QtCore.QRectF(0, 0, 13, 13))
+        return path
+
+    def paint(self, painter: QPainter,
+              option: QtWidgets.QStyleOptionGraphicsItem,
+              widget: Optional[QWidget] = None) -> None:
+        editor_constants = _get_editor_constants()
+        pen = QPen(editor_constants.HANDLE_FILL, 2)
+        pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+        pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+        painter.setPen(pen)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+        painter.drawLine(QPointF(2, 2), QPointF(11, 11))
+        painter.drawLine(QPointF(11, 11), QPointF(8, 11))
+        painter.drawLine(QPointF(11, 11), QPointF(11, 8))
 
     def itemChange(self, change: QGraphicsItem.GraphicsItemChange, value: Any) -> Any:
         if change == QGraphicsItem.GraphicsItemChange.ItemPositionChange:
@@ -509,9 +528,9 @@ class PortItem(QAbstractGraphicsShapeItem):
             v1 = QPointF(-h, -side / 2)
             v2 = QPointF(-h, side / 2)
         else:
-            v0 = QPointF(0, 0)
-            v1 = QPointF(h, -side / 2)
-            v2 = QPointF(h, side / 2)
+            v0 = QPointF(h, 0)
+            v1 = QPointF(0, -side / 2)
+            v2 = QPointF(0, side / 2)
 
         self._path = self._build_rounded_triangle(v0, v1, v2, r)
 
@@ -1219,7 +1238,7 @@ class GenericBlockItem(QGraphicsRectItem):
     def update_handle_position(self):
         rect = self.rect()
         self.resizing_from_handle = False
-        self.resize_handle.setPos(rect.width(), rect.height())
+        self.resize_handle.setPos(rect.width() - 9, rect.height() - 9)
         self.resizing_from_handle = True
 
     def update_name_position(self):
@@ -1400,7 +1419,21 @@ class GenericBlockItem(QGraphicsRectItem):
         QApplication.setOverrideCursor(Qt.CursorShape.OpenHandCursor)
 
     def hoverLeaveEvent(self, event):
+        if self.resize_handle is not None and self.resize_handle.isVisible():
+            self.resize_handle.hide()
         QApplication.restoreOverrideCursor()
+
+    def hoverMoveEvent(self, event):
+        pos = event.pos()
+        rect = self.rect()
+        margin = 10.0
+        near_corner = (pos.x() >= rect.width() - margin and
+                       pos.y() >= rect.height() - margin)
+        if self.resize_handle is not None:
+            if near_corner and not self.resize_handle.isVisible():
+                self.resize_handle.show()
+            elif not near_corner and self.resize_handle.isVisible():
+                self.resize_handle.hide()
 
     def itemChange(self, change, value):
         if change == QGraphicsItem.GraphicsItemChange.ItemPositionChange:
