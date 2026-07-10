@@ -21,6 +21,17 @@ import scipy.optimize
 import scipy.sparse
 import scipy.sparse.linalg
 
+try:
+    from VeraGridEngine.basic_structures import BoolVec, CxMat, CxVec, IntMat, IntVec, Mat, StrVec, Vec
+except ModuleNotFoundError:
+    repo_root_for_types: Path = Path(__file__).resolve().parents[2]
+    src_path_for_types: str = str(repo_root_for_types / "src")
+    if src_path_for_types not in sys.path:
+        sys.path.insert(0, src_path_for_types)
+    else:
+        pass
+    from VeraGridEngine.basic_structures import BoolVec, CxMat, CxVec, IntMat, IntVec, Mat, StrVec, Vec
+
 if TYPE_CHECKING:
     from VeraGridEngine.Devices.Injections.generator import Generator
     from VeraGridEngine.Devices.Injections.load import Load
@@ -2058,6 +2069,84 @@ def calculate_monomial_weights_from_table(table: MultiIndexTable, values: np.nda
     )
 
 
+@nb.njit(cache=True, parallel=True)
+def calculate_monomial_weights_from_table_batch_numba(
+    terms_count: int,
+    active_dim_offsets: np.ndarray,
+    active_dims_flat: np.ndarray,
+    minus_e_flat: np.ndarray,
+    values_matrix: np.ndarray,
+) -> np.ndarray:
+    """
+    Evaluate all monomials for a batch of query points.
+
+    Parameters
+    ----------
+    terms_count:
+        Number of coefficient rows.
+    active_dim_offsets:
+        Prefix offsets into the non-zero dimension data.
+    active_dims_flat:
+        Flat non-zero dimension indices.
+    minus_e_flat:
+        Flat predecessor positions paired with ``active_dims_flat``.
+    values_matrix:
+        Complex evaluation matrix with shape ``(n_scenarios, n_dims)``.
+
+    Returns
+    -------
+    numpy.ndarray
+        Complex monomial weights with shape ``(n_scenarios, n_terms)``.
+    """
+    scenario_count: int = int(values_matrix.shape[0])
+    weights: np.ndarray = np.ones((scenario_count, terms_count), dtype=np.complex128)
+    scenario_index: int
+
+    # The compressed predecessor walk is independent for each scenario, so the
+    # outer batch loop is the right place to parallelize.
+    for scenario_index in nb.prange(scenario_count):
+        position: int
+        for position in range(1, terms_count):
+            start: int = int(active_dim_offsets[position])
+            previous_position: int = int(minus_e_flat[start])
+            active_dimension: int = int(active_dims_flat[start])
+            weights[scenario_index, position] = (
+                weights[scenario_index, previous_position] * values_matrix[scenario_index, active_dimension]
+            )
+
+    return weights
+
+
+def calculate_monomial_weights_from_table_batch(table: MultiIndexTable, values_matrix: np.ndarray) -> np.ndarray:
+    """
+    Evaluate all monomials for a batch of query points.
+
+    Parameters
+    ----------
+    table:
+        Compressed multi-index table.
+    values_matrix:
+        Complex evaluation matrix with shape ``(n_scenarios, n_dims)``.
+
+    Returns
+    -------
+    numpy.ndarray
+        Complex monomial weights with shape ``(n_scenarios, n_terms)``.
+    """
+    value_matrix: np.ndarray = np.asarray(values_matrix, dtype=np.complex128)
+
+    if value_matrix.ndim == 2 and value_matrix.shape[1] == table.get_dims():
+        return calculate_monomial_weights_from_table_batch_numba(
+            terms_count=table.get_terms_count(),
+            active_dim_offsets=table._active_dim_offsets,
+            active_dims_flat=table._active_dims_flat,
+            minus_e_flat=table._minus_e_flat,
+            values_matrix=value_matrix,
+        )
+    else:
+        raise ValueError("values_matrix must have shape (n_scenarios, n_dims)")
+
+
 def count_coefficients(dims: int, max_order: int) -> int:
     """
     Count multivariate coefficients up to total order ``max_order``.
@@ -3576,35 +3665,126 @@ class MDHEMQueryResult:
 
     def __init__(
         self,
-        pq_active_power: np.ndarray,
-        pq_reactive_power: np.ndarray,
-        pv_active_power: np.ndarray,
-        voltage: np.ndarray,
-        scheduled_power: np.ndarray,
-        calculated_power: np.ndarray,
-        pv_reactive_power: np.ndarray,
+        pq_active_power: Vec,
+        pq_reactive_power: Vec,
+        pv_active_power: Vec,
+        voltage: CxVec,
+        scheduled_power: CxVec,
+        calculated_power: CxVec,
+        pv_reactive_power: Vec,
         mismatch_norm: float,
         pv_voltage_error: float,
         converged_like: bool,
-        branch_from_power: np.ndarray,
-        branch_to_power: np.ndarray,
-        branch_loading: np.ndarray,
-        branch_losses: np.ndarray,
+        branch_from_power: CxVec,
+        branch_to_power: CxVec,
+        branch_loading: CxVec,
+        branch_losses: CxVec,
     ) -> None:
-        self.pq_active_power: np.ndarray = pq_active_power
-        self.pq_reactive_power: np.ndarray = pq_reactive_power
-        self.pv_active_power: np.ndarray = pv_active_power
-        self.voltage: np.ndarray = voltage
-        self.scheduled_power: np.ndarray = scheduled_power
-        self.calculated_power: np.ndarray = calculated_power
-        self.pv_reactive_power: np.ndarray = pv_reactive_power
+        self.pq_active_power: Vec = pq_active_power
+        self.pq_reactive_power: Vec = pq_reactive_power
+        self.pv_active_power: Vec = pv_active_power
+        self.voltage: CxVec = voltage
+        self.scheduled_power: CxVec = scheduled_power
+        self.calculated_power: CxVec = calculated_power
+        self.pv_reactive_power: Vec = pv_reactive_power
         self.mismatch_norm: float = mismatch_norm
         self.pv_voltage_error: float = pv_voltage_error
         self.converged_like: bool = converged_like
-        self.branch_from_power: np.ndarray = branch_from_power
-        self.branch_to_power: np.ndarray = branch_to_power
-        self.branch_loading: np.ndarray = branch_loading
-        self.branch_losses: np.ndarray = branch_losses
+        self.branch_from_power: CxVec = branch_from_power
+        self.branch_to_power: CxVec = branch_to_power
+        self.branch_loading: CxVec = branch_loading
+        self.branch_losses: CxVec = branch_losses
+
+
+class MDHEMBatchQueryResult:
+    """
+    Store the online batch query result returned by the artifact.
+
+    Parameters
+    ----------
+    pq_active_power:
+        Queried active powers for PQ buses with shape
+        ``(n_scenarios, n_pq)``.
+    pq_reactive_power:
+        Queried reactive powers for PQ buses with shape
+        ``(n_scenarios, n_pq)``.
+    pv_active_power:
+        Queried active powers for PV buses with shape
+        ``(n_scenarios, n_pv)``.
+    voltage:
+        Complex bus voltage matrix with shape ``(n_scenarios, n_bus)``.
+    scheduled_power:
+        Scheduled complex bus powers represented by the query batch.
+    calculated_power:
+        Power computed from ``Ybus`` and ``voltage`` for the full batch.
+    pv_reactive_power:
+        Reactive powers solved by the PV series with shape
+        ``(n_scenarios, n_pv)``.
+    mismatch_norm:
+        Infinity norm of the power-flow mismatch for each scenario.
+    pv_voltage_error:
+        Maximum absolute PV voltage-magnitude error for each scenario.
+    converged_like:
+        True for scenarios whose mismatch and PV voltage error are below the
+        requested tolerance.
+    branch_from_power:
+        Branch-from complex powers in MVA for the full batch.
+    branch_to_power:
+        Branch-to complex powers in MVA for the full batch.
+    branch_loading:
+        Branch loading ratio for the full batch.
+    branch_losses:
+        Branch losses in MVA for the full batch.
+    """
+
+    __slots__ = (
+        "pq_active_power",
+        "pq_reactive_power",
+        "pv_active_power",
+        "voltage",
+        "scheduled_power",
+        "calculated_power",
+        "pv_reactive_power",
+        "mismatch_norm",
+        "pv_voltage_error",
+        "converged_like",
+        "branch_from_power",
+        "branch_to_power",
+        "branch_loading",
+        "branch_losses",
+    )
+
+    def __init__(
+        self,
+        pq_active_power: Mat,
+        pq_reactive_power: Mat,
+        pv_active_power: Mat,
+        voltage: CxMat,
+        scheduled_power: CxMat,
+        calculated_power: CxMat,
+        pv_reactive_power: Mat,
+        mismatch_norm: Vec,
+        pv_voltage_error: Vec,
+        converged_like: BoolVec,
+        branch_from_power: CxMat,
+        branch_to_power: CxMat,
+        branch_loading: CxMat,
+        branch_losses: CxMat,
+    ) -> None:
+        self.pq_active_power: Mat = pq_active_power
+        self.pq_reactive_power: Mat = pq_reactive_power
+        self.pv_active_power: Mat = pv_active_power
+        self.voltage: CxMat = voltage
+        self.scheduled_power: CxMat = scheduled_power
+        self.calculated_power: CxMat = calculated_power
+        self.pv_reactive_power: Mat = pv_reactive_power
+        self.mismatch_norm: Vec = mismatch_norm
+        self.pv_voltage_error: Vec = pv_voltage_error
+        self.converged_like: BoolVec = converged_like
+        self.branch_from_power: CxMat = branch_from_power
+        self.branch_to_power: CxMat = branch_to_power
+        self.branch_loading: CxMat = branch_loading
+        self.branch_losses: CxMat = branch_losses
 
 
 class MDHEMPVQueryArtifact:
@@ -3701,58 +3881,58 @@ class MDHEMPVQueryArtifact:
         ybus: scipy.sparse.csc_matrix,
         yf: scipy.sparse.csc_matrix,
         yt: scipy.sparse.csc_matrix,
-        slack: np.ndarray,
-        pq: np.ndarray,
-        pv: np.ndarray,
-        no_slack: np.ndarray,
-        slack_voltage: np.ndarray,
-        voltage_setpoint: np.ndarray,
-        scheduled_power_germ: np.ndarray,
-        scheduled_basis: np.ndarray,
+        slack: IntVec,
+        pq: IntVec,
+        pv: IntVec,
+        no_slack: IntVec,
+        slack_voltage: CxVec,
+        voltage_setpoint: Vec,
+        scheduled_power_germ: CxVec,
+        scheduled_basis: CxMat,
         table: MultiIndexTable,
-        u_coefficients: np.ndarray,
-        x_coefficients: np.ndarray,
-        q_coefficients: np.ndarray,
-        dimension_kind_codes: np.ndarray,
-        dimension_bus: np.ndarray,
-        dimension_local: np.ndarray,
-        pq_active_dimension: np.ndarray,
-        pq_reactive_dimension: np.ndarray,
-        pv_active_dimension: np.ndarray,
-        bus_names: np.ndarray,
-        branch_from_indices: np.ndarray,
-        branch_to_indices: np.ndarray,
-        branch_rates: np.ndarray,
+        u_coefficients: CxMat,
+        x_coefficients: CxMat,
+        q_coefficients: Mat,
+        dimension_kind_codes: IntVec,
+        dimension_bus: IntVec,
+        dimension_local: IntVec,
+        pq_active_dimension: IntVec,
+        pq_reactive_dimension: IntVec,
+        pv_active_dimension: IntVec,
+        bus_names: StrVec,
+        branch_from_indices: IntVec,
+        branch_to_indices: IntVec,
+        branch_rates: Vec,
         sbase: float,
     ) -> None:
         self._ybus: scipy.sparse.csc_matrix = ybus
         self._yf: scipy.sparse.csc_matrix = yf
         self._yt: scipy.sparse.csc_matrix = yt
-        self._slack: np.ndarray = slack
-        self._pq: np.ndarray = pq
-        self._pv: np.ndarray = pv
-        self._no_slack: np.ndarray = no_slack
-        self._slack_voltage: np.ndarray = slack_voltage
-        self._voltage_setpoint: np.ndarray = voltage_setpoint
-        self._scheduled_power_germ: np.ndarray = scheduled_power_germ
-        self._scheduled_basis: np.ndarray = scheduled_basis
+        self._slack: IntVec = slack
+        self._pq: IntVec = pq
+        self._pv: IntVec = pv
+        self._no_slack: IntVec = no_slack
+        self._slack_voltage: CxVec = slack_voltage
+        self._voltage_setpoint: Vec = voltage_setpoint
+        self._scheduled_power_germ: CxVec = scheduled_power_germ
+        self._scheduled_basis: CxMat = scheduled_basis
         self._table: MultiIndexTable = table
-        self._u_coefficients: np.ndarray = u_coefficients
-        self._x_coefficients: np.ndarray = x_coefficients
-        self._q_coefficients: np.ndarray = q_coefficients
-        self._dimension_kind_codes: np.ndarray = dimension_kind_codes
-        self._dimension_bus: np.ndarray = dimension_bus
-        self._dimension_local: np.ndarray = dimension_local
-        self._pq_active_dimension: np.ndarray = pq_active_dimension
-        self._pq_reactive_dimension: np.ndarray = pq_reactive_dimension
-        self._pv_active_dimension: np.ndarray = pv_active_dimension
-        self._bus_names: np.ndarray = bus_names
-        self._branch_from_indices: np.ndarray = branch_from_indices
-        self._branch_to_indices: np.ndarray = branch_to_indices
-        self._branch_rates: np.ndarray = branch_rates
+        self._u_coefficients: CxMat = u_coefficients
+        self._x_coefficients: CxMat = x_coefficients
+        self._q_coefficients: Mat = q_coefficients
+        self._dimension_kind_codes: IntVec = dimension_kind_codes
+        self._dimension_bus: IntVec = dimension_bus
+        self._dimension_local: IntVec = dimension_local
+        self._pq_active_dimension: IntVec = pq_active_dimension
+        self._pq_reactive_dimension: IntVec = pq_reactive_dimension
+        self._pv_active_dimension: IntVec = pv_active_dimension
+        self._bus_names: StrVec = bus_names
+        self._branch_from_indices: IntVec = branch_from_indices
+        self._branch_to_indices: IntVec = branch_to_indices
+        self._branch_rates: Vec = branch_rates
         self._sbase: float = sbase
 
-    def get_pq_bus_indices(self) -> np.ndarray:
+    def get_pq_bus_indices(self) -> IntVec:
         """
         Get the PQ bus indices.
 
@@ -3763,7 +3943,7 @@ class MDHEMPVQueryArtifact:
         """
         return self._pq
 
-    def get_pv_bus_indices(self) -> np.ndarray:
+    def get_pv_bus_indices(self) -> IntVec:
         """
         Get the PV bus indices.
 
@@ -3774,7 +3954,7 @@ class MDHEMPVQueryArtifact:
         """
         return self._pv
 
-    def get_bus_names(self) -> np.ndarray:
+    def get_bus_names(self) -> StrVec:
         """
         Get the bus names.
 
@@ -3807,7 +3987,7 @@ class MDHEMPVQueryArtifact:
         """
         return int(self._scheduled_basis.shape[0])
 
-    def get_voltage_coefficients(self) -> np.ndarray:
+    def get_voltage_coefficients(self) -> CxMat:
         """
         Get the stored voltage coefficient tensor.
 
@@ -3818,7 +3998,7 @@ class MDHEMPVQueryArtifact:
         """
         return np.asarray(self._u_coefficients, dtype=np.complex128)
 
-    def get_reciprocal_voltage_coefficients(self) -> np.ndarray:
+    def get_reciprocal_voltage_coefficients(self) -> CxMat:
         """
         Get the stored reciprocal-voltage coefficient tensor.
 
@@ -3829,7 +4009,7 @@ class MDHEMPVQueryArtifact:
         """
         return np.asarray(self._x_coefficients, dtype=np.complex128)
 
-    def get_pv_reactive_power_coefficients(self) -> np.ndarray:
+    def get_pv_reactive_power_coefficients(self) -> Mat:
         """
         Get the stored PV reactive-power coefficient tensor.
 
@@ -3840,7 +4020,7 @@ class MDHEMPVQueryArtifact:
         """
         return np.asarray(self._q_coefficients, dtype=np.float64)
 
-    def get_scheduled_basis(self) -> np.ndarray:
+    def get_scheduled_basis(self) -> CxMat:
         """
         Get the internal scheduled-power basis matrix.
 
@@ -3851,7 +4031,7 @@ class MDHEMPVQueryArtifact:
         """
         return np.asarray(self._scheduled_basis, dtype=np.complex128)
 
-    def get_multi_index_alphas(self) -> np.ndarray:
+    def get_multi_index_alphas(self) -> IntMat:
         """
         Get the multivariate exponent matrix.
 
@@ -3886,6 +4066,32 @@ class MDHEMPVQueryArtifact:
             raise ValueError("s_bus must match the full bus count")
 
         return pq_active_power, pq_reactive_power, pv_active_power
+
+    def split_sbus_input_matrix(self, s_bus_matrix: CxMat) -> tuple[Mat, Mat, Mat]:
+        """
+        Split a batch of full bus-power vectors into artifact query matrices.
+
+        Parameters
+        ----------
+        s_bus_matrix:
+            Full complex bus-power matrix with shape ``(n_scenarios, n_bus)``.
+
+        Returns
+        -------
+        tuple[Mat, Mat, Mat]
+            ``(pq_active_power_matrix, pq_reactive_power_matrix,
+            pv_active_power_matrix)``.
+        """
+        s_bus_array: CxMat = np.asarray(s_bus_matrix, dtype=np.complex128)
+
+        if s_bus_array.ndim == 2 and s_bus_array.shape[1] == self._ybus.shape[0]:
+            pq_active_power_matrix: Mat = np.asarray(s_bus_array[:, self._pq].real, dtype=np.float64)
+            pq_reactive_power_matrix: Mat = np.asarray(s_bus_array[:, self._pq].imag, dtype=np.float64)
+            pv_active_power_matrix: Mat = np.asarray(s_bus_array[:, self._pv].real, dtype=np.float64)
+        else:
+            raise ValueError("s_bus_matrix must have shape (n_scenarios, n_bus)")
+
+        return pq_active_power_matrix, pq_reactive_power_matrix, pv_active_power_matrix
 
     def build_deviation_vector(
         self,
@@ -3967,6 +4173,85 @@ class MDHEMPVQueryArtifact:
 
         return deviation
 
+    def build_deviation_matrix(
+        self,
+        pq_active_power_matrix: Mat,
+        pq_reactive_power_matrix: Mat,
+        pv_active_power_matrix: Mat,
+    ) -> CxMat:
+        """
+        Convert a batch of absolute query powers to internal deviation points.
+
+        Parameters
+        ----------
+        pq_active_power_matrix:
+            PQ active-power matrix with shape ``(n_scenarios, n_pq)``.
+        pq_reactive_power_matrix:
+            PQ reactive-power matrix with shape ``(n_scenarios, n_pq)``.
+        pv_active_power_matrix:
+            PV active-power matrix with shape ``(n_scenarios, n_pv)``.
+
+        Returns
+        -------
+        CxMat
+            Internal deviation matrix with shape ``(n_scenarios, n_dims)``.
+        """
+        pq_active_array: Mat = np.asarray(pq_active_power_matrix, dtype=np.float64)
+        pq_reactive_array: Mat = np.asarray(pq_reactive_power_matrix, dtype=np.float64)
+        pv_active_array: Mat = np.asarray(pv_active_power_matrix, dtype=np.float64)
+        scenario_count: int = int(pq_active_array.shape[0])
+
+        if pq_active_array.ndim == 2 and pq_active_array.shape[1] == self._pq.size:
+            pass
+        else:
+            raise ValueError("pq_active_power_matrix must have shape (n_scenarios, n_pq)")
+
+        if pq_reactive_array.shape == (scenario_count, self._pq.size):
+            pass
+        else:
+            raise ValueError("pq_reactive_power_matrix must have shape (n_scenarios, n_pq)")
+
+        if pv_active_array.shape == (scenario_count, self._pv.size):
+            pass
+        else:
+            raise ValueError("pv_active_power_matrix must have shape (n_scenarios, n_pv)")
+
+        deviation_matrix: CxMat = np.zeros((scenario_count, self.get_dimensions_count()), dtype=np.complex128)
+
+        if self._pq.size > 0:
+            pq_active_basis: Vec = np.asarray(
+                self._scheduled_basis[self._pq_active_dimension, self._dimension_local[self._pq_active_dimension]].real,
+                dtype=np.float64,
+            )
+            pq_active_germ: Vec = np.asarray(self._scheduled_power_germ[self._pq].real, dtype=np.float64)
+            pq_reactive_basis: Vec = np.asarray(
+                self._scheduled_basis[self._pq_reactive_dimension, self._dimension_local[self._pq_reactive_dimension]].imag,
+                dtype=np.float64,
+            )
+            pq_reactive_germ: Vec = np.asarray(self._scheduled_power_germ[self._pq].imag, dtype=np.float64)
+            deviation_matrix[:, self._pq_active_dimension] = (
+                (pq_active_array - pq_active_germ[np.newaxis, :]) / pq_active_basis[np.newaxis, :]
+            )
+            deviation_matrix[:, self._pq_reactive_dimension] = (
+                (pq_reactive_array - pq_reactive_germ[np.newaxis, :]) / pq_reactive_basis[np.newaxis, :]
+            )
+        else:
+            pass
+
+        if self._pv.size > 0:
+            pv_active_basis: Vec = np.asarray(
+                self._scheduled_basis[self._pv_active_dimension, self._dimension_local[self._pv_active_dimension]].real,
+                dtype=np.float64,
+            )
+            pv_active_germ: Vec = np.asarray(self._scheduled_power_germ[self._pv].real, dtype=np.float64)
+            deviation_matrix[:, self._pv_active_dimension] = (
+                (pv_active_array - pv_active_germ[np.newaxis, :]) / pv_active_basis[np.newaxis, :]
+            )
+        else:
+            pass
+
+        return deviation_matrix
+
     def evaluate_deviation(self, deviation: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """
         Evaluate the artifact at one internal deviation point.
@@ -4009,6 +4294,50 @@ class MDHEMPVQueryArtifact:
 
         return voltage, scheduled_power, pv_reactive_power
 
+    def evaluate_deviation_matrix(self, deviation_matrix: CxMat) -> tuple[CxMat, CxMat, Mat]:
+        """
+        Evaluate the artifact at a batch of internal deviation points.
+
+        Parameters
+        ----------
+        deviation_matrix:
+            Internal embedding-variable matrix with shape
+            ``(n_scenarios, n_dims)``.
+
+        Returns
+        -------
+        tuple[CxMat, CxMat, Mat]
+            Batch voltage matrix, scheduled-power matrix and PV
+            reactive-power matrix.
+        """
+        deviation_array: CxMat = np.asarray(deviation_matrix, dtype=np.complex128)
+        expected_dimension_count: int = self.get_dimensions_count()
+
+        if deviation_array.ndim == 2 and deviation_array.shape[1] == expected_dimension_count:
+            weights: CxMat = calculate_monomial_weights_from_table_batch(
+                table=self._table,
+                values_matrix=deviation_array,
+            )
+            scenario_count: int = int(deviation_array.shape[0])
+            voltage_matrix: CxMat = np.zeros((scenario_count, self._ybus.shape[0]), dtype=np.complex128)
+            slack_values: CxVec = extract_slack_voltage_values(
+                slack_voltage=self._slack_voltage,
+                slack=self._slack,
+                nbus=self._ybus.shape[0],
+            )
+            voltage_matrix[:, self._slack] = slack_values[np.newaxis, :]
+            voltage_matrix[:, self._no_slack] = weights @ self._u_coefficients
+            pv_reactive_power_complex: CxMat = weights @ self._q_coefficients
+            pv_reactive_power_matrix: Mat = np.asarray(pv_reactive_power_complex.real, dtype=np.float64)
+            scheduled_power_matrix: CxMat = self.calculate_scheduled_power_matrix(
+                deviation_matrix=deviation_array,
+                pv_reactive_power_matrix=pv_reactive_power_matrix,
+            )
+        else:
+            raise ValueError("deviation_matrix must have shape (n_scenarios, n_dims)")
+
+        return voltage_matrix, scheduled_power_matrix, pv_reactive_power_matrix
+
     def calculate_scheduled_power(self, deviation: np.ndarray, pv_reactive_power: np.ndarray) -> np.ndarray:
         """
         Rebuild the scheduled complex powers represented by one query point.
@@ -4049,6 +4378,37 @@ class MDHEMPVQueryArtifact:
             scheduled_power[full_bus_index] = scheduled_power[full_bus_index].real + 1j * pv_reactive_power[pv_index]
 
         return scheduled_power
+
+    def calculate_scheduled_power_matrix(
+        self,
+        deviation_matrix: CxMat,
+        pv_reactive_power_matrix: Mat,
+    ) -> CxMat:
+        """
+        Rebuild the scheduled complex powers for a batch of query points.
+
+        Parameters
+        ----------
+        deviation_matrix:
+            Internal deviation matrix with shape ``(n_scenarios, n_dims)``.
+        pv_reactive_power_matrix:
+            Evaluated PV reactive-power matrix with shape
+            ``(n_scenarios, n_pv)``.
+
+        Returns
+        -------
+        CxMat
+            Full scheduled-power matrix in per unit.
+        """
+        return calculate_scheduled_power_matrix(
+            scheduled_power_germ=np.asarray(self._scheduled_power_germ, dtype=np.complex128),
+            no_slack=np.asarray(self._no_slack, dtype=np.int64),
+            pv=np.asarray(self._pv, dtype=np.int64),
+            dimension_local=np.asarray(self._dimension_local, dtype=np.int64),
+            scheduled_basis=np.asarray(self._scheduled_basis, dtype=np.complex128),
+            deviation_matrix=np.asarray(deviation_matrix, dtype=np.complex128),
+            pv_reactive_power_matrix=np.asarray(pv_reactive_power_matrix, dtype=np.float64),
+        )
 
     def query(
         self,
@@ -4153,6 +4513,93 @@ class MDHEMPVQueryArtifact:
             pq_active_power=pq_active_power,
             pq_reactive_power=pq_reactive_power,
             pv_active_power=pv_active_power,
+            tolerance=tolerance,
+        )
+
+    def query_matrix(
+        self,
+        pq_active_power_matrix: Mat,
+        pq_reactive_power_matrix: Mat,
+        pv_active_power_matrix: Mat,
+        tolerance: float,
+    ) -> MDHEMBatchQueryResult:
+        """
+        Query the artifact with a batch of PQ and PV power injections.
+
+        Parameters
+        ----------
+        pq_active_power_matrix:
+            PQ active-power matrix with shape ``(n_scenarios, n_pq)``.
+        pq_reactive_power_matrix:
+            PQ reactive-power matrix with shape ``(n_scenarios, n_pq)``.
+        pv_active_power_matrix:
+            PV active-power matrix with shape ``(n_scenarios, n_pv)``.
+        tolerance:
+            Convergence-like tolerance used for the result flags.
+
+        Returns
+        -------
+        MDHEMBatchQueryResult
+            Batch query result with voltages, flows and mismatch metrics.
+        """
+        deviation_matrix: CxMat = self.build_deviation_matrix(
+            pq_active_power_matrix=pq_active_power_matrix,
+            pq_reactive_power_matrix=pq_reactive_power_matrix,
+            pv_active_power_matrix=pv_active_power_matrix,
+        )
+        voltage_matrix: CxMat
+        scheduled_power_matrix: CxMat
+        pv_reactive_power_matrix: Mat
+        voltage_matrix, scheduled_power_matrix, pv_reactive_power_matrix = self.evaluate_deviation_matrix(
+            deviation_matrix=deviation_matrix
+        )
+        return build_batch_query_result(
+            pq_active_power_matrix=np.asarray(pq_active_power_matrix, dtype=np.float64),
+            pq_reactive_power_matrix=np.asarray(pq_reactive_power_matrix, dtype=np.float64),
+            pv_active_power_matrix=np.asarray(pv_active_power_matrix, dtype=np.float64),
+            voltage_matrix=voltage_matrix,
+            scheduled_power_matrix=scheduled_power_matrix,
+            pv_reactive_power_matrix=pv_reactive_power_matrix,
+            tolerance=tolerance,
+            ybus=self._ybus,
+            yf=self._yf,
+            yt=self._yt,
+            no_slack=self._no_slack,
+            pq=self._pq,
+            pv=self._pv,
+            voltage_setpoint=self._voltage_setpoint,
+            branch_from_indices=self._branch_from_indices,
+            branch_to_indices=self._branch_to_indices,
+            branch_rates=self._branch_rates,
+            sbase=self._sbase,
+        )
+
+    def query_matrix_from_sbus(self, s_bus_matrix: CxMat, tolerance: float) -> MDHEMBatchQueryResult:
+        """
+        Query the artifact from a batch of full complex bus-power vectors.
+
+        Parameters
+        ----------
+        s_bus_matrix:
+            Full complex bus-power matrix with shape ``(n_scenarios, n_bus)``.
+        tolerance:
+            Convergence-like tolerance used for the result flags.
+
+        Returns
+        -------
+        MDHEMBatchQueryResult
+            Batch query result with voltages, flows and mismatch metrics.
+        """
+        pq_active_power_matrix: Mat
+        pq_reactive_power_matrix: Mat
+        pv_active_power_matrix: Mat
+        pq_active_power_matrix, pq_reactive_power_matrix, pv_active_power_matrix = self.split_sbus_input_matrix(
+            s_bus_matrix=s_bus_matrix
+        )
+        return self.query_matrix(
+            pq_active_power_matrix=pq_active_power_matrix,
+            pq_reactive_power_matrix=pq_reactive_power_matrix,
+            pv_active_power_matrix=pv_active_power_matrix,
             tolerance=tolerance,
         )
 
@@ -4488,6 +4935,494 @@ def calculate_branch_results(
     branch_losses: np.ndarray = branch_from_power + branch_to_power
     branch_loading: np.ndarray = branch_from_power / (branch_rates + 1e-9)
     return branch_from_power, branch_to_power, branch_loading, branch_losses
+
+
+def compute_power_from_ybus_batch(ybus: scipy.sparse.csc_matrix, voltage_matrix: np.ndarray) -> np.ndarray:
+    """
+    Compute the bus powers from ``Ybus`` and a batch of voltages.
+
+    Parameters
+    ----------
+    ybus:
+        Full bus admittance matrix.
+    voltage_matrix:
+        Complex bus-voltage matrix with shape ``(n_scenarios, n_bus)``.
+
+    Returns
+    -------
+    numpy.ndarray
+        Complex bus-power matrix in per unit.
+    """
+    voltage_array: np.ndarray = np.asarray(voltage_matrix, dtype=np.complex128)
+
+    if voltage_array.ndim == 2 and voltage_array.shape[1] == ybus.shape[0]:
+        current_matrix: np.ndarray = np.asarray((ybus @ voltage_array.T).T, dtype=np.complex128)
+        return voltage_array * np.conj(current_matrix)
+    else:
+        raise ValueError("voltage_matrix must have shape (n_scenarios, n_bus)")
+
+
+@nb.njit(cache=True, parallel=True)
+def calculate_query_mismatch_norm_batch_numba(
+    calculated_power_matrix: np.ndarray,
+    scheduled_power_matrix: np.ndarray,
+    no_slack: np.ndarray,
+    pq: np.ndarray,
+) -> np.ndarray:
+    """
+    Calculate the MDHEM query mismatch for a batch of scenarios.
+
+    Parameters
+    ----------
+    calculated_power_matrix:
+        Calculated power matrix with shape ``(n_scenarios, n_bus)``.
+    scheduled_power_matrix:
+        Scheduled power matrix with shape ``(n_scenarios, n_bus)``.
+    no_slack:
+        Non-slack bus indices.
+    pq:
+        PQ bus indices.
+
+    Returns
+    -------
+    numpy.ndarray
+        Per-scenario mismatch infinity norms.
+    """
+    scenario_count: int = int(calculated_power_matrix.shape[0])
+    mismatch_norm: np.ndarray = np.zeros(scenario_count, dtype=np.float64)
+    scenario_index: int
+
+    for scenario_index in nb.prange(scenario_count):
+        max_value: float = 0.0
+        no_slack_index: int
+
+        for no_slack_index in range(no_slack.size):
+            bus_index: int = int(no_slack[no_slack_index])
+            value: float = abs(
+                calculated_power_matrix[scenario_index, bus_index].real
+                - scheduled_power_matrix[scenario_index, bus_index].real
+            )
+            if value > max_value:
+                max_value = value
+            else:
+                max_value = max_value
+
+        pq_index: int
+        for pq_index in range(pq.size):
+            bus_index = int(pq[pq_index])
+            value = abs(
+                calculated_power_matrix[scenario_index, bus_index].imag
+                - scheduled_power_matrix[scenario_index, bus_index].imag
+            )
+            if value > max_value:
+                max_value = value
+            else:
+                max_value = max_value
+
+        mismatch_norm[scenario_index] = max_value
+
+    return mismatch_norm
+
+
+def calculate_query_mismatch_norm_batch(
+    calculated_power_matrix: np.ndarray,
+    scheduled_power_matrix: np.ndarray,
+    no_slack: np.ndarray,
+    pq: np.ndarray,
+) -> np.ndarray:
+    """
+    Calculate the MDHEM query mismatch for a batch of scenarios.
+
+    Parameters
+    ----------
+    calculated_power_matrix:
+        Calculated power matrix with shape ``(n_scenarios, n_bus)``.
+    scheduled_power_matrix:
+        Scheduled power matrix with shape ``(n_scenarios, n_bus)``.
+    no_slack:
+        Non-slack bus indices.
+    pq:
+        PQ bus indices.
+
+    Returns
+    -------
+    numpy.ndarray
+        Per-scenario mismatch infinity norms.
+    """
+    calculated_power_array: np.ndarray = np.asarray(calculated_power_matrix, dtype=np.complex128)
+    scheduled_power_array: np.ndarray = np.asarray(scheduled_power_matrix, dtype=np.complex128)
+
+    if calculated_power_array.shape == scheduled_power_array.shape and calculated_power_array.ndim == 2:
+        return calculate_query_mismatch_norm_batch_numba(
+            calculated_power_matrix=calculated_power_array,
+            scheduled_power_matrix=scheduled_power_array,
+            no_slack=np.asarray(no_slack, dtype=np.int64),
+            pq=np.asarray(pq, dtype=np.int64),
+        )
+    else:
+        raise ValueError("calculated_power_matrix and scheduled_power_matrix must share shape (n_scenarios, n_bus)")
+
+
+@nb.njit(cache=True, parallel=True)
+def calculate_pv_voltage_error_batch_numba(
+    voltage_matrix: np.ndarray,
+    pv: np.ndarray,
+    voltage_setpoint: np.ndarray,
+) -> np.ndarray:
+    """
+    Calculate the PV voltage-magnitude error for a batch of scenarios.
+
+    Parameters
+    ----------
+    voltage_matrix:
+        Complex voltage matrix with shape ``(n_scenarios, n_bus)``.
+    pv:
+        PV bus indices.
+    voltage_setpoint:
+        Voltage magnitude targets.
+
+    Returns
+    -------
+    numpy.ndarray
+        Per-scenario PV voltage-magnitude error.
+    """
+    scenario_count: int = int(voltage_matrix.shape[0])
+    pv_voltage_error: np.ndarray = np.zeros(scenario_count, dtype=np.float64)
+    scenario_index: int
+
+    for scenario_index in nb.prange(scenario_count):
+        max_value: float = 0.0
+        pv_index: int
+
+        for pv_index in range(pv.size):
+            bus_index: int = int(pv[pv_index])
+            value: float = abs(abs(voltage_matrix[scenario_index, bus_index]) - voltage_setpoint[bus_index])
+            if value > max_value:
+                max_value = value
+            else:
+                max_value = max_value
+
+        pv_voltage_error[scenario_index] = max_value
+
+    return pv_voltage_error
+
+
+def calculate_pv_voltage_error_batch(
+    voltage_matrix: np.ndarray,
+    pv: np.ndarray,
+    voltage_setpoint: np.ndarray,
+) -> np.ndarray:
+    """
+    Calculate the PV voltage-magnitude error for a batch of scenarios.
+
+    Parameters
+    ----------
+    voltage_matrix:
+        Complex voltage matrix with shape ``(n_scenarios, n_bus)``.
+    pv:
+        PV bus indices.
+    voltage_setpoint:
+        Voltage magnitude targets.
+
+    Returns
+    -------
+    numpy.ndarray
+        Per-scenario PV voltage-magnitude error.
+    """
+    voltage_array: np.ndarray = np.asarray(voltage_matrix, dtype=np.complex128)
+
+    if voltage_array.ndim == 2 and voltage_array.shape[1] == voltage_setpoint.size:
+        if pv.size > 0:
+            return calculate_pv_voltage_error_batch_numba(
+                voltage_matrix=voltage_array,
+                pv=np.asarray(pv, dtype=np.int64),
+                voltage_setpoint=np.asarray(voltage_setpoint, dtype=np.float64),
+            )
+        else:
+            return np.zeros(voltage_array.shape[0], dtype=np.float64)
+    else:
+        raise ValueError("voltage_matrix must have shape (n_scenarios, n_bus)")
+
+
+def calculate_branch_results_batch(
+    voltage_matrix: np.ndarray,
+    yf: scipy.sparse.csc_matrix,
+    yt: scipy.sparse.csc_matrix,
+    branch_from_indices: np.ndarray,
+    branch_to_indices: np.ndarray,
+    branch_rates: np.ndarray,
+    sbase: float,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """
+    Calculate branch results for a batch of scenarios.
+
+    Parameters
+    ----------
+    voltage_matrix:
+        Complex voltage matrix with shape ``(n_scenarios, n_bus)``.
+    yf:
+        Branch-from admittance matrix.
+    yt:
+        Branch-to admittance matrix.
+    branch_from_indices:
+        Branch-from bus indices.
+    branch_to_indices:
+        Branch-to bus indices.
+    branch_rates:
+        Branch MVA ratings.
+    sbase:
+        System base power in MVA.
+
+    Returns
+    -------
+    tuple[numpy.ndarray, numpy.ndarray, numpy.ndarray, numpy.ndarray]
+        Batch branch-from power, branch-to power, branch loading and branch
+        losses.
+    """
+    voltage_array: np.ndarray = np.asarray(voltage_matrix, dtype=np.complex128)
+
+    if voltage_array.ndim == 2 and voltage_array.shape[1] == yf.shape[1]:
+        branch_from_voltage: np.ndarray = voltage_array[:, branch_from_indices]
+        branch_to_voltage: np.ndarray = voltage_array[:, branch_to_indices]
+        branch_from_current: np.ndarray = np.asarray((yf @ voltage_array.T).T, dtype=np.complex128)
+        branch_to_current: np.ndarray = np.asarray((yt @ voltage_array.T).T, dtype=np.complex128)
+        branch_from_power_pu: np.ndarray = branch_from_voltage * np.conj(branch_from_current)
+        branch_to_power_pu: np.ndarray = branch_to_voltage * np.conj(branch_to_current)
+        branch_from_power: np.ndarray = branch_from_power_pu * sbase
+        branch_to_power: np.ndarray = branch_to_power_pu * sbase
+        branch_losses: np.ndarray = branch_from_power + branch_to_power
+        branch_loading: np.ndarray = branch_from_power / (branch_rates[np.newaxis, :] + 1e-9)
+    else:
+        raise ValueError("voltage_matrix must have shape (n_scenarios, n_bus)")
+
+    return branch_from_power, branch_to_power, branch_loading, branch_losses
+
+
+def build_batch_query_result(
+    pq_active_power_matrix: np.ndarray,
+    pq_reactive_power_matrix: np.ndarray,
+    pv_active_power_matrix: np.ndarray,
+    voltage_matrix: np.ndarray,
+    scheduled_power_matrix: np.ndarray,
+    pv_reactive_power_matrix: np.ndarray,
+    tolerance: float,
+    ybus: scipy.sparse.csc_matrix,
+    yf: scipy.sparse.csc_matrix,
+    yt: scipy.sparse.csc_matrix,
+    no_slack: np.ndarray,
+    pq: np.ndarray,
+    pv: np.ndarray,
+    voltage_setpoint: np.ndarray,
+    branch_from_indices: np.ndarray,
+    branch_to_indices: np.ndarray,
+    branch_rates: np.ndarray,
+    sbase: float,
+) -> MDHEMBatchQueryResult:
+    """
+    Build the batch query result from already-evaluated voltages and powers.
+
+    Parameters
+    ----------
+    pq_active_power_matrix:
+        Queried PQ active powers with shape ``(n_scenarios, n_pq)``.
+    pq_reactive_power_matrix:
+        Queried PQ reactive powers with shape ``(n_scenarios, n_pq)``.
+    pv_active_power_matrix:
+        Queried PV active powers with shape ``(n_scenarios, n_pv)``.
+    voltage_matrix:
+        Evaluated voltage matrix with shape ``(n_scenarios, n_bus)``.
+    scheduled_power_matrix:
+        Evaluated scheduled-power matrix with shape ``(n_scenarios, n_bus)``.
+    pv_reactive_power_matrix:
+        Evaluated PV reactive-power matrix with shape ``(n_scenarios, n_pv)``.
+    tolerance:
+        Convergence-like tolerance used for the result flags.
+    ybus:
+        Full bus admittance matrix.
+    yf:
+        Branch-from admittance matrix.
+    yt:
+        Branch-to admittance matrix.
+    no_slack:
+        Non-slack bus indices.
+    pq:
+        PQ bus indices.
+    pv:
+        PV bus indices.
+    voltage_setpoint:
+        Voltage magnitude targets.
+    branch_from_indices:
+        Branch-from bus indices.
+    branch_to_indices:
+        Branch-to bus indices.
+    branch_rates:
+        Branch MVA ratings.
+    sbase:
+        System base power in MVA.
+
+    Returns
+    -------
+    MDHEMBatchQueryResult
+        Batch query result with voltages, flows and mismatch metrics.
+    """
+    calculated_power_matrix: np.ndarray = compute_power_from_ybus_batch(ybus=ybus, voltage_matrix=voltage_matrix)
+    mismatch_norm: np.ndarray = calculate_query_mismatch_norm_batch(
+        calculated_power_matrix=calculated_power_matrix,
+        scheduled_power_matrix=scheduled_power_matrix,
+        no_slack=no_slack,
+        pq=pq,
+    )
+    pv_voltage_error: np.ndarray = calculate_pv_voltage_error_batch(
+        voltage_matrix=voltage_matrix,
+        pv=pv,
+        voltage_setpoint=voltage_setpoint,
+    )
+    branch_from_power: np.ndarray
+    branch_to_power: np.ndarray
+    branch_loading: np.ndarray
+    branch_losses: np.ndarray
+    branch_from_power, branch_to_power, branch_loading, branch_losses = calculate_branch_results_batch(
+        voltage_matrix=voltage_matrix,
+        yf=yf,
+        yt=yt,
+        branch_from_indices=branch_from_indices,
+        branch_to_indices=branch_to_indices,
+        branch_rates=branch_rates,
+        sbase=sbase,
+    )
+    converged_like: np.ndarray = np.logical_and(mismatch_norm <= tolerance, pv_voltage_error <= tolerance)
+    return MDHEMBatchQueryResult(
+        pq_active_power=np.asarray(pq_active_power_matrix, dtype=np.float64),
+        pq_reactive_power=np.asarray(pq_reactive_power_matrix, dtype=np.float64),
+        pv_active_power=np.asarray(pv_active_power_matrix, dtype=np.float64),
+        voltage=np.asarray(voltage_matrix, dtype=np.complex128),
+        scheduled_power=np.asarray(scheduled_power_matrix, dtype=np.complex128),
+        calculated_power=np.asarray(calculated_power_matrix, dtype=np.complex128),
+        pv_reactive_power=np.asarray(pv_reactive_power_matrix, dtype=np.float64),
+        mismatch_norm=np.asarray(mismatch_norm, dtype=np.float64),
+        pv_voltage_error=np.asarray(pv_voltage_error, dtype=np.float64),
+        converged_like=np.asarray(converged_like, dtype=bool),
+        branch_from_power=np.asarray(branch_from_power, dtype=np.complex128),
+        branch_to_power=np.asarray(branch_to_power, dtype=np.complex128),
+        branch_loading=np.asarray(branch_loading, dtype=np.complex128),
+        branch_losses=np.asarray(branch_losses, dtype=np.complex128),
+    )
+
+
+@nb.njit(cache=True, parallel=True)
+def calculate_local_scheduled_power_matrix_numba(
+    base_local_power: CxVec,
+    dimension_local: IntVec,
+    basis_scalars: CxVec,
+    deviation_matrix: CxMat,
+) -> CxMat:
+    """
+    Rebuild the non-slack scheduled powers for a batch of query points.
+
+    Parameters
+    ----------
+    base_local_power:
+        Germ scheduled powers on the non-slack buses.
+    dimension_local:
+        Non-slack bus position controlled by each query dimension.
+    basis_scalars:
+        Physical scaling carried by each query dimension.
+    deviation_matrix:
+        Internal deviation matrix with shape ``(n_scenarios, n_dims)``.
+
+    Returns
+    -------
+    CxMat
+        Batch scheduled powers on the non-slack buses.
+    """
+    scenario_count: int = int(deviation_matrix.shape[0])
+    local_bus_count: int = int(base_local_power.size)
+    dimension_count: int = int(deviation_matrix.shape[1])
+    local_scheduled_power: CxMat = np.empty((scenario_count, local_bus_count), dtype=np.complex128)
+    scenario_index: int
+
+    # Each scenario is independent, so the outer loop is the natural
+    # parallelization boundary for the online batch query path.
+    for scenario_index in nb.prange(scenario_count):
+        local_index: int
+        for local_index in range(local_bus_count):
+            local_scheduled_power[scenario_index, local_index] = base_local_power[local_index]
+
+        dimension_index: int
+        for dimension_index in range(dimension_count):
+            local_index = int(dimension_local[dimension_index])
+            local_scheduled_power[scenario_index, local_index] = (
+                local_scheduled_power[scenario_index, local_index]
+                + deviation_matrix[scenario_index, dimension_index] * basis_scalars[dimension_index]
+            )
+
+    return local_scheduled_power
+
+
+def calculate_scheduled_power_matrix(
+    scheduled_power_germ: CxVec,
+    no_slack: IntVec,
+    pv: IntVec,
+    dimension_local: IntVec,
+    scheduled_basis: CxMat,
+    deviation_matrix: CxMat,
+    pv_reactive_power_matrix: Mat,
+) -> CxMat:
+    """
+    Rebuild the scheduled powers represented by a batch of query points.
+
+    Parameters
+    ----------
+    scheduled_power_germ:
+        Germ scheduled power vector.
+    no_slack:
+        Non-slack bus indices.
+    pv:
+        PV bus indices.
+    dimension_local:
+        Non-slack bus position controlled by each query dimension.
+    scheduled_basis:
+        Physical basis used by the deviation coordinates.
+    deviation_matrix:
+        Internal deviation matrix with shape ``(n_scenarios, n_dims)``.
+    pv_reactive_power_matrix:
+        Evaluated PV reactive powers with shape ``(n_scenarios, n_pv)``.
+
+    Returns
+    -------
+    CxMat
+        Full scheduled-power matrix with shape ``(n_scenarios, n_bus)``.
+    """
+    deviation_array: CxMat = np.asarray(deviation_matrix, dtype=np.complex128)
+    pv_reactive_array: Mat = np.asarray(pv_reactive_power_matrix, dtype=np.float64)
+    scenario_count: int = int(deviation_array.shape[0])
+    bus_count: int = int(scheduled_power_germ.size)
+    expected_shape: tuple[int, int] = (scenario_count, pv.size)
+
+    if pv_reactive_array.shape == expected_shape:
+        pass
+    else:
+        raise ValueError("pv_reactive_power_matrix must have shape (n_scenarios, n_pv)")
+
+    basis_row_indices: IntVec = np.arange(scheduled_basis.shape[0], dtype=np.int64)
+    basis_scalars: CxVec = np.asarray(scheduled_basis[basis_row_indices, dimension_local], dtype=np.complex128)
+    local_scheduled_power: CxMat = calculate_local_scheduled_power_matrix_numba(
+        base_local_power=np.asarray(scheduled_power_germ[no_slack], dtype=np.complex128),
+        dimension_local=np.asarray(dimension_local, dtype=np.int64),
+        basis_scalars=basis_scalars,
+        deviation_matrix=deviation_array,
+    )
+    scheduled_power_matrix: CxMat = np.tile(np.asarray(scheduled_power_germ, dtype=np.complex128), (scenario_count, 1))
+    scheduled_power_matrix[:, no_slack] = local_scheduled_power
+
+    if pv.size > 0:
+        scheduled_power_matrix[:, pv] = (
+            scheduled_power_matrix[:, pv].real + 1j * pv_reactive_array
+        )
+    else:
+        pass
+
+    return scheduled_power_matrix
 
 
 def build_query_basis(
@@ -5558,6 +6493,50 @@ def evaluate_artifact_higher_order_terms(
     return voltage_contribution, reactive_contribution
 
 
+def evaluate_artifact_higher_order_terms_batch(
+    artifact: MDHEMPVQueryArtifact,
+    deviation_matrix: CxMat,
+    minimum_order: int,
+) -> tuple[CxMat, CxMat]:
+    """
+    Evaluate only the higher-order contributions for a batch of query points.
+
+    Parameters
+    ----------
+    artifact:
+        Artifact to evaluate.
+    deviation_matrix:
+        Internal deviation matrix with shape ``(n_scenarios, n_dims)``.
+    minimum_order:
+        First total order that must be included in the returned sum.
+
+    Returns
+    -------
+    tuple[CxMat, CxMat]
+        Batch non-slack voltage contribution and batch PV reactive-power
+        contribution.
+    """
+    deviation_array: CxMat = np.asarray(deviation_matrix, dtype=np.complex128)
+    expected_dimension_count: int = artifact.get_dimensions_count()
+
+    if deviation_array.ndim == 2 and deviation_array.shape[1] == expected_dimension_count:
+        if minimum_order <= artifact._table.get_max_order():
+            weights: CxMat = calculate_monomial_weights_from_table_batch(
+                table=artifact._table,
+                values_matrix=deviation_array,
+            )
+            start: int = artifact._table.get_order_start(minimum_order)
+            voltage_contribution: CxMat = weights[:, start:] @ artifact._u_coefficients[start:, :]
+            reactive_contribution: CxMat = weights[:, start:] @ artifact._q_coefficients[start:, :]
+        else:
+            voltage_contribution = np.zeros((deviation_array.shape[0], artifact._no_slack.size), dtype=np.complex128)
+            reactive_contribution = np.zeros((deviation_array.shape[0], artifact._pv.size), dtype=np.complex128)
+    else:
+        raise ValueError("deviation_matrix must have shape (n_scenarios, n_dims)")
+
+    return voltage_contribution, reactive_contribution
+
+
 class MDHEMOrder2CompressedArtifact:
     """
     Store the exact linear map plus a compressed quadratic correction.
@@ -5714,6 +6693,23 @@ class MDHEMOrder2CompressedArtifact:
         """
         return self._linear_artifact.split_sbus_input(s_bus=s_bus)
 
+    def split_sbus_input_matrix(self, s_bus_matrix: CxMat) -> tuple[Mat, Mat, Mat]:
+        """
+        Split a batch of full complex bus-power vectors into query matrices.
+
+        Parameters
+        ----------
+        s_bus_matrix:
+            Full complex bus-power matrix with shape ``(n_scenarios, n_bus)``.
+
+        Returns
+        -------
+        tuple[Mat, Mat, Mat]
+            ``(pq_active_power_matrix, pq_reactive_power_matrix,
+            pv_active_power_matrix)``.
+        """
+        return self._linear_artifact.split_sbus_input_matrix(s_bus_matrix=s_bus_matrix)
+
     def build_deviation_vector(
         self,
         pq_active_power: np.ndarray,
@@ -5741,6 +6737,35 @@ class MDHEMOrder2CompressedArtifact:
             pq_active_power=pq_active_power,
             pq_reactive_power=pq_reactive_power,
             pv_active_power=pv_active_power,
+        )
+
+    def build_deviation_matrix(
+        self,
+        pq_active_power_matrix: Mat,
+        pq_reactive_power_matrix: Mat,
+        pv_active_power_matrix: Mat,
+    ) -> CxMat:
+        """
+        Convert a batch of absolute powers to the full deviation matrix.
+
+        Parameters
+        ----------
+        pq_active_power_matrix:
+            PQ active-power matrix in per unit.
+        pq_reactive_power_matrix:
+            PQ reactive-power matrix in per unit.
+        pv_active_power_matrix:
+            PV active-power matrix in per unit.
+
+        Returns
+        -------
+        CxMat
+            Full deviation matrix.
+        """
+        return self._linear_artifact.build_deviation_matrix(
+            pq_active_power_matrix=pq_active_power_matrix,
+            pq_reactive_power_matrix=pq_reactive_power_matrix,
+            pv_active_power_matrix=pv_active_power_matrix,
         )
 
     def evaluate_deviation(self, deviation: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -5792,6 +6817,60 @@ class MDHEMOrder2CompressedArtifact:
             raise ValueError("deviation has an unexpected shape")
 
         return voltage, scheduled_power, pv_reactive_power
+
+    def evaluate_deviation_matrix(self, deviation_matrix: CxMat) -> tuple[CxMat, CxMat, Mat]:
+        """
+        Evaluate the compressed artifact at a batch of full deviation points.
+
+        Parameters
+        ----------
+        deviation_matrix:
+            Full deviation matrix with shape ``(n_scenarios, n_dims)``.
+
+        Returns
+        -------
+        tuple[CxMat, CxMat, Mat]
+            Batch voltage matrix, scheduled-power matrix and PV
+            reactive-power matrix.
+        """
+        deviation_array: CxMat = np.asarray(deviation_matrix, dtype=np.complex128)
+        expected_shape_second_axis: int = self.get_dimensions_count()
+
+        if deviation_array.ndim == 2 and deviation_array.shape[1] == expected_shape_second_axis:
+            linear_voltage_matrix: CxMat
+            linear_scheduled_power_matrix: CxMat
+            linear_pv_reactive_power_matrix: Mat
+            linear_voltage_matrix, linear_scheduled_power_matrix, linear_pv_reactive_power_matrix = (
+                self._linear_artifact.evaluate_deviation_matrix(deviation_matrix=deviation_array)
+            )
+            _ = linear_scheduled_power_matrix
+            quadratic_deviation_matrix: CxMat = deviation_array[:, self._selected_dimension_indices]
+            quadratic_voltage_local_matrix: CxMat
+            quadratic_pv_reactive_power_matrix_complex: CxMat
+            quadratic_voltage_local_matrix, quadratic_pv_reactive_power_matrix_complex = (
+                evaluate_artifact_higher_order_terms_batch(
+                    artifact=self._quadratic_artifact,
+                    deviation_matrix=quadratic_deviation_matrix,
+                    minimum_order=2,
+                )
+            )
+            voltage_matrix: CxMat = np.asarray(linear_voltage_matrix, dtype=np.complex128).copy()
+            voltage_matrix[:, self._linear_artifact._no_slack] = (
+                voltage_matrix[:, self._linear_artifact._no_slack] + quadratic_voltage_local_matrix
+            )
+            pv_reactive_power_matrix: Mat = np.asarray(
+                np.asarray(linear_pv_reactive_power_matrix, dtype=np.float64)
+                + quadratic_pv_reactive_power_matrix_complex.real,
+                dtype=np.float64,
+            )
+            scheduled_power_matrix: CxMat = self._linear_artifact.calculate_scheduled_power_matrix(
+                deviation_matrix=deviation_array,
+                pv_reactive_power_matrix=pv_reactive_power_matrix,
+            )
+        else:
+            raise ValueError("deviation_matrix must have shape (n_scenarios, n_dims)")
+
+        return voltage_matrix, scheduled_power_matrix, pv_reactive_power_matrix
 
     def query(
         self,
@@ -5896,6 +6975,93 @@ class MDHEMOrder2CompressedArtifact:
             pq_active_power=pq_active_power,
             pq_reactive_power=pq_reactive_power,
             pv_active_power=pv_active_power,
+            tolerance=tolerance,
+        )
+
+    def query_matrix(
+        self,
+        pq_active_power_matrix: Mat,
+        pq_reactive_power_matrix: Mat,
+        pv_active_power_matrix: Mat,
+        tolerance: float,
+    ) -> MDHEMBatchQueryResult:
+        """
+        Query the compressed artifact with a batch of PQ and PV powers.
+
+        Parameters
+        ----------
+        pq_active_power_matrix:
+            PQ active-power matrix in per unit.
+        pq_reactive_power_matrix:
+            PQ reactive-power matrix in per unit.
+        pv_active_power_matrix:
+            PV active-power matrix in per unit.
+        tolerance:
+            Convergence-like tolerance used for the result flags.
+
+        Returns
+        -------
+        MDHEMBatchQueryResult
+            Batch query result with voltages, flows and mismatch metrics.
+        """
+        deviation_matrix: CxMat = self.build_deviation_matrix(
+            pq_active_power_matrix=pq_active_power_matrix,
+            pq_reactive_power_matrix=pq_reactive_power_matrix,
+            pv_active_power_matrix=pv_active_power_matrix,
+        )
+        voltage_matrix: CxMat
+        scheduled_power_matrix: CxMat
+        pv_reactive_power_matrix: Mat
+        voltage_matrix, scheduled_power_matrix, pv_reactive_power_matrix = self.evaluate_deviation_matrix(
+            deviation_matrix=deviation_matrix
+        )
+        return build_batch_query_result(
+            pq_active_power_matrix=np.asarray(pq_active_power_matrix, dtype=np.float64),
+            pq_reactive_power_matrix=np.asarray(pq_reactive_power_matrix, dtype=np.float64),
+            pv_active_power_matrix=np.asarray(pv_active_power_matrix, dtype=np.float64),
+            voltage_matrix=voltage_matrix,
+            scheduled_power_matrix=scheduled_power_matrix,
+            pv_reactive_power_matrix=pv_reactive_power_matrix,
+            tolerance=tolerance,
+            ybus=self._linear_artifact._ybus,
+            yf=self._linear_artifact._yf,
+            yt=self._linear_artifact._yt,
+            no_slack=self._linear_artifact._no_slack,
+            pq=self._linear_artifact._pq,
+            pv=self._linear_artifact._pv,
+            voltage_setpoint=self._linear_artifact._voltage_setpoint,
+            branch_from_indices=self._linear_artifact._branch_from_indices,
+            branch_to_indices=self._linear_artifact._branch_to_indices,
+            branch_rates=self._linear_artifact._branch_rates,
+            sbase=self._linear_artifact._sbase,
+        )
+
+    def query_matrix_from_sbus(self, s_bus_matrix: CxMat, tolerance: float) -> MDHEMBatchQueryResult:
+        """
+        Query the compressed artifact from a batch of full bus powers.
+
+        Parameters
+        ----------
+        s_bus_matrix:
+            Full complex bus-power matrix with shape ``(n_scenarios, n_bus)``.
+        tolerance:
+            Convergence-like tolerance used for the result flags.
+
+        Returns
+        -------
+        MDHEMBatchQueryResult
+            Batch query result with voltages, flows and mismatch metrics.
+        """
+        pq_active_power_matrix: Mat
+        pq_reactive_power_matrix: Mat
+        pv_active_power_matrix: Mat
+        pq_active_power_matrix, pq_reactive_power_matrix, pv_active_power_matrix = self.split_sbus_input_matrix(
+            s_bus_matrix=s_bus_matrix
+        )
+        return self.query_matrix(
+            pq_active_power_matrix=pq_active_power_matrix,
+            pq_reactive_power_matrix=pq_reactive_power_matrix,
+            pv_active_power_matrix=pv_active_power_matrix,
             tolerance=tolerance,
         )
 
