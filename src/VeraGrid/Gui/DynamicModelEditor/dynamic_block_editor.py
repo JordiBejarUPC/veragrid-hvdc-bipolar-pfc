@@ -2301,13 +2301,13 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         reference: VarPowerFlowReferenceType
 
         for reference in voltage_refs:
-            specs.append(ConnectionVarSpec("input", reference, f"{reference.value}_{safe_bus_name}"))
+            specs.append(ConnectionVarSpec("input", reference, f"{reference.value}"))
 
         for reference in current_refs:
             specs.append(ConnectionVarSpec(
                 "output",
                 reference,
-                f"net_conn_{reference.value}_{safe_bus_name}_{self.api_object.name}",
+                f"net_conn_{reference.value}",
             ))
 
     def create_inverse_lookup_array_linear_descriptor_item(self,
@@ -2898,15 +2898,27 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             # connect bus variables
             if self.api_object.bus.rms_model.empty():
                 initialize_bus_rms(self.api_object.bus, self.var_factory)
+            if self.api_object.bus.is_dc:
+                Vdc, Vm, Va = get_bus_rms_algebraic_vars(self.api_object.bus.rms_model)
+                self.main_block.in_vars.append(Vdc)
+                self.main_block.in_vars.append(Vm)
+                self.main_block.in_vars.append(Va)
 
-            Vm, Va = get_bus_rms_algebraic_vars(self.api_object.bus.rms_model)
-            self.main_block.in_vars.append(Vm)
-            self.main_block.in_vars.append(Va)
+                self.main_block.external_mapping.update(
+                    {VarPowerFlowReferenceType.Vdc: Vdc})
+                self.main_block.external_mapping.update(
+                    {VarPowerFlowReferenceType.Vm: Vm})
+                self.main_block.external_mapping.update(
+                    {VarPowerFlowReferenceType.Va: Va})
+            else:
+                Vm, Va = get_bus_rms_algebraic_vars(self.api_object.bus.rms_model)
+                self.main_block.in_vars.append(Vm)
+                self.main_block.in_vars.append(Va)
 
-            self.main_block.external_mapping.update(
-                {VarPowerFlowReferenceType.Vm: Vm})
-            self.main_block.external_mapping.update(
-                {VarPowerFlowReferenceType.Va: Va})
+                self.main_block.external_mapping.update(
+                    {VarPowerFlowReferenceType.Vm: Vm})
+                self.main_block.external_mapping.update(
+                    {VarPowerFlowReferenceType.Va: Va})
 
             # add connection variables
             P = self.var_factory.add_var('net_conn_P', VarPowerFlowReferenceType.P, True)
@@ -3377,39 +3389,39 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             # the connected bus EMT shell from the remaining ports.
             specs.append(ConnectionVarSpec("input",
                                            VarPowerFlowReferenceType.v_N,
-                                           f"v_N_{safe_bus_name}"))
+                                           f"v_N"))
 
             specs.append(ConnectionVarSpec("input",
                                            VarPowerFlowReferenceType.v_A,
-                                           f"v_A_{safe_bus_name}"))
+                                           f"v_A"))
 
             specs.append(ConnectionVarSpec("input",
                                            VarPowerFlowReferenceType.v_B,
-                                           f"v_B_{safe_bus_name}"))
+                                           f"v_B"))
 
             specs.append(ConnectionVarSpec("input",
                                            VarPowerFlowReferenceType.v_C,
-                                           f"v_C_{safe_bus_name}"))
+                                           f"v_C"))
 
             specs.append(ConnectionVarSpec(
                 "output",
                 VarPowerFlowReferenceType.i_N,
-                f"net_conn_{VarPowerFlowReferenceType.i_N.value}_{self.api_object.name}",
+                f"net_conn_{VarPowerFlowReferenceType.i_N.value}",
             ))
             specs.append(ConnectionVarSpec(
                 "output",
                 VarPowerFlowReferenceType.i_A,
-                f"net_conn_{VarPowerFlowReferenceType.i_A.value}_{self.api_object.name}",
+                f"net_conn_{VarPowerFlowReferenceType.i_A.value}",
             ))
             specs.append(ConnectionVarSpec(
                 "output",
                 VarPowerFlowReferenceType.i_B,
-                f"net_conn_{VarPowerFlowReferenceType.i_B.value}_{self.api_object.name}",
+                f"net_conn_{VarPowerFlowReferenceType.i_B.value}",
             ))
             specs.append(ConnectionVarSpec(
                 "output",
                 VarPowerFlowReferenceType.i_C,
-                f"net_conn_{VarPowerFlowReferenceType.i_C.value}_{self.api_object.name}",
+                f"net_conn_{VarPowerFlowReferenceType.i_C.value}",
             ))
 
         return specs

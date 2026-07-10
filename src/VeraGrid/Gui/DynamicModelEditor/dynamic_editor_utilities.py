@@ -40,16 +40,6 @@ def get_blocktype2template_builder_dict():
         BlockType.CONTROLLED_VOLTAGE_SOURCE_EMT: emt_templates.ControlledVoltageSourceEmtTemplate,
         BlockType.CONTROLLED_CURRENT_SOURCE_EMT: emt_templates.ControlledCurrentSourceEmtTemplate,
 
-        BlockType.DC_VOLTAGE_SOURCE_EMT: emt_templates.DcVoltageSourceEmtTemplate,
-        BlockType.DC_CURRENT_SOURCE_EMT: emt_templates.DcCurrentSourceEmtTemplate,
-        BlockType.CONTROLLED_DC_VOLTAGE_SOURCE_EMT: emt_templates.ControlledDcVoltageSourceEmtTemplate,
-        BlockType.CONTROLLED_DC_CURRENT_SOURCE_EMT: emt_templates.ControlledDcCurrentSourceEmtTemplate,
-
-        BlockType.BALANCED_3PH_VOLTAGE_SOURCE_EMT: emt_templates.Balanced3phVoltageSourceEmtTemplate,
-        BlockType.BALANCED_3PH_CURRENT_SOURCE_EMT: emt_templates.Balanced3phCurrentSourceEmtTemplate,
-        BlockType.CONTROLLED_BALANCED_3PH_VOLTAGE_SOURCE_EMT: emt_templates.ControlledBalanced3phVoltageSourceEmtTemplate,
-        BlockType.CONTROLLED_BALANCED_3PH_CURRENT_SOURCE_EMT: emt_templates.ControlledBalanced3phCurrentSourceEmtTemplate,
-
         BlockType.ARBITRARY_WAVEFORM_VOLTAGE_SOURCE_EMT: emt_templates.ArbitraryWaveformVoltageSourceEmtTemplate,
         BlockType.ARBITRARY_WAVEFORM_CURRENT_SOURCE_EMT: emt_templates.ArbitraryWaveformCurrentSourceEmtTemplate,
 
@@ -105,13 +95,13 @@ def create_block_of_type(var_factory: VarFactory,
         blk = gain(var_factory, item_name)
         blk.name = item_name
         return blk
-
-    # SUM / ADDER (2 inputs)
-    elif block_type == BlockType.SUM:
-        blk = adder(var_factory = var_factory,
-                    name=item_name)
-        blk.name = item_name
-        return blk
+    #
+    # # SUM / ADDER (2 inputs)
+    # elif block_type == BlockType.SUM:
+    #     blk = adder(var_factory = var_factory,
+    #                 name=item_name)
+    #     blk.name = item_name
+    #     return blk
 
     # SUBSTRACT (2 inputs)
     elif block_type == BlockType.SUBSTR:
@@ -119,11 +109,11 @@ def create_block_of_type(var_factory: VarFactory,
         blk.name = item_name
         return blk
 
-    # PRODUCT (2 inputs)
-    elif block_type == BlockType.PRODUCT:
-        blk = product(var_factory, item_name)
-        blk.name = item_name
-        return blk
+    # # PRODUCT (2 inputs)
+    # elif block_type == BlockType.PRODUCT:
+    #     blk = product(var_factory, item_name)
+    #     blk.name = item_name
+    #     return blk
 
     # DIVIDE (2 inputs)
     elif block_type == BlockType.DIVIDE:
@@ -258,17 +248,8 @@ def create_block_of_type(var_factory: VarFactory,
     #     blk.name = item_name
     #     return blk
 
-    elif block_type == BlockType.TRAFO_EMT:
-        conn_f, conn_t = _get_transformer_connection_types(api_object)
-        blk = tem.get_transformer_emt_template(var_factory, conn_f=conn_f, conn_t=conn_t).block
-        blk.name = item_name
-        return blk
 
-    elif block_type == BlockType.XFMR_TRANSFORMER:
-        conn_f, conn_t = _get_transformer_connection_types(api_object)
-        blk = tem.get_xfmr_emt_template(var_factory, conn_f=conn_f, conn_t=conn_t).block
-        blk.name = item_name
-        return blk
+
 
     elif block_type == BlockType.GROUND_EMT:
         blk = tem.get_ground_emt_template(var_factory, item_name).block
@@ -300,6 +281,47 @@ def create_block_of_type(var_factory: VarFactory,
     # COMPLETE PSEUDO EMT VSC
     elif block_type == BlockType.COMPLETE_PSEUDO_VSC_EMT:
         blk = tem.get_full_pseudo_emt_converter(var_factory).block
+        blk.name = item_name
+        return blk
+
+
+    elif block_type == BlockType.DC_VOLTAGE_SOURCE_EMT:
+        blk = tem.get_dc_voltage_source_emt_template(var_factory).block
+        blk.name = item_name
+        return blk
+
+    elif block_type == BlockType.DC_CURRENT_SOURCE_EMT:
+        blk = tem.get_dc_current_source_emt_template(var_factory).block
+        blk.name = item_name
+        return blk
+
+    elif block_type == BlockType.CONTROLLED_DC_VOLTAGE_SOURCE_EMT:
+        blk = tem.get_controlled_dc_voltage_source_emt_template(var_factory).block
+        blk.name = item_name
+        return blk
+
+    elif block_type == BlockType.CONTROLLED_DC_CURRENT_SOURCE_EMT:
+        blk = tem.get_controlled_dc_current_source_emt_template(var_factory).block
+        blk.name = item_name
+        return blk
+
+    elif block_type == BlockType.BALANCED_3PH_VOLTAGE_SOURCE_EMT:
+        blk = tem.get_balanced_3ph_voltage_source_emt_template(var_factory).block
+        blk.name = item_name
+        return blk
+
+    elif block_type == BlockType.BALANCED_3PH_CURRENT_SOURCE_EMT:
+        blk = tem.get_balanced_3ph_current_source_emt_template(var_factory).block
+        blk.name = item_name
+        return blk
+
+    elif block_type == BlockType.CONTROLLED_BALANCED_3PH_VOLTAGE_SOURCE_EMT:
+        blk = tem.get_controlled_balanced_3ph_voltage_source_emt_template(var_factory).block
+        blk.name = item_name
+        return blk
+
+    elif block_type == BlockType.CONTROLLED_BALANCED_3PH_CURRENT_SOURCE_EMT:
+        blk = tem.get_controlled_balanced_3ph_current_source_emt_template(var_factory).block
         blk.name = item_name
         return blk
 
