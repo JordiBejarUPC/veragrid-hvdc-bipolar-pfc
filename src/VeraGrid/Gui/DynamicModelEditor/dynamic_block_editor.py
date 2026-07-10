@@ -2836,12 +2836,12 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 if self.api_object.bus_from.rms_model.empty():
                     initialize_bus_rms(self.api_object.bus_from, self.var_factory)
 
-                Vmf, Vaf = get_bus_rms_algebraic_vars(self.api_object.bus_from.rms_model)
+                _, Vmf, Vaf = get_bus_rms_algebraic_vars(self.api_object.bus_from.rms_model)
 
                 if self.api_object.bus_to.rms_model.empty():
                     initialize_bus_rms(self.api_object.bus_to, self.var_factory)
 
-                Vmt, Vat = get_bus_rms_algebraic_vars(self.api_object.bus_to.rms_model)
+                _, Vmt, Vat = get_bus_rms_algebraic_vars(self.api_object.bus_to.rms_model)
 
                 self.main_block.in_vars.append(Vmf)
                 self.main_block.in_vars.append(Vaf)
@@ -2899,7 +2899,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             if self.api_object.bus.rms_model.empty():
                 initialize_bus_rms(self.api_object.bus, self.var_factory)
 
-            Vm, Va = get_bus_rms_algebraic_vars(self.api_object.bus.rms_model)
+            _, Vm, Va = get_bus_rms_algebraic_vars(self.api_object.bus.rms_model)
             self.main_block.in_vars.append(Vm)
             self.main_block.in_vars.append(Va)
 

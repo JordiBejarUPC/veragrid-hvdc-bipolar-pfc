@@ -478,6 +478,58 @@ def test_opf_battery_energy_sign():
     assert (e[1:][discharging] < e[:-1][discharging]).all()
 
 
+def test_opf_battery_respects_initial_soc_on_first_step():
+    """
+    Regression test for the reported "Baterias2.veragrid" battery bug.
+
+    Reported behavior before the fix:
+    - the battery starts at its minimum allowed state of charge
+      (soc_0 == min_soc, so it is already at the energy floor)
+    - the linear OPF time series still dispatches the battery to discharge
+      at the first time step
+    - battery_energy[0] stays pinned at the initial value instead of dropping
+      according to the discharged power
+
+    Root cause before the fix:
+    - the battery energy transition equation was enforced only for t > 0
+    - for t == 0, the model simply assigned battery_energy[0] = energy_0
+      and did not link battery_power[0] to battery_energy[0]
+    - that let the optimizer inject power in the first interval "for free"
+      from the point of view of the energy balance
+
+    What this test checks:
+    - load the real user-reported case copied into the test fixtures
+    - run the linear OPF time series
+    - inspect the first battery, first time step
+    - assert that the battery does not discharge at t = 0
+    - assert that the reported first-step energy is not below the initial
+      stored energy implied by soc_0
+
+    Why these assertions are enough:
+    - if the battery starts exactly at min_soc, any positive discharge at the
+      first step would require energy below the lower bound once the energy
+      equation is enforced
+    - therefore a correct formulation must make battery_power[0] non-positive
+      (idle or charging) for this fixture
+    """
+    fname = os.path.join('data', 'grids', 'Baterias2.veragrid')
+    grid = FileOpen(fname).open()
+
+    opf_options = OptimalPowerFlowOptions(verbose=0,
+                                          solver=SolverType.LINEAR_OPF,
+                                          zonal_grouping=ZonalGrouping.NoGrouping)
+    driver = OptimalPowerFlowTimeSeriesDriver(grid=grid, options=opf_options)
+    driver.run()
+
+    p0 = driver.results.battery_power[0, 0]
+    e0 = driver.results.battery_energy[0, 0]
+    batt = grid.batteries[0]
+    e_init = batt.Enom * batt.soc_0
+
+    assert p0 <= 1e-6
+    assert e0 >= e_init - 1e-6
+
+
 def test_opf_load_shedding():
     """
     This test, checks that a load is shed appropriately because of a generator constraint

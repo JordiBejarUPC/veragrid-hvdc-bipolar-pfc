@@ -41,6 +41,7 @@ from VeraGridEngine.enumerations import (DeviceType, AvailableTransferMode, Solv
                                          ContingencyFilteringMethods, InvestmentsEvaluationObjectives,
                                          ReliabilityMode, OpfDispatchMode, DynamicIntegrationMethod,
                                          RmsInitializationMethod, EmtInitializationMethod, EmtSolverTypes,
+                                         MethodShortCircuit,
                                          DynamicSimulationMode)
 
 
@@ -1818,11 +1819,23 @@ class SimulationsMain(TimeEventsMain):
                 _, pf_results = self.session.power_flow
                 _, pf_results3ph = self.session.power_flow_3ph
 
-                if pf_results is not None:
+                if self.circuit.get_short_circuit_event_number() == 0:
+                    warning_msg('You need to define short circuits in the Database.'
+                                + '\nAdd them by right click on a bus and selecting on the context menu.')
+                else:
+                    methods = {event.method for event in self.circuit.short_circuit_event}
+                    needs_pf = any(method in (MethodShortCircuit.sequences, MethodShortCircuit.sequences_vsc)
+                                   for method in methods)
+                    needs_pf_3ph = MethodShortCircuit.phases in methods
 
-                    if self.circuit.get_short_circuit_event_number() == 0:
-                        warning_msg('You need to define short circuits in the Database.'
-                                    + '\nAdd them by right click on a bus and selecting on the context menu.')
+                    missing = list()
+                    if needs_pf and pf_results is None:
+                        missing.append('Run a power flow simulation first.')
+                    if needs_pf_3ph and pf_results3ph is None:
+                        missing.append('Run a 3-phase power flow simulation first.')
+
+                    if missing:
+                        info_msg('\n'.join(missing) + '\nThe results are needed to initialize this simulation.')
                     else:
                         self.add_simulation(SimulationTypes.ShortCircuit_run)
 
@@ -1847,10 +1860,6 @@ class SimulationsMain(TimeEventsMain):
                                          post_func=self.post_short_circuit,
                                          prog_func=self.ui.progressBar.setValue,
                                          text_func=self.ui.progress_label.setText)
-
-                else:
-                    info_msg('Run a power flow simulation first.\n'
-                             'The results are needed to initialize this simulation.')
             else:
                 warning_msg('Another short circuit is being executed now...')
         else:
