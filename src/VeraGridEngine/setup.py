@@ -57,7 +57,7 @@ __VeraGridEngine_VERSION__ = read_module_constant('__VeraGridEngine_VERSION__')
 
 pkgs_to_exclude = ['docs', 'research', 'tests', 'tutorials', 'VeraGrid']
 
-packages = find_packages(exclude=pkgs_to_exclude)
+packages = find_packages(where='..', exclude=pkgs_to_exclude)
 
 # ... so we have to do the filtering ourselves
 packages2 = list()
@@ -122,7 +122,7 @@ setup(
     ],
     keywords='power systems planning',  # Optional
     packages=packages2,  # Required
-    package_dir={'': '.'},
+    package_dir={'': '..'},
     include_package_data=True,
     python_requires='>=3.8',
     install_requires=dependencies,

@@ -1111,6 +1111,32 @@ def should_use_parallel_convolution(pair_count: int, vector_width: int) -> bool:
         return False
 
 
+def should_use_parallel_rhs_power(active_dimension_count: int, local_bus_count: int) -> bool:
+    """
+    Decide whether one RHS power assembly should use threading.
+
+    Parameters
+    ----------
+    active_dimension_count:
+        Number of non-zero dimensions in the current coefficient row.
+    local_bus_count:
+        Number of non-slack buses updated by the RHS vector.
+
+    Returns
+    -------
+    bool
+        ``True`` when the parallel RHS-power kernel should be used.
+    """
+    operation_scale: int = active_dimension_count * max(local_bus_count, 1)
+
+    # The artifact builder calls this kernel once per coefficient row, so the
+    # threshold stays high enough to avoid paying thread startup on tiny rows.
+    if operation_scale >= 20_000:
+        return True
+    else:
+        return False
+
+
 def determine_rhs_block_columns(unknown_count: int, target_block_bytes: int) -> int:
     """
     Choose a dense multi-RHS block width for the repeated sparse solves.
@@ -2317,6 +2343,60 @@ def create_per_bus_basis(
     return basis, dimension_bus, dimension_local, dimension_is_pv
 
 
+def calculate_rhs_power(
+    active_dims_row: np.ndarray,
+    minus_e_previous_row: np.ndarray,
+    basis_conjugate: np.ndarray,
+    x_coefficients: np.ndarray,
+    pv_local: np.ndarray,
+    qx_known: np.ndarray,
+) -> np.ndarray:
+    """
+    Assemble the complex power-balance RHS contribution for one coefficient.
+
+    Parameters
+    ----------
+    active_dims_row:
+        Non-zero dimension indices of the current coefficient row.
+    minus_e_previous_row:
+        ``alpha - e_d`` coefficient positions paired with ``active_dims_row``.
+    basis_conjugate:
+        Conjugated scheduled-power basis.
+    x_coefficients:
+        Reciprocal-voltage coefficients.
+    pv_local:
+        PV positions in local non-slack order.
+    qx_known:
+        Known ``Q * X`` convolution term for the PV buses.
+
+    Returns
+    -------
+    numpy.ndarray
+        Complex RHS-power vector in local non-slack order.
+    """
+    if should_use_parallel_rhs_power(
+        active_dimension_count=int(active_dims_row.size),
+        local_bus_count=int(basis_conjugate.shape[1]),
+    ):
+        return calculate_rhs_power_parallel_numba(
+            active_dims_row=active_dims_row,
+            minus_e_previous_row=minus_e_previous_row,
+            basis_conjugate=basis_conjugate,
+            x_coefficients=x_coefficients,
+            pv_local=pv_local,
+            qx_known=qx_known,
+        )
+    else:
+        return calculate_rhs_power_numba(
+            active_dims_row=active_dims_row,
+            minus_e_previous_row=minus_e_previous_row,
+            basis_conjugate=basis_conjugate,
+            x_coefficients=x_coefficients,
+            pv_local=pv_local,
+            qx_known=qx_known,
+        )
+
+
 @nb.njit(cache=True)
 def calculate_rhs_power_numba(
     active_dims_row: np.ndarray,
@@ -2370,6 +2450,66 @@ def calculate_rhs_power_numba(
     for pv_index in range(pv_local.size):
         local_index = int(pv_local[pv_index])
         rhs_power[local_index] = rhs_power[local_index] - 1j * qx_known[pv_index]
+
+    return rhs_power
+
+
+@nb.njit(cache=True, parallel=True)
+def calculate_rhs_power_parallel_numba(
+    active_dims_row: np.ndarray,
+    minus_e_previous_row: np.ndarray,
+    basis_conjugate: np.ndarray,
+    x_coefficients: np.ndarray,
+    pv_local: np.ndarray,
+    qx_known: np.ndarray,
+) -> np.ndarray:
+    """
+    Assemble the complex power-balance RHS with parallel bus updates.
+
+    Parameters
+    ----------
+    active_dims_row:
+        Non-zero dimension indices of the current coefficient row.
+    minus_e_previous_row:
+        ``alpha - e_d`` coefficient positions paired with ``active_dims_row``.
+    basis_conjugate:
+        Conjugated scheduled-power basis.
+    x_coefficients:
+        Reciprocal-voltage coefficients.
+    pv_local:
+        PV positions in local non-slack order.
+    qx_known:
+        Known ``Q * X`` convolution term for the PV buses.
+
+    Returns
+    -------
+    numpy.ndarray
+        Complex RHS-power vector in local non-slack order.
+    """
+    n_no_slack: int = int(basis_conjugate.shape[1])
+    rhs_power: np.ndarray = np.zeros(n_no_slack, dtype=np.complex128)
+    local_index: int
+
+    # Each local bus writes to its own RHS slot, so the bus loop is the safe
+    # parallelization boundary without any cross-thread reduction.
+    for local_index in nb.prange(n_no_slack):
+        value: complex = complex(0.0, 0.0)
+        entry_index: int
+        for entry_index in range(active_dims_row.size):
+            dimension_index: int = int(active_dims_row[entry_index])
+            previous_position: int = int(minus_e_previous_row[entry_index])
+            value = value + (
+                basis_conjugate[dimension_index, local_index] * x_coefficients[previous_position, local_index]
+            )
+
+        pv_index: int
+        for pv_index in range(pv_local.size):
+            if int(pv_local[pv_index]) == local_index:
+                value = value - 1j * qx_known[pv_index]
+            else:
+                pass
+
+        rhs_power[local_index] = value
 
     return rhs_power
 
@@ -3082,7 +3222,7 @@ def solve_mdhelm_pv(
                     x_coefficients=x_coefficients,
                     pv_local=pv_local,
                 )
-                rhs_power: np.ndarray = calculate_rhs_power_numba(
+                rhs_power: np.ndarray = calculate_rhs_power(
                     active_dims_row=active_dims_row,
                     minus_e_previous_row=minus_e_previous_row,
                     basis_conjugate=basis_conjugate,
@@ -5702,32 +5842,22 @@ def calculate_dimension_scores_from_linear_artifact(
 
 def select_top_dimensions(scores: np.ndarray, retained_dimensions: int) -> np.ndarray:
     """
-    Select the highest-scoring embedding dimensions.
+    Disabled legacy helper.
 
     Parameters
     ----------
     scores:
-        Per-dimension scores.
+        Unused.
     retained_dimensions:
-        Requested number of retained dimensions.
+        Unused.
 
     Returns
     -------
     numpy.ndarray
-        Sorted full-dimension indices kept by the compressed artifact.
+        This function always raises.
     """
-    score_array: np.ndarray = np.asarray(scores, dtype=np.float64)
-    available_dimensions: int = score_array.size
-
-    if retained_dimensions > 0:
-        kept_dimensions: int = min(retained_dimensions, available_dimensions)
-    else:
-        raise ValueError("retained_dimensions must be positive")
-
-    sorted_indices: np.ndarray = np.argsort(score_array)[::-1]
-    selected_indices: np.ndarray = np.asarray(sorted_indices[0:kept_dimensions], dtype=np.int64)
-    selected_indices.sort()
-    return selected_indices
+    _ = (scores, retained_dimensions)
+    raise RuntimeError("Dimension reduction is disabled. Keep every query dimension.")
 
 
 def select_top_dimensions_balanced(
@@ -5736,97 +5866,24 @@ def select_top_dimensions_balanced(
     retained_dimensions: int,
 ) -> np.ndarray:
     """
-    Select high-scoring dimensions while preserving input-kind coverage.
+    Disabled legacy helper.
 
     Parameters
     ----------
     scores:
-        Per-dimension scores.
+        Unused.
     dimension_kind_codes:
-        Per-dimension kind codes.
+        Unused.
     retained_dimensions:
-        Requested retained dimension count.
+        Unused.
 
     Returns
     -------
     numpy.ndarray
-        Sorted retained dimension indices.
+        This function always raises.
     """
-    score_array: np.ndarray = np.asarray(scores, dtype=np.float64)
-    kind_array: np.ndarray = np.asarray(dimension_kind_codes, dtype=np.int64)
-    available_dimensions: int = score_array.size
-
-    if retained_dimensions > 0:
-        kept_dimensions: int = min(retained_dimensions, available_dimensions)
-    else:
-        raise ValueError("retained_dimensions must be positive")
-
-    kind_codes: np.ndarray = np.asarray(
-        [
-            int(DimensionKind.PQ_ACTIVE.value),
-            int(DimensionKind.PQ_REACTIVE.value),
-            int(DimensionKind.PV_ACTIVE.value),
-        ],
-        dtype=np.int64,
-    )
-    present_mask: np.ndarray = np.zeros(kind_codes.size, dtype=bool)
-    kind_index: int
-    for kind_index in range(kind_codes.size):
-        present_mask[kind_index] = bool(np.any(kind_array == int(kind_codes[kind_index])))
-
-    present_kind_count: int = int(np.count_nonzero(present_mask))
-    selected_mask: np.ndarray = np.zeros(available_dimensions, dtype=bool)
-
-    if present_kind_count > 0:
-        base_quota: int = kept_dimensions // present_kind_count
-        remainder: int = kept_dimensions % present_kind_count
-        carried_slots: int = 0
-
-        # The first pass guarantees that every present query kind contributes
-        # some retained quadratic variables before the remaining slots go to
-        # the globally strongest responses.
-        for kind_index in range(kind_codes.size):
-            if present_mask[kind_index]:
-                target_count: int = base_quota
-                if remainder > 0:
-                    target_count = target_count + 1
-                    remainder = remainder - 1
-                else:
-                    target_count = target_count
-
-                candidate_indices: np.ndarray = np.where(kind_array == int(kind_codes[kind_index]))[0]
-                candidate_scores: np.ndarray = score_array[candidate_indices]
-                candidate_order: np.ndarray = np.argsort(candidate_scores)[::-1]
-                actual_count: int = min(target_count, candidate_indices.size)
-                carried_slots = carried_slots + (target_count - actual_count)
-                candidate_position: int
-                for candidate_position in range(actual_count):
-                    selected_mask[int(candidate_indices[int(candidate_order[candidate_position])])] = True
-            else:
-                pass
-
-        selected_count: int = int(np.count_nonzero(selected_mask))
-        remaining_count: int = kept_dimensions - selected_count + carried_slots
-    else:
-        remaining_count = kept_dimensions
-
-    if remaining_count > 0:
-        global_order: np.ndarray = np.argsort(score_array)[::-1]
-        global_position: int = 0
-        while global_position < global_order.size and remaining_count > 0:
-            dimension_index: int = int(global_order[global_position])
-            if selected_mask[dimension_index]:
-                pass
-            else:
-                selected_mask[dimension_index] = True
-                remaining_count = remaining_count - 1
-            global_position = global_position + 1
-    else:
-        pass
-
-    selected_indices: np.ndarray = np.where(selected_mask)[0].astype(np.int64)
-    selected_indices.sort()
-    return selected_indices
+    _ = (scores, dimension_kind_codes, retained_dimensions)
+    raise RuntimeError("Dimension reduction is disabled. Keep every query dimension.")
 
 
 def format_query_dimension_name(kind_code: int, bus_name: str) -> str:
@@ -5864,7 +5921,7 @@ def create_selected_dimension_names(
     selected_dimension_indices: np.ndarray,
 ) -> np.ndarray:
     """
-    Create labels for the retained compressed-query dimensions.
+    Create labels for the selected compressed-query dimensions.
 
     Parameters
     ----------
@@ -5875,12 +5932,12 @@ def create_selected_dimension_names(
     dimension_bus:
         Full dimension bus indices.
     selected_dimension_indices:
-        Retained full query dimensions.
+        Selected full query dimensions.
 
     Returns
     -------
     numpy.ndarray
-        String labels for the retained dimensions.
+        String labels for the selected dimensions.
     """
     selected_array: np.ndarray = np.asarray(selected_dimension_indices, dtype=np.int64)
     names: np.ndarray = np.empty(selected_array.size, dtype=object)
@@ -6380,7 +6437,7 @@ def solve_mdhelm_query_artifact_from_basis(
                     x_coefficients=x_coefficients,
                     pv_local=pv_local,
                 )
-                rhs_power: np.ndarray = calculate_rhs_power_numba(
+                rhs_power: np.ndarray = calculate_rhs_power(
                     active_dims_row=active_dims_row,
                     minus_e_previous_row=minus_e_previous_row,
                     basis_conjugate=basis_conjugate,
@@ -6537,28 +6594,691 @@ def evaluate_artifact_higher_order_terms_batch(
     return voltage_contribution, reactive_contribution
 
 
+class MDHEMQuadraticCPModel:
+    """
+    Store one low-rank symmetric CP-style quadratic correction.
+
+    Parameters
+    ----------
+    projection_matrix:
+        Real projection matrix with shape ``(rank, n_dims)``.
+    voltage_weights:
+        Complex output weights with shape ``(rank, n_no_slack)``.
+    reactive_weights:
+        Real PV-reactive output weights with shape ``(rank, n_pv)``.
+    """
+
+    __slots__ = (
+        "_projection_matrix",
+        "_voltage_weights",
+        "_reactive_weights",
+    )
+
+    def __init__(
+        self,
+        projection_matrix: np.ndarray,
+        voltage_weights: np.ndarray,
+        reactive_weights: np.ndarray,
+    ) -> None:
+        self._projection_matrix: np.ndarray = np.asarray(projection_matrix, dtype=np.float64)
+        self._voltage_weights: np.ndarray = np.asarray(voltage_weights, dtype=np.complex128)
+        self._reactive_weights: np.ndarray = np.asarray(reactive_weights, dtype=np.float64)
+
+    def evaluate(self, deviation: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        """
+        Evaluate the quadratic correction at one full deviation vector.
+
+        Parameters
+        ----------
+        deviation:
+            Full real deviation vector.
+
+        Returns
+        -------
+        tuple[numpy.ndarray, numpy.ndarray]
+            Local non-slack voltage correction and PV reactive-power
+            correction.
+        """
+        deviation_array: np.ndarray = np.asarray(deviation, dtype=np.float64)
+        feature_values: np.ndarray = (self._projection_matrix @ deviation_array) ** 2
+        voltage_correction: np.ndarray = feature_values @ self._voltage_weights
+        reactive_correction: np.ndarray = np.asarray(
+            feature_values @ self._reactive_weights,
+            dtype=np.float64,
+        )
+        return voltage_correction, reactive_correction
+
+    def evaluate_batch(self, deviation_matrix: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        """
+        Evaluate the quadratic correction for a batch of deviation vectors.
+
+        Parameters
+        ----------
+        deviation_matrix:
+            Real deviation matrix with shape ``(n_scenarios, n_dims)``.
+
+        Returns
+        -------
+        tuple[numpy.ndarray, numpy.ndarray]
+            Batch local voltage correction and batch PV reactive-power
+            correction.
+        """
+        deviation_array: np.ndarray = np.asarray(deviation_matrix, dtype=np.float64)
+        feature_matrix: np.ndarray = (deviation_array @ self._projection_matrix.T) ** 2
+        voltage_correction: np.ndarray = feature_matrix @ self._voltage_weights
+        reactive_correction: np.ndarray = np.asarray(
+            feature_matrix @ self._reactive_weights,
+            dtype=np.float64,
+        )
+        return voltage_correction, reactive_correction
+
+    def get_rank(self) -> int:
+        """
+        Get the retained CP rank.
+
+        Returns
+        -------
+        int
+            Number of retained rank-1 factors.
+        """
+        return int(self._projection_matrix.shape[0])
+
+
+class MDHEMProjectedDirectionalBundleModel:
+    """
+    Store a small bundle of projected one-dimensional high-order artifacts.
+
+    Parameters
+    ----------
+    projection_matrix:
+        Real projection matrix with shape ``(bundle_size, n_dims)``.
+    component_artifacts:
+        One-dimensional HELM artifacts, one per projection row.
+    voltage_mix_weights:
+        Complex mixing weights with shape ``(bundle_size, n_no_slack)``.
+    reactive_mix_weights:
+        Real PV-reactive mixing weights with shape ``(bundle_size, n_pv)``.
+    """
+
+    __slots__ = (
+        "_projection_matrix",
+        "_component_artifacts",
+        "_voltage_mix_weights",
+        "_reactive_mix_weights",
+    )
+
+    def __init__(
+        self,
+        projection_matrix: np.ndarray,
+        component_artifacts: list["MDHEMPVQueryArtifact"],
+        voltage_mix_weights: np.ndarray,
+        reactive_mix_weights: np.ndarray,
+    ) -> None:
+        self._projection_matrix: np.ndarray = np.asarray(projection_matrix, dtype=np.float64)
+        self._component_artifacts: list[MDHEMPVQueryArtifact] = component_artifacts
+        self._voltage_mix_weights: np.ndarray = np.asarray(voltage_mix_weights, dtype=np.complex128)
+        self._reactive_mix_weights: np.ndarray = np.asarray(reactive_mix_weights, dtype=np.float64)
+
+    def evaluate(self, deviation: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        """
+        Evaluate the represented higher-order correction at one deviation.
+
+        Parameters
+        ----------
+        deviation:
+            Full real deviation vector.
+
+        Returns
+        -------
+        tuple[numpy.ndarray, numpy.ndarray]
+            Local non-slack voltage correction and PV reactive-power
+            correction.
+        """
+        deviation_array: np.ndarray = np.asarray(deviation, dtype=np.float64)
+        bundle_size: int = len(self._component_artifacts)
+        component_voltage: np.ndarray = np.zeros(
+            (bundle_size, self._voltage_mix_weights.shape[1]),
+            dtype=np.complex128,
+        )
+        component_reactive: np.ndarray = np.zeros(
+            (bundle_size, self._reactive_mix_weights.shape[1]),
+            dtype=np.float64,
+        )
+        component_index: int
+
+        for component_index in range(bundle_size):
+            scalar_deviation: np.ndarray = np.asarray(
+                [self._projection_matrix[component_index, :] @ deviation_array],
+                dtype=np.complex128,
+            )
+            voltage_part: np.ndarray
+            reactive_part: np.ndarray
+            voltage_part, reactive_part = evaluate_artifact_higher_order_terms(
+                artifact=self._component_artifacts[component_index],
+                deviation=scalar_deviation,
+                minimum_order=2,
+            )
+            component_voltage[component_index, :] = voltage_part
+            component_reactive[component_index, :] = np.asarray(reactive_part.real, dtype=np.float64)
+
+        voltage_correction: np.ndarray = np.sum(component_voltage * self._voltage_mix_weights, axis=0)
+        reactive_correction: np.ndarray = np.asarray(
+            np.sum(component_reactive * self._reactive_mix_weights, axis=0),
+            dtype=np.float64,
+        )
+        return voltage_correction, reactive_correction
+
+    def evaluate_batch(self, deviation_matrix: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        """
+        Evaluate the represented higher-order correction for a batch.
+
+        Parameters
+        ----------
+        deviation_matrix:
+            Real deviation matrix with shape ``(n_scenarios, n_dims)``.
+
+        Returns
+        -------
+        tuple[numpy.ndarray, numpy.ndarray]
+            Batch local voltage correction and batch PV reactive-power
+            correction.
+        """
+        deviation_array: np.ndarray = np.asarray(deviation_matrix, dtype=np.float64)
+        scenario_count: int = int(deviation_array.shape[0])
+        voltage_correction: np.ndarray = np.zeros(
+            (scenario_count, self._voltage_mix_weights.shape[1]),
+            dtype=np.complex128,
+        )
+        reactive_correction: np.ndarray = np.zeros(
+            (scenario_count, self._reactive_mix_weights.shape[1]),
+            dtype=np.float64,
+        )
+        component_index: int
+
+        for component_index in range(len(self._component_artifacts)):
+            scalar_deviation_matrix: np.ndarray = np.asarray(
+                (deviation_array @ self._projection_matrix[component_index, :].reshape(-1, 1)),
+                dtype=np.complex128,
+            )
+            component_voltage: np.ndarray
+            component_reactive_complex: np.ndarray
+            component_voltage, component_reactive_complex = evaluate_artifact_higher_order_terms_batch(
+                artifact=self._component_artifacts[component_index],
+                deviation_matrix=scalar_deviation_matrix,
+                minimum_order=2,
+            )
+            voltage_correction = voltage_correction + (
+                component_voltage * self._voltage_mix_weights[component_index, :][np.newaxis, :]
+            )
+            reactive_correction = reactive_correction + (
+                np.asarray(component_reactive_complex.real, dtype=np.float64)
+                * self._reactive_mix_weights[component_index, :][np.newaxis, :]
+            )
+
+        return voltage_correction, reactive_correction
+
+    def get_bundle_size(self) -> int:
+        """
+        Get the number of stored projected artifacts.
+
+        Returns
+        -------
+        int
+            Bundle size.
+        """
+        return int(len(self._component_artifacts))
+
+
+def create_directional_case_data_from_linear_artifact(artifact: MDHEMPVQueryArtifact) -> VeraGridQueryCaseData:
+    """
+    Create the directional one-dimensional case data from one linear artifact.
+
+    Parameters
+    ----------
+    artifact:
+        Linear full-dimension artifact.
+
+    Returns
+    -------
+    VeraGridQueryCaseData
+        Case data aligned with the linear artifact.
+    """
+    return VeraGridQueryCaseData(
+        ybus=artifact._ybus,
+        yf=artifact._yf,
+        yt=artifact._yt,
+        slack_voltage=artifact._slack_voltage,
+        base_power=artifact._scheduled_power_germ,
+        slack=artifact._slack,
+        pq=artifact._pq,
+        pv=artifact._pv,
+        no_slack=artifact._no_slack,
+        bus_names=artifact._bus_names,
+        voltage_setpoint=artifact._voltage_setpoint,
+        branch_from_indices=artifact._branch_from_indices,
+        branch_to_indices=artifact._branch_to_indices,
+        branch_rates=artifact._branch_rates,
+        sbase=artifact._sbase,
+    )
+
+
+def create_directional_germ_voltage_from_linear_artifact(artifact: MDHEMPVQueryArtifact) -> np.ndarray:
+    """
+    Create the full-bus germ voltage used by the directional solve.
+
+    Parameters
+    ----------
+    artifact:
+        Linear full-dimension artifact.
+
+    Returns
+    -------
+    numpy.ndarray
+        Full-bus germ voltage vector.
+    """
+    voltage: np.ndarray = np.zeros(artifact._ybus.shape[0], dtype=np.complex128)
+    voltage[artifact._slack] = extract_slack_voltage_values(
+        slack_voltage=artifact._slack_voltage,
+        slack=artifact._slack,
+        nbus=artifact._ybus.shape[0],
+    )
+    voltage[artifact._no_slack] = artifact._u_coefficients[0, :]
+    return voltage
+
+
+def evaluate_directional_higher_order_terms_from_linear_artifact(
+    artifact: MDHEMPVQueryArtifact,
+    directional_max_order: int,
+    deviation: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Evaluate one one-dimensional directional higher-order correction.
+
+    Parameters
+    ----------
+    artifact:
+        Linear full-dimension artifact.
+    directional_max_order:
+        Maximum total order used by the one-dimensional directional solve.
+    deviation:
+        Full deviation vector.
+
+    Returns
+    -------
+    tuple[numpy.ndarray, numpy.ndarray]
+        Local non-slack voltage correction and PV reactive-power correction.
+    """
+    deviation_array: np.ndarray = np.asarray(deviation, dtype=np.complex128)
+
+    if np.all(np.abs(deviation_array) < 1.0e-15):
+        return (
+            np.zeros(artifact._no_slack.size, dtype=np.complex128),
+            np.zeros(artifact._pv.size, dtype=np.float64),
+        )
+
+    directional_basis_row: np.ndarray = np.asarray(
+        deviation_array @ artifact._scheduled_basis,
+        dtype=np.complex128,
+    ).reshape(1, artifact._no_slack.size)
+    directional_kind_codes: np.ndarray = np.asarray([int(DimensionKind.PQ_ACTIVE.value)], dtype=np.int64)
+    directional_bus: np.ndarray = np.asarray([int(artifact._no_slack[0])], dtype=np.int64)
+    directional_local: np.ndarray = np.asarray([0], dtype=np.int64)
+    directional_pq_active: np.ndarray = create_empty_dimension_position_array(artifact._pq.size)
+    directional_pq_reactive: np.ndarray = create_empty_dimension_position_array(artifact._pq.size)
+    directional_pv_active: np.ndarray = create_empty_dimension_position_array(artifact._pv.size)
+    directional_artifact: MDHEMPVQueryArtifact = solve_mdhelm_query_artifact_from_basis(
+        input_data=create_directional_case_data_from_linear_artifact(artifact=artifact),
+        germ_voltage=create_directional_germ_voltage_from_linear_artifact(artifact=artifact),
+        germ_power=artifact._scheduled_power_germ,
+        basis=directional_basis_row,
+        dimension_kind_codes=directional_kind_codes,
+        dimension_bus=directional_bus,
+        dimension_local=directional_local,
+        pq_active_dimension=directional_pq_active,
+        pq_reactive_dimension=directional_pq_reactive,
+        pv_active_dimension=directional_pv_active,
+        max_order=directional_max_order,
+    )
+    return evaluate_artifact_higher_order_terms(
+        artifact=directional_artifact,
+        deviation=np.asarray([1.0 + 0.0j], dtype=np.complex128),
+        minimum_order=2,
+    )
+
+
+def build_quadratic_cp_model_from_directional_samples(
+    linear_artifact: MDHEMPVQueryArtifact,
+    directional_max_order: int,
+    rank: int,
+    training_samples: int,
+    random_seed: int,
+) -> MDHEMQuadraticCPModel:
+    """
+    Fit one low-rank CP-style quadratic model from directional samples.
+
+    Parameters
+    ----------
+    linear_artifact:
+        Full-dimension first-order artifact.
+    directional_max_order:
+        Maximum total order used in the sampled one-dimensional solves.
+    rank:
+        Retained CP rank.
+    training_samples:
+        Number of sampled directions used for the fit.
+    random_seed:
+        Random seed for the projections and sample directions.
+
+    Returns
+    -------
+    MDHEMQuadraticCPModel
+        Fitted low-rank quadratic model.
+    """
+    if rank <= 0:
+        raise ValueError("rank must be positive")
+
+    if training_samples < rank:
+        raise ValueError("training_samples must be at least rank")
+
+    rng: np.random.Generator = np.random.default_rng(random_seed)
+    dims: int = linear_artifact.get_dimensions_count()
+    deviation_samples: np.ndarray = np.zeros((training_samples, dims), dtype=np.float64)
+    pq_active_mask: np.ndarray = (
+        np.asarray(linear_artifact._dimension_kind_codes, dtype=np.int64) == int(DimensionKind.PQ_ACTIVE.value)
+    )
+    pq_reactive_mask: np.ndarray = (
+        np.asarray(linear_artifact._dimension_kind_codes, dtype=np.int64) == int(DimensionKind.PQ_REACTIVE.value)
+    )
+    pv_active_mask: np.ndarray = (
+        np.asarray(linear_artifact._dimension_kind_codes, dtype=np.int64) == int(DimensionKind.PV_ACTIVE.value)
+    )
+    sample_index: int
+
+    for sample_index in range(training_samples):
+        deviation_row: np.ndarray = np.zeros(dims, dtype=np.float64)
+        deviation_row[pq_active_mask] = rng.normal(0.0, 0.08, size=int(np.count_nonzero(pq_active_mask)))
+        deviation_row[pq_reactive_mask] = rng.normal(0.0, 0.08, size=int(np.count_nonzero(pq_reactive_mask)))
+        deviation_row[pv_active_mask] = rng.normal(0.0, 0.06, size=int(np.count_nonzero(pv_active_mask)))
+
+        if np.any(pv_active_mask):
+            active_sum: float = float(np.sum(deviation_row[pq_active_mask]) + np.sum(deviation_row[pv_active_mask]))
+            deviation_row[pv_active_mask] = deviation_row[pv_active_mask] - (
+                active_sum / float(np.count_nonzero(pv_active_mask))
+            )
+        else:
+            pass
+
+        if np.any(pq_reactive_mask):
+            reactive_sum: float = float(np.sum(deviation_row[pq_reactive_mask]))
+            deviation_row[pq_reactive_mask] = deviation_row[pq_reactive_mask] - (
+                reactive_sum / float(np.count_nonzero(pq_reactive_mask))
+            )
+        else:
+            pass
+
+        deviation_samples[sample_index, :] = deviation_row
+
+    projection_matrix: np.ndarray = rng.standard_normal((rank, dims))
+    projection_norms: np.ndarray = np.linalg.norm(projection_matrix, axis=1, keepdims=True)
+    projection_norms = np.maximum(projection_norms, 1.0e-12)
+    projection_matrix = projection_matrix / projection_norms
+    voltage_targets: np.ndarray = np.zeros(
+        (training_samples, linear_artifact._no_slack.size),
+        dtype=np.complex128,
+    )
+    reactive_targets: np.ndarray = np.zeros(
+        (training_samples, linear_artifact._pv.size),
+        dtype=np.float64,
+    )
+    for sample_index in range(training_samples):
+        sample_voltage: np.ndarray
+        sample_reactive: np.ndarray
+        sample_voltage, sample_reactive = evaluate_directional_higher_order_terms_from_linear_artifact(
+            artifact=linear_artifact,
+            directional_max_order=directional_max_order,
+            deviation=deviation_samples[sample_index, :],
+        )
+        voltage_targets[sample_index, :] = sample_voltage
+        reactive_targets[sample_index, :] = np.asarray(sample_reactive.real, dtype=np.float64)
+
+    # ponytail: random-feature CP fit, upgrade to exact pairwise tensor ALS/HOSVD only if this low-rank sketch misses the target.
+    feature_matrix: np.ndarray = (deviation_samples @ projection_matrix.T) ** 2
+    voltage_weights: np.ndarray = np.linalg.lstsq(feature_matrix, voltage_targets, rcond=1.0e-8)[0]
+    reactive_weights: np.ndarray = np.asarray(
+        np.linalg.lstsq(feature_matrix, reactive_targets, rcond=1.0e-8)[0],
+        dtype=np.float64,
+    )
+    return MDHEMQuadraticCPModel(
+        projection_matrix=projection_matrix,
+        voltage_weights=voltage_weights,
+        reactive_weights=reactive_weights,
+    )
+
+
+def build_projected_directional_artifact(
+    linear_artifact: MDHEMPVQueryArtifact,
+    directional_max_order: int,
+    projection_vector: np.ndarray,
+) -> MDHEMPVQueryArtifact:
+    """
+    Build one one-dimensional high-order artifact on a projected direction.
+
+    Parameters
+    ----------
+    linear_artifact:
+        Full-dimension first-order artifact.
+    directional_max_order:
+        Maximum total order of the one-dimensional artifact.
+    projection_vector:
+        Real projection vector in full query coordinates.
+
+    Returns
+    -------
+    MDHEMPVQueryArtifact
+        One-dimensional projected artifact.
+    """
+    projection_array: np.ndarray = np.asarray(projection_vector, dtype=np.float64)
+    directional_basis_row: np.ndarray = np.asarray(
+        projection_array.astype(np.complex128) @ linear_artifact._scheduled_basis,
+        dtype=np.complex128,
+    ).reshape(1, linear_artifact._no_slack.size)
+    directional_kind_codes: np.ndarray = np.asarray([int(DimensionKind.PQ_ACTIVE.value)], dtype=np.int64)
+    directional_bus: np.ndarray = np.asarray([int(linear_artifact._no_slack[0])], dtype=np.int64)
+    directional_local: np.ndarray = np.asarray([0], dtype=np.int64)
+    directional_pq_active: np.ndarray = create_empty_dimension_position_array(linear_artifact._pq.size)
+    directional_pq_reactive: np.ndarray = create_empty_dimension_position_array(linear_artifact._pq.size)
+    directional_pv_active: np.ndarray = create_empty_dimension_position_array(linear_artifact._pv.size)
+    return solve_mdhelm_query_artifact_from_basis(
+        input_data=create_directional_case_data_from_linear_artifact(artifact=linear_artifact),
+        germ_voltage=create_directional_germ_voltage_from_linear_artifact(artifact=linear_artifact),
+        germ_power=linear_artifact._scheduled_power_germ,
+        basis=directional_basis_row,
+        dimension_kind_codes=directional_kind_codes,
+        dimension_bus=directional_bus,
+        dimension_local=directional_local,
+        pq_active_dimension=directional_pq_active,
+        pq_reactive_dimension=directional_pq_reactive,
+        pv_active_dimension=directional_pv_active,
+        max_order=directional_max_order,
+    )
+
+
+def build_projected_directional_bundle_model(
+    linear_artifact: MDHEMPVQueryArtifact,
+    directional_max_order: int,
+    bundle_size: int,
+    training_samples: int,
+    random_seed: int,
+) -> MDHEMProjectedDirectionalBundleModel:
+    """
+    Build one projected bundle that represents larger-order corrections.
+
+    Parameters
+    ----------
+    linear_artifact:
+        Full-dimension first-order artifact.
+    directional_max_order:
+        Maximum total order of each projected one-dimensional artifact.
+    bundle_size:
+        Number of stored projected artifacts.
+    training_samples:
+        Number of sampled scenarios used to fit the mixing weights.
+    random_seed:
+        Random seed for projections and training scenarios.
+
+    Returns
+    -------
+    MDHEMProjectedDirectionalBundleModel
+        Fitted projected bundle model.
+    """
+    if bundle_size <= 0:
+        raise ValueError("bundle_size must be positive")
+
+    if training_samples < bundle_size:
+        raise ValueError("training_samples must be at least bundle_size")
+
+    rng: np.random.Generator = np.random.default_rng(random_seed)
+    dims: int = linear_artifact.get_dimensions_count()
+    projection_matrix: np.ndarray = rng.standard_normal((bundle_size, dims))
+    projection_norms: np.ndarray = np.linalg.norm(projection_matrix, axis=1, keepdims=True)
+    projection_norms = np.maximum(projection_norms, 1.0e-12)
+    projection_matrix = projection_matrix / projection_norms
+    component_artifacts: list[MDHEMPVQueryArtifact] = []
+    component_index: int
+    for component_index in range(bundle_size):
+        component_artifacts.append(
+            build_projected_directional_artifact(
+                linear_artifact=linear_artifact,
+                directional_max_order=directional_max_order,
+                projection_vector=projection_matrix[component_index, :],
+            )
+        )
+
+    deviation_samples: np.ndarray = np.zeros((training_samples, dims), dtype=np.float64)
+    pq_active_mask: np.ndarray = (
+        np.asarray(linear_artifact._dimension_kind_codes, dtype=np.int64) == int(DimensionKind.PQ_ACTIVE.value)
+    )
+    pq_reactive_mask: np.ndarray = (
+        np.asarray(linear_artifact._dimension_kind_codes, dtype=np.int64) == int(DimensionKind.PQ_REACTIVE.value)
+    )
+    pv_active_mask: np.ndarray = (
+        np.asarray(linear_artifact._dimension_kind_codes, dtype=np.int64) == int(DimensionKind.PV_ACTIVE.value)
+    )
+    sample_index: int
+
+    for sample_index in range(training_samples):
+        deviation_row: np.ndarray = np.zeros(dims, dtype=np.float64)
+        deviation_row[pq_active_mask] = rng.normal(0.0, 0.08, size=int(np.count_nonzero(pq_active_mask)))
+        deviation_row[pq_reactive_mask] = rng.normal(0.0, 0.08, size=int(np.count_nonzero(pq_reactive_mask)))
+        deviation_row[pv_active_mask] = rng.normal(0.0, 0.06, size=int(np.count_nonzero(pv_active_mask)))
+
+        if np.any(pv_active_mask):
+            active_sum: float = float(np.sum(deviation_row[pq_active_mask]) + np.sum(deviation_row[pv_active_mask]))
+            deviation_row[pv_active_mask] = deviation_row[pv_active_mask] - (
+                active_sum / float(np.count_nonzero(pv_active_mask))
+            )
+
+        if np.any(pq_reactive_mask):
+            reactive_sum: float = float(np.sum(deviation_row[pq_reactive_mask]))
+            deviation_row[pq_reactive_mask] = deviation_row[pq_reactive_mask] - (
+                reactive_sum / float(np.count_nonzero(pq_reactive_mask))
+            )
+
+        deviation_samples[sample_index, :] = deviation_row
+
+    target_voltage: np.ndarray = np.zeros((training_samples, linear_artifact._no_slack.size), dtype=np.complex128)
+    target_reactive: np.ndarray = np.zeros((training_samples, linear_artifact._pv.size), dtype=np.float64)
+    bundle_voltage: np.ndarray = np.zeros(
+        (training_samples, bundle_size, linear_artifact._no_slack.size),
+        dtype=np.complex128,
+    )
+    bundle_reactive: np.ndarray = np.zeros(
+        (training_samples, bundle_size, linear_artifact._pv.size),
+        dtype=np.float64,
+    )
+
+    for sample_index in range(training_samples):
+        sample_voltage: np.ndarray
+        sample_reactive: np.ndarray
+        sample_voltage, sample_reactive = evaluate_directional_higher_order_terms_from_linear_artifact(
+            artifact=linear_artifact,
+            directional_max_order=directional_max_order,
+            deviation=deviation_samples[sample_index, :],
+        )
+        target_voltage[sample_index, :] = sample_voltage
+        target_reactive[sample_index, :] = np.asarray(sample_reactive.real, dtype=np.float64)
+
+        for component_index in range(bundle_size):
+            scalar_deviation: np.ndarray = np.asarray(
+                [projection_matrix[component_index, :] @ deviation_samples[sample_index, :]],
+                dtype=np.complex128,
+            )
+            component_voltage: np.ndarray
+            component_reactive: np.ndarray
+            component_voltage, component_reactive = evaluate_artifact_higher_order_terms(
+                artifact=component_artifacts[component_index],
+                deviation=scalar_deviation,
+                minimum_order=2,
+            )
+            bundle_voltage[sample_index, component_index, :] = component_voltage
+            bundle_reactive[sample_index, component_index, :] = np.asarray(component_reactive.real, dtype=np.float64)
+
+    voltage_mix_weights: np.ndarray = np.zeros((bundle_size, linear_artifact._no_slack.size), dtype=np.complex128)
+    local_index: int
+    for local_index in range(linear_artifact._no_slack.size):
+        voltage_mix_weights[:, local_index] = np.linalg.lstsq(
+            bundle_voltage[:, :, local_index],
+            target_voltage[:, local_index],
+            rcond=1.0e-8,
+        )[0]
+
+    reactive_mix_weights: np.ndarray = np.zeros((bundle_size, linear_artifact._pv.size), dtype=np.float64)
+    pv_index: int
+    for pv_index in range(linear_artifact._pv.size):
+        reactive_mix_weights[:, pv_index] = np.asarray(
+            np.linalg.lstsq(
+                bundle_reactive[:, :, pv_index],
+                target_reactive[:, pv_index],
+                rcond=1.0e-8,
+            )[0],
+            dtype=np.float64,
+        )
+
+    # ponytail: projected bundle is a representation path, not an exact tensor; upgrade to TT/MPS cores only if this beats the single-direction baseline.
+    return MDHEMProjectedDirectionalBundleModel(
+        projection_matrix=projection_matrix,
+        component_artifacts=component_artifacts,
+        voltage_mix_weights=voltage_mix_weights,
+        reactive_mix_weights=reactive_mix_weights,
+    )
+
+
 class MDHEMOrder2CompressedArtifact:
     """
-    Store the exact linear map plus a compressed quadratic correction.
+    Store the exact linear map plus an order-2 correction path.
 
     Parameters
     ----------
     linear_artifact:
         Full per-bus query artifact solved to first order.
     quadratic_artifact:
-        Reduced query artifact solved to second order on the retained
-        dimensions only.
+        Optional explicit quadratic artifact. When omitted, the quadratic
+        correction is solved on demand along the full query direction of the
+        current scenario.
     selected_dimension_indices:
-        Full query dimension indices retained by the quadratic stage.
+        Full query dimension indices carried by the quadratic stage.
     selected_dimension_scores:
-        First-order sensitivity scores of the retained dimensions.
+        First-order sensitivity scores of the quadratic dimensions.
     selected_dimension_names:
-        Human-readable labels of the retained dimensions.
+        Human-readable labels of the quadratic dimensions.
     """
 
     __slots__ = (
         "_linear_artifact",
         "_quadratic_artifact",
+        "_quadratic_cp_model",
+        "_projected_bundle_model",
+        "_directional_max_order",
         "_selected_dimension_indices",
         "_selected_dimension_scores",
         "_selected_dimension_names",
@@ -6567,16 +7287,65 @@ class MDHEMOrder2CompressedArtifact:
     def __init__(
         self,
         linear_artifact: MDHEMPVQueryArtifact,
-        quadratic_artifact: MDHEMPVQueryArtifact,
+        quadratic_artifact: Optional[MDHEMPVQueryArtifact],
+        quadratic_cp_model: Optional[MDHEMQuadraticCPModel],
+        projected_bundle_model: Optional[MDHEMProjectedDirectionalBundleModel],
+        directional_max_order: int,
         selected_dimension_indices: np.ndarray,
         selected_dimension_scores: np.ndarray,
         selected_dimension_names: np.ndarray,
     ) -> None:
+        full_dimension_count: int = linear_artifact.get_dimensions_count()
+        expected_indices: np.ndarray = np.arange(full_dimension_count, dtype=np.int64)
+        selected_indices: np.ndarray = np.asarray(selected_dimension_indices, dtype=np.int64)
+
+        if quadratic_artifact is not None:
+            if quadratic_artifact.get_dimensions_count() != full_dimension_count:
+                raise ValueError("quadratic_artifact must keep every full query dimension")
+        else:
+            pass
+
+        model_count: int = 0
+        if quadratic_artifact is not None:
+            model_count = model_count + 1
+        if quadratic_cp_model is not None:
+            model_count = model_count + 1
+        if projected_bundle_model is not None:
+            model_count = model_count + 1
+        if model_count > 1:
+            raise ValueError("choose one quadratic representation path")
+
+        if not np.array_equal(selected_indices, expected_indices):
+            raise ValueError("order-2 artifacts must keep every full query dimension")
+
+        if quadratic_artifact is None:
+            if directional_max_order < 2:
+                raise ValueError("directional_max_order must be at least 2")
+        else:
+            if directional_max_order != quadratic_artifact.get_max_order():
+                raise ValueError("directional_max_order must match quadratic_artifact max_order")
+
         self._linear_artifact: MDHEMPVQueryArtifact = linear_artifact
         self._quadratic_artifact: MDHEMPVQueryArtifact = quadratic_artifact
-        self._selected_dimension_indices: np.ndarray = np.asarray(selected_dimension_indices, dtype=np.int64)
+        self._quadratic_cp_model: Optional[MDHEMQuadraticCPModel] = quadratic_cp_model
+        self._projected_bundle_model: Optional[MDHEMProjectedDirectionalBundleModel] = projected_bundle_model
+        self._directional_max_order: int = int(directional_max_order)
+        self._selected_dimension_indices: np.ndarray = selected_indices
         self._selected_dimension_scores: np.ndarray = np.asarray(selected_dimension_scores, dtype=np.float64)
         self._selected_dimension_names: np.ndarray = np.asarray(selected_dimension_names, dtype=str)
+
+    def _create_directional_case_data(self) -> VeraGridQueryCaseData:
+        return create_directional_case_data_from_linear_artifact(artifact=self._linear_artifact)
+
+    def _create_directional_germ_voltage(self) -> np.ndarray:
+        return create_directional_germ_voltage_from_linear_artifact(artifact=self._linear_artifact)
+
+    def _evaluate_directional_quadratic_terms(self, deviation: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        return evaluate_directional_higher_order_terms_from_linear_artifact(
+            artifact=self._linear_artifact,
+            directional_max_order=self._directional_max_order,
+            deviation=deviation,
+        )
 
     def get_pq_bus_indices(self) -> np.ndarray:
         """
@@ -6631,33 +7400,33 @@ class MDHEMOrder2CompressedArtifact:
         int
             Maximum total order.
         """
-        return 2
+        return int(self._directional_max_order)
 
     def get_quadratic_dimensions_count(self) -> int:
         """
-        Get the retained quadratic dimension count.
+        Get the quadratic dimension count.
 
         Returns
         -------
         int
-            Number of retained quadratic dimensions.
+            Number of quadratic dimensions.
         """
         return int(self._selected_dimension_indices.size)
 
     def get_quadratic_dimension_indices(self) -> np.ndarray:
         """
-        Get the retained full query dimensions.
+        Get the full query dimensions carried by the quadratic stage.
 
         Returns
         -------
         numpy.ndarray
-            Full-dimension indices kept by the quadratic stage.
+            Full-dimension indices used by the quadratic stage.
         """
         return np.asarray(self._selected_dimension_indices, dtype=np.int64)
 
     def get_quadratic_dimension_scores(self) -> np.ndarray:
         """
-        Get the retained full query dimension scores.
+        Get the full query dimension scores.
 
         Returns
         -------
@@ -6668,7 +7437,7 @@ class MDHEMOrder2CompressedArtifact:
 
     def get_quadratic_dimension_names(self) -> np.ndarray:
         """
-        Get the retained full query dimension names.
+        Get the full query dimension names.
 
         Returns
         -------
@@ -6793,14 +7562,27 @@ class MDHEMOrder2CompressedArtifact:
                 deviation=deviation_array
             )
             _ = linear_scheduled_power
-            quadratic_deviation: np.ndarray = deviation_array[self._selected_dimension_indices]
             quadratic_voltage_local: np.ndarray
             quadratic_pv_reactive_power: np.ndarray
-            quadratic_voltage_local, quadratic_pv_reactive_power = evaluate_artifact_higher_order_terms(
-                artifact=self._quadratic_artifact,
-                deviation=quadratic_deviation,
-                minimum_order=2,
-            )
+            if self._projected_bundle_model is not None:
+                quadratic_voltage_local, quadratic_pv_reactive_power = self._projected_bundle_model.evaluate(
+                    deviation=np.asarray(deviation_array.real, dtype=np.float64)
+                )
+            elif self._quadratic_cp_model is not None:
+                quadratic_voltage_local, quadratic_pv_reactive_power = self._quadratic_cp_model.evaluate(
+                    deviation=np.asarray(deviation_array.real, dtype=np.float64)
+                )
+            elif self._quadratic_artifact is None:
+                quadratic_voltage_local, quadratic_pv_reactive_power = self._evaluate_directional_quadratic_terms(
+                    deviation=deviation_array
+                )
+            else:
+                quadratic_deviation: np.ndarray = deviation_array[self._selected_dimension_indices]
+                quadratic_voltage_local, quadratic_pv_reactive_power = evaluate_artifact_higher_order_terms(
+                    artifact=self._quadratic_artifact,
+                    deviation=quadratic_deviation,
+                    minimum_order=2,
+                )
             voltage: np.ndarray = np.asarray(linear_voltage, dtype=np.complex128).copy()
             voltage[self._linear_artifact._no_slack] = (
                 voltage[self._linear_artifact._no_slack] + quadratic_voltage_local
@@ -6844,16 +7626,52 @@ class MDHEMOrder2CompressedArtifact:
                 self._linear_artifact.evaluate_deviation_matrix(deviation_matrix=deviation_array)
             )
             _ = linear_scheduled_power_matrix
-            quadratic_deviation_matrix: CxMat = deviation_array[:, self._selected_dimension_indices]
             quadratic_voltage_local_matrix: CxMat
             quadratic_pv_reactive_power_matrix_complex: CxMat
-            quadratic_voltage_local_matrix, quadratic_pv_reactive_power_matrix_complex = (
-                evaluate_artifact_higher_order_terms_batch(
-                    artifact=self._quadratic_artifact,
-                    deviation_matrix=quadratic_deviation_matrix,
-                    minimum_order=2,
+            if self._projected_bundle_model is not None:
+                bundle_voltage_matrix: np.ndarray
+                bundle_reactive_matrix: np.ndarray
+                bundle_voltage_matrix, bundle_reactive_matrix = self._projected_bundle_model.evaluate_batch(
+                    deviation_matrix=np.asarray(deviation_array.real, dtype=np.float64)
                 )
-            )
+                quadratic_voltage_local_matrix = np.asarray(bundle_voltage_matrix, dtype=np.complex128)
+                quadratic_pv_reactive_power_matrix_complex = np.asarray(bundle_reactive_matrix, dtype=np.complex128)
+            elif self._quadratic_cp_model is not None:
+                cp_voltage_matrix: np.ndarray
+                cp_reactive_matrix: np.ndarray
+                cp_voltage_matrix, cp_reactive_matrix = self._quadratic_cp_model.evaluate_batch(
+                    deviation_matrix=np.asarray(deviation_array.real, dtype=np.float64)
+                )
+                quadratic_voltage_local_matrix = np.asarray(cp_voltage_matrix, dtype=np.complex128)
+                quadratic_pv_reactive_power_matrix_complex = np.asarray(cp_reactive_matrix, dtype=np.complex128)
+            elif self._quadratic_artifact is None:
+                scenario_count: int = deviation_array.shape[0]
+                quadratic_voltage_local_matrix = np.zeros(
+                    (scenario_count, self._linear_artifact._no_slack.size),
+                    dtype=np.complex128,
+                )
+                quadratic_pv_reactive_power_matrix_complex = np.zeros(
+                    (scenario_count, self._linear_artifact._pv.size),
+                    dtype=np.complex128,
+                )
+                scenario_index: int
+                for scenario_index in range(scenario_count):
+                    scenario_voltage_local: np.ndarray
+                    scenario_pv_reactive_power: np.ndarray
+                    scenario_voltage_local, scenario_pv_reactive_power = self._evaluate_directional_quadratic_terms(
+                        deviation=deviation_array[scenario_index, :]
+                    )
+                    quadratic_voltage_local_matrix[scenario_index, :] = scenario_voltage_local
+                    quadratic_pv_reactive_power_matrix_complex[scenario_index, :] = scenario_pv_reactive_power
+            else:
+                quadratic_deviation_matrix: CxMat = deviation_array[:, self._selected_dimension_indices]
+                quadratic_voltage_local_matrix, quadratic_pv_reactive_power_matrix_complex = (
+                    evaluate_artifact_higher_order_terms_batch(
+                        artifact=self._quadratic_artifact,
+                        deviation_matrix=quadratic_deviation_matrix,
+                        minimum_order=2,
+                    )
+                )
             voltage_matrix: CxMat = np.asarray(linear_voltage_matrix, dtype=np.complex128).copy()
             voltage_matrix[:, self._linear_artifact._no_slack] = (
                 voltage_matrix[:, self._linear_artifact._no_slack] + quadratic_voltage_local_matrix
@@ -7282,33 +8100,60 @@ def build_artifact_from_case(
 
 def build_order2_compressed_artifact_from_case(
     grid: "MultiCircuit",
-    retained_dimensions: int,
+    max_order: int = 2,
     germ_seed_results: Optional["PowerFlowResults"] = None,
     reactive_score_weight: float = 1.0,
+    quadratic_mode: str = "directional_on_demand",
+    cp_rank: int = 32,
+    cp_training_samples: int = 96,
+    cp_random_seed: int = 2000,
+    bundle_size: int = 8,
+    bundle_training_samples: int = 24,
+    bundle_random_seed: int = 3000,
 ) -> tuple[VeraGridQueryCaseData, MDHEMOrder2CompressedArtifact, float]:
     """
-    Build the exact-linear plus compressed-quadratic artifact.
+    Build the exact-linear plus full-quadratic order-2 artifact.
 
     Parameters
     ----------
     grid:
         VeraGrid grid object.
-    retained_dimensions:
-        Number of full query dimensions kept by the quadratic stage.
+    max_order:
+        Maximum total polynomial order used by the directional on-demand
+        correction path. Must be at least ``2``.
     germ_seed_results:
         Optional converged VeraGrid power-flow result used as the artifact
         germ. When omitted, the germ is obtained internally with VeraGrid
         HELM.
     reactive_score_weight:
-        Relative weight applied to PV reactive-power sensitivity while ranking
-        retained quadratic dimensions.
+        Relative weight applied to PV reactive-power sensitivity while
+        reporting full-dimension scores.
+    quadratic_mode:
+        Quadratic correction mode. Supported values are
+        ``"directional_on_demand"`` and ``"cp_low_rank"``.
+    cp_rank:
+        Retained rank used when ``quadratic_mode == "cp_low_rank"``.
+    cp_training_samples:
+        Number of sampled directions used by the low-rank CP fit.
+    cp_random_seed:
+        Random seed used by the low-rank CP fit.
+    bundle_size:
+        Number of projected one-dimensional artifacts used when
+        ``quadratic_mode == "projected_bundle"``.
+    bundle_training_samples:
+        Number of sampled scenarios used to fit the projected bundle weights.
+    bundle_random_seed:
+        Random seed used by the projected bundle builder.
 
     Returns
     -------
     tuple[VeraGridQueryCaseData, MDHEMOrder2CompressedArtifact, float]
-        Case data, built compressed artifact and the physical-germ residual
+        Case data, built order-2 artifact and the physical-germ residual
         norm.
     """
+    if max_order < 2:
+        raise ValueError("max_order must be at least 2")
+
     input_data: VeraGridQueryCaseData = create_mdhelm_inputs(grid=grid)
     germ_voltage: np.ndarray
     germ_power: np.ndarray
@@ -7348,11 +8193,7 @@ def build_order2_compressed_artifact_from_case(
         artifact=linear_artifact,
         reactive_weight=reactive_score_weight,
     )
-    selected_dimension_indices: np.ndarray = select_top_dimensions_balanced(
-        scores=dimension_scores,
-        dimension_kind_codes=dimension_kind_codes,
-        retained_dimensions=retained_dimensions,
-    )
+    selected_dimension_indices: np.ndarray = np.arange(basis.shape[0], dtype=np.int64)
     quadratic_dimension_scores: np.ndarray = np.asarray(
         dimension_scores[selected_dimension_indices],
         dtype=np.float64,
@@ -7363,39 +8204,37 @@ def build_order2_compressed_artifact_from_case(
         dimension_bus=dimension_bus,
         selected_dimension_indices=selected_dimension_indices,
     )
-    subset_basis: np.ndarray
-    subset_kind_codes: np.ndarray
-    subset_dimension_bus: np.ndarray
-    subset_dimension_local: np.ndarray
-    subset_pq_active_dimension: np.ndarray
-    subset_pq_reactive_dimension: np.ndarray
-    subset_pv_active_dimension: np.ndarray
-    subset_basis, subset_kind_codes, subset_dimension_bus, subset_dimension_local, subset_pq_active_dimension, subset_pq_reactive_dimension, subset_pv_active_dimension = build_subset_query_basis(
-        basis=basis,
-        dimension_kind_codes=dimension_kind_codes,
-        dimension_bus=dimension_bus,
-        dimension_local=dimension_local,
-        pq_active_dimension=pq_active_dimension,
-        pq_reactive_dimension=pq_reactive_dimension,
-        pv_active_dimension=pv_active_dimension,
-        selected_dimension_indices=selected_dimension_indices,
-    )
-    quadratic_artifact: MDHEMPVQueryArtifact = solve_mdhelm_query_artifact_from_basis(
-        input_data=input_data,
-        germ_voltage=germ_voltage,
-        germ_power=germ_power,
-        basis=subset_basis,
-        dimension_kind_codes=subset_kind_codes,
-        dimension_bus=subset_dimension_bus,
-        dimension_local=subset_dimension_local,
-        pq_active_dimension=subset_pq_active_dimension,
-        pq_reactive_dimension=subset_pq_reactive_dimension,
-        pv_active_dimension=subset_pv_active_dimension,
-        max_order=2,
-    )
+    quadratic_artifact: Optional[MDHEMPVQueryArtifact] = None
+    quadratic_cp_model: Optional[MDHEMQuadraticCPModel] = None
+    projected_bundle_model: Optional[MDHEMProjectedDirectionalBundleModel] = None
+
+    if quadratic_mode == "directional_on_demand":
+        pass
+    elif quadratic_mode == "cp_low_rank":
+        quadratic_cp_model = build_quadratic_cp_model_from_directional_samples(
+            linear_artifact=linear_artifact,
+            directional_max_order=max_order,
+            rank=cp_rank,
+            training_samples=cp_training_samples,
+            random_seed=cp_random_seed,
+        )
+    elif quadratic_mode == "projected_bundle":
+        projected_bundle_model = build_projected_directional_bundle_model(
+            linear_artifact=linear_artifact,
+            directional_max_order=max_order,
+            bundle_size=bundle_size,
+            training_samples=bundle_training_samples,
+            random_seed=bundle_random_seed,
+        )
+    else:
+        raise ValueError(f"Unsupported quadratic_mode: {quadratic_mode}")
+
     artifact: MDHEMOrder2CompressedArtifact = MDHEMOrder2CompressedArtifact(
         linear_artifact=linear_artifact,
         quadratic_artifact=quadratic_artifact,
+        quadratic_cp_model=quadratic_cp_model,
+        projected_bundle_model=projected_bundle_model,
+        directional_max_order=max_order,
         selected_dimension_indices=selected_dimension_indices,
         selected_dimension_scores=quadratic_dimension_scores,
         selected_dimension_names=quadratic_dimension_names,
@@ -7649,7 +8488,33 @@ def save_order2_compressed_artifact(path: Path, artifact: MDHEMOrder2CompressedA
     """
     entries: dict[str, np.ndarray] = dict()
     store_query_artifact_entries(entries=entries, prefix="linear", artifact=artifact._linear_artifact)
-    store_query_artifact_entries(entries=entries, prefix="quadratic", artifact=artifact._quadratic_artifact)
+    if artifact._projected_bundle_model is not None:
+        entries["quadratic_mode"] = np.asarray(["projected_bundle"])
+        entries["directional_max_order"] = np.asarray([artifact._directional_max_order], dtype=np.int64)
+        entries["bundle_projection_matrix"] = artifact._projected_bundle_model._projection_matrix
+        entries["bundle_voltage_mix_weights"] = artifact._projected_bundle_model._voltage_mix_weights
+        entries["bundle_reactive_mix_weights"] = artifact._projected_bundle_model._reactive_mix_weights
+        entries["bundle_size"] = np.asarray([artifact._projected_bundle_model.get_bundle_size()], dtype=np.int64)
+        component_index: int
+        for component_index, component_artifact in enumerate(artifact._projected_bundle_model._component_artifacts):
+            store_query_artifact_entries(
+                entries=entries,
+                prefix=f"bundle_component_{component_index}",
+                artifact=component_artifact,
+            )
+    elif artifact._quadratic_cp_model is not None:
+        entries["quadratic_mode"] = np.asarray(["cp_low_rank"])
+        entries["directional_max_order"] = np.asarray([artifact._directional_max_order], dtype=np.int64)
+        entries["cp_projection_matrix"] = artifact._quadratic_cp_model._projection_matrix
+        entries["cp_voltage_weights"] = artifact._quadratic_cp_model._voltage_weights
+        entries["cp_reactive_weights"] = artifact._quadratic_cp_model._reactive_weights
+    elif artifact._quadratic_artifact is None:
+        entries["quadratic_mode"] = np.asarray(["directional_on_demand"])
+        entries["directional_max_order"] = np.asarray([artifact._directional_max_order], dtype=np.int64)
+    else:
+        entries["quadratic_mode"] = np.asarray(["explicit_full"])
+        entries["directional_max_order"] = np.asarray([artifact._directional_max_order], dtype=np.int64)
+        store_query_artifact_entries(entries=entries, prefix="quadratic", artifact=artifact._quadratic_artifact)
     entries["selected_dimension_indices"] = artifact._selected_dimension_indices
     entries["selected_dimension_scores"] = artifact._selected_dimension_scores
     entries["selected_dimension_names"] = artifact._selected_dimension_names
@@ -7672,10 +8537,67 @@ def load_order2_compressed_artifact(path: Path) -> MDHEMOrder2CompressedArtifact
     """
     with np.load(path, allow_pickle=False) as data:
         linear_artifact: MDHEMPVQueryArtifact = load_query_artifact_from_entries(data=data, prefix="linear")
-        quadratic_artifact: MDHEMPVQueryArtifact = load_query_artifact_from_entries(data=data, prefix="quadratic")
+        quadratic_mode: str
+        if "quadratic_mode" in data.files:
+            quadratic_mode = str(np.asarray(data["quadratic_mode"]).reshape(-1)[0])
+        else:
+            quadratic_mode = "explicit_full"
+
+        quadratic_artifact: Optional[MDHEMPVQueryArtifact]
+        quadratic_cp_model: Optional[MDHEMQuadraticCPModel]
+        projected_bundle_model: Optional[MDHEMProjectedDirectionalBundleModel]
+        directional_max_order: int
+        if quadratic_mode == "directional_on_demand":
+            quadratic_artifact = None
+            quadratic_cp_model = None
+            projected_bundle_model = None
+            if "directional_max_order" in data.files:
+                directional_max_order = int(data["directional_max_order"][0])
+            else:
+                directional_max_order = 2
+        elif quadratic_mode == "cp_low_rank":
+            quadratic_artifact = None
+            quadratic_cp_model = MDHEMQuadraticCPModel(
+                projection_matrix=np.asarray(data["cp_projection_matrix"], dtype=np.float64),
+                voltage_weights=np.asarray(data["cp_voltage_weights"], dtype=np.complex128),
+                reactive_weights=np.asarray(data["cp_reactive_weights"], dtype=np.float64),
+            )
+            projected_bundle_model = None
+            if "directional_max_order" in data.files:
+                directional_max_order = int(data["directional_max_order"][0])
+            else:
+                directional_max_order = 2
+        elif quadratic_mode == "projected_bundle":
+            quadratic_artifact = None
+            quadratic_cp_model = None
+            bundle_size: int = int(data["bundle_size"][0])
+            component_artifacts: list[MDHEMPVQueryArtifact] = []
+            component_index: int
+            for component_index in range(bundle_size):
+                component_artifacts.append(
+                    load_query_artifact_from_entries(data=data, prefix=f"bundle_component_{component_index}")
+                )
+            projected_bundle_model = MDHEMProjectedDirectionalBundleModel(
+                projection_matrix=np.asarray(data["bundle_projection_matrix"], dtype=np.float64),
+                component_artifacts=component_artifacts,
+                voltage_mix_weights=np.asarray(data["bundle_voltage_mix_weights"], dtype=np.complex128),
+                reactive_mix_weights=np.asarray(data["bundle_reactive_mix_weights"], dtype=np.float64),
+            )
+            if "directional_max_order" in data.files:
+                directional_max_order = int(data["directional_max_order"][0])
+            else:
+                directional_max_order = 2
+        else:
+            quadratic_artifact = load_query_artifact_from_entries(data=data, prefix="quadratic")
+            quadratic_cp_model = None
+            projected_bundle_model = None
+            directional_max_order = int(quadratic_artifact.get_max_order())
         artifact: MDHEMOrder2CompressedArtifact = MDHEMOrder2CompressedArtifact(
             linear_artifact=linear_artifact,
             quadratic_artifact=quadratic_artifact,
+            quadratic_cp_model=quadratic_cp_model,
+            projected_bundle_model=projected_bundle_model,
+            directional_max_order=directional_max_order,
             selected_dimension_indices=np.asarray(data["selected_dimension_indices"], dtype=np.int64),
             selected_dimension_scores=np.asarray(data["selected_dimension_scores"], dtype=np.float64),
             selected_dimension_names=np.asarray(data["selected_dimension_names"], dtype=str),
