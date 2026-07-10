@@ -2059,7 +2059,7 @@ class ProtectedConnectionBlockItem(BlockItem):
 
 
 class RoundBaseArithmeticOpItem(QGraphicsEllipseItem):
-    LABEL_OUTSET: float = 3.5
+    LABEL_OUTSET: float = 5.0
 
     def __init__(self,
                  subsys: Block,
@@ -2239,32 +2239,12 @@ class RoundBaseArithmeticOpItem(QGraphicsEllipseItem):
                 label.setPlainText(self._input_signs[i])
             port = self.inputs[i]
 
-            tw = label.boundingRect().width()
-            th = label.boundingRect().height()
-
-            if n_inputs == 1:
-                base_x = port.pos().x()
-                base_y = port.pos().y() - th / 2
-            elif n_inputs == 2:
-                if i == 0:
-                    base_x = port.pos().x() - tw / 2
-                    base_y = port.pos().y()
-                else:
-                    base_x = port.pos().x()
-                    base_y = port.pos().y() - th / 2
-            elif n_inputs == 3:
-                if i == 0:
-                    base_x = port.pos().x() - tw / 2
-                    base_y = port.pos().y()
-                elif i == 1:
-                    base_x = port.pos().x()
-                    base_y = port.pos().y() - th / 2
-                else:
-                    base_x = port.pos().x() - tw / 2
-                    base_y = port.pos().y() - th
-
-            offset = self._get_label_outset_offset(port)
-            label.setPos(base_x + offset.x(), base_y + offset.y())
+            rect = label.boundingRect()
+            center = port.pos() - self._get_label_outset_offset(port)
+            label.setPos(
+                center.x() - rect.width() / 2,
+                center.y() - rect.height() / 2,
+            )
 
     def paint(self,
               painter: QPainter,
