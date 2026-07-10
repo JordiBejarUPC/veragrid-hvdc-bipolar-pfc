@@ -313,7 +313,7 @@ def get_bus_data(bus_data: BusData,
         bus_data.idtag[i] = bus.idtag
         bus_data.Vnom[i] = bus.Vnom
         bus_data.cost_v[i] = bus.Vm_cost
-        bus_data.Vbus[i] = bus.get_voltage_guess(use_stored_guess=use_stored_guess)
+        bus_data.Vbus[i] = bus.get_voltage_guess_at(t_idx=t_idx, use_stored_guess=use_stored_guess)
         bus_data.is_dc[i] = bus.is_dc
 
         # Grounded buses go to zero
