@@ -31,6 +31,15 @@ except ModuleNotFoundError:
     def show_results(lp):
         return None
 # from cryptography.x509 import name
+project_base = Path(__file__).resolve().parents[2]
+src_path = project_base / "src"
+if src_path.exists():
+    if str(src_path) not in sys.path:
+        sys.path.insert(0, str(src_path))
+else:
+    print(f"[ERROR] Engine not found: {src_path}")
+    sys.exit(1)
+
 from PolynomialMatrixBuilder import PolynomialMatrixBuilder
 from matplotlib import pyplot as plt
 import VeraGridEngine.api as vge
@@ -48,15 +57,6 @@ from scipy.optimize import linear_sum_assignment
 from types import MethodType
 from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_rms_model
 
-
-project_base = Path(__file__).resolve().parents[2]
-src_path = project_base / "src"
-if src_path.exists():
-    if str(src_path) not in sys.path:
-        sys.path.insert(0, str(src_path))
-else:
-    print(f"[ERROR] Engine not found: {src_path}")
-    sys.exit(1)
 
 grid_folder = project_base / "Grids_and_profiles" / "grids"
 GRID = sys.argv[1] if len(sys.argv) > 1 else "IEEE 9 Bus.gridcal"
