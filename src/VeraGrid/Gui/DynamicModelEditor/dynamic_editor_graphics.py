@@ -64,13 +64,14 @@ class EditorGraphicsDefaultsDark:
     BLOCK_COMPACT_PORT_ROW_HEIGHT: float = 14.0
     BLOCK_COMPACT_PORT_SECTION_PADDING: float = 6.0
     PORT_ITEM_COLOR: QColor = QColor("#819ba7")
+    VALIDATION_HICHLIGHTED_BORDER = QColor("#b42318")
 
 
 class EditorGraphicsDefaultsLight:
-    BLOCK_BORDER: QColor = QColor("#202124")
-    BLOCK_BORDER_SELECTED: QColor = QColor("#cc6f2c")
+    BLOCK_BORDER: QColor = QColor("#022633")
+    BLOCK_BORDER_SELECTED: QColor = QColor("#00bbff")
     BLOCK_TITLE: QColor = QColor("#173042")
-    WIRE_COLOR: QColor = QColor("black")
+    WIRE_COLOR: QColor = QColor("#022633")
     HANDLE_FILL: QColor = QColor("#36536b")
     BLOCK_FILL: QColor = QColor("#f5fdff")
     PORT_LABEL_COLOR: QColor = QColor("#173042")
@@ -86,6 +87,8 @@ class EditorGraphicsDefaultsLight:
     BLOCK_COMPACT_HEADER_HEIGHT: float = 20.0
     BLOCK_COMPACT_PORT_ROW_HEIGHT: float = 14.0
     BLOCK_COMPACT_PORT_SECTION_PADDING: float = 6.0
+    PORT_ITEM_COLOR: QColor = QColor("#819ba7")
+    VALIDATION_HICHLIGHTED_BORDER = QColor("#b42318")
 
 
 def _get_editor_constants() -> type[EditorGraphicsDefaultsLight] | type[EditorGraphicsDefaultsDark] | DynamicBlockEditorGUI:
@@ -1267,7 +1270,7 @@ class GenericBlockItem(QGraphicsRectItem):
         editor_constants = _get_editor_constants()
 
         if self._validation_highlighted:
-            border_color: QColor = QColor("#b42318")
+            border_color: QColor = editor_constants.VALIDATION_HICHLIGHTED_BORDER
         else:
             border_color = (
                 editor_constants.BLOCK_BORDER_SELECTED
@@ -1825,18 +1828,18 @@ class BlockItem(QGraphicsRectItem):
             QGraphicsItem.GraphicsItemFlag.ItemSendsScenePositionChanges
         )
         self.setAcceptHoverEvents(True)
+        editor_constants = _get_editor_constants()
         self.setPen(
             QPen(
-                QColor("#202124"),
+                editor_constants.BLOCK_BORDER,
                 1.6
             )
         )
 
         self.setBrush(
             QBrush(
-                QColor("#f5fdff")
+                editor_constants.BLOCK_FILL)
             )
-        )
 
     def set_dark_mode(self):
         editor_constants = _get_editor_constants()
@@ -1966,7 +1969,7 @@ class BlockItem(QGraphicsRectItem):
         editor_constants = _get_editor_constants()
 
         if self._validation_highlighted:
-            border_color: QColor = QColor("#b42318")
+            border_color: QColor = editor_constants.VALIDATION_HICHLIGHTED_BORDER
         else:
             border_color = (
                 editor_constants.BLOCK_BORDER_SELECTED
