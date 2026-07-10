@@ -2491,6 +2491,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         if isinstance(payload, BlockType) and payload in self.blocktype2templatebuilder:
             return self.create_item_from_blocktype(payload, x_pos, y_pos)
 
+        # these ones cannot be included avobe because they are represented by a different item in the scene
         elif isinstance(payload, BlockType) and payload == BlockType.FROM_GOTO:
             items = self.create_signal_pair_item(x_pos=x_pos, y_pos=y_pos)
             return items[0] if items else None
@@ -2504,6 +2505,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         elif isinstance(payload, BlockType) and payload == BlockType.GENERIC:
             return self.create_generic_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
 
+        # Todo: include in blocktype2templatebuilder, create clases and inputs
         elif isinstance(payload, BlockType) and payload == BlockType.EMT_JMARTI_LINE:
             return self.create_jmarti_line_emt_block_item(x_pos=x_pos, y_pos=y_pos)
 
