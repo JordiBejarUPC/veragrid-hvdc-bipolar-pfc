@@ -840,36 +840,43 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         if template_builder is not None:
             dialog = DynTemplatesEditorDialog(name, template_builder.params)
-            dialog.exec()
+        else:
+            return
+
+        if dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+
             template = template_builder.eval()
             block_model = template.block
 
-        block_item: GenericBlockItem = GenericBlockItem(
-            editor=self,
-            var_factory=self.var_factory,
-            subsys=block_model,
-            api_object=self.api_object,
-            mode=self.mode,
-            name=item_name,
-            position_changed_callback=self._build_position_changed_callback(block_model.uid)
-        )
+            block_item: GenericBlockItem = GenericBlockItem(
+                editor=self,
+                var_factory=self.var_factory,
+                subsys=block_model,
+                api_object=self.api_object,
+                mode=self.mode,
+                name=item_name,
+                position_changed_callback=self._build_position_changed_callback(block_model.uid)
+            )
 
-        self.block_counters[blocktype] = count
-        block_item.set_subsystem(block_model)
-        block_item.position_changed_callback = self._build_position_changed_callback(block_model.uid)
-        block_item.build_item()
-        self.main_block.add(block_model)
-        self.scene.addItem(block_item)
-        block_item.setPos(QtCore.QPointF(x_pos, y_pos))
-        self.diagram.add_node(
-            name=item_name,
-            x=x_pos,
-            y=y_pos,
-            tpe=blocktype.name,
-            device_uid=block_model.uid,
-        )
-        self.mark_unapplied_changes()
-        return block_item
+            self.block_counters[blocktype] = count
+            block_item.set_subsystem(block_model)
+            block_item.position_changed_callback = self._build_position_changed_callback(block_model.uid)
+            block_item.build_item()
+            self.main_block.add(block_model)
+            self.scene.addItem(block_item)
+            block_item.setPos(QtCore.QPointF(x_pos, y_pos))
+            self.diagram.add_node(
+                name=item_name,
+                x=x_pos,
+                y=y_pos,
+                tpe=blocktype.name,
+                device_uid=block_model.uid,
+            )
+            self.mark_unapplied_changes()
+            return block_item
+
+        else:
+            return
 
     def create_generic_block_item(self, block_type: BlockType, x_pos, y_pos) -> GenericBlockItem | None:
         """
