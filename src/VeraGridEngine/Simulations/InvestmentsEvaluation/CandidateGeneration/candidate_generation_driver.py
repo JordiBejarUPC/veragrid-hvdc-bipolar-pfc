@@ -310,6 +310,9 @@ class CandidateGenerationDriver(DriverTemplate):
         :param original_keys: Identities of all violations found in the original screening.
         :return: One-line verification report.
         """
+        candidate.verified = True
+        candidate.n_targeted = len(candidate.relieved_violations)
+
         cpy = self.grid.copy()
 
         if candidate.kind == NEW_LINE:
@@ -329,10 +332,15 @@ class CandidateGenerationDriver(DriverTemplate):
 
         converged, base_flow = self._run_ac_pf(cpy)
         if not converged:
+            candidate.verification_converged = False
             return f"{candidate.label()}: verification power flow did NOT converge."
+
+        candidate.verification_converged = True
 
         nc = compile_numerical_circuit_at(cpy)
         if len(base_flow) != nc.nbr:
+            # Cannot map flows onto branches reliably; treat as not verifiable.
+            candidate.verification_converged = False
             return f"{candidate.label()}: verification skipped (branch count changed)."
 
         lin = LinearAnalysis(nc=nc)
@@ -344,6 +352,9 @@ class CandidateGenerationDriver(DriverTemplate):
         targeted = {self._violation_key(v) for v in candidate.relieved_violations}
         resolved = targeted - new_keys
         introduced = new_keys - original_keys
+
+        candidate.n_resolved = len(resolved)
+        candidate.n_new_violations = len(introduced)
 
         return (f"{candidate.label()}: resolved {len(resolved)}/{len(targeted)} targeted violation(s); "
                 f"{len(introduced)} new violation(s).")

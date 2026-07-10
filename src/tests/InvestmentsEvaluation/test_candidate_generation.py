@@ -73,11 +73,49 @@ def test_candidate_generation_pipeline():
     assert len(results.verification_report) == 1
     assert "resolved" in results.verification_report[0]
 
+    # Only the top verify_top_k candidates are verified; the rest are left untouched.
+    verified_flagged = [c for c in results.candidates if c.verified]
+    assert len(verified_flagged) == min(1, len(results.candidates))
+
     # Summary text carries the pipeline sections.
     summary = results.summary_text()
     assert "Base case AC power flow" in summary
     assert "N-1 screening" in summary
     assert "Ranked candidates" in summary
+
+
+def test_verified_candidates_filter():
+    """
+    Only the top verify_top_k candidates are verified, and ``verified_candidates`` returns exactly
+    those verified ones that converged and introduced no new violations.
+    """
+    grid = _stressed_ieee14()
+    verify_top_k = 8
+    drv = CandidateGenerationDriver(
+        grid=grid,
+        options=CandidateGenerationOptions(top_n_corridors=3, verify_top_k=verify_top_k),
+    )
+    drv.run()
+    results = drv.results
+
+    # Exactly the top-k by score are flagged as verified.
+    verified_flagged = [c for c in results.candidates if c.verified]
+    assert len(verified_flagged) == min(verify_top_k, len(results.candidates))
+    assert verified_flagged == results.candidates[:len(verified_flagged)]
+
+    # The shortlist is a subset of the verified ones, each converged with no new violations.
+    shortlist = results.verified_candidates
+    assert set(shortlist).issubset(set(verified_flagged))
+    for c in shortlist:
+        assert c.verified is True
+        assert c.verification_converged is True
+        assert c.n_new_violations == 0
+        assert c.verified_ok is True
+
+    # Any verified candidate excluded from the shortlist must have failed the gate.
+    for c in verified_flagged:
+        if c not in shortlist:
+            assert (not c.verification_converged) or c.n_new_violations > 0
 
 
 def test_candidate_apply_creates_investments():

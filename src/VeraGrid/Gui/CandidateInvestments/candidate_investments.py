@@ -61,6 +61,16 @@ class CandidateInvestmentsWindow(QtWidgets.QDialog):
         self.top_n_spin.setToolTip("Number of nearby substation corridors enumerated as new-line "
                                    "candidates for each flagged violation.")
         options_layout.addWidget(self.top_n_spin)
+
+        options_layout.addWidget(QtWidgets.QLabel("Candidates to verify"))
+        self.verify_top_k_spin = QtWidgets.QSpinBox()
+        self.verify_top_k_spin.setMinimum(1)
+        self.verify_top_k_spin.setMaximum(50)
+        self.verify_top_k_spin.setValue(1)
+        self.verify_top_k_spin.setToolTip("Number of top-ranked candidates (by score) verified with "
+                                          "a full AC power flow plus N-1 screening. Only verified "
+                                          "candidates that introduce no new violations are listed.")
+        options_layout.addWidget(self.verify_top_k_spin)
         options_layout.addStretch(1)
         self.run_button = QtWidgets.QPushButton("Run")
         self.run_button.setToolTip("Run the candidate-generation pipeline.")
@@ -109,7 +119,8 @@ class CandidateInvestmentsWindow(QtWidgets.QDialog):
         self.report_text.setPlainText("Running...")
         QtGui.QGuiApplication.processEvents()
 
-        options = CandidateGenerationOptions(top_n_corridors=self.top_n_spin.value())
+        options = CandidateGenerationOptions(top_n_corridors=self.top_n_spin.value(),
+                                             verify_top_k=self.verify_top_k_spin.value())
         pf_options = self.app.get_selected_power_flow_options()
 
         driver = CandidateGenerationDriver(grid=self.app.circuit,
@@ -128,21 +139,20 @@ class CandidateInvestmentsWindow(QtWidgets.QDialog):
         # Fill the base-case / N-1 report
         self.report_text.setPlainText(results.summary_text())
 
-        # Fill the ranked candidate list with checkable items
-        for candidate in results.candidates:
+        # Fill the ranked candidate list with checkable items. Only verified candidates that
+        # introduce no new violations are offered, so the user selects from options confirmed by a
+        # full AC power flow + N-1 re-check.
+        verified = results.verified_candidates
+        for candidate in verified:
             item = QtWidgets.QListWidgetItem(candidate.label())
             item.setFlags(item.flags() | QtCore.Qt.ItemFlag.ItemIsUserCheckable)
             item.setCheckState(QtCore.Qt.CheckState.Unchecked)
-            # Stash the candidate index so we can recover the object on accept.
+            # Stash the candidate object so we can recover it on accept.
             item.setData(QtCore.Qt.ItemDataRole.UserRole, candidate)
             self.candidate_list.addItem(item)
             self._candidate_items.append(item)
 
-        self.add_button.setEnabled(len(results.candidates) > 0)
-
-        # Surface any log messages from the run.
-        if driver.logger.has_logs():
-            LogsDialogue('Candidate investment generator log', driver.logger).exec()
+        self.add_button.setEnabled(len(verified) > 0)
 
     # ----------------------------------------------------------------------------------------------
     # Materialise the selected candidates as investments

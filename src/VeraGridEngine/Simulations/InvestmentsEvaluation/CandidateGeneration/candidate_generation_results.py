@@ -102,6 +102,21 @@ class ReinforcementCandidate:
         self.score: float = 0.0
         self.capex: float = 0.0
 
+        # Verification outcome (populated only for the top-k candidates that are verified in step 5)
+        self.verified: bool = False
+        self.verification_converged: bool = False
+        self.n_targeted: int = 0
+        self.n_resolved: int = 0
+        self.n_new_violations: int = 0
+
+    @property
+    def verified_ok(self) -> bool:
+        """
+        Whether this candidate was verified with a converged AC power flow and introduced no new
+        violations. This is the gate for displaying a candidate in the GUI shortlist.
+        """
+        return self.verified and self.verification_converged and self.n_new_violations == 0
+
     def label(self) -> str:
         """Human-readable one-line label for the candidate list in the GUI."""
         n = len(self.relieved_violations)
@@ -174,6 +189,14 @@ class CandidateGenerationResults:
     def n1_violations(self) -> List[ViolationRecord]:
         """N-1 violations."""
         return [v for v in self.violations if not v.is_base_case]
+
+    @property
+    def verified_candidates(self) -> List[ReinforcementCandidate]:
+        """
+        Candidates that passed verification: verified with a converged AC power flow and no new
+        violations introduced. This is the shortlist offered to the user in the GUI.
+        """
+        return [c for c in self.candidates if c.verified_ok]
 
     def summary_text(self) -> str:
         """
