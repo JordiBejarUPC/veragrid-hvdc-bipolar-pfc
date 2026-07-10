@@ -2204,7 +2204,7 @@ class MultiCircuit(Assets):
         for ld in self.get_loads():
             ld.active_prof.set(ld.P_prof.toarray().astype(bool))
 
-    def get_voltage_guess(self) -> CxVec:
+    def get_voltage_guess_at(self, t_idx: int | None) -> CxVec:
         """
         Get the buses stored voltage guess
         :return: array of complex voltages per bus
@@ -2213,7 +2213,8 @@ class MultiCircuit(Assets):
 
         for i, bus in enumerate(self.buses):
             if bus.active:
-                v[i] = cmath.rect(bus.Vm0, bus.Va0)
+                v[i] = cmath.rect(bus.get_Vm0_at(t_idx),
+                                  bus.get_Vm0_at(t_idx))
 
         return v
 
