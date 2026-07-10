@@ -1073,9 +1073,6 @@ class GenericBlockItem(QGraphicsRectItem):
         else:
             self.set_light_mode()
 
-        name_font: QtGui.QFont = QtGui.QFont("DejaVu Sans", 9)
-        name_font.setBold(True)
-        self.name_item.setFont(name_font)
         self.update_name_position()
 
         self.inputs: List[PortItem] = list()
@@ -1097,9 +1094,6 @@ class GenericBlockItem(QGraphicsRectItem):
         )
         self.setAcceptHoverEvents(True)
 
-        name_font = QtGui.QFont("DejaVu Sans", 9)
-        name_font.setBold(True)
-        self.name_item.setFont(name_font)
         self.update_name_position()
 
         n_inputs = len(self.subsys.in_vars)
@@ -1197,9 +1191,7 @@ class GenericBlockItem(QGraphicsRectItem):
             self.name_item = QGraphicsTextItem(self.name, self)
             editor_constants = _get_editor_constants()
             self.name_item.setDefaultTextColor(editor_constants.BLOCK_TITLE)
-            name_font: QtGui.QFont = QtGui.QFont("DejaVu Sans", 9)
-            name_font.setBold(True)
-            self.name_item.setFont(name_font)
+
             self.update_name_position()
 
             n_inputs: int = len(self.subsys.in_vars)
@@ -1337,8 +1329,7 @@ class GenericBlockItem(QGraphicsRectItem):
 
     def create_port_label_item(self) -> QGraphicsTextItem:
         label_item: QGraphicsTextItem = QGraphicsTextItem("", self)
-        label_font: QtGui.QFont = QtGui.QFont("DejaVu Sans", 9)
-        label_item.setFont(label_font)
+
         label_item.setDefaultTextColor(_get_editor_constants().PORT_LABEL_COLOR)
         label_item.setZValue(4)
         return label_item
@@ -1442,11 +1433,11 @@ class PairedItem(QGraphicsPolygonItem):
                  api_object,
                  mode: DynamicSimulationMode,
                  name: str,
-                 paired_item: "PairedItem | None" = None,
+                 paired_items: List["PairedItem"] | None = None,
                  position_changed_callback=None,
                  editor: "DynamicBlockEditorGUI | None" = None):
         super().__init__()
-        self._paired_item: PairedItem | None = paired_item
+        self.paired_items: List[PairedItem] | None = [paired_item for paired_item in paired_items] if paired_items else None
         self.editor: DynamicBlockEditorGUI | None = editor
         self.var_factory = var_factory
         self.subsys = subsys
@@ -1467,10 +1458,6 @@ class PairedItem(QGraphicsPolygonItem):
             self.set_dark_mode()
         else:
             self.set_light_mode()
-
-        name_font: QtGui.QFont = QtGui.QFont("DejaVu Sans", 7)
-        name_font.setBold(True)
-        self.name_item.setFont(name_font)
 
         self.inputs: List[PortItem] = list()
         self.outputs: List[PortItem] = list()
@@ -1565,7 +1552,11 @@ class PairedItem(QGraphicsPolygonItem):
                     conn.update_path()
 
     def set_paired_item(self, paired_item: "PairedItem") -> None:
-        self._paired_item = paired_item
+        if self.paired_items is None:
+            self.paired_items = [paired_item]
+        else:
+            self.paired_items.append(paired_item)
+
 
     def set_subsystem(self, block: Block) -> None:
         self.subsys = block
@@ -1577,9 +1568,6 @@ class PairedItem(QGraphicsPolygonItem):
             self.name_item = QGraphicsTextItem(self.name, self)
             editor_constants = _get_editor_constants()
             self.name_item.setDefaultTextColor(editor_constants.BLOCK_TITLE)
-            name_font: QtGui.QFont = QtGui.QFont("DejaVu Sans", 7)
-            name_font.setBold(True)
-            self.name_item.setFont(name_font)
             self.setBrush(QBrush(editor_constants.BLOCK_FILL))
 
             n_inputs: int = len(self.subsys.in_vars)
@@ -1652,11 +1640,13 @@ class PairedItem(QGraphicsPolygonItem):
         else:
             pass
 
-        if self._paired_item is not None:
-            other = self._paired_item
-            other._paired_item = None
-            other.refresh_port_metadata()
-            other._paired_item = self
+        if self.paired_items is not None:
+            for other in self.paired_items:
+                if other.paired_items is not None and self in other.paired_items:
+                    other.paired_items.remove(self)
+                other.refresh_port_metadata()
+
+                other.set_paired_item(self)
         else:
             pass
 
@@ -1670,7 +1660,7 @@ class PairedItem(QGraphicsPolygonItem):
         QApplication.restoreOverrideCursor()
 
     def contextMenuEvent(self, event):
-        if not self._is_signal_in and self._paired_item is not None:
+        if not self._is_signal_in and self.paired_items is not None:
             menu = QMenu()
             duplicate_action = QAction("Duplicate", menu)
             duplicate_action.triggered.connect(lambda: duplicate_paired_item(self))
@@ -1697,17 +1687,33 @@ class PairedItem(QGraphicsPolygonItem):
             pass
         return super().itemChange(change, value)
 
+    # def mouseDoubleClickEvent(self, event):
+    #     self._select_group()
+    #     event.accept()
+
+    def _select_group(self):
+        scene = self.scene()
+        if scene is None:
+            return
+
+        scene.clearSelection()
+        self.setSelected(True)
+
+        if self.paired_items:
+            for item in self.paired_items:
+                if item is not None:
+                    item.setSelected(True)
 
 def duplicate_paired_item(original: PairedItem) -> PairedItem | None:
-    if original.editor is None or original._is_signal_in or original._paired_item is None:
+    if original.editor is None or original._is_signal_in or original.paired_items is None:
         return None
 
     editor = original.editor
-    from_item = original._paired_item
+    from_items = original.paired_items
     var_factory = original.var_factory
 
     shared_var = var_factory.add_var("var_to")
-    shared_var.uid = from_item.subsys.in_vars[0].uid
+    shared_var.uid = from_items[0].subsys.in_vars[0].uid
 
     blk_new = Block(
         # algebraic_vars=[shared_var],
@@ -1724,10 +1730,12 @@ def duplicate_paired_item(original: PairedItem) -> PairedItem | None:
         api_object=original.api_object,
         mode=original.mode,
         name=blk_new.name,
-        paired_item=from_item,
+        paired_items=from_items,
         position_changed_callback=editor._build_position_changed_callback(blk_new.uid),
     )
+
     new_item.setPos(original.pos() + QPointF(0.0, 80.0))
+    from_items[0].set_paired_item(new_item)
     editor.scene.addItem(new_item)
     editor.diagram.add_node(
         name=blk_new.name,
@@ -1819,9 +1827,6 @@ class BlockItem(QGraphicsRectItem):
             self.name_item = QGraphicsTextItem(self.name, self)
             editor_constants = _get_editor_constants()
             self.name_item.setDefaultTextColor(editor_constants.BLOCK_TITLE)
-            name_font: QtGui.QFont = QtGui.QFont("DejaVu Sans", 7)
-            name_font.setBold(True)
-            self.name_item.setFont(name_font)
 
             n_inputs: int = len(self.subsys.in_vars)
             n_outputs: int = len(self.subsys.out_vars)
@@ -1837,8 +1842,6 @@ class BlockItem(QGraphicsRectItem):
 
     def create_port_label_item(self) -> QGraphicsTextItem:
         label_item: QGraphicsTextItem = QGraphicsTextItem("", self)
-        label_font: QtGui.QFont = QtGui.QFont("DejaVu Sans", 7)
-        label_item.setFont(label_font)
         label_item.setDefaultTextColor(_get_editor_constants().PORT_LABEL_COLOR)
         label_item.setZValue(4)
         return label_item
@@ -2095,8 +2098,6 @@ class RoundBaseArithmeticOpItem(QGraphicsEllipseItem):
             port = PortItem(self, True, i, n_inputs)
             self.inputs.append(port)
             label = QGraphicsTextItem("", self)
-            label_font = QtGui.QFont("DejaVu Sans", 8)
-            label.setFont(label_font)
             label.setDefaultTextColor(editor_constants.BLOCK_TITLE)
             self.input_labels.append(label)
 
@@ -2311,8 +2312,6 @@ class RectBaseArithmeticOpItem(QGraphicsRectItem):
             port = PortItem(self, True, i, n_inputs)
             self.inputs.append(port)
             label = QGraphicsTextItem("", self)
-            label_font = QtGui.QFont("DejaVu Sans", 8)
-            label.setFont(label_font)
             label.setDefaultTextColor(QColor("#173042"))
             self.input_labels.append(label)
 
@@ -2584,7 +2583,7 @@ class DiagramScene(QGraphicsScene):
     def contextMenuEvent(self, event: QtWidgets.QGraphicsSceneContextMenuEvent) -> None:
         item: QGraphicsItem
         for item in self.items(event.scenePos()):
-            if isinstance(item, (GenericBlockItem, ConnectionItem, RoundBaseArithmeticOpItem, RectBaseArithmeticOpItem | PairedItem)):
+            if isinstance(item, (GenericBlockItem, ConnectionItem, RoundBaseArithmeticOpItem, RectBaseArithmeticOpItem)):
                 menu: QMenu = QMenu()
                 if item is not None:
                     self.context_item = item
@@ -2601,6 +2600,29 @@ class DiagramScene(QGraphicsScene):
                     menu.exec(event.screenPos())
                     self.context_item = None
                 return
+
+            elif isinstance(item, PairedItem):
+                menu: QMenu = QMenu()
+                if item is not None:
+                    self.context_item = item
+
+                    remove_action: QAction = QAction("Remove", menu)
+                    remove_action.triggered.connect(self.remove_context_item)
+                    menu.addAction(remove_action)
+
+                    duplicate_action = QAction("Duplicate", menu)
+                    duplicate_action.triggered.connect(lambda: duplicate_paired_item(item))
+                    menu.addAction(duplicate_action)
+
+                    color_action: QAction = QAction("Change Color", menu)
+                    color_action.triggered.connect(self.recolor_context_item)
+                    menu.addAction(color_action)
+
+                    menu.exec(event.screenPos())
+                    self.context_item = None
+                return
+
+
             else:
                 pass
 
@@ -2680,6 +2702,11 @@ class DiagramScene(QGraphicsScene):
             super().mouseReleaseEvent(event)
 
     def mouseDoubleClickEvent(self, event: QtWidgets.QGraphicsSceneMouseEvent) -> None:
+        for item in self.items(event.scenePos()):
+            if isinstance(item, PairedItem):
+                item._select_group()
+                event.accept()
+                return
         super().mouseDoubleClickEvent(event)
 
     def connect_ports(self, source_port: PortItem | BranchingItem, target_port: PortItem) -> None:
