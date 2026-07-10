@@ -34,6 +34,7 @@ from power_flow_atlas.model import AtlasBuildResult, AtlasStorageResult, PowerFl
 from power_flow_atlas.options import PowerFlowAtlasOptions
 from power_flow_atlas.storage import save_power_flow_atlas
 from power_flow_atlas.veragrid_integration import (
+    compare_atlas_with_numerical_circuit,
     VeraGridAtlasQueryResult,
     VeraGridPowerFlowAtlasBuilder,
     VeraGridPowerFlowAtlasEngine,
@@ -661,6 +662,11 @@ def run_example(
                 atlas=atlas,
             )
             if storage_result.get_status() == AtlasStorageStatus.Saved:
+                atlas_compatible: bool = compare_atlas_with_numerical_circuit(
+                    atlas=atlas,
+                    numerical_circuit=numerical_circuit,
+                )
+                print("Atlas compatibility:", atlas_compatible)
                 engine: VeraGridPowerFlowAtlasEngine = VeraGridPowerFlowAtlasEngine(
                     numerical_circuit=numerical_circuit,
                     atlas=atlas,
@@ -699,9 +705,11 @@ def run_example(
                 worst_full_from_power_error: float = 0.0
                 worst_full_to_power_error: float = 0.0
                 worst_full_loading_error: float = 0.0
-                query_index: int
-
                 print("query  status            patch  residual     dPsum_MW   dQsum_MVAr  full_dV    full_dSf_MVA  full_dL    fixed_dV   fixed_dSf_MVA")
+                batch_query_results: tuple[VeraGridAtlasQueryResult, ...] = (
+                    engine.query_mva_batch(query_matrix)
+                )
+                query_index: int
                 for query_index in range(query_matrix.shape[0]):
                     query_s_mva: np.ndarray = np.asarray(
                         query_matrix[query_index, :],
@@ -713,9 +721,7 @@ def run_example(
                     net_reactive_delta_mvar: float = float(
                         np.sum(query_s_mva.imag - base_s_mva.imag)
                     )
-                    query_result: VeraGridAtlasQueryResult = engine.query_mva(
-                        target_s_mva=query_s_mva,
-                    )
+                    query_result: VeraGridAtlasQueryResult = batch_query_results[query_index]
                     full_voltage_error: float = float("inf")
                     full_from_power_error: float = float("inf")
                     full_to_power_error: float = float("inf")

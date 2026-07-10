@@ -40,6 +40,105 @@ from power_flow_atlas.rectangular_series import (
 from power_flow_atlas.selector import select_nearest_atlas_patch
 
 
+def compare_atlas_with_numerical_circuit(
+    atlas: PowerFlowAtlas,
+    numerical_circuit: NumericalCircuit,
+) -> bool:
+    """Compare one loaded atlas against a compiled VeraGrid numerical circuit.
+
+    This check is intended as an explicit preflight step before online queries.
+    It validates dimensionality, topology signature, analytic-model support,
+    and whether every stored patch matches the runtime nodal reactive limits.
+
+    :param atlas: Loaded atlas artifact.
+    :param numerical_circuit: Compiled VeraGrid numerical circuit.
+    :return: Whether the atlas is compatible with the numerical circuit.
+    """
+    runtime_admittances: AdmittanceMatrices = (
+        numerical_circuit.get_admittance_matrices()
+    )
+    runtime_y_bus: csc_matrix = csc_matrix(runtime_admittances.Ybus, copy=False)
+    runtime_y_from: csc_matrix = csc_matrix(runtime_admittances.Yf, copy=False)
+    runtime_y_to: csc_matrix = csc_matrix(runtime_admittances.Yt, copy=False)
+    runtime_branch_from_indices: np.ndarray = np.asarray(
+        numerical_circuit.passive_branch_data.F,
+        dtype=np.int64,
+    )
+    runtime_branch_to_indices: np.ndarray = np.asarray(
+        numerical_circuit.passive_branch_data.T,
+        dtype=np.int64,
+    )
+    runtime_signature: str = build_topology_signature(
+        system_base_power=numerical_circuit.Sbase,
+        y_bus=runtime_y_bus,
+        y_from=runtime_y_from,
+        y_to=runtime_y_to,
+        branch_from_indices=runtime_branch_from_indices,
+        branch_to_indices=runtime_branch_to_indices,
+    )
+    current_injections: np.ndarray = (
+        numerical_circuit.get_current_injections_pu()
+    )
+    admittance_injections: np.ndarray = (
+        numerical_circuit.get_admittance_injections_pu()
+    )
+    constant_power_only: bool = bool(
+        np.max(np.abs(current_injections), initial=0.0) <= 1.0e-14
+        and np.max(np.abs(admittance_injections), initial=0.0) <= 1.0e-14
+    )
+    classical_network: bool = bool(
+        numerical_circuit.nvsc == 0
+        and numerical_circuit.nhvdc == 0
+        and not numerical_circuit.active_branch_data.any_pf_control
+    )
+    bus_count_matches: bool = bool(
+        atlas.get_bus_count() == numerical_circuit.nbus
+    )
+    topology_matches: bool = bool(
+        atlas.get_topology_signature() == runtime_signature
+    )
+    patch_count: int = atlas.get_patch_count()
+    runtime_q_max: np.ndarray
+    runtime_q_min: np.ndarray
+    runtime_q_max, runtime_q_min = numerical_circuit.get_reactive_power_limits()
+    patch_index: int
+    all_patch_limits_match: bool = True
+
+    for patch_index in range(patch_count):
+        patch: PowerFlowAtlasPatch | None = atlas.get_patch(patch_index)
+        if patch is not None:
+            patch_q_min: np.ndarray = patch.get_q_min()
+            patch_q_max: np.ndarray = patch.get_q_max()
+            patch_limits_match: bool = bool(
+                patch_q_min.shape == runtime_q_min.shape
+                and patch_q_max.shape == runtime_q_max.shape
+                and np.allclose(
+                    patch_q_min,
+                    runtime_q_min,
+                    rtol=0.0,
+                    atol=1.0e-12,
+                )
+                and np.allclose(
+                    patch_q_max,
+                    runtime_q_max,
+                    rtol=0.0,
+                    atol=1.0e-12,
+                )
+            )
+            all_patch_limits_match = all_patch_limits_match and patch_limits_match
+        else:
+            all_patch_limits_match = False
+
+    return bool(
+        patch_count > 0
+        and bus_count_matches
+        and topology_matches
+        and constant_power_only
+        and classical_network
+        and all_patch_limits_match
+    )
+
+
 class VeraGridAtlasQueryResult:
     """Certified atlas output together with optional native VeraGrid results."""
 
@@ -480,16 +579,101 @@ class VeraGridPowerFlowAtlasEngine:
         result: VeraGridAtlasQueryResult = self.query_pu(target_s_pu)
         return result
 
+    def query_mva_batch(
+        self,
+        target_s_mva_batch: np.ndarray,
+    ) -> tuple[VeraGridAtlasQueryResult, ...]:
+        """Evaluate a batch of injections expressed in MW and MVAr.
+
+        :param target_s_mva_batch: Complex matrix shaped ``(query, bus)`` in MVA.
+        :return: Tuple of query results in the same row order.
+        """
+        batch_array: np.ndarray = np.asarray(
+            target_s_mva_batch,
+            dtype=np.complex128,
+        )
+        target_s_pu_batch: np.ndarray = batch_array / self._numerical_circuit.Sbase
+        return self.query_pu_batch(target_s_pu_batch=target_s_pu_batch)
+
     def query_pu(self, target_s_pu: np.ndarray) -> VeraGridAtlasQueryResult:
         """Evaluate bus injections expressed in per unit.
 
         :param target_s_pu: Complex nodal injections in VeraGrid bus order.
         :return: Certified atlas result or an explicit fallback result.
         """
+        self._assert_compatible_runtime_model()
         query_target_s: np.ndarray = np.asarray(
             target_s_pu,
             dtype=np.complex128,
         ).reshape(-1)
+        return self._query_pu_without_compatibility_check(query_target_s)
+
+    def query_pu_batch(
+        self,
+        target_s_pu_batch: np.ndarray,
+    ) -> tuple[VeraGridAtlasQueryResult, ...]:
+        """Evaluate a batch of injections expressed in per unit.
+
+        :param target_s_pu_batch: Complex matrix shaped ``(query, bus)`` in p.u.
+        :return: Tuple of query results in the same row order.
+        """
+        self._assert_compatible_runtime_model()
+        batch_array: np.ndarray = np.asarray(
+            target_s_pu_batch,
+            dtype=np.complex128,
+        )
+        batch_shape_valid: bool = bool(
+            batch_array.ndim == 2
+            and batch_array.shape[0] > 0
+            and batch_array.shape[1] == self._atlas.get_bus_count()
+        )
+        values_finite: bool = bool(np.all(np.isfinite(batch_array)))
+        if not batch_shape_valid:
+            raise RuntimeError(
+                "Batch query matrix must be finite and shaped (query_count, atlas_bus_count)"
+            )
+        else:
+            if not values_finite:
+                raise RuntimeError(
+                    "Batch query matrix contains non-finite values"
+                )
+            else:
+                pass
+
+        query_count: int = int(batch_array.shape[0])
+        result_array: np.ndarray = np.empty(query_count, dtype=object)
+        query_index: int
+        for query_index in range(query_count):
+            result_array[query_index] = self._query_pu_without_compatibility_check(
+                query_target_s=np.asarray(
+                    batch_array[query_index, :],
+                    dtype=np.complex128,
+                ),
+            )
+        return tuple(result_array)
+
+    def _assert_compatible_runtime_model(self) -> None:
+        """Validate atlas compatibility before online prediction."""
+        atlas_compatible: bool = compare_atlas_with_numerical_circuit(
+            atlas=self._atlas,
+            numerical_circuit=self._numerical_circuit,
+        )
+        if not atlas_compatible:
+            raise RuntimeError(
+                "The atlas is not compatible with the runtime numerical circuit"
+            )
+        else:
+            pass
+
+    def _query_pu_without_compatibility_check(
+        self,
+        query_target_s: np.ndarray,
+    ) -> VeraGridAtlasQueryResult:
+        """Evaluate one per-unit query after compatibility has been checked.
+
+        :param query_target_s: Complex nodal injections in p.u.
+        :return: Certified atlas result or an explicit fallback result.
+        """
         admittances: AdmittanceMatrices = (
             self._numerical_circuit.get_admittance_matrices()
         )

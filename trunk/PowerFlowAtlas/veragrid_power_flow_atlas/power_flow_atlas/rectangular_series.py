@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 
+import numba as nb
 import numpy as np
 from scipy.sparse import bmat, csc_matrix, diags
 
@@ -11,6 +12,79 @@ from power_flow_atlas.model import (
     FixedRegimeResidual,
     PowerFlowAtlasPatch,
 )
+
+
+@nb.njit(cache=True)
+def compose_higher_order_right_hand_side_numba(
+    order_index: int,
+    voltage_coefficients: np.ndarray,
+    current_coefficients: np.ndarray,
+    free_indices: np.ndarray,
+    pq_indices: np.ndarray,
+    pv_indices: np.ndarray,
+) -> np.ndarray:
+    """Compose one higher-order recurrence right-hand side with explicit loops.
+
+    :param order_index: Series order currently being solved.
+    :param voltage_coefficients: Per-order bus-voltage coefficients.
+    :param current_coefficients: Per-order bus-current coefficients.
+    :param free_indices: Ordered non-slack bus indices.
+    :param pq_indices: PQ-bus indices.
+    :param pv_indices: PV-bus indices.
+    :return: Dense real right-hand side in chart equation order.
+    """
+    bus_count: int = voltage_coefficients.shape[1]
+    free_count: int = free_indices.size
+    pq_count: int = pq_indices.size
+    pv_count: int = pv_indices.size
+    lower_power_coefficient: np.ndarray = np.zeros(bus_count, dtype=np.complex128)
+    lower_voltage_square_coefficient: np.ndarray = np.zeros(
+        pv_count,
+        dtype=np.complex128,
+    )
+    convolution_index: int
+    bus_index: int
+    pv_position: int
+    for convolution_index in range(1, order_index):
+        for bus_index in range(bus_count):
+            lower_power_coefficient[bus_index] = (
+                lower_power_coefficient[bus_index]
+                + voltage_coefficients[convolution_index, bus_index]
+                * np.conj(
+                    current_coefficients[
+                        order_index - convolution_index,
+                        bus_index,
+                    ]
+                )
+            )
+        for pv_position in range(pv_count):
+            bus_index = int(pv_indices[pv_position])
+            lower_voltage_square_coefficient[pv_position] = (
+                lower_voltage_square_coefficient[pv_position]
+                + voltage_coefficients[convolution_index, bus_index]
+                * np.conj(
+                    voltage_coefficients[
+                        order_index - convolution_index,
+                        bus_index,
+                    ]
+                )
+            )
+
+    right_hand_side: np.ndarray = np.zeros(2 * free_count, dtype=np.float64)
+    free_position: int
+    for free_position in range(free_count):
+        bus_index = int(free_indices[free_position])
+        right_hand_side[free_position] = -lower_power_coefficient[bus_index].real
+    for free_position in range(pq_count):
+        bus_index = int(pq_indices[free_position])
+        right_hand_side[free_count + free_position] = (
+            -lower_power_coefficient[bus_index].imag
+        )
+    for pv_position in range(pv_count):
+        right_hand_side[free_count + pq_count + pv_position] = (
+            -lower_voltage_square_coefficient[pv_position].real
+        )
+    return right_hand_side
 
 
 def build_ordered_free_indices(
@@ -251,33 +325,13 @@ def compose_higher_order_right_hand_side(
     pv_indices: np.ndarray = patch.get_pv_indices()
     pq_indices: np.ndarray = patch.get_pq_indices()
     free_indices: np.ndarray = patch.get_free_indices()
-    bus_count: int = voltage_coefficients.shape[1]
-    free_count: int = free_indices.size
-    pq_count: int = pq_indices.size
-    pv_count: int = pv_indices.size
-
-    lower_power_coefficient: np.ndarray = np.zeros(bus_count, dtype=np.complex128)
-    lower_voltage_square_coefficient: np.ndarray = np.zeros(pv_count, dtype=np.complex128)
-
-    # The network equations are quadratic, so every higher coefficient is a
-    # convolution of already-known lower coefficients. No nonlinear iteration
-    # is needed while the fixed control regime remains valid.
-    convolution_index: int
-    for convolution_index in range(1, order_index):
-        lower_power_coefficient += (
-            voltage_coefficients[convolution_index, :]
-            * np.conj(current_coefficients[order_index - convolution_index, :])
-        )
-        lower_voltage_square_coefficient += (
-            voltage_coefficients[convolution_index, pv_indices]
-            * np.conj(voltage_coefficients[order_index - convolution_index, pv_indices])
-        )
-
-    right_hand_side: np.ndarray = np.zeros(2 * free_count, dtype=float)
-    right_hand_side[:free_count] = -lower_power_coefficient.real[free_indices]
-    right_hand_side[free_count:free_count + pq_count] = -lower_power_coefficient.imag[pq_indices]
-    right_hand_side[free_count + pq_count:free_count + pq_count + pv_count] = (
-        -lower_voltage_square_coefficient.real
+    right_hand_side: np.ndarray = compose_higher_order_right_hand_side_numba(
+        order_index=order_index,
+        voltage_coefficients=voltage_coefficients,
+        current_coefficients=current_coefficients,
+        free_indices=free_indices,
+        pq_indices=pq_indices,
+        pv_indices=pv_indices,
     )
     return right_hand_side
 
@@ -639,4 +693,3 @@ def build_topology_signature(
             hash_builder.update(np.asarray((-1,), dtype=np.int8).tobytes())
     signature: str = hash_builder.hexdigest()
     return signature
-

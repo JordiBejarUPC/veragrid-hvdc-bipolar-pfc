@@ -11,6 +11,32 @@ The result is either:
 - an explicit full VeraGrid fallback result;
 - or an explicit failure/status indicating that the artifact is not valid for the query.
 
+## Trust boundary
+
+The online engine has two distinct modes:
+
+- pure-series certification;
+- series plus bounded VeraGrid correction.
+
+If you want to measure the atlas itself, set:
+
+```python
+PowerFlowAtlasOptions(
+    maximum_newton_iterations=0,
+)
+```
+
+With `maximum_newton_iterations=0`, a `CertifiedSeries` result is **not**
+corrected by Newton or by `multi_island_pf_nc()`. The engine only:
+
+1. evaluates the directional series;
+2. checks the exact fixed-regime residual;
+3. reconstructs native VeraGrid result fields from the returned voltage without solving.
+
+That native reconstruction path uses zero iterations internally and is only
+post-processing. The full power-flow solver is used only when the status is
+`FullPowerFlowFallback`.
+
 ## Implemented scope
 
 The current implementation supports:
@@ -221,6 +247,8 @@ The complete editable example is in `examples/build_and_query_atlas.py`.
 
 ## Online evaluation
 
+The intended API is batch-first:
+
 ```python
 from pathlib import Path
 
@@ -236,7 +264,7 @@ from power_flow_atlas.model import AtlasStorageResult, PowerFlowAtlas
 from power_flow_atlas.options import PowerFlowAtlasOptions
 from power_flow_atlas.storage import load_power_flow_atlas
 from power_flow_atlas.veragrid_integration import (
-    VeraGridAtlasQueryResult,
+    compare_atlas_with_numerical_circuit,
     VeraGridPowerFlowAtlasEngine,
 )
 
@@ -271,35 +299,204 @@ if atlas is not None:
         power_flow_options=power_flow_options,
         logger=logger,
     )
+    print(compare_atlas_with_numerical_circuit(
+        atlas=atlas,
+        numerical_circuit=numerical_circuit,
+    ))
 
-    target_s_mva: np.ndarray = np.empty(
-        numerical_circuit.nbus,
+    target_s_mva_batch: np.ndarray = np.empty(
+        (query_count, numerical_circuit.nbus),
         dtype=np.complex128,
     )
-    # Fill target_s_mva in the same compiled bus order.
+    # Fill every row in the same compiled bus order.
 
-    query_result: VeraGridAtlasQueryResult = engine.query_mva(
-        target_s_mva=target_s_mva,
+    query_results = engine.query_mva_batch(
+        target_s_mva_batch=target_s_mva_batch,
     )
-    voltage: np.ndarray = query_result.get_voltage()
-    flow_result: AtlasBranchFlowResult = calculate_branch_flows(
-        atlas=atlas,
-        voltage=voltage,
-    )
+    for query_result in query_results:
+        voltage: np.ndarray = query_result.get_voltage()
+        flow_result: AtlasBranchFlowResult = calculate_branch_flows(
+            atlas=atlas,
+            voltage=voltage,
+        )
 
-    print(query_result.get_status())
-    print(query_result.get_residual_norm())
-    print(voltage)
-    print(flow_result.get_from_power_mva())
-    print(flow_result.get_to_power_mva())
+        print(query_result.get_status())
+        print(query_result.get_residual_norm())
+        print(voltage)
+        print(flow_result.get_from_power_mva())
+        print(flow_result.get_to_power_mva())
 else:
     print(load_result.get_status(), load_result.get_message())
 ```
+
+`query_mva(...)` and `query_pu(...)` remain available for a single injection
+vector, but the public API is expected to use `query_mva_batch(...)` or
+`query_pu_batch(...)` for online evaluation.
 
 The returned native VeraGrid objects are also available:
 
 - `get_numeric_results()` for certified series or bounded-Newton results;
 - `get_power_flow_results()` for a full VeraGrid fallback.
+
+For `CertifiedSeries` in pure-series mode (`maximum_newton_iterations=0`):
+
+- `get_numeric_results()` is present;
+- `get_numeric_results().iterations == 0`;
+- `get_power_flow_results()` is `None`.
+
+For `FullPowerFlowFallback`:
+
+- `get_numeric_results()` is `None`;
+- `get_power_flow_results()` contains the fallback `PowerFlowResults`.
+
+## Atlas vs NR example
+
+The practical API pattern is:
+
+1. build anchors with VeraGrid;
+2. build the atlas from those solved anchors;
+3. generate random balanced nodal injections;
+4. query the atlas on those exact injections;
+5. solve the same injections with VeraGrid NR;
+6. compare voltage and branch flows.
+
+The complete working example is
+[`examples/build_and_query_atlas.py`](./examples/build_and_query_atlas.py).
+The shortened version below shows the intended usage:
+
+```python
+from pathlib import Path
+
+import numpy as np
+import VeraGridEngine as vg
+from VeraGridEngine.Compilers.circuit_to_data import compile_numerical_circuit_at
+from VeraGridEngine.Simulations.PowerFlow.power_flow_worker import multi_island_pf_nc
+
+from power_flow_atlas.branch_flows import calculate_branch_flows
+from power_flow_atlas.enumerations import AtlasQueryStatus
+from power_flow_atlas.options import PowerFlowAtlasOptions
+from power_flow_atlas.veragrid_integration import (
+    VeraGridPowerFlowAtlasBuilder,
+    VeraGridPowerFlowAtlasEngine,
+)
+
+
+grid_path: Path = Path("case_ACTIVSg2000.matpower")
+logger: vg.Logger = vg.Logger()
+grid: vg.MultiCircuit = vg.open_file(filename=str(grid_path))
+power_flow_options: vg.PowerFlowOptions = vg.PowerFlowOptions(
+    solver_type=vg.SolverType.NR,
+    retry_with_other_methods=True,
+    tolerance=1.0e-10,
+    control_q=True,
+    control_taps_phase=False,
+    control_taps_modules=False,
+    verbose=False,
+)
+numerical_circuit = compile_numerical_circuit_at(
+    circuit=grid,
+    t_idx=None,
+    logger=logger,
+)
+
+# 1. Solve the base point and nearby offline anchors with VeraGrid.
+base_result = multi_island_pf_nc(
+    nc=numerical_circuit,
+    options=power_flow_options,
+    logger=logger,
+    V_guess=None,
+    Sbus_input=numerical_circuit.get_power_injections_pu(),
+)
+anchor_results: tuple = (base_result,)
+anchor_target_s_mva: tuple[np.ndarray, ...] = (
+    np.asarray(numerical_circuit.get_power_injections_pu(), dtype=np.complex128)
+    * numerical_circuit.Sbase,
+)
+
+# 2. Build a pure-series atlas.
+atlas_options: PowerFlowAtlasOptions = PowerFlowAtlasOptions(
+    series_order=10,
+    series_tolerance=1.0e-8,
+    newton_tolerance=1.0e-9,
+    maximum_newton_iterations=0,
+    validity_radius=0.20,
+)
+atlas = VeraGridPowerFlowAtlasBuilder(
+    numerical_circuit=numerical_circuit,
+    atlas_options=atlas_options,
+    logger=logger,
+).build_from_power_flow_results(
+    anchor_results=anchor_results,
+    anchor_target_s_mva=anchor_target_s_mva,
+).get_atlas()
+
+engine: VeraGridPowerFlowAtlasEngine = VeraGridPowerFlowAtlasEngine(
+    numerical_circuit=numerical_circuit,
+    atlas=atlas,
+    atlas_options=atlas_options,
+    power_flow_options=power_flow_options,
+    logger=logger,
+)
+
+# 3. Query a batch of explicit nodal injection vectors in VeraGrid bus order.
+target_s_mva_batch: np.ndarray = np.vstack(
+    (
+        anchor_target_s_mva[0],
+        anchor_target_s_mva[0],
+    )
+)
+query_results = engine.query_mva_batch(target_s_mva_batch=target_s_mva_batch)
+
+# 4. Compare every batch row against a separate VeraGrid NR solve.
+for query_index, query_result in enumerate(query_results):
+    target_s_mva: np.ndarray = np.asarray(
+        target_s_mva_batch[query_index, :],
+        dtype=np.complex128,
+    )
+    nr_result = multi_island_pf_nc(
+        nc=numerical_circuit,
+        options=power_flow_options,
+        logger=logger,
+        V_guess=np.asarray(numerical_circuit.bus_data.Vbus, dtype=np.complex128),
+        Sbus_input=target_s_mva / numerical_circuit.Sbase,
+    )
+
+    if query_result.get_status() == AtlasQueryStatus.CertifiedSeries:
+        atlas_voltage: np.ndarray = query_result.get_voltage()
+        full_nr_voltage: np.ndarray = np.asarray(nr_result.voltage, dtype=np.complex128)
+        voltage_error: float = float(np.max(np.abs(atlas_voltage - full_nr_voltage)))
+
+        flow_result = calculate_branch_flows(
+            atlas=atlas,
+            voltage=atlas_voltage,
+        )
+        if flow_result.is_successful():
+            from_power_error_mva: float = float(
+                np.max(
+                    np.abs(
+                        flow_result.get_from_power_mva()
+                        - np.asarray(nr_result.Sf, dtype=np.complex128)
+                    )
+                )
+            )
+            print("query=", query_index)
+            print("status=", query_result.get_status().name)
+            print("residual=", query_result.get_residual_norm())
+            print("dV=", voltage_error)
+            print("dSf_MVA=", from_power_error_mva)
+    else:
+        print("query=", query_index)
+        print("status=", query_result.get_status().name)
+        print("message=", query_result.get_message())
+```
+
+Two details matter here:
+
+- Use a fixed `V_guess` such as `numerical_circuit.bus_data.Vbus` for the NR
+  reference when validating independent random queries.
+- Do not infer atlas quality from `CertifiedNewton` or `FullPowerFlowFallback`.
+  Those statuses are useful operationally, but they no longer represent a pure
+  atlas-only answer.
 
 ## Query statuses
 
@@ -392,4 +589,3 @@ Before merging this into the VeraGrid repository, the recommended steps are:
 5. add performance benchmarks for patch selection, coefficient generation, post-processing, bounded correction, and full fallback;
 6. define an explicit version field tying each artifact to the VeraGrid numerical-model schema;
 7. add one artifact per topology/admittance state, or extend the container to dispatch among multiple topology-specific atlases.
-
