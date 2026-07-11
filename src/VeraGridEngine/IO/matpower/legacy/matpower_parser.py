@@ -746,10 +746,10 @@ def read_matpower_file(filename: str, logger: Logger) -> Dict[str, np.ndarray]:
     return data
 
 
-def parse_matpower_file(filename) -> Tuple[MultiCircuit | None, Logger]:
+def parse_matpower_file(filename) -> Tuple[MultiCircuit, Logger]:
     """
     Read MatPower file
-    :param filename: Matpower file
+    :param filename: MatPower file
     :return: MultiCircuit (if successful), Logger
     """
     logger = Logger()
@@ -760,7 +760,7 @@ def parse_matpower_file(filename) -> Tuple[MultiCircuit | None, Logger]:
         circuit = interpret_data_v1(data, logger)
     else:
         logger.add_error('No bus data')
-        circuit = None
+        raise Exception("No bus data found in MatPower file:(")
 
     return circuit, logger
 
