@@ -2956,6 +2956,7 @@ class SimulationTypes(Enum):
     InvestmentsEvaluation_run = 'Investments evaluation'
     CatalogueOptimization_run = 'Catalogue optimization'
     TopologyProcessor_run = 'Topology Processor'
+    NodalCapacity_run = 'Nodal capacity'
     NodalCapacityTimeSeries_run = 'Nodal capacity time series'
     Reliability_run = "Reliability"
     RmsDynamic_run = "RMS Dynamic"

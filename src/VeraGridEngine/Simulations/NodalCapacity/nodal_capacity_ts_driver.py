@@ -105,6 +105,24 @@ class NodalCapacityTimeSeriesDriver(TimeSeriesDriverTemplate):
         """
         return self.options.opf_options.power_flow_options
 
+    def _single_bus_capacity_idx(self, bus_idx: int) -> np.ndarray:
+        return np.array([bus_idx], dtype=int)
+
+    def _get_linear_bus_active_power(self, opf_vars, capacity_nodes_idx: np.ndarray) -> np.ndarray:
+        sbus = np.array(opf_vars.bus_vars.Pgen, dtype=float, copy=True) * self.grid.Sbase
+
+        for k, load in enumerate(self.grid.get_loads()):
+            sbus[:, self.grid.buses.index(load.bus)] -= opf_vars.load_vars.p[:, k]
+
+        if self.options.nodal_capacity_sign >= 0:
+            for k, bus_idx in enumerate(capacity_nodes_idx):
+                sbus[:, bus_idx] += opf_vars.nodal_capacity_vars.P[:, k]
+        else:
+            for k, bus_idx in enumerate(capacity_nodes_idx):
+                sbus[:, bus_idx] -= opf_vars.nodal_capacity_vars.P[:, k]
+
+        return sbus
+
     def get_steps(self):
         """
         Get time steps list of strings
@@ -134,32 +152,68 @@ class NodalCapacityTimeSeriesDriver(TimeSeriesDriverTemplate):
             self.report_progress(0.0)
             self.report_text('Formulating problem...')
 
-        # DC optimal power flow
-        opf_vars, model = run_linear_opf_ts(grid=self.grid,
-                                            time_indices=self.time_indices,
-                                            dispatch_mode=OpfDispatchMode.NodalCapacity,
-                                            solver_type=self.opf_options.mip_solver,
-                                            zonal_grouping=self.opf_options.zonal_grouping,
-                                            skip_generation_limits=self.opf_options.skip_generation_limits,
-                                            consider_contingencies=self.opf_options.consider_contingencies,
-                                            contingency_groups_used=self.grid.contingency_groups,
-                                            ramp_constraints=self.opf_options.consider_ramps,
-                                            lodf_threshold=self.opf_options.lodf_tolerance,
-                                            inter_aggregation_info=self.opf_options.inter_aggregation_info,
-                                            energy_0=batteries_energy_0,
-                                            nodal_capacity_sign=self.options.nodal_capacity_sign,
-                                            capacity_nodes_idx=self.options.capacity_nodes_idx,
-                                            logger=self.logger,
-                                            progress_text=self.report_text,
-                                            progress_func=self.report_progress,
-                                            verbose=self.opf_options.verbose,
-                                            robust=self.opf_options.robust,
-                                            mip_framework=self.opf_options.mip_framework)
+        if len(self.options.capacity_nodes_idx) > 1:
+            nodal_capacity = np.zeros((len(self.time_indices), len(self.options.capacity_nodes_idx)), dtype=float)
+            opf_vars = None
+            model = None
+            solved_capacity_nodes_idx = None
+            for k, bus_idx in enumerate(self.options.capacity_nodes_idx):
+                cap_idx = self._single_bus_capacity_idx(bus_idx)
+                opf_vars_k, model_k = run_linear_opf_ts(
+                    grid=self.grid,
+                    time_indices=self.time_indices,
+                    dispatch_mode=OpfDispatchMode.NodalCapacity,
+                    solver_type=self.opf_options.mip_solver,
+                    zonal_grouping=self.opf_options.zonal_grouping,
+                    skip_generation_limits=self.opf_options.skip_generation_limits,
+                    consider_contingencies=self.opf_options.consider_contingencies,
+                    contingency_groups_used=self.grid.contingency_groups,
+                    ramp_constraints=self.opf_options.consider_ramps,
+                    lodf_threshold=self.opf_options.lodf_tolerance,
+                    inter_aggregation_info=self.opf_options.inter_aggregation_info,
+                    energy_0=batteries_energy_0,
+                    nodal_capacity_sign=self.options.nodal_capacity_sign,
+                    capacity_nodes_idx=cap_idx,
+                    logger=self.logger,
+                    progress_text=self.report_text,
+                    progress_func=self.report_progress,
+                    verbose=self.opf_options.verbose,
+                    robust=self.opf_options.robust,
+                    mip_framework=self.opf_options.mip_framework
+                )
+                nodal_capacity[:, k] = self.options.nodal_capacity_sign * opf_vars_k.nodal_capacity_vars.P[:, 0]
+                if opf_vars is None:
+                    opf_vars = opf_vars_k
+                    model = model_k
+                    solved_capacity_nodes_idx = cap_idx
+        else:
+            opf_vars, model = run_linear_opf_ts(grid=self.grid,
+                                                time_indices=self.time_indices,
+                                                dispatch_mode=OpfDispatchMode.NodalCapacity,
+                                                solver_type=self.opf_options.mip_solver,
+                                                zonal_grouping=self.opf_options.zonal_grouping,
+                                                skip_generation_limits=self.opf_options.skip_generation_limits,
+                                                consider_contingencies=self.opf_options.consider_contingencies,
+                                                contingency_groups_used=self.grid.contingency_groups,
+                                                ramp_constraints=self.opf_options.consider_ramps,
+                                                lodf_threshold=self.opf_options.lodf_tolerance,
+                                                inter_aggregation_info=self.opf_options.inter_aggregation_info,
+                                                energy_0=batteries_energy_0,
+                                                nodal_capacity_sign=self.options.nodal_capacity_sign,
+                                                capacity_nodes_idx=self.options.capacity_nodes_idx,
+                                                logger=self.logger,
+                                                progress_text=self.report_text,
+                                                progress_func=self.report_progress,
+                                                verbose=self.opf_options.verbose,
+                                                robust=self.opf_options.robust,
+                                                mip_framework=self.opf_options.mip_framework)
+            nodal_capacity = self.options.nodal_capacity_sign * opf_vars.nodal_capacity_vars.P
+            solved_capacity_nodes_idx = self.options.capacity_nodes_idx
 
-        self.results.Sbus = opf_vars.bus_vars.Pinj + 1j * np.zeros_like(opf_vars.bus_vars.Pinj)
+        self.results.Sbus = self._get_linear_bus_active_power(opf_vars, solved_capacity_nodes_idx) + 1j * 0.0
         self.results.voltage = np.ones((opf_vars.nt, opf_vars.nbus)) * np.exp(1j * opf_vars.bus_vars.Va)
         self.results.bus_shadow_prices = opf_vars.bus_vars.shadow_prices
-        self.results.nodal_capacity = opf_vars.nodal_capacity_vars.P
+        self.results.nodal_capacity = nodal_capacity
 
         self.results.load_shedding = opf_vars.load_vars.shedding
 
@@ -221,53 +275,84 @@ class NodalCapacityTimeSeriesDriver(TimeSeriesDriverTemplate):
         has_ts, t_indices = self.get_time_indices()
 
         self.report_progress(0.0)
-        for it, t in enumerate(t_indices):
+        if len(self.options.capacity_nodes_idx) > 1:
+            first_bus_idx = self.options.capacity_nodes_idx[0]
+            for k, bus_idx in enumerate(self.options.capacity_nodes_idx):
+                for it, t in enumerate(t_indices):
 
-            # report progress
-            if has_ts:
-                self.report_text('Nonlinear OPF at ' + str(self.grid.time_profile[t]) + '...')
-                self.report_progress2(it, len(self.time_indices))
-            else:
-                self.report_text('Nonlinear OPF at the snapshot...')
-                self.report_progress2(it, 1)
+                    if has_ts:
+                        self.report_text('Nonlinear OPF at ' + str(self.grid.time_profile[t]) + '...')
+                        self.report_progress2(it, len(self.time_indices))
+                    else:
+                        self.report_text('Nonlinear OPF at the snapshot...')
+                        self.report_progress2(it, 1)
 
-            # run opf
-            res = run_nonlinear_opf(grid=self.grid,
-                                    opf_options=self.opf_options,
-                                    t_idx=t,
-                                    # for the first power flow, use the given strategy
-                                    # for the successive ones, use the previous solution
-                                    # Sbus_pf0=self.results.Sbus[it - 1, :] if it > 0 else None,
-                                    # voltage_pf0=self.results.voltage[it - 1, :] if it > 0 else None,
-                                    optimize_nodal_capacity=True,
-                                    nodal_capacity_sign=self.options.nodal_capacity_sign,
-                                    capacity_nodes_idx=self.options.capacity_nodes_idx,
-                                    logger=self.logger)
+                    res = run_nonlinear_opf(grid=self.grid,
+                                            opf_options=self.opf_options,
+                                            t_idx=t,
+                                            optimize_nodal_capacity=True,
+                                            nodal_capacity_sign=self.options.nodal_capacity_sign,
+                                            capacity_nodes_idx=self._single_bus_capacity_idx(bus_idx),
+                                            logger=self.logger)
 
-            # set the results
-            Sbase = self.grid.Sbase
-            self.results.voltage[it, :] = res.V
-            self.results.Sbus[it, :] = res.S * Sbase
-            self.results.bus_shadow_prices[it, :] = res.lam_p
-            self.results.nodal_capacity[it, :] = res.nodal_capacity
-            # self.results.load_shedding = npa_res.load_shedding[0, :]
-            # self.results.battery_power = npa_res.battery_p[0, :]
-            # self.results.battery_energy = npa_res.battery_energy[0, :]
-            self.results.generator_power[it, :] = res.Pg * Sbase
-            self.results.generator_cost[it, :] = res.Pcost
+                    if bus_idx == first_bus_idx:
+                        Sbase = self.grid.Sbase
+                        self.results.voltage[it, :] = res.V
+                        self.results.Sbus[it, :] = res.S * Sbase
+                        self.results.bus_shadow_prices[it, :] = res.lam_p
+                        self.results.generator_power[it, :] = res.Pg * Sbase
+                        self.results.generator_cost[it, :] = res.Pcost
+                        self.results.Sf[it, :] = res.Sf * Sbase
+                        self.results.St[it, :] = res.St * Sbase
+                        self.results.overloads[it, :] = (res.sl_sf - res.sl_st) * Sbase
+                        self.results.loading[it, :] = res.loading
+                        self.results.tap_angle[it, :] = res.tap_phase
+                        self.results.hvdc_Pf[it, :] = res.hvdc_Pf
+                        self.results.hvdc_loading[it, :] = res.hvdc_loading
+                        self.results.converged[it] = res.converged
 
-            self.results.Sf[it, :] = res.Sf * Sbase
-            self.results.St[it, :] = res.St * Sbase
-            self.results.overloads[it, :] = (res.sl_sf - res.sl_st) * Sbase
-            self.results.loading[it, :] = res.loading
-            self.results.tap_angle[it, :] = res.tap_phase
+                    self.results.nodal_capacity[it, k] = self.options.nodal_capacity_sign * res.nodal_capacity[0]
 
-            self.results.hvdc_Pf[it, :] = res.hvdc_Pf
-            self.results.hvdc_loading[it, :] = res.hvdc_loading
-            self.results.converged[it] = res.converged
+                    if self.is_cancel():
+                        return self.results
+        else:
+            for it, t in enumerate(t_indices):
 
-            if self.is_cancel():
-                return self.results
+                if has_ts:
+                    self.report_text('Nonlinear OPF at ' + str(self.grid.time_profile[t]) + '...')
+                    self.report_progress2(it, len(self.time_indices))
+                else:
+                    self.report_text('Nonlinear OPF at the snapshot...')
+                    self.report_progress2(it, 1)
+
+                res = run_nonlinear_opf(grid=self.grid,
+                                        opf_options=self.opf_options,
+                                        t_idx=t,
+                                        optimize_nodal_capacity=True,
+                                        nodal_capacity_sign=self.options.nodal_capacity_sign,
+                                        capacity_nodes_idx=self.options.capacity_nodes_idx,
+                                        logger=self.logger)
+
+                Sbase = self.grid.Sbase
+                self.results.voltage[it, :] = res.V
+                self.results.Sbus[it, :] = res.S * Sbase
+                self.results.bus_shadow_prices[it, :] = res.lam_p
+                self.results.nodal_capacity[it, :] = self.options.nodal_capacity_sign * res.nodal_capacity
+                self.results.generator_power[it, :] = res.Pg * Sbase
+                self.results.generator_cost[it, :] = res.Pcost
+
+                self.results.Sf[it, :] = res.Sf * Sbase
+                self.results.St[it, :] = res.St * Sbase
+                self.results.overloads[it, :] = (res.sl_sf - res.sl_st) * Sbase
+                self.results.loading[it, :] = res.loading
+                self.results.tap_angle[it, :] = res.tap_phase
+
+                self.results.hvdc_Pf[it, :] = res.hvdc_Pf
+                self.results.hvdc_loading[it, :] = res.hvdc_loading
+                self.results.converged[it] = res.converged
+
+                if self.is_cancel():
+                    return self.results
 
         # Compute the emissions, fuel costs and energy used
         (self.results.system_fuel,
