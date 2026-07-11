@@ -7,6 +7,91 @@ import os
 from VeraGridEngine.api import *
 
 
+VALENTINA_GEN_COSTS = {
+    "Gen 04": 40.0,
+    "Gen 05": 80.0,
+}
+VALENTINA_GEN_LIMITS = {
+    "Gen 04": {"ramp_up": 18.0, "ramp_down": 18.0, "min_time_up": 24.0, "min_time_down": 24.0},
+    "Gen 05": {"ramp_up": 200.0, "ramp_down": 200.0, "min_time_up": 2.0, "min_time_down": 2.0},
+}
+VALENTINA_LOAD_COST = 12000.0
+
+
+def _valentina_case():
+    fname = os.path.join('data', 'grids', 'New.England_solar_case_OPF.gridcal')
+    grid = FileOpen(fname).open()
+    nt = len(grid.get_all_time_indices())
+
+    for gen in grid.get_generators():
+        if gen.name in VALENTINA_GEN_COSTS:
+            gen.Cost = VALENTINA_GEN_COSTS[gen.name]
+            gen.Cost_prof = np.full(nt, VALENTINA_GEN_COSTS[gen.name], dtype=float)
+        if gen.name in VALENTINA_GEN_LIMITS:
+            limits = VALENTINA_GEN_LIMITS[gen.name]
+            gen.ramp_up = limits["ramp_up"]
+            gen.ramp_down = limits["ramp_down"]
+            gen.min_time_up = limits["min_time_up"]
+            gen.min_time_down = limits["min_time_down"]
+
+    for load in grid.get_loads():
+        load.Cost = VALENTINA_LOAD_COST
+        load.Cost_prof = np.full(nt, VALENTINA_LOAD_COST, dtype=float)
+
+    return grid
+
+
+def _run_valentina_case(dispatch_mode):
+    grid = _valentina_case()
+
+    opf_options = OptimalPowerFlowOptions(verbose=0,
+                                          dispatch_mode=dispatch_mode,
+                                          solver=SolverType.LINEAR_OPF,
+                                          power_flow_options=PowerFlowOptions(),
+                                          time_grouping=TimeGrouping.NoGrouping,
+                                          mip_solver=MIPSolvers.HIGHS,
+                                          mip_framework=MIPFramework.PuLP,
+                                          consider_ramps=True,
+                                          consider_time_up_down=True)
+
+    driver = OptimalPowerFlowTimeSeriesDriver(grid=grid,
+                                              options=opf_options,
+                                              time_indices=grid.get_all_time_indices())
+    driver.run()
+
+    return driver
+
+
+def _collect_ramp_violations(driver, limits_by_name, eps: float = 1e-6):
+    gen_names = list(driver.results.generator_names)
+    power = np.asarray(driver.results.generator_power, dtype=float)
+    violations = list()
+
+    for gen_name, limits in limits_by_name.items():
+        idx = gen_names.index(gen_name)
+        for t in range(1, power.shape[0]):
+            delta = power[t, idx] - power[t - 1, idx]
+            if delta > limits["ramp_up"] + eps:
+                violations.append((gen_name, "up", t, float(delta), limits["ramp_up"]))
+            if -delta > limits["ramp_down"] + eps:
+                violations.append((gen_name, "down", t, float(-delta), limits["ramp_down"]))
+
+    return violations
+
+
+def _run_lengths(status):
+    values = np.asarray(status, dtype=int)
+    lengths = list()
+    start = 0
+    while start < len(values):
+        end = start + 1
+        while end < len(values) and values[end] == values[start]:
+            end += 1
+        lengths.append((values[start], end - start))
+        start = end
+    return lengths
+
+
 def test_opf():
     fname = os.path.join('data', 'grids', 'IEEE39_1W.gridcal')
     print('Reading...')
@@ -657,6 +742,30 @@ def test_opf_unit_commitment():
     opf_ts.run()
 
     print()
+
+
+def test_valentina_case_respects_ramps():
+    driver = _run_valentina_case(OpfDispatchMode.Normal)
+
+    assert driver.logger.error_count() == 0
+    assert np.allclose(driver.results.load_shedding, 0.0)
+    assert _collect_ramp_violations(driver, VALENTINA_GEN_LIMITS) == []
+
+
+def test_valentina_case_unit_commitment_respects_min_up_down():
+    driver = _run_valentina_case(OpfDispatchMode.UnitCommitment)
+
+    gen_names = list(driver.results.generator_names)
+    gen05_status = driver.results.generator_producing[:, gen_names.index("Gen 05")]
+    gen04_status = driver.results.generator_producing[:, gen_names.index("Gen 04")]
+    gen05_internal_blocks = _run_lengths(gen05_status)[1:-1]
+
+    assert driver.logger.error_count() == 0
+    assert np.allclose(driver.results.load_shedding, 0.0)
+    assert _collect_ramp_violations(driver, VALENTINA_GEN_LIMITS) == []
+    assert all(length >= 2 for state, length in gen05_internal_blocks if state == 1)
+    assert all(length >= 2 for state, length in gen05_internal_blocks if state == 0)
+    assert np.all(np.asarray(gen04_status, dtype=int) == 1)
 
 
 if __name__ == '__main__':
