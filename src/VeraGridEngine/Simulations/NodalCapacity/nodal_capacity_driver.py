@@ -17,11 +17,11 @@ from VeraGridEngine.Simulations.ContinuationPowerFlow.continuation_power_flow_in
     ContinuationPowerFlowInput)
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowDriver
 from VeraGridEngine.Simulations.PowerFlow.power_flow_options import PowerFlowOptions
-from VeraGridEngine.Simulations.driver_template import TimeSeriesDriverTemplate
+from VeraGridEngine.Simulations.driver_template import DriverTemplate
 from VeraGridEngine.enumerations import NodalCapacityMethod, CpfStopAt, CpfParametrization, OpfDispatchMode
 
 
-class NodalCapacityDriver(TimeSeriesDriverTemplate):
+class NodalCapacityDriver(DriverTemplate):
     __slots__ = (
         "options",
         "all_solved",
@@ -34,12 +34,15 @@ class NodalCapacityDriver(TimeSeriesDriverTemplate):
                  grid: MultiCircuit,
                  options: Union[NodalCapacityOptions, None] = None,
                  engine: EngineType = EngineType.VeraGrid):
-        TimeSeriesDriverTemplate.__init__(self,
-                                          grid=grid,
-                                          time_indices=None,
-                                          clustering_results=None,
-                                          engine=engine,
-                                          check_time_series=False)
+        """
+
+        :param grid:
+        :param options:
+        :param engine:
+        """
+        DriverTemplate.__init__(self,
+                                grid=grid,
+                                engine=engine, )
 
         self.options = options if options else NodalCapacityOptions()
 
@@ -97,71 +100,44 @@ class NodalCapacityDriver(TimeSeriesDriverTemplate):
         return sbus
 
     def linear_opf(self, remote: bool = False) -> NodalCapacityResults:
+        """
+
+        :param remote:
+        :return:
+        """
         if not remote:
             self.report_progress(0.0)
             self.report_text('Formulating problem...')
-        if len(self.options.capacity_nodes_idx) > 1:
-            nodal_capacity = np.zeros(len(self.options.capacity_nodes_idx), dtype=float)
-            opf_vars = None
-            model = None
-            solved_capacity_nodes_idx = None
-            for k, bus_idx in enumerate(self.options.capacity_nodes_idx):
-                cap_idx = self._single_bus_capacity_idx(bus_idx)
-                opf_vars_k, model_k = run_linear_opf_ts(
-                    grid=self.grid,
-                    time_indices=None,
-                    dispatch_mode=OpfDispatchMode.NodalCapacity,
-                    solver_type=self.opf_options.mip_solver,
-                    zonal_grouping=self.opf_options.zonal_grouping,
-                    skip_generation_limits=self.opf_options.skip_generation_limits,
-                    consider_contingencies=self.opf_options.consider_contingencies,
-                    contingency_groups_used=self.grid.contingency_groups,
-                    ramp_constraints=self.opf_options.consider_ramps,
-                    lodf_threshold=self.opf_options.lodf_tolerance,
-                    inter_aggregation_info=self.opf_options.inter_aggregation_info,
-                    energy_0=None,
-                    nodal_capacity_sign=self.options.nodal_capacity_sign,
-                    capacity_nodes_idx=cap_idx,
-                    logger=self.logger,
-                    progress_text=self.report_text,
-                    progress_func=self.report_progress,
-                    verbose=self.opf_options.verbose,
-                    robust=self.opf_options.robust,
-                    mip_framework=self.opf_options.mip_framework
-                )
-                nodal_capacity[k] = self.options.nodal_capacity_sign * opf_vars_k.nodal_capacity_vars.P[0, 0]
-                if opf_vars is None:
-                    opf_vars = opf_vars_k
-                    model = model_k
-                    solved_capacity_nodes_idx = cap_idx
-        else:
-            opf_vars, model = run_linear_opf_ts(grid=self.grid,
-                                                time_indices=None,
-                                                dispatch_mode=OpfDispatchMode.NodalCapacity,
-                                                solver_type=self.opf_options.mip_solver,
-                                                zonal_grouping=self.opf_options.zonal_grouping,
-                                                skip_generation_limits=self.opf_options.skip_generation_limits,
-                                                consider_contingencies=self.opf_options.consider_contingencies,
-                                                contingency_groups_used=self.grid.contingency_groups,
-                                                ramp_constraints=self.opf_options.consider_ramps,
-                                                lodf_threshold=self.opf_options.lodf_tolerance,
-                                                inter_aggregation_info=self.opf_options.inter_aggregation_info,
-                                                energy_0=None,
-                                                nodal_capacity_sign=self.options.nodal_capacity_sign,
-                                                capacity_nodes_idx=self.options.capacity_nodes_idx,
-                                                logger=self.logger,
-                                                progress_text=self.report_text,
-                                                progress_func=self.report_progress,
-                                                verbose=self.opf_options.verbose,
-                                                robust=self.opf_options.robust,
-                                                mip_framework=self.opf_options.mip_framework)
-            nodal_capacity = self.options.nodal_capacity_sign * opf_vars.nodal_capacity_vars.P[0, :]
-            solved_capacity_nodes_idx = self.options.capacity_nodes_idx
+        opf_vars, model = run_linear_opf_ts(
+            grid=self.grid,
+            time_indices=None,
+            dispatch_mode=OpfDispatchMode.NodalCapacity,
+            solver_type=self.opf_options.mip_solver,
+            zonal_grouping=self.opf_options.zonal_grouping,
+            skip_generation_limits=self.opf_options.skip_generation_limits,
+            consider_contingencies=self.opf_options.consider_contingencies,
+            contingency_groups_used=self.grid.contingency_groups,
+            ramp_constraints=self.opf_options.consider_ramps,
+            lodf_threshold=self.opf_options.lodf_tolerance,
+            inter_aggregation_info=self.opf_options.inter_aggregation_info,
+            energy_0=None,
+            nodal_capacity_sign=self.options.nodal_capacity_sign,
+            capacity_nodes_idx=self.options.capacity_nodes_idx,
+            logger=self.logger,
+            progress_text=self.report_text,
+            progress_func=self.report_progress,
+            verbose=self.opf_options.verbose,
+            robust=self.opf_options.robust,
+            mip_framework=self.opf_options.mip_framework
+        )
 
-        self.results.Sbus = self._get_linear_bus_active_power(opf_vars, solved_capacity_nodes_idx) + 1j * 0.0
+        self.results.Sbus = self._get_linear_bus_active_power(
+            opf_vars=opf_vars,
+            capacity_nodes_idx=self.options.capacity_nodes_idx
+        ) + 1j * 0.0
         self.results.voltage = np.exp(1j * opf_vars.bus_vars.Va[0, :])
         self.results.bus_shadow_prices = opf_vars.bus_vars.shadow_prices[0, :]
-        self.results.nodal_capacity = nodal_capacity
+        self.results.nodal_capacity = self.options.nodal_capacity_sign * opf_vars.nodal_capacity_vars.P[0, :]
 
         self.results.load_power = opf_vars.load_vars.p[0, :]
         self.results.load_shedding = opf_vars.load_vars.shedding[0, :]
@@ -290,6 +266,11 @@ class NodalCapacityDriver(TimeSeriesDriverTemplate):
         return self.results
 
     def add_report(self, eps: float = 1e-6) -> None:
+        """
+
+        :param eps:
+        :return:
+        """
         for gen_name, gen_shedding in zip(self.results.generator_names, self.results.generator_shedding):
             if gen_shedding > eps:
                 self.logger.add_warning("Generation shedding",
@@ -304,7 +285,8 @@ class NodalCapacityDriver(TimeSeriesDriverTemplate):
                                         value=load_shedding,
                                         expected_value=0.0)
 
-        for fluid_node_name, fluid_node_spillage in zip(self.results.fluid_node_names, self.results.fluid_node_spillage):
+        for fluid_node_name, fluid_node_spillage in zip(self.results.fluid_node_names,
+                                                        self.results.fluid_node_spillage):
             if fluid_node_spillage > eps:
                 self.logger.add_warning("Fluid node spillage",
                                         device=fluid_node_name,
@@ -319,6 +301,10 @@ class NodalCapacityDriver(TimeSeriesDriverTemplate):
                                         expected_value=100.0)
 
     def run(self):
+        """
+
+        :return:
+        """
         self.tic()
 
         if self.engine == EngineType.VeraGrid:
@@ -328,8 +314,21 @@ class NodalCapacityDriver(TimeSeriesDriverTemplate):
                 self.non_linear_opf()
             elif self.options.method == NodalCapacityMethod.CPF:
                 self.cpf()
+            else:
+                raise NotImplementedError(f"self.engine {self.engine} is not implemented")
+
         elif self.engine == EngineType.NewtonPA:
             self.logger.add_warning("Engine not implemented", value=str(self.engine.value))
+
+        else:
+            if self.options.method == NodalCapacityMethod.LinearOptimization:
+                self.linear_opf()
+            elif self.options.method == NodalCapacityMethod.NonlinearOptimization:
+                self.non_linear_opf()
+            elif self.options.method == NodalCapacityMethod.CPF:
+                self.cpf()
+            else:
+                raise NotImplementedError(f"self.engine {self.engine} is not implemented")
 
         if self.opf_options.generate_report:
             self.add_report()
