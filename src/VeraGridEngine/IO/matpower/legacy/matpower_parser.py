@@ -181,7 +181,7 @@ def parse_buses_data(circuit: MultiCircuit,
         bus_idx_dict[table[i, matpower_buses.BUS_I]] = i
 
         # determine if the bus is set as slack manually
-        bus.is_slack = table[i, matpower_buses.BUS_TYPE] == matpower_buses.REF
+        bus.set_is_slack_at(t=None, val=table[i, matpower_buses.BUS_TYPE] == matpower_buses.REF)
 
         # Add the bus to the circuit buses
         circuit.add_bus(bus)
@@ -868,7 +868,7 @@ def get_buses(circuit: MultiCircuit) -> Tuple[List[Dict[str, float]], Dict[dev.B
 
         data.append({
             'bus_i': i + 1,  # matlab starts at 1
-            'type': elm.determine_bus_type().value,
+            'type': elm.determine_snapshot_bus_type().value,
             'Pd': Pd,
             'Qd': Qd,
             'Gs': Gs,
