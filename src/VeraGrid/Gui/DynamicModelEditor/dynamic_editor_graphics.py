@@ -12,7 +12,6 @@ from PySide6.QtWidgets import QAbstractGraphicsShapeItem, QApplication, QColorDi
     QGraphicsView, QMenu, QWidget
 
 import VeraGrid.ThirdParty.darkdetect as darkdetect
-from VeraGridEngine.Devices.Diagrams.block_diagram import BlockDiagram
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.enumerations import BlockType
 from VeraGridEngine.Utils.Symbolic.block import Block
@@ -48,7 +47,7 @@ class EditorGraphicsDefaultsDark:
     BLOCK_BORDER_SELECTED: QColor = QColor("#00bbff")
     BLOCK_TITLE: QColor = QColor("#173042")
     WIRE_COLOR: QColor = QColor("#022633")
-    HANDLE_FILL: QColor = QColor("#36536b")
+    HANDLE_FILL: QColor = QColor("#022633")
     BLOCK_FILL: QColor = QColor("#f5fdff")
     PORT_LABEL_COLOR: QColor = QColor("#173042")
     WIRE_ELBOW_OFFSET: float = 36.0
@@ -72,7 +71,7 @@ class EditorGraphicsDefaultsLight:
     BLOCK_BORDER_SELECTED: QColor = QColor("#00bbff")
     BLOCK_TITLE: QColor = QColor("#173042")
     WIRE_COLOR: QColor = QColor("#022633")
-    HANDLE_FILL: QColor = QColor("#36536b")
+    HANDLE_FILL: QColor = QColor("#022633")
     BLOCK_FILL: QColor = QColor("#f5fdff")
     PORT_LABEL_COLOR: QColor = QColor("#173042")
     WIRE_ELBOW_OFFSET: float = 36.0
@@ -91,7 +90,7 @@ class EditorGraphicsDefaultsLight:
     VALIDATION_HICHLIGHTED_BORDER = QColor("#b42318")
 
 
-def _get_editor_constants() -> type[EditorGraphicsDefaultsLight] | type[EditorGraphicsDefaultsDark] | DynamicBlockEditorGUI:
+def _get_editor_constants() -> type[EditorGraphicsDefaultsLight] | type[EditorGraphicsDefaultsDark]:
 
     try:
         is_dark = darkdetect.theme() == "Dark"
@@ -409,12 +408,12 @@ class Node:
 
 
 class ResizeHandle(QGraphicsItem):
-    def __init__(self, block_item: "BlockItem | PairedItem", size: int = 10):
+    def __init__(self, block_item: GenericBlockItem, size: int = 10):
         super().__init__(block_item)
         self._size = size
         self.setCursor(Qt.CursorShape.SizeFDiagCursor)
         self.setZValue(2)
-        self.block: BlockItem | PairedItem = block_item
+        self.block: GenericBlockItem = block_item
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable)
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemSendsScenePositionChanges)
         self.setAcceptHoverEvents(True)
@@ -471,8 +470,8 @@ class PortItem(QAbstractGraphicsShapeItem):
         self.is_input: bool = is_input
         self._path: QPainterPath = QPainterPath()
         self._build_path()
-
-        self.setBrush(QBrush(QColor("#819ba7")))
+        editor_constants = _get_editor_constants()
+        self.setBrush(QBrush(editor_constants.PORT_ITEM_COLOR))
         self.setPen(QPen(Qt.PenStyle.NoPen))
         self.setZValue(3)
         self.setAcceptHoverEvents(True)
@@ -554,15 +553,11 @@ class PortItem(QAbstractGraphicsShapeItem):
         painter.setPen(self.pen())
         painter.drawPath(self._path)
 
-    # --- events ---
-
     def hoverEnterEvent(self, event: QtWidgets.QGraphicsSceneHoverEvent) -> None:
         QApplication.setOverrideCursor(Qt.CursorShape.PointingHandCursor)
 
     def hoverLeaveEvent(self, event: QtWidgets.QGraphicsSceneHoverEvent) -> None:
         QApplication.restoreOverrideCursor()
-
-    # --- connection helpers ---
 
     def is_connected(self) -> bool:
         if self.connections is not None:
@@ -570,13 +565,11 @@ class PortItem(QAbstractGraphicsShapeItem):
         else:
             return False
 
-    def _update_port_visibility(self) -> None:
+    def update_port_visibility(self) -> None:
         if self.connections is not None and len(self.connections) > 0:
             self.setVisible(False)
         else:
             self.setVisible(True)
-
-    # --- validation ---
 
     def set_validation_highlighted(self, val: bool) -> None:
         """
@@ -585,12 +578,13 @@ class PortItem(QAbstractGraphicsShapeItem):
         :param val: Whether the port should be shown as a validation issue.
         :return: None.
         """
+        editor_constants = _get_editor_constants()
         self._validation_highlighted = val
 
         if self._validation_highlighted:
-            self.setBrush(QBrush(QColor("#b42318")))
+            self.setBrush(QBrush(editor_constants.VALIDATION_HICHLIGHTED_BORDER))
         else:
-            self.setBrush(QBrush(QColor("#819ba7")))
+            self.setBrush(QBrush(editor_constants.PORT_ITEM_COLOR))
 
 
 class BranchingItem(QGraphicsEllipseItem):
@@ -600,9 +594,8 @@ class BranchingItem(QGraphicsEllipseItem):
                  radius: int = 6):
         super().__init__(-radius, -radius, 2 * radius, 2 * radius)
         editor_constants = _get_editor_constants()
-        fill_color: QColor = editor_constants.OUTPUT_PORT_FILL
-        self.setBrush(QBrush(fill_color))
-        self.setPen(QPen(editor_constants.PORT_BORDER, 1.5))
+        self.setBrush(QBrush(editor_constants.WIRE_COLOR))
+        self.setPen(QPen(Qt.PenStyle.NoPen))
         self.setZValue(3)
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable)
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable)
@@ -632,7 +625,7 @@ class ConnectionItem(QGraphicsPathItem):
                  diagram=None,
                  con_uid=None,
                  uid=None,
-                 elbow_points: List[QPointF] = None,
+                 elbow_points: List[QPointF] | None = None,
                  editor: "DynamicBlockEditorGUI | None" = None):
         super().__init__()
         if editor is not None:
@@ -648,21 +641,18 @@ class ConnectionItem(QGraphicsPathItem):
 
         if self.source_port.connections is None:
             self.source_port.connections = list()
-        self.source_port.connections.append(self)
+        if self.source_port.connections is not None:
+            self.source_port.connections.append(self)
 
         if self.target_port.connections is None:
             self.target_port.connections = list()
-        self.target_port.connections.append(self)
-
-        if isinstance(self.source_port.subsystem, BlockItem):
-            self.source_port.subsystem._refresh_connection_color()
-        if isinstance(self.target_port.subsystem, BlockItem):
-            self.target_port.subsystem._refresh_connection_color()
+        if self.target_port.connections is not None:
+            self.target_port.connections.append(self)
 
         if isinstance(self.source_port, PortItem):
-            self.source_port._update_port_visibility()
+            self.source_port.update_port_visibility()
         if isinstance(self.target_port, PortItem):
-            self.target_port._update_port_visibility()
+            self.target_port.update_port_visibility()
 
         try:
             is_dark = darkdetect.theme() == "Dark"
@@ -1911,7 +1901,7 @@ class BlockItem(QGraphicsRectItem):
         min_width, min_height = self.get_minimum_block_size()
         QGraphicsRectItem.setRect(self, 0, 0, min_width, min_height)
         self.update_ports()
-        self.update_handle_position()
+        # self.update_handle_position()
         self._center_name()
 
     def _center_name(self) -> None:
@@ -2003,15 +1993,6 @@ class BlockItem(QGraphicsRectItem):
     def resize_block(self, width: float, height: float) -> None:
         pass
 
-    def update_handle_position(self) -> None:
-        rect = self.rect()
-        if self.resize_handle is not None:
-            self.resizing_from_handle = False
-            self.resize_handle.setPos(rect.width(), rect.height())
-            self.resizing_from_handle = True
-        else:
-            pass
-
     def update_ports(self) -> None:
         block_height: float = self.rect().height()
 
@@ -2035,7 +2016,6 @@ class BlockItem(QGraphicsRectItem):
             label_width: float = label_item.boundingRect().width()
             label_item.setPos(self.rect().width() - label_width - 10.0, port.pos().y() - 6.0)
 
-        self.update_handle_position()
         for port in self.inputs + self.outputs:
             if port.connections is not None:
                 conn: ConnectionItem

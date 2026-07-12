@@ -2650,9 +2650,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             target_port.subsystem._refresh_connection_color()
 
         if isinstance(source_port, PortItem):
-            source_port._update_port_visibility()
+            source_port.update_port_visibility()
         if isinstance(target_port, PortItem):
-            target_port._update_port_visibility()
+            target_port.update_port_visibility()
 
         self.scene.removeItem(item)
 
