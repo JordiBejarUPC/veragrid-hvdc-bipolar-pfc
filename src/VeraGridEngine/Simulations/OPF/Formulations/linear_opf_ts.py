@@ -73,7 +73,7 @@ class BusVars:
             for i in range(n_elm):
                 data.Va[t, i] = model.get_value(self.Va[t, i])
                 data.Vm[t, i] = model.get_value(self.Vm[t, i])
-                data.Pinj[t, i] = model.get_value(self.Pinj[t, i])
+                data.Pinj[t, i] = model.get_value(self.Pinj[t, i]) * Sbase
                 data.Pgen[t, i] = model.get_value(self.Pgen[t, i])
                 data.Pbalance[t, i] = model.get_value(self.Pbalance[t, i]) * Sbase
                 data.shadow_prices[t, i] = model.get_dual_value(self.kirchhoff[t, i])
@@ -926,6 +926,9 @@ def add_linear_simple_generation_formulation(local_t: Union[int, None],
             # add to the balance
             bus_vars.Pbalance[local_t, bus_idx] += gen_vars.p[local_t, k]
 
+            # add to the net injections
+            bus_vars.Pinj[local_t, bus_idx] += gen_vars.p[local_t, k]
+
             # add to the generation injections in case of inter-area
             bus_vars.Pgen[local_t, bus_idx] += gen_vars.p[local_t, k]
 
@@ -1708,6 +1711,9 @@ def add_linear_battery_formulation(t: Union[int, None],
             # add to the balance
             bus_vars.Pbalance[t, bus_idx] += batt_vars.p[t, k]
 
+            # add to the net injections
+            bus_vars.Pinj[t, bus_idx] += batt_vars.p[t, k]
+
             # add to the generation injections in case of inter-area
             bus_vars.Pgen[t, bus_idx] += batt_vars.p[t, k]
 
@@ -1793,7 +1799,7 @@ def add_linear_load_formulation(t: Union[int, None],
             bus_vars.Pbalance[t, bus_idx] += -load_vars.p[t, k]
 
             # add to the injections
-            # bus_vars.Pinj[t, bus_idx] += - load_vars.p[t, k]
+            bus_vars.Pinj[t, bus_idx] += -load_vars.p[t, k]
 
         else:
             # the load is not available at time step
@@ -2278,8 +2284,10 @@ def add_linear_node_balance(t_idx: int,
     if len(capacity_nodes_idx) > 0:
         if nodal_capacity_sign >= 0:
             bus_vars.Pbalance[t_idx, capacity_nodes_idx] += nodal_capacity_vars.P[t_idx, :]
+            bus_vars.Pinj[t_idx, capacity_nodes_idx] += nodal_capacity_vars.P[t_idx, :]
         else:
             bus_vars.Pbalance[t_idx, capacity_nodes_idx] -= nodal_capacity_vars.P[t_idx, :]
+            bus_vars.Pinj[t_idx, capacity_nodes_idx] -= nodal_capacity_vars.P[t_idx, :]
 
     # add the equality restrictions
     for k in range(bus_data.nbus):

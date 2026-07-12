@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 from typing import Union, List
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
-from VeraGridEngine.enumerations import EngineType, SimulationTypes
+from VeraGridEngine.enumerations import EngineType, SimulationTypes, TimeGrouping
 from VeraGridEngine.Simulations.OPF.opf_options import OptimalPowerFlowOptions
 from VeraGridEngine.Simulations.OPF.Formulations.linear_opf_ts import run_linear_opf_ts
 from VeraGridEngine.Simulations.OPF.ac_opf_worker import run_nonlinear_opf
@@ -22,7 +22,7 @@ from VeraGridEngine.Simulations.ContinuationPowerFlow.continuation_power_flow_op
 from VeraGridEngine.Simulations.ContinuationPowerFlow.continuation_power_flow_input import ContinuationPowerFlowInput
 from VeraGridEngine.Simulations.driver_template import TimeSeriesDriverTemplate
 from VeraGridEngine.Simulations.Clustering.clustering_results import ClusteringResults
-from VeraGridEngine.basic_structures import IntVec
+from VeraGridEngine.basic_structures import IntVec, Vec, get_time_groups
 from VeraGridEngine.enumerations import NodalCapacityMethod, CpfStopAt, CpfParametrization, OpfDispatchMode
 
 
@@ -42,11 +42,13 @@ class NodalCapacityTimeSeriesDriver(TimeSeriesDriverTemplate):
                  clustering_results: Union[ClusteringResults, None] = None,
                  engine: EngineType = EngineType.VeraGrid):
         """
-        OptimalPowerFlowTimeSeriesDriver class constructor
-        :param grid: MultiCircuit Object
-        :param options: OPF options (optional)
-        :param time_indices: array of time indices to simulate (optional)
-        :param engine: Calculation engine to use (if available) (optional)
+        Initialize the nodal capacity time-series driver.
+
+        :param grid: Multi-circuit model to simulate.
+        :param options: Nodal capacity options.
+        :param time_indices: Time indices to simulate.
+        :param clustering_results: Optional clustering results.
+        :param engine: Calculation engine to use.
         """
         TimeSeriesDriverTemplate.__init__(self,
                                           grid=grid,
@@ -92,44 +94,44 @@ class NodalCapacityTimeSeriesDriver(TimeSeriesDriverTemplate):
     @property
     def opf_options(self) -> OptimalPowerFlowOptions:
         """
-        Get the OptimalPowerFlowOptions options provides with the OpfOptions
-        :return: PowerFlowOptions
+        Return the embedded OPF options.
+
+        :return: Optimal power flow options.
         """
         return self.options.opf_options
 
     @property
     def pf_options(self) -> PowerFlowOptions:
         """
-        Get the PowerFlow options provides with the OpfOptions
-        :return: PowerFlowOptions
+        Return the embedded power-flow options.
+
+        :return: Power flow options.
         """
         return self.options.opf_options.power_flow_options
 
     def _single_bus_capacity_idx(self, bus_idx: int) -> np.ndarray:
+        """
+        Build a one-bus capacity index array.
+
+        :param bus_idx: Bus index.
+        :return: One-element integer array.
+        """
         return np.array([bus_idx], dtype=int)
-
-    def _get_linear_bus_active_power(self, opf_vars, capacity_nodes_idx: np.ndarray) -> np.ndarray:
-        sbus = np.array(opf_vars.bus_vars.Pgen, dtype=float, copy=True) * self.grid.Sbase
-
-        for k, load in enumerate(self.grid.get_loads()):
-            sbus[:, self.grid.buses.index(load.bus)] -= opf_vars.load_vars.p[:, k]
-
-        if self.options.nodal_capacity_sign >= 0:
-            for k, bus_idx in enumerate(capacity_nodes_idx):
-                sbus[:, bus_idx] += opf_vars.nodal_capacity_vars.P[:, k]
-        else:
-            for k, bus_idx in enumerate(capacity_nodes_idx):
-                sbus[:, bus_idx] -= opf_vars.nodal_capacity_vars.P[:, k]
-
-        return sbus
 
     def get_steps(self):
         """
-        Get time steps list of strings
+        Return the formatted time-step labels.
+
+        :return: List of time labels.
         """
         return [l.strftime('%d-%m-%Y %H:%M') for l in pd.to_datetime(self.grid.time_profile)]
 
     def get_time_indices(self):
+        """
+        Return the effective time-index list and whether time series mode is active.
+
+        :return: Tuple of ``(has_time_series, indices)``.
+        """
 
         if self.time_indices is not None:
             has_ts = True
@@ -140,12 +142,65 @@ class NodalCapacityTimeSeriesDriver(TimeSeriesDriverTemplate):
 
         return has_ts, t_indices
 
-    def linear_opf(self, remote=False, batteries_energy_0=None):
+    def assign_linear_results(self, result_indices: IntVec, opf_vars) -> None:
         """
-        Run a power flow for every circuit
-        :param remote: is this function being called from the time series?
-        :param batteries_energy_0: initial state of the batteries, if None the default values are taken
-        :return: OptimalPowerFlowResults object
+        Copy linear OPF results into the driver results buffers.
+
+        :param result_indices:
+        :param opf_vars: Linear OPF variables to unpack.
+        :return: ``None``.
+        """
+        self.results.Sbus[result_indices, :] = opf_vars.bus_vars.Pinj + 1j * 0.0
+        self.results.voltage[result_indices, :] = opf_vars.bus_vars.Vm * np.exp(1j * opf_vars.bus_vars.Va)
+        self.results.bus_shadow_prices[result_indices, :] = opf_vars.bus_vars.shadow_prices
+        self.results.nodal_capacity[result_indices, :] = self.options.nodal_capacity_sign * opf_vars.nodal_capacity_vars.P
+
+        self.results.load_shedding[result_indices, :] = opf_vars.load_vars.shedding
+
+        self.results.battery_power[result_indices, :] = opf_vars.batt_vars.p
+        self.results.battery_energy[result_indices, :] = opf_vars.batt_vars.e
+
+        self.results.generator_power[result_indices, :] = opf_vars.gen_vars.p
+        self.results.generator_shedding[result_indices, :] = opf_vars.gen_vars.shedding
+        self.results.generator_cost[result_indices, :] = opf_vars.gen_vars.cost
+        self.results.generator_producing[result_indices, :] = opf_vars.gen_vars.producing
+        self.results.generator_starting_up[result_indices, :] = opf_vars.gen_vars.starting_up
+        self.results.generator_shutting_down[result_indices, :] = opf_vars.gen_vars.shedding
+
+        self.results.Sf[result_indices, :] = opf_vars.branch_vars.flows
+        self.results.St[result_indices, :] = -opf_vars.branch_vars.flows
+        self.results.overloads[result_indices, :] = (
+            opf_vars.branch_vars.flow_slacks_pos - opf_vars.branch_vars.flow_slacks_neg
+        )
+
+        self.results.loading[result_indices, :] = opf_vars.branch_vars.loading
+        self.results.tap_angle[result_indices, :] = opf_vars.branch_vars.tap_angles
+
+        self.results.hvdc_Pf[result_indices, :] = opf_vars.hvdc_vars.flows
+        self.results.hvdc_loading[result_indices, :] = opf_vars.hvdc_vars.loading
+
+        self.results.fluid_node_current_level[result_indices, :] = opf_vars.fluid_node_vars.current_level
+        self.results.fluid_node_flow_in[result_indices, :] = opf_vars.fluid_node_vars.flow_in
+        self.results.fluid_node_flow_out[result_indices, :] = opf_vars.fluid_node_vars.flow_out
+        self.results.fluid_node_p2x_flow[result_indices, :] = opf_vars.fluid_node_vars.p2x_flow
+        self.results.fluid_node_spillage[result_indices, :] = opf_vars.fluid_node_vars.spillage
+        self.results.fluid_path_flow[result_indices, :] = opf_vars.fluid_path_vars.flow
+        self.results.fluid_injection_flow[result_indices, :] = opf_vars.fluid_inject_vars.flow
+
+        self.results.system_fuel[result_indices, :] = opf_vars.sys_vars.system_fuel
+        self.results.system_emissions[result_indices, :] = opf_vars.sys_vars.system_emissions
+        self.results.system_energy_cost[result_indices] = opf_vars.sys_vars.system_unit_energy_cost
+
+        self.results.converged[result_indices] = np.array([opf_vars.acceptable_solution] * opf_vars.nt)
+
+    def linear_opf(self, remote=False, batteries_energy_0=None, fluid_level_0=None):
+        """
+        Run the linear nodal capacity OPF for the configured time range.
+
+        :param remote: Whether the call comes from another driver.
+        :param batteries_energy_0: Optional initial battery energies.
+        :param fluid_level_0: Optional initial fluid levels.
+        :return: Time-series nodal capacity results.
         """
 
         if not remote:
@@ -159,11 +214,12 @@ class NodalCapacityTimeSeriesDriver(TimeSeriesDriverTemplate):
                                             zonal_grouping=self.opf_options.zonal_grouping,
                                             skip_generation_limits=self.opf_options.skip_generation_limits,
                                             consider_contingencies=self.opf_options.consider_contingencies,
-                                            contingency_groups_used=self.grid.contingency_groups,
+                                            contingency_groups_used=self.opf_options.contingency_groups_used,
                                             ramp_constraints=self.opf_options.consider_ramps,
                                             lodf_threshold=self.opf_options.lodf_tolerance,
                                             inter_aggregation_info=self.opf_options.inter_aggregation_info,
                                             energy_0=batteries_energy_0,
+                                            fluid_level_0=fluid_level_0,
                                             nodal_capacity_sign=self.options.nodal_capacity_sign,
                                             capacity_nodes_idx=self.options.capacity_nodes_idx,
                                             logger=self.logger,
@@ -172,52 +228,7 @@ class NodalCapacityTimeSeriesDriver(TimeSeriesDriverTemplate):
                                             verbose=self.opf_options.verbose,
                                             robust=self.opf_options.robust,
                                             mip_framework=self.opf_options.mip_framework)
-        nodal_capacity = self.options.nodal_capacity_sign * opf_vars.nodal_capacity_vars.P
-        solved_capacity_nodes_idx = self.options.capacity_nodes_idx
-
-        self.results.Sbus = self._get_linear_bus_active_power(opf_vars, solved_capacity_nodes_idx) + 1j * 0.0
-        self.results.voltage = np.ones((opf_vars.nt, opf_vars.nbus)) * np.exp(1j * opf_vars.bus_vars.Va)
-        self.results.bus_shadow_prices = opf_vars.bus_vars.shadow_prices
-        self.results.nodal_capacity = nodal_capacity
-
-        self.results.load_shedding = opf_vars.load_vars.shedding
-
-        self.results.battery_power = opf_vars.batt_vars.p
-        self.results.battery_energy = opf_vars.batt_vars.e
-
-        self.results.generator_power = opf_vars.gen_vars.p
-        self.results.generator_shedding = opf_vars.gen_vars.shedding
-        self.results.generator_cost = opf_vars.gen_vars.cost
-        # self.results.generator_fuel = opf_vars.gen_vars.fuel
-        # self.results.generator_emissions = opf_vars.gen_vars.emissions
-        self.results.generator_producing = opf_vars.gen_vars.producing
-        self.results.generator_starting_up = opf_vars.gen_vars.starting_up
-        self.results.generator_shutting_down = opf_vars.gen_vars.shedding
-
-        self.results.Sf = opf_vars.branch_vars.flows
-        self.results.St = -opf_vars.branch_vars.flows
-        self.results.overloads = opf_vars.branch_vars.flow_slacks_pos - opf_vars.branch_vars.flow_slacks_neg
-
-        self.results.loading = opf_vars.branch_vars.loading
-        self.results.tap_angle = opf_vars.branch_vars.tap_angles
-
-        self.results.hvdc_Pf = opf_vars.hvdc_vars.flows
-        self.results.hvdc_loading = opf_vars.hvdc_vars.loading
-
-        self.results.fluid_node_current_level = opf_vars.fluid_node_vars.current_level
-        self.results.fluid_node_flow_in = opf_vars.fluid_node_vars.flow_in
-        self.results.fluid_node_flow_out = opf_vars.fluid_node_vars.flow_out
-        self.results.fluid_node_p2x_flow = opf_vars.fluid_node_vars.p2x_flow
-        self.results.fluid_node_spillage = opf_vars.fluid_node_vars.spillage
-        self.results.fluid_path_flow = opf_vars.fluid_path_vars.flow
-        self.results.fluid_injection_flow = opf_vars.fluid_inject_vars.flow
-
-        self.results.system_fuel = opf_vars.sys_vars.system_fuel
-        self.results.system_emissions = opf_vars.sys_vars.system_emissions
-        self.results.system_energy_cost = opf_vars.sys_vars.system_unit_energy_cost
-
-        # set converged for all t to the value of acceptable solution
-        self.results.converged = np.array([opf_vars.acceptable_solution] * opf_vars.nt)
+        self.assign_linear_results(result_indices=np.arange(opf_vars.nt), opf_vars=opf_vars)
 
         if not remote:
             self.report_progress(0.0)
@@ -225,12 +236,49 @@ class NodalCapacityTimeSeriesDriver(TimeSeriesDriverTemplate):
 
         return self.results
 
+    def run_linear_opf_indices(self, result_indices: IntVec, time_indices: IntVec,
+                               energy_0: Vec, fluid_level_0: Vec):
+        """
+        Run the linear nodal capacity OPF for a chunk of indices.
+
+        :param result_indices: Result-array slots to populate.
+        :param time_indices: Circuit time indices to solve.
+        :param energy_0: Initial battery energies for the chunk.
+        :param fluid_level_0: Initial fluid levels for the chunk.
+        :return: Linear model instance.
+        """
+        opf_vars, model = run_linear_opf_ts(grid=self.grid,
+                                            time_indices=time_indices,
+                                            dispatch_mode=OpfDispatchMode.NodalCapacity,
+                                            solver_type=self.opf_options.mip_solver,
+                                            zonal_grouping=self.opf_options.zonal_grouping,
+                                            skip_generation_limits=self.opf_options.skip_generation_limits,
+                                            consider_contingencies=self.opf_options.consider_contingencies,
+                                            contingency_groups_used=self.opf_options.contingency_groups_used,
+                                            ramp_constraints=self.opf_options.consider_ramps,
+                                            lodf_threshold=self.opf_options.lodf_tolerance,
+                                            inter_aggregation_info=self.opf_options.inter_aggregation_info,
+                                            energy_0=energy_0,
+                                            fluid_level_0=fluid_level_0,
+                                            nodal_capacity_sign=self.options.nodal_capacity_sign,
+                                            capacity_nodes_idx=self.options.capacity_nodes_idx,
+                                            logger=self.logger,
+                                            progress_text=self.report_text,
+                                            progress_func=self.report_progress,
+                                            verbose=self.opf_options.verbose,
+                                            robust=self.opf_options.robust,
+                                            mip_framework=self.opf_options.mip_framework)
+
+        self.assign_linear_results(result_indices=result_indices, opf_vars=opf_vars)
+        return model
+
     def non_linear_opf(self, remote=False, batteries_energy_0=None):
         """
-        Run a power flow for every circuit
-        :param remote: is this function being called from the time series?
-        :param batteries_energy_0: initial state of the batteries, if None the default values are taken
-        :return: OptimalPowerFlowResults object
+        Run the nonlinear nodal capacity OPF.
+
+        :param remote: Whether the call comes from another driver.
+        :param batteries_energy_0: Unused nonlinear battery seed.
+        :return: Time-series nodal capacity results.
         """
 
         if not remote:
@@ -335,10 +383,11 @@ class NodalCapacityTimeSeriesDriver(TimeSeriesDriverTemplate):
 
     def cpf(self, remote=False, batteries_energy_0=None):
         """
-        Run a power flow for every circuit
-        :param remote: is this function being called from the time series?
-        :param batteries_energy_0: initial state of the batteries, if None the default values are taken
-        :return: OptimalPowerFlowResults object
+        Run continuation power flow for nodal capacity.
+
+        :param remote: Whether the call comes from another driver.
+        :param batteries_energy_0: Unused CPF battery seed.
+        :return: Time-series nodal capacity results.
         """
 
         if not remote:
@@ -427,7 +476,10 @@ class NodalCapacityTimeSeriesDriver(TimeSeriesDriverTemplate):
 
     def add_report(self, eps: float = 1e-6) -> None:
         """
-        Add a report of the results (in-place)
+        Append warnings to the logger from the computed results.
+
+        :param eps: Numerical tolerance for reporting.
+        :return: ``None``.
         """
         if self.progress_text:
             self.report_text("Creating report")
@@ -481,10 +533,70 @@ class NodalCapacityTimeSeriesDriver(TimeSeriesDriverTemplate):
                                             value=va[i],
                                             expected_value=bus.angle_min)
 
+    def linear_opf_by_groups(self) -> None:
+        """
+        Run the linear nodal capacity OPF by grouped chunks.
+
+        :return: ``None``.
+        """
+        self.report_progress(0.0)
+        self.report_text('Making groups...')
+
+        groups = get_time_groups(t_array=self.grid.time_profile[self.time_indices],
+                                 grouping=self.opf_options.time_grouping)
+
+        n = len(groups)
+        i = 1
+        energy_0: Union[Vec, None] = None
+        fluid_level_0: Union[Vec, None] = None
+
+        while i < n and not self.is_cancel():
+            start_ = groups[i - 1]
+            end_ = groups[i]
+
+            if i == n - 1:
+                result_indices = np.arange(start_, end_ + 1)
+            else:
+                result_indices = np.arange(start_, end_)
+
+            time_indices = self.time_indices[result_indices]
+
+            msg = f"Group {i} -> {start_} : {end_} [{end_ - start_}]"
+            if self.opf_options.verbose > 0:
+                print(msg)
+
+            self.report_text('Running OPF for the time group {0} '
+                             'start {1} - end {2} in external solver...'.format(i, start_, end_))
+
+            model = self.run_linear_opf_indices(result_indices=result_indices,
+                                                time_indices=time_indices,
+                                                energy_0=energy_0,
+                                                fluid_level_0=fluid_level_0)
+
+            energy_0 = self.results.battery_energy[result_indices[-1], :]
+            fluid_level_0 = self.results.fluid_node_current_level[result_indices[-1], :]
+
+            if self.opf_options.report_formulation:
+                formulation = model.model_as_string()
+                if self.results.report_text:
+                    self.results.report_text += f"\n\n## {msg}\n\n{formulation}"
+                else:
+                    self.results.report_text = f"## {msg}\n\n{formulation}"
+
+            self.report_progress2(i, len(groups))
+
+            if self.is_cancel():
+                return None
+
+            i += 1
+
+        return None
+
     def run(self):
         """
+        Execute the configured nodal capacity study.
 
-        :return:
+        :return: ``None``.
         """
 
         self.tic()
@@ -492,7 +604,12 @@ class NodalCapacityTimeSeriesDriver(TimeSeriesDriverTemplate):
         if self.engine == EngineType.VeraGrid:
 
             if self.options.method == NodalCapacityMethod.LinearOptimization:
-                self.linear_opf()
+                if (self.opf_options.time_grouping == TimeGrouping.NoGrouping
+                        or self.time_indices is None
+                        or len(self.time_indices) == 0):
+                    self.linear_opf()
+                else:
+                    self.linear_opf_by_groups()
 
             elif self.options.method == NodalCapacityMethod.NonlinearOptimization:
                 self.non_linear_opf()

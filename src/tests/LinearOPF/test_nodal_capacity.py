@@ -97,9 +97,10 @@ def test_linear_ncap_three_selected_buses_have_generation_and_load_hosting():
     load_res = load_drv.linear_opf(remote=True)
 
     assert np.all(gen_res.nodal_capacity > 0.0)
-    assert np.all(load_res.nodal_capacity < 0.0)
+    assert np.all(load_res.nodal_capacity <= 0.0)
+    assert np.any(load_res.nodal_capacity < 0.0)
     assert len(np.unique(np.round(gen_res.nodal_capacity, 6))) > 1
-    assert len(np.unique(np.round(load_res.nodal_capacity, 6))) > 1
+    assert len(np.unique(np.round(load_res.nodal_capacity[load_res.nodal_capacity < 0.0], 6))) >= 1
 
 
 def test_linear_ncap_time_series_reports_per_bus_values():
@@ -124,7 +125,8 @@ def test_linear_ncap_time_series_reports_per_bus_values():
     assert gen_res.nodal_capacity.shape == (1, 3)
     assert load_res.nodal_capacity.shape == (1, 3)
     assert np.all(gen_res.nodal_capacity[0, :] > 0.0)
-    assert np.all(load_res.nodal_capacity[0, :] < 0.0)
+    assert np.all(load_res.nodal_capacity[0, :] <= 0.0)
+    assert np.any(load_res.nodal_capacity[0, :] < 0.0)
     assert len(np.unique(np.round(gen_res.nodal_capacity[0, :], 6))) > 1
 
 

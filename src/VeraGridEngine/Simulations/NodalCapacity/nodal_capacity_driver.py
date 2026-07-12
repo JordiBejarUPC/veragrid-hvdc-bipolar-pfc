@@ -84,21 +84,6 @@ class NodalCapacityDriver(DriverTemplate):
     def _single_bus_capacity_idx(self, bus_idx: int) -> np.ndarray:
         return np.array([bus_idx], dtype=int)
 
-    def _get_linear_bus_active_power(self, opf_vars, capacity_nodes_idx: np.ndarray) -> np.ndarray:
-        sbus = np.array(opf_vars.bus_vars.Pgen[0, :], dtype=float, copy=True) * self.grid.Sbase
-
-        for k, load in enumerate(self.grid.get_loads()):
-            sbus[self.grid.buses.index(load.bus)] -= opf_vars.load_vars.p[0, k]
-
-        if self.options.nodal_capacity_sign >= 0:
-            for k, bus_idx in enumerate(capacity_nodes_idx):
-                sbus[bus_idx] += opf_vars.nodal_capacity_vars.P[0, k]
-        else:
-            for k, bus_idx in enumerate(capacity_nodes_idx):
-                sbus[bus_idx] -= opf_vars.nodal_capacity_vars.P[0, k]
-
-        return sbus
-
     def linear_opf(self, remote: bool = False) -> NodalCapacityResults:
         """
 
@@ -131,10 +116,7 @@ class NodalCapacityDriver(DriverTemplate):
             mip_framework=self.opf_options.mip_framework
         )
 
-        self.results.Sbus = self._get_linear_bus_active_power(
-            opf_vars=opf_vars,
-            capacity_nodes_idx=self.options.capacity_nodes_idx
-        ) + 1j * 0.0
+        self.results.Sbus = opf_vars.bus_vars.Pinj[0, :] + 1j * 0.0
         self.results.voltage = np.exp(1j * opf_vars.bus_vars.Va[0, :])
         self.results.bus_shadow_prices = opf_vars.bus_vars.shadow_prices[0, :]
         self.results.nodal_capacity = self.options.nodal_capacity_sign * opf_vars.nodal_capacity_vars.P[0, :]
