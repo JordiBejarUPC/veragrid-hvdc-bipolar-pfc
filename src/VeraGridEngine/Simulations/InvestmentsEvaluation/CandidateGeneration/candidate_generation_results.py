@@ -117,6 +117,12 @@ class ReinforcementCandidate:
         """
         return self.verified and self.verification_converged and self.n_new_violations == 0
 
+    def group_name(self) -> str:
+        """Name of the investments group this candidate goes into: the asset it represents."""
+        if self.kind == NEW_LINE:
+            return f"New line {self.bus_from.name} - {self.bus_to.name}"
+        return f"Upgrade {self.target_branch.name} rate {self.new_rate:.0f}"
+
     def label(self) -> str:
         """Human-readable one-line label for the candidate list in the GUI."""
         n = len(self.relieved_violations)

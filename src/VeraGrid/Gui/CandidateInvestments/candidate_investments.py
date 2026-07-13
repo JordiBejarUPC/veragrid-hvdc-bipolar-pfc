@@ -15,6 +15,9 @@ from VeraGridEngine.Simulations.InvestmentsEvaluation.CandidateGeneration.candid
 from VeraGridEngine.Simulations.InvestmentsEvaluation.CandidateGeneration.candidate_generation_options import (
     CandidateGenerationOptions,
 )
+from VeraGridEngine.Simulations.InvestmentsEvaluation.CandidateGeneration.candidate_generation_results import (
+    ReinforcementCandidate,
+)
 from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import SchematicWidget
 from VeraGrid.Gui.Diagrams.MapWidget.grid_map_widget import GridMapWidget
 from VeraGrid.Gui.general_dialogues import LogsDialogue
@@ -44,7 +47,7 @@ class CandidateInvestmentsWindow(QtWidgets.QDialog):
 
         # State of the last successful run. "Add investments" can only run once these are populated.
         self._driver: Optional[CandidateGenerationDriver] = None
-        self._candidate_items: List[QtWidgets.QListWidgetItem] = list()
+        self._candidates: List[ReinforcementCandidate] = list()
 
         # ------------------------------------------------------------------------------------------
         # Widgets
@@ -92,11 +95,10 @@ class CandidateInvestmentsWindow(QtWidgets.QDialog):
 
         # --- accept row ---
         accept_layout = QtWidgets.QHBoxLayout()
-        accept_layout.addWidget(QtWidgets.QLabel("Investment group name"))
-        self.group_name_edit = QtWidgets.QLineEdit()
-        self.group_name_edit.setText("Investment " + str(len(self.app.circuit.investments_groups)))
-        accept_layout.addWidget(self.group_name_edit)
-        self.add_button = QtWidgets.QPushButton("Add selected investments")
+        accept_layout.addStretch(1)
+        self.add_button = QtWidgets.QPushButton("Add investments")
+        self.add_button.setToolTip("Add every listed candidate as an investment, each in its own "
+                                   "investments group named after the asset.")
         self.add_button.setEnabled(False)
         self.add_button.clicked.connect(self.add_investments)
         accept_layout.addWidget(self.add_button)
@@ -111,11 +113,11 @@ class CandidateInvestmentsWindow(QtWidgets.QDialog):
     def run(self) -> None:
         """
         Run the candidate-generation pipeline synchronously and populate the report and the
-        ranked candidate list. "Add selected investments" is enabled only when candidates result.
+        ranked candidate list. "Add investments" is enabled only when candidates result.
         """
         self.add_button.setEnabled(False)
         self.candidate_list.clear()
-        self._candidate_items.clear()
+        self._candidates.clear()
         self.report_text.setPlainText("Running...")
         QtGui.QGuiApplication.processEvents()
 
@@ -139,51 +141,36 @@ class CandidateInvestmentsWindow(QtWidgets.QDialog):
         # Fill the base-case / N-1 report
         self.report_text.setPlainText(results.summary_text())
 
-        # Fill the ranked candidate list with checkable items. Only verified candidates that
-        # introduce no new violations are offered, so the user selects from options confirmed by a
-        # full AC power flow + N-1 re-check.
-        verified = results.verified_candidates
-        for candidate in verified:
-            item = QtWidgets.QListWidgetItem(candidate.label())
-            item.setFlags(item.flags() | QtCore.Qt.ItemFlag.ItemIsUserCheckable)
-            item.setCheckState(QtCore.Qt.CheckState.Unchecked)
-            # Stash the candidate object so we can recover it on accept.
-            item.setData(QtCore.Qt.ItemDataRole.UserRole, candidate)
-            self.candidate_list.addItem(item)
-            self._candidate_items.append(item)
+        # Fill the ranked candidate list. Only verified candidates that introduce no new violations
+        # are listed, so everything shown is confirmed by a full AC power flow + N-1 re-check.
+        self._candidates = results.verified_candidates
+        for candidate in self._candidates:
+            self.candidate_list.addItem(QtWidgets.QListWidgetItem(candidate.label()))
 
-        self.add_button.setEnabled(len(verified) > 0)
+        self.add_button.setEnabled(len(self._candidates) > 0)
 
     # ----------------------------------------------------------------------------------------------
     # Materialise the selected candidates as investments
     # ----------------------------------------------------------------------------------------------
     def add_investments(self) -> None:
         """
-        Create an ``InvestmentsGroup`` and one ``Investment`` per checked candidate, adding any
-        new-line devices to the circuit and drawing them on the currently selected diagram.
+        Add every listed candidate as an investment. Each candidate gets its own
+        ``InvestmentsGroup``, named after the asset it represents, so they can be combined freely
+        by the downstream investment evaluation. Any new-line devices are added to the circuit and
+        drawn on the currently selected diagram.
         """
-        if self._driver is None:
-            return
-
-        selected = [item.data(QtCore.Qt.ItemDataRole.UserRole)
-                    for item in self._candidate_items
-                    if item.checkState() == QtCore.Qt.CheckState.Checked]
-
-        if len(selected) == 0:
-            QtWidgets.QMessageBox.information(self, "Candidate investment generator",
-                                              "No candidates selected.")
+        if self._driver is None or len(self._candidates) == 0:
             return
 
         logger = Logger()
-        group = dev.InvestmentsGroup(
-            idtag=None,
-            name=self.group_name_edit.text(),
-            category="single" if len(selected) == 1 else "multiple"
-        )
-        self.app.circuit.add_investments_group(group)
-
         new_lines: List[dev.Line] = list()
-        for candidate in selected:
+
+        for candidate in self._candidates:
+            group = dev.InvestmentsGroup(idtag=None,
+                                         name=candidate.group_name(),
+                                         category="single")
+            self.app.circuit.add_investments_group(group)
+
             # Each candidate creates its Investment (and any new device) against the circuit.
             new_line = candidate.apply(circuit=self.app.circuit, group=group, logger=logger)
             if new_line is not None:
