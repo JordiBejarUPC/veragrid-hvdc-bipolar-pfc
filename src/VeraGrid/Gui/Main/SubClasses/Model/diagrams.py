@@ -1408,6 +1408,37 @@ class DiagramsMain(CompiledArraysMain):
                                              max_bus_width=max_bus_width,
                                              cmap=cmap)
 
+    def nc_colouring(self, diagram_widget: ALL_EDITORS,
+                     results: sim.NodalCapacityResults,
+                     cmap: Colormaps,
+                     use_flow_based_width: bool = False,
+                     min_branch_width: int = 2,
+                     max_branch_width: int = 5,
+                     min_bus_width: int = 2,
+                     max_bus_width: int = 5):
+        bus_active = self.circuit.get_bus_actives(t_idx=None)
+        br_active = self.circuit.get_branch_actives(t_idx=None, add_vsc=False, add_hvdc=False, add_switch=True)
+        hvdc_active = self.circuit.get_hvdc_actives(t_idx=None)
+
+        return diagram_widget.colour_results(voltages=results.voltage,
+                                             Sbus=results.Sbus,
+                                             types=results.bus_types,
+                                             bus_active=bus_active,
+                                             Sf=results.Sf,
+                                             St=results.St,
+                                             loadings=np.abs(results.loading),
+                                             br_active=br_active,
+                                             hvdc_Pf=results.hvdc_Pf,
+                                             hvdc_Pt=-results.hvdc_Pf,
+                                             hvdc_loading=results.hvdc_loading,
+                                             hvdc_active=hvdc_active,
+                                             use_flow_based_width=use_flow_based_width,
+                                             min_branch_width=min_branch_width,
+                                             max_branch_width=max_branch_width,
+                                             min_bus_width=min_bus_width,
+                                             max_bus_width=max_bus_width,
+                                             cmap=cmap)
+
     def linpf_colouring(self, diagram_widget: ALL_EDITORS,
                         results: sim.LinearAnalysisResults, cmap: Colormaps,
                         use_flow_based_width: bool = False,
@@ -1859,6 +1890,18 @@ class DiagramsMain(CompiledArraysMain):
             else:
                 if allow_popups:
                     self.show_warning_toast(f"{current_study} does not have values for the snapshot")
+
+        elif current_study == sim.NodalCapacityDriver.tpe.value:
+
+            _, results = self.session.nodal_capacity_optimization
+            self.nc_colouring(diagram_widget=diagram_widget,
+                              results=results,
+                              cmap=cmap,
+                              use_flow_based_width=use_flow_based_width,
+                              min_branch_width=min_branch_width,
+                              max_branch_width=max_branch_width,
+                              min_bus_width=min_bus_width,
+                              max_bus_width=max_bus_width)
 
         elif current_study == sim.NodalCapacityTimeSeriesDriver.tpe.value:
 

@@ -1156,6 +1156,7 @@ def get_simulation_tree_icons() -> Dict[str, str]:
         SimulationTypes.ContinuationPowerFlow_run.value: ':/Icons/icons/continuation_power_flow.png',
         SimulationTypes.ClusteringAnalysis_run.value: ':/Icons/icons/clustering.png',
         SimulationTypes.InvestmentsEvaluation_run.value: ':/Icons/icons/expansion_planning.png',
+        SimulationTypes.NodalCapacity_run.value: ':/Icons/icons/nodal_capacity.png',
         SimulationTypes.NodalCapacityTimeSeries_run.value: ':/Icons/icons/nodal_capacity.png',
         SimulationTypes.OPF_NTC_run.value: ':/Icons/icons/ntc_opf.png',
         SimulationTypes.OPF_NTC_TS_run.value: ':/Icons/icons/ntc_opf_ts.png',
