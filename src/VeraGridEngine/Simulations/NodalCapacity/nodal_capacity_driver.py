@@ -81,9 +81,6 @@ class NodalCapacityDriver(DriverTemplate):
     def pf_options(self) -> PowerFlowOptions:
         return self.options.opf_options.power_flow_options
 
-    def _single_bus_capacity_idx(self, bus_idx: int) -> np.ndarray:
-        return np.array([bus_idx], dtype=int)
-
     def linear_opf(self, remote: bool = False) -> NodalCapacityResults:
         """
 
@@ -157,32 +154,23 @@ class NodalCapacityDriver(DriverTemplate):
         return self.results
 
     def non_linear_opf(self, remote: bool = False) -> NodalCapacityResults:
+        """
+
+        :param remote:
+        :return:
+        """
         if not remote:
             self.report_progress(0.0)
             self.report_text('Running non linear optimization...')
-        if len(self.options.capacity_nodes_idx) > 1:
-            nodal_capacity = np.zeros(len(self.options.capacity_nodes_idx), dtype=float)
-            res = None
-            for k, bus_idx in enumerate(self.options.capacity_nodes_idx):
-                res_k = run_nonlinear_opf(grid=self.grid,
-                                          opf_options=self.opf_options,
-                                          t_idx=None,
-                                          optimize_nodal_capacity=True,
-                                          nodal_capacity_sign=self.options.nodal_capacity_sign,
-                                          capacity_nodes_idx=self._single_bus_capacity_idx(bus_idx),
-                                          logger=self.logger)
-                nodal_capacity[k] = self.options.nodal_capacity_sign * res_k.nodal_capacity[0]
-                if res is None:
-                    res = res_k
-        else:
-            res = run_nonlinear_opf(grid=self.grid,
-                                    opf_options=self.opf_options,
-                                    t_idx=None,
-                                    optimize_nodal_capacity=True,
-                                    nodal_capacity_sign=self.options.nodal_capacity_sign,
-                                    capacity_nodes_idx=self.options.capacity_nodes_idx,
-                                    logger=self.logger)
-            nodal_capacity = self.options.nodal_capacity_sign * res.nodal_capacity
+
+        res = run_nonlinear_opf(grid=self.grid,
+                                opf_options=self.opf_options,
+                                t_idx=None,
+                                optimize_nodal_capacity=True,
+                                nodal_capacity_sign=self.options.nodal_capacity_sign,
+                                capacity_nodes_idx=self.options.capacity_nodes_idx,
+                                logger=self.logger)
+        nodal_capacity = self.options.nodal_capacity_sign * res.nodal_capacity
 
         Sbase = self.grid.Sbase
         self.results.voltage = res.V
@@ -203,6 +191,11 @@ class NodalCapacityDriver(DriverTemplate):
         return self.results
 
     def cpf(self, remote: bool = False) -> NodalCapacityResults:
+        """
+
+        :param remote:
+        :return:
+        """
         if not remote:
             self.report_progress(0.0)
             self.report_text('Formulating problem...')

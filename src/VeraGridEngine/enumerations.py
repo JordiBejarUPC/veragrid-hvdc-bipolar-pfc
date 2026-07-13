@@ -2573,7 +2573,7 @@ class ResultTypes(Enum):
     ShuntNeutralVoltage = 'Shunt neutral voltage'
 
     BusVoltagePolarPlot = 'Voltage plot'
-    BusNodalCapacity = "Nodal capacity"
+    BusNodalCapacity = "Bus nodal capacity"
 
     # OPF-NTC
     HvdcOverloads = 'HVDC overloads'

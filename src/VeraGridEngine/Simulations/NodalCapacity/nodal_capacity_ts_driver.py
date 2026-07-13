@@ -109,15 +109,6 @@ class NodalCapacityTimeSeriesDriver(TimeSeriesDriverTemplate):
         """
         return self.options.opf_options.power_flow_options
 
-    def _single_bus_capacity_idx(self, bus_idx: int) -> np.ndarray:
-        """
-        Build a one-bus capacity index array.
-
-        :param bus_idx: Bus index.
-        :return: One-element integer array.
-        """
-        return np.array([bus_idx], dtype=int)
-
     def get_steps(self):
         """
         Return the formatted time-step labels.
@@ -288,84 +279,44 @@ class NodalCapacityTimeSeriesDriver(TimeSeriesDriverTemplate):
         has_ts, t_indices = self.get_time_indices()
 
         self.report_progress(0.0)
-        if len(self.options.capacity_nodes_idx) > 1:
-            first_bus_idx = self.options.capacity_nodes_idx[0]
-            for k, bus_idx in enumerate(self.options.capacity_nodes_idx):
-                for it, t in enumerate(t_indices):
 
-                    if has_ts:
-                        self.report_text('Nonlinear OPF at ' + str(self.grid.time_profile[t]) + '...')
-                        self.report_progress2(it, len(self.time_indices))
-                    else:
-                        self.report_text('Nonlinear OPF at the snapshot...')
-                        self.report_progress2(it, 1)
+        for it, t in enumerate(t_indices):
 
-                    res = run_nonlinear_opf(grid=self.grid,
-                                            opf_options=self.opf_options,
-                                            t_idx=t,
-                                            optimize_nodal_capacity=True,
-                                            nodal_capacity_sign=self.options.nodal_capacity_sign,
-                                            capacity_nodes_idx=self._single_bus_capacity_idx(bus_idx),
-                                            logger=self.logger)
+            if has_ts:
+                self.report_text('Nonlinear OPF at ' + str(self.grid.time_profile[t]) + '...')
+                self.report_progress2(it, len(self.time_indices))
+            else:
+                self.report_text('Nonlinear OPF at the snapshot...')
+                self.report_progress2(it, 1)
 
-                    if bus_idx == first_bus_idx:
-                        Sbase = self.grid.Sbase
-                        self.results.voltage[it, :] = res.V
-                        self.results.Sbus[it, :] = res.S * Sbase
-                        self.results.bus_shadow_prices[it, :] = res.lam_p
-                        self.results.generator_power[it, :] = res.Pg * Sbase
-                        self.results.generator_cost[it, :] = res.Pcost
-                        self.results.Sf[it, :] = res.Sf * Sbase
-                        self.results.St[it, :] = res.St * Sbase
-                        self.results.overloads[it, :] = (res.sl_sf - res.sl_st) * Sbase
-                        self.results.loading[it, :] = res.loading
-                        self.results.tap_angle[it, :] = res.tap_phase
-                        self.results.hvdc_Pf[it, :] = res.hvdc_Pf
-                        self.results.hvdc_loading[it, :] = res.hvdc_loading
-                        self.results.converged[it] = res.converged
+            res = run_nonlinear_opf(grid=self.grid,
+                                    opf_options=self.opf_options,
+                                    t_idx=t,
+                                    optimize_nodal_capacity=True,
+                                    nodal_capacity_sign=self.options.nodal_capacity_sign,
+                                    capacity_nodes_idx=self.options.capacity_nodes_idx,
+                                    logger=self.logger)
 
-                    self.results.nodal_capacity[it, k] = self.options.nodal_capacity_sign * res.nodal_capacity[0]
+            Sbase = self.grid.Sbase
+            self.results.voltage[it, :] = res.V
+            self.results.Sbus[it, :] = res.S * Sbase
+            self.results.bus_shadow_prices[it, :] = res.lam_p
+            self.results.nodal_capacity[it, :] = self.options.nodal_capacity_sign * res.nodal_capacity
+            self.results.generator_power[it, :] = res.Pg * Sbase
+            self.results.generator_cost[it, :] = res.Pcost
 
-                    if self.is_cancel():
-                        return self.results
-        else:
-            for it, t in enumerate(t_indices):
+            self.results.Sf[it, :] = res.Sf * Sbase
+            self.results.St[it, :] = res.St * Sbase
+            self.results.overloads[it, :] = (res.sl_sf - res.sl_st) * Sbase
+            self.results.loading[it, :] = res.loading
+            self.results.tap_angle[it, :] = res.tap_phase
 
-                if has_ts:
-                    self.report_text('Nonlinear OPF at ' + str(self.grid.time_profile[t]) + '...')
-                    self.report_progress2(it, len(self.time_indices))
-                else:
-                    self.report_text('Nonlinear OPF at the snapshot...')
-                    self.report_progress2(it, 1)
+            self.results.hvdc_Pf[it, :] = res.hvdc_Pf
+            self.results.hvdc_loading[it, :] = res.hvdc_loading
+            self.results.converged[it] = res.converged
 
-                res = run_nonlinear_opf(grid=self.grid,
-                                        opf_options=self.opf_options,
-                                        t_idx=t,
-                                        optimize_nodal_capacity=True,
-                                        nodal_capacity_sign=self.options.nodal_capacity_sign,
-                                        capacity_nodes_idx=self.options.capacity_nodes_idx,
-                                        logger=self.logger)
-
-                Sbase = self.grid.Sbase
-                self.results.voltage[it, :] = res.V
-                self.results.Sbus[it, :] = res.S * Sbase
-                self.results.bus_shadow_prices[it, :] = res.lam_p
-                self.results.nodal_capacity[it, :] = self.options.nodal_capacity_sign * res.nodal_capacity
-                self.results.generator_power[it, :] = res.Pg * Sbase
-                self.results.generator_cost[it, :] = res.Pcost
-
-                self.results.Sf[it, :] = res.Sf * Sbase
-                self.results.St[it, :] = res.St * Sbase
-                self.results.overloads[it, :] = (res.sl_sf - res.sl_st) * Sbase
-                self.results.loading[it, :] = res.loading
-                self.results.tap_angle[it, :] = res.tap_phase
-
-                self.results.hvdc_Pf[it, :] = res.hvdc_Pf
-                self.results.hvdc_loading[it, :] = res.hvdc_loading
-                self.results.converged[it] = res.converged
-
-                if self.is_cancel():
-                    return self.results
+            if self.is_cancel():
+                return self.results
 
         # Compute the emissions, fuel costs and energy used
         (self.results.system_fuel,
