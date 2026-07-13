@@ -69,7 +69,7 @@ from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_library import DynamicEditor
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_models import BlockParameterKind, BlockParameterRow, \
     BlockTableFilterProxyModel, EditParameterDialog, InspectModel, WrappableBlockTableModel, _build_block_uid_lookup, \
     _ensure_block_tree_names, add_variable_to_block, block_namespace_contains_name, \
-    block_requires_editor_connection_bootstrap, build_block_symbol_namespace, clone_block_for_editing, copy_block_state, \
+    block_requires_editor_connection_bootstrap, build_block_symbol_namespace, \
     initialize_connected_bus_models_for_editor_assignment, is_valid_symbol_name
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_validation import ValidationRow, ValidationSection, ValidationSectionDialog, \
     ValidationTraversalNode, add_validation_detail, add_validation_port_detail, add_validation_status_detail, \
@@ -386,43 +386,59 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
     def __init__(self,
                  var_factory: VarFactory,
-                 block: Block,
                  api_object: ALL_DEV_TYPES,
                  circuit: MultiCircuit,
                  mode: DynamicSimulationMode = DynamicSimulationMode.RMS,
                  templates_list: Optional[List[RmsModelTemplate | EmtModelTemplate | FmuTemplate]] = None,
-                 main_editor=False,
+                 is_root_editor=False,
                  modal: bool = True,
-                 workspace_embedded: bool = False):
+                 workspace_embedded: bool = False,
+                 # --- new parameters: working-tree blocks ---
+                 root_block: Block | None = None,
+                 current_block: Block | None = None,
+                 document=None,
+                 # --- deprecated parameters kept for backward compat ---
+                 block: Block | None = None,
+                 main_editor: bool | None = None):
         """
-        Initializes a dynamic block editor window used for editing and managing blocks within a graphical model.
+        Initializes a dynamic block editor window.
 
-        This constructor sets up the user interface, initializes required attributes, creates a library model
-        for draggable block items, and optionally constructs a tree structure based on the specified mode.
-        It also configures drag-and-drop functionality for graphical items, connects various UI components
-        to their associated event handlers, and reconstructs the scene from an existing diagram.
+        In the new document-based architecture the editor receives two
+        blocks that already live inside the working tree owned by
+        :class:`DynamicEditorDocument`:
+
+        * ``root_block`` — the top-level working block for the tab.
+        * ``current_block`` — the specific node being edited right now.
+
+        The editor never clones.  All edits target the working tree
+        directly.
+
+        Legacy callers that pass ``block=`` and ``main_editor=`` are
+        still supported but deprecated.
 
         :param var_factory: Factory object responsible for variable creation and management.
-        :type var_factory: VarFactory
-        :param block: The original block to be edited.
-        :type block: Block
         :param api_object: Optional API object associated with the dynamic model.
-        :type api_object: ALL_DEV_TYPES
-        :param mode: Specifies the editor mode, either RMS or EMT.
-        :type mode: DynamicSimulationMode
-        :param templates_list: Optional block-template catalogue entries exposed to the editor.
-        :type templates_list: Optional[List[RmsModelTemplate | EmtModelTemplate | FmuTemplate]]
         :param circuit: Circuit context that owns the edited dynamic device.
-        :type circuit: MultiCircuit
-        :param main_editor: Indicates whether this instance is the main editor for the block.
-        :type main_editor: bool
+        :param mode: Specifies the editor mode, either RMS or EMT.
+        :param templates_list: Optional block-template catalogue entries exposed to the editor.
+        :param is_root_editor: Indicates whether this instance is the root-level editor.
         :param modal: Specifies whether the editor window should be modal.
-        :type modal: bool
         :param workspace_embedded: Whether the editor is hosted inside the tabbed dynamic-editor workspace.
-        :type workspace_embedded: bool
+        :param root_block: Top-level working block (from the document).
+        :param current_block: Block currently being edited (from the working tree).
+        :param block: Deprecated — use ``current_block`` instead.
+        :param main_editor: Deprecated — use ``is_root_editor`` instead.
         :return: None.
         """
         super().__init__()
+
+        # --- backward-compat shims ---
+        if main_editor is not None:
+            is_root_editor = main_editor
+        if current_block is None and block is not None:
+            current_block = block
+        if root_block is None:
+            root_block = current_block
 
         self.ui = Ui_BlockEditorWindow()
         self.ui.setupUi(self)
@@ -446,12 +462,14 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         self.var_factory = var_factory
         self.api_object = api_object
-        self.original_block: Block = block  # api_object.rms_model
 
         self.circuit: MultiCircuit = circuit
         self.mode = mode
-        self.main_editor = main_editor
+        self.is_root_editor = is_root_editor
         self.workspace_embedded = workspace_embedded
+
+        self._document = document
+        self._navigate_callback = None
         self.templates_list: List[
             RmsModelTemplate | EmtModelTemplate | FmuTemplate] = templates_list if templates_list is not None else list()
 
@@ -466,21 +484,15 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.dynamic_editor_entry: DynamicEditorEntry | None = None
         self._prepared_to_delete: bool = False
 
+        # --- working-tree blocks (no cloning) ---
+        self.root_block: Block = root_block
+        self.main_block: Block = current_block
+
         self.blocktype2templatebuilder = get_blocktype2template_builder_dict()
 
         self.devices_static_params_mapping: Dict[DeviceType, List[ParamPowerFlowReferenceType]] = (
             self.circuit.get_devices_static_params_mapping()
         )
-
-        if not self.original_block.children and not self.original_block.empty() and self.main_editor:
-            self.main_block = Block()
-            block_to_append = clone_block_for_editing(block)
-            self.main_block.children.append(block_to_append)
-            self.main_block.in_vars = block_to_append.in_vars
-            self.main_block.out_vars = block_to_append.out_vars
-            self.main_block.external_mapping = block_to_append.external_mapping
-        else:
-            self.main_block: Block = clone_block_for_editing(block)
 
         self.diagram: BlockDiagram = self.main_block.diagram
 
@@ -628,7 +640,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         self.ui.toolBox.currentChanged.connect(self.handle_side_panel_page_changed)
         self.scene.selectionChanged.connect(self.on_scene_selection_changed)
-        if self.mode == DynamicSimulationMode.EMT and self.main_editor:
+        if self.mode == DynamicSimulationMode.EMT and self.is_root_editor:
             self._ensure_full_emt_editor_interface()
         else:
             pass
@@ -656,7 +668,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         # Build items for models with graphical info
         elif not self.main_block.diagram.node_data:
             # here we add the connection variables to the main block
-            if self.main_editor:
+            if self.is_root_editor:
                 self.add_connection_vars()
                 # self.add_api_obj_mapping()
 
@@ -665,28 +677,33 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             pass
         self.rebuild_scene_from_diagram()
 
-    @staticmethod
-    def new_editor(var_factory: VarFactory,
-                   block: Block,
-                   api_object: ALL_DEV_TYPES,
-                   circuit: MultiCircuit,
-                   mode: DynamicSimulationMode):
+    def set_navigate_callback(self, callback) -> None:
         """
-        Function to create a new instance of this class.
-        :param var_factory:
-        :param block:
-        :param api_object:
-        :param circuit:
-        :param mode:
-        :return:
+        Register a callback invoked when a child block should be opened
+        for in-place navigation.
+
+        The callback signature is ``callback(block: Block) -> None``.
+        When set, Ctrl+Click on a GenericBlockItem delegates to this
+        callback instead of creating a floating editor window.
+
+        :param callback: Navigation callback function.
+        :return: None.
         """
-        return DynamicBlockEditorGUI(
-            var_factory=var_factory,
-            block=block,
-            api_object=api_object,
-            circuit=circuit,
-            mode=mode,
-        )
+        self._navigate_callback = callback
+
+    def _request_navigate_to_block(self, block: Block) -> None:
+        """
+        Request navigation into a child block.
+
+        If a navigate callback has been registered (by the parent
+        :class:`DynamicEditorTab`), it is invoked with the target block.
+        Otherwise, the request is silently ignored.
+
+        :param block: Child block to navigate into.
+        :return: None.
+        """
+        if self._navigate_callback is not None:
+            self._navigate_callback(block)
 
     def changeEvent(self, event: QtCore.QEvent) -> None:
         """
@@ -2683,11 +2700,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         connections_to_remove: List[ConnectionItem] = list()
         child_block: Block
 
-        if isinstance(item, (BlockItem, GenericBlockItem)):
-            item.close_editor_window()
-        else:
-            pass
-
         # find connections to remove
         for port in item.inputs + item.outputs:
             if port.connections is not None:
@@ -4037,7 +4049,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         :return: None.
         """
-        if not self.main_editor or self.mode != DynamicSimulationMode.EMT:
+        if not self.is_root_editor or self.mode != DynamicSimulationMode.EMT:
             return
         else:
             pass
@@ -5415,69 +5427,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :return: None.
         """
         if isinstance(item, (GenericBlockItem, BlockItem)):
-            self.open_block_subeditor(item)
-
-    def open_block_subeditor(self, item: BlockItem | GenericBlockItem) -> None:
-        """
-        Open a nested block editor for one block item.
-
-        :param item: Target block item.
-        :return: None.
-        """
-        if item.subsys is None:
-            return
-        else:
-            pass
-
-        editor_window: DynamicBlockEditorGUI | None = item.editor_window
-
-        if editor_window is None:
-            editor_window = DynamicBlockEditorGUI(
-                var_factory=self.var_factory,
-                block=item.subsys,
-                api_object=self.api_object,
-                circuit=self.circuit,
-                mode=self.mode,
-                modal=False,
-            )
-            item.editor_window = editor_window
-        else:
-            pass
-
-        editor_window.show()
-        editor_window.raise_()
-        editor_window.activateWindow()
-
-    def decompose_block_in_place(self, block: Block) -> None:
-
-        decomposer = EquationDecomposer(self.var_factory)
-        decomposed = decomposer.decompose(block)
-        preserved_uid = block.uid
-        block.name = decomposed.name
-        block.is_decomposable = decomposed.is_decomposable
-        block.vars_glob_name2uid = decomposed.vars_glob_name2uid
-        block.state_vars = decomposed.state_vars
-        block.state_eqs = decomposed.state_eqs
-        block.algebraic_vars = decomposed.algebraic_vars
-        block.algebraic_eqs = decomposed.algebraic_eqs
-        block.diff_vars = decomposed.diff_vars
-        block.reformulated_vars = decomposed.reformulated_vars
-        block.differential_eqs = decomposed.differential_eqs
-        block.init_eqs = decomposed.init_eqs
-        block.diff_init_eqs = decomposed.diff_init_eqs
-        block.children = decomposed.children
-        block.in_vars = decomposed.in_vars
-        block.out_vars = decomposed.out_vars
-        block.parameters = decomposed.parameters
-        block.discrete_eqs = decomposed.discrete_eqs
-        block.external_mapping = decomposed.external_mapping
-        block.api_obj_mapping = decomposed.api_obj_mapping
-        block.init_values = decomposed.init_values
-        block.var_mapping = decomposed.var_mapping
-        block.event_dict = decomposed.event_dict
-        block.mode_dict = decomposed.mode_dict
-        block.diagram = decomposed.diagram
-        block.uid = preserved_uid
+            if item.subsys is not None:
+                self._request_navigate_to_block(item.subsys)
 
     def get_scene_item_by_block_uid(self,
                                     block_uid: int) -> BlockItem | GenericBlockItem | RoundBaseArithmeticOpItem | RectBaseArithmeticOpItem | None:
@@ -5554,7 +5505,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         """
         if self.mode == DynamicSimulationMode.RMS:
             # Persist the edited RMS block back into the original model object.
-            copy_block_state(source_block=self.main_block, target_block=self.original_block)
+            self._document.commit()
             # Rebuild the connected bus helper models so the saved block stays
             # consistent with the rest of the dynamic network representation.
             initialize_connected_bus_models_for_editor_assignment(api_object=self.api_object,
@@ -5603,7 +5554,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 # rebuilt terminal bus shells seen by the simulation builder.
                 self._prune_disconnected_emt_root_interface()
                 # Copy the validated editor state back to the owned EMT model.
-                copy_block_state(source_block=self.main_block, target_block=self.original_block)
+                self._document.commit()
                 # Editor copy-back can leave the saved root external mapping and
                 # the saved root input/output vars for the same EMT reference as
                 # different symbolic objects. Normalize the saved contract first
@@ -6767,7 +6718,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         node: Any
         con: Any
 
-        self.close_child_editor_windows()
         self.scene.clear()
 
         # Recreate nodes
@@ -6885,7 +6835,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             else:
                 pass
 
-        if self.mode == DynamicSimulationMode.EMT and self.main_editor:
+        if self.mode == DynamicSimulationMode.EMT and self.is_root_editor:
             visible_non_interface_items: list[GenericBlockItem] = self._collect_non_interface_scene_items()
             self._rebuild_visible_symbolic_connections(visible_non_interface_items)
             self._rebuild_editor_interface_graphical_connections(visible_non_interface_items)
@@ -6980,19 +6930,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         except (RuntimeError, TypeError):
             pass
 
-    def close_child_editor_windows(self) -> None:
-        """
-        Close any floating child editors opened from block items in this scene.
-
-        :return: None.
-        """
-        scene_item: QtWidgets.QGraphicsItem
-        for scene_item in list(self.scene.items()):
-            if isinstance(scene_item, (BlockItem, GenericBlockItem)):
-                scene_item.close_editor_window()
-            else:
-                pass
-
     def prepare_to_delete(self) -> None:
         """
         Release editor-owned Qt objects before deleting this editor widget.
@@ -7003,7 +6940,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             return
 
         self._prepared_to_delete = True
-        self.close_child_editor_windows()
         self.disconnect_editor_signals()
         self.scene.clear()
 
@@ -7120,7 +7056,8 @@ if __name__ == "__main__":
     device = dev.Generator()
     window = DynamicBlockEditorGUI(
         var_factory=vf,
-        block=bl,
+        root_block=bl,
+        current_block=bl,
         api_object=device,
         circuit=MultiCircuit(),
     )

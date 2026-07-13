@@ -11,6 +11,7 @@ from PySide6 import QtCore, QtGui, QtWidgets
 
 from VeraGrid.Gui.DynamicModelEditor.detachable_editor_tabs_widget import DetachableEditorTabWidget
 from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI
+from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_tab import DynamicEditorTab
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_workspace import Ui_DynamicEditorWorkspaceWindow
 from VeraGrid.Gui.Icons.icon_associations import device_type_icons
 from VeraGrid.Gui.gui_functions import add_menu_entry
@@ -209,6 +210,8 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
         :return: Active block editor or ``None``.
         """
         page = self.current_page()
+        if isinstance(page, DynamicEditorTab):
+            return page.editor
         if isinstance(page, DynamicBlockEditorGUI):
             return page
         return None
@@ -628,7 +631,7 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
         """
         return self.editor_tabs.indexOf(page)
 
-    def page_at(self, index: int) -> DynamicBlockEditorGUI | None:
+    def page_at(self, index: int) -> DynamicBlockEditorGUI | DynamicEditorTab | None:
         """
         Return the page at one tab index.
 
@@ -638,18 +641,18 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
         if index < 0 or index >= self.editor_tabs.count():
             return None
         page = self.editor_tabs.widget(index)
-        if isinstance(page, DynamicBlockEditorGUI):
+        if isinstance(page, (DynamicBlockEditorGUI, DynamicEditorTab)):
             return page
         else:
             return None
 
-    def pages_iter(self) -> Iterator[DynamicBlockEditorGUI]:
+    def pages_iter(self):
         for index in range(self.editor_tabs.count()):
             page = self.editor_tabs.widget(index)
-            if isinstance(page, DynamicBlockEditorGUI):
+            if isinstance(page, (DynamicBlockEditorGUI, DynamicEditorTab)):
                 yield page
 
-    def current_page(self) -> DynamicBlockEditorGUI | None:
+    def current_page(self) -> DynamicBlockEditorGUI | DynamicEditorTab | None:
         """
         Return the currently selected tab page.
 
@@ -657,7 +660,7 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
         """
         return self.page_at(self.editor_tabs.currentIndex())
 
-    def remove_page(self, page: DynamicBlockEditorGUI) -> None:
+    def remove_page(self, page: DynamicBlockEditorGUI | DynamicEditorTab) -> None:
         """
         Remove one page from the tab widget.
 

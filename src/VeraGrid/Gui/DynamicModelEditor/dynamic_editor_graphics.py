@@ -1094,7 +1094,6 @@ class GenericBlockItem(QGraphicsRectItem):
 
 
 
-        self.editor_window: DynamicBlockEditorGUI | None = None
         self.resize_handle: ResizeHandle | None = None
         self.resizing_from_handle = False
         self._suppress_resize: bool = False
@@ -1137,36 +1136,9 @@ class GenericBlockItem(QGraphicsRectItem):
                 event.button() == Qt.MouseButton.LeftButton
                 and event.modifiers() & Qt.KeyboardModifier.ControlModifier
         ):
-            if self.editor_window is None and self.subsys.is_eq_decomposable():
-                self.editor_window = self.editor.new_editor(
-                                    var_factory=self.var_factory,
-                                    block=self.subsys,
-                                    api_object=self.api_object,
-                                    circuit=self.editor.circuit,
-                                    mode=self.mode,
-                )
-                if self.editor_window is not None:
-                    self.editor_window.decompose_block_in_place(self.subsys)
-                    self.editor_window.diagram = self.subsys.diagram
-                    self.editor_window.main_block = self.subsys
-                    self.editor_window.rebuild_scene_from_diagram()
-                    self.editor_window.show()
 
-            elif self.editor_window is None:
-                self.editor_window = self.editor.new_editor(
-                                    var_factory=self.var_factory,
-                                    block=self.subsys,
-                                    api_object=self.api_object,
-                                    circuit=self.editor.circuit,
-                                    mode=self.mode,
-                )
-                if self.editor_window is not None:
-                    self.editor_window.show()
+            self.editor._request_navigate_to_block(self.subsys)
 
-            elif self.editor_window is not None:
-                self.editor_window.show()
-            else:
-                pass
             event.accept()
             return
 
@@ -1175,25 +1147,6 @@ class GenericBlockItem(QGraphicsRectItem):
 
     def mouseDoubleClickEvent(self, event):
         pass
-
-    def close_editor_window(self) -> None:
-        """
-        Close the floating child editor associated with this block item.
-
-        :return: None.
-        """
-        editor_window: DynamicBlockEditorGUI | None = self.editor_window
-        if editor_window is None:
-            return
-        else:
-            pass
-
-        # Clear the back-reference first so later scene teardown cannot reuse
-        # an editor window that is already on the way out.
-        self.editor_window = None
-        editor_window.prepare_to_delete()
-        editor_window.close()
-        editor_window.deleteLater()
 
     def set_subsystem(self, block: Block) -> None:
         self.subsys = block
@@ -1793,7 +1746,6 @@ class BlockItem(QGraphicsRectItem):
         self.resize_handle: ResizeHandle | None = None
         self.resizing_from_handle: bool = False
         self.subsys: Block | None = None
-        self.editor_window: DynamicBlockEditorGUI | None = None
         self.name_item: QGraphicsTextItem | None = None
 
         try:
@@ -2049,25 +2001,6 @@ class BlockItem(QGraphicsRectItem):
             return super().itemChange(change, value)
         else:
             return super().itemChange(change, value)
-
-    def close_editor_window(self) -> None:
-        """
-        Close the floating child editor associated with this block item.
-
-        :return: None.
-        """
-        editor_window: DynamicBlockEditorGUI | None = self.editor_window
-        if editor_window is None:
-            return
-        else:
-            pass
-
-        # Clear the back-reference first so later scene teardown cannot reuse
-        # an editor window that is already on the way out.
-        self.editor_window = None
-        editor_window.prepare_to_delete()
-        editor_window.close()
-        editor_window.deleteLater()
 
 
 class ProtectedConnectionBlockItem(BlockItem):
