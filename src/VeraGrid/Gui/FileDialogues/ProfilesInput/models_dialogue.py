@@ -28,13 +28,13 @@ def extract_and_convert_to_datetime(filename, logger: Logger) -> pd.DatetimeInde
     :return: pd.DateTimeIndex or None
     """
     date_patterns = [
-        (r'\b(\d{4}[^\d]\d{2}[^\d]\d{2})\b', '%Y-%m-%d'),  # YYYY-MM-DD
-        (r'\b(\d{4}[^\d]\d{2}[^\d]\d{2})\b', '%Y_%m_%d'),  # YYYY_MM_DD
-        (r'\b(\d{8})\b', '%Y%m%d'),  # YYYYMMDD
-        (r'\b(\d{12})\b', '%Y%m%d%H%M'),  # YYYYMMDDHHMM
-        (r'\b(\d{8}_\d{4})\b', '%Y%m%d_%H%M'),  # YYYYMMDD_HHMM
-        (r'\b(\d{4}[^\d]\d{2}[^\d]\d{2}_\d{4})\b', '%Y-%m-%d_%H%M'),  # YYYY-MM-DD_HHMM
-        (r'\b(\d{4}[^\d]\d{2}[^\d]\d{2}_\d{4})\b', '%Y_%m_%d_%H%M')  # YYYY_MM_DD_HHMM
+        (r'(?<!\d)(\d{8}_\d{4})(?!\d)', '%Y%m%d_%H%M'),  # YYYYMMDD_HHMM
+        (r'(?<!\d)(\d{12})(?!\d)', '%Y%m%d%H%M'),  # YYYYMMDDHHMM
+        (r'(?<!\d)(\d{4}-\d{2}-\d{2}_\d{4})(?!\d)', '%Y-%m-%d_%H%M'),  # YYYY-MM-DD_HHMM
+        (r'(?<!\d)(\d{4}_\d{2}_\d{2}_\d{4})(?!\d)', '%Y_%m_%d_%H%M'),  # YYYY_MM_DD_HHMM
+        (r'(?<!\d)(\d{4}-\d{2}-\d{2})(?!\d)', '%Y-%m-%d'),  # YYYY-MM-DD
+        (r'(?<!\d)(\d{4}_\d{2}_\d{2})(?!\d)', '%Y_%m_%d'),  # YYYY_MM_DD
+        (r'(?<!\d)(\d{8})(?!\d)', '%Y%m%d')  # YYYYMMDD
     ]
 
     date_str = filename
@@ -240,6 +240,52 @@ class GridsModel(QtCore.QAbstractTableModel):
         pass
 
 
+class ModelsProcessThread(QtCore.QThread):
+    """
+    Run the model-to-profile import in a background thread.
+    """
+    progress_signal = QtCore.Signal(float)
+    done_signal = QtCore.Signal()
+
+    def __init__(self,
+                 gui_instance: "ModelsInputGUI",
+                 main_grid: MultiCircuit,
+                 logger: Logger,
+                 items: List[GridsModelItem],
+                 use_secondary_key: bool) -> None:
+        """
+        Create the worker thread.
+
+        :param gui_instance: Dialogue owning the import logic.
+        :param main_grid: Grid that will receive the imported profiles.
+        :param logger: Logger collecting import messages.
+        :param items: Snapshot of the items to import.
+        :param use_secondary_key: Matching mode selected in the dialogue.
+        """
+        QtCore.QThread.__init__(self)
+
+        self.gui_instance: ModelsInputGUI = gui_instance
+        self.main_grid: MultiCircuit = main_grid
+        self.logger: Logger = logger
+        self.items: List[GridsModelItem] = items
+        self.use_secondary_key: bool = use_secondary_key
+
+    def run(self) -> None:
+        """
+        Execute the import algorithm outside the GUI thread.
+
+        :return: None
+        """
+        self.gui_instance.process(
+            main_grid=self.main_grid,
+            logger=self.logger,
+            items=self.items,
+            use_secondary_key=self.use_secondary_key,
+            progress_func=self.progress_signal.emit
+        )
+        self.done_signal.emit()
+
+
 def assign_grid(t, grid_to_add: MultiCircuit, main_grid: MultiCircuit, use_secondary_key, logger: Logger):
     """
     Assign all the values of the loaded grid to the profiles of the main grid at the time step t
@@ -285,10 +331,11 @@ class ModelsInputGUI(QtWidgets.QDialog):
     ModelsInputGUI
     """
 
-    def __init__(self, parent=None) -> None:
+    def __init__(self, parent=None, main_grid: MultiCircuit | None = None) -> None:
         """
 
         :param parent:
+        :param main_grid: Grid receiving the imported profiles.
         """
 
         QtWidgets.QDialog.__init__(self, parent)
@@ -298,10 +345,15 @@ class ModelsInputGUI(QtWidgets.QDialog):
         self.setWindowTitle('Models import dialogue')
 
         self.grids_model: GridsModel = GridsModel()
+        self.main_grid: MultiCircuit | None = main_grid
 
         self.logger = Logger()
+        self.process_logger: Logger = Logger()
+        self.process_thread: ModelsProcessThread | None = None
+        self.processing_active: bool = False
 
         self.ui.matchUsingCodeCheckBox.setChecked(True)
+        self.ui.progressBar.setValue(0)
 
         self.ui.modelsTableView.setModel(None)
         self.ui.modelsTableView.setModel(self.grids_model)
@@ -309,7 +361,7 @@ class ModelsInputGUI(QtWidgets.QDialog):
 
         # click
         self.ui.addModelsButton.clicked.connect(self.add_models)
-        self.ui.acceptModelsButton.clicked.connect(self.accept)
+        self.ui.acceptModelsButton.clicked.connect(self.start_process)
         self.ui.deleteModelsButton.clicked.connect(self.clear_model)
 
     def accept(self) -> None:
@@ -355,22 +407,79 @@ class ModelsInputGUI(QtWidgets.QDialog):
             self.ui.modelsTableView.setModel(self.grids_model)
             self.ui.modelsTableView.repaint()
 
-    def generate_time_array(self, main_grid: MultiCircuit, logger: Logger):
+    def start_process(self) -> None:
+        """
+        Start the import in a background thread and report progress in the dialogue.
+
+        :return: None
+        """
+        if self.processing_active:
+            return
+
+        if self.main_grid is None:
+            return
+
+        if self.grids_model.rowCount() == 0:
+            self.accept()
+        else:
+            items_snapshot: List[GridsModelItem] = list(self.grids_model.items())
+            use_secondary_key: bool = self.ui.matchUsingCodeCheckBox.isChecked()
+
+            self.processing_active = True
+            self.process_logger = Logger()
+            self.ui.progressBar.setValue(0)
+            self.ui.acceptModelsButton.setEnabled(False)
+            self.ui.addModelsButton.setEnabled(False)
+            self.ui.deleteModelsButton.setEnabled(False)
+            self.ui.detectDatesButton.setEnabled(False)
+
+            # Keep the worker object on the dialogue so Qt signals stay valid
+            # until the import completes and the window closes.
+            self.process_thread = ModelsProcessThread(
+                gui_instance=self,
+                main_grid=self.main_grid,
+                logger=self.process_logger,
+                items=items_snapshot,
+                use_secondary_key=use_secondary_key
+            )
+            self.process_thread.progress_signal.connect(self.ui.progressBar.setValue)
+            self.process_thread.done_signal.connect(self.on_process_done)
+            self.process_thread.start()
+
+    def on_process_done(self) -> None:
+        """
+        Finalize the threaded import and close the dialogue.
+
+        :return: None
+        """
+        self.processing_active = False
+        self.ui.progressBar.setValue(100)
+        self.accept()
+
+    def generate_time_array(self,
+                            main_grid: MultiCircuit,
+                            logger: Logger,
+                            items: List[GridsModelItem]) -> None:
         """
         Generate time profile from model
         :param main_grid:
         :param logger:
+        :param items:
         :return:
         """
-        n = len(self.grids_model.items())
+        n: int = len(items)
+        t: int
+        entry: GridsModelItem
 
         t_profile = np.zeros(n, dtype=object)
 
-        d = datetime.today()
-        base_date = datetime(d.year, 1, 1, 00, 00, 00)
-        base_inc = 1  # 1 hour
+        d: datetime = datetime.today()
+        base_date: datetime = datetime(d.year, 1, 1, 0, 0, 0)
+        base_inc: int = 1  # 1 hour
 
-        for t, entry in enumerate(self.grids_model.items()):
+        # Use the same item snapshot that the worker thread processes so the
+        # time array matches the filename-derived timestamps shown in the table.
+        for t, entry in enumerate(items):
             if entry.time is not None:
                 if isinstance(entry.time, pd.DatetimeIndex):
                     t_profile[t] = entry.time
@@ -388,20 +497,36 @@ class ModelsInputGUI(QtWidgets.QDialog):
         main_grid.time_profile = pd.to_datetime(t_profile)
         main_grid.ensure_profiles_exist()
 
-    def process(self, main_grid: MultiCircuit, logger: Logger):
+    def process(self,
+                main_grid: MultiCircuit,
+                logger: Logger,
+                items: List[GridsModelItem],
+                use_secondary_key: bool,
+                progress_func=None) -> None:
         """
         Process the imported data
         :param main_grid: Grid to apply the values to, it has to have declared profiles already
         :param logger: Logger
+        :param items: Snapshot of the model items to import.
+        :param use_secondary_key: Use the secondary key ("code") to match.
+        :param progress_func: Function to report percentage progress.
         :return: None
         """
-        use_secondary_key = self.ui.matchUsingCodeCheckBox.isChecked()
+        n: int = len(items)
+        t: int
+        entry: GridsModelItem
+        name: str
+        loaded_grid: MultiCircuit | None
+        progress_value: float
 
-        n = len(self.grids_model.items())
+        self.generate_time_array(main_grid=main_grid, logger=logger, items=items)
 
-        self.generate_time_array(main_grid=main_grid, logger=logger)
+        if progress_func is not None:
+            progress_func(0.0)
+        else:
+            pass
 
-        for t, entry in enumerate(self.grids_model.items()):
+        for t, entry in enumerate(items):
             name = os.path.basename(entry.path)
             print_progress_bar(iteration=t+1, total=n, txt=name)
 
@@ -417,6 +542,17 @@ class ModelsInputGUI(QtWidgets.QDialog):
                                 device=name,
                                 device_property="Path",
                                 value=entry.path)
+            else:
+                pass
+
+            # Report progress after each imported model because file loading is
+            # the dominant cost in the algorithm and users need coarse but
+            # reliable feedback.
+            if progress_func is not None:
+                progress_value = ((t + 1) * 100.0) / n if n > 0 else 100.0
+                progress_func(progress_value)
+            else:
+                pass
 
         print()  # to finalize the progressbar
 
@@ -450,6 +586,11 @@ class ModelsInputGUI(QtWidgets.QDialog):
                     logger.add_warning(msg="Inconsistent active state",
                                        device=elm.name,
                                        device_property=str(t))
+
+        if progress_func is not None:
+            progress_func(100.0)
+        else:
+            pass
 
 # if __name__ == "__main__":
 #     import sys
