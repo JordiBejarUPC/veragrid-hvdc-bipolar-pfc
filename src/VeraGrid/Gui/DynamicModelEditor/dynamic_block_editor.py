@@ -840,36 +840,43 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         if template_builder is not None:
             dialog = DynTemplatesEditorDialog(name, template_builder.params)
-            dialog.exec()
+        else:
+            return
+
+        if dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+
             template = template_builder.eval()
             block_model = template.block
 
-        block_item: GenericBlockItem = GenericBlockItem(
-            editor=self,
-            var_factory=self.var_factory,
-            subsys=block_model,
-            api_object=self.api_object,
-            mode=self.mode,
-            name=item_name,
-            position_changed_callback=self._build_position_changed_callback(block_model.uid)
-        )
+            block_item: GenericBlockItem = GenericBlockItem(
+                editor=self,
+                var_factory=self.var_factory,
+                subsys=block_model,
+                api_object=self.api_object,
+                mode=self.mode,
+                name=item_name,
+                position_changed_callback=self._build_position_changed_callback(block_model.uid)
+            )
 
-        self.block_counters[blocktype] = count
-        block_item.set_subsystem(block_model)
-        block_item.position_changed_callback = self._build_position_changed_callback(block_model.uid)
-        block_item.build_item()
-        self.main_block.add(block_model)
-        self.scene.addItem(block_item)
-        block_item.setPos(QtCore.QPointF(x_pos, y_pos))
-        self.diagram.add_node(
-            name=item_name,
-            x=x_pos,
-            y=y_pos,
-            tpe=blocktype.name,
-            device_uid=block_model.uid,
-        )
-        self.mark_unapplied_changes()
-        return block_item
+            self.block_counters[blocktype] = count
+            block_item.set_subsystem(block_model)
+            block_item.position_changed_callback = self._build_position_changed_callback(block_model.uid)
+            block_item.build_item()
+            self.main_block.add(block_model)
+            self.scene.addItem(block_item)
+            block_item.setPos(QtCore.QPointF(x_pos, y_pos))
+            self.diagram.add_node(
+                name=item_name,
+                x=x_pos,
+                y=y_pos,
+                tpe=blocktype.name,
+                device_uid=block_model.uid,
+            )
+            self.mark_unapplied_changes()
+            return block_item
+
+        else:
+            return
 
     def create_generic_block_item(self, block_type: BlockType, x_pos, y_pos) -> GenericBlockItem | None:
         """
@@ -2484,6 +2491,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         if isinstance(payload, BlockType) and payload in self.blocktype2templatebuilder:
             return self.create_item_from_blocktype(payload, x_pos, y_pos)
 
+        # these ones cannot be included avobe because they are represented by a different item in the scene
         elif isinstance(payload, BlockType) and payload == BlockType.FROM_GOTO:
             items = self.create_signal_pair_item(x_pos=x_pos, y_pos=y_pos)
             return items[0] if items else None
@@ -2497,6 +2505,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         elif isinstance(payload, BlockType) and payload == BlockType.GENERIC:
             return self.create_generic_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
 
+        # Todo: include in blocktype2templatebuilder, create clases and inputs
         elif isinstance(payload, BlockType) and payload == BlockType.EMT_JMARTI_LINE:
             return self.create_jmarti_line_emt_block_item(x_pos=x_pos, y_pos=y_pos)
 
@@ -2641,9 +2650,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             target_port.subsystem._refresh_connection_color()
 
         if isinstance(source_port, PortItem):
-            source_port._update_port_visibility()
+            source_port.update_port_visibility()
         if isinstance(target_port, PortItem):
-            target_port._update_port_visibility()
+            target_port.update_port_visibility()
 
         self.scene.removeItem(item)
 
@@ -2898,15 +2907,27 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             # connect bus variables
             if self.api_object.bus.rms_model.empty():
                 initialize_bus_rms(self.api_object.bus, self.var_factory)
+            if self.api_object.bus.is_dc:
+                Vdc, Vm, Va = get_bus_rms_algebraic_vars(self.api_object.bus.rms_model)
+                self.main_block.in_vars.append(Vdc)
+                self.main_block.in_vars.append(Vm)
+                self.main_block.in_vars.append(Va)
 
-            _, Vm, Va = get_bus_rms_algebraic_vars(self.api_object.bus.rms_model)
-            self.main_block.in_vars.append(Vm)
-            self.main_block.in_vars.append(Va)
+                self.main_block.external_mapping.update(
+                    {VarPowerFlowReferenceType.Vdc: Vdc})
+                self.main_block.external_mapping.update(
+                    {VarPowerFlowReferenceType.Vm: Vm})
+                self.main_block.external_mapping.update(
+                    {VarPowerFlowReferenceType.Va: Va})
+            else:
+                _, Vm, Va = get_bus_rms_algebraic_vars(self.api_object.bus.rms_model)
+                self.main_block.in_vars.append(Vm)
+                self.main_block.in_vars.append(Va)
 
-            self.main_block.external_mapping.update(
-                {VarPowerFlowReferenceType.Vm: Vm})
-            self.main_block.external_mapping.update(
-                {VarPowerFlowReferenceType.Va: Va})
+                self.main_block.external_mapping.update(
+                    {VarPowerFlowReferenceType.Vm: Vm})
+                self.main_block.external_mapping.update(
+                    {VarPowerFlowReferenceType.Va: Va})
 
             # add connection variables
             P = self.var_factory.add_var('net_conn_P', VarPowerFlowReferenceType.P, True)
