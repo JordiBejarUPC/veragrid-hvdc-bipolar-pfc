@@ -10,7 +10,7 @@ import json
 import numpy as np
 import pandas as pd
 from PySide6 import QtWidgets, QtCore
-from typing import List
+from typing import List, Dict
 from datetime import datetime, timedelta
 
 import VeraGrid.Gui.gui_functions as gf
@@ -461,23 +461,57 @@ class ModelsProcessThread(QtCore.QThread):
         self.cancel_requested = True
 
 
-def assign_grid(t, grid_to_add: MultiCircuit, main_grid: MultiCircuit, use_secondary_key, logger: Logger):
+def build_main_elements_dict_by_type(main_grid: MultiCircuit,
+                                     use_secondary_key: bool) -> Dict[object, Dict[str, object]]:
+    """
+    Build the element lookup dictionaries once for the whole import run.
+
+    :param main_grid: Main grid receiving the imported profiles.
+    :param use_secondary_key: Use the secondary key ("code") to match.
+    :return: Lookup dictionaries indexed by device type.
+    """
+    main_elements_dict_by_type: Dict[object, Dict[str, object]] = dict()
+    dev_template: object
+    device_type: object
+
+    # Precompute the dictionaries once because rebuilding them for every file
+    # and every device type repeats the same work many times.
+    for dev_template in main_grid.template_items():
+        device_type = dev_template.device_type
+        main_elements_dict_by_type[device_type] = main_grid.get_elements_dict_by_type(
+            device_type,
+            use_secondary_key=use_secondary_key
+        )
+
+    return main_elements_dict_by_type
+
+
+def assign_grid(t: int,
+                grid_to_add: MultiCircuit,
+                main_grid: MultiCircuit,
+                main_elements_dict_by_type: Dict[object, Dict[str, object]],
+                use_secondary_key: bool,
+                logger: Logger) -> None:
     """
     Assign all the values of the loaded grid to the profiles of the main grid at the time step t
     :param t: time step index
     :param grid_to_add: grid to add to the main cirucuit
     :param main_grid: main grid
+    :param main_elements_dict_by_type: Cached dictionaries of main-grid elements by device type.
     :param use_secondary_key: Use the secondary key ("code") to match
     :param logger: Logger
     """
+    device_type: object
+    main_elms_dict: Dict[str, object]
+    elms_from_the_grid_to_add: List[object]
+    elm_to_add: object
+    main_elm: object | None
+    key: str
+    prop: str
+    profile_prop: str
+
     # for each device type that we see in the tree ...
-    for dev_template in main_grid.template_items():
-
-        # get the device type
-        device_type = dev_template.device_type
-
-        # get dictionary of devices
-        main_elms_dict = main_grid.get_elements_dict_by_type(device_type, use_secondary_key=use_secondary_key)
+    for device_type, main_elms_dict in main_elements_dict_by_type.items():
 
         # get list of devices
         elms_from_the_grid_to_add = grid_to_add.get_elements_by_type(device_type)
@@ -486,7 +520,8 @@ def assign_grid(t, grid_to_add: MultiCircuit, main_grid: MultiCircuit, use_secon
         for elm_to_add in elms_from_the_grid_to_add:
 
             # try to find the element in the main grid: fast way to avoid double lookup
-            main_elm = main_elms_dict.get(elm_to_add.code if use_secondary_key else elm_to_add.idtag, None)
+            key = elm_to_add.code if use_secondary_key else elm_to_add.idtag
+            main_elm = main_elms_dict.get(key, None)
 
             if main_elm is not None:
 
@@ -499,6 +534,7 @@ def assign_grid(t, grid_to_add: MultiCircuit, main_grid: MultiCircuit, use_secon
                 logger.add_warning("Element not found in the main grid, added on the fly",
                                    value=elm_to_add.name)
                 main_grid.add_element(elm_to_add)
+                main_elms_dict[key] = elm_to_add
 
 
 class ModelsInputGUI(QtWidgets.QDialog):
@@ -760,8 +796,14 @@ class ModelsInputGUI(QtWidgets.QDialog):
         loaded_grid: MultiCircuit | None
         progress_value: float
         worker_thread: ModelsProcessThread | None = self.process_thread
+        main_elements_dict_by_type: Dict[object, Dict[str, object]]
 
         self.generate_time_array(main_grid=main_grid, logger=logger, items=items)
+
+        main_elements_dict_by_type = build_main_elements_dict_by_type(
+            main_grid=main_grid,
+            use_secondary_key=use_secondary_key
+        )
 
         if progress_func is not None:
             progress_func(0.0)
@@ -778,13 +820,13 @@ class ModelsInputGUI(QtWidgets.QDialog):
                 pass
 
             name = os.path.basename(entry.path)
-            print_progress_bar(iteration=t+1, total=n, txt=name)
 
             if os.path.exists(entry.path):
                 loaded_grid = FileOpen(entry.path).open()
                 assign_grid(t=t,
                             grid_to_add=loaded_grid,
                             main_grid=main_grid,
+                            main_elements_dict_by_type=main_elements_dict_by_type,
                             use_secondary_key=use_secondary_key,
                             logger=logger)
 
@@ -802,7 +844,8 @@ class ModelsInputGUI(QtWidgets.QDialog):
                 progress_value = ((t + 1) * 100.0) / n if n > 0 else 100.0
                 progress_func(progress_value)
             else:
-                pass
+                # Show progress bar only if there is no progress_func pointer
+                print_progress_bar(iteration=t + 1, total=n, txt=name)
 
         print()  # to finalize the progressbar
 
