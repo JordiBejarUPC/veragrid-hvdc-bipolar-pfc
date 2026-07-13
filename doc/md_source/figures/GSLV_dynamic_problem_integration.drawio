@@ -1,6 +1,6 @@
 <mxfile host="Electron" agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/28.2.5 Chrome/138.0.7204.251 Electron/37.6.1 Safari/537.36" version="28.2.5">
   <diagram name="Página-1" id="6xkU-8dtnjQvpxFfgR55">
-    <mxGraphModel dx="1835" dy="1128" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+    <mxGraphModel dx="2688" dy="1128" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -103,7 +103,7 @@
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="J5owqbnTUZASKEeiJjSt-47" value="DLL" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;" vertex="1" parent="1">
-          <mxGeometry x="900" y="340" width="60" height="80" as="geometry" />
+          <mxGeometry x="970" y="300" width="60" height="80" as="geometry" />
         </mxCell>
         <mxCell id="J5owqbnTUZASKEeiJjSt-48" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0;entryY=0;entryDx=25;entryDy=0;entryPerimeter=0;startArrow=blockThin;startFill=1;" edge="1" parent="1" source="J5owqbnTUZASKEeiJjSt-47" target="J5owqbnTUZASKEeiJjSt-44">
           <mxGeometry relative="1" as="geometry" />
@@ -125,13 +125,29 @@
           </mxGeometry>
         </mxCell>
         <mxCell id="J5owqbnTUZASKEeiJjSt-63" value="DLL Manager" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1ba1e2;fontColor=#ffffff;strokeColor=#006EAF;" vertex="1" parent="1">
-          <mxGeometry x="215" y="30" width="410" height="60" as="geometry" />
+          <mxGeometry x="200" y="120" width="410" height="60" as="geometry" />
         </mxCell>
         <mxCell id="J5owqbnTUZASKEeiJjSt-64" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.75;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0;entryDx=15;entryDy=0;entryPerimeter=0;startArrow=blockThin;startFill=1;" edge="1" parent="1" source="J5owqbnTUZASKEeiJjSt-63" target="J5owqbnTUZASKEeiJjSt-55">
-          <mxGeometry relative="1" as="geometry" />
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="507" y="200" />
+              <mxPoint x="655" y="200" />
+            </Array>
+          </mxGeometry>
         </mxCell>
         <mxCell id="J5owqbnTUZASKEeiJjSt-65" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.25;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0;entryDx=15;entryDy=0;entryPerimeter=0;startArrow=blockThin;startFill=1;" edge="1" parent="1" source="J5owqbnTUZASKEeiJjSt-63" target="J5owqbnTUZASKEeiJjSt-51">
-          <mxGeometry relative="1" as="geometry" />
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="303" y="200" />
+              <mxPoint x="75" y="200" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="J5owqbnTUZASKEeiJjSt-66" value="Online compilation" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=30;" vertex="1" parent="1">
+          <mxGeometry x="870" y="20" width="360" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="J5owqbnTUZASKEeiJjSt-67" value="Offline compilation" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=30;" vertex="1" parent="1">
+          <mxGeometry x="54" y="10" width="360" height="60" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>
