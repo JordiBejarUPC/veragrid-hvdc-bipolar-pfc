@@ -197,6 +197,81 @@ def _validate_bus_side_emt_reference(logger: Logger,
             )
 
 
+def _get_element_lookup_key(elm: ALL_DEV_TYPES, use_secondary_key: bool) -> str:
+    """
+    Return the import lookup key for one device.
+
+    :param elm: Device to identify.
+    :param use_secondary_key: Use the secondary key instead of the idtag.
+    :return: Lookup key.
+    """
+    if use_secondary_key:
+        return elm.code
+    else:
+        return elm.idtag
+
+
+def rebind_imported_device_references(elm_to_add: ALL_DEV_TYPES,
+                                      main_elements_dict_by_type: Dict[object, Dict[str, object]],
+                                      use_secondary_key: bool) -> None:
+    """
+    Rebind one imported device to canonical main-grid dependency objects.
+
+    Imported devices may reference temporary objects from the loaded grid even
+    when equivalent objects already exist in the target grid. Rebinding before
+    insertion keeps the target object graph consistent.
+
+    :param elm_to_add: Imported device that may be inserted into the main grid.
+    :param main_elements_dict_by_type: Cached lookups of main-grid elements.
+    :param use_secondary_key: Use the secondary key instead of the idtag.
+    :return: None.
+    """
+    prop_name: str
+    prop: object
+    prop_value: object
+    main_elms_dict: Dict[str, object]
+    pointed_device: EditableDevice
+    main_pointed_device: object | None
+    rebound_objects_by_idtag: Dict[str, ALL_DEV_TYPES]
+    main_key: str
+    main_device: object
+
+    for prop_name, prop in elm_to_add.registered_properties.items():
+        prop_value = getattr(elm_to_add, prop_name)
+
+        if isinstance(prop.tpe, DeviceType):
+            if isinstance(prop_value, EditableDevice):
+                main_elms_dict = main_elements_dict_by_type.get(prop.tpe, dict())
+                pointed_device = prop_value
+                main_pointed_device = main_elms_dict.get(
+                    _get_element_lookup_key(elm=pointed_device, use_secondary_key=use_secondary_key),
+                    None
+                )
+
+                if isinstance(main_pointed_device, EditableDevice):
+                    setattr(elm_to_add, prop_name, main_pointed_device)
+                else:
+                    pass
+            else:
+                pass
+        elif prop.tpe == SubObjectType.Associations:
+            if hasattr(prop_value, "device_type") and hasattr(prop_value, "rebind_device_references"):
+                main_elms_dict = main_elements_dict_by_type.get(prop_value.device_type, dict())
+                rebound_objects_by_idtag = dict()
+
+                for main_key, main_device in main_elms_dict.items():
+                    if isinstance(main_device, EditableDevice):
+                        rebound_objects_by_idtag[main_device.idtag] = main_device
+                    else:
+                        pass
+
+                prop_value.rebind_device_references(objects_by_idtag=rebound_objects_by_idtag)
+            else:
+                pass
+        else:
+            pass
+
+
 def _validate_vsc_dc_bus_reference(logger: Logger,
                                    branch: ALL_DEV_TYPES) -> None:
     """
@@ -4005,3 +4080,61 @@ class MultiCircuit(Assets):
             # Assign the cost
             inj.Cost = cost
             inj.Cost_prof = cost_profile
+
+    def assign_grid(self,
+                    t: int,
+                    grid_to_add: MultiCircuit,
+                    main_elements_dict_by_type: Dict[object, Dict[str, object]],
+                    use_secondary_key: bool,
+                    logger: Logger) -> None:
+        """
+        Assign all the values of the loaded grid to the profiles of the main grid at the time step t
+        :param t: time step index
+        :param grid_to_add: grid to add to the main circuit
+        :param main_elements_dict_by_type: Cached dictionaries of main-grid elements by device type.
+        :param use_secondary_key: Use the secondary key ("code") to match
+        :param logger: Logger
+        """
+        device_type: DeviceType
+        main_elms_dict: Dict[str, ALL_DEV_TYPES]
+        elm_to_add: ALL_DEV_TYPES
+        prop_name: str
+        profile_prop_name: str
+
+        # for each device type that we see in the tree ...
+        for device_type, main_elms_dict in main_elements_dict_by_type.items():
+
+            # get list of devices
+            elms_from_the_grid_to_add: List[ALL_DEV_TYPES] = grid_to_add.get_elements_by_type(device_type)
+
+            # for each device
+            for elm_to_add in elms_from_the_grid_to_add:
+
+                # try to find the element in the main grid: fast way to avoid double lookup
+                key: str = _get_element_lookup_key(elm=elm_to_add, use_secondary_key=use_secondary_key)
+                main_elm: ALL_DEV_TYPES | None = main_elms_dict.get(key, None)
+
+                if main_elm is None:
+
+                    logger.add_warning("Element not found in the main grid, added on the fly",
+                                       value=elm_to_add.name)
+                    # Imported devices can point to temporary dependency
+                    # objects from the loaded grid. Rebind them first so the
+                    # inserted device joins the canonical main-grid graph.
+                    rebind_imported_device_references(
+                        elm_to_add=elm_to_add,
+                        main_elements_dict_by_type=main_elements_dict_by_type,
+                        use_secondary_key=use_secondary_key
+                    )
+                    self.add_element(elm_to_add)
+                    main_elms_dict[key] = elm_to_add
+
+                    # Set the main_elm to the recently added device so that
+                    # snapshot values at the profile time step of the recently added element,
+                    # after adding because the time series will be formatted in it
+                    main_elm = elm_to_add
+
+                # for every property with profile, set the profile value with the element value
+                for prop_name, profile_prop_name in main_elm.properties_with_profile.items():
+                    # copy the element profile properties to the main element at the time index t
+                    getattr(main_elm, profile_prop_name)[t] = getattr(elm_to_add, prop_name)

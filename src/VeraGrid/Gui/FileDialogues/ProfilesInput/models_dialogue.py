@@ -493,57 +493,6 @@ def build_main_elements_dict_by_type(main_grid: MultiCircuit,
     return main_elements_dict_by_type
 
 
-def assign_grid(t: int,
-                grid_to_add: MultiCircuit,
-                main_grid: MultiCircuit,
-                main_elements_dict_by_type: Dict[object, Dict[str, object]],
-                use_secondary_key: bool,
-                logger: Logger) -> None:
-    """
-    Assign all the values of the loaded grid to the profiles of the main grid at the time step t
-    :param t: time step index
-    :param grid_to_add: grid to add to the main cirucuit
-    :param main_grid: main grid
-    :param main_elements_dict_by_type: Cached dictionaries of main-grid elements by device type.
-    :param use_secondary_key: Use the secondary key ("code") to match
-    :param logger: Logger
-    """
-    device_type: object
-    main_elms_dict: Dict[str, object]
-    elms_from_the_grid_to_add: List[object]
-    elm_to_add: object
-    main_elm: object | None
-    key: str
-    prop: str
-    profile_prop: str
-
-    # for each device type that we see in the tree ...
-    for device_type, main_elms_dict in main_elements_dict_by_type.items():
-
-        # get list of devices
-        elms_from_the_grid_to_add = grid_to_add.get_elements_by_type(device_type)
-
-        # for each device
-        for elm_to_add in elms_from_the_grid_to_add:
-
-            # try to find the element in the main grid: fast way to avoid double lookup
-            key = elm_to_add.code if use_secondary_key else elm_to_add.idtag
-            main_elm = main_elms_dict.get(key, None)
-
-            if main_elm is not None:
-
-                # for every property with profile, set the profile value with the element value
-                for prop, profile_prop in main_elm.properties_with_profile.items():
-                    # copy the element profile properties to the main element at the time index t
-                    getattr(main_elm, profile_prop)[t] = getattr(elm_to_add, prop)
-
-            else:
-                logger.add_warning("Element not found in the main grid, added on the fly",
-                                   value=elm_to_add.name)
-                main_grid.add_element(elm_to_add)
-                main_elms_dict[key] = elm_to_add
-
-
 class ModelsInputGUI(QtWidgets.QDialog):
     """
     ModelsInputGUI
@@ -830,12 +779,13 @@ class ModelsInputGUI(QtWidgets.QDialog):
 
             if os.path.exists(entry.path):
                 loaded_grid = FileOpen(entry.path).open()
-                assign_grid(t=t,
-                            grid_to_add=loaded_grid,
-                            main_grid=main_grid,
-                            main_elements_dict_by_type=main_elements_dict_by_type,
-                            use_secondary_key=use_secondary_key,
-                            logger=logger)
+                main_grid.assign_grid(
+                    t=t,
+                    grid_to_add=loaded_grid,
+                    main_elements_dict_by_type=main_elements_dict_by_type,
+                    use_secondary_key=use_secondary_key,
+                    logger=logger
+                )
 
                 logger.add_info(msg="Loaded grid",
                                 device=name,
