@@ -596,7 +596,7 @@ def _compile_to_file(full_source: str, func_name: str) -> Callable:
     """
     import sys
 
-    header = "import numpy as np\nimport math\nfrom VeraGridEngine.Utils.Symbolic.symbolic import heaviside_num as _heaviside\n\n"
+    header = "import numpy as np\nimport math\nfrom numpy import nan\nfrom VeraGridEngine.Utils.Symbolic.symbolic import heaviside_num as _heaviside\n\n"
     full_content = header + full_source
 
     repo_root = Path(__file__).resolve().parents[4]

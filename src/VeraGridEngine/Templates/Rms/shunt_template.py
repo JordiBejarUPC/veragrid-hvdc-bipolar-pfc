@@ -29,7 +29,8 @@ def ShuntLoadBuild(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
     res_block = Block()
     pi = math.pi
     # Inputs:
-    inputs = [vfactory.add_var('Vm'), vfactory.add_var('Va')]
+    inputs = [vfactory.add_var('Vm', VarPowerFlowReferenceType.Vm),
+              vfactory.add_var('Va', VarPowerFlowReferenceType.Va)]
     Vm = inputs[0]
     Va = inputs[1]
     # Variables:

@@ -1050,7 +1050,7 @@ class SimulationsMain(TimeEventsMain):
         ops = sim.RmsOptions(
             time_step=self.ui.rms_h_spinBox.value(),
             simulation_time=self.ui.rms_sim_time_spinBox.value(),
-            tolerance=self.ui.tolerance_rms_spinBox.value(),
+            tolerance=1.0 / (10.0 ** self.ui.tolerance_rms_spinBox.value()),
             integration_method=self.ui.rms_integration_method_comboBox.currentData(),
             initialization_method=self.ui.rms_initialization_method_comboBox.currentData(),
         )
@@ -1077,7 +1077,7 @@ class SimulationsMain(TimeEventsMain):
         ops = sim.EmtOptions(
             time_step=self.ui.emt_h_spinBox.value(),
             simulation_time=self.ui.emt_sim_time_spinBox.value(),
-            tolerance=self.ui.tolerance_emt_spinBox.value(),
+            tolerance=1.0 / (10.0 ** self.ui.tolerance_emt_spinBox.value()),
             integration_method=self.ui.emt_integration_method_comboBox.currentData(),
             initialization_method=self.ui.emt_initialization_method_comboBox.currentData(),
             solver_type=self.ui.emt_solver_type_comboBox.currentData(),
