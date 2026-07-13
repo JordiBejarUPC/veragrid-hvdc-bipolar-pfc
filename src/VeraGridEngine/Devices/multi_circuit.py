@@ -27,7 +27,7 @@ from VeraGridEngine.Devices.types import ALL_DEV_TYPES, INJECTION_DEVICE_TYPES, 
 from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.Topology.topology import find_different_states
 from VeraGridEngine.enumerations import (DeviceType, ActionType, SubObjectType, ConverterControlType, ExternalGridMode,
-                                          BusGraphicType, VarPowerFlowReferenceType)
+                                         BusGraphicType, VarPowerFlowReferenceType)
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic_io import compare_blocks
 
@@ -235,14 +235,16 @@ def rebind_imported_device_references(elm_to_add: ALL_DEV_TYPES,
     rebound_objects_by_idtag: Dict[str, ALL_DEV_TYPES]
     main_key: str
     main_device: object
+    association_device: EditableDevice
+    association_main_device: object | None
 
     for prop_name, prop in elm_to_add.registered_properties.items():
         prop_value = getattr(elm_to_add, prop_name)
 
         if isinstance(prop.tpe, DeviceType):
             if isinstance(prop_value, EditableDevice):
-                main_elms_dict = main_elements_dict_by_type.get(prop.tpe, dict())
                 pointed_device = prop_value
+                main_elms_dict = main_elements_dict_by_type.get(pointed_device.device_type, dict())
                 main_pointed_device = main_elms_dict.get(
                     _get_element_lookup_key(elm=pointed_device, use_secondary_key=use_secondary_key),
                     None
@@ -258,10 +260,19 @@ def rebind_imported_device_references(elm_to_add: ALL_DEV_TYPES,
             if hasattr(prop_value, "device_type") and hasattr(prop_value, "rebind_device_references"):
                 main_elms_dict = main_elements_dict_by_type.get(prop_value.device_type, dict())
                 rebound_objects_by_idtag = dict()
+                association_values = prop_value.to_list() if hasattr(prop_value, "to_list") else list()
 
-                for main_key, main_device in main_elms_dict.items():
-                    if isinstance(main_device, EditableDevice):
-                        rebound_objects_by_idtag[main_device.idtag] = main_device
+                for association_device in association_values:
+                    if isinstance(association_device, EditableDevice):
+                        association_main_device = main_elms_dict.get(
+                            _get_element_lookup_key(elm=association_device, use_secondary_key=use_secondary_key),
+                            None
+                        )
+
+                        if isinstance(association_main_device, EditableDevice):
+                            rebound_objects_by_idtag[association_device.idtag] = association_main_device
+                        else:
+                            pass
                     else:
                         pass
 
@@ -3800,7 +3811,7 @@ class MultiCircuit(Assets):
                     _validate_line_emt_model_phases_present_in_static_object(logger=logger, line=elm)
                 elif elm.device_type == DeviceType.Transformer2WDevice:
                     _validate_transformer_emt_model_phases_present_in_static_object(logger=logger,
-                                                                                         transformer=elm)
+                                                                                    transformer=elm)
                 elif elm.device_type == DeviceType.VscDevice:
                     _validate_vsc_emt_model_phases_present_in_static_object(logger=logger, vsc=elm)
                 else:
@@ -3822,7 +3833,8 @@ class MultiCircuit(Assets):
                 #     pass
         return logger
 
-    def create_in_out_respecting_line_locations(self, line: dev.Line, bus: dev.Bus, remove_line: bool = False) -> tuple[dev.Line, dev.Line]:
+    def create_in_out_respecting_line_locations(self, line: dev.Line, bus: dev.Bus, remove_line: bool = False) -> tuple[
+        dev.Line, dev.Line]:
         """
         Create an in/out connection that splits a line at the point on its geographic path closest
         to the given bus.
@@ -4100,6 +4112,7 @@ class MultiCircuit(Assets):
         elm_to_add: ALL_DEV_TYPES
         prop_name: str
         profile_prop_name: str
+        added_elements: List[ALL_DEV_TYPES] = list()
 
         # for each device type that we see in the tree ...
         for device_type, main_elms_dict in main_elements_dict_by_type.items():
@@ -4115,8 +4128,8 @@ class MultiCircuit(Assets):
                 main_elm: ALL_DEV_TYPES | None = main_elms_dict.get(key, None)
 
                 if main_elm is None:
-
                     logger.add_warning("Element not found in the main grid, added on the fly",
+                                       device_class=elm_to_add.device_type.value,
                                        value=elm_to_add.name)
                     # Imported devices can point to temporary dependency
                     # objects from the loaded grid. Rebind them first so the
@@ -4128,13 +4141,27 @@ class MultiCircuit(Assets):
                     )
                     self.add_element(elm_to_add)
                     main_elms_dict[key] = elm_to_add
+                    added_elements.append(elm_to_add)
 
                     # Set the main_elm to the recently added device so that
                     # snapshot values at the profile time step of the recently added element,
                     # after adding because the time series will be formatted in it
                     main_elm = elm_to_add
+                else:
+                    pass
 
                 # for every property with profile, set the profile value with the element value
                 for prop_name, profile_prop_name in main_elm.properties_with_profile.items():
                     # copy the element profile properties to the main element at the time index t
                     getattr(main_elm, profile_prop_name)[t] = getattr(elm_to_add, prop_name)
+
+        # Some dependencies are imported later in the device-type order
+        # (for instance, branch templates after branches). Rebind the newly
+        # inserted objects once more after the full pass so their references
+        # point to the canonical main-grid objects.
+        for elm_to_add in added_elements:
+            rebind_imported_device_references(
+                elm_to_add=elm_to_add,
+                main_elements_dict_by_type=main_elements_dict_by_type,
+                use_secondary_key=use_secondary_key
+            )
