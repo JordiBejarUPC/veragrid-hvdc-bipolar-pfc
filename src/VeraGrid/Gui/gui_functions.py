@@ -5,13 +5,15 @@
 
 from __future__ import annotations
 import numpy as np
-from typing import Dict, List, Union, Any, Tuple, TYPE_CHECKING, Set, Sequence
+from enum import Enum
+from typing import Callable, Dict, List, Union, Any, Tuple, TYPE_CHECKING, Set, Sequence
 from PySide6 import QtCore, QtWidgets, QtGui
-from collections import defaultdict, OrderedDict
+from collections import defaultdict
 
 from VeraGridEngine.basic_structures import IntVec
 from VeraGridEngine.data_logger import DataLogger
 from VeraGridEngine.IO.cim.cgmes.cgmes_circuit import CgmesCircuit, CGMES_ASSETS
+from VeraGridEngine.IO.cim.cgmes.base import Base as CgmesBase
 from VeraGridEngine.Devices.Branches.line_locations import LineLocations
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.enumerations import SimulationTypes, WindingType
@@ -19,6 +21,9 @@ from VeraGrid.Gui.font_config import MENU_FONT_SIZE
 
 if TYPE_CHECKING:
     from VeraGrid.Gui.object_model import ObjectsModel
+
+
+ComboStableKey = Union[str, int, float, bool, None]
 
 
 def translate_context_menu_text(text: str) -> str:
@@ -715,37 +720,199 @@ def get_chck_list_model(lst: List[str], check_status: List[bool]) -> QtGui.QStan
     return list_model
 
 
-def enums_to_model(enums_lst: List[Any]) -> Tuple[Dict[str, Any], QtGui.QStandardItemModel]:
+class ComboModel(QtGui.QStandardItemModel):
     """
-    Get the model and dict from a list of Enum value
-    :param enums_lst:
-    :return: dictionary, model
+    Combo-box model storing translated display labels separately from runtime
+    values and persistent configuration keys.
     """
-    d = OrderedDict()
-    val_list = list()
-    for e in enums_lst:
-        d[e.value] = e
-        val_list.append(e.value)
 
-    mdl = get_list_model(val_list)
+    __slots__ = ("_translate",)
 
-    return d, mdl
+    SourceTextRole = QtCore.Qt.ItemDataRole.UserRole + 1
+    StableKeyRole = QtCore.Qt.ItemDataRole.UserRole + 2
 
-def enums_to_icons_model(enums_lst: List[Tuple[Any, str]]) -> Tuple[Dict[str, Any], QtGui.QStandardItemModel]:
-    """
-    Get the model and dict from a list of Enum value
-    :param enums_lst: Tuple of (enum, icon string)
-    :return: dictionary, model
-    """
-    d = OrderedDict()
-    val_list = list()
-    for e, icon_str in enums_lst:
-        d[e.value] = e
-        val_list.append((e.value, icon_str))
+    def __init__(self,
+                 enum_values: Sequence[Enum] | None = None,
+                 text_items: Sequence[Tuple[str, Any]] | None = None,
+                 icon_enum_values: Sequence[Tuple[Enum, str]] | None = None,
+                 icon_text_items: Sequence[Tuple[str, Any, str]] | None = None,
+                 translate: Callable[[str], str] | None = None) -> None:
+        """
+        Constructor.
 
-    mdl = get_icon_list_model(val_list)
+        :param enum_values: Optional enum values to add immediately.
+        :param text_items: Optional (label, runtime data) items to add immediately.
+        :param icon_enum_values: Optional (enum value, icon path) items to add immediately.
+        :param icon_text_items: Optional (label, runtime data, icon path) items to add immediately.
+        :param translate: Optional label translation function, typically ``self.tr``.
+        """
+        QtGui.QStandardItemModel.__init__(self)
+        self._translate: Callable[[str], str] | None = translate
+        if enum_values is None:
+            pass
+        else:
+            for enum_value in enum_values:
+                self.add_enum(enum_value=enum_value)
 
-    return d, mdl
+        if text_items is None:
+            pass
+        else:
+            for source_text, data in text_items:
+                stable_key: ComboStableKey
+                if isinstance(data, (str, int, float, bool)):
+                    stable_key = data
+                else:
+                    stable_key = str(source_text)
+                self.add_combo_item(source_text=str(source_text), data=data, stable_key=stable_key)
+
+        if icon_enum_values is None:
+            pass
+        else:
+            for enum_value, icon_path in icon_enum_values:
+                self.add_icon_enum(enum_value=enum_value, icon_path=icon_path)
+
+        if icon_text_items is None:
+            pass
+        else:
+            for source_text, data, icon_path in icon_text_items:
+                stable_key: ComboStableKey
+                if isinstance(data, (str, int, float, bool)):
+                    stable_key = data
+                else:
+                    stable_key = str(source_text)
+                self.add_combo_item(source_text=str(source_text),
+                                    data=data,
+                                    stable_key=stable_key,
+                                    icon_path=icon_path)
+
+    def _get_display_text(self, source_text: str) -> str:
+        """
+        Get the current display text for a source label.
+
+        :param source_text: Untranslated label.
+        :return: Translated label when a translator is available.
+        """
+        if self._translate is None:
+            return source_text
+        else:
+            return self._translate(source_text)
+
+    def add_combo_item(self,
+                       source_text: str,
+                       data: Any,
+                       stable_key: ComboStableKey,
+                       icon_path: str | None = None,
+                       checks: bool = False,
+                       check_value: bool = False) -> None:
+        """
+        Add one item with separate display text, runtime data and stable key.
+
+        :param source_text: Untranslated display label.
+        :param data: Runtime value returned by ``QComboBox.currentData()``.
+        :param stable_key: Serializable value used for settings persistence.
+        :param icon_path: Optional icon resource path.
+        :param checks: Add a check box to the item.
+        :param check_value: Initial check state when checks is true.
+        :return: Nothing.
+        """
+        display_text: str = self._get_display_text(source_text=source_text)
+        item = QtGui.QStandardItem(display_text)
+        item.setEditable(False)
+        item.setData(data, QtCore.Qt.ItemDataRole.UserRole)
+        item.setData(source_text, self.SourceTextRole)
+        item.setData(stable_key, self.StableKeyRole)
+        if icon_path is None:
+            pass
+        else:
+            icon = QtGui.QIcon()
+            icon.addPixmap(QtGui.QPixmap(icon_path))
+            item.setIcon(icon)
+        if checks:
+            item.setCheckable(True)
+            if check_value:
+                item.setCheckState(QtCore.Qt.CheckState.Checked)
+            else:
+                pass
+        else:
+            pass
+        self.appendRow(item)
+
+    def add_text(self,
+                 source_text: str,
+                 data: str,
+                 checks: bool = False,
+                 check_value: bool = False) -> None:
+        """
+        Add one text-backed item.
+
+        :param source_text: Untranslated display label.
+        :param data: Runtime string value.
+        :param checks: Add a check box to the item.
+        :param check_value: Initial check state when checks is true.
+        :return: Nothing.
+        """
+        self.add_combo_item(source_text=source_text,
+                            data=data,
+                            stable_key=data,
+                            checks=checks,
+                            check_value=check_value)
+
+    def add_enum(self,
+                 enum_value: Enum,
+                 checks: bool = False,
+                 check_value: bool = False) -> None:
+        """
+        Add one enum-backed item.
+
+        :param enum_value: Runtime enum value.
+        :param checks: Add a check box to the item.
+        :param check_value: Initial check state when checks is true.
+        :return: Nothing.
+        """
+        source_text: str = str(enum_value.value)
+        self.add_combo_item(source_text=source_text,
+                            data=enum_value,
+                            stable_key=source_text,
+                            checks=checks,
+                            check_value=check_value)
+
+    def add_icon_enum(self,
+                      enum_value: Enum,
+                      icon_path: str,
+                      checks: bool = False,
+                      check_value: bool = False) -> None:
+        """
+        Add one enum-backed item with an icon.
+
+        :param enum_value: Runtime enum value.
+        :param icon_path: Icon resource path.
+        :param checks: Add a check box to the item.
+        :param check_value: Initial check state when checks is true.
+        :return: Nothing.
+        """
+        source_text: str = str(enum_value.value)
+        self.add_combo_item(source_text=source_text,
+                            data=enum_value,
+                            stable_key=source_text,
+                            icon_path=icon_path,
+                            checks=checks,
+                            check_value=check_value)
+
+    def retranslate(self, translate: Callable[[str], str] | None) -> None:
+        """
+        Refresh all display labels from their stored source text.
+
+        :param translate: New translation function.
+        :return: Nothing.
+        """
+        self._translate = translate
+        for row_idx in range(self.rowCount()):
+            item = self.item(row_idx)
+            source_text = item.data(self.SourceTextRole)
+            if isinstance(source_text, str):
+                item.setText(self._get_display_text(source_text=source_text))
+            else:
+                pass
 
 
 class CustomFileSystemModel(QtWidgets.QFileSystemModel):
@@ -1022,21 +1189,19 @@ CIM_LOADED_ROLE = QtCore.Qt.UserRole + 121
 
 
 def _get_cim_object_id(obj: Any):
-    if hasattr(obj, 'rdfid') and obj.rdfid is not None:
+    if isinstance(obj, CgmesBase) and obj.rdfid is not None:
         return obj.rdfid
-    return id(obj)
+    else:
+        return id(obj)
 
 
 def _get_cim_object_label(class_tag, device):
     if class_tag is not None:
         return class_tag
-    if hasattr(device, 'name'):
-        if device.name is not None:
-            if device.name != '':
-                return device.name
-    if hasattr(device, 'rdfid'):
+    elif isinstance(device, CgmesBase):
         return device.rdfid
-    return str(device)
+    else:
+        return str(device)
 
 
 def _collect_cim_ancestor_ids(item: QtGui.QStandardItem) -> Set[Any]:
@@ -1087,7 +1252,7 @@ def populate_cim_item_children(item: QtGui.QStandardItem, editable=False):
 
         property_value = getattr(device, property_name)
 
-        if hasattr(property_value, 'rdfid'):
+        if isinstance(property_value, CgmesBase):
 
             prop_id = _get_cim_object_id(property_value)
             we_are_in_a_recursive_loop = prop_id in ancestor_ids
@@ -1164,7 +1329,7 @@ def add_cim_object_node(class_tag,
 
             property_value = getattr(device, property_name)
 
-            if hasattr(property_value, 'rdfid'):
+            if isinstance(property_value, CgmesBase):
 
                 prop_id = _get_cim_object_id(property_value)
                 we_are_in_a_recursive_loop = prop_id in already_visited

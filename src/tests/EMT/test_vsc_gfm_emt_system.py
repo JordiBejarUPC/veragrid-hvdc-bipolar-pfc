@@ -322,8 +322,8 @@ def _build_dc_fed_gfm_island() -> tuple:
     # ``di/dt`` well-posed; 1.0e-4 pu is small enough that the GFM
     # behaves as an ideal voltage source compared to the 0.1 pu filter.
     vsc_template = get_gfm_emt_template(vf=grid.var_factory, name="GFM_VSC")
-    R_s_var = _find_name_in_block("R_s_GFM_VSC", vsc_template.block)
-    X_s_var = _find_name_in_block("X_s_GFM_VSC", vsc_template.block)
+    R_s_var = _find_name_in_block("R_s", vsc_template.block)
+    X_s_var = _find_name_in_block("X_s", vsc_template.block)
     assert R_s_var is not None and X_s_var is not None
     vsc_template.block.event_dict[R_s_var] = grid.var_factory.add_const(1.0e-4)
     vsc_template.block.event_dict[X_s_var] = grid.var_factory.add_const(1.0e-4)
@@ -434,10 +434,10 @@ def test_vsc_gfm_emt_dc_fed_island_initializes_consistently() -> None:
 
     x0 = problem.get_x0()
 
-    omega_var = _find_name_in_block("omega_GFM_VSC", vsc.emt_model)
-    Epk_var = _find_name_in_block("Epk_GFM_VSC", vsc.emt_model)
-    Pe_var = _find_name_in_block("Pe_GFM_VSC", vsc.emt_model)
-    theta_var = _find_name_in_block("theta_GFM_VSC", vsc.emt_model)
+    omega_var = _find_name_in_block("omega", vsc.emt_model)
+    Epk_var = _find_name_in_block("Epk", vsc.emt_model)
+    Pe_var = _find_name_in_block("Pe", vsc.emt_model)
+    theta_var = _find_name_in_block("theta", vsc.emt_model)
     assert omega_var is not None
     assert Epk_var is not None
     assert Pe_var is not None
@@ -532,9 +532,9 @@ def test_vsc_gfm_emt_dc_fed_island_event_registration_and_update_path() -> None:
     )
     full_params: np.ndarray = np.concatenate((runtime_values, constant_values))
 
-    Pe_var = _find_name_in_block("Pe_GFM_VSC", vsc.emt_model)
-    omega_var = _find_name_in_block("omega_GFM_VSC", vsc.emt_model)
-    Epk_var = _find_name_in_block("Epk_GFM_VSC", vsc.emt_model)
+    Pe_var = _find_name_in_block("Pe", vsc.emt_model)
+    omega_var = _find_name_in_block("omega", vsc.emt_model)
+    Epk_var = _find_name_in_block("Epk", vsc.emt_model)
     assert Pe_var is not None 
     assert omega_var is not None
     assert Epk_var is not None
@@ -633,9 +633,9 @@ def test_vsc_gfm_emt_dc_fed_island_full_simulate_load_step_response() -> None:
     assert np.all(np.isfinite(y)), "EMT state trajectory must remain finite"
     assert np.all(np.isfinite(dy)), "EMT derivative trajectory must remain finite"
 
-    i_A_var = _find_name_in_block("i_A_GFM_VSC", vsc.emt_model)
-    omega_var = _find_name_in_block("omega_GFM_VSC", vsc.emt_model)
-    Pe_var = _find_name_in_block("Pe_GFM_VSC", vsc.emt_model)
+    i_A_var = _find_name_in_block("i_A", vsc.emt_model)
+    omega_var = _find_name_in_block("omega", vsc.emt_model)
+    Pe_var = _find_name_in_block("Pe", vsc.emt_model)
     assert i_A_var is not None 
     assert omega_var is not None
     assert Pe_var is not None

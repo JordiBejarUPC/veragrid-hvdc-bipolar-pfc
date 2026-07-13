@@ -12,7 +12,7 @@ THETA_WRAP_PERIOD_RAD: float = 2.0 * np.pi
 # power reference change in the GFM controller
 # TEST_NAME: str = "p_ref_step_v3_2pref"
 # SIMULINK_CSV_NAME: str = "simulink_results_G4L_p_ref_2events.csv"
-# VERAGRID_CSV_NAME: str = "veragrid_G4L_p_gfm_v3_2pref.csv"
+# VERAGRID_CSV_NAME: str = "veragrid_G4L_p_gfm_v5_no_dc.csv"
 # EVENT_TIMES_S: list[float] = [1.0, 1.5]
 # EVENT_WINDOW_HALF_WIDTH_S: float = 0.025
 # STEADY_STATE_WINDOWS: list[tuple[str, float, float, str]] = [
@@ -23,7 +23,7 @@ THETA_WRAP_PERIOD_RAD: float = 2.0 * np.pi
 # stairs
 # TEST_NAME: str = "p_ref_step_v3_stair"
 # SIMULINK_CSV_NAME: str = "simulink_results_G4L_p_ref_stair.csv"
-# VERAGRID_CSV_NAME: str = "veragrid_G4L_p_gfm_v3_2pref.csv"
+# VERAGRID_CSV_NAME: str = "veragrid_G4L_p_gfm_v5_no_dc.csv"
 # EVENT_TIMES_S: list[float] = [1.0, 1.5]
 # EVENT_WINDOW_HALF_WIDTH_S: float = 0.025
 # STEADY_STATE_WINDOWS: list[tuple[str, float, float, str]] = [
@@ -31,9 +31,20 @@ THETA_WRAP_PERIOD_RAD: float = 2.0 * np.pi
 #     ("post_event_1", 1.25, 1.30, "After first event"),
 #     ("post_event_2", 1.75, 1.80, "After second event"),
 # ]
-TEST_NAME: str = "p_ref_step_v4_noVA"
-SIMULINK_CSV_NAME: str = "simulink_results_G4L_p_ref_noVA.csv"
-VERAGRID_CSV_NAME: str = "veragrid_G4L_p_gfm_noVA.csv"
+# TEST_NAME: str = "p_ref_step_v4_noVA"
+# SIMULINK_CSV_NAME: str = "simulink_results_G4L_p_ref_noVA.csv"
+# VERAGRID_CSV_NAME: str = "veragrid_G4L_p_gfm_noVA.csv"
+# EVENT_TIMES_S: list[float] = [1.0, 1.5]
+# EVENT_WINDOW_HALF_WIDTH_S: float = 0.025
+# STEADY_STATE_WINDOWS: list[tuple[str, float, float, str]] = [
+#     ("pre_event", 0.25, 0.30, "Before first event"),
+#     ("post_event_1", 1.25, 1.30, "After first event"),
+#     ("post_event_2", 1.75, 1.80, "After second event"),
+# ]
+
+TEST_NAME: str = "p_ref_step_v5_noDC"
+SIMULINK_CSV_NAME: str = "simulink_results_G4L_p_ref_noDC.csv"
+VERAGRID_CSV_NAME: str = "veragrid_G4L_p_gfm_v5_no_dc.csv"
 EVENT_TIMES_S: list[float] = [1.0, 1.5]
 EVENT_WINDOW_HALF_WIDTH_S: float = 0.025
 STEADY_STATE_WINDOWS: list[tuple[str, float, float, str]] = [

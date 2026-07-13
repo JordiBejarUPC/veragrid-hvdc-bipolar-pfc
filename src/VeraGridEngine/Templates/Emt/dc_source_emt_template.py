@@ -55,9 +55,9 @@ def get_dc_current_source_emt_template(vf: VarFactory,
     templ.name = name
     templ.block.name = name
 
-    v_dc: Var = vf.add_var(name=f"v_dc_{name}", reference=VarPowerFlowReferenceType.Vdc)
-    i_dc: Var = vf.add_var(name=f"i_dc_{name}", reference=VarPowerFlowReferenceType.Idc)
-    i_src: Var = vf.add_var(name=f"I_src_{name}")
+    v_dc: Var = vf.add_var(name=f"v_dc", reference=VarPowerFlowReferenceType.Vdc)
+    i_dc: Var = vf.add_var(name=f"i_dc", reference=VarPowerFlowReferenceType.Idc)
+    i_src: Var = vf.add_var(name=f"I_src")
     templ.block.event_dict[i_src] = vf.add_const(float(source_current_value))
 
     templ.block.in_vars = [v_dc]
@@ -109,9 +109,9 @@ def get_controlled_dc_current_source_emt_template(vf: VarFactory,
     templ.name = name
     templ.block.name = name
 
-    v_dc: Var = vf.add_var(name=f"v_dc_{name}", reference=VarPowerFlowReferenceType.Vdc)
-    i_cmd: Var = vf.add_var(name=f"i_cmd_{name}")
-    i_dc: Var = vf.add_var(name=f"i_dc_{name}", reference=VarPowerFlowReferenceType.Idc)
+    v_dc: Var = vf.add_var(name=f"v_dc", reference=VarPowerFlowReferenceType.Vdc)
+    i_cmd: Var = vf.add_var(name=f"i_cmd")
+    i_dc: Var = vf.add_var(name=f"i_dc", reference=VarPowerFlowReferenceType.Idc)
 
     templ.block.in_vars = [v_dc, i_cmd]
     templ.block.algebraic_vars = [i_dc]
@@ -170,10 +170,10 @@ def get_dc_voltage_source_emt_template(vf: VarFactory,
     templ.name = name
     templ.block.name = name
 
-    v_dc: Var = vf.add_var(name=f"v_dc_{name}", reference=VarPowerFlowReferenceType.Vdc)
-    i_dc: Var = vf.add_var(name=f"i_dc_{name}", reference=VarPowerFlowReferenceType.Idc)
-    v_src: Var = vf.add_var(name=f"V_src_{name}")
-    g_src: Var = vf.add_var(name=f"g_src_{name}")
+    v_dc: Var = vf.add_var(name=f"v_dc", reference=VarPowerFlowReferenceType.Vdc)
+    i_dc: Var = vf.add_var(name=f"i_dc", reference=VarPowerFlowReferenceType.Idc)
+    v_src: Var = vf.add_var(name=f"V_src")
+    g_src: Var = vf.add_var(name=f"g_src")
     templ.block.event_dict[v_src] = vf.add_const(
         None if source_voltage_value is None else float(source_voltage_value)
     )
@@ -234,10 +234,10 @@ def get_controlled_dc_voltage_source_emt_template(vf: VarFactory,
     templ.name = name
     templ.block.name = name
 
-    v_dc: Var = vf.add_var(name=f"v_dc_{name}", reference=VarPowerFlowReferenceType.Vdc)
-    v_cmd: Var = vf.add_var(name=f"v_cmd_{name}")
-    i_dc: Var = vf.add_var(name=f"i_dc_{name}", reference=VarPowerFlowReferenceType.Idc)
-    g_src: Var = vf.add_var(name=f"g_src_{name}")
+    v_dc: Var = vf.add_var(name=f"v_dc", reference=VarPowerFlowReferenceType.Vdc)
+    v_cmd: Var = vf.add_var(name=f"v_cmd")
+    i_dc: Var = vf.add_var(name=f"i_dc", reference=VarPowerFlowReferenceType.Idc)
+    g_src: Var = vf.add_var(name=f"g_src")
     templ.block.event_dict[g_src] = vf.add_const(float(source_conductance_value))
 
     templ.block.in_vars = [v_dc, v_cmd]

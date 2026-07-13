@@ -685,7 +685,7 @@ for name in [
 fig_overview, axes_overview = plt.subplots(3, 2, figsize=(14, 11), sharex=True)
 axes_overview = axes_overview.ravel()
 
-for name in ["v_A_Bus1_emt_template", "v_B_Bus1_emt_template", "v_C_Bus1_emt_template"]:
+for name in ["v_A", "v_B", "v_C"]:
     plot_if_available(axes_overview[0], t_arr, try_get_series(problem, y_arr, name), name)
 axes_overview[0].set_title("Grid-Side AC Voltages")
 axes_overview[0].grid(True)
@@ -911,11 +911,11 @@ else:
 fig_si_overview, axes_si_overview = plt.subplots(3, 2, figsize=(16, 12), sharex=True)
 axes_si_overview = axes_si_overview.ravel()
 
-plot_scaled_with_tracking(axes_si_overview[0], t_arr, problem, y_arr, "v_A_Bus1_emt_template",
+plot_scaled_with_tracking(axes_si_overview[0], t_arr, problem, y_arr, "v_A",
                           V_phase_rms_base / 1000.0, "v_A_Bus1 [kV]")
-plot_scaled_with_tracking(axes_si_overview[0], t_arr, problem, y_arr, "v_B_Bus1_emt_template",
+plot_scaled_with_tracking(axes_si_overview[0], t_arr, problem, y_arr, "v_B",
                           V_phase_rms_base / 1000.0, "v_B_Bus1 [kV]")
-plot_scaled_with_tracking(axes_si_overview[0], t_arr, problem, y_arr, "v_C_Bus1_emt_template",
+plot_scaled_with_tracking(axes_si_overview[0], t_arr, problem, y_arr, "v_C",
                           V_phase_rms_base / 1000.0, "v_C_Bus1 [kV]")
 axes_si_overview[0].set_title("Grid-Side AC Voltages [kV phase-to-neutral instantaneous]")
 axes_si_overview[0].set_ylabel("Voltage [kV]")
@@ -1285,9 +1285,9 @@ def add_csv_array(column_name: str, series):
         csv_columns[column_name] = series
 
 
-add_csv_series("vA_Bus1_kV", "v_A_Bus1_emt_template", V_phase_rms_base / 1000.0)
-add_csv_series("vB_Bus1_kV", "v_B_Bus1_emt_template", V_phase_rms_base / 1000.0)
-add_csv_series("vC_Bus1_kV", "v_C_Bus1_emt_template", V_phase_rms_base / 1000.0)
+add_csv_series("vA_Bus1_kV", "v_A", V_phase_rms_base / 1000.0)
+add_csv_series("vB_Bus1_kV", "v_B", V_phase_rms_base / 1000.0)
+add_csv_series("vC_Bus1_kV", "v_C", V_phase_rms_base / 1000.0)
 add_csv_series("iA_grid_A_sim_sign", "i_f_A_G4L_grid_side_converter", Ibase_vg, negate=True)
 add_csv_series("iB_grid_A_sim_sign", "i_f_B_G4L_grid_side_converter", Ibase_vg, negate=True)
 add_csv_series("iC_grid_A_sim_sign", "i_f_C_G4L_grid_side_converter", Ibase_vg, negate=True)

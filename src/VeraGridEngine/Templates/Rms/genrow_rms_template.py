@@ -20,8 +20,8 @@ def get_genrow_rms_template(vfactory: VarFactory, name="Genrow rms template") ->
     templ.tpe = DeviceType.GeneratorDevice
     templ.name = name
 
-    inputs = [vfactory.add_var("Vm_" + name, reference=VarPowerFlowReferenceType.Vm),
-              vfactory.add_var("Va_" + name, reference=VarPowerFlowReferenceType.Va)]
+    inputs = [vfactory.add_var("Vm", reference=VarPowerFlowReferenceType.Vm),
+              vfactory.add_var("Va", reference=VarPowerFlowReferenceType.Va)]
 
     P_g = vfactory.add_var('P_g', reference=VarPowerFlowReferenceType.P)
     Q_g = vfactory.add_var('Q_g', reference=VarPowerFlowReferenceType.Q)

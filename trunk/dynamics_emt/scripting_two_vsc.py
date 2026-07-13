@@ -1108,7 +1108,7 @@ def add_dc_load_step_event(case: TwoVscCase, models: EmtModels) -> None:
     constants: CaseConstants = get_case_constants()
     events_group: EmtEventsGroup = EmtEventsGroup("two_vsc_events")
     case.circuit.add_emt_events_group(events_group)
-    pl0_var: Optional[Var] = find_name_in_block("Pl0_dc_load_1_emt", models.dc_load_1)
+    pl0_var: Optional[Var] = find_name_in_block("Pl0", models.dc_load_1)
 
     if pl0_var is not None:
         event: EmtEvent = EmtEvent(
@@ -1120,7 +1120,7 @@ def add_dc_load_step_event(case: TwoVscCase, models: EmtModels) -> None:
         )
         case.circuit.add_emt_event(event)
     else:
-        print("Warning: DC-load EMT event parameter 'Pl0_dc_load_1_emt' was not found. Running steady-state EMT only.")
+        print("Warning: DC-load EMT event parameter 'Pl0' was not found. Running steady-state EMT only.")
 
 
 def get_signal(

@@ -26,8 +26,8 @@ def VoltageSourceBuild(
     templ = RmsModelTemplate()
     templ.tpe = DeviceType.ExternalGridDevice
 
-    Vm = vfactory.add_var("Vm_" + name, VarPowerFlowReferenceType.Vm)
-    Va = vfactory.add_var("Va_" + name, VarPowerFlowReferenceType.Va)
+    Vm = vfactory.add_var("Vm", VarPowerFlowReferenceType.Vm)
+    Va = vfactory.add_var("Va", VarPowerFlowReferenceType.Va)
     inputs = [Vm, Va]
 
     P = vfactory.add_var("P")

@@ -53,7 +53,7 @@ def PVLoadBuild(vfactory: VarFactory, name: str = "", Pg0_val=1.0, Vg0_val=1.0) 
     templ.tpe = DeviceType.LoadDevice
     
     # Input: Vm (voltage magnitude)
-    Vm = vfactory.add_var("Vm_" + name)
+    Vm = vfactory.add_var("Vm")
     inputs = [Vm]
     
     # Variables

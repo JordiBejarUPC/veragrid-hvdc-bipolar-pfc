@@ -1287,14 +1287,14 @@ def _build_fault_voltage_candidate_groups(config: FaultCaseConfig,
     """
     candidate_groups: List[List[str]] = list()
     source_names: Dict[str, str] = dict({
-        "A": f"v_A_{bus_source.name}_emt_template",
-        "B": f"v_B_{bus_source.name}_emt_template",
-        "C": f"v_C_{bus_source.name}_emt_template",
+        "A": "v_A",
+        "B": "v_B",
+        "C": "v_C",
     })
     remote_names: Dict[str, str] = dict({
-        "A": f"v_A_{bus_remote.name}_emt_template",
-        "B": f"v_B_{bus_remote.name}_emt_template",
-        "C": f"v_C_{bus_remote.name}_emt_template",
+        "A": "v_A",
+        "B": "v_B",
+        "C": "v_C",
     })
     phase_label: str
 
@@ -1410,14 +1410,14 @@ def _collect_results(problem: EmtProblemDae,
     interface_residuals: np.ndarray = np.zeros((time_values.size, 3), dtype=float)
     rms_fault_currents: np.ndarray = np.zeros(3, dtype=float)
     source_voltage_names: Tuple[str, str, str] = (
-        f"v_A_{bus_source.name}_emt_template",
-        f"v_B_{bus_source.name}_emt_template",
-        f"v_C_{bus_source.name}_emt_template",
+        "v_A",
+        "v_B",
+        "v_C",
     )
     remote_voltage_names: Tuple[str, str, str] = (
-        f"v_A_{bus_remote.name}_emt_template",
-        f"v_B_{bus_remote.name}_emt_template",
-        f"v_C_{bus_remote.name}_emt_template",
+        "v_A",
+        "v_B",
+        "v_C",
     )
     sending_current_names: Tuple[str, str, str] = (
         "if_A_faulted_line_branch",

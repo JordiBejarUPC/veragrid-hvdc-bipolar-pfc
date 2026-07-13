@@ -236,10 +236,10 @@ def build_dc_fed_gfm_island(kdp: float, kdq: float,
         source_conductance_value=200.0, name="DC_Gen").block
 
     vsc_template = get_gfm_emt_template(vf=grid.var_factory, name="GFM_VSC")
-    R_s_var = _find_name_in_block("R_s_GFM_VSC", vsc_template.block)
-    X_s_var = _find_name_in_block("X_s_GFM_VSC", vsc_template.block)
-    Kdp_var = _find_name_in_block("Kdp_GFM_VSC", vsc_template.block)
-    Kdq_var = _find_name_in_block("Kdq_GFM_VSC", vsc_template.block)
+    R_s_var = _find_name_in_block("R_s", vsc_template.block)
+    X_s_var = _find_name_in_block("X_s", vsc_template.block)
+    Kdp_var = _find_name_in_block("Kdp", vsc_template.block)
+    Kdq_var = _find_name_in_block("Kdq", vsc_template.block)
     assert all(v is not None for v in (R_s_var, X_s_var, Kdp_var, Kdq_var))
     # GFM internal impedance lives in the filter line; make GFM near-ideal.
     vsc_template.block.event_dict[R_s_var] = grid.var_factory.add_const(1.0e-4)

@@ -444,13 +444,13 @@ def test_switched_vsc_emt_passes_validation_and_switches_gates() -> None:
     problem = EmtProblemDae(grid=grid, options=switched_options, pf_results=pf_results, pf_results_3Ph=pf_res_3ph)
     assert problem is not None
 
-    gate_a_var = _find_name_in_block("gate_a_VSC", vsc.emt_model)
-    gate_b_var = _find_name_in_block("gate_b_VSC", vsc.emt_model)
-    gate_c_var = _find_name_in_block("gate_c_VSC", vsc.emt_model)
-    i_A_var = _find_name_in_block("i_A_VSC", vsc.emt_model)
-    i_B_var = _find_name_in_block("i_B_VSC", vsc.emt_model)
-    i_C_var = _find_name_in_block("i_C_VSC", vsc.emt_model)
-    v_dc_var = _find_name_in_block("v_dc_VSC", vsc.emt_model)
+    gate_a_var = _find_name_in_block("gate_a", vsc.emt_model)
+    gate_b_var = _find_name_in_block("gate_b", vsc.emt_model)
+    gate_c_var = _find_name_in_block("gate_c", vsc.emt_model)
+    i_A_var = _find_name_in_block("i_A", vsc.emt_model)
+    i_B_var = _find_name_in_block("i_B", vsc.emt_model)
+    i_C_var = _find_name_in_block("i_C", vsc.emt_model)
+    v_dc_var = _find_name_in_block("v_dc", vsc.emt_model)
 
     assert gate_a_var is not None
     assert gate_b_var is not None
@@ -470,10 +470,10 @@ def test_switched_vsc_emt_passes_validation_and_switches_gates() -> None:
     constant_values = np.asarray([const.value for const in problem.get_parameters_values()], dtype=float)
     full_params = np.concatenate((runtime_values, constant_values))
     runtime_mode_map = {var.name: var for var in problem.get_runtime_mode_parameters()}
-    gate_a_mode_idx = problem.uid2idx_event_params[runtime_mode_map["gate_a_mode_VSC_plant_bridge"].uid]
-    gate_b_mode_idx = problem.uid2idx_event_params[runtime_mode_map["gate_b_mode_VSC_plant_bridge"].uid]
-    gate_c_mode_idx = problem.uid2idx_event_params[runtime_mode_map["gate_c_mode_VSC_plant_bridge"].uid]
-    switching_enabled_idx = problem.uid2idx_event_params[runtime_mode_map["switching_enabled_mode_VSC"].uid]
+    gate_a_mode_idx = problem.uid2idx_event_params[runtime_mode_map["gate_a_mode"].uid]
+    gate_b_mode_idx = problem.uid2idx_event_params[runtime_mode_map["gate_b_mode"].uid]
+    gate_c_mode_idx = problem.uid2idx_event_params[runtime_mode_map["gate_c_mode"].uid]
+    switching_enabled_idx = problem.uid2idx_event_params[runtime_mode_map["switching_enabled_mode"].uid]
     gate_a_trace = list()
     gate_b_trace = list()
     gate_c_trace = list()

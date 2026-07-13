@@ -203,67 +203,67 @@ def get_simple_generator_emt_template(vf: VarFactory, name: str = "simple_emt_ty
     # --------------------------------------------------------------------------------------
     # Inputs: instantaneous abc terminal voltages in pu (at bus)
     # --------------------------------------------------------------------------------------
-    v_A = vf.add_var(name=f"v_A_{name}", reference= VarPowerFlowReferenceType.v_A)
-    v_B = vf.add_var(name=f"v_B_{name}", reference= VarPowerFlowReferenceType.v_B)
-    v_C = vf.add_var(name=f"v_C_{name}", reference= VarPowerFlowReferenceType.v_C)
-    Tm = vf.add_var(name=f"Tm_{name}")
-    v_f = vf.add_var(name=f"v_f_{name}")
+    v_A = vf.add_var(name=f"v_A", reference= VarPowerFlowReferenceType.v_A)
+    v_B = vf.add_var(name=f"v_B", reference= VarPowerFlowReferenceType.v_B)
+    v_C = vf.add_var(name=f"v_C", reference= VarPowerFlowReferenceType.v_C)
+    Tm = vf.add_var(name=f"Tm")
+    v_f = vf.add_var(name=f"v_f")
 
-    d_v_A = vf.add_var(name=f"d_v_A_{name}", reference=VarPowerFlowReferenceType.d_v_A)
-    d_v_B = vf.add_var(name=f"d_v_B_{name}", reference=VarPowerFlowReferenceType.d_v_B)
-    d_v_C = vf.add_var(name=f"d_v_C_{name}", reference=VarPowerFlowReferenceType.d_v_C)
-    p_A = vf.add_var(name=f"P_A_{name}", reference=VarPowerFlowReferenceType.P_A)
-    q_A = vf.add_var(name=f"Q_A_{name}", reference=VarPowerFlowReferenceType.Q_A)
-    p_B = vf.add_var(name=f"P_B_{name}", reference=VarPowerFlowReferenceType.P_B)
-    q_B = vf.add_var(name=f"Q_B_{name}", reference=VarPowerFlowReferenceType.Q_B)
-    p_C = vf.add_var(name=f"P_C_{name}", reference=VarPowerFlowReferenceType.P_C)
-    q_C = vf.add_var(name=f"Q_C_{name}", reference=VarPowerFlowReferenceType.Q_C)
+    d_v_A = vf.add_var(name=f"d_v_A", reference=VarPowerFlowReferenceType.d_v_A)
+    d_v_B = vf.add_var(name=f"d_v_B", reference=VarPowerFlowReferenceType.d_v_B)
+    d_v_C = vf.add_var(name=f"d_v_C", reference=VarPowerFlowReferenceType.d_v_C)
+    p_A = vf.add_var(name=f"P_A", reference=VarPowerFlowReferenceType.P_A)
+    q_A = vf.add_var(name=f"Q_A", reference=VarPowerFlowReferenceType.Q_A)
+    p_B = vf.add_var(name=f"P_B", reference=VarPowerFlowReferenceType.P_B)
+    q_B = vf.add_var(name=f"Q_B", reference=VarPowerFlowReferenceType.Q_B)
+    p_C = vf.add_var(name=f"P_C", reference=VarPowerFlowReferenceType.P_C)
+    q_C = vf.add_var(name=f"Q_C", reference=VarPowerFlowReferenceType.Q_C)
     inputs = [v_A, v_B, v_C, Tm, v_f]
     # --------------------------------------------------------------------------------------
     # States (pu, except theta [rad])
     # --------------------------------------------------------------------------------------
 
-    theta = vf.add_var("theta_" + name)  # electrical angle [rad]
-    omega = vf.add_var(name=f"omega_{name}")  # speed [pu]
-    psi_d = vf.add_var("psi_d_" + name)  # flux linkages [pu] on psi_base = Vbase/omega_base
-    psi_q = vf.add_var("psi_q_" + name)
-    psi_f = vf.add_var("psi_f_" + name)
-    psi_0 = vf.add_var("psi_0_" + name)
+    theta = vf.add_var("theta")  # electrical angle [rad]
+    omega = vf.add_var(name=f"omega")  # speed [pu]
+    psi_d = vf.add_var("psi_d")  # flux linkages [pu] on psi_base = Vbase/omega_base
+    psi_q = vf.add_var("psi_q")
+    psi_f = vf.add_var("psi_f")
+    psi_0 = vf.add_var("psi_0")
 
 
     # Diff vars (derivatives)
-    d_omega = vf.add_diff_var(name = f"d_omega_{name}", base_var=omega)
-    d_theta = vf.add_diff_var(name = f"d_theta_{name}", base_var=theta)
-    d_psi_d = vf.add_diff_var(name = f"d_psi_d_{name}", base_var=psi_d)
-    d_psi_q = vf.add_diff_var(name = f"d_psi_q_{name}", base_var=psi_q)
-    d_psi_0 = vf.add_diff_var(name = f"d_psi_0_{name}", base_var=psi_0)
-    d_psi_f = vf.add_diff_var(name = f"d_psi_f_{name}", base_var=psi_f)
+    d_omega = vf.add_diff_var(name = f"d_omega", base_var=omega)
+    d_theta = vf.add_diff_var(name = f"d_theta", base_var=theta)
+    d_psi_d = vf.add_diff_var(name = f"d_psi_d", base_var=psi_d)
+    d_psi_q = vf.add_diff_var(name = f"d_psi_q", base_var=psi_q)
+    d_psi_0 = vf.add_diff_var(name = f"d_psi_0", base_var=psi_0)
+    d_psi_f = vf.add_diff_var(name = f"d_psi_f", base_var=psi_f)
 
     # --------------------------------------------------------------------------------------
     # Algebraic eqs
     # --------------------------------------------------------------------------------------
-    i_A = vf.add_var(name=f"i_A_{name}", reference= VarPowerFlowReferenceType.i_A)
-    i_B = vf.add_var(name=f"i_B_{name}", reference= VarPowerFlowReferenceType.i_B)
-    i_C = vf.add_var(name=f"i_C_{name}", reference= VarPowerFlowReferenceType.i_C)
+    i_A = vf.add_var(name=f"i_A", reference= VarPowerFlowReferenceType.i_A)
+    i_B = vf.add_var(name=f"i_B", reference= VarPowerFlowReferenceType.i_B)
+    i_C = vf.add_var(name=f"i_C", reference= VarPowerFlowReferenceType.i_C)
 
     # dq0 voltages
-    v_d = vf.add_var("v_d_" + name)
-    v_q = vf.add_var("v_q_" + name)
-    v_0 = vf.add_var("v_0_" + name)
+    v_d = vf.add_var("v_d")
+    v_q = vf.add_var("v_q")
+    v_0 = vf.add_var("v_0")
 
     # dq0 currents
-    i_d = vf.add_var("i_d_" + name)
-    i_q = vf.add_var("i_q_" + name)
-    i_0 = vf.add_var("i_0_" + name)
+    i_d = vf.add_var("i_d")
+    i_q = vf.add_var("i_q")
+    i_0 = vf.add_var("i_0")
 
     # field
-    i_f = vf.add_var(name=f"i_f_{name}")
+    i_f = vf.add_var(name=f"i_f")
 
     # powers/torques
-    Te = vf.add_var("Te_" + name)
-    Pe = vf.add_var("Pe_" + name)
-    Qe = vf.add_var("Qe_" + name)
-    Pm = vf.add_var("Pm_" + name)
+    Te = vf.add_var("Te")
+    Pe = vf.add_var("Pe")
+    Qe = vf.add_var("Qe")
+    Pm = vf.add_var("Pm")
 
     # --------------------------------------------------------------------------------------
     # Parameters
@@ -283,7 +283,7 @@ def get_simple_generator_emt_template(vf: VarFactory, name: str = "simple_emt_ty
     L0  = vf.add_var("L0")
 
     omega_ref = vf.add_var("omega_ref")  # pu
-    delta = vf.add_var("delta_" + name)  # difference between rotor angle and grid angle
+    delta = vf.add_var("delta")  # difference between rotor angle and grid angle
 
     phi_v_init: sym.Expr
     phi_init: sym.Expr
@@ -510,146 +510,146 @@ def get_generator_emt_type_template(vf: VarFactory, name: str = "emt_type_genera
     # ----------------------------------------------------------------------------------
     # Inputs: instantaneous abc terminal voltages at the bus
     # ----------------------------------------------------------------------------------
-    v_A = vf.add_var("v_A_" + name, reference=VarPowerFlowReferenceType.v_A)
-    v_B = vf.add_var("v_B_" + name, reference=VarPowerFlowReferenceType.v_B)
-    v_C = vf.add_var("v_C_" + name, reference=VarPowerFlowReferenceType.v_C)
-    Tm = vf.add_var("Tm_" + name)
-    v_f = vf.add_var("v_f_" + name)
+    v_A = vf.add_var("v_A", reference=VarPowerFlowReferenceType.v_A)
+    v_B = vf.add_var("v_B", reference=VarPowerFlowReferenceType.v_B)
+    v_C = vf.add_var("v_C", reference=VarPowerFlowReferenceType.v_C)
+    Tm = vf.add_var("Tm")
+    v_f = vf.add_var("v_f")
 
-    d_v_A = vf.add_var("d_v_A_" + name, reference=VarPowerFlowReferenceType.d_v_A)
-    d_v_B = vf.add_var("d_v_B_" + name, reference=VarPowerFlowReferenceType.d_v_B)
-    d_v_C = vf.add_var("d_v_C_" + name, reference=VarPowerFlowReferenceType.d_v_C)
-    p_A = vf.add_var("P_A_" + name, reference=VarPowerFlowReferenceType.P_A)
-    q_A = vf.add_var("Q_A_" + name, reference=VarPowerFlowReferenceType.Q_A)
-    p_B = vf.add_var("P_B_" + name, reference=VarPowerFlowReferenceType.P_B)
-    q_B = vf.add_var("Q_B_" + name, reference=VarPowerFlowReferenceType.Q_B)
-    p_C = vf.add_var("P_C_" + name, reference=VarPowerFlowReferenceType.P_C)
-    q_C = vf.add_var("Q_C_" + name, reference=VarPowerFlowReferenceType.Q_C)
+    d_v_A = vf.add_var("d_v_A", reference=VarPowerFlowReferenceType.d_v_A)
+    d_v_B = vf.add_var("d_v_B", reference=VarPowerFlowReferenceType.d_v_B)
+    d_v_C = vf.add_var("d_v_C", reference=VarPowerFlowReferenceType.d_v_C)
+    p_A = vf.add_var("P_A", reference=VarPowerFlowReferenceType.P_A)
+    q_A = vf.add_var("Q_A", reference=VarPowerFlowReferenceType.Q_A)
+    p_B = vf.add_var("P_B", reference=VarPowerFlowReferenceType.P_B)
+    q_B = vf.add_var("Q_B", reference=VarPowerFlowReferenceType.Q_B)
+    p_C = vf.add_var("P_C", reference=VarPowerFlowReferenceType.P_C)
+    q_C = vf.add_var("Q_C", reference=VarPowerFlowReferenceType.Q_C)
     inputs = [v_A, v_B, v_C, Tm, v_f]
 
     # ----------------------------------------------------------------------------------
     # State variables
     # ----------------------------------------------------------------------------------
     # Flux linkages
-    psi_d = vf.add_var("psi_d_" + name)
-    psi_q = vf.add_var("psi_q_" + name)
-    psi_0 = vf.add_var("psi_0_" + name)
-    psi_f = vf.add_var("psi_f_" + name)
-    psi_d1 = vf.add_var("psi_d1_" + name)
-    psi_d2 = vf.add_var("psi_d2_" + name)
-    psi_q1 = vf.add_var("psi_q1_" + name)
-    psi_q2 = vf.add_var("psi_q2_" + name)
-    psi_q3 = vf.add_var("psi_q3_" + name)
+    psi_d = vf.add_var("psi_d")
+    psi_q = vf.add_var("psi_q")
+    psi_0 = vf.add_var("psi_0")
+    psi_f = vf.add_var("psi_f")
+    psi_d1 = vf.add_var("psi_d1")
+    psi_d2 = vf.add_var("psi_d2")
+    psi_q1 = vf.add_var("psi_q1")
+    psi_q2 = vf.add_var("psi_q2")
+    psi_q3 = vf.add_var("psi_q3")
 
     # Rotor electrical angle and mechanical speed
-    theta_elec = vf.add_var("theta_elec_" + name)
-    w_mec = vf.add_var("w_mec_" + name)
+    theta_elec = vf.add_var("theta_elec")
+    w_mec = vf.add_var("w_mec")
 
     # Differential variables
-    d_psi_d = vf.add_diff_var(name=f"d_psi_d_{name}", base_var=psi_d)
-    d_psi_q = vf.add_diff_var(name=f"d_psi_q_{name}", base_var=psi_q)
-    d_psi_0 = vf.add_diff_var(name=f"d_psi_0_{name}", base_var=psi_0)
-    d_psi_f = vf.add_diff_var(name=f"d_psi_f_{name}", base_var=psi_f)
-    d_psi_d1 = vf.add_diff_var(name=f"d_psi_d1_{name}", base_var=psi_d1)
-    d_psi_d2 = vf.add_diff_var(name=f"d_psi_d2_{name}", base_var=psi_d2)
-    d_psi_q1 = vf.add_diff_var(name=f"d_psi_q1_{name}", base_var=psi_q1)
-    d_psi_q2 = vf.add_diff_var(name=f"d_psi_q2_{name}", base_var=psi_q2)
-    d_psi_q3 = vf.add_diff_var(name=f"d_psi_q3_{name}", base_var=psi_q3)
+    d_psi_d = vf.add_diff_var(name=f"d_psi_d", base_var=psi_d)
+    d_psi_q = vf.add_diff_var(name=f"d_psi_q", base_var=psi_q)
+    d_psi_0 = vf.add_diff_var(name=f"d_psi_0", base_var=psi_0)
+    d_psi_f = vf.add_diff_var(name=f"d_psi_f", base_var=psi_f)
+    d_psi_d1 = vf.add_diff_var(name=f"d_psi_d1", base_var=psi_d1)
+    d_psi_d2 = vf.add_diff_var(name=f"d_psi_d2", base_var=psi_d2)
+    d_psi_q1 = vf.add_diff_var(name=f"d_psi_q1", base_var=psi_q1)
+    d_psi_q2 = vf.add_diff_var(name=f"d_psi_q2", base_var=psi_q2)
+    d_psi_q3 = vf.add_diff_var(name=f"d_psi_q3", base_var=psi_q3)
 
-    d_theta_elec = vf.add_diff_var(name=f"d_theta_elec_{name}", base_var=theta_elec)
-    d_w_mec = vf.add_diff_var(name=f"d_w_mec_{name}", base_var=w_mec)
+    d_theta_elec = vf.add_diff_var(name=f"d_theta_elec", base_var=theta_elec)
+    d_w_mec = vf.add_diff_var(name=f"d_w_mec", base_var=w_mec)
 
     # ----------------------------------------------------------------------------------
     # Algebraic variables
     # ----------------------------------------------------------------------------------
     # dq0 voltages
-    v_d = vf.add_var("v_d_" + name)
-    v_q = vf.add_var("v_q_" + name)
-    v_0 = vf.add_var("v_0_" + name)
+    v_d = vf.add_var("v_d")
+    v_q = vf.add_var("v_q")
+    v_0 = vf.add_var("v_0")
 
     # abc stator currents (positive when machine injects into the bus)
-    i_A = vf.add_var("i_A_" + name, reference=VarPowerFlowReferenceType.i_A)
-    i_B = vf.add_var("i_B_" + name, reference=VarPowerFlowReferenceType.i_B)
-    i_C = vf.add_var("i_C_" + name, reference=VarPowerFlowReferenceType.i_C)
+    i_A = vf.add_var("i_A_", reference=VarPowerFlowReferenceType.i_A)
+    i_B = vf.add_var("i_B_", reference=VarPowerFlowReferenceType.i_B)
+    i_C = vf.add_var("i_C_", reference=VarPowerFlowReferenceType.i_C)
 
     # dq0 and rotor currents
-    i_d = vf.add_var("i_d_" + name)
-    i_q = vf.add_var("i_q_" + name)
-    i_0 = vf.add_var("i_0_" + name)
-    i_f = vf.add_var("i_f_" + name)
-    i_d1 = vf.add_var("i_d1_" + name)
-    i_d2 = vf.add_var("i_d2_" + name)
-    i_q1 = vf.add_var("i_q1_" + name)
-    i_q2 = vf.add_var("i_q2_" + name)
-    i_q3 = vf.add_var("i_q3_" + name)
+    i_d = vf.add_var("i_d")
+    i_q = vf.add_var("i_q")
+    i_0 = vf.add_var("i_0")
+    i_f = vf.add_var("i_f_")
+    i_d1 = vf.add_var("i_d1_")
+    i_d2 = vf.add_var("i_d2_")
+    i_q1 = vf.add_var("i_q1_")
+    i_q2 = vf.add_var("i_q2_")
+    i_q3 = vf.add_var("i_q3_")
 
     # Mechanical/electrical auxiliaries
-    w_elec = vf.add_var("w_elec_" + name)
+    w_elec = vf.add_var("w_elec_")
 
     # Powers and torque
-    Te = vf.add_var("Te_" + name)
-    Pe = vf.add_var("Pe_" + name)
-    Qe = vf.add_var("Qe_" + name)
-    Pm = vf.add_var("Pm_" + name)
+    Te = vf.add_var("Te_")
+    Pe = vf.add_var("Pe_")
+    Qe = vf.add_var("Qe_")
+    Pm = vf.add_var("Pm_")
 
     # ----------------------------------------------------------------------------------
     # Parameters
     # ----------------------------------------------------------------------------------
     omega_base = vf.add_var("omega_base")
 
-    La = vf.add_var("La_" + name)
-    Lmq = vf.add_var("Lmq_" + name)
-    X0 = vf.add_var("X0_" + name)
-    Lf = vf.add_var("Lf_" + name)
+    La = vf.add_var("La_")
+    Lmq = vf.add_var("Lmq_")
+    X0 = vf.add_var("X0_")
+    Lf = vf.add_var("Lf_")
     # Electrical resistances
-    Ra = vf.add_var("Ra_" + name)
-    Rf = vf.add_var("Rf_" + name)
-    Rd1 = vf.add_var("Rd1_" + name)
-    Rd2 = vf.add_var("Rd2_" + name)
-    Rq1 = vf.add_var("Rq1_" + name)
-    Rq2 = vf.add_var("Rq2_" + name)
-    Rq3 = vf.add_var("Rq3_" + name)
-    R0 = vf.add_var("R0_" + name)
+    Ra = vf.add_var("Ra_")
+    Rf = vf.add_var("Rf_")
+    Rd1 = vf.add_var("Rd1_")
+    Rd2 = vf.add_var("Rd2_")
+    Rq1 = vf.add_var("Rq1_")
+    Rq2 = vf.add_var("Rq2_")
+    Rq3 = vf.add_var("Rq3_")
+    R0 = vf.add_var("R0_")
 
     # Self inductances
-    Ld = vf.add_var("Ld_" + name)
-    Lq = vf.add_var("Lq_" + name)
-    L0 = vf.add_var("L0_" + name)
-    Lff = vf.add_var("Lff_" + name)
-    Ld1 = vf.add_var("Ld1_" + name)
-    Ld2 = vf.add_var("Ld2_" + name)
-    Lq1 = vf.add_var("Lq1_" + name)
-    Lq2 = vf.add_var("Lq2_" + name)
-    Lq3 = vf.add_var("Lq3_" + name)
+    Ld = vf.add_var("Ld_")
+    Lq = vf.add_var("Lq_")
+    L0 = vf.add_var("L0_")
+    Lff = vf.add_var("Lff_")
+    Ld1 = vf.add_var("Ld1_")
+    Ld2 = vf.add_var("Ld2_")
+    Lq1 = vf.add_var("Lq1_")
+    Lq2 = vf.add_var("Lq2_")
+    Lq3 = vf.add_var("Lq3_")
 
     # Mutual inductances
-    Mdf = vf.add_var("Mdf_" + name)
-    Mdd1 = vf.add_var("Mdd1_" + name)
-    Mdd2 = vf.add_var("Mdd2_" + name)
-    Mqq1 = vf.add_var("Mqq1_" + name)
-    Mqq2 = vf.add_var("Mqq2_" + name)
-    Mqq3 = vf.add_var("Mqq3_" + name)
-    Mfd1 = vf.add_var("Mfd1_" + name)
-    Mfd2 = vf.add_var("Mfd2_" + name)
-    Md1d2 = vf.add_var("Md1d2_" + name)
-    Mq1q2 = vf.add_var("Mq1q2_" + name)
-    Mq1q3 = vf.add_var("Mq1q3_" + name)
-    Mq2q3 = vf.add_var("Mq2q3_" + name)
+    Mdf = vf.add_var("Mdf_")
+    Mdd1 = vf.add_var("Mdd1_")
+    Mdd2 = vf.add_var("Mdd2_")
+    Mqq1 = vf.add_var("Mqq1_")
+    Mqq2 = vf.add_var("Mqq2_")
+    Mqq3 = vf.add_var("Mqq3_")
+    Mfd1 = vf.add_var("Mfd1_")
+    Mfd2 = vf.add_var("Mfd2_")
+    Md1d2 = vf.add_var("Md1d2_")
+    Mq1q2 = vf.add_var("Mq1q2_")
+    Mq1q3 = vf.add_var("Mq1q3_")
+    Mq2q3 = vf.add_var("Mq2q3_")
 
     # Machine and base data
-    p_poles = vf.add_var("p_poles_" + name)
-    w_elec_base = vf.add_var("w_elec_base_" + name)
-    w_mec_base = vf.add_var("w_mec_base_" + name)
+    p_poles = vf.add_var("p_poles_")
+    w_elec_base = vf.add_var("w_elec_base_")
+    w_mec_base = vf.add_var("w_mec_base_")
 
     # Mechanical equivalent one-mass data
-    H = vf.add_var("H_" + name)
-    D = vf.add_var("D_" + name)
-    w_mec_ref = vf.add_var("w_mec_ref_" + name)
+    H = vf.add_var("H_")
+    D = vf.add_var("D_")
+    w_mec_ref = vf.add_var("w_mec_ref_")
 
     # ----------------------------------------------------------------------------------
     # Parameters needed for initialization from PF
     # ----------------------------------------------------------------------------------
-    delta = vf.add_var("delta_" + name)
+    delta = vf.add_var("delta_")
 
     phi_v_init: sym.Expr
     phi_init: sym.Expr
@@ -1066,100 +1066,100 @@ def get_generator_sauer_pai_type_emt_template(vf: VarFactory, name: str = "sauer
     # ------------------------------------------------------------------
     # Inputs: abc terminal voltages + controller inputs
     # ------------------------------------------------------------------
-    v_A = vf.add_var("v_A_" + name, reference=VarPowerFlowReferenceType.v_A)
-    v_B = vf.add_var("v_B_" + name, reference=VarPowerFlowReferenceType.v_B)
-    v_C = vf.add_var("v_C_" + name, reference=VarPowerFlowReferenceType.v_C)
-    Tm = vf.add_var("Tm_" + name, shared_reference = "Tm_reference")
-    v_f = vf.add_var("v_f_" + name, shared_reference = "v_f_reference")
+    v_A = vf.add_var("v_A_", reference=VarPowerFlowReferenceType.v_A)
+    v_B = vf.add_var("v_B_", reference=VarPowerFlowReferenceType.v_B)
+    v_C = vf.add_var("v_C_", reference=VarPowerFlowReferenceType.v_C)
+    Tm = vf.add_var("Tm_", shared_reference = "Tm_reference")
+    v_f = vf.add_var("v_f_", shared_reference = "v_f_reference")
 
-    d_v_A = vf.add_var("d_v_A_" + name, reference=VarPowerFlowReferenceType.d_v_A)
-    d_v_B = vf.add_var("d_v_B_" + name, reference=VarPowerFlowReferenceType.d_v_B)
-    d_v_C = vf.add_var("d_v_C_" + name, reference=VarPowerFlowReferenceType.d_v_C)
-    p_A = vf.add_var("P_A_" + name, reference=VarPowerFlowReferenceType.P_A)
-    q_A = vf.add_var("Q_A_" + name, reference=VarPowerFlowReferenceType.Q_A)
-    p_B = vf.add_var("P_B_" + name, reference=VarPowerFlowReferenceType.P_B)
-    q_B = vf.add_var("Q_B_" + name, reference=VarPowerFlowReferenceType.Q_B)
-    p_C = vf.add_var("P_C_" + name, reference=VarPowerFlowReferenceType.P_C)
-    q_C = vf.add_var("Q_C_" + name, reference=VarPowerFlowReferenceType.Q_C)
+    d_v_A = vf.add_var("d_v_A_", reference=VarPowerFlowReferenceType.d_v_A)
+    d_v_B = vf.add_var("d_v_B_", reference=VarPowerFlowReferenceType.d_v_B)
+    d_v_C = vf.add_var("d_v_C_", reference=VarPowerFlowReferenceType.d_v_C)
+    p_A = vf.add_var("P_A_", reference=VarPowerFlowReferenceType.P_A)
+    q_A = vf.add_var("Q_A_", reference=VarPowerFlowReferenceType.Q_A)
+    p_B = vf.add_var("P_B_", reference=VarPowerFlowReferenceType.P_B)
+    q_B = vf.add_var("Q_B_", reference=VarPowerFlowReferenceType.Q_B)
+    p_C = vf.add_var("P_C_", reference=VarPowerFlowReferenceType.P_C)
+    q_C = vf.add_var("Q_C_", reference=VarPowerFlowReferenceType.Q_C)
     inputs = [v_A, v_B, v_C, Tm, v_f]
     #
     # ------------------------------------------------------------------
     # State variables
     # ------------------------------------------------------------------
-    theta_abs = vf.add_var("theta_abs_" + name)
-    omega = vf.add_var("omega_" + name, shared_reference = "omega_reference")
+    theta_abs = vf.add_var("theta_abs_")
+    omega = vf.add_var("omega_", shared_reference = "omega_reference")
 
-    psi_d = vf.add_var("psi_d_" + name)
-    psi_q = vf.add_var("psi_q_" + name)
-    psi_0 = vf.add_var("psi_0_" + name)
+    psi_d = vf.add_var("psi_d_")
+    psi_q = vf.add_var("psi_q_")
+    psi_0 = vf.add_var("psi_0_")
 
-    e_qp = vf.add_var("e_qp_" + name)
-    e_dp = vf.add_var("e_dp_" + name)
-    psi_pp_d = vf.add_var("psi_pp_d_" + name)
-    psi_pp_q = vf.add_var("psi_pp_q_" + name)
+    e_qp = vf.add_var("e_qp_")
+    e_dp = vf.add_var("e_dp_")
+    psi_pp_d = vf.add_var("psi_pp_d_")
+    psi_pp_q = vf.add_var("psi_pp_q_")
 
     # Differential variables
-    d_theta_abs = vf.add_diff_var(name=f"d_theta_abs_{name}", base_var=theta_abs)
-    d_omega = vf.add_diff_var(name=f"d_omega_{name}", base_var=omega)
+    d_theta_abs = vf.add_diff_var(name=f"d_theta_abs", base_var=theta_abs)
+    d_omega = vf.add_diff_var(name=f"d_omega", base_var=omega)
 
-    d_psi_d = vf.add_diff_var(name=f"d_psi_d_{name}", base_var=psi_d)
-    d_psi_q = vf.add_diff_var(name=f"d_psi_q_{name}", base_var=psi_q)
-    d_psi_0 = vf.add_diff_var(name=f"d_psi_0_{name}", base_var=psi_0)
+    d_psi_d = vf.add_diff_var(name=f"d_psi_d", base_var=psi_d)
+    d_psi_q = vf.add_diff_var(name=f"d_psi_q", base_var=psi_q)
+    d_psi_0 = vf.add_diff_var(name=f"d_psi_0", base_var=psi_0)
 
-    d_e_qp = vf.add_diff_var(name=f"d_e_qp_{name}", base_var=e_qp)
-    d_e_dp = vf.add_diff_var(name=f"d_e_dp_{name}", base_var=e_dp)
-    d_psi_pp_d = vf.add_diff_var(name=f"d_psi_pp_d_{name}", base_var=psi_pp_d)
-    d_psi_pp_q = vf.add_diff_var(name=f"d_psi_pp_q_{name}", base_var=psi_pp_q)
+    d_e_qp = vf.add_diff_var(name=f"d_e_qp", base_var=e_qp)
+    d_e_dp = vf.add_diff_var(name=f"d_e_dp", base_var=e_dp)
+    d_psi_pp_d = vf.add_diff_var(name=f"d_psi_pp_d", base_var=psi_pp_d)
+    d_psi_pp_q = vf.add_diff_var(name=f"d_psi_pp_q", base_var=psi_pp_q)
 
     # ------------------------------------------------------------------
     # Algebraic variables
     # ------------------------------------------------------------------
-    v_d = vf.add_var("v_d_" + name)
-    v_q = vf.add_var("v_q_" + name)
-    v_0 = vf.add_var("v_0_" + name)
+    v_d = vf.add_var("v_d_")
+    v_q = vf.add_var("v_q_")
+    v_0 = vf.add_var("v_0_")
 
-    i_d = vf.add_var("i_d_" + name)
-    i_q = vf.add_var("i_q_" + name)
-    i_0 = vf.add_var("i_0_" + name)
+    i_d = vf.add_var("i_d_")
+    i_q = vf.add_var("i_q_")
+    i_0 = vf.add_var("i_0_")
 
-    i_A = vf.add_var("i_A_" + name, reference=VarPowerFlowReferenceType.i_A)
-    i_B = vf.add_var("i_B_" + name, reference=VarPowerFlowReferenceType.i_B)
-    i_C = vf.add_var("i_C_" + name, reference=VarPowerFlowReferenceType.i_C)
+    i_A = vf.add_var("i_A", reference=VarPowerFlowReferenceType.i_A)
+    i_B = vf.add_var("i_B", reference=VarPowerFlowReferenceType.i_B)
+    i_C = vf.add_var("i_C", reference=VarPowerFlowReferenceType.i_C)
 
-    Te = vf.add_var("Te_" + name, shared_reference = "Te_reference")
-    p_e = vf.add_var("p_e_" + name)
-    q_e = vf.add_var("q_e_" + name)
+    Te = vf.add_var("Te", shared_reference = "Te_reference")
+    p_e = vf.add_var("p_e")
+    q_e = vf.add_var("q_e")
 
-    IRPu = vf.add_var("IRPu_" + name, shared_reference = "IRPu_reference")
+    IRPu = vf.add_var("IRPu", shared_reference = "IRPu_reference")
 
     # ------------------------------------------------------------------
     # Parameters
     # ------------------------------------------------------------------
-    ra = vf.add_var("ra_" + name)
+    ra = vf.add_var("ra")
 
-    xd = vf.add_var("xd_" + name)
-    xq = vf.add_var("xq_" + name)
-    xdp = vf.add_var("xdp_" + name)
-    xqp = vf.add_var("xqp_" + name)
-    xdpp = vf.add_var("xdpp_" + name)
-    xqpp = vf.add_var("xqpp_" + name)
-    xl = vf.add_var("xl_" + name)
-    x0 = vf.add_var("x0_" + name)
+    xd = vf.add_var("xd")
+    xq = vf.add_var("xq")
+    xdp = vf.add_var("xdp")
+    xqp = vf.add_var("xqp")
+    xdpp = vf.add_var("xdpp")
+    xqpp = vf.add_var("xqpp")
+    xl = vf.add_var("xl")
+    x0 = vf.add_var("x0")
 
-    Td0p = vf.add_var("Td0p_" + name)
-    Tq0p = vf.add_var("Tq0p_" + name)
-    Td0pp = vf.add_var("Td0pp_" + name)
-    Tq0pp = vf.add_var("Tq0pp_" + name)
+    Td0p = vf.add_var("Td0p")
+    Tq0p = vf.add_var("Tq0p")
+    Td0pp = vf.add_var("Td0pp")
+    Tq0pp = vf.add_var("Tq0pp")
 
-    gamma_d1 = vf.add_var("gamma_d1_" + name)
-    gamma_q1 = vf.add_var("gamma_q1_" + name)
-    gamma_d2 = vf.add_var("gamma_d2_" + name)
-    gamma_q2 = vf.add_var("gamma_q2_" + name)
+    gamma_d1 = vf.add_var("gamma_d1")
+    gamma_q1 = vf.add_var("gamma_q1")
+    gamma_d2 = vf.add_var("gamma_d2")
+    gamma_q2 = vf.add_var("gamma_q2")
 
-    H = vf.add_var("H_" + name)
-    D = vf.add_var("D_" + name)
-    omega_b = vf.add_var("omega_b_" + name)
-    omega_s = vf.add_var("omega_s_" + name)
+    H = vf.add_var("H")
+    D = vf.add_var("D")
+    omega_b = vf.add_var("omega_b")
+    omega_s = vf.add_var("omega_s")
 
     phi_v_init: sym.Expr
     phi_init: sym.Expr
@@ -1472,28 +1472,28 @@ def get_generator_sauer_pai_type_emt_template(vf: VarFactory, name: str = "sauer
 
 def get_governor_emt(vf: VarFactory, name: str = "Governor") -> EmtModelTemplate:
     templ = EmtModelTemplate(name=name)
-    inputs = [vf.add_var(name=f"omega_{name}", shared_reference = "omega_reference"), vf.add_var(name=f'Te_{name}', shared_reference = "Te_reference")]
-    Tm = vf.add_var(name=f"Tm_{name}", shared_reference = "Tm_reference")  # Mechanical power input (pu
-    Pm_ref = vf.add_var(f'Pm_ref_{name}')
-    y_gov0 = vf.add_var(f'y_gov0_{name}')
-    y2_3 = vf.add_var(f'y2_3_gov_{name}')
+    inputs = [vf.add_var(name=f"omega", shared_reference = "omega_reference"), vf.add_var(name=f'Te', shared_reference = "Te_reference")]
+    Tm = vf.add_var(name=f"Tm", shared_reference = "Tm_reference")  # Mechanical power input (pu
+    Pm_ref = vf.add_var(f'Pm_ref')
+    y_gov0 = vf.add_var(f'y_gov0')
+    y2_3 = vf.add_var(f'y2_3_gov')
 
-    d_y_gov0 = vf.add_diff_var(name=f'd_y_gov0_{name}', base_var=y_gov0)
-    K = vf.add_var(f"K_{name}")  # governor gain (inverse droop)
-    Pmax = vf.add_var(f"Pmax_{name}")  # max mechanical power (pu)
-    Pmin = vf.add_var(f"Pmin_{name}")  # min mechanical power (pu)
-    Uc = vf.add_var(f"Uc_{name}")  # max valve closing rate (pu/s)
-    Uo = vf.add_var(f"Uo_{name}")  # max valve opening rate (pu/s)
-    T_aux = vf.add_var(f"T_aux_{name}")
+    d_y_gov0 = vf.add_diff_var(name=f'd_y_gov0', base_var=y_gov0)
+    K = vf.add_var(f"K")  # governor gain (inverse droop)
+    Pmax = vf.add_var(f"Pmax")  # max mechanical power (pu)
+    Pmin = vf.add_var(f"Pmin")  # min mechanical power (pu)
+    Uc = vf.add_var(f"Uc")  # max valve closing rate (pu/s)
+    Uo = vf.add_var(f"Uo")  # max valve opening rate (pu/s)
+    T_aux = vf.add_var(f"T_aux")
 
     # Control
-    Kp = vf.add_var(f"Kp_{name}")
-    Ki = vf.add_var(f"Ki_{name}")
-    omega_ref = vf.add_var(f'omega_ref_{name}')
-    p0 = vf.add_var(f'p0_{name}')
-    P0 = vf.add_var(f'P0_{name}')
-    T1 = vf.add_var(f'T1_gov_{name}')
-    T3 = vf.add_var(f'T3_gov_{name}')
+    Kp = vf.add_var(f"Kp")
+    Ki = vf.add_var(f"Ki")
+    omega_ref = vf.add_var(f'omega_ref')
+    p0 = vf.add_var(f'p0')
+    P0 = vf.add_var(f'P0')
+    T1 = vf.add_var(f'T1_gov')
+    T3 = vf.add_var(f'T3_gov')
 
     events_dict = {
         # control parameters
@@ -1584,14 +1584,14 @@ def get_stabilizer_emt(vf: VarFactory, name: str = "stabilizer") -> EmtModelTemp
     # input variables
     # omega: omega from generator
 
-    inputs = [vf.add_var(f"omega_{name}", shared_reference = "omega_reference")]
+    inputs = [vf.add_var(f"omega", shared_reference = "omega_reference")]
 
     # PSS parameters with typical values
 
-    Ks = vf.add_var(f"Ks_{name}")  # stabilizer gain
-    VPssMaxPu = vf.add_var(f"VPssMaxPu_{name}")  # max stabilizer output
-    VPssMinPu = vf.add_var(f"VPssMinPu_{name}")  # min stabilizer output
-    SNom = vf.add_var(f"SNom_{name}")  # nominal apparent power
+    Ks = vf.add_var(f"Ks")  # stabilizer gain
+    VPssMaxPu = vf.add_var(f"VPssMaxPu")  # max stabilizer output
+    VPssMinPu = vf.add_var(f"VPssMinPu")  # min stabilizer output
+    SNom = vf.add_var(f"SNom")  # nominal apparent power
 
     events_dict = {
         # Stabilizer parameters
@@ -1602,17 +1602,17 @@ def get_stabilizer_emt(vf: VarFactory, name: str = "stabilizer") -> EmtModelTemp
     }
 
     # variables
-    Vpss = vf.add_var(f'V_pss_{name}', shared_reference = "V_pss_reference")
-    y1 = vf.add_var(f'y_stabilizer1_{name}')
-    y2 = vf.add_var(f'y_stabilizer2_{name}')
-    y3 = vf.add_var(f'y_stabilizer3_{name}')
-    y4 = vf.add_var(f'y_stabilizer4_{name}')
-    y5 = vf.add_var(f'y_stabilizer5_{name}')
+    Vpss = vf.add_var(f'V_pss', shared_reference = "V_pss_reference")
+    y1 = vf.add_var(f'y_stabilizer1')
+    y2 = vf.add_var(f'y_stabilizer2')
+    y3 = vf.add_var(f'y_stabilizer3')
+    y4 = vf.add_var(f'y_stabilizer4')
+    y5 = vf.add_var(f'y_stabilizer5')
 
-    d_y1 = vf.add_diff_var(name=f'd_y_stabilizer1_{name}', base_var=y1)
-    d_y2 = vf.add_diff_var(name=f'd_y_stabilizer2_{name}', base_var=y2)
-    d_y4 = vf.add_diff_var(name=f'd_y_stabilizer4_{name}', base_var=y4)
-    d_y5 = vf.add_diff_var(name=f'd_y_stabilizer5_{name}', base_var=y5)
+    d_y1 = vf.add_diff_var(name=f'd_y_stabilizer1', base_var=y1)
+    d_y2 = vf.add_diff_var(name=f'd_y_stabilizer2', base_var=y2)
+    d_y4 = vf.add_diff_var(name=f'd_y_stabilizer4', base_var=y4)
+    d_y5 = vf.add_diff_var(name=f'd_y_stabilizer5', base_var=y5)
 
     speed_deviation = inputs[0] - vf.add_const(1.0)
     washout_output = Ks * (y1 - y2)
@@ -1681,60 +1681,60 @@ def get_exciter_emt(vf: VarFactory, name: str = "exciter") -> EmtModelTemplate:
     # Va: measured stator voltage (from generator) (pu)
     # Vpss: output from power system stabilizer (pu)
 
-    IRPu = vf.add_var(f"IRPu_{name}", shared_reference = "IRPu_reference")
-    v_A = vf.add_var("v_A_" + name, reference=VarPowerFlowReferenceType.v_A)
-    v_B = vf.add_var("v_B_" + name, reference=VarPowerFlowReferenceType.v_B)
-    v_C = vf.add_var("v_C_" + name, reference=VarPowerFlowReferenceType.v_C)
-    Vpss = vf.add_var(f"V_pss_{name}", shared_reference = "V_pss_reference")
+    IRPu = vf.add_var(f"IRPu", shared_reference = "IRPu_reference")
+    v_A = vf.add_var("v_A_", reference=VarPowerFlowReferenceType.v_A)
+    v_B = vf.add_var("v_B_", reference=VarPowerFlowReferenceType.v_B)
+    v_C = vf.add_var("v_C_", reference=VarPowerFlowReferenceType.v_C)
+    Vpss = vf.add_var(f"V_pss", shared_reference = "V_pss_reference")
 
     inputs = [IRPu, v_A, v_B, v_C, Vpss]
 
-    Vm = vf.add_var(f"Vm_{name}")
+    Vm = vf.add_var(f"Vm")
 
-    Vf = vf.add_var(f"Vf_{name}", shared_reference = "v_f_reference")
-    Efe = vf.add_var(f'Efe_{name}')
-    UsRefPu = vf.add_var(name=f"UsRefPu_{name}")  # reference voltage (pu)
-    y1 = vf.add_var(f'y_exciter1_{name}')
-    y2 = vf.add_var(f'y_exciter2_{name}')
-    y3 = vf.add_var(f'y_exciter3_{name}')
-    y4 = vf.add_var(f'y_exciter4_{name}')
+    Vf = vf.add_var(f"Vf", shared_reference = "v_f_reference")
+    Efe = vf.add_var(f'Efe')
+    UsRefPu = vf.add_var(name=f"UsRefPu")  # reference voltage (pu)
+    y1 = vf.add_var(f'y_exciter1')
+    y2 = vf.add_var(f'y_exciter2')
+    y3 = vf.add_var(f'y_exciter3')
+    y4 = vf.add_var(f'y_exciter4')
 
-    d_y1 = vf.add_diff_var(name=f'd_y_exciter1_{name}', base_var=y1)
-    d_y2 = vf.add_diff_var(name=f'd_y_exciter2_{name}', base_var=y2)
-    d_y3 = vf.add_diff_var(name=f'd_y_exciter3_{name}', base_var=y3)
-    d_y4 = vf.add_diff_var(name=f'd_y_exciter4_{name}', base_var=y4)
-    d_Vf = vf.add_diff_var(name=f'd_Vf_{name}', base_var=Vf)
+    d_y1 = vf.add_diff_var(name=f'd_y_exciter1', base_var=y1)
+    d_y2 = vf.add_diff_var(name=f'd_y_exciter2', base_var=y2)
+    d_y3 = vf.add_diff_var(name=f'd_y_exciter3', base_var=y3)
+    d_y4 = vf.add_diff_var(name=f'd_y_exciter4', base_var=y4)
+    d_Vf = vf.add_diff_var(name=f'd_Vf', base_var=Vf)
 
     # Exciter internal variables
-    VeMaxPu = vf.add_var(f'VeMaxPu_{name}')
-    u_aux = vf.add_var(f'u_aux_{name}')
+    VeMaxPu = vf.add_var(f'VeMaxPu')
+    u_aux = vf.add_var(f'u_aux')
 
     # ______________________________________________________________________________________
     #                                    parameters
     # ______________________________________________________________________________________
 
     # ---- Exciter (AVR) parameters ----
-    AEz = vf.add_var(f"AEz_{name}")  # saturation gain
-    BEz = vf.add_var(f"BEz_{name}")  # saturation exponential coefficient
-    EfeMaxPu = vf.add_var(f"EfeMaxPu_{name}")  # max exciter field voltage (pu)
-    EfeMinPu = vf.add_var(f"EfeMinPu_{name}")  # min exciter field voltage (pu)
+    AEz = vf.add_var(f"AEz")  # saturation gain
+    BEz = vf.add_var(f"BEz")  # saturation exponential coefficient
+    EfeMaxPu = vf.add_var(f"EfeMaxPu")  # max exciter field voltage (pu)
+    EfeMinPu = vf.add_var(f"EfeMinPu")  # min exciter field voltage (pu)
 
     # ---- Exciter (AVR) time constants and limits ----
 
-    TolLi = vf.add_var(f"TolLi_{name}")  # limiter crossing tolerance (fraction)
+    TolLi = vf.add_var(f"TolLi")  # limiter crossing tolerance (fraction)
 
-    VaMaxPu = vf.add_var(f"VaMaxPu_{name}")  # AVR output max (pu)
-    VaMinPu = vf.add_var(f"VaMinPu_{name}")  # AVR output min (pu)
-    VeMinPu = vf.add_var(f"VeMinPu_{name}")  # min exciter output voltage (pu)
-    VfeMaxPu = vf.add_var(f"VfeMaxPu_{name}")  # max exciter field current signal (pu)
+    VaMaxPu = vf.add_var(f"VaMaxPu")  # AVR output max (pu)
+    VaMinPu = vf.add_var(f"VaMinPu")  # AVR output min (pu)
+    VeMinPu = vf.add_var(f"VeMinPu")  # min exciter output voltage (pu)
+    VfeMaxPu = vf.add_var(f"VfeMaxPu")  # max exciter field current signal (pu)
 
     # exciter submodel parameters
-    AEx = vf.add_var(f"AEx_{name}")  # Gain of saturation function
-    BEx = vf.add_var(f"BEx_{name}")  # Exponential coefficient of saturation function
-    Se_threshold = vf.add_var(f"Se_threshold_{name}")  # Exponential coefficient of saturation function
-    ToLLi = vf.add_var(f"ToLLi_{name}")  # Tolerance on limit crossing
-    VeMinPu_submodel = vf.add_var(f"VeMinPu_submodel_{name}")  # Minimum exciter output voltage (pu)
-    VfeMaxPu_submodel = vf.add_var(f"VfeMaxPu_submodel_{name}")  # Maximum exciter field current signal (pu)
+    AEx = vf.add_var(f"AEx")  # Gain of saturation function
+    BEx = vf.add_var(f"BEx")  # Exponential coefficient of saturation function
+    Se_threshold = vf.add_var(f"Se_threshold")  # Exponential coefficient of saturation function
+    ToLLi = vf.add_var(f"ToLLi")  # Tolerance on limit crossing
+    VeMinPu_submodel = vf.add_var(f"VeMinPu_submodel")  # Minimum exciter output voltage (pu)
+    VfeMaxPu_submodel = vf.add_var(f"VfeMaxPu_submodel")  # Maximum exciter field current signal (pu)
 
     events_dict = {
         # Exciter (AVR) parameters
@@ -1832,9 +1832,9 @@ def get_complete_generator_template_emt(vf: VarFactory, name="complete_generator
     # bind the complete generator at the wrapper boundary. The internal machine
     # and exciter inputs are then connected to these wrapper variables before the
     # child blocks are flattened.
-    v_a_in = vf.add_var(name=f"v_A_{name}", reference=VarPowerFlowReferenceType.v_A)
-    v_b_in = vf.add_var(name=f"v_B_{name}", reference=VarPowerFlowReferenceType.v_B)
-    v_c_in = vf.add_var(name=f"v_C_{name}", reference=VarPowerFlowReferenceType.v_C)
+    v_a_in = vf.add_var(name=f"v_A", reference=VarPowerFlowReferenceType.v_A)
+    v_b_in = vf.add_var(name=f"v_B", reference=VarPowerFlowReferenceType.v_B)
+    v_c_in = vf.add_var(name=f"v_C", reference=VarPowerFlowReferenceType.v_C)
 
     # generate models
     # The exciter interface is defined in terms of IRPu -> v_f, which matches the

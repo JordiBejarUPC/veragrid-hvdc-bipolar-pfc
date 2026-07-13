@@ -34,11 +34,11 @@ def get_simple_generator_emt_template_trig_transform(
     templ.name = name
     templ.block.name = name
 
-    v_A = vf.add_var(name=f"v_A_{name}", reference=VarPowerFlowReferenceType.v_A)
-    v_B = vf.add_var(name=f"v_B_{name}", reference=VarPowerFlowReferenceType.v_B)
-    v_C = vf.add_var(name=f"v_C_{name}", reference=VarPowerFlowReferenceType.v_C)
-    Tm = vf.add_var(name=f"Tm_{name}")
-    v_f = vf.add_var(name=f"v_f_{name}")
+    v_A = vf.add_var(name=f"v_A", reference=VarPowerFlowReferenceType.v_A)
+    v_B = vf.add_var(name=f"v_B", reference=VarPowerFlowReferenceType.v_B)
+    v_C = vf.add_var(name=f"v_C", reference=VarPowerFlowReferenceType.v_C)
+    Tm = vf.add_var(name=f"Tm")
+    v_f = vf.add_var(name=f"v_f")
 
     Ipk = vf.add_var(name="Ipk", reference=VarPowerFlowReferenceType.Ipk)
     Vpk = vf.add_var(name="Vpk", reference=VarPowerFlowReferenceType.Vpk)
@@ -47,24 +47,24 @@ def get_simple_generator_emt_template_trig_transform(
     inputs = [v_A, v_B, v_C]
 
     theta = vf.add_var("theta_" + name)
-    omega = vf.add_var(name=f"omega_{name}")
+    omega = vf.add_var(name=f"omega")
     psi_d = vf.add_var("psi_d_" + name)
     psi_q = vf.add_var("psi_q_" + name)
     psi_f = vf.add_var("psi_f_" + name)
     psi_0 = vf.add_var("psi_0_" + name)
     et = vf.add_var("et_" + name)
 
-    d_omega = vf.add_diff_var(name=f"d_omega_{name}", base_var=omega)
-    d_theta = vf.add_diff_var(name=f"d_theta_{name}", base_var=theta)
-    d_psi_d = vf.add_diff_var(name=f"d_psi_d_{name}", base_var=psi_d)
-    d_psi_q = vf.add_diff_var(name=f"d_psi_q_{name}", base_var=psi_q)
-    d_psi_0 = vf.add_diff_var(name=f"d_psi_0_{name}", base_var=psi_0)
-    d_psi_f = vf.add_diff_var(name=f"d_psi_f_{name}", base_var=psi_f)
-    d_et = vf.add_diff_var(name=f"d_et_{name}", base_var=et)
+    d_omega = vf.add_diff_var(name=f"d_omega", base_var=omega)
+    d_theta = vf.add_diff_var(name=f"d_theta", base_var=theta)
+    d_psi_d = vf.add_diff_var(name=f"d_psi_d", base_var=psi_d)
+    d_psi_q = vf.add_diff_var(name=f"d_psi_q", base_var=psi_q)
+    d_psi_0 = vf.add_diff_var(name=f"d_psi_0", base_var=psi_0)
+    d_psi_f = vf.add_diff_var(name=f"d_psi_f", base_var=psi_f)
+    d_et = vf.add_diff_var(name=f"d_et", base_var=et)
 
-    i_A = vf.add_var(name=f"i_A_{name}", reference=VarPowerFlowReferenceType.i_A)
-    i_B = vf.add_var(name=f"i_B_{name}", reference=VarPowerFlowReferenceType.i_B)
-    i_C = vf.add_var(name=f"i_C_{name}", reference=VarPowerFlowReferenceType.i_C)
+    i_A = vf.add_var(name=f"i_A", reference=VarPowerFlowReferenceType.i_A)
+    i_B = vf.add_var(name=f"i_B", reference=VarPowerFlowReferenceType.i_B)
+    i_C = vf.add_var(name=f"i_C", reference=VarPowerFlowReferenceType.i_C)
 
     v_d = vf.add_var("v_d_" + name)
     v_q = vf.add_var("v_q_" + name)
@@ -72,7 +72,7 @@ def get_simple_generator_emt_template_trig_transform(
     i_d = vf.add_var("i_d_" + name)
     i_q = vf.add_var("i_q_" + name)
     i_0 = vf.add_var("i_0_" + name)
-    i_f = vf.add_var(name=f"i_f_{name}")
+    i_f = vf.add_var(name=f"i_f")
 
     Te = vf.add_var("Te_" + name)
     Pe = vf.add_var("Pe_" + name)
@@ -252,9 +252,9 @@ def get_simple_multilinear_generator_reference_template(
     governor_mdl = get_governor_emt(vf=vf).block
     stabilizer_mdl = get_stabilizer_emt(vf=vf).block
 
-    gen_i_f = find_name_in_block(f"i_f_{gen_mdl.name}", gen_mdl)
-    gen_te = find_name_in_block(f"Te_{gen_mdl.name}", gen_mdl)
-    gen_omega = find_name_in_block(f"omega_{gen_mdl.name}", gen_mdl)
+    gen_i_f = find_name_in_block("i_f", gen_mdl)
+    gen_te = find_name_in_block("Te", gen_mdl)
+    gen_omega = find_name_in_block("omega", gen_mdl)
 
     vf.add_connections([gen_mdl.in_vars[4]], [exciter_mdl.out_vars[0]])
     vf.add_connections([exciter_mdl.in_vars[0]], [gen_i_f])

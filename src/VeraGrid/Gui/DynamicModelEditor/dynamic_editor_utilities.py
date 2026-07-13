@@ -65,7 +65,10 @@ def get_blocktype2template_builder_dict():
         BlockType.ZIP_LOAD_EMT: emt_templates.LoadZIPEmtTemplate,
 
         BlockType.TRAFO_EMT: emt_templates.TransformerEmtTemplate,
-        BlockType.XFMR_TRANSFORMER: emt_templates.XfmrEmtTemplate
+        BlockType.XFMR_TRANSFORMER: emt_templates.XfmrEmtTemplate,
+
+        BlockType.EMT_PI_LINE: emt_templates.PiLineEmtTemplate,
+        BlockType.EMT_BERGERON_LINE: emt_templates.BergeronLineEmtTemplate,
 
     }
 
@@ -105,7 +108,8 @@ def create_block_of_type(var_factory: VarFactory,
 
     # SUM / ADDER (2 inputs)
     elif block_type == BlockType.SUM:
-        blk = adder(var_factory, item_name)
+        blk = adder(var_factory = var_factory,
+                    name=item_name)
         blk.name = item_name
         return blk
 

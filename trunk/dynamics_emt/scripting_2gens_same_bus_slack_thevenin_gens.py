@@ -610,9 +610,9 @@ def export_plots_two_slack_generators_same_bus(
     total_generator_currents: np.ndarray = generator_1_currents + generator_2_currents
 
     load_currents: np.ndarray = -np.column_stack((
-        get_state_series(problem, load_block, 'i_A_R_shunt_3ph', y_values),
-        get_state_series(problem, load_block, 'i_B_R_shunt_3ph', y_values),
-        get_state_series(problem, load_block, 'i_C_R_shunt_3ph', y_values),
+        get_state_series(problem, load_block, 'i_A', y_values),
+        get_state_series(problem, load_block, 'i_B', y_values),
+        get_state_series(problem, load_block, 'i_C', y_values),
     ))
 
     line_series_currents: np.ndarray = np.column_stack((

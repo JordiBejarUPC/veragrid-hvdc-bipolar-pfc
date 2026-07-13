@@ -105,7 +105,7 @@ class AdderTemplate(TemplateDefinition):
 
 
 
-def adder(var_factory: VarFactory, minuend_inputs: int = 1, subtrahend_inputs: int = 1) -> Block:
+def adder(var_factory: VarFactory, minuend_inputs: int = 1, subtrahend_inputs: int = 1, name: str = "sum") -> Block:
     """
 
     :param var_factory:

@@ -173,7 +173,8 @@ def _build_demo_configs() -> list[InductionMotorDemoConfig]:
 
 def _motor_var_name(base_name: str, motor_name: str) -> str:
     """Return one motor-scoped symbolic variable name."""
-    return f"{base_name}_{motor_name}"
+    _unused_motor_name: str = motor_name
+    return base_name
 
 
 def _get_output_directory(config: InductionMotorDemoConfig) -> Path:

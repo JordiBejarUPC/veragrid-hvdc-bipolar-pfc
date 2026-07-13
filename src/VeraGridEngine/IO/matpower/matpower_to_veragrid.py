@@ -83,7 +83,7 @@ def convert_buses(circuit: MultiCircuit,
         bus_dict[m_bus.bus_i] = bus
 
         # determine if the bus is set as slack manually
-        bus.is_slack = m_bus.bus_type == REF
+        bus.set_is_slack_at(t=None, val=m_bus.bus_type == REF)
 
         # Add the bus to the circuit buses
         circuit.add_bus(bus)

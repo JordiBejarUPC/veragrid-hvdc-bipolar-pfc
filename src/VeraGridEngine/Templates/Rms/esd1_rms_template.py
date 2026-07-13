@@ -28,8 +28,8 @@ def get_esd1_rms_template(vfactory: VarFactory, name: str = "ESD1 RMS template")
     templ = RmsModelTemplate(name=name)
     templ.tpe = DeviceType.BatteryDevice
 
-    vm = vfactory.add_var(f"Vm_{name}", reference=VarPowerFlowReferenceType.Vm)
-    va = vfactory.add_var(f"Va_{name}", reference=VarPowerFlowReferenceType.Va)
+    vm = vfactory.add_var("Vm", reference=VarPowerFlowReferenceType.Vm)
+    va = vfactory.add_var("Va", reference=VarPowerFlowReferenceType.Va)
     inputs = [vm, va]
 
     p = vfactory.add_var("P_esd1")

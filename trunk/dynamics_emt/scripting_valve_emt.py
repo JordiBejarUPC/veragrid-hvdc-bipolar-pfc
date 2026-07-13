@@ -504,14 +504,14 @@ def _build_valve_problem(valve_tpe: ValveEmtType) -> Tuple[GenericEmtProblem, in
     ).block
 
     # The complete variant is regularized with a finite Ron and tiny off-conductance to keep the EMT DAE well posed.
-    _set_block_runtime_parameter(valve_block, f'on_resistance_{block_name}', 0.02)
-    _set_block_runtime_parameter(valve_block, f'off_conductance_{block_name}', 1.0e-6)
-    _set_block_runtime_parameter(valve_block, f'forward_voltage_{block_name}', 0.0)
-    _set_block_runtime_parameter(valve_block, f'snubber_enabled_{block_name}', 0.0)
+    _set_block_runtime_parameter(valve_block, 'on_resistance', 0.02)
+    _set_block_runtime_parameter(valve_block, 'off_conductance', 1.0e-6)
+    _set_block_runtime_parameter(valve_block, 'forward_voltage', 0.0)
+    _set_block_runtime_parameter(valve_block, 'snubber_enabled', 0.0)
     _connect_valve_terminals(valve_block, v_source=v_source, v_load=v_load)
 
     i_branch = valve_block.external_mapping[VarPowerFlowReferenceType.If_dc]
-    v_valve = _find_name_in_block(f'v_valve_{block_name}', valve_block)
+    v_valve = _find_name_in_block('v_valve', valve_block)
     if v_valve is None:
         raise KeyError(f"Valve voltage variable for block '{block_name}' could not be resolved")
     else:
@@ -545,12 +545,12 @@ def _build_valve_problem(valve_tpe: ValveEmtType) -> Tuple[GenericEmtProblem, in
     gate_idx = -1
     mode_idx = -1
     for parameter in problem.get_variable_parameters():
-        if parameter.name == f'gate_fired_{block_name}':
+        if parameter.name == 'gate_fired':
             gate_idx = int(problem.uid2idx_event_params[parameter.uid])
         else:
             pass
 
-        if parameter.name == f'path_mode_{block_name}':
+        if parameter.name == 'path_mode':
             mode_idx = int(problem.uid2idx_event_params[parameter.uid])
         else:
             pass

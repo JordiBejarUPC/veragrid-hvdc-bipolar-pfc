@@ -99,32 +99,32 @@ class IssueEntry:
 
     def matches_filters(self,
                         search_text: str,
-                        severity_filter_text: str,
-                        object_type_filter_text: str,
+                        severity_filter: LogSeverity | None,
+                        object_type_filter: str | None,
                         fixable_only: bool) -> bool:
         """
         Check whether the issue passes the active dashboard filters.
 
         :param search_text: Lower-cased free text search
-        :param severity_filter_text: Selected severity label
-        :param object_type_filter_text: Selected object-type label
+        :param severity_filter: Selected severity or None for all severities
+        :param object_type_filter: Selected object type or None for all object types
         :param fixable_only: Only keep auto-fixable rows
         :return: True when the row should remain visible
         """
         severity_matches: bool = False
-        if severity_filter_text == translate_analysis_dialog("All severities"):
+        if severity_filter is None:
             severity_matches = True
         else:
-            if severity_filter_text == severity_to_text(self.severity):
+            if severity_filter == self.severity:
                 severity_matches = True
             else:
                 severity_matches = False
 
         object_type_matches: bool = False
-        if object_type_filter_text == translate_analysis_dialog("All object types"):
+        if object_type_filter is None:
             object_type_matches = True
         else:
-            if object_type_filter_text == self.object_type:
+            if object_type_filter == self.object_type:
                 object_type_matches = True
             else:
                 object_type_matches = False
@@ -423,6 +423,22 @@ def build_fixable_properties(fixable_error: FIXABLE_ERROR_TYPES) -> List[str]:
     return properties
 
 
+def is_fixable_issue(element_name: str, property_name: str, fixable_keys: set[str]) -> bool:
+    """
+    Match one dashboard row against the auto-fix lookup set.
+
+    :param element_name: Element display name in the dashboard row
+    :param property_name: Property name in the dashboard row
+    :param fixable_keys: Lookup set built from fixable errors
+    :return: True when the row is fixable
+    """
+    compound_key: str = f"{element_name}|{property_name}"
+    if compound_key in fixable_keys:
+        return True
+    else:
+        return False
+
+
 class GridAnalysisGUI(QtWidgets.QMainWindow):
     """
     Modern dashboard window merging grid analysis and sigma analysis.
@@ -669,40 +685,41 @@ class GridAnalysisGUI(QtWidgets.QMainWindow):
         """
         # Populate the filter combo once because the dashboard reuses the same labels repeatedly.
         self.ui.severityFilterComboBox.clear()
-        self.ui.severityFilterComboBox.addItem(self.tr("All severities"))
-        self.ui.severityFilterComboBox.addItem(self.tr("Error"))
-        self.ui.severityFilterComboBox.addItem(self.tr("Warning"))
-        self.ui.severityFilterComboBox.addItem(self.tr("Information"))
-        self.ui.severityFilterComboBox.addItem(self.tr("Divergence"))
+        self.ui.severityFilterComboBox.addItem(self.tr("All severities"), None)
+        self.ui.severityFilterComboBox.addItem(self.tr("Error"), LogSeverity.Error)
+        self.ui.severityFilterComboBox.addItem(self.tr("Warning"), LogSeverity.Warning)
+        self.ui.severityFilterComboBox.addItem(self.tr("Information"), LogSeverity.Information)
+        self.ui.severityFilterComboBox.addItem(self.tr("Divergence"), LogSeverity.Divergence)
 
         self.ui.objectTypeFilterComboBox.clear()
-        self.ui.objectTypeFilterComboBox.addItem(self.tr("All object types"))
+        self.ui.objectTypeFilterComboBox.addItem(self.tr("All object types"), None)
 
         self.balanceAggregationComboBox.clear()
-        self.balanceAggregationComboBox.addItem(self.tr("Area"))
-        self.balanceAggregationComboBox.addItem(self.tr("Zone"))
-        self.balanceAggregationComboBox.addItem(self.tr("Substation"))
-        self.balanceAggregationComboBox.addItem(self.tr("VoltageLevel"))
-        self.balanceAggregationComboBox.addItem(self.tr("Country"))
-        self.balanceAggregationComboBox.addItem(self.tr("Community"))
-        self.balanceAggregationComboBox.addItem(self.tr("Region"))
-        self.balanceAggregationComboBox.addItem(self.tr("Municipality"))
+        self.balanceAggregationComboBox.addItem(self.tr("Area"), ResultTypes.AreaBalanceAnalysis)
+        self.balanceAggregationComboBox.addItem(self.tr("Zone"), ResultTypes.ZoneBalanceAnalysis)
+        self.balanceAggregationComboBox.addItem(self.tr("Substation"), ResultTypes.SubstationBalanceAnalysis)
+        self.balanceAggregationComboBox.addItem(self.tr("VoltageLevel"), ResultTypes.VoltageLevelBalanceAnalysis)
+        self.balanceAggregationComboBox.addItem(self.tr("Country"), ResultTypes.CountryBalanceAnalysis)
+        self.balanceAggregationComboBox.addItem(self.tr("Community"), ResultTypes.CommunityBalanceAnalysis)
+        self.balanceAggregationComboBox.addItem(self.tr("Region"), ResultTypes.RegionBalanceAnalysis)
+        self.balanceAggregationComboBox.addItem(self.tr("Municipality"), ResultTypes.MunicipalityBalanceAnalysis)
 
     def populate_object_type_filter(self) -> None:
         """
         Refresh the object-type filter options from the current issue set.
         """
-        current_text: str = self.ui.objectTypeFilterComboBox.currentText()
+        current_data: str | None = self.ui.objectTypeFilterComboBox.currentData()
         object_types: List[str] = sorted({issue.object_type for issue in self.issue_entries if issue.object_type != ""})
 
         self.ui.objectTypeFilterComboBox.blockSignals(True)
         self.ui.objectTypeFilterComboBox.clear()
-        self.ui.objectTypeFilterComboBox.addItem(self.tr("All object types"))
+        self.ui.objectTypeFilterComboBox.addItem(self.tr("All object types"), None)
         for object_type in object_types:
-            self.ui.objectTypeFilterComboBox.addItem(object_type)
+            self.ui.objectTypeFilterComboBox.addItem(object_type, object_type)
 
-        if self.ui.objectTypeFilterComboBox.findText(current_text) >= 0:
-            self.ui.objectTypeFilterComboBox.setCurrentText(current_text)
+        index: int = self.ui.objectTypeFilterComboBox.findData(current_data)
+        if index >= 0:
+            self.ui.objectTypeFilterComboBox.setCurrentIndex(index)
         else:
             self.ui.objectTypeFilterComboBox.setCurrentIndex(0)
         self.ui.objectTypeFilterComboBox.blockSignals(False)
@@ -722,13 +739,13 @@ class GridAnalysisGUI(QtWidgets.QMainWindow):
         self.ui.exportReportButton.clicked.connect(self.export_report)
 
         # Make the findings table react live to dashboard filters.
-        self.ui.severityFilterComboBox.currentTextChanged.connect(self.refresh_issue_table)
-        self.ui.objectTypeFilterComboBox.currentTextChanged.connect(self.refresh_issue_table)
+        self.ui.severityFilterComboBox.currentIndexChanged.connect(self.refresh_issue_table)
+        self.ui.objectTypeFilterComboBox.currentIndexChanged.connect(self.refresh_issue_table)
         self.ui.fixableOnlyCheckBox.toggled.connect(self.refresh_issue_table)
         self.ui.issueSearchLineEdit.textChanged.connect(self.refresh_issue_table)
         self.ui.expandAllIssuesButton.clicked.connect(self.expand_all_issues)
         self.ui.collapseAllIssuesButton.clicked.connect(self.collapse_all_issues)
-        self.balanceAggregationComboBox.currentTextChanged.connect(self.update_balance_panel)
+        self.balanceAggregationComboBox.currentIndexChanged.connect(self.update_balance_panel)
         self.balanceTopNSpinBox.valueChanged.connect(self.update_balance_panel)
 
     def expand_all_issues(self) -> None:
@@ -1072,35 +1089,14 @@ QWidget#overviewPage QProgressBar::chunk {{
         else:
             return inputs_driver.results
 
-    def get_balance_result_type(self, aggregation: str) -> ResultTypes:
+    def get_balance_aggregation(self, result_type: ResultTypes) -> str:
         """
-        Map one balance aggregation label to the matching inputs-analysis result type.
+        Return the grouping key for the selected balance result type.
 
-        :param aggregation: Aggregation label selected in the balance explorer
-        :return: Matching balance result type
+        :param result_type: Aggregation result type selected in the balance explorer
+        :return: Inputs-analysis grouping key
         """
-        if aggregation == self.tr("Area"):
-            return ResultTypes.AreaBalanceAnalysis
-        else:
-            if aggregation == self.tr("Zone"):
-                return ResultTypes.ZoneBalanceAnalysis
-            else:
-                if aggregation == self.tr("Substation"):
-                    return ResultTypes.SubstationBalanceAnalysis
-                else:
-                    if aggregation == self.tr("VoltageLevel"):
-                        return ResultTypes.VoltageLevelBalanceAnalysis
-                    else:
-                        if aggregation == self.tr("Country"):
-                            return ResultTypes.CountryBalanceAnalysis
-                        else:
-                            if aggregation == self.tr("Community"):
-                                return ResultTypes.CommunityBalanceAnalysis
-                            else:
-                                if aggregation == self.tr("Region"):
-                                    return ResultTypes.RegionBalanceAnalysis
-                                else:
-                                    return ResultTypes.MunicipalityBalanceAnalysis
+        return self.inputs_results.get_result_aggregation(result_type)
 
     def update_balance_panel(self) -> None:
         """
@@ -1149,11 +1145,11 @@ QWidget#overviewPage QProgressBar::chunk {{
         else:
             pass
 
-        aggregation: str = self.balanceAggregationComboBox.currentText()
+        result_type: ResultTypes = self.balanceAggregationComboBox.currentData()
         top_n: int = self.balanceTopNSpinBox.value()
 
         if self.circuit.get_time_number() > 0:
-            self.plot_time_series_balances(aggregation=aggregation,
+            self.plot_time_series_balances(result_type=result_type,
                                            top_n=top_n,
                                            axis=axis,
                                            label_color=label_color,
@@ -1161,7 +1157,7 @@ QWidget#overviewPage QProgressBar::chunk {{
                                            positive_color=positive_color,
                                            negative_color=negative_color)
         else:
-            self.plot_snapshot_balances(aggregation=aggregation,
+            self.plot_snapshot_balances(result_type=result_type,
                                         top_n=top_n,
                                         axis=axis,
                                         label_color=label_color,
@@ -1175,7 +1171,7 @@ QWidget#overviewPage QProgressBar::chunk {{
                                          self.tr("Balance Explorer"))
 
     def plot_time_series_balances(self,
-                                  aggregation: str,
+                                  result_type: ResultTypes,
                                   top_n: int,
                                   axis,
                                   label_color: str,
@@ -1185,7 +1181,7 @@ QWidget#overviewPage QProgressBar::chunk {{
         """
         Plot the strongest time-series balances for the selected aggregation.
 
-        :param aggregation: Aggregation label
+        :param result_type: Balance result type
         :param top_n: Maximum number of traces to show
         :param axis: Matplotlib axis
         :param label_color: Theme text color
@@ -1193,7 +1189,7 @@ QWidget#overviewPage QProgressBar::chunk {{
         :param positive_color: Positive accent color
         :param negative_color: Negative accent color
         """
-        result_type: ResultTypes = self.get_balance_result_type(aggregation)
+        aggregation: str = self.get_balance_aggregation(result_type)
         result_table = self.inputs_results.mdl(result_type)
         magnitude: np.ndarray = np.max(np.abs(result_table.data_c), axis=0)
         ranking: np.ndarray = np.argsort(magnitude)[::-1]
@@ -1265,7 +1261,7 @@ QWidget#overviewPage QProgressBar::chunk {{
         )
 
     def plot_snapshot_balances(self,
-                               aggregation: str,
+                               result_type: ResultTypes,
                                top_n: int,
                                axis,
                                label_color: str,
@@ -1275,7 +1271,7 @@ QWidget#overviewPage QProgressBar::chunk {{
         """
         Plot the strongest snapshot balances for the selected aggregation.
 
-        :param aggregation: Aggregation label
+        :param result_type: Balance result type
         :param top_n: Maximum number of bars to show
         :param axis: Matplotlib axis
         :param label_color: Theme text color
@@ -1283,6 +1279,7 @@ QWidget#overviewPage QProgressBar::chunk {{
         :param positive_color: Positive accent color
         :param negative_color: Negative accent color
         """
+        aggregation: str = self.get_balance_aggregation(result_type)
         grouped_frame: pd.DataFrame = self.inputs_results.group_by(aggregation)
         balance_series: pd.Series = grouped_frame["P"].astype(float)
         ordered_series: pd.Series = balance_series.reindex(balance_series.abs().sort_values(ascending=False).index)
@@ -1383,7 +1380,7 @@ QWidget#overviewPage QProgressBar::chunk {{
                 lower: str = display_text(raw_entry[5])
                 value: str = display_text(raw_entry[6])
                 upper: str = display_text(raw_entry[7])
-                fixable: bool = self.is_fixable_issue(element_name=element_name,
+                fixable: bool = is_fixable_issue(element_name=element_name,
                                                       property_name=property_name,
                                                       fixable_keys=fixable_keys)
 
@@ -1500,21 +1497,6 @@ QWidget#overviewPage QProgressBar::chunk {{
 
         return keys
 
-    def is_fixable_issue(self, element_name: str, property_name: str, fixable_keys: set[str]) -> bool:
-        """
-        Match one dashboard row against the auto-fix lookup set.
-
-        :param element_name: Element display name in the dashboard row
-        :param property_name: Property name in the dashboard row
-        :param fixable_keys: Lookup set built from fixable errors
-        :return: True when the row is fixable
-        """
-        compound_key: str = f"{element_name}|{property_name}"
-        if compound_key in fixable_keys:
-            return True
-        else:
-            return False
-
     def run_sigma_analysis(self) -> Tuple[Optional[SigmaAnalysisResults], str]:
         """
         Execute sigma analysis with the current power-flow options.
@@ -1555,7 +1537,7 @@ QWidget#overviewPage QProgressBar::chunk {{
 
     def build_summary(self, sigma_status_text: str) -> DashboardSummary:
         """
-        Synthesize the dashboard score and the main summary metrics.
+        Synthesise the dashboard score and the main summary metrics.
 
         :param sigma_status_text: Human-readable sigma status
         :return: Dashboard summary record
@@ -1778,15 +1760,15 @@ QWidget#overviewPage QProgressBar::chunk {{
         """
         # Read filters once so the same criteria are applied to every row consistently.
         search_text: str = self.ui.issueSearchLineEdit.text().strip().lower()
-        severity_filter_text: str = self.ui.severityFilterComboBox.currentText()
-        object_type_filter_text: str = self.ui.objectTypeFilterComboBox.currentText()
+        severity_filter: LogSeverity | None = self.ui.severityFilterComboBox.currentData()
+        object_type_filter: str | None = self.ui.objectTypeFilterComboBox.currentData()
         fixable_only: bool = self.ui.fixableOnlyCheckBox.isChecked()
 
         filtered_issues: List[IssueEntry] = list()
         for issue in self.issue_entries:
             if issue.matches_filters(search_text=search_text,
-                                     severity_filter_text=severity_filter_text,
-                                     object_type_filter_text=object_type_filter_text,
+                                     severity_filter=severity_filter,
+                                     object_type_filter=object_type_filter,
                                      fixable_only=fixable_only):
                 filtered_issues.append(issue)
             else:

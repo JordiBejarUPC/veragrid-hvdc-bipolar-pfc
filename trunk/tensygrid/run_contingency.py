@@ -27,12 +27,12 @@ from small_signal_multilinear import build_problems, run_small_signal_from_drive
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Calcula contingències de xarxa')
+    parser = argparse.ArgumentParser(description='Compute network contingencies')
     parser.add_argument('--grid', required=True, help='Nom del fitxer de xarxa')
-    parser.add_argument('--type', required=True, choices=['generator', 'line', 'load'],
-                       help='Tipus d\'element a desconnectar')
-    parser.add_argument('--element', required=True, help='Índex de l\'element (ex: gen_0, line_2)')
-    
+    parser.add_argument('--type', required=True, choices=['generator', 'line', 'transformer'],
+                       help='Element type to disconnect')
+    parser.add_argument('--element', required=True, help='Element index (e.g., gen_0, line_2)')
+
     args = parser.parse_args()
     
     try:
@@ -60,6 +60,11 @@ def main():
             if element_idx >= len(loads):
                 raise ValueError(f"Load index {element_idx} out of range ({len(loads)} loads)")
             loads[element_idx].active = False
+        elif args.type == "transformer":
+            trafos = list(grid.transformers2w)
+            if element_idx >= len(trafos):
+                raise ValueError(f"Transformer index {element_idx} out of range ({len(trafos)} transformers)")
+            trafos[element_idx].active = False
 
         # Construir el problema RMS amb la grid ja modificada (element desactivat)
         problem_ml, problem_ph, pf_results, rms_options_ml, rms_options_ph = build_problems(

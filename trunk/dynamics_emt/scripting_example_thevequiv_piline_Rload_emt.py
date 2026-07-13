@@ -454,12 +454,12 @@ def export_demo_plots(
     bus1_voltages: np.ndarray = extract_three_phase_matrix(problem, y_values, bus1.emt_model.out_vars)
     generator_currents: np.ndarray = extract_three_phase_matrix(problem, y_values, gen_mdl.out_vars)
     load_current_triplet: Tuple[Any, Any, Any] = (
-        find_name_in_block("i_A_R_shunt_3ph", load_mdl),
-        find_name_in_block("i_B_R_shunt_3ph", load_mdl),
-        find_name_in_block("i_C_R_shunt_3ph", load_mdl),
+        find_name_in_block("i_A", load_mdl),
+        find_name_in_block("i_B", load_mdl),
+        find_name_in_block("i_C", load_mdl),
     )
     load_currents: np.ndarray = -extract_three_phase_matrix(problem, y_values, load_current_triplet)
-    theta_var: Any = find_name_in_block("theta_emt_thevenin_eq_generator_template", gen_mdl)
+    theta_var: Any = find_name_in_block("theta", gen_mdl)
     theta_values: np.ndarray = y_values[:, problem.get_var_idx(theta_var)]
 
     voltage_path: Path = output_dir / "bus_voltages.png"

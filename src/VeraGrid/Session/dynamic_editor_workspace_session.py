@@ -356,3 +356,19 @@ class DynamicEditorWorkspaceSession(QtCore.QObject):
         """
         self._pending_drag_page = None
         self._pending_drag_workspace = None
+
+    def set_dark_mode(self):
+        """
+        Set the dark mode
+        :return:
+        """
+        for ws in self._open_workspaces:
+            ws.set_dark_mode()
+
+    def set_light_mode(self):
+        """
+                Set the dark mode
+                :return:
+                """
+        for ws in self._open_workspaces:
+            ws.set_light_mode()

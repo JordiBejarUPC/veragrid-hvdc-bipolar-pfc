@@ -278,7 +278,7 @@ def _build_lg_fault_equations(active_phases: List[str],
     :return: None.
     """
     phase_label: str = active_phases[0]
-    i_fault_var: Var = vf.add_var(f"i_fault_{phase_label}G_{name}")
+    i_fault_var: Var = vf.add_var(f"i_fault_{phase_label}G")
     algebraic_vars.append(i_fault_var)
     algebraic_eqs.append(i_fault_var - g_fault_eff * phase_inner_voltage_vars[phase_label])
     phase_fault_current_exprs[phase_label] = phase_fault_current_exprs[phase_label] + i_fault_var
@@ -307,7 +307,7 @@ def _build_ll_fault_equations(active_phases: List[str],
     """
     phase_a: str = active_phases[0]
     phase_b: str = active_phases[1]
-    i_fault_var: Var = vf.add_var(f"i_fault_{phase_a}{phase_b}_{name}")
+    i_fault_var: Var = vf.add_var(f"i_fault_{phase_a}{phase_b}")
     algebraic_vars.append(i_fault_var)
     algebraic_eqs.append(i_fault_var - g_fault_eff * (phase_inner_voltage_vars[phase_a] - phase_inner_voltage_vars[phase_b]))
     phase_fault_current_exprs[phase_a] = phase_fault_current_exprs[phase_a] + i_fault_var
@@ -335,9 +335,9 @@ def _build_llg_fault_equations(active_phases: List[str],
     :param name: Symbolic block name.
     :return: None.
     """
-    fault_node_voltage_var: Var = vf.add_var(f"v_fault_node_{name}")
-    i_fault_a_var: Var = vf.add_var(f"i_fault_{active_phases[0]}N_{name}")
-    i_fault_b_var: Var = vf.add_var(f"i_fault_{active_phases[1]}N_{name}")
+    fault_node_voltage_var: Var = vf.add_var(f"v_fault_node")
+    i_fault_a_var: Var = vf.add_var(f"i_fault_{active_phases[0]}N")
+    i_fault_b_var: Var = vf.add_var(f"i_fault_{active_phases[1]}N")
 
     algebraic_vars.append(fault_node_voltage_var)
     algebraic_vars.append(i_fault_a_var)
@@ -376,10 +376,10 @@ def _build_lll_fault_equations(active_phases: List[str],
     :param name: Symbolic block name.
     :return: None.
     """
-    fault_node_voltage_var: Var = vf.add_var(f"v_fault_node_{name}")
-    i_fault_a_var: Var = vf.add_var(f"i_fault_AN_{name}")
-    i_fault_b_var: Var = vf.add_var(f"i_fault_BN_{name}")
-    i_fault_c_var: Var = vf.add_var(f"i_fault_CN_{name}")
+    fault_node_voltage_var: Var = vf.add_var(f"v_fault_node")
+    i_fault_a_var: Var = vf.add_var(f"i_fault_AN")
+    i_fault_b_var: Var = vf.add_var(f"i_fault_BN")
+    i_fault_c_var: Var = vf.add_var(f"i_fault_CN")
 
     algebraic_vars.append(fault_node_voltage_var)
     algebraic_vars.append(i_fault_a_var)
@@ -420,7 +420,7 @@ def _build_lllg_fault_equations(active_phases: List[str],
     phase_label: str
 
     for phase_label in active_phases:
-        i_fault_var: Var = vf.add_var(f"i_fault_{phase_label}G_{name}")
+        i_fault_var: Var = vf.add_var(f"i_fault_{phase_label}G")
         algebraic_vars.append(i_fault_var)
         algebraic_eqs.append(i_fault_var - g_fault_eff * phase_inner_voltage_vars[phase_label])
         phase_fault_current_exprs[phase_label] = phase_fault_current_exprs[phase_label] + i_fault_var
@@ -488,13 +488,13 @@ def get_fault_emt_template(
     templ.block.name = name
     templ.block.external_mapping = dict()
 
-    closed_mode: Var = vf.add_var(f"fault_closed_mode_{name}")
+    closed_mode: Var = vf.add_var(f"fault_closed_mode")
     templ.block.mode_dict[closed_mode] = Const(1.0 if initial_closed else 0.0, name="fault_closed_mode")
 
-    fault_r_var: Var = vf.add_var(f"fault_r_{name}")
-    ground_r_var: Var = vf.add_var(f"fault_rg_{name}")
-    g_open_var: Var = vf.add_var(f"fault_open_g_{name}")
-    tau_var: Var = vf.add_var(f"fault_tau_{name}")
+    fault_r_var: Var = vf.add_var(f"fault_r")
+    ground_r_var: Var = vf.add_var(f"fault_rg")
+    g_open_var: Var = vf.add_var(f"fault_open_g")
+    tau_var: Var = vf.add_var(f"fault_tau")
     templ.block.event_dict[fault_r_var] = Const(float(fault_resistance), name="fault_r")
     templ.block.event_dict[ground_r_var] = Const(float(ground_resistance), name="fault_rg")
     templ.block.event_dict[g_open_var] = Const(float(open_conductance), name="fault_open_g")
@@ -518,8 +518,8 @@ def get_fault_emt_template(
     phase_fault_current_exprs: Dict[str, Expr] = dict()
 
     if signal_controlled:
-        command_input: Var = vf.add_var(f"fault_cmd_{name}")
-        threshold_var: Var = vf.add_var(f"fault_cmd_threshold_{name}")
+        command_input: Var = vf.add_var(f"fault_cmd")
+        threshold_var: Var = vf.add_var(f"fault_cmd_threshold")
         templ.block.event_dict[threshold_var] = vf.add_const(float(command_threshold), name="fault_cmd_threshold")
         templ.block.procedural_logic.append(
             sampled_value(output=closed_mode, source=Comparison(lhs=command_input, op=CmpOp.GE, rhs=threshold_var))
@@ -530,10 +530,10 @@ def get_fault_emt_template(
 
     phase_label: str
     for phase_label in active_phases:
-        v_outer_var: Var = vf.add_var(f"v_outer_{phase_label}_{name}")
-        i_inner_var: Var = vf.add_var(f"i_inner_{phase_label}_{name}")
-        v_inner_var: Var = vf.add_var(f"v_inner_{phase_label}_{name}")
-        i_outer_var: Var = vf.add_var(f"i_outer_{phase_label}_{name}")
+        v_outer_var: Var = vf.add_var(f"v_outer_{phase_label}")
+        i_inner_var: Var = vf.add_var(f"i_inner_{phase_label}")
+        v_inner_var: Var = vf.add_var(f"v_inner_{phase_label}")
+        i_outer_var: Var = vf.add_var(f"i_outer_{phase_label}")
 
         in_vars.append(v_outer_var)
         in_vars.append(i_inner_var)

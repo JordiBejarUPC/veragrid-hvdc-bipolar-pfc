@@ -14,7 +14,6 @@ import VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor as dynamic_block_edi
 import VeraGridEngine.api as gce
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI
-from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_graphics import _transformer_modal_config_allows_modify
 from VeraGrid.Gui.DynamicModelEditor.ElementDialogues.lookup_table_dialog import LookupArrayLinearDialog
 from VeraGrid.Gui.DynamicModelEditor.ElementDialogues.lookup_table_dialog import LookupMatrixLinearDialog
 from VeraGrid.Gui.DynamicModelEditor.ElementDialogues.lookup_table_dialog import _copy_selected_table_range_to_clipboard
@@ -835,7 +834,7 @@ def test_simple_r_emt_shunt_block_supports_delta_configuration(override_attrs) -
     assert modal_config["connection_type"] == ShuntConnectionType.Delta
     assert modal_config["use_static_device_values"] is False
     assert not any(node.tpe == BlockType.GROUNDING_LINK_EMT.name for node in block_item.subsys.diagram.node_data.values())
-    assert _find_prefixed_event_constant(block_item.subsys, "R_AB_") == pytest.approx(25.0)
+    assert _find_prefixed_event_constant(block_item.subsys, "R_AB") == pytest.approx(25.0)
     assert load.conn == ShuntConnectionType.Delta
 
     editor.has_unapplied_changes = False

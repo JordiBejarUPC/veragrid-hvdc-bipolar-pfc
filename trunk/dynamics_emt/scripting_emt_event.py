@@ -439,9 +439,9 @@ def export_demo_plots(
     bus0_voltages: np.ndarray = extract_three_phase_matrix(problem, y_values, bus0.emt_model.out_vars)
     bus1_voltages: np.ndarray = extract_three_phase_matrix(problem, y_values, bus1.emt_model.out_vars)
     load_current_triplet: Tuple[Any, Any, Any] = (
-        find_name_in_block("i_A_R_shunt_3ph", load_mdl),
-        find_name_in_block("i_B_R_shunt_3ph", load_mdl),
-        find_name_in_block("i_C_R_shunt_3ph", load_mdl),
+        find_name_in_block("i_A", load_mdl),
+        find_name_in_block("i_B", load_mdl),
+        find_name_in_block("i_C", load_mdl),
     )
     load_currents: np.ndarray = -extract_three_phase_matrix(problem, y_values, load_current_triplet)
     generator_currents: np.ndarray = extract_three_phase_matrix(problem, y_values, gen_mdl.out_vars)

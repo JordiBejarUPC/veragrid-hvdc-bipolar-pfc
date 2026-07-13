@@ -56,60 +56,60 @@ def get_gfm_emt_template(vf: VarFactory, name: str = "VSC_GridForming") -> EmtMo
     templ.block.name = name
 
     # Inputs: instantaneous abc bus voltages + DC bus voltage.
-    v_A = vf.add_var(name=f"v_A_{name}", reference=VarPowerFlowReferenceType.v_A)
-    v_B = vf.add_var(name=f"v_B_{name}", reference=VarPowerFlowReferenceType.v_B)
-    v_C = vf.add_var(name=f"v_C_{name}", reference=VarPowerFlowReferenceType.v_C)
-    v_dc = vf.add_var(name=f"v_dc_{name}", reference=VarPowerFlowReferenceType.Vdc)
+    v_A = vf.add_var(name=f"v_A", reference=VarPowerFlowReferenceType.v_A)
+    v_B = vf.add_var(name=f"v_B", reference=VarPowerFlowReferenceType.v_B)
+    v_C = vf.add_var(name=f"v_C", reference=VarPowerFlowReferenceType.v_C)
+    v_dc = vf.add_var(name=f"v_dc", reference=VarPowerFlowReferenceType.Vdc)
     inputs: List[Any] = [v_A, v_B, v_C, v_dc]
 
     # States: three phase currents, internal angle, frequency, EMF.
-    i_A = vf.add_var(name=f"i_A_{name}", reference=VarPowerFlowReferenceType.i_A)
-    i_B = vf.add_var(name=f"i_B_{name}", reference=VarPowerFlowReferenceType.i_B)
-    i_C = vf.add_var(name=f"i_C_{name}", reference=VarPowerFlowReferenceType.i_C)
-    theta = vf.add_var(name=f"theta_{name}")
-    omega = vf.add_var(name=f"omega_{name}")
-    Epk = vf.add_var(name=f"Epk_{name}")
+    i_A = vf.add_var(name=f"i_A", reference=VarPowerFlowReferenceType.i_A)
+    i_B = vf.add_var(name=f"i_B", reference=VarPowerFlowReferenceType.i_B)
+    i_C = vf.add_var(name=f"i_C", reference=VarPowerFlowReferenceType.i_C)
+    theta = vf.add_var(name=f"theta")
+    omega = vf.add_var(name=f"omega")
+    Epk = vf.add_var(name=f"Epk")
 
-    d_i_A = vf.add_diff_var(name=f"d_i_A_{name}", base_var=i_A)
-    d_i_B = vf.add_diff_var(name=f"d_i_B_{name}", base_var=i_B)
-    d_i_C = vf.add_diff_var(name=f"d_i_C_{name}", base_var=i_C)
-    d_theta = vf.add_diff_var(name=f"d_theta_{name}", base_var=theta)
-    d_omega = vf.add_diff_var(name=f"d_omega_{name}", base_var=omega)
-    d_Epk = vf.add_diff_var(name=f"d_Epk_{name}", base_var=Epk)
+    d_i_A = vf.add_diff_var(name=f"d_i_A", base_var=i_A)
+    d_i_B = vf.add_diff_var(name=f"d_i_B", base_var=i_B)
+    d_i_C = vf.add_diff_var(name=f"d_i_C", base_var=i_C)
+    d_theta = vf.add_diff_var(name=f"d_theta", base_var=theta)
+    d_omega = vf.add_diff_var(name=f"d_omega", base_var=omega)
+    d_Epk = vf.add_diff_var(name=f"d_Epk", base_var=Epk)
 
     # Algebraic variables: internal EMFs, powers.
-    e_A = vf.add_var(name=f"e_A_{name}")
-    e_B = vf.add_var(name=f"e_B_{name}")
-    e_C = vf.add_var(name=f"e_C_{name}")
-    Pe = vf.add_var(name=f"Pe_{name}")
-    Qe = vf.add_var(name=f"Qe_{name}")
+    e_A = vf.add_var(name=f"e_A")
+    e_B = vf.add_var(name=f"e_B")
+    e_C = vf.add_var(name=f"e_C")
+    Pe = vf.add_var(name=f"Pe")
+    Qe = vf.add_var(name=f"Qe")
     # DC-side current injection (branch ``if_dc`` terminal). It closes the DC
     # bus KCL when the VSC is connected to a real DC bus (e.g. through the GUI
     # branch connector). Defined by the lossless power balance below.
-    i_dc = vf.add_var(name=f"i_dc_{name}", reference=VarPowerFlowReferenceType.Idc)
+    i_dc = vf.add_var(name=f"i_dc", reference=VarPowerFlowReferenceType.Idc)
 
     # Static parameters and droop / control set-points.
-    omega_base = vf.add_var(name=f"omega_base_{name}")
-    R_s = vf.add_var(name=f"R_s_{name}")
-    X_s = vf.add_var(name=f"X_s_{name}")
-    Kdp = vf.add_var(name=f"Kdp_{name}")
-    Kdq = vf.add_var(name=f"Kdq_{name}")
-    tau_omega = vf.add_var(name=f"tau_omega_{name}")
-    tau_v = vf.add_var(name=f"tau_v_{name}")
-    omega_ref = vf.add_var(name=f"omega_ref_{name}")
-    P_ref = vf.add_var(name=f"P_ref_{name}")
-    Q_ref = vf.add_var(name=f"Q_ref_{name}")
-    V_ref = vf.add_var(name=f"V_ref_{name}")
-    Qf = vf.add_var(name=f"Qf_{name}")
+    omega_base = vf.add_var(name=f"omega_base")
+    R_s = vf.add_var(name=f"R_s")
+    X_s = vf.add_var(name=f"X_s")
+    Kdp = vf.add_var(name=f"Kdp")
+    Kdq = vf.add_var(name=f"Kdq")
+    tau_omega = vf.add_var(name=f"tau_omega")
+    tau_v = vf.add_var(name=f"tau_v")
+    omega_ref = vf.add_var(name=f"omega_ref")
+    P_ref = vf.add_var(name=f"P_ref")
+    Q_ref = vf.add_var(name=f"Q_ref")
+    V_ref = vf.add_var(name=f"V_ref")
+    Qf = vf.add_var(name=f"Qf")
 
     # PF positive-sequence references. The EMT bridge populates these
     # through ``_set_vsc_pf_positive_sequence`` when they are exposed in
     # the external mapping below. They are the SINGLE source of truth for
     # the EMT initialization — every initial value is derived from them.
-    Vpk_ref = vf.add_var(name=f"Vpk_ref_{name}")
-    phi_v_ref = vf.add_var(name=f"phi_v_ref_{name}")
-    Ipk_ref = vf.add_var(name=f"Ipk_ref_{name}")
-    phi_ref = vf.add_var(name=f"phi_ref_{name}")
+    Vpk_ref = vf.add_var(name=f"Vpk_ref")
+    phi_v_ref = vf.add_var(name=f"phi_v_ref")
+    Ipk_ref = vf.add_var(name=f"Ipk_ref")
+    phi_ref = vf.add_var(name=f"phi_ref")
 
     # Instantaneous algebraic expressions (used at runtime, NOT for init).
     # Sign convention: ``i_A`` is the current from the bus into the

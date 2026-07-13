@@ -313,7 +313,7 @@ def get_bus_data(bus_data: BusData,
         bus_data.idtag[i] = bus.idtag
         bus_data.Vnom[i] = bus.Vnom
         bus_data.cost_v[i] = bus.Vm_cost
-        bus_data.Vbus[i] = bus.get_voltage_guess(use_stored_guess=use_stored_guess)
+        bus_data.Vbus[i] = bus.get_voltage_guess_at(t_idx=t_idx, use_stored_guess=use_stored_guess)
         bus_data.is_dc[i] = bus.is_dc
 
         # Grounded buses go to zero
@@ -326,7 +326,7 @@ def get_bus_data(bus_data: BusData,
         bus_data.angle_min[i] = bus.angle_min
         bus_data.angle_max[i] = bus.angle_max
 
-        if bus.is_slack:
+        if bus.get_is_slack_at(t=t_idx):
             # bus_data.bus_types[i] = BusMode.Slack_tpe.value  # VD
             bus_data.set_bus_mode(i, BusMode.Slack_tpe)
 

@@ -731,7 +731,7 @@ def test_pi_line_matrix_parameters_receive_compiler_names() -> None:
     )
     compiler_names_dict = problem.get_compiler_names_dict()
     line_block = context.get_grid().lines[0].emt_model
-    parameter_name: str = "Linv_aa_Pi"
+    parameter_name: str = "Linv_aa"
     found_uid: int | None = None
 
     for parameter in line_block.parameters.keys():
@@ -777,8 +777,8 @@ def test_real_pi_line_problem_uses_template_equivalent_static_matrix_values() ->
         constant_by_name[constant_parameters[parameter_index].name] = float(constant_parameter_values[parameter_index].value)
         parameter_index += 1
 
-    assert "Linv_aa_Pi" in constant_by_name
-    assert "Caa_Pi" in constant_by_name
+    assert "Linv_aa" in constant_by_name
+    assert "Caa" in constant_by_name
     assert any(name == "cprms[0]" for name in compiler_names_dict.values())
 
     omega: float = 2.0 * np.pi * float(context.get_grid().fBase)
@@ -809,8 +809,8 @@ def test_real_pi_line_problem_uses_template_equivalent_static_matrix_values() ->
     assert np.isclose(float(l_full_actual[0, 0]), float(l_expected[0, 0]))
     assert np.isclose(float(c_full_actual[0, 0]), float(c_expected[0, 0]))
 
-    assert np.isclose(constant_by_name["Linv_aa_Pi"], float(linv_expected[0, 0]))
-    assert np.isclose(constant_by_name["Caa_Pi"], float(c_expected[0, 0]))
+    assert np.isclose(constant_by_name["Linv_aa"], float(linv_expected[0, 0]))
+    assert np.isclose(constant_by_name["Caa"], float(c_expected[0, 0]))
 
 
 if __name__ == "__main__":

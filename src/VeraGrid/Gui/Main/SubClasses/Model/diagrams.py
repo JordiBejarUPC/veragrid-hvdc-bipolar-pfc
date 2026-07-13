@@ -198,9 +198,8 @@ class DiagramsMain(CompiledArraysMain):
                          palettes.Colormaps.Green2Red,
                          palettes.Colormaps.Heatmap,
                          palettes.Colormaps.TSO]
-        self.cmap_dict = {e.value: e for e in palettes_list}
         self.cmap_index_dict = {pal: i for i, pal in enumerate(palettes_list)}
-        self.ui.palette_comboBox.setModel(gf.get_list_model([e.value for e in palettes_list]))
+        self.ui.palette_comboBox.setModel(gf.ComboModel(enum_values=palettes_list))
 
         # map tile sources
         self.tile_sources = [
@@ -226,10 +225,11 @@ class DiagramsMain(CompiledArraysMain):
                 max_zoom=21
             ),
         ]
-        tile_names = [tile.tile_set_name for tile in self.tile_sources]
         self.tile_index_dict = {tile.tile_set_name: i for i, tile in enumerate(self.tile_sources)}
         self.tile_name_dict = {tile.tile_set_name: tile for tile in self.tile_sources}
-        self.ui.tile_provider_comboBox.setModel(gf.get_list_model(tile_names))
+        self.ui.tile_provider_comboBox.setModel(
+            gf.ComboModel(text_items=[(tile.tile_set_name, tile) for tile in self.tile_sources])
+        )
         self.ui.tile_provider_comboBox.setCurrentIndex(0)
 
         # Automatic layout modes
@@ -247,9 +247,11 @@ class DiagramsMain(CompiledArraysMain):
         self.layout_algorithms_dict['bipartite'] = nx.bipartite_layout
         self.layout_algorithms_dict['multipartite'] = nx.multipartite_layout
 
-        mdl = gf.get_list_model(list(self.layout_algorithms_dict.keys()))
+        mdl = gf.ComboModel(text_items=[(name, name) for name in self.layout_algorithms_dict.keys()])
         self.ui.automatic_layout_comboBox.setModel(mdl)
-        self.ui.automatic_layout_comboBox.setCurrentText('power_system_layout')
+        idx = self.ui.automatic_layout_comboBox.findData('power_system_layout')
+        if idx > -1:
+            self.ui.automatic_layout_comboBox.setCurrentIndex(idx)
 
         # list of steps in the schematic
         self.schematic_list_steps = list()
@@ -257,9 +259,13 @@ class DiagramsMain(CompiledArraysMain):
         self.available_results_steps_dict = None
 
         # list of styles
-        self.ui.plt_style_comboBox.setModel(gf.get_list_model(plt.style.available))
+        self.ui.plt_style_comboBox.setModel(
+            gf.ComboModel(text_items=[(style, style) for style in plt.style.available])
+        )
         if 'fivethirtyeight' in plt.style.available:
-            self.ui.plt_style_comboBox.setCurrentText('fivethirtyeight')
+            idx = self.ui.plt_style_comboBox.findData('fivethirtyeight')
+            if idx > -1:
+                self.ui.plt_style_comboBox.setCurrentIndex(idx)
 
         self.ui.diagramSearchLineEdit.setPlaceholderText(self.tr("Type to search in the current diagram"))
 
@@ -329,12 +335,12 @@ class DiagramsMain(CompiledArraysMain):
         self.ui.diagramsListView.clicked.connect(self.set_selected_diagram_on_click)
 
         # combobox change
-        self.ui.plt_style_comboBox.currentTextChanged.connect(self.plot_style_change)
-        self.ui.palette_comboBox.currentTextChanged.connect(self.set_diagrams_palette)
-        self.ui.tile_provider_comboBox.currentTextChanged.connect(self.set_diagrams_map_tile_provider)
+        self.ui.plt_style_comboBox.currentIndexChanged.connect(self.plot_style_change)
+        self.ui.palette_comboBox.currentIndexChanged.connect(self.set_diagrams_palette)
+        self.ui.tile_provider_comboBox.currentIndexChanged.connect(self.set_diagrams_map_tile_provider)
 
         # TODO: this lambda calls to colour twice is the simulation is run the first time
-        self.ui.available_results_to_color_comboBox.currentTextChanged.connect(lambda: self.colour_diagrams(False))
+        self.ui.available_results_to_color_comboBox.currentIndexChanged.connect(lambda: self.colour_diagrams(False))
 
         # sliders
         self.ui.diagram_step_slider.sliderReleased.connect(self.colour_diagrams)
@@ -429,7 +435,7 @@ class DiagramsMain(CompiledArraysMain):
                         do_it = False
 
                 if do_it:
-                    diagram_widget.auto_layout(sel=self.ui.automatic_layout_comboBox.currentText())
+                    diagram_widget.auto_layout(sel=self.ui.automatic_layout_comboBox.currentData())
 
             else:
                 info_msg("The current diagram cannot be automatically layed out")
@@ -1043,56 +1049,64 @@ class DiagramsMain(CompiledArraysMain):
         method = self.circuit.short_circuit_event[sc_index].method
 
         if method == MethodShortCircuit.phases:
-            return diagram_widget.colour_results_3ph(
-                SbusA=results.SbusA[:, sc_index],
-                SbusB=results.SbusB[:, sc_index],
-                SbusC=results.SbusC[:, sc_index],
-                bus_active=bus_active,
-                SfA=results.SfA[:, sc_index],
-                SfB=results.SfB[:, sc_index],
-                SfC=results.SfC[:, sc_index],
-                StA=results.StA[:, sc_index],
-                StB=results.StB[:, sc_index],
-                StC=results.StC[:, sc_index],
-                voltagesA=results.voltageA[:, sc_index],
-                voltagesB=results.voltageB[:, sc_index],
-                voltagesC=results.voltageC[:, sc_index],
-                types=results.bus_types,
-                loadingsA=results.loadingA[:, sc_index],
-                loadingsB=results.loadingB[:, sc_index],
-                loadingsC=results.loadingC[:, sc_index],
-                lossesA=results.lossesA[:, sc_index],
-                lossesB=results.lossesB[:, sc_index],
-                lossesC=results.lossesC[:, sc_index],
-                br_active=br_active,
-                hvdc_PfA=results.hvdc_Pf[:, sc_index],
-                hvdc_PfB=results.hvdc_Pf[:, sc_index],
-                hvdc_PfC=results.hvdc_Pf[:, sc_index],
-                hvdc_PtA=results.hvdc_Pt[:, sc_index],
-                hvdc_PtB=results.hvdc_Pt[:, sc_index],
-                hvdc_PtC=results.hvdc_Pt[:, sc_index],
-                hvdc_losses=results.hvdc_losses[:, sc_index],
-                hvdc_loading=results.hvdc_loading[:, sc_index],
-                hvdc_active=hvdc_active,
-                vsc_Pf=results.vsc_Pfp[:, sc_index],
-                vsc_PtA=results.vsc_St.real[:, sc_index],
-                vsc_PtB=results.vsc_St.real[:, sc_index],
-                vsc_PtC=results.vsc_St.real[:, sc_index],
-                vsc_QtA=results.vsc_St.imag[:, sc_index],
-                vsc_QtB=results.vsc_St.imag[:, sc_index],
-                vsc_QtC=results.vsc_St.imag[:, sc_index],
-                vsc_losses=results.vsc_losses[:, sc_index],
-                vsc_loading=results.vsc_loading[:, sc_index],
-                vsc_active=vsc_active,
-                use_flow_based_width=use_flow_based_width,
-                min_branch_width=min_branch_width,
-                max_branch_width=max_branch_width,
-                min_bus_width=min_bus_width,
-                max_bus_width=max_bus_width,
-                cmap=cmap,
+            has_phase_results = (
+                np.any(np.abs(results.voltageA[:, sc_index]) > 0.0)
+                or np.any(np.abs(results.voltageB[:, sc_index]) > 0.0)
+                or np.any(np.abs(results.voltageC[:, sc_index]) > 0.0)
             )
+            if not has_phase_results and np.any(np.abs(results.voltage1[:, sc_index]) > 0.0):
+                method = MethodShortCircuit.sequences
+            else:
+                return diagram_widget.colour_results_3ph(
+                    SbusA=results.SbusA[:, sc_index],
+                    SbusB=results.SbusB[:, sc_index],
+                    SbusC=results.SbusC[:, sc_index],
+                    bus_active=bus_active,
+                    SfA=results.SfA[:, sc_index],
+                    SfB=results.SfB[:, sc_index],
+                    SfC=results.SfC[:, sc_index],
+                    StA=results.StA[:, sc_index],
+                    StB=results.StB[:, sc_index],
+                    StC=results.StC[:, sc_index],
+                    voltagesA=results.voltageA[:, sc_index],
+                    voltagesB=results.voltageB[:, sc_index],
+                    voltagesC=results.voltageC[:, sc_index],
+                    types=results.bus_types,
+                    loadingsA=results.loadingA[:, sc_index],
+                    loadingsB=results.loadingB[:, sc_index],
+                    loadingsC=results.loadingC[:, sc_index],
+                    lossesA=results.lossesA[:, sc_index],
+                    lossesB=results.lossesB[:, sc_index],
+                    lossesC=results.lossesC[:, sc_index],
+                    br_active=br_active,
+                    hvdc_PfA=results.hvdc_Pf[:, sc_index],
+                    hvdc_PfB=results.hvdc_Pf[:, sc_index],
+                    hvdc_PfC=results.hvdc_Pf[:, sc_index],
+                    hvdc_PtA=results.hvdc_Pt[:, sc_index],
+                    hvdc_PtB=results.hvdc_Pt[:, sc_index],
+                    hvdc_PtC=results.hvdc_Pt[:, sc_index],
+                    hvdc_losses=results.hvdc_losses[:, sc_index],
+                    hvdc_loading=results.hvdc_loading[:, sc_index],
+                    hvdc_active=hvdc_active,
+                    vsc_Pf=results.vsc_Pfp[:, sc_index],
+                    vsc_PtA=results.vsc_St.real[:, sc_index],
+                    vsc_PtB=results.vsc_St.real[:, sc_index],
+                    vsc_PtC=results.vsc_St.real[:, sc_index],
+                    vsc_QtA=results.vsc_St.imag[:, sc_index],
+                    vsc_QtB=results.vsc_St.imag[:, sc_index],
+                    vsc_QtC=results.vsc_St.imag[:, sc_index],
+                    vsc_losses=results.vsc_losses[:, sc_index],
+                    vsc_loading=results.vsc_loading[:, sc_index],
+                    vsc_active=vsc_active,
+                    use_flow_based_width=use_flow_based_width,
+                    min_branch_width=min_branch_width,
+                    max_branch_width=max_branch_width,
+                    min_bus_width=min_bus_width,
+                    max_bus_width=max_bus_width,
+                    cmap=cmap,
+                )
 
-        else:
+        if method == MethodShortCircuit.sequences:
             return diagram_widget.colour_results(Sbus=results.Sbus1[:, sc_index],
                                                  bus_active=bus_active,
                                                  Sf=results.Sf1[:, sc_index],
@@ -1118,6 +1132,8 @@ class DiagramsMain(CompiledArraysMain):
                                                  min_bus_width=min_bus_width,
                                                  max_bus_width=max_bus_width,
                                                  cmap=cmap)
+
+        return None
 
     def opf_colouring(self, diagram_widget: ALL_EDITORS,
                       results: sim.OptimalPowerFlowResults, cmap: Colormaps,
@@ -1679,8 +1695,7 @@ class DiagramsMain(CompiledArraysMain):
         min_bus_width = self.ui.min_node_size_spinBox.value()
         max_bus_width = self.ui.max_node_size_spinBox.value()
 
-        cmap_text = self.ui.palette_comboBox.currentText()
-        cmap = self.cmap_dict[cmap_text]
+        cmap = self.ui.palette_comboBox.currentData()
 
         if current_study == sim.PowerFlowDriver.tpe.value:
             if t_idx is None:
@@ -2029,7 +2044,7 @@ class DiagramsMain(CompiledArraysMain):
         """
         if self.ui.available_results_to_color_comboBox.currentIndex() > -1:
 
-            current_study = self.ui.available_results_to_color_comboBox.currentText()
+            current_study = self.ui.available_results_to_color_comboBox.currentData()
 
             offset = self.ui.diagram_step_slider.minimum()
             if offset == -1:
@@ -2123,7 +2138,7 @@ class DiagramsMain(CompiledArraysMain):
             diagram_widget.center_nodes()
             return diagram_widget
         elif isinstance(diagram, dev.MapDiagram):
-            default_tile_source = self.tile_name_dict[self.ui.tile_provider_comboBox.currentText()]
+            default_tile_source = self.ui.tile_provider_comboBox.currentData()
             tile_source = self.tile_name_dict.get(diagram.tile_source, default_tile_source)
             return GridMapWidget(
                 gui=self,
@@ -2513,8 +2528,7 @@ class DiagramsMain(CompiledArraysMain):
             DeviceType.ExternalGridDevice
         ]
 
-        cmap_text = self.ui.palette_comboBox.currentText()
-        cmap = self.cmap_dict[cmap_text]
+        cmap = self.ui.palette_comboBox.currentData()
 
         if self.circuit.get_substation_number() > 0:
             # showing this menu only makes sense if there is anything there
@@ -2563,11 +2577,11 @@ class DiagramsMain(CompiledArraysMain):
             diagram = MapDiagram(name='Map diagram')
 
         # set other default properties of the diagram
-        diagram.tile_source = self.ui.tile_provider_comboBox.currentText()
+        diagram.tile_source = self.ui.tile_provider_comboBox.currentData().tile_set_name
         diagram.start_level = 5
 
         # select the tile source
-        tile_source = self.tile_name_dict[self.ui.tile_provider_comboBox.currentText()]
+        tile_source = self.ui.tile_provider_comboBox.currentData()
 
         # create the map widget
         map_widget = GridMapWidget(gui=self,
@@ -2725,7 +2739,7 @@ class DiagramsMain(CompiledArraysMain):
         """
         Change the style
         """
-        style = self.ui.plt_style_comboBox.currentText()
+        style = self.ui.plt_style_comboBox.currentData()
         plt.style.use(style)
 
     def diagrams_time_slider_change(self) -> None:
@@ -2859,7 +2873,7 @@ class DiagramsMain(CompiledArraysMain):
                             fps=self.ui.fps_spinBox.value(),
                             start_idx=self.get_simulation_start(),
                             end_idx=self.get_simulation_end(),
-                            current_study=self.ui.available_results_to_color_comboBox.currentText(),
+                            current_study=self.ui.available_results_to_color_comboBox.currentData(),
                             grid_colour_function=self.grid_colour_function
                         )
                         self.video_thread.progress_signal.connect(self.ui.progressBar.setValue)
@@ -3636,11 +3650,10 @@ class DiagramsMain(CompiledArraysMain):
             diagram_widget = self.get_selected_diagram_widget()
 
             if diagram_widget is not None:
-                cmap_text = self.ui.palette_comboBox.currentText()
-                cmap = self.cmap_dict[cmap_text]
+                cmap = self.ui.palette_comboBox.currentData()
                 diagram_widget.diagram.palette = cmap
 
-                current_study = self.ui.available_results_to_color_comboBox.currentText()
+                current_study = self.ui.available_results_to_color_comboBox.currentData()
                 val = self.ui.diagram_step_slider.value()
                 t_idx = val if val > -1 else None
 
@@ -3657,8 +3670,7 @@ class DiagramsMain(CompiledArraysMain):
 
             if diagram_widget is not None:
                 if isinstance(diagram_widget, GridMapWidget):
-                    tile_name = self.ui.tile_provider_comboBox.currentText()
-                    tile_src = self.tile_name_dict[tile_name]
+                    tile_src = self.ui.tile_provider_comboBox.currentData()
                     diagram_widget.map.tile_src = tile_src
 
     def consolidate_diagram_coordinates(self):
@@ -3710,13 +3722,12 @@ class DiagramsMain(CompiledArraysMain):
             max_branch_width = self.ui.max_branch_size_spinBox.value()
             min_bus_width = self.ui.min_node_size_spinBox.value()
             max_bus_width = self.ui.max_node_size_spinBox.value()
-            cmap_text = self.ui.palette_comboBox.currentText()
-            cmap = self.cmap_dict[cmap_text]
+            cmap = self.ui.palette_comboBox.currentData()
 
             text = indices[0].data(role=QtCore.Qt.ItemDataRole.DisplayRole)
             sel_idx = indices[0].row()
             if self.ui.available_results_to_color_comboBox.currentIndex() > -1 and sel_idx > -1:
-                current_study = self.ui.available_results_to_color_comboBox.currentText()
+                current_study = self.ui.available_results_to_color_comboBox.currentData()
 
                 if current_study == sim.ShortCircuitDriver.tpe.value:
                     results: sim.ShortCircuitResults = self.session.get_results(SimulationTypes.ShortCircuit_run)

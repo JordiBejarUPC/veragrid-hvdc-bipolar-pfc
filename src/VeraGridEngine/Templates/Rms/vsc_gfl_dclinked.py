@@ -64,7 +64,7 @@ def build_vsc_rms(vfactory: VarFactory, name:str = ''):
     templ.tpe = DeviceType.VscDevice
     templ.name = name
 
-    vm_t = vfactory.add_var("Vm_t_" + name)
+    vm_t = vfactory.add_var("Vm_t")
     inputs: List[Var] = [vm_t]
 
     Pf  = vfactory.add_var("Pf_vsc", VarPowerFlowReferenceType.Pf)

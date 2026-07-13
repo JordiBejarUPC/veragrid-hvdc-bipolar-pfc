@@ -257,10 +257,10 @@ class TrafoPhasorRmsTemplate(RmsModelTemplate):
         super().__init__(name=name)
 
         self.tpe: DeviceType = DeviceType.Transformer2WDevice
-        Vrf = vf.add_var("Vrf_" + name, VarPowerFlowReferenceType.Vrf)
-        Vif = vf.add_var("Vif_" + name, VarPowerFlowReferenceType.Vif)
-        Vrt = vf.add_var("Vrt_" + name, VarPowerFlowReferenceType.Vrt)
-        Vit = vf.add_var("Vit_" + name, VarPowerFlowReferenceType.Vit)
+        Vrf = vf.add_var("Vrf", VarPowerFlowReferenceType.Vrf)
+        Vif = vf.add_var("Vif", VarPowerFlowReferenceType.Vif)
+        Vrt = vf.add_var("Vrt", VarPowerFlowReferenceType.Vrt)
+        Vit = vf.add_var("Vit", VarPowerFlowReferenceType.Vit)
 
         Irf = vf.add_var("Irf")
         Iif = vf.add_var("Iif")

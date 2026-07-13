@@ -181,7 +181,7 @@ def parse_buses_data(circuit: MultiCircuit,
         bus_idx_dict[table[i, matpower_buses.BUS_I]] = i
 
         # determine if the bus is set as slack manually
-        bus.is_slack = table[i, matpower_buses.BUS_TYPE] == matpower_buses.REF
+        bus.set_is_slack_at(t=None, val=table[i, matpower_buses.BUS_TYPE] == matpower_buses.REF)
 
         # Add the bus to the circuit buses
         circuit.add_bus(bus)
@@ -746,28 +746,21 @@ def read_matpower_file(filename: str, logger: Logger) -> Dict[str, np.ndarray]:
     return data
 
 
-def parse_matpower_file(filename, export=False) -> [MultiCircuit, Logger]:
+def parse_matpower_file(filename) -> Tuple[MultiCircuit, Logger]:
     """
-
-    Args:
-        filename:
-        export:
-
-    Returns:
-
+    Read MatPower file
+    :param filename: MatPower file
+    :return: MultiCircuit (if successful), Logger
     """
-
-    # declare circuit
-    circuit = MultiCircuit()
-
     logger = Logger()
 
     data = read_matpower_file(filename, logger)
 
     if 'bus' in data.keys():
-        circuit = interpret_data_v1(circuit, data, logger)
+        circuit = interpret_data_v1(data, logger)
     else:
         logger.add_error('No bus data')
+        raise Exception("No bus data found in MatPower file:(")
 
     return circuit, logger
 
@@ -868,7 +861,7 @@ def get_buses(circuit: MultiCircuit) -> Tuple[List[Dict[str, float]], Dict[dev.B
 
         data.append({
             'bus_i': i + 1,  # matlab starts at 1
-            'type': elm.determine_bus_type().value,
+            'type': elm.determine_snapshot_bus_type().value,
             'Pd': Pd,
             'Qd': Qd,
             'Gs': Gs,

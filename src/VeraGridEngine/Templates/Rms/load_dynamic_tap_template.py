@@ -51,7 +51,7 @@ def DynamicTapLoadBuild(vfactory: VarFactory, name: str = "", Pl0=1.0, Ql0=0.1) 
     """
     templ = RmsModelTemplate()
     templ.tpe = DeviceType.LoadDevice
-    inputs = [vfactory.add_var("Vm_")]
+    inputs = [vfactory.add_var("Vm")]
 
     # Vars:
     m = vfactory.add_var('m')

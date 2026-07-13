@@ -829,14 +829,14 @@ def _build_standalone_valve_case(valve_tpe: ValveEmtType) -> Tuple[GenericEmtPro
         initial_state=initial_state,
         antiparallel_diode=antiparallel_enabled,
     ).block
-    _set_block_runtime_parameter(valve_block, f"on_resistance_{block_name}", 0.02)
-    _set_block_runtime_parameter(valve_block, f"off_conductance_{block_name}", 1.0e-6)
-    _set_block_runtime_parameter(valve_block, f"forward_voltage_{block_name}", 0.0)
-    _set_block_runtime_parameter(valve_block, f"snubber_enabled_{block_name}", 0.0)
+    _set_block_runtime_parameter(valve_block, "on_resistance", 0.02)
+    _set_block_runtime_parameter(valve_block, "off_conductance", 1.0e-6)
+    _set_block_runtime_parameter(valve_block, "forward_voltage", 0.0)
+    _set_block_runtime_parameter(valve_block, "snubber_enabled", 0.0)
     _connect_standalone_valve_terminals(valve_block, v_source=v_source, v_load=v_load)
 
     i_branch = valve_block.external_mapping[VarPowerFlowReferenceType.If_dc]
-    v_valve = _find_var_in_block_by_name(f"v_valve_{block_name}", valve_block)
+    v_valve = _find_var_in_block_by_name("v_valve", valve_block)
 
     if v_valve is None:
         raise KeyError(f"Valve voltage variable for block '{block_name}' was not found")
@@ -872,12 +872,12 @@ def _build_standalone_valve_case(valve_tpe: ValveEmtType) -> Tuple[GenericEmtPro
     mode_idx = -1
 
     for parameter in problem.get_variable_parameters():
-        if parameter.name == f"gate_fired_{block_name}":
+        if parameter.name == "gate_fired":
             gate_idx = int(problem.uid2idx_event_params[parameter.uid])
         else:
             pass
 
-        if parameter.name == f"path_mode_{block_name}":
+        if parameter.name == "path_mode":
             mode_idx = int(problem.uid2idx_event_params[parameter.uid])
         else:
             pass
@@ -1057,9 +1057,9 @@ def test_igbt_valve_uses_antiparallel_path_when_reverse_biased() -> None:
     params0: np.ndarray = problem.event_params_values.copy()
     x0: np.ndarray = problem.get_x0().copy()
 
-    idx_mode: int = _get_runtime_param_index_by_name(problem, "path_mode_valve_logic_case")
-    idx_v_valve: int = _get_var_index_by_name(problem, "v_valve_valve_logic_case")
-    idx_i_valve: int = _get_var_index_by_name(problem, "i_f_dc_valve_logic_case")
+    idx_mode: int = _get_runtime_param_index_by_name(problem, "path_mode")
+    idx_v_valve: int = _get_var_index_by_name(problem, "v_valve")
+    idx_i_valve: int = _get_var_index_by_name(problem, "i_f_dc")
 
     x0[idx_v_valve] = -0.2
     x0[idx_i_valve] = -0.1
@@ -1099,10 +1099,10 @@ def test_thyristor_valve_latches_after_gate_release_until_current_extinction() -
     params0: np.ndarray = problem.event_params_values.copy()
     x0: np.ndarray = problem.get_x0().copy()
 
-    idx_mode: int = _get_runtime_param_index_by_name(problem, "path_mode_thyristor_logic_case")
-    idx_gate: int = _get_runtime_param_index_by_name(problem, "gate_fired_thyristor_logic_case")
-    idx_v_valve: int = _get_var_index_by_name(problem, "v_valve_thyristor_logic_case")
-    idx_i_valve: int = _get_var_index_by_name(problem, "i_f_dc_thyristor_logic_case")
+    idx_mode: int = _get_runtime_param_index_by_name(problem, "path_mode")
+    idx_gate: int = _get_runtime_param_index_by_name(problem, "gate_fired")
+    idx_v_valve: int = _get_var_index_by_name(problem, "v_valve")
+    idx_i_valve: int = _get_var_index_by_name(problem, "i_f_dc")
 
     params0[idx_gate] = 1.0
     x0[idx_v_valve] = 0.15
@@ -1184,8 +1184,8 @@ def test_valve_template_initializes_mode_from_dc_power_flow_seed() -> None:
         pf_results_3Ph=pf_results_3ph,
     )
 
-    mode_idx: int = _get_runtime_param_index_by_name(problem, "path_mode_ValveHost")
-    pf_seed_idx: int = _get_runtime_param_index_by_name(problem, "path_mode_pf_seed_ValveHost")
+    mode_idx: int = _get_runtime_param_index_by_name(problem, "path_mode")
+    pf_seed_idx: int = _get_runtime_param_index_by_name(problem, "path_mode_pf_seed")
 
     assert problem.event_params_values[pf_seed_idx] == 1.0
     assert problem.event_params_values[mode_idx] == 1.0
@@ -1222,7 +1222,7 @@ def test_dc_line_runtime_case_responds_to_load_step() -> None:
     # generic Load device maps ``G`` to ``g_*`` and keeps ``P`` in ``Pl0_*`` as a
     # separate constant-power term, so this test must step the conductance
     # parameter directly instead of depending on any implicit remapping.
-    load_power_idx_full = _get_constant_parameter_full_index(problem, "g_dc_load_runtime_case")
+    load_power_idx_full = _get_constant_parameter_full_index(problem, "g")
     boundary_updater = LoadStepBoundaryUpdater(
         problem=problem,
         param_full_idx=load_power_idx_full,
@@ -1319,8 +1319,8 @@ def test_igbt_runtime_case_follows_gate_schedule() -> None:
     )
     solver = _create_symbolic_solver(problem, simulation_time_s=4.0e-3, time_step_s=1.0e-5)
 
-    gate_param_idx = _get_runtime_param_index_by_name(problem, "gate_fired_IGBT_Runtime")
-    mode_param_idx = _get_runtime_param_index_by_name(problem, "path_mode_IGBT_Runtime")
+    gate_param_idx = _get_runtime_param_index_by_name(problem, "gate_fired")
+    mode_param_idx = _get_runtime_param_index_by_name(problem, "path_mode")
     boundary_updater = GateScheduleBoundaryUpdater(
         problem=problem,
         gate_param_idx=gate_param_idx,

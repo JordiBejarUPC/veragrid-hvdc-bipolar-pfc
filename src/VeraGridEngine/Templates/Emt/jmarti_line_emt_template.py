@@ -91,10 +91,10 @@ def get_jmarti_line_emt_template(vf: VarFactory,
         phase_index += 1
 
     for phase_label in active_phases:
-        vf_vars.append(vf.add_var(name=f"vf_{phase_label}_{name}", reference=vf_keys[phase_label]))
-        vt_vars.append(vf.add_var(name=f"vt_{phase_label}_{name}", reference=vt_keys[phase_label]))
-        ih_f.append(vf.add_var(name=f"Ih_f_{name}_{phase_label}"))
-        ih_t.append(vf.add_var(name=f"Ih_t_{name}_{phase_label}"))
+        vf_vars.append(vf.add_var(name=f"vf_{phase_label}", reference=vf_keys[phase_label]))
+        vt_vars.append(vf.add_var(name=f"vt_{phase_label}", reference=vt_keys[phase_label]))
+        ih_f.append(vf.add_var(name=f"Ih_f_{phase_label}"))
+        ih_t.append(vf.add_var(name=f"Ih_t_{phase_label}"))
 
     templ.block.in_vars = vf_vars + vt_vars
     templ.block.event_dict = dict({parameter: vf.add_const(0.0) for parameter in (ih_f + ih_t)})

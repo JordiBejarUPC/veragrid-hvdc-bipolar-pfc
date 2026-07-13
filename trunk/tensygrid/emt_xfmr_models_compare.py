@@ -177,9 +177,9 @@ def run_case(use_multilinear: bool) -> dict[str, np.ndarray]:
 
     t, y, _, _, _ = solver.simulate(boundary_updater=problem)
 
-    vA_lv = get_series(problem, y, find_name_in_block("v_A_Bus_LV_emt_template", bus_lv.emt_model))
-    iA_f = get_series(problem, y, find_name_in_block("if_A_xfmr_test", xfmr_mdl))
-    iA_t = get_series(problem, y, find_name_in_block("it_A_xfmr_test", xfmr_mdl))
+    vA_lv = get_series(problem, y, find_name_in_block("v_A", bus_lv.emt_model))
+    iA_f = get_series(problem, y, find_name_in_block("if_A", xfmr_mdl))
+    iA_t = get_series(problem, y, find_name_in_block("it_A", xfmr_mdl))
 
     return {
         "t": np.asarray(t).reshape(-1),

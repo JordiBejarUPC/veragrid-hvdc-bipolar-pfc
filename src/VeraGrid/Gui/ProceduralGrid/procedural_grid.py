@@ -15,7 +15,7 @@ from VeraGridEngine.Utils.GeographicalMethods.haversine_distance import haversin
 from VeraGridEngine.Devices.Diagrams.map_location import MapLocation
 import VeraGridEngine.Devices as dev
 from VeraGrid.Gui.ProceduralGrid.procedural_grid_ui import Ui_Dialog
-from VeraGrid.Gui.gui_functions import get_list_model, enums_to_model
+from VeraGrid.Gui.gui_functions import ComboModel, get_list_model
 from VeraGridEngine.enumerations import ProceduralGridMethods
 from VeraGridEngine.Topology.Procedural.procedural_grid_engine import ProceduralGridComputationEngine
 from VeraGridEngine.basic_structures import Logger
@@ -46,10 +46,11 @@ class ProceduralGridWindow(QtWidgets.QDialog):
         self.app = app
 
         # Setup combobox
-        self.methods_dict, methods_mdl = enums_to_model(
-            [ProceduralGridMethods.SteinerAlone,
-             ProceduralGridMethods.SteinerAndOptimization,
-             ProceduralGridMethods.CatalogueOptimizationOnly]
+        methods_mdl = ComboModel(
+            enum_values=[ProceduralGridMethods.SteinerAlone,
+                         ProceduralGridMethods.SteinerAndOptimization,
+                         ProceduralGridMethods.CatalogueOptimizationOnly],
+            translate=self.tr
         )
         self.ui.methodComboBox.setModel(methods_mdl)
         self.ui.methodComboBox.setCurrentIndex(0)
@@ -127,7 +128,7 @@ class ProceduralGridWindow(QtWidgets.QDialog):
         self._invalidate_preview()
 
         # Resolve the method currently selected in the combo box
-        method: ProceduralGridMethods = self.methods_dict[self.ui.methodComboBox.currentText()]
+        method: ProceduralGridMethods = self.ui.methodComboBox.currentData()
 
         if method == ProceduralGridMethods.CatalogueOptimizationOnly:
             # The catalogue optimization does not use target/candidate substations and does not
@@ -221,7 +222,7 @@ class ProceduralGridWindow(QtWidgets.QDialog):
         :return: ``None``.
         """
         # 1. Get the chosen method
-        method: ProceduralGridMethods = self.methods_dict[self.ui.methodComboBox.currentText()]
+        method: ProceduralGridMethods = self.ui.methodComboBox.currentData()
 
         # 2. Extract the raw API objects from the graphic items
         target_objects = [se.api_object for se in self.connection_substations_graphics_list]
@@ -299,7 +300,7 @@ class ProceduralGridWindow(QtWidgets.QDialog):
         """
         # Branch on method: the catalogue-only method does not go through the engine
         # preview path; it reuses the application's catalogue optimization handler.
-        method: ProceduralGridMethods = self.methods_dict[self.ui.methodComboBox.currentText()]
+        method: ProceduralGridMethods = self.ui.methodComboBox.currentData()
         if method == ProceduralGridMethods.CatalogueOptimizationOnly:
             # Close first so that any warning popup raised by the handler (no selection,
             # no schematic, already running, etc.) appears cleanly over the main window.

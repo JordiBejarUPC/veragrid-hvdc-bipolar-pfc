@@ -41,37 +41,6 @@ from VeraGridEngine.Simulations.LinearFactors.linear_analysis import (LinearAnal
                                                                       LinearMultiContingencies)
 
 
-def get_contingency_flow_with_filter(multi_contingency: LinearMultiContingency,
-                                     base_flow: Vec,
-                                     injections: Union[None, Vec],
-                                     threshold: float,
-                                     m: int) -> LpExp:
-    """
-    Get contingency flow
-    :param multi_contingency: MultiContingency object
-    :param base_flow: Base branch flows (nbranch)
-    :param injections: Bus injections increments (nbus)
-    :param threshold: threshold to filter contingency elements
-    :param m: branch monitor index (int)
-    :return: New flows (nbranch)
-    """
-
-    res = base_flow[m] + 0
-
-    if len(multi_contingency.branch_indices):
-        for i, c in enumerate(multi_contingency.branch_indices):
-            if abs(multi_contingency.mlodf_factors[m, i]) >= threshold:
-                res += multi_contingency.mlodf_factors[m, i] * base_flow[c]
-
-    if len(multi_contingency.bus_indices):
-        for i, c in enumerate(multi_contingency.bus_indices):
-            if abs(multi_contingency.compensated_ptdf_factors[m, i]) >= threshold:
-                res += multi_contingency.compensated_ptdf_factors[m, i] * multi_contingency.injections_factor[i] * \
-                       injections[c]
-
-    return res
-
-
 class BusVars:
     """
     Struct to store the bus related vars
@@ -736,6 +705,94 @@ class OpfVars:
         return data
 
 
+def get_time_increment_hours(time_array: DateVec, idx: int) -> float:
+    """
+    Return the duration represented by a time step.
+    """
+    if len(time_array) <= 1:
+        return 1.0
+    if idx > 0:
+        return (time_array[idx] - time_array[idx - 1]).total_seconds() / 3600.0
+    return (time_array[1] - time_array[0]).total_seconds() / 3600.0
+
+
+def get_min_time_window(time_array: DateVec, local_t: int, min_hours: float) -> list[int]:
+    """
+    Return the backward-looking window of indices that must honor a minimum up/down duration.
+    """
+    if min_hours <= 0.0:
+        return list()
+
+    covered_hours = 0.0
+    window: list[int] = list()
+    tau = local_t
+    while tau >= 0 and covered_hours + 1e-12 < min_hours:
+        window.append(tau)
+        covered_hours += get_time_increment_hours(time_array, tau)
+        tau -= 1
+
+    return window
+
+
+def add_generator_ramp_constraints(local_t: int,
+                                   k: int,
+                                   Sbase: float,
+                                   time_array: DateVec,
+                                   gen_data_t: GeneratorData,
+                                   gen_vars: "GenerationVars",
+                                   prob: LpModel,
+                                   logger: Logger) -> None:
+    """
+    Add symmetric generator ramp constraints using positive ramp-up/ramp-down limits.
+    """
+    dt = get_time_increment_hours(time_array, local_t)
+
+    ramp_up = gen_data_t.ramp_up[k]
+    if 0.0 < ramp_up < gen_data_t.pmax[k]:
+        prob.add_cst(
+            gen_vars.p[local_t, k] - gen_vars.p[local_t - 1, k] <= ramp_up / Sbase * dt,
+            name=f"ramp_up_{local_t}_{k}"
+        )
+
+    ramp_down = gen_data_t.ramp_down[k]
+    if 0.0 < ramp_down < gen_data_t.pmax[k]:
+        prob.add_cst(
+            gen_vars.p[local_t - 1, k] - gen_vars.p[local_t, k] <= ramp_down / Sbase * dt,
+            name=f"ramp_dwn_{local_t}_{k}"
+        )
+
+
+def get_contingency_flow_with_filter(multi_contingency: LinearMultiContingency,
+                                     base_flow: Vec,
+                                     injections: Union[None, Vec],
+                                     threshold: float,
+                                     m: int) -> LpExp:
+    """
+    Get contingency flow
+    :param multi_contingency: MultiContingency object
+    :param base_flow: Base branch flows (nbranch)
+    :param injections: Bus injections increments (nbus)
+    :param threshold: threshold to filter contingency elements
+    :param m: branch monitor index (int)
+    :return: New flows (nbranch)
+    """
+
+    res = base_flow[m] + 0
+
+    if len(multi_contingency.branch_indices):
+        for i, c in enumerate(multi_contingency.branch_indices):
+            if abs(multi_contingency.mlodf_factors[m, i]) >= threshold:
+                res += multi_contingency.mlodf_factors[m, i] * base_flow[c]
+
+    if len(multi_contingency.bus_indices):
+        for i, c in enumerate(multi_contingency.bus_indices):
+            if abs(multi_contingency.compensated_ptdf_factors[m, i]) >= threshold:
+                res += multi_contingency.compensated_ptdf_factors[m, i] * multi_contingency.injections_factor[i] * \
+                       injections[c]
+
+    return res
+
+
 def add_linear_simple_generation_formulation(local_t: Union[int, None],
                                              Sbase: float,
                                              time_array: DateVec,
@@ -804,34 +861,14 @@ def add_linear_simple_generation_formulation(local_t: Union[int, None],
 
                 # add the ramp constraints
                 if ramp_constraints and local_t > 0 and not skip_generation_limits:
-
-                    # if the ramp is actually sufficiently restrictive...
-                    dt = (time_array[local_t] - time_array[local_t - 1]).seconds / 3600.0  # time increment in hours
-
-                    if gen_data_t.ramp_up[k] <= gen_data_t.pmax[k]:
-                        # P(t) - P(t-1) <= ramp_up · dt / Sbase
-                        prob.add_cst(
-                            gen_vars.p[local_t, k] - gen_vars.p[local_t - 1, k] <= gen_data_t.ramp_up[k] / Sbase * dt,
-                            name=f"ramp_up_{local_t}_{k}"
-                        )
-                    else:
-                        logger.add_warning("Generator ramp up greater then Pmax",
-                                           value=gen_data_t.ramp_up[k],
-                                           device=f"{k}: {gen_data_t.names[k]}",
-                                           expected_value=gen_data_t.pmax[k])
-
-                    if gen_data_t.ramp_down[k] <= - gen_data_t.pmax[k]:
-                        # P(t-1) - P(t) <= ramp_down · dt / Sbase
-                        # NOTE: Ramp down must be negative
-                        prob.add_cst(
-                            gen_vars.p[local_t - 1, k] - gen_vars.p[local_t, k] <= gen_data_t.ramp_down[k] / Sbase * dt,
-                            name=f"ramp_dwn_{local_t}_{k}"
-                        )
-                    else:
-                        logger.add_error("Generator ramp down lower than -Pmax",
-                                         value=gen_data_t.ramp_down[k],
-                                         device=f"{k}: {gen_data_t.names[k]}",
-                                         expected_value=-gen_data_t.pmax[k])
+                    add_generator_ramp_constraints(local_t=local_t,
+                                                   k=k,
+                                                   Sbase=Sbase,
+                                                   time_array=time_array,
+                                                   gen_data_t=gen_data_t,
+                                                   gen_vars=gen_vars,
+                                                   prob=prob,
+                                                   logger=logger)
 
             else:
 
@@ -1123,34 +1160,14 @@ def add_linear_generation_expansion_planning_formulation(local_t: Union[int, Non
 
                 # add the ramp constraints
                 if ramp_constraints and local_t > 0 and not skip_generation_limits:
-
-                    # if the ramp is actually sufficiently restrictive...
-                    dt = (time_array[local_t] - time_array[local_t - 1]).seconds / 3600.0  # time increment in hours
-
-                    if gen_data_t.ramp_up[k] <= gen_data_t.pmax[k]:
-                        # P(t) - P(t-1) <= ramp_up · dt / Sbase
-                        prob.add_cst(
-                            gen_vars.p[local_t, k] - gen_vars.p[local_t - 1, k] <= gen_data_t.ramp_up[k] / Sbase * dt,
-                            name=f"ramp_up_{local_t}_{k}"
-                        )
-                    else:
-                        logger.add_warning("Generator ramp up greater then Pmax",
-                                           value=gen_data_t.ramp_up[k],
-                                           device=f"{k}: {gen_data_t.names[k]}",
-                                           expected_value=gen_data_t.pmax[k])
-
-                    if gen_data_t.ramp_down[k] <= - gen_data_t.pmax[k]:
-                        # P(t-1) - P(t) <= ramp_down · dt / Sbase
-                        # NOTE: Ramp down must be negative
-                        prob.add_cst(
-                            gen_vars.p[local_t - 1, k] - gen_vars.p[local_t, k] <= gen_data_t.ramp_down[k] / Sbase * dt,
-                            name=f"ramp_dwn_{local_t}_{k}"
-                        )
-                    else:
-                        logger.add_error("Generator ramp down lower than -Pmax",
-                                         value=gen_data_t.ramp_down[k],
-                                         device=f"{k}: {gen_data_t.names[k]}",
-                                         expected_value=-gen_data_t.pmax[k])
+                    add_generator_ramp_constraints(local_t=local_t,
+                                                   k=k,
+                                                   Sbase=Sbase,
+                                                   time_array=time_array,
+                                                   gen_data_t=gen_data_t,
+                                                   gen_vars=gen_vars,
+                                                   prob=prob,
+                                                   logger=logger)
 
                 # Generation Expansion Planning
                 if gen_data_t.is_candidate[k]:
@@ -1370,36 +1387,33 @@ def add_linear_generation_unit_commitment_formulation(
                                 name=f"binary_alg4_{local_t}_{k}"
                             )
 
+                    if consider_time_up_down and local_t is not None:
+                        up_window = get_min_time_window(time_array, local_t, gen_data_t.min_time_up[k])
+                        if up_window:
+                            prob.add_cst(
+                                cst=sum(gen_vars.starting_up[tau, k] for tau in up_window) <= gen_vars.producing[
+                                    local_t, k],
+                                name=f"gen_min_up_{local_t}_{k}"
+                            )
+
+                        down_window = get_min_time_window(time_array, local_t, gen_data_t.min_time_down[k])
+                        if down_window:
+                            prob.add_cst(
+                                cst=(sum(gen_vars.shutting_down[tau, k] for tau in down_window)
+                                     <= 1 - gen_vars.producing[local_t, k]),
+                                name=f"gen_min_down_{local_t}_{k}"
+                            )
+
                 # add the ramp constraints
                 if ramp_constraints and local_t > 0 and not skip_generation_limits:
-
-                    # if the ramp is actually sufficiently restrictive...
-                    dt = (time_array[local_t] - time_array[local_t - 1]).seconds / 3600.0  # time increment in hours
-
-                    if gen_data_t.ramp_up[k] <= gen_data_t.pmax[k]:
-                        # P(t) - P(t-1) <= ramp_up · dt / Sbase
-                        prob.add_cst(
-                            gen_vars.p[local_t, k] - gen_vars.p[local_t - 1, k] <= gen_data_t.ramp_up[k] / Sbase * dt,
-                            name=f"ramp_up_{local_t}_{k}"
-                        )
-                    else:
-                        logger.add_warning("Generator ramp up greater then Pmax",
-                                           value=gen_data_t.ramp_up[k],
-                                           device=f"{k}: {gen_data_t.names[k]}",
-                                           expected_value=gen_data_t.pmax[k])
-
-                    if gen_data_t.ramp_down[k] <= - gen_data_t.pmax[k]:
-                        # P(t-1) - P(t) <= ramp_down · dt / Sbase
-                        # NOTE: Ramp down must be negative
-                        prob.add_cst(
-                            gen_vars.p[local_t - 1, k] - gen_vars.p[local_t, k] <= gen_data_t.ramp_down[k] / Sbase * dt,
-                            name=f"ramp_dwn_{local_t}_{k}"
-                        )
-                    else:
-                        logger.add_error("Generator ramp down lower than -Pmax",
-                                         value=gen_data_t.ramp_down[k],
-                                         device=f"{k}: {gen_data_t.names[k]}",
-                                         expected_value=-gen_data_t.pmax[k])
+                    add_generator_ramp_constraints(local_t=local_t,
+                                                   k=k,
+                                                   Sbase=Sbase,
+                                                   time_array=time_array,
+                                                   gen_data_t=gen_data_t,
+                                                   gen_vars=gen_vars,
+                                                   prob=prob,
+                                                   logger=logger)
 
             else:
 
@@ -1657,7 +1671,8 @@ def add_linear_battery_formulation(t: Union[int, None],
                                    ramp_constraints: bool,
                                    skip_generation_limits: bool,
                                    generation_expansion_planning: bool,
-                                   energy_0: Vec):
+                                   energy_0: Vec,
+                                   global_t: Union[int, None] = None):
     """
     Add MIP generation formulation
     :param t: time step, if None we assume single time step
@@ -1672,6 +1687,7 @@ def add_linear_battery_formulation(t: Union[int, None],
     :param skip_generation_limits: skip the generation limits?
     :param generation_expansion_planning: generation expansion planning?
     :param energy_0: initial value of the energy stored
+    :param global_t: global time index, used to keep the first interval consistent across grouped runs
     :return objective function
     """
     f_obj = 0.0
@@ -1749,8 +1765,22 @@ def add_linear_battery_formulation(t: Union[int, None],
 
                 # compute the time increment in hours
                 if len(time_array) > 1:
-                    dt = (time_array[t] - time_array[t - 1]).seconds / 3600.0
+                    if t > 0:
+                        # Normal case: this row has a previous row inside the same optimization
+                        # chunk, so use the local spacing between consecutive modeled rows.
+                        dt = (time_array[t] - time_array[t - 1]).seconds / 3600.0
+                    elif global_t is not None and global_t > 0:
+                        # First local row of a later chunk: there is no local t-1 row, but there
+                        # is a real previous timestamp in the full simulation timeline. Use that
+                        # full-series spacing so the carried battery state is updated correctly.
+                        dt = (time_array[global_t] - time_array[global_t - 1]).seconds / 3600.0
+                    else:
+                        # True first row of the whole simulation: no previous timestamp exists, so
+                        # define interval 0 using the first known spacing in the time series.
+                        dt = (time_array[1] - time_array[0]).seconds / 3600.0
                 else:
+                    # Single-point run: no spacing can be inferred from the time profile, so use
+                    # the historical 1-hour default for the battery energy balance.
                     dt = 1.0
 
                 if ramp_constraints and t is not None:
@@ -1778,8 +1808,11 @@ def add_linear_battery_formulation(t: Union[int, None],
                                               - p_pos / batt_data_t.discharge_efficiency[k])),
                                  name=join("batt_energy_", [t, k], "_"))
                 else:
-                    # set the initial energy value
-                    batt_vars.e[t, k] = energy_0[k] / Sbase
+                    # tie the first modeled interval to the provided initial energy
+                    prob.add_cst(cst=(batt_vars.e[t, k] == energy_0[k] / Sbase
+                                      + dt * (batt_data_t.charge_efficiency[k] * p_neg
+                                              - p_pos / batt_data_t.discharge_efficiency[k])),
+                                 name=join("batt_energy_", [t, k], "_"))
 
             else:
 
@@ -2257,15 +2290,15 @@ def add_linear_hvdc_formulation(t: int,
 
                 # use improved pmode3 formulation with three operating regions
                 P0 = hvdc_data_t.Pset[m] / Sbase
-                
+
                 # convert MW/deg to pu/rad
                 droop = hvdc_data_t.get_angle_droop_in_pu_rad_at(m, Sbase)
                 if droop == 0.0:
                     # avoid division by zero in pmode3_formulation_impr
                     droop = 1e-20
-                
+
                 rate = hvdc_data_t.rates[m] / Sbase
-                
+
                 hvdc_vars.flows[t, m] = pmode3_formulation_impr(
                     prob=prob,
                     elm_idx=m,
@@ -2806,7 +2839,8 @@ def run_linear_opf_ts(grid: MultiCircuit,
                 ramp_constraints=ramp_constraints,
                 skip_generation_limits=skip_generation_limits,
                 generation_expansion_planning=False,
-                energy_0=energy_0
+                energy_0=energy_0,
+                global_t=global_t_idx
             )
 
         elif dispatch_mode == OpfDispatchMode.UnitCommitment:
@@ -2839,7 +2873,8 @@ def run_linear_opf_ts(grid: MultiCircuit,
                 ramp_constraints=ramp_constraints,
                 skip_generation_limits=skip_generation_limits,
                 generation_expansion_planning=False,
-                energy_0=energy_0
+                energy_0=energy_0,
+                global_t=global_t_idx
             )
 
         elif dispatch_mode == OpfDispatchMode.NodalCapacity:
@@ -2870,7 +2905,8 @@ def run_linear_opf_ts(grid: MultiCircuit,
                 ramp_constraints=ramp_constraints,
                 skip_generation_limits=skip_generation_limits,
                 generation_expansion_planning=False,
-                energy_0=energy_0
+                energy_0=energy_0,
+                global_t=global_t_idx
             )
 
         elif dispatch_mode == OpfDispatchMode.GenerationExpansionPlanning:
@@ -2900,7 +2936,8 @@ def run_linear_opf_ts(grid: MultiCircuit,
                 ramp_constraints=ramp_constraints,
                 skip_generation_limits=skip_generation_limits,
                 generation_expansion_planning=True,
-                energy_0=energy_0
+                energy_0=energy_0,
+                global_t=global_t_idx
             )
 
         elif dispatch_mode == OpfDispatchMode.InterAreaRedispatch:
@@ -2929,7 +2966,8 @@ def run_linear_opf_ts(grid: MultiCircuit,
                 ramp_constraints=ramp_constraints,
                 skip_generation_limits=skip_generation_limits,
                 generation_expansion_planning=False,
-                energy_0=energy_0
+                energy_0=energy_0,
+                global_t=global_t_idx
             )
         else:
             raise ValueError(f"dispatch mode not supported {dispatch_mode}")

@@ -156,11 +156,11 @@ def _build_waveform_parameters(vf: VarFactory,
     _validate_waveform_points(time_points, value_points)
 
     for point_index in range(len(time_points)):
-        parameter_var = vf.add_var(f"arr_x{point_index + 1}_{name}")
+        parameter_var = vf.add_var(f"arr_x{point_index + 1}")
         template.block.event_dict[parameter_var] = vf.add_const(float(time_points[point_index]), name=f"arr_x{point_index + 1}")
         x_vars.append(parameter_var)
 
-        parameter_var = vf.add_var(f"arr_y{point_index + 1}_{name}")
+        parameter_var = vf.add_var(f"arr_y{point_index + 1}")
         template.block.event_dict[parameter_var] = vf.add_const(float(value_points[point_index]), name=f"arr_y{point_index + 1}")
         y_vars.append(parameter_var)
 
@@ -238,8 +238,8 @@ def get_arbitrary_waveform_current_source_emt_template(vf: VarFactory,
     template.name = resolved_name
     template.block.name = resolved_name
 
-    tau_var: Var = vf.add_var(name=f"t_src_{resolved_name}")
-    d_tau_var: Var = vf.add_diff_var(name=f"d_t_src_{resolved_name}", base_var=tau_var)
+    tau_var: Var = vf.add_var(name=f"t_src")
+    d_tau_var: Var = vf.add_diff_var(name=f"d_t_src", base_var=tau_var)
     x_vars, y_vars = _build_waveform_parameters(vf=vf, template=template, time_points=time_points, value_points=value_points, name=resolved_name)
     waveform_expr: Expr = _build_clipped_lookup_expression(coord_var=tau_var, x_vars=x_vars, y_vars=y_vars)
 
@@ -252,8 +252,8 @@ def get_arbitrary_waveform_current_source_emt_template(vf: VarFactory,
     phase_label: str
 
     for phase_label in active_labels:
-        voltage_var: Var = vf.add_var(name=f"v_{phase_label}_{resolved_name}", reference=_get_voltage_reference(phase_label))
-        current_var: Var = vf.add_var(name=f"i_{phase_label}_{resolved_name}", reference=_get_current_reference(phase_label))
+        voltage_var: Var = vf.add_var(name=f"v_{phase_label}", reference=_get_voltage_reference(phase_label))
+        current_var: Var = vf.add_var(name=f"i_{phase_label}", reference=_get_current_reference(phase_label))
         voltage_vars[phase_label] = voltage_var
         current_vars[phase_label] = current_var
         in_vars.append(voltage_var)
@@ -346,9 +346,9 @@ def get_arbitrary_waveform_voltage_source_emt_template(vf: VarFactory,
     template.name = resolved_name
     template.block.name = resolved_name
 
-    tau_var: Var = vf.add_var(name=f"t_src_{resolved_name}")
-    d_tau_var: Var = vf.add_diff_var(name=f"d_t_src_{resolved_name}", base_var=tau_var)
-    conductance_var: Var = vf.add_var(name=f"g_src_{resolved_name}")
+    tau_var: Var = vf.add_var(name=f"t_src")
+    d_tau_var: Var = vf.add_diff_var(name=f"d_t_src", base_var=tau_var)
+    conductance_var: Var = vf.add_var(name=f"g_src")
     template.block.event_dict[conductance_var] = vf.add_const(float(source_conductance_value))
     x_vars, y_vars = _build_waveform_parameters(vf=vf, template=template, time_points=time_points, value_points=value_points, name=resolved_name)
     waveform_expr: Expr = _build_clipped_lookup_expression(coord_var=tau_var, x_vars=x_vars, y_vars=y_vars)
@@ -362,8 +362,8 @@ def get_arbitrary_waveform_voltage_source_emt_template(vf: VarFactory,
     phase_label: str
 
     for phase_label in active_labels:
-        voltage_var: Var = vf.add_var(name=f"v_{phase_label}_{resolved_name}", reference=_get_voltage_reference(phase_label))
-        current_var: Var = vf.add_var(name=f"i_{phase_label}_{resolved_name}", reference=_get_current_reference(phase_label))
+        voltage_var: Var = vf.add_var(name=f"v_{phase_label}", reference=_get_voltage_reference(phase_label))
+        current_var: Var = vf.add_var(name=f"i_{phase_label}", reference=_get_current_reference(phase_label))
         voltage_vars[phase_label] = voltage_var
         current_vars[phase_label] = current_var
         in_vars.append(voltage_var)

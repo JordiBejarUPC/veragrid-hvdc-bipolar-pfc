@@ -19,8 +19,8 @@ def get_genrow4_rms_template(var_factory: VarFactory, name = "Genrow rms templat
     templ.tpe = DeviceType.GeneratorDevice
     templ.name = name
 
-    inputs = [var_factory.add_var("Vm_" + name, reference=VarPowerFlowReferenceType.Vm),
-              var_factory.add_var("Va_" + name, reference=VarPowerFlowReferenceType.Va)]
+    inputs = [var_factory.add_var("Vm", reference=VarPowerFlowReferenceType.Vm),
+              var_factory.add_var("Va", reference=VarPowerFlowReferenceType.Va)]
 
     P_g = var_factory.add_var('P_g')
     Q_g = var_factory.add_var('Q_g')

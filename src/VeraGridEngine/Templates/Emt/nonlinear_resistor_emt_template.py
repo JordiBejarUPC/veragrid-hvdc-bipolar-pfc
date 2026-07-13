@@ -44,10 +44,10 @@ def get_nonlinear_resistor_emt_template(
     template.name = name
     template.block.name = name
 
-    node_voltage_var: Var = vf.add_var(name=f"v_N_{name}", reference=VarPowerFlowReferenceType.v_N)
-    current_var: Var = vf.add_var(name=f"i_N_{name}", reference=VarPowerFlowReferenceType.i_N)
-    ground_node_var: Var = vf.add_var(name=f"v_gnd_{name}")
-    abs_voltage_var: Var = vf.add_var(name=f"v_abs_{name}")
+    node_voltage_var: Var = vf.add_var(name=f"v_N", reference=VarPowerFlowReferenceType.v_N)
+    current_var: Var = vf.add_var(name=f"i_N", reference=VarPowerFlowReferenceType.i_N)
+    ground_node_var: Var = vf.add_var(name=f"v_gnd")
+    abs_voltage_var: Var = vf.add_var(name=f"v_abs")
     one_const: Const = Const(1.0)
     zero_const: Const = Const(0.0)
 
@@ -62,8 +62,8 @@ def get_nonlinear_resistor_emt_template(
     point_index: int
 
     for point_index in range(len(voltage_points)):
-        x_var = vf.add_var(name=f"arr_v{point_index + 1}_{name}")
-        y_var = vf.add_var(name=f"arr_i{point_index + 1}_{name}")
+        x_var = vf.add_var(name=f"arr_v{point_index + 1}")
+        y_var = vf.add_var(name=f"arr_i{point_index + 1}")
         template.block.event_dict[x_var] = vf.add_const(float(voltage_points[point_index]), name=f"arr_v{point_index + 1}")
         template.block.event_dict[y_var] = vf.add_const(float(current_points[point_index]), name=f"arr_i{point_index + 1}")
         x_vars.append(x_var)
