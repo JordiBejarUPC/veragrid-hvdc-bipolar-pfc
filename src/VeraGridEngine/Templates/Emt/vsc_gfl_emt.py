@@ -307,7 +307,7 @@ def build_gfl_converter_model_emt(vfactory: VarFactory, inputs,
         control_block_2, _ = tf_to_block(vfactory,
             num=[Ki_pol, Kp_pol],
             den=[0, 1],
-            x= -(Q_ref - Q),
+            x= Q_ref - Q,
             y = i_d_ref,
             name='Qac_ctrl'
         )
@@ -462,6 +462,8 @@ def VscGflEmtBuild(vfactory: VarFactory, name: str = "",
     i_c_t = vfactory.add_var('i_c_f')
     i_dc = vfactory.add_var('i_dc')
     P_conv = vfactory.add_var('P_conv')
+    v_dc_cap = vfactory.add_var('Vdc_cap')
+    d_v_dc_cap = vfactory.add_diff_var(name='dt_1_Vdc_cap', base_var=v_dc_cap)
 
     # Parameters:
     bt = vfactory.add_var('bt')
@@ -470,6 +472,7 @@ def VscGflEmtBuild(vfactory: VarFactory, name: str = "",
     a0 = vfactory.add_var('a0')
     a1 = vfactory.add_var('a1')
     a2 = vfactory.add_var('a2')
+    Cdc = vfactory.add_var('Cdc')
     
     # Build the converter model with specified control modes
     gfl_block, P, Q = build_gfl_converter_model_emt(
@@ -487,24 +490,33 @@ def VscGflEmtBuild(vfactory: VarFactory, name: str = "",
         a0: vfactory.add_const(0.0),
         a1: vfactory.add_const(0.0),
         a2: vfactory.add_const(0.0),
+        Cdc: vfactory.add_const(10.0),
         Vpk_ref: vfactory.add_const(None),
         phi_v_ref: vfactory.add_const(None),
     }
     
     # EMT model outputs three-phase currents
     p_conv_init = -(inputs[0] * i_a_t + inputs[1] * i_b_t + inputs[2] * i_c_t) / vfactory.add_const(3.0)
+    eps_vdc = vfactory.add_const(1.0e-10)
     vsc_block = Block(
         algebraic_eqs=[
             Pt_vsc + P,
             Qt_vsc + Q,
             P_conv + (inputs[0] * i_a_t + inputs[1] * i_b_t + inputs[2] * i_c_t) / vfactory.add_const(3.0),
-            i_dc * inputs[9] - P_conv,
+            v_dc_cap - inputs[9],
         ],
         algebraic_vars=[Pt_vsc, Qt_vsc, i_a_t, i_b_t, i_c_t, i_dc, P_conv],
+        state_eqs=[(i_dc - P_conv / (v_dc_cap + eps_vdc)) / Cdc],
+        state_vars=[v_dc_cap],
+        diff_vars=[d_v_dc_cap],
         event_dict= event_dict,
         init_eqs={
+            v_dc_cap: inputs[9],
             P_conv: p_conv_init,
             i_dc: p_conv_init / inputs[9],
+        },
+        diff_init_eqs={
+            d_v_dc_cap: vfactory.add_const(0.0),
         },
         external_mapping={
             VarPowerFlowReferenceType.P: P,

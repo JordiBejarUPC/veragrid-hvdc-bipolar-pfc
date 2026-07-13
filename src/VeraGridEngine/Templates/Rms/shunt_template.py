@@ -63,7 +63,10 @@ def ShuntPhasorBuild(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
     templ.tpe = DeviceType.ShuntDevice
     res_block = Block()
     # Inputs:
-    inputs = [vfactory.add_var('Vr_'), vfactory.add_var('Vi_')]
+    inputs = [
+        vfactory.add_var('Vr_' + name, VarPowerFlowReferenceType.Vr),
+        vfactory.add_var('Vi_' + name, VarPowerFlowReferenceType.Vi),
+    ]
     Vr = inputs[0]
     Vi = inputs[1]
 

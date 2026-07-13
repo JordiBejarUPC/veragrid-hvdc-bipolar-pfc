@@ -18,7 +18,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[3]
 TENSYGRID_DIR = Path(__file__).resolve().parents[1]
 GRIDS_DIR = PROJECT_ROOT / "Grids_and_profiles" / "grids"
 PRECOMPUTED_DIR = TENSYGRID_DIR / "precomputed_builds"
-SCRIPT_PATH = TENSYGRID_DIR / "small_signal_multilinear.py"
+SCRIPT_PATH = TENSYGRID_DIR / "small_signal_analysis_main.py"
 CONTINGENCY_SCRIPT_PATH = TENSYGRID_DIR / "run_contingency.py"
 
 

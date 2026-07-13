@@ -20,16 +20,34 @@ from VeraGridEngine.Utils.Symbolic.block import Block, VarPowerFlowReferenceType
 from VeraGridEngine.Utils.Symbolic.bus_emt_template import get_bus_emt_template
 from VeraGridEngine.Templates.Emt.dc_source_emt_template import get_dc_voltage_source_emt_template
 from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template_with_ref
+from VeraGridEngine.Devices.Events.emt_event import EmtEvent
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_dae import EmtProblemDae
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.Simulations.EMT.emt_solver_factory import build_emt_solver
 from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_emt_model
 import VeraGridEngine.Utils.Symbolic.symbolic as sym
+from VeraGridEngine.Utils.Symbolic.diagnostic import NewtonDiagnosticsConfig
 from VeraGridEngine.enumerations import ConverterControlType, DynamicIntegrationMethod, EmtInitializationMethod, EmtSolverTypes
 import VeraGridEngine.api as gce
 
 
 PLOT_OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "gfl_vsc_emt_internal_filter_validation_plots")
+_DEFAULT_INTEGRATION_METHOD_NAME = os.environ.get("VERAGRID_GFL_EMT_INTEGRATION_METHOD", "DaeBackEuler")
+_DEFAULT_KP_ICL = "0.1" if _DEFAULT_INTEGRATION_METHOD_NAME == "DaeTrapezoidal" else "1.0"
+_DEFAULT_KI_ICL = "2.0" if _DEFAULT_INTEGRATION_METHOD_NAME == "DaeTrapezoidal" else "20.0"
+Q_CONTROL_KP_POL = float(os.environ.get("VERAGRID_GFL_EMT_KP_POL", "0.6"))
+Q_CONTROL_KI_POL = float(os.environ.get("VERAGRID_GFL_EMT_KI_POL", "10.0"))
+CURRENT_CONTROL_KP_ICL = float(os.environ.get("VERAGRID_GFL_EMT_KP_ICL", _DEFAULT_KP_ICL))
+CURRENT_CONTROL_KI_ICL = float(os.environ.get("VERAGRID_GFL_EMT_KI_ICL", _DEFAULT_KI_ICL))
+PLL_KP = float(os.environ.get("VERAGRID_GFL_EMT_KP_PLL", "0.01"))
+PLL_KI = float(os.environ.get("VERAGRID_GFL_EMT_KI_PLL", "0.05"))
+DC_LINK_CAPACITANCE = float(os.environ.get("VERAGRID_GFL_EMT_CDC", "10.0"))
+VERAGRID_GFL_EMT_TIME_STEP = float(os.environ.get("VERAGRID_GFL_EMT_TIME_STEP", "1e-5"))
+VERAGRID_GFL_EMT_SIM_TIME = float(os.environ.get("VERAGRID_GFL_EMT_SIM_TIME", "0.5"))
+VERAGRID_GFL_EMT_WARMUP_TIME = float(os.environ.get("VERAGRID_GFL_EMT_WARMUP_TIME", "0.2"))
+P_REF_EVENT_ENABLED = os.environ.get("VERAGRID_GFL_EMT_PREF_EVENT", "1") != "0"
+P_REF_EVENT_TIME = float(os.environ.get("VERAGRID_GFL_EMT_PREF_EVENT_TIME", "0.25"))
+P_REF_EVENT_DELTA = float(os.environ.get("VERAGRID_GFL_EMT_PREF_EVENT_DELTA", "0.005"))
 
 
 def find_name_in_block(name: str, block: Block):
@@ -43,9 +61,15 @@ def find_name_in_block(name: str, block: Block):
             + search_block.in_vars
             + search_block.out_vars
             + list(search_block.event_dict.keys())
+            + list(search_block.parameters.keys())
         )
         for var in block_vars:
-            if name == var.name or (allow_prefix and var.name.startswith(f"{name}_")):
+            var_name = getattr(var, 'name', None)
+            if (
+                var_name is not None
+                and hasattr(var, 'non_mutable_uid')
+                and (name == var_name or (allow_prefix and var_name.startswith(f"{name}_")))
+            ):
                 return var
 
         for mdl in search_block.children:
@@ -81,12 +105,13 @@ def set_problem_runtime_value(problem: EmtProblemDae, vf, block: Block, name: st
     if var is None:
         return
 
-    idx = problem.uid2idx_event_params.get(var.uid, None)
-    if idx is None:
+    uid2idx = getattr(problem, "_uid2idx_event_params", getattr(problem, "uid2idx_event_params", {}))
+    if var.uid not in uid2idx:
         return
 
+    idx = uid2idx[var.uid]
     const_value = vf.add_const(float(value))
-    problem.event_params_values[idx] = float(value)
+    problem._event_params_values[idx] = float(value)
     problem._event_parameters_eqs[idx] = const_value
     if hasattr(problem, "_runtime_parameter_eqs0"):
         problem._runtime_parameter_eqs0[idx] = const_value
@@ -127,8 +152,14 @@ def inverse_park_value(theta_value: float, vd_value: float, vq_value: float) -> 
     sin_t = np.sin(theta_value)
     sqrt3 = np.sqrt(3.0)
     va_value = vd_value * cos_t + vq_value * sin_t
-    vb_value = (-0.5 * vd_value - 0.5 * sqrt3 * vq_value) * cos_t + (0.5 * sqrt3 * vd_value - 0.5 * vq_value) * sin_t
-    vc_value = (-0.5 * vd_value + 0.5 * sqrt3 * vq_value) * cos_t + (-0.5 * sqrt3 * vd_value - 0.5 * vq_value) * sin_t
+    vb_value = (
+        vd_value * (-0.5 * cos_t - 0.5 * sqrt3 * sin_t)
+        + vq_value * (-0.5 * sin_t + 0.5 * sqrt3 * cos_t)
+    )
+    vc_value = (
+        vd_value * (-0.5 * cos_t + 0.5 * sqrt3 * sin_t)
+        + vq_value * (-0.5 * sin_t - 0.5 * sqrt3 * cos_t)
+    )
     return va_value, vb_value, vc_value
 
 
@@ -145,16 +176,36 @@ def trace_for_var(problem: EmtProblemDae, y: np.ndarray, var):
     return y[:, problem.get_var_idx(var)]
 
 
+def required_trace(problem: EmtProblemDae, y: np.ndarray, var, label: str) -> np.ndarray:
+    trace = trace_for_var(problem, y, var)
+    if trace is None:
+        raise RuntimeError(f"Cannot plot {label}: variable is not in the solved EMT vector")
+    return np.asarray(trace, dtype=float)
+
+
+def finalize_time_axis(t: np.ndarray) -> None:
+    plt.xlim(float(t[0]), float(t[-1]))
+
+
 def save_plot(filename: str) -> None:
     os.makedirs(PLOT_OUTPUT_DIR, exist_ok=True)
     plt.savefig(os.path.join(PLOT_OUTPUT_DIR, filename), dpi=150)
     plt.close()
 
 
-def plot_traces(t: np.ndarray, problem: EmtProblemDae, y: np.ndarray, vsc_mdl: Block, bus_dc: gce.Bus, bus2: gce.Bus) -> None:
-    v_a_b2 = trace_for_var(problem, y, find_name_in_block('v_A', bus2.emt_model))
-    v_b_b2 = trace_for_var(problem, y, find_name_in_block('v_B', bus2.emt_model))
-    v_c_b2 = trace_for_var(problem, y, find_name_in_block('v_C', bus2.emt_model))
+def plot_traces(
+    t: np.ndarray,
+    problem: EmtProblemDae,
+    y: np.ndarray,
+    vsc_mdl: Block,
+    bus_dc: gce.Bus,
+    bus2: gce.Bus,
+    p_ref0: float,
+) -> None:
+    t = np.asarray(t, dtype=float)
+    v_a_b2 = required_trace(problem, y, find_name_in_block('v_A', bus2.emt_model), 'B2 v_A')
+    v_b_b2 = required_trace(problem, y, find_name_in_block('v_B', bus2.emt_model), 'B2 v_B')
+    v_c_b2 = required_trace(problem, y, find_name_in_block('v_C', bus2.emt_model), 'B2 v_C')
     plt.figure(figsize=(10, 6))
     plt.plot(t, v_a_b2, label="v_A")
     plt.plot(t, v_b_b2, label="v_B")
@@ -162,14 +213,15 @@ def plot_traces(t: np.ndarray, problem: EmtProblemDae, y: np.ndarray, vsc_mdl: B
     plt.xlabel("Time (s)")
     plt.ylabel("Voltage (pu peak)")
     plt.title("B2 Phase Voltages")
+    finalize_time_axis(t)
     plt.grid(True)
     plt.legend(loc="upper right")
     plt.tight_layout()
     save_plot("b2_phase_voltages.png")
 
-    i_a = trace_for_var(problem, y, find_name_in_block('i_a_f', vsc_mdl))
-    i_b = trace_for_var(problem, y, find_name_in_block('i_b_f', vsc_mdl))
-    i_c = trace_for_var(problem, y, find_name_in_block('i_c_f', vsc_mdl))
+    i_a = required_trace(problem, y, find_name_in_block('i_filter_A', vsc_mdl), 'i_filter_A')
+    i_b = required_trace(problem, y, find_name_in_block('i_filter_B', vsc_mdl), 'i_filter_B')
+    i_c = required_trace(problem, y, find_name_in_block('i_filter_C', vsc_mdl), 'i_filter_C')
     plt.figure(figsize=(10, 6))
     plt.plot(t, i_a, label="i_A")
     plt.plot(t, i_b, label="i_B")
@@ -177,47 +229,55 @@ def plot_traces(t: np.ndarray, problem: EmtProblemDae, y: np.ndarray, vsc_mdl: B
     plt.xlabel("Time (s)")
     plt.ylabel("Current (pu peak)")
     plt.title("VSC Internal Filter Currents")
+    finalize_time_axis(t)
     plt.grid(True)
     plt.legend(loc="upper right")
     plt.tight_layout()
     save_plot("vsc_internal_filter_currents.png")
 
-    p_trace = trace_for_var(problem, y, find_name_in_block('P', vsc_mdl))
-    q_trace = trace_for_var(problem, y, find_name_in_block('Q', vsc_mdl))
+    p_trace = required_trace(problem, y, find_name_in_block('P', vsc_mdl), 'P')
+    q_trace = required_trace(problem, y, find_name_in_block('Q', vsc_mdl), 'Q')
     plt.figure(figsize=(10, 6))
     plt.plot(t, p_trace, label="P")
     plt.plot(t, q_trace, label="Q")
+    if P_REF_EVENT_ENABLED:
+        p_ref_trace = np.where(t >= P_REF_EVENT_TIME, p_ref0 + P_REF_EVENT_DELTA, p_ref0)
+        plt.step(t, p_ref_trace, where="post", label="P_ref", linestyle="--", color="tab:red")
+    else:
+        plt.axhline(p_ref0, label="P_ref", linestyle="--", color="tab:red")
     plt.xlabel("Time (s)")
     plt.ylabel("Power (pu)")
     plt.title("VSC PCC Power")
+    finalize_time_axis(t)
     plt.grid(True)
     plt.legend(loc="upper right")
     plt.tight_layout()
     save_plot("vsc_pq.png")
 
     fig, axes = plt.subplots(3, 1, figsize=(10, 9), sharex=True)
-    axes[0].plot(t, trace_for_var(problem, y, find_name_in_block('vg_d', vsc_mdl)), label="vg_d")
-    axes[0].plot(t, trace_for_var(problem, y, find_name_in_block('vg_q', vsc_mdl)), label="vg_q")
-    axes[0].plot(t, trace_for_var(problem, y, find_name_in_block('v_d_c', vsc_mdl)), label="v_d_c", linestyle="--")
-    axes[0].plot(t, trace_for_var(problem, y, find_name_in_block('v_q_c', vsc_mdl)), label="v_q_c", linestyle="--")
+    axes[0].plot(t, required_trace(problem, y, find_name_in_block('vg_d', vsc_mdl), 'vg_d'), label="vg_d")
+    axes[0].plot(t, required_trace(problem, y, find_name_in_block('vg_q', vsc_mdl), 'vg_q'), label="vg_q")
+    axes[0].plot(t, required_trace(problem, y, find_name_in_block('v_d_c', vsc_mdl), 'v_d_c'), label="v_d_c", linestyle="--")
+    axes[0].plot(t, required_trace(problem, y, find_name_in_block('v_q_c', vsc_mdl), 'v_q_c'), label="v_q_c", linestyle="--")
     axes[0].set_ylabel("Voltage (pu peak)")
     axes[0].legend(loc="upper right")
     axes[0].grid(True)
 
-    axes[1].plot(t, trace_for_var(problem, y, find_name_in_block('i_line_d', vsc_mdl)), label="i_d")
-    axes[1].plot(t, trace_for_var(problem, y, find_name_in_block('i_line_q', vsc_mdl)), label="i_q")
-    axes[1].plot(t, trace_for_var(problem, y, find_name_in_block('i_d_ref', vsc_mdl)), label="i_d_ref", linestyle="--")
-    axes[1].plot(t, trace_for_var(problem, y, find_name_in_block('i_q_ref', vsc_mdl)), label="i_q_ref", linestyle="--")
+    axes[1].plot(t, required_trace(problem, y, find_name_in_block('i_line_d', vsc_mdl), 'i_line_d'), label="i_d")
+    axes[1].plot(t, required_trace(problem, y, find_name_in_block('i_line_q', vsc_mdl), 'i_line_q'), label="i_q")
+    axes[1].plot(t, required_trace(problem, y, find_name_in_block('i_d_ref', vsc_mdl), 'i_d_ref'), label="i_d_ref", linestyle="--")
+    axes[1].plot(t, required_trace(problem, y, find_name_in_block('i_q_ref', vsc_mdl), 'i_q_ref'), label="i_q_ref", linestyle="--")
     axes[1].set_ylabel("Current (pu peak)")
     axes[1].legend(loc="upper right")
     axes[1].grid(True)
 
-    vdc_trace = trace_for_var(problem, y, bus_dc.emt_model.out_vars[0])
+    vdc_trace = required_trace(problem, y, bus_dc.emt_model.out_vars[0], 'Vdc')
     axes[2].plot(t, vdc_trace, label="Vdc")
     axes[2].set_xlabel("Time (s)")
     axes[2].set_ylabel("Voltage (pu)")
     axes[2].legend(loc="upper right")
     axes[2].grid(True)
+    axes[2].set_xlim(float(t[0]), float(t[-1]))
     fig.suptitle("VSC Internal Filter dq Variables and DC Voltage")
     fig.tight_layout()
     save_plot("vsc_dq_and_dc_voltage.png")
@@ -251,6 +311,41 @@ def print_vsc_seed_values(problem: EmtProblemDae, vsc_mdl: Block) -> None:
             print(f"  {name}={x0[idx]: .9e}")
 
 
+def apply_solution_as_initial_guess(problem: EmtProblemDae, y: np.ndarray, dy: np.ndarray) -> None:
+    final_y = np.asarray(y[-1, :], dtype=float)
+    for var in list(problem.get_state_vars()) + list(problem.get_algebraic_vars()):
+        if var.uid in problem._uid2idx_vars:
+            problem.init_guess[var.uid] = float(final_y[problem.get_var_idx(var)])
+
+    uid2idx_diff = getattr(problem, "uid2idx_diff", getattr(problem, "_uid2idx_diff", {}))
+    if dy is None or len(uid2idx_diff) == 0:
+        return
+
+    final_dy = np.asarray(dy[-1, :], dtype=float)
+    for diff_var in problem.get_diff_vars():
+        idx = uid2idx_diff.get(diff_var.uid, None)
+        if idx is not None and idx < final_dy.size:
+            problem.diff_init_guess[diff_var.uid] = float(final_dy[idx])
+
+
+def run_emt(problem: EmtProblemDae, options: EmtOptions, t_end: float):
+    solver = build_emt_solver(
+        options=options,
+        problem=problem,
+        t0=0.0,
+        t_end=t_end,
+        h=options.time_step,
+        method=options.integration_method,
+        newton_diag_config=NewtonDiagnosticsConfig(
+            enable_fallback=True,
+            enable_backtracking=True,
+            backtracking_min_alpha=1.0e-6,
+            backtracking_max_iter=12,
+        ),
+    )
+    return solver.simulate()
+
+
 def add_internal_filter_block(grid: gce.MultiCircuit, vsc_mdl: Block) -> None:
     vf = grid.var_factory
     r_filter = vf.add_var('R_filter')
@@ -261,47 +356,102 @@ def add_internal_filter_block(grid: gce.MultiCircuit, vsc_mdl: Block) -> None:
     y_vq_hat = find_name_in_block('y_vq_hat', vsc_mdl)
     v_d_g = find_name_in_block('vg_d', vsc_mdl)
     v_q_g = find_name_in_block('vg_q', vsc_mdl)
+    p_meas = find_name_in_block('P', vsc_mdl)
+    q_meas = find_name_in_block('Q', vsc_mdl)
     l_filter = find_name_in_block('L', vsc_mdl)
     omega = find_name_in_block('omega', vsc_mdl)
     i_d = find_name_in_block('i_line_d', vsc_mdl)
     i_q = find_name_in_block('i_line_q', vsc_mdl)
+    i_d_ref = find_name_in_block('i_d_ref', vsc_mdl)
+    i_q_ref = find_name_in_block('i_q_ref', vsc_mdl)
+    u_vd_hat = find_name_in_block('u_vd_hat', vsc_mdl)
+    u_vq_hat = find_name_in_block('u_vq_hat', vsc_mdl)
     park_theta = vf.add_const(0.0) - theta
     sqrt3 = vf.add_const(np.sqrt(3.0))
     half = vf.add_const(0.5)
+    third = vf.add_const(1.0 / 3.0)
     va_conv = vf.add_var('va_v')
     vb_conv = vf.add_var('vb_v')
     vc_conv = vf.add_var('vc_v')
+    i_filter_a = vf.add_var('i_filter_A')
+    i_filter_b = vf.add_var('i_filter_B')
+    i_filter_c = vf.add_var('i_filter_C')
+    d_i_filter_a = vf.add_diff_var(name='dt_i_filter_A', base_var=i_filter_a)
+    d_i_filter_b = vf.add_diff_var(name='dt_i_filter_B', base_var=i_filter_b)
+    d_i_filter_c = vf.add_diff_var(name='dt_i_filter_C', base_var=i_filter_c)
+    omega_base = vf.add_const(2.0 * np.pi * grid.fBase)
+    v_bus_a = find_name_in_block('vg_A', vsc_mdl)
+    v_bus_b = find_name_in_block('vg_B', vsc_mdl)
+    v_bus_c = find_name_in_block('vg_C', vsc_mdl)
+    i_vsc_a = vsc_mdl.external_mapping[VarPowerFlowReferenceType.i_A]
+    i_vsc_b = vsc_mdl.external_mapping[VarPowerFlowReferenceType.i_B]
+    i_vsc_c = vsc_mdl.external_mapping[VarPowerFlowReferenceType.i_C]
+    if not hasattr(i_vsc_a, 'non_mutable_uid'):
+        i_vsc_a = find_name_in_block('i_filter_A', vsc_mdl)
+    if not hasattr(i_vsc_b, 'non_mutable_uid'):
+        i_vsc_b = find_name_in_block('i_filter_B', vsc_mdl)
+    if not hasattr(i_vsc_c, 'non_mutable_uid'):
+        i_vsc_c = find_name_in_block('i_filter_C', vsc_mdl)
+    vsc_mdl.update_model(i_vsc_a, i_filter_a)
+    vsc_mdl.update_model(i_vsc_b, i_filter_b)
+    vsc_mdl.update_model(i_vsc_c, i_filter_c)
+    filter_current_uids = {i_filter_a.uid, i_filter_b.uid, i_filter_c.uid}
 
-    filtered_eqs = []
-    for eq in vsc_mdl.algebraic_eqs:
-        eq_text = str(eq)
-        remove_eq = (
-            eq_text.startswith("(v_d_c) - (((y_vd_hat) + (vg_d))")
-            or eq_text.startswith("(v_q_c) - (((y_vq_hat) + (vg_q))")
-            or eq_text == "(vc_d) - (v_d_c)"
-            or eq_text == "(vc_q) - (v_q_c)"
-            or eq_text == "((vc_A) + (vc_B)) + (vc_C)"
-            or eq_text.startswith("(vc_d) - ((0.3333333333333333)")
-            or eq_text.startswith("(vc_q) - ((0.3333333333333333)")
-        )
-        if not remove_eq:
-            filtered_eqs.append(eq)
-    vsc_mdl.algebraic_eqs = filtered_eqs
-    vsc_mdl.algebraic_vars = [
-        var for var in vsc_mdl.algebraic_vars
-        if var.name not in {'vc_d', 'vc_q'}
-    ]
+    for block in vsc_mdl.get_all_blocks():
+        filtered_eqs = []
+        for eq in block.algebraic_eqs:
+            eq_text = str(eq)
+            if u_vd_hat is not None and eq_text.startswith("(u_vd_hat) - "):
+                filtered_eqs.append(u_vd_hat - (i_d - i_d_ref))
+                continue
+            if u_vq_hat is not None and eq_text.startswith("(u_vq_hat) - "):
+                filtered_eqs.append(u_vq_hat - (i_q - i_q_ref))
+                continue
+            if p_meas is not None and eq_text.startswith("(P) - ((0.5)"):
+                continue
+            if q_meas is not None and eq_text.startswith("(Q) - ((0.5)"):
+                continue
+            if not (
+                str(eq).startswith("(v_d_c) - (((y_vd_hat) + (vg_d))")
+                or str(eq).startswith("(v_q_c) - (((y_vq_hat) + (vg_q))")
+                or str(eq) == "(vc_d) - (v_d_c)"
+                or str(eq) == "(vc_q) - (v_q_c)"
+                or str(eq) == "((vc_A) + (vc_B)) + (vc_C)"
+                or str(eq).startswith("(vc_d) - ((0.3333333333333333)")
+                or str(eq).startswith("(vc_q) - ((0.3333333333333333)")
+            ):
+                filtered_eqs.append(eq)
+        block.algebraic_eqs = filtered_eqs
+        block.algebraic_vars = [
+            var for var in block.algebraic_vars
+            if hasattr(var, 'non_mutable_uid')
+            and getattr(var, 'name', None) not in {'vc_d', 'vc_q'}
+            and getattr(var, 'uid', None) not in filter_current_uids
+        ]
 
     filter_block = Block(
         algebraic_vars=[va_conv, vb_conv, vc_conv],
+        state_vars=[i_filter_a, i_filter_b, i_filter_c],
+        diff_vars=[d_i_filter_a, d_i_filter_b, d_i_filter_c],
+        state_eqs=[
+            omega_base * (v_bus_a - va_conv - r_filter * i_filter_a) / l_filter,
+            omega_base * (v_bus_b - vb_conv - r_filter * i_filter_b) / l_filter,
+            omega_base * (v_bus_c - vc_conv - r_filter * i_filter_c) / l_filter,
+        ],
         algebraic_eqs=[
+            p_meas - third * (v_bus_a * i_filter_a + v_bus_b * i_filter_b + v_bus_c * i_filter_c),
+            q_meas - (third / sqrt3) * (
+                (v_bus_b - v_bus_c) * i_filter_a
+                + (v_bus_c - v_bus_a) * i_filter_b
+                + (v_bus_a - v_bus_b) * i_filter_c
+            ),
             v_d_c - (y_vd_hat + v_d_g + r_filter * i_d - l_filter * omega * i_q),
             v_q_c - (y_vq_hat + v_q_g + r_filter * i_q + l_filter * omega * i_d),
             va_conv - (v_d_c * sym.cos(park_theta) + v_q_c * sym.sin(park_theta)),
-            vb_conv - ((-half * v_d_c - half * sqrt3 * v_q_c) * sym.cos(park_theta)
-                       + (half * sqrt3 * v_d_c - half * v_q_c) * sym.sin(park_theta)),
-            vc_conv - ((-half * v_d_c + half * sqrt3 * v_q_c) * sym.cos(park_theta)
-                       + (-half * sqrt3 * v_d_c - half * v_q_c) * sym.sin(park_theta)),
+            vb_conv - (v_d_c * (-half * sym.cos(park_theta) - half * sqrt3 * sym.sin(park_theta))
+                       + v_q_c * (-half * sym.sin(park_theta) + half * sqrt3 * sym.cos(park_theta))),
+            vc_conv - (v_d_c * (-half * sym.cos(park_theta) + half * sqrt3 * sym.sin(park_theta))
+                       + v_q_c * (-half * sym.sin(park_theta) - half * sqrt3 * sym.cos(park_theta))),
         ],
         event_dict={
             r_filter: vf.add_const(0.0),
@@ -313,20 +463,49 @@ def add_internal_filter_block(grid: gce.MultiCircuit, vsc_mdl: Block) -> None:
 
 
 def connect_internal_filter_ports(grid: gce.MultiCircuit, vsc_mdl: Block) -> None:
+    def input_port(port_name: str):
+        found = next((var for var in vsc_mdl.in_vars if getattr(var, 'name', None) == port_name), None)
+        if found is not None:
+            return found
+        ref = {
+            'vc_A': VarPowerFlowReferenceType.v_A,
+            'vc_B': VarPowerFlowReferenceType.v_B,
+            'vc_C': VarPowerFlowReferenceType.v_C,
+        }.get(port_name)
+        return vsc_mdl.external_mapping.get(ref, None) if ref is not None else None
+
     va_conv = find_name_in_block('va_v', vsc_mdl)
     vb_conv = find_name_in_block('vb_v', vsc_mdl)
     vc_conv = find_name_in_block('vc_v', vsc_mdl)
     i_vsc_a = vsc_mdl.external_mapping[VarPowerFlowReferenceType.i_A]
     i_vsc_b = vsc_mdl.external_mapping[VarPowerFlowReferenceType.i_B]
     i_vsc_c = vsc_mdl.external_mapping[VarPowerFlowReferenceType.i_C]
+    if not hasattr(i_vsc_a, 'non_mutable_uid'):
+        i_vsc_a = find_name_in_block('i_filter_A', vsc_mdl)
+    if not hasattr(i_vsc_b, 'non_mutable_uid'):
+        i_vsc_b = find_name_in_block('i_filter_B', vsc_mdl)
+    if not hasattr(i_vsc_c, 'non_mutable_uid'):
+        i_vsc_c = find_name_in_block('i_filter_C', vsc_mdl)
 
     grid.var_factory.add_connections(
-        vsc_mdl.in_vars[0:3],
+        [input_port('vc_A'), input_port('vc_B'), input_port('vc_C')],
         [va_conv, vb_conv, vc_conv],
     )
     grid.var_factory.add_connections(
         [find_name_in_block('i_line_A', vsc_mdl), find_name_in_block('i_line_B', vsc_mdl), find_name_in_block('i_line_C', vsc_mdl)],
         [i_vsc_a, i_vsc_b, i_vsc_c],
+    )
+
+
+def add_bus_zero_sequence_reference(parent_block: Block, bus: gce.Bus) -> None:
+    v_a = find_name_in_block('v_A', bus.emt_model)
+    v_b = find_name_in_block('v_B', bus.emt_model)
+    v_c = find_name_in_block('v_C', bus.emt_model)
+    parent_block.add(
+        Block(
+            algebraic_eqs=[v_a + v_b + v_c],
+            name=f"{bus.name}_zero_sequence_reference",
+        )
     )
 
 
@@ -401,7 +580,7 @@ def run_power_flow(grid: gce.MultiCircuit):
     return gce.power_flow(grid, options=options)
 
 
-def build_emt_models(grid, line23, vsc1, gen1, dc_source, pf_results, bus_dc, bus2):
+def build_emt_models(grid, line23, vsc1, gen1, dc_source, pf_results, bus_dc, bus2, bus3):
     line23_mdl = get_pi_line_emt_template(vf=grid.var_factory, name="Pi23").block
     gen_mdl = get_generator_thevenin_rl_emt_template_with_ref(grid.var_factory).block
     dc_source_mdl = get_dc_voltage_source_emt_template(
@@ -451,17 +630,30 @@ def build_emt_models(grid, line23, vsc1, gen1, dc_source, pf_results, bus_dc, bu
         ('Vm_ac_ref', vq_ref0),
         ('P_ref', p_ref0),
         ('Q_ref', q_ref0),
-        ('Kp_pol', 0.02),
-        ('Ki_pol', 0.3),
-        ('Kp_icl', 1.0),
-        ('Ki_icl', 20.0),
-        ('Kp_pll', 0.01),
-        ('Ki_pll', 0.05),
+        ('Kp_pol', Q_CONTROL_KP_POL),
+        ('Ki_pol', Q_CONTROL_KI_POL),
+        ('Kp_icl', CURRENT_CONTROL_KP_ICL),
+        ('Ki_icl', CURRENT_CONTROL_KI_ICL),
+        ('Kp_pll', PLL_KP),
+        ('Ki_pll', PLL_KI),
         ('L', vsc_filter_l),
+        ('Cdc', DC_LINK_CAPACITANCE),
         ('R_filter', vsc_filter_r),
         ('L_filter', vsc_filter_l),
     ):
         set_event_value_in_block(grid.var_factory, name, vsc_mdl, value)
+
+    if P_REF_EVENT_ENABLED:
+        p_ref_var = find_name_in_block('P_ref', vsc_mdl)
+        if p_ref_var is None:
+            raise RuntimeError("Cannot add P_ref event: P_ref was not found in the VSC EMT model")
+        p_ref_event_value = p_ref0 + P_REF_EVENT_DELTA
+        grid.add_emt_event(EmtEvent(device=vsc1, parameter=p_ref_var, time=P_REF_EVENT_TIME, value=p_ref_event_value))
+        print(
+            "Added P_ref EMT event: "
+            f"t={P_REF_EVENT_TIME:g}, initial={p_ref0:.9e}, "
+            f"value={p_ref_event_value:.9e}, delta={P_REF_EVENT_DELTA:.9e}"
+        )
 
     return vsc_mdl, line23_mdl, gen_mdl, dc_source_mdl, vsc_filter_l, p_ref0, q_ref0, best_theta_ref
 
@@ -479,17 +671,13 @@ def seed_internal_filter_guess(problem, grid, pf_results, vsc_mdl, dc_source_mdl
     vd_c = vd_g + r_filter * i_d - x_filter * i_q
     vq_c = vq_g + r_filter * i_q + x_filter * i_d
     va_conv, vb_conv, vc_conv = inverse_park_value(theta_ref, vd_c, vq_c)
-    cos_t = np.cos(theta_ref)
-    sin_t = np.sin(theta_ref)
-    ia = i_d * cos_t + i_q * sin_t
-    ib = (-0.5 * i_d - np.sqrt(3.0) * 0.5 * i_q) * cos_t + (np.sqrt(3.0) * 0.5 * i_d - 0.5 * i_q) * sin_t
-    ic = (-0.5 * i_d + np.sqrt(3.0) * 0.5 * i_q) * cos_t + (-np.sqrt(3.0) * 0.5 * i_d - 0.5 * i_q) * sin_t
+    ia, ib, ic = inverse_park_value(theta_ref, i_d, i_q)
     vdc0 = abs(pf_results.voltage[grid.buses.index(bus_dc)])
     p_conv = -(va_conv * ia + vb_conv * ib + vc_conv * ic) / 3.0
     omega_base = 2.0 * np.pi * grid.fBase
-    dia = omega_base * (va_conv - va2 - r_filter * ia) / x_filter
-    dib = omega_base * (vb_conv - vb2 - r_filter * ib) / x_filter
-    dic = omega_base * (vc_conv - vc2 - r_filter * ic) / x_filter
+    dia = omega_base * (va2 - va_conv - r_filter * ia) / x_filter
+    dib = omega_base * (vb2 - vb_conv - r_filter * ib) / x_filter
+    dic = omega_base * (vc2 - vc_conv - r_filter * ic) / x_filter
     vd_hat = vd_c - (vd_g - x_filter * i_q)
     vq_hat = vq_c - (vq_g + x_filter * i_d)
 
@@ -530,10 +718,11 @@ def seed_internal_filter_guess(problem, grid, pf_results, vsc_mdl, dc_source_mdl
         'y_vq_hat': vq_hat,
         'u_vd_hat': 0.0,
         'u_vq_hat': 0.0,
-        'xi_Pac_ctrl': i_q / 0.3,
-        'xi_Qac_ctrl': i_d / 0.3,
-        'xi_vd_hat': vd_hat / 20.0,
-        'xi_vq_hat': vq_hat / 20.0,
+        'Vdc_cap': vdc0,
+        'xi_Pac_ctrl': i_q / Q_CONTROL_KI_POL,
+        'xi_Qac_ctrl': i_d / Q_CONTROL_KI_POL,
+        'xi_vd_hat': vd_hat / CURRENT_CONTROL_KI_ICL,
+        'xi_vq_hat': vq_hat / CURRENT_CONTROL_KI_ICL,
         'u_PLL_pi': vd_g,
     }
     for name, value in values.items():
@@ -548,12 +737,27 @@ def seed_internal_filter_guess(problem, grid, pf_results, vsc_mdl, dc_source_mdl
             elif var.uid in problem.uid2idx_event_params:
                 problem.event_params_values[problem.uid2idx_event_params[var.uid]] = float(value)
 
-    for name, value in (('P_ref', s_to.real), ('Q_ref', s_to.imag), ('Vm_ac_ref', vq_g)):
+    for name, value in (
+        ('P_ref', s_to.real),
+        ('Q_ref', s_to.imag),
+        ('Vm_ac_ref', vq_g),
+        ('Kp_pol', Q_CONTROL_KP_POL),
+        ('Ki_pol', Q_CONTROL_KI_POL),
+        ('Kp_icl', CURRENT_CONTROL_KP_ICL),
+        ('Ki_icl', CURRENT_CONTROL_KI_ICL),
+        ('Kp_pll', PLL_KP),
+        ('Ki_pll', PLL_KI),
+        ('L', x_filter),
+        ('Cdc', DC_LINK_CAPACITANCE),
+    ):
         set_problem_runtime_value(problem, grid.var_factory, vsc_mdl, name, value)
 
     theta_var = find_name_in_block('theta', vsc_mdl)
     if theta_var is not None and theta_var.diff_var is not None:
         problem.diff_init_guess[theta_var.diff_var.uid] = 2.0 * np.pi * grid.fBase
+    vdc_cap_var = find_name_in_block('Vdc_cap', vsc_mdl)
+    if vdc_cap_var is not None and vdc_cap_var.diff_var is not None:
+        problem.diff_init_guess[vdc_cap_var.diff_var.uid] = 0.0
     for name, value in (('dt_i_filter_A', dia), ('dt_i_filter_B', dib), ('dt_i_filter_C', dic)):
         diff_var = find_name_in_block(name, vsc_mdl)
         if diff_var is not None:
@@ -568,18 +772,18 @@ def main() -> None:
     print(pf_results.get_branch_df())
 
     vsc_mdl, line23_mdl, gen_mdl, dc_source_mdl, vsc_filter_l, p_ref0, q_ref0, theta_ref = build_emt_models(
-        grid, line23, vsc1, gen1, dc_source, pf_results, bus_dc, bus2
+        grid, line23, vsc1, gen1, dc_source, pf_results, bus_dc, bus2, bus3
     )
     print("Topology: VSC is connected to B2; only line 2-3 is in the MultiCircuit")
     print(f"Internal VSC filter L from former line 1-2 X: {vsc_filter_l:.9e}")
     print(f"Initial internal-filter references: P_ref={p_ref0:.9e}, Q_ref={q_ref0:.9e}")
 
     options = EmtOptions(
-        time_step=0.0001,
-        simulation_time=0.02,
+        time_step=VERAGRID_GFL_EMT_TIME_STEP,
+        simulation_time=VERAGRID_GFL_EMT_SIM_TIME,
         tolerance=1e-6,
-        integration_method=DynamicIntegrationMethod.DaeBackEuler,
-        solver_type=EmtSolverTypes.Automatic,
+        integration_method=DynamicIntegrationMethod[_DEFAULT_INTEGRATION_METHOD_NAME],
+        solver_type=EmtSolverTypes.StructuralAD,
         initialization_method=EmtInitializationMethod.Explicit,
         verbose=0,
     )
@@ -588,15 +792,27 @@ def main() -> None:
     print_problem_structure(problem)
     print_vsc_seed_values(problem, vsc_mdl)
 
-    solver = build_emt_solver(
-        options=options,
-        problem=problem,
-        t0=0.0,
-        t_end=options.simulation_time,
-        h=options.time_step,
-        method=options.integration_method,
-    )
-    t, y, dy, well_initialized, converged = solver.simulate()
+    try:
+        if VERAGRID_GFL_EMT_WARMUP_TIME > 0.0:
+            print(f"Running EMT warm-up: {VERAGRID_GFL_EMT_WARMUP_TIME:.6g} s")
+            tw, yw, dyw, warm_well_initialized, warm_converged = run_emt(
+                problem=problem,
+                options=options,
+                t_end=VERAGRID_GFL_EMT_WARMUP_TIME,
+            )
+            print(f"EMT warm-up well initialized: {warm_well_initialized}")
+            print(f"EMT warm-up converged: {warm_converged}")
+            apply_solution_as_initial_guess(problem, yw, dyw)
+
+        t, y, dy, well_initialized, converged = run_emt(
+            problem=problem,
+            options=options,
+            t_end=options.simulation_time,
+        )
+    except np.linalg.LinAlgError as exc:
+        print(f"EMT solve failed during Newton iteration: {exc}")
+        print("The assembled EMT system is structurally square, but the initial Jacobian is singular.")
+        return
     print(f"EMT well initialized: {well_initialized}")
     print(f"EMT converged: {converged}")
     print(f"Solved samples: {len(t)}")
@@ -607,7 +823,7 @@ def main() -> None:
             trace = y[:, problem.get_var_idx(var)]
             print(f"{name}: t0={trace[0]: .9e}, final={trace[-1]: .9e}")
 
-    plot_traces(t, problem, y, vsc_mdl, bus_dc, bus2)
+    plot_traces(t, problem, y, vsc_mdl, bus_dc, bus2, p_ref0)
     print(f"Plots saved to: {PLOT_OUTPUT_DIR}")
 
 

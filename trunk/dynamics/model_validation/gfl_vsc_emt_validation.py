@@ -22,7 +22,7 @@ from VeraGridEngine.Utils.Symbolic.bus_emt_template import get_bus_emt_template
 from VeraGridEngine.Templates.Emt.dc_load_emt_template import get_dc_load_emt_template
 from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template_with_ref
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_dae import EmtProblemDae
-from VeraGridEngine.Simulations.EMT.initialization_emt import _compute_missing_dx0
+from VeraGridEngine.Simulations.EMT.initialization_emt import _compute_missing_dx0, build_uid_bindings
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.Simulations.EMT.emt_solver_factory import build_emt_solver
 from VeraGridEngine.Simulations.EMT.solvers.StructuralVectorizedSolver import (
@@ -56,6 +56,7 @@ def find_name_in_block(name: str, block: Block):
             + search_block.in_vars
             + search_block.out_vars
             + list(search_block.event_dict.keys())
+            + list(search_block.parameters.keys())
         )
         for var in block_vars:
             if name == var.name or (allow_prefix and var.name.startswith(f"{name}_")):
@@ -102,6 +103,20 @@ def set_problem_runtime_value(problem, block: Block, name: str, value: float) ->
     if var.uid not in uid2idx:
         return
 
+    idx = uid2idx[var.uid]
+    value_float = float(value)
+    problem._event_params_values[idx] = value_float
+    problem._event_parameters_eqs[idx] = Const(value_float)
+    if hasattr(problem, "_runtime_all_eqs_source"):
+        problem._runtime_all_eqs_source[idx] = Const(value_float)
+    if hasattr(problem, "_runtime_parameter_eqs0"):
+        problem._runtime_parameter_eqs0[idx] = Const(value_float)
+
+
+def set_problem_runtime_var_value(problem, var, value: float) -> None:
+    uid2idx = getattr(problem, "_uid2idx_event_params", getattr(problem, "uid2idx_event_params", {}))
+    if var is None or var.uid not in uid2idx:
+        return
     idx = uid2idx[var.uid]
     value_float = float(value)
     problem._event_params_values[idx] = value_float
@@ -247,18 +262,91 @@ def refresh_initial_derivatives_from_residuals(problem) -> None:
     if problem.initialization_report is None:
         return
 
+    runtime_params = problem.def_event_params_fn(problem.event_params_values.copy(), 0.0)
     _compute_missing_dx0(
         problem=problem,
         report=problem.initialization_report,
         x_full=problem.get_x0(),
         dx_full=problem.get_dx0(),
-        runtime_params=problem.event_params_values.copy(),
+        runtime_params=runtime_params,
         constant_params=np.asarray(
             [float(const.value) for const in problem.get_parameters_values()],
             dtype=np.float64,
         ),
         include_existing=True,
     )
+
+
+def print_state_derivative_mismatches(problem, names: tuple[str, ...], count: int = 18) -> None:
+    x0 = problem.get_x0()
+    dx0 = problem.get_dx0()
+    runtime_params = problem.def_event_params_fn(problem.event_params_values.copy(), 0.0)
+    constant_params = np.asarray([float(const.value) for const in problem.get_parameters_values()], dtype=np.float64)
+    uid2idx_params = getattr(problem, "_uid2idx_params", getattr(problem, "uid2idx_params", {}))
+    uid2idx_event_params = getattr(problem, "_uid2idx_event_params", getattr(problem, "uid2idx_event_params", {}))
+
+    rows = []
+    for state_var, state_eq in zip(problem.get_state_vars(), problem.get_state_eqs()):
+        if not any(token in state_var.name for token in names):
+            continue
+        diff_var = getattr(state_var, "diff_var", None)
+        if diff_var is None or diff_var.uid not in problem.uid2idx_diff:
+            continue
+        bindings = build_uid_bindings(
+            state_eq,
+            event_params_array=runtime_params,
+            x=x0,
+            params_array=constant_params,
+            dx=dx0,
+            uid2idx_event_params=uid2idx_event_params,
+            uid2idx_vars=problem._uid2idx_vars,
+            uid2idx_params=uid2idx_params,
+            uid2idx_diff=problem.uid2idx_diff,
+        )
+        rhs = float(state_eq.eval_uid(bindings))
+        dx_value = float(dx0[problem.uid2idx_diff[diff_var.uid]])
+        rows.append((abs(dx_value - rhs), state_var.name, dx_value, rhs))
+
+    rows.sort(reverse=True)
+    print("Selected state derivative consistency at seeded x0:")
+    for mismatch, name, dx_value, rhs in rows[:count]:
+        print(f"  {name}: dx0={dx_value: .9e}, rhs={rhs: .9e}, diff={dx_value - rhs: .9e}")
+
+
+def print_balanced_rotation_mismatches(problem, triplets: tuple[tuple[str, Block], ...]) -> None:
+    x0 = problem.get_x0()
+    dx0 = problem.get_dx0()
+    omega = 2.0 * np.pi * grid.fBase
+    scale = omega / np.sqrt(3.0)
+    print("Balanced 50 Hz rotation consistency:")
+    for prefix, block in triplets:
+        values = []
+        derivs = []
+        missing = False
+        for phase in ("A", "B", "C"):
+            name = prefix.format(phase=phase) if "{phase}" in prefix else f"{prefix}_{phase}"
+            var = find_name_in_block(name, block)
+            if var is None or var.uid not in problem._uid2idx_vars:
+                missing = True
+                break
+            values.append(float(x0[problem.get_var_idx(var)]))
+            diff_var = getattr(var, "diff_var", None)
+            if diff_var is None or diff_var.uid not in problem.uid2idx_diff:
+                missing = True
+                break
+            derivs.append(float(dx0[problem.uid2idx_diff[diff_var.uid]]))
+        if missing:
+            continue
+
+        a, b, c = values
+        expected = [scale * (c - b), scale * (a - c), scale * (b - a)]
+        errors = [derivs[idx] - expected[idx] for idx in range(3)]
+        print(
+            f"  {prefix}: "
+            f"dA_err={errors[0]: .9e}, dB_err={errors[1]: .9e}, dC_err={errors[2]: .9e}; "
+            f"dx=[{derivs[0]: .6e}, {derivs[1]: .6e}, {derivs[2]: .6e}], "
+            f"rot=[{expected[0]: .6e}, {expected[1]: .6e}, {expected[2]: .6e}]"
+        )
 
 
 def seed_vsc_theta_dx0(problem, vsc_model: Block) -> None:
@@ -649,17 +737,27 @@ CONTROL1_MODE = ConverterControlType.Pac
 CONTROL2_MODE = ConverterControlType.Qac
 FREEZE_VSC_VOLTAGE_SOURCE = False
 DEBUG_PI_LINE_INIT = False
-COARSE_TO_FINE_DIAGNOSTIC = False
-COARSE_TO_FINE_SWITCH_TIME = 0.1
-COARSE_TO_FINE_COARSE_STEP = 1.0e-3
-COARSE_TO_FINE_FINE_STEP = 1.0e-5
-COARSE_TO_FINE_FINE_DURATION = 1.0e-5
-Q_CONTROL_KP_POL = float(os.environ.get("VERAGRID_GFL_EMT_KP_POL", "0.02"))
-Q_CONTROL_KI_POL = float(os.environ.get("VERAGRID_GFL_EMT_KI_POL", "0.3"))
-CURRENT_CONTROL_KP_ICL = float(os.environ.get("VERAGRID_GFL_EMT_KP_ICL", "1.0"))
-CURRENT_CONTROL_KI_ICL = float(os.environ.get("VERAGRID_GFL_EMT_KI_ICL", "20.0"))
+COARSE_TO_FINE_DIAGNOSTIC = os.environ.get("VERAGRID_GFL_EMT_COARSE_TO_FINE", "0") == "1"
+COARSE_TO_FINE_SWITCH_TIME = float(os.environ.get("VERAGRID_GFL_EMT_COARSE_SWITCH_TIME", "0.1"))
+COARSE_TO_FINE_COARSE_STEP = float(os.environ.get("VERAGRID_GFL_EMT_COARSE_STEP", "1.0e-3"))
+COARSE_TO_FINE_FINE_STEP = float(os.environ.get("VERAGRID_GFL_EMT_FINE_STEP", "1.0e-5"))
+COARSE_TO_FINE_FINE_DURATION = float(os.environ.get("VERAGRID_GFL_EMT_FINE_DURATION", "1.0e-5"))
+COARSE_TO_FINE_COARSE_METHOD = DynamicIntegrationMethod[
+    os.environ.get("VERAGRID_GFL_EMT_COARSE_METHOD", os.environ.get("VERAGRID_GFL_EMT_INTEGRATION_METHOD", "DaeBackEuler"))
+]
+COARSE_TO_FINE_FINE_METHOD = DynamicIntegrationMethod[
+    os.environ.get("VERAGRID_GFL_EMT_FINE_METHOD", os.environ.get("VERAGRID_GFL_EMT_INTEGRATION_METHOD", "DaeBackEuler"))
+]
+Q_CONTROL_KP_POL = float(os.environ.get("VERAGRID_GFL_EMT_KP_POL", "0.08"))
+Q_CONTROL_KI_POL = float(os.environ.get("VERAGRID_GFL_EMT_KI_POL", "1.2"))
+_DEFAULT_INTEGRATION_METHOD_NAME = os.environ.get("VERAGRID_GFL_EMT_INTEGRATION_METHOD", "DaeTrapezoidal")
+_DEFAULT_KP_ICL = "0.1" if _DEFAULT_INTEGRATION_METHOD_NAME == "DaeTrapezoidal" else "1.0"
+_DEFAULT_KI_ICL = "2.0" if _DEFAULT_INTEGRATION_METHOD_NAME == "DaeTrapezoidal" else "20.0"
+CURRENT_CONTROL_KP_ICL = float(os.environ.get("VERAGRID_GFL_EMT_KP_ICL", _DEFAULT_KP_ICL))
+CURRENT_CONTROL_KI_ICL = float(os.environ.get("VERAGRID_GFL_EMT_KI_ICL", _DEFAULT_KI_ICL))
 PLL_KP = float(os.environ.get("VERAGRID_GFL_EMT_KP_PLL", "0.01"))
 PLL_KI = float(os.environ.get("VERAGRID_GFL_EMT_KI_PLL", "0.05"))
+DC_LINK_CAPACITANCE = float(os.environ.get("VERAGRID_GFL_EMT_CDC", "10.0"))
 
 # Define VSCs with the selected control modes
 vsc1 = gce.VSC(name='VSC1', bus_from=bus_dc, bus_to=bus1, rate=100, alpha1=0.0, alpha2=0.0, alpha3=0.0,
@@ -810,6 +908,7 @@ set_event_value_in_block('Ki_icl', vsc_mdl, CURRENT_CONTROL_KI_ICL)
 set_event_value_in_block('Kp_pll', vsc_mdl, PLL_KP)
 set_event_value_in_block('Ki_pll', vsc_mdl, PLL_KI)
 set_event_value_in_block('L', vsc_mdl, vsc_filter_l)
+set_event_value_in_block('Cdc', vsc_mdl, DC_LINK_CAPACITANCE)
 
 # Find appropriate reference variable based on control mode
 if CONTROL1_MODE in [ConverterControlType.Pac, ConverterControlType.Pdc]:
@@ -830,12 +929,19 @@ if P_REF_EVENT_ENABLED:
         f"delta={P_REF_EVENT_DELTA:.9e}"
     )
 
-options = EmtOptions(time_step=1e-5,
-                     simulation_time=0.2,
+VERAGRID_GFL_EMT_TIME_STEP = float(os.environ.get("VERAGRID_GFL_EMT_TIME_STEP", "5e-6"))
+VERAGRID_GFL_EMT_SIM_TIME = float(os.environ.get("VERAGRID_GFL_EMT_SIM_TIME", "0.01"))
+INTEGRATION_METHOD = DynamicIntegrationMethod[_DEFAULT_INTEGRATION_METHOD_NAME]
+INITIALIZATION_METHOD = EmtInitializationMethod[
+    os.environ.get("VERAGRID_GFL_EMT_INITIALIZATION_METHOD", "Explicit")
+]
+
+options = EmtOptions(time_step=VERAGRID_GFL_EMT_TIME_STEP,
+                     simulation_time=VERAGRID_GFL_EMT_SIM_TIME,
                      tolerance=1e-6,
-                     integration_method=DynamicIntegrationMethod.DaeBackEuler,
+                     integration_method=INTEGRATION_METHOD,
                      solver_type=EmtSolverTypes.StructuralAD,
-                     initialization_method=EmtInitializationMethod.Explicit,
+                     initialization_method=INITIALIZATION_METHOD,
                      verbose=1)
 print(f"EMT initialization method: {options.initialization_method!r}")
 
@@ -971,6 +1077,7 @@ def seed_gfl_vsc_initial_guess(problem, vsc, pf_results, converter_bus, grid_bus
         'i_b_f': ib_vsc0,
         'i_c_f': ic_vsc0,
         'i_dc': i_dc0,
+        'Vdc_cap': vdc0,
         'P_conv': p_conv0,
         'theta': theta0,
         'omega': omega0,
@@ -1019,6 +1126,7 @@ def seed_gfl_vsc_initial_guess(problem, vsc, pf_results, converter_bus, grid_bus
         'u_vq_hat',
         'y_vd_hat',
         'y_vq_hat',
+        'Vdc_cap',
     ):
         set_diff_value(name, 0.0)
 
@@ -1046,22 +1154,129 @@ def seed_gfl_vsc_initial_guess(problem, vsc, pf_results, converter_bus, grid_bus
     set_runtime_value('Kp_pll', PLL_KP)
     set_runtime_value('Ki_pll', PLL_KI)
     set_runtime_value('L', vsc_filter_l)
+    set_runtime_value('Cdc', DC_LINK_CAPACITANCE)
     return None
 
 
-def seed_thevenin_current_from_terminal_line(problem, generator_model: Block, terminal_line_model: Block) -> None:
+def seed_thevenin_current_from_terminal_line(problem, generator_model: Block, terminal_line_model: Block, terminal_bus_model: Block) -> None:
     """Make the Thevenin current states satisfy the connected bus KCL at t=0."""
     x0 = problem.get_x0()
+    uid2idx_params = getattr(problem, "_uid2idx_params", getattr(problem, "uid2idx_params", {}))
+    uid2idx_event_params = getattr(problem, "_uid2idx_event_params", getattr(problem, "uid2idx_event_params", {}))
+    constant_params = np.asarray([float(const.value) for const in problem.get_parameters_values()], dtype=np.float64)
+
+    def get_value(var_name: str, default: float | None = None) -> float | None:
+        var = find_name_in_block(var_name, generator_model)
+        if var is None:
+            for param in getattr(problem, "_constant_parameters", []):
+                if var_name == param.name or param.name.startswith(f"{var_name}_"):
+                    param_idx = uid2idx_params.get(param.uid, None)
+                    if param_idx is not None:
+                        return float(constant_params[param_idx])
+            return default
+        if var.uid in problem._uid2idx_vars:
+            return float(x0[problem.get_var_idx(var)])
+        if var.uid in uid2idx_event_params:
+            return float(problem.event_params_values[uid2idx_event_params[var.uid]])
+        if var.uid in uid2idx_params:
+            return float(constant_params[uid2idx_params[var.uid]])
+        for param in getattr(problem, "_constant_parameters", []):
+            if var_name == param.name or param.name.startswith(f"{var_name}_"):
+                param_idx = uid2idx_params.get(param.uid, None)
+                if param_idx is not None:
+                    return float(constant_params[param_idx])
+        return default
+
+    phase_values = {}
     for phase in ("A", "B", "C"):
         gen_i = find_name_in_block(f"i_{phase}_emt_thevenin_eq_generator_template", generator_model)
         line_it = find_name_in_block(f"it_Pi23_{phase}", terminal_line_model)
         if gen_i is None or line_it is None:
             continue
-        problem.init_guess[gen_i.uid] = float(x0[problem.get_var_idx(line_it)])
+        value = float(x0[problem.get_var_idx(line_it)])
+        problem.init_guess[gen_i.uid] = value
+        phase_values[phase] = value
+
+    if len(phase_values) != 3:
+        return
+
+    voltage_values = {}
+    for phase in ("A", "B", "C"):
+        voltage = find_name_in_block(f"v_{phase}", terminal_bus_model)
+        if voltage is None or voltage.uid not in problem._uid2idx_vars:
+            return
+        voltage_values[phase] = float(x0[problem.get_var_idx(voltage)])
+
+    pe = sum(voltage_values[phase] * phase_values[phase] for phase in ("A", "B", "C"))
+    qe = (1.0 / np.sqrt(3.0)) * (
+        (voltage_values["A"] - voltage_values["B"]) * phase_values["C"]
+        + (voltage_values["B"] - voltage_values["C"]) * phase_values["A"]
+        + (voltage_values["C"] - voltage_values["A"]) * phase_values["B"]
+    )
+    for name, value in (
+        ("Pe_emt_thevenin_eq_generator_template", pe),
+        ("Qe_emt_thevenin_eq_generator_template", qe),
+    ):
+        var = find_name_in_block(name, generator_model)
+        if var is not None:
+            problem.init_guess[var.uid] = float(value)
+
+    r_s = get_value("R_s_emt_thevenin_eq_generator_template")
+    x_s = get_value("X_s_emt_thevenin_eq_generator_template")
+    omega_base = get_value("omega_base_emt_thevenin_eq_generator_template", 2.0 * np.pi * grid.fBase)
+    theta = get_value("theta_emt_thevenin_eq_generator_template")
+    if r_s is None or x_s is None or omega_base is None or theta is None:
+        return
+
+    rotation_scale = float(omega_base) / np.sqrt(3.0)
+    di_values = {
+        "A": rotation_scale * (phase_values["C"] - phase_values["B"]),
+        "B": rotation_scale * (phase_values["A"] - phase_values["C"]),
+        "C": rotation_scale * (phase_values["B"] - phase_values["A"]),
+    }
+    required_e = {
+        phase: voltage_values[phase] + float(r_s) * phase_values[phase] + (float(x_s) / float(omega_base)) * di_values[phase]
+        for phase in ("A", "B", "C")
+    }
+
+    e_d = (2.0 / 3.0) * (required_e["A"] - 0.5 * required_e["B"] - 0.5 * required_e["C"])
+    e_q = (1.0 / np.sqrt(3.0)) * (required_e["C"] - required_e["B"])
+    required_epk = float(np.hypot(e_d, e_q))
+    required_angle = float(np.arctan2(e_d, e_q))
+
+    current_e_values = []
+    for phase in ("A", "B", "C"):
+        e_var = find_name_in_block(f"e_{phase}_emt_thevenin_eq_generator_template", generator_model)
+        if e_var is None or e_var.uid not in problem._uid2idx_vars:
+            return
+        current_e_values.append(float(x0[problem.get_var_idx(e_var)]))
+        problem.init_guess[e_var.uid] = float(required_e[phase])
+
+    current_e_d = (2.0 / 3.0) * (current_e_values[0] - 0.5 * current_e_values[1] - 0.5 * current_e_values[2])
+    current_e_q = (1.0 / np.sqrt(3.0)) * (current_e_values[2] - current_e_values[1])
+    current_scale = get_value("E_scale_emt_thevenin_eq_generator_template", 1.0)
+    base_epk = float(np.hypot(current_e_d, current_e_q)) / max(abs(float(current_scale)), 1.0e-12)
+    if base_epk <= 1.0e-12:
+        return
+
+    e_scale_var = find_name_in_block("E_scale_emt_thevenin_eq_generator_template", generator_model)
+    theta_deviation_var = find_name_in_block("theta_deviation_param_emt_thevenin_eq_generator_template", generator_model)
+    e_scale_value = required_epk / base_epk
+    theta_deviation_value = required_angle - float(theta)
+    set_problem_runtime_var_value(
+        problem,
+        e_scale_var,
+        e_scale_value,
+    )
+    set_problem_runtime_var_value(
+        problem,
+        theta_deviation_var,
+        theta_deviation_value,
+    )
 
 
 seed_gfl_vsc_initial_guess(problem, vsc1, res, bus1, bus2)
-seed_thevenin_current_from_terminal_line(problem, gen1.emt_model, line23_mdl)
+seed_thevenin_current_from_terminal_line(problem, gen1.emt_model, line23_mdl, bus3.emt_model)
 problem.set_events_group(None)
 refresh_initial_derivatives_from_residuals(problem)
 seed_vsc_theta_dx0(problem, vsc_mdl)
@@ -1087,6 +1302,19 @@ for line_name, line_mdl in (("line12", line12_mdl), ("line23", line23_mdl)):
                 value = problem.event_params_values[idx] if idx is not None else None
                 parts.append(f"d_v{side}_{phase}={value: .6e}" if value is not None else f"d_v{side}_{phase}=None")
     print(f"  {line_name}: " + ", ".join(parts))
+
+print_state_derivative_mismatches(
+    problem,
+    names=("i_ser_Pi", "q_f_Pi", "q_t_Pi", "i_A_emt_thevenin", "i_B_emt_thevenin", "i_C_emt_thevenin", "theta"),
+)
+print_balanced_rotation_mismatches(
+    problem,
+    triplets=(
+        ("i_ser_Pi12", line12_mdl),
+        ("i_ser_Pi23", line23_mdl),
+        ("i_{phase}_emt_thevenin_eq_generator_template", gen1.emt_model),
+    ),
+)
 
 def print_pi_line_initial_consistency(problem, line, line_mdl, pf_results, label):
     x0 = problem.get_x0()
@@ -1205,7 +1433,7 @@ solver = build_emt_solver(
     t0=0.0,
     t_end=COARSE_TO_FINE_SWITCH_TIME if COARSE_TO_FINE_DIAGNOSTIC else options.simulation_time,
     h=COARSE_TO_FINE_COARSE_STEP if COARSE_TO_FINE_DIAGNOSTIC else options.time_step,
-    method=options.integration_method,
+    method=COARSE_TO_FINE_COARSE_METHOD if COARSE_TO_FINE_DIAGNOSTIC else options.integration_method,
 )
 
 print_q_control_initialization(problem, vsc_mdl, "true x0", problem.get_x0())
@@ -1224,7 +1452,8 @@ if COARSE_TO_FINE_DIAGNOSTIC:
     print(
         "Running coarse-to-fine diagnostic: "
         f"h={COARSE_TO_FINE_COARSE_STEP:g} until t={COARSE_TO_FINE_SWITCH_TIME:g}, "
-        f"then h={COARSE_TO_FINE_FINE_STEP:g} for {COARSE_TO_FINE_FINE_DURATION:g} s"
+        f"then h={COARSE_TO_FINE_FINE_STEP:g} for {COARSE_TO_FINE_FINE_DURATION:g} s, "
+        f"methods={COARSE_TO_FINE_COARSE_METHOD.name}->{COARSE_TO_FINE_FINE_METHOD.name}"
     )
     t_coarse, y_coarse, dy_coarse, well_initialized, converged = solver.simulate()
     fine_solver = build_emt_solver(
@@ -1233,7 +1462,7 @@ if COARSE_TO_FINE_DIAGNOSTIC:
         t0=float(t_coarse[-1]),
         t_end=float(t_coarse[-1] + COARSE_TO_FINE_FINE_DURATION),
         h=COARSE_TO_FINE_FINE_STEP,
-        method=options.integration_method,
+        method=COARSE_TO_FINE_FINE_METHOD,
     )
     t_fine, y_fine, dy_fine, well_initialized_fine, converged_fine = fine_solver.simulate(
         x0=y_coarse[-1].copy(),
