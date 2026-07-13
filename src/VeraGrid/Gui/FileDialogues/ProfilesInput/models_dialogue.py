@@ -22,7 +22,7 @@ from VeraGridEngine.Utils.progress_bar import print_progress_bar
 from VeraGrid.Gui.FileDialogues.ProfilesInput.profiles_from_models_gui import Ui_Dialog
 
 
-def extract_and_convert_to_datetime(filename, logger: Logger) -> pd.DatetimeIndex | None:
+def extract_and_convert_to_datetime(filename, logger: Logger) -> pd.Timestamp | None:
     """
     Try to extract date from file name
     :param filename: file name
@@ -64,17 +64,19 @@ class GridsModelItem:
     GridsModelItem
     """
 
-    def __init__(self, path, tme, logger: Logger):
+    def __init__(self, path: str, tme: pd.Timestamp, logger: Logger):
         """
 
         :param path:
+        :param tme:
+        :param logger:
         """
         suggested_tme = extract_and_convert_to_datetime(filename=os.path.basename(path), logger=logger)
-        self.time = suggested_tme if suggested_tme is not None else tme
+        self.time: pd.Timestamp = suggested_tme if suggested_tme is not None else tme
 
         self.path: str = path
 
-        self.name = os.path.basename(path)
+        self.name: str = os.path.basename(path)
 
     def get_at(self, idx: int) -> str | pd.Timestamp:
         """
@@ -173,11 +175,16 @@ class GridsModel(QtCore.QAbstractTableModel):
         current_date: datetime = datetime.today()
         base_date: datetime = datetime(current_date.year, 1, 1, 0, 0, 0)
         base_increment_hours: int = 1
-        tme: datetime = base_date + timedelta(hours=base_increment_hours * item_count)
 
-        # Build the item here so dropped files and manually added files follow
-        # the same filename-to-time proposal path.
-        self._values_.append(GridsModelItem(path=path, tme=tme, logger=self.logger))
+        tme_value = pd.Timestamp(base_date + timedelta(hours=base_increment_hours * item_count))
+        if not pd.isna(tme_value):
+            tme: pd.Timestamp = tme_value
+
+            # Build the item here so dropped files and manually added files follow
+            # the same filename-to-time proposal path.
+            self._values_.append(GridsModelItem(path=path, tme=tme, logger=self.logger))
+        else:
+            print(f"path: {path}, failed to convert date :/")
 
     def add_paths(self, paths: List[str]) -> None:
         """
