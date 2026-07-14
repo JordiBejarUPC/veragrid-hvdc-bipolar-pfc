@@ -474,6 +474,45 @@ def seed_line_current_predictors(problem: EmtProblemDae, grid: vge.MultiCircuit,
     problem.algebraic_predictor_derivatives = predictors
 
 
+def seed_source_currents_from_equations(problem: EmtProblemDae, devices: dict) -> None:
+    source = devices["gen_slack"].emt_model
+    bus = devices["bus_slack"].emt_model
+
+    def event_value(block, name: str, default: float = 0.0) -> float:
+        var = find_name_in_block(name, block)
+        uid2idx = getattr(problem, "_uid2idx_event_params", getattr(problem, "uid2idx_event_params", {}))
+        if var is not None and var.uid in uid2idx:
+            return float(problem._event_params_values[uid2idx[var.uid]])
+        return float(default)
+
+    def init_value(block, name: str) -> float:
+        var = find_name_in_block(name, block)
+        if var is None:
+            return 0.0
+        if var.uid in problem.init_guess:
+            return float(problem.init_guess[var.uid])
+        if var.uid in problem._uid2idx_vars:
+            return float(problem.get_x0()[problem.get_var_idx(var)])
+        return 0.0
+
+    def set_init(block, name: str, value: float) -> None:
+        var = find_name_in_block(name, block)
+        if var is not None and var.uid in problem._uid2idx_vars:
+            problem.init_guess[var.uid] = float(value)
+
+    amplitude = event_value(source, "V_amp", 0.0)
+    phase_a_deg = event_value(source, "phi_deg_A", 0.0)
+    offset = event_value(source, "V_offset", 0.0)
+    conductance = event_value(source, "g_src", 0.0)
+    theta = init_value(source, "theta_src")
+    shifts = {"A": 0.0, "B": -120.0, "C": 120.0}
+    for phase, shift_deg in shifts.items():
+        angle = theta + np.deg2rad(phase_a_deg + shift_deg)
+        v_src = offset + amplitude * np.sin(angle)
+        v_bus = init_value(bus, f"v_{phase}")
+        set_init(source, f"i_{phase}", conductance * (v_src - v_bus))
+
+
 def print_gfm_algebraic_residuals(problem: EmtProblemDae, gfm_block, limit: int = 10) -> None:
     x0 = problem.get_x0()
     bindings = {}
