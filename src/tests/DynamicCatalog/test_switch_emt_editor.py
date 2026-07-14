@@ -32,12 +32,12 @@ def _build_editor() -> DynamicBlockEditorGUI:
     _get_app()
     editor = DynamicBlockEditorGUI(
         var_factory=VarFactory(),
-        block=Block(),
+        current_block=Block(),
         api_object=_ApiStub(),
         circuit=MultiCircuit(),
         mode=DynamicSimulationMode.EMT,
         templates_list=list(),
-        main_editor=False,
+        is_root_editor=False,
         modal=False,
     )
     editor.show()
