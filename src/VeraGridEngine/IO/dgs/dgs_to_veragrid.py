@@ -2730,12 +2730,11 @@ def convert_dgs_to_line(
         else:
             applied_template = False
     elif seq_template is not None:
-        # Use high-precision rounding so very short (~1 m) connector segments do
-        # not have their tiny per-unit series R/X rounded away to exactly zero
-        # (which would create an infinite-admittance branch). Matches the
-        # line-section path above.
-        line.apply_template(obj=seq_template, Sbase=baseMVA, freq=freq, logger=logger,
-                            decimals_rounding=16)
+        # Keep the default rounding: the ~1 m connector segments round to R=X=0, which marks
+        # them reducible (PassiveBranchData.detect_superconductor_at) so they get merged away.
+        # Preserving their true ~1e-8 pu impedance instead leaves ~1e8 admittances in the Ybus
+        # and the power flow stops converging.
+        line.apply_template(obj=seq_template, Sbase=baseMVA, freq=freq, logger=logger)
         applied_template = True
     elif ohl_template is not None:
         # OverheadLineType uses a 1-based circuit index. Default to circuit 1 here.
