@@ -54,28 +54,4 @@ class DynTemplatesEditorDialog(QDialog):
         return self.property_list
 
     def accept(self) -> None:
-        for prop in self.property_list:
-            val = prop.value
-            if not isinstance(val, list) or len(val) == 0:
-                continue
-            if not isinstance(val[0], np.ndarray):
-                continue
-
-            if len(val) < 2:
-                QMessageBox.warning(
-                    self,
-                    "Invalid waveform",
-                    "Arbitrary source waveform requires at least two points.",
-                )
-                return
-
-            for i in range(1, len(val)):
-                if val[i][0] <= val[i - 1][0]:
-                    QMessageBox.warning(
-                        self,
-                        "Invalid waveform",
-                        "Arbitrary source waveform times must be strictly increasing.",
-                    )
-                    return
-
         super().accept()

@@ -33,6 +33,8 @@ def get_blocktype2template_builder_dict():
         BlockType.ARBITRARY_WAVEFORM_VOLTAGE_SOURCE_EMT: emt_templates.ArbitraryWaveformVoltageSourceEmtTemplate,
         BlockType.ARBITRARY_WAVEFORM_CURRENT_SOURCE_EMT: emt_templates.ArbitraryWaveformCurrentSourceEmtTemplate,
 
+        BlockType.NONLINEAR_RESISTOR_EMT: emt_templates.NonLinearResistorEmtTemplate,
+
         BlockType.STEP_VOLTAGE_SOURCE_EMT: emt_templates.StepVoltageSourceEmtTemplate,
         BlockType.STEP_CURRENT_SOURCE_EMT: emt_templates.StepCurrentSourceEmtTemplate,
         BlockType.RAMP_VOLTAGE_SOURCE_EMT: emt_templates.RampVoltageSourceEmtTemplate,

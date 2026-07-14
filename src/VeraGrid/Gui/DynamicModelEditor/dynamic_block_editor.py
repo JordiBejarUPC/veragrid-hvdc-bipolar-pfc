@@ -299,6 +299,18 @@ def build_emt_branch_bus_mask_from_refs(
 _SENTINEL = object()
 
 
+class _FallbackDocument:
+    """
+    Minimal document shim for legacy callers that don't pass a document.
+
+    In the legacy code-path the editor edits the block directly (there is
+    no separate working copy), so ``commit()`` is a no-op.
+    """
+
+    def commit(self) -> None:
+        """No-op: edits already live on the block."""
+
+
 class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
     """
     DynamicModelEditorGUI
@@ -473,7 +485,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.is_root_editor = is_root_editor
         self.workspace_embedded = workspace_embedded
 
-        self._document = document
+        self._document = document if document is not None else _FallbackDocument()
         self._navigation_delegate = None
         self.templates_list: List[
             RmsModelTemplate | EmtModelTemplate | FmuTemplate] = templates_list if templates_list is not None else list()
@@ -1915,72 +1927,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.mark_unapplied_changes()
         return block_item
 
-    def create_nonlinear_resistor_emt_block_item(self, x_pos: float, y_pos: float) -> GenericBlockItem | None:
-        """
-        Create one modal-configured ATP-like EMT nonlinear resistor block.
-
-        :param x_pos: Drop x position.
-        :param y_pos: Drop y position.
-        :return: Created block item or None when the dialog is cancelled.
-        """
-        dialog = LookupArrayLinearDialog(
-            block_label="Nonlinear resistor EMT V-I curve",
-            initial_points=list([(0.0, 0.0), (1.0, 0.1), (1.5, 1.0), (2.0, 10.0)]),
-            parent=self,
-            x_label="V",
-            y_label="I",
-            preview_enabled=True,
-            preview_title="Nonlinear resistor EMT V-I curve",
-        )
-
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            voltage_points, current_points = dialog.get_points()
-        else:
-            return None
-
-        count: int = self.block_counters.get(BlockType.NONLINEAR_RESISTOR_EMT, 0) + 1
-        item_name: str = f"nonlinear_resistor_emt_{count}"
-        block_model = emt_templates.get_nonlinear_resistor_emt_template(
-            vf=self.var_factory,
-            voltage_points=voltage_points,
-            current_points=current_points,
-            name=item_name,
-        ).block
-        block_item: GenericBlockItem = GenericBlockItem(
-            editor=self, var_factory=self.var_factory,
-            subsys=block_model,
-            api_object=self.api_object,
-            mode=self.mode,
-            name=item_name,
-            position_changed_callback=self._build_position_changed_callback(block_model.uid)
-        )
-
-        self.set_modal_template_metadata(
-            block_model,
-            kind="nonlinear_resistor_emt",
-            config=dict({
-                "voltage_points": voltage_points,
-                "current_points": current_points,
-            }),
-        )
-
-        self.block_counters[BlockType.NONLINEAR_RESISTOR_EMT] = count
-        block_item.set_subsystem(block_model)
-        block_item.position_changed_callback = self._build_position_changed_callback(block_model.uid)
-        block_item.build_item()
-        self.main_block.add(block_model)
-        self.scene.addItem(block_item)
-        block_item.setPos(QtCore.QPointF(x_pos, y_pos))
-        self.diagram.add_node(
-            name=item_name,
-            x=x_pos,
-            y=y_pos,
-            tpe=BlockType.NONLINEAR_RESISTOR_EMT.name,
-            device_uid=block_model.uid,
-        )
-        self.mark_unapplied_changes()
-        return block_item
-
     def _build_shunt_component_emt_dialog(self,
                                           block_type: BlockType,
                                           initial_config: Dict[str, Any] | None = None) -> ShuntComponentEmtDialog:
@@ -2507,7 +2453,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         if isinstance(payload, BlockType) and payload in self.blocktype2templatebuilder:
             return self.create_item_from_blocktype(payload, x_pos, y_pos)
 
-        # these ones cannot be included avobe because they are represented by a different item in the scene
+        # this ones cannot be included avobe because they are represented by a different item in the scene
         elif isinstance(payload, BlockType) and payload == BlockType.FROM_GOTO:
             items = self.create_signal_pair_item(x_pos=x_pos, y_pos=y_pos)
             return items[0] if items else None
@@ -2524,9 +2470,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         # Todo: include in blocktype2templatebuilder, create clases and inputs
         elif isinstance(payload, BlockType) and payload == BlockType.EMT_JMARTI_LINE:
             return self.create_jmarti_line_emt_block_item(x_pos=x_pos, y_pos=y_pos)
-
-        elif isinstance(payload, BlockType) and payload == BlockType.NONLINEAR_RESISTOR_EMT:
-            return self.create_nonlinear_resistor_emt_block_item(x_pos=x_pos, y_pos=y_pos)
 
         elif isinstance(payload, BlockType) and payload in {
             BlockType.R_LOAD_EMT,

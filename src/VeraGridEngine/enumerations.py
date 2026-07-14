@@ -1318,6 +1318,19 @@ class TerminalType(Enum):
         return list(enum_item.value for enum_item in cls)
 
 
+
+class WaveformSequenceType(Enum):
+    """
+        Squence points type
+    """
+
+class V_I_CurveSequenceType(Enum):
+    """
+        Squence points type
+    """
+
+
+
 class WindingType(str, Enum):
     """
     Transformer windings connection types

@@ -79,3 +79,4 @@ from VeraGridEngine.Templates.Emt.transformer_emt_template import TransformerEmt
 from VeraGridEngine.Templates.Emt.xfmr_emt_template import XfmrEmtTemplate, get_xfmr_emt_template
 from VeraGridEngine.Templates.Emt.bergeron_line_emt_template import BergeronLineEmtTemplate
 from VeraGridEngine.Templates.Emt.pi_line_emt_template import PiLineEmtTemplate
+from VeraGridEngine.Templates.Emt.nonlinear_resistor_emt_template import NonLinearResistorEmtTemplate, get_nonlinear_resistor_emt_template
