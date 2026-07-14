@@ -18,19 +18,18 @@ def get_pll_transform_rms(vfactory: VarFactory, name: str = "Pll_transform_rms")
     """
      Pll
     """
-    suffix = f"_{name}" if name else ""
     templ = RmsModelTemplate(name=name)
     templ.tpe = DeviceType.NoDevice
 
-    inputs = [vfactory.add_var("Vm_" + name, reference=VarPowerFlowReferenceType.Vm),
-              vfactory.add_var("Va_" + name, reference=VarPowerFlowReferenceType.Va),
+    inputs = [vfactory.add_var("Vm", reference=VarPowerFlowReferenceType.Vm),
+              vfactory.add_var("Va", reference=VarPowerFlowReferenceType.Va),
               ]
     ############### phase detector block ############################
 
     # phase detector Variables
-    vd = vfactory.add_var(f'vd{suffix}', shared_reference="vd_reference")
-    vq = vfactory.add_var(f'vq{suffix}', shared_reference="vq_reference")
-    theta_phase_detect_blk = vfactory.add_var(f'theta{suffix}', shared_reference="theta_reference")
+    vd = vfactory.add_var('vd', shared_reference="vd_reference")
+    vq = vfactory.add_var('vq', shared_reference="vq_reference")
+    theta_phase_detect_blk = vfactory.add_var('theta', shared_reference="theta_reference")
 
     phase_detector_block = Block(
 
@@ -52,8 +51,8 @@ def get_pll_transform_rms(vfactory: VarFactory, name: str = "Pll_transform_rms")
     ############### loop filter block ############################
 
     # Parameters
-    Kp_pll = vfactory.add_var(f'Kp_pll{suffix}')
-    Ki_pll = vfactory.add_var(f'Ki_pll{suffix}')
+    Kp_pll = vfactory.add_var('Kp_pll')
+    Ki_pll = vfactory.add_var('Ki_pll')
 
     # variables
     vd_pi_block = vfactory.add_var('vd_pi_block', shared_reference="vd_reference")
@@ -89,7 +88,7 @@ def get_pll_transform_rms(vfactory: VarFactory, name: str = "Pll_transform_rms")
     ############ VCO #############################################
 
     # Parameters
-    fn = vfactory.add_var(f'fn{suffix}')
+    fn = vfactory.add_var('fn')
 
     # variables
     omega_vco = vfactory.add_var('omega_vco', shared_reference="omega_reference")

@@ -48,6 +48,7 @@ from typing import Dict, List, Tuple
 
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
+from VeraGridEngine.Templates.template_definition import TemplateDefinition, TemplateProp
 from VeraGridEngine.Utils.Symbolic import symbolic as sym
 from VeraGridEngine.Utils.Symbolic.block import Block, Expr, Var
 from VeraGridEngine.enumerations import DeviceType, ParamPowerFlowReferenceType, VarPowerFlowReferenceType
@@ -283,25 +284,25 @@ def _build_common_events(
     parameters: Dict[str, Var] = dict()
 
     # Power-flow and base-frequency parameters used to seed the EMT initialization.
-    parameters["omega_base"] = vf.add_var(name=f"omega_base_{name}")
-    parameters["p0_a"] = vf.add_var(name=f"P0_A_{name}")
-    parameters["p0_b"] = vf.add_var(name=f"P0_B_{name}")
-    parameters["p0_c"] = vf.add_var(name=f"P0_C_{name}")
-    parameters["q0_a"] = vf.add_var(name=f"Q0_A_{name}")
-    parameters["q0_b"] = vf.add_var(name=f"Q0_B_{name}")
-    parameters["q0_c"] = vf.add_var(name=f"Q0_C_{name}")
+    parameters["omega_base"] = vf.add_var(name=f"omega_base")
+    parameters["p0_a"] = vf.add_var(name=f"P0_A")
+    parameters["p0_b"] = vf.add_var(name=f"P0_B")
+    parameters["p0_c"] = vf.add_var(name=f"P0_C")
+    parameters["q0_a"] = vf.add_var(name=f"Q0_A")
+    parameters["q0_b"] = vf.add_var(name=f"Q0_B")
+    parameters["q0_c"] = vf.add_var(name=f"Q0_C")
 
     # Common electrical, mechanical and numerical-protection parameters.
-    parameters["r_s"] = vf.add_var(name=f"r_s_{name}")
-    parameters["x_ls"] = vf.add_var(name=f"x_ls_{name}")
-    parameters["x_m"] = vf.add_var(name=f"x_m_{name}")
-    parameters["h"] = vf.add_var(name=f"H_{name}")
-    parameters["d"] = vf.add_var(name=f"D_{name}")
-    parameters["slip_init"] = vf.add_var(name=f"slip_init_{name}")
-    parameters["slip_min"] = vf.add_var(name=f"slip_min_{name}")
-    parameters["slip_max"] = vf.add_var(name=f"slip_max_{name}")
-    parameters["speed_eps"] = vf.add_var(name=f"speed_eps_{name}")
-    parameters["t_load_nom"] = vf.add_var(name=f"t_load_nom_{name}")
+    parameters["r_s"] = vf.add_var(name=f"r_s")
+    parameters["x_ls"] = vf.add_var(name=f"x_ls")
+    parameters["x_m"] = vf.add_var(name=f"x_m")
+    parameters["h"] = vf.add_var(name=f"H")
+    parameters["d"] = vf.add_var(name=f"D")
+    parameters["slip_init"] = vf.add_var(name=f"slip_init")
+    parameters["slip_min"] = vf.add_var(name=f"slip_min")
+    parameters["slip_max"] = vf.add_var(name=f"slip_max")
+    parameters["speed_eps"] = vf.add_var(name=f"speed_eps")
+    parameters["t_load_nom"] = vf.add_var(name=f"t_load_nom")
 
     # Default base frequency and per-phase power targets used before API values are injected.
     block.parameters[parameters["omega_base"]] = vf.add_const(2.0 * _PI * 50.0)
@@ -404,47 +405,47 @@ def get_induction_motor_single_cage_emt_template(
     templ: EmtModelTemplate = EmtModelTemplate()
     block: Block = templ.block
     params: Dict[str, Var] = _build_common_events(vf=vf, block=block, name=name)
-    r_r: Var = vf.add_var(name=f"r_r_{name}")
-    x_lr: Var = vf.add_var(name=f"x_lr_{name}")
+    r_r: Var = vf.add_var(name=f"r_r")
+    x_lr: Var = vf.add_var(name=f"x_lr")
     block.event_dict[r_r] = vf.add_const(0.02)
     block.event_dict[x_lr] = vf.add_const(0.12)
 
-    v_a: Var = vf.add_var(name=f"v_A_{name}", reference=VarPowerFlowReferenceType.v_A)
-    v_b: Var = vf.add_var(name=f"v_B_{name}", reference=VarPowerFlowReferenceType.v_B)
-    v_c: Var = vf.add_var(name=f"v_C_{name}", reference=VarPowerFlowReferenceType.v_C)
-    d_v_a: Var = vf.add_var(name=f"d_v_A_{name}")
-    d_v_b: Var = vf.add_var(name=f"d_v_B_{name}")
-    d_v_c: Var = vf.add_var(name=f"d_v_C_{name}")
+    v_a: Var = vf.add_var(name=f"v_A", reference=VarPowerFlowReferenceType.v_A)
+    v_b: Var = vf.add_var(name=f"v_B", reference=VarPowerFlowReferenceType.v_B)
+    v_c: Var = vf.add_var(name=f"v_C", reference=VarPowerFlowReferenceType.v_C)
+    d_v_a: Var = vf.add_var(name=f"d_v_A")
+    d_v_b: Var = vf.add_var(name=f"d_v_B")
+    d_v_c: Var = vf.add_var(name=f"d_v_C")
     block.event_dict[d_v_a] = vf.add_const(None)
     block.event_dict[d_v_b] = vf.add_const(None)
     block.event_dict[d_v_c] = vf.add_const(None)
 
-    psi_s_alpha: Var = vf.add_var(name=f"psi_s_alpha_{name}")
-    psi_s_beta: Var = vf.add_var(name=f"psi_s_beta_{name}")
-    psi_r_alpha: Var = vf.add_var(name=f"psi_r_alpha_{name}")
-    psi_r_beta: Var = vf.add_var(name=f"psi_r_beta_{name}")
-    omega_r: Var = vf.add_var(name=f"omega_r_{name}")
+    psi_s_alpha: Var = vf.add_var(name=f"psi_s_alpha")
+    psi_s_beta: Var = vf.add_var(name=f"psi_s_beta")
+    psi_r_alpha: Var = vf.add_var(name=f"psi_r_alpha")
+    psi_r_beta: Var = vf.add_var(name=f"psi_r_beta")
+    omega_r: Var = vf.add_var(name=f"omega_r")
 
-    d_psi_s_alpha: Var = vf.add_diff_var(name=f"d_psi_s_alpha_{name}", base_var=psi_s_alpha)
-    d_psi_s_beta: Var = vf.add_diff_var(name=f"d_psi_s_beta_{name}", base_var=psi_s_beta)
-    d_psi_r_alpha: Var = vf.add_diff_var(name=f"d_psi_r_alpha_{name}", base_var=psi_r_alpha)
-    d_psi_r_beta: Var = vf.add_diff_var(name=f"d_psi_r_beta_{name}", base_var=psi_r_beta)
-    d_omega_r: Var = vf.add_diff_var(name=f"d_omega_r_{name}", base_var=omega_r)
+    d_psi_s_alpha: Var = vf.add_diff_var(name=f"d_psi_s_alpha", base_var=psi_s_alpha)
+    d_psi_s_beta: Var = vf.add_diff_var(name=f"d_psi_s_beta", base_var=psi_s_beta)
+    d_psi_r_alpha: Var = vf.add_diff_var(name=f"d_psi_r_alpha", base_var=psi_r_alpha)
+    d_psi_r_beta: Var = vf.add_diff_var(name=f"d_psi_r_beta", base_var=psi_r_beta)
+    d_omega_r: Var = vf.add_diff_var(name=f"d_omega_r", base_var=omega_r)
 
-    i_s_alpha: Var = vf.add_var(name=f"i_s_alpha_{name}")
-    i_s_beta: Var = vf.add_var(name=f"i_s_beta_{name}")
-    i_r_alpha: Var = vf.add_var(name=f"i_r_alpha_{name}")
-    i_r_beta: Var = vf.add_var(name=f"i_r_beta_{name}")
-    i_a: Var = vf.add_var(name=f"i_A_{name}", reference=VarPowerFlowReferenceType.i_A)
-    i_b: Var = vf.add_var(name=f"i_B_{name}", reference=VarPowerFlowReferenceType.i_B)
-    i_c: Var = vf.add_var(name=f"i_C_{name}", reference=VarPowerFlowReferenceType.i_C)
-    p_motor: Var = vf.add_var(name=f"P_motor_{name}")
-    q_motor: Var = vf.add_var(name=f"Q_motor_{name}")
-    torque_e: Var = vf.add_var(name=f"T_e_{name}")
-    torque_m: Var = vf.add_var(name=f"T_m_{name}")
-    slip: Var = vf.add_var(name=f"slip_{name}")
-    v_alpha: Var = vf.add_var(name=f"v_alpha_{name}")
-    v_beta: Var = vf.add_var(name=f"v_beta_{name}")
+    i_s_alpha: Var = vf.add_var(name=f"i_s_alpha")
+    i_s_beta: Var = vf.add_var(name=f"i_s_beta")
+    i_r_alpha: Var = vf.add_var(name=f"i_r_alpha")
+    i_r_beta: Var = vf.add_var(name=f"i_r_beta")
+    i_a: Var = vf.add_var(name=f"i_A", reference=VarPowerFlowReferenceType.i_A)
+    i_b: Var = vf.add_var(name=f"i_B", reference=VarPowerFlowReferenceType.i_B)
+    i_c: Var = vf.add_var(name=f"i_C", reference=VarPowerFlowReferenceType.i_C)
+    p_motor: Var = vf.add_var(name=f"P_motor")
+    q_motor: Var = vf.add_var(name=f"Q_motor")
+    torque_e: Var = vf.add_var(name=f"T_e")
+    torque_m: Var = vf.add_var(name=f"T_m")
+    slip: Var = vf.add_var(name=f"slip")
+    v_alpha: Var = vf.add_var(name=f"v_alpha")
+    v_beta: Var = vf.add_var(name=f"v_beta")
 
     c_eps: Expr = vf.add_const(1e-9)
     c_speed_eps: Expr = params["speed_eps"]
@@ -693,57 +694,57 @@ def get_induction_motor_double_cage_emt_template(
     templ: EmtModelTemplate = EmtModelTemplate()
     block: Block = templ.block
     params: Dict[str, Var] = _build_common_events(vf=vf, block=block, name=name)
-    r_r1: Var = vf.add_var(name=f"r_r1_{name}")
-    x_lr1: Var = vf.add_var(name=f"x_lr1_{name}")
-    r_r2: Var = vf.add_var(name=f"r_r2_{name}")
-    x_lr2: Var = vf.add_var(name=f"x_lr2_{name}")
+    r_r1: Var = vf.add_var(name=f"r_r1")
+    x_lr1: Var = vf.add_var(name=f"x_lr1")
+    r_r2: Var = vf.add_var(name=f"r_r2")
+    x_lr2: Var = vf.add_var(name=f"x_lr2")
     block.event_dict[r_r1] = vf.add_const(0.025)
     block.event_dict[x_lr1] = vf.add_const(0.10)
     block.event_dict[r_r2] = vf.add_const(0.080)
     block.event_dict[x_lr2] = vf.add_const(0.35)
 
-    v_a: Var = vf.add_var(name=f"v_A_{name}", reference=VarPowerFlowReferenceType.v_A)
-    v_b: Var = vf.add_var(name=f"v_B_{name}", reference=VarPowerFlowReferenceType.v_B)
-    v_c: Var = vf.add_var(name=f"v_C_{name}", reference=VarPowerFlowReferenceType.v_C)
-    d_v_a: Var = vf.add_var(name=f"d_v_A_{name}")
-    d_v_b: Var = vf.add_var(name=f"d_v_B_{name}")
-    d_v_c: Var = vf.add_var(name=f"d_v_C_{name}")
+    v_a: Var = vf.add_var(name=f"v_A", reference=VarPowerFlowReferenceType.v_A)
+    v_b: Var = vf.add_var(name=f"v_B", reference=VarPowerFlowReferenceType.v_B)
+    v_c: Var = vf.add_var(name=f"v_C", reference=VarPowerFlowReferenceType.v_C)
+    d_v_a: Var = vf.add_var(name=f"d_v_A")
+    d_v_b: Var = vf.add_var(name=f"d_v_B")
+    d_v_c: Var = vf.add_var(name=f"d_v_C")
     block.event_dict[d_v_a] = vf.add_const(None)
     block.event_dict[d_v_b] = vf.add_const(None)
     block.event_dict[d_v_c] = vf.add_const(None)
 
-    psi_s_alpha: Var = vf.add_var(name=f"psi_s_alpha_{name}")
-    psi_s_beta: Var = vf.add_var(name=f"psi_s_beta_{name}")
-    psi_r1_alpha: Var = vf.add_var(name=f"psi_r1_alpha_{name}")
-    psi_r1_beta: Var = vf.add_var(name=f"psi_r1_beta_{name}")
-    psi_r2_alpha: Var = vf.add_var(name=f"psi_r2_alpha_{name}")
-    psi_r2_beta: Var = vf.add_var(name=f"psi_r2_beta_{name}")
-    omega_r: Var = vf.add_var(name=f"omega_r_{name}")
+    psi_s_alpha: Var = vf.add_var(name=f"psi_s_alpha")
+    psi_s_beta: Var = vf.add_var(name=f"psi_s_beta")
+    psi_r1_alpha: Var = vf.add_var(name=f"psi_r1_alpha")
+    psi_r1_beta: Var = vf.add_var(name=f"psi_r1_beta")
+    psi_r2_alpha: Var = vf.add_var(name=f"psi_r2_alpha")
+    psi_r2_beta: Var = vf.add_var(name=f"psi_r2_beta")
+    omega_r: Var = vf.add_var(name=f"omega_r")
 
-    d_psi_s_alpha: Var = vf.add_diff_var(name=f"d_psi_s_alpha_{name}", base_var=psi_s_alpha)
-    d_psi_s_beta: Var = vf.add_diff_var(name=f"d_psi_s_beta_{name}", base_var=psi_s_beta)
-    d_psi_r1_alpha: Var = vf.add_diff_var(name=f"d_psi_r1_alpha_{name}", base_var=psi_r1_alpha)
-    d_psi_r1_beta: Var = vf.add_diff_var(name=f"d_psi_r1_beta_{name}", base_var=psi_r1_beta)
-    d_psi_r2_alpha: Var = vf.add_diff_var(name=f"d_psi_r2_alpha_{name}", base_var=psi_r2_alpha)
-    d_psi_r2_beta: Var = vf.add_diff_var(name=f"d_psi_r2_beta_{name}", base_var=psi_r2_beta)
-    d_omega_r: Var = vf.add_diff_var(name=f"d_omega_r_{name}", base_var=omega_r)
+    d_psi_s_alpha: Var = vf.add_diff_var(name=f"d_psi_s_alpha", base_var=psi_s_alpha)
+    d_psi_s_beta: Var = vf.add_diff_var(name=f"d_psi_s_beta", base_var=psi_s_beta)
+    d_psi_r1_alpha: Var = vf.add_diff_var(name=f"d_psi_r1_alpha", base_var=psi_r1_alpha)
+    d_psi_r1_beta: Var = vf.add_diff_var(name=f"d_psi_r1_beta", base_var=psi_r1_beta)
+    d_psi_r2_alpha: Var = vf.add_diff_var(name=f"d_psi_r2_alpha", base_var=psi_r2_alpha)
+    d_psi_r2_beta: Var = vf.add_diff_var(name=f"d_psi_r2_beta", base_var=psi_r2_beta)
+    d_omega_r: Var = vf.add_diff_var(name=f"d_omega_r", base_var=omega_r)
 
-    i_s_alpha: Var = vf.add_var(name=f"i_s_alpha_{name}")
-    i_s_beta: Var = vf.add_var(name=f"i_s_beta_{name}")
-    i_r1_alpha: Var = vf.add_var(name=f"i_r1_alpha_{name}")
-    i_r1_beta: Var = vf.add_var(name=f"i_r1_beta_{name}")
-    i_r2_alpha: Var = vf.add_var(name=f"i_r2_alpha_{name}")
-    i_r2_beta: Var = vf.add_var(name=f"i_r2_beta_{name}")
-    i_a: Var = vf.add_var(name=f"i_A_{name}", reference=VarPowerFlowReferenceType.i_A)
-    i_b: Var = vf.add_var(name=f"i_B_{name}", reference=VarPowerFlowReferenceType.i_B)
-    i_c: Var = vf.add_var(name=f"i_C_{name}", reference=VarPowerFlowReferenceType.i_C)
-    p_motor: Var = vf.add_var(name=f"P_motor_{name}")
-    q_motor: Var = vf.add_var(name=f"Q_motor_{name}")
-    torque_e: Var = vf.add_var(name=f"T_e_{name}")
-    torque_m: Var = vf.add_var(name=f"T_m_{name}")
-    slip: Var = vf.add_var(name=f"slip_{name}")
-    v_alpha: Var = vf.add_var(name=f"v_alpha_{name}")
-    v_beta: Var = vf.add_var(name=f"v_beta_{name}")
+    i_s_alpha: Var = vf.add_var(name=f"i_s_alpha")
+    i_s_beta: Var = vf.add_var(name=f"i_s_beta")
+    i_r1_alpha: Var = vf.add_var(name=f"i_r1_alpha")
+    i_r1_beta: Var = vf.add_var(name=f"i_r1_beta")
+    i_r2_alpha: Var = vf.add_var(name=f"i_r2_alpha")
+    i_r2_beta: Var = vf.add_var(name=f"i_r2_beta")
+    i_a: Var = vf.add_var(name=f"i_A", reference=VarPowerFlowReferenceType.i_A)
+    i_b: Var = vf.add_var(name=f"i_B", reference=VarPowerFlowReferenceType.i_B)
+    i_c: Var = vf.add_var(name=f"i_C", reference=VarPowerFlowReferenceType.i_C)
+    p_motor: Var = vf.add_var(name=f"P_motor")
+    q_motor: Var = vf.add_var(name=f"Q_motor")
+    torque_e: Var = vf.add_var(name=f"T_e")
+    torque_m: Var = vf.add_var(name=f"T_m")
+    slip: Var = vf.add_var(name=f"slip")
+    v_alpha: Var = vf.add_var(name=f"v_alpha")
+    v_beta: Var = vf.add_var(name=f"v_beta")
 
     c_eps: Expr = vf.add_const(1e-9)
     c_one: Expr = vf.add_const(1.0)
@@ -1025,6 +1026,29 @@ def get_induction_motor_double_cage_emt_template(
         d_omega_r: (torque_e - torque_m - params["d"] * (omega_r - c_one)) / (c_two * params["h"] + c_eps),
     })
     return templ
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+# INDUCTION MOTOR
+# ----------------------------------------------------------------------------------------------------------------------
+class InductionMotorEmtTemplate(TemplateDefinition):
+
+    def __init__(self, vf):
+        super().__init__(
+            vf,
+            params=[
+                TemplateProp(name="level", units="", descr="Model fidelity level (2=single-cage, 3=double-cage).", tpe=int, value=2),
+                TemplateProp(name="name", units="", descr="Name of the emt model.", tpe=str, value="induction_motor_emt_template"),
+            ]
+        )
+
+    def eval(self) -> EmtModelTemplate:
+        level: int = self.get_value("level")
+        name: str = self.get_value("name")
+
+        return get_induction_motor_emt_template(
+            self.vf, level, name
+        )
 
 
 def get_induction_motor_emt_template(

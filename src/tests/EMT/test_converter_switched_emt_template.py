@@ -31,16 +31,14 @@ def test_switched_converter_template_builds_on_bridge_filter_control_stack() -> 
     runtime_parameter_names = [var.name for var in problem.get_variable_parameters()]
     mode_names = [var.name for var in problem.get_runtime_mode_parameters()]
 
-    assert find_name_in_block("i_A_VSC", templ.block) is not None
-    assert find_name_in_block("i_A_VSC_plant", templ.block) is not None
-    assert find_name_in_block("v_conv_a_VSC", templ.block) is not None
-    assert find_name_in_block("i_d_ref_VSC", templ.block) is not None
-    assert find_name_in_block("v_cmd_d_VSC", templ.block) is not None
-    assert find_name_in_block("gate_a_VSC", templ.block) is not None
-    assert find_name_in_block("gate_a_VSC_plant_bridge", templ.block) is not None
-    assert find_name_in_block("theta_pll_VSC", templ.block) is not None
-    assert "t_enable_sw_VSC" in runtime_parameter_names
-    assert "switching_enabled_mode_VSC" in mode_names
-    assert "gate_a_mode_VSC_plant_bridge" in mode_names
-    assert "gate_b_mode_VSC_plant_bridge" in mode_names
-    assert "gate_c_mode_VSC_plant_bridge" in mode_names
+    assert find_name_in_block("i_A", templ.block) is not None
+    assert find_name_in_block("v_conv_a", templ.block) is not None
+    assert find_name_in_block("i_d_ref", templ.block) is not None
+    assert find_name_in_block("v_cmd_d", templ.block) is not None
+    assert find_name_in_block("gate_a", templ.block) is not None
+    assert find_name_in_block("theta_pll", templ.block) is not None
+    assert "t_enable_sw" in runtime_parameter_names
+    assert "switching_enabled_mode" in mode_names
+    assert "gate_a_mode" in mode_names
+    assert "gate_b_mode" in mode_names
+    assert "gate_c_mode" in mode_names

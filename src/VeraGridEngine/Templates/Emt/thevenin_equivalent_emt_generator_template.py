@@ -91,9 +91,9 @@ def get_generator_thevenin_rl_emt_template_with_ref(
     # ------------------------------------------------------------------
     # Inputs: terminal bus voltages in abc.
     # ------------------------------------------------------------------
-    v_A = vf.add_var(name=f"v_A_{name}", reference=VarPowerFlowReferenceType.v_A)
-    v_B = vf.add_var(name=f"v_B_{name}", reference=VarPowerFlowReferenceType.v_B)
-    v_C = vf.add_var(name=f"v_C_{name}", reference=VarPowerFlowReferenceType.v_C)
+    v_A = vf.add_var(name=f"v_A", reference=VarPowerFlowReferenceType.v_A)
+    v_B = vf.add_var(name=f"v_B", reference=VarPowerFlowReferenceType.v_B)
+    v_C = vf.add_var(name=f"v_C", reference=VarPowerFlowReferenceType.v_C)
     inputs: List[Any] = list([v_A, v_B, v_C])
 
     # ------------------------------------------------------------------
@@ -101,53 +101,53 @@ def get_generator_thevenin_rl_emt_template_with_ref(
     # - current dynamics
     # - absolute synchronous angle
     # ------------------------------------------------------------------
-    i_A = vf.add_var(name=f"i_A_{name}", reference=VarPowerFlowReferenceType.i_A)
-    i_B = vf.add_var(name=f"i_B_{name}", reference=VarPowerFlowReferenceType.i_B)
-    i_C = vf.add_var(name=f"i_C_{name}", reference=VarPowerFlowReferenceType.i_C)
+    i_A = vf.add_var(name=f"i_A", reference=VarPowerFlowReferenceType.i_A)
+    i_B = vf.add_var(name=f"i_B", reference=VarPowerFlowReferenceType.i_B)
+    i_C = vf.add_var(name=f"i_C", reference=VarPowerFlowReferenceType.i_C)
 
-    theta = vf.add_var(name=f"theta_{name}")
+    theta = vf.add_var(name=f"theta")
     # parameter to create a phase jump
-    theta_deviation_param = vf.add_var(name=f"theta_deviation_param_{name}")
+    theta_deviation_param = vf.add_var(name=f"theta_deviation_param")
     # parameter to create RoCoF
-    w_scale = vf.add_var(name=f"f_scale_{name}")
+    w_scale = vf.add_var(name=f"f_scale")
 
-    d_i_A = vf.add_diff_var(name=f"d_i_A_{name}", base_var=i_A)
-    d_i_B = vf.add_diff_var(name=f"d_i_B_{name}", base_var=i_B)
-    d_i_C = vf.add_diff_var(name=f"d_i_C_{name}", base_var=i_C)
-    d_theta = vf.add_diff_var(name=f"d_theta_{name}", base_var=theta)
+    d_i_A = vf.add_diff_var(name=f"d_i_A", base_var=i_A)
+    d_i_B = vf.add_diff_var(name=f"d_i_B", base_var=i_B)
+    d_i_C = vf.add_diff_var(name=f"d_i_C", base_var=i_C)
+    d_theta = vf.add_diff_var(name=f"d_theta", base_var=theta)
 
     # ------------------------------------------------------------------
     # Algebraic variables:
     # - internal phase emfs
     # - measured active/reactive power
     # ------------------------------------------------------------------
-    e_A = vf.add_var(name=f"e_A_{name}")
-    e_B = vf.add_var(name=f"e_B_{name}")
-    e_C = vf.add_var(name=f"e_C_{name}")
-    Pe = vf.add_var(name=f"Pe_{name}")
-    Qe = vf.add_var(name=f"Qe_{name}")
+    e_A = vf.add_var(name=f"e_A")
+    e_B = vf.add_var(name=f"e_B")
+    e_C = vf.add_var(name=f"e_C")
+    Pe = vf.add_var(name=f"Pe")
+    Qe = vf.add_var(name=f"Qe")
 
     # ------------------------------------------------------------------
     # Static parameters and PF-derived initialization parameters.
     # ------------------------------------------------------------------
-    omega_base = vf.add_var(name=f"omega_base_{name}")
-    R_s = vf.add_var(name=f"R_s_{name}")
-    X_s = vf.add_var(name=f"X_s_{name}")
+    omega_base = vf.add_var(name=f"omega_base")
+    R_s = vf.add_var(name=f"R_s")
+    X_s = vf.add_var(name=f"X_s")
 
-    phi_v = vf.add_var(name=f"phi_v_{name}")
-    phi = vf.add_var(name=f"phi_{name}")
-    Vpk = vf.add_var(name=f"Vpk_{name}")
-    Ipk = vf.add_var(name=f"Ipk_{name}")
+    phi_v = vf.add_var(name=f"phi_v")
+    phi = vf.add_var(name=f"phi")
+    Vpk = vf.add_var(name=f"Vpk")
+    Ipk = vf.add_var(name=f"Ipk")
 
     # ------------------------------------------------------------------
     # Optional sharing references.
     # The references are exposed for higher-level orchestration only. The passive
     # Thevenin source does not use them internally.
     # ------------------------------------------------------------------
-    share_enable = vf.add_var(name=f"share_enable_{name}")
-    P_share_ref = vf.add_var(name=f"P_share_ref_{name}")
-    Q_share_ref = vf.add_var(name=f"Q_share_ref_{name}")
-    E_scale = vf.add_var(name=f"E_scale_{name}")
+    share_enable = vf.add_var(name=f"share_enable")
+    P_share_ref = vf.add_var(name=f"P_share_ref")
+    Q_share_ref = vf.add_var(name=f"Q_share_ref")
+    E_scale = vf.add_var(name=f"E_scale")
 
     # ------------------------------------------------------------------
     # PF-consistent positive-sequence internal emf.

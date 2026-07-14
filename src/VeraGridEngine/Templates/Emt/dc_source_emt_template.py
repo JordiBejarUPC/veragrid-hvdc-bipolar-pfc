@@ -9,8 +9,32 @@ from typing import Optional
 
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
+from VeraGridEngine.Templates.template_definition import TemplateDefinition, TemplateProp
 from VeraGridEngine.Utils.Symbolic.block import Var
 from VeraGridEngine.enumerations import DeviceType, VarPowerFlowReferenceType
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+# DC CURRENT SOURCE
+# ----------------------------------------------------------------------------------------------------------------------
+class DcCurrentSourceEmtTemplate(TemplateDefinition):
+
+    def __init__(self, vf):
+        super().__init__(
+            vf,
+            params=[
+                TemplateProp(name="source_current_value", units="A", descr="Fixed injected DC current.", tpe=float, value=0.0),
+                TemplateProp(name="name", units="", descr="Name of the emt model.", tpe=str, value="dc_current_source_emt"),
+            ]
+        )
+
+    def eval(self) -> EmtModelTemplate:
+        source_current_value: float = self.get_value("source_current_value")
+        name: str = self.get_value("name")
+
+        return get_dc_current_source_emt_template(
+            self.vf, source_current_value, name
+        )
 
 
 def get_dc_current_source_emt_template(vf: VarFactory,
@@ -31,9 +55,9 @@ def get_dc_current_source_emt_template(vf: VarFactory,
     templ.name = name
     templ.block.name = name
 
-    v_dc: Var = vf.add_var(name=f"v_dc_{name}", reference=VarPowerFlowReferenceType.Vdc)
-    i_dc: Var = vf.add_var(name=f"i_dc_{name}", reference=VarPowerFlowReferenceType.Idc)
-    i_src: Var = vf.add_var(name=f"I_src_{name}")
+    v_dc: Var = vf.add_var(name=f"v_dc", reference=VarPowerFlowReferenceType.Vdc)
+    i_dc: Var = vf.add_var(name=f"i_dc", reference=VarPowerFlowReferenceType.Idc)
+    i_src: Var = vf.add_var(name=f"I_src")
     templ.block.event_dict[i_src] = vf.add_const(float(source_current_value))
 
     templ.block.in_vars = [v_dc]
@@ -46,6 +70,27 @@ def get_dc_current_source_emt_template(vf: VarFactory,
     }
     templ.block.init_eqs[i_dc] = i_src
     return templ
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+# CONTROLLED DC CURRENT SOURCE
+# ----------------------------------------------------------------------------------------------------------------------
+class ControlledDcCurrentSourceEmtTemplate(TemplateDefinition):
+
+    def __init__(self, vf):
+        super().__init__(
+            vf,
+            params=[
+                TemplateProp(name="name", units="", descr="Name of the emt model.", tpe=str, value="controlled_dc_current_source_emt"),
+            ]
+        )
+
+    def eval(self) -> EmtModelTemplate:
+        name: str = self.get_value("name")
+
+        return get_controlled_dc_current_source_emt_template(
+            self.vf, name
+        )
 
 
 def get_controlled_dc_current_source_emt_template(vf: VarFactory,
@@ -64,9 +109,9 @@ def get_controlled_dc_current_source_emt_template(vf: VarFactory,
     templ.name = name
     templ.block.name = name
 
-    v_dc: Var = vf.add_var(name=f"v_dc_{name}", reference=VarPowerFlowReferenceType.Vdc)
-    i_cmd: Var = vf.add_var(name=f"i_cmd_{name}")
-    i_dc: Var = vf.add_var(name=f"i_dc_{name}", reference=VarPowerFlowReferenceType.Idc)
+    v_dc: Var = vf.add_var(name=f"v_dc", reference=VarPowerFlowReferenceType.Vdc)
+    i_cmd: Var = vf.add_var(name=f"i_cmd")
+    i_dc: Var = vf.add_var(name=f"i_dc", reference=VarPowerFlowReferenceType.Idc)
 
     templ.block.in_vars = [v_dc, i_cmd]
     templ.block.algebraic_vars = [i_dc]
@@ -78,6 +123,31 @@ def get_controlled_dc_current_source_emt_template(vf: VarFactory,
     }
     templ.block.init_eqs[i_dc] = i_cmd
     return templ
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+# DC VOLTAGE SOURCE
+# ----------------------------------------------------------------------------------------------------------------------
+class DcVoltageSourceEmtTemplate(TemplateDefinition):
+
+    def __init__(self, vf):
+        super().__init__(
+            vf,
+            params=[
+                TemplateProp(name="source_voltage_value", units="V", descr="Fixed source voltage.", tpe=float, value=0.0),
+                TemplateProp(name="source_conductance_value", units="S", descr="Norton conductance.", tpe=float, value=100.0),
+                TemplateProp(name="name", units="", descr="Name of the emt model.", tpe=str, value="dc_voltage_source_emt"),
+            ]
+        )
+
+    def eval(self) -> EmtModelTemplate:
+        source_voltage_value: float = self.get_value("source_voltage_value")
+        source_conductance_value: float = self.get_value("source_conductance_value")
+        name: str = self.get_value("name")
+
+        return get_dc_voltage_source_emt_template(
+            self.vf, source_voltage_value, source_conductance_value, name
+        )
 
 
 def get_dc_voltage_source_emt_template(vf: VarFactory,
@@ -100,10 +170,10 @@ def get_dc_voltage_source_emt_template(vf: VarFactory,
     templ.name = name
     templ.block.name = name
 
-    v_dc: Var = vf.add_var(name=f"v_dc_{name}", reference=VarPowerFlowReferenceType.Vdc)
-    i_dc: Var = vf.add_var(name=f"i_dc_{name}", reference=VarPowerFlowReferenceType.Idc)
-    v_src: Var = vf.add_var(name=f"V_src_{name}")
-    g_src: Var = vf.add_var(name=f"g_src_{name}")
+    v_dc: Var = vf.add_var(name=f"v_dc", reference=VarPowerFlowReferenceType.Vdc)
+    i_dc: Var = vf.add_var(name=f"i_dc", reference=VarPowerFlowReferenceType.Idc)
+    v_src: Var = vf.add_var(name=f"V_src")
+    g_src: Var = vf.add_var(name=f"g_src")
     templ.block.event_dict[v_src] = vf.add_const(
         None if source_voltage_value is None else float(source_voltage_value)
     )
@@ -120,6 +190,29 @@ def get_dc_voltage_source_emt_template(vf: VarFactory,
     templ.block.init_eqs[i_dc] = g_src * (v_src - v_dc)
     templ.block.init_eqs[v_src] = v_dc + i_dc / g_src
     return templ
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+# CONTROLLED DC VOLTAGE SOURCE
+# ----------------------------------------------------------------------------------------------------------------------
+class ControlledDcVoltageSourceEmtTemplate(TemplateDefinition):
+
+    def __init__(self, vf):
+        super().__init__(
+            vf,
+            params=[
+                TemplateProp(name="source_conductance_value", units="S", descr="Norton conductance.", tpe=float, value=100.0),
+                TemplateProp(name="name", units="", descr="Name of the emt model.", tpe=str, value="controlled_dc_voltage_source_emt"),
+            ]
+        )
+
+    def eval(self) -> EmtModelTemplate:
+        source_conductance_value: float = self.get_value("source_conductance_value")
+        name: str = self.get_value("name")
+
+        return get_controlled_dc_voltage_source_emt_template(
+            self.vf, source_conductance_value, name
+        )
 
 
 def get_controlled_dc_voltage_source_emt_template(vf: VarFactory,
@@ -141,10 +234,10 @@ def get_controlled_dc_voltage_source_emt_template(vf: VarFactory,
     templ.name = name
     templ.block.name = name
 
-    v_dc: Var = vf.add_var(name=f"v_dc_{name}", reference=VarPowerFlowReferenceType.Vdc)
-    v_cmd: Var = vf.add_var(name=f"v_cmd_{name}")
-    i_dc: Var = vf.add_var(name=f"i_dc_{name}", reference=VarPowerFlowReferenceType.Idc)
-    g_src: Var = vf.add_var(name=f"g_src_{name}")
+    v_dc: Var = vf.add_var(name=f"v_dc", reference=VarPowerFlowReferenceType.Vdc)
+    v_cmd: Var = vf.add_var(name=f"v_cmd")
+    i_dc: Var = vf.add_var(name=f"i_dc", reference=VarPowerFlowReferenceType.Idc)
+    g_src: Var = vf.add_var(name=f"g_src")
     templ.block.event_dict[g_src] = vf.add_const(float(source_conductance_value))
 
     templ.block.in_vars = [v_dc, v_cmd]

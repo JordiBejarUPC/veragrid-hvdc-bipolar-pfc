@@ -15,6 +15,9 @@ from VeraGridEngine.Utils.Symbolic import symbolic as sym
 from VeraGridEngine.Utils.Symbolic.symbolic import CmpOp
 from VeraGridEngine.Utils.Symbolic.symbolic import Comparison
 from VeraGridEngine.enumerations import DeviceType, VarPowerFlowReferenceType
+from VeraGridEngine.Templates.template_definition import TemplateDefinition, TemplateProp
+from VeraGridEngine.basic_structures import Vec
+
 
 
 def _get_active_nabc_labels(phN: bool, phA: bool, phB: bool, phC: bool) -> List[str]:
@@ -153,15 +156,56 @@ def _build_waveform_parameters(vf: VarFactory,
     _validate_waveform_points(time_points, value_points)
 
     for point_index in range(len(time_points)):
-        parameter_var = vf.add_var(f"arr_x{point_index + 1}_{name}")
+        parameter_var = vf.add_var(f"arr_x{point_index + 1}")
         template.block.event_dict[parameter_var] = vf.add_const(float(time_points[point_index]), name=f"arr_x{point_index + 1}")
         x_vars.append(parameter_var)
 
-        parameter_var = vf.add_var(f"arr_y{point_index + 1}_{name}")
+        parameter_var = vf.add_var(f"arr_y{point_index + 1}")
         template.block.event_dict[parameter_var] = vf.add_const(float(value_points[point_index]), name=f"arr_y{point_index + 1}")
         y_vars.append(parameter_var)
 
     return x_vars, y_vars
+
+# ----------------------------------------------------------------------------------------------------------------------
+# ARBITRARY WAVEFORM CURRENT SOURCE
+# ----------------------------------------------------------------------------------------------------------------------
+class ArbitraryWaveformCurrentSourceEmtTemplate(TemplateDefinition):
+
+    def __init__(self, vf):
+        """
+        
+        :param vf:
+        """
+        super().__init__(
+            vf,
+            params=[
+                TemplateProp(name="phN", units="", descr="Whether neutral is active.", tpe=bool, value=False),
+                TemplateProp(name="phA", units="", descr="Whether phase A is active.", tpe=bool, value=True),
+                TemplateProp(name="phB", units="", descr="Whether phase B is active.", tpe=bool, value=False),
+                TemplateProp(name="phC", units="", descr="Whether phase C is active.", tpe=bool, value=False),
+                TemplateProp(name="waveform", units="", descr="waveform points (value, time)", tpe=Sequence[Vec], value=((0.0, 0.0), (0.02, 1), (0.04, 0.0))),
+                TemplateProp(name="name", units="", descr="Name of the emt model.", tpe=str, value="arbitrary_waveform_current_source_emt"),
+            ]
+        )
+
+    def eval(self) -> EmtModelTemplate:
+        phN: bool = self.get_value("phN")
+        phA: bool = self.get_value("phA")
+        phB: bool = self.get_value("phB")
+        phC: bool = self.get_value("phC")
+        waveform: Sequence[Vec] = self.get_value("waveform")
+        name: str = self.get_value("name")
+
+        time_points = list()
+        value_points = list()
+        for point in waveform:
+            time_points.append(point[0])
+            value_points.append(point[1])
+
+
+        return get_arbitrary_waveform_current_source_emt_template(
+            self.vf, phN, phA, phB, phC, time_points, value_points, name
+        )
 
 
 def get_arbitrary_waveform_current_source_emt_template(vf: VarFactory,
@@ -194,8 +238,8 @@ def get_arbitrary_waveform_current_source_emt_template(vf: VarFactory,
     template.name = resolved_name
     template.block.name = resolved_name
 
-    tau_var: Var = vf.add_var(name=f"t_src_{resolved_name}")
-    d_tau_var: Var = vf.add_diff_var(name=f"d_t_src_{resolved_name}", base_var=tau_var)
+    tau_var: Var = vf.add_var(name=f"t_src")
+    d_tau_var: Var = vf.add_diff_var(name=f"d_t_src", base_var=tau_var)
     x_vars, y_vars = _build_waveform_parameters(vf=vf, template=template, time_points=time_points, value_points=value_points, name=resolved_name)
     waveform_expr: Expr = _build_clipped_lookup_expression(coord_var=tau_var, x_vars=x_vars, y_vars=y_vars)
 
@@ -208,8 +252,8 @@ def get_arbitrary_waveform_current_source_emt_template(vf: VarFactory,
     phase_label: str
 
     for phase_label in active_labels:
-        voltage_var: Var = vf.add_var(name=f"v_{phase_label}_{resolved_name}", reference=_get_voltage_reference(phase_label))
-        current_var: Var = vf.add_var(name=f"i_{phase_label}_{resolved_name}", reference=_get_current_reference(phase_label))
+        voltage_var: Var = vf.add_var(name=f"v_{phase_label}", reference=_get_voltage_reference(phase_label))
+        current_var: Var = vf.add_var(name=f"i_{phase_label}", reference=_get_current_reference(phase_label))
         voltage_vars[phase_label] = voltage_var
         current_vars[phase_label] = current_var
         in_vars.append(voltage_var)
@@ -230,6 +274,45 @@ def get_arbitrary_waveform_current_source_emt_template(vf: VarFactory,
     return template
 
 
+class ArbitraryWaveformVoltageSourceEmtTemplate(TemplateDefinition):
+
+    def __init__(self, vf):
+        """
+        
+        :param vf: variable factory.
+        """
+        super().__init__(
+            vf,
+            params=[
+                TemplateProp(name="phN", units="", descr="Whether neutral is active.", tpe=bool, value=False),
+                TemplateProp(name="phA", units="", descr="Whether phase A is active.", tpe=bool, value=True),
+                TemplateProp(name="phB", units="", descr="Whether phase B is active.", tpe=bool, value=False),
+                TemplateProp(name="phC", units="", descr="Whether phase C is active.", tpe=bool, value=False),
+                TemplateProp(name="waveform", units="", descr="waveform points (value, time)", tpe=Sequence[Vec], value=None),
+                TemplateProp(name="source_conductance_value", units="Siemens", descr="Norton conductance.", tpe=float, value=100.0),
+                TemplateProp(name="name", units="", descr="Name of the emt model.", tpe=str, value="arbitrary_waveform_voltage_source_emt"),
+            ]
+        )
+
+    def eval(self) -> EmtModelTemplate:
+        phN: bool = self.get_value("phN")
+        phA: bool = self.get_value("phA")
+        phB: bool = self.get_value("phB")
+        phC: bool = self.get_value("phC")
+        waveform: Sequence[Vec] = self.get_value("waveform")
+        source_conductance_value: float = self.get_value("source_conductance_value")
+        name: str = self.get_value("name")
+
+        time_points = list()
+        value_points = list()
+        for point in waveform:
+            time_points.append(point[0])
+            value_points.append(point[1])
+
+        return get_arbitrary_waveform_voltage_source_emt_template(
+            self.vf, phN, phA, phB, phC, time_points, value_points, source_conductance_value, name
+        )
+
 def get_arbitrary_waveform_voltage_source_emt_template(vf: VarFactory,
                                                        phN: bool = False,
                                                        phA: bool = True,
@@ -245,7 +328,7 @@ def get_arbitrary_waveform_voltage_source_emt_template(vf: VarFactory,
     The same time/value waveform is applied to every active phase and injected as
     one Norton equivalent ``i = g * (v_src - v_bus)``.
 
-    :param vf: EMT variable factory.
+    :param vf: variable factory.
     :param phN: Whether neutral is active.
     :param phA: Whether phase A is active.
     :param phB: Whether phase B is active.
@@ -263,9 +346,9 @@ def get_arbitrary_waveform_voltage_source_emt_template(vf: VarFactory,
     template.name = resolved_name
     template.block.name = resolved_name
 
-    tau_var: Var = vf.add_var(name=f"t_src_{resolved_name}")
-    d_tau_var: Var = vf.add_diff_var(name=f"d_t_src_{resolved_name}", base_var=tau_var)
-    conductance_var: Var = vf.add_var(name=f"g_src_{resolved_name}")
+    tau_var: Var = vf.add_var(name=f"t_src")
+    d_tau_var: Var = vf.add_diff_var(name=f"d_t_src", base_var=tau_var)
+    conductance_var: Var = vf.add_var(name=f"g_src")
     template.block.event_dict[conductance_var] = vf.add_const(float(source_conductance_value))
     x_vars, y_vars = _build_waveform_parameters(vf=vf, template=template, time_points=time_points, value_points=value_points, name=resolved_name)
     waveform_expr: Expr = _build_clipped_lookup_expression(coord_var=tau_var, x_vars=x_vars, y_vars=y_vars)
@@ -279,8 +362,8 @@ def get_arbitrary_waveform_voltage_source_emt_template(vf: VarFactory,
     phase_label: str
 
     for phase_label in active_labels:
-        voltage_var: Var = vf.add_var(name=f"v_{phase_label}_{resolved_name}", reference=_get_voltage_reference(phase_label))
-        current_var: Var = vf.add_var(name=f"i_{phase_label}_{resolved_name}", reference=_get_current_reference(phase_label))
+        voltage_var: Var = vf.add_var(name=f"v_{phase_label}", reference=_get_voltage_reference(phase_label))
+        current_var: Var = vf.add_var(name=f"i_{phase_label}", reference=_get_current_reference(phase_label))
         voltage_vars[phase_label] = voltage_var
         current_vars[phase_label] = current_var
         in_vars.append(voltage_var)

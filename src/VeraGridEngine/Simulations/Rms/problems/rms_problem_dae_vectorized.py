@@ -12,11 +12,9 @@ import scipy.sparse as sp
 from VeraGridEngine.enumerations import ParamPowerFlowReferenceType, DeviceType, DynamicEventTransitionType
 from VeraGridEngine.Devices import MultiCircuit
 from VeraGridEngine.Simulations.driver_template import DummySignal
-from VeraGridEngine.Utils.Symbolic.symbolic import (Var, Const, Expr, piecewise, get_expression_vars, heaviside,
-                                                    hard_sat)
+from VeraGridEngine.Utils.Symbolic.symbolic import (Var, Const, Expr, piecewise, get_expression_vars, hard_sat)
 from VeraGridEngine.Utils.Symbolic.compiled_functions import SymbolicParamsVector, SymbolicDerivative, SymbolicJacobian
 from VeraGridEngine.Utils.Symbolic.block import Block
-from VeraGridEngine.Utils.Symbolic.symbolic_io import block_deep_copy
 from VeraGridEngine.enumerations import VarPowerFlowReferenceType, RmsInitializationMethod
 from VeraGridEngine.basic_structures import Vec, ObjVec, BoolVec, Logger
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowResults
@@ -47,7 +45,7 @@ from VeraGridEngine.IO.fmu.importer.experimental_me import (
     register_rms_fmu_me_device,
 )
 
-from VeraGridEngine.Utils.Symbolic.static_parameter_mapping_rms import (
+from VeraGridEngine.Devices.Dynamic.static_parameter_mapping import (
     assign_static_api_object_mapping_for_device,
 )
 
@@ -550,8 +548,7 @@ class RmsProblemDaeVec(RmsProblemTemplate):
                                                             problem_mapping=self._static_parameters_values_mapping,
                                                             logger=None)
 
-                Vmf, Vaf = get_bus_rms_algebraic_vars(elm.bus_from.rms_model)
-
+                _, Vmf, Vaf = get_bus_rms_algebraic_vars(elm.bus_from.rms_model)
 
                 self.add_variables_to_compilation_dicts(elm, elm.rms_model)
                 register_rms_fmu_cs_device(self, elm, elm.rms_model)
@@ -1960,7 +1957,7 @@ class RmsProblemDaeVec(RmsProblemTemplate):
             # we add bus variables for vectorization
             class_idx = self._class_n_vars.get(mdl.uid, 0)
             if elm in self.grid.get_branches_iter():
-                Vmf, Vaf = get_bus_rms_algebraic_vars(elm.bus_from.rms_model)
+                _, Vmf, Vaf = get_bus_rms_algebraic_vars(elm.bus_from.rms_model)
                 self._compiler_names_dict_vect[mdl.uid][Vmf.uid] = f"{self.VARS_NAME}[{class_idx}]"
                 self._alias_names_dict_vect[mdl.uid][Vmf.uid] = f"{self.VARS_NAME}_{class_idx}"
                 self._uid2idx_vars_vec[mdl.uid][Vmf.uid] = class_idx
@@ -1975,7 +1972,7 @@ class RmsProblemDaeVec(RmsProblemTemplate):
                 self._class_n_vars[mdl.uid] = class_idx + 1
 
                 class_idx = self._class_n_vars.get(mdl.uid, 0)
-                Vmt, Vat = get_bus_rms_algebraic_vars(elm.bus_to.rms_model)
+                _, Vmt, Vat = get_bus_rms_algebraic_vars(elm.bus_to.rms_model)
                 self._compiler_names_dict_vect[mdl.uid][Vmt.uid] = f"{self.VARS_NAME}[{class_idx}]"
                 self._alias_names_dict_vect[mdl.uid][Vmt.uid] = f"{self.VARS_NAME}_{class_idx}"
                 self._uid2idx_vars_vec[mdl.uid][Vmt.uid] = class_idx
@@ -1990,7 +1987,7 @@ class RmsProblemDaeVec(RmsProblemTemplate):
                 self._class_n_vars[mdl.uid] = class_idx + 1
 
             if elm in self.grid.get_injection_devices_iter():
-                Vm, Va = get_bus_rms_algebraic_vars(elm.bus.rms_model)
+                _, Vm, Va = get_bus_rms_algebraic_vars(elm.bus.rms_model)
                 class_idx = self._class_n_vars.get(mdl.uid, 0)
                 self._compiler_names_dict_vect[mdl.uid][Vm.uid] =f"{self.VARS_NAME}[{class_idx}]"
                 self._alias_names_dict_vect[mdl.uid][Vm.uid] = f"{self.VARS_NAME}_{class_idx}"

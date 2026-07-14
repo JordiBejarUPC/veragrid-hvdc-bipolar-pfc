@@ -1657,7 +1657,8 @@ def add_linear_battery_formulation(t: Union[int, None],
                                    ramp_constraints: bool,
                                    skip_generation_limits: bool,
                                    generation_expansion_planning: bool,
-                                   energy_0: Vec):
+                                   energy_0: Vec,
+                                   global_t: Union[int, None] = None):
     """
     Add MIP generation formulation
     :param t: time step, if None we assume single time step
@@ -1672,6 +1673,7 @@ def add_linear_battery_formulation(t: Union[int, None],
     :param skip_generation_limits: skip the generation limits?
     :param generation_expansion_planning: generation expansion planning?
     :param energy_0: initial value of the energy stored
+    :param global_t: global time index, used to keep the first interval consistent across grouped runs
     :return objective function
     """
     f_obj = 0.0
@@ -1749,8 +1751,22 @@ def add_linear_battery_formulation(t: Union[int, None],
 
                 # compute the time increment in hours
                 if len(time_array) > 1:
-                    dt = (time_array[t] - time_array[t - 1]).seconds / 3600.0
+                    if t > 0:
+                        # Normal case: this row has a previous row inside the same optimization
+                        # chunk, so use the local spacing between consecutive modeled rows.
+                        dt = (time_array[t] - time_array[t - 1]).seconds / 3600.0
+                    elif global_t is not None and global_t > 0:
+                        # First local row of a later chunk: there is no local t-1 row, but there
+                        # is a real previous timestamp in the full simulation timeline. Use that
+                        # full-series spacing so the carried battery state is updated correctly.
+                        dt = (time_array[global_t] - time_array[global_t - 1]).seconds / 3600.0
+                    else:
+                        # True first row of the whole simulation: no previous timestamp exists, so
+                        # define interval 0 using the first known spacing in the time series.
+                        dt = (time_array[1] - time_array[0]).seconds / 3600.0
                 else:
+                    # Single-point run: no spacing can be inferred from the time profile, so use
+                    # the historical 1-hour default for the battery energy balance.
                     dt = 1.0
 
                 if ramp_constraints and t is not None:
@@ -1772,14 +1788,17 @@ def add_linear_battery_formulation(t: Union[int, None],
                                                  join("batt_e_", [t, k], "_"))
 
                 if t > 0:
-                    # energy decreases / increases with power · dt
+                    # energy falls when discharging (p_pos) and rises when charging (p_neg)
                     prob.add_cst(cst=(batt_vars.e[t, k] == batt_vars.e[t - 1, k]
-                                      + dt * (batt_data_t.discharge_efficiency[k] * p_pos
-                                              - batt_data_t.charge_efficiency[k] * p_neg)),
+                                      + dt * (batt_data_t.charge_efficiency[k] * p_neg
+                                              - p_pos / batt_data_t.discharge_efficiency[k])),
                                  name=join("batt_energy_", [t, k], "_"))
                 else:
-                    # set the initial energy value
-                    batt_vars.e[t, k] = energy_0[k] / Sbase
+                    # tie the first modeled interval to the provided initial energy
+                    prob.add_cst(cst=(batt_vars.e[t, k] == energy_0[k] / Sbase
+                                      + dt * (batt_data_t.charge_efficiency[k] * p_neg
+                                              - p_pos / batt_data_t.discharge_efficiency[k])),
+                                 name=join("batt_energy_", [t, k], "_"))
 
             else:
 
@@ -2806,7 +2825,8 @@ def run_linear_opf_ts(grid: MultiCircuit,
                 ramp_constraints=ramp_constraints,
                 skip_generation_limits=skip_generation_limits,
                 generation_expansion_planning=False,
-                energy_0=energy_0
+                energy_0=energy_0,
+                global_t=global_t_idx
             )
 
         elif dispatch_mode == OpfDispatchMode.UnitCommitment:
@@ -2839,7 +2859,8 @@ def run_linear_opf_ts(grid: MultiCircuit,
                 ramp_constraints=ramp_constraints,
                 skip_generation_limits=skip_generation_limits,
                 generation_expansion_planning=False,
-                energy_0=energy_0
+                energy_0=energy_0,
+                global_t=global_t_idx
             )
 
         elif dispatch_mode == OpfDispatchMode.NodalCapacity:
@@ -2870,7 +2891,8 @@ def run_linear_opf_ts(grid: MultiCircuit,
                 ramp_constraints=ramp_constraints,
                 skip_generation_limits=skip_generation_limits,
                 generation_expansion_planning=False,
-                energy_0=energy_0
+                energy_0=energy_0,
+                global_t=global_t_idx
             )
 
         elif dispatch_mode == OpfDispatchMode.GenerationExpansionPlanning:
@@ -2900,7 +2922,8 @@ def run_linear_opf_ts(grid: MultiCircuit,
                 ramp_constraints=ramp_constraints,
                 skip_generation_limits=skip_generation_limits,
                 generation_expansion_planning=True,
-                energy_0=energy_0
+                energy_0=energy_0,
+                global_t=global_t_idx
             )
 
         elif dispatch_mode == OpfDispatchMode.InterAreaRedispatch:
@@ -2929,7 +2952,8 @@ def run_linear_opf_ts(grid: MultiCircuit,
                 ramp_constraints=ramp_constraints,
                 skip_generation_limits=skip_generation_limits,
                 generation_expansion_planning=False,
-                energy_0=energy_0
+                energy_0=energy_0,
+                global_t=global_t_idx
             )
         else:
             raise ValueError(f"dispatch mode not supported {dispatch_mode}")

@@ -38,7 +38,7 @@ from VeraGridEngine.Templates.Emt.dc_line_emt_template import get_dc_line_with_p
 from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template_with_ref
 from VeraGridEngine.Utils.Symbolic.block import Block, build_name_to_var_lookup, find_name_in_block
 from VeraGridEngine.Utils.Symbolic.bus_emt_template import get_bus_emt_template
-from VeraGridEngine.Utils.Symbolic.static_parameter_mapping_rms import converter_control_code
+from VeraGridEngine.Devices.Dynamic.static_parameter_mapping import converter_control_code
 from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_emt_model
 from VeraGridEngine.Utils.Symbolic.block import Var
 from VeraGridEngine.enumerations import ConverterControlType, DynamicIntegrationMethod, EmtInitializationMethod, EmtSolverTypes, SolverType
@@ -501,20 +501,20 @@ power_reference_trace_pu_1: np.ndarray = get_piecewise_reference_trace(
     events=event_times_and_values_vsc2,
 )
 
-v_pcc1_a: np.ndarray = get_signal(problem, bus_grid_1.emt_model, f"v_A_{bus_grid_1.name}_emt_template", trajectory)
-v_pcc1_b: np.ndarray = get_signal(problem, bus_grid_1.emt_model, f"v_B_{bus_grid_1.name}_emt_template", trajectory)
-v_pcc1_c: np.ndarray = get_signal(problem, bus_grid_1.emt_model, f"v_C_{bus_grid_1.name}_emt_template", trajectory)
-v_pcc2_a: np.ndarray = get_signal(problem, bus_grid_2.emt_model, f"v_A_{bus_grid_2.name}_emt_template", trajectory)
-v_pcc2_b: np.ndarray = get_signal(problem, bus_grid_2.emt_model, f"v_B_{bus_grid_2.name}_emt_template", trajectory)
-v_pcc2_c: np.ndarray = get_signal(problem, bus_grid_2.emt_model, f"v_C_{bus_grid_2.name}_emt_template", trajectory)
+v_pcc1_a: np.ndarray = get_signal(problem, bus_grid_1.emt_model, "v_A", trajectory)
+v_pcc1_b: np.ndarray = get_signal(problem, bus_grid_1.emt_model, "v_B", trajectory)
+v_pcc1_c: np.ndarray = get_signal(problem, bus_grid_1.emt_model, "v_C", trajectory)
+v_pcc2_a: np.ndarray = get_signal(problem, bus_grid_2.emt_model, "v_A", trajectory)
+v_pcc2_b: np.ndarray = get_signal(problem, bus_grid_2.emt_model, "v_B", trajectory)
+v_pcc2_c: np.ndarray = get_signal(problem, bus_grid_2.emt_model, "v_C", trajectory)
 i_vsc1_a: np.ndarray = get_signal(problem, converter_1_mdl, "i_A_vsc1_pseudo_emt", trajectory)
 i_vsc1_b: np.ndarray = get_signal(problem, converter_1_mdl, "i_B_vsc1_pseudo_emt", trajectory)
 i_vsc1_c: np.ndarray = get_signal(problem, converter_1_mdl, "i_C_vsc1_pseudo_emt", trajectory)
 i_vsc2_a: np.ndarray = get_signal(problem, converter_2_mdl, "i_A_vsc2_pseudo_emt", trajectory)
 i_vsc2_b: np.ndarray = get_signal(problem, converter_2_mdl, "i_B_vsc2_pseudo_emt", trajectory)
 i_vsc2_c: np.ndarray = get_signal(problem, converter_2_mdl, "i_C_vsc2_pseudo_emt", trajectory)
-v_dc_1: np.ndarray = get_signal(problem, bus_dc_1.emt_model, f"v_DC_{bus_dc_1.name}_emt_template", trajectory)
-v_dc_2: np.ndarray = get_signal(problem, bus_dc_2.emt_model, f"v_DC_{bus_dc_2.name}_emt_template", trajectory)
+v_dc_1: np.ndarray = get_signal(problem, bus_dc_1.emt_model, "v_DC", trajectory)
+v_dc_2: np.ndarray = get_signal(problem, bus_dc_2.emt_model, "v_DC", trajectory)
 i_line: np.ndarray = get_signal(problem, dc_line_mdl, "i_f_dc_hvdc_line_power_input_emt", trajectory)
 p_vsc1: np.ndarray = get_signal(problem, converter_1_mdl, "P_vsc1_pseudo_emt", trajectory)
 q_vsc1: np.ndarray = get_signal(problem, converter_1_mdl, "Q_vsc1_pseudo_emt", trajectory)

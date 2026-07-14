@@ -23,10 +23,10 @@ def get_line_rms_template(vfactory: VarFactory, name="Line_rms_template") -> Rms
     templ.tpe = DeviceType.LineDevice
     templ.name = name
 
-    inputs: List[Var] = [vfactory.add_var("Vmf_" + name, reference=VarPowerFlowReferenceType.Vmf),
-                         vfactory.add_var("Vaf_" + name, reference=VarPowerFlowReferenceType.Vaf),
-                         vfactory.add_var("Vmt_" + name, reference=VarPowerFlowReferenceType.Vmt),
-                         vfactory.add_var("Vat_" + name, reference=VarPowerFlowReferenceType.Vat), ]
+    inputs: List[Var] = [vfactory.add_var("Vmf", reference=VarPowerFlowReferenceType.Vmf),
+                         vfactory.add_var("Vaf", reference=VarPowerFlowReferenceType.Vaf),
+                         vfactory.add_var("Vmt", reference=VarPowerFlowReferenceType.Vmt),
+                         vfactory.add_var("Vat", reference=VarPowerFlowReferenceType.Vat), ]
 
     Qf = vfactory.add_var("Qf", reference=VarPowerFlowReferenceType.Qf)
     Qt = vfactory.add_var("Qt", reference=VarPowerFlowReferenceType.Qt)
@@ -98,8 +98,8 @@ def get_dc_line_rms_template(vfactory: VarFactory, name="DC_Line_rms_template") 
     templ.tpe = DeviceType.DCLineDevice
     templ.name = name
 
-    Vdcf = vfactory.add_var("Vdcf_" + name, reference=VarPowerFlowReferenceType.Vmf)
-    Vdct = vfactory.add_var("Vdct_" + name, reference=VarPowerFlowReferenceType.Vmt)
+    Vdcf = vfactory.add_var("Vdcf", reference=VarPowerFlowReferenceType.Vmf)
+    Vdct = vfactory.add_var("Vdct", reference=VarPowerFlowReferenceType.Vmt)
     inputs: List[Var] = [Vdcf, Vdct]
 
     If_dc = vfactory.add_var("If_dc")

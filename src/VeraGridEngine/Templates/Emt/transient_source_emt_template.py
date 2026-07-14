@@ -14,6 +14,7 @@ from VeraGridEngine.Templates.Emt.source_emt_template import _build_source_templ
 from VeraGridEngine.Templates.Emt.source_emt_template import _get_active_nabc_labels
 from VeraGridEngine.Templates.Emt.source_emt_template import _get_current_reference
 from VeraGridEngine.Templates.Emt.source_emt_template import _get_voltage_reference
+from VeraGridEngine.Templates.template_definition import TemplateDefinition, TemplateProp
 from VeraGridEngine.Utils.Symbolic.block import Expr, Var
 from VeraGridEngine.Utils.Symbolic import symbolic as sym
 from VeraGridEngine.Utils.Symbolic.symbolic import CmpOp, Comparison
@@ -29,8 +30,8 @@ def _build_time_state(vf: VarFactory, template: EmtModelTemplate, resolved_name:
     :param resolved_name: Symbolic block name.
     :return: Internal source-time state variable.
     """
-    time_var: Var = vf.add_var(name=f"t_src_{resolved_name}")
-    diff_time_var: Var = vf.add_diff_var(name=f"d_t_src_{resolved_name}", base_var=time_var)
+    time_var: Var = vf.add_var(name=f"t_src")
+    diff_time_var: Var = vf.add_diff_var(name=f"d_t_src", base_var=time_var)
     template.block.state_vars = [time_var]
     template.block.diff_vars = [diff_time_var]
     template.block.state_eqs = [sym.Const(1.0)]
@@ -205,8 +206,8 @@ def _build_current_source_template_from_waveform(vf: VarFactory,
     phase_label: str
 
     for phase_label in active_labels:
-        voltage_var: Var = vf.add_var(name=f"v_{phase_label}_{resolved_name}", reference=_get_voltage_reference(phase_label))
-        current_var: Var = vf.add_var(name=f"i_{phase_label}_{resolved_name}", reference=_get_current_reference(phase_label))
+        voltage_var: Var = vf.add_var(name=f"v_{phase_label}", reference=_get_voltage_reference(phase_label))
+        current_var: Var = vf.add_var(name=f"i_{phase_label}", reference=_get_current_reference(phase_label))
         voltage_vars[phase_label] = voltage_var
         current_vars[phase_label] = current_var
         in_vars.append(voltage_var)
@@ -260,8 +261,8 @@ def _build_voltage_source_template_from_waveform(vf: VarFactory,
     phase_label: str
 
     for phase_label in active_labels:
-        voltage_var: Var = vf.add_var(name=f"v_{phase_label}_{resolved_name}", reference=_get_voltage_reference(phase_label))
-        current_var: Var = vf.add_var(name=f"i_{phase_label}_{resolved_name}", reference=_get_current_reference(phase_label))
+        voltage_var: Var = vf.add_var(name=f"v_{phase_label}", reference=_get_voltage_reference(phase_label))
+        current_var: Var = vf.add_var(name=f"i_{phase_label}", reference=_get_current_reference(phase_label))
         voltage_vars[phase_label] = voltage_var
         current_vars[phase_label] = current_var
         in_vars.append(voltage_var)
@@ -276,6 +277,38 @@ def _build_voltage_source_template_from_waveform(vf: VarFactory,
     template.block.out_vars = out_vars
     template.block.external_mapping = _build_external_mapping(voltage_vars, current_vars)
     return template
+
+
+class StepCurrentSourceEmtTemplate(TemplateDefinition):
+
+    def __init__(self, vf):
+        super().__init__(
+            vf,
+            params=[
+                TemplateProp(name="phN", units="", descr="Whether neutral is active.", tpe=bool, value=False),
+                TemplateProp(name="phA", units="", descr="Whether phase A is active.", tpe=bool, value=True),
+                TemplateProp(name="phB", units="", descr="Whether phase B is active.", tpe=bool, value=False),
+                TemplateProp(name="phC", units="", descr="Whether phase C is active.", tpe=bool, value=False),
+                TemplateProp(name="initial_value", units="", descr="Value before the step.", tpe=float, value=0.0),
+                TemplateProp(name="final_value", units="", descr="Value after the step.", tpe=float, value=1.0),
+                TemplateProp(name="step_time_s", units="s", descr="Step time in seconds.", tpe=float, value=0.02),
+                TemplateProp(name="name", units="", descr="Symbolic block name.", tpe=str, value="step_current_source_emt"),
+            ]
+        )
+
+    def eval(self) -> EmtModelTemplate:
+        phN: bool = self.get_value("phN")
+        phA: bool = self.get_value("phA")
+        phB: bool = self.get_value("phB")
+        phC: bool = self.get_value("phC")
+        initial_value: float = self.get_value("initial_value")
+        final_value: float = self.get_value("final_value")
+        step_time_s: float = self.get_value("step_time_s")
+        name: str | None = self.get_value("name")
+
+        return get_step_current_source_emt_template(
+            self.vf, phN, phA, phB, phC, initial_value, final_value, step_time_s, name,
+        )
 
 
 def get_step_current_source_emt_template(vf: VarFactory,
@@ -307,9 +340,9 @@ def get_step_current_source_emt_template(vf: VarFactory,
     template.name = resolved_name
     template.block.name = resolved_name
     time_var: Var = _build_time_state(vf, template, resolved_name)
-    initial_var: Var = vf.add_var(name=f"step_init_{resolved_name}")
-    final_var: Var = vf.add_var(name=f"step_final_{resolved_name}")
-    step_time_var: Var = vf.add_var(name=f"step_time_{resolved_name}")
+    initial_var: Var = vf.add_var(name=f"step_init")
+    final_var: Var = vf.add_var(name=f"step_final")
+    step_time_var: Var = vf.add_var(name=f"step_time")
     template.block.event_dict[initial_var] = vf.add_const(float(initial_value))
     template.block.event_dict[final_var] = vf.add_const(float(final_value))
     template.block.event_dict[step_time_var] = vf.add_const(float(step_time_s))
@@ -323,6 +356,41 @@ def get_step_current_source_emt_template(vf: VarFactory,
     source_template.name = resolved_name
     source_template.block.name = resolved_name
     return source_template
+
+
+class StepVoltageSourceEmtTemplate(TemplateDefinition):
+
+    def __init__(self, vf):
+        super().__init__(
+            vf,
+            params=[
+                TemplateProp(name="phN", units="", descr="Whether neutral is active.", tpe=bool, value=False),
+                TemplateProp(name="phA", units="", descr="Whether phase A is active.", tpe=bool, value=True),
+                TemplateProp(name="phB", units="", descr="Whether phase B is active.", tpe=bool, value=False),
+                TemplateProp(name="phC", units="", descr="Whether phase C is active.", tpe=bool, value=False),
+                TemplateProp(name="initial_value", units="", descr="Value before the step.", tpe=float, value=0.0),
+                TemplateProp(name="final_value", units="", descr="Value after the step.", tpe=float, value=1.0),
+                TemplateProp(name="step_time_s", units="s", descr="Step time in seconds.", tpe=float, value=0.02),
+                TemplateProp(name="source_conductance_value", units="S", descr="Norton conductance.", tpe=float, value=100.0),
+                TemplateProp(name="name", units="", descr="Symbolic block name.", tpe=str, value="step_voltage_source_emt"),
+            ]
+        )
+
+    def eval(self) -> EmtModelTemplate:
+        phN: bool = self.get_value("phN")
+        phA: bool = self.get_value("phA")
+        phB: bool = self.get_value("phB")
+        phC: bool = self.get_value("phC")
+        initial_value: float = self.get_value("initial_value")
+        final_value: float = self.get_value("final_value")
+        step_time_s: float = self.get_value("step_time_s")
+        source_conductance_value: float = self.get_value("source_conductance_value")
+        name: str | None = self.get_value("name")
+
+        return get_step_voltage_source_emt_template(
+            self.vf, phN, phA, phB, phC, initial_value, final_value, step_time_s,
+            source_conductance_value, name,
+        )
 
 
 def get_step_voltage_source_emt_template(vf: VarFactory,
@@ -356,10 +424,10 @@ def get_step_voltage_source_emt_template(vf: VarFactory,
     template.name = resolved_name
     template.block.name = resolved_name
     time_var: Var = _build_time_state(vf, template, resolved_name)
-    initial_var: Var = vf.add_var(name=f"step_init_{resolved_name}")
-    final_var: Var = vf.add_var(name=f"step_final_{resolved_name}")
-    step_time_var: Var = vf.add_var(name=f"step_time_{resolved_name}")
-    conductance_var: Var = vf.add_var(name=f"g_src_{resolved_name}")
+    initial_var: Var = vf.add_var(name=f"step_init")
+    final_var: Var = vf.add_var(name=f"step_final")
+    step_time_var: Var = vf.add_var(name=f"step_time")
+    conductance_var: Var = vf.add_var(name=f"g_src")
     template.block.event_dict[initial_var] = vf.add_const(float(initial_value))
     template.block.event_dict[final_var] = vf.add_const(float(final_value))
     template.block.event_dict[step_time_var] = vf.add_const(float(step_time_s))
@@ -374,6 +442,41 @@ def get_step_voltage_source_emt_template(vf: VarFactory,
     source_template.name = resolved_name
     source_template.block.name = resolved_name
     return source_template
+
+
+class RampCurrentSourceEmtTemplate(TemplateDefinition):
+
+    def __init__(self, vf):
+        super().__init__(
+            vf,
+            params=[
+                TemplateProp(name="phN", units="", descr="Whether neutral is active.", tpe=bool, value=False),
+                TemplateProp(name="phA", units="", descr="Whether phase A is active.", tpe=bool, value=True),
+                TemplateProp(name="phB", units="", descr="Whether phase B is active.", tpe=bool, value=False),
+                TemplateProp(name="phC", units="", descr="Whether phase C is active.", tpe=bool, value=False),
+                TemplateProp(name="initial_value", units="", descr="Value before the ramp.", tpe=float, value=0.0),
+                TemplateProp(name="final_value", units="", descr="Value after the ramp.", tpe=float, value=1.0),
+                TemplateProp(name="start_time_s", units="s", descr="Ramp start time in seconds.", tpe=float, value=0.01),
+                TemplateProp(name="end_time_s", units="s", descr="Ramp end time in seconds.", tpe=float, value=0.03),
+                TemplateProp(name="name", units="", descr="Symbolic block name.", tpe=str, value="ramp_current_source_emt"),
+            ]
+        )
+
+    def eval(self) -> EmtModelTemplate:
+        phN: bool = self.get_value("phN")
+        phA: bool = self.get_value("phA")
+        phB: bool = self.get_value("phB")
+        phC: bool = self.get_value("phC")
+        initial_value: float = self.get_value("initial_value")
+        final_value: float = self.get_value("final_value")
+        start_time_s: float = self.get_value("start_time_s")
+        end_time_s: float = self.get_value("end_time_s")
+        name: str | None = self.get_value("name")
+
+        return get_ramp_current_source_emt_template(
+            self.vf, phN, phA, phB, phC, initial_value, final_value,
+            start_time_s, end_time_s, name,
+        )
 
 
 def get_ramp_current_source_emt_template(vf: VarFactory,
@@ -395,10 +498,10 @@ def get_ramp_current_source_emt_template(vf: VarFactory,
     template.name = resolved_name
     template.block.name = resolved_name
     time_var: Var = _build_time_state(vf, template, resolved_name)
-    initial_var: Var = vf.add_var(name=f"ramp_init_{resolved_name}")
-    final_var: Var = vf.add_var(name=f"ramp_final_{resolved_name}")
-    start_time_var: Var = vf.add_var(name=f"ramp_start_{resolved_name}")
-    end_time_var: Var = vf.add_var(name=f"ramp_end_{resolved_name}")
+    initial_var: Var = vf.add_var(name=f"ramp_init")
+    final_var: Var = vf.add_var(name=f"ramp_final")
+    start_time_var: Var = vf.add_var(name=f"ramp_start")
+    end_time_var: Var = vf.add_var(name=f"ramp_end")
     template.block.event_dict[initial_var] = vf.add_const(float(initial_value))
     template.block.event_dict[final_var] = vf.add_const(float(final_value))
     template.block.event_dict[start_time_var] = vf.add_const(float(start_time_s))
@@ -413,6 +516,43 @@ def get_ramp_current_source_emt_template(vf: VarFactory,
     source_template.name = resolved_name
     source_template.block.name = resolved_name
     return source_template
+
+
+class RampVoltageSourceEmtTemplate(TemplateDefinition):
+
+    def __init__(self, vf):
+        super().__init__(
+            vf,
+            params=[
+                TemplateProp(name="phN", units="", descr="Whether neutral is active.", tpe=bool, value=False),
+                TemplateProp(name="phA", units="", descr="Whether phase A is active.", tpe=bool, value=True),
+                TemplateProp(name="phB", units="", descr="Whether phase B is active.", tpe=bool, value=False),
+                TemplateProp(name="phC", units="", descr="Whether phase C is active.", tpe=bool, value=False),
+                TemplateProp(name="initial_value", units="", descr="Value before the ramp.", tpe=float, value=0.0),
+                TemplateProp(name="final_value", units="", descr="Value after the ramp.", tpe=float, value=1.0),
+                TemplateProp(name="start_time_s", units="s", descr="Ramp start time in seconds.", tpe=float, value=0.01),
+                TemplateProp(name="end_time_s", units="s", descr="Ramp end time in seconds.", tpe=float, value=0.03),
+                TemplateProp(name="source_conductance_value", units="S", descr="Norton conductance.", tpe=float, value=100.0),
+                TemplateProp(name="name", units="", descr="Symbolic block name.", tpe=str, value="ramp_voltage_source_emt"),
+            ]
+        )
+
+    def eval(self) -> EmtModelTemplate:
+        phN: bool = self.get_value("phN")
+        phA: bool = self.get_value("phA")
+        phB: bool = self.get_value("phB")
+        phC: bool = self.get_value("phC")
+        initial_value: float = self.get_value("initial_value")
+        final_value: float = self.get_value("final_value")
+        start_time_s: float = self.get_value("start_time_s")
+        end_time_s: float = self.get_value("end_time_s")
+        source_conductance_value: float = self.get_value("source_conductance_value")
+        name: str | None = self.get_value("name")
+
+        return get_ramp_voltage_source_emt_template(
+            self.vf, phN, phA, phB, phC, initial_value, final_value,
+            start_time_s, end_time_s, source_conductance_value, name,
+        )
 
 
 def get_ramp_voltage_source_emt_template(vf: VarFactory,
@@ -435,11 +575,11 @@ def get_ramp_voltage_source_emt_template(vf: VarFactory,
     template.name = resolved_name
     template.block.name = resolved_name
     time_var: Var = _build_time_state(vf, template, resolved_name)
-    initial_var: Var = vf.add_var(name=f"ramp_init_{resolved_name}")
-    final_var: Var = vf.add_var(name=f"ramp_final_{resolved_name}")
-    start_time_var: Var = vf.add_var(name=f"ramp_start_{resolved_name}")
-    end_time_var: Var = vf.add_var(name=f"ramp_end_{resolved_name}")
-    conductance_var: Var = vf.add_var(name=f"g_src_{resolved_name}")
+    initial_var: Var = vf.add_var(name=f"ramp_init")
+    final_var: Var = vf.add_var(name=f"ramp_final")
+    start_time_var: Var = vf.add_var(name=f"ramp_start")
+    end_time_var: Var = vf.add_var(name=f"ramp_end")
+    conductance_var: Var = vf.add_var(name=f"g_src")
     template.block.event_dict[initial_var] = vf.add_const(float(initial_value))
     template.block.event_dict[final_var] = vf.add_const(float(final_value))
     template.block.event_dict[start_time_var] = vf.add_const(float(start_time_s))
@@ -455,6 +595,41 @@ def get_ramp_voltage_source_emt_template(vf: VarFactory,
     source_template.name = resolved_name
     source_template.block.name = resolved_name
     return source_template
+
+
+class DoubleExponentialCurrentSourceEmtTemplate(TemplateDefinition):
+
+    def __init__(self, vf):
+        super().__init__(
+            vf,
+            params=[
+                TemplateProp(name="phN", units="", descr="Whether neutral is active.", tpe=bool, value=False),
+                TemplateProp(name="phA", units="", descr="Whether phase A is active.", tpe=bool, value=True),
+                TemplateProp(name="phB", units="", descr="Whether phase B is active.", tpe=bool, value=False),
+                TemplateProp(name="phC", units="", descr="Whether phase C is active.", tpe=bool, value=False),
+                TemplateProp(name="amplitude_value", units="", descr="Overall amplitude scale.", tpe=float, value=1.0),
+                TemplateProp(name="alpha_value", units="", descr="Slow exponential coefficient.", tpe=float, value=100.0),
+                TemplateProp(name="beta_value", units="", descr="Fast exponential coefficient.", tpe=float, value=5000.0),
+                TemplateProp(name="delay_s", units="s", descr="Emission delay in seconds.", tpe=float, value=0.0),
+                TemplateProp(name="name", units="", descr="Symbolic block name.", tpe=str, value="double_exponential_current_source_emt"),
+            ]
+        )
+
+    def eval(self) -> EmtModelTemplate:
+        phN: bool = self.get_value("phN")
+        phA: bool = self.get_value("phA")
+        phB: bool = self.get_value("phB")
+        phC: bool = self.get_value("phC")
+        amplitude_value: float = self.get_value("amplitude_value")
+        alpha_value: float = self.get_value("alpha_value")
+        beta_value: float = self.get_value("beta_value")
+        delay_s: float = self.get_value("delay_s")
+        name: str | None = self.get_value("name")
+
+        return get_double_exponential_current_source_emt_template(
+            self.vf, phN, phA, phB, phC, amplitude_value, alpha_value,
+            beta_value, delay_s, name,
+        )
 
 
 def get_double_exponential_current_source_emt_template(vf: VarFactory,
@@ -476,10 +651,10 @@ def get_double_exponential_current_source_emt_template(vf: VarFactory,
     template.name = resolved_name
     template.block.name = resolved_name
     time_var: Var = _build_time_state(vf, template, resolved_name)
-    amplitude_var: Var = vf.add_var(name=f"amp_{resolved_name}")
-    alpha_var: Var = vf.add_var(name=f"alpha_{resolved_name}")
-    beta_var: Var = vf.add_var(name=f"beta_{resolved_name}")
-    delay_var: Var = vf.add_var(name=f"delay_{resolved_name}")
+    amplitude_var: Var = vf.add_var(name=f"amp")
+    alpha_var: Var = vf.add_var(name=f"alpha")
+    beta_var: Var = vf.add_var(name=f"beta")
+    delay_var: Var = vf.add_var(name=f"delay")
     template.block.event_dict[amplitude_var] = vf.add_const(float(amplitude_value))
     template.block.event_dict[alpha_var] = vf.add_const(float(alpha_value))
     template.block.event_dict[beta_var] = vf.add_const(float(beta_value))
@@ -494,6 +669,43 @@ def get_double_exponential_current_source_emt_template(vf: VarFactory,
     source_template.name = resolved_name
     source_template.block.name = resolved_name
     return source_template
+
+
+class HeidlerCurrentSourceEmtTemplate(TemplateDefinition):
+
+    def __init__(self, vf):
+        super().__init__(
+            vf,
+            params=[
+                TemplateProp(name="phN", units="", descr="Whether neutral is active.", tpe=bool, value=False),
+                TemplateProp(name="phA", units="", descr="Whether phase A is active.", tpe=bool, value=True),
+                TemplateProp(name="phB", units="", descr="Whether phase B is active.", tpe=bool, value=False),
+                TemplateProp(name="phC", units="", descr="Whether phase C is active.", tpe=bool, value=False),
+                TemplateProp(name="peak_value", units="", descr="Peak-current scale.", tpe=float, value=1.0),
+                TemplateProp(name="front_time_s", units="s", descr="Front-time parameter in seconds.", tpe=float, value=1.0e-4),
+                TemplateProp(name="tail_time_s", units="s", descr="Tail-time parameter in seconds.", tpe=float, value=5.0e-4),
+                TemplateProp(name="order_value", units="", descr="Heidler order exponent.", tpe=float, value=4.0),
+                TemplateProp(name="delay_s", units="s", descr="Emission delay in seconds.", tpe=float, value=0.0),
+                TemplateProp(name="name", units="", descr="Symbolic block name.", tpe=str, value="heidler_current_source_emt"),
+            ]
+        )
+
+    def eval(self) -> EmtModelTemplate:
+        phN: bool = self.get_value("phN")
+        phA: bool = self.get_value("phA")
+        phB: bool = self.get_value("phB")
+        phC: bool = self.get_value("phC")
+        peak_value: float = self.get_value("peak_value")
+        front_time_s: float = self.get_value("front_time_s")
+        tail_time_s: float = self.get_value("tail_time_s")
+        order_value: float = self.get_value("order_value")
+        delay_s: float = self.get_value("delay_s")
+        name: str | None = self.get_value("name")
+
+        return get_heidler_current_source_emt_template(
+            self.vf, phN, phA, phB, phC, peak_value, front_time_s,
+            tail_time_s, order_value, delay_s, name,
+        )
 
 
 def get_heidler_current_source_emt_template(vf: VarFactory,
@@ -516,11 +728,11 @@ def get_heidler_current_source_emt_template(vf: VarFactory,
     template.name = resolved_name
     template.block.name = resolved_name
     time_var: Var = _build_time_state(vf, template, resolved_name)
-    peak_var: Var = vf.add_var(name=f"peak_{resolved_name}")
-    front_time_var: Var = vf.add_var(name=f"front_time_{resolved_name}")
-    tail_time_var: Var = vf.add_var(name=f"tail_time_{resolved_name}")
-    order_var: Var = vf.add_var(name=f"order_{resolved_name}")
-    delay_var: Var = vf.add_var(name=f"delay_{resolved_name}")
+    peak_var: Var = vf.add_var(name=f"peak")
+    front_time_var: Var = vf.add_var(name=f"front_time")
+    tail_time_var: Var = vf.add_var(name=f"tail_time")
+    order_var: Var = vf.add_var(name=f"order")
+    delay_var: Var = vf.add_var(name=f"delay")
     template.block.event_dict[peak_var] = vf.add_const(float(peak_value))
     template.block.event_dict[front_time_var] = vf.add_const(float(front_time_s))
     template.block.event_dict[tail_time_var] = vf.add_const(float(tail_time_s))
@@ -536,6 +748,51 @@ def get_heidler_current_source_emt_template(vf: VarFactory,
     source_template.name = resolved_name
     source_template.block.name = resolved_name
     return source_template
+
+
+class CigreSurgeCurrentSourceEmtTemplate(TemplateDefinition):
+
+    def __init__(self, vf):
+        super().__init__(
+            vf,
+            params=[
+                TemplateProp(name="phN", units="", descr="Whether neutral is active.", tpe=bool, value=False),
+                TemplateProp(name="phA", units="", descr="Whether phase A is active.", tpe=bool, value=True),
+                TemplateProp(name="phB", units="", descr="Whether phase B is active.", tpe=bool, value=False),
+                TemplateProp(name="phC", units="", descr="Whether phase C is active.", tpe=bool, value=False),
+                TemplateProp(name="a_value", units="", descr="Front linear coefficient.", tpe=float, value=1000.0),
+                TemplateProp(name="b_value", units="", descr="Front nonlinear coefficient.", tpe=float, value=10000.0),
+                TemplateProp(name="n_value", units="", descr="Front exponent.", tpe=float, value=2.0),
+                TemplateProp(name="tn_s", units="s", descr="Front-to-tail transition time in seconds.", tpe=float, value=1.0e-4),
+                TemplateProp(name="i1_value", units="", descr="First tail amplitude.", tpe=float, value=1.0),
+                TemplateProp(name="t1_s", units="s", descr="First tail time constant in seconds.", tpe=float, value=5.0e-4),
+                TemplateProp(name="i2_value", units="", descr="Second tail amplitude.", tpe=float, value=0.5),
+                TemplateProp(name="t2_s", units="s", descr="Second tail time constant in seconds.", tpe=float, value=2.0e-4),
+                TemplateProp(name="delay_s", units="s", descr="Emission delay in seconds.", tpe=float, value=0.0),
+                TemplateProp(name="name", units="", descr="Symbolic block name.", tpe=str, value="cigre_surge_current_source_emt"),
+            ]
+        )
+
+    def eval(self) -> EmtModelTemplate:
+        phN: bool = self.get_value("phN")
+        phA: bool = self.get_value("phA")
+        phB: bool = self.get_value("phB")
+        phC: bool = self.get_value("phC")
+        a_value: float = self.get_value("a_value")
+        b_value: float = self.get_value("b_value")
+        n_value: float = self.get_value("n_value")
+        tn_s: float = self.get_value("tn_s")
+        i1_value: float = self.get_value("i1_value")
+        t1_s: float = self.get_value("t1_s")
+        i2_value: float = self.get_value("i2_value")
+        t2_s: float = self.get_value("t2_s")
+        delay_s: float = self.get_value("delay_s")
+        name: str | None = self.get_value("name")
+
+        return get_cigre_surge_current_source_emt_template(
+            self.vf, phN, phA, phB, phC, a_value, b_value, n_value,
+            tn_s, i1_value, t1_s, i2_value, t2_s, delay_s, name,
+        )
 
 
 def get_cigre_surge_current_source_emt_template(vf: VarFactory,
@@ -562,15 +819,15 @@ def get_cigre_surge_current_source_emt_template(vf: VarFactory,
     template.name = resolved_name
     template.block.name = resolved_name
     time_var: Var = _build_time_state(vf, template, resolved_name)
-    a_var: Var = vf.add_var(name=f"a_{resolved_name}")
-    b_var: Var = vf.add_var(name=f"b_{resolved_name}")
-    n_var: Var = vf.add_var(name=f"n_{resolved_name}")
-    tn_var: Var = vf.add_var(name=f"tn_{resolved_name}")
-    i1_var: Var = vf.add_var(name=f"i1_{resolved_name}")
-    t1_var: Var = vf.add_var(name=f"t1_{resolved_name}")
-    i2_var: Var = vf.add_var(name=f"i2_{resolved_name}")
-    t2_var: Var = vf.add_var(name=f"t2_{resolved_name}")
-    delay_var: Var = vf.add_var(name=f"delay_{resolved_name}")
+    a_var: Var = vf.add_var(name=f"a")
+    b_var: Var = vf.add_var(name=f"b")
+    n_var: Var = vf.add_var(name=f"n")
+    tn_var: Var = vf.add_var(name=f"tn")
+    i1_var: Var = vf.add_var(name=f"i1")
+    t1_var: Var = vf.add_var(name=f"t1")
+    i2_var: Var = vf.add_var(name=f"i2")
+    t2_var: Var = vf.add_var(name=f"t2")
+    delay_var: Var = vf.add_var(name=f"delay")
     template.block.event_dict[a_var] = vf.add_const(float(a_value))
     template.block.event_dict[b_var] = vf.add_const(float(b_value))
     template.block.event_dict[n_var] = vf.add_const(float(n_value))

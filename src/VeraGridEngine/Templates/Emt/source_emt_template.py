@@ -12,6 +12,7 @@ from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Templates.Emt.load_RLC_emt_template import _get_phase_count_name
 from VeraGridEngine.Utils.Symbolic.block import Expr, Var
 from VeraGridEngine.Utils.Symbolic import symbolic as sym
+from VeraGridEngine.Templates.template_definition import TemplateDefinition, TemplateProp
 from VeraGridEngine.enumerations import DeviceType, VarPowerFlowReferenceType
 
 
@@ -167,6 +168,41 @@ def _build_sinusoidal_wave_expression(amplitude_expr: Expr,
     return offset_var + amplitude_expr * sym.sin(theta_var + phase_rad_expr)
 
 
+class CurrentSourceEmtTemplate(TemplateDefinition):
+
+    def __init__(self, vf):
+        super().__init__(
+            vf,
+            params=[
+                TemplateProp(name="phN", units="", descr="Whether neutral is active.", tpe=bool, value=False),
+                TemplateProp(name="phA", units="", descr="Whether phase A is active.", tpe=bool, value=True),
+                TemplateProp(name="phB", units="", descr="Whether phase B is active.", tpe=bool, value=True),
+                TemplateProp(name="phC", units="", descr="Whether phase C is active.", tpe=bool, value=True),
+                TemplateProp(name="amplitude_values", units="", descr="Optional sinusoidal amplitudes by phase label.", tpe=dict, value=None),
+                TemplateProp(name="frequency_hz", units="Hz", descr="Common sinusoidal frequency.", tpe=float, value=50.0),
+                TemplateProp(name="phase_angle_deg", units="", descr="Optional phase offsets in degrees by phase label.", tpe=dict, value=None),
+                TemplateProp(name="offset_values", units="", descr="Optional DC offsets by phase label.", tpe=dict, value=None),
+                TemplateProp(name="name", units="", descr="Symbolic block name.", tpe=str, value="current_source_emt"),
+            ]
+        )
+
+    def eval(self) -> EmtModelTemplate:
+        phN: bool = self.get_value("phN")
+        phA: bool = self.get_value("phA")
+        phB: bool = self.get_value("phB")
+        phC: bool = self.get_value("phC")
+        amplitude_values: Dict[str, float] | None = self.get_value("amplitude_values")
+        frequency_hz: float = self.get_value("frequency_hz")
+        phase_angle_deg: Dict[str, float] | None = self.get_value("phase_angle_deg")
+        offset_values: Dict[str, float] | None = self.get_value("offset_values")
+        name: str | None = self.get_value("name")
+
+        return get_current_source_emt_template(
+            self.vf, phN, phA, phB, phC, amplitude_values, frequency_hz,
+            phase_angle_deg, offset_values, name,
+        )
+
+
 def get_current_source_emt_template(vf: VarFactory,
                                     phN: bool = False,
                                     phA: bool = True,
@@ -202,10 +238,10 @@ def get_current_source_emt_template(vf: VarFactory,
     template.name = resolved_name
     template.block.name = resolved_name
 
-    frequency_var: Var = vf.add_var(name=f"f_src_{resolved_name}")
+    frequency_var: Var = vf.add_var(name=f"f_src")
     template.block.event_dict[frequency_var] = vf.add_const(float(frequency_hz))
-    theta_var: Var = vf.add_var(name=f"theta_src_{resolved_name}")
-    d_theta_var: Var = vf.add_diff_var(name=f"d_theta_src_{resolved_name}", base_var=theta_var)
+    theta_var: Var = vf.add_var(name=f"theta_src")
+    d_theta_var: Var = vf.add_diff_var(name=f"d_theta_src", base_var=theta_var)
 
     voltage_vars: Dict[str, Var] = dict()
     current_vars: Dict[str, Var] = dict()
@@ -216,11 +252,11 @@ def get_current_source_emt_template(vf: VarFactory,
     phase_label: str
 
     for phase_label in active_labels:
-        voltage_var: Var = vf.add_var(name=f"v_{phase_label}_{resolved_name}", reference=_get_voltage_reference(phase_label))
-        current_var: Var = vf.add_var(name=f"i_{phase_label}_{resolved_name}", reference=_get_current_reference(phase_label))
-        amplitude_var: Var = vf.add_var(name=f"I_amp_{phase_label}_{resolved_name}")
-        phase_deg_var: Var = vf.add_var(name=f"phi_deg_{phase_label}_{resolved_name}")
-        offset_var: Var = vf.add_var(name=f"I_offset_{phase_label}_{resolved_name}")
+        voltage_var: Var = vf.add_var(name=f"v_{phase_label}", reference=_get_voltage_reference(phase_label))
+        current_var: Var = vf.add_var(name=f"i_{phase_label}", reference=_get_current_reference(phase_label))
+        amplitude_var: Var = vf.add_var(name=f"I_amp_{phase_label}")
+        phase_deg_var: Var = vf.add_var(name=f"phi_deg_{phase_label}")
+        offset_var: Var = vf.add_var(name=f"I_offset_{phase_label}")
         template.block.event_dict[amplitude_var] = vf.add_const(_resolve_phase_value(amplitude_values, phase_label, 0.0))
         template.block.event_dict[phase_deg_var] = vf.add_const(_resolve_phase_value(phase_angle_deg, phase_label, 0.0))
         template.block.event_dict[offset_var] = vf.add_const(_resolve_phase_value(offset_values, phase_label, 0.0))
@@ -242,6 +278,39 @@ def get_current_source_emt_template(vf: VarFactory,
     template.block.external_mapping = _build_external_mapping(voltage_vars, current_vars)
     template.block.init_eqs[theta_var] = sym.Const(0.0)
     return template
+
+
+class ControlledCurrentSourceEmtTemplate(TemplateDefinition):
+
+    def __init__(self, vf):
+        super().__init__(
+            vf,
+            params=[
+                TemplateProp(name="phN", units="", descr="Whether neutral is active.", tpe=bool, value=False),
+                TemplateProp(name="phA", units="", descr="Whether phase A is active.", tpe=bool, value=True),
+                TemplateProp(name="phB", units="", descr="Whether phase B is active.", tpe=bool, value=True),
+                TemplateProp(name="phC", units="", descr="Whether phase C is active.", tpe=bool, value=True),
+                TemplateProp(name="frequency_hz", units="Hz", descr="Common sinusoidal frequency.", tpe=float, value=50.0),
+                TemplateProp(name="phase_angle_deg", units="", descr="Optional phase offsets in degrees by phase label.", tpe=dict, value=None),
+                TemplateProp(name="offset_values", units="", descr="Optional DC offsets by phase label.", tpe=dict, value=None),
+                TemplateProp(name="name", units="", descr="Symbolic block name.", tpe=str, value="controlled_current_source_emt"),
+            ]
+        )
+
+    def eval(self) -> EmtModelTemplate:
+        phN: bool = self.get_value("phN")
+        phA: bool = self.get_value("phA")
+        phB: bool = self.get_value("phB")
+        phC: bool = self.get_value("phC")
+        frequency_hz: float = self.get_value("frequency_hz")
+        phase_angle_deg: Dict[str, float] | None = self.get_value("phase_angle_deg")
+        offset_values: Dict[str, float] | None = self.get_value("offset_values")
+        name: str | None = self.get_value("name")
+
+        return get_controlled_current_source_emt_template(
+            self.vf, phN, phA, phB, phC, frequency_hz,
+            phase_angle_deg, offset_values, name,
+        )
 
 
 def get_controlled_current_source_emt_template(vf: VarFactory,
@@ -276,10 +345,10 @@ def get_controlled_current_source_emt_template(vf: VarFactory,
     template.name = resolved_name
     template.block.name = resolved_name
 
-    frequency_var: Var = vf.add_var(name=f"f_src_{resolved_name}")
+    frequency_var: Var = vf.add_var(name=f"f_src")
     template.block.event_dict[frequency_var] = vf.add_const(float(frequency_hz))
-    theta_var: Var = vf.add_var(name=f"theta_src_{resolved_name}")
-    d_theta_var: Var = vf.add_diff_var(name=f"d_theta_src_{resolved_name}", base_var=theta_var)
+    theta_var: Var = vf.add_var(name=f"theta_src")
+    d_theta_var: Var = vf.add_diff_var(name=f"d_theta_src", base_var=theta_var)
 
     voltage_vars: Dict[str, Var] = dict()
     current_vars: Dict[str, Var] = dict()
@@ -290,11 +359,11 @@ def get_controlled_current_source_emt_template(vf: VarFactory,
     phase_label: str
 
     for phase_label in active_labels:
-        voltage_var: Var = vf.add_var(name=f"v_{phase_label}_{resolved_name}", reference=_get_voltage_reference(phase_label))
-        current_var: Var = vf.add_var(name=f"i_{phase_label}_{resolved_name}", reference=_get_current_reference(phase_label))
-        amplitude_command_var: Var = vf.add_var(name=f"i_amp_cmd_{phase_label}_{resolved_name}")
-        phase_deg_var: Var = vf.add_var(name=f"phi_deg_{phase_label}_{resolved_name}")
-        offset_var: Var = vf.add_var(name=f"I_offset_{phase_label}_{resolved_name}")
+        voltage_var: Var = vf.add_var(name=f"v_{phase_label}", reference=_get_voltage_reference(phase_label))
+        current_var: Var = vf.add_var(name=f"i_{phase_label}", reference=_get_current_reference(phase_label))
+        amplitude_command_var: Var = vf.add_var(name=f"i_amp_cmd_{phase_label}")
+        phase_deg_var: Var = vf.add_var(name=f"phi_deg_{phase_label}")
+        offset_var: Var = vf.add_var(name=f"I_offset_{phase_label}")
         template.block.event_dict[phase_deg_var] = vf.add_const(_resolve_phase_value(phase_angle_deg, phase_label, 0.0))
         template.block.event_dict[offset_var] = vf.add_const(_resolve_phase_value(offset_values, phase_label, 0.0))
         voltage_vars[phase_label] = voltage_var
@@ -316,6 +385,43 @@ def get_controlled_current_source_emt_template(vf: VarFactory,
     template.block.external_mapping = _build_external_mapping(voltage_vars, current_vars)
     template.block.init_eqs[theta_var] = sym.Const(0.0)
     return template
+
+
+class VoltageSourceEmtTemplate(TemplateDefinition):
+
+    def __init__(self, vf):
+        super().__init__(
+            vf,
+            params=[
+                TemplateProp(name="phN", units="", descr="Whether neutral is active.", tpe=bool, value=False),
+                TemplateProp(name="phA", units="", descr="Whether phase A is active.", tpe=bool, value=True),
+                TemplateProp(name="phB", units="", descr="Whether phase B is active.", tpe=bool, value=True),
+                TemplateProp(name="phC", units="", descr="Whether phase C is active.", tpe=bool, value=True),
+                TemplateProp(name="amplitude_values", units="", descr="Optional sinusoidal amplitudes by phase label.", tpe=dict, value=None),
+                TemplateProp(name="frequency_hz", units="Hz", descr="Common sinusoidal frequency.", tpe=float, value=50.0),
+                TemplateProp(name="phase_angle_deg", units="", descr="Optional phase offsets in degrees by phase label.", tpe=dict, value=None),
+                TemplateProp(name="offset_values", units="", descr="Optional DC offsets by phase label.", tpe=dict, value=None),
+                TemplateProp(name="source_conductance_value", units="S", descr="Common Norton conductance.", tpe=float, value=0.0),
+                TemplateProp(name="name", units="", descr="Symbolic block name.", tpe=str, value="voltage_source_emt"),
+            ]
+        )
+
+    def eval(self) -> EmtModelTemplate:
+        phN: bool = self.get_value("phN")
+        phA: bool = self.get_value("phA")
+        phB: bool = self.get_value("phB")
+        phC: bool = self.get_value("phC")
+        amplitude_values: Dict[str, float] | None = self.get_value("amplitude_values")
+        frequency_hz: float = self.get_value("frequency_hz")
+        phase_angle_deg: Dict[str, float] | None = self.get_value("phase_angle_deg")
+        offset_values: Dict[str, float] | None = self.get_value("offset_values")
+        source_conductance_value: float = self.get_value("source_conductance_value")
+        name: str | None = self.get_value("name")
+
+        return get_voltage_source_emt_template(
+            self.vf, phN, phA, phB, phC, amplitude_values, frequency_hz,
+            phase_angle_deg, offset_values, source_conductance_value, name,
+        )
 
 
 def get_voltage_source_emt_template(vf: VarFactory,
@@ -355,12 +461,12 @@ def get_voltage_source_emt_template(vf: VarFactory,
     template.name = resolved_name
     template.block.name = resolved_name
 
-    frequency_var: Var = vf.add_var(name=f"f_src_{resolved_name}")
-    source_conductance_var: Var = vf.add_var(name=f"g_src_{resolved_name}")
+    frequency_var: Var = vf.add_var(name=f"f_src")
+    source_conductance_var: Var = vf.add_var(name=f"g_src")
     template.block.event_dict[frequency_var] = vf.add_const(float(frequency_hz))
     template.block.event_dict[source_conductance_var] = vf.add_const(float(source_conductance_value))
-    theta_var: Var = vf.add_var(name=f"theta_src_{resolved_name}")
-    d_theta_var: Var = vf.add_diff_var(name=f"d_theta_src_{resolved_name}", base_var=theta_var)
+    theta_var: Var = vf.add_var(name=f"theta_src")
+    d_theta_var: Var = vf.add_diff_var(name=f"d_theta_src", base_var=theta_var)
 
     voltage_vars: Dict[str, Var] = dict()
     current_vars: Dict[str, Var] = dict()
@@ -371,11 +477,11 @@ def get_voltage_source_emt_template(vf: VarFactory,
     phase_label: str
 
     for phase_label in active_labels:
-        voltage_var: Var = vf.add_var(name=f"v_{phase_label}_{resolved_name}", reference=_get_voltage_reference(phase_label))
-        current_var: Var = vf.add_var(name=f"i_{phase_label}_{resolved_name}", reference=_get_current_reference(phase_label))
-        amplitude_var: Var = vf.add_var(name=f"V_amp_{phase_label}_{resolved_name}")
-        phase_deg_var: Var = vf.add_var(name=f"phi_deg_{phase_label}_{resolved_name}")
-        offset_var: Var = vf.add_var(name=f"V_offset_{phase_label}_{resolved_name}")
+        voltage_var: Var = vf.add_var(name=f"v_{phase_label}", reference=_get_voltage_reference(phase_label))
+        current_var: Var = vf.add_var(name=f"i_{phase_label}", reference=_get_current_reference(phase_label))
+        amplitude_var: Var = vf.add_var(name=f"V_amp_{phase_label}")
+        phase_deg_var: Var = vf.add_var(name=f"phi_deg_{phase_label}")
+        offset_var: Var = vf.add_var(name=f"V_offset_{phase_label}")
         template.block.event_dict[amplitude_var] = vf.add_const(_resolve_phase_value(amplitude_values, phase_label, 0.0))
         template.block.event_dict[phase_deg_var] = vf.add_const(_resolve_phase_value(phase_angle_deg, phase_label, 0.0))
         template.block.event_dict[offset_var] = vf.add_const(_resolve_phase_value(offset_values, phase_label, 0.0))
@@ -397,6 +503,41 @@ def get_voltage_source_emt_template(vf: VarFactory,
     template.block.external_mapping = _build_external_mapping(voltage_vars, current_vars)
     template.block.init_eqs[theta_var] = sym.Const(0.0)
     return template
+
+
+class ControlledVoltageSourceEmtTemplate(TemplateDefinition):
+
+    def __init__(self, vf):
+        super().__init__(
+            vf,
+            params=[
+                TemplateProp(name="phN", units="", descr="Whether neutral is active.", tpe=bool, value=False),
+                TemplateProp(name="phA", units="", descr="Whether phase A is active.", tpe=bool, value=True),
+                TemplateProp(name="phB", units="", descr="Whether phase B is active.", tpe=bool, value=True),
+                TemplateProp(name="phC", units="", descr="Whether phase C is active.", tpe=bool, value=True),
+                TemplateProp(name="frequency_hz", units="Hz", descr="Common sinusoidal frequency.", tpe=float, value=50.0),
+                TemplateProp(name="phase_angle_deg", units="", descr="Optional phase offsets in degrees by phase label.", tpe=dict, value=None),
+                TemplateProp(name="offset_values", units="", descr="Optional DC offsets by phase label.", tpe=dict, value=None),
+                TemplateProp(name="source_conductance_value", units="S", descr="Common Norton conductance.", tpe=float, value=0.0),
+                TemplateProp(name="name", units="", descr="Symbolic block name.", tpe=str, value="controlled_voltage_source_emt"),
+            ]
+        )
+
+    def eval(self) -> EmtModelTemplate:
+        phN: bool = self.get_value("phN")
+        phA: bool = self.get_value("phA")
+        phB: bool = self.get_value("phB")
+        phC: bool = self.get_value("phC")
+        frequency_hz: float = self.get_value("frequency_hz")
+        phase_angle_deg: Dict[str, float] | None = self.get_value("phase_angle_deg")
+        offset_values: Dict[str, float] | None = self.get_value("offset_values")
+        source_conductance_value: float = self.get_value("source_conductance_value")
+        name: str | None = self.get_value("name")
+
+        return get_controlled_voltage_source_emt_template(
+            self.vf, phN, phA, phB, phC, frequency_hz,
+            phase_angle_deg, offset_values, source_conductance_value, name,
+        )
 
 
 def get_controlled_voltage_source_emt_template(vf: VarFactory,
@@ -434,12 +575,12 @@ def get_controlled_voltage_source_emt_template(vf: VarFactory,
     template.name = resolved_name
     template.block.name = resolved_name
 
-    frequency_var: Var = vf.add_var(name=f"f_src_{resolved_name}")
-    source_conductance_var: Var = vf.add_var(name=f"g_src_{resolved_name}")
+    frequency_var: Var = vf.add_var(name=f"f_src")
+    source_conductance_var: Var = vf.add_var(name=f"g_src")
     template.block.event_dict[frequency_var] = vf.add_const(float(frequency_hz))
     template.block.event_dict[source_conductance_var] = vf.add_const(float(source_conductance_value))
-    theta_var: Var = vf.add_var(name=f"theta_src_{resolved_name}")
-    d_theta_var: Var = vf.add_diff_var(name=f"d_theta_src_{resolved_name}", base_var=theta_var)
+    theta_var: Var = vf.add_var(name=f"theta_src")
+    d_theta_var: Var = vf.add_diff_var(name=f"d_theta_src", base_var=theta_var)
 
     voltage_vars: Dict[str, Var] = dict()
     current_vars: Dict[str, Var] = dict()
@@ -450,11 +591,11 @@ def get_controlled_voltage_source_emt_template(vf: VarFactory,
     phase_label: str
 
     for phase_label in active_labels:
-        voltage_var: Var = vf.add_var(name=f"v_{phase_label}_{resolved_name}", reference=_get_voltage_reference(phase_label))
-        current_var: Var = vf.add_var(name=f"i_{phase_label}_{resolved_name}", reference=_get_current_reference(phase_label))
-        amplitude_command_var: Var = vf.add_var(name=f"v_amp_cmd_{phase_label}_{resolved_name}")
-        phase_deg_var: Var = vf.add_var(name=f"phi_deg_{phase_label}_{resolved_name}")
-        offset_var: Var = vf.add_var(name=f"V_offset_{phase_label}_{resolved_name}")
+        voltage_var: Var = vf.add_var(name=f"v_{phase_label}", reference=_get_voltage_reference(phase_label))
+        current_var: Var = vf.add_var(name=f"i_{phase_label}", reference=_get_current_reference(phase_label))
+        amplitude_command_var: Var = vf.add_var(name=f"v_amp_cmd_{phase_label}")
+        phase_deg_var: Var = vf.add_var(name=f"phi_deg_{phase_label}")
+        offset_var: Var = vf.add_var(name=f"V_offset_{phase_label}")
         template.block.event_dict[phase_deg_var] = vf.add_const(_resolve_phase_value(phase_angle_deg, phase_label, 0.0))
         template.block.event_dict[offset_var] = vf.add_const(_resolve_phase_value(offset_values, phase_label, 0.0))
         voltage_vars[phase_label] = voltage_var

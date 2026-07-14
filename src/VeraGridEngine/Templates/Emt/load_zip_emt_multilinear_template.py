@@ -74,16 +74,16 @@ def get_load_ZIP_emt_multilinear_template(
     templ.block.name = resolved_name
 
     c2: Expr = vf.add_const(2.0)
-    v0: Var = vf.add_var(name=f"V0_{resolved_name}")
-    a1: Var = vf.add_var(name=f"a1_{resolved_name}")
-    a2: Var = vf.add_var(name=f"a2_{resolved_name}")
-    a3: Var = vf.add_var(name=f"a3_{resolved_name}")
-    a4: Var = vf.add_var(name=f"a4_{resolved_name}")
-    a5: Var = vf.add_var(name=f"a5_{resolved_name}")
-    a6: Var = vf.add_var(name=f"a6_{resolved_name}")
-    k_sogi: Var = vf.add_var(name=f"k_sogi_{resolved_name}")
-    eps: Var = vf.add_var(name=f"eps_{resolved_name}")
-    omega: Var = vf.add_var(name=f"omega_{resolved_name}")
+    v0: Var = vf.add_var(name=f"V0")
+    a1: Var = vf.add_var(name=f"a1")
+    a2: Var = vf.add_var(name=f"a2")
+    a3: Var = vf.add_var(name=f"a3")
+    a4: Var = vf.add_var(name=f"a4")
+    a5: Var = vf.add_var(name=f"a5")
+    a6: Var = vf.add_var(name=f"a6")
+    k_sogi: Var = vf.add_var(name=f"k_sogi")
+    eps: Var = vf.add_var(name=f"eps")
+    omega: Var = vf.add_var(name=f"omega")
 
     templ.block.event_dict[v0] = vf.add_const(float(np.sqrt(2.0)))
     templ.block.event_dict[k_sogi] = vf.add_const(float(np.sqrt(2.0)))
@@ -113,10 +113,10 @@ def get_load_ZIP_emt_multilinear_template(
     diff_init_eqs: Dict[Var, Expr] = dict()
 
     for phase_label in active_phases:
-        voltage_var: Var = vf.add_var(name=f"v_{phase_label}_{resolved_name}", reference=_get_voltage_reference(phase_label))
-        voltage_derivative_var: Var = vf.add_var(name=f"d_v_{phase_label}_{resolved_name}")
-        p0_var: Var = vf.add_var(name=f"P0_{phase_label}_{resolved_name}")
-        q0_var: Var = vf.add_var(name=f"Q0_{phase_label}_{resolved_name}")
+        voltage_var: Var = vf.add_var(name=f"v_{phase_label}", reference=_get_voltage_reference(phase_label))
+        voltage_derivative_var: Var = vf.add_var(name=f"d_v_{phase_label}")
+        p0_var: Var = vf.add_var(name=f"P0_{phase_label}")
+        q0_var: Var = vf.add_var(name=f"Q0_{phase_label}")
 
         templ.block.event_dict[voltage_derivative_var] = vf.add_const(None)
         voltage_vars[phase_label] = voltage_var
@@ -125,26 +125,26 @@ def get_load_ZIP_emt_multilinear_template(
         q0_vars[phase_label] = q0_var
         in_vars.append(voltage_var)
 
-        u_var: Var = vf.add_var(name=f"u_{phase_label}_{resolved_name}")
-        q_var: Var = vf.add_var(name=f"q_{phase_label}_{resolved_name}")
-        d_u_var: Var = vf.add_diff_var(name=f"d_u_{phase_label}_{resolved_name}", base_var=u_var)
-        d_q_var: Var = vf.add_diff_var(name=f"d_q_{phase_label}_{resolved_name}", base_var=q_var)
+        u_var: Var = vf.add_var(name=f"u_{phase_label}")
+        q_var: Var = vf.add_var(name=f"q_{phase_label}")
+        d_u_var: Var = vf.add_diff_var(name=f"d_u_{phase_label}", base_var=u_var)
+        d_q_var: Var = vf.add_diff_var(name=f"d_q_{phase_label}", base_var=q_var)
         state_vars.extend([u_var, q_var])
         diff_vars.extend([d_u_var, d_q_var])
         state_eqs.append(k_sogi * omega * (voltage_var - u_var) - omega * q_var)
         state_eqs.append(omega * u_var)
 
-        u_aux: Var = vf.add_var(name=f"u_aux_{phase_label}_{resolved_name}")
-        q_aux: Var = vf.add_var(name=f"q_aux_{phase_label}_{resolved_name}")
-        v2_var: Var = vf.add_var(name=f"V{phase_label}2_{resolved_name}")
-        vm_var: Var = vf.add_var(name=f"Vm{phase_label}_{resolved_name}")
-        vm_aux: Var = vf.add_var(name=f"Vm_aux_{phase_label}_{resolved_name}")
-        ratio_var: Var = vf.add_var(name=f"r{phase_label}_{resolved_name}")
-        ratio_aux: Var = vf.add_var(name=f"r_aux_{phase_label}_{resolved_name}")
-        p_var: Var = vf.add_var(name=f"P_{phase_label}_{resolved_name}")
-        q_load_var: Var = vf.add_var(name=f"Q_{phase_label}_{resolved_name}")
-        v2_inv_var: Var = vf.add_var(name=f"V{phase_label}2_inv_{resolved_name}")
-        current_var: Var = vf.add_var(name=f"i_{phase_label}_{resolved_name}")
+        u_aux: Var = vf.add_var(name=f"u_aux_{phase_label}")
+        q_aux: Var = vf.add_var(name=f"q_aux_{phase_label}")
+        v2_var: Var = vf.add_var(name=f"V{phase_label}2")
+        vm_var: Var = vf.add_var(name=f"Vm{phase_label}")
+        vm_aux: Var = vf.add_var(name=f"Vm_aux_{phase_label}")
+        ratio_var: Var = vf.add_var(name=f"r{phase_label}")
+        ratio_aux: Var = vf.add_var(name=f"r_aux_{phase_label}")
+        p_var: Var = vf.add_var(name=f"P_{phase_label}")
+        q_load_var: Var = vf.add_var(name=f"Q_{phase_label}")
+        v2_inv_var: Var = vf.add_var(name=f"V{phase_label}2_inv")
+        current_var: Var = vf.add_var(name=f"i_{phase_label}")
 
         p_vars[phase_label] = p_var
         q_load_vars[phase_label] = q_load_var
@@ -181,7 +181,7 @@ def get_load_ZIP_emt_multilinear_template(
         diff_init_eqs[d_q_var] = omega * u_var
 
     if connection_type == ShuntConnectionType.Delta:
-        templ.block.set_parameter_in_model(var_name=f"V0_{resolved_name}", new_value=float(np.sqrt(6.0)))
+        templ.block.set_parameter_in_model(var_name=f"V0", new_value=float(np.sqrt(6.0)))
 
     templ.block.in_vars = in_vars
     templ.block.out_vars = list(current_vars[phase_label] for phase_label in active_phases)

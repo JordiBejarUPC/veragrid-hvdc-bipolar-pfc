@@ -44,7 +44,7 @@ from VeraGridEngine.Simulations.EMT.solvers.StructuralVectorizedSolver import St
 from VeraGridEngine.Simulations.EMT.solvers.structural_compiled_solver import StructuralCompiledSolver
 
 from VeraGridEngine.Utils.Symbolic.diagnostic import NewtonTraceCollector
-from VeraGridEngine.enumerations import DynamicIntegrationMethod, EmtSolverTypes, ShuntConnectionType
+from VeraGridEngine.enumerations import DynamicIntegrationMethod, EmtSolverTypes, ShuntConnectionType, EmtInitializationMethod
 import VeraGridEngine.api as gce
 
 ###########################################################################################################################
@@ -248,10 +248,12 @@ if CHOSEN_SOLVER not in SOLVER_TYPE_MAP:
     raise ValueError(f"Solver '{CHOSEN_SOLVER}' no reconocido. Usa SYMBOLIC, AD, VECTORIZED o COMPILED.")
 
 options = EmtOptions(time_step = 5e-6, # 5e-7,
-                     simulation_time =  0.04,  #5e-6*10, # s
+                     simulation_time =  5,  #5e-6*10, # s
                      tolerance = 1e-6,
                      solver_type = SOLVER_TYPE_MAP[CHOSEN_SOLVER],
                      integration_method = DynamicIntegrationMethod.DaeTrapezoidal,
+                     initialization_method=EmtInitializationMethod.Explicit,
+                     # initialization_method=EmtInitializationMethod.PseudoTransient,
                      verbose = 1)
 
 
@@ -481,16 +483,16 @@ steps: int = int(t_end / h)
 tme: np.ndarray = np.linspace(0, t_end, steps)
 
 #
-v_A_0 = find_name_in_block("v_A_Bus0_emt_template", bus0.emt_model)
-v_B_0 = find_name_in_block("v_B_Bus0_emt_template", bus0.emt_model)
-v_C_0 = find_name_in_block("v_C_Bus0_emt_template", bus0.emt_model)
+v_A_0 = find_name_in_block("v_A", bus0.emt_model)
+v_B_0 = find_name_in_block("v_B", bus0.emt_model)
+v_C_0 = find_name_in_block("v_C", bus0.emt_model)
 v_A_0_plt = y[:, problem.get_var_idx(v_A_0)]
 v_B_0_plt = y[:, problem.get_var_idx(v_B_0)]
 v_C_0_plt = y[:, problem.get_var_idx(v_C_0)]
 
-v_A_1 = find_name_in_block("v_A_Bus1_emt_template", bus1.emt_model)
-v_B_1 = find_name_in_block("v_B_Bus1_emt_template", bus1.emt_model)
-v_C_1 = find_name_in_block("v_C_Bus1_emt_template", bus1.emt_model)
+v_A_1 = find_name_in_block("v_A", bus1.emt_model)
+v_B_1 = find_name_in_block("v_B", bus1.emt_model)
+v_C_1 = find_name_in_block("v_C", bus1.emt_model)
 v_A_1_plt = y[:, problem.get_var_idx(v_A_1)]
 v_B_1_plt = y[:, problem.get_var_idx(v_B_1)]
 v_C_1_plt = y[:, problem.get_var_idx(v_C_1)]
@@ -506,7 +508,6 @@ plt.xlabel("Time")
 plt.ylabel("Voltage [p.u.]")
 plt.legend(loc='upper left')
 plt.grid(True)
-plt.legend()
 
 plt.subplot(2, 1, 2)
 plt.plot(tme, v_A_1_plt[:len(tme)], label='Voltage phase A bus 1', color='blue')
@@ -517,14 +518,13 @@ plt.xlabel("Time")
 plt.ylabel("Voltage [p.u.]")
 plt.legend(loc='upper left')
 plt.grid(True)
-plt.legend()
 
 plt.tight_layout()
 print("Generating plots...")
 plt.show()
 
-theta = find_name_in_block("theta_abs_complete_generator_emt_template_gen", gen_mdl)
-omega_gen = find_name_in_block("omega_complete_generator_emt_template_gen", gen_mdl)
+theta = find_name_in_block("theta_abs", gen_mdl)
+omega_gen = find_name_in_block("omega", gen_mdl)
 theta_plt = y[:, problem.get_var_idx(theta)]
 omega_plt = y[:, problem.get_var_idx(omega_gen)]
 
@@ -537,7 +537,6 @@ plt.xlabel("Time")
 plt.ylabel("Theta generator")
 plt.legend(loc='upper left')
 plt.grid(True)
-plt.legend()
 #
 plt.subplot(2, 1, 2)
 plt.plot(tme, omega_plt[:len(tme)], label='Speed generator [rad/s]', color='blue')
@@ -546,15 +545,14 @@ plt.xlabel("Time")
 plt.ylabel("Omega generator [rad/s]")
 plt.legend(loc='upper left')
 plt.grid(True)
-plt.legend()
 
 plt.tight_layout()
 print("Generating plots...")
 plt.show()
 
-i_A_gen = find_name_in_block("i_A_complete_generator_emt_template_gen", gen_mdl)
-i_B_gen = find_name_in_block("i_B_complete_generator_emt_template_gen", gen_mdl)
-i_C_gen = find_name_in_block("i_C_complete_generator_emt_template_gen", gen_mdl)
+i_A_gen = find_name_in_block("i_A", gen_mdl)
+i_B_gen = find_name_in_block("i_B", gen_mdl)
+i_C_gen = find_name_in_block("i_C", gen_mdl)
 i_A_gen_plt = y[:, problem.get_var_idx(i_A_gen)]
 i_B_gen_plt = y[:, problem.get_var_idx(i_B_gen)]
 i_C_gen_plt = y[:, problem.get_var_idx(i_C_gen)]
@@ -562,9 +560,9 @@ i_C_gen_plt = y[:, problem.get_var_idx(i_C_gen)]
 # i_A_load = find_name_in_block("i_A_ZIP_Load_EMT_3ph", load_mdl)
 # i_B_load = find_name_in_block("i_B_ZIP_Load_EMT_3ph", load_mdl)
 # i_C_load = find_name_in_block("i_C_ZIP_Load_EMT_3ph", load_mdl)
-i_A_load = find_name_in_block("i_A_R_shunt_3ph", load_mdl)
-i_B_load = find_name_in_block("i_B_R_shunt_3ph", load_mdl)
-i_C_load = find_name_in_block("i_C_R_shunt_3ph", load_mdl)
+i_A_load = find_name_in_block("i_A", load_mdl)
+i_B_load = find_name_in_block("i_B", load_mdl)
+i_C_load = find_name_in_block("i_C", load_mdl)
 i_A_load_plt = y[:, problem.get_var_idx(i_A_load)]
 i_B_load_plt = y[:, problem.get_var_idx(i_B_load)]
 i_C_load_plt = y[:, problem.get_var_idx(i_C_load)]
@@ -580,7 +578,6 @@ plt.xlabel("Time")
 plt.ylabel("Current generator")
 plt.legend(loc='upper left')
 plt.grid(True)
-plt.legend()
 
 plt.subplot(2, 2, 2)
 # SIGNS IN LOAD ARE FLIPPED. FOR SIGN CONVENTION CURRENTS LEAVE INJECTIONS SO IN THE CASE OF THE LOAD
@@ -593,7 +590,6 @@ plt.xlabel("Time")
 plt.ylabel("Current load")
 plt.legend(loc='upper left')
 plt.grid(True)
-plt.legend()
 
 plt.tight_layout()
 print("Generating plots...")
@@ -646,10 +642,10 @@ plt.show()
 # plt.show()
 
 # Pm_gen = find_name_in_block("Pm_simple_emt_type_generator_template", gen_mdl)
-Qe_gen = find_name_in_block("q_e_complete_generator_emt_template_gen", gen_mdl)
-Pe_gen = find_name_in_block("p_e_complete_generator_emt_template_gen", gen_mdl)
-Tm_gen = find_name_in_block("Tm_complete_generator_emt_template_governor", gen_mdl)
-Te_gen = find_name_in_block("Te_complete_generator_emt_template_gen", gen_mdl)
+Qe_gen = find_name_in_block("q_e", gen_mdl)
+Pe_gen = find_name_in_block("p_e", gen_mdl)
+Tm_gen = find_name_in_block("Tm", gen_mdl)
+Te_gen = find_name_in_block("Te", gen_mdl)
 # et_gen = find_name_in_block("et_simple_emt_type_generator_template", gen_mdl)
 # Pm_gen_plt = y[:, problem.get_var_idx(Pm_gen)]
 Qe_gen_plt = y[:, problem.get_var_idx(Qe_gen)]
@@ -669,7 +665,6 @@ plt.xlabel("Time")
 plt.ylabel("power generator")
 plt.legend(loc='upper left')
 plt.grid(True)
-plt.legend()
 
 plt.subplot(2, 2, 2)
 plt.plot(tme, Tm_gen_plt[:len(tme)], label='Mechanical torque Tm from generator', color='blue')
@@ -679,7 +674,6 @@ plt.xlabel("Time")
 plt.ylabel("torque generator")
 plt.legend(loc='upper left')
 plt.grid(True)
-plt.legend()
 
 # plt.subplot(2, 2, 3)
 # plt.plot(tme, et_gen_plt[:len(tme)], label='PI error at generator', color='blue')
@@ -694,14 +688,14 @@ plt.tight_layout()
 print("Generating plots...")
 plt.show()
 
-i_d_gen = find_name_in_block("i_d_complete_generator_emt_template_gen", gen_mdl)
-i_q_gen = find_name_in_block("i_q_complete_generator_emt_template_gen", gen_mdl)
-i_0_gen = find_name_in_block("i_0_complete_generator_emt_template_gen", gen_mdl)
-i_f_gen = find_name_in_block("IRPu_complete_generator_emt_template_gen", gen_mdl)
-v_d_gen = find_name_in_block("v_d_complete_generator_emt_template_gen", gen_mdl)
-v_q_gen = find_name_in_block("v_q_complete_generator_emt_template_gen", gen_mdl)
-v_0_gen = find_name_in_block("v_0_complete_generator_emt_template_gen", gen_mdl)
-v_f_gen = find_name_in_block("Vf_complete_generator_emt_template_exciter", gen_mdl)
+i_d_gen = find_name_in_block("i_d", gen_mdl)
+i_q_gen = find_name_in_block("i_q", gen_mdl)
+i_0_gen = find_name_in_block("i_0", gen_mdl)
+i_f_gen = find_name_in_block("IRPu", gen_mdl)
+v_d_gen = find_name_in_block("v_d", gen_mdl)
+v_q_gen = find_name_in_block("v_q", gen_mdl)
+v_0_gen = find_name_in_block("v_0", gen_mdl)
+v_f_gen = find_name_in_block("Vf", gen_mdl)
 i_d_gen_plt = y[:, problem.get_var_idx(i_d_gen)]
 i_q_gen_plt = y[:, problem.get_var_idx(i_q_gen)]
 i_0_gen_plt = y[:, problem.get_var_idx(i_0_gen)]
@@ -722,7 +716,6 @@ plt.xlabel("Time")
 plt.ylabel("dq0 currents generator")
 plt.legend(loc='upper left')
 plt.grid(True)
-plt.legend()
 
 plt.subplot(2, 2, 2)
 plt.plot(tme, i_f_gen_plt[:len(tme)], label='Field current in the generator', color='purple')
@@ -731,7 +724,6 @@ plt.xlabel("Time")
 plt.ylabel("Field current")
 plt.legend(loc='upper left')
 plt.grid(True)
-plt.legend()
 
 plt.subplot(2, 2, 3)
 plt.plot(tme, v_d_gen_plt[:len(tme)], label='Voltage in the d axis generator', color='blue')
@@ -742,7 +734,6 @@ plt.xlabel("Time")
 plt.ylabel("dq0 Voltages generator")
 plt.legend(loc='upper left')
 plt.grid(True)
-plt.legend()
 
 plt.subplot(2, 2, 4)
 plt.plot(tme, v_f_gen_plt[:len(tme)], label='Field voltage in the generator', color='purple')
@@ -751,7 +742,6 @@ plt.xlabel("Time")
 plt.ylabel("Field voltage")
 plt.legend(loc='upper left')
 plt.grid(True)
-plt.legend()
 
 plt.tight_layout()
 print("Generating plots...")
@@ -784,7 +774,6 @@ plt.xlabel("Time")
 plt.ylabel("Current generator")
 plt.legend(loc='upper left')
 plt.grid(True)
-plt.legend()
 
 plt.subplot(2, 2, 2)
 # SIGNS IN LOAD ARE FLIPPED. FOR SIGN CONVENTION CURRENTS LEAVE INJECTIONS SO IN THE CASE OF THE LOAD
@@ -797,7 +786,6 @@ plt.xlabel("Time")
 plt.ylabel("Current load")
 plt.legend(loc='upper left')
 plt.grid(True)
-plt.legend()
 
 plt.subplot(2, 2, 3)
 plt.plot(tme, i_f_A_line_plt[:len(tme)], label='Current FROM phase A from line', color='blue')
@@ -808,7 +796,6 @@ plt.xlabel("Time")
 plt.ylabel("Current from")
 plt.legend(loc='upper left')
 plt.grid(True)
-plt.legend()
 
 plt.subplot(2, 2, 4)
 # SIGNS IN LOAD ARE FLIPPED. FOR SIGN CONVENTION CURRENTS LEAVE INJECTIONS SO IN THE CASE OF THE LOAD
@@ -827,23 +814,23 @@ plt.tight_layout()
 print("Generating plots...")
 plt.show()
 
-i_ser_A = find_name_in_block("i_ser_Pi_A", line0.emt_model)
-i_ser_B = find_name_in_block("i_ser_Pi_B", line0.emt_model)
-i_ser_C = find_name_in_block("i_ser_Pi_C", line0.emt_model)
+i_ser_A = find_name_in_block("i_ser_A", line0.emt_model)
+i_ser_B = find_name_in_block("i_ser_B", line0.emt_model)
+i_ser_C = find_name_in_block("i_ser_C", line0.emt_model)
 i_ser_A_plt = y[:, problem.get_var_idx(i_ser_A)]
 i_ser_B_plt = y[:, problem.get_var_idx(i_ser_B)]
 i_ser_C_plt = y[:, problem.get_var_idx(i_ser_C)]
 
-i_f_cap_A = find_name_in_block("i_cap_f_Pi_A", line0.emt_model)
-i_f_cap_B = find_name_in_block("i_cap_f_Pi_B", line0.emt_model)
-i_f_cap_C = find_name_in_block("i_cap_f_Pi_C", line0.emt_model)
+i_f_cap_A = find_name_in_block("i_cap_f_A", line0.emt_model)
+i_f_cap_B = find_name_in_block("i_cap_f_B", line0.emt_model)
+i_f_cap_C = find_name_in_block("i_cap_f_C", line0.emt_model)
 i_f_cap_A_plt = y[:, problem.get_var_idx(i_f_cap_A)]
 i_f_cap_B_plt = y[:, problem.get_var_idx(i_f_cap_B)]
 i_f_cap_C_plt = y[:, problem.get_var_idx(i_f_cap_C)]
 
-i_t_cap_A = find_name_in_block("i_cap_t_Pi_A", line0.emt_model)
-i_t_cap_B = find_name_in_block("i_cap_t_Pi_B", line0.emt_model)
-i_t_cap_C = find_name_in_block("i_cap_t_Pi_C", line0.emt_model)
+i_t_cap_A = find_name_in_block("i_cap_t_A", line0.emt_model)
+i_t_cap_B = find_name_in_block("i_cap_t_B", line0.emt_model)
+i_t_cap_C = find_name_in_block("i_cap_t_C", line0.emt_model)
 i_t_cap_A_plt = y[:, problem.get_var_idx(i_t_cap_A)]
 i_t_cap_B_plt = y[:, problem.get_var_idx(i_t_cap_B)]
 i_t_cap_C_plt = y[:, problem.get_var_idx(i_t_cap_C)]

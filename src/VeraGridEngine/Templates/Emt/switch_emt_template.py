@@ -10,6 +10,7 @@ from typing import Dict, List
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.enumerations import DeviceType, ParamPowerFlowReferenceType, VarPowerFlowReferenceType
+from VeraGridEngine.Templates.template_definition import TemplateDefinition, TemplateProp
 from VeraGridEngine.Utils.procedural_logic import sampled_value
 from VeraGridEngine.Utils.Symbolic.symbolic import CmpOp, Comparison, Const, Expr, Var
 
@@ -98,6 +99,48 @@ def _get_to_current_reference(phase_label: str) -> VarPowerFlowReferenceType:
                 raise ValueError(f"Unsupported phase label '{phase_label}'")
 
 
+class SwitchEmtTemplate(TemplateDefinition):
+
+    def __init__(self, vf):
+        super().__init__(
+            vf,
+            params=[
+                TemplateProp(name="phA", units="", descr="Enable phase A.", tpe=bool, value=True),
+                TemplateProp(name="phB", units="", descr="Enable phase B.", tpe=bool, value=True),
+                TemplateProp(name="phC", units="", descr="Enable phase C.", tpe=bool, value=True),
+                TemplateProp(name="signal_controlled", units="", descr="If True, expose one control input and procedural logic.", tpe=bool, value=False),
+                TemplateProp(name="seed_from_pf_active", units="", descr="If True, seed the closed/open mode from Switch.active.", tpe=bool, value=True),
+                TemplateProp(name="initial_closed", units="", descr="Default closed state when PF seeding is disabled.", tpe=bool, value=True),
+                TemplateProp(name="use_device_conductance", units="", descr="If True, use the switch static R/X to derive the closed conductance.", tpe=bool, value=True),
+                TemplateProp(name="manual_closed_conductance", units="S", descr="Manual closed conductance fallback.", tpe=float, value=1.0e4),
+                TemplateProp(name="open_conductance", units="S", descr="Open-state leakage conductance.", tpe=float, value=1.0e-8),
+                TemplateProp(name="switch_time_constant", units="s", descr="First-order current time constant.", tpe=float, value=1.0e-4),
+                TemplateProp(name="command_threshold", units="", descr="Control threshold for the external command.", tpe=float, value=0.5),
+                TemplateProp(name="name", units="", descr="Symbolic model name.", tpe=str, value="switch_emt_template"),
+            ]
+        )
+
+    def eval(self) -> EmtModelTemplate:
+        phA: bool = self.get_value("phA")
+        phB: bool = self.get_value("phB")
+        phC: bool = self.get_value("phC")
+        signal_controlled: bool = self.get_value("signal_controlled")
+        seed_from_pf_active: bool = self.get_value("seed_from_pf_active")
+        initial_closed: bool = self.get_value("initial_closed")
+        use_device_conductance: bool = self.get_value("use_device_conductance")
+        manual_closed_conductance: float = self.get_value("manual_closed_conductance")
+        open_conductance: float = self.get_value("open_conductance")
+        switch_time_constant: float = self.get_value("switch_time_constant")
+        command_threshold: float = self.get_value("command_threshold")
+        name: str = self.get_value("name")
+
+        return get_switch_emt_template(
+            self.vf, phA, phB, phC, signal_controlled, seed_from_pf_active,
+            initial_closed, use_device_conductance, manual_closed_conductance,
+            open_conductance, switch_time_constant, command_threshold, name,
+        )
+
+
 def get_switch_emt_template(
     vf: VarFactory,
     phA: bool = True,
@@ -137,14 +180,14 @@ def get_switch_emt_template(
     templ.name = name
     templ.block.name = name
 
-    closed_mode: Var = vf.add_var(f"switch_closed_mode_{name}")
+    closed_mode: Var = vf.add_var(f"switch_closed_mode")
     templ.block.mode_dict[closed_mode] = Const(1.0 if initial_closed else 0.0, name="switch_closed_mode")
 
-    g_device: Var = vf.add_var(f"switch_closed_g_api_{name}")
-    g_manual: Var = vf.add_var(f"switch_closed_g_manual_{name}")
-    g_open: Var = vf.add_var(f"switch_open_g_{name}")
-    tau_var: Var = vf.add_var(f"switch_tau_{name}")
-    seed_from_pf_var: Var = vf.add_var(f"switch_seed_from_pf_{name}")
+    g_device: Var = vf.add_var(f"switch_closed_g_api")
+    g_manual: Var = vf.add_var(f"switch_closed_g_manual")
+    g_open: Var = vf.add_var(f"switch_open_g")
+    tau_var: Var = vf.add_var(f"switch_tau")
+    seed_from_pf_var: Var = vf.add_var(f"switch_seed_from_pf")
 
     templ.block.parameters[g_device] = Const(0.0, name="switch_closed_g_api")
     templ.block.api_obj_mapping[ParamPowerFlowReferenceType.g] = g_device
@@ -197,8 +240,8 @@ def get_switch_emt_template(
     })
 
     if signal_controlled:
-        command_input = vf.add_var(f"switch_cmd_{name}")
-        threshold_var = vf.add_var(f"switch_cmd_threshold_{name}")
+        command_input = vf.add_var(f"switch_cmd")
+        threshold_var = vf.add_var(f"switch_cmd_threshold")
         templ.block.event_dict[threshold_var] = Const(float(command_threshold), name="switch_cmd_threshold")
         templ.block.procedural_logic.append(
             sampled_value(output=closed_mode, source=Comparison(lhs=command_input, op=CmpOp.GE, rhs=threshold_var))
@@ -209,12 +252,12 @@ def get_switch_emt_template(
 
     phase_label: str
     for phase_label in active_phases:
-        v_from = vf.add_var(f"vf_{phase_label}_{name}", reference=_get_from_voltage_reference(phase_label))
-        v_to = vf.add_var(f"vt_{phase_label}_{name}", reference=_get_to_voltage_reference(phase_label))
-        i_state = vf.add_var(f"i_{phase_label}_{name}")
-        di_state = vf.add_diff_var(name=f"di_{phase_label}_{name}", base_var=i_state)
-        i_from = vf.add_var(f"if_{phase_label}_{name}", reference=_get_from_current_reference(phase_label))
-        i_to = vf.add_var(f"it_{phase_label}_{name}", reference=_get_to_current_reference(phase_label))
+        v_from = vf.add_var(f"vf_{phase_label}", reference=_get_from_voltage_reference(phase_label))
+        v_to = vf.add_var(f"vt_{phase_label}", reference=_get_to_voltage_reference(phase_label))
+        i_state = vf.add_var(f"i_{phase_label}")
+        di_state = vf.add_diff_var(name=f"di_{phase_label}", base_var=i_state)
+        i_from = vf.add_var(f"if_{phase_label}", reference=_get_from_current_reference(phase_label))
+        i_to = vf.add_var(f"it_{phase_label}", reference=_get_to_current_reference(phase_label))
 
         in_vars.extend(list([v_from, v_to]))
         state_vars.append(i_state)

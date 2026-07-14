@@ -28,8 +28,8 @@ def get_pvd1_rms_template(vfactory: VarFactory, name: str = "PVD1 RMS template")
 
     from VeraGridEngine.Utils.procedural_logic import sampled_value
 
-    vm = vfactory.add_var(f"Vm_{name}", VarPowerFlowReferenceType.Vm)
-    va = vfactory.add_var(f"Va_{name}", VarPowerFlowReferenceType.Va)
+    vm = vfactory.add_var("Vm", VarPowerFlowReferenceType.Vm)
+    va = vfactory.add_var("Va", VarPowerFlowReferenceType.Va)
     inputs = [vm, va]
 
     p = vfactory.add_var("P_pvd1")
@@ -113,7 +113,7 @@ def get_pvd1_rms_template(vfactory: VarFactory, name: str = "PVD1 RMS template")
     procedural_logic = list()
 
     def register_sampled(name_suffix: str, expr):
-        rt_var = vfactory.add_var(f"{name_suffix}_{name}")
+        rt_var = vfactory.add_var(name_suffix)
         mode_dict[rt_var] = expr
         procedural_logic.append(sampled_value(output=rt_var, source=expr, name=f"sample_{name_suffix}"))
         return rt_var
@@ -230,8 +230,8 @@ def get_pvd1_complete_rms_template(vfactory: VarFactory, name: str = "PVD1 compl
     # Local import avoids a package import cycle at module load time.
     from VeraGridEngine.Utils.procedural_logic import flipflop, bool_and, bool_or, sampled_value
 
-    vm = vfactory.add_var(f"Vm_{name}", VarPowerFlowReferenceType.Vm)
-    va = vfactory.add_var(f"Va_{name}", VarPowerFlowReferenceType.Va)
+    vm = vfactory.add_var("Vm", VarPowerFlowReferenceType.Vm)
+    va = vfactory.add_var("Va", VarPowerFlowReferenceType.Va)
     inputs = [vm, va]
 
     p = vfactory.add_var("P_pvd1")
@@ -393,7 +393,7 @@ def get_pvd1_complete_rms_template(vfactory: VarFactory, name: str = "PVD1 compl
     ]
 
     def register_sampled(name_suffix: str, expr):
-        rt_var = vfactory.add_var(f"{name_suffix}_{name}")
+        rt_var = vfactory.add_var(name_suffix)
         mode_dict[rt_var] = expr
         procedural_logic.append(sampled_value(output=rt_var, source=expr, name=f"sample_{name_suffix}"))
         return rt_var
@@ -582,8 +582,8 @@ def get_pvd1_dc_mppt_rms_template(vfactory: VarFactory, name: str = "PVD1 DC-MPP
 
     from VeraGridEngine.Utils.procedural_logic import sampled_value
 
-    vm = vfactory.add_var(f"Vm_{name}", VarPowerFlowReferenceType.Vm)
-    va = vfactory.add_var(f"Va_{name}", VarPowerFlowReferenceType.Va)
+    vm = vfactory.add_var("Vm", VarPowerFlowReferenceType.Vm)
+    va = vfactory.add_var("Va", VarPowerFlowReferenceType.Va)
     inputs = [vm, va]
 
     p = vfactory.add_var("P_pvd1")
@@ -682,7 +682,7 @@ def get_pvd1_dc_mppt_rms_template(vfactory: VarFactory, name: str = "PVD1 DC-MPP
     procedural_logic = list()
 
     def register_sampled(name_suffix: str, expr):
-        rt_var = vfactory.add_var(f"{name_suffix}_{name}")
+        rt_var = vfactory.add_var(name_suffix)
         mode_dict[rt_var] = expr
         procedural_logic.append(sampled_value(output=rt_var, source=expr, name=f"sample_{name_suffix}"))
         return rt_var
@@ -802,8 +802,8 @@ def get_pvd1_dc_link_mppt_rms_template(vfactory: VarFactory, name: str = "PVD1 D
 
     from VeraGridEngine.Utils.procedural_logic import sampled_value
 
-    vm = vfactory.add_var(f"Vm_{name}", VarPowerFlowReferenceType.Vm)
-    va = vfactory.add_var(f"Va_{name}", VarPowerFlowReferenceType.Va)
+    vm = vfactory.add_var("Vm", VarPowerFlowReferenceType.Vm)
+    va = vfactory.add_var("Va", VarPowerFlowReferenceType.Va)
     inputs = [vm, va]
 
     p = vfactory.add_var("P_pvd1")
@@ -943,7 +943,7 @@ def get_pvd1_dc_link_mppt_rms_template(vfactory: VarFactory, name: str = "PVD1 D
     procedural_logic = list()
 
     def register_sampled(name_suffix: str, expr):
-        rt_var = vfactory.add_var(f"{name_suffix}_{name}")
+        rt_var = vfactory.add_var(name_suffix)
         mode_dict[rt_var] = expr
         procedural_logic.append(sampled_value(output=rt_var, source=expr, name=f"sample_{name_suffix}"))
         return rt_var
@@ -1119,8 +1119,8 @@ def get_pvd1_dc_link_bess_rms_template(vfactory: VarFactory, name: str = "PVD1 D
 
     from VeraGridEngine.Utils.procedural_logic import sampled_value
 
-    vm = vfactory.add_var(f"Vm_{name}", VarPowerFlowReferenceType.Vm)
-    va = vfactory.add_var(f"Va_{name}", VarPowerFlowReferenceType.Va)
+    vm = vfactory.add_var("Vm", VarPowerFlowReferenceType.Vm)
+    va = vfactory.add_var("Va", VarPowerFlowReferenceType.Va)
     inputs = [vm, va]
 
     p = vfactory.add_var("P_pvd1")
@@ -1234,7 +1234,7 @@ def get_pvd1_dc_link_bess_rms_template(vfactory: VarFactory, name: str = "PVD1 D
     procedural_logic = list()
 
     def register_sampled(name_suffix: str, expr):
-        rt_var = vfactory.add_var(f"{name_suffix}_{name}")
+        rt_var = vfactory.add_var(name_suffix)
         mode_dict[rt_var] = expr
         procedural_logic.append(sampled_value(output=rt_var, source=expr, name=f"sample_{name_suffix}"))
         return rt_var

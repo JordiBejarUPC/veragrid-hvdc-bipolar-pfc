@@ -12,7 +12,6 @@ configuration pointing to ``trunk.dynamics_emt.scripting_two_vsc``.
 
 from __future__ import annotations
 
-import os
 import sys
 from enum import Enum
 from pathlib import Path
@@ -76,7 +75,7 @@ from VeraGridEngine.Templates.Emt.pi_line_emt_template import get_pi_line_emt_te
 from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template_with_ref
 from VeraGridEngine.Utils.Symbolic.block import Block, Var, find_name_in_block
 from VeraGridEngine.Utils.Symbolic.bus_emt_template import get_bus_emt_template
-from VeraGridEngine.Utils.Symbolic.static_parameter_mapping_rms import converter_control_code
+from VeraGridEngine.Devices.Dynamic.static_parameter_mapping import converter_control_code
 from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_emt_model
 from VeraGridEngine.enumerations import (
     BranchImpedanceMode,
@@ -1109,7 +1108,7 @@ def add_dc_load_step_event(case: TwoVscCase, models: EmtModels) -> None:
     constants: CaseConstants = get_case_constants()
     events_group: EmtEventsGroup = EmtEventsGroup("two_vsc_events")
     case.circuit.add_emt_events_group(events_group)
-    pl0_var: Optional[Var] = find_name_in_block("Pl0_dc_load_1_emt", models.dc_load_1)
+    pl0_var: Optional[Var] = find_name_in_block("Pl0", models.dc_load_1)
 
     if pl0_var is not None:
         event: EmtEvent = EmtEvent(
@@ -1121,7 +1120,7 @@ def add_dc_load_step_event(case: TwoVscCase, models: EmtModels) -> None:
         )
         case.circuit.add_emt_event(event)
     else:
-        print("Warning: DC-load EMT event parameter 'Pl0_dc_load_1_emt' was not found. Running steady-state EMT only.")
+        print("Warning: DC-load EMT event parameter 'Pl0' was not found. Running steady-state EMT only.")
 
 
 def get_signal(

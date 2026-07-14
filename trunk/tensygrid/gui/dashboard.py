@@ -9,10 +9,12 @@ from typing import Optional
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 import uvicorn
 
 app = FastAPI(title="TenSyGrid Stability Monitor")
+app.mount("/resources", StaticFiles(directory=Path(__file__).parent / "resources"), name="resources")
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 TENSYGRID_DIR = Path(__file__).resolve().parents[1]
@@ -34,8 +36,9 @@ def _find_venv_python() -> Path:
         PROJECT_ROOT,
         PROJECT_ROOT.parent,
         PROJECT_ROOT / "venv",   # venv directly as a subfolder named venv
+        PROJECT_ROOT / ".venv",  # .venv directly as a subfolder named .venv
     ]
-    # Also add every direct child dir of PROJECT_ROOT named *venv*
+    # Also add every direct child dir of PROJECT_ROOT named *venv* or *.venv*
     try:
         for child in PROJECT_ROOT.iterdir():
             if child.is_dir() and "venv" in child.name.lower():
@@ -114,6 +117,7 @@ def get_precomputed_results() -> list[dict]:
                     'margin': data.get('margin'),
                     'n_eigenvalues': data.get('n_eigenvalues', 0),
                     'modified': f.stat().st_mtime,
+                    'elapsed_seconds': data.get('elapsed_seconds'),
                 })
             except Exception as e:
                 results.append({
@@ -147,6 +151,7 @@ def load_result(filename: str) -> dict:
             'matches': data.get('matches', 0),
             'op_hash': data.get('op_hash', ''),
             'timestamp': filepath.stat().st_mtime,
+            'elapsed_seconds': data.get('elapsed_seconds'),
         }
         
         if result['stable']:

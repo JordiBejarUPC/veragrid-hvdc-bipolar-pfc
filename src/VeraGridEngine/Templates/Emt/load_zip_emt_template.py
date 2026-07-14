@@ -11,6 +11,7 @@ import numpy as np
 
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
+from VeraGridEngine.Templates.template_definition import TemplateDefinition, TemplateProp
 from VeraGridEngine.Templates.Emt.load_RLC_emt_template import (
     _get_active_phases,
     _get_delta_branch_specs,
@@ -18,8 +19,31 @@ from VeraGridEngine.Templates.Emt.load_RLC_emt_template import (
     wrap_delta_referenced_load_emt_template,
     wrap_ground_referenced_load_emt_template,
 )
+from VeraGridEngine.Templates.template_definition import TemplateDefinition, TemplateProp
 from VeraGridEngine.Utils.Symbolic.block import Expr, Var
 from VeraGridEngine.enumerations import DeviceType, ParamPowerFlowReferenceType, ShuntConnectionType, VarPowerFlowReferenceType
+
+
+class LoadZipEmtTemplate(TemplateDefinition):
+
+    def __init__(self, vf):
+        super().__init__(vf, params=[
+            TemplateProp(name="phA", units="", descr="True when phase A is active.", tpe=bool),
+            TemplateProp(name="phB", units="", descr="True when phase B is active.", tpe=bool),
+            TemplateProp(name="phC", units="", descr="True when phase C is active.", tpe=bool),
+            TemplateProp(name="connection_type", units="", descr="Optional explicit star connection topology.", tpe=ShuntConnectionType | None),
+            TemplateProp(name="name", units="", descr="Name of the emt model.", tpe=str),
+        ])
+
+    def eval(self) -> EmtModelTemplate:
+        return get_load_ZIP_emt_template(
+            self.vf,
+            self.get_value("phA"),
+            self.get_value("phB"),
+            self.get_value("phC"),
+            self.get_value("connection_type"),
+            self.get_value("name"),
+        )
 
 
 def _get_voltage_reference(phase_label: str) -> VarPowerFlowReferenceType:
@@ -63,6 +87,33 @@ def _get_api_power_references(phase_label: str) -> Tuple[ParamPowerFlowReference
                 raise ValueError(f"Unsupported phase label '{phase_label}'")
 
     return p_reference, q_reference
+
+
+# ---
+class LoadZIPEmtTemplate(TemplateDefinition):
+
+    def __init__(self, vf):
+        super().__init__(
+            vf,
+            params=[
+                TemplateProp(name="phA", units="", descr="Whether phase A is active.", tpe=bool, value=True),
+                TemplateProp(name="phB", units="", descr="Whether phase B is active.", tpe=bool, value=True),
+                TemplateProp(name="phC", units="", descr="Whether phase C is active.", tpe=bool, value=True),
+                TemplateProp(name="connection_type", units="", descr="Star connection topology.", tpe=ShuntConnectionType, value=None),
+                TemplateProp(name="name", units="", descr="Name of the emt model.", tpe=str, value="ZIP_Load_EMT_3ph"),
+            ]
+        )
+
+    def eval(self) -> EmtModelTemplate:
+        phA: bool = self.get_value("phA")
+        phB: bool = self.get_value("phB")
+        phC: bool = self.get_value("phC")
+        connection_type: ShuntConnectionType | None = self.get_value("connection_type")
+        name: str = self.get_value("name")
+
+        return get_load_ZIP_emt_template(
+            self.vf, phA, phB, phC, connection_type, name
+        )
 
 
 def get_load_ZIP_emt_template(
@@ -121,16 +172,16 @@ def get_load_ZIP_emt_template(
 
     # ZIP coefficients remain device-wide EMT parameters because the existing load
     # model uses one coefficient set for all active phase equations.
-    v0: Var = vf.add_var(name=f"V0_{resolved_name}")
-    a1: Var = vf.add_var(name=f"a1_{resolved_name}")
-    a2: Var = vf.add_var(name=f"a2_{resolved_name}")
-    a3: Var = vf.add_var(name=f"a3_{resolved_name}")
-    a4: Var = vf.add_var(name=f"a4_{resolved_name}")
-    a5: Var = vf.add_var(name=f"a5_{resolved_name}")
-    a6: Var = vf.add_var(name=f"a6_{resolved_name}")
-    k_sogi: Var = vf.add_var(name=f"k_sogi_{resolved_name}")
-    eps: Var = vf.add_var(name=f"eps_{resolved_name}")
-    omega: Var = vf.add_var(name=f"omega_{resolved_name}")
+    v0: Var = vf.add_var(name=f"V0")
+    a1: Var = vf.add_var(name=f"a1")
+    a2: Var = vf.add_var(name=f"a2")
+    a3: Var = vf.add_var(name=f"a3")
+    a4: Var = vf.add_var(name=f"a4")
+    a5: Var = vf.add_var(name=f"a5")
+    a6: Var = vf.add_var(name=f"a6")
+    k_sogi: Var = vf.add_var(name=f"k_sogi")
+    eps: Var = vf.add_var(name=f"eps")
+    omega: Var = vf.add_var(name=f"omega")
 
     templ.block.event_dict[v0] = vf.add_const(float(np.sqrt(2.0)))
     templ.block.event_dict[k_sogi] = vf.add_const(float(np.sqrt(2.0)))
@@ -174,12 +225,12 @@ def get_load_ZIP_emt_template(
         # These inputs are the only terminal voltages exposed to the bus model, so
         # the block connectivity automatically shrinks to the active phase set.
         voltage_var: Var = vf.add_var(
-            name=f"v_{phase_label}_{resolved_name}",
+            name=f"v_{phase_label}",
             reference=_get_voltage_reference(phase_label=phase_label),
         )
-        voltage_derivative_var: Var = vf.add_var(name=f"d_v_{phase_label}_{resolved_name}")
-        p0_var: Var = vf.add_var(name=f"P0_{phase_label}_{resolved_name}")
-        q0_var: Var = vf.add_var(name=f"Q0_{phase_label}_{resolved_name}")
+        voltage_derivative_var: Var = vf.add_var(name=f"d_v_{phase_label}")
+        p0_var: Var = vf.add_var(name=f"P0_{phase_label}")
+        q0_var: Var = vf.add_var(name=f"Q0_{phase_label}")
 
         templ.block.event_dict[voltage_derivative_var] = vf.add_const(None)
 
@@ -191,10 +242,10 @@ def get_load_ZIP_emt_template(
 
         # Each active phase preserves the original SOGI pair and differential
         # equations, which is why the ABC realization remains numerically stable.
-        u_var: Var = vf.add_var(name=f"u_{phase_label}_{resolved_name}")
-        q_var: Var = vf.add_var(name=f"q_{phase_label}_{resolved_name}")
-        d_u_var: Var = vf.add_diff_var(name=f"d_u_{phase_label}_{resolved_name}", base_var=u_var)
-        d_q_var: Var = vf.add_diff_var(name=f"d_q_{phase_label}_{resolved_name}", base_var=q_var)
+        u_var: Var = vf.add_var(name=f"u_{phase_label}")
+        q_var: Var = vf.add_var(name=f"q_{phase_label}")
+        d_u_var: Var = vf.add_diff_var(name=f"d_u_{phase_label}", base_var=u_var)
+        d_q_var: Var = vf.add_diff_var(name=f"d_q_{phase_label}", base_var=q_var)
 
         u_vars[phase_label] = u_var
         q_vars[phase_label] = q_var
@@ -209,12 +260,12 @@ def get_load_ZIP_emt_template(
 
         # The ZIP polynomial and current injection are created per active phase so
         # there are no inactive entries hidden in the algebraic system size.
-        v2_var: Var = vf.add_var(name=f"V{phase_label}2_{resolved_name}")
-        vm_var: Var = vf.add_var(name=f"Vm{phase_label}_{resolved_name}")
-        ratio_var: Var = vf.add_var(name=f"r{phase_label}_{resolved_name}")
-        p_var: Var = vf.add_var(name=f"P_{phase_label}_{resolved_name}")
-        q_load_var: Var = vf.add_var(name=f"Q_{phase_label}_{resolved_name}")
-        current_var: Var = vf.add_var(name=f"i_{phase_label}_{resolved_name}")
+        v2_var: Var = vf.add_var(name=f"V{phase_label}2")
+        vm_var: Var = vf.add_var(name=f"Vm{phase_label}")
+        ratio_var: Var = vf.add_var(name=f"r{phase_label}")
+        p_var: Var = vf.add_var(name=f"P_{phase_label}")
+        q_load_var: Var = vf.add_var(name=f"Q_{phase_label}")
+        current_var: Var = vf.add_var(name=f"i_{phase_label}")
 
         v2_vars[phase_label] = v2_var
         vm_vars[phase_label] = vm_var
@@ -276,7 +327,7 @@ def get_load_ZIP_emt_template(
     if connection_type == ShuntConnectionType.Delta:
         # Delta branches are driven by line-to-line voltages whose nominal peak
         # magnitude is sqrt(3) times the phase-to-neutral peak base.
-        templ.block.set_parameter_in_model(var_name=f"V0_{resolved_name}", new_value=float(np.sqrt(6.0)))
+        templ.block.set_parameter_in_model(var_name=f"V0", new_value=float(np.sqrt(6.0)))
     else:
         pass
 

@@ -6,6 +6,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import csv
+from pathlib import Path
 
 
 import sys
@@ -45,6 +46,8 @@ from VeraGridEngine.enumerations import (BranchImpedanceMode, DynamicIntegration
                                          DynamicEventTransitionType, EmtSolverTypes, ShuntConnectionType, SolverType)
 from trunk.GridsForLoads_dynamic.gridsforloads_converter_template import (get_trafo_grid_connection_G4L,
                                                                           get_complete_load_template_G4L)
+# from trunk.GridsForLoads_dynamic.gridsforloads_converter_template_V2 import (get_trafo_grid_connection_G4L,
+#                                                                           get_complete_load_template_G4L)
 import VeraGridEngine.api as gce
 
 from VeraGridEngine.Devices.Events.emt_events_group import EmtEventsGroup
@@ -178,6 +181,29 @@ def find_name_in_block(name: str, block: Block):
             return res
 
 
+def sanitize_file_name(name: str) -> str:
+    sanitized = []
+    for char in name:
+        if char.isalnum() or char in ("-", "_"):
+            sanitized.append(char)
+        else:
+            sanitized.append("_")
+    return "".join(sanitized).strip("_") or "plot"
+
+
+def get_plot_output_folder(selected_test_name: str) -> Path:
+    base_folder = Path(REPO_ROOT) / "trunk" / "GridsForLoads_dynamic" / "generated_plots"
+    return base_folder / f"GFM_Load_no_constraints_{sanitize_file_name(selected_test_name)}"
+
+
+def save_selected_figures(output_folder: Path, figures: list[tuple[str, plt.Figure]]) -> None:
+    output_folder.mkdir(parents=True, exist_ok=True)
+    for stem, figure in figures:
+        figure_path = output_folder / f"{sanitize_file_name(stem)}.png"
+        figure.savefig(figure_path, dpi=150, bbox_inches="tight")
+        print(f"Saved plot: {figure_path}")
+
+
 ######################################################################################################
 # Build grid
 ######################################################################################################
@@ -291,12 +317,12 @@ VALID_TESTS = {
 }
 
 # Select a single EMT test here.
-# selected_test = TEST_P_GFM
+selected_test = TEST_P_GFM
 # selected_test = TEST_ROCOF
 # selected_test = TEST_PHASE_JUMP
 # selected_test = TEST_VAC_STEP
 # selected_test = TEST_VQ_STEP
-selected_test = TEST_VD_STEP
+# selected_test = TEST_VD_STEP
 # selected_test = TEST_NONE
 
 if selected_test not in VALID_TESTS:
@@ -659,7 +685,7 @@ for name in [
 fig_overview, axes_overview = plt.subplots(3, 2, figsize=(14, 11), sharex=True)
 axes_overview = axes_overview.ravel()
 
-for name in ["v_A_Bus1_emt_template", "v_B_Bus1_emt_template", "v_C_Bus1_emt_template"]:
+for name in ["v_A", "v_B", "v_C"]:
     plot_if_available(axes_overview[0], t_arr, try_get_series(problem, y_arr, name), name)
 axes_overview[0].set_title("Grid-Side AC Voltages")
 axes_overview[0].grid(True)
@@ -885,11 +911,11 @@ else:
 fig_si_overview, axes_si_overview = plt.subplots(3, 2, figsize=(16, 12), sharex=True)
 axes_si_overview = axes_si_overview.ravel()
 
-plot_scaled_with_tracking(axes_si_overview[0], t_arr, problem, y_arr, "v_A_Bus1_emt_template",
+plot_scaled_with_tracking(axes_si_overview[0], t_arr, problem, y_arr, "v_A",
                           V_phase_rms_base / 1000.0, "v_A_Bus1 [kV]")
-plot_scaled_with_tracking(axes_si_overview[0], t_arr, problem, y_arr, "v_B_Bus1_emt_template",
+plot_scaled_with_tracking(axes_si_overview[0], t_arr, problem, y_arr, "v_B",
                           V_phase_rms_base / 1000.0, "v_B_Bus1 [kV]")
-plot_scaled_with_tracking(axes_si_overview[0], t_arr, problem, y_arr, "v_C_Bus1_emt_template",
+plot_scaled_with_tracking(axes_si_overview[0], t_arr, problem, y_arr, "v_C",
                           V_phase_rms_base / 1000.0, "v_C_Bus1 [kV]")
 axes_si_overview[0].set_title("Grid-Side AC Voltages [kV phase-to-neutral instantaneous]")
 axes_si_overview[0].set_ylabel("Voltage [kV]")
@@ -1242,6 +1268,7 @@ for ax in axes_si_pll:
 
 csv_suffix = TEST_CSV_SUFFIX.get(selected_test, selected_test)
 csv_path = os.path.join(REPO_ROOT, "trunk", "GridsForLoads_dynamic", f"veragrid_G4L_{csv_suffix}.csv")
+plot_output_folder = get_plot_output_folder(csv_suffix)
 csv_columns = {"time_s": t_arr}
 
 
@@ -1258,9 +1285,9 @@ def add_csv_array(column_name: str, series):
         csv_columns[column_name] = series
 
 
-add_csv_series("vA_Bus1_kV", "v_A_Bus1_emt_template", V_phase_rms_base / 1000.0)
-add_csv_series("vB_Bus1_kV", "v_B_Bus1_emt_template", V_phase_rms_base / 1000.0)
-add_csv_series("vC_Bus1_kV", "v_C_Bus1_emt_template", V_phase_rms_base / 1000.0)
+add_csv_series("vA_Bus1_kV", "v_A", V_phase_rms_base / 1000.0)
+add_csv_series("vB_Bus1_kV", "v_B", V_phase_rms_base / 1000.0)
+add_csv_series("vC_Bus1_kV", "v_C", V_phase_rms_base / 1000.0)
 add_csv_series("iA_grid_A_sim_sign", "i_f_A_G4L_grid_side_converter", Ibase_vg, negate=True)
 add_csv_series("iB_grid_A_sim_sign", "i_f_B_G4L_grid_side_converter", Ibase_vg, negate=True)
 add_csv_series("iC_grid_A_sim_sign", "i_f_C_G4L_grid_side_converter", Ibase_vg, negate=True)
@@ -1333,4 +1360,13 @@ fig_si_currents.tight_layout()
 # fig_si_va_corrected.tight_layout()
 # fig_si_va_inferred.tight_layout()
 fig_si_currents_corrected.tight_layout()
+
+figures_to_save = [
+    ("01_ac_voltage_current_overview", fig_si_overview),
+    ("02_dq_current_chain", fig_si_currents_corrected),
+    ("03_power_and_frequency_response", fig_si_pll),
+    ("04_virtual_admittance_internal_checks", fig_si_va_corrected),
+]
+save_selected_figures(plot_output_folder, figures_to_save)
+print(f"PNG plots exported to: {plot_output_folder}")
 # plt.show()

@@ -91,6 +91,7 @@ def adv_jacobian(nbus: int,
                  k_vsc_pfp_droop: IntVec,
                  dpfp_droop_slope: Vec,
                  k_vsc_vmdc_diff: IntVec,
+                 k_vsc_pdc: IntVec,
                  Pt_vsc: Vec,
                  Qt_vsc: Vec,
                  Pf_hvdc: Vec,
@@ -251,7 +252,7 @@ def adv_jacobian(nbus: int,
     n_droop = len(k_vsc_pfp_droop)
     dDroop_dVa = CSC(n_droop, len(i_u_va), 0, False)  # fully empty
     dDroop_dVm = deriv.dDroopvsc_dVm_csc(n_droop, nbus, i_u_vm, k_vsc_pfp_droop, Fdcp_vsc, dpfp_droop_slope)
-    dDroop_dPfpvsc = deriv.dDroopvsc_dPfp_csc(n_droop, nvsc, k_vsc_pfp_droop, u_vsc_pfp)
+    dDroop_dPfpvsc = deriv.dunit_vsc_csc(n_droop, nvsc, k_vsc_pfp_droop, u_vsc_pfp)
     dDroop_dPfnvsc = CSC(n_droop, len(u_vsc_pfn), 0, False)  # fully empty
     dDroop_dPtvsc = CSC(n_droop, len(u_vsc_pt), 0, False)  # fully empty
     dDroop_dQtvsc = CSC(n_droop, len(u_vsc_qt), 0, False)  # fully empty
@@ -261,6 +262,21 @@ def adv_jacobian(nbus: int,
     dDroop_dQthvdc = CSC(n_droop, nhvdc, 0, False)  # fully empty
     dDroop_dm = CSC(n_droop, len(u_cbr_m), 0, False)  # fully empty
     dDroop_dtau = CSC(n_droop, len(u_cbr_tau), 0, False)  # fully empty
+
+    # -------- ROW 5b2 (bipolar Pdc equations: Pfp + Pfn - Pdc_set = 0) ---------
+    n_pdc = len(k_vsc_pdc)
+    dPdc_dVa = CSC(n_pdc, len(i_u_va), 0, False)  # fully empty (DC bus angles are not unknowns)
+    dPdc_dVm = CSC(n_pdc, len(i_u_vm), 0, False)  # fully empty (linear in Pfp and Pfn only)
+    dPdc_dPfpvsc = deriv.dunit_vsc_csc(n_pdc, nvsc, k_vsc_pdc, u_vsc_pfp)
+    dPdc_dPfnvsc = deriv.dunit_vsc_csc(n_pdc, nvsc, k_vsc_pdc, u_vsc_pfn)
+    dPdc_dPtvsc = CSC(n_pdc, len(u_vsc_pt), 0, False)  # fully empty
+    dPdc_dQtvsc = CSC(n_pdc, len(u_vsc_qt), 0, False)  # fully empty
+    dPdc_dPfhvdc = CSC(n_pdc, nhvdc, 0, False)  # fully empty
+    dPdc_dPthvdc = CSC(n_pdc, nhvdc, 0, False)  # fully empty
+    dPdc_dQfhvdc = CSC(n_pdc, nhvdc, 0, False)  # fully empty
+    dPdc_dQthvdc = CSC(n_pdc, nhvdc, 0, False)  # fully empty
+    dPdc_dm = CSC(n_pdc, len(u_cbr_m), 0, False)  # fully empty
+    dPdc_dtau = CSC(n_pdc, len(u_cbr_tau), 0, False)  # fully empty
 
     # -------- ROW 5c (bipolar Vm_dc pole-to-pole: (V[F].real - V[F_dcn].real) - Udc_set = 0) ---------
     n_vmdc_diff = len(k_vsc_vmdc_diff)
@@ -395,6 +411,9 @@ def adv_jacobian(nbus: int,
         dDroop_dVa, dDroop_dVm, dDroop_dPfpvsc, dDroop_dPfnvsc, dDroop_dPtvsc, dDroop_dQtvsc, dDroop_dPfhvdc,
         dDroop_dPthvdc, dDroop_dQfhvdc, dDroop_dQthvdc, dDroop_dm, dDroop_dtau,
 
+        dPdc_dVa, dPdc_dVm, dPdc_dPfpvsc, dPdc_dPfnvsc, dPdc_dPtvsc, dPdc_dQtvsc, dPdc_dPfhvdc,
+        dPdc_dPthvdc, dPdc_dQfhvdc, dPdc_dQthvdc, dPdc_dm, dPdc_dtau,
+
         dVmdcDiff_dVa, dVmdcDiff_dVm, dVmdcDiff_dPfpvsc, dVmdcDiff_dPfnvsc, dVmdcDiff_dPtvsc, dVmdcDiff_dQtvsc,
         dVmdcDiff_dPfhvdc, dVmdcDiff_dPthvdc, dVmdcDiff_dQfhvdc, dVmdcDiff_dQthvdc, dVmdcDiff_dm, dVmdcDiff_dtau,
 
@@ -418,7 +437,7 @@ def adv_jacobian(nbus: int,
         dQt_dVa, dQt_dVm, dQt_dPfpvsc, dQt_dPfnvsc, dQt_dPtvsc, dQt_dQtvsc, dQt_dPfhvdc, dQt_dPthvdc, dQt_dQfhvdc,
         dQt_dQthvdc, dQt_dm, dQt_dtau
 
-    ], n_rows=13, n_cols=12)
+    ], n_rows=14, n_cols=12)
 
     return J
 
@@ -694,6 +713,8 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
         self.vsc_pfp_droop_side = np.zeros(0, dtype=int)  # 1 if control1 carries the droop, else 2
         self.k_vsc_vmdc_diff = np.zeros(0, dtype=int)  # bipolar VSCs whose Vm_dc regulates pole-to-pole Udc
         self.vsc_vmdc_diff_side = np.zeros(0, dtype=int)  # 1 if control1 carries the Vm_dc, else 2
+        self.k_vsc_pdc = np.zeros(0, dtype=int)  # bipolar VSCs whose Pdc fixes Pdcset = Pfp + Pfn
+        self.vsc_pdc_set = np.zeros(0, dtype=float)  # Pdc setpoints in MW aligned with k_vsc_pdc
         self._set_vsc_control_indices()
 
         # Fill HVDC Indices
@@ -725,6 +746,9 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
         if len(self.k_vsc_pfp_droop):
             # warm-start the droop Pfp unknowns at the droop law evaluated at the initial voltage
             self.Pfp_vsc[self.k_vsc_pfp_droop] = self._pfp_droop_values(polar_to_rect(self.Vm, self.Va))
+        if len(self.k_vsc_pdc):
+            # start the bipolar-Pdc Pfp unknowns at the setpoint (like when the negative pole is grounded)
+            self.Pfp_vsc[self.k_vsc_pdc] = self.vsc_pdc_set / self.nc.Sbase
         self.Pfn_vsc[self.k_vsc_pfn] = self.vsc_pfn_set / self.nc.Sbase
         self.Pt_vsc[self.k_vsc_pt] = self.vsc_pt_set / self.nc.Sbase
         self.Qt_vsc[self.k_vsc_qt] = self.vsc_qt_set / self.nc.Sbase
@@ -753,6 +777,113 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
         # numerical work to the existing Numba kernels.
         self.discrete_shunt_control = DiscreteShuntControlState(nc=self.nc)
         self.qv_droop_control = QvDroopControlState(S0=self.S0, nc=self.nc)
+
+        # On a flat start the negative DC poles sit at +1 instead
+        # of -1 and the grounded buses at 1 instead of 0. Init them correctly
+        if not self.options.use_stored_guess:
+            self._apply_bipolar_flat_start()
+
+    def _apply_bipolar_flat_start(self, v_ground: float = 1e-8) -> None:
+        """
+        Init Vm/Va so a bipolar AC/DC grid flat starts in the right basin:
+            positive DC pole -> +1
+            negative DC pole -> -1
+            Return/ground -> ~0 
+
+        AC buses are left untouched 
+
+        Polarity is inferred from the grid structure:
+          1. split the DC network into islands 
+          2. the grounding area is any island holding a grounded bus or a VSC
+             negative terminal (F_dcn) -> seeded to roughly 0
+          3. every other island is a live pole, where its sign comes from 
+          a Vm_dc voltage reference
+
+        A pole island with no Vm_dc reference is under-defined (its sign would be
+        fixed only by the initial guess). We default it to +1 and warn, because a
+        well conditioned bipolar grid must anchor each pole with a V reference.
+
+        :param v_ground: small non-zero magnitude for grounded buses
+        :return: nothing
+        """
+        vsc = self.nc.vsc_data
+        is_dc = self.nc.bus_data.is_dc
+        F_pb = self.nc.passive_branch_data.F
+        T_pb = self.nc.passive_branch_data.T
+        dc_pb = self.nc.passive_branch_data.dc
+
+        # We label each DC bus with its island id (running a BFS over DC lines)
+        adj: Dict[int, List[int]] = dict()
+        for k in np.where(dc_pb != 0)[0]:
+            f, t = int(F_pb[k]), int(T_pb[k])
+            adj.setdefault(f, list()).append(t)
+            adj.setdefault(t, list()).append(f)
+
+        comp: Dict[int, int] = dict()  # bus -> island id
+        comp_buses: List[List[int]] = list()  # island id -> buses
+        for b0 in np.where(is_dc != 0)[0]:
+            b0 = int(b0)
+            if b0 not in comp:
+                cid = len(comp_buses)
+                members: List[int] = list()
+                stack = [b0]
+                comp[b0] = cid
+                while stack:
+                    u = stack.pop()
+                    members.append(u)
+                    for w in adj.get(u, ()):
+                        if w not in comp:
+                            comp[w] = cid
+                            stack.append(w)
+                comp_buses.append(members)
+
+        # The positive DC pole fp is never meant to be grounded
+        for k in range(vsc.nelm):
+            if vsc.active[k] and self.bus_grounded[int(vsc.F[k])]:
+                self.logger.add_warning(
+                    msg="VSC positive DC terminal is grounded, while the positive "
+                        "pole is never meant to be grounded",
+                    device=str(self.nc.bus_data.names[int(vsc.F[k])]))
+
+        # Set the grounding area for islands with a grounded bus or a VSC negative
+        is_return = [bool(np.any(self.bus_grounded[m] != 0)) for m in comp_buses]
+        for fn in vsc.F_dcn:
+            if fn > -1 and int(fn) in comp:
+                is_return[comp[int(fn)]] = True
+
+        # Each pole island gets the sign from a Vm_dc reference on its fp side
+        vmdc = ConverterControlType.Vm_dc.idx()
+        sign: Dict[int, int] = dict()  # pole island, so apply +-1
+        for k in range(vsc.nelm):
+            if vsc.active[k]:
+                pole = comp.get(int(vsc.F[k]))
+                if pole is not None and not is_return[pole]:
+                    if vsc.control1_int[k] == vmdc:
+                        sign[pole] = 1 if vsc.control1_val[k] >= 0.0 else -1
+                    elif vsc.control2_int[k] == vmdc:
+                        sign[pole] = 1 if vsc.control2_val[k] >= 0.0 else -1
+
+        # under-defined pole islands (no Vm_dc reference) default to +1 and warn
+        for cid, members in enumerate(comp_buses):
+            if not is_return[cid] and cid not in sign:
+                sign[cid] = 1
+                self.logger.add_warning(
+                    msg="DC pole has no Vm_dc voltage reference; sign defaults to +1 "
+                        "and depends on the initial guess. Anchor the pole to make it well posed.",
+                    device=str(self.nc.bus_data.names[members[0]]))
+
+        # Populate the DC bus voltage with the guess
+        for b in np.where(is_dc != 0)[0]:
+            b = int(b)
+            cid = comp[b]
+            if is_return[cid]:
+                self._Vm[b] = v_ground
+                self._Va[b] = 0.0
+            elif sign.get(cid, 1) > 0:
+                self._Va[b] = 0.0
+            else:
+                self._Va[b] = np.pi  # Like a minus sign
+        self.V = polar_to_rect(self._Vm, self._Va)
 
     def _update_Qlim_indices(self, i_u_vm: IntVec, i_k_q: IntVec) -> None:
         """
@@ -885,8 +1016,6 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
         vsc_qt_set = list()
         vsc_i_set = list()
         k_vsc_has_dc_n = list()
-        vmdc_diff_k = list()
-        vmdc_diff_side = list()
 
         # VSC LOOP
         for k in range(self.nc.vsc_data.nelm):
@@ -1746,29 +1875,29 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
         if len(self.k_vsc_pfp_droop):
             self.u_vsc_pfp = np.unique(np.r_[self.u_vsc_pfp, self.k_vsc_pfp_droop]).astype(int)
 
-        # --- Bipolar Vm_dc pole-to-pole reformulation ----------------------------------------------------------------
-        # A Vm_dc control normally pins a single DC pole bus (control{1,2}_bus_idx == F[k]) to its setpoint.
-        # For a bipolar VSC (F_dcn > -1) we instead regulate the pole-to-pole voltage difference
-        # (V[F].real - V[F_dcn].real == Udc_set): both pole-bus magnitudes stay unknowns and an extra
-        # residual equation is added. Here we unpin the bus and register the converter.
-        for k in range(self.nc.vsc_data.nelm):
-            if not self.nc.vsc_data.active[k]:
-                continue
-            if self.nc.vsc_data.F_dcn[k] <= -1:
-                continue  # monopolar: keep the existing pole-to-ground pin
-            if self.nc.vsc_data.control1_int[k] == ConverterControlType.Vm_dc.idx():
-                side, bus_dev = 1, self.nc.vsc_data.control1_bus_idx[k]
-            elif self.nc.vsc_data.control2_int[k] == ConverterControlType.Vm_dc.idx():
-                side, bus_dev = 2, self.nc.vsc_data.control2_bus_idx[k]
-            else:
-                continue
-            if bus_dev > -1:
-                self.is_vm_controlled[bus_dev] = False  # Vm[F] becomes an unknown again
-            vmdc_diff_k.append(k)
-            vmdc_diff_side.append(side)
+        # When setting the Pdc, a bipolar VSC sets Pdc = Pfp + Pfn. If the n terminal is grounded, only Pfp
+        bipolar = self.nc.vsc_data.F_dcn[self.k_vsc_pfp] > -1
+        self.k_vsc_pdc = self.k_vsc_pfp[bipolar]
+        self.vsc_pdc_set = self.vsc_pfp_set[bipolar]
+        self.k_vsc_pfp = self.k_vsc_pfp[~bipolar]
+        self.vsc_pfp_set = self.vsc_pfp_set[~bipolar]
+        if len(self.k_vsc_pdc):
+            self.u_vsc_pfp = np.unique(np.r_[self.u_vsc_pfp, self.k_vsc_pdc]).astype(int)
 
-        self.k_vsc_vmdc_diff = np.array(vmdc_diff_k, dtype=int)
-        self.vsc_vmdc_diff_side = np.array(vmdc_diff_side, dtype=int)
+        # A bipolar VSC sets the voltage as the difference Vfp - Vfn, if not bipolar, only Vfp
+        vd = self.nc.vsc_data
+        vmdc = ConverterControlType.Vm_dc.idx()
+        eligible = vd.active.astype(bool) & (vd.F_dcn > -1)
+        on_side1 = eligible & (vd.control1_int == vmdc)
+        on_side2 = eligible & (vd.control2_int == vmdc) & ~on_side1
+        selected = on_side1 | on_side2
+
+        self.k_vsc_vmdc_diff = np.where(selected)[0].astype(int)
+        self.vsc_vmdc_diff_side = np.where(on_side1[selected], 1, 2).astype(int)
+
+        # The regulated pole bus stops being pinned, so Vm[F] becomes an unknown again
+        bus_dev = np.where(on_side1, vd.control1_bus_idx, vd.control2_bus_idx)[selected]
+        self.is_vm_controlled[bus_dev[bus_dev > -1]] = False
 
     def _set_hvdc_control_indices(self) -> None:
         """
@@ -2140,6 +2269,10 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
         # Pdc voltage-droop equation per droop converter: Pfp - droop(Vm[pole]) = 0
         droop_vsc = Pfp_vsc_[self.k_vsc_pfp_droop] - self._pfp_droop_values(V)
 
+        # Bipolar Pdc equation: total converter DC power Pfp + Pfn - Pdc_set = 0
+        kp = self.k_vsc_pdc
+        pdc_vsc = (Pfp_vsc_[kp] + Pfn_vsc_[kp]) - self.vsc_pdc_set / self.nc.Sbase
+
         # Bipolar Vm_dc pole-to-pole voltage equation: (V[F].real - V[F_dcn].real) - Udc_set = 0
         kk = self.k_vsc_vmdc_diff
         vmdc_diff = ((V[self.nc.vsc_data.F[kk]].real - V[self.nc.vsc_data.F_dcn[kk]].real)
@@ -2195,6 +2328,7 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
             balance_vsc,
             current_vsc[self.k_vsc_i],
             droop_vsc,
+            pdc_vsc,
             vmdc_diff,
             loss_hvdc,
             inj_hvdc,
@@ -2588,6 +2722,8 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
                 # re-apply VSC setpoints after control indices have been rebuilt
                 if n_disconnected_vscs > 0:
                     self.Pfp_vsc[self.k_vsc_pfp] = self.vsc_pfp_set / self.nc.Sbase
+                    if len(self.k_vsc_pdc):
+                        self.Pfp_vsc[self.k_vsc_pdc] = self.vsc_pdc_set / self.nc.Sbase
                     self.Pfn_vsc[self.k_vsc_pfn] = self.vsc_pfn_set / self.nc.Sbase
                     self.Pt_vsc[self.k_vsc_pt] = self.vsc_pt_set / self.nc.Sbase
                     self.Qt_vsc[self.k_vsc_qt] = self.vsc_qt_set / self.nc.Sbase
@@ -2729,6 +2865,10 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
         # Pdc voltage-droop equation per droop converter: Pfp - droop(Vm[pole]) = 0
         droop_vsc = self.Pfp_vsc[self.k_vsc_pfp_droop] - self._pfp_droop_values(V)
 
+        # Bipolar Pdc equation: total converter DC power Pfp + Pfn - Pdc_set = 0
+        kp = self.k_vsc_pdc
+        pdc_vsc = (self.Pfp_vsc[kp] + self.Pfn_vsc[kp]) - self.vsc_pdc_set / self.nc.Sbase
+
         # Bipolar Vm_dc pole-to-pole voltage equation: (V[F].real - V[F_dcn].real) - Udc_set = 0
         kk = self.k_vsc_vmdc_diff
         vmdc_diff = (V[F[kk]].real - V[F_dcn[kk]].real) - self._vmdc_diff_setpoints()
@@ -2779,6 +2919,7 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
             balance_vsc,
             current_vsc[self.k_vsc_i],
             droop_vsc,
+            pdc_vsc,
             vmdc_diff,
             dloss_hvdc,
             dinj_hvdc,
@@ -2880,6 +3021,7 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
                 k_vsc_pfp_droop=self.k_vsc_pfp_droop,
                 dpfp_droop_slope=dpfp_droop_slope,
                 k_vsc_vmdc_diff=self.k_vsc_vmdc_diff,
+                k_vsc_pdc=self.k_vsc_pdc,
                 Pt_vsc=self.Pt_vsc,
                 Qt_vsc=self.Qt_vsc,
                 Pf_hvdc=self.Pf_hvdc,
@@ -2975,6 +3117,10 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
 
         Pfp_vsc = self.Pfp_vsc * self.nc.Sbase
         Pfn_vsc = self.Pfn_vsc * self.nc.Sbase
+        # DC pole-to-pole voltage Vfp - Vfn (Vfn = 0 for monopolar VSCs, F_dcn == -1)
+        Fdcn = self.nc.vsc_data.F_dcn
+        Vfn = np.where(Fdcn > -1, self.V[Fdcn].real, 0.0)
+        Vdc_vsc = self.V[self.nc.vsc_data.F].real - Vfn
         St_vsc = make_complex(self.Pt_vsc, self.Qt_vsc) * self.nc.Sbase
         If_vsc = self.Pfp_vsc / self.Vm[self.nc.vsc_data.F]
         It_vsc = make_complex(self.Pt_vsc, self.Qt_vsc) / self.Vm[self.nc.vsc_data.T]
@@ -3028,6 +3174,7 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
             losses=losses,
             Pfp_vsc=Pfp_vsc,
             Pfn_vsc=Pfn_vsc,
+            Vdc_vsc=Vdc_vsc,
             St_vsc=St_vsc,
             If_vsc=If_vsc,
             It_vsc=It_vsc,

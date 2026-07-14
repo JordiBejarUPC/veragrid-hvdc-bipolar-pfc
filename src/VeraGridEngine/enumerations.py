@@ -1702,6 +1702,7 @@ class SubObjectType(Enum):
     Associations = "AssociationsList"
     ListOfWires = 'ListOfWires'
     AdmittanceMatrix = "Admittance Matrix"
+    ImpedanceTripletList = "Impedance Triplet List"
     DaeBlockType = "DaeBlock"
     VarType = "VarType"
     ConstType = "ConstType"
@@ -2495,6 +2496,8 @@ class ResultTypes(Enum):
     VscLosses = 'Vsc losses'
     VscPowerFromPositive = 'Vsc power "from" positive pole'
     VscPowerFromNegative = 'Vsc power "from" negative pole'
+    VscPdc = 'Vsc Pdc'
+    VscVdc = 'Vsc Vdc'
     VscLoading = 'Vsc loading'
 
     VscPowerTo = 'Vsc power "to"'
@@ -4295,6 +4298,9 @@ class BlockType(Enum):
     this class contains the existing types of blocks
     """
 
+    # tools
+    FROM_GOTO = "FROM_GOTO"
+
     # inputs and outputs
     INPUT_CONN = "Bus Connection"
     OUTPUT_CONN = "EXTERNAL_MAPPING"
@@ -4368,8 +4374,8 @@ class BlockType(Enum):
     EXP_LOAD_EMT = "EXP_LOAD_EMT"
     ZIP_LOAD_EMT = "ZIP_LOAD_EMT"
     DC_LOAD_EMT = "DC_LOAD_EMT"
-    EMT_THEVENIN = "EMT_THEVENIN_EMT"
-    EMTLOAD = "EMT_LOAD"
+    EMT_THEVENIN = "EMT_THEVENIN"
+    EMT_LOAD = "EMT_LOAD"
     TRAFO_EMT = "TRAFO_EMT"
     XFMR_TRANSFORMER = "XFMR_TRANSFORMER"
     INDUCTION_MOTOR_EMT = "INDUCTION_MOTOR_EMT"

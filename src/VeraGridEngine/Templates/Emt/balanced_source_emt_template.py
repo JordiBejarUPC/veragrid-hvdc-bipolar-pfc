@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
+from VeraGridEngine.Templates.template_definition import TemplateDefinition, TemplateProp
 from VeraGridEngine.Utils.Symbolic.block import Expr, Var
 from VeraGridEngine.Utils.Symbolic import symbolic as sym
 from VeraGridEngine.enumerations import DeviceType, VarPowerFlowReferenceType
@@ -49,6 +50,35 @@ def _build_external_mapping(v_a: Var, v_b: Var, v_c: Var, i_a: Var, i_b: Var, i_
     }
 
 
+# ----------------------------------------------------------------------------------------------------------------------
+# BALANCED THREE-PHASE CURRENT SOURCE
+# ----------------------------------------------------------------------------------------------------------------------
+class Balanced3phCurrentSourceEmtTemplate(TemplateDefinition):
+
+    def __init__(self, vf):
+        super().__init__(
+            vf,
+            params=[
+                TemplateProp(name="amplitude_value", units="A", descr="Common phase amplitude.", tpe=float, value=1.0),
+                TemplateProp(name="frequency_hz", units="Hz", descr="Common sinusoidal frequency.", tpe=float, value=50.0),
+                TemplateProp(name="phase_a_deg", units="deg", descr="Phase-A angle offset.", tpe=float, value=0.0),
+                TemplateProp(name="offset_value", units="A", descr="Common phase offset.", tpe=float, value=0.0),
+                TemplateProp(name="name", units="", descr="Name of the emt model.", tpe=str, value="balanced_3ph_current_source_emt"),
+            ]
+        )
+
+    def eval(self) -> EmtModelTemplate:
+        amplitude_value: float = self.get_value("amplitude_value")
+        frequency_hz: float = self.get_value("frequency_hz")
+        phase_a_deg: float = self.get_value("phase_a_deg")
+        offset_value: float = self.get_value("offset_value")
+        name: str = self.get_value("name")
+
+        return get_balanced_3ph_current_source_emt_template(
+            self.vf, amplitude_value, frequency_hz, phase_a_deg, offset_value, name
+        )
+
+
 def get_balanced_3ph_current_source_emt_template(vf: VarFactory,
                                                  amplitude_value: float = 1.0,
                                                  frequency_hz: float = 50.0,
@@ -71,18 +101,18 @@ def get_balanced_3ph_current_source_emt_template(vf: VarFactory,
     templ.name = name
     templ.block.name = name
 
-    v_a: Var = vf.add_var(name=f"v_A_{name}", reference=VarPowerFlowReferenceType.v_A)
-    v_b: Var = vf.add_var(name=f"v_B_{name}", reference=VarPowerFlowReferenceType.v_B)
-    v_c: Var = vf.add_var(name=f"v_C_{name}", reference=VarPowerFlowReferenceType.v_C)
-    i_a: Var = vf.add_var(name=f"i_A_{name}", reference=VarPowerFlowReferenceType.i_A)
-    i_b: Var = vf.add_var(name=f"i_B_{name}", reference=VarPowerFlowReferenceType.i_B)
-    i_c: Var = vf.add_var(name=f"i_C_{name}", reference=VarPowerFlowReferenceType.i_C)
-    theta_var: Var = vf.add_var(name=f"theta_src_{name}")
-    d_theta_var: Var = vf.add_diff_var(name=f"d_theta_src_{name}", base_var=theta_var)
-    frequency_var: Var = vf.add_var(name=f"f_src_{name}")
-    amplitude_var: Var = vf.add_var(name=f"I_amp_{name}")
-    phase_a_deg_var: Var = vf.add_var(name=f"phi_deg_A_{name}")
-    offset_var: Var = vf.add_var(name=f"I_offset_{name}")
+    v_a: Var = vf.add_var(name=f"v_A", reference=VarPowerFlowReferenceType.v_A)
+    v_b: Var = vf.add_var(name=f"v_B", reference=VarPowerFlowReferenceType.v_B)
+    v_c: Var = vf.add_var(name=f"v_C", reference=VarPowerFlowReferenceType.v_C)
+    i_a: Var = vf.add_var(name=f"i_A", reference=VarPowerFlowReferenceType.i_A)
+    i_b: Var = vf.add_var(name=f"i_B", reference=VarPowerFlowReferenceType.i_B)
+    i_c: Var = vf.add_var(name=f"i_C", reference=VarPowerFlowReferenceType.i_C)
+    theta_var: Var = vf.add_var(name=f"theta_src")
+    d_theta_var: Var = vf.add_diff_var(name=f"d_theta_src", base_var=theta_var)
+    frequency_var: Var = vf.add_var(name=f"f_src")
+    amplitude_var: Var = vf.add_var(name=f"I_amp")
+    phase_a_deg_var: Var = vf.add_var(name=f"phi_deg_A")
+    offset_var: Var = vf.add_var(name=f"I_offset")
 
     templ.block.event_dict[frequency_var] = vf.add_const(float(frequency_hz))
     templ.block.event_dict[amplitude_var] = vf.add_const(float(amplitude_value))
@@ -105,6 +135,33 @@ def get_balanced_3ph_current_source_emt_template(vf: VarFactory,
     return templ
 
 
+# ----------------------------------------------------------------------------------------------------------------------
+# CONTROLLED BALANCED THREE-PHASE CURRENT SOURCE
+# ----------------------------------------------------------------------------------------------------------------------
+class ControlledBalanced3phCurrentSourceEmtTemplate(TemplateDefinition):
+
+    def __init__(self, vf):
+        super().__init__(
+            vf,
+            params=[
+                TemplateProp(name="frequency_hz", units="Hz", descr="Common sinusoidal frequency.", tpe=float, value=50.0),
+                TemplateProp(name="phase_a_deg", units="deg", descr="Phase-A angle offset.", tpe=float, value=0.0),
+                TemplateProp(name="offset_value", units="A", descr="Common phase offset.", tpe=float, value=0.0),
+                TemplateProp(name="name", units="", descr="Name of the emt model.", tpe=str, value="controlled_balanced_3ph_current_source_emt"),
+            ]
+        )
+
+    def eval(self) -> EmtModelTemplate:
+        frequency_hz: float = self.get_value("frequency_hz")
+        phase_a_deg: float = self.get_value("phase_a_deg")
+        offset_value: float = self.get_value("offset_value")
+        name: str = self.get_value("name")
+
+        return get_controlled_balanced_3ph_current_source_emt_template(
+            self.vf, frequency_hz, phase_a_deg, offset_value, name
+        )
+
+
 def get_controlled_balanced_3ph_current_source_emt_template(vf: VarFactory,
                                                             frequency_hz: float = 50.0,
                                                             phase_a_deg: float = 0.0,
@@ -125,18 +182,18 @@ def get_controlled_balanced_3ph_current_source_emt_template(vf: VarFactory,
     templ.name = name
     templ.block.name = name
 
-    v_a: Var = vf.add_var(name=f"v_A_{name}", reference=VarPowerFlowReferenceType.v_A)
-    v_b: Var = vf.add_var(name=f"v_B_{name}", reference=VarPowerFlowReferenceType.v_B)
-    v_c: Var = vf.add_var(name=f"v_C_{name}", reference=VarPowerFlowReferenceType.v_C)
-    i_amp_cmd: Var = vf.add_var(name=f"i_amp_cmd_{name}")
-    i_a: Var = vf.add_var(name=f"i_A_{name}", reference=VarPowerFlowReferenceType.i_A)
-    i_b: Var = vf.add_var(name=f"i_B_{name}", reference=VarPowerFlowReferenceType.i_B)
-    i_c: Var = vf.add_var(name=f"i_C_{name}", reference=VarPowerFlowReferenceType.i_C)
-    theta_var: Var = vf.add_var(name=f"theta_src_{name}")
-    d_theta_var: Var = vf.add_diff_var(name=f"d_theta_src_{name}", base_var=theta_var)
-    frequency_var: Var = vf.add_var(name=f"f_src_{name}")
-    phase_a_deg_var: Var = vf.add_var(name=f"phi_deg_A_{name}")
-    offset_var: Var = vf.add_var(name=f"I_offset_{name}")
+    v_a: Var = vf.add_var(name=f"v_A", reference=VarPowerFlowReferenceType.v_A)
+    v_b: Var = vf.add_var(name=f"v_B", reference=VarPowerFlowReferenceType.v_B)
+    v_c: Var = vf.add_var(name=f"v_C", reference=VarPowerFlowReferenceType.v_C)
+    i_amp_cmd: Var = vf.add_var(name=f"i_amp_cmd")
+    i_a: Var = vf.add_var(name=f"i_A", reference=VarPowerFlowReferenceType.i_A)
+    i_b: Var = vf.add_var(name=f"i_B", reference=VarPowerFlowReferenceType.i_B)
+    i_c: Var = vf.add_var(name=f"i_C", reference=VarPowerFlowReferenceType.i_C)
+    theta_var: Var = vf.add_var(name=f"theta_src")
+    d_theta_var: Var = vf.add_diff_var(name=f"d_theta_src", base_var=theta_var)
+    frequency_var: Var = vf.add_var(name=f"f_src")
+    phase_a_deg_var: Var = vf.add_var(name=f"phi_deg_A")
+    offset_var: Var = vf.add_var(name=f"I_offset")
 
     templ.block.event_dict[frequency_var] = vf.add_const(float(frequency_hz))
     templ.block.event_dict[phase_a_deg_var] = vf.add_const(float(phase_a_deg))
@@ -156,6 +213,37 @@ def get_controlled_balanced_3ph_current_source_emt_template(vf: VarFactory,
     templ.block.external_mapping = _build_external_mapping(v_a, v_b, v_c, i_a, i_b, i_c)
     templ.block.init_eqs = {theta_var: sym.Const(0.0), i_a: offset_var, i_b: offset_var, i_c: offset_var}
     return templ
+
+
+# ----------------------------------------------------------------------------------------------------------------------
+# BALANCED THREE-PHASE VOLTAGE SOURCE
+# ----------------------------------------------------------------------------------------------------------------------
+class Balanced3phVoltageSourceEmtTemplate(TemplateDefinition):
+
+    def __init__(self, vf):
+        super().__init__(
+            vf,
+            params=[
+                TemplateProp(name="amplitude_value", units="V", descr="Common phase amplitude.", tpe=float, value=1.0),
+                TemplateProp(name="frequency_hz", units="Hz", descr="Common sinusoidal frequency.", tpe=float, value=50.0),
+                TemplateProp(name="phase_a_deg", units="deg", descr="Phase-A angle offset.", tpe=float, value=0.0),
+                TemplateProp(name="offset_value", units="V", descr="Common phase offset.", tpe=float, value=0.0),
+                TemplateProp(name="source_conductance_value", units="S", descr="Norton conductance.", tpe=float, value=100.0),
+                TemplateProp(name="name", units="", descr="Name of the emt model.", tpe=str, value="balanced_3ph_voltage_source_emt"),
+            ]
+        )
+
+    def eval(self) -> EmtModelTemplate:
+        amplitude_value: float = self.get_value("amplitude_value")
+        frequency_hz: float = self.get_value("frequency_hz")
+        phase_a_deg: float = self.get_value("phase_a_deg")
+        offset_value: float = self.get_value("offset_value")
+        source_conductance_value: float = self.get_value("source_conductance_value")
+        name: str = self.get_value("name")
+
+        return get_balanced_3ph_voltage_source_emt_template(
+            self.vf, amplitude_value, frequency_hz, phase_a_deg, offset_value, source_conductance_value, name
+        )
 
 
 def get_balanced_3ph_voltage_source_emt_template(vf: VarFactory,
@@ -182,19 +270,19 @@ def get_balanced_3ph_voltage_source_emt_template(vf: VarFactory,
     templ.name = name
     templ.block.name = name
 
-    v_a: Var = vf.add_var(name=f"v_A_{name}", reference=VarPowerFlowReferenceType.v_A)
-    v_b: Var = vf.add_var(name=f"v_B_{name}", reference=VarPowerFlowReferenceType.v_B)
-    v_c: Var = vf.add_var(name=f"v_C_{name}", reference=VarPowerFlowReferenceType.v_C)
-    i_a: Var = vf.add_var(name=f"i_A_{name}", reference=VarPowerFlowReferenceType.i_A)
-    i_b: Var = vf.add_var(name=f"i_B_{name}", reference=VarPowerFlowReferenceType.i_B)
-    i_c: Var = vf.add_var(name=f"i_C_{name}", reference=VarPowerFlowReferenceType.i_C)
-    theta_var: Var = vf.add_var(name=f"theta_src_{name}")
-    d_theta_var: Var = vf.add_diff_var(name=f"d_theta_src_{name}", base_var=theta_var)
-    frequency_var: Var = vf.add_var(name=f"f_src_{name}")
-    amplitude_var: Var = vf.add_var(name=f"V_amp_{name}")
-    phase_a_deg_var: Var = vf.add_var(name=f"phi_deg_A_{name}")
-    offset_var: Var = vf.add_var(name=f"V_offset_{name}")
-    conductance_var: Var = vf.add_var(name=f"g_src_{name}")
+    v_a: Var = vf.add_var(name=f"v_A", reference=VarPowerFlowReferenceType.v_A)
+    v_b: Var = vf.add_var(name=f"v_B", reference=VarPowerFlowReferenceType.v_B)
+    v_c: Var = vf.add_var(name=f"v_C", reference=VarPowerFlowReferenceType.v_C)
+    i_a: Var = vf.add_var(name=f"i_A", reference=VarPowerFlowReferenceType.i_A)
+    i_b: Var = vf.add_var(name=f"i_B", reference=VarPowerFlowReferenceType.i_B)
+    i_c: Var = vf.add_var(name=f"i_C", reference=VarPowerFlowReferenceType.i_C)
+    theta_var: Var = vf.add_var(name=f"theta_src")
+    d_theta_var: Var = vf.add_diff_var(name=f"d_theta_src", base_var=theta_var)
+    frequency_var: Var = vf.add_var(name=f"f_src")
+    amplitude_var: Var = vf.add_var(name=f"V_amp")
+    phase_a_deg_var: Var = vf.add_var(name=f"phi_deg_A")
+    offset_var: Var = vf.add_var(name=f"V_offset")
+    conductance_var: Var = vf.add_var(name=f"g_src")
 
     templ.block.event_dict[frequency_var] = vf.add_const(float(frequency_hz))
     templ.block.event_dict[amplitude_var] = vf.add_const(float(amplitude_value))
@@ -222,6 +310,35 @@ def get_balanced_3ph_voltage_source_emt_template(vf: VarFactory,
     return templ
 
 
+# ----------------------------------------------------------------------------------------------------------------------
+# CONTROLLED BALANCED THREE-PHASE VOLTAGE SOURCE
+# ----------------------------------------------------------------------------------------------------------------------
+class ControlledBalanced3phVoltageSourceEmtTemplate(TemplateDefinition):
+
+    def __init__(self, vf):
+        super().__init__(
+            vf,
+            params=[
+                TemplateProp(name="frequency_hz", units="Hz", descr="Common sinusoidal frequency.", tpe=float, value=50.0),
+                TemplateProp(name="phase_a_deg", units="deg", descr="Phase-A angle offset.", tpe=float, value=0.0),
+                TemplateProp(name="offset_value", units="V", descr="Common phase offset.", tpe=float, value=0.0),
+                TemplateProp(name="source_conductance_value", units="S", descr="Norton conductance.", tpe=float, value=100.0),
+                TemplateProp(name="name", units="", descr="Name of the emt model.", tpe=str, value="controlled_balanced_3ph_voltage_source_emt"),
+            ]
+        )
+
+    def eval(self) -> EmtModelTemplate:
+        frequency_hz: float = self.get_value("frequency_hz")
+        phase_a_deg: float = self.get_value("phase_a_deg")
+        offset_value: float = self.get_value("offset_value")
+        source_conductance_value: float = self.get_value("source_conductance_value")
+        name: str = self.get_value("name")
+
+        return get_controlled_balanced_3ph_voltage_source_emt_template(
+            self.vf, frequency_hz, phase_a_deg, offset_value, source_conductance_value, name
+        )
+
+
 def get_controlled_balanced_3ph_voltage_source_emt_template(vf: VarFactory,
                                                             frequency_hz: float = 50.0,
                                                             phase_a_deg: float = 0.0,
@@ -244,19 +361,19 @@ def get_controlled_balanced_3ph_voltage_source_emt_template(vf: VarFactory,
     templ.name = name
     templ.block.name = name
 
-    v_a: Var = vf.add_var(name=f"v_A_{name}", reference=VarPowerFlowReferenceType.v_A)
-    v_b: Var = vf.add_var(name=f"v_B_{name}", reference=VarPowerFlowReferenceType.v_B)
-    v_c: Var = vf.add_var(name=f"v_C_{name}", reference=VarPowerFlowReferenceType.v_C)
-    v_amp_cmd: Var = vf.add_var(name=f"v_amp_cmd_{name}")
-    i_a: Var = vf.add_var(name=f"i_A_{name}", reference=VarPowerFlowReferenceType.i_A)
-    i_b: Var = vf.add_var(name=f"i_B_{name}", reference=VarPowerFlowReferenceType.i_B)
-    i_c: Var = vf.add_var(name=f"i_C_{name}", reference=VarPowerFlowReferenceType.i_C)
-    theta_var: Var = vf.add_var(name=f"theta_src_{name}")
-    d_theta_var: Var = vf.add_diff_var(name=f"d_theta_src_{name}", base_var=theta_var)
-    frequency_var: Var = vf.add_var(name=f"f_src_{name}")
-    phase_a_deg_var: Var = vf.add_var(name=f"phi_deg_A_{name}")
-    offset_var: Var = vf.add_var(name=f"V_offset_{name}")
-    conductance_var: Var = vf.add_var(name=f"g_src_{name}")
+    v_a: Var = vf.add_var(name=f"v_A", reference=VarPowerFlowReferenceType.v_A)
+    v_b: Var = vf.add_var(name=f"v_B", reference=VarPowerFlowReferenceType.v_B)
+    v_c: Var = vf.add_var(name=f"v_C", reference=VarPowerFlowReferenceType.v_C)
+    v_amp_cmd: Var = vf.add_var(name=f"v_amp_cmd")
+    i_a: Var = vf.add_var(name=f"i_A", reference=VarPowerFlowReferenceType.i_A)
+    i_b: Var = vf.add_var(name=f"i_B", reference=VarPowerFlowReferenceType.i_B)
+    i_c: Var = vf.add_var(name=f"i_C", reference=VarPowerFlowReferenceType.i_C)
+    theta_var: Var = vf.add_var(name=f"theta_src")
+    d_theta_var: Var = vf.add_diff_var(name=f"d_theta_src", base_var=theta_var)
+    frequency_var: Var = vf.add_var(name=f"f_src")
+    phase_a_deg_var: Var = vf.add_var(name=f"phi_deg_A")
+    offset_var: Var = vf.add_var(name=f"V_offset")
+    conductance_var: Var = vf.add_var(name=f"g_src")
 
     templ.block.event_dict[frequency_var] = vf.add_const(float(frequency_hz))
     templ.block.event_dict[phase_a_deg_var] = vf.add_const(float(phase_a_deg))

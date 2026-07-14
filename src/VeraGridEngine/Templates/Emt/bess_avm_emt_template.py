@@ -69,39 +69,39 @@ def get_battery_avm_emt_template(vf: VarFactory, name: str) -> EmtModelTemplate:
     # ------------------------------------------------------------------
     # Inputs from the imported VSC block.
     # ------------------------------------------------------------------
-    i_dc = vf.add_var(name=f"i_dc_bat_in_{name}")
-    i_dc_conv_init = vf.add_var(name=f"i_dc_conv_bat_in_{name}")
-    r_dc_init = vf.add_var(name=f"r_dc_bat_in_{name}")
-    r_dc_term_init = vf.add_var(name=f"r_dc_term_bat_in_{name}")
+    i_dc = vf.add_var(name=f"i_dc_bat_in")
+    i_dc_conv_init = vf.add_var(name=f"i_dc_conv_bat_in")
+    r_dc_init = vf.add_var(name=f"r_dc_bat_in")
+    r_dc_term_init = vf.add_var(name=f"r_dc_term_bat_in")
 
     # ------------------------------------------------------------------
     # Battery state and derivative.
     # ------------------------------------------------------------------
-    soc = vf.add_var(name=f"soc_{name}")
-    d_soc = vf.add_diff_var(name=f"d_soc_{name}", base_var=soc)
+    soc = vf.add_var(name=f"soc")
+    d_soc = vf.add_diff_var(name=f"d_soc", base_var=soc)
 
     # ------------------------------------------------------------------
     # Algebraic battery variables.
     # ------------------------------------------------------------------
-    v_dc_bus = vf.add_var(name=f"v_dc_bus_bat_{name}", reference=VarPowerFlowReferenceType.Vdc)
-    v_oc = vf.add_var(name=f"v_oc_bat_{name}")
-    i_bat = vf.add_var(name=f"i_bat_{name}")
-    p_bat = vf.add_var(name=f"p_bat_{name}")
-    p_dis = vf.add_var(name=f"p_dis_bat_{name}")
-    p_ch = vf.add_var(name=f"p_ch_bat_{name}")
+    v_dc_bus = vf.add_var(name=f"v_dc_bus_bat", reference=VarPowerFlowReferenceType.Vdc)
+    v_oc = vf.add_var(name=f"v_oc_bat")
+    i_bat = vf.add_var(name=f"i_bat")
+    p_bat = vf.add_var(name=f"p_bat")
+    p_dis = vf.add_var(name=f"p_dis_bat")
+    p_ch = vf.add_var(name=f"p_ch_bat")
 
     # ------------------------------------------------------------------
     # Local battery parameters.
     # ------------------------------------------------------------------
-    e_cap = vf.add_var(name=f"e_cap_bat_{name}")
-    v_min = vf.add_var(name=f"v_min_bat_{name}")
-    v_max = vf.add_var(name=f"v_max_bat_{name}")
-    r_bat = vf.add_var(name=f"r_bat_{name}")
-    eta_ch = vf.add_var(name=f"eta_ch_bat_{name}")
-    eta_dis = vf.add_var(name=f"eta_dis_bat_{name}")
-    soc_min = vf.add_var(name=f"soc_min_bat_{name}")
-    soc_max = vf.add_var(name=f"soc_max_bat_{name}")
-    soc0 = vf.add_var(name=f"soc0_bat_{name}")
+    e_cap = vf.add_var(name=f"e_cap_bat")
+    v_min = vf.add_var(name=f"v_min_bat")
+    v_max = vf.add_var(name=f"v_max_bat")
+    r_bat = vf.add_var(name=f"r_bat")
+    eta_ch = vf.add_var(name=f"eta_ch_bat")
+    eta_dis = vf.add_var(name=f"eta_dis_bat")
+    soc_min = vf.add_var(name=f"soc_min_bat")
+    soc_max = vf.add_var(name=f"soc_max_bat")
+    soc0 = vf.add_var(name=f"soc0_bat")
     c0 = vf.add_const(0.0)
     c1 = vf.add_const(1.0)
     c_half = vf.add_const(0.5)
@@ -198,46 +198,46 @@ def _build_bess_outer_power_loop_block(vf: VarFactory, name: str) -> Block:
     :param name: Symbolic model name.
     :return: Outer-loop block.
     """
-    v_d = vf.add_var(name=f"v_d_outer_in_{name}")
-    v_q = vf.add_var(name=f"v_q_outer_in_{name}")
-    v_0 = vf.add_var(name=f"v_0_outer_in_{name}")
-    i_d = vf.add_var(name=f"i_d_outer_in_{name}")
-    i_q = vf.add_var(name=f"i_q_outer_in_{name}")
-    i_0 = vf.add_var(name=f"i_0_outer_in_{name}")
-    P = vf.add_var(name=f"P_outer_in_{name}")
-    Q = vf.add_var(name=f"Q_outer_in_{name}")
-    sbase = vf.add_var(name=f"sbase_outer_in_{name}")
-    P_ref = vf.add_var(name=f"P_ref_outer_in_{name}")
-    Q_ref = vf.add_var(name=f"Q_ref_outer_in_{name}")
-    Vpk = vf.add_var(name=f"Vpk_outer_in_{name}")
-    P_loss0 = vf.add_var(name=f"P_loss0_outer_in_{name}")
-    p_kp = vf.add_var(name=f"vdc_kp_outer_in_{name}")
-    p_ki = vf.add_var(name=f"vdc_ki_outer_in_{name}")
-    q_kp = vf.add_var(name=f"q_kp_outer_in_{name}")
-    q_ki = vf.add_var(name=f"q_ki_outer_in_{name}")
-    i_max = vf.add_var(name=f"i_max_outer_in_{name}")
-    tau_meas = vf.add_var(name=f"tau_meas_outer_in_{name}")
-    aw_gain = vf.add_var(name=f"aw_gain_outer_in_{name}")
+    v_d = vf.add_var(name=f"v_d_outer_in")
+    v_q = vf.add_var(name=f"v_q_outer_in")
+    v_0 = vf.add_var(name=f"v_0_outer_in")
+    i_d = vf.add_var(name=f"i_d_outer_in")
+    i_q = vf.add_var(name=f"i_q_outer_in")
+    i_0 = vf.add_var(name=f"i_0_outer_in")
+    P = vf.add_var(name=f"P_outer_in")
+    Q = vf.add_var(name=f"Q_outer_in")
+    sbase = vf.add_var(name=f"sbase_outer_in")
+    P_ref = vf.add_var(name=f"P_ref_outer_in")
+    Q_ref = vf.add_var(name=f"Q_ref_outer_in")
+    Vpk = vf.add_var(name=f"Vpk_outer_in")
+    P_loss0 = vf.add_var(name=f"P_loss0_outer_in")
+    p_kp = vf.add_var(name=f"vdc_kp_outer_in")
+    p_ki = vf.add_var(name=f"vdc_ki_outer_in")
+    q_kp = vf.add_var(name=f"q_kp_outer_in")
+    q_ki = vf.add_var(name=f"q_ki_outer_in")
+    i_max = vf.add_var(name=f"i_max_outer_in")
+    tau_meas = vf.add_var(name=f"tau_meas_outer_in")
+    aw_gain = vf.add_var(name=f"aw_gain_outer_in")
 
-    xi_vdc = vf.add_var(name=f"xi_vdc_{name}")
-    xi_q = vf.add_var(name=f"xi_q_{name}")
-    P_f = vf.add_var(name=f"P_f_{name}")
-    Q_f = vf.add_var(name=f"Q_f_{name}")
+    xi_vdc = vf.add_var(name=f"xi_vdc")
+    xi_q = vf.add_var(name=f"xi_q")
+    P_f = vf.add_var(name=f"P_f")
+    Q_f = vf.add_var(name=f"Q_f")
 
-    d_xi_vdc = vf.add_diff_var(name=f"d_xi_vdc_{name}", base_var=xi_vdc)
-    d_xi_q = vf.add_diff_var(name=f"d_xi_q_{name}", base_var=xi_q)
-    d_P_f = vf.add_diff_var(name=f"d_P_f_{name}", base_var=P_f)
-    d_Q_f = vf.add_diff_var(name=f"d_Q_f_{name}", base_var=Q_f)
+    d_xi_vdc = vf.add_diff_var(name=f"d_xi_vdc", base_var=xi_vdc)
+    d_xi_q = vf.add_diff_var(name=f"d_xi_q", base_var=xi_q)
+    d_P_f = vf.add_diff_var(name=f"d_P_f", base_var=P_f)
+    d_Q_f = vf.add_diff_var(name=f"d_Q_f", base_var=Q_f)
 
-    v_mag = vf.add_var(name=f"v_mag_{name}")
-    i_d_ff = vf.add_var(name=f"i_d_ff_{name}")
-    i_q_ff = vf.add_var(name=f"i_q_ff_{name}")
-    i_0_ref_u = vf.add_var(name=f"i_0_ref_u_{name}")
-    i_d_ref_u = vf.add_var(name=f"i_d_ref_u_{name}")
-    i_q_ref_u = vf.add_var(name=f"i_q_ref_u_{name}")
-    i_0_ref = vf.add_var(name=f"i_0_ref_{name}")
-    i_d_ref = vf.add_var(name=f"i_d_ref_{name}")
-    i_q_ref = vf.add_var(name=f"i_q_ref_{name}")
+    v_mag = vf.add_var(name=f"v_mag")
+    i_d_ff = vf.add_var(name=f"i_d_ff")
+    i_q_ff = vf.add_var(name=f"i_q_ff")
+    i_0_ref_u = vf.add_var(name=f"i_0_ref_u")
+    i_d_ref_u = vf.add_var(name=f"i_d_ref_u")
+    i_q_ref_u = vf.add_var(name=f"i_q_ref_u")
+    i_0_ref = vf.add_var(name=f"i_0_ref")
+    i_d_ref = vf.add_var(name=f"i_d_ref")
+    i_q_ref = vf.add_var(name=f"i_q_ref")
 
     eps = vf.add_const(1e-10)
     c0 = vf.add_const(0.0)
@@ -372,9 +372,9 @@ def get_bess_avm_grid_following_emt_template(
     # device with an internal battery, so the DC bus voltage is produced by the
     # battery block rather than received from an external DC network.
     # ------------------------------------------------------------------
-    v_A = vf.add_var(name=f"v_A_{name}", reference=VarPowerFlowReferenceType.v_A)
-    v_B = vf.add_var(name=f"v_B_{name}", reference=VarPowerFlowReferenceType.v_B)
-    v_C = vf.add_var(name=f"v_C_{name}", reference=VarPowerFlowReferenceType.v_C)
+    v_A = vf.add_var(name=f"v_A", reference=VarPowerFlowReferenceType.v_A)
+    v_B = vf.add_var(name=f"v_B", reference=VarPowerFlowReferenceType.v_B)
+    v_C = vf.add_var(name=f"v_C", reference=VarPowerFlowReferenceType.v_C)
 
     # ------------------------------------------------------------------
     # Imported converter/control blocks.

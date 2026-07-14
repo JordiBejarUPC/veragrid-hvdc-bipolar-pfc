@@ -14,6 +14,7 @@ from VeraGridEngine.enumerations import (
 )
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
+from VeraGridEngine.Templates.template_definition import TemplateDefinition, TemplateProp
 from VeraGridEngine.Templates.Emt.load_RLC_emt_template import get_grounding_link_emt_template
 from VeraGridEngine.Templates.Emt.transformer_emt_template import _attach_transformer_editor_diagram
 from VeraGridEngine.Utils.Symbolic.block import Block, Var, Expr
@@ -162,6 +163,8 @@ def get_xfmr_emt_template(
     :param name: Symbolic model name.
     :return: EMT transformer template.
     """
+
+    name = "xfmr_emt_template"
     templ = EmtModelTemplate()
     templ.tpe = DeviceType.Transformer2WDevice
     templ.name = name
@@ -188,13 +191,13 @@ def get_xfmr_emt_template(
     # ------------------------------------------------------------------
     # Static parameters mapped from the transformer API object.
     # ------------------------------------------------------------------
-    omega_base: Var = vf.add_var(name=f"omega_base_{name}")
-    xfmr_s_rated_mva: Var = vf.add_var(name=f"xfmr_s_rated_mva_{name}")
-    xfmr_oc_current_pct: Var = vf.add_var(name=f"xfmr_oc_current_pct_{name}")
-    xfmr_oc_loss_kw: Var = vf.add_var(name=f"xfmr_oc_loss_kw_{name}")
-    xfmr_sc_voltage_pct: Var = vf.add_var(name=f"xfmr_sc_voltage_pct_{name}")
-    xfmr_sc_loss_kw: Var = vf.add_var(name=f"xfmr_sc_loss_kw_{name}")
-    xfmr_tap_module: Var = vf.add_var(name=f"xfmr_tap_module_{name}")
+    omega_base: Var = vf.add_var(name=f"omega_base")
+    xfmr_s_rated_mva: Var = vf.add_var(name=f"xfmr_s_rated_mva")
+    xfmr_oc_current_pct: Var = vf.add_var(name=f"xfmr_oc_current_pct")
+    xfmr_oc_loss_kw: Var = vf.add_var(name=f"xfmr_oc_loss_kw")
+    xfmr_sc_voltage_pct: Var = vf.add_var(name=f"xfmr_sc_voltage_pct")
+    xfmr_sc_loss_kw: Var = vf.add_var(name=f"xfmr_sc_loss_kw")
+    xfmr_tap_module: Var = vf.add_var(name=f"xfmr_tap_module")
 
     templ.block.api_obj_mapping[ParamPowerFlowReferenceType.omega_base] = omega_base
     templ.block.api_obj_mapping[ParamPowerFlowReferenceType.transformer_rated_power_mva] = xfmr_s_rated_mva
@@ -250,8 +253,8 @@ def get_xfmr_emt_template(
         c_t_row: list[Expr] = []
 
         for j in range(3):
-            c_f_var: Var = vf.add_var(name=f"xfmr_cf_{i}_{j}_{name}")
-            c_t_var: Var = vf.add_var(name=f"xfmr_ct_{i}_{j}_{name}")
+            c_f_var: Var = vf.add_var(name=f"xfmr_cf_{i}_{j}")
+            c_t_var: Var = vf.add_var(name=f"xfmr_ct_{i}_{j}")
 
             templ.block.api_obj_mapping[cf_enums[i][j]] = c_f_var
             templ.block.api_obj_mapping[ct_enums[i][j]] = c_t_var
@@ -265,20 +268,20 @@ def get_xfmr_emt_template(
     # ------------------------------------------------------------------
     # Local dynamic-model parameters.
     # ------------------------------------------------------------------
-    xfmr_core_topology_code: Var = vf.add_var(name=f"xfmr_core_topology_code_{name}")
-    xfmr_yoke_area_rel: Var = vf.add_var(name=f"xfmr_yoke_area_rel_{name}")
-    xfmr_yoke_length_rel: Var = vf.add_var(name=f"xfmr_yoke_length_rel_{name}")
-    xfmr_outer_leg_area_rel: Var = vf.add_var(name=f"xfmr_outer_leg_area_rel_{name}")
-    xfmr_outer_leg_length_rel: Var = vf.add_var(name=f"xfmr_outer_leg_length_rel_{name}")
-    xfmr_c_term: Var = vf.add_var(name=f"xfmr_c_term_{name}")
-    xfmr_use_linear_core: Var = vf.add_var(name=f"xfmr_use_linear_core_{name}")
-    xfmr_core_knee_flux_mult: Var = vf.add_var(name=f"xfmr_core_knee_flux_mult_{name}")
-    xfmr_core_knee_current_mult: Var = vf.add_var(name=f"xfmr_core_knee_current_mult_{name}")
+    xfmr_core_topology_code: Var = vf.add_var(name=f"xfmr_core_topology_code")
+    xfmr_yoke_area_rel: Var = vf.add_var(name=f"xfmr_yoke_area_rel")
+    xfmr_yoke_length_rel: Var = vf.add_var(name=f"xfmr_yoke_length_rel")
+    xfmr_outer_leg_area_rel: Var = vf.add_var(name=f"xfmr_outer_leg_area_rel")
+    xfmr_outer_leg_length_rel: Var = vf.add_var(name=f"xfmr_outer_leg_length_rel")
+    xfmr_c_term: Var = vf.add_var(name=f"xfmr_c_term")
+    xfmr_use_linear_core: Var = vf.add_var(name=f"xfmr_use_linear_core")
+    xfmr_core_knee_flux_mult: Var = vf.add_var(name=f"xfmr_core_knee_flux_mult")
+    xfmr_core_knee_current_mult: Var = vf.add_var(name=f"xfmr_core_knee_current_mult")
 
-    xfmr_sc_resistance_pct: Var = vf.add_var(name=f"xfmr_sc_resistance_pct_{name}")
-    xfmr_core_linear_l_pu: Var = vf.add_var(name=f"xfmr_core_linear_l_pu_{name}")
-    xfmr_core_a_prime: Var = vf.add_var(name=f"xfmr_core_a_prime_{name}")
-    xfmr_core_b_prime: Var = vf.add_var(name=f"xfmr_core_b_prime_{name}")
+    xfmr_sc_resistance_pct: Var = vf.add_var(name=f"xfmr_sc_resistance_pct")
+    xfmr_core_linear_l_pu: Var = vf.add_var(name=f"xfmr_core_linear_l_pu")
+    xfmr_core_a_prime: Var = vf.add_var(name=f"xfmr_core_a_prime")
+    xfmr_core_b_prime: Var = vf.add_var(name=f"xfmr_core_b_prime")
 
     templ.block.event_dict[xfmr_core_topology_code] = vf.add_const(3.0)
     templ.block.event_dict[xfmr_yoke_area_rel] = vf.add_const(1.0)
@@ -347,57 +350,57 @@ def get_xfmr_emt_template(
     v_t_n: Var | None = None
 
     if from_has_neutral_port:
-        v_f_n = vf.add_var(name=f"vf_N_{name}", reference=vf_keys["N"])
+        v_f_n = vf.add_var(name=f"vf_N", reference=vf_keys["N"])
     else:
         pass
 
     if to_has_neutral_port:
-        v_t_n = vf.add_var(name=f"vt_N_{name}", reference=vt_keys["N"])
+        v_t_n = vf.add_var(name=f"vt_N", reference=vt_keys["N"])
     else:
         pass
 
     v_f: list[Var] = [
-        vf.add_var(name=f"vf_A_{name}", reference=vf_keys["A"]),
-        vf.add_var(name=f"vf_B_{name}", reference=vf_keys["B"]),
-        vf.add_var(name=f"vf_C_{name}", reference=vf_keys["C"]),
+        vf.add_var(name=f"vf_A", reference=vf_keys["A"]),
+        vf.add_var(name=f"vf_B", reference=vf_keys["B"]),
+        vf.add_var(name=f"vf_C", reference=vf_keys["C"]),
     ]
     v_t: list[Var] = [
-        vf.add_var(name=f"vt_A_{name}", reference=vt_keys["A"]),
-        vf.add_var(name=f"vt_B_{name}", reference=vt_keys["B"]),
-        vf.add_var(name=f"vt_C_{name}", reference=vt_keys["C"]),
+        vf.add_var(name=f"vt_A", reference=vt_keys["A"]),
+        vf.add_var(name=f"vt_B", reference=vt_keys["B"]),
+        vf.add_var(name=f"vt_C", reference=vt_keys["C"]),
     ]
 
     # ------------------------------------------------------------------
     # Dynamic states and derivatives.
     # ------------------------------------------------------------------
-    i_leak: list[Var] = [vf.add_var(name=f"i_leak_{ph}_{name}") for ph in ("A", "B", "C")]
-    lam_leg: list[Var] = [vf.add_var(name=f"lam_leg_{ph}_{name}") for ph in ("A", "B", "C")]
-    q_f: list[Var] = [vf.add_var(name=f"qf_{ph}_{name}") for ph in ("A", "B", "C")]
-    q_t: list[Var] = [vf.add_var(name=f"qt_{ph}_{name}") for ph in ("A", "B", "C")]
+    i_leak: list[Var] = [vf.add_var(name=f"i_leak_{ph}") for ph in ("A", "B", "C")]
+    lam_leg: list[Var] = [vf.add_var(name=f"lam_leg_{ph}") for ph in ("A", "B", "C")]
+    q_f: list[Var] = [vf.add_var(name=f"qf_{ph}") for ph in ("A", "B", "C")]
+    q_t: list[Var] = [vf.add_var(name=f"qt_{ph}") for ph in ("A", "B", "C")]
 
-    di_leak: list[Var] = [vf.add_diff_var(name=f"di_leak_{ph}_{name}", base_var=i_leak[k]) for k, ph in enumerate(("A", "B", "C"))]
-    dlam_leg: list[Var] = [vf.add_diff_var(name=f"dlam_leg_{ph}_{name}", base_var=lam_leg[k]) for k, ph in enumerate(("A", "B", "C"))]
-    dq_f: list[Var] = [vf.add_diff_var(name=f"dqf_{ph}_{name}", base_var=q_f[k]) for k, ph in enumerate(("A", "B", "C"))]
-    dq_t: list[Var] = [vf.add_diff_var(name=f"dqt_{ph}_{name}", base_var=q_t[k]) for k, ph in enumerate(("A", "B", "C"))]
+    di_leak: list[Var] = [vf.add_diff_var(name=f"di_leak_{ph}", base_var=i_leak[k]) for k, ph in enumerate(("A", "B", "C"))]
+    dlam_leg: list[Var] = [vf.add_diff_var(name=f"dlam_leg_{ph}", base_var=lam_leg[k]) for k, ph in enumerate(("A", "B", "C"))]
+    dq_f: list[Var] = [vf.add_diff_var(name=f"dqf_{ph}", base_var=q_f[k]) for k, ph in enumerate(("A", "B", "C"))]
+    dq_t: list[Var] = [vf.add_diff_var(name=f"dqt_{ph}", base_var=q_t[k]) for k, ph in enumerate(("A", "B", "C"))]
 
     # ------------------------------------------------------------------
     # Algebraic variables.
     # ------------------------------------------------------------------
-    i_leg_core: list[Var] = [vf.add_var(name=f"i_leg_core_{ph}_{name}") for ph in ("A", "B", "C")]
-    i_mag: list[Var] = [vf.add_var(name=f"i_mag_{ph}_{name}") for ph in ("A", "B", "C")]
-    i_loss_leg: list[Var] = [vf.add_var(name=f"i_loss_leg_{ph}_{name}") for ph in ("A", "B", "C")]
-    i_cap_f: list[Var] = [vf.add_var(name=f"i_cap_f_{ph}_{name}") for ph in ("A", "B", "C")]
-    i_cap_t: list[Var] = [vf.add_var(name=f"i_cap_t_{ph}_{name}") for ph in ("A", "B", "C")]
-    if_act: list[Var] = [vf.add_var(name=f"if_{ph}_{name}") for ph in ("A", "B", "C")]
-    it_act: list[Var] = [vf.add_var(name=f"it_{ph}_{name}") for ph in ("A", "B", "C")]
-    if_n_act: Var | None = vf.add_var(name=f"if_N_{name}") if from_has_neutral_port else None
-    it_n_act: Var | None = vf.add_var(name=f"it_N_{name}") if to_has_neutral_port else None
+    i_leg_core: list[Var] = [vf.add_var(name=f"i_leg_core_{ph}") for ph in ("A", "B", "C")]
+    i_mag: list[Var] = [vf.add_var(name=f"i_mag_{ph}") for ph in ("A", "B", "C")]
+    i_loss_leg: list[Var] = [vf.add_var(name=f"i_loss_leg_{ph}") for ph in ("A", "B", "C")]
+    i_cap_f: list[Var] = [vf.add_var(name=f"i_cap_f_{ph}") for ph in ("A", "B", "C")]
+    i_cap_t: list[Var] = [vf.add_var(name=f"i_cap_t_{ph}") for ph in ("A", "B", "C")]
+    if_act: list[Var] = [vf.add_var(name=f"if_{ph}") for ph in ("A", "B", "C")]
+    it_act: list[Var] = [vf.add_var(name=f"it_{ph}") for ph in ("A", "B", "C")]
+    if_n_act: Var | None = vf.add_var(name=f"if_N") if from_has_neutral_port else None
+    it_n_act: Var | None = vf.add_var(name=f"it_N") if to_has_neutral_port else None
     from_ground_current: Var | None = None
     to_ground_current: Var | None = None
     from_grounding_link_block: Block | None = None
     to_grounding_link_block: Block | None = None
-    i_return_path: Var = vf.add_var(name=f"i_return_path_{name}")
-    i_return_total: Var = vf.add_var(name=f"i_return_total_{name}")
+    i_return_path: Var = vf.add_var(name=f"i_return_path")
+    i_return_total: Var = vf.add_var(name=f"i_return_total")
 
     input_vars: list[Var] = list()
     if v_f_n is not None:
@@ -888,3 +891,24 @@ def get_xfmr_emt_template(
     )
 
     return templ
+
+
+class XfmrEmtTemplate(TemplateDefinition):
+
+    def __init__(self, vf):
+        super().__init__(
+            vf,
+            params=[
+                TemplateProp(name="conn_f", units="", descr="From-side winding connection.", tpe=WindingType, value=None),
+                TemplateProp(name="conn_t", units="", descr="To-side winding connection.", tpe=WindingType, value=None),
+                TemplateProp(name="name", units="", descr="Name of the emt model.", tpe=str, value="xfmr_emt_template"),
+            ]
+        )
+
+    def eval(self) -> EmtModelTemplate:
+        return get_xfmr_emt_template(
+            self.vf,
+            conn_f=self.get_value("conn_f"),
+            conn_t=self.get_value("conn_t"),
+            name=self.get_value("name"),
+        )

@@ -482,16 +482,16 @@ steps: int = int(t_end / h)
 tme: np.ndarray = np.linspace(0, t_end, steps)
 
 #
-v_A_0 = find_name_in_block("v_A_Bus0_emt_template", bus0.emt_model)
-v_B_0 = find_name_in_block("v_B_Bus0_emt_template", bus0.emt_model)
-v_C_0 = find_name_in_block("v_C_Bus0_emt_template", bus0.emt_model)
+v_A_0 = find_name_in_block("v_A", bus0.emt_model)
+v_B_0 = find_name_in_block("v_B", bus0.emt_model)
+v_C_0 = find_name_in_block("v_C", bus0.emt_model)
 v_A_0_plt = y[:, problem.get_var_idx(v_A_0)]
 v_B_0_plt = y[:, problem.get_var_idx(v_B_0)]
 v_C_0_plt = y[:, problem.get_var_idx(v_C_0)]
 
-v_A_1 = find_name_in_block("v_A_Bus1_emt_template", bus1.emt_model)
-v_B_1 = find_name_in_block("v_B_Bus1_emt_template", bus1.emt_model)
-v_C_1 = find_name_in_block("v_C_Bus1_emt_template", bus1.emt_model)
+v_A_1 = find_name_in_block("v_A", bus1.emt_model)
+v_B_1 = find_name_in_block("v_B", bus1.emt_model)
+v_C_1 = find_name_in_block("v_C", bus1.emt_model)
 v_A_1_plt = y[:, problem.get_var_idx(v_A_1)]
 v_B_1_plt = y[:, problem.get_var_idx(v_B_1)]
 v_C_1_plt = y[:, problem.get_var_idx(v_C_1)]
@@ -524,8 +524,8 @@ plt.tight_layout()
 print("Generating plots...")
 plt.show()
 
-theta = find_name_in_block("theta_simple_emt_type_generator_template", gen_mdl)
-omega_gen = find_name_in_block("omega_simple_emt_type_generator_template", gen_mdl)
+theta = find_name_in_block("theta", gen_mdl)
+omega_gen = find_name_in_block("omega", gen_mdl)
 theta_plt = y[:, problem.get_var_idx(theta)]
 omega_plt = y[:, problem.get_var_idx(omega_gen)]
 
@@ -553,9 +553,9 @@ plt.tight_layout()
 print("Generating plots...")
 plt.show()
 
-i_A_gen = find_name_in_block("i_A_simple_emt_type_generator_template", gen_mdl)
-i_B_gen = find_name_in_block("i_B_simple_emt_type_generator_template", gen_mdl)
-i_C_gen = find_name_in_block("i_C_simple_emt_type_generator_template", gen_mdl)
+i_A_gen = find_name_in_block("i_A", gen_mdl)
+i_B_gen = find_name_in_block("i_B", gen_mdl)
+i_C_gen = find_name_in_block("i_C", gen_mdl)
 i_A_gen_plt = y[:, problem.get_var_idx(i_A_gen)]
 i_B_gen_plt = y[:, problem.get_var_idx(i_B_gen)]
 i_C_gen_plt = y[:, problem.get_var_idx(i_C_gen)]
@@ -563,9 +563,9 @@ i_C_gen_plt = y[:, problem.get_var_idx(i_C_gen)]
 # i_A_load = find_name_in_block("i_A_ZIP_Load_EMT_3ph", load_mdl)
 # i_B_load = find_name_in_block("i_B_ZIP_Load_EMT_3ph", load_mdl)
 # i_C_load = find_name_in_block("i_C_ZIP_Load_EMT_3ph", load_mdl)
-i_A_load = find_name_in_block("i_A_R_shunt_3ph", load_mdl)
-i_B_load = find_name_in_block("i_B_R_shunt_3ph", load_mdl)
-i_C_load = find_name_in_block("i_C_R_shunt_3ph", load_mdl)
+i_A_load = find_name_in_block("i_A", load_mdl)
+i_B_load = find_name_in_block("i_B", load_mdl)
+i_C_load = find_name_in_block("i_C", load_mdl)
 i_A_load_plt = y[:, problem.get_var_idx(i_A_load)]
 i_B_load_plt = y[:, problem.get_var_idx(i_B_load)]
 i_C_load_plt = y[:, problem.get_var_idx(i_C_load)]
@@ -646,12 +646,12 @@ plt.show()
 # print("Generating plots...")
 # plt.show()
 
-Pm_gen = find_name_in_block("Pm_simple_emt_type_generator_template", gen_mdl)
-Qe_gen = find_name_in_block("Qe_simple_emt_type_generator_template", gen_mdl)
-Pe_gen = find_name_in_block("Pe_simple_emt_type_generator_template", gen_mdl)
-Tm_gen = find_name_in_block("Tm_simple_emt_type_generator_template", gen_mdl)
-Te_gen = find_name_in_block("Te_simple_emt_type_generator_template", gen_mdl)
-et_gen = find_name_in_block("et_simple_emt_type_generator_template", gen_mdl)
+Pm_gen = find_name_in_block("Pm", gen_mdl)
+Qe_gen = find_name_in_block("Qe", gen_mdl)
+Pe_gen = find_name_in_block("Pe", gen_mdl)
+Tm_gen = find_name_in_block("Tm", gen_mdl)
+Te_gen = find_name_in_block("Te", gen_mdl)
+et_gen = find_name_in_block("et", gen_mdl)
 Pm_gen_plt = y[:, problem.get_var_idx(Pm_gen)]
 Qe_gen_plt = y[:, problem.get_var_idx(Qe_gen)]
 Pe_gen_plt = y[:, problem.get_var_idx(Pe_gen)]
@@ -695,14 +695,14 @@ plt.tight_layout()
 print("Generating plots...")
 plt.show()
 
-i_d_gen = find_name_in_block("i_d_simple_emt_type_generator_template", gen_mdl)
-i_q_gen = find_name_in_block("i_q_simple_emt_type_generator_template", gen_mdl)
-i_0_gen = find_name_in_block("i_0_simple_emt_type_generator_template", gen_mdl)
-i_f_gen = find_name_in_block("i_f_simple_emt_type_generator_template", gen_mdl)
-v_d_gen = find_name_in_block("v_d_simple_emt_type_generator_template", gen_mdl)
-v_q_gen = find_name_in_block("v_q_simple_emt_type_generator_template", gen_mdl)
-v_0_gen = find_name_in_block("v_0_simple_emt_type_generator_template", gen_mdl)
-v_f_gen = find_name_in_block("v_f_simple_emt_type_generator_template", gen_mdl)
+i_d_gen = find_name_in_block("i_d", gen_mdl)
+i_q_gen = find_name_in_block("i_q", gen_mdl)
+i_0_gen = find_name_in_block("i_0", gen_mdl)
+i_f_gen = find_name_in_block("i_f", gen_mdl)
+v_d_gen = find_name_in_block("v_d", gen_mdl)
+v_q_gen = find_name_in_block("v_q", gen_mdl)
+v_0_gen = find_name_in_block("v_0", gen_mdl)
+v_f_gen = find_name_in_block("v_f", gen_mdl)
 i_d_gen_plt = y[:, problem.get_var_idx(i_d_gen)]
 i_q_gen_plt = y[:, problem.get_var_idx(i_q_gen)]
 i_0_gen_plt = y[:, problem.get_var_idx(i_0_gen)]
@@ -760,16 +760,16 @@ plt.show()
 
 
 
-i_f_A_line = find_name_in_block("if_Pi_A", line0.emt_model)
-i_f_B_line = find_name_in_block("if_Pi_B", line0.emt_model)
-i_f_C_line = find_name_in_block("if_Pi_C", line0.emt_model)
+i_f_A_line = find_name_in_block("if_A", line0.emt_model)
+i_f_B_line = find_name_in_block("if_B", line0.emt_model)
+i_f_C_line = find_name_in_block("if_C", line0.emt_model)
 i_f_A_line_plt = y[:, problem.get_var_idx(i_f_A_line)]
 i_f_B_line_plt = y[:, problem.get_var_idx(i_f_B_line)]
 i_f_C_line_plt = y[:, problem.get_var_idx(i_f_C_line)]
 
-i_t_A_line = find_name_in_block("it_Pi_A", line0.emt_model)
-i_t_B_line = find_name_in_block("it_Pi_B", line0.emt_model)
-i_t_C_line = find_name_in_block("it_Pi_C", line0.emt_model)
+i_t_A_line = find_name_in_block("it_A", line0.emt_model)
+i_t_B_line = find_name_in_block("it_B", line0.emt_model)
+i_t_C_line = find_name_in_block("it_C", line0.emt_model)
 i_t_A_line_plt = y[:, problem.get_var_idx(i_t_A_line)]
 i_t_B_line_plt = y[:, problem.get_var_idx(i_t_B_line)]
 i_t_C_line_plt = y[:, problem.get_var_idx(i_t_C_line)]
@@ -828,23 +828,23 @@ plt.tight_layout()
 print("Generating plots...")
 plt.show()
 
-i_ser_A = find_name_in_block("i_ser_Pi_A", line0.emt_model)
-i_ser_B = find_name_in_block("i_ser_Pi_B", line0.emt_model)
-i_ser_C = find_name_in_block("i_ser_Pi_C", line0.emt_model)
+i_ser_A = find_name_in_block("i_ser_A", line0.emt_model)
+i_ser_B = find_name_in_block("i_ser_B", line0.emt_model)
+i_ser_C = find_name_in_block("i_ser_C", line0.emt_model)
 i_ser_A_plt = y[:, problem.get_var_idx(i_ser_A)]
 i_ser_B_plt = y[:, problem.get_var_idx(i_ser_B)]
 i_ser_C_plt = y[:, problem.get_var_idx(i_ser_C)]
 
-i_f_cap_A = find_name_in_block("i_cap_f_Pi_A", line0.emt_model)
-i_f_cap_B = find_name_in_block("i_cap_f_Pi_B", line0.emt_model)
-i_f_cap_C = find_name_in_block("i_cap_f_Pi_C", line0.emt_model)
+i_f_cap_A = find_name_in_block("i_cap_f_A", line0.emt_model)
+i_f_cap_B = find_name_in_block("i_cap_f_B", line0.emt_model)
+i_f_cap_C = find_name_in_block("i_cap_f_C", line0.emt_model)
 i_f_cap_A_plt = y[:, problem.get_var_idx(i_f_cap_A)]
 i_f_cap_B_plt = y[:, problem.get_var_idx(i_f_cap_B)]
 i_f_cap_C_plt = y[:, problem.get_var_idx(i_f_cap_C)]
 
-i_t_cap_A = find_name_in_block("i_cap_t_Pi_A", line0.emt_model)
-i_t_cap_B = find_name_in_block("i_cap_t_Pi_B", line0.emt_model)
-i_t_cap_C = find_name_in_block("i_cap_t_Pi_C", line0.emt_model)
+i_t_cap_A = find_name_in_block("i_cap_t_A", line0.emt_model)
+i_t_cap_B = find_name_in_block("i_cap_t_B", line0.emt_model)
+i_t_cap_C = find_name_in_block("i_cap_t_C", line0.emt_model)
 i_t_cap_A_plt = y[:, problem.get_var_idx(i_t_cap_A)]
 i_t_cap_B_plt = y[:, problem.get_var_idx(i_t_cap_B)]
 i_t_cap_C_plt = y[:, problem.get_var_idx(i_t_cap_C)]

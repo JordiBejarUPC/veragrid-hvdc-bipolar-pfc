@@ -254,13 +254,13 @@ print('\nSimulation completed successfully!')
 t_sim = np.asarray(t).reshape(-1)
 
 # Bus voltages
-vA_hv = get_series(problem, y, find_name_in_block('v_A_Bus_HV_emt_template', bus_hv.emt_model))
-vB_hv = get_series(problem, y, find_name_in_block('v_B_Bus_HV_emt_template', bus_hv.emt_model))
-vC_hv = get_series(problem, y, find_name_in_block('v_C_Bus_HV_emt_template', bus_hv.emt_model))
+vA_hv = get_series(problem, y, find_name_in_block('v_A', bus_hv.emt_model))
+vB_hv = get_series(problem, y, find_name_in_block('v_B', bus_hv.emt_model))
+vC_hv = get_series(problem, y, find_name_in_block('v_C', bus_hv.emt_model))
 
-vA_lv = get_series(problem, y, find_name_in_block('v_A_Bus_LV_emt_template', bus_lv.emt_model))
-vB_lv = get_series(problem, y, find_name_in_block('v_B_Bus_LV_emt_template', bus_lv.emt_model))
-vC_lv = get_series(problem, y, find_name_in_block('v_C_Bus_LV_emt_template', bus_lv.emt_model))
+vA_lv = get_series(problem, y, find_name_in_block('v_A', bus_lv.emt_model))
+vB_lv = get_series(problem, y, find_name_in_block('v_B', bus_lv.emt_model))
+vC_lv = get_series(problem, y, find_name_in_block('v_C', bus_lv.emt_model))
 
 # Transformer terminal currents
 ifA = get_series(problem, y, find_name_in_block('if_A_xfmr_test', xfmr_mdl))

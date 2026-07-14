@@ -47,57 +47,57 @@ def inverse_park_currents_block(vfactory, i_d, i_q, theta):
 
 
 def build_vsc_gfm_emt_park(vfactory, name: str = "gfm_emt"):
-    v_a = vfactory.add_var(f"v_A_{name}", reference=VarPowerFlowReferenceType.v_A)
-    v_b = vfactory.add_var(f"v_B_{name}", reference=VarPowerFlowReferenceType.v_B)
-    v_c = vfactory.add_var(f"v_C_{name}", reference=VarPowerFlowReferenceType.v_C)
-    v_dc = vfactory.add_var(f"Vdc_{name}", reference=VarPowerFlowReferenceType.Vdc)
+    v_a = vfactory.add_var(f"v_A", reference=VarPowerFlowReferenceType.v_A)
+    v_b = vfactory.add_var(f"v_B", reference=VarPowerFlowReferenceType.v_B)
+    v_c = vfactory.add_var(f"v_C", reference=VarPowerFlowReferenceType.v_C)
+    v_dc = vfactory.add_var(f"Vdc", reference=VarPowerFlowReferenceType.Vdc)
 
-    Pt_vsc = vfactory.add_var(f"Pt_vsc_{name}")
-    Qt_vsc = vfactory.add_var(f"Qt_vsc_{name}")
+    Pt_vsc = vfactory.add_var(f"Pt_vsc")
+    Qt_vsc = vfactory.add_var(f"Qt_vsc")
 
-    theta = vfactory.add_var(f"theta_{name}")
-    omega = vfactory.add_var(f"omega_{name}")
-    dt_theta = vfactory.add_diff_var(f"dt_theta_{name}", base_var=theta)
+    theta = vfactory.add_var(f"theta")
+    omega = vfactory.add_var(f"omega")
+    dt_theta = vfactory.add_diff_var(f"dt_theta", base_var=theta)
 
-    Rf = vfactory.add_var(f"Rf_{name}")
-    Lf = vfactory.add_var(f"Lf_{name}")
-    Rc = vfactory.add_var(f"Rc_{name}")
-    Lc = vfactory.add_var(f"Lc_{name}")
-    Cf = vfactory.add_var(f"Cf_{name}")
-    Rcap = vfactory.add_var(f"Rcap_{name}")
-    Kdp = vfactory.add_var(f"Kdp_{name}")
-    Kdq = vfactory.add_var(f"Kdq_{name}")
-    fn = vfactory.add_var(f"fn_{name}")
-    Kp_icl = vfactory.add_var(f"Kp_icl_{name}")
-    Ki_icl = vfactory.add_var(f"Ki_icl_{name}")
-    tau_P = vfactory.add_var(f"tau_P_{name}")
-    tau_Q = vfactory.add_var(f"tau_Q_{name}")
-    I_max = vfactory.add_var(f"I_max_{name}")
+    Rf = vfactory.add_var(f"Rf")
+    Lf = vfactory.add_var(f"Lf")
+    Rc = vfactory.add_var(f"Rc")
+    Lc = vfactory.add_var(f"Lc")
+    Cf = vfactory.add_var(f"Cf")
+    Rcap = vfactory.add_var(f"Rcap")
+    Kdp = vfactory.add_var(f"Kdp")
+    Kdq = vfactory.add_var(f"Kdq")
+    fn = vfactory.add_var(f"fn")
+    Kp_icl = vfactory.add_var(f"Kp_icl")
+    Ki_icl = vfactory.add_var(f"Ki_icl")
+    tau_P = vfactory.add_var(f"tau_P")
+    tau_Q = vfactory.add_var(f"tau_Q")
+    I_max = vfactory.add_var(f"I_max")
 
-    vd_g = vfactory.add_var(f"vd_g_{name}")
-    vq_g = vfactory.add_var(f"vq_g_{name}")
-    vd_f = vfactory.add_var(f"vd_f_{name}")
-    vq_f = vfactory.add_var(f"vq_f_{name}")
-    vd_c = vfactory.add_var(f"vd_c_{name}")
-    vq_c = vfactory.add_var(f"vq_c_{name}")
+    vd_g = vfactory.add_var(f"vd_g")
+    vq_g = vfactory.add_var(f"vq_g")
+    vd_f = vfactory.add_var(f"vd_f")
+    vq_f = vfactory.add_var(f"vq_f")
+    vd_c = vfactory.add_var(f"vd_c")
+    vq_c = vfactory.add_var(f"vq_c")
 
-    id_g = vfactory.add_var(f"id_g_{name}")
-    iq_g = vfactory.add_var(f"iq_g_{name}")
-    id_c = vfactory.add_var(f"id_c_{name}")
-    iq_c = vfactory.add_var(f"iq_c_{name}")
-    id_c_ref = vfactory.add_var(f"id_c_ref_{name}")
-    iq_c_ref = vfactory.add_var(f"iq_c_ref_{name}")
-    vd_c_ref = vfactory.add_var(f"vd_c_ref_{name}")
-    vq_c_ref = vfactory.add_var(f"vq_c_ref_{name}")
+    id_g = vfactory.add_var(f"id_g")
+    iq_g = vfactory.add_var(f"iq_g")
+    id_c = vfactory.add_var(f"id_c")
+    iq_c = vfactory.add_var(f"iq_c")
+    id_c_ref = vfactory.add_var(f"id_c_ref")
+    iq_c_ref = vfactory.add_var(f"iq_c_ref")
+    vd_c_ref = vfactory.add_var(f"vd_c_ref")
+    vq_c_ref = vfactory.add_var(f"vq_c_ref")
 
-    P = vfactory.add_var(f"P_{name}", reference=VarPowerFlowReferenceType.P)
-    Q = vfactory.add_var(f"Q_{name}", reference=VarPowerFlowReferenceType.Q)
-    P_ref = vfactory.add_var(f"P_ref_{name}")
-    Q_ref = vfactory.add_var(f"Q_ref_{name}")
-    V_ref = vfactory.add_var(f"V_ref_{name}")
-    V = vfactory.add_var(f"V_{name}")
+    P = vfactory.add_var(f"P", reference=VarPowerFlowReferenceType.P)
+    Q = vfactory.add_var(f"Q", reference=VarPowerFlowReferenceType.Q)
+    P_ref = vfactory.add_var(f"P_ref")
+    Q_ref = vfactory.add_var(f"Q_ref")
+    V_ref = vfactory.add_var(f"V_ref")
+    V = vfactory.add_var(f"V")
 
-    park_block, (vd_meas, vq_meas) = park_transform_block(vfactory, [v_a, v_b, v_c], theta, name=f"v_{name}")
+    park_block, (vd_meas, vq_meas) = park_transform_block(vfactory, [v_a, v_b, v_c], theta, name=f"v")
 
     eqs = [
         vd_g - vd_meas,
@@ -112,8 +112,8 @@ def build_vsc_gfm_emt_park(vfactory, name: str = "gfm_emt"):
         Q - vfactory.add_const(1.5) * (vq_g * id_g - vd_g * iq_g),
     ]
 
-    block_P, P_lp = tf_to_block(vfactory, num=[vfactory.add_const(1)], den=[vfactory.add_const(1), tau_P], x=P, name=f"P_lp_{name}")
-    block_Q, Q_lp = tf_to_block(vfactory, num=[vfactory.add_const(1)], den=[vfactory.add_const(1), tau_Q], x=Q, name=f"Q_lp_{name}")
+    block_P, P_lp = tf_to_block(vfactory, num=[vfactory.add_const(1)], den=[vfactory.add_const(1), tau_P], x=P, name=f"P_lp")
+    block_Q, Q_lp = tf_to_block(vfactory, num=[vfactory.add_const(1)], den=[vfactory.add_const(1), tau_Q], x=Q, name=f"Q_lp")
     block_P.init_eqs = {P_lp: P}
     block_Q.init_eqs = {Q_lp: Q}
 
@@ -125,8 +125,8 @@ def build_vsc_gfm_emt_park(vfactory, name: str = "gfm_emt"):
 
     vd_ref = vd_f
     vq_ref = vq_f
-    block_vd, id_hat = tf_to_block(vfactory, num=[Ki_icl, Kp_icl], den=[0, 1], x=vd_ref - vd_f, name=f"vd_ctrl_{name}")
-    block_vq, iq_hat = tf_to_block(vfactory, num=[Ki_icl, Kp_icl], den=[0, 1], x=vq_ref - vq_f, name=f"vq_ctrl_{name}")
+    block_vd, id_hat = tf_to_block(vfactory, num=[Ki_icl, Kp_icl], den=[0, 1], x=vd_ref - vd_f, name=f"vd_ctrl")
+    block_vq, iq_hat = tf_to_block(vfactory, num=[Ki_icl, Kp_icl], den=[0, 1], x=vq_ref - vq_f, name=f"vq_ctrl")
 
     i_d_ref_raw = iq_hat + iq_g - Cf * omega * vq_f
     i_q_ref_raw = id_hat + id_g + Cf * omega * vd_f
@@ -134,8 +134,8 @@ def build_vsc_gfm_emt_park(vfactory, name: str = "gfm_emt"):
     id_max = sym.sqrt(sym.max(I_max ** 2 - iq_for_lim ** 2, vfactory.add_const(1e-5)))
     i_d_ref_sat = sym.hard_sat(i_d_ref_raw, -id_max, id_max)
     i_q_ref_sat = sym.hard_sat(i_q_ref_raw, -I_max, I_max)
-    i_d_ref_sat_var = vfactory.add_var(f"i_d_ref_sat_{name}")
-    i_q_ref_sat_var = vfactory.add_var(f"i_q_ref_sat_{name}")
+    i_d_ref_sat_var = vfactory.add_var(f"i_d_ref_sat")
+    i_q_ref_sat_var = vfactory.add_var(f"i_q_ref_sat")
 
     eqs += [
         i_d_ref_sat_var - i_d_ref_sat,
@@ -144,8 +144,8 @@ def build_vsc_gfm_emt_park(vfactory, name: str = "gfm_emt"):
         iq_c_ref - i_q_ref_sat_var,
     ]
 
-    block_id, vd_hat = tf_to_block(vfactory, num=[Ki_icl, Kp_icl], den=[0, 1], x=id_c_ref - id_c, name=f"id_ctrl_{name}")
-    block_iq, vq_hat = tf_to_block(vfactory, num=[Ki_icl, Kp_icl], den=[0, 1], x=iq_c_ref - iq_c, name=f"iq_ctrl_{name}")
+    block_id, vd_hat = tf_to_block(vfactory, num=[Ki_icl, Kp_icl], den=[0, 1], x=id_c_ref - id_c, name=f"id_ctrl")
+    block_iq, vq_hat = tf_to_block(vfactory, num=[Ki_icl, Kp_icl], den=[0, 1], x=iq_c_ref - iq_c, name=f"iq_ctrl")
     eqs += [
         vd_c_ref - (vd_hat + vd_f - Lf * omega * iq_c),
         vq_c_ref - (vq_hat + vq_f + Lf * omega * id_c),
