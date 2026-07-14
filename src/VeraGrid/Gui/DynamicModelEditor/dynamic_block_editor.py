@@ -57,10 +57,9 @@ import VeraGridEngine.Templates.Emt as emt_templates
 import VeraGridEngine.Templates.BasicBlockCatalog as basic_block_templates
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.Utils.Symbolic.block import Block, find_connections, find_connections_pf
-from VeraGridEngine.Utils.Symbolic.equation_decomposer import EquationDecomposer
 from VeraGrid.Gui.DynamicModelEditor.block_editor import Ui_BlockEditorWindow
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_dialogs import AddBlockVariableDialog, AddEquationDialog, \
-    AddParameterDialog, EmtTemplateWizardDialog, ExpressionTextEditorDialog, GenericBlockDialog
+    AddParameterDialog, ExpressionTextEditorDialog, GenericBlockDialog
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_graphics import BlockItem, BlockPositionChangedCallback, \
     BranchingItem, ConnectionItem, DiagramScene, GenericBlockItem, RoundBaseArithmeticOpItem, RectBaseArithmeticOpItem, \
     GraphicsView, PairedItem, PortItem, ProtectedConnectionBlockItem
@@ -296,9 +295,6 @@ def build_emt_branch_bus_mask_from_refs(
     return mask
 
 
-_SENTINEL = object()
-
-
 class _FallbackDocument:
     """
     Minimal document shim for legacy callers that don't pass a document.
@@ -408,11 +404,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                  is_root_editor=False,
                  modal: bool = True,
                  workspace_embedded: bool = False,
-                 root_block: Block = _SENTINEL,
-                 current_block: Block = _SENTINEL,
-                 document=None,
-                 block: Block | None = None,
-                 main_editor: bool | None = None):
+                 root_block: Block = Block(),
+                 current_block: Block = Block(),
+                 document=None):
         """
         Initializes a dynamic block editor window.
 
@@ -444,18 +438,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :return: None.
         """
         super().__init__()
-
-        # Deprecated shim: map old block= and main_editor= to new params.
-        if main_editor is not None:
-            is_root_editor = main_editor
-        if block is not None:
-            current_block = block
-            if root_block is _SENTINEL:
-                root_block = block
-        if root_block is _SENTINEL:
-            root_block = current_block if current_block is not _SENTINEL else Block()
-        if current_block is _SENTINEL:
-            current_block = root_block
 
         self.ui = Ui_BlockEditorWindow()
         self.ui.setupUi(self)
