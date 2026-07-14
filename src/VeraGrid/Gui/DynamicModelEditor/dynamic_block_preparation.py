@@ -10,8 +10,8 @@ from VeraGridEngine.Utils.Symbolic.equation_decomposer import EquationDecomposer
 
 
 def prepare_block_for_editing(
-    block: Block,
-    var_factory: object,
+        block: Block,
+        var_factory: object,
 ) -> Block:
     """
     Prepare a block for display in the editor **without cloning it**.

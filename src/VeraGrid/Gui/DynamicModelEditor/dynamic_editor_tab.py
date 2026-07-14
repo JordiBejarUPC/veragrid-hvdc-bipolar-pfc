@@ -16,15 +16,100 @@ from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Devices.Dynamic.fmu_template import FmuTemplate
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_breadcrumb import DynamicEditorBreadcrumb
-from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_document import DynamicEditorDocument
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_navigation import DynamicEditorNavigation
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.enumerations import DynamicSimulationMode
 from VeraGridEngine.Utils.Symbolic.block import Block
+from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_models import clone_block_for_editing, copy_block_state
 
 from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI
 from VeraGrid.Session.dynamic_editor_entries import DynamicEditorEntry
+
+
+class DynamicEditorDocument:
+    """
+    Represents a single editing document opened in a tab.
+
+    A document owns exactly two block trees:
+
+    * ``original_root_block`` — the authoritative model as it was when the
+      document was opened.  Never mutated during editing.
+    * ``working_root_block`` — a deep copy of the original that the editors
+      modify directly.  All navigation, scene building, and in-place edits
+      operate exclusively on this tree.
+
+    The document also provides lifecycle operations:
+
+    * :meth:`commit` — copy the working tree back into the original tree.
+    * :meth:`discard` — throw away the working tree and start fresh from
+      the original.
+    * :meth:`is_dirty` — whether the working tree has unsaved changes.
+    """
+
+    def __init__(self, original_root_block: Block) -> None:
+        """
+        Create a new document from the original (persistent) block tree.
+
+        A single deep copy is made immediately; all subsequent edits
+        target the copy.
+
+        :param original_root_block: The authoritative block tree to edit.
+        :return: None.
+        """
+        self._original_root_block: Block = original_root_block
+        self._working_root_block: Block = clone_block_for_editing(original_root_block)
+
+    # ------------------------------------------------------------------
+    # Read-only properties
+    # ------------------------------------------------------------------
+
+    @property
+    def original_root_block(self) -> Block:
+        """Return the original (persistent) block tree."""
+        return self._original_root_block
+
+    @property
+    def working_root_block(self) -> Block:
+        """Return the working (editable) block tree."""
+        return self._working_root_block
+
+    # ------------------------------------------------------------------
+    # Lifecycle
+    # ------------------------------------------------------------------
+
+    def commit(self) -> None:
+        """
+        Copy the working tree back into the original tree.
+
+        This is the single point where edited state is persisted back
+        to the authoritative model.  Call this when the user explicitly
+        saves or applies changes.
+
+        :return: None.
+        """
+        copy_block_state(
+            source_block=self._working_root_block,
+            target_block=self._original_root_block,
+        )
+
+    def discard(self) -> None:
+        """
+        Discard the current working tree and recreate it from the
+        original tree.
+
+        :return: None.
+        """
+        self._working_root_block = clone_block_for_editing(self._original_root_block)
+
+    def is_dirty(self) -> bool:
+        """
+        Return whether the working tree has unsaved modifications.
+
+        :return: ``True`` if the document has been modified since the
+            last commit.  Currently always returns ``False`` (placeholder).
+        """
+        return False
 
 
 class DynamicEditorTab(QtWidgets.QWidget):
@@ -34,7 +119,7 @@ class DynamicEditorTab(QtWidgets.QWidget):
 
     It owns:
 
-    * A :class:`DynamicEditorDocument` (one working copy per tab).
+    * A :class:`DynamicEditorNavigation` (which holds the document).
     * A :class:`DynamicEditorBreadcrumb` at the top.
     * Exactly one :class:`DynamicBlockEditorGUI` below the breadcrumb.
 
@@ -46,14 +131,14 @@ class DynamicEditorTab(QtWidgets.QWidget):
     dirtyStateChanged = Signal(bool)
 
     def __init__(
-        self,
-        var_factory: VarFactory,
-        block: Block,
-        api_object: ALL_DEV_TYPES,
-        circuit: MultiCircuit,
-        mode: DynamicSimulationMode,
-        templates_list: Optional[List[RmsModelTemplate | EmtModelTemplate | FmuTemplate]] = None,
-        parent: QtWidgets.QWidget | None = None,
+            self,
+            var_factory: VarFactory,
+            block: Block,
+            api_object: ALL_DEV_TYPES,
+            circuit: MultiCircuit,
+            mode: DynamicSimulationMode,
+            templates_list: Optional[List[RmsModelTemplate | EmtModelTemplate | FmuTemplate]] = None,
+            parent: QtWidgets.QWidget | None = None,
     ) -> None:
         super().__init__(parent)
 
@@ -64,13 +149,10 @@ class DynamicEditorTab(QtWidgets.QWidget):
         self._templates_list = templates_list if templates_list is not None else list()
         self._dynamic_editor_entry: DynamicEditorEntry | None = None
 
-        # ---- Document: single working copy per tab ----
-        self._document = DynamicEditorDocument(block)
-        working_root = self._document.working_root_block
-        prepare_block_for_editing(working_root, var_factory)
-
-        # ---- Navigation over the working tree ----
-        self._navigation = DynamicEditorNavigation(working_root)
+        # ---- Document + Navigation ----
+        document = DynamicEditorDocument(block)
+        prepare_block_for_editing(document.working_root_block, var_factory)
+        self._navigation = DynamicEditorNavigation(document)
 
         self._layout = QtWidgets.QVBoxLayout(self)
         self._layout.setContentsMargins(0, 0, 0, 0)
@@ -81,16 +163,11 @@ class DynamicEditorTab(QtWidgets.QWidget):
         self._layout.addWidget(self._breadcrumb)
 
         self._editor: DynamicBlockEditorGUI | None = None
-        self._create_editor(working_root)
+        self._create_editor(self._navigation.root_block)
 
     # ------------------------------------------------------------------
     # Public API — session / workspace compatibility
     # ------------------------------------------------------------------
-
-    @property
-    def document(self) -> DynamicEditorDocument:
-        """Return the document backing this tab."""
-        return self._document
 
     def get_dynamic_editor_entry(self) -> DynamicEditorEntry | None:
         return self._dynamic_editor_entry
@@ -175,7 +252,7 @@ class DynamicEditorTab(QtWidgets.QWidget):
 
     @property
     def root_block(self) -> Block:
-        return self._document.working_root_block
+        return self._navigation.root_block
 
     @property
     def current_block(self) -> Block:
@@ -186,11 +263,9 @@ class DynamicEditorTab(QtWidgets.QWidget):
     # ------------------------------------------------------------------
 
     def _create_editor(self, block: Block) -> None:
-        from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI
-
         self._editor = DynamicBlockEditorGUI(
             var_factory=self._var_factory,
-            root_block=self._document.working_root_block,
+            root_block=self._navigation.root_block,
             current_block=block,
             api_object=self._api_object,
             circuit=self._circuit,
@@ -199,7 +274,7 @@ class DynamicEditorTab(QtWidgets.QWidget):
             is_root_editor=self._navigation.is_root(),
             modal=False,
             workspace_embedded=True,
-            document=self._document,
+            document=self._navigation.document,
         )
         if self._editor is not None:
             self._editor.set_navigation_delegate(self)

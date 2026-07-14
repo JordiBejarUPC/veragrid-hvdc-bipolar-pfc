@@ -5,36 +5,45 @@
 
 from __future__ import annotations
 
-from typing import List
+from typing import TYPE_CHECKING, List
 
 from VeraGridEngine.Utils.Symbolic.block import Block
+
+if TYPE_CHECKING:
+    from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_tab import DynamicEditorDocument
 
 
 class DynamicEditorNavigation:
     """
-    Domain object that tracks the current position inside a block hierarchy.
+    Domain object that tracks the current position inside a block hierarchy
+    owned by a :class:`DynamicEditorDocument`.
 
-    It stores a *root* block and a *current* block and provides
-    domain-language operations to navigate between them.  The internal
-    representation is kept private so that the API stays clean.
+    The navigation owns the document reference and exposes the working-tree
+    root through a property so that callers never need to reach into the
+    document directly.
     """
 
-    def __init__(self, root_block: Block) -> None:
+    def __init__(self, document: DynamicEditorDocument) -> None:
         """
-        :param root_block: The top-level block that owns this tab.
+        :param document: The editing document whose working tree is navigated.
         :return: None.
         """
-        self._root_block: Block = root_block
-        self._path: List[Block] = [root_block]
+        self._document: DynamicEditorDocument = document
+        self._path: List[Block] = [document.working_root_block]
 
     # ------------------------------------------------------------------
     # Properties
     # ------------------------------------------------------------------
 
     @property
+    def document(self) -> DynamicEditorDocument:
+        """Return the document backing this navigation."""
+        return self._document
+
+    @property
     def root_block(self) -> Block:
-        """Return the root block of this tab."""
-        return self._root_block
+        """Return the root block of the working tree."""
+        return self._document.working_root_block
 
     @property
     def current_block(self) -> Block:
@@ -75,7 +84,7 @@ class DynamicEditorNavigation:
 
     def go_to_root(self) -> None:
         """Navigate back to the root block."""
-        self._path = [self._root_block]
+        self._path = [self._document.working_root_block]
 
     def go_to_parent(self) -> None:
         """

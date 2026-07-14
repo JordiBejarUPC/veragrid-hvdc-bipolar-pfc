@@ -7,7 +7,8 @@ from typing import Any, Dict, List, Optional, TYPE_CHECKING, cast
 from PySide6 import QtCore, QtGui, QtWidgets
 from PySide6.QtCore import QPointF, Qt
 from PySide6.QtGui import QColor, QBrush, QPainter, QPainterPath, QPen, QAction, QPolygonF
-from PySide6.QtWidgets import QAbstractGraphicsShapeItem, QApplication, QColorDialog, QGraphicsEllipseItem, QGraphicsItem, \
+from PySide6.QtWidgets import QAbstractGraphicsShapeItem, QApplication, QColorDialog, QGraphicsEllipseItem, \
+    QGraphicsItem, \
     QGraphicsPathItem, QGraphicsPolygonItem, QGraphicsRectItem, QGraphicsScene, QGraphicsTextItem, \
     QGraphicsView, QMenu, QWidget
 
@@ -91,7 +92,6 @@ class EditorGraphicsDefaultsLight:
 
 
 def _get_editor_constants() -> type[EditorGraphicsDefaultsLight] | type[EditorGraphicsDefaultsDark]:
-
     try:
         is_dark = darkdetect.theme() == "Dark"
     except ImportError:
@@ -101,6 +101,7 @@ def _get_editor_constants() -> type[EditorGraphicsDefaultsLight] | type[EditorGr
         return EditorGraphicsDefaultsDark
     else:
         return EditorGraphicsDefaultsLight
+
 
 def _new_uid() -> int:
     return uuid.uuid4().int
@@ -1092,8 +1093,6 @@ class GenericBlockItem(QGraphicsRectItem):
         self.input_labels: List[QGraphicsTextItem] = list()
         self.output_labels: List[QGraphicsTextItem] = list()
 
-
-
         self.resize_handle: ResizeHandle | None = None
         self.resizing_from_handle = False
         self._suppress_resize: bool = False
@@ -1136,7 +1135,6 @@ class GenericBlockItem(QGraphicsRectItem):
                 event.button() == Qt.MouseButton.LeftButton
                 and event.modifiers() & Qt.KeyboardModifier.ControlModifier
         ):
-
             self.editor._request_navigate_to_block(self.subsys)
 
             event.accept()
@@ -1313,7 +1311,8 @@ class GenericBlockItem(QGraphicsRectItem):
                 variable_name = self.subsys.in_vars[i].name
                 port.setToolTip(_build_port_tooltip("Input", i, variable_name))
                 label_item = self.input_labels[i]
-                label_item.setPlainText(truncate_port_label(variable_name, _get_editor_constants().PORT_LABEL_MAX_CHARS))
+                label_item.setPlainText(
+                    truncate_port_label(variable_name, _get_editor_constants().PORT_LABEL_MAX_CHARS))
 
             for i, port in enumerate(self.outputs):
                 if port.base_var is None:
@@ -1323,7 +1322,8 @@ class GenericBlockItem(QGraphicsRectItem):
                 variable_name = self.subsys.out_vars[i].name
                 port.setToolTip(_build_port_tooltip("Output", i, variable_name))
                 label_item = self.output_labels[i]
-                label_item.setPlainText(truncate_port_label(variable_name, _get_editor_constants().PORT_LABEL_MAX_CHARS))
+                label_item.setPlainText(
+                    truncate_port_label(variable_name, _get_editor_constants().PORT_LABEL_MAX_CHARS))
         else:
             pass
 
@@ -1416,7 +1416,8 @@ class PairedItem(QGraphicsPolygonItem):
                  position_changed_callback=None,
                  editor: "DynamicBlockEditorGUI | None" = None):
         super().__init__()
-        self.paired_items: List[PairedItem] | None = [paired_item for paired_item in paired_items] if paired_items else None
+        self.paired_items: List[PairedItem] | None = [paired_item for paired_item in
+                                                      paired_items] if paired_items else None
         self.editor: DynamicBlockEditorGUI | None = editor
         self.var_factory = var_factory
         self.subsys = subsys
@@ -1535,7 +1536,6 @@ class PairedItem(QGraphicsPolygonItem):
             self.paired_items = [paired_item]
         else:
             self.paired_items.append(paired_item)
-
 
     def set_subsystem(self, block: Block) -> None:
         self.subsys = block
@@ -1683,6 +1683,7 @@ class PairedItem(QGraphicsPolygonItem):
                 if item is not None:
                     item.setSelected(True)
 
+
 def duplicate_paired_item(original: PairedItem) -> PairedItem | None:
     if original.editor is None or original._is_signal_in or original.paired_items is None:
         return None
@@ -1781,7 +1782,7 @@ class BlockItem(QGraphicsRectItem):
         self.setBrush(
             QBrush(
                 editor_constants.BLOCK_FILL)
-            )
+        )
 
     def set_dark_mode(self):
         editor_constants = _get_editor_constants()
@@ -1927,7 +1928,6 @@ class BlockItem(QGraphicsRectItem):
         painter.setBrush(QBrush(fill_color))
         painter.drawRoundedRect(body_rect, radius, radius)
 
-
         painter.setPen(QPen(border_color, 1.6))
         painter.setBrush(Qt.BrushStyle.NoBrush)
         painter.drawRoundedRect(body_rect, radius, radius)
@@ -2013,9 +2013,9 @@ class RoundBaseArithmeticOpItem(QGraphicsEllipseItem):
     def __init__(self,
                  subsys: Block,
                  var_factory: VarFactory,
-                 block_type: BlockType, 
+                 block_type: BlockType,
                  editor: "DynamicBlockEditorGUI | None" = None,
-                 position_changed_callback = None):
+                 position_changed_callback=None):
         size = 35.0
         super().__init__(-size / 2, -size / 2, size, size)
         self.block_type: BlockType = block_type
@@ -2053,7 +2053,6 @@ class RoundBaseArithmeticOpItem(QGraphicsEllipseItem):
         for i in range(n_outputs):
             port = PortItem(self, False, i, n_outputs)
             self.outputs.append(port)
-
 
         self._analyze_input_signs()
         self.update_ports()
@@ -2368,6 +2367,7 @@ class RectBaseArithmeticOpItem(QGraphicsRectItem):
         else:
             return super().itemChange(change, value)
 
+
 class GraphicsView(QGraphicsView):
     ZOOM_FACTOR: float = 1.15
 
@@ -2389,7 +2389,8 @@ class GraphicsView(QGraphicsView):
             self._pan_start = event.position()
             self.setCursor(Qt.CursorShape.ClosedHandCursor)
         else:
-            if event.button() == Qt.MouseButton.LeftButton and bool(event.modifiers() & Qt.KeyboardModifier.ControlModifier):
+            if event.button() == Qt.MouseButton.LeftButton and bool(
+                    event.modifiers() & Qt.KeyboardModifier.ControlModifier):
                 self.setDragMode(QGraphicsView.DragMode.RubberBandDrag)
             else:
                 self.setDragMode(QGraphicsView.DragMode.NoDrag)
@@ -2512,7 +2513,8 @@ class DiagramScene(QGraphicsScene):
     def contextMenuEvent(self, event: QtWidgets.QGraphicsSceneContextMenuEvent) -> None:
         item: QGraphicsItem
         for item in self.items(event.scenePos()):
-            if isinstance(item, (GenericBlockItem, ConnectionItem, RoundBaseArithmeticOpItem, RectBaseArithmeticOpItem)):
+            if isinstance(item,
+                          (GenericBlockItem, ConnectionItem, RoundBaseArithmeticOpItem, RectBaseArithmeticOpItem)):
                 menu: QMenu = QMenu()
                 if item is not None:
                     self.context_item = item
@@ -2524,7 +2526,6 @@ class DiagramScene(QGraphicsScene):
                     color_action: QAction = QAction("Change Color", menu)
                     color_action.triggered.connect(self.recolor_context_item)
                     menu.addAction(color_action)
-
 
                     menu.exec(event.screenPos())
                     self.context_item = None

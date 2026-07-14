@@ -71,7 +71,8 @@ from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_models import BlockParameter
     _ensure_block_tree_names, add_variable_to_block, block_namespace_contains_name, \
     block_requires_editor_connection_bootstrap, build_block_symbol_namespace, \
     initialize_connected_bus_models_for_editor_assignment, is_valid_symbol_name
-from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_validation import ValidationRow, ValidationSection, ValidationSectionDialog, \
+from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_validation import ValidationRow, ValidationSection, \
+    ValidationSectionDialog, \
     ValidationTraversalNode, add_validation_detail, add_validation_port_detail, add_validation_status_detail, \
     append_missing_port_messages_for_direction, append_port_vars_to_phase_count, append_vars_to_name_uid_map, \
     build_validation_row_highlight_metadata, build_validation_traversal_node, classify_emt_branch_phase_wire_from_refs, \
@@ -85,7 +86,6 @@ from VeraGrid.Gui.DynamicModelEditor.ElementDialogues.lookup_table_dialog import
 from VeraGrid.Gui.DynamicModelEditor.ElementDialogues.lookup_table_dialog import LookupMatrixLinearDialog
 from VeraGrid.Gui.DynamicModelEditor.ElementDialogues.jmarti_line_emt_dialog import JMartiLineEmtDialog
 from VeraGrid.Gui.DynamicModelEditor.ElementDialogues.shunt_component_emt_dialog import ShuntComponentEmtDialog
-
 
 from VeraGrid.Gui.messages import yes_no_question
 from VeraGrid.Gui.toast_widget import ToastManager
@@ -296,6 +296,9 @@ def build_emt_branch_bus_mask_from_refs(
     return mask
 
 
+_SENTINEL = object()
+
+
 class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
     """
     DynamicModelEditorGUI
@@ -393,9 +396,11 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                  is_root_editor=False,
                  modal: bool = True,
                  workspace_embedded: bool = False,
-                 root_block: Block = Block(),
-                 current_block: Block = Block(),
-                 document=None):
+                 root_block: Block = _SENTINEL,
+                 current_block: Block = _SENTINEL,
+                 document=None,
+                 block: Block | None = None,
+                 main_editor: bool | None = None):
         """
         Initializes a dynamic block editor window.
 
@@ -427,6 +432,18 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :return: None.
         """
         super().__init__()
+
+        # Deprecated shim: map old block= and main_editor= to new params.
+        if main_editor is not None:
+            is_root_editor = main_editor
+        if block is not None:
+            current_block = block
+            if root_block is _SENTINEL:
+                root_block = block
+        if root_block is _SENTINEL:
+            root_block = current_block if current_block is not _SENTINEL else Block()
+        if current_block is _SENTINEL:
+            current_block = root_block
 
         self.ui = Ui_BlockEditorWindow()
         self.ui.setupUi(self)
@@ -823,7 +840,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         return BlockPositionChangedCallback(self, block_uid)
 
-
     def create_item_from_blocktype(self,
                                    blocktype: BlockType,
                                    x_pos: float,
@@ -999,7 +1015,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             return rect_base_op_item
 
         return None
-
 
     @staticmethod
     def _extract_jmarti_phase_tuple(modal_config: Dict[str, Any]) -> tuple[bool, bool, bool, bool]:
@@ -2805,7 +2820,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         if isinstance(item, ConnectionItem):
             self.remove_connection_item(item)
             self.mark_unapplied_changes()
-        elif isinstance(item, (BlockItem, GenericBlockItem, RoundBaseArithmeticOpItem, RectBaseArithmeticOpItem | PairedItem)):
+        elif isinstance(item, (BlockItem, GenericBlockItem, RoundBaseArithmeticOpItem,
+                               RectBaseArithmeticOpItem | PairedItem)):
             self.remove_block_item(item)
             self.mark_unapplied_changes()
         else:
@@ -2934,9 +2950,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
             self.main_block.external_mapping.update({VarPowerFlowReferenceType.P: P})
             self.main_block.external_mapping.update({VarPowerFlowReferenceType.Q: Q})
-
-
-
 
     def add_connection_vars(self) -> None:
         """
@@ -6474,7 +6487,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                     interface_inputs_by_ref=interface_inputs_by_ref,
                     model_ref=source_ref,
                 )
-                if mapped_input_item is not None and mapped_input_item.subsys is not None and len(mapped_input_item.subsys.out_vars) > 0:
+                if mapped_input_item is not None and mapped_input_item.subsys is not None and len(
+                        mapped_input_item.subsys.out_vars) > 0:
                     mapped_ref = get_var_reference(var=mapped_input_item.subsys.out_vars[0])
                     if mapped_ref is not None:
                         candidate_refs.add(mapped_ref)
@@ -6487,7 +6501,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                     interface_outputs_by_ref=interface_outputs_by_ref,
                     model_ref=source_ref,
                 )
-                if mapped_output_item is not None and mapped_output_item.subsys is not None and len(mapped_output_item.subsys.in_vars) > 0:
+                if mapped_output_item is not None and mapped_output_item.subsys is not None and len(
+                        mapped_output_item.subsys.in_vars) > 0:
                     mapped_ref = get_var_reference(var=mapped_output_item.subsys.in_vars[0])
                     if mapped_ref is not None:
                         candidate_refs.add(mapped_ref)
@@ -7012,11 +7027,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :return:
         """
         for item in self.scene.items():
-            if isinstance(item, (GenericBlockItem, PairedItem, ConnectionItem, RectBaseArithmeticOpItem, RoundBaseArithmeticOpItem)):
+            if isinstance(item, (GenericBlockItem, PairedItem, ConnectionItem, RectBaseArithmeticOpItem,
+                                 RoundBaseArithmeticOpItem)):
                 item.set_dark_mode()
-
-
-
 
     def set_light_mode(self):
         """
@@ -7024,9 +7037,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :return:
         """
         for item in self.scene.items():
-            if isinstance(item, (GenericBlockItem, PairedItem, ConnectionItem, RectBaseArithmeticOpItem,RoundBaseArithmeticOpItem)):
+            if isinstance(item, (GenericBlockItem, PairedItem, ConnectionItem, RectBaseArithmeticOpItem,
+                                 RoundBaseArithmeticOpItem)):
                 item.set_light_mode()
-
 
 
 if __name__ == "__main__":
