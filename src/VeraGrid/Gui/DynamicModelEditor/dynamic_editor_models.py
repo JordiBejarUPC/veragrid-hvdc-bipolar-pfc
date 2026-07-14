@@ -995,6 +995,7 @@ class InspectModel(QWidget):
         for submodel in model.children:
             self.refresh_lists(submodel, clear=False)
 
+
 # this class in cynamic_editor_library
 
 
@@ -1156,7 +1157,8 @@ def _initialize_editor_assigned_emt_bus_model(bus: Bus,
                                               api_object: Any,
                                               circuit: MultiCircuit | None,
                                               var_factory: VarFactory,
-                                              editor_interface_refs: set[VarPowerFlowReferenceType] | None = None) -> None:
+                                              editor_interface_refs: set[
+                                                                         VarPowerFlowReferenceType] | None = None) -> None:
     if bus.emt_model.empty():
         if editor_interface_refs is not None:
             mask: list[bool] | None = None
@@ -1243,7 +1245,8 @@ def initialize_connected_bus_models_for_editor_assignment(api_object: Any,
                                                           circuit: MultiCircuit | None,
                                                           var_factory: VarFactory,
                                                           mode: DynamicSimulationMode,
-                                                          editor_interface_refs: set[VarPowerFlowReferenceType] | None = None) -> None:
+                                                          editor_interface_refs: set[
+                                                                                     VarPowerFlowReferenceType] | None = None) -> None:
     if isinstance(api_object, InjectionParent):
         bus: Bus | None = api_object.bus
         if bus is None:

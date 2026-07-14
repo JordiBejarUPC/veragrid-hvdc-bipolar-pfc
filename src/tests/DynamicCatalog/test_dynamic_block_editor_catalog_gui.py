@@ -147,12 +147,12 @@ def _build_editor(mode: DynamicSimulationMode = DynamicSimulationMode.EMT,
     resolved_api_object = api_object if api_object is not None else _ApiStub()
     editor = DynamicBlockEditorGUI(
         var_factory=VarFactory(),
-        block=Block(),
+        current_block=Block(),
         api_object=resolved_api_object,
         mode=mode,
         templates_list=list(),
         circuit=circuit,
-        main_editor=False,
+        is_root_editor=False,
         modal=False,
     )
     editor.show()
