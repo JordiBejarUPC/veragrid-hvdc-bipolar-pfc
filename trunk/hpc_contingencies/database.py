@@ -42,6 +42,7 @@ def save_result(exec_id, contingency_id, result_value, status):
             (exec_id, contingency_id, result_value, status)
         )
         conn.commit()
+
     finally:
         conn.close()
 
@@ -49,7 +50,12 @@ def save_result(exec_id, contingency_id, result_value, status):
 def cleanup_database():
     conn = sqlite3.connect(DB_FILE, timeout=30.0)
     conn.execute('PRAGMA wal_checkpoint(TRUNCATE);')
+    conn.execute('PRAGMA journal_mode=DELETE;')
     conn.close()
+    for suffix in ('-wal', '-shm'):
+        path = DB_FILE + suffix
+        if os.path.exists(path):
+            os.remove(path)
 
 
 if __name__ == '__main__':
