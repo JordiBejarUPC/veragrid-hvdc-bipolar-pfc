@@ -190,7 +190,8 @@ class DialogInpModel(WrappableTableModel):
                     return ""
                 return str(val)
 
-            return val
+            if role == QtCore.Qt.ItemDataRole.EditRole:
+                return val
 
         return None
 

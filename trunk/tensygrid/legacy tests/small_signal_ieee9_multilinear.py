@@ -15,7 +15,7 @@ from pathlib import Path
 from matplotlib import pyplot as plt
 import numpy as np
 
-project_base = Path(__file__).resolve().parents[2]
+project_base = next(p for p in Path(__file__).resolve().parents if (p / "src" / "VeraGridEngine").exists())
 src_path = project_base / "src"
 if str(src_path) not in sys.path:
     sys.path.insert(0, str(src_path))
@@ -159,7 +159,14 @@ def _plot_eigen_comparison(ml_eigs: np.ndarray, ph_eigs: np.ndarray, grid_label:
     ax.grid(True, alpha=0.3)
     ax.legend(loc="best")
     plt.tight_layout()
+    plot_dir = Path(__file__).resolve().parent / "plots"
+    plot_dir.mkdir(exist_ok=True)
+    safe_label = "".join(c if c.isalnum() or c in "._-" else "_" for c in grid_label).strip("_")
+    plot_path = plot_dir / f"{safe_label}_eigen_comparison.png"
+    fig.savefig(plot_path, dpi=160)
+    print(f"Saved eigen comparison plot: {plot_path}")
     plt.show()
+    plt.close(fig)
 
 
 def _seed_problem_init_guess_from_vector(problem, x_vec: np.ndarray) -> None:

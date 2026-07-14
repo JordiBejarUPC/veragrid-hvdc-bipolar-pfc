@@ -253,7 +253,7 @@ if pf_res_3ph.converged:
 ###########################################################################################################################
 
 # Solver configuration
-CHOSEN_SOLVER = "COMPILED"
+CHOSEN_SOLVER = "AD"
 RUN_ALL_SOLVERS = False
 ENABLE_PLOTS = True
 ENABLE_NEWTON_TRACE = False

@@ -155,6 +155,15 @@ def tune_event(block, vf, name, value):
         base.set_event_in_block(var, value, vf, block)
 
 
+def get_filter_grid_power_refs(grid, pf_results):
+    line_filter_grid = next(line for line in grid.lines if line.name == 'Line Filter-Grid')
+    branch_list = list(grid.get_branches_iter(add_vsc=False, add_hvdc=False, add_switch=True))
+    filter_grid_idx = branch_list.index(line_filter_grid)
+    p_ref = -float(np.real(pf_results.St[filter_grid_idx]) / grid.Sbase)
+    q_ref = -float(np.imag(pf_results.St[filter_grid_idx]) / grid.Sbase)
+    return p_ref, q_ref
+
+
 def initialize_rms_models(grid, pf_results):
     print("\n" + "-" * 70)
     print("Initializing RMS models for explicit-filter GFM VSC")
@@ -230,10 +239,7 @@ def initialize_rms_models(grid, pf_results):
         filter_vm = float(np.abs(pf_results.voltage[filter_bus_idx]))
         tune_event(vsc.rms_model, vf, 'V_ref', filter_vm)
 
-        branch_list = list(grid.get_branches_iter(add_vsc=False, add_hvdc=False, add_switch=True))
-        filter_grid_idx = branch_list.index(line_filter_grid)
-        p_ref = -float(np.real(pf_results.St[filter_grid_idx]) / grid.Sbase)
-        q_ref = -float(np.imag(pf_results.St[filter_grid_idx]) / grid.Sbase)
+        p_ref, q_ref = get_filter_grid_power_refs(grid, pf_results)
         tune_event(vsc.rms_model, vf, 'P_ref', p_ref)
         tune_event(vsc.rms_model, vf, 'Q_ref', q_ref)
 
@@ -317,7 +323,7 @@ def run_rms_simulation(grid, pf_results):
     vsc = grid.vsc_devices[0]
     pref = base.find_name_in_block('P_ref', vsc.rms_model)
     if pref is not None:
-        p_ref0 = -float(np.real(pf_results.St_vsc[0]) / grid.Sbase)
+        p_ref0, _ = get_filter_grid_power_refs(grid, pf_results)
         p_ref_step = 0.005
         event = RmsEvent(device=vsc, parameter=pref, time=0.10, value=p_ref0 + p_ref_step, group=events_group)
         grid.add_rms_event(event)
@@ -341,17 +347,17 @@ def run_rms_simulation(grid, pf_results):
     driver.run()
     results = driver.results
     print(f"  ✓ RMS simulation complete (converged={results.converged})")
-    plot_results(grid, results)
+    plot_results(grid, results, options.time_step)
+    return driver
 
 
-def plot_results(grid, results):
+def plot_results(grid, results, time_step=0.001):
     if results is None or results.values is None or len(results.time_array) == 0:
         print("  No RMS results to plot")
         return
 
     y = results.values[:, :, 0]
-    dt = 0.001
-    t = np.arange(y.shape[0], dtype=float) * dt
+    t = np.arange(y.shape[0], dtype=float) * time_step
     row_norm = np.max(np.abs(y), axis=1)
     valid_idx = np.where(np.isfinite(row_norm) & (row_norm > 0.0))[0]
     if len(valid_idx) == 0:

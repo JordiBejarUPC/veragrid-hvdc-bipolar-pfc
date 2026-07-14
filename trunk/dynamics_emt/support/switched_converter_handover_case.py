@@ -884,6 +884,7 @@ def build_switched_vsc_case(
         q_ki: float = 60.0,
         tau_meas_s: float = 0.005,
         converter_builder: Callable[[Any, str], Any] = get_switched_emt_converter,
+        problem_class: type[Any] = EmtProblemDae,
 ) -> SwitchedConverterCaseContext:
     """
     Build the switched EMT VSC validation case.
@@ -976,7 +977,7 @@ def build_switched_vsc_case(
     set_emt_model(device=dc_load, model=dc_load_mdl, var_factory=grid.var_factory)
 
     # The resulting EMT problem is the single source of truth reused by demos, scripting and tests.
-    problem = EmtProblemDae(
+    problem = problem_class(
         grid=grid,
         options=resolved_emt_options,
         pf_results=pf_results,
@@ -1194,6 +1195,7 @@ def simulate_switched_converter_handover(
         q_ki: float = 60.0,
         tau_meas_s: float = 0.005,
         converter_builder: Callable[[Any, str], Any] = get_switched_emt_converter,
+        problem_class: type[Any] = EmtProblemDae,
         newton_trace_collector: Optional[Any] = None,
         max_residual_inf_fail: float = float("inf"),
         max_state_residual_inf_fail: float = float("inf"),
@@ -1223,6 +1225,7 @@ def simulate_switched_converter_handover(
         q_ki=q_ki,
         tau_meas_s=tau_meas_s,
         converter_builder=converter_builder,
+        problem_class=problem_class,
     )
     problem: EmtProblemDae = case_context.problem
     if newton_trace_collector is not None:

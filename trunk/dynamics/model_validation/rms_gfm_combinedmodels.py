@@ -133,15 +133,19 @@ def build_gfm_current_injection_model(
     algebraic_eqs = [
         p + pt_vsc,
         q + qt_vsc,
+        p - vm * (ir * sym.cos(va) + ii * sym.sin(va)),
+        q + vm * (ii * sym.cos(va) - ir * sym.sin(va)),
         pdc - pf_vsc,
     ]
 
     model = Block(
         children=[vsc_block, pv_block],
-        algebraic_vars=[p, q, vdc],
+        algebraic_vars=[ir, ii, p, q, vdc],
         algebraic_eqs=algebraic_eqs,
         init_eqs={
             vdc: vm,
+            ir: (p * sym.cos(va) + q * sym.sin(va)) / vm_eps,
+            ii: (p * sym.sin(va) - q * sym.cos(va)) / vm_eps,
         },
         in_vars=[vm, va],
         out_vars=[p, q, ir, ii, vdc],
@@ -399,7 +403,6 @@ def plot_results(grid: vge.MultiCircuit, results, file_name: str = "rms_gfm_comb
             axes[0].plot(t, np.degrees(va), label="Va (deg)", linewidth=1.5)
         axes[0].set_ylabel("Bus")
         axes[0].grid(True)
-        axes[0].legend(loc="best")
 
     if gfm_gen is not None:
         p = values_for(gfm_gen.rms_model, f"P_{sfx}")
@@ -410,7 +413,6 @@ def plot_results(grid: vge.MultiCircuit, results, file_name: str = "rms_gfm_comb
             axes[1].plot(t, q, label="Q", linewidth=1.5)
         axes[1].set_ylabel("P/Q")
         axes[1].grid(True)
-        axes[1].legend(loc="best")
 
         ir = values_for(gfm_gen.rms_model, f"Ir_{sfx}")
         ii = values_for(gfm_gen.rms_model, f"Ii_{sfx}")
@@ -420,7 +422,6 @@ def plot_results(grid: vge.MultiCircuit, results, file_name: str = "rms_gfm_comb
             axes[2].plot(t, ii, label="Ii", linewidth=1.5)
         axes[2].set_ylabel("I")
         axes[2].grid(True)
-        axes[2].legend(loc="best")
 
         vdc = values_for(gfm_gen.rms_model, f"Vdc_{sfx}")
         pdc = values_for(gfm_gen.rms_model, "Pdc")
@@ -432,11 +433,15 @@ def plot_results(grid: vge.MultiCircuit, results, file_name: str = "rms_gfm_comb
     axes[3].set_ylabel("DC")
     axes[3].set_xlabel("Time (s)")
     axes[3].grid(True)
-    axes[3].legend(loc="best")
 
     for ax in axes:
         ax.axvline(x=0.50, color="red", linestyle=":", alpha=0.7)
         ax.set_xlim([0.0, t[-1]])
+
+    for ax in axes:
+        handles, labels = ax.get_legend_handles_labels()
+        if handles:
+            ax.legend(handles, labels, loc="best")
 
     plt.tight_layout()
     plt.savefig(file_name, dpi=150)

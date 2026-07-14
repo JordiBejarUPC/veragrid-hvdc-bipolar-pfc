@@ -183,7 +183,7 @@ class ArbitraryWaveformCurrentSourceEmtTemplate(TemplateDefinition):
                 TemplateProp(name="phA", units="", descr="Whether phase A is active.", tpe=bool, value=True),
                 TemplateProp(name="phB", units="", descr="Whether phase B is active.", tpe=bool, value=False),
                 TemplateProp(name="phC", units="", descr="Whether phase C is active.", tpe=bool, value=False),
-                TemplateProp(name="waveform", units="", descr="waveform points (value, time)", tpe=Sequence[Vec], value=None),
+                TemplateProp(name="waveform", units="", descr="waveform points (value, time)", tpe=Sequence[Vec], value=((0.0, 0.0), (0.02, 1), (0.04, 0.0))),
                 TemplateProp(name="name", units="", descr="Name of the emt model.", tpe=str, value="arbitrary_waveform_current_source_emt"),
             ]
         )

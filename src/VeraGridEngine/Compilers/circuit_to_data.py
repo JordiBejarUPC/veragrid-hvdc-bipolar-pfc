@@ -955,7 +955,7 @@ def get_shunt_data(
                                         bus_name=elm.bus.name,
                                         bus_data=bus_data,
                                         bus_voltage_used=bus_voltage_used,
-                                        candidate_Vm=elm.Vset,
+                                        candidate_Vm=elm.get_Vset_at(t_idx),
                                         logger=logger)
 
             if elm.use_kw:
@@ -1091,7 +1091,7 @@ def fill_generator_parent(
                                     bus_name=elm.bus.name,
                                     bus_data=bus_data,
                                     bus_voltage_used=bus_voltage_used,
-                                    candidate_Vm=elm.Vset,
+                                    candidate_Vm=elm.get_Vset_at(t_idx),
                                     logger=logger)
             # we pick this value to initialize
             data.q[k] = elm.get_Q_at(t_idx)

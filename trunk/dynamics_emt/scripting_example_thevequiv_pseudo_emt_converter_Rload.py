@@ -29,7 +29,6 @@ else:
 import VeraGridEngine.api as gce
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_dae import EmtProblemDae
-from VeraGridEngine.Simulations.EMT.solvers.structural_compiled_solver import StructuralCompiledSolver
 from VeraGridEngine.Simulations.EMT.solvers.jit_symbolic_solver import JitSymbolicSolver
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowOptions
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results import PowerFlowResults
@@ -250,24 +249,24 @@ def build_problem(grid: gce.MultiCircuit, pf_results: PowerFlowResults) -> EmtPr
         time_step=2.0e-5,
         simulation_time=0.15,
         tolerance=1e-6,
-        solver_type=EmtSolverTypes.StructuralCompiled,
+        solver_type=EmtSolverTypes.Symbolic,
         initialization_method=EmtInitializationMethod.Explicit,
         integration_method=DynamicIntegrationMethod.DaeTrapezoidal,
-        verbose=1,
+        verbose=0,
     )
     return EmtProblemDae(grid=grid, options=options, pf_results_3ph=None, pf_results=pf_results)
 
 
-def build_solver(problem: EmtProblemDae) -> StructuralCompiledSolver|JitSymbolicSolver:
+def build_solver(problem: EmtProblemDae) -> JitSymbolicSolver:
     """
-    Build the compiled EMT solver backend.
+    Build the EMT solver backend.
 
     :param problem:
         EMT problem.
     :return:
         Configured solver.
     """
-    solver: StructuralCompiledSolver = StructuralCompiledSolver(
+    return JitSymbolicSolver(
         problem=problem,
         t0=0.0,
         t_end=problem.options.simulation_time,
@@ -276,10 +275,7 @@ def build_solver(problem: EmtProblemDae) -> StructuralCompiledSolver|JitSymbolic
         pred_method=DynamicIntegrationMethod.OdeEuler,
         dense_threshold=0,
         verbose=False,
-        auto_build=False,
     )
-    solver._build_vectorized_backend(problem.options.integration_method)
-    return solver
 
 
 def get_signal(problem: EmtProblemDae, root_block: Block, variable_name: str, y: np.ndarray) -> np.ndarray:

@@ -10,7 +10,7 @@ import json
 import numpy as np
 import pandas as pd
 from PySide6 import QtWidgets, QtCore
-from typing import List
+from typing import List, Dict
 from datetime import datetime, timedelta
 
 import VeraGrid.Gui.gui_functions as gf
@@ -22,7 +22,7 @@ from VeraGridEngine.Utils.progress_bar import print_progress_bar
 from VeraGrid.Gui.FileDialogues.ProfilesInput.profiles_from_models_gui import Ui_Dialog
 
 
-def extract_and_convert_to_datetime(filename, logger: Logger) -> pd.DatetimeIndex | None:
+def extract_and_convert_to_datetime(filename, logger: Logger) -> pd.Timestamp | None:
     """
     Try to extract date from file name
     :param filename: file name
@@ -64,17 +64,19 @@ class GridsModelItem:
     GridsModelItem
     """
 
-    def __init__(self, path, tme, logger: Logger):
+    def __init__(self, path: str, tme: pd.Timestamp, logger: Logger):
         """
 
         :param path:
+        :param tme:
+        :param logger:
         """
         suggested_tme = extract_and_convert_to_datetime(filename=os.path.basename(path), logger=logger)
-        self.time = suggested_tme if suggested_tme is not None else tme
+        self.time: pd.Timestamp = suggested_tme if suggested_tme is not None else tme
 
         self.path: str = path
 
-        self.name = os.path.basename(path)
+        self.name: str = os.path.basename(path)
 
     def get_at(self, idx: int) -> str | pd.Timestamp:
         """
@@ -173,11 +175,16 @@ class GridsModel(QtCore.QAbstractTableModel):
         current_date: datetime = datetime.today()
         base_date: datetime = datetime(current_date.year, 1, 1, 0, 0, 0)
         base_increment_hours: int = 1
-        tme: datetime = base_date + timedelta(hours=base_increment_hours * item_count)
 
-        # Build the item here so dropped files and manually added files follow
-        # the same filename-to-time proposal path.
-        self._values_.append(GridsModelItem(path=path, tme=tme, logger=self.logger))
+        tme_value = pd.Timestamp(base_date + timedelta(hours=base_increment_hours * item_count))
+        if not pd.isna(tme_value):
+            tme: pd.Timestamp = tme_value
+
+            # Build the item here so dropped files and manually added files follow
+            # the same filename-to-time proposal path.
+            self._values_.append(GridsModelItem(path=path, tme=tme, logger=self.logger))
+        else:
+            print(f"path: {path}, failed to convert date :/")
 
     def add_paths(self, paths: List[str]) -> None:
         """
@@ -461,44 +468,29 @@ class ModelsProcessThread(QtCore.QThread):
         self.cancel_requested = True
 
 
-def assign_grid(t, grid_to_add: MultiCircuit, main_grid: MultiCircuit, use_secondary_key, logger: Logger):
+def build_main_elements_dict_by_type(main_grid: MultiCircuit,
+                                     use_secondary_key: bool) -> Dict[object, Dict[str, object]]:
     """
-    Assign all the values of the loaded grid to the profiles of the main grid at the time step t
-    :param t: time step index
-    :param grid_to_add: grid to add to the main cirucuit
-    :param main_grid: main grid
-    :param use_secondary_key: Use the secondary key ("code") to match
-    :param logger: Logger
+    Build the element lookup dictionaries once for the whole import run.
+
+    :param main_grid: Main grid receiving the imported profiles.
+    :param use_secondary_key: Use the secondary key ("code") to match.
+    :return: Lookup dictionaries indexed by device type.
     """
-    # for each device type that we see in the tree ...
+    main_elements_dict_by_type: Dict[object, Dict[str, object]] = dict()
+    dev_template: object
+    device_type: object
+
+    # Precompute the dictionaries once because rebuilding them for every file
+    # and every device type repeats the same work many times.
     for dev_template in main_grid.template_items():
-
-        # get the device type
         device_type = dev_template.device_type
+        main_elements_dict_by_type[device_type] = main_grid.get_elements_dict_by_type(
+            device_type,
+            use_secondary_key=use_secondary_key
+        )
 
-        # get dictionary of devices
-        main_elms_dict = main_grid.get_elements_dict_by_type(device_type, use_secondary_key=use_secondary_key)
-
-        # get list of devices
-        elms_from_the_grid_to_add = grid_to_add.get_elements_by_type(device_type)
-
-        # for each device
-        for elm_to_add in elms_from_the_grid_to_add:
-
-            # try to find the element in the main grid: fast way to avoid double lookup
-            main_elm = main_elms_dict.get(elm_to_add.code if use_secondary_key else elm_to_add.idtag, None)
-
-            if main_elm is not None:
-
-                # for every property with profile, set the profile value with the element value
-                for prop, profile_prop in main_elm.properties_with_profile.items():
-                    # copy the element profile properties to the main element at the time index t
-                    getattr(main_elm, profile_prop)[t] = getattr(elm_to_add, prop)
-
-            else:
-                logger.add_warning("Element not found in the main grid, added on the fly",
-                                   value=elm_to_add.name)
-                main_grid.add_element(elm_to_add)
+    return main_elements_dict_by_type
 
 
 class ModelsInputGUI(QtWidgets.QDialog):
@@ -760,8 +752,14 @@ class ModelsInputGUI(QtWidgets.QDialog):
         loaded_grid: MultiCircuit | None
         progress_value: float
         worker_thread: ModelsProcessThread | None = self.process_thread
+        main_elements_dict_by_type: Dict[object, Dict[str, object]]
 
         self.generate_time_array(main_grid=main_grid, logger=logger, items=items)
+
+        main_elements_dict_by_type = build_main_elements_dict_by_type(
+            main_grid=main_grid,
+            use_secondary_key=use_secondary_key
+        )
 
         if progress_func is not None:
             progress_func(0.0)
@@ -778,15 +776,16 @@ class ModelsInputGUI(QtWidgets.QDialog):
                 pass
 
             name = os.path.basename(entry.path)
-            print_progress_bar(iteration=t+1, total=n, txt=name)
 
             if os.path.exists(entry.path):
                 loaded_grid = FileOpen(entry.path).open()
-                assign_grid(t=t,
-                            grid_to_add=loaded_grid,
-                            main_grid=main_grid,
-                            use_secondary_key=use_secondary_key,
-                            logger=logger)
+                main_grid.assign_grid(
+                    t=t,
+                    grid_to_add=loaded_grid,
+                    main_elements_dict_by_type=main_elements_dict_by_type,
+                    use_secondary_key=use_secondary_key,
+                    logger=logger
+                )
 
                 logger.add_info(msg="Loaded grid",
                                 device=name,
@@ -802,7 +801,8 @@ class ModelsInputGUI(QtWidgets.QDialog):
                 progress_value = ((t + 1) * 100.0) / n if n > 0 else 100.0
                 progress_func(progress_value)
             else:
-                pass
+                # Show progress bar only if there is no progress_func pointer
+                print_progress_bar(iteration=t + 1, total=n, txt=name)
 
         print()  # to finalize the progressbar
 

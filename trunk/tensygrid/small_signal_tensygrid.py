@@ -11,6 +11,18 @@ This script creates the phasor problem manually and injects it into the SmallSig
 
 import sys
 from pathlib import Path
+import pickle
+
+project_base = Path(__file__).resolve().parents[2]
+script_dir = Path(__file__).resolve().parent
+src_path = project_base / "src"
+if src_path.exists():
+    if str(src_path) not in sys.path:
+        sys.path.insert(0, str(src_path))
+else:
+    print(f"[ERROR] Engine not found: {src_path}")
+    sys.exit(1)
+
 import time, pickle, os
 import multiprocessing as mp
 from typing import Tuple, Any, List
@@ -43,6 +55,9 @@ else:
 from PolynomialMatrixBuilder import PolynomialMatrixBuilder
 from matplotlib import pyplot as plt
 import VeraGridEngine.api as vge
+from VeraGridEngine.basic_structures import Logger
+from VeraGridEngine.IO.veragrid.pack_unpack import parse_veragrid_data
+from VeraGridEngine.IO.veragrid.zip_interface import get_frames_from_zip
 from VeraGridEngine.Simulations.Rms.numerical.back_euler_fx import BackEulerImplicitIntegration
 from phasor_diagnostics import (
     check_pf_line_equations,
@@ -89,10 +104,28 @@ EXEC_METRICS = {
 }
 
 
+def open_grid_rebuilding_symbolic_data(grid_path):
+    """Open a grid, ignoring stale serialized symbolic blocks if they cannot be parsed."""
+    try:
+        return vge.open_file(grid_path)
+    except KeyError as ex:
+        logger = Logger()
+        data_dictionary, _, has_multiverse_data = get_frames_from_zip(file_name_zip=grid_path, logger=logger)
+        if data_dictionary is None or has_multiverse_data:
+            raise
+
+        if data_dictionary.get("symbolic_data") is None:
+            raise
+
+        print(f"  ! Ignoring stale serialized symbolic data ({ex}); rebuilding RMS models from grid devices")
+        data_dictionary["symbolic_data"] = {}
+        return parse_veragrid_data(data=data_dictionary, logger=logger)
+
+
 def define_problem_with_path(grid_path):
     """Creates the grid, runs the power flow, and returns the phasor problem."""
     print("\n[1] Creating phasor grid_path...")
-    grid = vge.open_file(grid_path)
+    grid = open_grid_rebuilding_symbolic_data(grid_path)
     ensure_unique_device_names(grid)
 
     # Build models
@@ -181,6 +214,13 @@ def define_problem_with_path(grid_path):
         print("  ✗ Power flow failed")
         return False, None, None
 
+
+    if CHRISTOPH_COMPARISON:
+        if CHRISTOPH_PF_FILE.exists():
+            with open(CHRISTOPH_PF_FILE, "rb") as f:
+                pf_results = pickle.load(f)
+        else:
+            print(f"  ! Christoph PF reference not found at {CHRISTOPH_PF_FILE}; using computed power flow")
 
     if RUN_PF_LINE_EQ_CHECK:
         check_pf_line_equations(grid=grid, pf_results=pf_results)
