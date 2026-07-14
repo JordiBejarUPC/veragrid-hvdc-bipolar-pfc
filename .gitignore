@@ -47,4 +47,4 @@ LOCAL_VERAGRID_NOTES.md
 /trunk/tensygrid/venv_bash/*
 trunk/tensygrid/precomputed_builds/
 trunk/tensygrid/venv_bash/
-trunk/hpc_contingencies/contingency_results.db
+/trunk/hpc_contingencies/results.db
