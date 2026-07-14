@@ -526,6 +526,7 @@ class EditParameterDialog(QDialog):
 
 class WrappableBlockTableModel(WrappableTableModel):
     block_updated = Signal(object)
+    latex_invalidation_requested = Signal(str)
 
     def __init__(self,
                  var_factory: VarFactory,
@@ -685,6 +686,11 @@ class WrappableBlockTableModel(WrappableTableModel):
             if self.mode == DynamicTableModelMode.EQUATIONS:
                 old_expr = row.value
                 try:
+                    from VeraGridEngine.Utils.Symbolic.latex_printer import symbolic_to_latex
+                    old_latex = symbolic_to_latex(old_expr) if isinstance(old_expr, Expr) else None
+                except Exception:
+                    old_latex = None
+                try:
                     namespace = self.symbol_namespace
                     if namespace is None and self.block is not None:
                         namespace = build_block_symbol_namespace(self.block)
@@ -695,6 +701,8 @@ class WrappableBlockTableModel(WrappableTableModel):
                     update_source_dict(self.block, row, row.value, old_expr)
                     self.dataChanged.emit(index, index, [role])
                     self.block_updated.emit(self.block.uid)
+                    if old_latex is not None:
+                        self.latex_invalidation_requested.emit(old_latex)
                     return True
                 except Exception:
                     return False
@@ -815,7 +823,8 @@ class WrappableBlockTableModel(WrappableTableModel):
             delegate = BlockValueDelegate(view)
             view.setItemDelegateForColumn(2, delegate)
         elif self.mode == DynamicTableModelMode.EQUATIONS:
-            delegate = BlockValueDelegate(view)
+            from VeraGrid.Gui.DynamicModelEditor.dynamic_latex_renderer import LatexEquationDelegate
+            delegate = LatexEquationDelegate(view)
             view.setItemDelegateForColumn(1, delegate)
         else:
             pass

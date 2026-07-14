@@ -594,6 +594,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         )
         self.equations_model.set_mode(DynamicTableModelMode.EQUATIONS)
         self.equations_model.set_delegates()
+        self._equations_latex_delegate = self.ui.equationsTableView.itemDelegateForColumn(1)
+        self.equations_model.latex_invalidation_requested.connect(
+            self._invalidate_equations_latex
+        )
         self.equations_search = QLineEdit()
         self.equations_search.setPlaceholderText(self.tr("Search equations..."))
         self.equations_search.setClearButtonEnabled(True)
@@ -609,7 +613,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         equations_header.setSectionResizeMode(QtWidgets.QHeaderView.ResizeMode.Interactive)
         equations_header.setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
         equations_header.setSectionResizeMode(1, QtWidgets.QHeaderView.ResizeMode.Stretch)
-        self.ui.equationsTableView.verticalHeader().setVisible(False)
+        equations_vheader = self.ui.equationsTableView.verticalHeader()
+        equations_vheader.setSectionResizeMode(
+            QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
+        equations_vheader.setVisible(False)
         self.ui.equationsTableView.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows)
         self.ui.equationsTableView.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection)
         self.ui.equationsTableView.doubleClicked.connect(self.on_parameters_table_double_clicked)
@@ -5389,6 +5396,13 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             item.setSelected(True)
         else:
             pass
+
+    def _invalidate_equations_latex(self, old_latex: str) -> None:
+        """Drop one cached LaTeX pixmap after the source equation changed."""
+        delegate = self._equations_latex_delegate
+        if hasattr(delegate, "invalidate"):
+            delegate.invalidate(old_latex)
+        self.ui.equationsTableView.resizeRowsToContents()
 
     def on_block_updated(self, block_uid: int) -> None:
         """
