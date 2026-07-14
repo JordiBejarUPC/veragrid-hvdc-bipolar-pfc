@@ -3,7 +3,7 @@ import sqlite3
 import time
 import numpy as np
 
-DB_FILE = "contingency_results.db"
+DB_FILE = "results.db"
 
 def initialize_database():
     conn = sqlite3.connect(DB_FILE)
