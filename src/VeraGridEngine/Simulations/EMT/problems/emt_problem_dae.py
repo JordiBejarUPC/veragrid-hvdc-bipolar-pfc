@@ -4525,7 +4525,10 @@ class EmtProblemDae(EmtProblemTemplate):
             # The Thevenin generator templates reconstruct an internal balanced emf
             # from the PF seed. Those internal variables are not externally mapped,
             # so they must be preserved explicitly across the later native-init pass.
-            if injection.device_type == DeviceType.GeneratorDevice and generator_count_same_bus > 1:
+            # The Thevenin generator needs its PF-derived internal emf/current seed
+            # even when it is the only generator at the bus; otherwise its source
+            # current can be left in the per-phase PF convention and violate KCL.
+            if injection.device_type == DeviceType.GeneratorDevice and self._is_thevenin_generator_model(mdl=mdl):
                 self._seed_thevenin_internal_emf_from_pf(
                     injection=injection,
                     mdl=mdl,
@@ -4554,6 +4557,22 @@ class EmtProblemDae(EmtProblemTemplate):
                 else:
                     pass
                 phase_index += 1
+
+    @staticmethod
+    def _is_thevenin_generator_model(mdl: Block) -> bool:
+        """
+        Return whether a generator model exposes Thevenin runtime EMF controls.
+        """
+        if "thevenin" in str(mdl.name).lower():
+            return True
+
+        for variable in mdl.event_dict.keys():
+            if variable.name.startswith("E_scale"):
+                return True
+            else:
+                pass
+
+        return False
 
     def _seed_thevenin_internal_emf_from_pf(
             self,
@@ -4607,6 +4626,14 @@ class EmtProblemDae(EmtProblemTemplate):
         else:
             current_c = 0.0 + 0.0j
 
+        # Balanced PF seeds store per-phase complex power, while the Thevenin EMT
+        # source current states participate directly in the bus KCL against branch
+        # terminal currents. In the balanced EMT convention those KCL currents are
+        # the three-phase current basis, not the per-phase power current.
+        current_a *= 3.0
+        current_b *= 3.0
+        current_c *= 3.0
+
         # The positive-sequence phasors define the same operating point used by the
         # explicit-init equations inside the Thevenin template.
         voltage_positive_sequence: complex = (
@@ -4652,11 +4679,25 @@ class EmtProblemDae(EmtProblemTemplate):
         self.set_internal_runtime_if_exists(mdl=mdl, var_name="phi_" + mdl.name, value=phi_rel)
         self.set_internal_runtime_if_exists(mdl=mdl, var_name="Vpk_" + mdl.name, value=voltage_peak)
         self.set_internal_runtime_if_exists(mdl=mdl, var_name="Ipk_" + mdl.name, value=current_peak)
+        self.set_external_param(mdl=mdl, key=VarPowerFlowReferenceType.phi_v, value=phi_v)
+        self.set_external_param(mdl=mdl, key=VarPowerFlowReferenceType.phi, value=phi_rel)
+        self.set_external_param(mdl=mdl, key=VarPowerFlowReferenceType.Vpk, value=voltage_peak)
+        self.set_external_param(mdl=mdl, key=VarPowerFlowReferenceType.Ipk, value=current_peak)
 
         theta_var: Optional[Var] = _find_internal_var_by_prefix(mdl, "theta_")
         e_a_var: Optional[Var] = _find_internal_var_by_prefix(mdl, "e_A_")
         e_b_var: Optional[Var] = _find_internal_var_by_prefix(mdl, "e_B_")
         e_c_var: Optional[Var] = _find_internal_var_by_prefix(mdl, "e_C_")
+        i_a_var: Optional[Var] = _get_external_mapping_var_if_present(mdl=mdl, key=VarPowerFlowReferenceType.i_A)
+        i_b_var: Optional[Var] = _get_external_mapping_var_if_present(mdl=mdl, key=VarPowerFlowReferenceType.i_B)
+        i_c_var: Optional[Var] = _get_external_mapping_var_if_present(mdl=mdl, key=VarPowerFlowReferenceType.i_C)
+        i_a_value: float = float(c_sqrt_2 * np.imag(current_a))
+        i_b_value: float = float(c_sqrt_2 * np.imag(current_b))
+        i_c_value: float = float(c_sqrt_2 * np.imag(current_c))
+        omega_base: float = 2.0 * np.pi * self.grid.fBase
+        d_i_a_value: float = float(omega_base * (e_a_value - resistance_s * i_a_value - c_sqrt_2 * np.imag(phase_a)) / reactance_s)
+        d_i_b_value: float = float(omega_base * (e_b_value - resistance_s * i_b_value - c_sqrt_2 * np.imag(phase_b)) / reactance_s)
+        d_i_c_value: float = float(omega_base * (e_c_value - resistance_s * i_c_value - c_sqrt_2 * np.imag(phase_c)) / reactance_s)
 
         # The preserved guesses are written directly into both init dictionaries so
         # the later native-init pass starts from the PF-consistent emf and the final
@@ -4682,6 +4723,39 @@ class EmtProblemDae(EmtProblemTemplate):
         if e_c_var is not None:
             self._temp_init_guess[e_c_var.uid] = e_c_value
             self._temp_post_init_guess[e_c_var.uid] = e_c_value
+        else:
+            pass
+
+        if i_a_var is not None:
+            self._temp_init_guess[i_a_var.uid] = i_a_value
+            self._temp_post_init_guess[i_a_var.uid] = i_a_value
+            if i_a_var.diff_var is not None:
+                self._temp_diff_init_guess[i_a_var.diff_var.uid] = d_i_a_value
+                self._temp_post_diff_init_guess[i_a_var.diff_var.uid] = d_i_a_value
+        else:
+            pass
+
+        if i_b_var is not None:
+            self._temp_init_guess[i_b_var.uid] = i_b_value
+            self._temp_post_init_guess[i_b_var.uid] = i_b_value
+            if i_b_var.diff_var is not None:
+                self._temp_diff_init_guess[i_b_var.diff_var.uid] = d_i_b_value
+                self._temp_post_diff_init_guess[i_b_var.diff_var.uid] = d_i_b_value
+        else:
+            pass
+
+        if i_c_var is not None:
+            self._temp_init_guess[i_c_var.uid] = i_c_value
+            self._temp_post_init_guess[i_c_var.uid] = i_c_value
+            if i_c_var.diff_var is not None:
+                self._temp_diff_init_guess[i_c_var.diff_var.uid] = d_i_c_value
+                self._temp_post_diff_init_guess[i_c_var.diff_var.uid] = d_i_c_value
+        else:
+            pass
+
+        if theta_var is not None and theta_var.diff_var is not None:
+            self._temp_diff_init_guess[theta_var.diff_var.uid] = omega_base
+            self._temp_post_diff_init_guess[theta_var.diff_var.uid] = omega_base
         else:
             pass
 

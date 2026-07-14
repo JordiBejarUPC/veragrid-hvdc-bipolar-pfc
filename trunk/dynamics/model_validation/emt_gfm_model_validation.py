@@ -22,6 +22,7 @@ from VeraGridEngine.Templates.Emt.load_zip_emt_template import get_load_ZIP_emt_
 from VeraGridEngine.Templates.Emt.pi_line_emt_template import get_pi_line_emt_template
 from VeraGridEngine.Templates.Emt.balanced_source_emt_template import get_balanced_3ph_voltage_source_emt_template
 from VeraGridEngine.Templates.Emt.simple_generator_emt_template import get_simple_generator_emt_template
+from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template_with_ref
 from VeraGridEngine.Utils.Symbolic.bus_emt_template import get_bus_emt_template
 from VeraGridEngine.Utils.Symbolic.diagnostic import NewtonDiagnosticsConfig
 from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_emt_model
@@ -30,12 +31,24 @@ from VeraGridEngine.enumerations import DynamicIntegrationMethod, EmtInitializat
 from emt_gfm_model import build_emt_gfm_model, create_grid, find_name_in_block
 
 
-PLOT_OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "emt_gfm_model_validation_plots")
-TIME_STEP = float(os.environ.get("VERAGRID_GFM_EMT_TIME_STEP", "0.0001"))
-SIM_TIME = float(os.environ.get("VERAGRID_GFM_EMT_SIM_TIME", "0.02"))
-WARMUP_TIME = float(os.environ.get("VERAGRID_GFM_EMT_WARMUP_TIME", "0.2"))
-METHOD_NAME = os.environ.get("VERAGRID_GFM_EMT_METHOD", "back_euler").strip().lower()
-SLACK_SOURCE = os.environ.get("VERAGRID_GFM_EMT_SLACK_SOURCE", "generator").strip().lower()
+PLOT_OUTPUT_DIR = os.environ.get(
+    "VERAGRID_GFM_EMT_PLOT_OUTPUT_DIR",
+    os.path.join(os.path.dirname(__file__), "emt_gfm_model_validation_plots"),
+)
+TIME_STEP = float(os.environ.get("VERAGRID_GFM_EMT_TIME_STEP", "1e-5"))
+SIM_TIME = float(os.environ.get("VERAGRID_GFM_EMT_SIM_TIME", "0.1"))
+WARMUP_TIME = float(os.environ.get("VERAGRID_GFM_EMT_WARMUP_TIME", "0.0"))
+METHOD_NAME = os.environ.get("VERAGRID_GFM_EMT_METHOD", "trap").strip().lower()
+SLACK_SOURCE = os.environ.get("VERAGRID_GFM_EMT_SLACK_SOURCE", "thevenin").strip().lower()
+LOAD_SCALE = float(os.environ.get("VERAGRID_GFM_EMT_LOAD_SCALE", "1.0"))
+
+
+def env_flag(name: str, default: str = "0") -> bool:
+    return os.environ.get(name, default).strip().lower() in {"1", "true", "yes", "on"}
+
+
+P_REF_STEP = os.environ.get("VERAGRID_GFM_EMT_P_REF_STEP", None)
+P_REF_STEP_TIME = float(os.environ.get("VERAGRID_GFM_EMT_P_REF_STEP_TIME", "0.1"))
 
 
 def integration_method_from_env() -> DynamicIntegrationMethod:
@@ -57,6 +70,46 @@ def run_power_flow(grid: vge.MultiCircuit):
         orthogonalize_controls=False,
     )
     return vge.power_flow(grid=grid, options=options)
+
+
+def create_simplified_grid() -> tuple[vge.MultiCircuit, dict]:
+    """Create a minimal slack-line-GFM EMT validation case."""
+
+    grid = vge.MultiCircuit(name="EMT GFM simplified validation", Sbase=100.0, fbase=50.0)
+
+    bus_slack = vge.Bus(name="Bus 1 (AC)", Vnom=230.0, is_slack=True)
+    bus_gfm = vge.Bus(name="Bus 1_1 (AC)", Vnom=230.0)
+    grid.add_bus(bus_slack)
+    grid.add_bus(bus_gfm)
+
+    gen_slack = vge.Generator(name="Generator", P=0.0, vset=0.98, Snom=grid.Sbase, freq=50.0)
+    gen_slack.R1 = float(os.environ.get("VERAGRID_GFM_EMT_THEVENIN_R", "0.01"))
+    gen_slack.X1 = float(os.environ.get("VERAGRID_GFM_EMT_THEVENIN_X", "0.20"))
+    gen_slack.X0 = gen_slack.X1
+    gen_gfm = vge.Generator(name="GFM Generator", P=4.0, vset=0.98, Snom=grid.Sbase, freq=50.0)
+    line13 = vge.Line(
+        name="Line13",
+        bus_from=bus_gfm,
+        bus_to=bus_slack,
+        rate=100.0,
+        r=0.01,
+        x=0.05,
+        b=0.0,
+    )
+
+    grid.add_generator(bus=bus_slack, api_obj=gen_slack)
+    grid.add_generator(bus=bus_gfm, api_obj=gen_gfm)
+    grid.add_line(line13)
+    grid.apply_all_branch_types()
+
+    devices = {
+        "bus_slack": bus_slack,
+        "bus_gfm": bus_gfm,
+        "gen_slack": gen_slack,
+        "gen_gfm": gen_gfm,
+        "line13": line13,
+    }
+    return grid, devices
 
 
 def attach_emt_models(grid: vge.MultiCircuit, devices: dict, pf_results=None) -> object:
@@ -126,17 +179,20 @@ def attach_emt_models(grid: vge.MultiCircuit, devices: dict, pf_results=None) ->
                 source_conductance_value=source_g,
                 name="slack_balanced_voltage_source",
             ).block
+        elif SLACK_SOURCE in {"thevenin", "thevenin_rl"}:
+            slack_block = get_generator_thevenin_rl_emt_template_with_ref(vf=grid.var_factory).block
         else:
             slack_block = get_simple_generator_emt_template(vf=grid.var_factory).block
         set_emt_model(devices["gen_slack"], slack_block, grid.var_factory)
 
-    load_block = get_load_ZIP_emt_template(vf=grid.var_factory).block
-    set_emt_model(devices["load"], load_block, grid.var_factory)
+    if "load" in devices:
+        load_block = get_load_ZIP_emt_template(vf=grid.var_factory).block
+        set_emt_model(devices["load"], load_block, grid.var_factory)
 
     return gfm_block
 
 
-def run_emt(problem: EmtProblemDae, options: EmtOptions, t_end: float):
+def run_emt(problem: EmtProblemDae, options: EmtOptions, t_end: float, x0=None, dx0=None, params0=None):
     solver = build_emt_solver(
         options=options,
         problem=problem,
@@ -147,6 +203,7 @@ def run_emt(problem: EmtProblemDae, options: EmtOptions, t_end: float):
         newton_diag_config=NewtonDiagnosticsConfig(
             enable_fallback=True,
             enable_backtracking=True,
+            compute_dense_cond=env_flag("VERAGRID_GFM_EMT_COMPUTE_DENSE_COND", "1"),
             backtracking_min_alpha=1.0e-6,
             backtracking_max_iter=12,
             max_newton_step_inf=float(os.environ.get("VERAGRID_GFM_EMT_MAX_NEWTON_STEP", "0.05")),
@@ -156,7 +213,49 @@ def run_emt(problem: EmtProblemDae, options: EmtOptions, t_end: float):
     predictor_derivatives = getattr(predictor, "algebraic_derivative_by_index", {}) if predictor is not None else {}
     if predictor_derivatives:
         print(f"Algebraic predictor derivatives active: {len(predictor_derivatives)}")
-    return solver.simulate()
+    return solver.simulate(x0=x0, dx0=dx0, params0=params0)
+
+
+def set_runtime_param_in_vector(problem: EmtProblemDae, block, name: str, params: np.ndarray, value: float) -> None:
+    var = find_name_in_block(name, block)
+    if var is None:
+        raise ValueError(f"Could not find runtime parameter {name}")
+    uid2idx = getattr(problem, "_uid2idx_event_params", getattr(problem, "uid2idx_event_params", {}))
+    idx = uid2idx.get(var.uid, None)
+    if idx is None:
+        raise ValueError(f"{name} is not an EMT runtime parameter")
+    params[idx] = float(value)
+    if hasattr(problem, "_event_params_values"):
+        problem._event_params_values[idx] = float(value)
+    if hasattr(problem, "event_params_values"):
+        problem.event_params_values[idx] = float(value)
+    if hasattr(problem, "_event_parameters_eqs"):
+        problem._event_parameters_eqs[idx] = problem.grid.var_factory.add_const(float(value))
+    if hasattr(problem, "_runtime_continuous_eqs") and idx < len(problem._runtime_continuous_eqs):
+        problem._runtime_continuous_eqs[idx] = problem.grid.var_factory.add_const(float(value))
+
+
+def run_emt_with_p_ref_step(problem: EmtProblemDae, options: EmtOptions, gfm_block, step_time: float, step_delta: float):
+    step_time = max(0.0, min(float(step_time), float(options.simulation_time)))
+    print(f"Running EMT simulation with P_ref step: t={step_time:.6g} s, delta={step_delta:.9e}")
+    t1, y1, dy1, well1, conv1 = run_emt(problem, options, step_time)
+    params = problem.event_params_values.copy()
+    p_ref = trace_or_param(problem, y1, "P_ref", gfm_block)
+    p_ref_before = float(p_ref[-1])
+    set_runtime_param_in_vector(problem, gfm_block, "P_ref", params, p_ref_before + float(step_delta))
+    print(f"P_ref step applied: {p_ref_before:.9e} -> {p_ref_before + float(step_delta):.9e}")
+
+    x0 = np.asarray(y1[-1, :], dtype=float)
+    dx0 = np.asarray(dy1[-1, :], dtype=float)
+    t2, y2, dy2, well2, conv2 = run_emt(problem, options, options.simulation_time - step_time, x0=x0, dx0=dx0, params0=params)
+
+    if t2.size > 1:
+        t = np.concatenate([t1, step_time + t2[1:]])
+        y = np.vstack([y1, y2[1:, :]])
+        dy = np.vstack([dy1, dy2[1:, :]])
+    else:
+        t, y, dy = t1, y1, dy1
+    return t, y, dy, bool(well1 and well2), bool(conv1 and conv2)
 
 
 def apply_solution_as_initial_guess(problem: EmtProblemDae, y: np.ndarray, dy: np.ndarray) -> None:
@@ -197,7 +296,28 @@ def set_block_event_value(block, vf, name: str, value: float) -> None:
         block.event_dict[var] = vf.add_const(float(value))
 
 
+def apply_gfm_gain_overrides(gfm_block, vf) -> None:
+    overrides = {
+        "Kp_icl": "VERAGRID_GFM_EMT_KP_ICL",
+        "Ki_icl": "VERAGRID_GFM_EMT_KI_ICL",
+        "Kdp": "VERAGRID_GFM_EMT_KDP",
+        "Kdq": "VERAGRID_GFM_EMT_KDQ",
+        "tau_P": "VERAGRID_GFM_EMT_TAU_P",
+        "tau_Q": "VERAGRID_GFM_EMT_TAU_Q",
+    }
+    for gain_name, env_name in overrides.items():
+        env_value = os.environ.get(env_name, None)
+        if env_value is None:
+            continue
+        value = float(env_value)
+        set_block_event_value(gfm_block, vf, gain_name, value)
+        print(f"Overrode {gain_name}: {value:.9e}")
+
+
 def seed_gfm_from_power_flow(problem: EmtProblemDae, grid: vge.MultiCircuit, pf_results, gfm_block, bus_gfm) -> None:
+    theta_name_var = find_name_in_block("theta", gfm_block)
+    theta_name = getattr(theta_name_var, "name", "") if theta_name_var is not None else ""
+    model_name = theta_name[len("theta_"):] if theta_name.startswith("theta_") else str(gfm_block.name)
     bus_idx = grid.buses.index(bus_gfm)
     voltage = complex(pf_results.voltage[bus_idx])
     vpk = float(np.sqrt(2.0) * abs(voltage))
@@ -242,8 +362,10 @@ def seed_gfm_from_power_flow(problem: EmtProblemDae, grid: vge.MultiCircuit, pf_
     lc = 0.1
     cf = 0.05
     rcap = 1.0e6
-    kp = 0.05
-    ki = 50.0
+    kp = float(os.environ.get("VERAGRID_GFM_EMT_KP_ICL", "0.00075"))
+    ki = float(os.environ.get("VERAGRID_GFM_EMT_KI_ICL", "0.2"))
+    if abs(ki) <= 1.0e-12:
+        raise ValueError("VERAGRID_GFM_EMT_KI_ICL must be non-zero for explicit GFM PI-state seeding")
     omega0 = 1.0
     vd_g0 = 0.0
     vq_g0 = vpk
@@ -255,8 +377,30 @@ def seed_gfm_from_power_flow(problem: EmtProblemDae, grid: vge.MultiCircuit, pf_
     iq_c0 = iq0 + cf * omega0 * vd_f0 + vq_f0 / rcap
     vd_c0 = vd_f0 + rf * id_c0 - omega0 * lf * iq_c0
     vq_c0 = vq_f0 + rf * iq_c0 + omega0 * lf * id_c0
+
+    # The GFM voltage loop regulates the filter-capacitor voltage, not the bus
+    # voltage. Rotate the controller frame so the seeded capacitor voltage has
+    # vd_f=0; otherwise the voltage integrator immediately relaxes the PF point.
+    delta = float(np.arctan2(vd_f0, vq_f0))
+    theta = float(theta + delta)
+
+    def rotate_pair(d_value: float, q_value: float) -> tuple[float, float]:
+        c_delta = np.cos(delta)
+        s_delta = np.sin(delta)
+        return (
+            float(d_value * c_delta - q_value * s_delta),
+            float(d_value * s_delta + q_value * c_delta),
+        )
+
+    vd_g0, vq_g0 = rotate_pair(vd_g0, vq_g0)
+    id0, iq0 = rotate_pair(float(id0), float(iq0))
+    vd_f0, vq_f0 = rotate_pair(vd_f0, vq_f0)
+    id_c0, iq_c0 = rotate_pair(id_c0, iq_c0)
+    vd_c0, vq_c0 = rotate_pair(vd_c0, vq_c0)
+    v_ref0 = vq_f0
+
     z_vd0 = (id_c0 - id0 + cf * omega0 * vq_f0 - kp * (0.0 - vd_f0)) / ki
-    z_vq0 = (iq_c0 - iq0 - cf * omega0 * vd_f0 - kp * (vpk - vq_f0)) / ki
+    z_vq0 = (iq_c0 - iq0 - cf * omega0 * vd_f0 - kp * (v_ref0 - vq_f0)) / ki
     vd_ctrl0 = vd_c0 - vd_f0 + lf * omega0 * iq_c0
     vq_ctrl0 = vq_c0 - vq_f0 - lf * omega0 * id_c0
     ia0, ib0, ic0 = abc_from_dq(float(id0), float(iq0))
@@ -283,10 +427,10 @@ def seed_gfm_from_power_flow(problem: EmtProblemDae, grid: vge.MultiCircuit, pf_
         ("Q_ref", q0),
         ("y_p_lp", p0),
         ("y_q_lp", q0),
-        ("V_ref", vpk),
-        ("V", vpk),
+        ("V_ref", v_ref0),
+        ("V", v_ref0),
         ("vd_ref", 0.0),
-        ("vq_ref", vpk),
+        ("vq_ref", v_ref0),
         ("vd_g", vd_g0),
         ("vq_g", vq_g0),
         ("vd_f", vd_f0),
@@ -337,14 +481,14 @@ def seed_gfm_from_power_flow(problem: EmtProblemDae, grid: vge.MultiCircuit, pf_
         ("A_v_c", v_c_a0),
         ("B_v_c", v_c_b0),
         ("C_v_c", v_c_c0),
-        ("vd_GFM_combined_bus", vd_g0),
-        ("vq_GFM_combined_bus", vq_g0),
-        ("vd_GFM_combined_ig", id0),
-        ("vq_GFM_combined_ig", iq0),
-        ("vd_GFM_combined_ic", id_c0),
-        ("vq_GFM_combined_ic", iq_c0),
-        ("vd_GFM_combined_vf", vd_f0),
-        ("vq_GFM_combined_vf", vq_f0),
+        (f"vd_{model_name}_bus", vd_g0),
+        (f"vq_{model_name}_bus", vq_g0),
+        (f"vd_{model_name}_ig", id0),
+        (f"vq_{model_name}_ig", iq0),
+        (f"vd_{model_name}_ic", id_c0),
+        (f"vq_{model_name}_ic", iq_c0),
+        (f"vd_{model_name}_vf", vd_f0),
+        (f"vq_{model_name}_vf", vq_f0),
     ):
         set_runtime_value(problem, gfm_block, name, value)
 
@@ -365,10 +509,15 @@ def seed_gfm_from_power_flow(problem: EmtProblemDae, grid: vge.MultiCircuit, pf_
                          + q_value * (-0.5 * c + 0.5 * sqrt3 * s)),
         )
 
+    omega_base = 2.0 * np.pi * grid.fBase
+    d_i_g_a0 = omega_base * (v_f_a0 - va0 - rc * ia0) / lc
+    d_i_g_b0 = omega_base * (v_f_b0 - vb0 - rc * ib0) / lc
+    d_i_g_c0 = omega_base * (v_f_c0 - vc0 - rc * ic0) / lc
+
     for base_name, value in (
-        ("i_g_A", dq_derivative_samples(float(id0), float(iq0))[0]),
-        ("i_g_B", dq_derivative_samples(float(id0), float(iq0))[1]),
-        ("i_g_C", dq_derivative_samples(float(id0), float(iq0))[2]),
+        ("i_g_A", d_i_g_a0),
+        ("i_g_B", d_i_g_b0),
+        ("i_g_C", d_i_g_c0),
         ("i_c_A", dq_derivative_samples(float(id_c0), float(iq_c0))[0]),
         ("i_c_B", dq_derivative_samples(float(id_c0), float(iq_c0))[1]),
         ("i_c_C", dq_derivative_samples(float(id_c0), float(iq_c0))[2]),
@@ -376,7 +525,7 @@ def seed_gfm_from_power_flow(problem: EmtProblemDae, grid: vge.MultiCircuit, pf_
         ("v_f_B", dq_derivative_samples(float(vd_f0), float(vq_f0))[1]),
         ("v_f_C", dq_derivative_samples(float(vd_f0), float(vq_f0))[2]),
         ("z_vd_loop", 0.0 - vd_f0),
-        ("z_vq_loop", vpk - vq_f0),
+        ("z_vq_loop", v_ref0 - vq_f0),
         ("z_id_loop", 0.0),
         ("z_iq_loop", 0.0),
     ):
@@ -462,6 +611,8 @@ def seed_line_current_predictors(problem: EmtProblemDae, grid: vge.MultiCircuit,
                 predictors[var.uid] = float(derivative)
 
     for line_key in ("line13", "line34"):
+        if line_key not in devices:
+            continue
         line = devices[line_key]
         block = line.emt_model
         d_v_from = bus_voltage_derivatives(line.bus_from)
@@ -513,17 +664,22 @@ def seed_source_currents_from_equations(problem: EmtProblemDae, devices: dict) -
         set_init(source, f"i_{phase}", conductance * (v_src - v_bus))
 
 
-def print_gfm_algebraic_residuals(problem: EmtProblemDae, gfm_block, limit: int = 10) -> None:
+def uid_bindings_from_problem(problem: EmtProblemDae) -> dict[int, float]:
     x0 = problem.get_x0()
     bindings = {}
     for var in list(problem.get_state_vars()) + list(problem.get_algebraic_vars()):
         if var.uid in problem._uid2idx_vars:
-            bindings[var.name] = float(x0[problem.get_var_idx(var)])
+            bindings[var.uid] = float(x0[problem.get_var_idx(var)])
 
     uid2idx = getattr(problem, "_uid2idx_event_params", getattr(problem, "uid2idx_event_params", {}))
     for var in problem.get_variable_parameters():
         if var.uid in uid2idx:
-            bindings[var.name] = float(problem._event_params_values[uid2idx[var.uid]])
+            bindings[var.uid] = float(problem._event_params_values[uid2idx[var.uid]])
+    return bindings
+
+
+def print_gfm_algebraic_residuals(problem: EmtProblemDae, gfm_block, limit: int = 10) -> None:
+    bindings = uid_bindings_from_problem(problem)
 
     gfm_var_names = {var.name for var in gfm_block.algebraic_vars + gfm_block.state_vars + gfm_block.diff_vars}
     gfm_var_names.update(var.name for var in gfm_block.in_vars + gfm_block.out_vars)
@@ -539,7 +695,7 @@ def print_gfm_algebraic_residuals(problem: EmtProblemDae, gfm_block, limit: int 
         if not any(name in eq_text for name in gfm_var_names):
             continue
         try:
-            value = float(eq.eval(**bindings))
+            value = float(eq.eval_uid(bindings))
         except Exception:
             continue
         if np.isfinite(value):
@@ -553,21 +709,12 @@ def print_gfm_algebraic_residuals(problem: EmtProblemDae, gfm_block, limit: int 
 
 
 def print_gfm_state_residuals(problem: EmtProblemDae, gfm_block, limit: int = 16) -> None:
-    x0 = problem.get_x0()
-    bindings = {}
-    for var in list(problem.get_state_vars()) + list(problem.get_algebraic_vars()):
-        if var.uid in problem._uid2idx_vars:
-            bindings[var.name] = float(x0[problem.get_var_idx(var)])
-
-    uid2idx = getattr(problem, "_uid2idx_event_params", getattr(problem, "uid2idx_event_params", {}))
-    for var in problem.get_variable_parameters():
-        if var.uid in uid2idx:
-            bindings[var.name] = float(problem._event_params_values[uid2idx[var.uid]])
+    bindings = uid_bindings_from_problem(problem)
 
     residuals = []
     for state_var, diff_var, eq in zip(gfm_block.state_vars, gfm_block.diff_vars, gfm_block.state_eqs):
         try:
-            rhs = float(eq.eval(**bindings))
+            rhs = float(eq.eval_uid(bindings))
         except Exception:
             continue
         diff_value = float(problem.diff_init_guess.get(diff_var.uid, 0.0))
@@ -584,22 +731,64 @@ def print_gfm_state_residuals(problem: EmtProblemDae, gfm_block, limit: int = 16
         )
 
 
-def print_global_state_residuals(problem: EmtProblemDae, limit: int = 20) -> None:
-    x0 = problem.get_x0()
-    bindings = {}
-    for var in list(problem.get_state_vars()) + list(problem.get_algebraic_vars()):
-        if var.uid in problem._uid2idx_vars:
-            bindings[var.name] = float(x0[problem.get_var_idx(var)])
+def print_block_algebraic_residuals(problem: EmtProblemDae, block, label: str, limit: int = 10) -> None:
+    bindings = uid_bindings_from_problem(problem)
+    block_var_names = {var.name for var in block.algebraic_vars + block.state_vars + block.diff_vars}
+    block_var_names.update(var.name for var in block.in_vars + block.out_vars)
+    block_var_names.update(var.name for var in block.event_dict.keys())
+    for child in block.children:
+        block_var_names.update(var.name for var in child.algebraic_vars + child.state_vars + child.diff_vars)
+        block_var_names.update(var.name for var in child.in_vars + child.out_vars)
+        block_var_names.update(var.name for var in child.event_dict.keys())
 
-    uid2idx = getattr(problem, "_uid2idx_event_params", getattr(problem, "uid2idx_event_params", {}))
-    for var in problem.get_variable_parameters():
-        if var.uid in uid2idx:
-            bindings[var.name] = float(problem._event_params_values[uid2idx[var.uid]])
+    residuals = []
+    for eq in problem.get_algebraic_eqs():
+        eq_text = str(eq)
+        if not any(name in eq_text for name in block_var_names):
+            continue
+        try:
+            value = float(eq.eval_uid(bindings))
+        except Exception:
+            continue
+        if np.isfinite(value):
+            residuals.append((abs(value), value, eq_text[:160]))
+
+    residuals.sort(reverse=True, key=lambda item: item[0])
+    max_res = residuals[0][0] if residuals else 0.0
+    print(f"{label} algebraic residual at seeded x0: max_abs={max_res:.6e}")
+    for abs_value, value, eq_text in residuals[:limit]:
+        print(f"  residual={value:.6e}, abs={abs_value:.6e}, eq={eq_text}")
+
+
+def print_block_state_residuals(problem: EmtProblemDae, block, label: str, limit: int = 10) -> None:
+    bindings = uid_bindings_from_problem(problem)
+    residuals = []
+    for state_var, diff_var, eq in zip(block.state_vars, block.diff_vars, block.state_eqs):
+        try:
+            rhs = float(eq.eval_uid(bindings))
+        except Exception:
+            continue
+        diff_value = float(problem.diff_init_guess.get(diff_var.uid, 0.0))
+        residual = rhs - diff_value
+        residuals.append((abs(residual), residual, rhs, diff_value, state_var.name))
+
+    residuals.sort(reverse=True, key=lambda item: item[0])
+    max_res = residuals[0][0] if residuals else 0.0
+    print(f"{label} state residual at seeded x0: max_abs={max_res:.6e}")
+    for abs_value, residual, rhs, diff_value, name in residuals[:limit]:
+        print(
+            f"  {name}: rhs={rhs:.6e}, d_init={diff_value:.6e}, "
+            f"residual={residual:.6e}, abs={abs_value:.6e}"
+        )
+
+
+def print_global_state_residuals(problem: EmtProblemDae, limit: int = 20) -> None:
+    bindings = uid_bindings_from_problem(problem)
 
     residuals = []
     for state_var, diff_var, eq in zip(problem.get_state_vars(), problem.get_diff_vars(), problem.get_state_eqs()):
         try:
-            rhs = float(eq.eval(**bindings))
+            rhs = float(eq.eval_uid(bindings))
         except Exception:
             continue
         diff_value = float(problem.diff_init_guess.get(diff_var.uid, 0.0))
@@ -617,32 +806,25 @@ def print_global_state_residuals(problem: EmtProblemDae, limit: int = 20) -> Non
 
 
 def print_bus_kcl_residuals(problem: EmtProblemDae, grid: vge.MultiCircuit) -> None:
-    x0 = problem.get_x0()
-    bindings = {}
-    for var in list(problem.get_state_vars()) + list(problem.get_algebraic_vars()):
-        if var.uid in problem._uid2idx_vars:
-            bindings[var.name] = float(x0[problem.get_var_idx(var)])
-
-    uid2idx = getattr(problem, "_uid2idx_event_params", getattr(problem, "uid2idx_event_params", {}))
-    for var in problem.get_variable_parameters():
-        if var.uid in uid2idx:
-            bindings[var.name] = float(problem._event_params_values[uid2idx[var.uid]])
+    uid_bindings = uid_bindings_from_problem(problem)
 
     phases = ("N", "A", "B", "C")
     print("Bus KCL residuals at seeded x0:")
+    working_models = getattr(problem, "_working_emt_models", {})
     for bus in grid.buses:
+        bus_model = working_models.get(str(bus.idtag), bus.emt_model)
         residuals = []
-        for eq in bus.emt_model.algebraic_eqs:
+        for eq in bus_model.algebraic_eqs:
             try:
-                residuals.append(float(eq.eval(**bindings)))
+                residuals.append(float(eq.eval_uid(uid_bindings)))
             except Exception:
                 residuals.append(float("nan"))
 
         phase_vars = [
-            find_name_in_block("v_N", bus.emt_model),
-            find_name_in_block("v_A", bus.emt_model),
-            find_name_in_block("v_B", bus.emt_model),
-            find_name_in_block("v_C", bus.emt_model),
+            find_name_in_block("v_N", bus_model),
+            find_name_in_block("v_A", bus_model),
+            find_name_in_block("v_B", bus_model),
+            find_name_in_block("v_C", bus_model),
         ]
         active_phases = [phase for phase, var in zip(phases, phase_vars) if var is not None]
         labels = active_phases if len(active_phases) == len(residuals) else [f"eq{idx}" for idx in range(len(residuals))]
@@ -661,6 +843,10 @@ def print_case_kcl_residuals(problem: EmtProblemDae, devices: dict, gfm_block) -
 
 def print_case_kcl_from_vector(problem: EmtProblemDae, devices: dict, gfm_block, vector: np.ndarray, label: str) -> None:
     vector = np.asarray(vector, dtype=float)
+    working_models = getattr(problem, "_working_emt_models", {})
+
+    def model(device):
+        return working_models.get(str(device.idtag), device.emt_model)
 
     def value(block, name: str) -> float:
         var = find_name_in_block(name, block)
@@ -670,24 +856,32 @@ def print_case_kcl_from_vector(problem: EmtProblemDae, devices: dict, gfm_block,
 
     print(f"Case KCL residuals from device currents at {label}:")
     for phase in ("A", "B", "C"):
-        line13_if = value(devices["line13"].emt_model, f"if_Line13_{phase}")
-        line13_it = value(devices["line13"].emt_model, f"it_Line13_{phase}")
-        line34_if = value(devices["line34"].emt_model, f"if_Line_3-4_{phase}")
-        line34_it = value(devices["line34"].emt_model, f"it_Line_3-4_{phase}")
-        slack_i = value(devices["gen_slack"].emt_model, f"i_{phase}")
+        line13_if = value(model(devices["line13"]), f"if_Line13_{phase}")
+        line13_it = value(model(devices["line13"]), f"it_Line13_{phase}")
+        line34_if = value(model(devices["line34"]), f"if_Line_3-4_{phase}") if "line34" in devices else 0.0
+        line34_it = value(model(devices["line34"]), f"it_Line_3-4_{phase}") if "line34" in devices else 0.0
+        slack_i = value(model(devices["gen_slack"]), f"i_{phase}")
         gfm_i = value(gfm_block, f"i_{phase}")
-        load_i = value(devices["load"].emt_model, f"i_{phase}")
+        load_i = value(model(devices["load"]), f"i_{phase}") if "load" in devices else 0.0
 
         slack_bus = -line13_it + slack_i
         gfm_bus = -line13_if - line34_if + gfm_i
         load_bus = -line34_it + load_i
-        print(
-            f"  phase {phase}: "
-            f"slack={slack_bus:.6e}, gfm={gfm_bus:.6e}, load={load_bus:.6e}"
-        )
+        if "load" in devices:
+            print(
+                f"  phase {phase}: "
+                f"slack={slack_bus:.6e}, gfm={gfm_bus:.6e}, load={load_bus:.6e}"
+            )
+        else:
+            print(f"  phase {phase}: slack={slack_bus:.6e}, gfm={gfm_bus:.6e}")
 
 
 def print_gfm_bus_kcl_derivative(problem: EmtProblemDae, devices: dict, gfm_block) -> None:
+    working_models = getattr(problem, "_working_emt_models", {})
+
+    def model(device):
+        return working_models.get(str(device.idtag), device.emt_model)
+
     def derivative_of_state(block, state_prefix: str, phase: str) -> float:
         for var in block.state_vars:
             if var.name.startswith(state_prefix) and var.name.endswith(f"_{phase}") and var.diff_var is not None:
@@ -702,8 +896,8 @@ def print_gfm_bus_kcl_derivative(problem: EmtProblemDae, devices: dict, gfm_bloc
 
     print("GFM bus KCL derivative residual at seeded x0:")
     for phase in ("A", "B", "C"):
-        d_if_13 = derivative_of_state(devices["line13"].emt_model, "i_ser_", phase)
-        d_if_34 = derivative_of_state(devices["line34"].emt_model, "i_ser_", phase)
+        d_if_13 = derivative_of_state(model(devices["line13"]), "i_ser_", phase)
+        d_if_34 = derivative_of_state(model(devices["line34"]), "i_ser_", phase) if "line34" in devices else 0.0
         d_i_gfm = derivative_of_gfm_current(phase)
         residual = -d_if_13 - d_if_34 + d_i_gfm
         print(
@@ -907,9 +1101,46 @@ def plot_results(t: np.ndarray, problem: EmtProblemDae, y: np.ndarray, gfm_block
     fig.tight_layout()
     save_plot("gfm_controller_inputs_errors.png")
 
+    fig, axes = plt.subplots(4, 1, figsize=(10, 11), sharex=True)
+    axes[0].plot(t, trace(problem, y, "z_vd_loop", gfm_block), label="z_vd_loop")
+    axes[0].plot(t, trace(problem, y, "z_vq_loop", gfm_block), label="z_vq_loop")
+    axes[0].set_ylabel("Voltage PI states")
+    axes[0].grid(True)
+    axes[0].legend(loc="upper right")
+
+    axes[1].plot(t, trace(problem, y, "z_id_loop", gfm_block), label="z_id_loop")
+    axes[1].plot(t, trace(problem, y, "z_iq_loop", gfm_block), label="z_iq_loop")
+    axes[1].set_ylabel("Current PI states")
+    axes[1].grid(True)
+    axes[1].legend(loc="upper right")
+
+    axes[2].plot(t, trace(problem, y, "vd_ctrl_out", gfm_block), label="vd_ctrl_out")
+    axes[2].plot(t, trace(problem, y, "vq_ctrl_out", gfm_block), label="vq_ctrl_out")
+    axes[2].set_ylabel("Current ctrl output")
+    axes[2].grid(True)
+    axes[2].legend(loc="upper right")
+
+    axes[3].plot(t, trace(problem, y, "id_ref", gfm_block), label="id_ref")
+    axes[3].plot(t, trace(problem, y, "iq_ref", gfm_block), label="iq_ref")
+    axes[3].plot(t, trace(problem, y, "id_c", gfm_block), "--", label="id_c")
+    axes[3].plot(t, trace(problem, y, "iq_c", gfm_block), "--", label="iq_c")
+    axes[3].set_xlabel("Time (s)")
+    axes[3].set_ylabel("Current refs/states")
+    axes[3].grid(True)
+    axes[3].legend(loc="upper right")
+    axes[3].set_xlim(float(t[0]), float(t[-1]))
+    fig.suptitle("EMT GFM Control Loop States")
+    fig.tight_layout()
+    save_plot("gfm_control_loop_states.png")
+
 
 def main() -> None:
-    grid, devices = create_grid()
+    grid, devices = create_simplified_grid()
+    if "load" in devices and LOAD_SCALE != 1.0:
+        devices["load"].P *= LOAD_SCALE
+        devices["load"].Q *= LOAD_SCALE
+        print(f"Scaled load powers by {LOAD_SCALE:g}")
+
     pf_results = run_power_flow(grid)
     print(f"Power flow converged: {pf_results.converged}")
     print(pf_results.get_bus_df())
@@ -921,6 +1152,7 @@ def main() -> None:
     set_block_event_value(gfm_block, grid.var_factory, "P_ref", float(np.real(pf_results.Sbus[bus_idx]) / grid.Sbase))
     set_block_event_value(gfm_block, grid.var_factory, "Q_ref", float(np.imag(pf_results.Sbus[bus_idx]) / grid.Sbase))
     set_block_event_value(gfm_block, grid.var_factory, "V_ref", float(np.sqrt(2.0) * abs(voltage)))
+    apply_gfm_gain_overrides(gfm_block, grid.var_factory)
 
     options = EmtOptions(
         time_step=TIME_STEP,
@@ -938,6 +1170,8 @@ def main() -> None:
     seed_line_current_predictors(problem, grid, pf_results, devices)
     print_gfm_algebraic_residuals(problem, gfm_block)
     print_gfm_state_residuals(problem, gfm_block)
+    print_block_algebraic_residuals(problem, devices["gen_slack"].emt_model, "Slack source")
+    print_block_state_residuals(problem, devices["gen_slack"].emt_model, "Slack source")
     print_global_state_residuals(problem)
     print_bus_kcl_residuals(problem, grid)
     print_case_kcl_residuals(problem, devices, gfm_block)
@@ -949,9 +1183,21 @@ def main() -> None:
             tw, yw, dyw, warm_well_initialized, warm_converged = run_emt(problem, options, WARMUP_TIME)
             print(f"EMT warm-up well initialized: {warm_well_initialized}")
             print(f"EMT warm-up converged: {warm_converged}")
-            apply_solution_as_initial_guess(problem, yw, dyw)
-
-        t, y, dy, well_initialized, converged = run_emt(problem, options, options.simulation_time)
+            if warm_well_initialized and warm_converged:
+                apply_solution_as_initial_guess(problem, yw, dyw)
+            else:
+                print("Skipping warm-up state reuse because warm-up did not converge cleanly")
+        if P_REF_STEP is not None:
+            t, y, dy, well_initialized, converged = run_emt_with_p_ref_step(
+                problem=problem,
+                options=options,
+                gfm_block=gfm_block,
+                step_time=P_REF_STEP_TIME,
+                step_delta=float(P_REF_STEP),
+            )
+        else:
+            print("Running EMT simulation")
+            t, y, dy, well_initialized, converged = run_emt(problem, options, options.simulation_time)
     except np.linalg.LinAlgError as exc:
         print(f"EMT solve failed during Newton iteration: {exc}")
         return
@@ -972,9 +1218,28 @@ def main() -> None:
     ):
         values = trace(problem, y, name, gfm_block)
         print(f"{name}: t0={values[0]: .9e}, final={values[-1]: .9e}")
+    for label, lhs_name, rhs_name in (
+        ("vd_ref-vd_f", "vd_ref", "vd_f"),
+        ("vq_ref-vq_f", "vq_ref", "vq_f"),
+        ("id_ref-id_c", "id_ref", "id_c"),
+        ("iq_ref-iq_c", "iq_ref", "iq_c"),
+    ):
+        lhs = trace(problem, y, lhs_name, gfm_block)
+        rhs = trace(problem, y, rhs_name, gfm_block)
+        diff = lhs - rhs
+        print(f"{label}: t0={diff[0]: .9e}, final={diff[-1]: .9e}")
+    for name in ("z_vd_loop", "z_vq_loop", "z_id_loop", "z_iq_loop", "vd_ctrl_out", "vq_ctrl_out"):
+        values = trace(problem, y, name, gfm_block)
+        print(f"{name}: t0={values[0]: .9e}, final={values[-1]: .9e}")
     for name in ("v_A", "v_B", "v_C"):
         values = trace(problem, y, name, devices["bus_gfm"].emt_model)
         print(f"bus {name}: t0={values[0]: .9e}, final={values[-1]: .9e}")
+    for name in ("i_A", "i_B", "i_C", "e_A", "e_B", "e_C", "Pe", "Qe"):
+        var = find_name_in_block(name, devices["gen_slack"].emt_model)
+        if var is None or var.uid not in problem._uid2idx_vars:
+            continue
+        values = trace(problem, y, name, devices["gen_slack"].emt_model)
+        print(f"slack {name}: t0={values[0]: .9e}, final={values[-1]: .9e}")
 
     plot_results(t, problem, y, gfm_block, devices["bus_gfm"])
     print(f"Plots saved to: {PLOT_OUTPUT_DIR}")
