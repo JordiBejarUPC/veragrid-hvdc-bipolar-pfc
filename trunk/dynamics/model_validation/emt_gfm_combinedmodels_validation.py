@@ -29,7 +29,7 @@ def create_grid() -> tuple[vge.MultiCircuit, vge.Generator, vge.Generator, vge.L
     grid.add_bus(bus3_ac)
     grid.add_bus(bus4_ac)
 
-    gen_slack = vge.Generator(name="Generator", P=10.0, vset=0.98)
+    gen_slack = vge.Generator(name="Generator", vset=0.98)
     gen_gfm = vge.Generator(name="GFM Generator", P=4.0, vset=1.00)
     ac_load = vge.Load(name="AC Load", P=3.0, Q=0.0)
 

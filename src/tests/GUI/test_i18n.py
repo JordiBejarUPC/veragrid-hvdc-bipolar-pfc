@@ -64,6 +64,8 @@ def test_requested_language_prefers_first_ui_language() -> None:
         ("हिंदी", ApplicationLanguage.HINDI),
         ("Japanese", ApplicationLanguage.JAPANESE),
         ("日本語", ApplicationLanguage.JAPANESE),
+        ("Korean", ApplicationLanguage.KOREAN),
+        ("한국어", ApplicationLanguage.KOREAN),
         ("Mandarin", ApplicationLanguage.CHINESE),
         ("普通话", ApplicationLanguage.CHINESE),
         ("Español", ApplicationLanguage.SPANISH),
@@ -152,6 +154,11 @@ def test_install_translators_loads_spanish_catalog(qt_app: object) -> None:
             ApplicationLanguage.JAPANESE,
             "ファイル",
             "日本語",
+        ),
+        (
+            ApplicationLanguage.KOREAN,
+            "파일",
+            "한국어",
         ),
         (
             ApplicationLanguage.BASQUE,
@@ -244,6 +251,7 @@ def test_install_translators_load_additional_catalogs(
         ApplicationLanguage.SYSTEM,
         ApplicationLanguage.ENGLISH,
         ApplicationLanguage.JAPANESE,
+        ApplicationLanguage.KOREAN,
         ApplicationLanguage.BASQUE,
         ApplicationLanguage.GALICIAN,
         ApplicationLanguage.ARABIC,
@@ -322,6 +330,7 @@ def test_hindi_main_window_menu_titles_render_in_ui(qt_app: object) -> None:
     "language",
     [
         ApplicationLanguage.JAPANESE,
+        ApplicationLanguage.KOREAN,
         ApplicationLanguage.BASQUE,
         ApplicationLanguage.GALICIAN,
         ApplicationLanguage.ARABIC,
@@ -359,6 +368,7 @@ def test_plugin_reload_action_translation_exists(
     ("language", "about_text", "dashboard_text"),
     [
         (ApplicationLanguage.HINDI, "VeraGrid के बारे में", "ग्रिड स्वास्थ्य डैशबोर्ड"),
+        (ApplicationLanguage.KOREAN, "VeraGrid 소개", "그리드 상태 대시보드"),
         (ApplicationLanguage.SPANISH, "Acerca de VeraGrid", "Panel de salud de la red"),
     ],
 )
@@ -409,6 +419,7 @@ def test_hindi_simulation_runtime_strings_use_simulations_context(
     [
         (ApplicationLanguage.ENGLISH, "English"),
         (ApplicationLanguage.JAPANESE, "日本語"),
+        (ApplicationLanguage.KOREAN, "한국어"),
         (ApplicationLanguage.HINDI, "हिंदी"),
         (ApplicationLanguage.CANTONESE, "廣東話"),
         (ApplicationLanguage.SPANISH, "Español"),
@@ -433,6 +444,7 @@ def test_language_selector_uses_stable_endonyms(
     ("active_language", "selector_language", "selector_text"),
     [
         (ApplicationLanguage.SPANISH, ApplicationLanguage.JAPANESE, "日本語"),
+        (ApplicationLanguage.KOREAN, ApplicationLanguage.KOREAN, "한국어"),
         (ApplicationLanguage.CATALAN, ApplicationLanguage.FRENCH, "Français"),
         (ApplicationLanguage.GERMAN, ApplicationLanguage.GREEK, "Ελληνικά"),
         (ApplicationLanguage.ITALIAN, ApplicationLanguage.JAPANESE, "日本語"),

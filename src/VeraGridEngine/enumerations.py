@@ -2586,7 +2586,7 @@ class ResultTypes(Enum):
     ShuntNeutralVoltage = 'Shunt neutral voltage'
 
     BusVoltagePolarPlot = 'Voltage plot'
-    BusNodalCapacity = "Nodal capacity"
+    BusNodalCapacity = "Bus nodal capacity"
 
     # OPF-NTC
     HvdcOverloads = 'HVDC overloads'
@@ -2969,6 +2969,7 @@ class SimulationTypes(Enum):
     InvestmentsEvaluation_run = 'Investments evaluation'
     CatalogueOptimization_run = 'Catalogue optimization'
     TopologyProcessor_run = 'Topology Processor'
+    NodalCapacity_run = 'Nodal capacity'
     NodalCapacityTimeSeries_run = 'Nodal capacity time series'
     Reliability_run = "Reliability"
     RmsDynamic_run = "RMS Dynamic"

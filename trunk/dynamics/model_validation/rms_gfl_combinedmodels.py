@@ -339,6 +339,19 @@ def run_rms_simulation(grid: vge.MultiCircuit, pf_results):
     events_group = RmsEventsGroup(name="PV combined model events")
     grid.add_rms_events_group(events_group)
 
+    pv_gen = grid.generators[1]
+    p_ref = find_name_in_block("P_ref", pv_gen.rms_model)
+    if p_ref is not None:
+        bus_idx = list(grid.buses).index(pv_gen.bus)
+        if hasattr(pf_results, "Sbus") and len(pf_results.Sbus) > bus_idx:
+            p0 = float(np.real(complex(pf_results.Sbus[bus_idx]) / grid.Sbase))
+        else:
+            p0 = float(pv_gen.P) / grid.Sbase
+        p1 = p0 + 0.02
+        evt = RmsEvent(device=pv_gen, parameter=p_ref, time=0.50, value=p1, group=events_group)
+        grid.add_rms_event(evt)
+        print(f"  Added event: VSC P_ref step {p0:.6f} -> {p1:.6f} at t=0.50s")
+
     rms_options = vge.RmsOptions(
         simulation_time=20.0,
         time_step=0.01,
@@ -359,7 +372,7 @@ def run_rms_simulation(grid: vge.MultiCircuit, pf_results):
     return results
 
 
-def plot_results(grid: vge.MultiCircuit, results, file_name: str = "rms_gfl_pv_current_generator_validation.png"):
+def plot_results(grid: vge.MultiCircuit, results, file_name: str = "rms_gfl_combinedmodels.png"):
     if results is None or results.values is None or len(results.time_array) == 0:
         print("No results to plot")
         return
