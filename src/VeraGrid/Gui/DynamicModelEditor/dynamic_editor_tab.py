@@ -5,12 +5,16 @@
 
 from __future__ import annotations
 
-from typing import Any, List, Optional
+from typing import List, Optional
 
-from PySide6 import QtCore, QtWidgets
+from PySide6 import QtWidgets
 from PySide6.QtCore import Signal
 
+from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGrid.Gui.DynamicModelEditor.dynamic_block_preparation import prepare_block_for_editing
+from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
+from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
+from VeraGridEngine.Devices.Dynamic.fmu_template import FmuTemplate
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_breadcrumb import DynamicEditorBreadcrumb
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_document import DynamicEditorDocument
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_navigation import DynamicEditorNavigation
@@ -19,10 +23,8 @@ from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.enumerations import DynamicSimulationMode
 from VeraGridEngine.Utils.Symbolic.block import Block
 
-if False:
-    from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI
-    from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_library import DynamicEditorLibrary
-    from VeraGrid.Session.dynamic_editor_entries import DynamicEditorEntry
+from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI
+from VeraGrid.Session.dynamic_editor_entries import DynamicEditorEntry
 
 
 class DynamicEditorTab(QtWidgets.QWidget):
@@ -47,10 +49,10 @@ class DynamicEditorTab(QtWidgets.QWidget):
         self,
         var_factory: VarFactory,
         block: Block,
-        api_object: Any,
+        api_object: ALL_DEV_TYPES,
         circuit: MultiCircuit,
         mode: DynamicSimulationMode,
-        templates_list: Optional[List[Any]] = None,
+        templates_list: Optional[List[RmsModelTemplate | EmtModelTemplate | FmuTemplate]] = None,
         parent: QtWidgets.QWidget | None = None,
     ) -> None:
         super().__init__(parent)
@@ -60,7 +62,7 @@ class DynamicEditorTab(QtWidgets.QWidget):
         self._circuit = circuit
         self._mode = mode
         self._templates_list = templates_list if templates_list is not None else list()
-        self._dynamic_editor_entry: "DynamicEditorEntry | None" = None
+        self._dynamic_editor_entry: DynamicEditorEntry | None = None
 
         # ---- Document: single working copy per tab ----
         self._document = DynamicEditorDocument(block)
@@ -78,7 +80,7 @@ class DynamicEditorTab(QtWidgets.QWidget):
         self._breadcrumb.blockClicked.connect(self._on_breadcrumb_clicked)
         self._layout.addWidget(self._breadcrumb)
 
-        self._editor: "DynamicBlockEditorGUI | None" = None
+        self._editor: DynamicBlockEditorGUI | None = None
         self._create_editor(working_root)
 
     # ------------------------------------------------------------------
@@ -90,10 +92,10 @@ class DynamicEditorTab(QtWidgets.QWidget):
         """Return the document backing this tab."""
         return self._document
 
-    def get_dynamic_editor_entry(self) -> "DynamicEditorEntry | None":
+    def get_dynamic_editor_entry(self) -> DynamicEditorEntry | None:
         return self._dynamic_editor_entry
 
-    def set_dynamic_editor_entry(self, entry: "DynamicEditorEntry") -> None:
+    def set_dynamic_editor_entry(self, entry: DynamicEditorEntry) -> None:
         self._dynamic_editor_entry = entry
 
     def get_dynamic_editor_mode(self) -> DynamicSimulationMode:
@@ -164,7 +166,7 @@ class DynamicEditorTab(QtWidgets.QWidget):
     # ------------------------------------------------------------------
 
     @property
-    def editor(self) -> "DynamicBlockEditorGUI | None":
+    def editor(self) -> DynamicBlockEditorGUI | None:
         return self._editor
 
     @property
@@ -199,10 +201,11 @@ class DynamicEditorTab(QtWidgets.QWidget):
             workspace_embedded=True,
             document=self._document,
         )
-        self._editor.set_navigate_callback(self.navigate_to_block)
-        self._editor.dirtyStateChanged.connect(self.dirtyStateChanged)
-        self._layout.addWidget(self._editor)
-        self._refresh_breadcrumb()
+        if self._editor is not None:
+            self._editor.set_navigation_delegate(self)
+            self._editor.dirtyStateChanged.connect(self.dirtyStateChanged)
+            self._layout.addWidget(self._editor)
+            self._refresh_breadcrumb()
 
     def _replace_editor(self) -> None:
         if self._editor is not None:

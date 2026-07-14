@@ -393,13 +393,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                  is_root_editor=False,
                  modal: bool = True,
                  workspace_embedded: bool = False,
-                 # --- new parameters: working-tree blocks ---
-                 root_block: Block | None = None,
-                 current_block: Block | None = None,
-                 document=None,
-                 # --- deprecated parameters kept for backward compat ---
-                 block: Block | None = None,
-                 main_editor: bool | None = None):
+                 root_block: Block = Block(),
+                 current_block: Block = Block(),
+                 document=None):
         """
         Initializes a dynamic block editor window.
 
@@ -432,14 +428,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         """
         super().__init__()
 
-        # --- backward-compat shims ---
-        if main_editor is not None:
-            is_root_editor = main_editor
-        if current_block is None and block is not None:
-            current_block = block
-        if root_block is None:
-            root_block = current_block
-
         self.ui = Ui_BlockEditorWindow()
         self.ui.setupUi(self)
 
@@ -469,7 +457,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.workspace_embedded = workspace_embedded
 
         self._document = document
-        self._navigate_callback = None
+        self._navigation_delegate = None
         self.templates_list: List[
             RmsModelTemplate | EmtModelTemplate | FmuTemplate] = templates_list if templates_list is not None else list()
 
@@ -484,7 +472,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.dynamic_editor_entry: DynamicEditorEntry | None = None
         self._prepared_to_delete: bool = False
 
-        # --- working-tree blocks (no cloning) ---
         self.root_block: Block = root_block
         self.main_block: Block = current_block
 
@@ -677,33 +664,30 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             pass
         self.rebuild_scene_from_diagram()
 
-    def set_navigate_callback(self, callback) -> None:
+    def set_navigation_delegate(self, delegate) -> None:
         """
-        Register a callback invoked when a child block should be opened
-        for in-place navigation.
+        Register the navigation delegate responsible for opening child blocks.
 
-        The callback signature is ``callback(block: Block) -> None``.
-        When set, Ctrl+Click on a GenericBlockItem delegates to this
-        callback instead of creating a floating editor window.
+        The delegate must expose a ``navigate_to_block(block: Block) -> None``
+        method.  :class:`DynamicEditorTab` acts as the default delegate.
 
-        :param callback: Navigation callback function.
+        :param delegate: Object that can open blocks for navigation.
         :return: None.
         """
-        self._navigate_callback = callback
+        self._navigation_delegate = delegate
 
     def _request_navigate_to_block(self, block: Block) -> None:
         """
         Request navigation into a child block.
 
-        If a navigate callback has been registered (by the parent
-        :class:`DynamicEditorTab`), it is invoked with the target block.
-        Otherwise, the request is silently ignored.
+        Delegates the request to the registered navigation delegate.
+        If no delegate has been registered, the request is silently ignored.
 
         :param block: Child block to navigate into.
         :return: None.
         """
-        if self._navigate_callback is not None:
-            self._navigate_callback(block)
+        if self._navigation_delegate is not None:
+            self._navigation_delegate.navigate_to_block(block)
 
     def changeEvent(self, event: QtCore.QEvent) -> None:
         """

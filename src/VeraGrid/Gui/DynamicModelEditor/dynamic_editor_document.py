@@ -5,8 +5,6 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_models import clone_block_for_editing, copy_block_state
 
