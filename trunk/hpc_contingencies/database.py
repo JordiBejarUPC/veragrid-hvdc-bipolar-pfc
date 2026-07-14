@@ -3,7 +3,7 @@ import sqlite3
 import time
 import numpy as np
 
-DB_FILE = "contingency_results.db"
+DB_FILE = "results.db"
 
 def initialize_database():
     conn = sqlite3.connect(DB_FILE)
@@ -46,6 +46,13 @@ def save_result(exec_id, contingency_id, result_value, status):
         conn.close()
 
 
+def cleanup_database():
+    conn = sqlite3.connect(DB_FILE, timeout=30.0)
+    conn.execute('PRAGMA wal_checkpoint(TRUNCATE);')
+    conn.close()
+
+
 if __name__ == '__main__':
     execution_id = os.getpid()
     save_result(execution_id, 123, 0.456, "SUCCESS")
+    cleanup_database()
