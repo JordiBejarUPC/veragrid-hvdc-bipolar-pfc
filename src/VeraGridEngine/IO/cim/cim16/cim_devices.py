@@ -42,6 +42,18 @@ def str2num(val: str):
             return val
 
 
+def resolve_terminal_bus_node(term):
+    if term.TopologicalNode is not None:
+        return term.TopologicalNode
+
+    if term.ConnectivityNode is not None:
+        if term.ConnectivityNode.TopologicalNode is not None:
+            return term.ConnectivityNode.TopologicalNode
+        return term.ConnectivityNode
+
+    return None
+
+
 class CimProperty:
 
     def __init__(self, name: str,
@@ -199,8 +211,10 @@ class IdentifiedObject:
         return self.rdfid
 
     def __hash__(self):
-        # alternatively, return hash(repr(self))
-        return int(self.uuid, 16)  # hex string to int
+        try:
+            return int(self.uuid, 16)
+        except ValueError:
+            return hash(self.uuid)
 
     def __lt__(self, other):
         return self.__hash__() < other.__hash__()
@@ -433,7 +447,7 @@ class MonoPole(IdentifiedObject):
             terminals = list(self.references_to_me['Terminal'])
 
             if len(terminals) == 1:
-                n1 = terminals[0].TopologicalNode
+                n1 = resolve_terminal_bus_node(terminals[0])
                 return n1
             else:
                 return None
@@ -480,8 +494,8 @@ class DiPole(IdentifiedObject):
             terminals = list(self.references_to_me['Terminal'])
 
             if len(terminals) == 2:
-                n1 = terminals[0].TopologicalNode
-                n2 = terminals[1].TopologicalNode
+                n1 = resolve_terminal_bus_node(terminals[0])
+                n2 = resolve_terminal_bus_node(terminals[1])
                 return n1, n2
             else:
                 return None, None
@@ -508,8 +522,8 @@ class DiPole(IdentifiedObject):
             terminals = list(self.references_to_me['Terminal'])
 
             if len(terminals) == 2:
-                n1 = terminals[0].TopologicalNode
-                n2 = terminals[1].TopologicalNode
+                n1 = resolve_terminal_bus_node(terminals[0])
+                n2 = resolve_terminal_bus_node(terminals[1])
                 return n1, n2
             else:
                 return None, None
@@ -1001,6 +1015,16 @@ class ConnectivityNode(IdentifiedObject):
                                unit=UnitSymbol.none,
                                description="Container of this connectivity node")
 
+    def get_voltage(self):
+        if self.TopologicalNode is not None:
+            return self.TopologicalNode.get_voltage()
+        return None
+
+    def get_bus(self):
+        if self.TopologicalNode is not None:
+            return self.TopologicalNode.get_bus()
+        return self
+
 
 class TopologicalNode(IdentifiedObject):
 
@@ -1210,7 +1234,9 @@ class TopologicalNode(IdentifiedObject):
                     return term.ConductingEquipment
 
         except KeyError:
-            return None
+            pass
+
+        return self
 
 
 class BusbarSection(IdentifiedObject):
@@ -1256,7 +1282,7 @@ class BusbarSection(IdentifiedObject):
         """
         try:
             terms = self.references_to_me['Terminal']
-            return [term.TopologicalNode for term in terms]
+            return [node for node in (resolve_terminal_bus_node(term) for term in terms) if node is not None]
         except KeyError:
             return list()
 
@@ -1268,7 +1294,7 @@ class BusbarSection(IdentifiedObject):
         try:
             terms = self.references_to_me['Terminal']
             for term in terms:
-                return term.TopologicalNode
+                return resolve_terminal_bus_node(term)
         except KeyError:
             return list()
 
@@ -1593,6 +1619,21 @@ class EquivalentEquipment(ConductingEquipment):
         # self.EquivalentNetwork = EquivalentNetwork
 
 
+class EnergySource(MonoPole, ConductingEquipment):
+
+    def __init__(self, rdfid, tpe):
+        MonoPole.__init__(self, rdfid, tpe)
+        ConductingEquipment.__init__(self, rdfid, tpe)
+
+        self.nominalVoltage: float = 0.0
+        self.voltageMagnitude: float = 0.0
+        self.voltageAngle: float = 0.0
+        self.r: float = 0.0
+        self.x: float = 0.0
+        self.r0: float = 0.0
+        self.x0: float = 0.0
+
+
 class EquivalentInjection(EquivalentEquipment):
 
     def __init__(self, rdfid, tpe):
@@ -1853,8 +1894,8 @@ class Switch(DiPole, ConductingEquipment):
             terminals = list(self.references_to_me['Terminal'])
 
             if len(terminals) == 2:
-                n1 = terminals[0].TopologicalNode
-                n2 = terminals[1].TopologicalNode
+                n1 = resolve_terminal_bus_node(terminals[0])
+                n2 = resolve_terminal_bus_node(terminals[1])
                 return n1, n2
             else:
                 return None, None
@@ -2457,7 +2498,7 @@ class PowerTransformer(DiPole, ConductingEquipment):
 
         :return:
         """
-        return [x.get_voltage(logger=logger) for x in self.get_windings()]
+        return [x.get_voltage() for x in self.get_windings()]
 
     def get_rate(self):
 
@@ -2561,6 +2602,43 @@ class EnergyConsumer(MonoPole, ConductingEquipment):
         #                        unit=UnitSymbol.none,
         #                        description="")
 
+    def get_pq(self):
+        try:
+            phases = list(self.references_to_me['EnergyConsumerPhase'])
+        except KeyError:
+            phases = list()
+
+        if phases:
+            return sum(phase.p for phase in phases), sum(phase.q for phase in phases)
+
+        if self.p != 0.0 or self.q != 0.0:
+            return self.p, self.q
+
+        if self.pfixed != 0.0 or self.qfixed != 0.0:
+            return self.pfixed, self.qfixed
+
+        return self.p, self.q
+
+
+class EnergyConsumerPhase(IdentifiedObject):
+
+    def __init__(self, rdfid, tpe):
+        IdentifiedObject.__init__(self, rdfid, tpe)
+
+        self.phase: cim_enums.PhaseCode = cim_enums.PhaseCode.ABC
+        self.p: float = 0.0
+        self.q: float = 0.0
+        self.EnergyConsumer: EnergyConsumer | None = None
+
+        self.register_property(name='phase', class_type=cim_enums.PhaseCode, description="")
+        self.register_property(name='p', class_type=float, multiplier=UnitMultiplier.M, unit=UnitSymbol.W, description="")
+        self.register_property(name='q', class_type=float, multiplier=UnitMultiplier.M, unit=UnitSymbol.VAr, description="")
+        self.register_property(name='EnergyConsumer',
+                               class_type=EnergyConsumer,
+                               multiplier=UnitMultiplier.none,
+                               unit=UnitSymbol.none,
+                               description="")
+
 
 class ConformLoad(EnergyConsumer):
 
@@ -2580,7 +2658,7 @@ class ConformLoad(EnergyConsumer):
                                description="")
 
     def get_pq(self):
-        return self.p, self.q
+        return super().get_pq()
 
 
 class ConformLoadGroup(IdentifiedObject):
@@ -2645,7 +2723,7 @@ class NonConformLoad(EnergyConsumer):
                                description="")
 
     def get_pq(self):
-        return self.p, self.q
+        return super().get_pq()
 
 
 class NonConformLoadGroup(IdentifiedObject):
@@ -3415,6 +3493,37 @@ class RotatingMachine(RegulatingCondEq):
                                unit=UnitSymbol.V,
                                description="ratedU", )
 
+    def get_pq(self):
+        try:
+            phases = list(self.references_to_me['SynchronousMachinePhase'])
+        except KeyError:
+            phases = list()
+
+        if phases:
+            return sum(phase.p for phase in phases), sum(phase.q for phase in phases)
+
+        return self.p, self.q
+
+
+class SynchronousMachinePhase(IdentifiedObject):
+
+    def __init__(self, rdfid, tpe):
+        IdentifiedObject.__init__(self, rdfid, tpe)
+
+        self.phase: cim_enums.PhaseCode = cim_enums.PhaseCode.ABC
+        self.p: float = 0.0
+        self.q: float = 0.0
+        self.SynchronousMachine: SynchronousMachine | None = None
+
+        self.register_property(name='phase', class_type=cim_enums.PhaseCode, description="")
+        self.register_property(name='p', class_type=float, multiplier=UnitMultiplier.M, unit=UnitSymbol.W, description="")
+        self.register_property(name='q', class_type=float, multiplier=UnitMultiplier.M, unit=UnitSymbol.VAr, description="")
+        self.register_property(name='SynchronousMachine',
+                               class_type=SynchronousMachine,
+                               multiplier=UnitMultiplier.none,
+                               unit=UnitSymbol.none,
+                               description="")
+
 
 class SynchronousMachine(MonoPole, RotatingMachine):
 
@@ -3983,6 +4092,51 @@ class LinearShuntCompensator(MonoPole):
             unit=UnitSymbol.none,
             description=""
         )
+
+    def get_gb(self):
+        try:
+            phases = list(self.references_to_me['LinearShuntCompensatorPhase'])
+        except KeyError:
+            phases = list()
+
+        if phases:
+            return sum(phase.get_gb()[0] for phase in phases), sum(phase.get_gb()[1] for phase in phases)
+
+        sections = self.sections or self.normalSections
+        if sections == 0 and (self.gPerSection != 0.0 or self.bPerSection != 0.0):
+            sections = 1
+
+        return self.gPerSection * sections, self.bPerSection * sections
+
+
+class LinearShuntCompensatorPhase(IdentifiedObject):
+
+    def __init__(self, rdfid, tpe):
+        IdentifiedObject.__init__(self, rdfid, tpe)
+
+        self.phase: cim_enums.PhaseCode = cim_enums.PhaseCode.ABC
+        self.bPerSection: float = 0.0
+        self.gPerSection: float = 0.0
+        self.sections: int = 0
+        self.normalSections: int = 0
+        self.ShuntCompensator: LinearShuntCompensator | None = None
+
+        self.register_property(name='phase', class_type=cim_enums.PhaseCode, description="")
+        self.register_property(name='bPerSection', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.S, description="")
+        self.register_property(name='gPerSection', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.S, description="")
+        self.register_property(name='sections', class_type=int, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description="")
+        self.register_property(name='normalSections', class_type=int, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description="")
+        self.register_property(name='ShuntCompensator',
+                               class_type=LinearShuntCompensator,
+                               multiplier=UnitMultiplier.none,
+                               unit=UnitSymbol.none,
+                               description="")
+
+    def get_gb(self):
+        sections = self.sections or self.normalSections
+        if sections == 0 and (self.gPerSection != 0.0 or self.bPerSection != 0.0):
+            sections = 1
+        return self.gPerSection * sections, self.bPerSection * sections
 
 
 class NuclearGeneratingUnit(GeneratingUnit):

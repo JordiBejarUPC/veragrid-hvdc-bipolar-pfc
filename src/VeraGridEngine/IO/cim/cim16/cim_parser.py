@@ -155,7 +155,12 @@ class CIMExport:
         # header
         text_file.write('<?xml version="1.0" encoding="UTF-8"?>\n')
         text_file.write('<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" '
-                        'xmlns:cim="http://iec.ch/TC57/2009/CIM-schema-cim14#">\n')
+                        'xmlns:cim="http://iec.ch/TC57/CIM100#">\n')
+
+        model = cimdev.IdentifiedObject(rdfid='00000000-0000-0000-0000-000000000100', tpe='IEC61970CIMVersion')
+        model.parsed_properties['version'] = 'IEC61970CIM100'
+        model.parsed_properties['date'] = '2019-04-01'
+        text_file.write(model.get_xml(1))
 
         # Model
         model = cimdev.IdentifiedObject(rdfid=self.circuit.idtag, tpe='Model')
@@ -188,6 +193,11 @@ class CIMExport:
 
             # add bus to the categorization
             substation_bus[bus.substation][Vnom].append(bus)
+
+        if None in substation_bus:
+            default_substation = gcdev.Substation(name='DefaultSubstation',
+                                                  idtag=f'{self.circuit.idtag}_DefaultSubstation')
+            substation_bus[default_substation] = substation_bus.pop(None)
 
         # generate Base voltages
         for V in base_voltages:
@@ -578,7 +588,7 @@ class CIMExport:
                                             class_replacements={'name': 'IdentifiedObject',
                                                                 'aliasName': 'IdentifiedObject'}
                                             )
-            model.parsed_properties['name'] = branch.name + '_T1'
+            model.parsed_properties['name'] = branch.bus_from.name + '_T1'
             model.parsed_properties['TopologicalNode'] = bus_id_dict[branch.bus_from]
             model.parsed_properties['ConductingEquipment'] = branch.idtag
             model.parsed_properties['connected'] = 'true'
@@ -591,7 +601,7 @@ class CIMExport:
                                             class_replacements={'name': 'IdentifiedObject',
                                                                 'aliasName': 'IdentifiedObject'}
                                             )
-            model.parsed_properties['name'] = branch.name + '_T2'
+            model.parsed_properties['name'] = branch.bus_to.name + '_T2'
             model.parsed_properties['TopologicalNode'] = bus_id_dict[branch.bus_to]
             model.parsed_properties['ConductingEquipment'] = branch.idtag
             model.parsed_properties['connected'] = 'true'
@@ -600,7 +610,9 @@ class CIMExport:
 
         for i, branch in enumerate(self.circuit.lines):
 
-            if branch.branch_type == gcdev.BranchType.Line or branch.branch_type == gcdev.BranchType.Branch:
+            branch_type = getattr(branch, 'branch_type', gcdev.BranchType.Line)
+
+            if branch_type == gcdev.BranchType.Line or branch_type == gcdev.BranchType.Branch:
 
                 z_base = (branch.bus_from.Vnom ** 2) / self.circuit.Sbase
 
@@ -631,7 +643,7 @@ class CIMExport:
                 model.parsed_properties['value'] = branch.rate / (branch.bus_from.Vnom * sqrt(3))  # kA
                 text_file.write(model.get_xml(1))
 
-            elif branch.branch_type == gcdev.BranchType.Switch:
+            elif branch_type == gcdev.BranchType.Switch:
 
                 model = cimdev.IdentifiedObject(rdfid=branch.idtag, tpe='Switch', resources=['BaseVoltage'])
                 model.parsed_properties['name'] = branch.name
@@ -641,7 +653,7 @@ class CIMExport:
                 model.parsed_properties['open'] = not branch.active
                 text_file.write(model.get_xml(1))
 
-            elif branch.branch_type == gcdev.BranchType.Reactance:
+            elif branch_type == gcdev.BranchType.Reactance:
                 self.logger.add_warning('Reactance CIM export not implemented yet, exported as a branch', branch.name)
 
                 conn_node_id = 'Reactance_' + str(i)
@@ -673,7 +685,7 @@ class CIMExport:
                                             class_replacements={'name': 'IdentifiedObject',
                                                                 'aliasName': 'IdentifiedObject'}
                                             )
-            model.parsed_properties['name'] = bus.name + '_' + branch.name + '_T1'
+            model.parsed_properties['name'] = branch.bus_from.name + '_' + branch.name + '_T1'
             model.parsed_properties['TopologicalNode'] = bus_id_dict[branch.bus_from]
             model.parsed_properties['ConductingEquipment'] = branch.idtag
             model.parsed_properties['connected'] = 'true'
@@ -686,7 +698,7 @@ class CIMExport:
                                             class_replacements={'name': 'IdentifiedObject',
                                                                 'aliasName': 'IdentifiedObject'}
                                             )
-            model.parsed_properties['name'] = bus.name + '_' + branch.name + '_T2'
+            model.parsed_properties['name'] = branch.bus_to.name + '_' + branch.name + '_T2'
             model.parsed_properties['TopologicalNode'] = bus_id_dict[branch.bus_to]
             model.parsed_properties['ConductingEquipment'] = branch.idtag
             model.parsed_properties['connected'] = 'true'
@@ -754,7 +766,16 @@ class CIMImport:
         busbar_dict = dict()
 
         if 'BusbarSection' in cim.elements_by_type.keys():
-            for elm in cim.elements_by_type['BusbarSection']:
+            elements = cim.elements_by_type['BusbarSection']
+        elif 'TopologicalNode' in cim.elements_by_type.keys():
+            elements = cim.elements_by_type['TopologicalNode']
+        elif 'ConnectivityNode' in cim.elements_by_type.keys():
+            elements = cim.elements_by_type['ConnectivityNode']
+        else:
+            elements = list()
+
+        if elements:
+            for elm in elements:
                 obj = gcdev.Bus(name=str(elm.name),
                                 idtag=elm.uuid)
 
@@ -762,7 +783,7 @@ class CIMImport:
 
                 busbar_dict[elm] = obj
         else:
-            self.logger.add_error("No BusbarSections: There is no chance to reduce the grid")
+            self.logger.add_error("No bus topology objects: There is no chance to reduce the grid")
 
         return busbar_dict
 
@@ -803,6 +824,20 @@ class CIMImport:
                 else:
                     self.logger.add_error('Bus not found', elm.rdfid)
 
+    def parse_slack_sources(self, cim: CIMCircuit, busbar_dict):
+        source_types = (cimdev.EquivalentNetwork, cimdev.EquivalentInjection, cimdev.EnergySource)
+
+        for term in cim.elements_by_type.get('Terminal', list()):
+            if not isinstance(term.ConductingEquipment, source_types):
+                continue
+
+            node = cimdev.resolve_terminal_bus_node(term)
+            bus = node.get_bus() if node is not None else None
+            vg_bus = try_bus(bus, busbar_dict)
+
+            if vg_bus is not None:
+                vg_bus.is_slack = True
+
     def parse_power_transformer(self, cim: CIMCircuit, circuit: MultiCircuit, busbar_dict, logger: DataLogger):
         """
 
@@ -817,7 +852,7 @@ class CIMImport:
                 B1, B2 = try_buses(b1, b2, busbar_dict)
 
                 if B1 is not None and B2 is not None:
-                    R, X, G, B = elm.get_pu_values()
+                    R, X, G, B, *_ = elm.get_pu_values(circuit.Sbase)
                     rate = elm.get_rate()
 
                     voltages = elm.get_voltages(logger=logger)
@@ -918,14 +953,14 @@ class CIMImport:
         :param busbar_dict:
         :return:
         """
-        if 'ShuntCompensator' in cim.elements_by_type.keys():
-            for elm in cim.elements_by_type['ShuntCompensator']:
+        cim_shunts = ['ShuntCompensator', 'LinearShuntCompensator']
+        if any_in_dict(cim.elements_by_type, cim_shunts):
+            for elm in get_elements(cim.elements_by_type, cim_shunts):
                 b1 = elm.get_bus()
                 B1 = try_bus(b1, busbar_dict)
 
                 if B1 is not None:
-                    g = 0
-                    b = 0
+                    g, b = elm.get_gb()
                     sh = gcdev.Shunt(idtag=elm.uuid,
                                      name=str(elm.name),
                                      G=g,
@@ -948,10 +983,11 @@ class CIMImport:
                 B1 = try_bus(b1, busbar_dict)
 
                 if B1 is not None:
+                    p, q = elm.get_pq()
 
                     gen = gcdev.Generator(idtag=elm.uuid,
                                           name=str(elm.name),
-                                          P=-elm.p,
+                                          P=-p,
                                           # CGMES defines the generator P as negative to indicate a positive injection
                                           vset=1.0)
                     circuit.add_generator(B1, gen)
@@ -990,7 +1026,7 @@ class CIMImport:
         self.emit_text('Converting CIM to VeraGrid...')
         self.parse_model(self.cim, circuit)
         busbar_dict = self.parse_bus_bars(self.cim, circuit)
-        self.parse_ac_line_segment(self.cim, circuit, busbar_dict)
+        self.parse_slack_sources(self.cim, busbar_dict)
         self.parse_ac_line_segment(self.cim, circuit, busbar_dict)
         self.parse_power_transformer(self.cim, circuit, busbar_dict, logger=self.logger)
         self.parse_switches(self.cim, circuit, busbar_dict)
