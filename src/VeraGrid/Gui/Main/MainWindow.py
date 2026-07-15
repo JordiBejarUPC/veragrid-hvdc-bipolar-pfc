@@ -890,7 +890,7 @@ class Ui_mainWindow(object):
         self.toolBox.addItem(self.page, icon49, u"Diagrams")
         self.page_2 = QWidget()
         self.page_2.setObjectName(u"page_2")
-        self.page_2.setGeometry(QRect(0, 0, 382, 360))
+        self.page_2.setGeometry(QRect(0, 0, 382, 362))
         self.verticalLayout_51 = QVBoxLayout(self.page_2)
         self.verticalLayout_51.setObjectName(u"verticalLayout_51")
         self.frame_24 = QFrame(self.page_2)
@@ -1332,6 +1332,8 @@ class Ui_mainWindow(object):
         self.verticalLayout_27.setContentsMargins(-1, 6, 0, 6)
         self.dataStructuresTreeView = QTreeView(self.frame_26)
         self.dataStructuresTreeView.setObjectName(u"dataStructuresTreeView")
+        self.dataStructuresTreeView.setMinimumSize(QSize(230, 0))
+        self.dataStructuresTreeView.setMaximumSize(QSize(16777215, 16777215))
         self.dataStructuresTreeView.setAnimated(True)
 
         self.verticalLayout_27.addWidget(self.dataStructuresTreeView)

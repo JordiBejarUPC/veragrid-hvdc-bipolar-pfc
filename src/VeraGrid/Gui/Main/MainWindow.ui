@@ -350,7 +350,7 @@
                             <x>0</x>
                             <y>0</y>
                             <width>382</width>
-                            <height>360</height>
+                            <height>362</height>
                            </rect>
                           </property>
                           <attribute name="icon">
@@ -1299,6 +1299,18 @@
                 </property>
                 <item>
                  <widget class="QTreeView" name="dataStructuresTreeView">
+                  <property name="minimumSize">
+                   <size>
+                    <width>230</width>
+                    <height>0</height>
+                   </size>
+                  </property>
+                  <property name="maximumSize">
+                   <size>
+                    <width>16777215</width>
+                    <height>16777215</height>
+                   </size>
+                  </property>
                   <property name="animated">
                    <bool>true</bool>
                   </property>
