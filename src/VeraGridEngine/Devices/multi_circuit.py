@@ -4093,6 +4093,24 @@ class MultiCircuit(Assets):
             inj.Cost = cost
             inj.Cost_prof = cost_profile
 
+    def build_main_elements_dict_by_type(self,
+                                         use_secondary_key: bool = False) -> Dict[DeviceType, Dict[str, ALL_DEV_TYPES]]:
+        """
+        Build the per-device-type lookup dictionaries used by assign_grid().
+
+        :return: Device-type lookup dictionaries keyed by idtag.
+        """
+        main_elements_dict_by_type: Dict[DeviceType, Dict[str, ALL_DEV_TYPES]] = dict()
+        template_elm: ALL_DEV_TYPES
+
+        for template_elm in self.template_items():
+            main_elements_dict_by_type[template_elm.device_type] = self.get_elements_dict_by_type(
+                element_type=template_elm.device_type,
+                use_secondary_key=use_secondary_key
+            )
+
+        return main_elements_dict_by_type
+
     def assign_grid(self,
                     t: int,
                     grid_to_add: MultiCircuit,
@@ -4116,6 +4134,12 @@ class MultiCircuit(Assets):
 
         # for each device type that we see in the tree ...
         for device_type, main_elms_dict in main_elements_dict_by_type.items():
+
+            # If an element is absent from the imported snapshot at time t, it
+            # must not keep a stale active state from an earlier time step.
+            for main_elm in main_elms_dict.values():
+                if hasattr(main_elm, "active_prof"):
+                    main_elm.active_prof[t] = False
 
             # get list of devices
             elms_from_the_grid_to_add: List[ALL_DEV_TYPES] = grid_to_add.get_elements_by_type(device_type)

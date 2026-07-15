@@ -7,8 +7,9 @@ from typing import Tuple
 import numpy as np
 from scipy.sparse import csc_matrix, coo_matrix
 import VeraGridEngine.Topology.topology as tp
-from VeraGridEngine.basic_structures import CxVec, Vec, IntVec, BoolVec, StrVec
+from VeraGridEngine.basic_structures import CxVec, Vec, IntVec, BoolVec, StrVec, Logger
 from VeraGridEngine.enumerations import GeneratorControlMode
+from VeraGridEngine.Utils.compare import compare_arr
 
 
 class GeneratorData:
@@ -288,6 +289,16 @@ class GeneratorData:
         data.is_at_dc_bus = self.is_at_dc_bus.copy()
 
         return data
+
+    def compare(self, other: "GeneratorData", tol: float, logger: Logger) -> None:
+        """
+        Compare generator fields used by NumericalCircuit.compare().
+        """
+        compare_arr(self.active, other.active, tol, 'GenData', 'active', logger)
+        compare_arr(self.p, other.p, tol, 'GenData', 'P', logger)
+        compare_arr(self.v, other.v, tol, 'GenData', 'Vset', logger)
+        compare_arr(self.qmin, other.qmin, tol, 'GenData', 'Qmin', logger)
+        compare_arr(self.qmax, other.qmax, tol, 'GenData', 'Qmax', logger)
 
     def get_injections(self) -> CxVec:
         """
