@@ -4,7 +4,7 @@
     <cim:IEC61970CIMVersion.version>IEC61970CIM100</cim:IEC61970CIMVersion.version>
     <cim:IEC61970CIMVersion.date>2019-04-01</cim:IEC61970CIMVersion.date>
   </cim:IEC61970CIMVersion>
-  <cim:Model rdf:ID="c9e619c5d94f493cae0e0e95d2f7cd0c">
+  <cim:Model rdf:ID="a284cd3153ec418980c19a1475c87541">
     <cim:Model.name></cim:Model.name>
     <cim:Model.version>1</cim:Model.version>
     <cim:Model.description></cim:Model.description>
@@ -13,7 +13,7 @@
     <cim:BaseVoltage.name>Base_voltage_10_0</cim:BaseVoltage.name>
     <cim:BaseVoltage.nominalVoltage>10.0</cim:BaseVoltage.nominalVoltage>
   </cim:BaseVoltage>
-  <cim:Substation rdf:ID="c9e619c5d94f493cae0e0e95d2f7cd0c_DefaultSubstation">
+  <cim:Substation rdf:ID="a284cd3153ec418980c19a1475c87541_DefaultSubstation">
     <cim:Substation.name>DefaultSubstation</cim:Substation.name>
     <cim:Substation.aliasName>DefaultSubstation</cim:Substation.aliasName>
     <cim:Substation.PSRType></cim:Substation.PSRType>
@@ -24,7 +24,7 @@
     <cim:VoltageLevel.name>DefaultSubstation</cim:VoltageLevel.name>
     <cim:VoltageLevel.aliasName>DefaultSubstation</cim:VoltageLevel.aliasName>
     <cim:VoltageLevel.BaseVoltage rdf:resource="#Base_voltage_10_0" />
-    <cim:VoltageLevel.Substation rdf:resource="#c9e619c5d94f493cae0e0e95d2f7cd0c_DefaultSubstation" />
+    <cim:VoltageLevel.Substation rdf:resource="#a284cd3153ec418980c19a1475c87541_DefaultSubstation" />
   </cim:VoltageLevel>
   <cim:ConnectivityNode rdf:ID="BUS_0">
     <cim:IdentifiedObject.name>sourcebus</cim:IdentifiedObject.name>
@@ -746,15 +746,15 @@
     <cim:PowerTransformerEnd.windingType rdf:resource="#http://iec.ch/TC57/2009/CIM-schema-cim14#WindingType.secondary" />
   </cim:PowerTransformerEnd>
   <cim:Terminal rdf:ID="urn:uuid:F6990A716B58453BA9F492DA82E14BA3_T1">
-    <cim:IdentifiedObject.name>xf1_T1</cim:IdentifiedObject.name>
-    <cim:Terminal.TopologicalNode rdf:resource="#BUS_5" />
+    <cim:IdentifiedObject.name>634_T1</cim:IdentifiedObject.name>
+    <cim:Terminal.TopologicalNode rdf:resource="#BUS_6" />
     <cim:Terminal.ConductingEquipment rdf:resource="#urn:uuid:F6990A716B58453BA9F492DA82E14BA3" />
     <cim:Terminal.connected>true</cim:Terminal.connected>
     <cim:Terminal.sequenceNumber>1</cim:Terminal.sequenceNumber>
   </cim:Terminal>
   <cim:Terminal rdf:ID="urn:uuid:F6990A716B58453BA9F492DA82E14BA3_T2">
-    <cim:IdentifiedObject.name>634_T2</cim:IdentifiedObject.name>
-    <cim:Terminal.TopologicalNode rdf:resource="#BUS_6" />
+    <cim:IdentifiedObject.name>xf1_T2</cim:IdentifiedObject.name>
+    <cim:Terminal.TopologicalNode rdf:resource="#BUS_5" />
     <cim:Terminal.ConductingEquipment rdf:resource="#urn:uuid:F6990A716B58453BA9F492DA82E14BA3" />
     <cim:Terminal.connected>true</cim:Terminal.connected>
     <cim:Terminal.sequenceNumber>1</cim:Terminal.sequenceNumber>
@@ -775,15 +775,15 @@
     <cim:CurrentLimit.value>5.773502691896258e-22</cim:CurrentLimit.value>
   </cim:ACLineSegment>
   <cim:Terminal rdf:ID="urn:uuid:D34F31CCE95D4940AC772F4856AA584E_T1">
-    <cim:IdentifiedObject.name>rg60_650632_T1</cim:IdentifiedObject.name>
-    <cim:Terminal.TopologicalNode rdf:resource="#BUS_4" />
+    <cim:IdentifiedObject.name>632_650632_T1</cim:IdentifiedObject.name>
+    <cim:Terminal.TopologicalNode rdf:resource="#BUS_15" />
     <cim:Terminal.ConductingEquipment rdf:resource="#urn:uuid:D34F31CCE95D4940AC772F4856AA584E" />
     <cim:Terminal.connected>true</cim:Terminal.connected>
     <cim:Terminal.sequenceNumber>1</cim:Terminal.sequenceNumber>
   </cim:Terminal>
   <cim:Terminal rdf:ID="urn:uuid:D34F31CCE95D4940AC772F4856AA584E_T2">
-    <cim:IdentifiedObject.name>632_650632_T2</cim:IdentifiedObject.name>
-    <cim:Terminal.TopologicalNode rdf:resource="#BUS_15" />
+    <cim:IdentifiedObject.name>rg60_650632_T2</cim:IdentifiedObject.name>
+    <cim:Terminal.TopologicalNode rdf:resource="#BUS_4" />
     <cim:Terminal.ConductingEquipment rdf:resource="#urn:uuid:D34F31CCE95D4940AC772F4856AA584E" />
     <cim:Terminal.connected>true</cim:Terminal.connected>
     <cim:Terminal.sequenceNumber>1</cim:Terminal.sequenceNumber>
@@ -804,15 +804,15 @@
     <cim:CurrentLimit.value>5.773502691896258e-22</cim:CurrentLimit.value>
   </cim:ACLineSegment>
   <cim:Terminal rdf:ID="urn:uuid:F993F793D3BE4F0DBD1526A0D7EC38B7_T1">
-    <cim:IdentifiedObject.name>670_632670_T1</cim:IdentifiedObject.name>
-    <cim:Terminal.TopologicalNode rdf:resource="#BUS_14" />
+    <cim:IdentifiedObject.name>mid_632670_T1</cim:IdentifiedObject.name>
+    <cim:Terminal.TopologicalNode rdf:resource="#BUS_16" />
     <cim:Terminal.ConductingEquipment rdf:resource="#urn:uuid:F993F793D3BE4F0DBD1526A0D7EC38B7" />
     <cim:Terminal.connected>true</cim:Terminal.connected>
     <cim:Terminal.sequenceNumber>1</cim:Terminal.sequenceNumber>
   </cim:Terminal>
   <cim:Terminal rdf:ID="urn:uuid:F993F793D3BE4F0DBD1526A0D7EC38B7_T2">
-    <cim:IdentifiedObject.name>mid_632670_T2</cim:IdentifiedObject.name>
-    <cim:Terminal.TopologicalNode rdf:resource="#BUS_16" />
+    <cim:IdentifiedObject.name>670_632670_T2</cim:IdentifiedObject.name>
+    <cim:Terminal.TopologicalNode rdf:resource="#BUS_14" />
     <cim:Terminal.ConductingEquipment rdf:resource="#urn:uuid:F993F793D3BE4F0DBD1526A0D7EC38B7" />
     <cim:Terminal.connected>true</cim:Terminal.connected>
     <cim:Terminal.sequenceNumber>1</cim:Terminal.sequenceNumber>
@@ -833,15 +833,15 @@
     <cim:CurrentLimit.value>5.773502691896258e-22</cim:CurrentLimit.value>
   </cim:ACLineSegment>
   <cim:Terminal rdf:ID="urn:uuid:0F3FA4918F8041BAA3995769B45512D9_T1">
-    <cim:IdentifiedObject.name>670_670671_T1</cim:IdentifiedObject.name>
-    <cim:Terminal.TopologicalNode rdf:resource="#BUS_14" />
+    <cim:IdentifiedObject.name>671_670671_T1</cim:IdentifiedObject.name>
+    <cim:Terminal.TopologicalNode rdf:resource="#BUS_7" />
     <cim:Terminal.ConductingEquipment rdf:resource="#urn:uuid:0F3FA4918F8041BAA3995769B45512D9" />
     <cim:Terminal.connected>true</cim:Terminal.connected>
     <cim:Terminal.sequenceNumber>1</cim:Terminal.sequenceNumber>
   </cim:Terminal>
   <cim:Terminal rdf:ID="urn:uuid:0F3FA4918F8041BAA3995769B45512D9_T2">
-    <cim:IdentifiedObject.name>671_670671_T2</cim:IdentifiedObject.name>
-    <cim:Terminal.TopologicalNode rdf:resource="#BUS_7" />
+    <cim:IdentifiedObject.name>670_670671_T2</cim:IdentifiedObject.name>
+    <cim:Terminal.TopologicalNode rdf:resource="#BUS_14" />
     <cim:Terminal.ConductingEquipment rdf:resource="#urn:uuid:0F3FA4918F8041BAA3995769B45512D9" />
     <cim:Terminal.connected>true</cim:Terminal.connected>
     <cim:Terminal.sequenceNumber>1</cim:Terminal.sequenceNumber>
@@ -862,15 +862,15 @@
     <cim:CurrentLimit.value>5.773502691896258e-22</cim:CurrentLimit.value>
   </cim:ACLineSegment>
   <cim:Terminal rdf:ID="urn:uuid:6170982068F44C1B822E568906381F6A_T1">
-    <cim:IdentifiedObject.name>671_671680_T1</cim:IdentifiedObject.name>
-    <cim:Terminal.TopologicalNode rdf:resource="#BUS_7" />
+    <cim:IdentifiedObject.name>680_671680_T1</cim:IdentifiedObject.name>
+    <cim:Terminal.TopologicalNode rdf:resource="#BUS_17" />
     <cim:Terminal.ConductingEquipment rdf:resource="#urn:uuid:6170982068F44C1B822E568906381F6A" />
     <cim:Terminal.connected>true</cim:Terminal.connected>
     <cim:Terminal.sequenceNumber>1</cim:Terminal.sequenceNumber>
   </cim:Terminal>
   <cim:Terminal rdf:ID="urn:uuid:6170982068F44C1B822E568906381F6A_T2">
-    <cim:IdentifiedObject.name>680_671680_T2</cim:IdentifiedObject.name>
-    <cim:Terminal.TopologicalNode rdf:resource="#BUS_17" />
+    <cim:IdentifiedObject.name>671_671680_T2</cim:IdentifiedObject.name>
+    <cim:Terminal.TopologicalNode rdf:resource="#BUS_7" />
     <cim:Terminal.ConductingEquipment rdf:resource="#urn:uuid:6170982068F44C1B822E568906381F6A" />
     <cim:Terminal.connected>true</cim:Terminal.connected>
     <cim:Terminal.sequenceNumber>1</cim:Terminal.sequenceNumber>
@@ -978,15 +978,15 @@
     <cim:CurrentLimit.value>5.773502691896258e-22</cim:CurrentLimit.value>
   </cim:ACLineSegment>
   <cim:Terminal rdf:ID="urn:uuid:208C6A56551E4907A58EC7E0BB0C78C0_T1">
-    <cim:IdentifiedObject.name>692_692675_T1</cim:IdentifiedObject.name>
-    <cim:Terminal.TopologicalNode rdf:resource="#BUS_10" />
+    <cim:IdentifiedObject.name>675_692675_T1</cim:IdentifiedObject.name>
+    <cim:Terminal.TopologicalNode rdf:resource="#BUS_11" />
     <cim:Terminal.ConductingEquipment rdf:resource="#urn:uuid:208C6A56551E4907A58EC7E0BB0C78C0" />
     <cim:Terminal.connected>true</cim:Terminal.connected>
     <cim:Terminal.sequenceNumber>1</cim:Terminal.sequenceNumber>
   </cim:Terminal>
   <cim:Terminal rdf:ID="urn:uuid:208C6A56551E4907A58EC7E0BB0C78C0_T2">
-    <cim:IdentifiedObject.name>675_692675_T2</cim:IdentifiedObject.name>
-    <cim:Terminal.TopologicalNode rdf:resource="#BUS_11" />
+    <cim:IdentifiedObject.name>692_692675_T2</cim:IdentifiedObject.name>
+    <cim:Terminal.TopologicalNode rdf:resource="#BUS_10" />
     <cim:Terminal.ConductingEquipment rdf:resource="#urn:uuid:208C6A56551E4907A58EC7E0BB0C78C0" />
     <cim:Terminal.connected>true</cim:Terminal.connected>
     <cim:Terminal.sequenceNumber>1</cim:Terminal.sequenceNumber>
@@ -1036,15 +1036,15 @@
     <cim:CurrentLimit.value>5.773502691896258e-22</cim:CurrentLimit.value>
   </cim:ACLineSegment>
   <cim:Terminal rdf:ID="urn:uuid:648DEB1ED2914736B96AEBA5ACC2CBE7_T1">
-    <cim:IdentifiedObject.name>tap_684611_T1</cim:IdentifiedObject.name>
-    <cim:Terminal.TopologicalNode rdf:resource="#BUS_20" />
+    <cim:IdentifiedObject.name>611_684611_T1</cim:IdentifiedObject.name>
+    <cim:Terminal.TopologicalNode rdf:resource="#BUS_12" />
     <cim:Terminal.ConductingEquipment rdf:resource="#urn:uuid:648DEB1ED2914736B96AEBA5ACC2CBE7" />
     <cim:Terminal.connected>true</cim:Terminal.connected>
     <cim:Terminal.sequenceNumber>1</cim:Terminal.sequenceNumber>
   </cim:Terminal>
   <cim:Terminal rdf:ID="urn:uuid:648DEB1ED2914736B96AEBA5ACC2CBE7_T2">
-    <cim:IdentifiedObject.name>611_684611_T2</cim:IdentifiedObject.name>
-    <cim:Terminal.TopologicalNode rdf:resource="#BUS_12" />
+    <cim:IdentifiedObject.name>tap_684611_T2</cim:IdentifiedObject.name>
+    <cim:Terminal.TopologicalNode rdf:resource="#BUS_20" />
     <cim:Terminal.ConductingEquipment rdf:resource="#urn:uuid:648DEB1ED2914736B96AEBA5ACC2CBE7" />
     <cim:Terminal.connected>true</cim:Terminal.connected>
     <cim:Terminal.sequenceNumber>1</cim:Terminal.sequenceNumber>

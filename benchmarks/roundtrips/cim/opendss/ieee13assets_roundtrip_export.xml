@@ -1,0 +1,642 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:cim="http://iec.ch/TC57/CIM100#">
+  <cim:IEC61970CIMVersion rdf:ID="00000000-0000-0000-0000-000000000100">
+    <cim:IEC61970CIMVersion.version>IEC61970CIM100</cim:IEC61970CIMVersion.version>
+    <cim:IEC61970CIMVersion.date>2019-04-01</cim:IEC61970CIMVersion.date>
+  </cim:IEC61970CIMVersion>
+  <cim:Model rdf:ID="0ee7efcfc17449a9a47b2411e810e232">
+    <cim:Model.name></cim:Model.name>
+    <cim:Model.version>1</cim:Model.version>
+    <cim:Model.description></cim:Model.description>
+  </cim:Model>
+  <cim:BaseVoltage rdf:ID="Base_voltage_10_0">
+    <cim:BaseVoltage.name>Base_voltage_10_0</cim:BaseVoltage.name>
+    <cim:BaseVoltage.nominalVoltage>10.0</cim:BaseVoltage.nominalVoltage>
+  </cim:BaseVoltage>
+  <cim:Substation rdf:ID="0ee7efcfc17449a9a47b2411e810e232_DefaultSubstation">
+    <cim:Substation.name>DefaultSubstation</cim:Substation.name>
+    <cim:Substation.aliasName>DefaultSubstation</cim:Substation.aliasName>
+    <cim:Substation.PSRType></cim:Substation.PSRType>
+    <cim:Substation.Location rdf:resource="#" />
+    <cim:Substation.SubGeographicalRegion rdf:resource="#" />
+  </cim:Substation>
+  <cim:VoltageLevel rdf:ID="VoltageLevel_10_0_0">
+    <cim:VoltageLevel.name>DefaultSubstation</cim:VoltageLevel.name>
+    <cim:VoltageLevel.aliasName>DefaultSubstation</cim:VoltageLevel.aliasName>
+    <cim:VoltageLevel.BaseVoltage rdf:resource="#Base_voltage_10_0" />
+    <cim:VoltageLevel.Substation rdf:resource="#0ee7efcfc17449a9a47b2411e810e232_DefaultSubstation" />
+  </cim:VoltageLevel>
+  <cim:ConnectivityNode rdf:ID="BUS_0">
+    <cim:IdentifiedObject.name>sourcebus</cim:IdentifiedObject.name>
+    <cim:IdentifiedObject.aliasName>sourcebus</cim:IdentifiedObject.aliasName>
+    <cim:ConnectivityNode.BaseVoltage rdf:resource="#Base_voltage_10_0" />
+    <cim:ConnectivityNode.ConnectivityNodeContainer rdf:resource="#VoltageLevel_10_0_0" />
+  </cim:ConnectivityNode>
+  <cim:EquivalentNetwork rdf:ID="BUS_0_EqNetwork">
+    <cim:IdentifiedObject.name>sourcebus_Slack</cim:IdentifiedObject.name>
+    <cim:IdentifiedObject.aliasName>sourcebus_Slack</cim:IdentifiedObject.aliasName>
+    <cim:EquivalentNetwork.BaseVoltage rdf:resource="#Base_voltage_10_0" />
+    <cim:EquivalentNetwork.VoltageLevel rdf:resource="#VoltageLevel_10_0_0" />
+  </cim:EquivalentNetwork>
+  <cim:Terminal rdf:ID="BUS_0_EqNetwork_T">
+    <cim:IdentifiedObject.name>BUS_0_EqNetwork_T</cim:IdentifiedObject.name>
+    <cim:Terminal.TopologicalNode rdf:resource="#BUS_0" />
+    <cim:Terminal.ConductingEquipment rdf:resource="#BUS_0_EqNetwork" />
+    <cim:Terminal.connected>true</cim:Terminal.connected>
+    <cim:Terminal.sequenceNumber>1</cim:Terminal.sequenceNumber>
+  </cim:Terminal>
+  <cim:ConnectivityNode rdf:ID="BUS_1">
+    <cim:IdentifiedObject.name>650</cim:IdentifiedObject.name>
+    <cim:IdentifiedObject.aliasName>650</cim:IdentifiedObject.aliasName>
+    <cim:ConnectivityNode.BaseVoltage rdf:resource="#Base_voltage_10_0" />
+    <cim:ConnectivityNode.ConnectivityNodeContainer rdf:resource="#VoltageLevel_10_0_0" />
+  </cim:ConnectivityNode>
+  <cim:ConnectivityNode rdf:ID="BUS_2">
+    <cim:IdentifiedObject.name>633</cim:IdentifiedObject.name>
+    <cim:IdentifiedObject.aliasName>633</cim:IdentifiedObject.aliasName>
+    <cim:ConnectivityNode.BaseVoltage rdf:resource="#Base_voltage_10_0" />
+    <cim:ConnectivityNode.ConnectivityNodeContainer rdf:resource="#VoltageLevel_10_0_0" />
+  </cim:ConnectivityNode>
+  <cim:ConnectivityNode rdf:ID="BUS_3">
+    <cim:IdentifiedObject.name>634</cim:IdentifiedObject.name>
+    <cim:IdentifiedObject.aliasName>634</cim:IdentifiedObject.aliasName>
+    <cim:ConnectivityNode.BaseVoltage rdf:resource="#Base_voltage_10_0" />
+    <cim:ConnectivityNode.ConnectivityNodeContainer rdf:resource="#VoltageLevel_10_0_0" />
+  </cim:ConnectivityNode>
+  <cim:ConnectivityNode rdf:ID="BUS_4">
+    <cim:IdentifiedObject.name>rg60</cim:IdentifiedObject.name>
+    <cim:IdentifiedObject.aliasName>rg60</cim:IdentifiedObject.aliasName>
+    <cim:ConnectivityNode.BaseVoltage rdf:resource="#Base_voltage_10_0" />
+    <cim:ConnectivityNode.ConnectivityNodeContainer rdf:resource="#VoltageLevel_10_0_0" />
+  </cim:ConnectivityNode>
+  <cim:ConnectivityNode rdf:ID="BUS_5">
+    <cim:IdentifiedObject.name>671</cim:IdentifiedObject.name>
+    <cim:IdentifiedObject.aliasName>671</cim:IdentifiedObject.aliasName>
+    <cim:ConnectivityNode.BaseVoltage rdf:resource="#Base_voltage_10_0" />
+    <cim:ConnectivityNode.ConnectivityNodeContainer rdf:resource="#VoltageLevel_10_0_0" />
+  </cim:ConnectivityNode>
+  <cim:ConnectivityNode rdf:ID="BUS_6">
+    <cim:IdentifiedObject.name>645</cim:IdentifiedObject.name>
+    <cim:IdentifiedObject.aliasName>645</cim:IdentifiedObject.aliasName>
+    <cim:ConnectivityNode.BaseVoltage rdf:resource="#Base_voltage_10_0" />
+    <cim:ConnectivityNode.ConnectivityNodeContainer rdf:resource="#VoltageLevel_10_0_0" />
+  </cim:ConnectivityNode>
+  <cim:ConnectivityNode rdf:ID="BUS_7">
+    <cim:IdentifiedObject.name>646</cim:IdentifiedObject.name>
+    <cim:IdentifiedObject.aliasName>646</cim:IdentifiedObject.aliasName>
+    <cim:ConnectivityNode.BaseVoltage rdf:resource="#Base_voltage_10_0" />
+    <cim:ConnectivityNode.ConnectivityNodeContainer rdf:resource="#VoltageLevel_10_0_0" />
+  </cim:ConnectivityNode>
+  <cim:ConnectivityNode rdf:ID="BUS_8">
+    <cim:IdentifiedObject.name>692</cim:IdentifiedObject.name>
+    <cim:IdentifiedObject.aliasName>692</cim:IdentifiedObject.aliasName>
+    <cim:ConnectivityNode.BaseVoltage rdf:resource="#Base_voltage_10_0" />
+    <cim:ConnectivityNode.ConnectivityNodeContainer rdf:resource="#VoltageLevel_10_0_0" />
+  </cim:ConnectivityNode>
+  <cim:ConnectivityNode rdf:ID="BUS_9">
+    <cim:IdentifiedObject.name>675</cim:IdentifiedObject.name>
+    <cim:IdentifiedObject.aliasName>675</cim:IdentifiedObject.aliasName>
+    <cim:ConnectivityNode.BaseVoltage rdf:resource="#Base_voltage_10_0" />
+    <cim:ConnectivityNode.ConnectivityNodeContainer rdf:resource="#VoltageLevel_10_0_0" />
+  </cim:ConnectivityNode>
+  <cim:ConnectivityNode rdf:ID="BUS_10">
+    <cim:IdentifiedObject.name>611</cim:IdentifiedObject.name>
+    <cim:IdentifiedObject.aliasName>611</cim:IdentifiedObject.aliasName>
+    <cim:ConnectivityNode.BaseVoltage rdf:resource="#Base_voltage_10_0" />
+    <cim:ConnectivityNode.ConnectivityNodeContainer rdf:resource="#VoltageLevel_10_0_0" />
+  </cim:ConnectivityNode>
+  <cim:ConnectivityNode rdf:ID="BUS_11">
+    <cim:IdentifiedObject.name>652</cim:IdentifiedObject.name>
+    <cim:IdentifiedObject.aliasName>652</cim:IdentifiedObject.aliasName>
+    <cim:ConnectivityNode.BaseVoltage rdf:resource="#Base_voltage_10_0" />
+    <cim:ConnectivityNode.ConnectivityNodeContainer rdf:resource="#VoltageLevel_10_0_0" />
+  </cim:ConnectivityNode>
+  <cim:ConnectivityNode rdf:ID="BUS_12">
+    <cim:IdentifiedObject.name>670</cim:IdentifiedObject.name>
+    <cim:IdentifiedObject.aliasName>670</cim:IdentifiedObject.aliasName>
+    <cim:ConnectivityNode.BaseVoltage rdf:resource="#Base_voltage_10_0" />
+    <cim:ConnectivityNode.ConnectivityNodeContainer rdf:resource="#VoltageLevel_10_0_0" />
+  </cim:ConnectivityNode>
+  <cim:ConnectivityNode rdf:ID="BUS_13">
+    <cim:IdentifiedObject.name>632</cim:IdentifiedObject.name>
+    <cim:IdentifiedObject.aliasName>632</cim:IdentifiedObject.aliasName>
+    <cim:ConnectivityNode.BaseVoltage rdf:resource="#Base_voltage_10_0" />
+    <cim:ConnectivityNode.ConnectivityNodeContainer rdf:resource="#VoltageLevel_10_0_0" />
+  </cim:ConnectivityNode>
+  <cim:ConnectivityNode rdf:ID="BUS_14">
+    <cim:IdentifiedObject.name>680</cim:IdentifiedObject.name>
+    <cim:IdentifiedObject.aliasName>680</cim:IdentifiedObject.aliasName>
+    <cim:ConnectivityNode.BaseVoltage rdf:resource="#Base_voltage_10_0" />
+    <cim:ConnectivityNode.ConnectivityNodeContainer rdf:resource="#VoltageLevel_10_0_0" />
+  </cim:ConnectivityNode>
+  <cim:ConnectivityNode rdf:ID="BUS_15">
+    <cim:IdentifiedObject.name>684</cim:IdentifiedObject.name>
+    <cim:IdentifiedObject.aliasName>684</cim:IdentifiedObject.aliasName>
+    <cim:ConnectivityNode.BaseVoltage rdf:resource="#Base_voltage_10_0" />
+    <cim:ConnectivityNode.ConnectivityNodeContainer rdf:resource="#VoltageLevel_10_0_0" />
+  </cim:ConnectivityNode>
+  <cim:ConformLoad rdf:ID="urn:uuid:A178435DE0064CF5B06F8410159811B3_LOAD_0">
+    <cim:IdentifiedObject.name>671</cim:IdentifiedObject.name>
+    <cim:IdentifiedObject.aliasName>671</cim:IdentifiedObject.aliasName>
+    <cim:ConformLoad.BaseVoltage rdf:resource="#Base_voltage_10_0" />
+    <cim:Equipment.EquipmentContainer>VoltageLevel_10_0_0</cim:Equipment.EquipmentContainer>
+    <cim:ConformLoad.LoadResponse rdf:resource="#urn:uuid:A178435DE0064CF5B06F8410159811B3_LOAD_0_LRC" />
+    <cim:ConformLoad.pfixed>1155000.0</cim:ConformLoad.pfixed>
+    <cim:ConformLoad.qfixed>660000.0</cim:ConformLoad.qfixed>
+    <cim:ConformLoad.normallyInService>True</cim:ConformLoad.normallyInService>
+  </cim:ConformLoad>
+  <cim:LoadResponseCharacteristic rdf:ID="urn:uuid:A178435DE0064CF5B06F8410159811B3_LOAD_0_LRC">
+    <cim:LoadResponseCharacteristic.name>671</cim:LoadResponseCharacteristic.name>
+    <cim:LoadResponseCharacteristic.exponentModel>false</cim:LoadResponseCharacteristic.exponentModel>
+    <cim:LoadResponseCharacteristic.pConstantCurrent>0.0</cim:LoadResponseCharacteristic.pConstantCurrent>
+    <cim:LoadResponseCharacteristic.pConstantImpedance>1e+20</cim:LoadResponseCharacteristic.pConstantImpedance>
+    <cim:LoadResponseCharacteristic.pConstantPower>1155000.0</cim:LoadResponseCharacteristic.pConstantPower>
+    <cim:LoadResponseCharacteristic.pVoltageExponent>0.0</cim:LoadResponseCharacteristic.pVoltageExponent>
+    <cim:LoadResponseCharacteristic.pFrequencyExponent>0.0</cim:LoadResponseCharacteristic.pFrequencyExponent>
+    <cim:LoadResponseCharacteristic.qConstantCurrent>0.0</cim:LoadResponseCharacteristic.qConstantCurrent>
+    <cim:LoadResponseCharacteristic.qConstantImpedance>1e+20</cim:LoadResponseCharacteristic.qConstantImpedance>
+    <cim:LoadResponseCharacteristic.qConstantPower>660000.0</cim:LoadResponseCharacteristic.qConstantPower>
+    <cim:LoadResponseCharacteristic.qVoltageExponent>0.0</cim:LoadResponseCharacteristic.qVoltageExponent>
+    <cim:LoadResponseCharacteristic.qFrequencyExponent>0.0</cim:LoadResponseCharacteristic.qFrequencyExponent>
+  </cim:LoadResponseCharacteristic>
+  <cim:Terminal rdf:ID="urn:uuid:A178435DE0064CF5B06F8410159811B3_LOAD_0_T">
+    <cim:IdentifiedObject.name>671</cim:IdentifiedObject.name>
+    <cim:Terminal.TopologicalNode rdf:resource="#BUS_5" />
+    <cim:Terminal.ConductingEquipment rdf:resource="#urn:uuid:A178435DE0064CF5B06F8410159811B3_LOAD_0" />
+    <cim:Terminal.connected>true</cim:Terminal.connected>
+    <cim:Terminal.sequenceNumber>1</cim:Terminal.sequenceNumber>
+  </cim:Terminal>
+  <cim:ConformLoad rdf:ID="urn:uuid:4605B99B1F494414B5E3C02CB42D658C_LOAD_1">
+    <cim:IdentifiedObject.name>634a</cim:IdentifiedObject.name>
+    <cim:IdentifiedObject.aliasName>634a</cim:IdentifiedObject.aliasName>
+    <cim:ConformLoad.BaseVoltage rdf:resource="#Base_voltage_10_0" />
+    <cim:Equipment.EquipmentContainer>VoltageLevel_10_0_0</cim:Equipment.EquipmentContainer>
+    <cim:ConformLoad.LoadResponse rdf:resource="#urn:uuid:4605B99B1F494414B5E3C02CB42D658C_LOAD_1_LRC" />
+    <cim:ConformLoad.pfixed>160000.0</cim:ConformLoad.pfixed>
+    <cim:ConformLoad.qfixed>110000.0</cim:ConformLoad.qfixed>
+    <cim:ConformLoad.normallyInService>True</cim:ConformLoad.normallyInService>
+  </cim:ConformLoad>
+  <cim:LoadResponseCharacteristic rdf:ID="urn:uuid:4605B99B1F494414B5E3C02CB42D658C_LOAD_1_LRC">
+    <cim:LoadResponseCharacteristic.name>634a</cim:LoadResponseCharacteristic.name>
+    <cim:LoadResponseCharacteristic.exponentModel>false</cim:LoadResponseCharacteristic.exponentModel>
+    <cim:LoadResponseCharacteristic.pConstantCurrent>0.0</cim:LoadResponseCharacteristic.pConstantCurrent>
+    <cim:LoadResponseCharacteristic.pConstantImpedance>1e+20</cim:LoadResponseCharacteristic.pConstantImpedance>
+    <cim:LoadResponseCharacteristic.pConstantPower>160000.0</cim:LoadResponseCharacteristic.pConstantPower>
+    <cim:LoadResponseCharacteristic.pVoltageExponent>0.0</cim:LoadResponseCharacteristic.pVoltageExponent>
+    <cim:LoadResponseCharacteristic.pFrequencyExponent>0.0</cim:LoadResponseCharacteristic.pFrequencyExponent>
+    <cim:LoadResponseCharacteristic.qConstantCurrent>0.0</cim:LoadResponseCharacteristic.qConstantCurrent>
+    <cim:LoadResponseCharacteristic.qConstantImpedance>1e+20</cim:LoadResponseCharacteristic.qConstantImpedance>
+    <cim:LoadResponseCharacteristic.qConstantPower>110000.0</cim:LoadResponseCharacteristic.qConstantPower>
+    <cim:LoadResponseCharacteristic.qVoltageExponent>0.0</cim:LoadResponseCharacteristic.qVoltageExponent>
+    <cim:LoadResponseCharacteristic.qFrequencyExponent>0.0</cim:LoadResponseCharacteristic.qFrequencyExponent>
+  </cim:LoadResponseCharacteristic>
+  <cim:Terminal rdf:ID="urn:uuid:4605B99B1F494414B5E3C02CB42D658C_LOAD_1_T">
+    <cim:IdentifiedObject.name>634a</cim:IdentifiedObject.name>
+    <cim:Terminal.TopologicalNode rdf:resource="#BUS_3" />
+    <cim:Terminal.ConductingEquipment rdf:resource="#urn:uuid:4605B99B1F494414B5E3C02CB42D658C_LOAD_1" />
+    <cim:Terminal.connected>true</cim:Terminal.connected>
+    <cim:Terminal.sequenceNumber>1</cim:Terminal.sequenceNumber>
+  </cim:Terminal>
+  <cim:ConformLoad rdf:ID="urn:uuid:2BFF8F2709FD4AD7AC38689BDDF624AC_LOAD_2">
+    <cim:IdentifiedObject.name>634b</cim:IdentifiedObject.name>
+    <cim:IdentifiedObject.aliasName>634b</cim:IdentifiedObject.aliasName>
+    <cim:ConformLoad.BaseVoltage rdf:resource="#Base_voltage_10_0" />
+    <cim:Equipment.EquipmentContainer>VoltageLevel_10_0_0</cim:Equipment.EquipmentContainer>
+    <cim:ConformLoad.LoadResponse rdf:resource="#urn:uuid:2BFF8F2709FD4AD7AC38689BDDF624AC_LOAD_2_LRC" />
+    <cim:ConformLoad.pfixed>120000.0</cim:ConformLoad.pfixed>
+    <cim:ConformLoad.qfixed>90000.0</cim:ConformLoad.qfixed>
+    <cim:ConformLoad.normallyInService>True</cim:ConformLoad.normallyInService>
+  </cim:ConformLoad>
+  <cim:LoadResponseCharacteristic rdf:ID="urn:uuid:2BFF8F2709FD4AD7AC38689BDDF624AC_LOAD_2_LRC">
+    <cim:LoadResponseCharacteristic.name>634b</cim:LoadResponseCharacteristic.name>
+    <cim:LoadResponseCharacteristic.exponentModel>false</cim:LoadResponseCharacteristic.exponentModel>
+    <cim:LoadResponseCharacteristic.pConstantCurrent>0.0</cim:LoadResponseCharacteristic.pConstantCurrent>
+    <cim:LoadResponseCharacteristic.pConstantImpedance>1e+20</cim:LoadResponseCharacteristic.pConstantImpedance>
+    <cim:LoadResponseCharacteristic.pConstantPower>120000.0</cim:LoadResponseCharacteristic.pConstantPower>
+    <cim:LoadResponseCharacteristic.pVoltageExponent>0.0</cim:LoadResponseCharacteristic.pVoltageExponent>
+    <cim:LoadResponseCharacteristic.pFrequencyExponent>0.0</cim:LoadResponseCharacteristic.pFrequencyExponent>
+    <cim:LoadResponseCharacteristic.qConstantCurrent>0.0</cim:LoadResponseCharacteristic.qConstantCurrent>
+    <cim:LoadResponseCharacteristic.qConstantImpedance>1e+20</cim:LoadResponseCharacteristic.qConstantImpedance>
+    <cim:LoadResponseCharacteristic.qConstantPower>90000.0</cim:LoadResponseCharacteristic.qConstantPower>
+    <cim:LoadResponseCharacteristic.qVoltageExponent>0.0</cim:LoadResponseCharacteristic.qVoltageExponent>
+    <cim:LoadResponseCharacteristic.qFrequencyExponent>0.0</cim:LoadResponseCharacteristic.qFrequencyExponent>
+  </cim:LoadResponseCharacteristic>
+  <cim:Terminal rdf:ID="urn:uuid:2BFF8F2709FD4AD7AC38689BDDF624AC_LOAD_2_T">
+    <cim:IdentifiedObject.name>634b</cim:IdentifiedObject.name>
+    <cim:Terminal.TopologicalNode rdf:resource="#BUS_3" />
+    <cim:Terminal.ConductingEquipment rdf:resource="#urn:uuid:2BFF8F2709FD4AD7AC38689BDDF624AC_LOAD_2" />
+    <cim:Terminal.connected>true</cim:Terminal.connected>
+    <cim:Terminal.sequenceNumber>1</cim:Terminal.sequenceNumber>
+  </cim:Terminal>
+  <cim:ConformLoad rdf:ID="urn:uuid:BB5BEE17B618425CB2AEE458CBD433CD_LOAD_3">
+    <cim:IdentifiedObject.name>634c</cim:IdentifiedObject.name>
+    <cim:IdentifiedObject.aliasName>634c</cim:IdentifiedObject.aliasName>
+    <cim:ConformLoad.BaseVoltage rdf:resource="#Base_voltage_10_0" />
+    <cim:Equipment.EquipmentContainer>VoltageLevel_10_0_0</cim:Equipment.EquipmentContainer>
+    <cim:ConformLoad.LoadResponse rdf:resource="#urn:uuid:BB5BEE17B618425CB2AEE458CBD433CD_LOAD_3_LRC" />
+    <cim:ConformLoad.pfixed>120000.0</cim:ConformLoad.pfixed>
+    <cim:ConformLoad.qfixed>90000.0</cim:ConformLoad.qfixed>
+    <cim:ConformLoad.normallyInService>True</cim:ConformLoad.normallyInService>
+  </cim:ConformLoad>
+  <cim:LoadResponseCharacteristic rdf:ID="urn:uuid:BB5BEE17B618425CB2AEE458CBD433CD_LOAD_3_LRC">
+    <cim:LoadResponseCharacteristic.name>634c</cim:LoadResponseCharacteristic.name>
+    <cim:LoadResponseCharacteristic.exponentModel>false</cim:LoadResponseCharacteristic.exponentModel>
+    <cim:LoadResponseCharacteristic.pConstantCurrent>0.0</cim:LoadResponseCharacteristic.pConstantCurrent>
+    <cim:LoadResponseCharacteristic.pConstantImpedance>1e+20</cim:LoadResponseCharacteristic.pConstantImpedance>
+    <cim:LoadResponseCharacteristic.pConstantPower>120000.0</cim:LoadResponseCharacteristic.pConstantPower>
+    <cim:LoadResponseCharacteristic.pVoltageExponent>0.0</cim:LoadResponseCharacteristic.pVoltageExponent>
+    <cim:LoadResponseCharacteristic.pFrequencyExponent>0.0</cim:LoadResponseCharacteristic.pFrequencyExponent>
+    <cim:LoadResponseCharacteristic.qConstantCurrent>0.0</cim:LoadResponseCharacteristic.qConstantCurrent>
+    <cim:LoadResponseCharacteristic.qConstantImpedance>1e+20</cim:LoadResponseCharacteristic.qConstantImpedance>
+    <cim:LoadResponseCharacteristic.qConstantPower>90000.0</cim:LoadResponseCharacteristic.qConstantPower>
+    <cim:LoadResponseCharacteristic.qVoltageExponent>0.0</cim:LoadResponseCharacteristic.qVoltageExponent>
+    <cim:LoadResponseCharacteristic.qFrequencyExponent>0.0</cim:LoadResponseCharacteristic.qFrequencyExponent>
+  </cim:LoadResponseCharacteristic>
+  <cim:Terminal rdf:ID="urn:uuid:BB5BEE17B618425CB2AEE458CBD433CD_LOAD_3_T">
+    <cim:IdentifiedObject.name>634c</cim:IdentifiedObject.name>
+    <cim:Terminal.TopologicalNode rdf:resource="#BUS_3" />
+    <cim:Terminal.ConductingEquipment rdf:resource="#urn:uuid:BB5BEE17B618425CB2AEE458CBD433CD_LOAD_3" />
+    <cim:Terminal.connected>true</cim:Terminal.connected>
+    <cim:Terminal.sequenceNumber>1</cim:Terminal.sequenceNumber>
+  </cim:Terminal>
+  <cim:ConformLoad rdf:ID="urn:uuid:3BD0DF72F5E54223B534F702D806F875_LOAD_4">
+    <cim:IdentifiedObject.name>645</cim:IdentifiedObject.name>
+    <cim:IdentifiedObject.aliasName>645</cim:IdentifiedObject.aliasName>
+    <cim:ConformLoad.BaseVoltage rdf:resource="#Base_voltage_10_0" />
+    <cim:Equipment.EquipmentContainer>VoltageLevel_10_0_0</cim:Equipment.EquipmentContainer>
+    <cim:ConformLoad.LoadResponse rdf:resource="#urn:uuid:3BD0DF72F5E54223B534F702D806F875_LOAD_4_LRC" />
+    <cim:ConformLoad.pfixed>170000.0</cim:ConformLoad.pfixed>
+    <cim:ConformLoad.qfixed>125000.0</cim:ConformLoad.qfixed>
+    <cim:ConformLoad.normallyInService>True</cim:ConformLoad.normallyInService>
+  </cim:ConformLoad>
+  <cim:LoadResponseCharacteristic rdf:ID="urn:uuid:3BD0DF72F5E54223B534F702D806F875_LOAD_4_LRC">
+    <cim:LoadResponseCharacteristic.name>645</cim:LoadResponseCharacteristic.name>
+    <cim:LoadResponseCharacteristic.exponentModel>false</cim:LoadResponseCharacteristic.exponentModel>
+    <cim:LoadResponseCharacteristic.pConstantCurrent>0.0</cim:LoadResponseCharacteristic.pConstantCurrent>
+    <cim:LoadResponseCharacteristic.pConstantImpedance>1e+20</cim:LoadResponseCharacteristic.pConstantImpedance>
+    <cim:LoadResponseCharacteristic.pConstantPower>170000.0</cim:LoadResponseCharacteristic.pConstantPower>
+    <cim:LoadResponseCharacteristic.pVoltageExponent>0.0</cim:LoadResponseCharacteristic.pVoltageExponent>
+    <cim:LoadResponseCharacteristic.pFrequencyExponent>0.0</cim:LoadResponseCharacteristic.pFrequencyExponent>
+    <cim:LoadResponseCharacteristic.qConstantCurrent>0.0</cim:LoadResponseCharacteristic.qConstantCurrent>
+    <cim:LoadResponseCharacteristic.qConstantImpedance>1e+20</cim:LoadResponseCharacteristic.qConstantImpedance>
+    <cim:LoadResponseCharacteristic.qConstantPower>125000.0</cim:LoadResponseCharacteristic.qConstantPower>
+    <cim:LoadResponseCharacteristic.qVoltageExponent>0.0</cim:LoadResponseCharacteristic.qVoltageExponent>
+    <cim:LoadResponseCharacteristic.qFrequencyExponent>0.0</cim:LoadResponseCharacteristic.qFrequencyExponent>
+  </cim:LoadResponseCharacteristic>
+  <cim:Terminal rdf:ID="urn:uuid:3BD0DF72F5E54223B534F702D806F875_LOAD_4_T">
+    <cim:IdentifiedObject.name>645</cim:IdentifiedObject.name>
+    <cim:Terminal.TopologicalNode rdf:resource="#BUS_6" />
+    <cim:Terminal.ConductingEquipment rdf:resource="#urn:uuid:3BD0DF72F5E54223B534F702D806F875_LOAD_4" />
+    <cim:Terminal.connected>true</cim:Terminal.connected>
+    <cim:Terminal.sequenceNumber>1</cim:Terminal.sequenceNumber>
+  </cim:Terminal>
+  <cim:ConformLoad rdf:ID="urn:uuid:65CCB8808B204E449400387C0B919E4D_LOAD_5">
+    <cim:IdentifiedObject.name>646</cim:IdentifiedObject.name>
+    <cim:IdentifiedObject.aliasName>646</cim:IdentifiedObject.aliasName>
+    <cim:ConformLoad.BaseVoltage rdf:resource="#Base_voltage_10_0" />
+    <cim:Equipment.EquipmentContainer>VoltageLevel_10_0_0</cim:Equipment.EquipmentContainer>
+    <cim:ConformLoad.LoadResponse rdf:resource="#urn:uuid:65CCB8808B204E449400387C0B919E4D_LOAD_5_LRC" />
+    <cim:ConformLoad.pfixed>230000.0</cim:ConformLoad.pfixed>
+    <cim:ConformLoad.qfixed>132000.0</cim:ConformLoad.qfixed>
+    <cim:ConformLoad.normallyInService>True</cim:ConformLoad.normallyInService>
+  </cim:ConformLoad>
+  <cim:LoadResponseCharacteristic rdf:ID="urn:uuid:65CCB8808B204E449400387C0B919E4D_LOAD_5_LRC">
+    <cim:LoadResponseCharacteristic.name>646</cim:LoadResponseCharacteristic.name>
+    <cim:LoadResponseCharacteristic.exponentModel>false</cim:LoadResponseCharacteristic.exponentModel>
+    <cim:LoadResponseCharacteristic.pConstantCurrent>0.0</cim:LoadResponseCharacteristic.pConstantCurrent>
+    <cim:LoadResponseCharacteristic.pConstantImpedance>1e+20</cim:LoadResponseCharacteristic.pConstantImpedance>
+    <cim:LoadResponseCharacteristic.pConstantPower>230000.0</cim:LoadResponseCharacteristic.pConstantPower>
+    <cim:LoadResponseCharacteristic.pVoltageExponent>0.0</cim:LoadResponseCharacteristic.pVoltageExponent>
+    <cim:LoadResponseCharacteristic.pFrequencyExponent>0.0</cim:LoadResponseCharacteristic.pFrequencyExponent>
+    <cim:LoadResponseCharacteristic.qConstantCurrent>0.0</cim:LoadResponseCharacteristic.qConstantCurrent>
+    <cim:LoadResponseCharacteristic.qConstantImpedance>1e+20</cim:LoadResponseCharacteristic.qConstantImpedance>
+    <cim:LoadResponseCharacteristic.qConstantPower>132000.0</cim:LoadResponseCharacteristic.qConstantPower>
+    <cim:LoadResponseCharacteristic.qVoltageExponent>0.0</cim:LoadResponseCharacteristic.qVoltageExponent>
+    <cim:LoadResponseCharacteristic.qFrequencyExponent>0.0</cim:LoadResponseCharacteristic.qFrequencyExponent>
+  </cim:LoadResponseCharacteristic>
+  <cim:Terminal rdf:ID="urn:uuid:65CCB8808B204E449400387C0B919E4D_LOAD_5_T">
+    <cim:IdentifiedObject.name>646</cim:IdentifiedObject.name>
+    <cim:Terminal.TopologicalNode rdf:resource="#BUS_7" />
+    <cim:Terminal.ConductingEquipment rdf:resource="#urn:uuid:65CCB8808B204E449400387C0B919E4D_LOAD_5" />
+    <cim:Terminal.connected>true</cim:Terminal.connected>
+    <cim:Terminal.sequenceNumber>1</cim:Terminal.sequenceNumber>
+  </cim:Terminal>
+  <cim:ConformLoad rdf:ID="urn:uuid:56865FD7AD25402BA242EC9BCF014CBD_LOAD_6">
+    <cim:IdentifiedObject.name>692</cim:IdentifiedObject.name>
+    <cim:IdentifiedObject.aliasName>692</cim:IdentifiedObject.aliasName>
+    <cim:ConformLoad.BaseVoltage rdf:resource="#Base_voltage_10_0" />
+    <cim:Equipment.EquipmentContainer>VoltageLevel_10_0_0</cim:Equipment.EquipmentContainer>
+    <cim:ConformLoad.LoadResponse rdf:resource="#urn:uuid:56865FD7AD25402BA242EC9BCF014CBD_LOAD_6_LRC" />
+    <cim:ConformLoad.pfixed>170000.0</cim:ConformLoad.pfixed>
+    <cim:ConformLoad.qfixed>151000.0</cim:ConformLoad.qfixed>
+    <cim:ConformLoad.normallyInService>True</cim:ConformLoad.normallyInService>
+  </cim:ConformLoad>
+  <cim:LoadResponseCharacteristic rdf:ID="urn:uuid:56865FD7AD25402BA242EC9BCF014CBD_LOAD_6_LRC">
+    <cim:LoadResponseCharacteristic.name>692</cim:LoadResponseCharacteristic.name>
+    <cim:LoadResponseCharacteristic.exponentModel>false</cim:LoadResponseCharacteristic.exponentModel>
+    <cim:LoadResponseCharacteristic.pConstantCurrent>0.0</cim:LoadResponseCharacteristic.pConstantCurrent>
+    <cim:LoadResponseCharacteristic.pConstantImpedance>1e+20</cim:LoadResponseCharacteristic.pConstantImpedance>
+    <cim:LoadResponseCharacteristic.pConstantPower>170000.0</cim:LoadResponseCharacteristic.pConstantPower>
+    <cim:LoadResponseCharacteristic.pVoltageExponent>0.0</cim:LoadResponseCharacteristic.pVoltageExponent>
+    <cim:LoadResponseCharacteristic.pFrequencyExponent>0.0</cim:LoadResponseCharacteristic.pFrequencyExponent>
+    <cim:LoadResponseCharacteristic.qConstantCurrent>0.0</cim:LoadResponseCharacteristic.qConstantCurrent>
+    <cim:LoadResponseCharacteristic.qConstantImpedance>1e+20</cim:LoadResponseCharacteristic.qConstantImpedance>
+    <cim:LoadResponseCharacteristic.qConstantPower>151000.0</cim:LoadResponseCharacteristic.qConstantPower>
+    <cim:LoadResponseCharacteristic.qVoltageExponent>0.0</cim:LoadResponseCharacteristic.qVoltageExponent>
+    <cim:LoadResponseCharacteristic.qFrequencyExponent>0.0</cim:LoadResponseCharacteristic.qFrequencyExponent>
+  </cim:LoadResponseCharacteristic>
+  <cim:Terminal rdf:ID="urn:uuid:56865FD7AD25402BA242EC9BCF014CBD_LOAD_6_T">
+    <cim:IdentifiedObject.name>692</cim:IdentifiedObject.name>
+    <cim:Terminal.TopologicalNode rdf:resource="#BUS_8" />
+    <cim:Terminal.ConductingEquipment rdf:resource="#urn:uuid:56865FD7AD25402BA242EC9BCF014CBD_LOAD_6" />
+    <cim:Terminal.connected>true</cim:Terminal.connected>
+    <cim:Terminal.sequenceNumber>1</cim:Terminal.sequenceNumber>
+  </cim:Terminal>
+  <cim:ConformLoad rdf:ID="urn:uuid:242909B028BF4A2BB6B5DD437695539B_LOAD_7">
+    <cim:IdentifiedObject.name>675a</cim:IdentifiedObject.name>
+    <cim:IdentifiedObject.aliasName>675a</cim:IdentifiedObject.aliasName>
+    <cim:ConformLoad.BaseVoltage rdf:resource="#Base_voltage_10_0" />
+    <cim:Equipment.EquipmentContainer>VoltageLevel_10_0_0</cim:Equipment.EquipmentContainer>
+    <cim:ConformLoad.LoadResponse rdf:resource="#urn:uuid:242909B028BF4A2BB6B5DD437695539B_LOAD_7_LRC" />
+    <cim:ConformLoad.pfixed>485000.0</cim:ConformLoad.pfixed>
+    <cim:ConformLoad.qfixed>190000.0</cim:ConformLoad.qfixed>
+    <cim:ConformLoad.normallyInService>True</cim:ConformLoad.normallyInService>
+  </cim:ConformLoad>
+  <cim:LoadResponseCharacteristic rdf:ID="urn:uuid:242909B028BF4A2BB6B5DD437695539B_LOAD_7_LRC">
+    <cim:LoadResponseCharacteristic.name>675a</cim:LoadResponseCharacteristic.name>
+    <cim:LoadResponseCharacteristic.exponentModel>false</cim:LoadResponseCharacteristic.exponentModel>
+    <cim:LoadResponseCharacteristic.pConstantCurrent>0.0</cim:LoadResponseCharacteristic.pConstantCurrent>
+    <cim:LoadResponseCharacteristic.pConstantImpedance>1e+20</cim:LoadResponseCharacteristic.pConstantImpedance>
+    <cim:LoadResponseCharacteristic.pConstantPower>485000.0</cim:LoadResponseCharacteristic.pConstantPower>
+    <cim:LoadResponseCharacteristic.pVoltageExponent>0.0</cim:LoadResponseCharacteristic.pVoltageExponent>
+    <cim:LoadResponseCharacteristic.pFrequencyExponent>0.0</cim:LoadResponseCharacteristic.pFrequencyExponent>
+    <cim:LoadResponseCharacteristic.qConstantCurrent>0.0</cim:LoadResponseCharacteristic.qConstantCurrent>
+    <cim:LoadResponseCharacteristic.qConstantImpedance>1e+20</cim:LoadResponseCharacteristic.qConstantImpedance>
+    <cim:LoadResponseCharacteristic.qConstantPower>190000.0</cim:LoadResponseCharacteristic.qConstantPower>
+    <cim:LoadResponseCharacteristic.qVoltageExponent>0.0</cim:LoadResponseCharacteristic.qVoltageExponent>
+    <cim:LoadResponseCharacteristic.qFrequencyExponent>0.0</cim:LoadResponseCharacteristic.qFrequencyExponent>
+  </cim:LoadResponseCharacteristic>
+  <cim:Terminal rdf:ID="urn:uuid:242909B028BF4A2BB6B5DD437695539B_LOAD_7_T">
+    <cim:IdentifiedObject.name>675a</cim:IdentifiedObject.name>
+    <cim:Terminal.TopologicalNode rdf:resource="#BUS_9" />
+    <cim:Terminal.ConductingEquipment rdf:resource="#urn:uuid:242909B028BF4A2BB6B5DD437695539B_LOAD_7" />
+    <cim:Terminal.connected>true</cim:Terminal.connected>
+    <cim:Terminal.sequenceNumber>1</cim:Terminal.sequenceNumber>
+  </cim:Terminal>
+  <cim:ConformLoad rdf:ID="urn:uuid:61109E18595E4213AED04043743098FA_LOAD_8">
+    <cim:IdentifiedObject.name>675b</cim:IdentifiedObject.name>
+    <cim:IdentifiedObject.aliasName>675b</cim:IdentifiedObject.aliasName>
+    <cim:ConformLoad.BaseVoltage rdf:resource="#Base_voltage_10_0" />
+    <cim:Equipment.EquipmentContainer>VoltageLevel_10_0_0</cim:Equipment.EquipmentContainer>
+    <cim:ConformLoad.LoadResponse rdf:resource="#urn:uuid:61109E18595E4213AED04043743098FA_LOAD_8_LRC" />
+    <cim:ConformLoad.pfixed>68000.0</cim:ConformLoad.pfixed>
+    <cim:ConformLoad.qfixed>60000.0</cim:ConformLoad.qfixed>
+    <cim:ConformLoad.normallyInService>True</cim:ConformLoad.normallyInService>
+  </cim:ConformLoad>
+  <cim:LoadResponseCharacteristic rdf:ID="urn:uuid:61109E18595E4213AED04043743098FA_LOAD_8_LRC">
+    <cim:LoadResponseCharacteristic.name>675b</cim:LoadResponseCharacteristic.name>
+    <cim:LoadResponseCharacteristic.exponentModel>false</cim:LoadResponseCharacteristic.exponentModel>
+    <cim:LoadResponseCharacteristic.pConstantCurrent>0.0</cim:LoadResponseCharacteristic.pConstantCurrent>
+    <cim:LoadResponseCharacteristic.pConstantImpedance>1e+20</cim:LoadResponseCharacteristic.pConstantImpedance>
+    <cim:LoadResponseCharacteristic.pConstantPower>68000.0</cim:LoadResponseCharacteristic.pConstantPower>
+    <cim:LoadResponseCharacteristic.pVoltageExponent>0.0</cim:LoadResponseCharacteristic.pVoltageExponent>
+    <cim:LoadResponseCharacteristic.pFrequencyExponent>0.0</cim:LoadResponseCharacteristic.pFrequencyExponent>
+    <cim:LoadResponseCharacteristic.qConstantCurrent>0.0</cim:LoadResponseCharacteristic.qConstantCurrent>
+    <cim:LoadResponseCharacteristic.qConstantImpedance>1e+20</cim:LoadResponseCharacteristic.qConstantImpedance>
+    <cim:LoadResponseCharacteristic.qConstantPower>60000.0</cim:LoadResponseCharacteristic.qConstantPower>
+    <cim:LoadResponseCharacteristic.qVoltageExponent>0.0</cim:LoadResponseCharacteristic.qVoltageExponent>
+    <cim:LoadResponseCharacteristic.qFrequencyExponent>0.0</cim:LoadResponseCharacteristic.qFrequencyExponent>
+  </cim:LoadResponseCharacteristic>
+  <cim:Terminal rdf:ID="urn:uuid:61109E18595E4213AED04043743098FA_LOAD_8_T">
+    <cim:IdentifiedObject.name>675b</cim:IdentifiedObject.name>
+    <cim:Terminal.TopologicalNode rdf:resource="#BUS_9" />
+    <cim:Terminal.ConductingEquipment rdf:resource="#urn:uuid:61109E18595E4213AED04043743098FA_LOAD_8" />
+    <cim:Terminal.connected>true</cim:Terminal.connected>
+    <cim:Terminal.sequenceNumber>1</cim:Terminal.sequenceNumber>
+  </cim:Terminal>
+  <cim:ConformLoad rdf:ID="urn:uuid:483376A1D2F542A7B98B534AF6D7171E_LOAD_9">
+    <cim:IdentifiedObject.name>675c</cim:IdentifiedObject.name>
+    <cim:IdentifiedObject.aliasName>675c</cim:IdentifiedObject.aliasName>
+    <cim:ConformLoad.BaseVoltage rdf:resource="#Base_voltage_10_0" />
+    <cim:Equipment.EquipmentContainer>VoltageLevel_10_0_0</cim:Equipment.EquipmentContainer>
+    <cim:ConformLoad.LoadResponse rdf:resource="#urn:uuid:483376A1D2F542A7B98B534AF6D7171E_LOAD_9_LRC" />
+    <cim:ConformLoad.pfixed>290000.0</cim:ConformLoad.pfixed>
+    <cim:ConformLoad.qfixed>212000.0</cim:ConformLoad.qfixed>
+    <cim:ConformLoad.normallyInService>True</cim:ConformLoad.normallyInService>
+  </cim:ConformLoad>
+  <cim:LoadResponseCharacteristic rdf:ID="urn:uuid:483376A1D2F542A7B98B534AF6D7171E_LOAD_9_LRC">
+    <cim:LoadResponseCharacteristic.name>675c</cim:LoadResponseCharacteristic.name>
+    <cim:LoadResponseCharacteristic.exponentModel>false</cim:LoadResponseCharacteristic.exponentModel>
+    <cim:LoadResponseCharacteristic.pConstantCurrent>0.0</cim:LoadResponseCharacteristic.pConstantCurrent>
+    <cim:LoadResponseCharacteristic.pConstantImpedance>1e+20</cim:LoadResponseCharacteristic.pConstantImpedance>
+    <cim:LoadResponseCharacteristic.pConstantPower>290000.0</cim:LoadResponseCharacteristic.pConstantPower>
+    <cim:LoadResponseCharacteristic.pVoltageExponent>0.0</cim:LoadResponseCharacteristic.pVoltageExponent>
+    <cim:LoadResponseCharacteristic.pFrequencyExponent>0.0</cim:LoadResponseCharacteristic.pFrequencyExponent>
+    <cim:LoadResponseCharacteristic.qConstantCurrent>0.0</cim:LoadResponseCharacteristic.qConstantCurrent>
+    <cim:LoadResponseCharacteristic.qConstantImpedance>1e+20</cim:LoadResponseCharacteristic.qConstantImpedance>
+    <cim:LoadResponseCharacteristic.qConstantPower>212000.0</cim:LoadResponseCharacteristic.qConstantPower>
+    <cim:LoadResponseCharacteristic.qVoltageExponent>0.0</cim:LoadResponseCharacteristic.qVoltageExponent>
+    <cim:LoadResponseCharacteristic.qFrequencyExponent>0.0</cim:LoadResponseCharacteristic.qFrequencyExponent>
+  </cim:LoadResponseCharacteristic>
+  <cim:Terminal rdf:ID="urn:uuid:483376A1D2F542A7B98B534AF6D7171E_LOAD_9_T">
+    <cim:IdentifiedObject.name>675c</cim:IdentifiedObject.name>
+    <cim:Terminal.TopologicalNode rdf:resource="#BUS_9" />
+    <cim:Terminal.ConductingEquipment rdf:resource="#urn:uuid:483376A1D2F542A7B98B534AF6D7171E_LOAD_9" />
+    <cim:Terminal.connected>true</cim:Terminal.connected>
+    <cim:Terminal.sequenceNumber>1</cim:Terminal.sequenceNumber>
+  </cim:Terminal>
+  <cim:ConformLoad rdf:ID="urn:uuid:B3C640A6DCAA4A57BD7E5179A6D77856_LOAD_10">
+    <cim:IdentifiedObject.name>611</cim:IdentifiedObject.name>
+    <cim:IdentifiedObject.aliasName>611</cim:IdentifiedObject.aliasName>
+    <cim:ConformLoad.BaseVoltage rdf:resource="#Base_voltage_10_0" />
+    <cim:Equipment.EquipmentContainer>VoltageLevel_10_0_0</cim:Equipment.EquipmentContainer>
+    <cim:ConformLoad.LoadResponse rdf:resource="#urn:uuid:B3C640A6DCAA4A57BD7E5179A6D77856_LOAD_10_LRC" />
+    <cim:ConformLoad.pfixed>170000.0</cim:ConformLoad.pfixed>
+    <cim:ConformLoad.qfixed>80000.0</cim:ConformLoad.qfixed>
+    <cim:ConformLoad.normallyInService>True</cim:ConformLoad.normallyInService>
+  </cim:ConformLoad>
+  <cim:LoadResponseCharacteristic rdf:ID="urn:uuid:B3C640A6DCAA4A57BD7E5179A6D77856_LOAD_10_LRC">
+    <cim:LoadResponseCharacteristic.name>611</cim:LoadResponseCharacteristic.name>
+    <cim:LoadResponseCharacteristic.exponentModel>false</cim:LoadResponseCharacteristic.exponentModel>
+    <cim:LoadResponseCharacteristic.pConstantCurrent>0.0</cim:LoadResponseCharacteristic.pConstantCurrent>
+    <cim:LoadResponseCharacteristic.pConstantImpedance>1e+20</cim:LoadResponseCharacteristic.pConstantImpedance>
+    <cim:LoadResponseCharacteristic.pConstantPower>170000.0</cim:LoadResponseCharacteristic.pConstantPower>
+    <cim:LoadResponseCharacteristic.pVoltageExponent>0.0</cim:LoadResponseCharacteristic.pVoltageExponent>
+    <cim:LoadResponseCharacteristic.pFrequencyExponent>0.0</cim:LoadResponseCharacteristic.pFrequencyExponent>
+    <cim:LoadResponseCharacteristic.qConstantCurrent>0.0</cim:LoadResponseCharacteristic.qConstantCurrent>
+    <cim:LoadResponseCharacteristic.qConstantImpedance>1e+20</cim:LoadResponseCharacteristic.qConstantImpedance>
+    <cim:LoadResponseCharacteristic.qConstantPower>80000.0</cim:LoadResponseCharacteristic.qConstantPower>
+    <cim:LoadResponseCharacteristic.qVoltageExponent>0.0</cim:LoadResponseCharacteristic.qVoltageExponent>
+    <cim:LoadResponseCharacteristic.qFrequencyExponent>0.0</cim:LoadResponseCharacteristic.qFrequencyExponent>
+  </cim:LoadResponseCharacteristic>
+  <cim:Terminal rdf:ID="urn:uuid:B3C640A6DCAA4A57BD7E5179A6D77856_LOAD_10_T">
+    <cim:IdentifiedObject.name>611</cim:IdentifiedObject.name>
+    <cim:Terminal.TopologicalNode rdf:resource="#BUS_10" />
+    <cim:Terminal.ConductingEquipment rdf:resource="#urn:uuid:B3C640A6DCAA4A57BD7E5179A6D77856_LOAD_10" />
+    <cim:Terminal.connected>true</cim:Terminal.connected>
+    <cim:Terminal.sequenceNumber>1</cim:Terminal.sequenceNumber>
+  </cim:Terminal>
+  <cim:ConformLoad rdf:ID="urn:uuid:A734642FF0EC4E71A8D03CA3DBEC4019_LOAD_11">
+    <cim:IdentifiedObject.name>652</cim:IdentifiedObject.name>
+    <cim:IdentifiedObject.aliasName>652</cim:IdentifiedObject.aliasName>
+    <cim:ConformLoad.BaseVoltage rdf:resource="#Base_voltage_10_0" />
+    <cim:Equipment.EquipmentContainer>VoltageLevel_10_0_0</cim:Equipment.EquipmentContainer>
+    <cim:ConformLoad.LoadResponse rdf:resource="#urn:uuid:A734642FF0EC4E71A8D03CA3DBEC4019_LOAD_11_LRC" />
+    <cim:ConformLoad.pfixed>128000.0</cim:ConformLoad.pfixed>
+    <cim:ConformLoad.qfixed>86000.0</cim:ConformLoad.qfixed>
+    <cim:ConformLoad.normallyInService>True</cim:ConformLoad.normallyInService>
+  </cim:ConformLoad>
+  <cim:LoadResponseCharacteristic rdf:ID="urn:uuid:A734642FF0EC4E71A8D03CA3DBEC4019_LOAD_11_LRC">
+    <cim:LoadResponseCharacteristic.name>652</cim:LoadResponseCharacteristic.name>
+    <cim:LoadResponseCharacteristic.exponentModel>false</cim:LoadResponseCharacteristic.exponentModel>
+    <cim:LoadResponseCharacteristic.pConstantCurrent>0.0</cim:LoadResponseCharacteristic.pConstantCurrent>
+    <cim:LoadResponseCharacteristic.pConstantImpedance>1e+20</cim:LoadResponseCharacteristic.pConstantImpedance>
+    <cim:LoadResponseCharacteristic.pConstantPower>128000.0</cim:LoadResponseCharacteristic.pConstantPower>
+    <cim:LoadResponseCharacteristic.pVoltageExponent>0.0</cim:LoadResponseCharacteristic.pVoltageExponent>
+    <cim:LoadResponseCharacteristic.pFrequencyExponent>0.0</cim:LoadResponseCharacteristic.pFrequencyExponent>
+    <cim:LoadResponseCharacteristic.qConstantCurrent>0.0</cim:LoadResponseCharacteristic.qConstantCurrent>
+    <cim:LoadResponseCharacteristic.qConstantImpedance>1e+20</cim:LoadResponseCharacteristic.qConstantImpedance>
+    <cim:LoadResponseCharacteristic.qConstantPower>86000.0</cim:LoadResponseCharacteristic.qConstantPower>
+    <cim:LoadResponseCharacteristic.qVoltageExponent>0.0</cim:LoadResponseCharacteristic.qVoltageExponent>
+    <cim:LoadResponseCharacteristic.qFrequencyExponent>0.0</cim:LoadResponseCharacteristic.qFrequencyExponent>
+  </cim:LoadResponseCharacteristic>
+  <cim:Terminal rdf:ID="urn:uuid:A734642FF0EC4E71A8D03CA3DBEC4019_LOAD_11_T">
+    <cim:IdentifiedObject.name>652</cim:IdentifiedObject.name>
+    <cim:Terminal.TopologicalNode rdf:resource="#BUS_11" />
+    <cim:Terminal.ConductingEquipment rdf:resource="#urn:uuid:A734642FF0EC4E71A8D03CA3DBEC4019_LOAD_11" />
+    <cim:Terminal.connected>true</cim:Terminal.connected>
+    <cim:Terminal.sequenceNumber>1</cim:Terminal.sequenceNumber>
+  </cim:Terminal>
+  <cim:ConformLoad rdf:ID="urn:uuid:B72D9FCEAC4D41A1B6A1E35BAD450A0C_LOAD_12">
+    <cim:IdentifiedObject.name>670a</cim:IdentifiedObject.name>
+    <cim:IdentifiedObject.aliasName>670a</cim:IdentifiedObject.aliasName>
+    <cim:ConformLoad.BaseVoltage rdf:resource="#Base_voltage_10_0" />
+    <cim:Equipment.EquipmentContainer>VoltageLevel_10_0_0</cim:Equipment.EquipmentContainer>
+    <cim:ConformLoad.LoadResponse rdf:resource="#urn:uuid:B72D9FCEAC4D41A1B6A1E35BAD450A0C_LOAD_12_LRC" />
+    <cim:ConformLoad.pfixed>17000.0</cim:ConformLoad.pfixed>
+    <cim:ConformLoad.qfixed>10000.0</cim:ConformLoad.qfixed>
+    <cim:ConformLoad.normallyInService>True</cim:ConformLoad.normallyInService>
+  </cim:ConformLoad>
+  <cim:LoadResponseCharacteristic rdf:ID="urn:uuid:B72D9FCEAC4D41A1B6A1E35BAD450A0C_LOAD_12_LRC">
+    <cim:LoadResponseCharacteristic.name>670a</cim:LoadResponseCharacteristic.name>
+    <cim:LoadResponseCharacteristic.exponentModel>false</cim:LoadResponseCharacteristic.exponentModel>
+    <cim:LoadResponseCharacteristic.pConstantCurrent>0.0</cim:LoadResponseCharacteristic.pConstantCurrent>
+    <cim:LoadResponseCharacteristic.pConstantImpedance>1e+20</cim:LoadResponseCharacteristic.pConstantImpedance>
+    <cim:LoadResponseCharacteristic.pConstantPower>17000.0</cim:LoadResponseCharacteristic.pConstantPower>
+    <cim:LoadResponseCharacteristic.pVoltageExponent>0.0</cim:LoadResponseCharacteristic.pVoltageExponent>
+    <cim:LoadResponseCharacteristic.pFrequencyExponent>0.0</cim:LoadResponseCharacteristic.pFrequencyExponent>
+    <cim:LoadResponseCharacteristic.qConstantCurrent>0.0</cim:LoadResponseCharacteristic.qConstantCurrent>
+    <cim:LoadResponseCharacteristic.qConstantImpedance>1e+20</cim:LoadResponseCharacteristic.qConstantImpedance>
+    <cim:LoadResponseCharacteristic.qConstantPower>10000.0</cim:LoadResponseCharacteristic.qConstantPower>
+    <cim:LoadResponseCharacteristic.qVoltageExponent>0.0</cim:LoadResponseCharacteristic.qVoltageExponent>
+    <cim:LoadResponseCharacteristic.qFrequencyExponent>0.0</cim:LoadResponseCharacteristic.qFrequencyExponent>
+  </cim:LoadResponseCharacteristic>
+  <cim:Terminal rdf:ID="urn:uuid:B72D9FCEAC4D41A1B6A1E35BAD450A0C_LOAD_12_T">
+    <cim:IdentifiedObject.name>670a</cim:IdentifiedObject.name>
+    <cim:Terminal.TopologicalNode rdf:resource="#BUS_12" />
+    <cim:Terminal.ConductingEquipment rdf:resource="#urn:uuid:B72D9FCEAC4D41A1B6A1E35BAD450A0C_LOAD_12" />
+    <cim:Terminal.connected>true</cim:Terminal.connected>
+    <cim:Terminal.sequenceNumber>1</cim:Terminal.sequenceNumber>
+  </cim:Terminal>
+  <cim:ConformLoad rdf:ID="urn:uuid:58C137687DB04D8BAE14978D1CD6BC54_LOAD_13">
+    <cim:IdentifiedObject.name>670b</cim:IdentifiedObject.name>
+    <cim:IdentifiedObject.aliasName>670b</cim:IdentifiedObject.aliasName>
+    <cim:ConformLoad.BaseVoltage rdf:resource="#Base_voltage_10_0" />
+    <cim:Equipment.EquipmentContainer>VoltageLevel_10_0_0</cim:Equipment.EquipmentContainer>
+    <cim:ConformLoad.LoadResponse rdf:resource="#urn:uuid:58C137687DB04D8BAE14978D1CD6BC54_LOAD_13_LRC" />
+    <cim:ConformLoad.pfixed>66000.0</cim:ConformLoad.pfixed>
+    <cim:ConformLoad.qfixed>38000.0</cim:ConformLoad.qfixed>
+    <cim:ConformLoad.normallyInService>True</cim:ConformLoad.normallyInService>
+  </cim:ConformLoad>
+  <cim:LoadResponseCharacteristic rdf:ID="urn:uuid:58C137687DB04D8BAE14978D1CD6BC54_LOAD_13_LRC">
+    <cim:LoadResponseCharacteristic.name>670b</cim:LoadResponseCharacteristic.name>
+    <cim:LoadResponseCharacteristic.exponentModel>false</cim:LoadResponseCharacteristic.exponentModel>
+    <cim:LoadResponseCharacteristic.pConstantCurrent>0.0</cim:LoadResponseCharacteristic.pConstantCurrent>
+    <cim:LoadResponseCharacteristic.pConstantImpedance>1e+20</cim:LoadResponseCharacteristic.pConstantImpedance>
+    <cim:LoadResponseCharacteristic.pConstantPower>66000.0</cim:LoadResponseCharacteristic.pConstantPower>
+    <cim:LoadResponseCharacteristic.pVoltageExponent>0.0</cim:LoadResponseCharacteristic.pVoltageExponent>
+    <cim:LoadResponseCharacteristic.pFrequencyExponent>0.0</cim:LoadResponseCharacteristic.pFrequencyExponent>
+    <cim:LoadResponseCharacteristic.qConstantCurrent>0.0</cim:LoadResponseCharacteristic.qConstantCurrent>
+    <cim:LoadResponseCharacteristic.qConstantImpedance>1e+20</cim:LoadResponseCharacteristic.qConstantImpedance>
+    <cim:LoadResponseCharacteristic.qConstantPower>38000.0</cim:LoadResponseCharacteristic.qConstantPower>
+    <cim:LoadResponseCharacteristic.qVoltageExponent>0.0</cim:LoadResponseCharacteristic.qVoltageExponent>
+    <cim:LoadResponseCharacteristic.qFrequencyExponent>0.0</cim:LoadResponseCharacteristic.qFrequencyExponent>
+  </cim:LoadResponseCharacteristic>
+  <cim:Terminal rdf:ID="urn:uuid:58C137687DB04D8BAE14978D1CD6BC54_LOAD_13_T">
+    <cim:IdentifiedObject.name>670b</cim:IdentifiedObject.name>
+    <cim:Terminal.TopologicalNode rdf:resource="#BUS_12" />
+    <cim:Terminal.ConductingEquipment rdf:resource="#urn:uuid:58C137687DB04D8BAE14978D1CD6BC54_LOAD_13" />
+    <cim:Terminal.connected>true</cim:Terminal.connected>
+    <cim:Terminal.sequenceNumber>1</cim:Terminal.sequenceNumber>
+  </cim:Terminal>
+  <cim:ConformLoad rdf:ID="urn:uuid:A963DF37B0EB4DE7B2CD568AC9095932_LOAD_14">
+    <cim:IdentifiedObject.name>670c</cim:IdentifiedObject.name>
+    <cim:IdentifiedObject.aliasName>670c</cim:IdentifiedObject.aliasName>
+    <cim:ConformLoad.BaseVoltage rdf:resource="#Base_voltage_10_0" />
+    <cim:Equipment.EquipmentContainer>VoltageLevel_10_0_0</cim:Equipment.EquipmentContainer>
+    <cim:ConformLoad.LoadResponse rdf:resource="#urn:uuid:A963DF37B0EB4DE7B2CD568AC9095932_LOAD_14_LRC" />
+    <cim:ConformLoad.pfixed>117000.0</cim:ConformLoad.pfixed>
+    <cim:ConformLoad.qfixed>68000.0</cim:ConformLoad.qfixed>
+    <cim:ConformLoad.normallyInService>True</cim:ConformLoad.normallyInService>
+  </cim:ConformLoad>
+  <cim:LoadResponseCharacteristic rdf:ID="urn:uuid:A963DF37B0EB4DE7B2CD568AC9095932_LOAD_14_LRC">
+    <cim:LoadResponseCharacteristic.name>670c</cim:LoadResponseCharacteristic.name>
+    <cim:LoadResponseCharacteristic.exponentModel>false</cim:LoadResponseCharacteristic.exponentModel>
+    <cim:LoadResponseCharacteristic.pConstantCurrent>0.0</cim:LoadResponseCharacteristic.pConstantCurrent>
+    <cim:LoadResponseCharacteristic.pConstantImpedance>1e+20</cim:LoadResponseCharacteristic.pConstantImpedance>
+    <cim:LoadResponseCharacteristic.pConstantPower>117000.0</cim:LoadResponseCharacteristic.pConstantPower>
+    <cim:LoadResponseCharacteristic.pVoltageExponent>0.0</cim:LoadResponseCharacteristic.pVoltageExponent>
+    <cim:LoadResponseCharacteristic.pFrequencyExponent>0.0</cim:LoadResponseCharacteristic.pFrequencyExponent>
+    <cim:LoadResponseCharacteristic.qConstantCurrent>0.0</cim:LoadResponseCharacteristic.qConstantCurrent>
+    <cim:LoadResponseCharacteristic.qConstantImpedance>1e+20</cim:LoadResponseCharacteristic.qConstantImpedance>
+    <cim:LoadResponseCharacteristic.qConstantPower>68000.0</cim:LoadResponseCharacteristic.qConstantPower>
+    <cim:LoadResponseCharacteristic.qVoltageExponent>0.0</cim:LoadResponseCharacteristic.qVoltageExponent>
+    <cim:LoadResponseCharacteristic.qFrequencyExponent>0.0</cim:LoadResponseCharacteristic.qFrequencyExponent>
+  </cim:LoadResponseCharacteristic>
+  <cim:Terminal rdf:ID="urn:uuid:A963DF37B0EB4DE7B2CD568AC9095932_LOAD_14_T">
+    <cim:IdentifiedObject.name>670c</cim:IdentifiedObject.name>
+    <cim:Terminal.TopologicalNode rdf:resource="#BUS_12" />
+    <cim:Terminal.ConductingEquipment rdf:resource="#urn:uuid:A963DF37B0EB4DE7B2CD568AC9095932_LOAD_14" />
+    <cim:Terminal.connected>true</cim:Terminal.connected>
+    <cim:Terminal.sequenceNumber>1</cim:Terminal.sequenceNumber>
+  </cim:Terminal>
+  <cim:ShuntCompensator rdf:ID="urn:uuid:0B118B316B5849C7ACAD06D63ACB9FFF_Shunt_0">
+    <cim:IdentifiedObject.name>cap1</cim:IdentifiedObject.name>
+    <cim:IdentifiedObject.aliasName>cap1</cim:IdentifiedObject.aliasName>
+    <cim:ShuntCompensator.BaseVoltage rdf:resource="#Base_voltage_10_0" />
+    <cim:Equipment.EquipmentContainer>VoltageLevel_10_0_0</cim:Equipment.EquipmentContainer>
+    <cim:ShuntCompensator.gPerSection>0.0</cim:ShuntCompensator.gPerSection>
+    <cim:ShuntCompensator.bPerSection>0.034670858</cim:ShuntCompensator.bPerSection>
+    <cim:ShuntCompensator.g0PerSection>0.0</cim:ShuntCompensator.g0PerSection>
+    <cim:ShuntCompensator.b0PerSection>0.0</cim:ShuntCompensator.b0PerSection>
+    <cim:ShuntCompensator.normallyInService>True</cim:ShuntCompensator.normallyInService>
+  </cim:ShuntCompensator>
+  <cim:Terminal rdf:ID="urn:uuid:0B118B316B5849C7ACAD06D63ACB9FFF_Shunt_0_T">
+    <cim:IdentifiedObject.name>cap1</cim:IdentifiedObject.name>
+    <cim:Terminal.TopologicalNode rdf:resource="#BUS_9" />
+    <cim:Terminal.ConductingEquipment rdf:resource="#urn:uuid:0B118B316B5849C7ACAD06D63ACB9FFF_Shunt_0" />
+    <cim:Terminal.connected>true</cim:Terminal.connected>
+    <cim:Terminal.sequenceNumber>1</cim:Terminal.sequenceNumber>
+  </cim:Terminal>
+  <cim:ShuntCompensator rdf:ID="urn:uuid:B289252AAD534A53B2037811ED3E0E96_Shunt_1">
+    <cim:IdentifiedObject.name>cap2</cim:IdentifiedObject.name>
+    <cim:IdentifiedObject.aliasName>cap2</cim:IdentifiedObject.aliasName>
+    <cim:ShuntCompensator.BaseVoltage rdf:resource="#Base_voltage_10_0" />
+    <cim:Equipment.EquipmentContainer>VoltageLevel_10_0_0</cim:Equipment.EquipmentContainer>
+    <cim:ShuntCompensator.gPerSection>0.0</cim:ShuntCompensator.gPerSection>
+    <cim:ShuntCompensator.bPerSection>0.017361111</cim:ShuntCompensator.bPerSection>
+    <cim:ShuntCompensator.g0PerSection>0.0</cim:ShuntCompensator.g0PerSection>
+    <cim:ShuntCompensator.b0PerSection>0.0</cim:ShuntCompensator.b0PerSection>
+    <cim:ShuntCompensator.normallyInService>True</cim:ShuntCompensator.normallyInService>
+  </cim:ShuntCompensator>
+  <cim:Terminal rdf:ID="urn:uuid:B289252AAD534A53B2037811ED3E0E96_Shunt_1_T">
+    <cim:IdentifiedObject.name>cap2</cim:IdentifiedObject.name>
+    <cim:Terminal.TopologicalNode rdf:resource="#BUS_10" />
+    <cim:Terminal.ConductingEquipment rdf:resource="#urn:uuid:B289252AAD534A53B2037811ED3E0E96_Shunt_1" />
+    <cim:Terminal.connected>true</cim:Terminal.connected>
+    <cim:Terminal.sequenceNumber>1</cim:Terminal.sequenceNumber>
+  </cim:Terminal>
+  <cim:PowerTransformer rdf:ID="urn:uuid:5A9CAB94F2DB4D6C9C4386BCCBFA1A0F">
+    <cim:IdentifiedObject.name>sub</cim:IdentifiedObject.name>
+    <cim:IdentifiedObject.aliasName>sub</cim:IdentifiedObject.aliasName>
+  </cim:PowerTransformer>

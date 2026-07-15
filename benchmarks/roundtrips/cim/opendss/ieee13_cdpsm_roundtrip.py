@@ -16,9 +16,8 @@ from VeraGridEngine.IO.file_save import FileSavingOptions
 from VeraGridEngine.enumerations import FileType
 
 
-def main() -> None:
-    cim_path = Path(__file__).with_name("ieee13cdpsm.xml")
-    export_path = Path(__file__).with_name("ieee13cdpsm_roundtrip_export.xml")
+def run_fixture(cim_path: Path) -> tuple[int, float]:
+    export_path = cim_path.with_name(f"{cim_path.stem}_roundtrip_export.xml")
 
     grid = vg.open_file(str(cim_path), options=FileOpenOptions(file_type=FileType.CIM))
     first = vg.power_flow(grid)
@@ -33,13 +32,24 @@ def main() -> None:
     roundtrip_grid = vg.open_file(str(export_path), options=FileOpenOptions(file_type=FileType.CIM))
     second = vg.power_flow(roundtrip_grid)
     assert second.converged
+    max_abs_voltage_diff = float(np.max(np.abs(first.voltage - second.voltage)))
     assert np.allclose(first.voltage, second.voltage, atol=1e-6)
 
     print("ok")
     print(f"fixture={cim_path}")
     print(f"export={export_path}")
     print(f"buses={len(grid.buses)}")
-    print(f"max_abs_voltage_diff={np.max(np.abs(first.voltage - second.voltage))}")
+    print(f"max_abs_voltage_diff={max_abs_voltage_diff}")
+    return len(grid.buses), max_abs_voltage_diff
+
+
+def main() -> None:
+    if len(sys.argv) > 1:
+        cim_path = Path(sys.argv[1]).resolve()
+    else:
+        cim_path = Path(__file__).with_name("ieee13cdpsm.xml")
+
+    run_fixture(cim_path)
 
 
 if __name__ == "__main__":
