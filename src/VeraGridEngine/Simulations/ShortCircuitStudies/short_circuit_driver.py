@@ -507,11 +507,15 @@ class ShortCircuitDriver(DriverTemplate):
                 bus_idx = bus_dict.get(sc_definition.device, None)
 
                 if bus_idx is not None:
+                    if nc.topology_performed:
+                        fault_bus_idx = int(nc.get_reduction_bus_mapping()[bus_idx])
+                    else:
+                        fault_bus_idx = bus_idx
 
                     # Compose the fault admittance
                     n = len(grid.buses)
                     Zf = np.zeros(n, dtype=complex)
-                    Zf[bus_idx] = sc_definition.get_fault_impedance()
+                    Zf[fault_bus_idx] = sc_definition.get_fault_impedance()
 
                     for i, island in enumerate(calculation_inputs):
 
@@ -519,12 +523,8 @@ class ShortCircuitDriver(DriverTemplate):
                         # for the calculation we need the bus index in the island scheme.
                         # Hence, we need to convert it, and if the global bus index is not
                         # in the island, do not perform any calculation
-                        # reverse_bus_index = {b: i for i, b in enumerate(island.bus_data.original_idx)}
-                        #
-                        # island_bus_index = reverse_bus_index.get(self.options.bus_index, None)
-
-                        bus_dict2 = island.bus_data.get_idtag_dict()
-                        island_bus_index = bus_dict2.get(sc_definition.device_idtag, None)
+                        reverse_bus_index = {b: i for i, b in enumerate(island.bus_data.original_idx)}
+                        island_bus_index = reverse_bus_index.get(fault_bus_idx, None)
 
                         if island_bus_index is not None:
 

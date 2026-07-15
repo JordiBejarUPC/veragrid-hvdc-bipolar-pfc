@@ -2362,7 +2362,7 @@ class PfAcDcWithNegativePolesSc(PfFormulationTemplate):
                 if self.nc.vsc_data.active[i]:
 
                     ac_bus_idx = self.nc.vsc_data.T[i]
-                    ac_voltage = self.Vm[ac_bus_idx]
+                    ac_voltage = abs(self.V[ac_bus_idx])
                     min_v = self.nc.vsc_data.min_ac_voltage[i]
 
                     if ac_voltage < min_v:
