@@ -171,13 +171,16 @@ class CandidateInvestmentsWindow(QtWidgets.QDialog):
                                          category="single")
             self.app.circuit.add_investments_group(group)
 
-            # Each candidate creates its Investment (and any new device) against the circuit.
-            new_line = candidate.apply(circuit=self.app.circuit, group=group, logger=logger)
-            if new_line is not None:
-                new_lines.append(new_line)
+            # Each candidate creates its Investment(s) (and any new device) against the circuit.
+            # A new-line candidate returns a Line to draw; an upgrade returns its uprated branch
+            # copy, which overlaps the original geometrically — draw it only when it is a Line so
+            # the corridor still shows solid once applied (transformer copies are left undrawn).
+            created = candidate.apply(circuit=self.app.circuit, group=group, logger=logger)
+            if isinstance(created, dev.Line):
+                new_lines.append(created)
 
-        # Draw any newly created lines on the currently selected diagram. New-line candidates
-        # connect existing buses, so their endpoints already exist on the diagram.
+        # Draw any newly created lines on the currently selected diagram. Both new-line and upgrade
+        # candidates connect existing buses, so their endpoints already exist on the diagram.
         self._draw_new_lines(new_lines)
 
         if logger.has_logs():

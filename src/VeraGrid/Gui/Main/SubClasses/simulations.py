@@ -13,7 +13,7 @@ from matplotlib.colors import LinearSegmentedColormap
 
 import VeraGrid.Gui.gui_functions as gf
 from VeraGrid.Gui.general_dialogues import LogsDialogue
-from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import SchematicWidget, make_diagram_from_buses
+from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import SchematicWidget
 from VeraGrid.Gui.Diagrams.MapWidget.grid_map_widget import MapWidget
 from VeraGrid.Gui.messages import yes_no_question, error_msg, warning_msg, info_msg
 from VeraGrid.Gui.Main.SubClasses.Model.time_events import TimeEventsMain
@@ -3494,48 +3494,26 @@ class SimulationsMain(TimeEventsMain):
             self._investments_all = list(self.circuit.investments)
             all_elements_dict, _ = self.circuit.get_all_elements_dict()
 
-            # create a schematic diagram for the best Pareto-optimal investment combination
+            # Apply the best Pareto-optimal combination to the live grid so the user lands on a
+            # usable state. No dedicated diagram is created: the Variations panel lets the user
+            # click any Pareto combination and applies it to the currently selected diagram, so an
+            # auto-generated "best Pareto" diagram would just be a redundant duplicate that
+            # accumulates one copy per run.
             if driver is not None and len(results.sorting_indices) > 0:
                 best_x = results.x[results.sorting_indices[0], :]
                 inv_list = driver.problem.get_investments_for_combination(x=best_x)
 
-                # Apply the best Pareto combination directly on self.circuit (no copy).
-                # Reason: the auto-generated diagram below must be bound to self.circuit
-                # so that subsequent clicks in the Variations panel — which mutate
-                # self.circuit — actually update the visible graphics. If we kept the
-                # old self.circuit.copy() pattern, every graphic's api_object would
-                # point to the copy, and clicking a Pareto combination later would
-                # silently change self.circuit while the diagram (still bound to the
-                # untouched copy) showed every branch as dashed forever.
-                # First deactivate every investment-touched device, then activate
-                # only the ones in best_x — same all-off-then-selected convention
-                # the click handler uses, so the auto-generated diagram is
-                # consistent with what a click on the same Pareto row would do.
+                # First deactivate every investment-touched device, then activate only the ones in
+                # best_x — same all-off-then-selected convention the Variations-panel click handler
+                # uses, so the state right after a run matches clicking the top Pareto row.
                 self.circuit.set_investments_status(investments_list=self._investments_all,
-                                                    status=False,
+                                                    apply_investment=False,
                                                     all_elements_dict=all_elements_dict)
                 self.circuit.set_investments_status(investments_list=inv_list,
-                                                    status=True,
+                                                    apply_investment=True,
                                                     all_elements_dict=all_elements_dict)
-
-                diagram = make_diagram_from_buses(
-                    circuit=self.circuit,
-                    buses=self.circuit.buses,
-                    name='Investments evaluation (best Pareto)'
-                )
-
-                diagram_widget = SchematicWidget(
-                    gui=self,
-                    diagram=diagram,
-                    default_bus_voltage=self.ui.defaultBusVoltageSpinBox.value(),
-                    time_index=self.get_diagram_slider_index()
-                )
-
-                self.add_diagram_widget_and_diagram(diagram_widget=diagram_widget,
-                                                    diagram=diagram)
-                self.set_diagrams_list_view()
             else:
-                # no Pareto results - nothing to apply or auto-display
+                # no Pareto results - nothing to apply
                 pass
 
             # apply result-based colouring after the baseline + best-Pareto state is set

@@ -132,28 +132,36 @@ class ReinforcementCandidate:
             what = f"Upgrade {self.target_branch.name} rate {self.old_rate:.0f} -> {self.new_rate:.0f} MVA"
         return f"{what} | relieves {n} violation(s) | score {self.score:.1f} MW"
 
-    def apply(self, circuit: "MultiCircuit", group: dev.InvestmentsGroup, logger: Logger) -> Optional[dev.Line]:
+    def apply(self, circuit: "MultiCircuit", group: dev.InvestmentsGroup, logger: Logger) -> Optional[dev.Branch]:
         """
-        Materialise this candidate on the given circuit as an ``Investment`` belonging to ``group``.
+        Materialise this candidate on the given circuit as ``Investment`` object(s) in ``group``.
 
-        For a new-line candidate a new ``Line`` device is added to the circuit and the investment
-        points at it. For an upgrade the investment points at the existing branch and encodes the
-        rating change through the ``prop``/``value`` mechanism, so the base grid is left untouched
-        until the investment is applied.
+        For a new-line candidate a new ``Line`` device is added to the circuit (inactive) and one
+        investment activates it.
+
+        For an upgrade the branch is *copied*, the copy's rate is set to the new value and it is
+        added inactive; two investments are added to the group: one activates the uprated copy and
+        one deactivates the original branch. This keeps the corridor's topology while raising its
+        rating, and — unlike a ``prop``/``value`` investment — works through the activation-only
+        investments framework (optimizer and Variations panel), which never applies ``prop``/
+        ``value``. The base grid is left untouched until the investments are applied.
 
         :param circuit: The circuit to add to (the same one the generator ran on).
         :param group: The investments group to attach to.
         :param logger: Logger for messages.
-        :return: The newly created ``Line`` (for drawing), or ``None`` for an upgrade.
+        :return: The newly created device (for drawing), or ``None`` if nothing new is drawable.
         """
         if self.kind == NEW_LINE:
+            # The line is a candidate investment: add it inactive so it shows as disabled on the
+            # diagram until its investment is applied.
             line = dev.Line(bus_from=self.bus_from,
                             bus_to=self.bus_to,
                             name=self.name,
                             r=self.r,
                             x=self.x,
                             b=self.b,
-                            rate=self.rate)
+                            rate=self.rate,
+                            active=False)
             circuit.add_line(line)
             circuit.add_investment(dev.Investment(device=line,
                                                   code=line.code,
@@ -162,15 +170,29 @@ class ReinforcementCandidate:
                                                   group=group))
             return line
         else:
-            # Upgrade: point at the existing branch and set its rate to the new value.
-            circuit.add_investment(dev.Investment(device=self.target_branch,
-                                                  code=self.target_branch.code,
+            # Upgrade: copy the branch, raise the copy's rate, add it inactive. The forced new
+            # idtag keeps the copy distinct from the original in the grid's element dictionary.
+            upgraded = self.target_branch.copy(forced_new_idtag=True)
+            upgraded.rate = self.new_rate
+            upgraded.active = False
+            upgraded.name = self.target_branch.name + " (upgraded)"
+            circuit.add_branch(upgraded)
+
+            # One investment activates the uprated copy...
+            circuit.add_investment(dev.Investment(device=upgraded,
+                                                  code=upgraded.code,
                                                   name="Upgrade: " + self.target_branch.name,
                                                   CAPEX=self.capex,
-                                                  prop="rate",
-                                                  value=self.new_rate,
+                                                  status=True,
                                                   group=group))
-            return None
+            # ...and one deactivates the original branch, so the corridor runs at the new rating.
+            circuit.add_investment(dev.Investment(device=self.target_branch,
+                                                  code=self.target_branch.code,
+                                                  name="Deactivate original: " + self.target_branch.name,
+                                                  CAPEX=0.0,
+                                                  status=False,
+                                                  group=group))
+            return upgraded
 
 
 class CandidateGenerationResults:

@@ -3867,12 +3867,12 @@ class DiagramsMain(CompiledArraysMain):
         # used when seeding the diagram.
         all_elements_dict, _ = self.circuit.get_all_elements_dict()
         self.circuit.set_investments_status(investments_list=self._investments_all,
-                                            status=False,
+                                            apply_investment=False,
                                             all_elements_dict=all_elements_dict)
 
         # apply the selected combination on top of the now-deactivated state
         self.circuit.set_investments_status(investments_list=inv_list,
-                                            status=True,
+                                            apply_investment=True,
                                             all_elements_dict=all_elements_dict)
 
         # Refresh active/inactive pen styles on every open schematic so toggled

@@ -165,7 +165,7 @@ class TimeSeriesPowerFlowInvestmentProblem(BlackBoxProblemTemplate):
 
         # enable the investment
         self.grid.set_investments_status(investments_list=inv_list,
-                                         status=True,
+                                         apply_investment=True,
                                          all_elements_dict=self.get_all_elements_dict)
 
         scores = power_flow_ts_function(inv_list=inv_list,
@@ -185,7 +185,7 @@ class TimeSeriesPowerFlowInvestmentProblem(BlackBoxProblemTemplate):
 
         # revert to the initial state
         self.grid.set_investments_status(investments_list=inv_list,
-                                         status=False,
+                                         apply_investment=False,
                                          all_elements_dict=self.get_all_elements_dict)
 
         return scores.arr()

@@ -2607,12 +2607,12 @@ class MultiCircuit(Assets):
 
     def set_investments_status(self,
                                investments_list: List[dev.Investment],
-                               status: bool,
+                               apply_investment: bool,
                                all_elements_dict: Union[None, dict[str, EditableDevice]] = None) -> None:
         """
         Set the active (and active profile) status of a list of investments' objects
         :param investments_list: list of investments
-        :param status: status to set in the internal structures
+        :param apply_investment: True to apply the investment status to the device, False to switch it
         :param all_elements_dict: Dictionary of all elements (idtag -> object), if None if is computed
         """
 
@@ -2624,10 +2624,13 @@ class MultiCircuit(Assets):
             device = all_elements_dict[device_idtag]
 
             if hasattr(device, 'active'):
-                device.active = status
+                # apply_investment says "you should apply the investment status to the device" or
+                # "you should apply the not(investment status) to the device".
+                device_status = inv.status if apply_investment else (not inv.status)
+                device.active = device_status
                 profile = device.get_profile('active')
                 if profile is not None:
-                    profile.fill(status)
+                    profile.fill(device_status)
 
     def merge_buses(self, bus1: dev.Bus, bus2: dev.Bus):
         """

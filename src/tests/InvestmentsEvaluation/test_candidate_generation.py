@@ -121,8 +121,8 @@ def test_verified_candidates_filter():
 def test_candidate_apply_creates_investments():
     """
     Applying candidates materialises investments: a new-line candidate adds a Line and an
-    investment pointing at it; an upgrade candidate adds an investment that encodes the rating
-    change via prop/value without touching the base grid.
+    investment activating it; an upgrade candidate adds an uprated copy of the branch plus two
+    investments (activate the copy, deactivate the original) without touching the base grid.
     """
     grid = _stressed_ieee14()
     drv = CandidateGenerationDriver(grid=grid, options=CandidateGenerationOptions(verify_top_k=0))
@@ -145,17 +145,33 @@ def test_candidate_apply_creates_investments():
     assert len(grid.investments) == n_inv_before + 1
     assert grid.investments[-1].device is created
 
-    # Upgrade candidate: adds an investment encoding the rate change; no new device, base grid
-    # rating unchanged.
+    # Upgrade candidate: copies the branch (new device with the raised rate, inactive) and adds
+    # two investments: activate the uprated copy, deactivate the original branch.
     old_rate = upgrade_cand.target_branch.rate
-    ret = upgrade_cand.apply(circuit=grid, group=group, logger=logger)
-    assert ret is None
-    up_inv = grid.investments[-1]
-    assert up_inv.prop == "rate"
-    assert up_inv.value == upgrade_cand.new_rate
-    assert up_inv.value > old_rate
-    # The base grid rating is untouched until the investment is applied.
+    n_branches_before = len(grid.get_branches(add_switch=True))
+
+    upgraded = upgrade_cand.apply(circuit=grid, group=group, logger=logger)
+
+    # A new (inactive) uprated device was added, distinct from the original.
+    assert upgraded is not None
+    assert upgraded is not upgrade_cand.target_branch
+    assert upgraded.idtag != upgrade_cand.target_branch.idtag
+    assert upgraded.rate == upgrade_cand.new_rate
+    assert upgraded.rate > old_rate
+    assert upgraded.active is False
+    assert len(grid.get_branches(add_switch=True)) == n_branches_before + 1
+
+    # Two investments were added: activate the copy (status True), deactivate the original (False).
+    activate_inv = grid.investments[-2]
+    deactivate_inv = grid.investments[-1]
+    assert activate_inv.device is upgraded
+    assert activate_inv.status is True
+    assert deactivate_inv.device is upgrade_cand.target_branch
+    assert deactivate_inv.status is False
+
+    # The base grid is untouched until the investments are applied: original rate and active state.
     assert upgrade_cand.target_branch.rate == old_rate
+    assert upgrade_cand.target_branch.active is True
 
 
 def test_no_violations_no_candidates():
