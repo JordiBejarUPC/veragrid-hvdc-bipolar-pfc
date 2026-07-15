@@ -136,6 +136,7 @@ class DynamicEditorTab(QtWidgets.QWidget):
             block: Block,
             api_object: ALL_DEV_TYPES,
             circuit: MultiCircuit,
+            current_theme: str,
             mode: DynamicSimulationMode,
             templates_list: Optional[List[RmsModelTemplate | EmtModelTemplate | FmuTemplate]] = None,
             parent: QtWidgets.QWidget | None = None,
@@ -146,6 +147,7 @@ class DynamicEditorTab(QtWidgets.QWidget):
         self._api_object = api_object
         self._circuit = circuit
         self._mode = mode
+        self.current_theme = current_theme
         self._templates_list = templates_list if templates_list is not None else list()
         self._dynamic_editor_entry: DynamicEditorEntry | None = None
 
@@ -270,6 +272,7 @@ class DynamicEditorTab(QtWidgets.QWidget):
             api_object=self._api_object,
             circuit=self._circuit,
             mode=self._mode,
+            current_theme = self.current_theme,
             templates_list=self._templates_list,
             is_root_editor=self._navigation.is_root(),
             modal=False,

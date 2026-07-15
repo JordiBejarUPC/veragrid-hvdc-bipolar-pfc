@@ -24,32 +24,12 @@ if TYPE_CHECKING:
 
 
 class EditorGraphicsDefaultsDark:
-    # BLOCK_BORDER: QColor = QColor("white")
-    # BLOCK_BORDER_SELECTED: QColor = QColor("#cc6f2c")
-    # BLOCK_TITLE: QColor = QColor("#173042")
-    # WIRE_COLOR: QColor = QColor("white")
-    # HANDLE_FILL: QColor = QColor("#36536b")
-    # BLOCK_FILL: QColor = QColor("#f5fdff")
-    # PORT_LABEL_COLOR: QColor = QColor("#173042")
-    # WIRE_ELBOW_OFFSET: float = 36.0
-    # PORT_LABEL_MAX_CHARS: int = 12
-    # BLOCK_HEADER_HEIGHT: float = 30.0
-    # BLOCK_PORT_ROW_HEIGHT: float = 20.0
-    # BLOCK_PORT_SECTION_PADDING: float = 10.0
-    # BLOCK_MIN_WIDTH: float = 160.0
-    # BLOCK_MIN_HEIGHT: float = 70.0
-    # BLOCK_COMPACT_MIN_WIDTH: float = 100.0
-    # BLOCK_COMPACT_MIN_HEIGHT: float = 40.0
-    # BLOCK_COMPACT_HEADER_HEIGHT: float = 20.0
-    # BLOCK_COMPACT_PORT_ROW_HEIGHT: float = 14.0
-    # BLOCK_COMPACT_PORT_SECTION_PADDING: float = 6.0
-
-    BLOCK_BORDER: QColor = QColor("#022633")
-    BLOCK_BORDER_SELECTED: QColor = QColor("#00bbff")
-    BLOCK_TITLE: QColor = QColor("#173042")
-    WIRE_COLOR: QColor = QColor("#022633")
-    HANDLE_FILL: QColor = QColor("#022633")
-    BLOCK_FILL: QColor = QColor("#f5fdff")
+    BLOCK_BORDER: QColor = QColor("#e1f7ff")
+    BLOCK_BORDER_SELECTED: QColor = QColor("#cc6f2c")
+    BLOCK_TITLE: QColor = QColor("#e1f7ff")
+    WIRE_COLOR: QColor = QColor("#e1f7ff")
+    HANDLE_FILL: QColor = QColor("#36536b")
+    BLOCK_FILL: QColor = QColor("#022633")
     PORT_LABEL_COLOR: QColor = QColor("#173042")
     WIRE_ELBOW_OFFSET: float = 36.0
     PORT_LABEL_MAX_CHARS: int = 12
@@ -63,16 +43,16 @@ class EditorGraphicsDefaultsDark:
     BLOCK_COMPACT_HEADER_HEIGHT: float = 20.0
     BLOCK_COMPACT_PORT_ROW_HEIGHT: float = 14.0
     BLOCK_COMPACT_PORT_SECTION_PADDING: float = 6.0
-    PORT_ITEM_COLOR: QColor = QColor("#819ba7")
+    PORT_ITEM_COLOR: QColor = QColor("#e1f7ff")
     VALIDATION_HICHLIGHTED_BORDER = QColor("#b42318")
 
 
 class EditorGraphicsDefaultsLight:
-    BLOCK_BORDER: QColor = QColor("#022633")
+    BLOCK_BORDER: QColor = QColor("#819ba7")
     BLOCK_BORDER_SELECTED: QColor = QColor("#00bbff")
-    BLOCK_TITLE: QColor = QColor("#173042")
-    WIRE_COLOR: QColor = QColor("#022633")
-    HANDLE_FILL: QColor = QColor("#022633")
+    BLOCK_TITLE: QColor = QColor("#819ba7")
+    WIRE_COLOR: QColor = QColor("#819ba7")
+    HANDLE_FILL: QColor = QColor("#819ba7")
     BLOCK_FILL: QColor = QColor("#f5fdff")
     PORT_LABEL_COLOR: QColor = QColor("#173042")
     WIRE_ELBOW_OFFSET: float = 36.0
@@ -409,8 +389,9 @@ class Node:
 
 
 class ResizeHandle(QGraphicsItem):
-    def __init__(self, block_item: GenericBlockItem, size: int = 10):
+    def __init__(self, block_item: GenericBlockItem, editor: DynamicBlockEditorGUI, size: int = 10):
         super().__init__(block_item)
+        self.editor = editor
         self._size = size
         self.setCursor(Qt.CursorShape.SizeFDiagCursor)
         self.setZValue(2)
@@ -418,6 +399,7 @@ class ResizeHandle(QGraphicsItem):
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable)
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemSendsScenePositionChanges)
         self.setAcceptHoverEvents(True)
+        self.pen_color: QColor | None = None
 
     def boundingRect(self) -> QtCore.QRectF:
         return QtCore.QRectF(0, 0, 13, 13)
@@ -427,18 +409,29 @@ class ResizeHandle(QGraphicsItem):
         path.addRect(QtCore.QRectF(0, 0, 13, 13))
         return path
 
+    def recolour_mode(self):
+        self.pen_color = self.editor.colors_palet.WIRE_COLOR
+
+    def recolour(self, use_custom_color: bool = False):
+        if use_custom_color:
+            pass
+        else:
+            self.recolour_mode()
+
+
+
     def paint(self, painter: QPainter,
               option: QtWidgets.QStyleOptionGraphicsItem,
               widget: Optional[QWidget] = None) -> None:
-        editor_constants = _get_editor_constants()
-        pen = QPen(editor_constants.HANDLE_FILL, 2)
-        pen.setCapStyle(Qt.PenCapStyle.RoundCap)
-        pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
-        painter.setPen(pen)
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
-        painter.drawLine(QPointF(2, 2), QPointF(11, 11))
-        painter.drawLine(QPointF(11, 11), QPointF(8, 11))
-        painter.drawLine(QPointF(11, 11), QPointF(11, 8))
+        if self.pen_color is not None:
+            pen = QPen(self.pen_color, 2)
+            pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+            pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+            painter.setPen(pen)
+            painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+            painter.drawLine(QPointF(2, 2), QPointF(11, 11))
+            painter.drawLine(QPointF(11, 11), QPointF(8, 11))
+            painter.drawLine(QPointF(11, 11), QPointF(11, 8))
 
     def itemChange(self, change: QGraphicsItem.GraphicsItemChange, value: Any) -> Any:
         if change == QGraphicsItem.GraphicsItemChange.ItemPositionChange:
@@ -462,18 +455,17 @@ class PortItem(QAbstractGraphicsShapeItem):
 
     def __init__(self,
                  subsystem: "BlockItem | GenericBlockItem | PairedItem | RoundBaseArithmeticOpItem | RectBaseArithmeticOpItem",
+                 editor: DynamicBlockEditorGUI,
                  is_input: bool,
                  index: int,
                  total: int,
                  size: int = 10):
         super().__init__(subsystem)
         self._size: int = size
+        self.editor = editor
         self.is_input: bool = is_input
         self._path: QPainterPath = QPainterPath()
         self._build_path()
-        editor_constants = _get_editor_constants()
-        self.setBrush(QBrush(editor_constants.PORT_ITEM_COLOR))
-        self.setPen(QPen(Qt.PenStyle.NoPen))
         self.setZValue(3)
         self.setAcceptHoverEvents(True)
         self.subsystem: "BlockItem | GenericBlockItem | PairedItem | RoundBaseArithmeticOpItem | RectBaseArithmeticOpItem" = subsystem
@@ -520,6 +512,16 @@ class PortItem(QAbstractGraphicsShapeItem):
         path.quadTo(v0, s0)
         path.closeSubpath()
         return path
+
+    def recolour_mode(self):
+        self.setBrush(QBrush(self.editor.colors_palet.PORT_ITEM_COLOR))
+        self.setPen(QPen(Qt.PenStyle.NoPen))
+
+    def recolour(self, use_custom_color: bool = False):
+        if use_custom_color:
+            pass
+        else:
+            self.recolour_mode()
 
     def _build_path(self) -> None:
         side = self._size
@@ -579,24 +581,23 @@ class PortItem(QAbstractGraphicsShapeItem):
         :param val: Whether the port should be shown as a validation issue.
         :return: None.
         """
-        editor_constants = _get_editor_constants()
         self._validation_highlighted = val
 
         if self._validation_highlighted:
-            self.setBrush(QBrush(editor_constants.VALIDATION_HICHLIGHTED_BORDER))
+            self.setBrush(QBrush(EditorGraphicsDefaultsLight.VALIDATION_HICHLIGHTED_BORDER))
         else:
-            self.setBrush(QBrush(editor_constants.PORT_ITEM_COLOR))
+            self.setBrush(self.brush())
 
 
 class BranchingItem(QGraphicsEllipseItem):
     def __init__(self,
                  subsystem: "BlockItem",
+                 editor: DynamicBlockEditorGUI,
                  index: int,
                  radius: int = 6):
         super().__init__(-radius, -radius, 2 * radius, 2 * radius)
-        editor_constants = _get_editor_constants()
-        self.setBrush(QBrush(editor_constants.WIRE_COLOR))
-        self.setPen(QPen(Qt.PenStyle.NoPen))
+
+        self.editor = editor
         self.setZValue(3)
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable)
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable)
@@ -619,6 +620,25 @@ class BranchingItem(QGraphicsEllipseItem):
             return False
 
 
+    def set_dark_mode(self):
+        self.setBrush(QBrush(EditorGraphicsDefaultsDark.BLOCK_FILL))
+        self.setPen(QPen(EditorGraphicsDefaultsDark.BLOCK_BORDER, 1))
+
+    def set_light_mode(self):
+        self.setBrush(QBrush(EditorGraphicsDefaultsLight.BLOCK_FILL))
+        self.setPen(QPen(EditorGraphicsDefaultsLight.BLOCK_BORDER, 1))
+
+    def recolour_mode(self):
+        self.setBrush(QBrush(self.editor.colors_palet.BLOCK_FILL))
+        self.setPen(QPen(self.editor.colors_palet.BLOCK_BORDER, 1))
+
+    def recolour(self, use_custom_color: bool = False):
+        if use_custom_color:
+            pass
+        else:
+            self.recolour_mode()
+
+
 class ConnectionItem(QGraphicsPathItem):
     def __init__(self,
                  source_port: PortItem | BranchingItem,
@@ -627,7 +647,7 @@ class ConnectionItem(QGraphicsPathItem):
                  con_uid=None,
                  uid=None,
                  elbow_points: List[QPointF] | None = None,
-                 editor: "DynamicBlockEditorGUI | None" = None):
+                 editor: DynamicBlockEditorGUI | None = None):
         super().__init__()
         if editor is not None:
             self.editor: DynamicBlockEditorGUI | None = editor
@@ -655,15 +675,6 @@ class ConnectionItem(QGraphicsPathItem):
         if isinstance(self.target_port, PortItem):
             self.target_port.update_port_visibility()
 
-        try:
-            is_dark = darkdetect.theme() == "Dark"
-        except ImportError:
-            is_dark = False
-
-        if is_dark:
-            self.set_dark_mode()
-        else:
-            self.set_light_mode()
         self.setAcceptHoverEvents(True)
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable, False)
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable, True)
@@ -682,23 +693,29 @@ class ConnectionItem(QGraphicsPathItem):
                 device_uid_to=self.target_port.subsystem.subsys.uid,
                 port_number_from=self.source_port.index,
                 port_number_to=self.target_port.index,
-                color=self.pen().color().name(),
                 elbow_points=[(pt.x(), pt.y()) for pt in self.elbow_points]
             )
 
-    def set_dark_mode(self):
-        editor_constants = _get_editor_constants()
-        pen = self.pen()
-        pen.setColor(editor_constants.WIRE_COLOR)
-        self.setPen(pen)
-        self.update()
 
-    def set_light_mode(self):
-        editor_constants = _get_editor_constants()
-        pen = self.pen()
-        pen.setColor(editor_constants.WIRE_COLOR)
-        self.setPen(pen)
-        self.update()
+    def recolour_mode(self):
+        if self.editor is not None:
+            pen = self.pen()
+            pen.setColor(self.editor.colors_palet.WIRE_COLOR)
+            self.setPen(pen)
+            self.update()
+        else:
+            pen = self.pen()
+            pen.setColor(self.source_port.subsystem.editor.colors_palet.WIRE_COLOR)
+            self.setPen(pen)
+            self.update()
+
+
+
+    def recolour(self, use_custom_color: bool = False):
+        if use_custom_color:
+            pass
+        else:
+            self.recolour_mode()
 
     def update_path(self) -> None:
         path: QPainterPath = QPainterPath(self.source_port.scenePos())
@@ -1018,9 +1035,6 @@ class ElbowItem(QGraphicsEllipseItem):
         super().__init__(-radius, -radius, radius * 2, radius * 2)
         self.connection_item = connection_item
         self.index = index
-        editor_constants = _get_editor_constants()
-        self.setBrush(QBrush(editor_constants.WIRE_COLOR))
-        self.setPen(QPen(QColor("#173042"), 1.5))
         self.setZValue(2)
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable, True)
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable, True)
@@ -1043,6 +1057,16 @@ class ElbowItem(QGraphicsEllipseItem):
     def mouseMoveEvent(self, event):
         super().mouseMoveEvent(event)
         self.connection_item.on_elbow_moved(self.index, self.scenePos())
+
+    def recolour_mode(self):
+        self.setBrush(QBrush(self.connection_item.editor.BLOCK_FILL))
+        self.setPen(QPen(self.connection_item.editor.BLOCK_BORDER, 1))
+
+    def recolour(self, use_custom_color: bool = False):
+        if use_custom_color:
+            pass
+        else:
+            self.recolour_mode()
 
 
 class GenericBlockItem(QGraphicsRectItem):
@@ -1074,17 +1098,10 @@ class GenericBlockItem(QGraphicsRectItem):
         self.api_object = api_object
         self.position_changed_callback = position_changed_callback
 
-        self.name_item = QGraphicsTextItem(self.subsys.name, self)
+        # self.name_item = QGraphicsTextItem(self.subsys.name, self)
+        self.name_item = QGraphicsTextItem(self.name, self)
 
-        try:
-            is_dark = darkdetect.theme() == "Dark"
-        except ImportError:
-            is_dark = False
-
-        if is_dark:
-            self.set_dark_mode()
-        else:
-            self.set_light_mode()
+        self.update_name_position()
 
         self.update_name_position()
 
@@ -1108,26 +1125,31 @@ class GenericBlockItem(QGraphicsRectItem):
 
         n_inputs = len(self.subsys.in_vars)
         n_outputs = len(self.subsys.out_vars)
-        self.inputs = [PortItem(self, True, i, n_inputs) for i in range(n_inputs)]
-        self.outputs = [PortItem(self, False, i, n_outputs) for i in range(n_outputs)]
+        self.inputs = [PortItem(self, self.editor,True, i, n_inputs) for i in range(n_inputs)]
+        self.outputs = [PortItem(self, self.editor,False, i, n_outputs) for i in range(n_outputs)]
+        for port_item in self.inputs:
+            port_item.recolour()
+        for port_item in self.outputs:
+            port_item.recolour()
         self.input_labels = [self.create_port_label_item() for _ in range(n_inputs)]
         self.output_labels = [self.create_port_label_item() for _ in range(n_outputs)]
 
         self.refresh_port_metadata()
-        self.resize_handle = ResizeHandle(self)
+        self.resize_handle = ResizeHandle(self, self.editor)
         self.resize_to_content()
 
-    def set_dark_mode(self):
-        editor_constants = _get_editor_constants()
-        self.name_item.setDefaultTextColor(editor_constants.BLOCK_TITLE)
-        self.setBrush(QBrush(editor_constants.BLOCK_FILL))
-        self.setPen(QPen(editor_constants.BLOCK_BORDER, 1))
 
-    def set_light_mode(self):
-        editor_constants = _get_editor_constants()
-        self.name_item.setDefaultTextColor(editor_constants.BLOCK_TITLE)
-        self.setBrush(QBrush(editor_constants.BLOCK_FILL))
-        self.setPen(QPen(editor_constants.BLOCK_BORDER, 1))
+    def recolour_mode(self):
+        self.name_item.setDefaultTextColor(self.editor.colors_palet.BLOCK_TITLE)
+        self.setBrush(QBrush(self.editor.colors_palet.BLOCK_FILL))
+        self.setPen(QPen(self.editor.colors_palet.BLOCK_BORDER, 1))
+
+
+    def recolour(self, use_custom_color: bool = False):
+        if use_custom_color:
+            pass
+        else:
+            self.recolour_mode()
 
     def mousePressEvent(self, event):
         # check if ctrl + click
@@ -1151,16 +1173,19 @@ class GenericBlockItem(QGraphicsRectItem):
 
     def build_item(self) -> None:
         if self.subsys is not None:
-            self.name_item = QGraphicsTextItem(self.name, self)
-            editor_constants = _get_editor_constants()
-            self.name_item.setDefaultTextColor(editor_constants.BLOCK_TITLE)
-
             self.update_name_position()
-
             n_inputs: int = len(self.subsys.in_vars)
             n_outputs: int = len(self.subsys.out_vars)
-            self.inputs = [PortItem(self, True, i, n_inputs) for i in range(n_inputs)]
-            self.outputs = [PortItem(self, False, i, n_outputs) for i in range(n_outputs)]
+            self.inputs = [PortItem(self, self.editor,True, i, n_inputs) for i in range(n_inputs)]
+            for port_item in self.inputs:
+                port_item.recolour()
+            for port_item in self.outputs:
+                port_item.recolour()
+            self.outputs = [PortItem(self, self.editor,False, i, n_outputs) for i in range(n_outputs)]
+            for port_item in self.inputs:
+                port_item.recolour()
+            for port_item in self.outputs:
+                port_item.recolour()
             self.input_labels = [self.create_port_label_item() for _ in range(n_inputs)]
             self.output_labels = [self.create_port_label_item() for _ in range(n_outputs)]
             self.refresh_port_metadata()
@@ -1205,33 +1230,26 @@ class GenericBlockItem(QGraphicsRectItem):
 
         rect: QtCore.QRectF = self.rect()
         outer_rect: QtCore.QRectF = rect.adjusted(2, 2, -2, -2)
-        shadow_rect: QtCore.QRectF = outer_rect.translated(2.5, 3.0)
         body_rect: QtCore.QRectF = outer_rect
 
-        editor_constants = _get_editor_constants()
-
         if self._validation_highlighted:
-            border_color: QColor = editor_constants.VALIDATION_HICHLIGHTED_BORDER
+            border_color: QColor = EditorGraphicsDefaultsLight.VALIDATION_HICHLIGHTED_BORDER
         else:
             border_color = (
-                editor_constants.BLOCK_BORDER_SELECTED
+                EditorGraphicsDefaultsLight.BLOCK_BORDER_SELECTED
                 if self.isSelected()
-                else editor_constants.BLOCK_BORDER
+                else self.pen().color()
             )
-
-        fill_color: QColor = self.brush().color()
 
         painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
 
         radius = 4.0
 
         # body
-        painter.setBrush(QBrush(fill_color))
-        painter.drawRoundedRect(body_rect, radius, radius)
+        painter.setBrush(self.brush())
 
         # delimiter
         painter.setPen(QPen(border_color, 1.6))
-        painter.setBrush(Qt.BrushStyle.NoBrush)
         painter.drawRoundedRect(body_rect, radius, radius)
 
     def set_validation_highlighted(self, val: bool) -> None:
@@ -1292,8 +1310,6 @@ class GenericBlockItem(QGraphicsRectItem):
 
     def create_port_label_item(self) -> QGraphicsTextItem:
         label_item: QGraphicsTextItem = QGraphicsTextItem("", self)
-
-        label_item.setDefaultTextColor(_get_editor_constants().PORT_LABEL_COLOR)
         label_item.setZValue(4)
         return label_item
 
@@ -1412,13 +1428,13 @@ class PairedItem(QGraphicsPolygonItem):
                  api_object,
                  mode: DynamicSimulationMode,
                  name: str,
+                 editor: DynamicBlockEditorGUI,
                  paired_items: List["PairedItem"] | None = None,
-                 position_changed_callback=None,
-                 editor: "DynamicBlockEditorGUI | None" = None):
+                 position_changed_callback=None):
         super().__init__()
         self.paired_items: List[PairedItem] | None = [paired_item for paired_item in
                                                       paired_items] if paired_items else None
-        self.editor: DynamicBlockEditorGUI | None = editor
+        self.editor: DynamicBlockEditorGUI = editor
         self.var_factory = var_factory
         self.subsys = subsys
         self.mode = mode
@@ -1427,17 +1443,7 @@ class PairedItem(QGraphicsPolygonItem):
         self.position_changed_callback = position_changed_callback
         self._is_signal_in: bool = bool(self.subsys.in_vars) and not bool(self.subsys.out_vars)
 
-        self.name_item = QGraphicsTextItem(self.subsys.name, self)
-
-        try:
-            is_dark = darkdetect.theme() == "Dark"
-        except ImportError:
-            is_dark = False
-
-        if is_dark:
-            self.set_dark_mode()
-        else:
-            self.set_light_mode()
+        self.name_item = QGraphicsTextItem(self.name, self)
 
         self.inputs: List[PortItem] = list()
         self.outputs: List[PortItem] = list()
@@ -1450,23 +1456,26 @@ class PairedItem(QGraphicsPolygonItem):
 
         n_inputs = len(self.subsys.in_vars)
         n_outputs = len(self.subsys.out_vars)
-        self.inputs = [PortItem(self, True, i, n_inputs) for i in range(n_inputs)]
-        self.outputs = [PortItem(self, False, i, n_outputs) for i in range(n_outputs)]
+        self.inputs = [PortItem(self, self.editor,True, i, n_inputs) for i in range(n_inputs)]
+        self.outputs = [PortItem(self, self.editor,False, i, n_outputs) for i in range(n_outputs)]
+        for port_item in self.inputs:
+            port_item.recolour()
+        for port_item in self.outputs:
+            port_item.recolour()
 
         self.refresh_port_metadata()
         self._build_polygon()
 
-    def set_dark_mode(self):
-        editor_constants = _get_editor_constants()
-        self.name_item.setDefaultTextColor(editor_constants.BLOCK_TITLE)
-        self.setBrush(QBrush(editor_constants.BLOCK_FILL))
-        self.setPen(QPen(editor_constants.BLOCK_BORDER, 1))
+    def recolour_mode(self):
+        self.name_item.setDefaultTextColor(self.editor.colors_palet.BLOCK_TITLE)
+        self.setBrush(QBrush(self.editor.colors_palet.BLOCK_FILL))
+        self.setPen(QPen(self.editor.colors_palet.BLOCK_BORDER, 1))
 
-    def set_light_mode(self):
-        editor_constants = _get_editor_constants()
-        self.name_item.setDefaultTextColor(editor_constants.BLOCK_TITLE)
-        self.setBrush(QBrush(editor_constants.BLOCK_FILL))
-        self.setPen(QPen(editor_constants.BLOCK_BORDER, 1))
+    def recolour(self, use_custom_color: bool = False):
+        if use_custom_color:
+            pass
+        else:
+            self.recolour_mode()
 
     def rect(self) -> QtCore.QRectF:
         return self.polygon().boundingRect()
@@ -1544,15 +1553,15 @@ class PairedItem(QGraphicsPolygonItem):
         if self.subsys is not None:
             self._is_signal_in = bool(self.subsys.in_vars) and not bool(self.subsys.out_vars)
 
-            self.name_item = QGraphicsTextItem(self.name, self)
-            editor_constants = _get_editor_constants()
-            self.name_item.setDefaultTextColor(editor_constants.BLOCK_TITLE)
-            self.setBrush(QBrush(editor_constants.BLOCK_FILL))
 
             n_inputs: int = len(self.subsys.in_vars)
             n_outputs: int = len(self.subsys.out_vars)
-            self.inputs = [PortItem(self, True, i, n_inputs) for i in range(n_inputs)]
-            self.outputs = [PortItem(self, False, i, n_outputs) for i in range(n_outputs)]
+            self.inputs = [PortItem(self, self.editor,True, i, n_inputs) for i in range(n_inputs)]
+            self.outputs = [PortItem(self, self.editor,False, i, n_outputs) for i in range(n_outputs)]
+            for port_item in self.inputs:
+                port_item.recolour()
+            for port_item in self.outputs:
+                port_item.recolour()
             self.refresh_port_metadata()
             self._build_polygon()
         else:
@@ -1569,19 +1578,11 @@ class PairedItem(QGraphicsPolygonItem):
               option: QtWidgets.QStyleOptionGraphicsItem,
               widget: Optional[QWidget] = None) -> None:
         polygon: QtGui.QPolygonF = self.polygon()
-        editor_constants = _get_editor_constants()
-        border_color: QColor = editor_constants.BLOCK_BORDER_SELECTED if self.isSelected() else editor_constants.BLOCK_BORDER
-        fill_color: QColor = self.brush().color()
+        border_color: QColor = EditorGraphicsDefaultsLight.BLOCK_BORDER_SELECTED if self.isSelected() else self.pen().color()
 
         painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
-        shadow_poly = polygon.translated(2.5, 3.0)
-        painter.setPen(Qt.PenStyle.NoPen)
-        painter.setBrush(QBrush(editor_constants.BLOCK_FILL))
-        painter.drawPolygon(shadow_poly)
-        painter.setBrush(QBrush(fill_color))
-        painter.drawPolygon(polygon)
         painter.setPen(QPen(border_color, 1.6))
-        painter.setBrush(Qt.BrushStyle.NoBrush)
+        painter.setBrush(self.brush())
         painter.drawPolygon(polygon)
 
     def _set_rect_internal(self, w, h):
@@ -1733,31 +1734,22 @@ class BlockItem(QGraphicsRectItem):
     def __init__(self,
                  var_factory: VarFactory,
                  name: str,
+                 editor: DynamicBlockEditorGUI,
                  api_object=None,
                  mode: DynamicSimulationMode = None,
-                 position_changed_callback=None,
-                 editor: "DynamicBlockEditorGUI | None" = None):
+                 position_changed_callback=None
+                 ):
         super().__init__(0, 0, 80, 40)
-        self.editor: DynamicBlockEditorGUI | None = editor
+        self.editor: DynamicBlockEditorGUI = editor
         self.var_factory: VarFactory = var_factory
         self.api_object = api_object
         self.mode = mode
         self.name: str = name
+        self.name_item = QGraphicsTextItem(self.name, self)
         self.position_changed_callback = position_changed_callback
         self.resize_handle: ResizeHandle | None = None
         self.resizing_from_handle: bool = False
         self.subsys: Block | None = None
-        self.name_item: QGraphicsTextItem | None = None
-
-        try:
-            is_dark = darkdetect.theme() == "Dark"
-        except ImportError:
-            is_dark = False
-
-        if is_dark:
-            self.set_dark_mode()
-        else:
-            self.set_light_mode()
 
         self.inputs: List[PortItem] = list()
         self.outputs: List[PortItem] = list()
@@ -1771,32 +1763,17 @@ class BlockItem(QGraphicsRectItem):
             QGraphicsItem.GraphicsItemFlag.ItemSendsScenePositionChanges
         )
         self.setAcceptHoverEvents(True)
-        editor_constants = _get_editor_constants()
-        self.setPen(
-            QPen(
-                editor_constants.BLOCK_BORDER,
-                1.6
-            )
-        )
 
-        self.setBrush(
-            QBrush(
-                editor_constants.BLOCK_FILL)
-        )
+    def recolour_mode(self):
+        self.name_item.setDefaultTextColor(self.editor.colors_palet.BLOCK_TITLE)
+        self.setBrush(QBrush(self.editor.colors_palet.BLOCK_FILL))
+        self.setPen(QPen(self.editor.colors_palet.BLOCK_BORDER, 1))
 
-    def set_dark_mode(self):
-        editor_constants = _get_editor_constants()
-        if self.name_item is not None:
-            self.name_item.setDefaultTextColor(editor_constants.BLOCK_TITLE)
-        self.setBrush(QBrush(editor_constants.BLOCK_FILL))
-        self.setPen(QPen(editor_constants.BLOCK_BORDER, 1))
-
-    def set_light_mode(self):
-        editor_constants = _get_editor_constants()
-        if self.name_item is not None:
-            self.name_item.setDefaultTextColor(editor_constants.BLOCK_TITLE)
-        self.setBrush(QBrush(editor_constants.BLOCK_FILL))
-        self.setPen(QPen(editor_constants.BLOCK_BORDER, 1))
+    def recolour(self, use_custom_color: bool = False):
+        if use_custom_color:
+            pass
+        else:
+            self.recolour_mode()
 
     def set_subsystem(self, block: Block) -> None:
         self.subsys = block
@@ -1804,15 +1781,15 @@ class BlockItem(QGraphicsRectItem):
     def build_item(self) -> None:
         if self.subsys is not None:
             self.name_item = QGraphicsTextItem(self.name, self)
-            editor_constants = _get_editor_constants()
-            self.name_item.setDefaultTextColor(editor_constants.BLOCK_TITLE)
 
             n_inputs: int = len(self.subsys.in_vars)
             n_outputs: int = len(self.subsys.out_vars)
-            self.inputs = [PortItem(self, True, i, n_inputs) for i in range(n_inputs)]
-            self.outputs = [PortItem(self, False, i, n_outputs) for i in range(n_outputs)]
-            # self.input_labels = [self.create_port_label_item() for _ in range(n_inputs)]
-            # self.output_labels = [self.create_port_label_item() for _ in range(n_outputs)]
+            self.inputs = [PortItem(self, self.editor,True, i, n_inputs) for i in range(n_inputs)]
+            self.outputs = [PortItem(self, self.editor,False, i, n_outputs) for i in range(n_outputs)]
+            for port_item in self.inputs:
+                port_item.recolour()
+            for port_item in self.outputs:
+                port_item.recolour()
             self.refresh_port_metadata()
 
             self.resize_to_content()
@@ -1905,31 +1882,23 @@ class BlockItem(QGraphicsRectItem):
               widget: Optional[QWidget] = None) -> None:
         rect: QtCore.QRectF = self.rect()
         outer_rect: QtCore.QRectF = rect.adjusted(2, 2, -2, -2)
-        shadow_rect: QtCore.QRectF = outer_rect.translated(2.5, 3.0)
         body_rect: QtCore.QRectF = outer_rect
         radius: float = body_rect.height() / 2.0
 
-        editor_constants = _get_editor_constants()
-
         if self._validation_highlighted:
-            border_color: QColor = editor_constants.VALIDATION_HICHLIGHTED_BORDER
+            border_color: QColor = EditorGraphicsDefaultsLight.VALIDATION_HICHLIGHTED_BORDER
         else:
             border_color = (
-                editor_constants.BLOCK_BORDER_SELECTED
+                EditorGraphicsDefaultsLight.BLOCK_BORDER_SELECTED
                 if self.isSelected()
-                else editor_constants.BLOCK_BORDER
+                else self.pen().color()
             )
-
-        fill_color: QColor = self.brush().color()
 
         painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
 
         # body
-        painter.setBrush(QBrush(fill_color))
-        painter.drawRoundedRect(body_rect, radius, radius)
-
+        painter.setBrush(self.brush())
         painter.setPen(QPen(border_color, 1.6))
-        painter.setBrush(Qt.BrushStyle.NoBrush)
         painter.drawRoundedRect(body_rect, radius, radius)
 
     def set_validation_highlighted(self, val: bool) -> None:
@@ -2014,51 +1983,38 @@ class RoundBaseArithmeticOpItem(QGraphicsEllipseItem):
                  subsys: Block,
                  var_factory: VarFactory,
                  block_type: BlockType,
-                 editor: "DynamicBlockEditorGUI | None" = None,
+                 editor: DynamicBlockEditorGUI,
                  position_changed_callback=None):
         size = 35.0
         super().__init__(-size / 2, -size / 2, size, size)
         self.block_type: BlockType = block_type
         self.subsys: Block = subsys
         self.var_factory: VarFactory = var_factory
-        self.editor: "DynamicBlockEditorGUI | None" = editor
+        self.editor: DynamicBlockEditorGUI = editor
         self.inputs: List[PortItem] = list()
         self.outputs: List[PortItem] = list()
         self.input_labels: List[QGraphicsTextItem] = list()
         self._input_signs: List[str] = list()
 
-        try:
-            is_dark = darkdetect.theme() == "Dark"
-        except ImportError:
-            is_dark = False
-
-        if is_dark:
-            self.set_dark_mode()
-        else:
-            self.set_light_mode()
-
         n_inputs = len(self.subsys.in_vars)
         if n_inputs > 3:
             raise ValueError("SumItem only supports up to 3 input ports")
         n_outputs = len(self.subsys.out_vars)
-        editor_constants = _get_editor_constants()
 
         for i in range(n_inputs):
-            port = PortItem(self, True, i, n_inputs)
+            port = PortItem(self, self.editor,True, i, n_inputs)
+            port.recolour(self.editor.current_theme)
             self.inputs.append(port)
             label = QGraphicsTextItem("", self)
-            label.setDefaultTextColor(editor_constants.BLOCK_TITLE)
             self.input_labels.append(label)
 
         for i in range(n_outputs):
-            port = PortItem(self, False, i, n_outputs)
+            port = PortItem(self, self.editor,False, i, n_outputs)
+            port.recolour(self.editor.current_theme)
             self.outputs.append(port)
 
         self._analyze_input_signs()
         self.update_ports()
-
-        self.setPen(QPen(QColor("#202124"), 1.6))
-        self.setBrush(QBrush(QColor("#f5fdff")))
         self.setZValue(2)
         self.setFlags(
             QGraphicsItem.GraphicsItemFlag.ItemIsMovable |
@@ -2067,19 +2023,17 @@ class RoundBaseArithmeticOpItem(QGraphicsEllipseItem):
         )
         self.setAcceptHoverEvents(True)
 
-    def set_dark_mode(self):
-        editor_constants = _get_editor_constants()
+    def recolour_mode(self):
         for label in self.input_labels:
-            label.setDefaultTextColor(editor_constants.BLOCK_TITLE)
-        self.setBrush(QBrush(editor_constants.BLOCK_BORDER))
-        self.setPen(QPen(editor_constants.BLOCK_FILL, 1))
+            label.setDefaultTextColor(self.editor.colors_palet.BLOCK_TITLE)
+        self.setBrush(QBrush(self.editor.colors_palet.BLOCK_BORDER))
+        self.setPen(QPen(self.editor.colors_palet.BLOCK_FILL, 1))
 
-    def set_light_mode(self):
-        editor_constants = _get_editor_constants()
-        for label in self.input_labels:
-            label.setDefaultTextColor(editor_constants.BLOCK_TITLE)
-        self.setBrush(QBrush(editor_constants.BLOCK_BORDER))
-        self.setPen(QPen(editor_constants.BLOCK_FILL, 1))
+    def recolour(self, use_custom_color: bool = False):
+        if use_custom_color:
+            pass
+        else:
+            self.recolour_mode()
 
     def _walk_sum_expr(self, expr: Expr, sign: int, result: Dict[int, int]) -> None:
         if isinstance(expr, Var):
@@ -2200,8 +2154,8 @@ class RoundBaseArithmeticOpItem(QGraphicsEllipseItem):
               widget: Optional[QWidget] = None) -> None:
         rect = self.rect()
         painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
-        painter.setBrush(QBrush(QColor("#f5fdff")))
-        painter.setPen(QPen(QColor("#202124"), 1.6))
+        painter.setBrush(self.brush())
+        painter.setPen(self.pen())
         painter.drawEllipse(rect)
 
     def itemChange(self, change: QGraphicsItem.GraphicsItemChange, value: Any) -> Any:
@@ -2220,7 +2174,7 @@ class RectBaseArithmeticOpItem(QGraphicsRectItem):
                  subsys: Block,
                  var_factory: VarFactory,
                  block_type: BlockType,
-                 editor: "DynamicBlockEditorGUI | None" = None,
+                 editor: DynamicBlockEditorGUI,
                  position_changed_callback=None):
         n_inputs = len(subsys.in_vars)
         n_outputs = len(subsys.out_vars)
@@ -2230,28 +2184,32 @@ class RectBaseArithmeticOpItem(QGraphicsRectItem):
         self.block_type: BlockType = block_type
         self.subsys: Block = subsys
         self.var_factory: VarFactory = var_factory
-        self.editor: "DynamicBlockEditorGUI | None" = editor
+        self.editor: DynamicBlockEditorGUI = editor
         self.inputs: List[PortItem] = list()
         self.outputs: List[PortItem] = list()
         self.input_labels: List[QGraphicsTextItem] = list()
         self._input_signs: List[str] = list()
 
         for i in range(n_inputs):
-            port = PortItem(self, True, i, n_inputs)
+            port = PortItem(self, self.editor,True, i, n_inputs)
+            port.recolour()
             self.inputs.append(port)
+
+
             label = QGraphicsTextItem("", self)
             label.setDefaultTextColor(QColor("#173042"))
             self.input_labels.append(label)
 
         for i in range(n_outputs):
-            port = PortItem(self, False, i, n_outputs)
+            port = PortItem(self, self.editor,False, i, n_outputs)
             self.outputs.append(port)
+            port.recolour()
 
         self._analyze_input_signs()
         self.update_ports()
 
-        self.setPen(QPen(QColor("#202124"), 1.6))
-        self.setBrush(QBrush(QColor("#f5fdff")))
+        # self.setPen(QPen(QColor("#202124"), 1.6))
+        # self.setBrush(QBrush(QColor("#f5fdff")))
         self.setZValue(2)
         self.setFlags(
             QGraphicsItem.GraphicsItemFlag.ItemIsMovable |
@@ -2260,11 +2218,17 @@ class RectBaseArithmeticOpItem(QGraphicsRectItem):
         )
         self.setAcceptHoverEvents(True)
 
-    def set_dark_mode(self):
-        pass
+    def recolour_mode(self):
+        for label in self.input_labels:
+            label.setDefaultTextColor(self.editor.colors_palet.BLOCK_TITLE)
+        self.setBrush(QBrush(self.editor.colors_palet.BLOCK_BORDER))
+        self.setPen(QPen(self.editor.colors_palet.BLOCK_FILL, 1))
 
-    def set_light_mode(self):
-        pass
+    def recolour(self, use_custom_color: bool = False):
+        if use_custom_color:
+            pass
+        else:
+            self.recolour_mode()
 
     def _walk_sum_expr(self, expr: Expr, sign: int, result: Dict[int, int]) -> None:
         if isinstance(expr, Var):
@@ -2353,8 +2317,8 @@ class RectBaseArithmeticOpItem(QGraphicsRectItem):
               widget: Optional[QWidget] = None) -> None:
         rect = self.rect()
         painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
-        painter.setBrush(QBrush(QColor("#f5fdff")))
-        painter.setPen(QPen(QColor("#202124"), 1.6))
+        painter.setBrush(self.brush())
+        painter.setPen(self.pen())
         painter.drawRoundedRect(rect, 6.0, 6.0)
 
     def itemChange(self, change: QGraphicsItem.GraphicsItemChange, value: Any) -> Any:
@@ -2566,15 +2530,7 @@ class DiagramScene(QGraphicsScene):
                 if not item.is_input:
                     self.source_port = item
                     path: QPainterPath = QPainterPath(item.scenePos())
-                    try:
-                        is_dark = darkdetect.theme() == "Dark"
-                    except ImportError:
-                        is_dark = False
-                    print(is_dark)
-                    #
-                    # pen: QPen = QPen(QColor("white"), 1, Qt.PenStyle.DashLine) if is_dark else QPen(
-                    #     QColor("black"), 1, Qt.PenStyle.DashLine)
-                    pen: QPen = QPen(QColor("black"), 1, Qt.PenStyle.DashLine)
+                    pen: QPen = QPen(QColor(self.editor.colors_palet.WIRE_COLOR), 1, Qt.PenStyle.DashLine)
                     self.temp_line = self.addPath(path, pen)
                     return
                 else:
@@ -2650,6 +2606,7 @@ class DiagramScene(QGraphicsScene):
                 diagram=self.editor.diagram,
                 editor=self.editor,
             )
+            connection.recolour()
 
             dst_var: Var = source_block.subsys.out_vars[source_port.index]
             target_input_var: Var = target_block.subsys.in_vars[target_port.index]

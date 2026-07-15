@@ -65,6 +65,7 @@ class DynamicEditorWorkspaceSession(QtCore.QObject):
         self._pending_drag_workspace: DynamicEditorWorkspaceWindow | None = None
         self._retained_workspaces: List[DynamicEditorWorkspaceWindow] = list()
         self._retained_pages: List[DynamicEditorTab | DynamicBlockEditorGUI] = list()
+        self.current_theme: str = ""
 
     def register_workspace(self, workspace: "DynamicEditorWorkspaceWindow") -> None:
         """
@@ -245,6 +246,7 @@ class DynamicEditorWorkspaceSession(QtCore.QObject):
             mode=mode,
             templates_list=get_templates_for_entry(entry, mode),
             circuit=entry.circuit,
+            current_theme = self.current_theme
         )
         page.set_dynamic_editor_entry(entry)
         self.connect_page_signals(page)
@@ -360,6 +362,7 @@ class DynamicEditorWorkspaceSession(QtCore.QObject):
         Set the dark mode
         :return:
         """
+        self.current_theme = "Dark"
         for ws in self._open_workspaces:
             ws.set_dark_mode()
 
@@ -368,5 +371,6 @@ class DynamicEditorWorkspaceSession(QtCore.QObject):
                 Set the dark mode
                 :return:
                 """
+        self.current_theme = "Light"
         for ws in self._open_workspaces:
             ws.set_light_mode()

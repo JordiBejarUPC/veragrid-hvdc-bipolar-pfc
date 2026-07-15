@@ -62,7 +62,7 @@ from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_dialogs import AddBlockVaria
     AddParameterDialog, ExpressionTextEditorDialog, GenericBlockDialog
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_graphics import BlockItem, BlockPositionChangedCallback, \
     BranchingItem, ConnectionItem, DiagramScene, GenericBlockItem, RoundBaseArithmeticOpItem, RectBaseArithmeticOpItem, \
-    GraphicsView, PairedItem, PortItem, ProtectedConnectionBlockItem
+    GraphicsView, PairedItem, PortItem, ProtectedConnectionBlockItem, ElbowItem, ResizeHandle
 from VeraGrid.Session.dynamic_editor_entries import DynamicEditorEntry
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_library import DynamicEditorLibrary, LibraryTreeFilterProxyModel
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_models import BlockParameterKind, BlockParameterRow, \
@@ -148,6 +148,53 @@ def _is_load_topology_block_type(block_type: BlockType) -> bool:
     :return: Boolean state.
     """
     return block_type in {BlockType.EXP_LOAD_EMT, BlockType.ZIP_LOAD_EMT}
+
+class EditorGraphicsDefaultsDark:
+    BLOCK_BORDER: QColor = QColor("#e1f7ff")
+    BLOCK_BORDER_SELECTED: QColor = QColor("#cc6f2c")
+    BLOCK_TITLE: QColor = QColor("#e1f7ff")
+    WIRE_COLOR: QColor = QColor("#e1f7ff")
+    HANDLE_FILL: QColor = QColor("#36536b")
+    BLOCK_FILL: QColor = QColor("#022633")
+    PORT_LABEL_COLOR: QColor = QColor("#173042")
+    WIRE_ELBOW_OFFSET: float = 36.0
+    PORT_LABEL_MAX_CHARS: int = 12
+    BLOCK_HEADER_HEIGHT: float = 30.0
+    BLOCK_PORT_ROW_HEIGHT: float = 20.0
+    BLOCK_PORT_SECTION_PADDING: float = 10.0
+    BLOCK_MIN_WIDTH: float = 160.0
+    BLOCK_MIN_HEIGHT: float = 70.0
+    BLOCK_COMPACT_MIN_WIDTH: float = 100.0
+    BLOCK_COMPACT_MIN_HEIGHT: float = 40.0
+    BLOCK_COMPACT_HEADER_HEIGHT: float = 20.0
+    BLOCK_COMPACT_PORT_ROW_HEIGHT: float = 14.0
+    BLOCK_COMPACT_PORT_SECTION_PADDING: float = 6.0
+    PORT_ITEM_COLOR: QColor = QColor("#e1f7ff")
+    VALIDATION_HICHLIGHTED_BORDER = QColor("#b42318")
+
+
+class EditorGraphicsDefaultsLight:
+    BLOCK_BORDER: QColor = QColor("#03384f")
+    BLOCK_BORDER_SELECTED: QColor = QColor("#00bbff")
+    BLOCK_TITLE: QColor = QColor("#03384f")
+    WIRE_COLOR: QColor = QColor("#03384f")
+    HANDLE_FILL: QColor = QColor("#819ba7")
+    BLOCK_FILL: QColor = QColor("#f5fdff")
+    PORT_LABEL_COLOR: QColor = QColor("#173042")
+    WIRE_ELBOW_OFFSET: float = 36.0
+    PORT_LABEL_MAX_CHARS: int = 12
+    BLOCK_HEADER_HEIGHT: float = 30.0
+    BLOCK_PORT_ROW_HEIGHT: float = 20.0
+    BLOCK_PORT_SECTION_PADDING: float = 10.0
+    BLOCK_MIN_WIDTH: float = 160.0
+    BLOCK_MIN_HEIGHT: float = 70.0
+    BLOCK_COMPACT_MIN_WIDTH: float = 100.0
+    BLOCK_COMPACT_MIN_HEIGHT: float = 40.0
+    BLOCK_COMPACT_HEADER_HEIGHT: float = 20.0
+    BLOCK_COMPACT_PORT_ROW_HEIGHT: float = 14.0
+    BLOCK_COMPACT_PORT_SECTION_PADDING: float = 6.0
+    PORT_ITEM_COLOR: QColor = QColor("#03384f")
+    VALIDATION_HICHLIGHTED_BORDER = QColor("#b42318")
 
 
 @dataclass
@@ -399,6 +446,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                  var_factory: VarFactory,
                  api_object: ALL_DEV_TYPES,
                  circuit: MultiCircuit,
+                 current_theme: str,
                  mode: DynamicSimulationMode = DynamicSimulationMode.RMS,
                  templates_list: Optional[List[RmsModelTemplate | EmtModelTemplate | FmuTemplate]] = None,
                  is_root_editor=False,
@@ -482,6 +530,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.has_unapplied_changes: bool = False
         self.dynamic_editor_entry: DynamicEditorEntry | None = None
         self._prepared_to_delete: bool = False
+        self.colors_palet: EditorGraphicsDefaultsDark | EditorGraphicsDefaultsLight | None = None
+        self.current_theme: str = current_theme
+        self.set_colors_palet()
 
         self.root_block: Block = root_block
         self.main_block: Block = current_block
@@ -681,6 +732,12 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             pass
         self.rebuild_scene_from_diagram()
+
+    def set_colors_palet(self):
+        if self.current_theme == "Dark":
+            self.colors_palet = EditorGraphicsDefaultsDark()
+        else:
+            self.colors_palet = EditorGraphicsDefaultsLight()
 
     def set_navigation_delegate(self, delegate) -> None:
         """
@@ -1609,6 +1666,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                     diagram=self.diagram,
                     editor=self,
                 )
+                connection.recolour()
                 self.scene.addItem(connection)
                 self.diagram.add_branch(
                     connectionitem_uid=connection.uid,
@@ -1616,7 +1674,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                     device_uid_to=item_dest.subsys.uid,
                     port_number_from=source_port.index,
                     port_number_to=target_port.index,
-                    color=self.WIRE_COLOR.name()
+                    color=connection.pen().color().name()
                 )
 
     def generate_block_item_for_block(self, block_model: Block,
@@ -1648,6 +1706,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             if x is None or y is None:
                 x, y = self._calculate_next_block_position(item)
             item.setPos(QtCore.QPointF(x, y))
+            item.recolour()
             self.scene.addItem(item)
 
             self.diagram.add_node(
@@ -4302,6 +4361,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                                     diagram=self.diagram,
                                     editor=self,
                                 )
+                                connection_item.recolour()
                                 self.scene.addItem(connection_item)
                         else:
                             pass
@@ -4326,6 +4386,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                                     diagram=self.diagram,
                                     editor=self,
                                 )
+                                connection_item.recolour()
                                 self.scene.addItem(connection_item)
                         else:
                             pass
@@ -4490,6 +4551,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                         diagram=self.diagram,
                         editor=self,
                     )
+                    connection.recolour()
                     self.scene.addItem(connection)
             else:
                 pass
@@ -6681,13 +6743,14 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                     block_item.set_subsystem(block_model)
                     block_item.position_changed_callback = self._build_position_changed_callback(block_model.uid)
                     block_item.build_item()
+                    block_item.recolour()
 
                     self.scene.addItem(block_item)
                     block_item.setPos(QPointF(node.x, node.y))
 
-                    brush: QBrush = block_item.brush()
-                    brush.setColor(QColor(node.color))
-                    block_item.setBrush(brush)
+                    # brush: QBrush = block_item.brush()
+                    # brush.setColor(QColor(node.color))
+                    # block_item.setBrush(brush)
                     uid_to_blockitem[uid] = block_item
 
                     if block_type is not None:
@@ -6707,6 +6770,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                                           position_changed_callback=self._build_position_changed_callback(
                                               block_model.uid)
                                           )
+                        item.recolour()
                         suffix = block_model.name.replace("From_", "").replace("To_", "")
                         if node.tpe == "signal_in":
                             signal_in_items[suffix] = item
@@ -6722,13 +6786,14 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                             name=block_model.name,
                             position_changed_callback=self._build_position_changed_callback(block_model.uid)
                         )
+                        item.recolour()
                     self.scene.addItem(item)
                     item.setPos(QPointF(node.x, node.y))
 
-                    if not isinstance(item, PairedItem):
-                        brush = item.brush()
-                        brush.setColor(QColor(node.color))
-                        item.setBrush(brush)
+                    # if not isinstance(item, PairedItem):
+                    #     brush = item.brush()
+                    #     brush.setColor(QColor(node.color))
+                    #     item.setBrush(brush)
 
                     uid_to_blockitem[uid] = item
 
@@ -6763,10 +6828,11 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                         elbow_points=elbow_points,
                         editor=self,
                     )
+                    connection.recolour()
 
-                    pen: QPen = connection.pen()
-                    pen.setColor(QColor(con.color))
-                    connection.setPen(pen)
+                    # pen: QPen = connection.pen()
+                    # pen.setColor(QColor(con.color))
+                    # connection.setPen(pen)
                     self.scene.addItem(connection)
                 else:
                     pass
@@ -6953,7 +7019,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 x_pos=scene_position.x(),
                 y_pos=scene_position.y(),
             )
+
             if block_item is not None:
+                block_item.recolour()
                 event.acceptProposedAction()
             else:
                 event.ignore()
@@ -6965,20 +7033,24 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         Set the dark mode
         :return:
         """
+        self.current_theme = "Dark"
+        self.set_colors_palet()
         for item in self.scene.items():
             if isinstance(item, (GenericBlockItem, PairedItem, ConnectionItem, RectBaseArithmeticOpItem,
-                                 RoundBaseArithmeticOpItem)):
-                item.set_dark_mode()
+                                 RoundBaseArithmeticOpItem, PortItem, ElbowItem, ResizeHandle, BlockItem)):
+                item.recolour()
 
     def set_light_mode(self):
         """
         Set the dark mode
         :return:
         """
+        self.current_theme = "Light"
+        self.set_colors_palet()
         for item in self.scene.items():
             if isinstance(item, (GenericBlockItem, PairedItem, ConnectionItem, RectBaseArithmeticOpItem,
-                                 RoundBaseArithmeticOpItem)):
-                item.set_light_mode()
+                                 RoundBaseArithmeticOpItem, PortItem, ElbowItem, ResizeHandle, BlockItem)):
+                item.recolour()
 
 
 if __name__ == "__main__":
