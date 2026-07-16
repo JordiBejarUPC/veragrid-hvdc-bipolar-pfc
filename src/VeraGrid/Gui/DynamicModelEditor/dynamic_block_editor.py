@@ -4,9 +4,6 @@
 # SPDX-License-Identifier: MPL-2.0
 
 from __future__ import annotations
-
-import math
-
 import re
 import copy
 from typing import List, Dict, Optional, Any
@@ -21,12 +18,9 @@ from VeraGridEngine.Devices.Branches.overhead_line_type import OverheadLineType
 from VeraGridEngine.Devices.Branches.sequence_line_type import SequenceLineType
 
 from VeraGridEngine.Devices.Branches.underground_line_type import UndergroundLineType
-from VeraGridEngine.Devices.Injections.controllable_shunt import ControllableShunt
-from VeraGridEngine.Devices.Injections.load import Load
-from VeraGridEngine.Devices.Injections.shunt import Shunt
 from VeraGridEngine.Devices.Parents.injection_parent import InjectionParent
 from VeraGridEngine.enumerations import DeviceType, VarPowerFlowReferenceType, ParamPowerFlowReferenceType, \
-    DynamicSimulationMode, ShuntConnectionType, DynamicTableModelMode
+    DynamicSimulationMode, DynamicTableModelMode
 from VeraGridEngine.Utils.Symbolic.bus_rms_template import initialize_bus_rms
 from VeraGridEngine.Utils.Symbolic.bus_emt_template import get_bus_emt_template, \
     get_bus_emt_algebraic_vars
@@ -53,7 +47,6 @@ from VeraGridEngine.Templates.BasicBlockCatalog.lookup_array_runtime_templates i
 from VeraGridEngine.Templates.BasicBlockCatalog.lookup_array_runtime_templates import \
     build_lookup_matrix_spline_runtime_template
 
-import VeraGridEngine.Templates.Emt as emt_templates
 import VeraGridEngine.Templates.BasicBlockCatalog as basic_block_templates
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.Utils.Symbolic.block import Block, find_connections, find_connections_pf
@@ -84,7 +77,6 @@ from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_utilities import create_bloc
 from VeraGrid.Gui.DynamicModelEditor.ElementDialogues.lookup_table_dialog import LookupArrayLinearDialog
 from VeraGrid.Gui.DynamicModelEditor.ElementDialogues.lookup_table_dialog import LookupMatrixLinearDialog
 from VeraGrid.Gui.DynamicModelEditor.ElementDialogues.jmarti_line_emt_dialog import JMartiLineEmtDialog
-from VeraGrid.Gui.DynamicModelEditor.ElementDialogues.shunt_component_emt_dialog import ShuntComponentEmtDialog
 
 from VeraGrid.Gui.messages import yes_no_question
 from VeraGrid.Gui.toast_widget import ToastManager
@@ -138,7 +130,6 @@ def _get_shunt_component_kind(block_type: BlockType) -> str | None:
         return "C"
     else:
         return None
-
 
 def _is_load_topology_block_type(block_type: BlockType) -> bool:
     """
@@ -200,7 +191,6 @@ class ConnectionVarSpec:
     """
     Specification of one connection variable exposed by the block editor.
     """
-
     direction: str
     reference: VarPowerFlowReferenceType
     visible_name: str
@@ -359,21 +349,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
     VALIDATION_HICHLIGHTED_BORDER = QColor("#b42318")
     BLOCK_BORDER_SELECTED: QColor = QColor("#00bbff")
-
     dirtyStateChanged = Signal(bool)
-    BLOCK_BORDER: QColor = QColor("#202124")
-    BLOCK_TITLE: QColor = QColor("#173042")
-    # Todo: to remove
-    BLOCK_SHADOW: QColor = QColor(24, 42, 56, 45)
-    PORT_BORDER: QColor = QColor("#173042")
-    WIRE_COLOR: QColor = QColor("#202124")
-    WIRE_HOVER_COLOR: QColor = QColor("#cc6f2c")
-    HANDLE_FILL: QColor = QColor("#36536b")
-    DEFAULT_BLOCK_FILL: QColor = QColor("#f5fdff")
-    PAIRED_ITEM_FILL: QColor = QColor("#9fa8da")
-    BLOCK_FILL_ALL_CONNECTED: QColor = QColor("#a5d6a7")
-    BLOCK_FILL_DISCONNECTED: QColor = QColor("#ffe082")
-    PORT_LABEL_COLOR: QColor = QColor("#173042")
     WIRE_ELBOW_OFFSET: float = 36.0
     PORT_LABEL_MAX_CHARS: int = 12
     BLOCK_HEADER_HEIGHT: float = 30.0
@@ -530,7 +506,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.has_unapplied_changes: bool = False
         self.dynamic_editor_entry: DynamicEditorEntry | None = None
         self._prepared_to_delete: bool = False
-        self.colors_palet: EditorGraphicsDefaultsDark()
+        self.colors_palet: EditorGraphicsDefaultsDark = EditorGraphicsDefaultsDark()
         self.current_theme: str = current_theme
         self.set_colors_palet()
 
@@ -1909,342 +1885,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
     # TODO: create PV power plant block item
 
-    def create_shunt_component_emt_block_item(self,
-                                              block_type: BlockType,
-                                              x_pos: float,
-                                              y_pos: float) -> GenericBlockItem | None:
-        """
-        Create one modal-configured single-component EMT shunt block.
-
-        :param block_type: ``R_LOAD_EMT``, ``L_LOAD_EMT`` or ``C_LOAD_EMT``.
-        :param x_pos: Drop x position.
-        :param y_pos: Drop y position.
-        :return: Created block item or None when the dialog is cancelled.
-        """
-        dialog = self._build_shunt_component_emt_dialog(block_type=block_type)
-
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            shunt_config = dialog.get_configuration()
-        else:
-            return None
-
-        try:
-            template_kwargs = self._build_shunt_component_emt_template_kwargs(block_type=block_type,
-                                                                              modal_config=shunt_config)
-        except ValueError as exc:
-            QtWidgets.QMessageBox.warning(self, "EMT Shunt", str(exc))
-            return None
-
-        count: int = self.block_counters.get(block_type, 0) + 1
-        item_name: str = f"{block_type.name}_{count}"
-        block_model = emt_templates.get_shunt_rlc_combo_emt_template(vf=self.var_factory,
-                                                                     name=item_name,
-                                                                     **template_kwargs).block
-        block_item: GenericBlockItem = GenericBlockItem(
-            editor=self,
-            var_factory=self.var_factory,
-            subsys=block_model,
-            api_object=self.api_object,
-            mode=self.mode,
-            name=item_name,
-            position_changed_callback=self.build_position_changed_callback(block_model.uid)
-        )
-
-        self.set_modal_template_metadata(block_model, kind="shunt_component_emt",
-                                         config=dict(shunt_config, block_type=block_type.name))
-        self._annotate_internal_grounding_link_blocks(block_model)
-
-        # The dynamic editor must not overwrite the static injection
-        # connection. The EMT block stores its own symbolic topology.
-        if isinstance(self.api_object, InjectionParent):
-            pass
-        else:
-            pass
-
-        self.block_counters[block_type] = count
-        block_item.set_subsystem(block_model)
-        block_item.position_changed_callback = self.build_position_changed_callback(block_model.uid)
-        block_item.build_item()
-        self.main_block.add(block_model)
-        self.scene.addItem(block_item)
-        block_item.setPos(QtCore.QPointF(x_pos, y_pos))
-        self.diagram.add_node(
-            name=item_name,
-            x=x_pos,
-            y=y_pos,
-            tpe=block_type.name,
-            device_uid=block_model.uid,
-        )
-        self.mark_unapplied_changes()
-        return block_item
-
-    def _build_shunt_component_emt_dialog(self,
-                                          block_type: BlockType,
-                                          initial_config: Dict[str, Any] | None = None) -> ShuntComponentEmtDialog:
-        """
-        Build the modal dialog used by one simple EMT shunt block.
-
-        :param block_type: ``R_LOAD_EMT``, ``L_LOAD_EMT`` or ``C_LOAD_EMT``.
-        :param initial_config: Optional persisted modal configuration.
-        :return: Configured dialog instance.
-        """
-        component_kind: str | None = _get_shunt_component_kind(block_type)
-        nominal_voltage_kv, base_power_mva, base_frequency_hz = self._get_rlc_combo_base_values()
-        allow_static_device_values: bool = isinstance(self.api_object, (Load, Shunt, ControllableShunt))
-        static_connection_type: ShuntConnectionType | None = None
-
-        if isinstance(self.api_object, (Load, Shunt, ControllableShunt)):
-            static_connection_type = self.api_object.conn
-        elif isinstance(self.api_object, InjectionParent):
-            static_connection_type = self.api_object.conn
-        else:
-            pass
-
-        if component_kind is None:
-            raise ValueError(f"Unsupported simple EMT shunt block type '{block_type.name}'")
-        else:
-            pass
-
-        return ShuntComponentEmtDialog(
-            component_kind=component_kind,
-            parent=self,
-            initial_config=initial_config,
-            allow_static_device_values=allow_static_device_values,
-            static_connection_type=static_connection_type,
-            nominal_voltage_kv=nominal_voltage_kv,
-            base_power_mva=base_power_mva,
-            base_frequency_hz=base_frequency_hz,
-        )
-
-    def _annotate_internal_grounding_link_blocks(self, block_model: Block) -> None:
-        """
-        Attach modal metadata to auto-generated internal grounding-link blocks.
-
-        :param block_model: Parent block that may own nested grounding-link children.
-        :return: None.
-        """
-        child_block: Block
-        grounding_config: Dict[str, Any] = dict({
-            "solid_connection": True,
-            "include_r": False,
-            "include_l": False,
-            "include_c": False,
-            "input_mode": "physical",
-            "resistance_ohm": 1.0,
-            "inductive_value": 0.01,
-            "capacitive_value": 1.0e-6,
-        })
-
-        for child_block in _iter_child_blocks(block_model):
-            if child_block.name.endswith("_grounding_link"):
-                self.set_modal_template_metadata(child_block, kind="grounding_link_emt", config=grounding_config)
-            else:
-                pass
-
-    def _get_rlc_combo_base_values(self) -> tuple[float | None, float | None, float | None]:
-        """
-        Resolve the host base values used by the EMT combined RLC modal.
-
-        :return: ``(Vnom_kV, Sbase_MVA, fbase_Hz)`` tuple.
-        """
-        nominal_voltage_kv: float | None = None
-        base_power_mva: float | None = None
-        base_frequency_hz: float | None = None
-
-        if isinstance(self.api_object, InjectionParent):
-            bus = self.api_object.bus
-            if bus is not None:
-                try:
-                    nominal_voltage_kv = float(bus.Vnom)
-                except (TypeError, ValueError):
-                    nominal_voltage_kv = None
-            else:
-                pass
-        else:
-            pass
-
-        if self.circuit is not None:
-            try:
-                base_power_mva = float(self.circuit.Sbase)
-            except (AttributeError, TypeError, ValueError):
-                base_power_mva = None
-
-            try:
-                base_frequency_hz = float(self.circuit.fBase)
-            except (AttributeError, TypeError, ValueError):
-                base_frequency_hz = None
-        else:
-            pass
-
-        return nominal_voltage_kv, base_power_mva, base_frequency_hz
-
-    def _get_rlc_combo_base_frequency_hz(self) -> float:
-        """
-        Return the frequency used to convert reactances into EMT L/C values.
-
-        :return: Frequency in hertz.
-        """
-        _, _, base_frequency_hz = self._get_rlc_combo_base_values()
-
-        if base_frequency_hz is not None and base_frequency_hz > 0.0:
-            return base_frequency_hz
-        else:
-            return 50.0
-
-    def _build_rlc_direct_values_from_modal_config(self, modal_config: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Convert one R/L/C modal configuration into direct EMT values.
-
-        :param modal_config: Raw modal configuration.
-        :return: Direct-value dictionary shared by EMT RLC modal builders.
-        :raises ValueError: If the modal configuration is not numerically valid.
-        """
-        include_r: bool = bool(modal_config.get("include_r", False))
-        include_l: bool = bool(modal_config.get("include_l", False))
-        include_c: bool = bool(modal_config.get("include_c", False))
-        solid_connection: bool = bool(modal_config.get("solid_connection", False))
-        input_mode: str = str(modal_config.get("input_mode", "physical"))
-        resistance_ohm: float = float(modal_config.get("resistance_ohm", 1.0))
-        inductive_value: float = float(modal_config.get("inductive_value", 0.01))
-        capacitive_value: float = float(modal_config.get("capacitive_value", 1.0e-6))
-        angular_frequency: float = 2.0 * math.pi * self._get_rlc_combo_base_frequency_hz()
-
-        if solid_connection:
-            return dict({
-                "solid_connection": True,
-                "include_r": False,
-                "include_l": False,
-                "include_c": False,
-                "direct_r_value": None,
-                "direct_l_value": None,
-                "direct_c_value": None,
-            })
-        else:
-            pass
-
-        if input_mode in {"physical", "reactance"}:
-            pass
-        else:
-            raise ValueError(f"Unsupported RLC input mode '{input_mode}'.")
-
-        if include_r and resistance_ohm <= 0.0:
-            raise ValueError("Resistance must be greater than zero when the resistor branch is enabled.")
-        else:
-            pass
-
-        if include_l and inductive_value <= 0.0:
-            if input_mode == "reactance":
-                raise ValueError("Inductive reactance must be greater than zero when the inductor branch is enabled.")
-            else:
-                raise ValueError("Inductance must be greater than zero when the inductor branch is enabled.")
-        else:
-            pass
-
-        if include_c and capacitive_value <= 0.0:
-            if input_mode == "reactance":
-                raise ValueError("Capacitive reactance must be greater than zero when the capacitor branch is enabled.")
-            else:
-                raise ValueError("Capacitance must be greater than zero when the capacitor branch is enabled.")
-        else:
-            pass
-
-        direct_l_value: float | None = None
-        if include_l:
-            if input_mode == "physical":
-                direct_l_value = inductive_value
-            else:
-                direct_l_value = inductive_value / angular_frequency
-        else:
-            pass
-
-        direct_c_value: float | None = None
-        if include_c:
-            if input_mode == "physical":
-                direct_c_value = capacitive_value
-            else:
-                direct_c_value = 1.0 / (angular_frequency * capacitive_value)
-        else:
-            pass
-
-        return dict({
-            "solid_connection": False,
-            "include_r": include_r,
-            "include_l": include_l,
-            "include_c": include_c,
-            "direct_r_value": resistance_ohm if include_r else None,
-            "direct_l_value": direct_l_value,
-            "direct_c_value": direct_c_value,
-        })
-
-    def _build_shunt_component_emt_template_kwargs(self,
-                                                   block_type: BlockType,
-                                                   modal_config: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Convert one single-component EMT shunt modal configuration into template arguments.
-
-        :param block_type: ``R_LOAD_EMT``, ``L_LOAD_EMT`` or ``C_LOAD_EMT``.
-        :param modal_config: Raw modal configuration.
-        :return: Template-builder keyword arguments.
-        """
-        use_static_load_values: bool = bool(
-            modal_config.get("use_static_device_values", modal_config.get("use_static_load_values", False)))
-
-        # Static-value mode must expose load-derived P/Q mappings to the EMT
-        # block, so the direct R/L/C values are left unresolved on purpose.
-        if use_static_load_values:
-            template_kwargs = dict({
-                "solid_connection": False,
-                "include_r": False,
-                "include_l": False,
-                "include_c": False,
-                "direct_r_value": None,
-                "direct_l_value": None,
-                "direct_c_value": None,
-            })
-        else:
-            template_kwargs = dict(self._build_rlc_direct_values_from_modal_config(modal_config))
-
-        if "solid_connection" in template_kwargs:
-            del template_kwargs["solid_connection"]
-        else:
-            pass
-
-        component_kind: str | None = _get_shunt_component_kind(block_type)
-        if component_kind == "R":
-            template_kwargs["include_r"] = True
-            template_kwargs["include_l"] = False
-            template_kwargs["include_c"] = False
-            if use_static_load_values:
-                template_kwargs["direct_r_value"] = None
-            else:
-                pass
-        elif component_kind == "L":
-            template_kwargs["include_r"] = False
-            template_kwargs["include_l"] = True
-            template_kwargs["include_c"] = False
-            if use_static_load_values:
-                template_kwargs["direct_l_value"] = None
-            else:
-                pass
-        elif component_kind == "C":
-            template_kwargs["include_r"] = False
-            template_kwargs["include_l"] = False
-            template_kwargs["include_c"] = True
-            if use_static_load_values:
-                template_kwargs["direct_c_value"] = None
-            else:
-                pass
-        else:
-            raise ValueError(f"Unsupported simple EMT shunt block type '{block_type.name}'")
-
-        template_kwargs.update({
-            "phA": bool(modal_config.get("phA", True)),
-            "phB": bool(modal_config.get("phB", True)),
-            "phC": bool(modal_config.get("phC", True)),
-            "connection_type": modal_config.get("connection_type", ShuntConnectionType.GroundedStar),
-        })
-        return template_kwargs
-
     def _append_emt_branch_side_connection_specs(
             self,
             specs: List[ConnectionVarSpec],
@@ -2521,13 +2161,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         # Todo: include in blocktype2templatebuilder, create clases and inputs
         elif isinstance(payload, BlockType) and payload == BlockType.EMT_JMARTI_LINE:
             return self.create_jmarti_line_emt_block_item(x_pos=x_pos, y_pos=y_pos)
-
-        elif isinstance(payload, BlockType) and payload in {
-            BlockType.R_LOAD_EMT,
-            BlockType.L_LOAD_EMT,
-            BlockType.C_LOAD_EMT,
-        }:
-            return self.create_shunt_component_emt_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
 
         elif isinstance(payload, BlockType):
             return self.create_block_item_mix(block_type=payload, x_pos=x_pos, y_pos=y_pos)
@@ -2968,37 +2601,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             raise ValueError(f"Unsupported dynamic editor mode {self.mode}")
 
-    # def add_connection_vars_rms(self):
-    #     """
-    #     Add a block with bus connection variables to connect the device
-    #     :return:
-    #     """
-    #
-    #     specs: List[ConnectionVarSpec] = list()
-    #
-    #     if isinstance(self.api_object, BranchParent):
-    #         specs = self._build_rms_branch_connection_specs()
-    #     elif isinstance(self.api_object, InjectionParent):
-    #         specs = self._build_rms_injection_connection_specs()
-    #     else:
-    #         pass
-    #
-    #     self._materialize_connection_specs(specs)
-    #
-    # def add_connection_vars_rms(self):
-    #     """
-    #     Add a block with bus connection variables to connect the device
-    #     :return:
-    #     """
-    #     if isinstance(self.api_object, BranchParent):
-    #         specs = self._build_rms_branch_connection_specs()
-    #     elif isinstance(self.api_object, InjectionParent):
-    #         specs = self._build_rms_injection_connection_specs()
-    #     else:
-    #         specs = list()
-    #
-    #     self._materialize_connection_specs(specs)
-    #
     def _compact_initial_layout(self) -> QtCore.QRectF | None:
         interface_items: list[ProtectedConnectionBlockItem] = [
             item for item in self.scene.items()

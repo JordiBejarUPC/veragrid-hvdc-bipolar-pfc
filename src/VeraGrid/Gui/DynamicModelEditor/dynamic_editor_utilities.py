@@ -22,8 +22,11 @@ def get_blocktype2template_builder_dict():
         BlockType.FAULT_EMT: emt_templates.FaultEmtTemplate,
         BlockType.SWITCH_EMT: emt_templates.SwitchEmtTemplate,
         BlockType.GROUNDING_LINK_EMT: emt_templates.GroundingLinkEmtTemplate,
-        BlockType.RLC_COMBO_EMT: emt_templates.ShuntRlcComboEmtTemplate,
         BlockType.INDUCTION_MOTOR_EMT: emt_templates.InductionMotorEmtTemplate,
+
+        BlockType.R_LOAD_EMT: emt_templates.ShuntRComboEmtTemplate,
+        BlockType.L_LOAD_EMT: emt_templates.ShuntLComboEmtTemplate,
+        BlockType.C_LOAD_EMT: emt_templates.ShuntCComboEmtTemplate,
 
         BlockType.VOLTAGE_SOURCE_EMT: emt_templates.VoltageSourceEmtTemplate,
         BlockType.CURRENT_SOURCE_EMT: emt_templates.CurrentSourceEmtTemplate,
