@@ -1336,9 +1336,6 @@ class PairedItem(QGraphicsPolygonItem):
         else:
             pass
 
-    def update_ports(self):
-        self._position_name_and_ports()
-
     def hoverEnterEvent(self, event):
         QApplication.setOverrideCursor(Qt.CursorShape.OpenHandCursor)
 
