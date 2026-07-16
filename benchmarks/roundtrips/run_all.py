@@ -18,6 +18,8 @@ def main() -> None:
         root / "matpower" / "run_matpower_roundtrip.py",
         root / "ucte" / "run_ucte_roundtrip.py",
         root / "cgmes" / "run_cgmes_roundtrip.py",
+        root / "pandapower" / "run_pandapower_roundtrip.py",
+        root / "pypowsybl" / "run_pypowsybl_roundtrip.py",
     ]
 
     for script_path in scripts:
