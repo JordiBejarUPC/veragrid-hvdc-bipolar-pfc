@@ -1677,8 +1677,8 @@ class RoundBaseArithmeticOpItem(QGraphicsEllipseItem):
     def recolour_mode(self):
         for label in self.input_labels:
             label.setDefaultTextColor(self.editor.colors_palet.BLOCK_TITLE)
-        self.setBrush(QBrush(self.editor.colors_palet.BLOCK_BORDER))
-        self.setPen(QPen(self.editor.colors_palet.BLOCK_FILL, 1))
+        self.setBrush(QBrush(self.editor.colors_palet.BLOCK_FILL))
+        self.setPen(QPen(self.editor.colors_palet.BLOCK_BORDER, 1))
 
     def recolour(self, use_custom_color: bool = False):
         if use_custom_color:
@@ -1869,8 +1869,8 @@ class RectBaseArithmeticOpItem(QGraphicsRectItem):
     def recolour_mode(self):
         for label in self.input_labels:
             label.setDefaultTextColor(self.editor.colors_palet.BLOCK_TITLE)
-        self.setBrush(QBrush(self.editor.colors_palet.BLOCK_BORDER))
-        self.setPen(QPen(self.editor.colors_palet.BLOCK_FILL, 1))
+        self.setBrush(QBrush(self.editor.colors_palet.BLOCK_FILL))
+        self.setPen(QPen(self.editor.colors_palet.BLOCK_BORDER, 1))
 
     def recolour(self, use_custom_color: bool = False):
         if use_custom_color:
