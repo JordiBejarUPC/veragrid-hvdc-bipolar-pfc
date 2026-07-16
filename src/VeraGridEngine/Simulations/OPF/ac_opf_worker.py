@@ -103,6 +103,12 @@ def run_nonlinear_opf(grid: MultiCircuit,
                                             logger=logger
                                             )
 
+        # The VSC current-definition equalities can become ill-conditioned when
+        # a converter is close to its hard current limit.  Keep a little more
+        # distance from the inequality boundary in that active set while keeping
+        # the historical fraction-to-boundary value for ordinary AC OPF cases.
+        xi = 0.995 if problem.nvsc else 0.99995
+
         # the solver changes the internal state of the problem
         ips_results = interior_point_solver(problem=problem,
                                             max_iter=opf_options.ips_iterations,
@@ -110,7 +116,8 @@ def run_nonlinear_opf(grid: MultiCircuit,
                                             pf_init=opf_options.ips_init_with_pf,
                                             trust=opf_options.ips_trust_radius,
                                             verbose=opf_options.verbose,
-                                            step_control=False)
+                                            step_control=False,
+                                            xi=xi)
 
         # once solved, we just gather the internal state
         island_res = problem.get_solution(ips_results=ips_results, verbose=opf_options.verbose, plot_error=plot_error)
