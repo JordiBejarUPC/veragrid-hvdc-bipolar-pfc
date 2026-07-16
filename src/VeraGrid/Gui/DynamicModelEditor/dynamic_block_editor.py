@@ -154,7 +154,6 @@ class EditorGraphicsDefaultsDark:
     BLOCK_BORDER_SELECTED: QColor = QColor("#cc6f2c")
     BLOCK_TITLE: QColor = QColor("#e1f7ff")
     WIRE_COLOR: QColor = QColor("#e1f7ff")
-    HANDLE_FILL: QColor = QColor("#36536b")
     BLOCK_FILL: QColor = QColor("#022633")
     PORT_LABEL_COLOR: QColor = QColor("#173042")
     WIRE_ELBOW_OFFSET: float = 36.0
@@ -178,7 +177,6 @@ class EditorGraphicsDefaultsLight:
     BLOCK_BORDER_SELECTED: QColor = QColor("#00bbff")
     BLOCK_TITLE: QColor = QColor("#03384f")
     WIRE_COLOR: QColor = QColor("#03384f")
-    HANDLE_FILL: QColor = QColor("#819ba7")
     BLOCK_FILL: QColor = QColor("#f5fdff")
     PORT_LABEL_COLOR: QColor = QColor("#173042")
     WIRE_ELBOW_OFFSET: float = 36.0
@@ -359,9 +357,11 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
     DynamicModelEditorGUI
     """
 
+    VALIDATION_HICHLIGHTED_BORDER = QColor("#b42318")
+    BLOCK_BORDER_SELECTED: QColor = QColor("#00bbff")
+
     dirtyStateChanged = Signal(bool)
     BLOCK_BORDER: QColor = QColor("#202124")
-    BLOCK_BORDER_SELECTED: QColor = QColor("#cc6f2c")
     BLOCK_TITLE: QColor = QColor("#173042")
     # Todo: to remove
     BLOCK_SHADOW: QColor = QColor(24, 42, 56, 45)
@@ -530,7 +530,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.has_unapplied_changes: bool = False
         self.dynamic_editor_entry: DynamicEditorEntry | None = None
         self._prepared_to_delete: bool = False
-        self.colors_palet: EditorGraphicsDefaultsDark | EditorGraphicsDefaultsLight | None = None
+        self.colors_palet: EditorGraphicsDefaultsDark()
         self.current_theme: str = current_theme
         self.set_colors_palet()
 
@@ -751,7 +751,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         """
         self._navigation_delegate = delegate
 
-    def _request_navigate_to_block(self, block: Block) -> None:
+    def request_navigate_to_block(self, block: Block) -> None:
         """
         Request navigation into a child block.
 
@@ -888,7 +888,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             return None
 
-    def _build_position_changed_callback(self, block_uid: int) -> BlockPositionChangedCallback:
+    def build_position_changed_callback(self, block_uid: int) -> BlockPositionChangedCallback:
         """
         Build the explicit callback object used by graphics items to report movement.
 
@@ -930,12 +930,12 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 api_object=self.api_object,
                 mode=self.mode,
                 name=item_name,
-                position_changed_callback=self._build_position_changed_callback(block_model.uid)
+                position_changed_callback=self.build_position_changed_callback(block_model.uid)
             )
 
             self.block_counters[blocktype] = count
             block_item.set_subsystem(block_model)
-            block_item.position_changed_callback = self._build_position_changed_callback(block_model.uid)
+            block_item.position_changed_callback = self.build_position_changed_callback(block_model.uid)
             block_item.build_item()
             self.main_block.add(block_model)
             self.scene.addItem(block_item)
@@ -976,7 +976,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 api_object=self.api_object,
                 mode=self.mode,
                 name=model.name,
-                position_changed_callback=self._build_position_changed_callback(model.uid)
+                position_changed_callback=self.build_position_changed_callback(model.uid)
             )
 
             item.setPos(QtCore.QPointF(x_pos, y_pos))
@@ -1030,11 +1030,11 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                                                                                       subsys=block_model,
                                                                                       block_type=block_type,
                                                                                       editor=self,
-                                                                                      position_changed_callback=self._build_position_changed_callback(
+                                                                                      position_changed_callback=self.build_position_changed_callback(
                                                                                           block_model.uid))
 
             self.block_counters[block_type] = count
-            RoundBaseArithmeticOpItem.position_changed_callback = self._build_position_changed_callback(block_model.uid)
+            RoundBaseArithmeticOpItem.position_changed_callback = self.build_position_changed_callback(block_model.uid)
             self.main_block.add(block_model)
             self.scene.addItem(round_base_op_item)
             round_base_op_item.setPos(QtCore.QPointF(x_pos, y_pos))
@@ -1052,12 +1052,13 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         elif block_model is not None and len(block_model.in_vars) > 3:
             rect_base_op_item: RectBaseArithmeticOpItem = RectBaseArithmeticOpItem(var_factory=self.var_factory,
                                                                                    subsys=block_model,
+                                                                                   block_type=block_type,
                                                                                    editor=self,
-                                                                                   position_changed_callback=self._build_position_changed_callback(
+                                                                                   position_changed_callback=self.build_position_changed_callback(
                                                                                        block_model.uid))
 
             self.block_counters[block_type] = count
-            RoundBaseArithmeticOpItem.position_changed_callback = self._build_position_changed_callback(block_model.uid)
+            RoundBaseArithmeticOpItem.position_changed_callback = self.build_position_changed_callback(block_model.uid)
             self.main_block.add(block_model)
             self.scene.addItem(rect_base_op_item)
             rect_base_op_item.setPos(QtCore.QPointF(x_pos, y_pos))
@@ -1420,7 +1421,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             api_object=self.api_object,
             mode=self.mode,
             name=item_name,
-            position_changed_callback=self._build_position_changed_callback(block_model.uid)
+            position_changed_callback=self.build_position_changed_callback(block_model.uid)
         )
 
         if block_model is None:
@@ -1433,7 +1434,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         set_jmarti_block_runtime_data(block_model, None)
         self.block_counters[BlockType.EMT_JMARTI_LINE] = count
         block_item.set_subsystem(block_model)
-        block_item.position_changed_callback = self._build_position_changed_callback(block_model.uid)
+        block_item.position_changed_callback = self.build_position_changed_callback(block_model.uid)
         block_item.build_item()
         block_item.setToolTip(self._build_jmarti_modal_tooltip(modal_config))
         self.main_block.add(block_model)
@@ -1489,7 +1490,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 api_object=self.api_object,
                 mode=self.mode,
                 name=block_model.name,
-                position_changed_callback=self._build_position_changed_callback(block_model.uid)
+                position_changed_callback=self.build_position_changed_callback(block_model.uid)
             )
 
             item.setPos(QtCore.QPointF(x_pos, y_pos))
@@ -1535,7 +1536,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             # The symbolic block has to be attached first so the graphics item can build its ports from it.
             self.block_counters[block_type] = count
             block_item.set_subsystem(block_model)
-            block_item.position_changed_callback = self._build_position_changed_callback(block_model.uid)
+            block_item.position_changed_callback = self.build_position_changed_callback(block_model.uid)
             block_item.build_item()
 
             # The editor block is the authoritative model container for later save/rebuild steps.
@@ -1698,7 +1699,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 api_object=self.api_object,
                 mode=self.mode,
                 name=item_name,
-                position_changed_callback=self._build_position_changed_callback(block_model.uid)
+                position_changed_callback=self.build_position_changed_callback(block_model.uid)
             )
 
             # The symbolic block has to be attached first so the graphics item can build its ports from it.
@@ -1774,7 +1775,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             item_name: str = f"{var.name}"
             block_item: ProtectedConnectionBlockItem = ProtectedConnectionBlockItem(editor=self,
                                                                                     var_factory=self.var_factory,
-                                                                                    name=item_name)
+                                                                                    name=item_name,
+                                                                                    mode=self.mode,
+                                                                                    api_object=self.api_object)
             block_model: Block = Block()
 
             if block_type == BlockType.INPUT_CONN:
@@ -1790,7 +1793,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 # The symbolic block has to be attached first so the graphics item can build its ports from it.
 
                 block_item.set_subsystem(block_model)
-                block_item.position_changed_callback = self._build_position_changed_callback(block_model.uid)
+                block_item.position_changed_callback = self.build_position_changed_callback(block_model.uid)
                 block_item.build_item()
 
                 # The editor block is the authoritative model container for later save/rebuild steps.
@@ -1837,7 +1840,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             api_object=self.api_object,
             mode=self.mode,
             name=item_name,
-            position_changed_callback=self._build_position_changed_callback(block_model.uid)
+            position_changed_callback=self.build_position_changed_callback(block_model.uid)
         )
 
         if item_name:
@@ -1944,7 +1947,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             api_object=self.api_object,
             mode=self.mode,
             name=item_name,
-            position_changed_callback=self._build_position_changed_callback(block_model.uid)
+            position_changed_callback=self.build_position_changed_callback(block_model.uid)
         )
 
         self.set_modal_template_metadata(block_model, kind="shunt_component_emt",
@@ -1960,7 +1963,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         self.block_counters[block_type] = count
         block_item.set_subsystem(block_model)
-        block_item.position_changed_callback = self._build_position_changed_callback(block_model.uid)
+        block_item.position_changed_callback = self.build_position_changed_callback(block_model.uid)
         block_item.build_item()
         self.main_block.add(block_model)
         self.scene.addItem(block_item)
@@ -2574,7 +2577,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                              api_object=self.api_object,
                              mode=self.mode,
                              name=blk_in.name,
-                             position_changed_callback=self._build_position_changed_callback(blk_in.uid)
+                             position_changed_callback=self.build_position_changed_callback(blk_in.uid)
                              )
         item_in.setPos(QtCore.QPointF(x_pos - 50.0, y_pos))
         self.scene.addItem(item_in)
@@ -2592,7 +2595,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                               api_object=self.api_object,
                               mode=self.mode,
                               name=blk_out.name,
-                              position_changed_callback=self._build_position_changed_callback(blk_out.uid)
+                              position_changed_callback=self.build_position_changed_callback(blk_out.uid)
                               )
         item_out.setPos(QtCore.QPointF(x_pos + 50.0, y_pos))
         self.scene.addItem(item_out)
@@ -5419,7 +5422,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         """
         if isinstance(item, (GenericBlockItem, BlockItem)):
             if item.subsys is not None:
-                self._request_navigate_to_block(item.subsys)
+                self.request_navigate_to_block(item.subsys)
 
     def get_scene_item_by_block_uid(self,
                                     block_uid: int) -> BlockItem | GenericBlockItem | RoundBaseArithmeticOpItem | RectBaseArithmeticOpItem | None:
@@ -6739,9 +6742,11 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                     block_item: ProtectedConnectionBlockItem = ProtectedConnectionBlockItem(editor=self,
                                                                                             var_factory=self.var_factory,
                                                                                             name=node.name,
+                                                                                            mode=self.mode,
+                                                                                            api_object=self.api_object
                                                                                             )
                     block_item.set_subsystem(block_model)
-                    block_item.position_changed_callback = self._build_position_changed_callback(block_model.uid)
+                    block_item.position_changed_callback = self.build_position_changed_callback(block_model.uid)
                     block_item.build_item()
                     block_item.recolour()
 
@@ -6767,7 +6772,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                                           api_object=self.api_object,
                                           mode=self.mode,
                                           name=block_model.name,
-                                          position_changed_callback=self._build_position_changed_callback(
+                                          position_changed_callback=self.build_position_changed_callback(
                                               block_model.uid)
                                           )
                         item.recolour()
@@ -6784,7 +6789,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                             api_object=self.api_object,
                             mode=self.mode,
                             name=block_model.name,
-                            position_changed_callback=self._build_position_changed_callback(block_model.uid)
+                            position_changed_callback=self.build_position_changed_callback(block_model.uid)
                         )
                         item.recolour()
                     self.scene.addItem(item)
