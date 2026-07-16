@@ -1189,7 +1189,7 @@ class GenericBlockItem(QGraphicsRectItem):
             self.input_labels = [self.create_port_label_item() for _ in range(n_inputs)]
             self.output_labels = [self.create_port_label_item() for _ in range(n_outputs)]
             self.refresh_port_metadata()
-            self.resize_handle = ResizeHandle(self)
+            self.resize_handle = ResizeHandle(self, self.editor)
             self.resize_to_content()
         else:
             pass

@@ -34,6 +34,7 @@ def _build_editor() -> DynamicBlockEditorGUI:
         var_factory=VarFactory(),
         current_block=Block(),
         api_object=_ApiStub(),
+        current_theme="Light",
         circuit=MultiCircuit(),
         mode=DynamicSimulationMode.EMT,
         templates_list=list(),
