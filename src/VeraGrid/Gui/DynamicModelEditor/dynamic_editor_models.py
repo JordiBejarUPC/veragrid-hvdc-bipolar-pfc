@@ -634,6 +634,12 @@ class WrappableBlockTableModel(WrappableTableModel):
                 return row.kind.value
             elif col == 1:
                 if self.mode == DynamicTableModelMode.EQUATIONS:
+                    if role == QtCore.Qt.ItemDataRole.DisplayRole and isinstance(row.value, Expr):
+                        try:
+                            from VeraGridEngine.Utils.Symbolic.latex_printer import symbolic_to_latex
+                            return symbolic_to_latex(row.value)
+                        except Exception:
+                            return row.display_value
                     return row.display_value
                 else:
                     return row.name

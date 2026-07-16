@@ -12,7 +12,7 @@ import copy
 from typing import List, Dict, Optional, Any
 from PySide6 import QtWidgets, QtGui, QtCore
 from PySide6.QtWidgets import (QGraphicsItem, QMenu, QDialog, QVBoxLayout, QDialogButtonBox, QLineEdit)
-from PySide6.QtGui import (QPen, QBrush, QAction, QDropEvent, QDragEnterEvent, QDragMoveEvent, QColor)
+from PySide6.QtGui import (QAction, QDropEvent, QDragEnterEvent, QDragMoveEvent, QColor)
 from PySide6.QtCore import Qt, QPointF, Signal
 
 from VeraGridEngine.Devices.Parents.branch_parent import BranchParent
@@ -102,7 +102,7 @@ from VeraGridEngine.Simulations.EMT.JMARTI_Sim.jmarti_runtime import set_jmarti_
 from VeraGrid.Gui.DynamicModelEditor.dyn_template_editor_dialogue import DynTemplatesEditorDialog
 from VeraGridEngine.enumerations import BlockType
 from VeraGridEngine.Devices.Diagrams.block_diagram import BlockDiagram
-from VeraGridEngine.Utils.Symbolic.symbolic import Var, Expr, BinOp, UnOp
+from VeraGridEngine.Utils.Symbolic.symbolic import Var, Expr
 from dataclasses import dataclass
 
 
@@ -2504,7 +2504,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         if isinstance(payload, BlockType) and payload in self.blocktype2templatebuilder:
             return self.create_item_from_blocktype(payload, x_pos, y_pos)
 
-        # this ones cannot be included avobe because they are represented by a different item in the scene
+        # this ones cannot be included above because they are represented by a different item in the scene
         elif isinstance(payload, BlockType) and payload == BlockType.FROM_GOTO:
             items = self.create_signal_pair_item(x_pos=x_pos, y_pos=y_pos)
             return items[0] if items else None

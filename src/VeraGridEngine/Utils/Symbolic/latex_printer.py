@@ -147,7 +147,8 @@ def _print_var(expr: Var) -> str:
     name = expr.name
     if "_" in name:
         base, sub = name.split("_", 1)
-        return f"{base}_{{{sub}}}"
+        escaped_sub = sub.replace("_", r"\_")
+        return f"{base}_{{{escaped_sub}}}"
     return name
 
 
