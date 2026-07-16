@@ -2,7 +2,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
-from typing import Union, List, Dict
+from typing import Union, List, Dict, Tuple, Callable
 from dataclasses import dataclass
 import numba as nb
 import numpy as np
@@ -13,7 +13,7 @@ import timeit
 from matplotlib import pyplot as plt
 from VeraGridEngine.basic_structures import Vec, CxVec
 from VeraGridEngine.Utils.Sparse.csc import pack_3_by_4, diags
-from VeraGridEngine.Utils.NumericalMethods.sparse_solve import get_linear_solver
+from VeraGridEngine.Utils.NumericalMethods.sparse_solve import get_linear_solver, get_available_sparse_solvers
 from VeraGridEngine.enumerations import SparseSolver
 
 
@@ -125,6 +125,107 @@ def calc_o_cond(f: float, f_prev: float) -> float:
     :return: Variation of the objective function
     """
     return abs(f - f_prev) / (1.0 + abs(f_prev))
+
+
+def get_ips_linear_solver_candidates() -> List[Tuple[SparseSolver, Callable[[csc, Vec], Vec]]]:
+    """
+    Build the ordered list of sparse linear solvers that IPS can try for one KKT system.
+
+    :return: Ordered ``(solver_type, linear_solver)`` pairs, from preferred to fallback.
+    """
+    available_solver_types: List[SparseSolver] = get_available_sparse_solvers()
+    candidate_order: List[SparseSolver] = list()
+    candidate_order.append(SparseSolver.Pardiso)
+    candidate_order.append(SparseSolver.SuperLU)
+    candidate_order.append(SparseSolver.UMFPACK)
+    candidate_order.append(SparseSolver.KLU)
+
+    linear_solver_candidates: List[Tuple[SparseSolver, Callable[[csc, Vec], Vec]]] = list()
+
+    # Only keep backends that are actually available in this runtime.
+    for solver_type in candidate_order:
+        if solver_type in available_solver_types:
+            linear_solver: Callable[[csc, Vec], Vec] = get_linear_solver(solver_type)
+            linear_solver_candidates.append((solver_type, linear_solver))
+        else:
+            pass
+
+    # Fall back to the scipy sparse solve path if no preferred backend is available.
+    if len(linear_solver_candidates) == 0:
+        fallback_solver_type: SparseSolver = SparseSolver.UMFPACK
+        fallback_solver: Callable[[csc, Vec], Vec] = get_linear_solver(fallback_solver_type)
+        linear_solver_candidates.append((fallback_solver_type, fallback_solver))
+    else:
+        pass
+
+    return linear_solver_candidates
+
+
+def solve_kkt_with_fallback(jac: csc,
+                            r: Vec,
+                            linear_solver_candidates: List[Tuple[SparseSolver, Callable[[csc, Vec], Vec]]],
+                            max_stepsize: float,
+                            residual_tol: float = 1e-6) -> Tuple[Union[Vec, None], Union[SparseSolver, None], float]:
+    """
+    Solve the KKT system while rejecting numerically broken linear solves early.
+
+    :param jac: KKT Jacobian matrix.
+    :param r: Right-hand side residual vector.
+    :param linear_solver_candidates: Ordered sparse solver backends to try.
+    :param max_stepsize: Maximum accepted Newton direction norm.
+    :param residual_tol: Maximum accepted relative linear residual.
+    :return: ``(solution, solver_type, residual_ratio)``. ``solution`` and ``solver_type`` are ``None`` if all attempts fail.
+    """
+    rhs_norm: float = np.linalg.norm(r, np.inf)
+
+    # Try each sparse backend in order and accept the first numerically sane Newton direction.
+    for solver_type, linear_solver in linear_solver_candidates:
+        solution: Union[Vec, None] = None
+        solution_ok: bool = False
+
+        # First, attempt the sparse linear solve itself.
+        try:
+            solution = np.asarray(linear_solver(jac, r)).reshape(-1)
+            solution_ok = True
+        except (RuntimeError, ValueError, TypeError, ArithmeticError):
+            solution_ok = False
+
+        # Second, reject NaN or Inf directions before they can contaminate the barrier state.
+        if solution_ok and solution is not None:
+            if np.all(np.isfinite(solution)):
+                solution_ok = True
+            else:
+                solution_ok = False
+        else:
+            solution_ok = False
+
+        # Third, reject directions that are so large they are almost certainly factorization garbage.
+        if solution_ok and solution is not None:
+            step_norm: float = np.linalg.norm(solution)
+            if step_norm > max_stepsize:
+                solution_ok = False
+            else:
+                solution_ok = True
+        else:
+            solution_ok = False
+
+        # Finally, verify that the accepted direction actually solves the linear system accurately enough.
+        if solution_ok and solution is not None:
+            residual: Vec = jac @ solution - r
+            residual_ratio: float = np.linalg.norm(residual, np.inf) / (1.0 + rhs_norm)
+            if np.isfinite(residual_ratio) and residual_ratio <= residual_tol:
+                solution_ok = True
+            else:
+                solution_ok = False
+        else:
+            residual_ratio = np.inf
+
+        if solution_ok and solution is not None:
+            return solution, solver_type, residual_ratio
+        else:
+            pass
+
+    return None, None, np.inf
 
 
 @dataclass
@@ -275,7 +376,7 @@ def interior_point_solver(problem,
     :return: IpsSolution
     """
 
-    linear_solver = get_linear_solver(SparseSolver.Pardiso)
+    linear_solver_candidates = get_ips_linear_solver_candidates()
 
     t_start = timeit.default_timer()
 
@@ -360,7 +461,19 @@ def interior_point_solver(problem,
         r = - np.r_[n, G]
 
         # Find the reduced problem residuals and split them
-        dx, dlam = split(linear_solver(jac, r), problem.NV)
+        dxdlam, linear_solver_used, linear_residual = solve_kkt_with_fallback(
+            jac=jac,
+            r=r,
+            linear_solver_candidates=linear_solver_candidates,
+            max_stepsize=max_stepsize,
+        )
+        if dxdlam is None:
+            break
+
+        if verbose > 2 and linear_solver_used != linear_solver_candidates[0][0]:
+            print(f"\tFallback linear solver: {linear_solver_used.value}, residual={linear_residual:.3e}")
+
+        dx, dlam = split(dxdlam, problem.NV)
 
         # Abort early on broken or runaway Newton directions instead of updating into NaNs.
         if not np.all(np.isfinite(dx)) or not np.all(np.isfinite(dlam)):
