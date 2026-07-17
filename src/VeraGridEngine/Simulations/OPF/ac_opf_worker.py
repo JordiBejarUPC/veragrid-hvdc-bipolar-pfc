@@ -15,6 +15,7 @@ from VeraGridEngine.Simulations.OPF.opf_options import OptimalPowerFlowOptions
 from VeraGridEngine.Simulations.OPF.Formulations.ac_opf_problem import NonLinearOptimalPfProblem, NonlinearOPFResults
 from VeraGridEngine.Simulations.OPF.NumericalMethods.newton_raphson_ips_fx import interior_point_solver
 from VeraGridEngine.basic_structures import CxVec, IntVec, Logger
+from VeraGridEngine.enumerations import AcOpfMode
 
 
 def remap_original_bus_indices(n_bus, original_bus_idx: Sequence[int]) -> Tuple[IntVec, IntVec]:
@@ -67,10 +68,13 @@ def run_nonlinear_opf(grid: MultiCircuit,
         Sbus_pf = opf_options.acopf_S0
         voltage_pf = opf_options.acopf_v0
     else:
-        # pick the default values
+        # Fall back to the static network data when no PF seed is requested or available.
         Sbus_pf = nc.bus_data.installed_power
         voltage_pf = nc.bus_data.Vbus
-        logger.add_error("Initialized with PF, but no PF values were passed")
+        if opf_options.ips_init_with_pf:
+            logger.add_error("Initialized with PF, but no PF values were passed")
+        else:
+            pass
 
     # split into islands, but considering the HVDC lines as actual links
     islands = nc.split_into_islands(ignore_single_node_islands=True,
@@ -108,6 +112,7 @@ def run_nonlinear_opf(grid: MultiCircuit,
         # distance from the inequality boundary in that active set while keeping
         # the historical fraction-to-boundary value for ordinary AC OPF cases.
         xi = 0.995 if problem.nvsc else 0.99995
+        use_step_control = opf_options.acopf_mode == AcOpfMode.ACOPFstd
 
         # the solver changes the internal state of the problem
         ips_results = interior_point_solver(problem=problem,
@@ -116,7 +121,7 @@ def run_nonlinear_opf(grid: MultiCircuit,
                                             pf_init=opf_options.ips_init_with_pf,
                                             trust=opf_options.ips_trust_radius,
                                             verbose=opf_options.verbose,
-                                            step_control=False,
+                                            step_control=use_step_control,
                                             xi=xi)
 
         # once solved, we just gather the internal state

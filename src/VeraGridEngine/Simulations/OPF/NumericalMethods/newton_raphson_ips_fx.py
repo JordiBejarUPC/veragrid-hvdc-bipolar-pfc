@@ -394,6 +394,8 @@ def interior_point_solver(problem,
     iter_counter = 0
     x = problem.x0
     gamma = 1.0
+    f_prev: float
+    cost_cond: float
     nabla = 0.05
     rho_lower = 1.0 - nabla
     rho_upper = 1.0 + nabla
@@ -433,8 +435,13 @@ def interior_point_solver(problem,
     feas_cond = calc_feas_cond(g=G, h=H, x=x, z=z)
     gradcond = calc_grad_cond(lx=lx, lam=lam, mu=mu)
     comp_cond = calc_c_cond(mu=mu, z=z, x=x)
+    f_prev = f
+    if step_control:
+        cost_cond = 0.0
+    else:
+        cost_cond = 0.0
     error = np.max([feas_cond, gradcond, comp_cond, gamma])
-    converged = feas_cond < tol and gradcond < tol and gamma < tol
+    converged = feas_cond < tol and gradcond < tol and cost_cond < tol and gamma < tol
     max_displ = 0
     error_evolution = np.zeros(max_iter + 1)
     feas_cond_evolution = np.zeros(max_iter + 1)
@@ -547,11 +554,17 @@ def interior_point_solver(problem,
         feas_cond = calc_feas_cond(g=G, h=H, x=x, z=z)
         gradcond = calc_grad_cond(lx=lx, lam=lam, mu=mu)
         comp_cond = calc_c_cond(mu=mu, z=z, x=x)
+        # Only the damped path uses the MATPOWER-style objective stabilization gate.
+        # The historical undamped path must keep its previous convergence behavior.
+        if step_control:
+            cost_cond = abs(f - f_prev) / (1.0 + abs(f_prev))
+        else:
+            cost_cond = 0.0
         error = np.max([feas_cond, gradcond, comp_cond, gamma])
         max_displ = np.max(np.r_[dx, dlam, dz, dmu])
         z_inv = diags(1.0 / z)
         mu_diag = diags(mu)
-        converged = feas_cond < tol and gradcond < tol and gamma < tol
+        converged = feas_cond < tol and gradcond < tol and cost_cond < tol and gamma < tol
 
         if verbose > 1:
             print(f'Iteration: {iter_counter}', "-" * 80)
@@ -565,6 +578,7 @@ def interior_point_solver(problem,
                 print("INEQ:\n", ineq_df)
             print("\tGamma:", gamma)
             print("\tComp cond:", comp_cond)
+            print("\tCost cond:", cost_cond)
             print("\tErr:", error)
             print("\tMax Displacement:", max_displ)
 
@@ -574,6 +588,7 @@ def interior_point_solver(problem,
         # record evolution
         feas_cond_evolution[iter_counter] = feas_cond
         error_evolution[iter_counter] = error
+        f_prev = f
 
     t_end = timeit.default_timer()
 

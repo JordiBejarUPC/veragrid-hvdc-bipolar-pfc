@@ -5,15 +5,20 @@ import math
 import timeit
 from pathlib import Path
 from typing import List, Tuple
+import numpy as np
 
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.IO.file_open import FileOpen
-from VeraGridEngine.Simulations.OPF.Formulations.ac_opf_problem import NonlinearOPFResults
+from VeraGridEngine.Simulations.OPF.Formulations.ac_opf_problem import NonlinearOPFResults, NonLinearOptimalPfProblem
 from VeraGridEngine.Simulations.OPF.ac_opf_worker import run_nonlinear_opf
 from VeraGridEngine.Simulations.OPF.opf_options import OptimalPowerFlowOptions
+from VeraGridEngine.Simulations.OPF.NumericalMethods.newton_raphson_ips_fx import interior_point_solver
 from VeraGridEngine.Simulations.PowerFlow.power_flow_options import PowerFlowOptions
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowDriver
+from VeraGridEngine.Compilers.circuit_to_data import compile_numerical_circuit_at
+from VeraGridEngine.basic_structures import IntVec, Logger
 from VeraGridEngine.enumerations import AcOpfMode, SolverType
+from VeraGridEngine import ShuntControlMode
 
 
 class BaselineEntry:
@@ -105,6 +110,9 @@ class BenchmarkConfig:
         "ips_tolerance",
         "ips_iterations",
         "verbose",
+        "benchmark_root",
+        "matpower_folder",
+        "baseline_path",
         "output_path",
     )
 
@@ -112,6 +120,8 @@ class BenchmarkConfig:
                  ips_tolerance: float,
                  ips_iterations: int,
                  verbose: int,
+                 benchmark_root: Path,
+                 baseline_path: Path,
                  output_path: Path) -> None:
         """
         Build one immutable-like benchmark configuration object.
@@ -119,11 +129,15 @@ class BenchmarkConfig:
         :param ips_tolerance: IPS convergence tolerance.
         :param ips_iterations: Maximum IPS iterations.
         :param verbose: VeraGrid ACOPF verbosity.
+        :param benchmark_root: Root directory of the benchmark archive.
+        :param baseline_path: Path to the benchmark baseline markdown.
         :param output_path: CSV file destination path.
         """
         self.ips_tolerance: float = ips_tolerance
         self.ips_iterations: int = ips_iterations
         self.verbose: int = verbose
+        self.benchmark_root: Path = benchmark_root
+        self.baseline_path: Path = baseline_path
         self.output_path: Path = output_path
 
 
@@ -254,25 +268,25 @@ def build_baseline_lookup(entries: List[BaselineEntry]) -> dict[str, BaselineEnt
     return lookup
 
 
-def collect_case_files(pglib_root: Path) -> List[Path]:
+def collect_case_files(benchmark_root: Path, matpower_folder: Path) -> List[Path]:
     """
     Collect all benchmark case files that should be run by VeraGrid.
 
-    :param pglib_root: Root directory of the PGLIB OPF benchmark archive.
+    :param benchmark_root: Root directory of the PGLIB OPF benchmark archive.
+    :param matpower_folder: Relative folder under ``benchmark_root`` that contains the case files.
     :return: Sorted list of ``.matpower`` case files.
     """
     case_files: List[Path] = list()
+    case_root: Path = benchmark_root / matpower_folder
 
-    for case_path in sorted(pglib_root.rglob("*.matpower")):
-        # The baseline markdown only reports the top-level TYP set plus the API and SAD subsets.
-        # Restricting the file list to these directories keeps the VeraGrid run aligned with PGLIB.
-        if case_path.parent == pglib_root:
+    # Use "." for the top-level base set, which must not recurse into ``api`` or ``sad``.
+    if matpower_folder == Path("."):
+        for case_path in sorted(case_root.glob("*.matpower")):
             case_files.append(case_path)
-        else:
-            if case_path.parent.name == "api" or case_path.parent.name == "sad":
-                case_files.append(case_path)
-            else:
-                pass
+    else:
+        # For any explicit subfolder, recurse under that folder so custom benchmark folders work too.
+        for case_path in sorted(case_root.rglob("*.matpower")):
+            case_files.append(case_path)
 
     return case_files
 
@@ -301,14 +315,24 @@ def detect_case_group(case_path: Path, pglib_root: Path) -> str:
     return group_name
 
 
-def compute_total_ac_objective(results: NonlinearOPFResults) -> float:
+def compute_total_ac_objective(grid: MultiCircuit, results: NonlinearOPFResults) -> float:
     """
-    Compute the total AC objective from the nonlinear OPF result payload.
+    Compute the total AC generator objective in the same units used by the ACOPF formulation.
 
+    :param grid: Solved benchmark grid.
     :param results: VeraGrid nonlinear ACOPF results.
     :return: Total active-power generation cost.
     """
-    total_cost: float = float(results.Pcost.sum())
+    total_cost: float = 0.0
+    generators: List = grid.get_generators()
+
+    # The solver stores ``Pg`` in per-unit on ``grid.Sbase``, while the economic coefficients are
+    # defined on MW. Rebuild the benchmark objective from the solved dispatch in MW so the CSV uses
+    # the same units as the internal ACOPF objective and as the PGLIB baseline tables.
+    for index, generator in enumerate(generators):
+        pg_mw: float = float(results.Pg[index]) * float(grid.Sbase)
+        total_cost += float(generator.Cost0) + float(generator.Cost) * pg_mw + float(generator.Cost2) * (pg_mw * pg_mw)
+
     return total_cost
 
 
@@ -333,7 +357,7 @@ def compute_objective_gap_percent(veragrid_ac_objective: float, baseline_ac_obje
 def build_opf_options_with_pf_init(grid: MultiCircuit,
                                    ips_tolerance: float,
                                    ips_iterations: int,
-                                   verbose: int) -> Tuple[OptimalPowerFlowOptions, bool]:
+                                   verbose: int) -> Tuple[OptimalPowerFlowOptions, bool, bool]:
     """
     Build ACOPF options and, when possible, seed them with a converged power-flow point.
 
@@ -341,7 +365,7 @@ def build_opf_options_with_pf_init(grid: MultiCircuit,
     :param ips_tolerance: IPS convergence tolerance.
     :param ips_iterations: Maximum IPS iterations.
     :param verbose: Solver verbosity level.
-    :return: ``(opf_options, pf_init_used)``.
+    :return: ``(opf_options, pf_init_used, pf_converged)``.
     """
     # First solve a plain PF because ACOPF is substantially more stable when it starts from a
     # physically consistent voltage profile instead of the flat or parser-provided default point.
@@ -358,18 +382,127 @@ def build_opf_options_with_pf_init(grid: MultiCircuit,
     )
 
     pf_init_used: bool = False
+    pf_converged: bool = False
 
-    # A converged PF point is the cheapest robust seed for the nonlinear OPF.
-    if pf_driver.results is not None and pf_driver.results.converged:
+    # Even a non-converged PF iterate is usually a much better ACOPF seed than the generic
+    # midpoint initialization on the large PGLIB cases. Keep the benchmark-specific warm start
+    # permissive here so hard cases such as the 10k GOC instance can still leverage that state.
+    if pf_driver.results is not None:
         opf_options.ips_init_with_pf = True
         opf_options.acopf_v0 = pf_driver.results.voltage
         opf_options.acopf_S0 = pf_driver.results.Sbus
         pf_init_used = True
+        pf_converged = bool(pf_driver.results.converged)
     else:
         opf_options.ips_init_with_pf = False
         pf_init_used = False
+        pf_converged = False
 
-    return opf_options, pf_init_used
+    return opf_options, pf_init_used, pf_converged
+
+
+def remap_original_bus_indices(n_bus: int, original_bus_idx: IntVec) -> Tuple[IntVec, IntVec]:
+    """
+    Build island/original bus-index maps for one benchmark island.
+
+    :param n_bus: Number of buses in the original compiled circuit.
+    :param original_bus_idx: Original bus indices referenced by the island.
+    :return: ``(original_indices, island_indices)``.
+    """
+    original_idx: IntVec = np.arange(n_bus, dtype=int)
+    mapping: dict[int, int] = dict()
+    island_indices: List[int] = list()
+    original_indices: List[int] = list()
+
+    for index, original in enumerate(original_idx):
+        mapping[int(original)] = index
+
+    for array_index, original in enumerate(original_bus_idx):
+        mapped_index: int | None = mapping.get(int(original), None)
+        if mapped_index is not None:
+            island_indices.append(mapped_index)
+            original_indices.append(array_index)
+        else:
+            pass
+
+    return np.array(original_indices, dtype=int), np.array(island_indices, dtype=int)
+
+
+def run_nonlinear_opf_with_pf_seed_and_default_multiplier_init(
+        grid: MultiCircuit,
+        opf_options: OptimalPowerFlowOptions) -> NonlinearOPFResults:
+    """
+    Run benchmark ACOPF using the PF state for ``x0`` while skipping the PF-specific multiplier bootstrap.
+
+    :param grid: Benchmark grid.
+    :param opf_options: Configured ACOPF options carrying the PF state seed.
+    :return: Nonlinear ACOPF results.
+    """
+    logger: Logger = Logger()
+    nc = compile_numerical_circuit_at(circuit=grid, t_idx=None, logger=logger)
+    Sbus_pf = opf_options.acopf_S0 if opf_options.acopf_S0 is not None else nc.bus_data.installed_power
+    voltage_pf = opf_options.acopf_v0 if opf_options.acopf_v0 is not None else nc.bus_data.Vbus
+    islands = nc.split_into_islands(ignore_single_node_islands=True, consider_hvdc_as_island_links=True)
+
+    results: NonlinearOPFResults = NonlinearOPFResults()
+    results.initialize(nbus=nc.nbus,
+                       nbr=nc.nbr,
+                       nsh=nc.nshunt,
+                       ng=nc.ngen,
+                       nil=len(nc.passive_branch_data.get_monitor_enabled_indices()),
+                       nhvdc=nc.nhvdc,
+                       ncap=0,
+                       nvsc=nc.vsc_data.nelm)
+
+    for island_index, island in enumerate(islands):
+        problem: NonLinearOptimalPfProblem = NonLinearOptimalPfProblem(
+            nc=island,
+            options=opf_options,
+            pf_init=True,
+            Sbus_pf=Sbus_pf[island.bus_data.original_idx],
+            voltage_pf=voltage_pf[island.bus_data.original_idx],
+            optimize_nodal_capacity=False,
+            nodal_capacity_sign=1.0,
+            capacity_nodes_idx=None,
+            logger=logger,
+        )
+
+        xi: float = 0.995 if problem.nvsc else 0.99995
+        use_step_control: bool = opf_options.acopf_mode == AcOpfMode.ACOPFstd
+        ips_results = interior_point_solver(problem=problem,
+                                            max_iter=opf_options.ips_iterations,
+                                            tol=opf_options.ips_tolerance,
+                                            pf_init=False,
+                                            trust=opf_options.ips_trust_radius,
+                                            verbose=opf_options.verbose,
+                                            step_control=use_step_control,
+                                            xi=xi)
+
+        island_res: NonlinearOPFResults = problem.get_solution(ips_results=ips_results,
+                                                               verbose=opf_options.verbose,
+                                                               plot_error=False)
+
+        results.merge(other=island_res,
+                      bus_idx=island.bus_data.original_idx,
+                      br_idx=island.passive_branch_data.original_idx,
+                      il_idx=island.passive_branch_data.get_monitor_enabled_indices(),
+                      gen_idx=island.generator_data.original_idx,
+                      hvdc_idx=island.hvdc_data.original_idx,
+                      ncap_idx=np.zeros(0, dtype=int),
+                      contshunt_idx=np.where(island.shunt_data.control_mode_int == ShuntControlMode.Continuous.idx())[0],
+                      acopf_mode=opf_options.acopf_mode,
+                      vsc_idx=island.vsc_data.original_idx)
+
+        if island_index > 0:
+            results.error = max(results.error, island_res.error)
+            results.iterations = max(results.iterations, island_res.iterations)
+            results.converged = results.converged and island_res.converged
+        else:
+            results.error = island_res.error
+            results.iterations = island_res.iterations
+            results.converged = island_res.converged
+
+    return results
 
 
 def benchmark_case(case_path: Path,
@@ -419,7 +552,7 @@ def benchmark_case(case_path: Path,
             row.nodes = grid.get_bus_number()
             row.edges = grid.get_branch_number(add_vsc=False, add_hvdc=False, add_switch=True)
 
-            opf_options, pf_init_used = build_opf_options_with_pf_init(
+            opf_options, pf_init_used, pf_converged = build_opf_options_with_pf_init(
                 grid=grid,
                 ips_tolerance=ips_tolerance,
                 ips_iterations=ips_iterations,
@@ -429,9 +562,15 @@ def benchmark_case(case_path: Path,
 
             # Run ACOPF with the same case file used by the baseline and extract the quantities that
             # matter for the comparison: objective value, convergence state, iterations and error.
-            results: NonlinearOPFResults = run_nonlinear_opf(grid=grid, opf_options=opf_options)
+            if pf_init_used and not pf_converged:
+                results: NonlinearOPFResults = run_nonlinear_opf_with_pf_seed_and_default_multiplier_init(
+                    grid=grid,
+                    opf_options=opf_options,
+                )
+            else:
+                results = run_nonlinear_opf(grid=grid, opf_options=opf_options)
 
-            row.veragrid_ac_objective = compute_total_ac_objective(results=results)
+            row.veragrid_ac_objective = compute_total_ac_objective(grid=grid, results=results)
             row.objective_gap_percent = compute_objective_gap_percent(
                 veragrid_ac_objective=row.veragrid_ac_objective,
                 baseline_ac_objective=row.baseline_ac_objective,
@@ -524,43 +663,55 @@ def print_summary(rows: List[BenchmarkRow]) -> None:
     print(f"Failed or not converged: {failed_cases}")
 
 
-def build_benchmark_config(repo_root: Path) -> BenchmarkConfig:
+def build_benchmark_config(matpower_folder: Path) -> BenchmarkConfig:
     """
     Build the explicit configuration used by this standalone benchmark script.
 
-    :param repo_root: Repository root path.
+    :param matpower_folder: Relative folder under ``pglib-opf`` that contains the ``.matpower`` files.
     :return: Benchmark configuration.
     """
-    # Keep configuration centralized so the script stays importable and does not depend on CLI args.
-    output_path: Path = repo_root / "benchmarks" / "nonlinear_opf" / "pglib_opf_veragrid_acopf_benchmark.csv"
+    script_dir: Path = Path(__file__).resolve().parent
+
+    benchmark_root: Path = script_dir / "pglib-opf"
+    baseline_path: Path = benchmark_root / "BASELINE.md"
+    output_suffix: str = str(matpower_folder).replace("/", "_").replace("\\", "_").replace(".", "base")
+    output_path: Path = script_dir / f"pglib_opf_veragrid_acopf_benchmark_{output_suffix}.csv"
+
     config: BenchmarkConfig = BenchmarkConfig(
         ips_tolerance=1e-6,
         ips_iterations=300,
         verbose=0,
+        benchmark_root=benchmark_root,
+        baseline_path=baseline_path,
         output_path=output_path,
     )
     return config
 
 
-def main() -> None:
+def main(matpower_folder: str = ".") -> None:
     """
     Execute the full PGLIB ACOPF benchmark run and write the CSV comparison table.
 
+    :param matpower_folder: Relative folder under ``pglib-opf`` that contains the case files.
+                            Use ``"."`` for base, ``"api"`` for API, or ``"sad"`` for SAD.
     :return: ``None``.
     """
-    script_path: Path = Path(__file__).resolve()
-    repo_root: Path = script_path.parents[2]
-    config: BenchmarkConfig = build_benchmark_config(repo_root=repo_root)
-    benchmark_root: Path = script_path.parent / "pglib-opf"
-    baseline_path: Path = benchmark_root / "BASELINE.md"
+    matpower_folder_path: Path = Path(matpower_folder)
+    config: BenchmarkConfig = build_benchmark_config(matpower_folder=matpower_folder_path)
+    benchmark_root: Path = config.benchmark_root
+    baseline_path: Path = config.baseline_path
     output_path: Path = config.output_path.resolve()
 
     baseline_entries: List[BaselineEntry] = parse_baseline_file(baseline_path=baseline_path)
     baseline_lookup: dict[str, BaselineEntry] = build_baseline_lookup(entries=baseline_entries)
-    case_files: List[Path] = collect_case_files(pglib_root=benchmark_root)
+    case_files: List[Path] = collect_case_files(
+        benchmark_root=benchmark_root,
+        matpower_folder=matpower_folder_path,
+    )
     benchmark_rows: List[BenchmarkRow] = list()
 
-    # Run the same file set used by the PGLIB baseline tables: TYP, API and SAD.
+    # Print the selected relative folder so the run log states exactly which benchmark set was used.
+    print(f"Matpower folder: {matpower_folder_path}")
     for case_path in case_files:
         row: BenchmarkRow = benchmark_case(
             case_path=case_path,
