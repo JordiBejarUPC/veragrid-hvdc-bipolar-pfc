@@ -27,7 +27,7 @@ from VeraGrid.Gui.gui_functions import ComboDelegate, TextDelegate
 from VeraGrid.Gui.wrappable_table_model import WrappableTableModel
 from VeraGridEngine.enumerations import DeviceType, DynamicSimulationMode, DynamicTableModelMode, \
     ParamPowerFlowReferenceType, VarPowerFlowReferenceType
-from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_library import is_supported_library_payload
+from VeraGridEngine.Utils.Symbolic.latex_printer import symbolic_to_latex
 
 
 def _new_uid() -> int:
@@ -685,11 +685,8 @@ class WrappableBlockTableModel(WrappableTableModel):
         if col == 1:
             if self.mode == DynamicTableModelMode.EQUATIONS:
                 old_expr = row.value
-                try:
-                    from VeraGridEngine.Utils.Symbolic.latex_printer import symbolic_to_latex
-                    old_latex = symbolic_to_latex(old_expr) if isinstance(old_expr, Expr) else None
-                except Exception:
-                    old_latex = None
+                old_latex = symbolic_to_latex(old_expr) if isinstance(old_expr, Expr) else None
+
                 try:
                     namespace = self.symbol_namespace
                     if namespace is None and self.block is not None:
@@ -704,8 +701,9 @@ class WrappableBlockTableModel(WrappableTableModel):
                     if old_latex is not None:
                         self.latex_invalidation_requested.emit(old_latex)
                     return True
-                except Exception:
+                except Exception:  # TODO: Except what? why should there be an exception here?
                     return False
+
             if row.key_var is not None:
                 row.key_var.name = value
             row.name = value
@@ -823,6 +821,7 @@ class WrappableBlockTableModel(WrappableTableModel):
             delegate = BlockValueDelegate(view)
             view.setItemDelegateForColumn(2, delegate)
         elif self.mode == DynamicTableModelMode.EQUATIONS:
+            # TODO: What is this?
             from VeraGrid.Gui.DynamicModelEditor.dynamic_latex_renderer import LatexEquationDelegate
             delegate = LatexEquationDelegate(view)
             view.setItemDelegateForColumn(1, delegate)
