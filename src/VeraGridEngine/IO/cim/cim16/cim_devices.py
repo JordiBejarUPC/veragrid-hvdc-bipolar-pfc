@@ -2636,21 +2636,13 @@ class EnergyConsumerPhase(IdentifiedObject):
         self.q: float = 0.0
         self.EnergyConsumer: EnergyConsumer | None = None
 
-        self.register_property(name='phase',
-                               class_type=cim_enums.PhaseCode,
-                               description="")
-        self.register_property(name='p',
-                               class_type=float,
-                               multiplier=UnitMultiplier.M,
-                               unit=UnitSymbol.W,
-                               description="")
-        self.register_property(name='q',
-                               class_type=float,
-                               multiplier=UnitMultiplier.M,
-                               unit=UnitSymbol.VAr,
-                               description="")
+        self.register_property(name='phase', class_type=cim_enums.PhaseCode, description="")
+        self.register_property(name='p', class_type=float, multiplier=UnitMultiplier.M, unit=UnitSymbol.W, description="")
+        self.register_property(name='q', class_type=float, multiplier=UnitMultiplier.M, unit=UnitSymbol.VAr, description="")
         self.register_property(name='EnergyConsumer',
                                class_type=EnergyConsumer,
+                               multiplier=UnitMultiplier.none,
+                               unit=UnitSymbol.none,
                                description="")
 
 
@@ -3527,23 +3519,15 @@ class SynchronousMachinePhase(IdentifiedObject):
         self.phase: cim_enums.PhaseCode = cim_enums.PhaseCode.ABC
         self.p: float = 0.0
         self.q: float = 0.0
-        self.SynchronousMachine: "SynchronousMachine" | None = None
+        self.SynchronousMachine: SynchronousMachine | None = None
 
-        self.register_property(name='phase',
-                               class_type=cim_enums.PhaseCode,
-                               description="")
-        self.register_property(name='p',
-                               class_type=float,
-                               multiplier=UnitMultiplier.M,
-                               unit=UnitSymbol.W,
-                               description="")
-        self.register_property(name='q',
-                               class_type=float,
-                               multiplier=UnitMultiplier.M,
-                               unit=UnitSymbol.VAr,
-                               description="")
+        self.register_property(name='phase', class_type=cim_enums.PhaseCode, description="")
+        self.register_property(name='p', class_type=float, multiplier=UnitMultiplier.M, unit=UnitSymbol.W, description="")
+        self.register_property(name='q', class_type=float, multiplier=UnitMultiplier.M, unit=UnitSymbol.VAr, description="")
         self.register_property(name='SynchronousMachine',
-                               class_type=IdentifiedObject,
+                               class_type=SynchronousMachine,
+                               multiplier=UnitMultiplier.none,
+                               unit=UnitSymbol.none,
                                description="")
 
 
@@ -4122,13 +4106,12 @@ class LinearShuntCompensator(MonoPole):
             phases = list()
 
         if phases:
-            g = sum(phase.get_gb()[0] for phase in phases)
-            b = sum(phase.get_gb()[1] for phase in phases)
-            return g, b
+            return sum(phase.get_gb()[0] for phase in phases), sum(phase.get_gb()[1] for phase in phases)
 
-        sections = self.sections if self.sections else self.normalSections
+        sections = self.sections or self.normalSections
         if sections == 0 and (self.gPerSection != 0.0 or self.bPerSection != 0.0):
             sections = 1
+
         return self.gPerSection * sections, self.bPerSection * sections
 
 
@@ -4140,45 +4123,23 @@ class LinearShuntCompensatorPhase(IdentifiedObject):
         self.phase: cim_enums.PhaseCode = cim_enums.PhaseCode.ABC
         self.bPerSection: float = 0.0
         self.gPerSection: float = 0.0
-        self.sections: float = 0.0
+        self.sections: int = 0
         self.normalSections: int = 0
-        self.maximumSections: int = 0
         self.ShuntCompensator: LinearShuntCompensator | None = None
 
-        self.register_property(name='phase',
-                               class_type=cim_enums.PhaseCode,
-                               description="")
-        self.register_property(name='bPerSection',
-                               class_type=float,
-                               multiplier=UnitMultiplier.none,
-                               unit=UnitSymbol.S,
-                               description="")
-        self.register_property(name='gPerSection',
-                               class_type=float,
-                               multiplier=UnitMultiplier.none,
-                               unit=UnitSymbol.S,
-                               description="")
-        self.register_property(name='sections',
-                               class_type=float,
-                               multiplier=UnitMultiplier.none,
-                               unit=UnitSymbol.none,
-                               description="")
-        self.register_property(name='normalSections',
-                               class_type=int,
-                               multiplier=UnitMultiplier.none,
-                               unit=UnitSymbol.none,
-                               description="")
-        self.register_property(name='maximumSections',
-                               class_type=int,
-                               multiplier=UnitMultiplier.none,
-                               unit=UnitSymbol.none,
-                               description="")
+        self.register_property(name='phase', class_type=cim_enums.PhaseCode, description="")
+        self.register_property(name='bPerSection', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.S, description="")
+        self.register_property(name='gPerSection', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.S, description="")
+        self.register_property(name='sections', class_type=int, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description="")
+        self.register_property(name='normalSections', class_type=int, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description="")
         self.register_property(name='ShuntCompensator',
                                class_type=LinearShuntCompensator,
+                               multiplier=UnitMultiplier.none,
+                               unit=UnitSymbol.none,
                                description="")
 
     def get_gb(self):
-        sections = self.sections if self.sections else self.normalSections
+        sections = self.sections or self.normalSections
         if sections == 0 and (self.gPerSection != 0.0 or self.bPerSection != 0.0):
             sections = 1
         return self.gPerSection * sections, self.bPerSection * sections

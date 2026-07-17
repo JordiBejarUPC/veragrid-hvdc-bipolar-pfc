@@ -515,7 +515,7 @@ class NonLinearOptimalPfProblem:
                                        (self.gen_bus_idx[self.gen_disp_idx_sh],
                                         np.arange(self.n_gen_disp_sh))),
                                       shape=(self.nbus, self.n_gen_disp_sh))
-        self.Cdispgen_sh_t = self.Cdispgen.T
+        self.Cdispgen_sh_t = self.Cdispgen_sh.T
 
         self.Inom = nc.generator_data.snom[self.gen_disp_idx] / self.Sbase
 
@@ -615,12 +615,7 @@ class NonLinearOptimalPfProblem:
             self.Pfdc = nc.hvdc_data.Pset[self.hvdc_disp_idx]
 
         else:
-
-            # TODO: Review this
-            # Pmax = nc.generator_data.pmax / self.Sbase
-            # Pmin = nc.generator_data.pmin / self.Sbase
             self.Pg = np.r_[
-                # (Pmax[gen_disp_idx_2] + Pmin[gen_disp_idx_2]) / 2,
                 (self.Pg_max[self.gen_disp_idx] + self.Pg_min[self.gen_disp_idx]) / 2,
                 np.zeros(self.nsh)
             ]
@@ -1398,10 +1393,14 @@ class NonLinearOptimalPfProblem:
                  lil_matrix((self.npq, self.nslcap + self.ntapm + self.ntapt + self.n_disp_hvdc + nvc))])
 
         else:
-            Hvu = sp.hstack([lil_matrix((self.npq, self.nbus)), diags_pq_ones,
-                             lil_matrix((self.npq, self.NV - self.nbus - self.npq))])
-            Hvl = sp.hstack([lil_matrix((self.npq, self.nbus)), - diags_pq_ones,
-                             lil_matrix((self.npq, self.NV - self.nbus - self.npq))])
+            # In standard ACOPF mode the Vm block still spans every bus, so the
+            # voltage-limit Jacobian must point to the actual PQ-bus columns
+            # inside that full-size Vm block instead of assuming the first
+            # ``npq`` Vm variables correspond to the PQ buses.
+            Hvu = sp.hstack([lil_matrix((self.npq, self.nbus)), diags_bus_ones[self.pq, :],
+                             lil_matrix((self.npq, self.NV - 2 * self.nbus))])
+            Hvl = sp.hstack([lil_matrix((self.npq, self.nbus)), - diags_bus_ones[self.pq, :],
+                             lil_matrix((self.npq, self.NV - 2 * self.nbus))])
             Hslsf = lil_matrix((0, self.NV))
             Hslst = lil_matrix((0, self.NV))
             Hslvmax = lil_matrix((0, self.NV))
