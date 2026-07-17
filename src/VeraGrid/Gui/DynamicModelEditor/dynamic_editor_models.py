@@ -27,6 +27,7 @@ from VeraGrid.Gui.gui_functions import ComboDelegate, TextDelegate
 from VeraGrid.Gui.wrappable_table_model import WrappableTableModel
 from VeraGridEngine.enumerations import DeviceType, DynamicSimulationMode, DynamicTableModelMode, \
     ParamPowerFlowReferenceType, VarPowerFlowReferenceType
+from VeraGrid.Gui.DynamicModelEditor.dynamic_latex_renderer import LatexEquationDelegate
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_library import is_supported_library_payload
 
 
@@ -829,7 +830,6 @@ class WrappableBlockTableModel(WrappableTableModel):
             delegate = BlockValueDelegate(view)
             view.setItemDelegateForColumn(2, delegate)
         elif self.mode == DynamicTableModelMode.EQUATIONS:
-            from VeraGrid.Gui.DynamicModelEditor.dynamic_latex_renderer import LatexEquationDelegate
             delegate = LatexEquationDelegate(view)
             view.setItemDelegateForColumn(1, delegate)
         else:
