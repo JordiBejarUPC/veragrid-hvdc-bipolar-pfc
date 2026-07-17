@@ -54,6 +54,7 @@ def get_blocktype2template_builder_dict():
 
         BlockType.EMT_PI_LINE: emt_templates.PiLineEmtTemplate,
         BlockType.EMT_BERGERON_LINE: emt_templates.BergeronLineEmtTemplate,
+        BlockType.EMT_JMARTI_LINE: emt_templates.JmartiLineEmtTemplate
 
     }
 
@@ -486,6 +487,42 @@ def create_emt_wizard_block(phase_n: bool,
 
     else:
         return None
+
+def create_j_marti_line_block(phase_n: bool,
+                            phase_a: bool,
+                            phase_b: bool,
+                            phase_c: bool,
+                            var_factory: VarFactory,
+                            block_type: BlockType,
+                            item_name: str) -> Block | None:
+    """
+    :param phase_n:
+    :type phase_n:
+    :param phase_a:
+    :type phase_a:
+    :param phase_b:
+    :type phase_b:
+    :param phase_c:
+    :type phase_c:
+    :param var_factory:
+    :type var_factory:
+    :param block_type:
+    :type block_type:
+    :param item_name:
+    :type item_name:
+    :return: Requested EMT wizard block or ``None``.
+    """
+
+
+    blk = tem.get_jmarti_line_emt_template(vf=var_factory,
+                                           phN=phase_n,
+                                           phA=phase_a,
+                                           phB=phase_b,
+                                           phC=phase_c,
+                                           name=item_name).block
+    blk.name = item_name
+    return blk
+
 
 
 def create_generic_block(var_factory: VarFactory,

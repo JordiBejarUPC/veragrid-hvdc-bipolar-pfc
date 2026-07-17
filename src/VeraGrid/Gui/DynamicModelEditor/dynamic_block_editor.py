@@ -73,7 +73,7 @@ from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_validation import Validation
     format_validation_block_label, get_branch_phase_table_label, get_phase_table_label, \
     get_var_reference, has_ac_emt_branch_side_refs, has_ac_emt_phase_interface_refs
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_utilities import create_block_of_type, create_generic_block, \
-    create_emt_wizard_block, get_blocktype2template_builder_dict
+    create_emt_wizard_block, create_j_marti_line_block, get_blocktype2template_builder_dict
 from VeraGrid.Gui.DynamicModelEditor.ElementDialogues.lookup_table_dialog import LookupArrayLinearDialog
 from VeraGrid.Gui.DynamicModelEditor.ElementDialogues.lookup_table_dialog import LookupMatrixLinearDialog
 from VeraGrid.Gui.DynamicModelEditor.ElementDialogues.jmarti_line_emt_dialog import JMartiLineEmtDialog
@@ -1150,41 +1150,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         })
 
     @staticmethod
-    def _build_jmarti_fit_source_description(modal_config: Dict[str, Any],
-                                             line_object: Line | None) -> str:
-        """
-        Return the user-facing description of the JMARTI fitting data source.
-
-        :param modal_config: Persisted GUI configuration.
-        :param line_object: Optional owning line object.
-        :return: Source description.
-        """
-        if str(modal_config.get("data_source_mode", "auto_template")) == "import_frequency_samples":
-            return f"Imported NPZ samples: {str(modal_config.get('import_file_path', ''))}"
-        elif line_object is None or line_object.template is None:
-            return "Automatic template source"
-        elif isinstance(line_object.template, OverheadLineType):
-            if len(line_object.template.wires_in_tower.data) > 0:
-                return "Automatic sweep from OverheadLineType conductor geometry"
-            else:
-                return (
-                    "Automatic RLGC sweep from OverheadLineType nominal matrices "
-                    f"at {float(modal_config.get('nominal_frequency_hz', 0.0)):.4f} Hz"
-                )
-        elif isinstance(line_object.template, SequenceLineType):
-            return (
-                "Automatic RLGC sweep from SequenceLineType "
-                f"at {float(modal_config.get('nominal_frequency_hz', 0.0)):.4f} Hz"
-            )
-        elif isinstance(line_object.template, UndergroundLineType):
-            return (
-                "Automatic RLGC sweep from UndergroundLineType "
-                f"at {float(modal_config.get('nominal_frequency_hz', 0.0)):.4f} Hz"
-            )
-        else:
-            return "Automatic template source"
-
-    @staticmethod
     def _build_jmarti_fit_diagnostics_text(source_description: str,
                                            fit_bundle) -> str:
         """
@@ -1256,37 +1221,63 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param modal_config: Dialog configuration.
         :return: Updated persisted configuration including fit status.
         """
-        updated_config: Dict[str, Any] = self._build_default_jmarti_line_modal_config(
-            phase_n=bool(modal_config.get("phase_n", False)),
-            phase_a=bool(modal_config.get("phase_a", True)),
-            phase_b=bool(modal_config.get("phase_b", True)),
-            phase_c=bool(modal_config.get("phase_c", True)),
-        )
+
+        options: JMartiFitOptions = JMartiFitOptions()
+
+        updated_config = dict({
+            "block_type": BlockType.EMT_JMARTI_LINE.name,
+            "phase_n": bool(modal_config.get("phase_n", False)),
+            "phase_a": bool(modal_config.get("phase_a", True)),
+            "phase_b": bool(modal_config.get("phase_b", True)),
+            "phase_c": bool(modal_config.get("phase_c", True)),
+            "data_source_mode": "auto_template",
+            "nominal_frequency_hz": 50.0,
+            # "nominal_frequency_hz": float(self.circuit.fbase) if self.circuit is not None and float(self.circuit.fbase) > 0.0 else 50.0,
+            "import_file_path": "",
+            "import_line_length_m": float(options.import_line_length) if options.import_line_length > 0 else (float(self.api_object.length) * 1000.0 if self.api_object is not None and float(self.api_object.length) > 0 else None),
+            "sweep_low_hz": 10.0, #
+            "sweep_high_hz": 10000.0,
+            "sweep_sample_count": 48,
+            "reference_frequency_hz": float(options.reference_frequency_hz),
+            "use_frequency_exploration_window": bool(options.use_frequency_exploration_window),
+            "exploration_low_hz": float(options.exploration_low_hz),
+            "exploration_high_hz": float(options.exploration_high_hz),
+            "use_delay_fit_window": bool(options.use_delay_fit_window),
+            "delay_fit_low_hz": float(options.delay_fit_low_hz),
+            "delay_fit_high_hz": float(options.delay_fit_high_hz),
+            "decoupling_warning_tolerance": float(options.decoupling_warning_tolerance),
+            "loewner_relative_tolerance": float(options.loewner_relative_tolerance),
+            "maximum_model_order": int(options.maximum_model_order),
+            "forced_model_order": int(options.forced_model_order),
+            "minimum_frequency_samples": int(options.minimum_frequency_samples),
+            "vf_max_iterations": int(options.vf_max_iterations),
+            "vf_pole_shift_tolerance": float(options.vf_pole_shift_tolerance),
+            "vf_enforce_stable_poles": bool(options.vf_enforce_stable_poles),
+            "vf_stability_real_part_floor": float(options.vf_stability_real_part_floor),
+            "vf_include_constant_term": bool(options.vf_include_constant_term),
+            "vf_include_proportional_term": bool(options.vf_include_proportional_term),
+            "passivity_frequency_sample_count": int(options.passivity_frequency_sample_count),
+            "passivity_minimum_real_yc_tolerance": float(options.passivity_minimum_real_yc_tolerance),
+            "passivity_maximum_hres_gain_tolerance": float(options.passivity_maximum_hres_gain_tolerance),
+            "fit_ready": False,
+            "fit_source_description": "",
+            "fit_status": (
+                "Fit not computed yet. Accept the dialog to build or refresh the JMARTI fit for the attached line."
+            ),
+            "fit_diagnostics_text": "",
+        })
+
         updated_config.update(modal_config)
-        updated_config["block_type"] = BlockType.EMT_JMARTI_LINE.name
+
+        # maby not useful at all
         fit_ready: bool = False
         fit_status: str = str(updated_config.get("fit_status", ""))
         fit_diagnostics_text: str = str(updated_config.get("fit_diagnostics_text", ""))
         line_object: Line | None
-        fit_source_description: str
         fit_bundle = None
-
-        if isinstance(self.api_object, Line):
-            line_object = self.api_object
-        else:
-            line_object = None
-
-        fit_source_description = self._build_jmarti_fit_source_description(updated_config, line_object)
+        #####
 
         if str(updated_config.get("data_source_mode", "auto_template")) == "import_frequency_samples":
-            fallback_line_length_m: float | None
-
-            if float(updated_config.get("import_line_length_m", 0.0)) > 0.0:
-                fallback_line_length_m = float(updated_config["import_line_length_m"])
-            elif line_object is not None and float(line_object.length) > 0.0:
-                fallback_line_length_m = float(line_object.length) * 1000.0
-            else:
-                fallback_line_length_m = None
 
             try:
                 fit_bundle = build_jmarti_fit_bundle_from_frequency_samples(
@@ -1296,7 +1287,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                         phase_a=bool(updated_config["phase_a"]),
                         phase_b=bool(updated_config["phase_b"]),
                         phase_c=bool(updated_config["phase_c"]),
-                        fallback_line_length_m=fallback_line_length_m,
+                        fallback_line_length_m=updated_config["import_line_length_m"],
                     ),
                     options=self._build_jmarti_fit_options_from_modal_config(updated_config),
                 )
@@ -1304,13 +1295,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 fit_status = f"Fit not computed: {exc}"
                 fit_diagnostics_text = fit_status
                 QtWidgets.QMessageBox.warning(self, "EMT J_Marti line", fit_status)
-        elif line_object is None:
-            fit_status = (
-                "Fit not computed: open the EMT editor on one concrete line device to build length-dependent JMARTI data."
-            )
-            fit_diagnostics_text = fit_status
+
         else:
-            if line_object.template is None:
+            if self.api_object.template is None:
                 fit_status = "Fit not computed: attach one compatible line template to the line device first."
                 fit_diagnostics_text = fit_status
             else:
@@ -1355,10 +1342,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 f"max decoupling Z/Y = {max_decoupling_z:.3e}/{max_decoupling_y:.3e}, "
                 f"passivity = {passivity_state}."
             )
-            fit_diagnostics_text = self._build_jmarti_fit_diagnostics_text(fit_source_description, fit_bundle)
+            fit_diagnostics_text = self._build_jmarti_fit_diagnostics_text("fit_source_description_not_needed", fit_bundle)
 
         updated_config["fit_ready"] = fit_ready
-        updated_config["fit_source_description"] = fit_source_description
+        updated_config["fit_source_description"] = "fit_source_description_not_needed"
         updated_config["fit_status"] = fit_status
         updated_config["fit_diagnostics_text"] = fit_diagnostics_text
         return updated_config, fit_bundle
@@ -1381,7 +1368,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         phase_n, phase_a, phase_b, phase_c = self._extract_jmarti_phase_tuple(modal_config)
         count: int = self.block_counters.get(BlockType.EMT_JMARTI_LINE, 0) + 1
         item_name: str = f"{BlockType.EMT_JMARTI_LINE.name}_{count}"
-        block_model = create_emt_wizard_block(
+        block_model = create_j_marti_line_block(
             phase_n=phase_n,
             phase_a=phase_a,
             phase_b=phase_b,
@@ -1412,7 +1399,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         block_item.set_subsystem(block_model)
         block_item.position_changed_callback = self.build_position_changed_callback(block_model.uid)
         block_item.build_item()
-        block_item.setToolTip(self._build_jmarti_modal_tooltip(modal_config))
+        # block_item.setToolTip(self._build_jmarti_modal_tooltip(modal_config))
         self.main_block.add(block_model)
         self.scene.addItem(block_item)
         block_item.setPos(QtCore.QPointF(x_pos, y_pos))
@@ -2159,8 +2146,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             return self.create_generic_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
 
         # Todo: include in blocktype2templatebuilder, create clases and inputs
-        elif isinstance(payload, BlockType) and payload == BlockType.EMT_JMARTI_LINE:
-            return self.create_jmarti_line_emt_block_item(x_pos=x_pos, y_pos=y_pos)
 
         elif isinstance(payload, BlockType):
             return self.create_block_item_mix(block_type=payload, x_pos=x_pos, y_pos=y_pos)
