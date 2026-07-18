@@ -28,7 +28,7 @@ try:
         "str": str,
     }
     for alias_name, alias_value in alias_map.items():
-        if not hasattr(np, alias_name):
+        if alias_name not in np.__dict__:
             setattr(np, alias_name, alias_value)
 
     from pandapower import from_pickle, from_sqlite, from_json, from_excel, create_empty_network
