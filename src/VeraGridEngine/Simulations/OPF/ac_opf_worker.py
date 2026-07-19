@@ -129,14 +129,25 @@ def run_nonlinear_opf(grid: MultiCircuit,
         # distance from the inequality boundary in that active set while keeping
         # the historical fraction-to-boundary value for ordinary AC OPF cases.
         xi = 0.995 if problem.nvsc else 0.99995
-        # MATPOWER/MIPS falls back to a conservative interior trajectory when it
-        # starts from its own flat point. Mirror that behavior on large plain-AC
-        # cases where a PF seed is unavailable or intentionally disabled.
+        # Large plain-AC PGLIB cases are sensitive to the IPS trajectory even
+        # when the derivatives are correct. Keep the undamped historical path
+        # for small cases, but switch to a conservative trust-controlled path
+        # on large ACOPF instances to avoid late KKT breakdowns.
         use_step_control = False
         trust_radius = opf_options.ips_trust_radius
-        if (not use_pf_state_init) and (not problem.nvsc) and problem.nbus >= 1000:
+        if (not problem.nvsc) and problem.nbus >= 1000:
             use_step_control = True
-            trust_radius = min(trust_radius, 0.1)
+            if use_pf_state_init:
+                # A converged PF seed is already in the right basin. Keep some
+                # damping to regularize the tail, but do not over-shrink the
+                # Newton steps or the solve becomes unnecessarily long.
+                trust_radius = min(trust_radius, 0.2)
+            else:
+                # Flat-start large cases need a stricter trust cap to match the
+                # robust MATPOWER/MIPS trajectory.
+                trust_radius = min(trust_radius, 0.1)
+        else:
+            pass
 
         # the solver changes the internal state of the problem
         ips_results = interior_point_solver(problem=problem,
