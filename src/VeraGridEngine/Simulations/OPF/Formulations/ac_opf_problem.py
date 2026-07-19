@@ -619,6 +619,27 @@ class NonLinearOptimalPfProblem:
             self.tap_tau = nc.active_branch_data.tap_angle[self.k_tau]
             self.Pfdc = nc.hvdc_data.Pset[self.hvdc_disp_idx]
 
+            # A non-converged PF seed can still point to the right basin, but its
+            # raw state may sit far outside the OPF box constraints. Clamp the
+            # primal initialization back into the feasible bounds before the IPS
+            # barrier variables are constructed.
+            self.Pg[:self.n_gen_disp] = np.clip(self.Pg[:self.n_gen_disp],
+                                                self.Pg_min[self.gen_disp_idx],
+                                                self.Pg_max[self.gen_disp_idx])
+            self.Qg[:self.n_gen_disp] = np.clip(self.Qg[:self.n_gen_disp],
+                                                self.Qg_min[self.gen_disp_idx],
+                                                self.Qg_max[self.gen_disp_idx])
+            self.Vm = np.clip(self.Vm, self.Vm_min, self.Vm_max)
+            self.tap_m = np.clip(self.tap_m, self.tapm_min, self.tapm_max)
+            self.tap_tau = np.clip(self.tap_tau, self.tapt_min, self.tapt_max)
+
+            if self.n_disp_hvdc:
+                self.Pfdc = np.clip(self.Pfdc,
+                                    -self.P_hvdc_max / self.Sbase,
+                                    self.P_hvdc_max / self.Sbase)
+            else:
+                pass
+
         else:
             self.Pg = np.r_[
                 (self.Pg_max[self.gen_disp_idx] + self.Pg_min[self.gen_disp_idx]) / 2,
@@ -628,7 +649,10 @@ class NonLinearOptimalPfProblem:
                 (self.Qg_max[self.gen_disp_idx] + self.Qg_min[self.gen_disp_idx]) / 2,
                 np.zeros(self.nsh)
             ]
-            self.Va = np.angle(nc.bus_data.Vbus)
+            ref_angle = np.angle(nc.bus_data.Vbus[self.slack[0]]) if self.n_slack else 0.0
+            # Match MATPOWER/MIPS interior initialization: start from a flat angle
+            # profile instead of inheriting a stressed network state.
+            self.Va = np.full(self.nbus, ref_angle)
             self.Vm = (self.Vm_max + self.Vm_min) / 2
             self.tap_m = nc.active_branch_data.tap_module[self.k_m]
             self.tap_tau = nc.active_branch_data.tap_angle[self.k_tau]

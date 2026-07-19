@@ -80,16 +80,26 @@ def run_nonlinear_opf(grid: MultiCircuit,
     islands = nc.split_into_islands(ignore_single_node_islands=True,
                                     consider_hvdc_as_island_links=True)
 
+    # Some benchmark cases still come back as a single island with the full
+    # bus set but with truncated device tables after the island projection.
+    # In that situation, solve the original compiled circuit directly.
+    if len(islands) == 1 and islands[0].nbus == nc.nbus:
+        islands = [nc]
+    else:
+        pass
+
     # create and initialize results
     results = NonlinearOPFResults()
     results.initialize(nbus=nc.nbus, nbr=nc.nbr, nsh=nc.nshunt, ng=nc.ngen, nil=len(nc.passive_branch_data.get_monitor_enabled_indices()),
                        nhvdc=nc.nhvdc, ncap=len(capacity_nodes_idx) if capacity_nodes_idx is not None else 0,
                        nvsc=nc.vsc_data.nelm)
 
-    # A failed PF iterate can still be a useful primal seed, but its derived multiplier
-    # bootstrap is unstable on hard ACOPF cases. Only reuse the PF-specific multiplier init
-    # when the PF seed actually converged.
-    use_pf_multiplier_init: bool = opf_options.ips_init_with_pf and opf_options.acopf_pf_converged
+    # A PF state can still be a useful primal seed. The PF-specific
+    # multiplier bootstrap is unstable on plain AC benchmark cases, but the
+    # AC/DC path still relies on it for the converter-coupled formulation.
+    # Keep the decision local to each compiled problem so VSC cases can
+    # retain the historical bootstrap.
+    use_pf_state_init: bool = opf_options.ips_init_with_pf
 
     for i, island in enumerate(islands):
 
@@ -103,7 +113,7 @@ def run_nonlinear_opf(grid: MultiCircuit,
 
         problem = NonLinearOptimalPfProblem(nc=island,
                                             options=opf_options,
-                                            pf_init=use_pf_multiplier_init,
+                                            pf_init=use_pf_state_init,
                                             Sbus_pf=Sbus_pf[island.bus_data.original_idx],
                                             voltage_pf=voltage_pf[island.bus_data.original_idx],
                                             optimize_nodal_capacity=optimize_nodal_capacity,
@@ -112,22 +122,28 @@ def run_nonlinear_opf(grid: MultiCircuit,
                                             logger=logger
                                             )
 
+        use_pf_multiplier_init: bool = bool(problem.nvsc) and opf_options.ips_init_with_pf and opf_options.acopf_pf_converged
+
         # The VSC current-definition equalities can become ill-conditioned when
         # a converter is close to its hard current limit.  Keep a little more
         # distance from the inequality boundary in that active set while keeping
         # the historical fraction-to-boundary value for ordinary AC OPF cases.
         xi = 0.995 if problem.nvsc else 0.99995
-        # Match the default MIPS trajectory for standard ACOPF.
-        # The large PGLIB cases reach a better KKT tail without the extra
-        # step-control damping.
+        # MATPOWER/MIPS falls back to a conservative interior trajectory when it
+        # starts from its own flat point. Mirror that behavior on large plain-AC
+        # cases where a PF seed is unavailable or intentionally disabled.
         use_step_control = False
+        trust_radius = opf_options.ips_trust_radius
+        if (not use_pf_state_init) and (not problem.nvsc) and problem.nbus >= 1000:
+            use_step_control = True
+            trust_radius = min(trust_radius, 0.1)
 
         # the solver changes the internal state of the problem
         ips_results = interior_point_solver(problem=problem,
                                             max_iter=opf_options.ips_iterations,
                                             tol=opf_options.ips_tolerance,
                                             pf_init=use_pf_multiplier_init,
-                                            trust=opf_options.ips_trust_radius,
+                                            trust=trust_radius,
                                             verbose=opf_options.verbose,
                                             step_control=use_step_control,
                                             xi=xi)

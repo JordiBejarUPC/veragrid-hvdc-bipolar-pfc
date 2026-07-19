@@ -384,10 +384,11 @@ def build_opf_options_with_pf_init(grid: MultiCircuit,
     pf_init_used: bool = False
     pf_converged: bool = False
 
-    # Even a non-converged PF iterate is usually a much better ACOPF seed than the generic
-    # midpoint initialization on the large PGLIB cases. Keep the benchmark-specific warm start
-    # permissive here so hard cases such as the 10k GOC instance can still leverage that state.
-    if pf_driver.results is not None:
+    # Match MATPOWER's large-case behavior more closely: when PF fails, do not feed the
+    # failed iterate into ACOPF as the primal seed. MIPS falls back to its own interior
+    # initialization in that situation, which is materially more robust on cases such as
+    # ``pglib_opf_case10480_goc``.
+    if pf_driver.results is not None and bool(pf_driver.results.converged):
         opf_options.ips_init_with_pf = True
         opf_options.acopf_v0 = pf_driver.results.voltage
         opf_options.acopf_S0 = pf_driver.results.Sbus
@@ -398,7 +399,7 @@ def build_opf_options_with_pf_init(grid: MultiCircuit,
         opf_options.ips_init_with_pf = False
         opf_options.acopf_pf_converged = False
         pf_init_used = False
-        pf_converged = False
+        pf_converged = bool(pf_driver.results.converged) if pf_driver.results is not None else False
 
     return opf_options, pf_init_used, pf_converged
 
