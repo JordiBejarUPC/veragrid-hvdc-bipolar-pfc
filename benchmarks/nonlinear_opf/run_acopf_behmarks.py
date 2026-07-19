@@ -391,10 +391,12 @@ def build_opf_options_with_pf_init(grid: MultiCircuit,
         opf_options.ips_init_with_pf = True
         opf_options.acopf_v0 = pf_driver.results.voltage
         opf_options.acopf_S0 = pf_driver.results.Sbus
+        opf_options.acopf_pf_converged = bool(pf_driver.results.converged)
         pf_init_used = True
         pf_converged = bool(pf_driver.results.converged)
     else:
         opf_options.ips_init_with_pf = False
+        opf_options.acopf_pf_converged = False
         pf_init_used = False
         pf_converged = False
 

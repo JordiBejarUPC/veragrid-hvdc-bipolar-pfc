@@ -50,6 +50,7 @@ class OptimalPowerFlowOptions(OptionsTemplate):
         GCProp(key="robust", tpe=bool),
         GCProp(key="acopf_v0", tpe=Vec),
         GCProp(key="acopf_S0", tpe=Vec),
+        GCProp(key="acopf_pf_converged", tpe=bool),
     )
 
     def __init__(self,
@@ -81,6 +82,7 @@ class OptimalPowerFlowOptions(OptionsTemplate):
                  acopf_mode: AcOpfMode = AcOpfMode.ACOPFstd,
                  acopf_v0: CxVec | None = None,
                  acopf_S0: CxVec | None = None,
+                 acopf_pf_converged: bool = True,
                  robust: bool = False,
                  mip_framework: MIPFramework = MIPFramework.PuLP):
         """
@@ -111,6 +113,7 @@ class OptimalPowerFlowOptions(OptionsTemplate):
         :param acopf_mode:
         :param acopf_S0: Sbus initial solution
         :param acopf_v0: Voltage initial solution
+        :param acopf_pf_converged: Whether the PF state used as ACOPF seed actually converged
         """
         OptionsTemplate.__init__(self, name="Optimal power flow options")
 
@@ -174,3 +177,4 @@ class OptimalPowerFlowOptions(OptionsTemplate):
 
         self.acopf_v0 = acopf_v0
         self.acopf_S0 = acopf_S0
+        self.acopf_pf_converged = acopf_pf_converged

@@ -86,6 +86,11 @@ def run_nonlinear_opf(grid: MultiCircuit,
                        nhvdc=nc.nhvdc, ncap=len(capacity_nodes_idx) if capacity_nodes_idx is not None else 0,
                        nvsc=nc.vsc_data.nelm)
 
+    # A failed PF iterate can still be a useful primal seed, but its derived multiplier
+    # bootstrap is unstable on hard ACOPF cases. Only reuse the PF-specific multiplier init
+    # when the PF seed actually converged.
+    use_pf_multiplier_init: bool = opf_options.ips_init_with_pf and opf_options.acopf_pf_converged
+
     for i, island in enumerate(islands):
 
         if capacity_nodes_idx is not None:
@@ -98,7 +103,7 @@ def run_nonlinear_opf(grid: MultiCircuit,
 
         problem = NonLinearOptimalPfProblem(nc=island,
                                             options=opf_options,
-                                            pf_init=opf_options.ips_init_with_pf,
+                                            pf_init=use_pf_multiplier_init,
                                             Sbus_pf=Sbus_pf[island.bus_data.original_idx],
                                             voltage_pf=voltage_pf[island.bus_data.original_idx],
                                             optimize_nodal_capacity=optimize_nodal_capacity,
@@ -118,7 +123,7 @@ def run_nonlinear_opf(grid: MultiCircuit,
         ips_results = interior_point_solver(problem=problem,
                                             max_iter=opf_options.ips_iterations,
                                             tol=opf_options.ips_tolerance,
-                                            pf_init=opf_options.ips_init_with_pf,
+                                            pf_init=use_pf_multiplier_init,
                                             trust=opf_options.ips_trust_radius,
                                             verbose=opf_options.verbose,
                                             step_control=use_step_control,
