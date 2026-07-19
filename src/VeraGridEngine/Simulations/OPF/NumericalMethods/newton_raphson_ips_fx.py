@@ -292,6 +292,23 @@ class IpsFunctionReturn:
 
 
 @dataclass
+class IpsIterationHistory:
+    """
+    Compact IPS per-iteration history for debugging and solver comparisons.
+    """
+    iteration: Vec
+    objective: Vec
+    feas_cond: Vec
+    gradcond: Vec
+    comp_cond: Vec
+    cost_cond: Vec
+    gamma: Vec
+    alpha_p: Vec
+    alpha_d: Vec
+    step_norm: Vec
+
+
+@dataclass
 class IpsSolution:
     """
     Represents the returning value of the interior point solution
@@ -307,6 +324,7 @@ class IpsSolution:
     converged: bool
     iterations: int
     error_evolution: Vec
+    history: IpsIterationHistory | None = None
 
     def plot_error(self):
         """
@@ -445,10 +463,27 @@ def interior_point_solver(problem,
     max_displ = 0
     error_evolution = np.zeros(max_iter + 1)
     feas_cond_evolution = np.zeros(max_iter + 1)
+    objective_history = np.full(max_iter + 1, np.nan, dtype=float)
+    gradcond_history = np.full(max_iter + 1, np.nan, dtype=float)
+    compcond_history = np.full(max_iter + 1, np.nan, dtype=float)
+    costcond_history = np.full(max_iter + 1, np.nan, dtype=float)
+    gamma_history = np.full(max_iter + 1, np.nan, dtype=float)
+    alphap_history = np.full(max_iter + 1, np.nan, dtype=float)
+    alphad_history = np.full(max_iter + 1, np.nan, dtype=float)
+    step_norm_history = np.full(max_iter + 1, np.nan, dtype=float)
 
+    objective_scale = getattr(problem, "objective_scale", 1.0)
     # record initial values
     feas_cond_evolution[iter_counter] = feas_cond
     error_evolution[0] = error
+    objective_history[0] = f / objective_scale
+    gradcond_history[0] = gradcond
+    compcond_history[0] = comp_cond
+    costcond_history[0] = cost_cond
+    gamma_history[0] = gamma
+    alphap_history[0] = 0.0
+    alphad_history[0] = 0.0
+    step_norm_history[0] = 0.0
     n = np.zeros(problem.NV + problem.neq)
     dlam = None
 
@@ -588,6 +623,14 @@ def interior_point_solver(problem,
         # record evolution
         feas_cond_evolution[iter_counter] = feas_cond
         error_evolution[iter_counter] = error
+        objective_history[iter_counter] = f / objective_scale
+        gradcond_history[iter_counter] = gradcond
+        compcond_history[iter_counter] = comp_cond
+        costcond_history[iter_counter] = cost_cond
+        gamma_history[iter_counter] = gamma
+        alphap_history[iter_counter] = alpha_p
+        alphad_history[iter_counter] = alpha_d
+        step_norm_history[iter_counter] = np.linalg.norm(dx)
         f_prev = f
 
     t_end = timeit.default_timer()
@@ -596,12 +639,26 @@ def interior_point_solver(problem,
         print(f'SOLUTION', "-" * 80)
         print(f"\tx:", x)
         print(f"\tλ:", lam)
-        print(f"\tF.obj: {f * 1e4}")
+        print(f"\tF.obj: {f / objective_scale}")
         print(f"\tErr: {error}")
         print(f'\tIterations: {iter_counter}')
         print(f'\tMax Displacement: {max_displ}')
         print(f'\tTime elapsed (s): {t_end - t_start}')
         print(f'\tFeas cond: ', feas_cond)
 
+    history = IpsIterationHistory(
+        iteration=np.arange(iter_counter + 1, dtype=int),
+        objective=objective_history[:iter_counter + 1],
+        feas_cond=feas_cond_evolution[:iter_counter + 1],
+        gradcond=gradcond_history[:iter_counter + 1],
+        comp_cond=compcond_history[:iter_counter + 1],
+        cost_cond=costcond_history[:iter_counter + 1],
+        gamma=gamma_history[:iter_counter + 1],
+        alpha_p=alphap_history[:iter_counter + 1],
+        alpha_d=alphad_history[:iter_counter + 1],
+        step_norm=step_norm_history[:iter_counter + 1],
+    )
+
     return IpsSolution(x=x, error=error, gamma=gamma, lam=lam, dlam=dlam, mu=mu, z=z, residuals=n,
-                       converged=converged, iterations=iter_counter, error_evolution=error_evolution)
+                       converged=converged, iterations=iter_counter, error_evolution=error_evolution,
+                       history=history)

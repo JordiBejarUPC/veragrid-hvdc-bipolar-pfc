@@ -117,7 +117,10 @@ def run_nonlinear_opf(grid: MultiCircuit,
         # distance from the inequality boundary in that active set while keeping
         # the historical fraction-to-boundary value for ordinary AC OPF cases.
         xi = 0.995 if problem.nvsc else 0.99995
-        use_step_control = opf_options.acopf_mode == AcOpfMode.ACOPFstd
+        # Match the default MIPS trajectory for standard ACOPF.
+        # The large PGLIB cases reach a better KKT tail without the extra
+        # step-control damping.
+        use_step_control = False
 
         # the solver changes the internal state of the problem
         ips_results = interior_point_solver(problem=problem,

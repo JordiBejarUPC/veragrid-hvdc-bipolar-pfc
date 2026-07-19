@@ -470,7 +470,9 @@ def run_nonlinear_opf_with_pf_seed_and_default_multiplier_init(
         )
 
         xi: float = 0.995 if problem.nvsc else 0.99995
-        use_step_control: bool = opf_options.acopf_mode == AcOpfMode.ACOPFstd
+        # Mirror the main worker path so benchmark fallback runs follow the same
+        # undamped IPS trajectory on hard large-scale ACOPF cases.
+        use_step_control: bool = False
         ips_results = interior_point_solver(problem=problem,
                                             max_iter=opf_options.ips_iterations,
                                             tol=opf_options.ips_tolerance,
@@ -562,15 +564,9 @@ def benchmark_case(case_path: Path,
             )
             row.pf_init_used = pf_init_used
 
-            # Run ACOPF with the same case file used by the baseline and extract the quantities that
-            # matter for the comparison: objective value, convergence state, iterations and error.
-            if pf_init_used and not pf_converged:
-                results: NonlinearOPFResults = run_nonlinear_opf_with_pf_seed_and_default_multiplier_init(
-                    grid=grid,
-                    opf_options=opf_options,
-                )
-            else:
-                results = run_nonlinear_opf(grid=grid, opf_options=opf_options)
+            # Run ACOPF through the same worker path used elsewhere so benchmark
+            # results stay aligned with the current IPS initialization logic.
+            results = run_nonlinear_opf(grid=grid, opf_options=opf_options)
 
             row.veragrid_ac_objective = compute_total_ac_objective(grid=grid, results=results)
             row.objective_gap_percent = compute_objective_gap_percent(
