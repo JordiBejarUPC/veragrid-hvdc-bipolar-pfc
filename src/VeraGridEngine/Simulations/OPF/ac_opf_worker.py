@@ -3,6 +3,7 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 import numpy as np
+from copy import copy
 from typing import Union, Tuple, Sequence
 
 from VeraGridEngine import ShuntControlMode
@@ -188,4 +189,32 @@ def run_nonlinear_opf(grid: MultiCircuit,
         results.Vm = nc.propagate_bus_result(results.Vm)
         results.voltage = nc.propagate_bus_result(results.voltage)
 
-    return results
+    # A converged PF can still seed the wrong OPF basin on some large plain-AC
+    # benchmark cases. If that happens, retry once from the flat interior start
+    # and keep the better result.
+    if (opf_options.ips_init_with_pf
+            and (not results.converged)
+            and nc.vsc_data.nelm == 0
+            and nc.nbus >= 2000):
+        retry_options: OptimalPowerFlowOptions = copy(opf_options)
+        retry_options.ips_init_with_pf = False
+        retry_options.acopf_v0 = None
+        retry_options.acopf_S0 = None
+        retry_options.acopf_pf_converged = False
+        retry_results: NonlinearOPFResults = run_nonlinear_opf(grid=grid,
+                                                               opf_options=retry_options,
+                                                               t_idx=t_idx,
+                                                               plot_error=plot_error,
+                                                               optimize_nodal_capacity=optimize_nodal_capacity,
+                                                               nodal_capacity_sign=nodal_capacity_sign,
+                                                               capacity_nodes_idx=capacity_nodes_idx,
+                                                               logger=logger)
+        if retry_results.converged:
+            return retry_results
+        else:
+            if retry_results.error < results.error:
+                return retry_results
+            else:
+                return results
+    else:
+        return results
