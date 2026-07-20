@@ -2,7 +2,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
-from typing import Union, List, Dict
+from typing import Union, List, Dict, Tuple, Callable
 from dataclasses import dataclass
 import numba as nb
 import numpy as np
@@ -13,7 +13,7 @@ import timeit
 from matplotlib import pyplot as plt
 from VeraGridEngine.basic_structures import Vec, CxVec
 from VeraGridEngine.Utils.Sparse.csc import pack_3_by_4, diags
-from VeraGridEngine.Utils.NumericalMethods.sparse_solve import get_linear_solver
+from VeraGridEngine.Utils.NumericalMethods.sparse_solve import get_linear_solver, get_available_sparse_solvers
 from VeraGridEngine.enumerations import SparseSolver
 
 
@@ -78,7 +78,7 @@ def max_abs(x: Vec) -> float:
     for x_val in x:
         x_abs = x_val if x_val > 0.0 else -x_val
         if x_abs > max_val:
-            max_val = x_val
+            max_val = x_abs
 
     return max_val
 
@@ -92,7 +92,8 @@ def calc_feas_cond(g: Vec, h: Vec, x: Vec, z: Vec) -> float:
     :param z: Vector of z slack variables
     :return: Feasibility condition value
     """
-    return max(max_abs(g), np.max(h)) / (1.0 + max(max_abs(x), max_abs(z)))
+    max_h = np.max(h) if len(h) > 0 else 0.0
+    return max(max_abs(g), max_h) / (1.0 + max(max_abs(x), max_abs(z)))
 
 
 def calc_grad_cond(lx: Vec, lam: Vec, mu: Vec) -> float:
@@ -124,6 +125,107 @@ def calc_o_cond(f: float, f_prev: float) -> float:
     :return: Variation of the objective function
     """
     return abs(f - f_prev) / (1.0 + abs(f_prev))
+
+
+def get_ips_linear_solver_candidates() -> List[Tuple[SparseSolver, Callable[[csc, Vec], Vec]]]:
+    """
+    Build the ordered list of sparse linear solvers that IPS can try for one KKT system.
+
+    :return: Ordered ``(solver_type, linear_solver)`` pairs, from preferred to fallback.
+    """
+    available_solver_types: List[SparseSolver] = get_available_sparse_solvers()
+    candidate_order: List[SparseSolver] = list()
+    candidate_order.append(SparseSolver.Pardiso)
+    candidate_order.append(SparseSolver.SuperLU)
+    candidate_order.append(SparseSolver.UMFPACK)
+    candidate_order.append(SparseSolver.KLU)
+
+    linear_solver_candidates: List[Tuple[SparseSolver, Callable[[csc, Vec], Vec]]] = list()
+
+    # Only keep backends that are actually available in this runtime.
+    for solver_type in candidate_order:
+        if solver_type in available_solver_types:
+            linear_solver: Callable[[csc, Vec], Vec] = get_linear_solver(solver_type)
+            linear_solver_candidates.append((solver_type, linear_solver))
+        else:
+            pass
+
+    # Fall back to the scipy sparse solve path if no preferred backend is available.
+    if len(linear_solver_candidates) == 0:
+        fallback_solver_type: SparseSolver = SparseSolver.UMFPACK
+        fallback_solver: Callable[[csc, Vec], Vec] = get_linear_solver(fallback_solver_type)
+        linear_solver_candidates.append((fallback_solver_type, fallback_solver))
+    else:
+        pass
+
+    return linear_solver_candidates
+
+
+def solve_kkt_with_fallback(jac: csc,
+                            r: Vec,
+                            linear_solver_candidates: List[Tuple[SparseSolver, Callable[[csc, Vec], Vec]]],
+                            max_stepsize: float,
+                            residual_tol: float = 1e-6) -> Tuple[Union[Vec, None], Union[SparseSolver, None], float]:
+    """
+    Solve the KKT system while rejecting numerically broken linear solves early.
+
+    :param jac: KKT Jacobian matrix.
+    :param r: Right-hand side residual vector.
+    :param linear_solver_candidates: Ordered sparse solver backends to try.
+    :param max_stepsize: Maximum accepted Newton direction norm.
+    :param residual_tol: Maximum accepted relative linear residual.
+    :return: ``(solution, solver_type, residual_ratio)``. ``solution`` and ``solver_type`` are ``None`` if all attempts fail.
+    """
+    rhs_norm: float = np.linalg.norm(r, np.inf)
+
+    # Try each sparse backend in order and accept the first numerically sane Newton direction.
+    for solver_type, linear_solver in linear_solver_candidates:
+        solution: Union[Vec, None] = None
+        solution_ok: bool = False
+
+        # First, attempt the sparse linear solve itself.
+        try:
+            solution = np.asarray(linear_solver(jac, r)).reshape(-1)
+            solution_ok = True
+        except (RuntimeError, ValueError, TypeError, ArithmeticError):
+            solution_ok = False
+
+        # Second, reject NaN or Inf directions before they can contaminate the barrier state.
+        if solution_ok and solution is not None:
+            if np.all(np.isfinite(solution)):
+                solution_ok = True
+            else:
+                solution_ok = False
+        else:
+            solution_ok = False
+
+        # Third, reject directions that are so large they are almost certainly factorization garbage.
+        if solution_ok and solution is not None:
+            step_norm: float = np.linalg.norm(solution)
+            if step_norm > max_stepsize:
+                solution_ok = False
+            else:
+                solution_ok = True
+        else:
+            solution_ok = False
+
+        # Finally, verify that the accepted direction actually solves the linear system accurately enough.
+        if solution_ok and solution is not None:
+            residual: Vec = jac @ solution - r
+            residual_ratio: float = np.linalg.norm(residual, np.inf) / (1.0 + rhs_norm)
+            if np.isfinite(residual_ratio) and residual_ratio <= residual_tol:
+                solution_ok = True
+            else:
+                solution_ok = False
+        else:
+            residual_ratio = np.inf
+
+        if solution_ok and solution is not None:
+            return solution, solver_type, residual_ratio
+        else:
+            pass
+
+    return None, None, np.inf
 
 
 @dataclass
@@ -224,7 +326,11 @@ def interior_point_solver(problem,
                           pf_init=False,
                           trust=0.9,
                           verbose: int = 0,
-                          step_control=False) -> IpsSolution:
+                          step_control=False,
+                          xi: float = 0.99995,
+                          sigma: float = 0.1,
+                          alpha_min: float = 1e-8,
+                          max_stepsize: float = 1e10) -> IpsSolution:
     """
     Solve a non-linear problem of the form:
 
@@ -263,18 +369,33 @@ def interior_point_solver(problem,
     :param trust: Amount of trust in the initial Newton derivative length estimation
     :param verbose: 0 to 3 (the larger, the more verbose)
     :param step_control: Use step control to improve the solution process control
+    :param xi: Fraction-to-the-boundary parameter for primal/dual steps
+    :param sigma: Centering parameter for the barrier update
+    :param alpha_min: Minimum accepted primal/dual step before declaring numeric failure
+    :param max_stepsize: Maximum allowed norm of the Newton direction before declaring numeric failure
     :return: IpsSolution
     """
 
-    linear_solver = get_linear_solver(SparseSolver.Pardiso)
+    linear_solver_candidates = get_ips_linear_solver_candidates()
 
     t_start = timeit.default_timer()
+
+    if not (0.5 <= xi < 1.0):
+        raise ValueError(f"xi must be in [0.5, 1.0), got {xi}")
+    if not (0.0 < sigma <= 1.0):
+        raise ValueError(f"sigma must be in (0.0, 1.0], got {sigma}")
+    if alpha_min <= 0.0:
+        raise ValueError(f"alpha_min must be positive, got {alpha_min}")
+    if max_stepsize <= 0.0:
+        raise ValueError(f"max_stepsize must be positive, got {max_stepsize}")
 
     # Init iteration values
     error = 1e6
     iter_counter = 0
     x = problem.x0
     gamma = 1.0
+    f_prev: float
+    cost_cond: float
     nabla = 0.05
     rho_lower = 1.0 - nabla
     rho_upper = 1.0 + nabla
@@ -310,8 +431,17 @@ def interior_point_solver(problem,
         mu_diag = diags(mu)
 
     fx, Gx, Hx, fxx, Gxx, Hxx = problem.get_jacobians_and_hessians(mu=mu, lam=lam, compute_hessians=True)
+    lx = fx + Gx.T @ lam + Hx.T @ mu
     feas_cond = calc_feas_cond(g=G, h=H, x=x, z=z)
-    converged = error <= gamma
+    gradcond = calc_grad_cond(lx=lx, lam=lam, mu=mu)
+    comp_cond = calc_c_cond(mu=mu, z=z, x=x)
+    f_prev = f
+    if step_control:
+        cost_cond = 0.0
+    else:
+        cost_cond = 0.0
+    error = np.max([feas_cond, gradcond, comp_cond, gamma])
+    converged = feas_cond < tol and gradcond < tol and cost_cond < tol and gamma < tol
     max_displ = 0
     error_evolution = np.zeros(max_iter + 1)
     feas_cond_evolution = np.zeros(max_iter + 1)
@@ -338,7 +468,25 @@ def interior_point_solver(problem,
         r = - np.r_[n, G]
 
         # Find the reduced problem residuals and split them
-        dx, dlam = split(linear_solver(jac, r), problem.NV)
+        dxdlam, linear_solver_used, linear_residual = solve_kkt_with_fallback(
+            jac=jac,
+            r=r,
+            linear_solver_candidates=linear_solver_candidates,
+            max_stepsize=max_stepsize,
+        )
+        if dxdlam is None:
+            break
+
+        if verbose > 2 and linear_solver_used != linear_solver_candidates[0][0]:
+            print(f"\tFallback linear solver: {linear_solver_used.value}, residual={linear_residual:.3e}")
+
+        dx, dlam = split(dxdlam, problem.NV)
+
+        # Abort early on broken or runaway Newton directions instead of updating into NaNs.
+        if not np.all(np.isfinite(dx)) or not np.all(np.isfinite(dlam)):
+            break
+        if np.linalg.norm(np.r_[dx, dlam]) > max_stepsize:
+            break
 
         # Calculate the inequalities residuals using the reduced problem residuals
         dz = - H - z - Hx @ dx
@@ -346,37 +494,54 @@ def interior_point_solver(problem,
 
         # Step control as in PyPower
         if step_control:
-            l0 = f + np.dot(lam, G) + np.dot(mu, H + z) - gamma * np.sum(np.log(z))
-            alpha = trust
-            for j in range(20):
-                dx1 = alpha * dx
-                x1 = x + dx1
+            x1 = x + dx
+            f1, G1, H1 = problem.update(x1)
+            # Re-evaluate derivatives at the trial point, matching the MIPS acceptance check.
+            fx1, Gx1, Hx1, _, _, _ = problem.get_jacobians_and_hessians(mu=mu, lam=lam, compute_hessians=False)
+            l1 = f1 + lam.T @ G1 + mu.T @ (H1 + z) - gamma * np.sum(np.log(z))
+            lx1 = fx1 + Gx1.T @ lam + Hx1.T @ mu
+            feas_cond1 = calc_feas_cond(g=G1, h=H1, x=x1, z=z)
+            gradcond1 = calc_grad_cond(lx=lx1, lam=lam, mu=mu)
 
-                f, G, H = problem.update(x1)
+            if feas_cond1 > feas_cond and gradcond1 > calc_grad_cond(lx=lx, lam=lam, mu=mu):
+                l0 = f + np.dot(lam, G) + np.dot(mu, H + z) - gamma * np.sum(np.log(z))
+                alpha = trust
+                for _ in range(20):
+                    dx1 = alpha * dx
+                    x1 = x + dx1
 
-                l1 = f + lam.T @ G + mu.T @ (H + z) - gamma * np.sum(np.log(z))
-                rho = (l1 - l0) / (lx @ dx1 + 0.5 * dx1.T @ lxx @ dx1)
+                    f1, G1, H1 = problem.update(x1)
+                    l1 = f1 + lam.T @ G1 + mu.T @ (H1 + z) - gamma * np.sum(np.log(z))
+                    rho = (l1 - l0) / (lx @ dx1 + 0.5 * dx1.T @ lxx @ dx1)
 
-                if rho_lower < rho < rho_upper:
-                    break
-                else:
+                    if rho_lower < rho < rho_upper:
+                        break
                     alpha = alpha / 2.0
-                    print('Use step control!')
 
-            dx = alpha * dx
-            dz = alpha * dz
-            dlam = alpha * dlam
-            dmu = alpha * dmu
+                dx = alpha * dx
+                dz = alpha * dz
+                dlam = alpha * dlam
+                dmu = alpha * dmu
 
         # Compute the maximum step allowed
-        alpha_p = step_calculation(z, dz)
-        alpha_d = step_calculation(mu, dmu)
+        alpha_p = step_calculation(z, dz, tau=xi)
+        alpha_d = step_calculation(mu, dmu, tau=xi)
+
+        if (not np.isfinite(alpha_p)) or (not np.isfinite(alpha_d)) or alpha_p <= 0.0 or alpha_d <= 0.0:
+            break
+
         # Update the values of the variables and multipliers
         x += dx * alpha_p
         z += dz * alpha_p
         lam += dlam * alpha_d
         mu += dmu * alpha_d
-        gamma = 0.1 * mu @ z / problem.nineq
+        # Keep gamma well-defined for formulations with no inequality constraints.
+        gamma = sigma * mu @ z / problem.nineq if problem.nineq > 0 else 0.0
+
+        if (not np.all(np.isfinite(x)) or not np.all(np.isfinite(z)) or
+                not np.all(np.isfinite(lam)) or not np.all(np.isfinite(mu)) or
+                gamma < np.finfo(float).eps or gamma > 1.0 / np.finfo(float).eps):
+            break
 
         # Update fobj, g, h, calculate next step.
         f, G, H = problem.update(x)
@@ -384,19 +549,22 @@ def interior_point_solver(problem,
 
         Hx_t = Hx.T
         Gx_t = Gx.T
-        g_norm = np.linalg.norm(G, np.inf)
-        lam_norm = np.linalg.norm(lam, np.inf)
-        mu_norm = np.linalg.norm(mu, np.inf)
-        z_norm = np.linalg.norm(z, np.inf)
 
         lx = fx + Hx_t @ mu + Gx_t @ lam
-        feas_cond = max([g_norm, max(H)]) / (1 + max([np.linalg.norm(x, np.inf), z_norm]))
-        gradcond = np.linalg.norm(lx, np.inf) / (1 + max([lam_norm, mu_norm]))
-        error = np.max([feas_cond, gradcond, gamma])
+        feas_cond = calc_feas_cond(g=G, h=H, x=x, z=z)
+        gradcond = calc_grad_cond(lx=lx, lam=lam, mu=mu)
+        comp_cond = calc_c_cond(mu=mu, z=z, x=x)
+        # Only the damped path uses the MATPOWER-style objective stabilization gate.
+        # The historical undamped path must keep its previous convergence behavior.
+        if step_control:
+            cost_cond = abs(f - f_prev) / (1.0 + abs(f_prev))
+        else:
+            cost_cond = 0.0
+        error = np.max([feas_cond, gradcond, comp_cond, gamma])
         max_displ = np.max(np.r_[dx, dlam, dz, dmu])
         z_inv = diags(1.0 / z)
         mu_diag = diags(mu)
-        converged = feas_cond < tol and gradcond < tol and gamma < tol
+        converged = feas_cond < tol and gradcond < tol and cost_cond < tol and gamma < tol
 
         if verbose > 1:
             print(f'Iteration: {iter_counter}', "-" * 80)
@@ -409,6 +577,8 @@ def interior_point_solver(problem,
                 print("EQ:\n", eq_df)
                 print("INEQ:\n", ineq_df)
             print("\tGamma:", gamma)
+            print("\tComp cond:", comp_cond)
+            print("\tCost cond:", cost_cond)
             print("\tErr:", error)
             print("\tMax Displacement:", max_displ)
 
@@ -418,6 +588,7 @@ def interior_point_solver(problem,
         # record evolution
         feas_cond_evolution[iter_counter] = feas_cond
         error_evolution[iter_counter] = error
+        f_prev = f
 
     t_end = timeit.default_timer()
 
