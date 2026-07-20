@@ -174,6 +174,7 @@ class GenerationVars:
         self.p = np.zeros((nt, n_elm), dtype=object)
         self.dp = np.zeros((nt, n_elm), dtype=object)
         self.shedding = np.zeros((nt, n_elm), dtype=object)
+        self.reserve = np.zeros((nt, n_elm), dtype=object)
         self.producing = np.zeros((nt, n_elm), dtype=object)
         self.starting_up = np.zeros((nt, n_elm), dtype=object)
         self.shutting_down = np.zeros((nt, n_elm), dtype=object)
@@ -201,6 +202,7 @@ class GenerationVars:
                 data.p[t, i] = model.get_value(self.p[t, i]) * Sbase
                 data.dp[t, i] = model.get_value(self.dp[t, i]) * Sbase
                 data.shedding[t, i] = model.get_value(self.shedding[t, i]) * Sbase
+                data.reserve[t, i] = model.get_value(self.reserve[t, i]) * Sbase
                 data.producing[t, i] = model.get_value(self.producing[t, i])
                 data.starting_up[t, i] = model.get_value(self.starting_up[t, i])
                 data.shutting_down[t, i] = model.get_value(self.shutting_down[t, i])
@@ -211,6 +213,7 @@ class GenerationVars:
         data.p = data.p.astype(float, copy=False)
         data.dp = data.dp.astype(float, copy=False)
         data.shedding = data.shedding.astype(float, copy=False)
+        data.reserve = data.reserve.astype(float, copy=False)
         data.producing = data.producing.astype(bool, copy=False)
         data.starting_up = data.starting_up.astype(bool, copy=False)
         data.shutting_down = data.shutting_down.astype(bool, copy=False)
@@ -762,6 +765,216 @@ def add_generator_ramp_constraints(local_t: int,
         )
 
 
+def add_generator_piecewise_quadratic_variable_cost(local_t: int,
+                                                    k: int,
+                                                    Sbase: float,
+                                                    gen_data_t: GeneratorData,
+                                                    gen_vars: "GenerationVars",
+                                                    prob: LpModel,
+                                                    producing_var: LpVar | int | float | None = None,
+                                                    segment_count: int = 4) -> LpExp | float:
+    """
+    Add a piecewise-linear approximation of one generator quadratic variable cost.
+
+    The helper approximates ``cost_2 * p^2 + cost_1 * p`` with an incremental
+    convex envelope over ``[0, pmax]``. This keeps the formulation linear/MIP
+    while activating the otherwise-unused ``cost_2`` coefficient.
+
+    :param local_t: Local time index.
+    :param k: Generator index.
+    :param Sbase: System base power in MVA.
+    :param gen_data_t: Generator data container.
+    :param gen_vars: Generator variable container.
+    :param prob: Linear/MIP model instance.
+    :param producing_var: Commitment/on-off indicator used to disable segments when the unit is off.
+    :param segment_count: Number of linear segments for the approximation.
+    :return: Linear expression representing the approximated variable cost.
+    """
+    quadratic_cost: float = gen_data_t.cost_2[k]
+    max_power: float = gen_data_t.pmax[k]
+    linear_cost: float = gen_data_t.cost_1[k]
+
+    if quadratic_cost == 0.0:
+        return linear_cost * gen_vars.p[local_t, k]
+    else:
+        if max_power <= 0.0 or gen_data_t.pmin[k] < 0.0 or segment_count <= 0:
+            return (quadratic_cost * max_power + linear_cost) * gen_vars.p[local_t, k]
+
+    block_count: int = int(segment_count)
+    block_width_mw: float = max_power / block_count
+    approximated_cost: LpExp | float = 0.0
+    block_vars: list[LpVar] = list()
+
+    # Split the generator dispatch into fixed-width blocks so the objective remains linear.
+    for block_idx in range(block_count):
+        block_var: LpVar = prob.add_var(
+            lb=0.0,
+            ub=block_width_mw / Sbase,
+            name=f"gen_quad_block_{local_t}_{k}_{block_idx}"
+        )
+        block_vars.append(block_var)
+
+        if producing_var is not None:
+            prob.add_cst(
+                cst=block_var <= (block_width_mw / Sbase) * producing_var,
+                name=f"gen_quad_block_cap_{local_t}_{k}_{block_idx}"
+            )
+
+        left_power: float = block_idx * block_width_mw
+        right_power: float = (block_idx + 1) * block_width_mw
+
+        # Use secant slopes so the approximation matches the quadratic curve at breakpoints.
+        left_cost: float = quadratic_cost * left_power * left_power + linear_cost * left_power
+        right_cost: float = quadratic_cost * right_power * right_power + linear_cost * right_power
+        slope: float = (right_cost - left_cost) / block_width_mw
+        approximated_cost += slope * block_var
+
+    # Tie the block decomposition to the physical dispatch variable.
+    prob.add_cst(
+        cst=prob.sum(block_vars) == gen_vars.p[local_t, k],
+        name=f"gen_quad_balance_{local_t}_{k}"
+    )
+
+    return approximated_cost
+
+
+def get_generator_cost_expression(local_t: int,
+                                  k: int,
+                                  Sbase: float,
+                                  gen_data_t: GeneratorData,
+                                  gen_vars: "GenerationVars",
+                                  prob: LpModel,
+                                  use_glsk_as_cost: bool,
+                                  quadratic_costs: bool,
+                                  producing_var: LpVar | int | float | None = None,
+                                  starting_up_var: LpVar | int | float | None = None,
+                                  shutting_down_var: LpVar | int | float | None = None) -> LpExp | float:
+    """
+    Build the full operating-cost expression for one generator at one time step.
+
+    This helper centralizes the generator operating-cost assembly so the callers
+    only decide which commitment variables exist in their formulation. The
+    production term can stay purely linear, use GLSK weights, or use the
+    piecewise-linear quadratic approximation.
+
+    :param local_t: Local time index.
+    :param k: Generator index.
+    :param Sbase: System base power in MVA.
+    :param gen_data_t: Generator data container.
+    :param gen_vars: Generator variable container.
+    :param prob: Linear/MIP model instance.
+    :param use_glsk_as_cost: Use GLSK participation factors instead of generator costs.
+    :param quadratic_costs: Enable the piecewise-linear quadratic cost approximation.
+    :param producing_var: Commitment/on-off variable when a no-load term should be commitment-dependent.
+    :param starting_up_var: Optional startup indicator.
+    :param shutting_down_var: Optional shutdown indicator.
+    :return: Linear expression representing the operating cost.
+    """
+    cost_expression: LpExp | float = 0.0
+
+    if use_glsk_as_cost:
+        cost_expression += gen_data_t.shift_key[k] * gen_vars.p[local_t, k]
+    else:
+        if quadratic_costs:
+            cost_expression += add_generator_piecewise_quadratic_variable_cost(
+                local_t=local_t,
+                k=k,
+                Sbase=Sbase,
+                gen_data_t=gen_data_t,
+                gen_vars=gen_vars,
+                prob=prob,
+                producing_var=producing_var
+            )
+        else:
+            cost_expression += gen_data_t.cost_1[k] * gen_vars.p[local_t, k]
+
+        if producing_var is None:
+            cost_expression += gen_data_t.cost_0[k]
+        else:
+            cost_expression += gen_data_t.cost_0[k] * producing_var
+
+        if starting_up_var is not None and gen_data_t.startup_cost[k] != 0.0:
+            cost_expression += gen_data_t.startup_cost[k] * starting_up_var
+
+        if shutting_down_var is not None and gen_data_t.shut_down_cost[k] != 0.0:
+            cost_expression += gen_data_t.shut_down_cost[k] * shutting_down_var
+
+    return cost_expression
+
+
+def build_area_spinning_reserve_requirement_matrix(grid: MultiCircuit,
+                                                   time_indices: list[int | None]) -> Mat:
+    """
+    Build the time-area spinning reserve requirement matrix in MW.
+
+    :param grid: MultiCircuit instance.
+    :param time_indices: Global time indices, or ``None`` for snapshot runs.
+    :return: Dense matrix with shape ``(nt, n_areas)`` in MW.
+    """
+    nt = len(time_indices)
+    n_areas = len(grid.areas)
+    matrix = np.zeros((nt, n_areas), dtype=float)
+
+    for local_t_idx, global_t_idx in enumerate(time_indices):
+        for area_idx, area in enumerate(grid.areas):
+            matrix[local_t_idx, area_idx] = area.get_spinning_reserve_requirement_at(global_t_idx)
+
+    return matrix
+
+
+def add_area_spinning_reserve_formulation(local_t: int,
+                                          Sbase: float,
+                                          gen_data_t: GeneratorData,
+                                          gen_vars: GenerationVars,
+                                          prob: LpModel,
+                                          area_generator_indices: list[IntVec],
+                                          area_requirements_mw: Vec) -> None:
+    """
+    Add area spinning reserve variables and constraints for one time step.
+
+    :param local_t: Local time index.
+    :param Sbase: Base power.
+    :param gen_data_t: Generator data for the current compiled circuit.
+    :param gen_vars: Generator LP variables.
+    :param prob: LP model.
+    :param area_generator_indices: Dispatchable active generator indices grouped by area.
+    :param area_requirements_mw: Reserve requirement per area in MW.
+    :return: None.
+    """
+    for area_idx, generator_indices in enumerate(area_generator_indices):
+
+        for gen_idx in generator_indices:
+            gen_vars.reserve[local_t, gen_idx] = prob.add_var(
+                lb=0.0,
+                ub=gen_data_t.pmax[gen_idx] / Sbase,
+                name=f"gen_reserve_{local_t}_{area_idx}_{gen_idx}"
+            )
+
+            producing_var = gen_vars.producing[local_t, gen_idx]
+            if isinstance(producing_var, (int, float, np.integer, np.floating)):
+                if float(producing_var) == 0.0:
+                    producing_var = 1
+                else:
+                    pass
+            else:
+                pass
+
+            prob.add_cst(
+                cst=(gen_vars.reserve[local_t, gen_idx] <=
+                     (gen_data_t.pmax[gen_idx] / Sbase) * producing_var - gen_vars.p[local_t, gen_idx]),
+                name=f"gen_reserve_headroom_{local_t}_{area_idx}_{gen_idx}"
+            )
+
+        if area_requirements_mw[area_idx] > 0.0:
+            area_reserve_sum = sum(gen_vars.reserve[local_t, gen_idx] for gen_idx in generator_indices)
+            prob.add_cst(
+                cst=area_reserve_sum >= area_requirements_mw[area_idx] / Sbase,
+                name=f"area_spinning_reserve_{local_t}_{area_idx}"
+            )
+        else:
+            pass
+
+
 def get_contingency_flow_with_filter(multi_contingency: LinearMultiContingency,
                                      base_flow: Vec,
                                      injections: Union[None, Vec],
@@ -803,6 +1016,7 @@ def add_linear_simple_generation_formulation(local_t: Union[int, None],
                                              ramp_constraints: bool,
                                              consider_time_up_down: bool,
                                              area_spinning_reserve: bool,
+                                             quadratic_costs: bool,
                                              skip_generation_limits: bool,
                                              use_glsk_as_cost: bool,
                                              logger: Logger) -> LpExp | float:
@@ -818,6 +1032,7 @@ def add_linear_simple_generation_formulation(local_t: Union[int, None],
     :param ramp_constraints: formulate ramp constraints?
     :param consider_time_up_down: consider time up/down?
     :param area_spinning_reserve: area spinning reserve?
+    :param quadratic_costs: enable the piecewise-linear quadratic cost approximation?
     :param skip_generation_limits: skip the generation limits?
     :param use_glsk_as_cost: if true, the GLSK values are used instead of the traditional costs
     :param logger: Logger object
@@ -847,12 +1062,16 @@ def add_linear_simple_generation_formulation(local_t: Union[int, None],
                         device=gen_data_t.names[k]
                     )
 
-                # Operational cost (linear...)
-                if use_glsk_as_cost:
-                    gen_vars.cost[local_t, k] += gen_data_t.shift_key[k] * gen_vars.p[local_t, k]
-                else:
-                    gen_vars.cost[local_t, k] += ((gen_data_t.cost_1[k] * gen_vars.p[local_t, k]) +
-                                                  gen_data_t.cost_0[k])
+                gen_vars.cost[local_t, k] += get_generator_cost_expression(
+                    local_t=local_t,
+                    k=k,
+                    Sbase=Sbase,
+                    gen_data_t=gen_data_t,
+                    gen_vars=gen_vars,
+                    prob=prob,
+                    use_glsk_as_cost=use_glsk_as_cost,
+                    quadratic_costs=quadratic_costs
+                )
 
                 if not skip_generation_limits:
                     prob.set_var_bounds(var=gen_vars.p[local_t, k],
@@ -917,11 +1136,16 @@ def add_linear_simple_generation_formulation(local_t: Union[int, None],
                                        device_class="Generator",
                                        device=gen_data_t.names[k])
 
-                # Operational cost (linear...)
-                if use_glsk_as_cost:
-                    gen_vars.cost[local_t, k] += gen_data_t.shift_key[k] * gen_vars.p[local_t, k]
-                else:
-                    gen_vars.cost[local_t, k] += (gen_data_t.cost_1[k] * gen_vars.p[local_t, k]) + gen_data_t.cost_0[k]
+                gen_vars.cost[local_t, k] += get_generator_cost_expression(
+                    local_t=local_t,
+                    k=k,
+                    Sbase=Sbase,
+                    gen_data_t=gen_data_t,
+                    gen_vars=gen_vars,
+                    prob=prob,
+                    use_glsk_as_cost=use_glsk_as_cost,
+                    quadratic_costs=quadratic_costs
+                )
 
             # add to the balance
             bus_vars.Pbalance[local_t, bus_idx] += gen_vars.p[local_t, k]
@@ -950,6 +1174,7 @@ def add_linear_generation_expansion_planning_formulation(local_t: Union[int, Non
                                                          gen_vars: GenerationVars,
                                                          prob: LpModel,
                                                          ramp_constraints: bool,
+                                                         quadratic_costs: bool,
                                                          skip_generation_limits: bool,
                                                          use_glsk_as_cost: bool,
                                                          logger: Logger) -> LpExp | float:
@@ -963,6 +1188,7 @@ def add_linear_generation_expansion_planning_formulation(local_t: Union[int, Non
     :param gen_vars: GenerationVars structure
     :param prob: LpModel
     :param ramp_constraints: formulate ramp constraints?
+    :param quadratic_costs: enable the piecewise-linear quadratic cost approximation?
     :param skip_generation_limits: skip the generation limits?
     :param use_glsk_as_cost: if true, the GLSK values are used instead of the traditional costs
     :param logger: Logger object
@@ -1000,12 +1226,16 @@ def add_linear_generation_expansion_planning_formulation(local_t: Union[int, Non
                         device=gen_data_t.names[k]
                     )
 
-                # Operational cost (linear...)
-                if use_glsk_as_cost:
-                    gen_vars.cost[local_t, k] += gen_data_t.shift_key[k] * gen_vars.p[local_t, k]
-                else:
-                    gen_vars.cost[local_t, k] += ((gen_data_t.cost_1[k] * gen_vars.p[local_t, k]) +
-                                                  gen_data_t.cost_0[k])
+                gen_vars.cost[local_t, k] += get_generator_cost_expression(
+                    local_t=local_t,
+                    k=k,
+                    Sbase=Sbase,
+                    gen_data_t=gen_data_t,
+                    gen_vars=gen_vars,
+                    prob=prob,
+                    use_glsk_as_cost=use_glsk_as_cost,
+                    quadratic_costs=quadratic_costs
+                )
 
                 if not skip_generation_limits:
                     prob.set_var_bounds(var=gen_vars.p[local_t, k],
@@ -1096,11 +1326,16 @@ def add_linear_generation_expansion_planning_formulation(local_t: Union[int, Non
                                        device_class="Generator",
                                        device=gen_data_t.names[k])
 
-                # Operational cost (linear...)
-                if use_glsk_as_cost:
-                    gen_vars.cost[local_t, k] += gen_data_t.shift_key[k] * gen_vars.p[local_t, k]
-                else:
-                    gen_vars.cost[local_t, k] += (gen_data_t.cost_1[k] * gen_vars.p[local_t, k]) + gen_data_t.cost_0[k]
+                gen_vars.cost[local_t, k] += get_generator_cost_expression(
+                    local_t=local_t,
+                    k=k,
+                    Sbase=Sbase,
+                    gen_data_t=gen_data_t,
+                    gen_vars=gen_vars,
+                    prob=prob,
+                    use_glsk_as_cost=use_glsk_as_cost,
+                    quadratic_costs=quadratic_costs
+                )
 
             # add to the balance
             bus_vars.Pbalance[local_t, bus_idx] += gen_vars.p[local_t, k]
@@ -1129,6 +1364,7 @@ def add_linear_generation_unit_commitment_formulation(
         ramp_constraints: bool,
         consider_time_up_down: bool,
         area_spinning_reserve: bool,
+        quadratic_costs: bool,
         skip_generation_limits: bool,
         use_glsk_as_cost: bool,
         logger: Logger) -> LpExp | float:
@@ -1144,6 +1380,7 @@ def add_linear_generation_unit_commitment_formulation(
     :param ramp_constraints: formulate ramp constraints?
     :param consider_time_up_down: consider time up/down?
     :param area_spinning_reserve: area spinning reserve?
+    :param quadratic_costs: enable the piecewise-linear quadratic cost approximation?
     :param skip_generation_limits: skip the generation limits?
     :param use_glsk_as_cost: if true, the GLSK values are used instead of the traditional costs
     :param logger: Logger object
@@ -1172,12 +1409,16 @@ def add_linear_generation_unit_commitment_formulation(
                                        device_class="Generator",
                                        device=gen_data_t.names[k])
 
-                    # Operational cost (linear...)
-                    if use_glsk_as_cost:
-                        gen_vars.cost[local_t, k] += gen_data_t.shift_key[k] * gen_vars.p[local_t, k]
-                    else:
-                        gen_vars.cost[local_t, k] += (gen_data_t.cost_1[k] * gen_vars.p[local_t, k]) + \
-                                                     gen_data_t.cost_0[k]
+                    gen_vars.cost[local_t, k] += get_generator_cost_expression(
+                        local_t=local_t,
+                        k=k,
+                        Sbase=Sbase,
+                        gen_data_t=gen_data_t,
+                        gen_vars=gen_vars,
+                        prob=prob,
+                        use_glsk_as_cost=use_glsk_as_cost,
+                        quadratic_costs=quadratic_costs
+                    )
 
                     if not skip_generation_limits:
                         prob.set_var_bounds(var=gen_vars.p[local_t, k],
@@ -1189,21 +1430,19 @@ def add_linear_generation_unit_commitment_formulation(
                     gen_vars.producing[local_t, k] = prob.add_bin(f"gen_producing_{local_t}_{k}")
                     gen_vars.shutting_down[local_t, k] = prob.add_bin(f"gen_shutting_down_{local_t}_{k}")
 
-                    # operational cost (linear...)
-                    if use_glsk_as_cost:
-                        gen_vars.cost[local_t, k] += gen_data_t.shift_key[k] * gen_vars.p[local_t, k]
-                    else:
-                        gen_vars.cost[local_t, k] += (gen_data_t.cost_1[k] * gen_vars.p[local_t, k]
-                                                      + gen_data_t.cost_0[k] * gen_vars.producing[local_t, k])
-
-                    # start-up cost
-                    if gen_data_t.startup_cost[k] != 0.0:
-                        gen_vars.cost[local_t, k] += gen_data_t.startup_cost[k] * gen_vars.starting_up[local_t, k]
-
-                    # shut-down cost
-                    if gen_data_t.shut_down_cost[k] != 0.0:
-                        gen_vars.cost[local_t, k] += gen_data_t.shut_down_cost[k] * gen_vars.shutting_down[
-                            local_t, k]
+                    gen_vars.cost[local_t, k] += get_generator_cost_expression(
+                        local_t=local_t,
+                        k=k,
+                        Sbase=Sbase,
+                        gen_data_t=gen_data_t,
+                        gen_vars=gen_vars,
+                        prob=prob,
+                        use_glsk_as_cost=use_glsk_as_cost,
+                        quadratic_costs=quadratic_costs,
+                        producing_var=gen_vars.producing[local_t, k],
+                        starting_up_var=gen_vars.starting_up[local_t, k],
+                        shutting_down_var=gen_vars.shutting_down[local_t, k]
+                    )
 
                     # power boundaries of the generator
                     if not skip_generation_limits:
@@ -1316,11 +1555,16 @@ def add_linear_generation_unit_commitment_formulation(
                                        device_class="Generator",
                                        device=gen_data_t.names[k])
 
-                # Operational cost (linear...)
-                if use_glsk_as_cost:
-                    gen_vars.cost[local_t, k] += gen_data_t.shift_key[k] * gen_vars.p[local_t, k]
-                else:
-                    gen_vars.cost[local_t, k] += (gen_data_t.cost_1[k] * gen_vars.p[local_t, k]) + gen_data_t.cost_0[k]
+                gen_vars.cost[local_t, k] += get_generator_cost_expression(
+                    local_t=local_t,
+                    k=k,
+                    Sbase=Sbase,
+                    gen_data_t=gen_data_t,
+                    gen_vars=gen_vars,
+                    prob=prob,
+                    use_glsk_as_cost=use_glsk_as_cost,
+                    quadratic_costs=quadratic_costs
+                )
 
             # add to the balance
             bus_vars.Pbalance[local_t, bus_idx] += gen_vars.p[local_t, k]
@@ -1345,6 +1589,7 @@ def add_linear_generation_redispatch_formulation(local_t: Union[int, None],
                                                  gen_vars: GenerationVars,
                                                  prob: LpModel,
                                                  inter_aggregation_info: InterAggregationInfo,
+                                                 quadratic_costs: bool,
                                                  skip_generation_limits: bool,
                                                  use_glsk_as_cost: bool,
                                                  logger: Logger) -> LpExp | float:
@@ -1360,6 +1605,7 @@ def add_linear_generation_redispatch_formulation(local_t: Union[int, None],
     :param gen_vars: GenerationVars structure
     :param prob: LpModel
     :param inter_aggregation_info:
+    :param quadratic_costs: enable the piecewise-linear quadratic cost approximation?
     :param skip_generation_limits: skip the generation limits?
     :param use_glsk_as_cost: if true, the GLSK values are used instead of the traditional costs
     :param logger: Logger object
@@ -1397,12 +1643,16 @@ def add_linear_generation_redispatch_formulation(local_t: Union[int, None],
                             device=gen_data_t.names[k]
                         )
 
-                    # Operational cost (linear...)
-                    if use_glsk_as_cost:
-                        gen_vars.cost[local_t, k] += gen_data_t.shift_key[k] * gen_vars.p[local_t, k]
-                    else:
-                        gen_vars.cost[local_t, k] += ((gen_data_t.cost_1[k] * gen_vars.p[local_t, k]) +
-                                                      gen_data_t.cost_0[k])
+                    gen_vars.cost[local_t, k] += get_generator_cost_expression(
+                        local_t=local_t,
+                        k=k,
+                        Sbase=Sbase,
+                        gen_data_t=gen_data_t,
+                        gen_vars=gen_vars,
+                        prob=prob,
+                        use_glsk_as_cost=use_glsk_as_cost,
+                        quadratic_costs=quadratic_costs
+                    )
 
                     if not skip_generation_limits:
                         prob.set_var_bounds(var=gen_vars.p[local_t, k],
@@ -1427,12 +1677,16 @@ def add_linear_generation_redispatch_formulation(local_t: Union[int, None],
                             device=gen_data_t.names[k]
                         )
 
-                    # Operational cost (linear...)
-                    if use_glsk_as_cost:
-                        gen_vars.cost[local_t, k] += gen_data_t.shift_key[k] * gen_vars.p[local_t, k]
-                    else:
-                        gen_vars.cost[local_t, k] += ((gen_data_t.cost_1[k] * gen_vars.p[local_t, k]) +
-                                                      gen_data_t.cost_0[k])
+                    gen_vars.cost[local_t, k] += get_generator_cost_expression(
+                        local_t=local_t,
+                        k=k,
+                        Sbase=Sbase,
+                        gen_data_t=gen_data_t,
+                        gen_vars=gen_vars,
+                        prob=prob,
+                        use_glsk_as_cost=use_glsk_as_cost,
+                        quadratic_costs=quadratic_costs
+                    )
 
                     if not skip_generation_limits:
                         prob.set_var_bounds(var=gen_vars.p[local_t, k],
@@ -1492,11 +1746,16 @@ def add_linear_generation_redispatch_formulation(local_t: Union[int, None],
                                        device_class="Generator",
                                        device=gen_data_t.names[k])
 
-                # Operational cost (linear...)
-                if use_glsk_as_cost:
-                    gen_vars.cost[local_t, k] += gen_data_t.shift_key[k] * gen_vars.p[local_t, k]
-                else:
-                    gen_vars.cost[local_t, k] += (gen_data_t.cost_1[k] * gen_vars.p[local_t, k]) + gen_data_t.cost_0[k]
+                gen_vars.cost[local_t, k] += get_generator_cost_expression(
+                    local_t=local_t,
+                    k=k,
+                    Sbase=Sbase,
+                    gen_data_t=gen_data_t,
+                    gen_vars=gen_vars,
+                    prob=prob,
+                    use_glsk_as_cost=use_glsk_as_cost,
+                    quadratic_costs=quadratic_costs
+                )
 
             # add to the balance
             bus_vars.Pbalance[local_t, bus_idx] += gen_vars.p[local_t, k]
@@ -2506,6 +2765,7 @@ def run_linear_opf_ts(grid: MultiCircuit,
                       ramp_constraints: bool = False,
                       consider_time_up_down: bool = False,
                       area_spinning_reserve: bool = False,
+                      quadratic_costs: bool = False,
                       lodf_threshold: float = 0.001,
                       inter_aggregation_info: InterAggregationInfo | None = None,
                       energy_0: Union[Vec, None] = None,
@@ -2533,6 +2793,7 @@ def run_linear_opf_ts(grid: MultiCircuit,
     :param ramp_constraints: Formulate ramp constraints?
     :param consider_time_up_down: Consider the time up/down?
     :param area_spinning_reserve: Area spinning reserve?
+    :param quadratic_costs: Enable the piecewise-linear quadratic cost approximation?
     :param lodf_threshold: LODF threshold value to consider contingencies
     :param inter_aggregation_info: Inter rea (or country, etc) information
     :param energy_0: Vector of initial energy for batteries (size: Number of batteries)
@@ -2586,6 +2847,11 @@ def run_linear_opf_ts(grid: MultiCircuit,
     gen_fuel_rates_matrix = grid.get_gen_fuel_rates_sparse_matrix()
     gen_tech_shares_matrix = grid.get_gen_technology_connectivity_matrix()
     batt_tech_shares_matrix = grid.get_batt_technology_connectivity_matrix()
+    bus_area_indices = grid.get_bus_area_indices()
+    area_spinning_reserve_requirements = (
+        build_area_spinning_reserve_requirement_matrix(grid=grid, time_indices=time_indices)
+        if area_spinning_reserve else None
+    )
 
     if dispatch_mode == OpfDispatchMode.InterAreaRedispatch:
         inter_area_branches = inter_aggregation_info.lst_br
@@ -2631,6 +2897,13 @@ def run_linear_opf_ts(grid: MultiCircuit,
         )
 
         indices = nc.get_simulation_indices()
+        area_generator_indices = (
+            nc.generator_data.get_dispatchable_active_indices_per_area(
+                bus_area_indices=bus_area_indices,
+                area_count=len(grid.areas)
+            )
+            if area_spinning_reserve else None
+        )
 
         # formulate the bus angles ---------------------------------------------------------------------------------
         for k in range(nc.bus_data.nbus):
@@ -2678,6 +2951,7 @@ def run_linear_opf_ts(grid: MultiCircuit,
                 ramp_constraints=ramp_constraints,
                 consider_time_up_down=consider_time_up_down,
                 area_spinning_reserve=area_spinning_reserve,
+                quadratic_costs=quadratic_costs,
                 skip_generation_limits=skip_generation_limits,
                 use_glsk_as_cost=use_glsk_as_cost,
                 logger=logger
@@ -2699,6 +2973,17 @@ def run_linear_opf_ts(grid: MultiCircuit,
                 global_t=global_t_idx
             )
 
+            if area_spinning_reserve:
+                add_area_spinning_reserve_formulation(
+                    local_t=local_t_idx,
+                    Sbase=nc.Sbase,
+                    gen_data_t=nc.generator_data,
+                    gen_vars=mip_vars.gen_vars,
+                    prob=lp_model,
+                    area_generator_indices=area_generator_indices,
+                    area_requirements_mw=area_spinning_reserve_requirements[local_t_idx, :]
+                )
+
         elif dispatch_mode == OpfDispatchMode.UnitCommitment:
 
             f_obj += add_linear_generation_unit_commitment_formulation(
@@ -2712,6 +2997,7 @@ def run_linear_opf_ts(grid: MultiCircuit,
                 ramp_constraints=ramp_constraints,
                 consider_time_up_down=consider_time_up_down,
                 area_spinning_reserve=area_spinning_reserve,
+                quadratic_costs=quadratic_costs,
                 skip_generation_limits=skip_generation_limits,
                 use_glsk_as_cost=use_glsk_as_cost,
                 logger=logger
@@ -2733,6 +3019,17 @@ def run_linear_opf_ts(grid: MultiCircuit,
                 global_t=global_t_idx
             )
 
+            if area_spinning_reserve:
+                add_area_spinning_reserve_formulation(
+                    local_t=local_t_idx,
+                    Sbase=nc.Sbase,
+                    gen_data_t=nc.generator_data,
+                    gen_vars=mip_vars.gen_vars,
+                    prob=lp_model,
+                    area_generator_indices=area_generator_indices,
+                    area_requirements_mw=area_spinning_reserve_requirements[local_t_idx, :]
+                )
+
         elif dispatch_mode == OpfDispatchMode.NodalCapacity:
             f_obj += add_linear_simple_generation_formulation(
                 local_t=local_t_idx,
@@ -2745,6 +3042,7 @@ def run_linear_opf_ts(grid: MultiCircuit,
                 ramp_constraints=ramp_constraints,
                 consider_time_up_down=consider_time_up_down,
                 area_spinning_reserve=area_spinning_reserve,
+                quadratic_costs=quadratic_costs,
                 skip_generation_limits=skip_generation_limits,
                 use_glsk_as_cost=use_glsk_as_cost,
                 logger=logger
@@ -2766,8 +3064,19 @@ def run_linear_opf_ts(grid: MultiCircuit,
                 global_t=global_t_idx
             )
 
+            if area_spinning_reserve:
+                add_area_spinning_reserve_formulation(
+                    local_t=local_t_idx,
+                    Sbase=nc.Sbase,
+                    gen_data_t=nc.generator_data,
+                    gen_vars=mip_vars.gen_vars,
+                    prob=lp_model,
+                    area_generator_indices=area_generator_indices,
+                    area_requirements_mw=area_spinning_reserve_requirements[local_t_idx, :]
+                )
+
         elif dispatch_mode == OpfDispatchMode.GenerationExpansionPlanning:
-            add_linear_generation_expansion_planning_formulation(
+            f_obj += add_linear_generation_expansion_planning_formulation(
                 local_t=local_t_idx,
                 Sbase=nc.Sbase,
                 time_array=grid.time_profile,
@@ -2776,6 +3085,7 @@ def run_linear_opf_ts(grid: MultiCircuit,
                 gen_vars=mip_vars.gen_vars,
                 prob=lp_model,
                 ramp_constraints=ramp_constraints,
+                quadratic_costs=quadratic_costs,
                 skip_generation_limits=skip_generation_limits,
                 use_glsk_as_cost=use_glsk_as_cost,
                 logger=logger
@@ -2797,6 +3107,17 @@ def run_linear_opf_ts(grid: MultiCircuit,
                 global_t=global_t_idx
             )
 
+            if area_spinning_reserve:
+                add_area_spinning_reserve_formulation(
+                    local_t=local_t_idx,
+                    Sbase=nc.Sbase,
+                    gen_data_t=nc.generator_data,
+                    gen_vars=mip_vars.gen_vars,
+                    prob=lp_model,
+                    area_generator_indices=area_generator_indices,
+                    area_requirements_mw=area_spinning_reserve_requirements[local_t_idx, :]
+                )
+
         elif dispatch_mode == OpfDispatchMode.InterAreaRedispatch:
             f_obj += add_linear_generation_redispatch_formulation(
                 local_t=local_t_idx,
@@ -2806,6 +3127,7 @@ def run_linear_opf_ts(grid: MultiCircuit,
                 gen_vars=mip_vars.gen_vars,
                 prob=lp_model,
                 inter_aggregation_info=inter_aggregation_info,
+                quadratic_costs=quadratic_costs,
                 skip_generation_limits=skip_generation_limits,
                 use_glsk_as_cost=use_glsk_as_cost,
                 logger=logger

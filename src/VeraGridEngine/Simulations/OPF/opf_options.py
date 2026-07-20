@@ -38,6 +38,7 @@ class OptimalPowerFlowOptions(OptionsTemplate):
         GCProp(key="consider_ramps", tpe=bool),
         GCProp(key="consider_time_up_down", tpe=bool),
         GCProp(key="area_spinning_reserve", tpe=bool),
+        GCProp(key="quadratic_costs", tpe=bool),
         GCProp(key="report_formulation", tpe=bool),
         GCProp(key="generate_report", tpe=bool),
         GCProp(key="acopf_mode", tpe=AcOpfMode),
@@ -69,6 +70,7 @@ class OptimalPowerFlowOptions(OptionsTemplate):
                  consider_ramps=False,
                  consider_time_up_down=False,
                  area_spinning_reserve=False,
+                 quadratic_costs: bool = False,
                  use_glsk_as_cost: bool = False,
                  add_losses_approximation: bool = False,
                  report_formulation: bool = False,
@@ -101,6 +103,7 @@ class OptimalPowerFlowOptions(OptionsTemplate):
         :param consider_ramps:
         :param consider_time_up_down:
         :param area_spinning_reserve:
+        :param quadratic_costs:
         :param use_glsk_as_cost: if true, the GLSK values are used instead of the traditional costs
         :param report_formulation:
         :param generate_report:
@@ -148,6 +151,8 @@ class OptimalPowerFlowOptions(OptionsTemplate):
         self.consider_time_up_down = consider_time_up_down
 
         self.area_spinning_reserve = area_spinning_reserve
+
+        self.quadratic_costs = quadratic_costs
 
         self.use_glsk_as_cost = use_glsk_as_cost
 

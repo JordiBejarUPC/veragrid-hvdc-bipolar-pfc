@@ -58,16 +58,35 @@ def is_pandapower_pickle(file_path):
         return False
 
 
-def is_pandapower_json(file_path):
+def is_pandapower_json(file_path: str) -> bool:
     """
-    Check if a file is pandapower JSON
-    :param file_path:
-    :return:
+    Check if a file is pandapower JSON.
+
+    :param file_path: Path to the candidate JSON file.
+    :returns: ``True`` when the JSON has pandapower markers or can be loaded by pandapower.
     """
+    try:
+        with open(file_path, "r", encoding="utf-8") as file_pointer:
+            data = json.load(file_pointer)
+    except (OSError, json.JSONDecodeError):
+        data = None
+
+    if isinstance(data, dict):
+        module_name = data.get("_module", None)
+        class_name = data.get("_class", None)
+
+        # pandapower JSON exports carry explicit top-level markers.
+        if module_name == "pandapower.auxiliary" and class_name == "pandapowerNet":
+            return True
+        else:
+            pass
+    else:
+        pass
+
     if PANDAPOWER_AVAILABLE:
         try:
             net = from_json(file_path)
-            return isinstance(net, dict) and all(key in net for key in ["bus", "line", "load", "ext_grid"])
+            return isinstance(net, pandapowerNet)
         except Exception:
             return False
     else:
