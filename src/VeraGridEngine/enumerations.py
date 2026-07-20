@@ -317,6 +317,7 @@ class SolverType(Enum):
     """
 
     NR = 'Newton Raphson'
+    NR_PC = 'Newton Raphson Predictor-Corrector'
     GAUSS = 'Gauss-Seidel'
     Decoupled_LU = 'Decoupled-LU Decomposition'
     GN = "Gauss-Newton"

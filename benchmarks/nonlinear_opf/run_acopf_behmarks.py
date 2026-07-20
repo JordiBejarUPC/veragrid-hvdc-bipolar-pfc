@@ -315,23 +315,39 @@ def detect_case_group(case_path: Path, pglib_root: Path) -> str:
     return group_name
 
 
-def compute_total_ac_objective(grid: MultiCircuit, results: NonlinearOPFResults) -> float:
+def compute_total_ac_objective(results: NonlinearOPFResults,
+                               sbase: float,
+                               active_generator_mask: np.ndarray,
+                               cost_0: np.ndarray,
+                               cost_1: np.ndarray,
+                               cost_2: np.ndarray) -> float:
     """
     Compute the total AC generator objective in the same units used by the ACOPF formulation.
 
-    :param grid: Solved benchmark grid.
     :param results: VeraGrid nonlinear ACOPF results.
+    :param sbase: System power base in MVA.
+    :param active_generator_mask: Active-state mask from the compiled numerical circuit.
+    :param cost_0: Constant generator cost coefficients.
+    :param cost_1: Linear generator cost coefficients.
+    :param cost_2: Quadratic generator cost coefficients.
     :return: Total active-power generation cost.
     """
     total_cost: float = 0.0
-    generators: List = grid.get_generators()
 
-    # The solver stores ``Pg`` in per-unit on ``grid.Sbase``, while the economic coefficients are
-    # defined on MW. Rebuild the benchmark objective from the solved dispatch in MW so the CSV uses
-    # the same units as the internal ACOPF objective and as the PGLIB baseline tables.
-    for index, generator in enumerate(generators):
-        pg_mw: float = float(results.Pg[index]) * float(grid.Sbase)
-        total_cost += float(generator.Cost0) + float(generator.Cost) * pg_mw + float(generator.Cost2) * (pg_mw * pg_mw)
+    # The solver works on the compiled numerical circuit, so the benchmark
+    # objective should be rebuilt only from the compiled numerical quantities
+    # that match the OPF solve.
+    #
+    # The solver stores ``Pg`` in per-unit on ``sbase``, while the
+    # economic coefficients are defined on MW. Rebuild the benchmark objective
+    # from the solved dispatch in MW so the CSV uses the same units as the
+    # internal ACOPF objective and as the PGLIB baseline tables.
+    for index in range(len(results.Pg)):
+        if bool(active_generator_mask[index]):
+            pg_mw: float = float(results.Pg[index]) * float(sbase)
+            total_cost += float(cost_0[index]) + float(cost_1[index]) * pg_mw + float(cost_2[index]) * (pg_mw * pg_mw)
+        else:
+            pass
 
     return total_cost
 
@@ -397,6 +413,8 @@ def build_opf_options_with_pf_init(grid: MultiCircuit,
         pf_converged = bool(pf_driver.results.converged)
     else:
         opf_options.ips_init_with_pf = False
+        opf_options.acopf_v0 = pf_driver.results.voltage if pf_driver.results is not None else None
+        opf_options.acopf_S0 = pf_driver.results.Sbus if pf_driver.results is not None else None
         opf_options.acopf_pf_converged = False
         pf_init_used = False
         pf_converged = bool(pf_driver.results.converged) if pf_driver.results is not None else False
@@ -569,7 +587,15 @@ def benchmark_case(case_path: Path,
             # results stay aligned with the current IPS initialization logic.
             results = run_nonlinear_opf(grid=grid, opf_options=opf_options)
 
-            row.veragrid_ac_objective = compute_total_ac_objective(grid=grid, results=results)
+            objective_nc = compile_numerical_circuit_at(circuit=grid, t_idx=None, logger=Logger())
+            row.veragrid_ac_objective = compute_total_ac_objective(
+                results=results,
+                sbase=float(objective_nc.Sbase),
+                active_generator_mask=objective_nc.generator_data.active.astype(bool),
+                cost_0=objective_nc.generator_data.cost_0,
+                cost_1=objective_nc.generator_data.cost_1,
+                cost_2=objective_nc.generator_data.cost_2,
+            )
             row.objective_gap_percent = compute_objective_gap_percent(
                 veragrid_ac_objective=row.veragrid_ac_objective,
                 baseline_ac_objective=row.baseline_ac_objective,
