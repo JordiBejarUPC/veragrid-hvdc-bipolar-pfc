@@ -14,9 +14,12 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_worker import multi_island_
 from VeraGridEngine.Simulations.PowerFlow.power_flow_options import PowerFlowOptions
 from VeraGridEngine.Simulations.OPF.opf_options import OptimalPowerFlowOptions
 from VeraGridEngine.Simulations.OPF.Formulations.ac_opf_problem import NonLinearOptimalPfProblem, NonlinearOPFResults
-from VeraGridEngine.Simulations.OPF.NumericalMethods.newton_raphson_ips_fx import interior_point_solver
+from VeraGridEngine.Simulations.OPF.NumericalMethods.newton_raphson_ips_fx import \
+    interior_point_solver as interior_point_solver_fx
+from VeraGridEngine.Simulations.OPF.NumericalMethods.newton_raphson_ips_pc import \
+    interior_point_solver as interior_point_solver_pc
 from VeraGridEngine.basic_structures import CxVec, IntVec, Logger
-from VeraGridEngine.enumerations import AcOpfMode
+from VeraGridEngine.enumerations import AcOpfMode, SolverType
 
 
 def remap_original_bus_indices(n_bus, original_bus_idx: Sequence[int]) -> Tuple[IntVec, IntVec]:
@@ -110,15 +113,15 @@ def run_nonlinear_opf(grid: MultiCircuit,
 
     projected_island_retry = None
     projected_shape_mismatch = (
-        len(split_islands) == 1
-        and split_islands[0].nbus == nc.nbus
-        and (
-            split_islands[0].ngen != nc.ngen
-            or split_islands[0].nbr != nc.nbr
-            or split_islands[0].nshunt != nc.nshunt
-            or split_islands[0].nhvdc != nc.nhvdc
-            or split_islands[0].vsc_data.nelm != nc.vsc_data.nelm
-        )
+            len(split_islands) == 1
+            and split_islands[0].nbus == nc.nbus
+            and (
+                    split_islands[0].ngen != nc.ngen
+                    or split_islands[0].nbr != nc.nbr
+                    or split_islands[0].nshunt != nc.nshunt
+                    or split_islands[0].nhvdc != nc.nhvdc
+                    or split_islands[0].vsc_data.nelm != nc.vsc_data.nelm
+            )
     )
 
     if projected_shape_mismatch:
@@ -152,7 +155,8 @@ def run_nonlinear_opf(grid: MultiCircuit,
 
             if capacity_nodes_idx is not None:
                 (capacity_nodes_idx_org,
-                 capacity_nodes_idx_isl) = remap_original_bus_indices(n_bus=nc.nbus, original_bus_idx=capacity_nodes_idx)
+                 capacity_nodes_idx_isl) = remap_original_bus_indices(n_bus=nc.nbus,
+                                                                      original_bus_idx=capacity_nodes_idx)
             else:
                 capacity_nodes_idx_org = None
                 capacity_nodes_idx_isl = None
@@ -168,7 +172,8 @@ def run_nonlinear_opf(grid: MultiCircuit,
                                                 logger=logger
                                                 )
 
-            use_pf_multiplier_init: bool = bool(problem.nvsc) and opf_options.ips_init_with_pf and opf_options.acopf_pf_converged
+            use_pf_multiplier_init: bool = bool(
+                problem.nvsc) and opf_options.ips_init_with_pf and opf_options.acopf_pf_converged
 
             # The VSC current-definition equalities can become ill-conditioned when
             # a converter is close to its hard current limit.  Keep a little more
@@ -190,16 +195,38 @@ def run_nonlinear_opf(grid: MultiCircuit,
             else:
                 pass
 
-            ips_results = interior_point_solver(problem=problem,
-                                                max_iter=opf_options.ips_iterations,
-                                                tol=opf_options.ips_tolerance,
-                                                pf_init=use_pf_multiplier_init,
-                                                trust=trust_radius,
-                                                verbose=opf_options.verbose,
-                                                step_control=use_step_control,
-                                                xi=xi)
+            if opf_options.ips_method == SolverType.NR_PC:
+                ips_results = interior_point_solver_pc(problem=problem,
+                                                       max_iter=opf_options.ips_iterations,
+                                                       tol=opf_options.ips_tolerance,
+                                                       pf_init=use_pf_multiplier_init,
+                                                       trust=trust_radius,
+                                                       verbose=opf_options.verbose,
+                                                       step_control=use_step_control,
+                                                       xi=xi)
 
-            island_res = problem.get_solution(ips_results=ips_results, verbose=opf_options.verbose, plot_error=plot_error)
+            elif opf_options.ips_method == SolverType.NR:
+
+                ips_results = interior_point_solver_fx(problem=problem,
+                                                       max_iter=opf_options.ips_iterations,
+                                                       tol=opf_options.ips_tolerance,
+                                                       pf_init=use_pf_multiplier_init,
+                                                       trust=trust_radius,
+                                                       verbose=opf_options.verbose,
+                                                       step_control=use_step_control,
+                                                       xi=xi)
+            else:
+                ips_results = interior_point_solver_fx(problem=problem,
+                                                       max_iter=opf_options.ips_iterations,
+                                                       tol=opf_options.ips_tolerance,
+                                                       pf_init=use_pf_multiplier_init,
+                                                       trust=trust_radius,
+                                                       verbose=opf_options.verbose,
+                                                       step_control=use_step_control,
+                                                       xi=xi)
+
+            island_res = problem.get_solution(ips_results=ips_results, verbose=opf_options.verbose,
+                                              plot_error=plot_error)
 
             results.merge(other=island_res,
                           bus_idx=island.bus_data.original_idx,
@@ -208,7 +235,8 @@ def run_nonlinear_opf(grid: MultiCircuit,
                           gen_idx=island.generator_data.original_idx,
                           hvdc_idx=island.hvdc_data.original_idx,
                           ncap_idx=capacity_nodes_idx_org,
-                          contshunt_idx=np.where(island.shunt_data.control_mode_int == ShuntControlMode.Continuous.idx())[0],
+                          contshunt_idx=
+                          np.where(island.shunt_data.control_mode_int == ShuntControlMode.Continuous.idx())[0],
                           acopf_mode=opf_options.acopf_mode,
                           vsc_idx=island.vsc_data.original_idx)
             if i > 0:
@@ -230,7 +258,6 @@ def run_nonlinear_opf(grid: MultiCircuit,
 
     # expand voltages if there was a bus topology reduction
     if nc.topology_performed:
-
         results.Va = nc.propagate_bus_result(results.Va)
         results.Vm = nc.propagate_bus_result(results.Vm)
         results.voltage = nc.propagate_bus_result(results.voltage)

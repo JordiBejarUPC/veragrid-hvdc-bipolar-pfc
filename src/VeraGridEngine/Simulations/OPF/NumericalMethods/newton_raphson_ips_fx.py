@@ -183,6 +183,46 @@ def has_tail_converged(problem,
         return False
 
 
+def compute_adaptive_sigma(mu: Vec,
+                           z: Vec,
+                           dmu: Vec,
+                           dz: Vec,
+                           alpha_p: float,
+                           alpha_d: float,
+                           sigma_floor: float = 1e-4,
+                           sigma_ceiling: float = 0.5) -> float:
+    """
+    Compute one conservative Mehrotra-style centering parameter.
+
+    :param mu: Current inequality multipliers.
+    :param z: Current inequality slacks.
+    :param dmu: Current multiplier step.
+    :param dz: Current slack step.
+    :param alpha_p: Accepted primal step fraction.
+    :param alpha_d: Accepted dual step fraction.
+    :param sigma_floor: Minimum centering parameter.
+    :param sigma_ceiling: Maximum centering parameter.
+    :return: Centering parameter clipped to a conservative interval.
+    """
+    sigma_value: float
+
+    if len(mu) == 0:
+        sigma_value = 0.0
+    else:
+        mu_bar: float = float(np.mean(mu * z))
+        mu_aff_vec: Vec = mu + alpha_d * dmu
+        z_aff_vec: Vec = z + alpha_p * dz
+        mu_aff_bar: float = float(np.mean(mu_aff_vec * z_aff_vec))
+
+        if mu_bar <= 0.0 or (not np.isfinite(mu_bar)) or (not np.isfinite(mu_aff_bar)):
+            sigma_value = sigma_ceiling
+        else:
+            ratio: float = max(mu_aff_bar, 0.0) / mu_bar
+            sigma_value = float(np.clip(ratio * ratio * ratio, sigma_floor, sigma_ceiling))
+
+    return sigma_value
+
+
 def get_ips_linear_solver_candidates() -> List[Tuple[SparseSolver, Callable[[csc, Vec], Vec]]]:
     """
     Build the ordered list of sparse linear solvers that IPS can try for one KKT system.
@@ -628,13 +668,24 @@ def interior_point_solver(problem,
         if (not np.isfinite(alpha_p)) or (not np.isfinite(alpha_d)) or alpha_p <= 0.0 or alpha_d <= 0.0:
             break
 
+        sigma_iter: float = sigma
+        if problem.nineq > 0:
+            sigma_iter = compute_adaptive_sigma(mu=mu,
+                                                z=z,
+                                                dmu=dmu,
+                                                dz=dz,
+                                                alpha_p=alpha_p,
+                                                alpha_d=alpha_d)
+        else:
+            pass
+
         # Update the values of the variables and multipliers
         x += dx * alpha_p
         z += dz * alpha_p
         lam += dlam * alpha_d
         mu += dmu * alpha_d
         # Keep gamma well-defined for formulations with no inequality constraints.
-        gamma = sigma * mu @ z / problem.nineq if problem.nineq > 0 else 0.0
+        gamma = sigma_iter * mu @ z / problem.nineq if problem.nineq > 0 else 0.0
 
         if (not np.all(np.isfinite(x)) or not np.all(np.isfinite(z)) or
                 not np.all(np.isfinite(lam)) or not np.all(np.isfinite(mu)) or

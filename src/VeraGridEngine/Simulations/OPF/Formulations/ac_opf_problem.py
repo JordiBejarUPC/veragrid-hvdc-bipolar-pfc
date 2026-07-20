@@ -255,6 +255,8 @@ class NonLinearOptimalPfProblem:
         "c0n",
         "c1n",
         "c2n",
+        "Pg_case0",
+        "Qg_case0",
         "tapm_max",
         "tapm_min",
         "tapt_max",
@@ -531,6 +533,8 @@ class NonLinearOptimalPfProblem:
         self.c0n = nc.generator_data.cost_0[self.gen_nondisp_idx]
         self.c1n = nc.generator_data.cost_1[self.gen_nondisp_idx]
         self.c2n = nc.generator_data.cost_2[self.gen_nondisp_idx]
+        self.Pg_case0 = np.r_[nc.generator_data.p[self.gen_disp_idx] / self.Sbase, np.zeros(self.nsh)]
+        self.Qg_case0 = np.r_[nc.generator_data.q[self.gen_disp_idx] / self.Sbase, np.zeros(self.nsh)]
 
         # Transformer operational limits
         self.tapm_max = nc.active_branch_data.tap_module_max[self.k_m]
@@ -597,36 +601,12 @@ class NonLinearOptimalPfProblem:
         # Variables
 
         if pf_init:
-
-            # TODO: try to substitute by using nc.generator_data.get_injections_per_bus()
-            #  @Carlos: get_injections does not account for the powerflow results
-
-            # Seed sharing must ignore inactive generators. Otherwise a bus PF
-            # injection gets split across units that are out of service in the
-            # MATPOWER case, which creates fake OPF generation on offline units.
-            active_gen_idx = np.flatnonzero(nc.generator_data.active.astype(bool))
-            active_gen_buses = self.gen_bus_idx[active_gen_idx]
-            ngenforgen = np.zeros(self.ngen, dtype=int)
-            if len(active_gen_buses):
-                active_count_per_bus = np.bincount(active_gen_buses, minlength=self.nbus)
-                ngenforgen[active_gen_idx] = active_count_per_bus[active_gen_buses]
-            else:
-                pass
-
-            # If there are multiple generators connected to the same bus, they share in equal parts the injection.
-            allPgen = np.zeros(self.ngen, dtype=float)
-            active_gen_mask = ngenforgen > 0
-            allPgen[active_gen_mask] = ((Sbus_pf.real + self.Sd.real)[self.gen_bus_idx[:self.ngen][active_gen_mask]]
-                                        / ngenforgen[active_gen_mask])
-
-            # Same for Q
-            allQgen = np.zeros(self.ngen, dtype=float)
-            allQgen[active_gen_mask] = ((Sbus_pf.imag + self.Sd.imag)[self.gen_bus_idx[:self.ngen][active_gen_mask]]
-                                        / ngenforgen[active_gen_mask])
-
-            self.Sg_undis = allPgen[self.gen_nondisp_idx] + 1j * allQgen[self.gen_nondisp_idx]
-            self.Pg = np.r_[allPgen[self.gen_disp_idx], np.zeros(self.nsh)]
-            self.Qg = np.r_[allQgen[self.gen_disp_idx], np.zeros(self.nsh)]
+            # Keep the PF voltage state when available, but seed generator
+            # outputs from the benchmark case data. Sharing a bus net injection
+            # equally across co-located generators destroys the original MATPOWER
+            # dispatch pattern and is especially harmful on large PEGASE cases.
+            self.Pg = self.Pg_case0.copy()
+            self.Qg = self.Qg_case0.copy()
             self.Vm = np.abs(voltage_pf)
             self.Va = np.angle(voltage_pf)
             self.tap_m = nc.active_branch_data.tap_module[self.k_m]
@@ -655,14 +635,11 @@ class NonLinearOptimalPfProblem:
                 pass
 
         else:
-            self.Pg = np.r_[
-                (self.Pg_max[self.gen_disp_idx] + self.Pg_min[self.gen_disp_idx]) / 2,
-                np.zeros(self.nsh)
-            ]
-            self.Qg = np.r_[
-                (self.Qg_max[self.gen_disp_idx] + self.Qg_min[self.gen_disp_idx]) / 2,
-                np.zeros(self.nsh)
-            ]
+            # The MATPOWER/PGLIB files already carry a meaningful generator
+            # dispatch. Use that as the primal seed instead of midpoint values,
+            # which are often far from the feasible AC basin on large cases.
+            self.Pg = self.Pg_case0.copy()
+            self.Qg = self.Qg_case0.copy()
             ref_angle = np.angle(nc.bus_data.Vbus[self.slack[0]]) if self.n_slack else 0.0
             # Match MATPOWER/MIPS interior initialization: start from a flat angle
             # profile instead of inheriting a stressed network state.
@@ -671,6 +648,15 @@ class NonLinearOptimalPfProblem:
             self.tap_m = nc.active_branch_data.tap_module[self.k_m]
             self.tap_tau = nc.active_branch_data.tap_angle[self.k_tau]
             self.Pfdc = np.zeros(self.n_disp_hvdc)
+
+            # The case-file generator seed can still sit outside the OPF box on
+            # stressed benchmarks. Clamp it before constructing the IPS state.
+            self.Pg[:self.n_gen_disp] = np.clip(self.Pg[:self.n_gen_disp],
+                                                self.Pg_min[self.gen_disp_idx],
+                                                self.Pg_max[self.gen_disp_idx])
+            self.Qg[:self.n_gen_disp] = np.clip(self.Qg[:self.n_gen_disp],
+                                                self.Qg_min[self.gen_disp_idx],
+                                                self.Qg_max[self.gen_disp_idx])
 
         if options.acopf_mode == AcOpfMode.ACOPFslacks:
             self.sl_sf = np.ones(self.n_br_mon)
