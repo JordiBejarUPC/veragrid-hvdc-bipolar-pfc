@@ -732,6 +732,7 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
         self.i_u_va = np.zeros(0, dtype=int)
         self.i_k_p = np.zeros(0, dtype=int)
         self.i_k_q = np.zeros(0, dtype=int)
+        self.i_k_p_dc = np.zeros(0, dtype=int)
         self._set_bus_control_indices()
 
         # Unknowns -----------------------------------------------------------------------------------------------------
@@ -904,6 +905,10 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
         # We exclude DC buses as it is the current for which the balance is imposed
         self.i_k_p = np.where((self.is_p_controlled == 1) & (self.nc.bus_data.is_dc == 0))[0]
         self.i_k_q = np.where(self.is_q_controlled == 1)[0]
+        # DC buses carrying a current-balance equation when P-controlled, not DC slacks and not grounded
+        self.i_k_p_dc = np.where((self.is_p_controlled == 1)
+                                 & (self.nc.bus_data.is_dc != 0)
+                                 & (self.nc.bus_data.is_grounded == 0))[0]
 
     def _set_branch_control_indices(self) -> None:
         """
@@ -2357,8 +2362,7 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
         # DC Bus Current balance ---------------------------------------------------------------------------------------
         # DC buses use a current eq. instead of a power mismatch to avoid div by 0
         tm[4] = time.time()
-        is_dc = self.nc.bus_data.is_dc
-        is_dc_indices = np.where((is_dc != 0) & (self.nc.bus_data.is_grounded == 0))[0]
+        is_dc_indices = self.i_k_p_dc
 
         I_passive_all = compute_current(adm_.Ybus, V)
 
@@ -2971,8 +2975,7 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
 
         # DC Bus Current balance ---------------------------------------------------------------------------------------
         # DC buses use a current mismatch instead of a power mismatch (see compute_f)
-        is_dc = self.nc.bus_data.is_dc
-        is_dc_indices = np.where((is_dc != 0) & (self.nc.bus_data.is_grounded == 0))[0]
+        is_dc_indices = self.i_k_p_dc
 
         I_passive_all = compute_current(self.adm.Ybus, V)
 
@@ -3042,11 +3045,10 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
 
         return self._f
 
-    def Jacobian(self, autodiff: bool = False) -> CSC:
+    def Jacobian(self, autodiff: bool = True) -> CSC:
         """
         Get the Jacobian of the current-based AC/DC formulation.
-        :param autodiff: use the finite-difference Jacobian instead of the analytic one
-                         (slower, kept for validation and as a fallback)
+        :param autodiff: use the finite-difference Jacobian (default, exact for every control) 
         :return: Jacobian matrix in CSC format
         """
         if autodiff:
@@ -3081,8 +3083,7 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
             droop_factor: Vec = self.Ifp_vsc[self.k_vsc_pfp_droop] - self._pfp_droop_slopes()
 
             # DC current-balance rows and the injection sensitivities
-            dc_rows: IntVec = np.where((self.nc.bus_data.is_dc != 0) &
-                                       (self.nc.bus_data.is_grounded == 0))[0]
+            dc_rows: IntVec = self.i_k_p_dc
 
             assert isspmatrix_csc(self.adm.Ybus)
 
@@ -3175,7 +3176,7 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
         Names matching fx
         :return:
         """
-        bus_dc = np.where((self.nc.bus_data.is_dc != 0) & (self.nc.bus_data.is_grounded == 0))[0]
+        bus_dc = self.i_k_p_dc
 
         rows = [f'dP_{i}' for i in self.i_k_p]
         rows += [f'dQ_{i}' for i in self.i_k_q]
