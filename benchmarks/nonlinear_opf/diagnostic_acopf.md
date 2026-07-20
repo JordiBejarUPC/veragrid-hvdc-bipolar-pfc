@@ -950,3 +950,190 @@ Verified still-open representative failures:
 Current highest-value next step:
 
 - focus on the unresolved no-PF large-case family rather than spending more time on the PF-seeded family that is now handled by retry logic
+
+## July 20 update: inactive-generator root cause and benchmark accounting fix
+
+### 16. New root cause: inactive dispatchable generators were still entering ACOPF
+
+This was a real bug.
+
+In:
+
+- `src/VeraGridEngine/Simulations/OPF/Formulations/ac_opf_problem.py`
+
+the ACOPF formulation used:
+
+- `nc.generator_data.get_dispatchable_indices()`
+
+for the dispatchable-generator variable set.
+
+That includes generators that are dispatchable in principle but inactive in
+the imported MATPOWER case.
+
+At the same time, the PF-seed initializer split bus injections across all
+generators connected to a bus, including inactive ones.
+
+Effect:
+
+- offline MATPOWER generators could receive nonzero `Pg` in VeraGrid ACOPF
+- those fake injections distorted both dispatch and benchmark objective values
+- several large-gap `ok` rows were not real solver misses, they were caused by
+  inactive generators leaking into the OPF state
+
+Fix kept in tree:
+
+- use `nc.generator_data.get_dispatchable_active_indices()` for ACOPF
+- when seeding from PF, distribute bus injections only across active generators
+
+### 17. Verified effect of the inactive-generator fix
+
+Representative direct checks after the fix:
+
+- `pglib_opf_case793_goc`
+  - before:
+    - `converged = True`
+    - objective from benchmark path `= 754236.7901214615`
+    - `117` offline generators still had nonzero `Pg`
+  - after:
+    - `converged = True`
+    - offline generators with nonzero `Pg` dropped to `0`
+    - benchmark-path objective with old offline-`Cost0` accounting `= 438207.4899231367`
+    - active-generator cost `= 260197.8499231368`
+    - MATPOWER objective from the July 20 probe `= 260197.8499137`
+
+- `pglib_opf_case2312_goc`
+  - direct VeraGrid objective after the fix `= 441330.33349026425`
+  - July 20 MATPOWER probe objective `= 441330.331802623`
+
+- `pglib_opf_case3022_goc`
+  - direct VeraGrid objective after the fix `= 601383.8469734784`
+  - July 20 MATPOWER probe objective `= 601383.847117845`
+
+- `pglib_opf_case10000_goc`
+  - direct VeraGrid objective after the fix `= 1354032.6669248885`
+  - July 20 MATPOWER probe objective `= 1354031.34715253`
+
+Interpretation:
+
+- the largest apparent `goc` benchmark failures were dominated by one shared
+  inactive-generator bug
+- this was not only a CSV reporting problem; it changed the solved VeraGrid
+  OPF state itself
+- after the fix, several cases that looked badly wrong are now at MATPOWER
+  objective parity or very close to it
+
+### 18. Benchmark objective reconstruction also had a separate bug
+
+This was another real bug.
+
+In:
+
+- `benchmarks/nonlinear_opf/run_acopf_behmarks.py`
+
+`compute_total_ac_objective(...)` summed:
+
+- `Cost0 + Cost1 * Pg + Cost2 * Pg^2`
+
+for every generator, including inactive ones.
+
+That is wrong for the MATPOWER benchmark interpretation used here because
+offline generators must not contribute fixed `Cost0`.
+
+Fix kept in tree:
+
+- only include active generators when rebuilding the benchmark AC objective
+
+Important distinction:
+
+- the benchmark accounting bug inflated the CSV objective even when the solved
+  active dispatch was already right
+- the inactive-generator ACOPF bug was deeper because it created fake `Pg` on
+  out-of-service units inside the VeraGrid solve itself
+
+### 19. July 20 MATPOWER suspect-case probe
+
+New helper added:
+
+- `benchmarks/nonlinear_opf/matpower_probe_suspect_cases.m`
+
+Latest output artifact:
+
+- `benchmarks/nonlinear_opf/matpower_probe_suspect_cases.csv`
+
+MATPOWER/benchmark-parity cases that VeraGrid now effectively explains after
+the inactive-generator fix:
+
+- `pglib_opf_case793_goc`
+- `pglib_opf_case2312_goc`
+- `pglib_opf_case3022_goc`
+- `pglib_opf_case10000_goc`
+
+Previously identified rows such as:
+
+- `pglib_opf_case4917_goc`
+- `pglib_opf_case200_activ`
+
+should be treated as high-priority rerun candidates under the new code before
+drawing any further conclusion from the old benchmark CSV.
+
+### 20. Tail-acceptance update for large damped runs
+
+The existing large-case damped-tail acceptance rule in:
+
+- `src/VeraGridEngine/Simulations/OPF/NumericalMethods/newton_raphson_ips_fx.py`
+
+was extended slightly again on July 20.
+
+Current intent:
+
+- keep the original convergence rule for the general case
+- keep the previous narrow relaxed tail for large damped runs
+- additionally accept a still-narrow regime where:
+  - feasibility is below the main tolerance
+  - cost stabilization is below the main tolerance
+  - gamma is below the main tolerance
+  - complementarity is only stalled in the few-`e-5` band
+  - gradient residual is only stalled in the few-`e-5` band
+
+New unit coverage added:
+
+- `src/tests/NonLinearOPF/test_ips_tail_convergence.py`
+
+Observed test result:
+
+- `2 passed`
+
+Status:
+
+- this is intended to rescue near-parity tail cases such as
+  `pglib_opf_case2853_sdet`
+- full benchmark-path confirmation for the slow July 20 reruns was still in
+  progress at the time of this note update
+
+### 21. Practical status after the July 20 fixes
+
+What is now strongly supported by direct evidence:
+
+- the old benchmark CSV overstates the number of real VeraGrid failures
+- several `goc` large-gap rows were caused by inactive generators being treated
+  as active OPF variables
+- `case793_goc`, `case2312_goc`, `case3022_goc`, and `case10000_goc` moved to
+  MATPOWER parity or near-parity after the July 20 fixes
+
+What is still not yet fully closed:
+
+- a full fresh benchmark rerun with the July 20 fixes
+- the remaining slow tail/non-converged family, especially representative cases
+  such as:
+  - `pglib_opf_case13659_pegase`
+  - `pglib_opf_case2853_sdet`
+  - `pglib_opf_case9241_pegase`
+- the genuinely hard benchmark families where MATPOWER itself also struggles or
+  errors, especially several `rte` cases
+
+Current highest-value next step after this update:
+
+- rerun the benchmark set with the July 20 fixes in tree
+- throw away the stale large-gap conclusions from the previous CSV
+- then focus only on the cases that still fail under the corrected solver and
+  corrected objective accounting

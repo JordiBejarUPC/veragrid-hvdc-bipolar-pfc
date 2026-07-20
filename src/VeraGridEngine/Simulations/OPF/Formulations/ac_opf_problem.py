@@ -468,7 +468,7 @@ class NonLinearOptimalPfProblem:
         self.nbr = nc.passive_branch_data.nelm
         self.br_idx = np.arange(self.nbr)
         self.br_mon_idx = nc.passive_branch_data.get_monitor_enabled_indices()
-        self.gen_disp_idx = nc.generator_data.get_dispatchable_indices()
+        self.gen_disp_idx = nc.generator_data.get_dispatchable_active_indices()
         self.gen_disp_idx_sh = np.r_[self.gen_disp_idx, np.arange(self.ngen, self.ngen + self.nsh)]
         self.Cfmon = nc.passive_branch_data.monitored_Cf(self.br_mon_idx)
         self.Cfmon_t = self.Cfmon.T
@@ -601,14 +601,28 @@ class NonLinearOptimalPfProblem:
             # TODO: try to substitute by using nc.generator_data.get_injections_per_bus()
             #  @Carlos: get_injections does not account for the powerflow results
 
-            # This array has the number of total generators connected to the same bus of each generator, counting itself
-            ngenforgen = np.bincount(self.gen_bus_idx[:self.ngen])[self.gen_bus_idx[:self.ngen]]
+            # Seed sharing must ignore inactive generators. Otherwise a bus PF
+            # injection gets split across units that are out of service in the
+            # MATPOWER case, which creates fake OPF generation on offline units.
+            active_gen_idx = np.flatnonzero(nc.generator_data.active.astype(bool))
+            active_gen_buses = self.gen_bus_idx[active_gen_idx]
+            ngenforgen = np.zeros(self.ngen, dtype=int)
+            if len(active_gen_buses):
+                active_count_per_bus = np.bincount(active_gen_buses, minlength=self.nbus)
+                ngenforgen[active_gen_idx] = active_count_per_bus[active_gen_buses]
+            else:
+                pass
 
             # If there are multiple generators connected to the same bus, they share in equal parts the injection.
-            allPgen = (Sbus_pf.real + self.Sd.real)[self.gen_bus_idx[:self.ngen]] / ngenforgen
+            allPgen = np.zeros(self.ngen, dtype=float)
+            active_gen_mask = ngenforgen > 0
+            allPgen[active_gen_mask] = ((Sbus_pf.real + self.Sd.real)[self.gen_bus_idx[:self.ngen][active_gen_mask]]
+                                        / ngenforgen[active_gen_mask])
 
             # Same for Q
-            allQgen = (Sbus_pf.imag + self.Sd.imag)[self.gen_bus_idx[:self.ngen]] / ngenforgen
+            allQgen = np.zeros(self.ngen, dtype=float)
+            allQgen[active_gen_mask] = ((Sbus_pf.imag + self.Sd.imag)[self.gen_bus_idx[:self.ngen][active_gen_mask]]
+                                        / ngenforgen[active_gen_mask])
 
             self.Sg_undis = allPgen[self.gen_nondisp_idx] + 1j * allQgen[self.gen_nondisp_idx]
             self.Pg = np.r_[allPgen[self.gen_disp_idx], np.zeros(self.nsh)]
