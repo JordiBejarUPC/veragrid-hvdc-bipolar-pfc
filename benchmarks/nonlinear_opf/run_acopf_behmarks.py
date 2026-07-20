@@ -397,6 +397,8 @@ def build_opf_options_with_pf_init(grid: MultiCircuit,
         pf_converged = bool(pf_driver.results.converged)
     else:
         opf_options.ips_init_with_pf = False
+        opf_options.acopf_v0 = pf_driver.results.voltage if pf_driver.results is not None else None
+        opf_options.acopf_S0 = pf_driver.results.Sbus if pf_driver.results is not None else None
         opf_options.acopf_pf_converged = False
         pf_init_used = False
         pf_converged = bool(pf_driver.results.converged) if pf_driver.results is not None else False

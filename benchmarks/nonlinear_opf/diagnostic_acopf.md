@@ -785,6 +785,95 @@ Representative cases:
 
 - `pglib_opf_case2000_goc`
 - `pglib_opf_case2312_goc`
+
+### 11. `case2000_goc` is a worker topology-routing bug, not an IPS math failure
+
+Fresh July 19 evidence on `pglib_opf_case2000_goc`:
+
+- MATPOWER PF fails:
+  - `success = 0`
+  - `iterations = 10`
+- MATPOWER MIPS still converges:
+  - `success = 1`
+  - `iterations = 40`
+  - `objective = 973432.475754297804`
+  - final metrics:
+    - `feascond = 6.509196142595e-14`
+    - `gradcond = 1.100217781030e-08`
+    - `compcond = 1.185013917783e-07`
+    - `costcond = 2.177666132374e-09`
+    - `gamma = 7.181902531827e-12`
+
+Direct VeraGrid IPS runs on the same compiled island also converge:
+
+- no PF multiplier init
+- flat start
+- `step_control = False`: converged in `33` iterations
+- `step_control = True`, `trust = 0.1`: converged in `77` iterations
+
+This means the core formulation / derivatives were not the blocker on this case.
+
+The actual failure was in `ac_opf_worker.py`:
+
+- the worker had a single-island shortcut:
+  - if `len(islands) == 1` and `islands[0].nbus == nc.nbus`
+  - replace the projected island with the original compiled circuit `nc`
+- that bus-count-only shortcut is unsafe
+
+Concrete topology evidence:
+
+- `case2000_goc` original compiled circuit:
+  - `nbus = 2000`
+  - `ngen = 384`
+  - `nbr = 3639`
+- `case2000_goc` projected single island:
+  - `nbus = 2000`
+  - `ngen = 238`
+  - `nbr = 3633`
+
+So the island kept all buses but still changed the generator and branch tables.
+Replacing it with the original circuit changed the OPF problem and produced the bad non-converged run.
+
+At the same time, `case500_goc` still needed the original compiled-circuit path:
+
+- original:
+  - `nbus = 500`
+  - `ngen = 224`
+  - `nbr = 733`
+- projected island:
+  - `nbus = 500`
+  - `ngen = 171`
+  - `nbr = 728`
+
+So there are two distinct single-island/full-bus behaviors in the benchmark set:
+
+- some cases are correct only on the original compiled circuit
+- some cases are correct only on the projected island
+
+Fix kept in tree:
+
+- detect the single-island/full-bus but changed-device-table pattern
+- solve the original compiled circuit first
+- if it does not converge, retry the projected island
+- keep the better result with `prefer_retry_result(...)`
+
+Observed effect after this fix:
+
+- `pglib_opf_case500_goc`:
+  - converged again
+  - objective `419478.8816083954`
+- `pglib_opf_case2000_goc`:
+  - now converges
+  - iterations `77`
+  - solver error `5.802767030845173e-06`
+  - objective from current worker path `972963.2833671358`
+
+Interpretation:
+
+- this is the first unresolved large no-PF family member that moved from
+  worker failure into a valid ACOPF solve without changing derivatives
+- the remaining objective gap versus MATPOWER on `case2000_goc` is now a
+  trajectory / acceptance-quality question, not a gross worker bug
 - `pglib_opf_case30000_goc`
 - `pglib_opf_case3022_goc`
 - `pglib_opf_case4917_goc`
