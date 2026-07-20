@@ -1756,6 +1756,31 @@ class RoundBaseArithmeticOpItem(QGraphicsEllipseItem):
         return QPointF(dx / length * self.LABEL_OUTSET,
                        dy / length * self.LABEL_OUTSET)
 
+    def refresh_port_metadata(self) -> None:
+        if self.subsys is not None:
+            i: int
+            port: PortItem
+            label_item: QGraphicsTextItem
+            variable_name: str
+            for i, port in enumerate(self.inputs):
+                if port.base_var is None:
+                    port.base_var = self.subsys.in_vars[i]
+                else:
+                    pass
+                variable_name = self.subsys.in_vars[i].name
+                port.setToolTip(_build_port_tooltip("Input", i, variable_name))
+
+            for i, port in enumerate(self.outputs):
+                if port.base_var is None:
+                    port.base_var = self.subsys.out_vars[i]
+                else:
+                    pass
+                variable_name = self.subsys.out_vars[i].name
+                port.setToolTip(_build_port_tooltip("Output", i, variable_name))
+
+        else:
+            pass
+
     def update_ports(self) -> None:
         rect = self.rect()
         cx = rect.center().x()
@@ -1935,6 +1960,31 @@ class RectBaseArithmeticOpItem(QGraphicsRectItem):
             self._walk_product_expr(expr, "x", label_map)
             for var in self.subsys.in_vars:
                 self._input_signs.append(label_map.get(var.uid, "x"))
+
+    def refresh_port_metadata(self) -> None:
+        if self.subsys is not None:
+            i: int
+            port: PortItem
+            label_item: QGraphicsTextItem
+            variable_name: str
+            for i, port in enumerate(self.inputs):
+                if port.base_var is None:
+                    port.base_var = self.subsys.in_vars[i]
+                else:
+                    pass
+                variable_name = self.subsys.in_vars[i].name
+                port.setToolTip(_build_port_tooltip("Input", i, variable_name))
+
+            for i, port in enumerate(self.outputs):
+                if port.base_var is None:
+                    port.base_var = self.subsys.out_vars[i]
+                else:
+                    pass
+                variable_name = self.subsys.out_vars[i].name
+                port.setToolTip(_build_port_tooltip("Output", i, variable_name))
+
+        else:
+            pass
 
     def update_ports(self) -> None:
         rect = self.rect()

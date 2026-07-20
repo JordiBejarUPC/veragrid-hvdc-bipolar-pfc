@@ -54,8 +54,13 @@ def get_blocktype2template_builder_dict():
 
         BlockType.EMT_PI_LINE: emt_templates.PiLineEmtTemplate,
         BlockType.EMT_BERGERON_LINE: emt_templates.BergeronLineEmtTemplate,
-        BlockType.EMT_JMARTI_LINE: emt_templates.JmartiLineEmtTemplate
+        BlockType.EMT_JMARTI_LINE: emt_templates.JmartiLineEmtTemplate,
 
+        BlockType.INVERSE_LOOKUP_ARRAY: emt_templates.InverseLookupArrayLinearRuntimeTemplate,
+        BlockType.LOOKUP_ARRAY_LINEAR: emt_templates.LookupArrayLinearRuntimeTemplate,
+        BlockType.LOOKUP_ARRAY_SPLINE: emt_templates.LookupArraySplineRuntimeTemplate,
+        BlockType.LOOKUP_MATRIX_LINEAR: emt_templates.LookupMatrixLinearRuntimeTemplate,
+        BlockType.LOOKUP_MATRIX_SPLINE: emt_templates.LookupMatrixSplineRuntimeTemplate
     }
 
 

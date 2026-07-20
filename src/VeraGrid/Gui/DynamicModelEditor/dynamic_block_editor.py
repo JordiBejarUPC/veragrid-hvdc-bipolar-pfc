@@ -13,11 +13,7 @@ from PySide6.QtGui import (QAction, QDropEvent, QDragEnterEvent, QDragMoveEvent,
 from PySide6.QtCore import Qt, QPointF, Signal
 
 from VeraGridEngine.Devices.Parents.branch_parent import BranchParent
-from VeraGridEngine.Devices.Branches.line import Line
-from VeraGridEngine.Devices.Branches.overhead_line_type import OverheadLineType
-from VeraGridEngine.Devices.Branches.sequence_line_type import SequenceLineType
 
-from VeraGridEngine.Devices.Branches.underground_line_type import UndergroundLineType
 from VeraGridEngine.Devices.Parents.injection_parent import InjectionParent
 from VeraGridEngine.enumerations import DeviceType, VarPowerFlowReferenceType, ParamPowerFlowReferenceType, \
     DynamicSimulationMode, DynamicTableModelMode
@@ -36,20 +32,10 @@ from VeraGridEngine.Templates.BasicBlockCatalog.predefined_blocks import signal_
 from VeraGridEngine.Templates.BasicBlockCatalog import BasicBlockTemplateDescriptor
 
 from VeraGridEngine.Templates.BasicBlockCatalog import load_basic_block_catalog_template
-from VeraGridEngine.Templates.BasicBlockCatalog.lookup_array_runtime_templates import \
-    build_lookup_array_linear_runtime_template
-from VeraGridEngine.Templates.BasicBlockCatalog.lookup_array_runtime_templates import \
-    build_inverse_lookup_array_linear_runtime_template
-from VeraGridEngine.Templates.BasicBlockCatalog.lookup_array_runtime_templates import \
-    build_lookup_matrix_linear_runtime_template
-from VeraGridEngine.Templates.BasicBlockCatalog.lookup_array_runtime_templates import \
-    build_lookup_array_spline_runtime_template
-from VeraGridEngine.Templates.BasicBlockCatalog.lookup_array_runtime_templates import \
-    build_lookup_matrix_spline_runtime_template
 
-import VeraGridEngine.Templates.BasicBlockCatalog as basic_block_templates
+import VeraGridEngine.Templates.BasicBlockCatalog as BasicBlockTemplates
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
-from VeraGridEngine.Utils.Symbolic.block import Block, find_connections, find_connections_pf
+from VeraGridEngine.Utils.Symbolic.block import Block, find_connections
 from VeraGrid.Gui.DynamicModelEditor.block_editor import Ui_BlockEditorWindow
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_dialogs import AddBlockVariableDialog, AddEquationDialog, \
     AddParameterDialog, ExpressionTextEditorDialog, GenericBlockDialog
@@ -72,11 +58,7 @@ from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_validation import Validation
     format_missing_port_detail, \
     format_validation_block_label, get_branch_phase_table_label, get_phase_table_label, \
     get_var_reference, has_ac_emt_branch_side_refs, has_ac_emt_phase_interface_refs
-from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_utilities import create_block_of_type, create_generic_block, \
-    create_emt_wizard_block, create_j_marti_line_block, get_blocktype2template_builder_dict
-from VeraGrid.Gui.DynamicModelEditor.ElementDialogues.lookup_table_dialog import LookupArrayLinearDialog
-from VeraGrid.Gui.DynamicModelEditor.ElementDialogues.lookup_table_dialog import LookupMatrixLinearDialog
-from VeraGrid.Gui.DynamicModelEditor.ElementDialogues.jmarti_line_emt_dialog import JMartiLineEmtDialog
+from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_utilities import create_block_of_type, create_generic_block, get_blocktype2template_builder_dict
 
 from VeraGrid.Gui.messages import yes_no_question
 from VeraGrid.Gui.toast_widget import ToastManager
@@ -84,61 +66,11 @@ from VeraGridEngine.Utils.Symbolic.symbolic import (symbolic_to_string, string_t
                                                     Const, Comparison)
 from VeraGridEngine.Utils.Symbolic.symbolic_io import duplicate_block
 from VeraGridEngine.Utils.Symbolic.bus_rms_template import get_bus_rms_algebraic_vars
-
-from VeraGridEngine.Simulations.EMT.JMARTI_Sim.jmarti_fit_options import JMartiFitOptions
-from VeraGridEngine.Simulations.EMT.JMARTI_Sim.jmarti_fit_workflow import build_jmarti_fit_bundle_from_frequency_samples
-from VeraGridEngine.Simulations.EMT.JMARTI_Sim.jmarti_fit_workflow import build_jmarti_frequency_samples_from_line
-from VeraGridEngine.Simulations.EMT.JMARTI_Sim.jmarti_fit_workflow import load_jmarti_frequency_samples_from_npz
-from VeraGridEngine.Simulations.EMT.JMARTI_Sim.jmarti_runtime import set_jmarti_block_fit_bundle
-from VeraGridEngine.Simulations.EMT.JMARTI_Sim.jmarti_runtime import set_jmarti_block_runtime_data
 from VeraGrid.Gui.DynamicModelEditor.dyn_template_editor_dialogue import DynTemplatesEditorDialog
 from VeraGridEngine.enumerations import BlockType
 from VeraGridEngine.Devices.Diagrams.block_diagram import BlockDiagram
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Expr
 from dataclasses import dataclass
-
-
-def _iter_child_blocks(block: Block) -> List[Block]:
-    """
-    Return all descendant blocks of one block.
-
-    :param block: Root block.
-    :return: Descendant blocks.
-    """
-    descendants: List[Block] = list()
-    child_block: Block
-
-    for child_block in block.children:
-        descendants.append(child_block)
-        descendants.extend(_iter_child_blocks(child_block))
-
-    return descendants
-
-
-def _get_shunt_component_kind(block_type: BlockType) -> str | None:
-    """
-    Return the single-component shunt kind handled by one block type.
-
-    :param block_type: Candidate block type.
-    :return: ``R``, ``L``, ``C`` or ``None``.
-    """
-    if block_type == BlockType.R_LOAD_EMT:
-        return "R"
-    elif block_type == BlockType.L_LOAD_EMT:
-        return "L"
-    elif block_type == BlockType.C_LOAD_EMT:
-        return "C"
-    else:
-        return None
-
-def _is_load_topology_block_type(block_type: BlockType) -> bool:
-    """
-    Return whether one block type uses the EMT load-topology modal.
-
-    :param block_type: Candidate block type.
-    :return: Boolean state.
-    """
-    return block_type in {BlockType.EXP_LOAD_EMT, BlockType.ZIP_LOAD_EMT}
 
 class EditorGraphicsDefaultsDark:
     BLOCK_BORDER: QColor = QColor("#e1f7ff")
@@ -329,7 +261,7 @@ def build_emt_branch_bus_mask_from_refs(
 
     return mask
 
-
+# Todo: is this class necessary?
 class _FallbackDocument:
     """
     Minimal document shim for legacy callers that don't pass a document.
@@ -372,51 +304,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
     BLOCK_SEARCH_ROLE: int = int(QtCore.Qt.ItemDataRole.UserRole) + 503
     MODAL_TEMPLATE_KIND_ATTR: str = "_modal_template_kind"
     MODAL_TEMPLATE_CONFIG_ATTR: str = "_modal_template_config"
-    LOOKUP_ARRAY_LINEAR_DESCRIPTOR_KEYS: set[str] = {
-        "lookup_array_linear",
-        "lookup_array_linear_noclipping",
-        "lookup_array_object_linear",
-        "lookup_array_object_linear_noclipping",
-    }
-    INVERSE_LOOKUP_ARRAY_LINEAR_DESCRIPTOR_KEYS: set[str] = {
-        "inverse_lookup_array_linear",
-        "inverse_lookup_array_object_linear",
-    }
-    LOOKUP_ARRAY_SPLINE_DESCRIPTOR_KEYS: set[str] = {
-        "lookup_array_spline",
-        "lookup_array_object_spline",
-    }
-    LOOKUP_MATRIX_LINEAR_DESCRIPTOR_KEYS: set[str] = {
-        "lookup_matrix_linear",
-        "lookup_matrix_object_linear",
-    }
-    LOOKUP_MATRIX_SPLINE_DESCRIPTOR_KEYS: set[str] = {
-        "lookup_matrix_spline",
-        "lookup_matrix_object_spline",
-    }
-    JMARTI_MODAL_OPTION_KEYS: tuple[str, ...] = (
-        "reference_frequency_hz",
-        "use_frequency_exploration_window",
-        "exploration_low_hz",
-        "exploration_high_hz",
-        "use_delay_fit_window",
-        "delay_fit_low_hz",
-        "delay_fit_high_hz",
-        "decoupling_warning_tolerance",
-        "loewner_relative_tolerance",
-        "maximum_model_order",
-        "forced_model_order",
-        "minimum_frequency_samples",
-        "vf_max_iterations",
-        "vf_pole_shift_tolerance",
-        "vf_enforce_stable_poles",
-        "vf_stability_real_part_floor",
-        "vf_include_constant_term",
-        "vf_include_proportional_term",
-        "passivity_frequency_sample_count",
-        "passivity_minimum_real_yc_tolerance",
-        "passivity_maximum_hres_gain_tolerance",
-    )
+
 
     def __init__(self,
                  var_factory: VarFactory,
@@ -473,7 +361,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         if modal:
             self.setWindowModality(QtCore.Qt.WindowModality.WindowModal)
 
-        self.ui.deviceLabel.setText(api_object.name if api_object is not None else "")
+        self.ui.deviceLabel.setText(api_object.name)
 
         self.block_role: int = int(QtCore.Qt.ItemDataRole.UserRole) + 300
         self.mime_type: str = "application/x-veragrid-dynamics-block"
@@ -506,7 +394,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.has_unapplied_changes: bool = False
         self.dynamic_editor_entry: DynamicEditorEntry | None = None
         self._prepared_to_delete: bool = False
-        self.colors_palet: EditorGraphicsDefaultsDark = EditorGraphicsDefaultsDark()
+        self.colors_palet: EditorGraphicsDefaultsDark | EditorGraphicsDefaultsLight = EditorGraphicsDefaultsDark()
         self.current_theme: str = current_theme
         self.set_colors_palet()
 
@@ -874,10 +762,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         return BlockPositionChangedCallback(self, block_uid)
 
-    def create_item_from_blocktype(self,
-                                   blocktype: BlockType,
-                                   x_pos: float,
-                                   y_pos: float) -> GenericBlockItem | RoundBaseArithmeticOpItem | RectBaseArithmeticOpItem | None:
+    def create_item_using_blocktype_wizard(self,
+                                           blocktype: BlockType,
+                                           x_pos: float,
+                                           y_pos: float) -> GenericBlockItem | RoundBaseArithmeticOpItem | RectBaseArithmeticOpItem | None:
         """
         Materialize one library payload on the diagram scene.
         """
@@ -991,9 +879,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         name = ""
 
         if block_type == BlockType.SUM:
-            template_builder = basic_block_templates.AdderTemplate(vf=self.var_factory)
+            template_builder = BasicBlockTemplates.AdderTemplate(vf=self.var_factory)
         elif block_type == BlockType.PRODUCT:
-            template_builder = basic_block_templates.ProductTemplate(vf=self.var_factory)
+            template_builder = BasicBlockTemplates.ProductTemplate(vf=self.var_factory)
 
         if template_builder is not None:
             dialog = DynTemplatesEditorDialog(name, template_builder.params)
@@ -1051,369 +939,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         return None
 
-    @staticmethod
-    def _extract_jmarti_phase_tuple(modal_config: Dict[str, Any]) -> tuple[bool, bool, bool, bool]:
-        """
-        Return the ordered phase tuple stored in one JMARTI modal configuration.
-
-        :param modal_config: Persisted modal configuration.
-        :return: ``(phase_n, phase_a, phase_b, phase_c)``.
-        """
-        return (
-            bool(modal_config.get("phase_n", False)),
-            bool(modal_config.get("phase_a", True)),
-            bool(modal_config.get("phase_b", True)),
-            bool(modal_config.get("phase_c", True)),
-        )
-
-    def _build_jmarti_fit_options_from_modal_config(self, modal_config: Dict[str, Any]) -> JMartiFitOptions:
-        """
-        Build one typed JMARTI fit-options object from one modal configuration.
-
-        :param modal_config: Persisted GUI configuration.
-        :return: Typed fit options.
-        """
-        resolved_config: Dict[str, Any] = self._build_default_jmarti_line_modal_config()
-        resolved_config.update(modal_config)
-        options_kwargs: Dict[str, Any] = dict()
-        option_key: str
-
-        for option_key in self.JMARTI_MODAL_OPTION_KEYS:
-            options_kwargs[option_key] = resolved_config[option_key]
-
-        return JMartiFitOptions(**options_kwargs)
-
-    def _build_default_jmarti_line_modal_config(self,
-                                                phase_n: bool = False,
-                                                phase_a: bool = True,
-                                                phase_b: bool = True,
-                                                phase_c: bool = True) -> Dict[str, Any]:
-        """
-        Build one default persisted configuration for the JMARTI line modal.
-
-        :param phase_n: Whether the neutral is enabled.
-        :param phase_a: Whether phase A is enabled.
-        :param phase_b: Whether phase B is enabled.
-        :param phase_c: Whether phase C is enabled.
-        :return: Default modal configuration.
-        """
-        options: JMartiFitOptions = JMartiFitOptions()
-        nominal_frequency_hz: float = 50.0
-
-        try:
-            if self.circuit is not None and float(self.circuit.fbase) > 0.0:
-                nominal_frequency_hz = float(self.circuit.fbase)
-            else:
-                pass
-        except Exception:
-            pass
-
-        return dict({
-            "phase_n": bool(phase_n),
-            "phase_a": bool(phase_a),
-            "phase_b": bool(phase_b),
-            "phase_c": bool(phase_c),
-            "data_source_mode": "auto_template",
-            "nominal_frequency_hz": nominal_frequency_hz,
-            "import_file_path": "",
-            "import_line_length_m": 0.0,
-            "sweep_low_hz": 10.0,
-            "sweep_high_hz": 10000.0,
-            "sweep_sample_count": 48,
-            "reference_frequency_hz": float(options.reference_frequency_hz),
-            "use_frequency_exploration_window": bool(options.use_frequency_exploration_window),
-            "exploration_low_hz": float(options.exploration_low_hz),
-            "exploration_high_hz": float(options.exploration_high_hz),
-            "use_delay_fit_window": bool(options.use_delay_fit_window),
-            "delay_fit_low_hz": float(options.delay_fit_low_hz),
-            "delay_fit_high_hz": float(options.delay_fit_high_hz),
-            "decoupling_warning_tolerance": float(options.decoupling_warning_tolerance),
-            "loewner_relative_tolerance": float(options.loewner_relative_tolerance),
-            "maximum_model_order": int(options.maximum_model_order),
-            "forced_model_order": int(options.forced_model_order),
-            "minimum_frequency_samples": int(options.minimum_frequency_samples),
-            "vf_max_iterations": int(options.vf_max_iterations),
-            "vf_pole_shift_tolerance": float(options.vf_pole_shift_tolerance),
-            "vf_enforce_stable_poles": bool(options.vf_enforce_stable_poles),
-            "vf_stability_real_part_floor": float(options.vf_stability_real_part_floor),
-            "vf_include_constant_term": bool(options.vf_include_constant_term),
-            "vf_include_proportional_term": bool(options.vf_include_proportional_term),
-            "passivity_frequency_sample_count": int(options.passivity_frequency_sample_count),
-            "passivity_minimum_real_yc_tolerance": float(options.passivity_minimum_real_yc_tolerance),
-            "passivity_maximum_hres_gain_tolerance": float(options.passivity_maximum_hres_gain_tolerance),
-            "fit_ready": False,
-            "fit_source_description": "",
-            "fit_status": (
-                "Fit not computed yet. Accept the dialog to build or refresh the JMARTI fit for the attached line."
-            ),
-            "fit_diagnostics_text": "",
-        })
-
-    @staticmethod
-    def _build_jmarti_fit_diagnostics_text(source_description: str,
-                                           fit_bundle) -> str:
-        """
-        Build one human-readable JMARTI fit report for the GUI.
-
-        :param source_description: Data-source description.
-        :param fit_bundle: Computed fit bundle.
-        :return: Multiline diagnostics text.
-        """
-        frequency_hz = fit_bundle.get_frequency_hz()
-        passivity_report = fit_bundle.get_passivity_report()
-        mode_delays = fit_bundle.get_mode_delays()
-        yc_fits = fit_bundle.get_yc_fits()
-        hres_fits = fit_bundle.get_hres_fits()
-        diagnostics_lines: List[str] = list()
-        mode_index: int = 0
-
-        diagnostics_lines.append(f"Source: {source_description}")
-        diagnostics_lines.append(f"Phases: {', '.join(fit_bundle.get_phase_labels())}")
-        diagnostics_lines.append(
-            f"Frequency band: {float(frequency_hz[0]):.6g} Hz to {float(frequency_hz[-1]):.6g} Hz ({frequency_hz.size} samples)"
-        )
-        diagnostics_lines.append(f"Reference modal frequency: {fit_bundle.get_reference_frequency_hz():.6g} Hz")
-        diagnostics_lines.append(f"Line length: {fit_bundle.get_line_length_m():.6f} m")
-        diagnostics_lines.append(
-            f"Max decoupling Z/Y: {float(fit_bundle.get_decoupling_error_z().max()):.3e} / {float(fit_bundle.get_decoupling_error_y().max()):.3e}"
-        )
-
-        if passivity_report is None:
-            diagnostics_lines.append("Passivity checks: not available")
-        elif passivity_report.get_all_checks_pass():
-            diagnostics_lines.append("Passivity checks: PASS")
-        else:
-            diagnostics_lines.append("Passivity checks: WARN")
-
-        while mode_index < fit_bundle.get_mode_count():
-            diagnostics_lines.append(
-                f"Mode {mode_index}: tau = {mode_delays[mode_index].get_tau_s():.6e} s, phase RMS = {mode_delays[mode_index].get_rms_phase_error_rad():.3e} rad"
-            )
-            diagnostics_lines.append(
-                f"  Yc: order {yc_fits[mode_index].get_poles_s().size}, rms {yc_fits[mode_index].get_fit_error_rms():.3e}, max {yc_fits[mode_index].get_max_relative_error():.3e}, stable {yc_fits[mode_index].get_stable()}, converged {yc_fits[mode_index].get_converged()}"
-            )
-            diagnostics_lines.append(
-                f"  Hres: order {hres_fits[mode_index].get_poles_s().size}, rms {hres_fits[mode_index].get_fit_error_rms():.3e}, max {hres_fits[mode_index].get_max_relative_error():.3e}, stable {hres_fits[mode_index].get_stable()}, converged {hres_fits[mode_index].get_converged()}"
-            )
-            mode_index += 1
-
-        return "\n".join(diagnostics_lines)
-
-    @staticmethod
-    def _build_jmarti_modal_tooltip(modal_config: Dict[str, Any]) -> str:
-        """
-        Build the tooltip shown for one JMARTI block item.
-
-        :param modal_config: Persisted modal configuration.
-        :return: Tooltip text.
-        """
-        diagnostics_text: str = str(modal_config.get("fit_diagnostics_text", "")).strip()
-
-        if diagnostics_text:
-            return diagnostics_text
-        else:
-            return str(modal_config.get("fit_status", "J_Marti line"))
-
-    def _apply_jmarti_line_fit_configuration(self, modal_config: Dict[str, Any]) -> tuple[Dict[str, Any], Any | None]:
-        """
-        Apply one JMARTI GUI configuration to the attached line object when possible.
-
-        :param modal_config: Dialog configuration.
-        :return: Updated persisted configuration including fit status.
-        """
-
-        options: JMartiFitOptions = JMartiFitOptions()
-
-        updated_config = dict({
-            "block_type": BlockType.EMT_JMARTI_LINE.name,
-            "phase_n": bool(modal_config.get("phase_n", False)),
-            "phase_a": bool(modal_config.get("phase_a", True)),
-            "phase_b": bool(modal_config.get("phase_b", True)),
-            "phase_c": bool(modal_config.get("phase_c", True)),
-            "data_source_mode": "auto_template",
-            "nominal_frequency_hz": 50.0,
-            # "nominal_frequency_hz": float(self.circuit.fbase) if self.circuit is not None and float(self.circuit.fbase) > 0.0 else 50.0,
-            "import_file_path": "",
-            "import_line_length_m": float(options.import_line_length) if options.import_line_length > 0 else (float(self.api_object.length) * 1000.0 if self.api_object is not None and float(self.api_object.length) > 0 else None),
-            "sweep_low_hz": 10.0, #
-            "sweep_high_hz": 10000.0,
-            "sweep_sample_count": 48,
-            "reference_frequency_hz": float(options.reference_frequency_hz),
-            "use_frequency_exploration_window": bool(options.use_frequency_exploration_window),
-            "exploration_low_hz": float(options.exploration_low_hz),
-            "exploration_high_hz": float(options.exploration_high_hz),
-            "use_delay_fit_window": bool(options.use_delay_fit_window),
-            "delay_fit_low_hz": float(options.delay_fit_low_hz),
-            "delay_fit_high_hz": float(options.delay_fit_high_hz),
-            "decoupling_warning_tolerance": float(options.decoupling_warning_tolerance),
-            "loewner_relative_tolerance": float(options.loewner_relative_tolerance),
-            "maximum_model_order": int(options.maximum_model_order),
-            "forced_model_order": int(options.forced_model_order),
-            "minimum_frequency_samples": int(options.minimum_frequency_samples),
-            "vf_max_iterations": int(options.vf_max_iterations),
-            "vf_pole_shift_tolerance": float(options.vf_pole_shift_tolerance),
-            "vf_enforce_stable_poles": bool(options.vf_enforce_stable_poles),
-            "vf_stability_real_part_floor": float(options.vf_stability_real_part_floor),
-            "vf_include_constant_term": bool(options.vf_include_constant_term),
-            "vf_include_proportional_term": bool(options.vf_include_proportional_term),
-            "passivity_frequency_sample_count": int(options.passivity_frequency_sample_count),
-            "passivity_minimum_real_yc_tolerance": float(options.passivity_minimum_real_yc_tolerance),
-            "passivity_maximum_hres_gain_tolerance": float(options.passivity_maximum_hres_gain_tolerance),
-            "fit_ready": False,
-            "fit_source_description": "",
-            "fit_status": (
-                "Fit not computed yet. Accept the dialog to build or refresh the JMARTI fit for the attached line."
-            ),
-            "fit_diagnostics_text": "",
-        })
-
-        updated_config.update(modal_config)
-
-        # maby not useful at all
-        fit_ready: bool = False
-        fit_status: str = str(updated_config.get("fit_status", ""))
-        fit_diagnostics_text: str = str(updated_config.get("fit_diagnostics_text", ""))
-        line_object: Line | None
-        fit_bundle = None
-        #####
-
-        if str(updated_config.get("data_source_mode", "auto_template")) == "import_frequency_samples":
-
-            try:
-                fit_bundle = build_jmarti_fit_bundle_from_frequency_samples(
-                    samples=load_jmarti_frequency_samples_from_npz(
-                        file_path=str(updated_config.get("import_file_path", "")),
-                        phase_n=bool(updated_config["phase_n"]),
-                        phase_a=bool(updated_config["phase_a"]),
-                        phase_b=bool(updated_config["phase_b"]),
-                        phase_c=bool(updated_config["phase_c"]),
-                        fallback_line_length_m=updated_config["import_line_length_m"],
-                    ),
-                    options=self._build_jmarti_fit_options_from_modal_config(updated_config),
-                )
-            except ValueError as exc:
-                fit_status = f"Fit not computed: {exc}"
-                fit_diagnostics_text = fit_status
-                QtWidgets.QMessageBox.warning(self, "EMT J_Marti line", fit_status)
-
-        else:
-            if self.api_object.template is None:
-                fit_status = "Fit not computed: attach one compatible line template to the line device first."
-                fit_diagnostics_text = fit_status
-            else:
-                try:
-                    fit_bundle = build_jmarti_fit_bundle_from_frequency_samples(
-                        samples=build_jmarti_frequency_samples_from_line(
-                            line=line_object,
-                            phase_n=bool(updated_config["phase_n"]),
-                            phase_a=bool(updated_config["phase_a"]),
-                            phase_b=bool(updated_config["phase_b"]),
-                            phase_c=bool(updated_config["phase_c"]),
-                            low_hz=float(updated_config["sweep_low_hz"]),
-                            high_hz=float(updated_config["sweep_high_hz"]),
-                            sample_count=int(updated_config["sweep_sample_count"]),
-                            nominal_frequency_hz=float(updated_config["nominal_frequency_hz"]),
-                            sbase_mva=float(self.circuit.Sbase) if self.circuit is not None else None,
-                        ),
-                        options=self._build_jmarti_fit_options_from_modal_config(updated_config),
-                    )
-                except ValueError as exc:
-                    fit_status = f"Fit not computed: {exc}"
-                    fit_diagnostics_text = fit_status
-                    QtWidgets.QMessageBox.warning(self, "EMT J_Marti line", fit_status)
-
-        if fit_bundle is not None:
-            passivity_report = fit_bundle.get_passivity_report()
-            decoupling_error_z = fit_bundle.get_decoupling_error_z()
-            decoupling_error_y = fit_bundle.get_decoupling_error_y()
-            max_decoupling_z: float = float(decoupling_error_z.max()) if decoupling_error_z.size > 0 else 0.0
-            max_decoupling_y: float = float(decoupling_error_y.max()) if decoupling_error_y.size > 0 else 0.0
-
-            if passivity_report is None or passivity_report.get_all_checks_pass():
-                passivity_state = "pass"
-            else:
-                passivity_state = "warn"
-
-            fit_ready = True
-            fit_status = (
-                "Fit computed: "
-                f"{fit_bundle.get_mode_count()} modes, "
-                f"{fit_bundle.get_frequency_hz().size} samples, "
-                f"max decoupling Z/Y = {max_decoupling_z:.3e}/{max_decoupling_y:.3e}, "
-                f"passivity = {passivity_state}."
-            )
-            fit_diagnostics_text = self._build_jmarti_fit_diagnostics_text("fit_source_description_not_needed", fit_bundle)
-
-        updated_config["fit_ready"] = fit_ready
-        updated_config["fit_source_description"] = "fit_source_description_not_needed"
-        updated_config["fit_status"] = fit_status
-        updated_config["fit_diagnostics_text"] = fit_diagnostics_text
-        return updated_config, fit_bundle
-
-    def create_jmarti_line_emt_block_item(self, x_pos: float, y_pos: float) -> GenericBlockItem | None:
-        """
-        Create one EMT J_Marti line block configured through its dedicated modal.
-
-        :param x_pos: Drop x position.
-        :param y_pos: Drop y position.
-        :return: Created block item or ``None`` when the dialog is cancelled.
-        """
-        dialog = JMartiLineEmtDialog(self, initial_config=self._build_default_jmarti_line_modal_config())
-
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            modal_config, fit_bundle = self._apply_jmarti_line_fit_configuration(dialog.get_configuration())
-        else:
-            return None
-
-        phase_n, phase_a, phase_b, phase_c = self._extract_jmarti_phase_tuple(modal_config)
-        count: int = self.block_counters.get(BlockType.EMT_JMARTI_LINE, 0) + 1
-        item_name: str = f"{BlockType.EMT_JMARTI_LINE.name}_{count}"
-        block_model = create_j_marti_line_block(
-            phase_n=phase_n,
-            phase_a=phase_a,
-            phase_b=phase_b,
-            phase_c=phase_c,
-            var_factory=self.var_factory,
-            block_type=BlockType.EMT_JMARTI_LINE,
-            item_name=item_name,
-        )
-        block_item: GenericBlockItem = GenericBlockItem(
-            editor=self,
-            var_factory=self.var_factory,
-            subsys=block_model,
-            api_object=self.api_object,
-            mode=self.mode,
-            name=item_name,
-            position_changed_callback=self.build_position_changed_callback(block_model.uid)
-        )
-
-        if block_model is None:
-            return None
-        else:
-            pass
-
-        self.set_modal_template_metadata(block_model, kind="jmarti_line_emt", config=modal_config)
-        set_jmarti_block_fit_bundle(block_model, fit_bundle)
-        set_jmarti_block_runtime_data(block_model, None)
-        self.block_counters[BlockType.EMT_JMARTI_LINE] = count
-        block_item.set_subsystem(block_model)
-        block_item.position_changed_callback = self.build_position_changed_callback(block_model.uid)
-        block_item.build_item()
-        # block_item.setToolTip(self._build_jmarti_modal_tooltip(modal_config))
-        self.main_block.add(block_model)
-        self.scene.addItem(block_item)
-        block_item.setPos(QtCore.QPointF(x_pos, y_pos))
-        self.diagram.add_node(
-            name=item_name,
-            x=x_pos,
-            y=y_pos,
-            tpe=BlockType.EMT_JMARTI_LINE.name,
-            device_uid=block_model.uid,
-        )
-        self.mark_unapplied_changes()
-        return block_item
-
-    def create_block_item_mix(self, block_type: BlockType, x_pos: float, y_pos: float) -> GenericBlockItem | None:
+    def create_block_item_from_blocktype(self, block_type: BlockType, x_pos: float, y_pos: float) -> GenericBlockItem | None:
         """
         Create and place a block item in the canvas scene.
 
@@ -1425,23 +951,15 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         block_model = None
         item_name = ""
         count: int = self.block_counters.get(block_type, 0) + 1
-        # if blocktype is generic we need to know initial input and output ports from the user
-        if block_type == BlockType.GENERIC:
-            dialog = GenericBlockDialog(self)
-            if dialog.exec() == QDialog.DialogCode.Accepted:
-                item_name, inputs, outputs = dialog.get_values()
-                block_model = create_generic_block(self.var_factory, inputs, outputs, item_name)
 
-        else:
-
-            item_name: str = f"{block_type.name}_{count}"
-            block_model: Block = create_block_of_type(
-                var_factory=self.var_factory,
-                block_type=block_type,
-                item_name=item_name,
-                api_object=self.api_object,
-            )
-            self.block_counters[block_type] = count
+        item_name: str = f"{block_type.name}_{count}"
+        block_model: Block | None = create_block_of_type(
+            var_factory=self.var_factory,
+            block_type=block_type,
+            item_name=item_name,
+            api_object=self.api_object,
+        )
+        self.block_counters[block_type] = count
 
         # no we have the name and the block
         if block_model is not None:
@@ -1549,54 +1067,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
                     if power_flow_pairs:
                         self.create_conn_items(item_1, item_2, power_flow_pairs)
-
-    def connect_items_pf(self, items_list: List[GenericBlockItem]):
-        """
-        create connection lines to show in editor
-        :param items_list:
-        :type items_list:
-        :return:
-        :rtype:
-        """
-
-        for item_1 in items_list:
-            for item_2 in items_list:
-                if item_1.subsys.uid != item_2.subsys.uid:
-                    power_flow_pairs = find_connections_pf(item_1.subsys, item_2.subsys)
-
-                    if power_flow_pairs:
-                        self.create_conn_items(item_1, item_2, power_flow_pairs)
-
-                    power_flow_pairs = find_connections_pf(item_2.subsys, item_1.subsys)
-
-                    if power_flow_pairs:
-                        self.create_conn_items(item_1, item_2, power_flow_pairs)
-
-    def connect_blocks(self, blocks_list: List[Block]):
-        """
-        create connection lines to show in editor
-        :param items_list:
-        :type items_list:
-        :return:
-        :rtype:
-        """
-
-        for block_1 in blocks_list:
-            for block_2 in blocks_list:
-                if block_1.uid != block_2.uid:
-                    pairs, power_flow_pairs = find_connections(block_1, block_2)
-                    if pairs:
-                        self.create_conn_items(block_1, block_2, pairs)
-
-                    if power_flow_pairs:
-                        self.create_conn_items(block_1, block_2, power_flow_pairs)
-
-                    pairs, power_flow_pairs = find_connections(block_2.subsys, block_1.subsys)
-                    if pairs:
-                        self.create_conn_items(block_2, block_1, pairs)
-
-                    if power_flow_pairs:
-                        self.create_conn_items(block_1, block_2, power_flow_pairs)
 
     def create_conn_items(self, item_source: GenericBlockItem, item_dest: GenericBlockItem,
                           pairs: List[tuple[Var, Var]]):
@@ -1825,51 +1295,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         return item
 
-    def create_lookup_array_linear_descriptor_item(self,
-                                                   descriptor: BasicBlockTemplateDescriptor,
-                                                   x_pos: float,
-                                                   y_pos: float) -> GenericBlockItem | None:
-        """
-        Materialize one modal-configured 1D lookup-table descriptor.
-
-        :param descriptor: Lookup descriptor selected from the native catalog.
-        :param x_pos: Drop x position.
-        :param y_pos: Drop y position.
-        :return: Created block item or None when the dialog is cancelled.
-        """
-        dialog: LookupArrayLinearDialog = LookupArrayLinearDialog(block_label=descriptor.display_label, parent=self)
-        dialog_result: int = dialog.exec()
-
-        if dialog_result == QDialog.DialogCode.Accepted:
-            x_points, y_points = dialog.get_points()
-        else:
-            return None
-
-        clip_enabled: bool = descriptor.template_key not in {
-            "lookup_array_linear_noclipping",
-            "lookup_array_object_linear_noclipping",
-        }
-        count: int = len(self.main_block.children) + 1
-        item_name: str = f"{descriptor.template_key}_{count}"
-        template: EmtModelTemplate = build_lookup_array_linear_runtime_template(
-            vf=self.var_factory,
-            x_points=x_points,
-            y_points=y_points,
-            clip=clip_enabled,
-            name=item_name,
-        )
-        self.set_modal_template_metadata(
-            template.block,
-            kind="lookup_array_1d",
-            config=dict({
-                "descriptor_key": descriptor.template_key,
-                "display_label": descriptor.display_label,
-                "x_points": x_points,
-                "y_points": y_points,
-            }),
-        )
-        return self.create_template_block_item(template=template, x_pos=x_pos, y_pos=y_pos)
-
     # TODO: create PV power plant block item
 
     def _append_emt_branch_side_connection_specs(
@@ -1957,179 +1382,15 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 f"net_conn_{reference.value}_{safe_bus_name}_{self.api_object.name}",
             ))
 
-    def create_inverse_lookup_array_linear_descriptor_item(self,
-                                                           descriptor: BasicBlockTemplateDescriptor,
-                                                           x_pos: float,
-                                                           y_pos: float) -> GenericBlockItem | None:
-        """
-        Materialize one modal-configured inverse 1D lookup-table descriptor.
-
-        :param descriptor: Lookup descriptor selected from the native catalog.
-        :param x_pos: Drop x position.
-        :param y_pos: Drop y position.
-        :return: Created block item or None when the dialog is cancelled.
-        """
-        dialog: LookupArrayLinearDialog = LookupArrayLinearDialog(block_label=descriptor.display_label, parent=self)
-        dialog_result: int = dialog.exec()
-
-        if dialog_result == QDialog.DialogCode.Accepted:
-            x_points, y_points = dialog.get_points()
-        else:
-            return None
-
-        count: int = len(self.main_block.children) + 1
-        item_name: str = f"{descriptor.template_key}_{count}"
-        template: EmtModelTemplate = build_inverse_lookup_array_linear_runtime_template(
-            vf=self.var_factory,
-            x_points=x_points,
-            y_points=y_points,
-            name=item_name,
-        )
-        self.set_modal_template_metadata(
-            template.block,
-            kind="lookup_array_inverse",
-            config=dict({
-                "descriptor_key": descriptor.template_key,
-                "display_label": descriptor.display_label,
-                "x_points": x_points,
-                "y_points": y_points,
-            }),
-        )
-        return self.create_template_block_item(template=template, x_pos=x_pos, y_pos=y_pos)
-
-    def create_lookup_array_spline_descriptor_item(self,
-                                                   descriptor: BasicBlockTemplateDescriptor,
-                                                   x_pos: float,
-                                                   y_pos: float) -> GenericBlockItem | None:
-        """
-        Materialize one modal-configured 1D spline lookup descriptor.
-
-        :param descriptor: Lookup descriptor selected from the native catalog.
-        :param x_pos: Drop x position.
-        :param y_pos: Drop y position.
-        :return: Created block item or None when the dialog is cancelled.
-        """
-        dialog: LookupArrayLinearDialog = LookupArrayLinearDialog(block_label=descriptor.display_label, parent=self)
-        dialog_result: int = dialog.exec()
-
-        if dialog_result == QDialog.DialogCode.Accepted:
-            x_points, y_points = dialog.get_points()
-        else:
-            return None
-
-        count: int = len(self.main_block.children) + 1
-        item_name: str = f"{descriptor.template_key}_{count}"
-        template: EmtModelTemplate = build_lookup_array_spline_runtime_template(
-            vf=self.var_factory,
-            x_points=x_points,
-            y_points=y_points,
-            name=item_name,
-        )
-        self.set_modal_template_metadata(
-            template.block,
-            kind="lookup_array_spline",
-            config=dict({
-                "descriptor_key": descriptor.template_key,
-                "display_label": descriptor.display_label,
-                "x_points": x_points,
-                "y_points": y_points,
-            }),
-        )
-        return self.create_template_block_item(template=template, x_pos=x_pos, y_pos=y_pos)
-
-    def create_lookup_matrix_linear_descriptor_item(self,
-                                                    descriptor: BasicBlockTemplateDescriptor,
-                                                    x_pos: float,
-                                                    y_pos: float) -> GenericBlockItem | None:
-        """
-        Materialize one modal-configured 2D lookup-matrix descriptor.
-
-        :param descriptor: Lookup descriptor selected from the native catalog.
-        :param x_pos: Drop x position.
-        :param y_pos: Drop y position.
-        :return: Created block item or None when the dialog is cancelled.
-        """
-        dialog: LookupMatrixLinearDialog = LookupMatrixLinearDialog(block_label=descriptor.display_label, parent=self)
-        dialog_result: int = dialog.exec()
-
-        if dialog_result == QDialog.DialogCode.Accepted:
-            x_points, y_points, z_matrix = dialog.get_matrix_data()
-        else:
-            return None
-
-        count: int = len(self.main_block.children) + 1
-        item_name: str = f"{descriptor.template_key}_{count}"
-        template: EmtModelTemplate = build_lookup_matrix_linear_runtime_template(
-            vf=self.var_factory,
-            x_points=x_points,
-            y_points=y_points,
-            z_matrix=z_matrix,
-            name=item_name,
-        )
-        self.set_modal_template_metadata(
-            template.block,
-            kind="lookup_matrix_linear",
-            config=dict({
-                "descriptor_key": descriptor.template_key,
-                "display_label": descriptor.display_label,
-                "x_points": x_points,
-                "y_points": y_points,
-                "z_matrix": z_matrix,
-            }),
-        )
-        return self.create_template_block_item(template=template, x_pos=x_pos, y_pos=y_pos)
-
-    def create_lookup_matrix_spline_descriptor_item(self,
-                                                    descriptor: BasicBlockTemplateDescriptor,
-                                                    x_pos: float,
-                                                    y_pos: float) -> GenericBlockItem | None:
-        """
-        Materialize one modal-configured 2D spline lookup-matrix descriptor.
-
-        :param descriptor: Lookup descriptor selected from the native catalog.
-        :param x_pos: Drop x position.
-        :param y_pos: Drop y position.
-        :return: Created block item or None when the dialog is cancelled.
-        """
-        dialog: LookupMatrixLinearDialog = LookupMatrixLinearDialog(block_label=descriptor.display_label, parent=self)
-        dialog_result: int = dialog.exec()
-
-        if dialog_result == QDialog.DialogCode.Accepted:
-            x_points, y_points, z_matrix = dialog.get_matrix_data()
-        else:
-            return None
-
-        count: int = len(self.main_block.children) + 1
-        item_name: str = f"{descriptor.template_key}_{count}"
-        template: EmtModelTemplate = build_lookup_matrix_spline_runtime_template(
-            vf=self.var_factory,
-            x_points=x_points,
-            y_points=y_points,
-            z_matrix=z_matrix,
-            name=item_name,
-        )
-        self.set_modal_template_metadata(
-            template.block,
-            kind="lookup_matrix_spline",
-            config=dict({
-                "descriptor_key": descriptor.template_key,
-                "display_label": descriptor.display_label,
-                "x_points": x_points,
-                "y_points": y_points,
-                "z_matrix": z_matrix,
-            }),
-        )
-        return self.create_template_block_item(template=template, x_pos=x_pos, y_pos=y_pos)
-
     def create_library_payload_item(self,
                                     payload: BlockType | BasicBlockTemplateDescriptor | RmsModelTemplate | EmtModelTemplate | FmuTemplate,
                                     x_pos: float,
-                                    y_pos: float) -> GenericBlockItem | RoundBaseArithmeticOpItem | RectBaseArithmeticOpItem | None:
+                                    y_pos: float) -> BlockItem | GenericBlockItem | RoundBaseArithmeticOpItem | RectBaseArithmeticOpItem | PairedItem | None:
         """
         Materialize one library payload on the diagram scene.
         """
         if isinstance(payload, BlockType) and payload in self.blocktype2templatebuilder:
-            return self.create_item_from_blocktype(payload, x_pos, y_pos)
+            return self.create_item_using_blocktype_wizard(payload, x_pos, y_pos)
 
         # this ones cannot be included above because they are represented by a different item in the scene
         elif isinstance(payload, BlockType) and payload == BlockType.FROM_GOTO:
@@ -2145,25 +1406,12 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         elif isinstance(payload, BlockType) and payload == BlockType.GENERIC:
             return self.create_generic_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
 
-        # Todo: include in blocktype2templatebuilder, create clases and inputs
-
         elif isinstance(payload, BlockType):
-            return self.create_block_item_mix(block_type=payload, x_pos=x_pos, y_pos=y_pos)
+            return self.create_block_item_from_blocktype(block_type=payload, x_pos=x_pos, y_pos=y_pos)
 
         elif isinstance(payload, BasicBlockTemplateDescriptor):
-            if payload.template_key in self.LOOKUP_ARRAY_LINEAR_DESCRIPTOR_KEYS:
-                return self.create_lookup_array_linear_descriptor_item(payload, x_pos, y_pos)
-            elif payload.template_key in self.INVERSE_LOOKUP_ARRAY_LINEAR_DESCRIPTOR_KEYS:
-                return self.create_inverse_lookup_array_linear_descriptor_item(payload, x_pos, y_pos)
-            elif payload.template_key in self.LOOKUP_ARRAY_SPLINE_DESCRIPTOR_KEYS:
-                return self.create_lookup_array_spline_descriptor_item(payload, x_pos, y_pos)
-            elif payload.template_key in self.LOOKUP_MATRIX_LINEAR_DESCRIPTOR_KEYS:
-                return self.create_lookup_matrix_linear_descriptor_item(payload, x_pos, y_pos)
-            elif payload.template_key in self.LOOKUP_MATRIX_SPLINE_DESCRIPTOR_KEYS:
-                return self.create_lookup_matrix_spline_descriptor_item(payload, x_pos, y_pos)
-            else:
-                template: EmtModelTemplate = load_basic_block_catalog_template(payload, self.var_factory)
-                return self.create_template_block_item(template=template, x_pos=x_pos, y_pos=y_pos)
+            template: EmtModelTemplate = load_basic_block_catalog_template(payload, self.var_factory)
+            return self.create_template_block_item(template=template, x_pos=x_pos, y_pos=y_pos)
 
         elif isinstance(payload, (RmsModelTemplate, EmtModelTemplate, FmuTemplate)):
             return self.create_template_block_item(template=payload, x_pos=x_pos, y_pos=y_pos)
@@ -2180,8 +1428,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param y_pos: Y coordinate for the drop position.
         :return: Tuple of (input_item, output_item) or None on failure.
         """
-        count: int = self.block_counters.get("signal_pair", 0) + 1
-        self.block_counters["signal_pair"] = count
+        count: int = self.block_counters.get(BlockType.FROM_GOTO, 0) + 1
+        self.block_counters[BlockType.FROM_GOTO] = count
         item_name: str = str(count)
 
         blk_in, blk_out = signal_pair(self.var_factory, item_name)
@@ -2272,11 +1520,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             pass
 
-        if isinstance(source_port.subsystem, BlockItem):
-            source_port.subsystem._refresh_connection_color()
-        if isinstance(target_port.subsystem, BlockItem):
-            target_port.subsystem._refresh_connection_color()
-
         if isinstance(source_port, PortItem):
             source_port.update_port_visibility()
         if isinstance(target_port, PortItem):
@@ -2291,7 +1534,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
             if target_var.network_conn:
                 self.var_factory.remove_connection(dst_var, target_var)
-                if not isinstance(target_port.subsystem, (RoundBaseArithmeticOpItem, RectBaseArithmeticOpItem)):
+                if not isinstance(source_port.subsystem, (RoundBaseArithmeticOpItem, RectBaseArithmeticOpItem)):
                     source_port.subsystem.refresh_port_metadata()
             else:
                 self.var_factory.remove_connection(target_var, dst_var)
@@ -2347,7 +1590,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             self.remove_connection_item(conn)
 
     def _remove_connection_interface_for_block(self,
-                                               item: BlockItem | GenericBlockItem | RoundBaseArithmeticOpItem | RectBaseArithmeticOpItem) -> None:
+                                               item: BlockItem | GenericBlockItem | RoundBaseArithmeticOpItem | RectBaseArithmeticOpItem | PairedItem) -> None:
         """
         Remove the saved top-level connection variable for one editor port block.
 
@@ -2454,6 +1697,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             if self.api_object.device_type in [DeviceType.VscDevice]:
                 if self.api_object.bus_from.is_dc:
                     Vdc, Vm, Va = get_bus_rms_algebraic_vars(self.api_object.bus_from.rms_model)
+                    #Todo: rethink this and find a proper way to get the vars
                     self.main_block.in_vars.append(Vm)
                     self.main_block.in_vars.append(Va)
                     self.main_block.in_vars.append(Vdc)
@@ -2931,31 +2175,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         ))
 
         return specs
-
-    # def _build_emt_injection_connection_specs(self) -> List[ConnectionVarSpec]:
-    #     """
-    #     Build the default maximum EMT connection-variable specs for an injection device.
-    #
-    #     :return:
-    #     """
-    #     safe_bus_name: str = self._get_safe_bus_name(self.api_object.bus)
-    #     specs: List[ConnectionVarSpec] = list()
-    #
-    #     # The editor must expose the full editable EMT contract up front. Static
-    #     # bus-domain and phase compatibility are validated later during EMT build.
-    #     specs.append(ConnectionVarSpec("input", VarPowerFlowReferenceType.v_N, f"v_N_{safe_bus_name}"))
-    #     specs.append(ConnectionVarSpec("input", VarPowerFlowReferenceType.v_A, f"v_A_{safe_bus_name}"))
-    #     specs.append(ConnectionVarSpec("input", VarPowerFlowReferenceType.v_B, f"v_B_{safe_bus_name}"))
-    #     specs.append(ConnectionVarSpec("input", VarPowerFlowReferenceType.v_C, f"v_C_{safe_bus_name}"))
-    #     specs.append(ConnectionVarSpec("input", VarPowerFlowReferenceType.Vdc, f"Vdc_{safe_bus_name}"))
-    #
-    #     specs.append(ConnectionVarSpec("output", VarPowerFlowReferenceType.i_N, f"net_conn_{VarPowerFlowReferenceType.i_N.value}_{self.api_object.name}"))
-    #     specs.append(ConnectionVarSpec("output", VarPowerFlowReferenceType.i_A, f"net_conn_{VarPowerFlowReferenceType.i_A.value}_{self.api_object.name}"))
-    #     specs.append(ConnectionVarSpec("output", VarPowerFlowReferenceType.i_B, f"net_conn_{VarPowerFlowReferenceType.i_B.value}_{self.api_object.name}"))
-    #     specs.append(ConnectionVarSpec("output", VarPowerFlowReferenceType.i_C, f"net_conn_{VarPowerFlowReferenceType.i_C.value}_{self.api_object.name}"))
-    #     specs.append(ConnectionVarSpec("output", VarPowerFlowReferenceType.Idc, f"net_conn_{VarPowerFlowReferenceType.Idc.value}_{self.api_object.name}"))
-    #
-    #     return specs
 
     def _build_emt_injection_connection_specs(self) -> List[ConnectionVarSpec]:
         """
@@ -4931,7 +4150,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         )
 
         if confirmed:
-            deletable_items: List[BlockItem | GenericBlockItem] = list()
+            deletable_items: List[BlockItem | GenericBlockItem | RoundBaseArithmeticOpItem | RectBaseArithmeticOpItem] = list()
             scene_item: QGraphicsItem
 
             for scene_item in self.scene.items():
@@ -5397,6 +4616,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 pass
 
     def _validate_port_connectivity(self, section: ValidationSection) -> None:
+        # todo: rethink this validation
         """
         Append missing-port-connection issues from the saved diagram.
 
@@ -6397,8 +5617,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 out_item.set_paired_item(in_item)
         # Recreate connections
         for uid, con in self.diagram.con_data.items():
-            src_item: BlockItem | None = uid_to_blockitem.get(con.from_uid, None)
-            dst_item: BlockItem | None = uid_to_blockitem.get(con.to_uid, None)
+            src_item: BlockItem | GenericBlockItem | RoundBaseArithmeticOpItem | RectBaseArithmeticOpItem | None = uid_to_blockitem.get(con.from_uid, None)
+            dst_item: BlockItem | GenericBlockItem | RoundBaseArithmeticOpItem | RectBaseArithmeticOpItem | None = uid_to_blockitem.get(con.to_uid, None)
             src_port: PortItem | None = None
             dst_port: PortItem | None = None
 
@@ -6421,10 +5641,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                         editor=self,
                     )
                     connection.recolour()
-
-                    # pen: QPen = connection.pen()
-                    # pen.setColor(QColor(con.color))
-                    # connection.setPen(pen)
                     self.scene.addItem(connection)
                 else:
                     pass
@@ -6437,11 +5653,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             self._rebuild_editor_interface_graphical_connections(visible_non_interface_items)
         else:
             pass
-
-        # Refresh connection-status color on all BlockItem instances
-        for block_item in uid_to_blockitem.values():
-            if isinstance(block_item, BlockItem):
-                block_item._refresh_connection_color()
 
     def mark_unapplied_changes(self) -> None:
         """
@@ -6660,6 +5871,7 @@ if __name__ == "__main__":
         current_block=bl,
         api_object=device,
         circuit=MultiCircuit(),
+        current_theme= "Dark",
     )
     window.show()
     app.exec_()
