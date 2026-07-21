@@ -192,7 +192,7 @@ class EditorGraphicsCommonFeatures:
     TEMPLATE_NODE_TYPE: str = "TEMPLATE"
     INITIAL_LAYOUT_SCALE: float = 0.60
     INITIAL_VIEW_SCALE: float = 1.3
-    _LAYOUT_MARGIN: float = 40.0
+    LAYOUT_MARGIN: float = 40.0
     PARAMETER_VALUE_TYPE_ROLE: int = int(QtCore.Qt.ItemDataRole.UserRole) + 500
     PARAMETER_EDITABLE_ROLE: int = int(QtCore.Qt.ItemDataRole.UserRole) + 501
     LIBRARY_SEARCH_TEXT_ROLE: int = int(QtCore.Qt.ItemDataRole.UserRole) + 502

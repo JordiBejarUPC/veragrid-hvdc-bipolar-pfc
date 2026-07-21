@@ -1719,8 +1719,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             br = item.sceneBoundingRect()
             new_br = br if new_br.isNull() else new_br.united(br)
 
-        return new_br.adjusted(-graph.EditorGraphicsCommonFeatures._LAYOUT_MARGIN, -graph.EditorGraphicsCommonFeatures._LAYOUT_MARGIN,
-                               graph.EditorGraphicsCommonFeatures._LAYOUT_MARGIN, graph.EditorGraphicsCommonFeatures._LAYOUT_MARGIN)
+        return new_br.adjusted(-graph.EditorGraphicsCommonFeatures.LAYOUT_MARGIN, -graph.EditorGraphicsCommonFeatures.LAYOUT_MARGIN,
+                               graph.EditorGraphicsCommonFeatures.LAYOUT_MARGIN, graph.EditorGraphicsCommonFeatures.LAYOUT_MARGIN)
 
     def add_connection_items(self, blocks_list: List[graph.BlockItem] | None = None):
         """
