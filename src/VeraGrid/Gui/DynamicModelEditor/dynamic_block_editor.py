@@ -1792,7 +1792,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
             # connect bus variables
 
-            # inicialize bus if needed
+            # initialize bus model if needed
             if self.api_object.bus.rms_model.empty():
                 initialize_bus_rms(self.api_object.bus, self.var_factory)
 
