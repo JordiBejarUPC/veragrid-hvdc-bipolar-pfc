@@ -3,7 +3,7 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 import time
-from typing import Tuple, List, Dict, Callable
+from typing import Tuple, List, Dict, Callable, Union
 import numpy as np
 from numba import njit
 from scipy.sparse import lil_matrix, isspmatrix_csc
@@ -668,6 +668,9 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
         self.nc: NumericalCircuit = nc
 
         self.logger: Logger = logger
+
+        # set to True to use the finite-difference Jacobian
+        self.use_autodiff_jacobian: bool = False
 
         self.V0: CxVec = V0
         self.S0: CxVec = S0
@@ -3045,12 +3048,15 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
 
         return self._f
 
-    def Jacobian(self, autodiff: bool = True) -> CSC:
+    def Jacobian(self, autodiff: Union[bool, None] = None) -> CSC:
         """
         Get the Jacobian of the current-based AC/DC formulation.
-        :param autodiff: use the finite-difference Jacobian (default, exact for every control) 
+        :param autodiff: use the finite-difference Jacobian
         :return: Jacobian matrix in CSC format
         """
+        if autodiff is None:
+            autodiff = self.use_autodiff_jacobian
+
         if autodiff:
             J: CSC = calc_autodiff_jacobian(func=self.compute_f,
                                             x=self.var2x(),
