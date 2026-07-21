@@ -16,6 +16,7 @@ from VeraGrid.Gui.gui_functions import ComboDelegate, FloatDelegate, IntDelegate
 from VeraGrid.Gui.Widgets.matplotlibwidget import MatplotlibWidget
 from VeraGrid.Gui.messages import warning_msg
 from VeraGrid.Gui.object_model import ObjectsModel
+from VeraGrid.Gui.spread_sheet_table import SpreadsheetTableView
 from VeraGrid.Gui.table_view_header_wrap import HeaderViewWithWordWrap
 import VeraGrid.Gui.gui_functions as gf
 from VeraGridEngine.Devices.Associations.association import Associations
@@ -273,6 +274,7 @@ class TemplateDeviceEditor(QtWidgets.QDialog):
         # Load UI from Qt Designer definition.
         self.ui = Ui_TemplateDeviceEditorDialog()
         self.ui.setupUi(self)
+        self._replace_profiles_table_view()
         self.setWindowTitle("Device editor")
 
         prop_filter_mdl = gf.ComboModel(
@@ -313,7 +315,7 @@ class TemplateDeviceEditor(QtWidgets.QDialog):
         self.profiles_copy_button: QtWidgets.QPushButton = self.ui.profiles_copy_button
         self.profiles_paste_button: QtWidgets.QPushButton = self.ui.profiles_paste_button
         self.profiles_plot_selected_button: QtWidgets.QPushButton = self.ui.profiles_plot_selected_button
-        self.profiles_table_view: QtWidgets.QTableView = self.ui.profiles_table_view
+        self.profiles_table_view: SpreadsheetTableView = self.ui.profiles_table_view
 
         self.associations_tab: QtWidgets.QWidget = self.ui.associations_tab
         self.associations_layout: QtWidgets.QVBoxLayout = self.ui.associations_layout
@@ -328,8 +330,6 @@ class TemplateDeviceEditor(QtWidgets.QDialog):
         # UI post-configuration.
         self.properties_table_view.setAlternatingRowColors(True)
         self.profiles_table_view.setAlternatingRowColors(True)
-        self.profiles_table_view.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectionBehavior.SelectItems)
-        self.profiles_table_view.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection)
         self.associations_table_view.setAlternatingRowColors(True)
         self.associations_table_view.setHorizontalHeader(HeaderViewWithWordWrap(self.associations_table_view))
 
@@ -392,6 +392,32 @@ class TemplateDeviceEditor(QtWidgets.QDialog):
 
         self._update_time_label(slider_index=self.time_step_slider.value())
         self.refresh_associations_table()
+
+    def _replace_profiles_table_view(self) -> None:
+        """
+        Replace the generated profile table with the reusable spreadsheet view.
+        """
+        old_table_view: QtWidgets.QTableView = self.ui.profiles_table_view
+        parent_widget: QtWidgets.QWidget | None = old_table_view.parentWidget()
+        if parent_widget is None:
+            return
+
+        new_table_view: SpreadsheetTableView = SpreadsheetTableView(parent_widget)
+        new_table_view.setObjectName(old_table_view.objectName())
+        new_table_view.setFrameShape(old_table_view.frameShape())
+        new_table_view.setFrameShadow(old_table_view.frameShadow())
+        new_table_view.setAlternatingRowColors(old_table_view.alternatingRowColors())
+        new_table_view.setSortingEnabled(old_table_view.isSortingEnabled())
+        new_table_view.setEditTriggers(old_table_view.editTriggers())
+        new_table_view.setTabKeyNavigation(old_table_view.tabKeyNavigation())
+        new_table_view.setCornerButtonEnabled(old_table_view.isCornerButtonEnabled())
+        new_table_view.setShowGrid(old_table_view.showGrid())
+        new_table_view.setGridStyle(old_table_view.gridStyle())
+
+        self.ui.profiles_layout.replaceWidget(old_table_view, new_table_view)
+        old_table_view.hide()
+        old_table_view.deleteLater()
+        self.ui.profiles_table_view = new_table_view
 
     def _build_delegate_dictionary(self) -> dict[DeviceType, list[object]]:
         """
