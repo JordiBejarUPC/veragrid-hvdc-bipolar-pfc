@@ -315,23 +315,39 @@ def detect_case_group(case_path: Path, pglib_root: Path) -> str:
     return group_name
 
 
-def compute_total_ac_objective(grid: MultiCircuit, results: NonlinearOPFResults) -> float:
+def compute_total_ac_objective(results: NonlinearOPFResults,
+                               sbase: float,
+                               active_generator_mask: np.ndarray,
+                               cost_0: np.ndarray,
+                               cost_1: np.ndarray,
+                               cost_2: np.ndarray) -> float:
     """
     Compute the total AC generator objective in the same units used by the ACOPF formulation.
 
-    :param grid: Solved benchmark grid.
     :param results: VeraGrid nonlinear ACOPF results.
+    :param sbase: System power base in MVA.
+    :param active_generator_mask: Active-state mask from the compiled numerical circuit.
+    :param cost_0: Constant generator cost coefficients.
+    :param cost_1: Linear generator cost coefficients.
+    :param cost_2: Quadratic generator cost coefficients.
     :return: Total active-power generation cost.
     """
     total_cost: float = 0.0
-    generators: List = grid.get_generators()
 
-    # The solver stores ``Pg`` in per-unit on ``grid.Sbase``, while the economic coefficients are
-    # defined on MW. Rebuild the benchmark objective from the solved dispatch in MW so the CSV uses
-    # the same units as the internal ACOPF objective and as the PGLIB baseline tables.
-    for index, generator in enumerate(generators):
-        pg_mw: float = float(results.Pg[index]) * float(grid.Sbase)
-        total_cost += float(generator.Cost0) + float(generator.Cost) * pg_mw + float(generator.Cost2) * (pg_mw * pg_mw)
+    # The solver works on the compiled numerical circuit, so the benchmark
+    # objective should be rebuilt only from the compiled numerical quantities
+    # that match the OPF solve.
+    #
+    # The solver stores ``Pg`` in per-unit on ``sbase``, while the
+    # economic coefficients are defined on MW. Rebuild the benchmark objective
+    # from the solved dispatch in MW so the CSV uses the same units as the
+    # internal ACOPF objective and as the PGLIB baseline tables.
+    for index in range(len(results.Pg)):
+        if bool(active_generator_mask[index]):
+            pg_mw: float = float(results.Pg[index]) * float(sbase)
+            total_cost += float(cost_0[index]) + float(cost_1[index]) * pg_mw + float(cost_2[index]) * (pg_mw * pg_mw)
+        else:
+            pass
 
     return total_cost
 
@@ -384,19 +400,24 @@ def build_opf_options_with_pf_init(grid: MultiCircuit,
     pf_init_used: bool = False
     pf_converged: bool = False
 
-    # Even a non-converged PF iterate is usually a much better ACOPF seed than the generic
-    # midpoint initialization on the large PGLIB cases. Keep the benchmark-specific warm start
-    # permissive here so hard cases such as the 10k GOC instance can still leverage that state.
-    if pf_driver.results is not None:
+    # Match MATPOWER's large-case behavior more closely: when PF fails, do not feed the
+    # failed iterate into ACOPF as the primal seed. MIPS falls back to its own interior
+    # initialization in that situation, which is materially more robust on cases such as
+    # ``pglib_opf_case10480_goc``.
+    if pf_driver.results is not None and bool(pf_driver.results.converged):
         opf_options.ips_init_with_pf = True
         opf_options.acopf_v0 = pf_driver.results.voltage
         opf_options.acopf_S0 = pf_driver.results.Sbus
+        opf_options.acopf_pf_converged = bool(pf_driver.results.converged)
         pf_init_used = True
         pf_converged = bool(pf_driver.results.converged)
     else:
         opf_options.ips_init_with_pf = False
+        opf_options.acopf_v0 = pf_driver.results.voltage if pf_driver.results is not None else None
+        opf_options.acopf_S0 = pf_driver.results.Sbus if pf_driver.results is not None else None
+        opf_options.acopf_pf_converged = False
         pf_init_used = False
-        pf_converged = False
+        pf_converged = bool(pf_driver.results.converged) if pf_driver.results is not None else False
 
     return opf_options, pf_init_used, pf_converged
 
@@ -468,7 +489,9 @@ def run_nonlinear_opf_with_pf_seed_and_default_multiplier_init(
         )
 
         xi: float = 0.995 if problem.nvsc else 0.99995
-        use_step_control: bool = opf_options.acopf_mode == AcOpfMode.ACOPFstd
+        # Mirror the main worker path so benchmark fallback runs follow the same
+        # undamped IPS trajectory on hard large-scale ACOPF cases.
+        use_step_control: bool = False
         ips_results = interior_point_solver(problem=problem,
                                             max_iter=opf_options.ips_iterations,
                                             tol=opf_options.ips_tolerance,
@@ -560,17 +583,19 @@ def benchmark_case(case_path: Path,
             )
             row.pf_init_used = pf_init_used
 
-            # Run ACOPF with the same case file used by the baseline and extract the quantities that
-            # matter for the comparison: objective value, convergence state, iterations and error.
-            if pf_init_used and not pf_converged:
-                results: NonlinearOPFResults = run_nonlinear_opf_with_pf_seed_and_default_multiplier_init(
-                    grid=grid,
-                    opf_options=opf_options,
-                )
-            else:
-                results = run_nonlinear_opf(grid=grid, opf_options=opf_options)
+            # Run ACOPF through the same worker path used elsewhere so benchmark
+            # results stay aligned with the current IPS initialization logic.
+            results = run_nonlinear_opf(grid=grid, opf_options=opf_options)
 
-            row.veragrid_ac_objective = compute_total_ac_objective(grid=grid, results=results)
+            objective_nc = compile_numerical_circuit_at(circuit=grid, t_idx=None, logger=Logger())
+            row.veragrid_ac_objective = compute_total_ac_objective(
+                results=results,
+                sbase=float(objective_nc.Sbase),
+                active_generator_mask=objective_nc.generator_data.active.astype(bool),
+                cost_0=objective_nc.generator_data.cost_0,
+                cost_1=objective_nc.generator_data.cost_1,
+                cost_2=objective_nc.generator_data.cost_2,
+            )
             row.objective_gap_percent = compute_objective_gap_percent(
                 veragrid_ac_objective=row.veragrid_ac_objective,
                 baseline_ac_objective=row.baseline_ac_objective,

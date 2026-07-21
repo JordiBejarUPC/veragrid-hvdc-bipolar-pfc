@@ -2793,6 +2793,7 @@ class SimulationsMain(TimeEventsMain):
         generate_report = self.ui.addOptimalPowerFlowReportCheckBox.isChecked()
         robust = self.ui.fixOpfCheckBox.isChecked()
         use_glsk_as_cost = self.ui.useGslkAsCostsOpfCheckBox.isChecked()
+        quadratic_costs = self.ui.quadraticCostsOpfCheckBox.isChecked()
         add_losses_approximation = self.ui.approximateLossesOpfCheckBox.isChecked()
         _, pf_results = self.session.power_flow
 
@@ -2823,6 +2824,7 @@ class SimulationsMain(TimeEventsMain):
         if pf_results is not None:
             acopf_v0 = pf_results.voltage
             acopf_S0 = pf_results.Sbus
+            acopf_pf_converged = bool(pf_results.converged)
         else:
             if ips_init_with_pf and solver == SolverType.NONLINEAR_OPF:
                 self.show_warning_toast("Run a power flow first")
@@ -2830,6 +2832,7 @@ class SimulationsMain(TimeEventsMain):
 
             acopf_v0 = None
             acopf_S0 = None
+            acopf_pf_converged = False
 
         verbose = self.ui.ips_verbose_spinBox.value()
 
@@ -2853,6 +2856,7 @@ class SimulationsMain(TimeEventsMain):
             report_formulation=report_formulation,
             generate_report=generate_report,
             use_glsk_as_cost=use_glsk_as_cost,
+            quadratic_costs=quadratic_costs,
             add_losses_approximation=add_losses_approximation,
             ips_method=ips_method,
             ips_tolerance=ips_tolerance,
@@ -2862,6 +2866,7 @@ class SimulationsMain(TimeEventsMain):
             ips_control_q_limits=ips_control_q_limits,
             acopf_v0=acopf_v0,
             acopf_S0=acopf_S0,
+            acopf_pf_converged=acopf_pf_converged,
             robust=robust,
             verbose=verbose,
             mip_framework=mip_framework
