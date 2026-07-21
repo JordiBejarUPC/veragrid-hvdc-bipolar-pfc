@@ -23,6 +23,7 @@ from VeraGrid.Gui.object_proxy_model import ObjectModelFilterProxy
 from VeraGrid.Gui.profiles_model import ProfilesModel
 from VeraGridEngine.enumerations import DeviceType, DynamicSimulationMode, TimeSeriesSearchPoint, PrpCat
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
+from VeraGridEngine.Devices.Parents.editable_device import EditableDevice
 from VeraGridEngine.Topology.detect_substations import detect_substations, detect_facilities
 from VeraGrid.Gui.Analysis.object_plot_analysis import object_histogram_analysis
 from VeraGrid.Gui.messages import yes_no_question, warning_msg, info_msg
@@ -45,6 +46,7 @@ from VeraGrid.Gui.DeviceEditors.Transformer3wEditor.transformer3w_device_editor 
 from VeraGrid.Gui.DeviceEditors.ControllableShuntEditor.controllable_shunt_device_editor import (
     ControllableShuntDeviceEditorDialog,
 )
+from VeraGrid.Gui.DeviceEditors.TemplateDeviceEditor.template_device_editor import TemplateDeviceEditor
 from VeraGrid.Gui.Icons.icon_associations import device_type_icons
 
 
@@ -1004,12 +1006,12 @@ class DataBaseTableMain(DiagramsMain):
                 elm_type = sel_item.data(role=QtCore.Qt.ItemDataRole.DisplayRole)
 
                 # get the selected index
-                idx_proxy = self.ui.dataStructureTableView.currentIndex().row()
+                idx_proxy: int = self.ui.dataStructureTableView.currentIndex().row()
 
                 if idx_proxy > -1:
 
                     # get the object from the table itself
-                    elm = model.objects[idx_proxy]
+                    elm: ALL_DEV_TYPES = model.objects[idx_proxy]
 
                     if elm_type == DeviceType.OverheadLineTypeDevice.value:
 
@@ -1083,6 +1085,11 @@ class DataBaseTableMain(DiagramsMain):
                         )
                         if dlg.exec():
                             self.view_objects_data()
+
+                    elif isinstance(elm, EditableDevice):
+                        dlg = TemplateDeviceEditor(api_object=elm, circuit=self.circuit)
+                        if dlg.exec():
+                            pass
 
                     else:
 
