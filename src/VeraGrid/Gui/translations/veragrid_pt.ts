@@ -5461,6 +5461,16 @@ Resultados do fluxo de potência de Monte Carlo:</translation>
         <translation>Quadro PMI</translation>
     </message>
     <message>
+        <location filename="../Main/MainWindow.ui" line="5583"/>
+        <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;When checked, the generation costs will use the quadratic coefficients cost, which will trigger a more complex formulation to approximate the quadratic thermal generation curve. Otherwise a linear model is used.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Quando marcado, os custos de geração usarão os coeficientes de custo quadráticos, o que ativará uma formulação mais complexa para aproximar a curva quadrática de geração térmica. Caso contrário, será usado um modelo linear.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+    </message>
+    <message>
+        <location filename="../Main/MainWindow.ui" line="5586"/>
+        <source>Use quadratic costs</source>
+        <translation>Usar custos quadráticos</translation>
+    </message>
+    <message>
         <location filename="../Main/MainWindow.ui" line="5384"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Choose the zonal grouping.&lt;br/&gt;When All (Copper plate) is selected, the branch restrictions are ignored&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Escolha o agrupamento zonal.&lt;br/&gt;Quando All (Placa de cobre) é selecionado, as restrições de ramificação são ignoradas&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>

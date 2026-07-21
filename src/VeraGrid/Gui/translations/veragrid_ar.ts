@@ -5440,6 +5440,16 @@ Monte Carlo power flow results:</source>
         <translation>إطار عمل MIP</translation>
     </message>
     <message>
+        <location filename="../Main/MainWindow.ui" line="5583"/>
+        <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;When checked, the generation costs will use the quadratic coefficients cost, which will trigger a more complex formulation to approximate the quadratic thermal generation curve. Otherwise a linear model is used.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;عند التحديد، ستستخدم تكاليف التوليد معاملات التكلفة التربيعية، مما يؤدي إلى تفعيل صياغة أكثر تعقيدًا لتقريب منحنى التوليد الحراري التربيعي. وإلا فسيُستخدم نموذج خطي.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+    </message>
+    <message>
+        <location filename="../Main/MainWindow.ui" line="5586"/>
+        <source>Use quadratic costs</source>
+        <translation>استخدام التكاليف التربيعية</translation>
+    </message>
+    <message>
         <location filename="../Main/MainWindow.ui" line="5384"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Choose the zonal grouping.&lt;br/&gt;When All (Copper plate) is selected, the branch restrictions are ignored&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;اختر التجمع المناطقي.&lt;br/&gt;عند تحديد الكل (لوحة نحاسية)، يتم تجاهل قيود الفروع&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>

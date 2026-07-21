@@ -5461,6 +5461,16 @@ Resultados do fluxo de enerxía de Monte Carlo:</translation>
         <translation>Marco MIP</translation>
     </message>
     <message>
+        <location filename="../Main/MainWindow.ui" line="5583"/>
+        <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;When checked, the generation costs will use the quadratic coefficients cost, which will trigger a more complex formulation to approximate the quadratic thermal generation curve. Otherwise a linear model is used.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Se está marcado, os custos de xeración usarán o custo con coeficientes cuadráticos, o que activará unha formulación máis complexa para aproximar a curva cuadrática de xeración térmica. En caso contrario usarase un modelo lineal.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+    </message>
+    <message>
+        <location filename="../Main/MainWindow.ui" line="5586"/>
+        <source>Use quadratic costs</source>
+        <translation>Usar custos cuadráticos</translation>
+    </message>
+    <message>
         <location filename="../Main/MainWindow.ui" line="5384"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Choose the zonal grouping.&lt;br/&gt;When All (Copper plate) is selected, the branch restrictions are ignored&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Escolla a agrupación zonal.&lt;br/&gt;Cando se selecciona Todo (placa de cobre), ignóranse as restricións das ramas&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>

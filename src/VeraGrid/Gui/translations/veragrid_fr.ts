@@ -5461,6 +5461,16 @@ Résultats du flux de puissance de Monte Carlo&#xa0;:</translation>
         <translation>Cadre MIP</translation>
     </message>
     <message>
+        <location filename="../Main/MainWindow.ui" line="5583"/>
+        <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;When checked, the generation costs will use the quadratic coefficients cost, which will trigger a more complex formulation to approximate the quadratic thermal generation curve. Otherwise a linear model is used.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Si cette option est cochée, les coûts de production utiliseront les coefficients de coût quadratiques, ce qui activera une formulation plus complexe pour approximer la courbe quadratique de production thermique. Sinon, un modèle linéaire est utilisé.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+    </message>
+    <message>
+        <location filename="../Main/MainWindow.ui" line="5586"/>
+        <source>Use quadratic costs</source>
+        <translation>Utiliser les coûts quadratiques</translation>
+    </message>
+    <message>
         <location filename="../Main/MainWindow.ui" line="5384"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Choose the zonal grouping.&lt;br/&gt;When All (Copper plate) is selected, the branch restrictions are ignored&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Choisissez le regroupement zonal.&lt;br/&gt;Lorsque Tout (Plaque de cuivre) est sélectionné, les restrictions de branchement sont ignorées&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>

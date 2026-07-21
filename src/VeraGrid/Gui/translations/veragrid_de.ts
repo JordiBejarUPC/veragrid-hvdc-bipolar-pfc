@@ -5461,6 +5461,16 @@ Monte-Carlo-Leistungsflussergebnisse:</translation>
         <translation>MIP-Framework</translation>
     </message>
     <message>
+        <location filename="../Main/MainWindow.ui" line="5583"/>
+        <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;When checked, the generation costs will use the quadratic coefficients cost, which will trigger a more complex formulation to approximate the quadratic thermal generation curve. Otherwise a linear model is used.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Wenn diese Option aktiviert ist, verwenden die Erzeugungskosten die quadratischen Kostenkoeffizienten. Dadurch wird eine komplexere Formulierung zur Approximation der quadratischen thermischen Erzeugungskurve verwendet. Andernfalls wird ein lineares Modell verwendet.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+    </message>
+    <message>
+        <location filename="../Main/MainWindow.ui" line="5586"/>
+        <source>Use quadratic costs</source>
+        <translation>Quadratische Kosten verwenden</translation>
+    </message>
+    <message>
         <location filename="../Main/MainWindow.ui" line="5384"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Choose the zonal grouping.&lt;br/&gt;When All (Copper plate) is selected, the branch restrictions are ignored&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Wählen Sie die Zonengruppierung.&lt;br/&gt;Wenn „Alle (Kupferplatte)“ ausgewählt ist, werden die Verzweigungsbeschränkungen ignoriert&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
