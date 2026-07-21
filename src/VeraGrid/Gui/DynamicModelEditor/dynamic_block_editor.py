@@ -406,15 +406,54 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         # Automatically build items for models with no graphical info
         if not self.main_block.empty() and not self.main_block.diagram.node_data and not requires_connection_bootstrap:
             if self.main_block.children:
-                blocks_list = list()
-                for child in self.main_block.children:
-                    item = self.generate_block_item_for_block(child)
-                    blocks_list.append(item)
-                self.add_connection_items(blocks_list)
-                if len(blocks_list) != 0:
-                    self.connect_items(blocks_list)
-                else:
-                    pass
+                input_output_blocks: List[Block] = list()
+                blocks_from_children: List[Block] = list()
+
+                # First of all create all Items that will be needed but without adding them to the scene and without creating the node in the diagram and add thme to the correspondant list:
+                self.add_connection_items(input_output_blocks)
+                # Blocks in children --> self.main_block.children
+
+                # here we need to calculate the position in the scene of every block in self.main_block.children and input_output_blocks
+                # build deph graph
+                # calculate layout
+                # assign positions and save them in a dictionary block.uid: position "block_positions_dict"
+
+
+                # add the nodes once everything is calculated we build the items from the blocks and the calculated positions, add them to an items list and create the DiagramNodes:
+
+                # blockitems_list: List(graph.BlockItem) = list()
+
+                # for child in self.main_block.children:
+                #     position = block_positions_dict[blk.uid]
+                #     item = self.generate_block_item_for_block(child, position[0], position[1])
+                #     blocks_list.append(item)
+
+                # for blk in input_output_blocks:
+
+                #   position =  block_positions_dict[blk.uid]
+                #   create a function that creates a BlockItem and adds the DiagramNode "self.generate_ext_conn_block_item_for_block"
+                #   item = self.generate_ext_conn_block_item_for_block(blk, position[0], position[1])
+                #   blocks_list.append(item)
+
+                # now we need to connect the items:
+                # if len(blocks_list) != 0:
+                #     self.connect_items(blocks_list)
+
+
+
+
+
+                # this code is not needed anymore:
+                # blocks_list = list()
+                #
+                # for child in self.main_block.children:
+                #     item = self.generate_block_item_for_block(child)
+                #     blocks_list.append(item)
+                # self.add_connection_items(blocks_list)
+                # if len(blocks_list) != 0:
+                #     self.connect_items(blocks_list)
+                # else:
+                #     pass
             elif not self.main_block.children and not self.main_block.is_eq_decomposable():
                 self.add_connection_items()
 
@@ -977,6 +1016,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             item.recolour()
             self.scene.addItem(item)
 
+            # this will not be needed anymore, because the block will already have tho position calculated and the node will already be added.
             self.diagram.add_node(
                 name=item_name,
                 x=x,
@@ -1084,6 +1124,39 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 return block_item
             else:
                 return None
+
+
+    def create_connection_block(self, var: Var, block_type: BlockType, blocks_list: List[Block] | None):
+        """
+        Create and place a block item in the canvas scene.
+
+        :param var:
+        :type var:
+        :param block_type:
+        :param blocks_list:
+        :return:
+        """
+
+        block_model: Block = Block()
+        block_model.name = f"{var.name}"
+
+        if block_type == BlockType.INPUT_CONN:
+            block_model.out_vars.append(var)
+
+        elif block_type == BlockType.OUTPUT_CONN:
+            block_model.in_vars.append(var)
+
+        else:
+            pass
+
+        if block_model is not None:
+            # The symbolic block has to be attached first so the graphics item can build its ports from it.
+            # The editor block is the authoritative model container for later save/rebuild steps.
+            self.main_block.add(block_model)
+            if blocks_list is not None:
+                blocks_list.append(block_model)
+            else:
+                pass
 
     def create_template_block_item(self,
                                    template: RmsModelTemplate | EmtModelTemplate | FmuTemplate,
@@ -1722,52 +1795,71 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         return new_br.adjusted(-graph.EditorGraphicsCommonFeatures.LAYOUT_MARGIN, -graph.EditorGraphicsCommonFeatures.LAYOUT_MARGIN,
                                graph.EditorGraphicsCommonFeatures.LAYOUT_MARGIN, graph.EditorGraphicsCommonFeatures.LAYOUT_MARGIN)
 
-    def add_connection_items(self, blocks_list: List[graph.BlockItem] | None = None):
+    def add_connection_items(self, blocks_list: List[Block] | None = None):
         """
         for every input and output var in the main block of the editor we build a block item to connect connection variables
 
         :return:
         :rtype:
         """
-        SCENE_WIDTH: float = 1200.0
-        SCENE_HEIGHT: float = 800.0
-        MARGIN_X: float = 100.0
-        MARGIN_Y: float = 80.0
-        BLOCK_HEIGHT: float = 80.0
-        MIN_SPACING: float = 60.0
-        MAX_SPACING: float = 180.0
-
-        num_inputs: int = len(self.main_block.in_vars)
-        num_outputs: int = len(self.main_block.out_vars)
-
-        if num_inputs > 0:
-            available_height: float = SCENE_HEIGHT - 2 * MARGIN_Y
-            input_spacing: float = min(MAX_SPACING, max(MIN_SPACING, available_height / (num_inputs + 1)))
-        else:
-            input_spacing: float = MAX_SPACING
-
-        if num_outputs > 0:
-            available_height = SCENE_HEIGHT - 2 * MARGIN_Y
-            output_spacing: float = min(MAX_SPACING, max(MIN_SPACING, available_height / (num_outputs + 1)))
-        else:
-            output_spacing = MAX_SPACING
 
         for i, invar in enumerate(self.main_block.in_vars):
-            y_pos: float = MARGIN_Y + input_spacing * (i + 1) - BLOCK_HEIGHT / 2
-            self.create_connection_block_item(invar, BlockType.INPUT_CONN, MARGIN_X, y_pos, blocks_list)
+            self.create_connection_block(invar, BlockType.INPUT_CONN, blocks_list)
 
         for i, outvar in enumerate(self.main_block.out_vars):
-            y_pos = MARGIN_Y + output_spacing * (i + 1) - BLOCK_HEIGHT / 2
-            x_pos: float = SCENE_WIDTH - MARGIN_X - BLOCK_HEIGHT
-            self.create_connection_block_item(outvar, BlockType.OUTPUT_CONN, x_pos, y_pos, blocks_list)
 
-        self.scene.setSceneRect(0, 0, SCENE_WIDTH, SCENE_HEIGHT)
-        fit_rect = self._compact_initial_layout()
-        if fit_rect is not None:
-            self.view.fitInView(fit_rect, QtCore.Qt.AspectRatioMode.KeepAspectRatio)
-            self.view.scale(graph.INITIAL_VIEW_SCALE, graph.INITIAL_VIEW_SCALE)
-        else:
-            self.view.fitInView(self.scene.sceneRect(), QtCore.Qt.AspectRatioMode.KeepAspectRatio)
+            self.create_connection_block(outvar, BlockType.OUTPUT_CONN, blocks_list)
+
+
+
+
+
+    # def add_connection_items(self, blocks_list: List[graph.BlockItem] | None = None):
+    #     """
+    #     for every input and output var in the main block of the editor we build a block item to connect connection variables
+    #
+    #     :return:
+    #     :rtype:
+    #     """
+    #     SCENE_WIDTH: float = 1200.0
+    #     SCENE_HEIGHT: float = 800.0
+    #     MARGIN_X: float = 100.0
+    #     MARGIN_Y: float = 80.0
+    #     BLOCK_HEIGHT: float = 80.0
+    #     MIN_SPACING: float = 60.0
+    #     MAX_SPACING: float = 180.0
+    #
+    #     num_inputs: int = len(self.main_block.in_vars)
+    #     num_outputs: int = len(self.main_block.out_vars)
+    #
+    #     if num_inputs > 0:
+    #         available_height: float = SCENE_HEIGHT - 2 * MARGIN_Y
+    #         input_spacing: float = min(MAX_SPACING, max(MIN_SPACING, available_height / (num_inputs + 1)))
+    #     else:
+    #         input_spacing: float = MAX_SPACING
+    #
+    #     if num_outputs > 0:
+    #         available_height = SCENE_HEIGHT - 2 * MARGIN_Y
+    #         output_spacing: float = min(MAX_SPACING, max(MIN_SPACING, available_height / (num_outputs + 1)))
+    #     else:
+    #         output_spacing = MAX_SPACING
+    #
+    #     for i, invar in enumerate(self.main_block.in_vars):
+    #         y_pos: float = MARGIN_Y + input_spacing * (i + 1) - BLOCK_HEIGHT / 2
+    #         self.create_connection_block_item(invar, BlockType.INPUT_CONN, MARGIN_X, y_pos, blocks_list)
+    #
+    #     for i, outvar in enumerate(self.main_block.out_vars):
+    #         y_pos = MARGIN_Y + output_spacing * (i + 1) - BLOCK_HEIGHT / 2
+    #         x_pos: float = SCENE_WIDTH - MARGIN_X - BLOCK_HEIGHT
+    #         self.create_connection_block_item(outvar, BlockType.OUTPUT_CONN, x_pos, y_pos, blocks_list)
+    #
+    #     self.scene.setSceneRect(0, 0, SCENE_WIDTH, SCENE_HEIGHT)
+    #     fit_rect = self._compact_initial_layout()
+    #     if fit_rect is not None:
+    #         self.view.fitInView(fit_rect, QtCore.Qt.AspectRatioMode.KeepAspectRatio)
+    #         self.view.scale(graph.INITIAL_VIEW_SCALE, graph.INITIAL_VIEW_SCALE)
+    #     else:
+    #         self.view.fitInView(self.scene.sceneRect(), QtCore.Qt.AspectRatioMode.KeepAspectRatio)
 
     def _ensure_emt_bus_model(self, bus: Any) -> None:
         """
