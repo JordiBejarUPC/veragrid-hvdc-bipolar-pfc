@@ -55,10 +55,21 @@ def read_long_description() -> str:
 long_description = read_long_description()
 __VeraGridEngine_VERSION__ = read_module_constant('__VeraGridEngine_VERSION__')
 
-packages = find_packages(
-    where=str(Path(__file__).resolve().parent.parent),
-    include=['VeraGridEngine', 'VeraGridEngine.*'],
-)
+pkgs_to_exclude = ['docs', 'research', 'tests', 'tutorials', 'VeraGrid']
+
+packages = find_packages(exclude=pkgs_to_exclude)
+
+# ... so we have to do the filtering ourselves
+packages2 = list()
+for package in packages:
+    elms = package.split('.')
+    excluded = False
+    for exclude in pkgs_to_exclude:
+        if exclude in elms:
+            excluded = True
+
+    if not excluded:
+        packages2.append(package)
 
 package_data = {'VeraGridEngine': ['LICENSE.txt', 'setup.py'], }
 
@@ -110,8 +121,8 @@ setup(
         'Programming Language :: Python :: 3.8',
     ],
     keywords='power systems planning',  # Optional
-    packages=packages,  # Required
-    package_dir={'': '..'},
+    packages=packages2,  # Required
+    package_dir={'': '.'},
     include_package_data=True,
     python_requires='>=3.8',
     install_requires=dependencies,

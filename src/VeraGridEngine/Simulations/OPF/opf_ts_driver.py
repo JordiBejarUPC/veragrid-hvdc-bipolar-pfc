@@ -120,6 +120,7 @@ class OptimalPowerFlowTimeSeriesDriver(TimeSeriesDriverTemplate):
             ramp_constraints=self.options.consider_ramps,
             consider_time_up_down=self.options.consider_time_up_down,
             area_spinning_reserve=self.options.area_spinning_reserve,
+            quadratic_costs=self.options.quadratic_costs,
             lodf_threshold=self.options.lodf_tolerance,
             inter_aggregation_info=self.options.inter_aggregation_info,
             use_glsk_as_cost=self.options.use_glsk_as_cost,
@@ -145,11 +146,12 @@ class OptimalPowerFlowTimeSeriesDriver(TimeSeriesDriverTemplate):
         self.results.generator_power = opf_vars.gen_vars.p
         self.results.generator_shedding = opf_vars.gen_vars.shedding
         self.results.generator_cost = opf_vars.gen_vars.cost
+        self.results.generator_reserve = opf_vars.gen_vars.reserve
         # self.results.generator_fuel = opf_vars.gen_vars.fuel
         # self.results.generator_emissions = opf_vars.gen_vars.emissions
         self.results.generator_producing = opf_vars.gen_vars.producing
         self.results.generator_starting_up = opf_vars.gen_vars.starting_up
-        self.results.generator_shutting_down = opf_vars.gen_vars.shedding
+        self.results.generator_shutting_down = opf_vars.gen_vars.shutting_down
         self.results.generator_invested = opf_vars.gen_vars.invested
 
         self.results.Sf = opf_vars.branch_vars.flows
@@ -209,6 +211,7 @@ class OptimalPowerFlowTimeSeriesDriver(TimeSeriesDriverTemplate):
             ramp_constraints=self.options.consider_ramps,
             consider_time_up_down=self.options.consider_time_up_down,
             area_spinning_reserve=self.options.area_spinning_reserve,
+            quadratic_costs=self.options.quadratic_costs,
             lodf_threshold=self.options.lodf_tolerance,
             inter_aggregation_info=self.options.inter_aggregation_info,
             energy_0=energy_0,
@@ -234,9 +237,10 @@ class OptimalPowerFlowTimeSeriesDriver(TimeSeriesDriverTemplate):
         self.results.generator_power[time_indices, :] = opf_vars.gen_vars.p
         self.results.generator_shedding[time_indices, :] = opf_vars.gen_vars.shedding
         self.results.generator_cost[time_indices, :] = opf_vars.gen_vars.cost
+        self.results.generator_reserve[time_indices, :] = opf_vars.gen_vars.reserve
         self.results.generator_producing[time_indices, :] = opf_vars.gen_vars.producing
         self.results.generator_starting_up[time_indices, :] = opf_vars.gen_vars.starting_up
-        self.results.generator_shutting_down[time_indices, :] = opf_vars.gen_vars.shedding
+        self.results.generator_shutting_down[time_indices, :] = opf_vars.gen_vars.shutting_down
         self.results.generator_invested[time_indices, :] = opf_vars.gen_vars.invested
 
         self.results.Sf[time_indices, :] = opf_vars.branch_vars.flows

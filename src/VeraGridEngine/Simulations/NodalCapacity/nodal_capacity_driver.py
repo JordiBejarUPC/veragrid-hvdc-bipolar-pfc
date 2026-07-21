@@ -100,6 +100,7 @@ class NodalCapacityDriver(DriverTemplate):
             consider_contingencies=self.opf_options.consider_contingencies,
             contingency_groups_used=self.grid.contingency_groups,
             ramp_constraints=self.opf_options.consider_ramps,
+            quadratic_costs=self.opf_options.quadratic_costs,
             lodf_threshold=self.opf_options.lodf_tolerance,
             inter_aggregation_info=self.opf_options.inter_aggregation_info,
             energy_0=None,

@@ -447,8 +447,10 @@ def parse_branches_data(circuit: MultiCircuit,
 
                 rate = max(table[i, [matpower_branches.RATE_A, matpower_branches.RATE_B, matpower_branches.RATE_C]])
 
-                if rate == 0.0:
-                    # in matpower rate=0 means not limited by rating
+                if rate == 0.0 or rate >= 99999.0:
+                    # In MATPOWER, rate=0 means not limited by rating.
+                    # PGLIB also uses 99999 as an explicit placeholder for
+                    # effectively-unbounded thermal ratings.
                     rate = 10000
                     monitor_loading = False
                 else:
@@ -499,8 +501,10 @@ def parse_branches_data(circuit: MultiCircuit,
 
                 rate = table[i, matpower_branches.RATE_A]
 
-                if rate == 0.0:
-                    # in matpower rate=0 means not limited by rating
+                if rate == 0.0 or rate >= 99999.0:
+                    # In MATPOWER, rate=0 means not limited by rating.
+                    # PGLIB also uses 99999 as an explicit placeholder for
+                    # effectively-unbounded thermal ratings.
                     rate = 10000
                     monitor_loading = False
                 else:
@@ -535,8 +539,10 @@ def parse_branches_data(circuit: MultiCircuit,
             else:
                 rate = table[i, matpower_branches.RATE_A]
 
-                if rate == 0.0:
-                    # in matpower rate=0 means not limited by rating
+                if rate == 0.0 or rate >= 99999.0:
+                    # In MATPOWER, rate=0 means not limited by rating.
+                    # PGLIB also uses 99999 as an explicit placeholder for
+                    # effectively-unbounded thermal ratings.
                     rate = 10000
                     monitor_loading = False
                 else:
@@ -563,8 +569,10 @@ def parse_branches_data(circuit: MultiCircuit,
 
                 rate = table[i, matpower_branches.RATE_A]
 
-                if rate == 0.0:
-                    # in matpower rate=0 means not limited by rating
+                if rate == 0.0 or rate >= 99999.0:
+                    # In MATPOWER, rate=0 means not limited by rating.
+                    # PGLIB also uses 99999 as an explicit placeholder for
+                    # effectively-unbounded thermal ratings.
                     rate = 10000
                     monitor_loading = False
                 else:
@@ -590,8 +598,10 @@ def parse_branches_data(circuit: MultiCircuit,
 
                 rate = table[i, matpower_branches.RATE_A]
 
-                if rate == 0.0:
-                    # in matpower rate=0 means not limited by rating
+                if rate == 0.0 or rate >= 99999.0:
+                    # In MATPOWER, rate=0 means not limited by rating.
+                    # PGLIB also uses 99999 as an explicit placeholder for
+                    # effectively-unbounded thermal ratings.
                     rate = 10000
                     monitor_loading = False
                 else:
