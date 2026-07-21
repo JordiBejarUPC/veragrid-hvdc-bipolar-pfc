@@ -5,7 +5,6 @@
 from __future__ import annotations
 
 import sys
-import re
 from enum import EnumMeta
 from typing import Any, Sequence
 import numpy as np
@@ -18,6 +17,7 @@ from VeraGrid.Gui.messages import warning_msg
 from VeraGrid.Gui.object_model import ObjectsModel
 from VeraGrid.Gui.spread_sheet_table import SpreadsheetTableView
 from VeraGrid.Gui.table_view_header_wrap import HeaderViewWithWordWrap
+from VeraGrid.Gui.toast_widget import ToastManager
 import VeraGrid.Gui.gui_functions as gf
 from VeraGridEngine.Devices.Associations.association import Associations
 from VeraGridEngine.Devices.Parents.editable_device import EditableDevice, GCProp
@@ -276,6 +276,7 @@ class TemplateDeviceEditor(QtWidgets.QDialog):
         self.ui.setupUi(self)
         self._replace_profiles_table_view()
         self.setWindowTitle("Device editor")
+        self.toast_manager: ToastManager = ToastManager(parent=self, position_top=False)
 
         prop_filter_mdl = gf.ComboModel(
             icon_enum_values=[
@@ -387,9 +388,6 @@ class TemplateDeviceEditor(QtWidgets.QDialog):
 
         self.ui.filterComboBox.currentIndexChanged.connect(self.refresh_model)
 
-        self.profiles_shortcuts: list[QtGui.QShortcut] = list()
-        self._install_profiles_shortcuts()
-
         self._update_time_label(slider_index=self.time_step_slider.value())
         self.refresh_associations_table()
 
@@ -418,6 +416,42 @@ class TemplateDeviceEditor(QtWidgets.QDialog):
         old_table_view.hide()
         old_table_view.deleteLater()
         self.ui.profiles_table_view = new_table_view
+
+    def show_toast(self, message: str, duration: int = 2000) -> None:
+        """
+        Show one generic toast attached to this editor.
+
+        :param message: Message to display.
+        :param duration: Duration in milliseconds.
+        """
+        self.toast_manager.show_toast(message=message, duration=duration, toast_type="veragrid")
+
+    def show_error_toast(self, message: str, duration: int = 2000) -> None:
+        """
+        Show one error toast attached to this editor.
+
+        :param message: Message to display.
+        :param duration: Duration in milliseconds.
+        """
+        self.toast_manager.show_error_toast(message=message, duration=duration)
+
+    def show_warning_toast(self, message: str, duration: int = 2000) -> None:
+        """
+        Show one warning toast attached to this editor.
+
+        :param message: Message to display.
+        :param duration: Duration in milliseconds.
+        """
+        self.toast_manager.show_warning_toast(message=message, duration=duration)
+
+    def show_info_toast(self, message: str, duration: int = 2000) -> None:
+        """
+        Show one info toast attached to this editor.
+
+        :param message: Message to display.
+        :param duration: Duration in milliseconds.
+        """
+        self.toast_manager.show_info_toast(message=message, duration=duration)
 
     def _build_delegate_dictionary(self) -> dict[DeviceType, list[object]]:
         """
@@ -696,160 +730,39 @@ class TemplateDeviceEditor(QtWidgets.QDialog):
         else:
             return None
 
-    def _install_profiles_shortcuts(self) -> None:
-        """
-        Install profile-tab shortcuts for spreadsheet-style edition.
-        """
-        copy_shortcut: QtGui.QShortcut = QtGui.QShortcut(QtGui.QKeySequence.StandardKey.Copy, self.profiles_tab)
-        copy_shortcut.setContext(QtCore.Qt.ShortcutContext.WidgetWithChildrenShortcut)
-        copy_shortcut.activated.connect(self.copy_profiles_selection_to_clipboard)
-        self.profiles_shortcuts.append(copy_shortcut)
-
-        paste_shortcut: QtGui.QShortcut = QtGui.QShortcut(QtGui.QKeySequence.StandardKey.Paste, self.profiles_tab)
-        paste_shortcut.setContext(QtCore.Qt.ShortcutContext.WidgetWithChildrenShortcut)
-        paste_shortcut.activated.connect(self.paste_profiles_from_clipboard)
-        self.profiles_shortcuts.append(paste_shortcut)
-
-    @staticmethod
-    def _parse_clipboard_grid(clipboard_text: str) -> list[list[str]]:
-        """
-        Parse clipboard text into a two-dimensional grid.
-
-        :param clipboard_text: Raw clipboard text.
-        :return: Parsed string grid.
-        """
-        parsed_rows: list[list[str]] = list()
-        line_text: str
-        split_values: list[str]
-
-        for line_text in clipboard_text.splitlines():
-            if len(line_text.strip()) > 0:
-                if "\t" in line_text:
-                    split_values = [value.rstrip("\r") for value in line_text.split("\t")]
-                    parsed_rows.append(split_values)
-                else:
-                    split_values = [value.strip() for value in re.split(r"[;,]+", line_text.strip())]
-                    parsed_rows.append(split_values)
-            else:
-                pass
-
-        return parsed_rows
-
-    def _get_profiles_paste_anchor(self) -> tuple[int, int]:
-        """
-        Determine the anchor cell where clipboard data starts to paste.
-
-        :return: `(row, column)` anchor.
-        """
-        selection_model: QtCore.QItemSelectionModel | None = self.profiles_table_view.selectionModel()
-        selected_indexes: list[QtCore.QModelIndex] = list()
-
-        if selection_model is not None:
-            selected_indexes = list(selection_model.selectedIndexes())
-        else:
-            pass
-
-        if len(selected_indexes) > 0:
-            row_values: list[int] = [index.row() for index in selected_indexes]
-            col_values: list[int] = [index.column() for index in selected_indexes]
-            return min(row_values), min(col_values)
-        else:
-            current_index: QtCore.QModelIndex = self.profiles_table_view.currentIndex()
-            if current_index.isValid():
-                return current_index.row(), current_index.column()
-            else:
-                return 0, 0
-
     def copy_profiles_selection_to_clipboard(self) -> None:
         """
         Copy the selected profile range to the clipboard.
         """
-        selection_model: QtCore.QItemSelectionModel | None = self.profiles_table_view.selectionModel()
-        selected_indexes: list[QtCore.QModelIndex] = list()
-
-        if selection_model is not None:
-            selected_indexes = list(selection_model.selectedIndexes())
+        if self.profiles_table_view.copy_selection_to_clipboard():
+            self.show_info_toast("Copied!")
         else:
-            pass
-
-        if len(selected_indexes) > 0:
-            min_row: int = min(index.row() for index in selected_indexes)
-            max_row: int = max(index.row() for index in selected_indexes)
-            min_col: int = min(index.column() for index in selected_indexes)
-            max_col: int = max(index.column() for index in selected_indexes)
-            row_lines: list[str] = list()
-            row_index: int
-            col_index: int
-
-            # Copy one rectangular range so it can be pasted directly in spreadsheets.
-            for row_index in range(min_row, max_row + 1):
-                row_cells: list[str] = list()
-                for col_index in range(min_col, max_col + 1):
-                    model_index: QtCore.QModelIndex = self.profiles_model.index(row_index, col_index)
-                    model_value: str | None = self.profiles_model.data(
-                        model_index, int(QtCore.Qt.ItemDataRole.DisplayRole)
-                    )
-                    if model_value is not None:
-                        row_cells.append(model_value)
-                    else:
-                        row_cells.append("")
-                row_lines.append("\t".join(row_cells))
-
-            QtWidgets.QApplication.clipboard().setText("\n".join(row_lines))
-        else:
-            warning_msg("Select profile cells before copying", "Profile editor")
+            self.show_warning_toast("Select profile cells before copying")
 
     def paste_profiles_from_clipboard(self) -> None:
         """
         Paste tabular clipboard data into profile cells.
         """
-        clipboard_text: str = QtWidgets.QApplication.clipboard().text()
-        parsed_rows: list[list[str]] = self._parse_clipboard_grid(clipboard_text=clipboard_text)
+        pasted_cells: int
+        failed_cells: int
+        pasted_cells, failed_cells = self.profiles_table_view.paste_from_clipboard()
 
-        if len(parsed_rows) > 0:
-            anchor_row: int
-            anchor_col: int
-            anchor_row, anchor_col = self._get_profiles_paste_anchor()
-
-            row_count: int = self.profiles_model.rowCount()
-            col_count: int = self.profiles_model.columnCount()
-            row_offset: int
-            col_offset: int
-            target_row: int
-            target_col: int
-            failed_cells: int = 0
-            pasted_cells: int = 0
-
-            # Paste each source cell in the matching target offset cell.
-            for row_offset, row_values in enumerate(parsed_rows):
-                for col_offset, cell_text in enumerate(row_values):
-                    target_row = anchor_row + row_offset
-                    target_col = anchor_col + col_offset
-                    if target_row < row_count and target_col < col_count:
-                        model_index: QtCore.QModelIndex = self.profiles_model.index(target_row, target_col)
-                        ok: bool = self.profiles_model.setData(
-                            model_index,
-                            cell_text,
-                            int(QtCore.Qt.ItemDataRole.EditRole),
-                        )
-                        if ok:
-                            pasted_cells += 1
-                        else:
-                            failed_cells += 1
-                    else:
-                        pass
-
+        if pasted_cells > 0:
             if failed_cells > 0:
-                warning_msg(f"{failed_cells} cell values could not be parsed for their column type", "Profile editor")
+                self.show_warning_toast(
+                    f"Pasted {pasted_cells} cells, {failed_cells} values were rejected",
+                    duration=3000,
+                )
             else:
-                pass
-
-            if pasted_cells == 0:
-                warning_msg("No profile cells were updated", "Profile editor")
-            else:
-                pass
+                self.show_info_toast(f"Pasted {pasted_cells} cells")
         else:
-            warning_msg("Clipboard does not contain tabular data", "Profile editor")
+            clipboard_text: str = QtWidgets.QApplication.clipboard().text()
+            if len(clipboard_text.strip()) == 0:
+                self.show_warning_toast("Clipboard does not contain tabular data")
+            elif failed_cells > 0:
+                self.show_warning_toast("No profile cells were updated")
+            else:
+                self.show_warning_toast("No profile cells were updated")
 
     def _collect_profile_series_by_unit(self, columns: Sequence[int]) -> dict[str, list[tuple[str, np.ndarray]]]:
         """
@@ -879,9 +792,8 @@ class TemplateDeviceEditor(QtWidgets.QDialog):
                 pass
 
         if len(skipped_columns) > 0:
-            warning_msg(
+            self.show_warning_toast(
                 "Skipped non numeric profiles: " + ", ".join(skipped_columns),
-                "Profile plotting",
             )
         else:
             pass
@@ -941,7 +853,7 @@ class TemplateDeviceEditor(QtWidgets.QDialog):
             plot_widget.redraw()
             dialog.exec()
         else:
-            warning_msg("No numeric profile columns available for plotting", "Profile plotting")
+            self.show_warning_toast("No numeric profile columns available for plotting")
 
     def plot_selected_profiles_grouped_by_units(self) -> None:
         """
@@ -967,7 +879,7 @@ class TemplateDeviceEditor(QtWidgets.QDialog):
             )
             self._open_profiles_plot_dialog(grouped_series=grouped_series, title="Selected Profile Plots")
         else:
-            warning_msg("Select one or more profile cells before plotting", "Profile plotting")
+            self.show_warning_toast("Select one or more profile cells before plotting")
 
     def on_time_step_changed(self) -> None:
         """

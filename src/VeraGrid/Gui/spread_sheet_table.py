@@ -101,7 +101,7 @@ class SpreadsheetTableView(QtWidgets.QTableView):
 
         self._copy_shortcut: QtGui.QShortcut = QtGui.QShortcut(QtGui.QKeySequence.StandardKey.Copy, self)
         self._copy_shortcut.setContext(QtCore.Qt.ShortcutContext.WidgetWithChildrenShortcut)
-        self._copy_shortcut.activated.connect(self._copy_selection_to_clipboard)
+        self._copy_shortcut.activated.connect(self.copy_selection_to_clipboard)
 
         self._undo_shortcut: QtGui.QShortcut = QtGui.QShortcut(QtGui.QKeySequence.StandardKey.Undo, self)
         self._undo_shortcut.setContext(QtCore.Qt.ShortcutContext.WidgetWithChildrenShortcut)
@@ -768,7 +768,7 @@ class SpreadsheetTableView(QtWidgets.QTableView):
 
         selected_action: QtGui.QAction | None = menu.exec(event.globalPos())
         if selected_action == copy_action:
-            self._copy_selection_to_clipboard()
+            self.copy_selection_to_clipboard()
         elif selected_action == paste_action:
             self.paste_from_clipboard()
         elif selected_action == clear_action:
@@ -922,19 +922,21 @@ class SpreadsheetTableView(QtWidgets.QTableView):
 
         return cleared_cells
 
-    def _copy_selection_to_clipboard(self) -> None:
+    def copy_selection_to_clipboard(self) -> bool:
         """
         Copy the current rectangular selection to the clipboard.
+
+        :return: ``True`` when one selection or current cell was copied.
         """
         model: QtCore.QAbstractItemModel | None = self.model()
         if model is None:
-            return
+            return False
 
         selection_range: QtCore.QItemSelectionRange | None = self._selection_range()
         if selection_range is None or selection_range.isEmpty():
             idx: QtCore.QModelIndex = self.currentIndex()
             if not idx.isValid():
-                return
+                return False
             selection_range = QtCore.QItemSelectionRange(idx)
         else:
             pass
@@ -960,7 +962,7 @@ class SpreadsheetTableView(QtWidgets.QTableView):
             self._build_internal_clipboard_payload(model=model, selection_range=selection_range),
         )
         QtWidgets.QApplication.clipboard().setMimeData(mime_data)
-
+        return True
 
 def _build_demo_model(rows: int = 20, cols: int = 4) -> QtGui.QStandardItemModel:
     model = QtGui.QStandardItemModel(rows, cols)
