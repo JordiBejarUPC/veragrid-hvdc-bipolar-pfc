@@ -317,6 +317,7 @@ class SolverType(Enum):
     """
 
     NR = 'Newton Raphson'
+    NR_PC = 'Newton Raphson Predictor-Corrector'
     GAUSS = 'Gauss-Seidel'
     Decoupled_LU = 'Decoupled-LU Decomposition'
     GN = "Gauss-Newton"
@@ -2565,6 +2566,7 @@ class ResultTypes(Enum):
     GeneratorReactivePowerC = 'Generator reactive power C'
 
     GeneratorCost = 'Generator cost'
+    GeneratorReserve = 'Generator reserve'
     GeneratorFuels = 'Generator fuels'
     GeneratorEmissions = 'Generator emissions'
     GeneratorProducing = 'Generator producing'
