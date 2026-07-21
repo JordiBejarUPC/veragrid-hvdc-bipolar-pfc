@@ -1691,44 +1691,62 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         if isinstance(self.api_object, BranchParent):
 
             # connect bus variables
+
+            # initialize bus models if needed
             if self.api_object.bus_from.rms_model.empty():
                 initialize_bus_rms(self.api_object.bus_from, self.var_factory)
+            if self.api_object.bus_to.rms_model.empty():
+                initialize_bus_rms(self.api_object.bus_to, self.var_factory)
 
-            if self.api_object.device_type in [DeviceType.VscDevice]:
-                if self.api_object.bus_from.is_dc:
-                    Vdc, Vm, Va = get_bus_rms_algebraic_vars(self.api_object.bus_from.rms_model)
-                    #Todo: rethink this and find a proper way to get the vars
-                    self.main_block.in_vars.append(Vm)
-                    self.main_block.in_vars.append(Va)
-                    self.main_block.in_vars.append(Vdc)
+            # get bus variables for bus from
+            if self.api_object.bus_from.is_dc:
+                Vf_dc, Vmf, Vaf = get_bus_rms_algebraic_vars(self.api_object.bus_from.rms_model)
+                if Vf_dc is not None:
+                    self.main_block.in_vars.append(Vmf)
+                    self.main_block.in_vars.append(Vaf)
+                    self.main_block.in_vars.append(Vf_dc)
 
                     self.main_block.external_mapping.update(
-                        {VarPowerFlowReferenceType.Vm: Vm})
+                        {VarPowerFlowReferenceType.Vmf: Vmf})
                     self.main_block.external_mapping.update(
-                        {VarPowerFlowReferenceType.Va: Va})
+                        {VarPowerFlowReferenceType.Vaf: Vaf})
                     self.main_block.external_mapping.update(
-                        {VarPowerFlowReferenceType.Vdc: Vdc})
-
+                        {VarPowerFlowReferenceType.Vf_dc: Vf_dc})
+                else:
+                    raise ValueError("Invalid RMS bus model: expected Vdc, Vm, Va")
             else:
-                if self.api_object.bus_from.rms_model.empty():
-                    initialize_bus_rms(self.api_object.bus_from, self.var_factory)
-
                 _, Vmf, Vaf = get_bus_rms_algebraic_vars(self.api_object.bus_from.rms_model)
-
-                if self.api_object.bus_to.rms_model.empty():
-                    initialize_bus_rms(self.api_object.bus_to, self.var_factory)
-
-                _, Vmt, Vat = get_bus_rms_algebraic_vars(self.api_object.bus_to.rms_model)
 
                 self.main_block.in_vars.append(Vmf)
                 self.main_block.in_vars.append(Vaf)
-                self.main_block.in_vars.append(Vmt)
-                self.main_block.in_vars.append(Vat)
 
                 self.main_block.external_mapping.update(
                     {VarPowerFlowReferenceType.Vmf: Vmf})
                 self.main_block.external_mapping.update(
                     {VarPowerFlowReferenceType.Vaf: Vaf})
+
+            # get bus variables for bus to
+            if self.api_object.bus_to.is_dc:
+                Vt_dc, Vmt, Vat = get_bus_rms_algebraic_vars(self.api_object.bus_to.rms_model)
+                if Vt_dc is not None:
+                    self.main_block.in_vars.append(Vmt)
+                    self.main_block.in_vars.append(Vat)
+                    self.main_block.in_vars.append(Vt_dc)
+
+                    self.main_block.external_mapping.update(
+                        {VarPowerFlowReferenceType.Vmt: Vmt})
+                    self.main_block.external_mapping.update(
+                        {VarPowerFlowReferenceType.Vat: Vat})
+                    self.main_block.external_mapping.update(
+                        {VarPowerFlowReferenceType.Vt_dc: Vt_dc})
+                else:
+                    raise ValueError("Invalid RMS bus model: expected Vdc, Vm, Va")
+
+            else:
+                _, Vmt, Vat = get_bus_rms_algebraic_vars(self.api_object.bus_to.rms_model)
+
+                self.main_block.in_vars.append(Vmt)
+                self.main_block.in_vars.append(Vat)
 
                 self.main_block.external_mapping.update(
                     {VarPowerFlowReferenceType.Vmt: Vmt})
@@ -1773,20 +1791,24 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         elif isinstance(self.api_object, InjectionParent):
 
             # connect bus variables
+
+            # inicialize bus if needed
             if self.api_object.bus.rms_model.empty():
                 initialize_bus_rms(self.api_object.bus, self.var_factory)
+
             if self.api_object.bus.is_dc:
                 Vdc, Vm, Va = get_bus_rms_algebraic_vars(self.api_object.bus.rms_model)
-                self.main_block.in_vars.append(Vdc)
-                self.main_block.in_vars.append(Vm)
-                self.main_block.in_vars.append(Va)
+                if Vdc is not None:
+                    self.main_block.in_vars.append(Vdc)
+                    self.main_block.in_vars.append(Vm)
+                    self.main_block.in_vars.append(Va)
 
-                self.main_block.external_mapping.update(
-                    {VarPowerFlowReferenceType.Vdc: Vdc})
-                self.main_block.external_mapping.update(
-                    {VarPowerFlowReferenceType.Vm: Vm})
-                self.main_block.external_mapping.update(
-                    {VarPowerFlowReferenceType.Va: Va})
+                    self.main_block.external_mapping.update(
+                        {VarPowerFlowReferenceType.Vdc: Vdc})
+                    self.main_block.external_mapping.update(
+                        {VarPowerFlowReferenceType.Vm: Vm})
+                    self.main_block.external_mapping.update(
+                        {VarPowerFlowReferenceType.Va: Va})
             else:
                 _, Vm, Va = get_bus_rms_algebraic_vars(self.api_object.bus.rms_model)
                 self.main_block.in_vars.append(Vm)
