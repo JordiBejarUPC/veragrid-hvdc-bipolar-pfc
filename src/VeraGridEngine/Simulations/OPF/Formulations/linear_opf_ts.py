@@ -708,15 +708,34 @@ class OpfVars:
         return data
 
 
-def get_time_increment_hours(time_array: DateVec, idx: int) -> float:
+def get_time_increment_seconds(time_array: DateVec, idx: int) -> float:
     """
     Return the duration represented by a time step.
     """
     if len(time_array) <= 1:
-        return 1.0
+        return 3600.0
     if idx > 0:
-        return (time_array[idx] - time_array[idx - 1]).total_seconds() / 3600.0
-    return (time_array[1] - time_array[0]).total_seconds() / 3600.0
+        return (time_array[idx] - time_array[idx - 1]).total_seconds()
+    return (time_array[1] - time_array[0]).total_seconds()
+
+
+def get_time_increment_hours(time_array: DateVec, idx: int) -> float:
+    """
+    Return the duration represented by a time step in hours.
+    """
+    return get_time_increment_seconds(time_array=time_array, idx=idx) / 3600.0
+
+
+def get_model_step_hours(time_array: DateVec, local_t: int, global_t: Union[int, None]) -> float:
+    """
+    Return the time-step duration in hours for a local optimization row.
+    """
+    idx: int = local_t
+    if local_t == 0 and global_t is not None:
+        idx = global_t
+    else:
+        idx = local_t
+    return get_time_increment_hours(time_array=time_array, idx=idx)
 
 
 def get_min_time_window(time_array: DateVec, local_t: int, min_hours: float) -> list[int]:
@@ -1815,6 +1834,11 @@ def add_linear_battery_formulation(t: Union[int, None],
             p_neg = prob.add_var(0, 1e20, join("batt_pneg_", [t, k], "_"))
             batt_vars.p[t, k] = p_pos - p_neg
 
+            # The battery energy recurrence is shared by both dispatchable and fixed-power
+            # operation modes, so compute the modeled interval once before the dispatchability
+            # split and reuse it in both paths.
+            dt: float = get_model_step_hours(time_array=time_array, local_t=t, global_t=global_t)
+
             if batt_data_t.dispatchable[k]:
 
                 if unit_commitment:
@@ -1876,26 +1900,6 @@ def add_linear_battery_formulation(t: Union[int, None],
                         prob.set_var_bounds(var=p_pos, lb=0, ub=+batt_data_t.pmax[k] / Sbase)
                         prob.set_var_bounds(var=p_neg, lb=0, ub=-batt_data_t.pmin[k] / Sbase)
 
-                # compute the time increment in hours
-                if len(time_array) > 1:
-                    if t > 0:
-                        # Normal case: this row has a previous row inside the same optimization
-                        # chunk, so use the local spacing between consecutive modeled rows.
-                        dt = (time_array[t] - time_array[t - 1]).seconds / 3600.0
-                    elif global_t is not None and global_t > 0:
-                        # First local row of a later chunk: there is no local t-1 row, but there
-                        # is a real previous timestamp in the full simulation timeline. Use that
-                        # full-series spacing so the carried battery state is updated correctly.
-                        dt = (time_array[global_t] - time_array[global_t - 1]).seconds / 3600.0
-                    else:
-                        # True first row of the whole simulation: no previous timestamp exists, so
-                        # define interval 0 using the first known spacing in the time series.
-                        dt = (time_array[1] - time_array[0]).seconds / 3600.0
-                else:
-                    # Single-point run: no spacing can be inferred from the time profile, so use
-                    # the historical 1-hour default for the battery energy balance.
-                    dt = 1.0
-
                 if ramp_constraints and t is not None:
                     if t > 0:
 
@@ -1934,10 +1938,14 @@ def add_linear_battery_formulation(t: Union[int, None],
                 # Operational cost (linear...)
                 f_obj += (batt_data_t.cost_1[k] * p_pos) + batt_data_t.cost_0[k]
 
-                p = batt_data_t.p[k] / Sbase
+                p: float = batt_data_t.p[k] / Sbase
 
                 # the generator is not dispatchable at time step
                 if p > 0:
+                    # Positive fixed power means battery discharge, so the charging branch must
+                    # stay at zero. This keeps the energy balance physically consistent.
+                    prob.set_var_bounds(var=p_pos, lb=0, ub=p)
+                    prob.set_var_bounds(var=p_neg, lb=0, ub=0)
 
                     batt_vars.shedding[t, k] = prob.add_var(0, p, join("bat_shedding_", [t, k], "_"))
 
@@ -1949,6 +1957,11 @@ def add_linear_battery_formulation(t: Union[int, None],
 
                 elif p < 0:
                     # the negative sign is because P is already negative here
+                    # Negative fixed power means battery charge, so the discharge branch must
+                    # stay at zero. This prevents fake simultaneous charge/discharge flows.
+                    prob.set_var_bounds(var=p_pos, lb=0, ub=0)
+                    prob.set_var_bounds(var=p_neg, lb=0, ub=-p)
+
                     batt_vars.shedding[t, k] = prob.add_var(lb=0,
                                                             ub=-p,
                                                             name=join("bat_shedding_", [t, k], "_"))
@@ -1960,12 +1973,35 @@ def add_linear_battery_formulation(t: Union[int, None],
                     f_obj += batt_data_t.cost_1[k] * batt_vars.shedding[t, k]
 
                 else:
-                    # the generation value is exactly zero, pass
-                    pass
+                    # Zero fixed power means neither charge nor discharge branch can move.
+                    prob.set_var_bounds(var=p_pos, lb=0, ub=0)
+                    prob.set_var_bounds(var=p_neg, lb=0, ub=0)
 
                 batt_vars.producing[t, k] = 1
                 batt_vars.shutting_down[t, k] = 0
                 batt_vars.starting_up[t, k] = 0
+
+                # The battery energy state must exist for every active battery, even when the
+                # power is fixed by the profile. Otherwise a later dispatchable step cannot
+                # reference a valid previous energy state.
+                batt_vars.e[t, k] = prob.add_var(batt_data_t.e_min[k] / Sbase,
+                                                 batt_data_t.e_max[k] / Sbase,
+                                                 join("batt_e_", [t, k], "_"))
+
+                if t > 0:
+                    # The same signed power split is reused here: p_pos discharges the battery
+                    # and p_neg charges it, so the state-of-charge continuity is preserved.
+                    prob.add_cst(cst=(batt_vars.e[t, k] == batt_vars.e[t - 1, k]
+                                      + dt * (batt_data_t.charge_efficiency[k] * p_neg
+                                              - p_pos / batt_data_t.discharge_efficiency[k])),
+                                 name=join("batt_energy_", [t, k], "_"))
+                else:
+                    # The first modeled interval must also carry the energy state forward from
+                    # the provided initial condition, even if dispatch is disabled here.
+                    prob.add_cst(cst=(batt_vars.e[t, k] == energy_0[k] / Sbase
+                                      + dt * (batt_data_t.charge_efficiency[k] * p_neg
+                                              - p_pos / batt_data_t.discharge_efficiency[k])),
+                                 name=join("batt_energy_", [t, k], "_"))
 
             # add to the balance
             bus_vars.Pbalance[t, bus_idx] += batt_vars.p[t, k]
@@ -2725,10 +2761,7 @@ def add_hydro_formulation(t: Union[int, None],
         # constraints for the node level
         for m in range(node_data.nelm):
             if t == 0:
-                if len(time_array) > time_global_tidx + 1:
-                    dt = (time_array[time_global_tidx + 1] - time_array[time_global_tidx]).seconds
-                else:
-                    dt = 3600
+                dt = get_time_increment_seconds(time_array=time_array, idx=time_global_tidx)
 
                 # Initialize level at fluid_level_0
                 prob.add_cst(cst=(node_vars.current_level[t, m] ==
@@ -2741,7 +2774,7 @@ def add_hydro_formulation(t: Union[int, None],
                              name=join("nodal_balance_", [t, m], "_"))
             else:
                 # Update the level according to the in and out flows as time passes
-                dt = (time_array[time_global_tidx] - time_array[time_global_tidx - 1]).seconds
+                dt = get_time_increment_seconds(time_array=time_array, idx=time_global_tidx)
 
                 prob.add_cst(cst=(node_vars.current_level[t, m] ==
                                   node_vars.current_level[t - 1, m]
