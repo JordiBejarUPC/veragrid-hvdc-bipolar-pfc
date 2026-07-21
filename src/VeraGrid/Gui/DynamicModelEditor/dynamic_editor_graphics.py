@@ -126,6 +126,53 @@ def build_orthogonal_connection_path(start: QPointF, end: QPointF, elbow_offset:
     return path
 
 
+class EditorGraphicsDefaultsDark:
+    BLOCK_BORDER: QColor = QColor("#e1f7ff")
+    BLOCK_BORDER_SELECTED: QColor = QColor("#cc6f2c")
+    BLOCK_TITLE: QColor = QColor("#e1f7ff")
+    WIRE_COLOR: QColor = QColor("#e1f7ff")
+    BLOCK_FILL: QColor = QColor("#022633")
+    PORT_LABEL_COLOR: QColor = QColor("#173042")
+    WIRE_ELBOW_OFFSET: float = 36.0
+    PORT_LABEL_MAX_CHARS: int = 12
+    BLOCK_HEADER_HEIGHT: float = 30.0
+    BLOCK_PORT_ROW_HEIGHT: float = 20.0
+    BLOCK_PORT_SECTION_PADDING: float = 10.0
+    BLOCK_MIN_WIDTH: float = 160.0
+    BLOCK_MIN_HEIGHT: float = 70.0
+    BLOCK_COMPACT_MIN_WIDTH: float = 100.0
+    BLOCK_COMPACT_MIN_HEIGHT: float = 40.0
+    BLOCK_COMPACT_HEADER_HEIGHT: float = 20.0
+    BLOCK_COMPACT_PORT_ROW_HEIGHT: float = 14.0
+    BLOCK_COMPACT_PORT_SECTION_PADDING: float = 6.0
+    PORT_ITEM_COLOR: QColor = QColor("#e1f7ff")
+    VALIDATION_HICHLIGHTED_BORDER = QColor("#b42318")
+
+
+class EditorGraphicsDefaultsLight:
+    BLOCK_BORDER: QColor = QColor("#03384f")
+    BLOCK_BORDER_SELECTED: QColor = QColor("#00bbff")
+    BLOCK_TITLE: QColor = QColor("#03384f")
+    WIRE_COLOR: QColor = QColor("#03384f")
+    BLOCK_FILL: QColor = QColor("#f5fdff")
+    PORT_LABEL_COLOR: QColor = QColor("#173042")
+    WIRE_ELBOW_OFFSET: float = 36.0
+    PORT_LABEL_MAX_CHARS: int = 12
+    BLOCK_HEADER_HEIGHT: float = 30.0
+    BLOCK_PORT_ROW_HEIGHT: float = 20.0
+    BLOCK_PORT_SECTION_PADDING: float = 10.0
+    BLOCK_MIN_WIDTH: float = 160.0
+    BLOCK_MIN_HEIGHT: float = 70.0
+    BLOCK_COMPACT_MIN_WIDTH: float = 100.0
+    BLOCK_COMPACT_MIN_HEIGHT: float = 40.0
+    BLOCK_COMPACT_HEADER_HEIGHT: float = 20.0
+    BLOCK_COMPACT_PORT_ROW_HEIGHT: float = 14.0
+    BLOCK_COMPACT_PORT_SECTION_PADDING: float = 6.0
+    PORT_ITEM_COLOR: QColor = QColor("#03384f")
+    VALIDATION_HICHLIGHTED_BORDER = QColor("#b42318")
+
+
+
 class BlockPositionChangedCallback:
     __slots__ = ("_editor", "_block_uid")
 
