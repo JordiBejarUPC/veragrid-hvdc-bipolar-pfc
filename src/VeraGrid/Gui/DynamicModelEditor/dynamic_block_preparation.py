@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.equation_decomposer import EquationDecomposer
+from VeraGridEngine.Devices.Dynamic import VarFactory
 
 
 def prepare_block_for_editing(
@@ -31,7 +32,7 @@ def prepare_block_for_editing(
     return block
 
 
-def decompose_block_in_place(block: Block, var_factory: object) -> None:
+def decompose_block_in_place(block: Block, var_factory: VarFactory) -> None:
     """
     Decompose the equations of *block* in place and generate its diagram.
 

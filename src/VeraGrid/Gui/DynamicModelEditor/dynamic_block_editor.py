@@ -4,7 +4,6 @@
 # SPDX-License-Identifier: MPL-2.0
 
 from __future__ import annotations
-import re
 import copy
 from typing import List, Dict, Optional, Any
 from PySide6 import QtWidgets, QtGui, QtCore
@@ -141,34 +140,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
     """
     DynamicModelEditorGUI
     """
-
-    VALIDATION_HICHLIGHTED_BORDER = QColor("#b42318")
-    BLOCK_BORDER_SELECTED: QColor = QColor("#00bbff")
-    dirtyStateChanged = Signal(bool)
-    WIRE_ELBOW_OFFSET: float = 36.0
-    PORT_LABEL_MAX_CHARS: int = 12
-    BLOCK_HEADER_HEIGHT: float = 30.0
-    BLOCK_PORT_ROW_HEIGHT: float = 20.0
-    BLOCK_PORT_SECTION_PADDING: float = 10.0
-    BLOCK_MIN_WIDTH: float = 160.0
-    BLOCK_MIN_HEIGHT: float = 70.0
-    BLOCK_COMPACT_MIN_WIDTH: float = 100.0
-    BLOCK_COMPACT_MIN_HEIGHT: float = 40.0
-    BLOCK_COMPACT_HEADER_HEIGHT: float = 20.0
-    BLOCK_COMPACT_PORT_ROW_HEIGHT: float = 14.0
-    BLOCK_COMPACT_PORT_SECTION_PADDING: float = 6.0
-    TEMPLATE_NODE_TYPE: str = "TEMPLATE"
-    INITIAL_LAYOUT_SCALE: float = 0.60
-    INITIAL_VIEW_SCALE: float = 1.3
-    _LAYOUT_MARGIN: float = 40.0
-    PARAMETER_VALUE_TYPE_ROLE: int = int(QtCore.Qt.ItemDataRole.UserRole) + 500
-    PARAMETER_EDITABLE_ROLE: int = int(QtCore.Qt.ItemDataRole.UserRole) + 501
-    LIBRARY_SEARCH_TEXT_ROLE: int = int(QtCore.Qt.ItemDataRole.UserRole) + 502
-    BLOCK_SEARCH_ROLE: int = int(QtCore.Qt.ItemDataRole.UserRole) + 503
-    MODAL_TEMPLATE_KIND_ATTR: str = "_modal_template_kind"
-    MODAL_TEMPLATE_CONFIG_ATTR: str = "_modal_template_config"
-
-
     def __init__(self,
                  var_factory: VarFactory,
                  api_object: ALL_DEV_TYPES,
@@ -302,7 +273,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             var_factory=self.var_factory,
             parameter_value_type_role=self.PARAMETER_VALUE_TYPE_ROLE,
             parameter_editable_role=self.PARAMETER_EDITABLE_ROLE,
-            block_search_role=self.BLOCK_SEARCH_ROLE,
+            block_search_role=graph.BLOCK_SEARCH_ROLE,
             parent=self.ui.variablesTableView
         )
         self.variables_model.set_mode(DynamicTableModelMode.VARIABLES)
@@ -311,7 +282,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.variables_search.setPlaceholderText(self.tr("Search variables..."))
         self.variables_search.setClearButtonEnabled(True)
         self.ui.verticalLayout_7.insertWidget(0, self.variables_search)
-        self.variables_proxy = dialog_models.BlockTableFilterProxyModel(search_role=self.BLOCK_SEARCH_ROLE,
+        self.variables_proxy = dialog_models.BlockTableFilterProxyModel(search_role=graph.BLOCK_SEARCH_ROLE,
                                                           parent=self.ui.variablesTableView)
         self.variables_proxy.setSourceModel(self.variables_model)
         self.ui.variablesTableView.setModel(self.variables_proxy)
@@ -335,7 +306,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             var_factory=self.var_factory,
             parameter_value_type_role=self.PARAMETER_VALUE_TYPE_ROLE,
             parameter_editable_role=self.PARAMETER_EDITABLE_ROLE,
-            block_search_role=self.BLOCK_SEARCH_ROLE,
+            block_search_role=graph.BLOCK_SEARCH_ROLE,
             parent=self.ui.parametersTableView
         )
         self.parameters_model.set_mode(DynamicTableModelMode.PARAMETERS)
@@ -344,7 +315,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.parameters_search.setPlaceholderText(self.tr("Search parameters..."))
         self.parameters_search.setClearButtonEnabled(True)
         self.ui.verticalLayout_8.insertWidget(0, self.parameters_search)
-        self.parameters_proxy = dialog_models.BlockTableFilterProxyModel(search_role=self.BLOCK_SEARCH_ROLE,
+        self.parameters_proxy = dialog_models.BlockTableFilterProxyModel(search_role=graph.BLOCK_SEARCH_ROLE,
                                                            parent=self.ui.parametersTableView)
         self.parameters_proxy.setSourceModel(self.parameters_model)
         self.ui.parametersTableView.setModel(self.parameters_proxy)
@@ -367,7 +338,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             var_factory=self.var_factory,
             parameter_value_type_role=self.PARAMETER_VALUE_TYPE_ROLE,
             parameter_editable_role=self.PARAMETER_EDITABLE_ROLE,
-            block_search_role=self.BLOCK_SEARCH_ROLE,
+            block_search_role=graph.BLOCK_SEARCH_ROLE,
             parent=self.ui.equationsTableView
         )
         self.equations_model.set_mode(DynamicTableModelMode.EQUATIONS)
@@ -380,7 +351,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.equations_search.setPlaceholderText(self.tr("Search equations..."))
         self.equations_search.setClearButtonEnabled(True)
         self.ui.verticalLayout_9.insertWidget(0, self.equations_search)
-        self.equations_proxy = dialog_models.BlockTableFilterProxyModel(search_role=self.BLOCK_SEARCH_ROLE,
+        self.equations_proxy = dialog_models.BlockTableFilterProxyModel(search_role=graph.BLOCK_SEARCH_ROLE,
                                                           parent=self.ui.equationsTableView)
         self.equations_proxy.setSourceModel(self.equations_model)
         self.ui.equationsTableView.setModel(self.equations_proxy)
@@ -537,8 +508,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param config: Serializable modal configuration.
         :return: None.
         """
-        block.__dict__[self.MODAL_TEMPLATE_KIND_ATTR] = kind
-        block.__dict__[self.MODAL_TEMPLATE_CONFIG_ATTR] = copy.deepcopy(config)
+        block.__dict__[graph.MODAL_TEMPLATE_KIND_ATTR] = kind
+        block.__dict__[graph.MODAL_TEMPLATE_CONFIG_ATTR] = copy.deepcopy(config)
 
     # Todo: remove this function when all the dialogs are unified
     def get_modal_template_metadata(self, block: Block | None) -> tuple[str | None, Dict[str, Any] | None]:
@@ -553,8 +524,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             pass
 
-        kind: Any = block.__dict__.get(self.MODAL_TEMPLATE_KIND_ATTR, None)
-        config: Any = block.__dict__.get(self.MODAL_TEMPLATE_CONFIG_ATTR, None)
+        kind: Any = block.__dict__.get(graph.MODAL_TEMPLATE_KIND_ATTR, None)
+        config: Any = block.__dict__.get(graph.MODAL_TEMPLATE_CONFIG_ATTR, None)
 
         if isinstance(kind, str) and isinstance(config, dict):
             return kind, copy.deepcopy(config)
@@ -1733,7 +1704,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         for item in interface_items:
             offset = item.pos() - center
-            item.setPos(center + offset * self.INITIAL_LAYOUT_SCALE)
+            item.setPos(center + offset * graph.INITIAL_LAYOUT_SCALE)
 
         for node in self.diagram.node_data.values():
             if node.tpe in {BlockType.INPUT_CONN.name, BlockType.OUTPUT_CONN.name}:
@@ -1748,8 +1719,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             br = item.sceneBoundingRect()
             new_br = br if new_br.isNull() else new_br.united(br)
 
-        return new_br.adjusted(-self._LAYOUT_MARGIN, -self._LAYOUT_MARGIN,
-                               self._LAYOUT_MARGIN, self._LAYOUT_MARGIN)
+        return new_br.adjusted(-graph._LAYOUT_MARGIN, -graph._LAYOUT_MARGIN,
+                               graph._LAYOUT_MARGIN, graph._LAYOUT_MARGIN)
 
     def add_connection_items(self, blocks_list: List[graph.BlockItem] | None = None):
         """
@@ -1794,7 +1765,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         fit_rect = self._compact_initial_layout()
         if fit_rect is not None:
             self.view.fitInView(fit_rect, QtCore.Qt.AspectRatioMode.KeepAspectRatio)
-            self.view.scale(self.INITIAL_VIEW_SCALE, self.INITIAL_VIEW_SCALE)
+            self.view.scale(graph.INITIAL_VIEW_SCALE, graph.INITIAL_VIEW_SCALE)
         else:
             self.view.fitInView(self.scene.sceneRect(), QtCore.Qt.AspectRatioMode.KeepAspectRatio)
 

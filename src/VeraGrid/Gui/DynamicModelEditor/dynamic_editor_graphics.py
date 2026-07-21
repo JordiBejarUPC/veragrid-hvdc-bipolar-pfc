@@ -12,6 +12,8 @@ from PySide6.QtWidgets import QAbstractGraphicsShapeItem, QApplication, QColorDi
     QGraphicsPathItem, QGraphicsPolygonItem, QGraphicsRectItem, QGraphicsScene, QGraphicsTextItem, \
     QGraphicsView, QMenu, QWidget
 
+from PySide6.QtCore import Signal
+
 import VeraGrid.ThirdParty.darkdetect as darkdetect
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.enumerations import BlockType
@@ -170,6 +172,33 @@ class EditorGraphicsDefaultsLight:
     BLOCK_COMPACT_PORT_SECTION_PADDING: float = 6.0
     PORT_ITEM_COLOR: QColor = QColor("#03384f")
     VALIDATION_HICHLIGHTED_BORDER = QColor("#b42318")
+
+class EditorGraphicsCommonFeatures:
+    VALIDATION_HICHLIGHTED_BORDER = QColor("#b42318")
+    BLOCK_BORDER_SELECTED: QColor = QColor("#00bbff")
+    dirtyStateChanged = Signal(bool)
+    WIRE_ELBOW_OFFSET: float = 36.0
+    PORT_LABEL_MAX_CHARS: int = 12
+    BLOCK_HEADER_HEIGHT: float = 30.0
+    BLOCK_PORT_ROW_HEIGHT: float = 20.0
+    BLOCK_PORT_SECTION_PADDING: float = 10.0
+    BLOCK_MIN_WIDTH: float = 160.0
+    BLOCK_MIN_HEIGHT: float = 70.0
+    BLOCK_COMPACT_MIN_WIDTH: float = 100.0
+    BLOCK_COMPACT_MIN_HEIGHT: float = 40.0
+    BLOCK_COMPACT_HEADER_HEIGHT: float = 20.0
+    BLOCK_COMPACT_PORT_ROW_HEIGHT: float = 14.0
+    BLOCK_COMPACT_PORT_SECTION_PADDING: float = 6.0
+    TEMPLATE_NODE_TYPE: str = "TEMPLATE"
+    INITIAL_LAYOUT_SCALE: float = 0.60
+    INITIAL_VIEW_SCALE: float = 1.3
+    _LAYOUT_MARGIN: float = 40.0
+    PARAMETER_VALUE_TYPE_ROLE: int = int(QtCore.Qt.ItemDataRole.UserRole) + 500
+    PARAMETER_EDITABLE_ROLE: int = int(QtCore.Qt.ItemDataRole.UserRole) + 501
+    LIBRARY_SEARCH_TEXT_ROLE: int = int(QtCore.Qt.ItemDataRole.UserRole) + 502
+    BLOCK_SEARCH_ROLE: int = int(QtCore.Qt.ItemDataRole.UserRole) + 503
+    MODAL_TEMPLATE_KIND_ATTR: str = "_modal_template_kind"
+    MODAL_TEMPLATE_CONFIG_ATTR: str = "_modal_template_config"
 
 
 
