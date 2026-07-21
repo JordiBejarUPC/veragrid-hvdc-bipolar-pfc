@@ -2793,6 +2793,7 @@ class SimulationsMain(TimeEventsMain):
         generate_report = self.ui.addOptimalPowerFlowReportCheckBox.isChecked()
         robust = self.ui.fixOpfCheckBox.isChecked()
         use_glsk_as_cost = self.ui.useGslkAsCostsOpfCheckBox.isChecked()
+        quadratic_costs = self.ui.quadraticCostsOpfCheckBox.isChecked()
         add_losses_approximation = self.ui.approximateLossesOpfCheckBox.isChecked()
         _, pf_results = self.session.power_flow
 
@@ -2855,6 +2856,7 @@ class SimulationsMain(TimeEventsMain):
             report_formulation=report_formulation,
             generate_report=generate_report,
             use_glsk_as_cost=use_glsk_as_cost,
+            quadratic_costs=quadratic_costs,
             add_losses_approximation=add_losses_approximation,
             ips_method=ips_method,
             ips_tolerance=ips_tolerance,
