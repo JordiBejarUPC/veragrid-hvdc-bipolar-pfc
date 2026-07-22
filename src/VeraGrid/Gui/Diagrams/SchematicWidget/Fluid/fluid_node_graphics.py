@@ -17,7 +17,7 @@ from VeraGridEngine.Devices.Parents.editable_device import EditableDevice
 from VeraGridEngine.Devices.types import FLUID_TYPES
 
 from VeraGrid.Gui.DeviceEditors.TemplateDeviceEditor.template_device_editor import TemplateDeviceEditor
-from VeraGrid.Gui.Diagrams.generic_graphics import ACTIVE, FONT_SCALE, GenericDiagramWidget
+from VeraGrid.Gui.Diagrams.generic_graphics import ACTIVE, FONT_SCALE, GenericDiagramWidget, DraggableLabelItem
 from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.slot_geometry import (SchematicAttachmentSlot,
                                                                           build_explicit_slot_key,
                                                                           clamp_attachment_alignment,
@@ -81,9 +81,11 @@ class FluidNodeGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         self.style = ACTIVE['style']
 
         # Label:
-        self.label = QtWidgets.QGraphicsTextItem(self.api_object.name if self.api_object is not None else "", self)
+        self.label = DraggableLabelItem(self)
         self.label.setDefaultTextColor(ACTIVE['text'])
+        self.label.document().setDocumentMargin(0.0)
         self.label.setScale(FONT_SCALE)
+        self.label.setPlainText(self.api_object.name if self.api_object is not None else "")
 
         # square
         self.tile = QtWidgets.QGraphicsRectItem(0, 0, 20, 20, self)
@@ -283,7 +285,7 @@ class FluidNodeGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         x0 = 0
 
         # center label:
-        self.label.setPos(self.w + 5, -20)
+        self.label.set_anchor_position(QPointF(self.w + 5.0, -20.0))
 
         # lower
         self._terminal.setPos(x0, y0)
