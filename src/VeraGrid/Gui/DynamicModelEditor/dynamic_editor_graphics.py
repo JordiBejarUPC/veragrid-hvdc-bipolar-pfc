@@ -430,7 +430,7 @@ class PortItem(QAbstractGraphicsShapeItem):
         self._validation_highlighted = val
 
         if self._validation_highlighted:
-            self.setBrush(QBrush(self.editor.VALIDATION_HICHLIGHTED_BORDER))
+            self.setBrush(QBrush(EditorGraphicsCommonFeatures.VALIDATION_HICHLIGHTED_BORDER))
         else:
             self.setBrush(self.brush())
 
@@ -560,9 +560,9 @@ class ConnectionItem(QGraphicsPathItem):
                 path.lineTo(pt)
         else:
             if self.editor is not None:
-                wire_elbou_offset = self.editor.WIRE_ELBOW_OFFSET
+                wire_elbou_offset = EditorGraphicsCommonFeatures.WIRE_ELBOW_OFFSET
             else:
-                wire_elbou_offset = self.source_port.editor.WIRE_ELBOW_OFFSET
+                wire_elbou_offset = EditorGraphicsCommonFeatures.WIRE_ELBOW_OFFSET
             path = build_orthogonal_connection_path(
                 self.source_port.scenePos(),
                 self.target_port.scenePos(),
@@ -1062,10 +1062,10 @@ class GenericBlockItem(QGraphicsRectItem):
         body_rect: QtCore.QRectF = outer_rect
 
         if self._validation_highlighted:
-            border_color: QColor = self.editor.VALIDATION_HICHLIGHTED_BORDER
+            border_color: QColor = EditorGraphicsCommonFeatures.VALIDATION_HICHLIGHTED_BORDER
         else:
             border_color = (
-                self.editor.BLOCK_BORDER_SELECTED
+                EditorGraphicsCommonFeatures.BLOCK_BORDER_SELECTED
                 if self.isSelected()
                 else self.pen().color()
             )
@@ -1095,9 +1095,9 @@ class GenericBlockItem(QGraphicsRectItem):
     def get_minimum_block_size(self) -> tuple[float, float]:
         port_rows: int = max(len(self.inputs), len(self.outputs), 1)
         min_height: float = max(
-            self.editor.BLOCK_MIN_HEIGHT,
-            self.editor.BLOCK_HEADER_HEIGHT + self.editor.BLOCK_PORT_SECTION_PADDING +
-            port_rows * self.editor.BLOCK_PORT_ROW_HEIGHT
+            EditorGraphicsCommonFeatures.BLOCK_MIN_HEIGHT,
+            EditorGraphicsCommonFeatures.BLOCK_HEADER_HEIGHT + EditorGraphicsCommonFeatures.BLOCK_PORT_SECTION_PADDING +
+            port_rows * EditorGraphicsCommonFeatures.BLOCK_PORT_ROW_HEIGHT
         )
 
         input_label_width = 0.0
@@ -1111,7 +1111,7 @@ class GenericBlockItem(QGraphicsRectItem):
         padding = 28.0
 
         min_width = max(
-            self.editor.BLOCK_MIN_WIDTH,
+            EditorGraphicsCommonFeatures.BLOCK_MIN_WIDTH,
             input_label_width + output_label_width + padding
         )
         return min_width, min_height
@@ -1148,7 +1148,7 @@ class GenericBlockItem(QGraphicsRectItem):
                 port.setToolTip(_build_port_tooltip("Input", i, variable_name))
                 label_item = self.input_labels[i]
                 label_item.setPlainText(
-                    truncate_port_label(variable_name, self.editor.PORT_LABEL_MAX_CHARS))
+                    truncate_port_label(variable_name, EditorGraphicsCommonFeatures.PORT_LABEL_MAX_CHARS))
 
             for i, port in enumerate(self.outputs):
                 if port.base_var is None:
@@ -1159,7 +1159,7 @@ class GenericBlockItem(QGraphicsRectItem):
                 port.setToolTip(_build_port_tooltip("Output", i, variable_name))
                 label_item = self.output_labels[i]
                 label_item.setPlainText(
-                    truncate_port_label(variable_name, self.editor.PORT_LABEL_MAX_CHARS))
+                    truncate_port_label(variable_name, EditorGraphicsCommonFeatures.PORT_LABEL_MAX_CHARS))
         else:
             pass
 
@@ -1372,7 +1372,7 @@ class PairedItem(QGraphicsPolygonItem):
               option: QtWidgets.QStyleOptionGraphicsItem,
               widget: Optional[QWidget] = None) -> None:
         polygon: QtGui.QPolygonF = self.polygon()
-        border_color: QColor = self.editor.BLOCK_BORDER_SELECTED if self.isSelected() else self.pen().color()
+        border_color: QColor = EditorGraphicsCommonFeatures.BLOCK_BORDER_SELECTED if self.isSelected() else self.pen().color()
 
         painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
         painter.setPen(QPen(border_color, 1.6))
@@ -1536,9 +1536,9 @@ class BlockItem(QGraphicsRectItem):
 
         port_rows: int = max(len(self.inputs), len(self.outputs), 1)
         min_height: float = max(
-            self.editor.BLOCK_COMPACT_MIN_HEIGHT,
-            self.editor.BLOCK_COMPACT_HEADER_HEIGHT + self.editor.BLOCK_COMPACT_PORT_SECTION_PADDING +
-            port_rows * self.editor.BLOCK_COMPACT_PORT_ROW_HEIGHT
+            EditorGraphicsCommonFeatures.BLOCK_COMPACT_MIN_HEIGHT,
+            EditorGraphicsCommonFeatures.BLOCK_COMPACT_HEADER_HEIGHT + EditorGraphicsCommonFeatures.BLOCK_COMPACT_PORT_SECTION_PADDING +
+            port_rows * EditorGraphicsCommonFeatures.BLOCK_COMPACT_PORT_ROW_HEIGHT
         )
         name_width = len(self.name) * 5
         max_label_length = 0
@@ -1551,7 +1551,7 @@ class BlockItem(QGraphicsRectItem):
         else:
             pass
         port_width = max_label_length * 5
-        min_width = max(self.editor.BLOCK_COMPACT_MIN_WIDTH, name_width + 10, port_width + 20)
+        min_width = max(EditorGraphicsCommonFeatures.BLOCK_COMPACT_MIN_WIDTH, name_width + 10, port_width + 20)
         return min_width, min_height
 
     def resize_to_content(self) -> None:
@@ -1613,10 +1613,10 @@ class BlockItem(QGraphicsRectItem):
         radius: float = body_rect.height() / 2.0
 
         if self._validation_highlighted:
-            border_color: QColor = self.editor.VALIDATION_HICHLIGHTED_BORDER
+            border_color: QColor = EditorGraphicsCommonFeatures.VALIDATION_HICHLIGHTED_BORDER
         else:
             border_color = (
-                self.editor.BLOCK_BORDER_SELECTED
+                EditorGraphicsCommonFeatures.BLOCK_BORDER_SELECTED
                 if self.isSelected()
                 else self.pen().color()
             )
@@ -2331,7 +2331,7 @@ class DiagramScene(QGraphicsScene):
             if self.source_port is not None:
                 start: QPointF = self.source_port.scenePos()
                 end: QPointF = event.scenePos()
-                path: QPainterPath = build_orthogonal_connection_path(start, end, self.editor.WIRE_ELBOW_OFFSET)
+                path: QPainterPath = build_orthogonal_connection_path(start, end, EditorGraphicsCommonFeatures.WIRE_ELBOW_OFFSET)
                 self.temp_line.setPath(path)
             else:
                 pass

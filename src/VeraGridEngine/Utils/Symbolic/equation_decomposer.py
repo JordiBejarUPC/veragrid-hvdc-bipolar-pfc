@@ -488,12 +488,13 @@ class EquationDecomposer:
         self._expr_cache: Dict[int, Tuple[sym.Var, List[Block]]] = {}
         self._param_uids: set = set()
         self._orig_block: Block | None = None
+        self.block2blocktype: Dict[int, BlockType] = dict()
 
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
 
-    def decompose(self, block: Block) -> Block:
+    def decompose(self, block: Block) -> Tuple[Block, Dict[int, BlockType]]:
         """
         Decompose a block's equations into child operation blocks.
 
@@ -526,6 +527,7 @@ class EquationDecomposer:
                 name=f"input_{in_var.name}",
                 is_decomposable=False
             )
+            self.block2blocktype[in_blk.uid] = BlockType.INPUT_CONN
             child_blocks.append(in_blk)
             connection_tpe[in_blk.uid] = BlockType.INPUT_CONN.name
 
@@ -573,6 +575,7 @@ class EquationDecomposer:
                         name="integrator",
                         is_decomposable=False
                     )
+                    self.block2blocktype[int_blk.uid] = BlockType.INTEGRATOR
                     block_eq_map[int_blk.uid] = eq_key
                     child_blocks.append(int_blk)
                 else:
@@ -586,6 +589,7 @@ class EquationDecomposer:
                         name="integrator",
                         is_decomposable=False
                     )
+                    self.block2blocktype[int_blk.uid] = BlockType.INTEGRATOR
                     block_eq_map[int_blk.uid] = eq_key
                     child_blocks.append(int_blk)
                 var_to_block_output[var.non_mutable_uid] = var
@@ -598,6 +602,7 @@ class EquationDecomposer:
                 name=f"output_{out_var.name}",
                 is_decomposable=False
             )
+            self.block2blocktype[out_blk.uid] = BlockType.OUTPUT_CONN
             child_blocks.append(out_blk)
             connection_tpe[out_blk.uid] = BlockType.OUTPUT_CONN.name
 
@@ -628,7 +633,7 @@ class EquationDecomposer:
         result.uid = block.uid
         result.diagram = diagram
 
-        return result
+        return result, self.block2blocktype
 
     # ------------------------------------------------------------------
     # Parameter collection
@@ -840,6 +845,7 @@ class EquationDecomposer:
                 name="const",
                 is_decomposable=False
             )
+            self.block2blocktype[blk.uid] = BlockType.CONST
             result = (y, [blk])
 
         elif isinstance(expr, sym.BinOp):
@@ -899,19 +905,21 @@ class EquationDecomposer:
                 name="sum",
                 is_decomposable=False
             )
+            self.block2blocktype[blk.uid] = BlockType.SUM
             all_blocks.append(blk)
             return (y, all_blocks)
 
         elif expr.op == "-":
-            y = self._new_var("sub")
+            y = self._new_var("suM")
             blk = Block(
                 algebraic_vars=[y],
                 algebraic_eqs=[y - (left_val - right_val)],
                 in_vars=in_vars,
                 out_vars=[y],
-                name="substraction",
+                name="sum",
                 is_decomposable=False
             )
+            self.block2blocktype[blk.uid] = BlockType.SUM
             all_blocks.append(blk)
             return (y, all_blocks)
 
@@ -925,6 +933,7 @@ class EquationDecomposer:
                 name="divide",
                 is_decomposable=False
             )
+            self.block2blocktype[blk.uid] = BlockType.PRODUCT
             all_blocks.append(blk)
             return (y, all_blocks)
 
@@ -938,6 +947,7 @@ class EquationDecomposer:
                 name="power",
                 is_decomposable=False
             )
+            self.block2blocktype[blk.uid] = BlockType.POWER
             all_blocks.append(blk)
             return (y, all_blocks)
 
@@ -958,6 +968,7 @@ class EquationDecomposer:
                 name="gain",
                 is_decomposable=False
             )
+            self.block2blocktype[blk.uid] = BlockType.GAIN
             return (gain_var, inner_blocks + [blk])
 
         if isinstance(expr.left, sym.Const):
@@ -973,6 +984,7 @@ class EquationDecomposer:
                 name="gain",
                 is_decomposable=False
             )
+            self.block2blocktype[blk.uid] = BlockType.GAIN
             return (gain_var, inner_blocks + [blk])
 
         if isinstance(expr.right, sym.Var) and self._is_parameter(expr.right):
@@ -987,6 +999,7 @@ class EquationDecomposer:
                 name="gain",
                 is_decomposable=False
             )
+            self.block2blocktype[blk.uid] = BlockType.GAIN
             return (gain_var, inner_blocks + [blk])
 
         if isinstance(expr.left, sym.Var) and self._is_parameter(expr.left):
@@ -1001,6 +1014,7 @@ class EquationDecomposer:
                 name="gain",
                 is_decomposable=False
             )
+            self.block2blocktype[blk.uid] = BlockType.GAIN
             return (gain_var, inner_blocks + [blk])
 
         left_var, left_blocks = self._decompose_expr(expr.left)
@@ -1014,6 +1028,7 @@ class EquationDecomposer:
             name="product",
             is_decomposable=False
         )
+        self.block2blocktype[blk.uid] = BlockType.PRODUCT
         return (prod_var, left_blocks + right_blocks + [blk])
 
     def _decompose_unop(self, expr: sym.UnOp) -> Tuple[sym.Var, List[Block]]:
@@ -1030,6 +1045,7 @@ class EquationDecomposer:
                 name="gain",
                 is_decomposable=False
             )
+            self.block2blocktype[blk.uid] = BlockType.GAIN
             return (y, inner_blocks + [blk])
         else:
             raise ValueError(f"Unsupported unary operator: {expr.op}")
@@ -1057,6 +1073,7 @@ class EquationDecomposer:
                 name=expr.op,
                 is_decomposable=False
             )
+            self.block2blocktype[blk.uid] = BlockType.NOTYPE
             return (y, inner_blocks + [blk])
         else:
             raise ValueError(f"Unsupported function: {expr.op}")
@@ -1078,6 +1095,7 @@ class EquationDecomposer:
                 name=expr.name,
                 is_decomposable=False
             )
+            self.block2blocktype[blk.uid] = BlockType.NOTYPE
             return (y, left_blocks + right_blocks + [blk])
         else:
             raise ValueError(f"Unsupported function: {expr.name}")
@@ -1102,13 +1120,16 @@ class EquationDecomposer:
         return target_output
 
     def _make_pass_through(self, target_var: sym.Var, source_var: sym.Var) -> Block:
-        return Block(
+        blk = Block(
             algebraic_vars=[target_var],
             algebraic_eqs=[target_var - source_var],
             in_vars=[source_var],
             out_vars=[target_var],
             name="passthrough",
         )
+        self.block2blocktype[blk.uid] = BlockType.NOTYPE
+        return blk
+
 
     # ------------------------------------------------------------------
     # BlockDiagram construction

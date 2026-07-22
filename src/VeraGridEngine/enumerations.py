@@ -4343,6 +4343,9 @@ class BlockType(Enum):
     PRODUCT = "PRODUCT"
     DIVIDE = "Divide"
     ABS = "Abs"
+    INTEGRATOR = "Integrator"
+    POWER = "Power"
+    NOTYPE = "Notype"
 
     # common basic arrays and matrices
 

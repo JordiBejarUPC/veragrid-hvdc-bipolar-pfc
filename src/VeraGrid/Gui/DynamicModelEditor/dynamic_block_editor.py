@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (QGraphicsItem, QMenu, QDialog, QVBoxLayout, QDial
 from PySide6.QtGui import (QAction, QDropEvent, QDragEnterEvent, QDragMoveEvent, QColor)
 from PySide6.QtCore import Qt, QPointF, Signal
 
+from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_graphics import PairedItem
 from VeraGridEngine.Devices.Parents.branch_parent import BranchParent
 
 from VeraGridEngine.Devices.Parents.injection_parent import InjectionParent
@@ -51,6 +52,14 @@ from VeraGridEngine.Utils.Symbolic.symbolic import (symbolic_to_string, string_t
                                                     Const, Comparison)
 from VeraGridEngine.Utils.Symbolic.symbolic_io import duplicate_block
 from VeraGridEngine.Utils.Symbolic.bus_rms_template import get_bus_rms_algebraic_vars
+from VeraGridEngine.Utils.Symbolic.elk_layered_python import (
+    ElkEdge,
+    ElkEdgeSection,
+    ElkGraph,
+    ElkLayeredPythonEngine,
+    ElkNode,
+    ElkPort,
+)
 from VeraGrid.Gui.DynamicModelEditor.dyn_template_editor_dialogue import DynTemplatesEditorDialog
 from VeraGridEngine.enumerations import BlockType
 from VeraGridEngine.Devices.Diagrams.block_diagram import BlockDiagram
@@ -140,6 +149,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
     """
     DynamicModelEditorGUI
     """
+
+    dirtyStateChanged = Signal(bool)
     def __init__(self,
                  var_factory: VarFactory,
                  api_object: ALL_DEV_TYPES,
@@ -152,7 +163,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                  workspace_embedded: bool = False,
                  root_block: Block = Block(),
                  current_block: Block = Block(),
-                 document=None):
+                 document=None,
+                 block2blocktype: Dict[int, BlockType] = dict()):
         """
         Initializes a dynamic block editor window.
 
@@ -214,6 +226,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.workspace_embedded = workspace_embedded
 
         self._document = document if document is not None else _FallbackDocument()
+        self._block2blocktype: Dict[int, BlockType] = block2blocktype
         self._navigation_delegate = None
         self.templates_list: List[
             RmsModelTemplate | EmtModelTemplate | FmuTemplate] = templates_list if templates_list is not None else list()
@@ -251,7 +264,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         # library
         self.library = DynamicEditorLibrary(self.api_object, self.mode, self.templates_list)
         self.library_proxy_model = LibraryTreeFilterProxyModel(
-            search_role=self.EditorGraphicsCommonFeatures.LIBRARY_SEARCH_TEXT_ROLE,
+            search_role=graph.EditorGraphicsCommonFeatures.LIBRARY_SEARCH_TEXT_ROLE,
             parent=self.ui.libraryTreeView,
         )
         self.library_proxy_model.setSourceModel(self.library.library_model)
@@ -271,8 +284,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         # Build variables table
         self.variables_model = dialog_models.WrappableBlockTableModel(
             var_factory=self.var_factory,
-            parameter_value_type_role=self.EditorGraphicsCommonFeatures.PARAMETER_VALUE_TYPE_ROLE,
-            parameter_editable_role=self.EditorGraphicsCommonFeatures.PARAMETER_EDITABLE_ROLE,
+            parameter_value_type_role=graph.EditorGraphicsCommonFeatures.PARAMETER_VALUE_TYPE_ROLE,
+            parameter_editable_role=graph.EditorGraphicsCommonFeatures.PARAMETER_EDITABLE_ROLE,
             block_search_role=graph.EditorGraphicsCommonFeatures.BLOCK_SEARCH_ROLE,
             parent=self.ui.variablesTableView
         )
@@ -304,8 +317,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.parameters_model = dialog_models.WrappableBlockTableModel(
             api_object=self.api_object,
             var_factory=self.var_factory,
-            parameter_value_type_role=self.EditorGraphicsCommonFeatures.PARAMETER_VALUE_TYPE_ROLE,
-            parameter_editable_role=self.EditorGraphicsCommonFeatures.PARAMETER_EDITABLE_ROLE,
+            parameter_value_type_role=graph.EditorGraphicsCommonFeatures.PARAMETER_VALUE_TYPE_ROLE,
+            parameter_editable_role=graph.EditorGraphicsCommonFeatures.PARAMETER_EDITABLE_ROLE,
             block_search_role=graph.EditorGraphicsCommonFeatures.BLOCK_SEARCH_ROLE,
             parent=self.ui.parametersTableView
         )
@@ -336,8 +349,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         # Build equations table
         self.equations_model = dialog_models.WrappableBlockTableModel(
             var_factory=self.var_factory,
-            parameter_value_type_role=self.EditorGraphicsCommonFeatures.PARAMETER_VALUE_TYPE_ROLE,
-            parameter_editable_role=self.EditorGraphicsCommonFeatures.PARAMETER_EDITABLE_ROLE,
+            parameter_value_type_role=graph.EditorGraphicsCommonFeatures.PARAMETER_VALUE_TYPE_ROLE,
+            parameter_editable_role=graph.EditorGraphicsCommonFeatures.PARAMETER_EDITABLE_ROLE,
             block_search_role=graph.EditorGraphicsCommonFeatures.BLOCK_SEARCH_ROLE,
             parent=self.ui.equationsTableView
         )
@@ -414,31 +427,37 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 self.add_connection_blocks(input_output_blocks)
                 # Blocks in children --> self.main_block.children
 
-                # here we need to calculate the position in the scene of every block in self.main_block.children and input_output_blocks
-                # build deph graph
-                # calculate layout
-                # assign positions and save them in a dictionary block.uid: position "block_positions_dict"
+                layout_graph = self._build_elk_layout_graph(
+                    self.main_block.children,
+                    input_output_blocks,
+                )
+                layout_result = ElkLayeredPythonEngine().compute(layout_graph)
+                block_positions_dict.update(
+                    {
+                        int(node.identifier): (node.x or 0.0, node.y or 0.0)
+                        for node in layout_result.graph.children
+                    }
+                )
 
 
                 # Oce everything is calculated we build the items from the blocks and the calculated positions, add them to an items list and create the DiagramNodes:
 
                 blockitems_list: List[graph.BlockItem | graph.GenericBlockItem] = list()
-
+                items_by_uid: Dict[int, graph.BlockItem | graph.GenericBlockItem] = dict()
                 for child in self.main_block.children:
                     position = block_positions_dict[child.uid]
                     item = self.generate_block_item_for_block(child, position[0], position[1])
                     blockitems_list.append(item)
+                    items_by_uid[child.uid] = item
 
                 for blk in input_output_blocks:
                     position = block_positions_dict[blk.uid]
                     item = self.generate_ext_conn_block_item_for_block(blk, position[0], position[1])
                     blockitems_list.append(item)
+                    items_by_uid[blk.uid] = item
 
-
-
-                # now we need to connect the items:
                 if len(blockitems_list) != 0:
-                    self.connect_items(blockitems_list)
+                    self._connect_items_from_layout(items_by_uid, layout_result.graph)
 
                 # we need an algorithm to create the connections properly:
                     # bends/corners not in the same place
@@ -991,15 +1010,43 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         """
         item_name: str = f"{block_model.name}"
 
-        item = graph.GenericBlockItem(
-            editor=self,
-            var_factory=self.var_factory,
-            subsys=block_model,
-            api_object=self.api_object,
-            mode=self.mode,
-            name=item_name,
-            position_changed_callback=self.build_position_changed_callback(block_model.uid)
-        )
+        block_type = self._block2blocktype.get(block_model.uid, None)
+
+        if block_type == BlockType.SUM or block_type == BlockType.PRODUCT:
+
+            count: int = self.block_counters.get(block_type, 0) + 1
+
+            if len(block_model.in_vars) <= 3:
+                item: graph.RoundBaseArithmeticOpItem = graph.RoundBaseArithmeticOpItem(
+                    var_factory=self.var_factory,
+                    subsys=block_model,
+                    block_type=block_type,
+                    editor=self,
+                    position_changed_callback=self.build_position_changed_callback(
+                        block_model.uid))
+            else:
+                item: graph.RectBaseArithmeticOpItem = graph.RectBaseArithmeticOpItem(
+                    var_factory=self.var_factory,
+                    subsys=block_model,
+                    block_type=block_type,
+                    editor=self,
+                    position_changed_callback=self.build_position_changed_callback(
+                        block_model.uid))
+
+            self.block_counters[block_type] = count
+            item.recolour()
+
+        else:
+
+            item = graph.GenericBlockItem(
+                editor=self,
+                var_factory=self.var_factory,
+                subsys=block_model,
+                api_object=self.api_object,
+                mode=self.mode,
+                name=item_name,
+                position_changed_callback=self.build_position_changed_callback(block_model.uid)
+            )
 
         # The symbolic block has to be attached first so the graphics item can build its ports from it.
 
@@ -1048,14 +1095,196 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.scene.addItem(item)
 
         # Keep the diagram synchronized so later features can rebuild from the same data source.
+        block_type = self._get_layout_block_kind(block_model)
         self.diagram.add_node(
             name=item_name,
             x=x_pos,
             y=y_pos,
-            tpe=BlockType.INPUT_CONN.name,
+            tpe=block_type,
             device_uid=block_model.uid
         )
         return item
+
+    def _get_layout_block_kind(self, block_model: Block) -> str:
+        if len(block_model.out_vars) > 0 and len(block_model.in_vars) == 0:
+            return BlockType.INPUT_CONN.name
+        if len(block_model.in_vars) > 0 and len(block_model.out_vars) == 0:
+            return BlockType.OUTPUT_CONN.name
+        return "internal"
+
+    def _build_elk_layout_graph(
+        self,
+        child_blocks: List[Block],
+        input_output_blocks: List[Block],
+    ) -> ElkGraph:
+        layout_nodes: List[ElkNode] = list()
+        layout_edges: List[ElkEdge] = list()
+        all_blocks: List[Block] = list(child_blocks) + list(input_output_blocks)
+        out_index_by_uid: Dict[int, Dict[int, int]] = dict()
+        in_index_by_uid: Dict[int, Dict[int, int]] = dict()
+        shared_out_refs: Dict[object, List[tuple[int, int]]] = dict()
+        shared_in_refs: Dict[object, List[tuple[int, int]]] = dict()
+        pf_out_refs: Dict[object, List[tuple[int, int]]] = dict()
+        pf_in_refs: Dict[object, List[tuple[int, int]]] = dict()
+
+        for block_model in all_blocks:
+            ports: List[ElkPort] = list()
+            out_uid_lookup: Dict[int, int] = dict()
+            in_uid_lookup: Dict[int, int] = dict()
+            for port_index, in_var in enumerate(block_model.in_vars):
+                in_uid_lookup[in_var.uid] = port_index
+                if in_var.shared_ref is not None:
+                    shared_in_refs.setdefault(in_var.shared_ref, list()).append((block_model.uid, port_index))
+                if in_var.ref is not None:
+                    pf_in_refs.setdefault(in_var.ref, list()).append((block_model.uid, port_index))
+                ports.append(
+                    ElkPort(
+                        identifier=f"{block_model.uid}:in:{port_index}",
+                        width=6.0,
+                        height=6.0,
+                        properties={
+                            "role": "input",
+                            "port_index": port_index,
+                            "var_uid": in_var.uid,
+                            "var_ref": in_var.ref,
+                            "shared_ref": in_var.shared_ref,
+                        },
+                        layout_options={
+                            "org.eclipse.elk.port.side": "WEST",
+                        },
+                    )
+                )
+            for port_index, out_var in enumerate(block_model.out_vars):
+                out_uid_lookup[out_var.uid] = port_index
+                if out_var.shared_ref is not None:
+                    shared_out_refs.setdefault(out_var.shared_ref, list()).append((block_model.uid, port_index))
+                if out_var.ref is not None:
+                    pf_out_refs.setdefault(out_var.ref, list()).append((block_model.uid, port_index))
+                ports.append(
+                    ElkPort(
+                        identifier=f"{block_model.uid}:out:{port_index}",
+                        width=6.0,
+                        height=6.0,
+                        properties={
+                            "role": "output",
+                            "port_index": port_index,
+                            "var_uid": out_var.uid,
+                            "var_ref": out_var.ref,
+                            "shared_ref": out_var.shared_ref,
+                        },
+                        layout_options={
+                            "org.eclipse.elk.port.side": "EAST",
+                        },
+                    )
+                )
+            layout_nodes.append(
+                ElkNode(
+                    identifier=str(block_model.uid),
+                    width=160.0,
+                    height=70.0,
+                    ports=ports,
+                    properties={
+                        "name": block_model.name,
+                        "kind": self._get_layout_block_kind(block_model),
+                    },
+                    layout_options={
+                        "org.eclipse.elk.portConstraints": "FIXED_ORDER",
+                    },
+                )
+            )
+            out_index_by_uid[block_model.uid] = out_uid_lookup
+            in_index_by_uid[block_model.uid] = in_uid_lookup
+
+        edge_uid = 1
+        seen_edges: set[tuple[int, int, int, int]] = set()
+        def add_edges_from_maps(
+            source_map: Dict[object, List[tuple[int, int]]],
+            target_map: Dict[object, List[tuple[int, int]]],
+        ) -> None:
+            nonlocal edge_uid
+            for ref_value, sources in source_map.items():
+                targets = target_map.get(ref_value, list())
+                if not targets:
+                    continue
+                for source_uid, source_port_index in sources:
+                    for target_uid, target_port_index in targets:
+                        if source_uid == target_uid:
+                            continue
+                        edge_key = (
+                            source_uid,
+                            source_port_index,
+                            target_uid,
+                            target_port_index,
+                        )
+                        if edge_key in seen_edges:
+                            continue
+                        seen_edges.add(edge_key)
+                        layout_edges.append(
+                            ElkEdge(
+                                identifier=str(edge_uid),
+                                sources=[f"{source_uid}:out:{source_port_index}"],
+                                targets=[f"{target_uid}:in:{target_port_index}"],
+                                properties={
+                                    "source_uid": source_uid,
+                                    "source_port_index": source_port_index,
+                                    "target_uid": target_uid,
+                                    "target_port_index": target_port_index,
+                                },
+                            )
+                        )
+                        edge_uid += 1
+
+        add_edges_from_maps(shared_out_refs, shared_in_refs)
+        add_edges_from_maps(pf_out_refs, pf_in_refs)
+
+        return ElkGraph(
+            identifier="dynamic-block-editor",
+            children=layout_nodes,
+            edges=layout_edges,
+            layout_options={
+                "org.eclipse.elk.algorithm": "layered",
+                "org.eclipse.elk.direction": "RIGHT",
+                "org.eclipse.elk.edgeRouting": "ORTHOGONAL",
+                "org.eclipse.elk.layered.layering.strategy": "NETWORK_SIMPLEX",
+                "org.eclipse.elk.layered.nodePlacement.strategy": "BRANDES_KOEPF",
+            },
+        )
+
+    def _connect_items_from_layout(
+        self,
+        items_by_uid: Dict[int, graph.BlockItem | graph.GenericBlockItem],
+        layout_graph: ElkGraph,
+    ) -> None:
+        for edge in layout_graph.edges:
+            src_uid = int(edge.properties["source_uid"])
+            dst_uid = int(edge.properties["target_uid"])
+            src_port_index = int(edge.properties["source_port_index"])
+            dst_port_index = int(edge.properties["target_port_index"])
+
+            src_item = items_by_uid.get(src_uid, None)
+            dst_item = items_by_uid.get(dst_uid, None)
+            if src_item is None or dst_item is None:
+                continue
+
+            try:
+                src_port = src_item.outputs[src_port_index]
+                dst_port = dst_item.inputs[dst_port_index]
+            except IndexError:
+                continue
+
+            section = edge.sections[0] if edge.sections else None
+            bend_points = section.bend_points if section is not None else []
+            elbow_points = [QPointF(x, y) for x, y in bend_points]
+            connection = graph.ConnectionItem(
+                source_port=src_port,
+                target_port=dst_port,
+                diagram=self.diagram,
+                con_uid=int(edge.identifier),
+                elbow_points=elbow_points,
+                editor=self,
+            )
+            connection.recolour()
+            self.scene.addItem(connection)
 
     def _calculate_next_block_position(self, item: graph.GenericBlockItem) -> tuple[float, float]:
         """
@@ -1220,7 +1449,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             name=item_name,
             x=x_pos,
             y=y_pos,
-            tpe=self.EditorGraphicsCommonFeatures.TEMPLATE_NODE_TYPE,
+            tpe=graph.EditorGraphicsCommonFeatures.TEMPLATE_NODE_TYPE,
             device_uid=block_model.uid
         )
 
@@ -1803,7 +2032,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         for item in interface_items:
             offset = item.pos() - center
-            item.setPos(center + offset * graph.INITIAL_LAYOUT_SCALE)
+            item.setPos(center + offset * graph.EditorGraphicsCommonFeatures.INITIAL_LAYOUT_SCALE)
 
         for node in self.diagram.node_data.values():
             if node.tpe in {BlockType.INPUT_CONN.name, BlockType.OUTPUT_CONN.name}:
@@ -1883,7 +2112,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         fit_rect = self._compact_initial_layout()
         if fit_rect is not None:
             self.view.fitInView(fit_rect, QtCore.Qt.AspectRatioMode.KeepAspectRatio)
-            self.view.scale(graph.INITIAL_VIEW_SCALE, graph.INITIAL_VIEW_SCALE)
+            self.view.scale(graph.EditorGraphicsCommonFeatures.INITIAL_VIEW_SCALE, graph.EditorGraphicsCommonFeatures.INITIAL_VIEW_SCALE)
         else:
             self.view.fitInView(self.scene.sceneRect(), QtCore.Qt.AspectRatioMode.KeepAspectRatio)
 
@@ -5414,7 +5643,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :return:
         """
         uid_to_blockitem: Dict[
-            int, graph.BlockItem | graph.GenericBlockItem | graph.RoundBaseArithmeticOpItem | graph.RectBaseArithmeticOpItem] = dict()
+            int, graph.BlockItem | graph.GenericBlockItem | graph.RoundBaseArithmeticOpItem | graph.RectBaseArithmeticOpItem | PairedItem] = dict()
         uid: int
         node: Any
         con: Any
@@ -5426,79 +5655,104 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         signal_out_items: Dict[str, graph.PairedItem] = {}
 
         for uid, node in self.diagram.node_data.items():
-            block_type: BlockType | None
-            block_model: Block | None = self.get_block_from_main_block(node.device_uid)
-
             if node.tpe in BlockType.__members__:
                 block_type = BlockType[node.tpe]
             else:
                 block_type = None
 
-            if block_model is not None:
+            block_model: Block = self.get_block_from_main_block(node.device_uid)
 
-                if block_type == BlockType.INPUT_CONN or block_type == BlockType.OUTPUT_CONN:
-                    block_item: graph.ProtectedConnectionBlockItem = graph.ProtectedConnectionBlockItem(editor=self,
-                                                                                            var_factory=self.var_factory,
-                                                                                            name=node.name,
-                                                                                            mode=self.mode,
-                                                                                            api_object=self.api_object
-                                                                                            )
-                    block_item.set_subsystem(block_model)
-                    block_item.position_changed_callback = self.build_position_changed_callback(block_model.uid)
-                    block_item.build_item()
-                    block_item.recolour()
+            item = None
+            if block_type == BlockType.INPUT_CONN or block_type == BlockType.OUTPUT_CONN:
+                block_item: graph.ProtectedConnectionBlockItem = graph.ProtectedConnectionBlockItem(editor=self,
+                                                                                        var_factory=self.var_factory,
+                                                                                        name=node.name,
+                                                                                        mode=self.mode,
+                                                                                        api_object=self.api_object
+                                                                                        )
+                block_item.set_subsystem(block_model)
+                block_item.position_changed_callback = self.build_position_changed_callback(block_model.uid)
+                block_item.build_item()
+                block_item.recolour()
 
-                    self.scene.addItem(block_item)
-                    block_item.setPos(QPointF(node.x, node.y))
+                self.scene.addItem(block_item)
+                block_item.setPos(QPointF(node.x, node.y))
 
-                    # brush: QBrush = block_item.brush()
-                    # brush.setColor(QColor(node.color))
-                    # block_item.setBrush(brush)
-                    uid_to_blockitem[uid] = block_item
+                # brush: QBrush = block_item.brush()
+                # brush.setColor(QColor(node.color))
+                # block_item.setBrush(brush)
+                uid_to_blockitem[uid] = block_item
 
-                    if block_type is not None:
-                        current_count: int = self.block_counters.get(block_type, 0) + 1
-                        self.block_counters[block_type] = current_count
-                    else:
-                        pass
 
+                current_count: int = self.block_counters.get(block_type, 0) + 1
+                self.block_counters[block_type] = current_count
+
+
+            elif node.tpe in ("signal_in", "signal_out"):
+                item = graph.PairedItem(editor=self,
+                                  var_factory=self.var_factory,
+                                  subsys=block_model,
+                                  api_object=self.api_object,
+                                  mode=self.mode,
+                                  name=block_model.name,
+                                  position_changed_callback=self.build_position_changed_callback(
+                                      block_model.uid)
+                                  )
+                item.recolour()
+                suffix = block_model.name.replace("From_", "").replace("To_", "")
+                if node.tpe == "signal_in":
+                    signal_in_items[suffix] = item
                 else:
-                    if node.tpe in ("signal_in", "signal_out"):
-                        item = graph.PairedItem(editor=self,
-                                          var_factory=self.var_factory,
-                                          subsys=block_model,
-                                          api_object=self.api_object,
-                                          mode=self.mode,
-                                          name=block_model.name,
-                                          position_changed_callback=self.build_position_changed_callback(
-                                              block_model.uid)
-                                          )
-                        item.recolour()
-                        suffix = block_model.name.replace("From_", "").replace("To_", "")
-                        if node.tpe == "signal_in":
-                            signal_in_items[suffix] = item
-                        else:
-                            signal_out_items[suffix] = item
-                    else:
-                        item = graph.GenericBlockItem(
-                            editor=self,
-                            var_factory=self.var_factory,
-                            subsys=block_model,
-                            api_object=self.api_object,
-                            mode=self.mode,
-                            name=block_model.name,
-                            position_changed_callback=self.build_position_changed_callback(block_model.uid)
-                        )
-                        item.recolour()
-                    self.scene.addItem(item)
-                    item.setPos(QPointF(node.x, node.y))
+                    signal_out_items[suffix] = item
 
-                    # if not isinstance(item, graph.PairedItem):
-                    #     brush = item.brush()
-                    #     brush.setColor(QColor(node.color))
-                    #     item.setBrush(brush)
+            elif block_type == BlockType.SUM or block_type == BlockType.PRODUCT:
 
-                    uid_to_blockitem[uid] = item
+                count: int = self.block_counters.get(block_type, 0) + 1
+
+                if len(block_model.in_vars) <= 3:
+                    item: graph.RoundBaseArithmeticOpItem = graph.RoundBaseArithmeticOpItem(
+                        var_factory=self.var_factory,
+                        subsys=block_model,
+                        block_type=block_type,
+                        editor=self,
+                        position_changed_callback=self.build_position_changed_callback(
+                            block_model.uid))
+                else:
+                    item: graph.RectBaseArithmeticOpItem = graph.RectBaseArithmeticOpItem(
+                        var_factory=self.var_factory,
+                        subsys=block_model,
+                        block_type=block_type,
+                        editor=self,
+                        position_changed_callback=self.build_position_changed_callback(
+                            block_model.uid))
+
+
+                self.block_counters[block_type] = count
+                item.recolour()
+
+
+            else:
+                item = graph.GenericBlockItem(
+                    editor=self,
+                    var_factory=self.var_factory,
+                    subsys=block_model,
+                    api_object=self.api_object,
+                    mode=self.mode,
+                    name=block_model.name,
+                    position_changed_callback=self.build_position_changed_callback(block_model.uid)
+                )
+                item.recolour()
+
+            if item is not None:
+                self.scene.addItem(item)
+                item.setPos(QPointF(node.x, node.y))
+
+                # if not isinstance(item, graph.PairedItem):
+                #     brush = item.brush()
+                #     brush.setColor(QColor(node.color))
+                #     item.setBrush(brush)
+
+                uid_to_blockitem[uid] = item
 
         # Pair signal_in and signal_out items
         for suffix, in_item in signal_in_items.items():
