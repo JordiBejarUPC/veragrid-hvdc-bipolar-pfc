@@ -5440,6 +5440,16 @@ Monte Carlo power flow results:</source>
         <translation>MIP-framework</translation>
     </message>
     <message>
+        <location filename="../Main/MainWindow.ui" line="5583"/>
+        <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;When checked, the generation costs will use the quadratic coefficients cost, which will trigger a more complex formulation to approximate the quadratic thermal generation curve. Otherwise a linear model is used.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Als dit is aangevinkt, gebruiken de opwekkingskosten de kwadratische kostencoëfficiënten, wat een complexere formulering activeert om de kwadratische thermische opwekkingscurve te benaderen. Anders wordt een lineair model gebruikt.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+    </message>
+    <message>
+        <location filename="../Main/MainWindow.ui" line="5586"/>
+        <source>Use quadratic costs</source>
+        <translation>Kwadratische kosten gebruiken</translation>
+    </message>
+    <message>
         <location filename="../Main/MainWindow.ui" line="5384"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Choose the zonal grouping.&lt;br/&gt;When All (Copper plate) is selected, the branch restrictions are ignored&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Kies de zonale groepering.&lt;br/&gt;Wanneer Alles (Koperplaat) is geselecteerd, worden de aftakkingsbeperkingen genegeerd&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>

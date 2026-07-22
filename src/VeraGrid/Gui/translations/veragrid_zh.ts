@@ -5469,6 +5469,16 @@ Monte Carlo power flow results:</source>
         <translation>MIP框架</translation>
     </message>
     <message>
+        <location filename="../Main/MainWindow.ui" line="5583"/>
+        <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;When checked, the generation costs will use the quadratic coefficients cost, which will trigger a more complex formulation to approximate the quadratic thermal generation curve. Otherwise a linear model is used.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;选中后，发电成本将使用二次成本系数，这会启用更复杂的建模方式来近似二次热电出力曲线。否则将使用线性模型。&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+    </message>
+    <message>
+        <location filename="../Main/MainWindow.ui" line="5586"/>
+        <source>Use quadratic costs</source>
+        <translation>使用二次成本</translation>
+    </message>
+    <message>
         <location filename="../Main/MainWindow.ui" line="5384"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Choose the zonal grouping.&lt;br/&gt;When All (Copper plate) is selected, the branch restrictions are ignored&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;选择区域分组。&lt;br/&gt;当选择全部（铜板）时，忽略分支限制&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>

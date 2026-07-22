@@ -5440,6 +5440,16 @@ Monte Carlo power flow results:</source>
         <translation>πλαίσιο MIP</translation>
     </message>
     <message>
+        <location filename="../Main/MainWindow.ui" line="5583"/>
+        <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;When checked, the generation costs will use the quadratic coefficients cost, which will trigger a more complex formulation to approximate the quadratic thermal generation curve. Otherwise a linear model is used.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Όταν είναι επιλεγμένο, τα κόστη παραγωγής θα χρησιμοποιούν το κόστος με τετραγωνικούς συντελεστές, ενεργοποιώντας μια πιο σύνθετη διατύπωση για την προσέγγιση της τετραγωνικής θερμικής καμπύλης παραγωγής. Διαφορετικά χρησιμοποιείται γραμμικό μοντέλο.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+    </message>
+    <message>
+        <location filename="../Main/MainWindow.ui" line="5586"/>
+        <source>Use quadratic costs</source>
+        <translation>Χρήση τετραγωνικών κοστών</translation>
+    </message>
+    <message>
         <location filename="../Main/MainWindow.ui" line="5384"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Choose the zonal grouping.&lt;br/&gt;When All (Copper plate) is selected, the branch restrictions are ignored&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Επιλέξτε τη χωρική ομαδοποίηση.&lt;br/&gt;Όταν είναι επιλεγμένο το All (Copper plate), οι περιορισμοί διακλάδωσης αγνοούνται&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>

@@ -7,7 +7,10 @@
 
 from __future__ import annotations
 
+import hashlib
+import pickle
 import sys
+import time
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -72,7 +75,8 @@ def set_models(grid) -> None:
     for igen, gen in enumerate(grid.generators):
         if not gen.active or not gen.rms_model.empty():
             continue
-        model = vge.get_complete_generator_templatgete_phasor(grid.var_factory, name=f"Gen{igen}").block
+        model = vge.get_complete_generator_template_phasor(grid.var_factory, name=f"Gen{igen}").block
+        #model = vge.get_complete_generator_templatgete_phasor(grid.var_factory, name=f"Gen{igen}").block
         model = vge.to_implicit(model, grid.var_factory)
         set_rms_model(device=gen, model=model, var_factory=grid.var_factory)
 
@@ -172,12 +176,130 @@ def plot_results(results: dict, output_path: Path | None = None) -> None:
     print(f"Saved plot: {output_path}")
 
 
+def _damping(re_: float, im: float) -> float:
+    mag = np.sqrt(re_ * re_ + im * im)
+    return -re_ / mag if mag > 1e-12 else 0.0
+
+
+def _freq_hz(im: float) -> float:
+    return abs(im) / (2 * np.pi)
+
+
+def _hash_operating_point(x: np.ndarray) -> str:
+    return hashlib.sha256(x.tobytes()).hexdigest()
+
+
+def save_results(results: dict, grid, grid_filename: str, elapsed: float) -> None:
+    eigenvalues = results["eigenvalues"]
+    pf_results = results["pf_results"]
+    problem = results["problem"]
+    pf_matrix = results["participation_factors"]
+
+    eigenvalues_list = [
+        {"re": float(np.real(ev)), "im": float(np.imag(ev))}
+        for ev in eigenvalues
+    ]
+
+    state_var_names = [
+        str(v.name) if hasattr(v, "name") else f"state_{i}"
+        for i, v in enumerate(problem.state_and_algebraic_vars)
+    ]
+
+    critical_modes = []
+    for i, ev in enumerate(eigenvalues):
+        re, im = float(np.real(ev)), float(np.imag(ev))
+        if abs(im) <= 0.1:
+            continue
+        damping = float(_damping(re, im))
+
+        participation = {}
+        if pf_matrix is not None:
+            pf_col = pf_matrix[:, i] if pf_matrix.ndim == 2 else pf_matrix
+            for j, var_name in enumerate(state_var_names):
+                if j < len(pf_col):
+                    participation[str(var_name)] = float(pf_col[j])
+
+        top_participation = dict(
+            sorted(participation.items(), key=lambda x: abs(x[1]), reverse=True)[:5]
+        )
+
+        critical_modes.append(
+            {
+                "mode": i,
+                "re": re,
+                "im": im,
+                "damping": damping,
+                "freq_hz": float(_freq_hz(im)),
+                "critical": bool(abs(damping) < 0.05),
+                "participation_factors": top_participation,
+            }
+        )
+    critical_modes.sort(key=lambda m: m["damping"])
+
+    bus_voltages = []
+    voltages = pf_results.voltage
+    bus_names = pf_results.bus_names if hasattr(pf_results, "bus_names") else []
+    bus_types = pf_results.bus_types if hasattr(pf_results, "bus_types") else []
+
+    for i, bus in enumerate(grid.buses):
+        v_complex = voltages[i] if i < len(voltages) else 1.0 + 0j
+        vm = float(abs(v_complex))
+        theta = float(np.angle(v_complex))
+        bus_type = str(bus_types[i]) if i < len(bus_types) else "Unknown"
+        bus_name = str(bus_names[i]) if i < len(bus_names) else str(bus.name)
+
+        bus_voltages.append(
+            {
+                "id": bus.idtag if hasattr(bus, "idtag") else str(i),
+                "name": bus_name,
+                "type": bus_type,
+                "vm_pu": round(vm, 4),
+                "theta_deg": round(float(np.degrees(theta)), 2),
+            }
+        )
+
+    grid_info = {
+        "n_buses": len(list(grid.buses)),
+        "n_generators": len(list(grid.generators)),
+        "n_lines": len(list(grid.lines)),
+        "n_loads": len(list(grid.loads)),
+        "n_transformers": len(list(grid.transformers2w)),
+    }
+
+    x = problem.get_x0()
+    op_hash = _hash_operating_point(x)
+
+    output = {
+        "grid_name": grid_filename,
+        "stable": results["stable"],
+        "margin": results["margin"],
+        "matches": 0,
+        "op_hash": op_hash,
+        "eigenvalues": eigenvalues_list,
+        "critical_modes": critical_modes[:10],
+        "bus_voltages": bus_voltages,
+        "grid_info": grid_info,
+        "n_eigenvalues": len(eigenvalues),
+        "n_state_vars": len(x),
+        "elapsed_seconds": round(elapsed, 2),
+    }
+
+    output_dir = Path("precomputed_builds")
+    output_dir.mkdir(exist_ok=True)
+    output_path = output_dir / f"{Path(grid_filename).stem}_{op_hash[:6]}.tensygrid"
+    with open(output_path, "wb") as f:
+        pickle.dump(output, f)
+    print(f"Results saved to {output_path}")
+
+
 def main() -> None:
+    t_start = time.perf_counter()
     grid_filename = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_GRID
     grid = load_grid(grid_filename)
     set_models(grid)
     results = run_small_signal_analysis(grid)
     plot_results(results)
+    save_results(results, grid, grid_filename, time.perf_counter() - t_start)
 
 
 if __name__ == "__main__":

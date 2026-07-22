@@ -5459,6 +5459,16 @@ Resultats del flux d&apos;energia de Montecarlo:</translation>
         <translation>Marc MIP</translation>
     </message>
     <message>
+        <location filename="../Main/MainWindow.ui" line="5583"/>
+        <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;When checked, the generation costs will use the quadratic coefficients cost, which will trigger a more complex formulation to approximate the quadratic thermal generation curve. Otherwise a linear model is used.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Si es marca, els costos de generació utilitzaran el cost amb coeficients quadràtics, cosa que activarà una formulació més complexa per aproximar la corba quadràtica de generació tèrmica. En cas contrari, s&apos;utilitzarà un model lineal.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+    </message>
+    <message>
+        <location filename="../Main/MainWindow.ui" line="5586"/>
+        <source>Use quadratic costs</source>
+        <translation>Utilitzeu costos quadràtics</translation>
+    </message>
+    <message>
         <location filename="../Main/MainWindow.ui" line="5384"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Choose the zonal grouping.&lt;br/&gt;When All (Copper plate) is selected, the branch restrictions are ignored&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Trieu l&apos;agrupació zonal.&lt;br/&gt;Quan se selecciona Tot (placa de coure), les restriccions de branca s&apos;ignoren&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>

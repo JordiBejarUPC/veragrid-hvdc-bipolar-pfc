@@ -5461,6 +5461,16 @@ Monte Carloko potentzia-fluxuaren emaitzak:</translation>
         <translation>MIP esparrua</translation>
     </message>
     <message>
+        <location filename="../Main/MainWindow.ui" line="5583"/>
+        <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;When checked, the generation costs will use the quadratic coefficients cost, which will trigger a more complex formulation to approximate the quadratic thermal generation curve. Otherwise a linear model is used.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Aukeratuta badago, sorkuntza-kostuek koefiziente kuadratikoen kostua erabiliko dute, eta horrek formulazio konplexuago bat aktibatuko du sorkuntza termikoaren kurba kuadratikoa hurbiltzeko. Bestela, eredu lineal bat erabiliko da.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+    </message>
+    <message>
+        <location filename="../Main/MainWindow.ui" line="5586"/>
+        <source>Use quadratic costs</source>
+        <translation>Erabili kostu kuadratikoak</translation>
+    </message>
+    <message>
         <location filename="../Main/MainWindow.ui" line="5384"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Choose the zonal grouping.&lt;br/&gt;When All (Copper plate) is selected, the branch restrictions are ignored&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Aukeratu zonakako taldekatzea.&lt;br/&gt;Guztiak (Kobrezko plaka) hautatzen denean, adar-murrizketak ez dira aintzat hartzen&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>

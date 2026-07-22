@@ -2187,23 +2187,23 @@ li.checked::marker { content: &quot;\2612&quot;; }
     <name>SimulationsMain</name>
     <message>
         <source>Model v. {model_version}</source>
-        <translation type="vanished">मॉडल सं. {model_version}</translation>
+        <translation>मॉडल सं. {model_version}</translation>
     </message>
     <message>
         <source>idtag. {idtag}</source>
-        <translation type="vanished">आईडीटैग. {idtag}</translation>
+        <translation>आईडीटैग. {idtag}</translation>
     </message>
     <message>
         <source>User: {user_name}</source>
-        <translation type="vanished">उपयोगकर्ता: {user_name}</translation>
+        <translation>उपयोगकर्ता: {user_name}</translation>
     </message>
     <message>
         <source>Compiling the grid...</source>
-        <translation type="vanished">ग्रिड को संकलित किया जा रहा है...</translation>
+        <translation>ग्रिड को संकलित किया जा रहा है...</translation>
     </message>
     <message>
         <source>Running power flow...</source>
-        <translation type="vanished">पावर फ्लो चल रहा है...</translation>
+        <translation>पावर फ्लो चल रहा है...</translation>
     </message>
 </context>
 <context>
@@ -3774,6 +3774,16 @@ li.checked::marker { content: &quot;\2612&quot;; }
         <location filename="../Main/MainWindow.ui" line="5371"/>
         <source>MIP framework</source>
         <translation>MIP ढांचा</translation>
+    </message>
+    <message>
+        <location filename="../Main/MainWindow.ui" line="5583"/>
+        <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;When checked, the generation costs will use the quadratic coefficients cost, which will trigger a more complex formulation to approximate the quadratic thermal generation curve. Otherwise a linear model is used.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;चयनित होने पर, उत्पादन लागतें द्विघात गुणांक लागत का उपयोग करेंगी, जिससे द्विघात तापीय उत्पादन वक्र का सन्निकटन करने के लिए अधिक जटिल फॉर्मुलेशन सक्रिय होगा। अन्यथा एक रैखिक मॉडल उपयोग किया जाएगा।&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+    </message>
+    <message>
+        <location filename="../Main/MainWindow.ui" line="5586"/>
+        <source>Use quadratic costs</source>
+        <translation>द्विघात लागतों का उपयोग करें</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="5384"/>
