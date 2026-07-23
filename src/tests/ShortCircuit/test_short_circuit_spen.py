@@ -1,8 +1,228 @@
+import json
+import math
+from pathlib import Path
+
 import VeraGridEngine.api as vge
 from VeraGridEngine import PowerFlowOptions, ShortCircuitOptions
-from VeraGridEngine.enumerations import ConverterControlType, MethodShortCircuit, ConverterFaultControlType
+from VeraGridEngine.enumerations import FaultType, MethodShortCircuit, PhasesShortCircuit
 from VeraGridEngine.Simulations.PowerFlow.power_flow_options import SolverType
 import numpy as np
+import pytest
+
+
+TEST_DATA_DIR = Path(__file__).resolve().parents[1] / "data"
+SPEN_SHORT_CIRCUIT_GRID = TEST_DATA_DIR / "grids" / "SPEN_ShortCircuit_codex_export.dgs"
+SPEN_LOPA3_REFERENCE = TEST_DATA_DIR / "results" / "spen_lopa3_short_circuit_veragrid_reference.json"
+
+
+def _spen_short_circuit_pf_options() -> PowerFlowOptions:
+    return PowerFlowOptions(solver_type=SolverType.NR,
+                            retry_with_other_methods=True,
+                            control_q=False,
+                            control_taps_modules=False,
+                            control_taps_phase=False,
+                            control_remote_voltage=False,
+                            apply_temperature_correction=False,
+                            initialize_angles=False,
+                            ignore_single_node_islands=True,
+                            use_stored_guess=False,
+                            tolerance=1e-8,
+                            max_iter=50)
+
+
+def _complex_angle_deg(value: complex) -> float:
+    return float(np.degrees(np.angle(value)))
+
+
+def _fault_current_ka(voltage_pu: float, vnom_kv: float, rf_ohm: float) -> float:
+    return float(voltage_pu) * float(vnom_kv) / (math.sqrt(3.0) * float(rf_ohm))
+
+
+def _injected_current(injected_s_mva: complex,
+                      voltage_pu_complex: complex,
+                      vnom_kv: float,
+                      sbase_mva: float) -> tuple[float, float]:
+    v_kv = abs(voltage_pu_complex) * float(vnom_kv)
+    current_ka = abs(injected_s_mva) / (math.sqrt(3.0) * v_kv)
+    current_pu = np.conj((injected_s_mva / float(sbase_mva)) / voltage_pu_complex)
+    return float(current_ka), _complex_angle_deg(current_pu)
+
+
+def _is_wind_vsc(name: str) -> bool:
+    return name.startswith("WTG_") or name.startswith("EMW_")
+
+
+def _find_bus_index(grid: vge.MultiCircuit, name: str, vnom_kv: float) -> int:
+    matches = [
+        idx for idx, bus in enumerate(grid.buses)
+        if str(bus.name) == name and np.isclose(float(bus.Vnom), float(vnom_kv), atol=1e-9)
+    ]
+    assert len(matches) == 1
+    return matches[0]
+
+
+def _assert_numeric_block_close(actual: dict[str, float], expected: dict[str, float], context: str) -> None:
+    assert set(actual) == set(expected), context
+    for key, expected_value in expected.items():
+        actual_value = actual[key]
+        assert np.isclose(actual_value, expected_value, rtol=1e-7, atol=1e-6), (
+            f"{context}.{key}: {actual_value} != {expected_value}"
+        )
+
+
+def _fault_bus_block(sc_results, bus_index: int, event_index: int, vnom_kv: float, rf_ohm: float) -> dict[str, float]:
+    voltage = sc_results.voltage1[bus_index, event_index]
+    voltage_pu = float(abs(voltage))
+    voltage_angle_deg = _complex_angle_deg(voltage)
+    return {
+        "voltage_pu": voltage_pu,
+        "voltage_angle_deg": voltage_angle_deg,
+        "current_ka": _fault_current_ka(voltage_pu=voltage_pu, vnom_kv=vnom_kv, rf_ohm=rf_ohm),
+        "current_angle_deg": voltage_angle_deg,
+    }
+
+
+def _changed_wind_generator_blocks(grid: vge.MultiCircuit,
+                                   pf_results,
+                                   sc_results,
+                                   event_index: int,
+                                   changed_power_tol: float) -> dict[str, dict[str, float]]:
+    bus_names = [str(bus.name) for bus in grid.buses]
+    vsc_bus_to_indices = [bus_names.index(str(vsc.bus_to.name)) for vsc in grid.vsc_devices]
+    blocks = {}
+
+    for idx, vsc in enumerate(grid.vsc_devices):
+        name = str(vsc.name)
+        if not _is_wind_vsc(name):
+            continue
+
+        base = -pf_results.St_vsc[idx]
+        injected = -sc_results.vsc_St[idx, event_index]
+        delta = injected - base
+        delta_p_mw = float(np.real(delta))
+        delta_q_mvar = float(np.imag(delta))
+        if abs(delta_p_mw) <= changed_power_tol and abs(delta_q_mvar) <= changed_power_tol:
+            continue
+
+        terminal_voltage = sc_results.voltage1[vsc_bus_to_indices[idx], event_index]
+        current_ka, current_angle_deg = _injected_current(injected_s_mva=injected,
+                                                          voltage_pu_complex=terminal_voltage,
+                                                          vnom_kv=float(vsc.bus_to.Vnom),
+                                                          sbase_mva=float(grid.Sbase))
+        blocks[name] = {
+            "base_p_mw": float(np.real(base)),
+            "base_q_mvar": float(np.imag(base)),
+            "p_mw": float(np.real(injected)),
+            "q_mvar": float(np.imag(injected)),
+            "delta_p_mw": delta_p_mw,
+            "delta_q_mvar": delta_q_mvar,
+            "terminal_voltage_pu": float(abs(terminal_voltage)),
+            "terminal_voltage_angle_deg": _complex_angle_deg(terminal_voltage),
+            "current_ka": current_ka,
+            "current_angle_deg": current_angle_deg,
+        }
+
+    return blocks
+
+
+@pytest.mark.slow
+def test_spen_top50_lopa3_short_circuit_json_sweep():
+    with SPEN_LOPA3_REFERENCE.open(encoding="utf-8") as fh:
+        reference = json.load(fh)
+
+    bus_name = reference["metadata"]["bus"]
+    vnom_kv = reference["metadata"]["vnom_kv"]
+    target_axis = reference["metadata"]["target_voltage_axis_pu"]
+    changed_power_tol = reference["metadata"]["changed_power_tol_mw_mvar"]
+    reference_data = reference["data"][bus_name]
+
+    assert reference["metadata"]["software"] == "veragrid"
+    assert target_axis == [0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1]
+    assert set(reference_data) == {f"{target:.1f}" for target in target_axis}
+
+    grid = vge.open_file(str(SPEN_SHORT_CIRCUIT_GRID))
+    bus_index = _find_bus_index(grid=grid, name=bus_name, vnom_kv=vnom_kv)
+    fault_bus = grid.buses[bus_index]
+    zbase_ohm = float(fault_bus.Vnom) * float(fault_bus.Vnom) / float(grid.Sbase)
+
+    pf_options = _spen_short_circuit_pf_options()
+    pf_results = vge.power_flow(grid=grid, options=pf_options)
+
+    assert np.all(pf_results.converged)
+    assert np.max(pf_results.error) < 1e-7
+
+    events = []
+    for target in target_axis:
+        target_label = f"{target:.1f}"
+        point = reference_data[target_label]
+        events.append(
+            vge.ShortCircuitEvent(
+                device=fault_bus,
+                name=f"{bus_name} target {target_label} pu",
+                active=True,
+                constz=True,
+                fault_type=FaultType.LLLG,
+                method=MethodShortCircuit.sequences_vsc,
+                phases=PhasesShortCircuit.abc,
+                r_fault=point["rf_ohm"] / zbase_ohm,
+                x_fault=point["x_f_ohm"] / zbase_ohm,
+            )
+        )
+    grid.short_circuit_event = events
+
+    sc_driver = vge.ShortCircuitDriver(grid=grid,
+                                       options=ShortCircuitOptions(),
+                                       pf_options=pf_options,
+                                       pf_results=pf_results,
+                                       pf_results3ph=None)
+    sc_driver.run()
+    sc_results = sc_driver.results
+
+    assert sc_results.voltage1.shape[1] == len(target_axis)
+
+    for event_index, target in enumerate(target_axis):
+        target_label = f"{target:.1f}"
+        expected_point = reference_data[target_label]
+        event = events[event_index]
+
+        _assert_numeric_block_close(
+            actual={
+                "target_voltage_pu": target,
+                "rf_ohm": event.r_fault * zbase_ohm,
+                "x_f_ohm": event.x_fault * zbase_ohm,
+            },
+            expected={
+                "target_voltage_pu": expected_point["target_voltage_pu"],
+                "rf_ohm": expected_point["rf_ohm"],
+                "x_f_ohm": expected_point["x_f_ohm"],
+            },
+            context=f"{bus_name} target {target_label} fault_setup",
+        )
+
+        _assert_numeric_block_close(
+            actual=_fault_bus_block(sc_results=sc_results,
+                                    bus_index=bus_index,
+                                    event_index=event_index,
+                                    vnom_kv=vnom_kv,
+                                    rf_ohm=expected_point["rf_ohm"]),
+            expected=expected_point["veragrid"]["fault_bus"],
+            context=f"{bus_name} target {target_label} fault_bus",
+        )
+
+        actual_changed = _changed_wind_generator_blocks(grid=grid,
+                                                        pf_results=pf_results,
+                                                        sc_results=sc_results,
+                                                        event_index=event_index,
+                                                        changed_power_tol=changed_power_tol)
+        expected_changed = expected_point["veragrid"]["changed_wind_generators"]
+
+        assert set(actual_changed) == set(expected_changed), f"{bus_name} target {target_label} changed generators"
+        for generator, expected_block in expected_changed.items():
+            _assert_numeric_block_close(
+                actual=actual_changed[generator],
+                expected=expected_block,
+                context=f"{bus_name} target {target_label} changed {generator}",
+            )
 
 
 def test_spen_west():
