@@ -53,12 +53,12 @@ from VeraGridEngine.Utils.Symbolic.symbolic import (symbolic_to_string, string_t
 from VeraGridEngine.Utils.Symbolic.symbolic_io import duplicate_block
 from VeraGridEngine.Utils.Symbolic.bus_rms_template import get_bus_rms_algebraic_vars
 from VeraGridEngine.Utils.Symbolic.elk_layered_python import (
-    ElkEdge,
-    ElkEdgeSection,
-    ElkGraph,
-    ElkLayeredPythonEngine,
-    ElkNode,
-    ElkPort,
+    SugiyamaEdge,
+    SugiyamaEdgeSection,
+    SugiyamaGraph,
+    SugiyamaLayeredPythonEngine,
+    SugiyamaNode,
+    SugiyamaPort,
 )
 from VeraGrid.Gui.DynamicModelEditor.dyn_template_editor_dialogue import DynTemplatesEditorDialog
 from VeraGridEngine.enumerations import BlockType
@@ -457,7 +457,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                     self.main_block.children,
                     input_output_blocks,
                 )
-                layout_result = ElkLayeredPythonEngine().compute(layout_graph)
+                layout_result = SugiyamaLayeredPythonEngine().compute(layout_graph)
                 block_positions_dict.update(
                     {
                         int(node.identifier): (node.x or 0.0, node.y or 0.0)
@@ -1179,9 +1179,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self,
         child_blocks: List[Block],
         input_output_blocks: List[Block],
-    ) -> ElkGraph:
-        layout_nodes: List[ElkNode] = list()
-        layout_edges: List[ElkEdge] = list()
+    ) -> SugiyamaGraph:
+        layout_nodes: List[SugiyamaNode] = list()
+        layout_edges: List[SugiyamaEdge] = list()
         all_blocks: List[Block] = list(child_blocks) + list(input_output_blocks)
         out_index_by_uid: Dict[int, Dict[int, int]] = dict()
         in_index_by_uid: Dict[int, Dict[int, int]] = dict()
@@ -1191,7 +1191,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         pf_in_refs: Dict[object, List[tuple[int, int]]] = dict()
 
         for block_model in all_blocks:
-            ports: List[ElkPort] = list()
+            ports: List[SugiyamaPort] = list()
             out_uid_lookup: Dict[int, int] = dict()
             in_uid_lookup: Dict[int, int] = dict()
             for port_index, in_var in enumerate(block_model.in_vars):
@@ -1201,7 +1201,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 if in_var.ref is not None:
                     pf_in_refs.setdefault(in_var.ref, list()).append((block_model.uid, port_index))
                 ports.append(
-                    ElkPort(
+                    SugiyamaPort(
                         identifier=f"{block_model.uid}:in:{port_index}",
                         width=6.0,
                         height=6.0,
@@ -1213,7 +1213,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                             "shared_ref": in_var.shared_ref,
                         },
                         layout_options={
-                            "org.eclipse.elk.port.side": "WEST",
+                            "org.vera.sugiyama.port.side": "WEST",
                         },
                     )
                 )
@@ -1224,7 +1224,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 if out_var.ref is not None:
                     pf_out_refs.setdefault(out_var.ref, list()).append((block_model.uid, port_index))
                 ports.append(
-                    ElkPort(
+                    SugiyamaPort(
                         identifier=f"{block_model.uid}:out:{port_index}",
                         width=6.0,
                         height=6.0,
@@ -1236,12 +1236,12 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                             "shared_ref": out_var.shared_ref,
                         },
                         layout_options={
-                            "org.eclipse.elk.port.side": "EAST",
+                            "org.vera.sugiyama.port.side": "EAST",
                         },
                     )
                 )
             layout_nodes.append(
-                ElkNode(
+                SugiyamaNode(
                     identifier=str(block_model.uid),
                     width=160.0,
                     height=70.0,
@@ -1251,7 +1251,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                         "kind": self._get_layout_block_kind(block_model),
                     },
                     layout_options={
-                        "org.eclipse.elk.portConstraints": "FIXED_ORDER",
+                        "org.vera.sugiyama.portConstraints": "FIXED_ORDER",
                     },
                 )
             )
@@ -1283,7 +1283,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                             continue
                         seen_edges.add(edge_key)
                         layout_edges.append(
-                            ElkEdge(
+                            SugiyamaEdge(
                                 identifier=str(edge_uid),
                                 sources=[f"{source_uid}:out:{source_port_index}"],
                                 targets=[f"{target_uid}:in:{target_port_index}"],
@@ -1300,23 +1300,23 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         add_edges_from_maps(shared_out_refs, shared_in_refs)
         add_edges_from_maps(pf_out_refs, pf_in_refs)
 
-        return ElkGraph(
+        return SugiyamaGraph(
             identifier="dynamic-block-editor",
             children=layout_nodes,
             edges=layout_edges,
             layout_options={
-                "org.eclipse.elk.algorithm": "layered",
-                "org.eclipse.elk.direction": "RIGHT",
-                "org.eclipse.elk.edgeRouting": "ORTHOGONAL",
-                "org.eclipse.elk.layered.layering.strategy": "NETWORK_SIMPLEX",
-                "org.eclipse.elk.layered.nodePlacement.strategy": "BRANDES_KOEPF",
+                "org.vera.sugiyama.algorithm": "layered",
+                "org.vera.sugiyama.direction": "RIGHT",
+                "org.vera.sugiyama.edgeRouting": "ORTHOGONAL",
+                "org.vera.sugiyama.layered.layering.strategy": "NETWORK_SIMPLEX",
+                "org.vera.sugiyama.layered.nodePlacement.strategy": "BRANDES_KOEPF",
             },
         )
 
     def _connect_items_from_layout(
         self,
         items_by_uid: Dict[int, graph.BlockItem | graph.GenericBlockItem],
-        layout_graph: ElkGraph,
+        layout_graph: SugiyamaGraph,
     ) -> None:
         for edge in layout_graph.edges:
             src_uid = int(edge.properties["source_uid"])
