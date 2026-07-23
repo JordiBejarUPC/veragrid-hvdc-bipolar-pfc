@@ -15,7 +15,7 @@ from VeraGridEngine.enumerations import BlockType
 
 def prepare_block_for_editing(
         block: Block,
-        var_factory: object,
+        var_factory: VarFactory,
 ) -> Tuple[Block, Dict[int, BlockType]]:
     """
     Prepare a block for display in the editor **without cloning it**.
@@ -73,7 +73,6 @@ def decompose_block_in_place(block: Block, var_factory: VarFactory) -> Dict[int,
     block.var_mapping = decomposed.var_mapping
     block.event_dict = decomposed.event_dict
     block.mode_dict = decomposed.mode_dict
-    # block.diagram = decomposed.diagram
     block.uid = preserved_uid
     block.diagram = BlockDiagram()
 

@@ -151,6 +151,32 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
     """
 
     dirtyStateChanged = Signal(bool)
+
+    UNARY_MATH_BLOCK_TYPES: set[BlockType] = {
+        BlockType.CONST,
+        BlockType.GAIN,
+        BlockType.ABS,
+        BlockType.INTEGRATOR,
+        BlockType.POWER,
+        BlockType.SIN,
+        BlockType.COS,
+        BlockType.TAN,
+        BlockType.EXP,
+        BlockType.LOG,
+        BlockType.LOG10,
+        BlockType.SQRT,
+        BlockType.ASIN,
+        BlockType.ACOS,
+        BlockType.ATAN,
+        BlockType.SINH,
+        BlockType.COSH,
+        BlockType.TANH,
+        BlockType.REAL,
+        BlockType.IMAG,
+        BlockType.CONJ,
+        BlockType.ANGLE,
+    }
+
     def __init__(self,
                  var_factory: VarFactory,
                  api_object: ALL_DEV_TYPES,
@@ -442,7 +468,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
                 # Oce everything is calculated we build the items from the blocks and the calculated positions, add them to an items list and create the DiagramNodes:
 
-                blockitems_list: List[graph.BlockItem | graph.GenericBlockItem] = list()
+                blockitems_list: List[graph.BlockItem | graph.GenericBlockItem | graph.RectBaseArithmeticOpItem | graph.RoundBaseArithmeticOpItem | graph.UnOpItem] = list()
                 items_by_uid: Dict[int, graph.BlockItem | graph.GenericBlockItem] = dict()
                 for child in self.main_block.children:
                     position = block_positions_dict[child.uid]
@@ -850,15 +876,28 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         # no we have the name and the block
         if block_model is not None:
             self.main_block.add(block_model)
-            item = graph.GenericBlockItem(
-                editor=self,
-                var_factory=self.var_factory,
-                subsys=block_model,
-                api_object=self.api_object,
-                mode=self.mode,
-                name=block_model.name,
-                position_changed_callback=self.build_position_changed_callback(block_model.uid)
-            )
+            if block_type in self.UNARY_MATH_BLOCK_TYPES:
+                item = graph.UnOpItem(
+                    editor=self,
+                    var_factory=self.var_factory,
+                    subsys=block_model,
+                    api_object=self.api_object,
+                    mode=self.mode,
+                    block_type=block_type,
+                    name=block_model.name,
+                    position_changed_callback=self.build_position_changed_callback(block_model.uid)
+                )
+
+            else:
+                item = graph.GenericBlockItem(
+                    editor=self,
+                    var_factory=self.var_factory,
+                    subsys=block_model,
+                    api_object=self.api_object,
+                    mode=self.mode,
+                    name=block_model.name,
+                    position_changed_callback=self.build_position_changed_callback(block_model.uid)
+                )
 
             item.setPos(QtCore.QPointF(x_pos, y_pos))
             self.scene.addItem(item)
@@ -1035,6 +1074,32 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
             self.block_counters[block_type] = count
             item.recolour()
+            self.diagram.add_node(
+                name=item_name,
+                x=x_pos,
+                y=y_pos,
+                tpe=block_type.name,
+                device_uid=block_model.uid
+            )
+
+        elif block_type in self.UNARY_MATH_BLOCK_TYPES:
+            item = graph.UnOpItem(
+                editor=self,
+                var_factory=self.var_factory,
+                subsys=block_model,
+                api_object=self.api_object,
+                mode=self.mode,
+                block_type=block_type,
+                name=item_name,
+                position_changed_callback=self.build_position_changed_callback(block_model.uid)
+            )
+            self.diagram.add_node(
+                name=item_name,
+                x=x_pos,
+                y=y_pos,
+                tpe=block_type.name,
+                device_uid=block_model.uid
+            )
 
         else:
 
@@ -1047,21 +1112,19 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 name=item_name,
                 position_changed_callback=self.build_position_changed_callback(block_model.uid)
             )
+            self.diagram.add_node(
+                name=item_name,
+                x=x_pos,
+                y=y_pos,
+                tpe=block_type.name if block_type is not None else "",
+                device_uid=block_model.uid
+            )
 
         # The symbolic block has to be attached first so the graphics item can build its ports from it.
 
         item.setPos(QtCore.QPointF(x_pos, y_pos))
         item.recolour()
         self.scene.addItem(item)
-
-        self.diagram.add_node(
-            name=item_name,
-            x=x_pos,
-            y=y_pos,
-            tpe="",
-            device_uid=block_model.uid
-        )
-
         self.mark_unapplied_changes()
 
         return item
@@ -5730,6 +5793,18 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 self.block_counters[block_type] = count
                 item.recolour()
 
+            elif block_type in self.UNARY_MATH_BLOCK_TYPES:
+                item = graph.UnOpItem(
+                    editor=self,
+                    var_factory=self.var_factory,
+                    subsys=block_model,
+                    api_object=self.api_object,
+                    mode=self.mode,
+                    block_type=block_type,
+                    name=block_model.name,
+                    position_changed_callback=self.build_position_changed_callback(block_model.uid)
+                )
+                item.recolour()
 
             else:
                 item = graph.GenericBlockItem(

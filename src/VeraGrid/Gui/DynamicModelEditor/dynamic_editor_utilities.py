@@ -104,23 +104,11 @@ def create_block_of_type(var_factory: VarFactory,
     #     blk.name = item_name
     #     return blk
 
-    # SUBSTRACT (2 inputs)
-    elif block_type == BlockType.SUBSTR:
-        blk = basic_block_templates.substract(var_factory, item_name)
-        blk.name = item_name
-        return blk
-
     # # PRODUCT (2 inputs)
     # elif block_type == BlockType.PRODUCT:
     #     blk = product(var_factory, item_name)
     #     blk.name = item_name
     #     return blk
-
-    # DIVIDE (2 inputs)
-    elif block_type == BlockType.DIVIDE:
-        blk = basic_block_templates.divide(var_factory, item_name)
-        blk.name = item_name
-        return blk
 
     # ABSOLUT (single input -> single output)
     elif block_type == BlockType.ABS:

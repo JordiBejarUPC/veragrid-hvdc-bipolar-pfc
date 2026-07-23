@@ -382,9 +382,7 @@ def build_basic_library_branch() -> Dict[str, Any]:
             LibraryLeafSpec("Const", BlockType.CONST),
             LibraryLeafSpec("Gain", BlockType.GAIN),
             LibraryLeafSpec("Sum", BlockType.SUM),
-            LibraryLeafSpec("Substr", BlockType.SUBSTR),
             LibraryLeafSpec("Product", BlockType.PRODUCT),
-            LibraryLeafSpec("Divide", BlockType.DIVIDE),
             LibraryLeafSpec("Abs", BlockType.ABS),
         ],
         "Arrays and matrices": [

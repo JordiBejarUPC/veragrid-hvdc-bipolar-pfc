@@ -1703,6 +1703,146 @@ class ProtectedConnectionBlockItem(BlockItem):
     pass
 
 
+class UnOpItem(BlockItem):
+    SIZE: float = 38.0
+    RADIUS: float = 4.0
+
+    _SYMBOL_TEXT: Dict[BlockType, str] = {
+        BlockType.CONST: "k",
+        BlockType.ABS: "|x|",
+        BlockType.INTEGRATOR: "∫",
+        BlockType.POWER: "x^y",
+        BlockType.SIN: "sin",
+        BlockType.COS: "cos",
+        BlockType.TAN: "tan",
+        BlockType.EXP: "exp",
+        BlockType.LOG: "ln",
+        BlockType.LOG10: "log",
+        BlockType.SQRT: "√",
+        BlockType.ASIN: "asin",
+        BlockType.ACOS: "acos",
+        BlockType.ATAN: "atan",
+        BlockType.SINH: "sinh",
+        BlockType.COSH: "cosh",
+        BlockType.TANH: "tanh",
+        BlockType.REAL: "Re",
+        BlockType.IMAG: "Im",
+        BlockType.CONJ: "z*",
+        BlockType.ANGLE: "∠",
+    }
+
+    def __init__(self,
+                 editor: DynamicBlockEditorGUI,
+                 var_factory: VarFactory,
+                 subsys: Block,
+                 api_object,
+                 mode: DynamicSimulationMode,
+                 block_type: BlockType,
+                 name: str,
+                 position_changed_callback=None):
+        super().__init__(
+            var_factory=var_factory,
+            name=name,
+            editor=editor,
+            mode=mode,
+            api_object=api_object,
+            position_changed_callback=position_changed_callback,
+        )
+        self.subsys = subsys
+        self.block_type: BlockType = block_type
+        self.name_item.setVisible(False)
+        self.build_item()
+
+    def build_item(self) -> None:
+        if self.subsys is None:
+            return
+
+        n_inputs: int = len(self.subsys.in_vars)
+        n_outputs: int = len(self.subsys.out_vars)
+        self.inputs = [PortItem(self, self.editor, True, i, n_inputs) for i in range(n_inputs)]
+        self.outputs = [PortItem(self, self.editor, False, i, n_outputs) for i in range(n_outputs)]
+        for port_item in self.inputs:
+            port_item.recolour()
+        for port_item in self.outputs:
+            port_item.recolour()
+        self.refresh_port_metadata()
+        self.resize_to_content()
+
+    def get_minimum_block_size(self) -> tuple[float, float]:
+        return self.SIZE, self.SIZE
+
+    def resize_to_content(self) -> None:
+        self.prepareGeometryChange()
+        QGraphicsRectItem.setRect(self, 0, 0, self.SIZE, self.SIZE)
+        self.update_ports()
+
+    def update_ports(self) -> None:
+        rect = self.rect()
+        center_y = rect.height() / 2.0
+
+        if self.inputs:
+            self.inputs[0].setPos(0.0, center_y)
+        for port in self.inputs[1:]:
+            port.setPos(0.0, center_y)
+
+        if self.outputs:
+            self.outputs[0].setPos(rect.width(), center_y)
+        for port in self.outputs[1:]:
+            port.setPos(rect.width(), center_y)
+
+        for port in self.inputs + self.outputs:
+            if port.connections:
+                conn: ConnectionItem
+                for conn in port.connections:
+                    conn.update_path()
+
+    def _draw_center_symbol(self, painter: QPainter, body_rect: QtCore.QRectF) -> None:
+        painter.setPen(QPen(self.editor.colors_palet.BLOCK_TITLE, 1.2))
+
+        if self.block_type == BlockType.GAIN:
+            triangle = QtGui.QPolygonF([
+                QPointF(body_rect.left() + body_rect.width() * 0.33, body_rect.top() + body_rect.height() * 0.25),
+                QPointF(body_rect.left() + body_rect.width() * 0.33, body_rect.bottom() - body_rect.height() * 0.25),
+                QPointF(body_rect.right() - body_rect.width() * 0.25, body_rect.center().y()),
+            ])
+            painter.setBrush(Qt.BrushStyle.NoBrush)
+            painter.drawPolygon(triangle)
+            return
+
+        symbol = self._SYMBOL_TEXT.get(self.block_type, self.block_type.value)
+        font = painter.font()
+        point_size = 8.5
+        if len(symbol) >= 4:
+            point_size = 7.0
+        elif len(symbol) == 3:
+            point_size = 7.6
+        font.setPointSizeF(point_size)
+        painter.setFont(font)
+        painter.drawText(body_rect, Qt.AlignmentFlag.AlignCenter, symbol)
+
+    def paint(self,
+              painter: QPainter,
+              option: QtWidgets.QStyleOptionGraphicsItem,
+              widget: Optional[QWidget] = None) -> None:
+        rect: QtCore.QRectF = self.rect()
+        body_rect: QtCore.QRectF = rect.adjusted(2, 2, -2, -2)
+
+        if self._validation_highlighted:
+            border_color: QColor = EditorGraphicsCommonFeatures.VALIDATION_HICHLIGHTED_BORDER
+        else:
+            border_color = (
+                EditorGraphicsCommonFeatures.BLOCK_BORDER_SELECTED
+                if self.isSelected()
+                else self.pen().color()
+            )
+
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+        painter.setBrush(self.brush())
+        painter.setPen(QPen(border_color, 1.6))
+        painter.drawRoundedRect(body_rect, self.RADIUS, self.RADIUS)
+        self._draw_center_symbol(painter, body_rect)
+
+
 class RoundBaseArithmeticOpItem(QGraphicsEllipseItem):
     LABEL_OUTSET: float = 5.0
 
