@@ -440,7 +440,7 @@ class TimeEventsMain(DataBaseTableMain):
         if dlg.is_accepted:
             self.circuit.re_index_time2(t0=dlg.date_time_editor.dateTime().toPython(),
                                         step_size=dlg.step_length.value(),
-                                        step_unit=dlg.units.currentText())
+                                        step_unit=dlg.units.currentData())
 
             self.update_date_dependent_combos()
 
@@ -512,15 +512,13 @@ class TimeEventsMain(DataBaseTableMain):
             return
 
         if self.circuit.time_profile is None:
-            self.models_input_dialogue = ModelsInputGUI(parent=self)
+            self.models_input_dialogue = ModelsInputGUI(parent=self, main_grid=self.circuit)
 
             self.models_input_dialogue.resize(int(1.61 * 600.0), 550)  # golden ratio
-            self.models_input_dialogue.exec()  # exec leaves the parent on hold
+            result = self.models_input_dialogue.exec()  # exec leaves the parent on hold
 
-            if self.models_input_dialogue.grids_model is not None:
-
-                logger = Logger()
-                self.models_input_dialogue.process(main_grid=self.circuit, logger=logger)
+            if result:
+                logger = self.models_input_dialogue.process_logger
 
                 # set up sliders
                 self.update_date_dependent_combos()
@@ -598,4 +596,3 @@ class TimeEventsMain(DataBaseTableMain):
             mdl.paste_from_clipboard(row_idx=row_idx, col_idx=col_idx)
         else:
             warning_msg('There is no profile displayed, please display one', 'Paste profile to clipboard')
-

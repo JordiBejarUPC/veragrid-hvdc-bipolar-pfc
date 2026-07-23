@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import os
 import sys
-from typing import Tuple
+from typing import Tuple, Any
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -36,15 +36,15 @@ from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_dae import EmtProblemDae
 from VeraGridEngine.Simulations.EMT.solvers.jit_symbolic_solver import BoundaryUpdateWrapper, JitSymbolicSolver
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowOptions
-from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_template
+from VeraGridEngine.Utils.Symbolic.bus_emt_template import get_bus_emt_template
 from VeraGridEngine.Templates.Emt.converter_emt_template import get_emt_ideal_converter
 from VeraGridEngine.Templates.Emt.dc_line_emt_template import get_dc_line_emt_template
 from VeraGridEngine.Templates.Emt.dc_load_emt_template import get_dc_load_emt_template
-from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template
-from VeraGridEngine.Templates.templates_common_functions import set_emt_model
+from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template_with_ref
+from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_emt_model
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic import Var
-from VeraGridEngine.enumerations import DynamicIntegrationMethod, ConverterControlType, SolverType, VarPowerFlowRefferenceType
+from VeraGridEngine.enumerations import DynamicIntegrationMethod, ConverterControlType, SolverType, VarPowerFlowReferenceType
 
 
 class LoadStepBoundaryUpdater(BoundaryUpdateWrapper):
@@ -118,7 +118,7 @@ class LoadStepBoundaryUpdater(BoundaryUpdateWrapper):
         # The new load level is written before the problem update so the accepted EMT step
         # solves the correct algebraic operating point for that time interval.
         params[self._param_full_idx] = applied_value_pu
-        self._problem.update(float(t), x, params)
+        self._problem.emt_boundary_update(float(t), x, params)
 
         if self._record_count < len(self._record_time_s):
             self._record_time_s[self._record_count] = float(t)
@@ -273,7 +273,7 @@ def assign_emt_models(grid: gce.MultiCircuit, generator: Generator, vsc: VSC, dc
         get_bus_emt_template(grid=grid, bus=bus)
 
     # The device templates are then attached to the existing static grid objects used by EmtProblemDae.
-    generator_model = get_generator_thevenin_rl_emt_template(vf=grid.var_factory).block
+    generator_model = get_generator_thevenin_rl_emt_template_with_ref(vf=grid.var_factory).block
     vsc_model = get_emt_ideal_converter(vf=grid.var_factory, name=vsc.name).block
     dc_line_model = get_dc_line_emt_template(vf=grid.var_factory, name=dc_line.name).block
     dc_load_model = get_dc_load_emt_template(vf=grid.var_factory, name='dc_load_emt').block
@@ -384,7 +384,7 @@ def run_dc_line_case(enable_plots: bool = False) -> None:
     options = build_default_emt_options()
     problem = EmtProblemDae(grid=grid, options=options, pf_results=pf_results, pf_results_3Ph=None)
     solver = create_symbolic_solver(problem=problem, options=options)
-    load_param_idx = get_constant_parameter_full_index(problem, 'g_dc_load_emt')
+    load_param_idx = get_constant_parameter_full_index(problem, 'g')
     boundary_updater = LoadStepBoundaryUpdater(
         problem=problem,
         param_full_idx=load_param_idx,
@@ -394,15 +394,15 @@ def run_dc_line_case(enable_plots: bool = False) -> None:
         max_records=4000,
     )
 
-    time_s, state_traj, _diff_traj = solver.simulate(boundary_updater=boundary_updater)
+    time_s, state_traj, _diff_traj, _, _ = solver.simulate(boundary_updater=boundary_updater)
 
     # The variables are taken directly from the EMT external mapping to avoid fragile name heuristics.
-    v_source_var = bus_dc_source.emt_model.external_mapping[VarPowerFlowRefferenceType.Vdc]
-    v_load_var = bus_dc_load.emt_model.external_mapping[VarPowerFlowRefferenceType.Vdc]
-    i_from_var = dc_line.emt_model.external_mapping[VarPowerFlowRefferenceType.If_dc]
-    i_to_var = dc_line.emt_model.external_mapping[VarPowerFlowRefferenceType.It_dc]
-    p_from_var = dc_line.emt_model.external_mapping[VarPowerFlowRefferenceType.Pf]
-    p_to_var = dc_line.emt_model.external_mapping[VarPowerFlowRefferenceType.Pt]
+    v_source_var = bus_dc_source.emt_model.external_mapping[VarPowerFlowReferenceType.Vdc]
+    v_load_var = bus_dc_load.emt_model.external_mapping[VarPowerFlowReferenceType.Vdc]
+    i_from_var = dc_line.emt_model.external_mapping[VarPowerFlowReferenceType.If_dc]
+    i_to_var = dc_line.emt_model.external_mapping[VarPowerFlowReferenceType.It_dc]
+    p_from_var = dc_line.emt_model.external_mapping[VarPowerFlowReferenceType.Pf]
+    p_to_var = dc_line.emt_model.external_mapping[VarPowerFlowReferenceType.Pt]
 
     v_source_trace = np.array(state_traj[:, problem.get_var_idx(v_source_var)], copy=True)
     v_load_trace = np.array(state_traj[:, problem.get_var_idx(v_load_var)], copy=True)

@@ -10,7 +10,8 @@ from matplotlib import pyplot as plt
 from typing import List, Tuple, TYPE_CHECKING
 from VeraGridEngine.Devices.Profiles import ProfileDevice, ProfileEnum, ProfileFloat
 from VeraGridEngine.Devices.Substation.bus import Bus
-from VeraGridEngine.enumerations import BuildStatus, ConverterControlType, ConverterFaultControlType
+from VeraGridEngine.enumerations import (BuildStatus, ConverterControlType, ConverterFaultControlType, PrpCat,
+                                         ParamPowerFlowReferenceType)
 from VeraGridEngine.Devices.Parents.branch_parent import BranchParent
 from VeraGridEngine.Devices.Parents.editable_device import DeviceType, GCProp
 from VeraGridEngine.Devices.Parents.editable_device import get_at
@@ -38,8 +39,8 @@ class VSC(BranchParent):
         '_control1_val_prof',
         '_control1_val_min',
         '_control1_val_max',
-        '_control1_droop',
-        '_control1_droop_prof',
+        '_control1_val_droop',
+        '_control1_val_droop_prof',
         '_control1_droop_val',
         '_control1_droop_val_prof',
         '_control1_droop_val_min',
@@ -70,59 +71,217 @@ class VSC(BranchParent):
     )
 
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
-        GCProp(key='bus_dc_n', units="", tpe=DeviceType.BusDevice,
-                      definition='DC negative bus', editable=False),
-        GCProp(key='alpha1', units='', tpe=float,
-                      definition='Losses constant parameter (IEC 62751-2 loss Correction, idle loss).'),
-        GCProp(key='alpha2', units='', tpe=float,
-                      definition='Losses linear parameter (IEC 62751-2 loss Correction, Switching loss).'),
-        GCProp(key='alpha3', units='', tpe=float,
-                      definition='Losses quadratic parameter (IEC 62751-2 loss Correction, resistive loss).'),
+        GCProp(
+            prop_name='bus_dc_n',
+            units="",
+            tpe=DeviceType.BusDevice,
+            definition='DC negative bus',
+            editable=False,
+            cat=[PrpCat.PF],
+        ),
+        GCProp(
+            prop_name='alpha1',
+            units='',
+            tpe=float,
+            definition='Losses constant parameter (IEC 62751-2 loss Correction, idle loss).',
+            dyn_ref=ParamPowerFlowReferenceType.alpha1,
+        ),
+        GCProp(
+            prop_name='alpha2',
+            units='',
+            tpe=float,
+            definition='Losses linear parameter (IEC 62751-2 loss Correction, Switching loss).',
+            dyn_ref=ParamPowerFlowReferenceType.alpha2,
+        ),
+        GCProp(
+            prop_name='alpha3',
+            units='',
+            tpe=float,
+            definition='Losses quadratic parameter (IEC 62751-2 loss Correction, resistive loss).',
+            dyn_ref=ParamPowerFlowReferenceType.alpha3,
+        ),
 
 
-        GCProp(key='control1', units='', tpe=ConverterControlType, profile_name="control1_prof",
-                      definition='Control mode 1.'),
-        GCProp(key='control1_dev', units="", tpe=DeviceType.BusOrBranch, profile_name="control1_dev_prof",
-               definition='Controlled device, None to apply to this converter', editable=False),
-        GCProp(key='control1_val', units='', tpe=float, profile_name="control1_val_prof",
-               definition='Control value 1.'
+        GCProp(
+            prop_name='control1',
+            units='',
+            tpe=ConverterControlType,
+            profile_name="control1_prof",
+            definition='Control mode 1.',
+            cat=[PrpCat.PF, PrpCat.OPF],
+            dyn_ref=ParamPowerFlowReferenceType.converter_control_mode_1,
+        ),
+        GCProp(
+            prop_name='control1_dev',
+            units="",
+            tpe=DeviceType.BusOrBranch,
+            profile_name="control1_dev_prof",
+            definition='Controlled device, None to apply to this converter',
+            editable=False,
+            cat=[PrpCat.PF],
+        ),
+        GCProp(
+            prop_name='control1_val',
+            units='',
+            tpe=float,
+            profile_name="control1_val_prof",
+            definition='Control value 1.'
                           'p.u. for voltage\n'
                           'rad for angles\n'
                           'MW for P\n'
-                          'MVAr for Q'),
-        GCProp(key='control1_val_min', units='', tpe=float, ),
-        GCProp(key='control1_val_max', units='', tpe=float, ),
-        GCProp(key='control1_droop', units='', tpe=float, profile_name="control1_droop_prof"),
-        GCProp(key='control1_droop_val', units='', tpe=float, profile_name="control1_droop_val_prof"),
-        GCProp(key='control1_droop_val_min', units='', tpe=float, ),
-        GCProp(key='control1_droop_val_max', units='', tpe=float, ),
+                          'MVAr for Q',
+            cat=[PrpCat.PF],
+            dyn_ref=ParamPowerFlowReferenceType.converter_control_target_1,
+        ),
+        GCProp(
+            prop_name='control1_val_min',
+            units='',
+            tpe=float,
+            cat=[PrpCat.PF, PrpCat.OPF],
+        ),
+        GCProp(
+            prop_name='control1_val_max',
+            units='',
+            tpe=float,
+            cat=[PrpCat.PF, PrpCat.OPF],
+        ),
+        GCProp(
+            prop_name='control1_val_droop',
+            units='',
+            tpe=float,
+            profile_name="control1_val_droop_prof",
+            old_names=['control1_droop'],
+            cat=[PrpCat.PF, PrpCat.OPF],
+            dyn_ref=ParamPowerFlowReferenceType.vsc_kdp_pu,
+        ),
+        GCProp(
+            prop_name='control1_droop_val',
+            units='',
+            tpe=float,
+            profile_name="control1_droop_val_prof",
+            cat=[PrpCat.PF, PrpCat.OPF],
+        ),
+        GCProp(
+            prop_name='control1_droop_val_min',
+            units='',
+            tpe=float,
+            cat=[PrpCat.PF, PrpCat.OPF],
+        ),
+        GCProp(
+            prop_name='control1_droop_val_max',
+            units='',
+            tpe=float,
+            cat=[PrpCat.PF, PrpCat.OPF],
+        ),
 
-        GCProp(key='control2', units='', tpe=ConverterControlType, profile_name="control2_prof",
-                      definition='Control mode 2.'),
-        GCProp(key='control2_dev', units="", tpe=DeviceType.BusOrBranch, profile_name="control2_dev_prof",
-               definition='Controlled device, None to apply to this converter', editable=False),
-        GCProp(key='control2_val', units='', tpe=float, profile_name="control2_val_prof",
-                      definition='Control value 2.'
+        GCProp(
+            prop_name='control2',
+            units='',
+            tpe=ConverterControlType,
+            profile_name="control2_prof",
+            definition='Control mode 2.',
+            cat=[PrpCat.PF, PrpCat.OPF],
+            dyn_ref=ParamPowerFlowReferenceType.converter_control_mode_2,
+        ),
+        GCProp(
+            prop_name='control2_dev',
+            units="",
+            tpe=DeviceType.BusOrBranch,
+            profile_name="control2_dev_prof",
+            definition='Controlled device, None to apply to this converter',
+            editable=False,
+            cat=[PrpCat.PF, PrpCat.OPF],
+        ),
+        GCProp(
+            prop_name='control2_val',
+            units='',
+            tpe=float,
+            profile_name="control2_val_prof",
+            definition='Control value 2.'
                                  'p.u. for voltage\n'
                                  'rad for angles\n'
                                  'MW for P\n'
-                                 'MVAr for Q'),
-        GCProp(key='control2_val_min', units='', tpe=float, ),
-        GCProp(key='control2_val_max', units='', tpe=float, ),
-        GCProp(key='control2_val_droop', units='', tpe=float, profile_name="control2_val_droop_prof"),
-        GCProp(key='control2_droop_val', units='', tpe=float, profile_name="control2_droop_val_prof"),
-        GCProp(key='control2_droop_val_min', units='', tpe=float, ),
-        GCProp(key='control2_droop_val_max', units='', tpe=float, ),
+                                 'MVAr for Q',
+            cat=[PrpCat.PF, PrpCat.OPF],
+            dyn_ref=ParamPowerFlowReferenceType.converter_control_target_2,
+        ),
+        GCProp(
+            prop_name='control2_val_min',
+            units='',
+            tpe=float,
+            cat=[PrpCat.PF, PrpCat.OPF],
+        ),
+        GCProp(
+            prop_name='control2_val_max',
+            units='',
+            tpe=float,
+            cat=[PrpCat.PF, PrpCat.OPF],
+        ),
+        GCProp(
+            prop_name='control2_val_droop',
+            units='',
+            tpe=float,
+            profile_name="control2_val_droop_prof",
+            cat=[PrpCat.PF, PrpCat.OPF],
+        ),
+        GCProp(
+            prop_name='control2_droop_val',
+            units='',
+            tpe=float,
+            profile_name="control2_droop_val_prof",
+            cat=[PrpCat.PF, PrpCat.OPF],
+        ),
+        GCProp(
+            prop_name='control2_droop_val_min',
+            units='',
+            tpe=float,
+            cat=[PrpCat.PF, PrpCat.OPF],
+        ),
+        GCProp(
+            prop_name='control2_droop_val_max',
+            units='',
+            tpe=float,
+            cat=[PrpCat.PF, PrpCat.OPF],
+        ),
 
-        GCProp(key='fault_control', units='', tpe=ConverterFaultControlType, profile_name="fault_control_prof",
-               definition='VSC control system during a short-circuit event.'),
-        GCProp(key='min_ac_voltage', units='p.u.', tpe=float,
-                      definition='Minimum AC voltage threshold. '
-                                 'If the AC bus voltage drops below this value, the VSC is disconnected.'),
-        GCProp(key='ysvs', units='p.u.', tpe=float,
-               definition='Admittance of non-controlled Static Var Systems.'),
-        GCProp(key='x', units='px', tpe=float, definition='x position'),
-        GCProp(key='y', units='px', tpe=float, definition='y position'),
+        GCProp(
+            prop_name='fault_control',
+            units='',
+            tpe=ConverterFaultControlType,
+            profile_name="fault_control_prof",
+            definition='VSC control system during a short-circuit event.',
+            cat=[PrpCat.PF],
+        ),
+        GCProp(
+            prop_name='min_ac_voltage',
+            units='p.u.',
+            tpe=float,
+            definition='Minimum AC voltage threshold. '
+                                 'If the AC bus voltage drops below this value, the VSC is disconnected.',
+            cat=[PrpCat.PF],
+            dyn_ref=ParamPowerFlowReferenceType.vsc_min_ac_voltage_pu,
+        ),
+        GCProp(
+            prop_name='ysvs',
+            units='p.u.',
+            tpe=float,
+            definition='Admittance of non-controlled Static Var Systems.',
+            cat=[PrpCat.PF],
+        ),
+        GCProp(
+            prop_name='x',
+            units='px',
+            tpe=float,
+            definition='x position',
+            cat=[PrpCat.TP],
+        ),
+        GCProp(
+            prop_name='y',
+            units='px',
+            tpe=float,
+            definition='y position',
+            cat=[PrpCat.TP],
+        ),
     )
 
     def __init__(self,
@@ -133,7 +292,8 @@ class VSC(BranchParent):
                  idtag: str | None = None,
                  code='',
                  active=True,
-                 rate: float = 100.0,
+                 design_rate: float = 9999.0,
+                 rate: float = 9999.0,
                  alpha1=0.0001,
                  alpha2=0.015,
                  alpha3=0.2,
@@ -185,6 +345,7 @@ class VSC(BranchParent):
         :param idtag:
         :param code:
         :param active:
+        :param design_rate: Design rate (MVA)
         :param rate:
         :param alpha1:
         :param alpha2:
@@ -216,6 +377,7 @@ class VSC(BranchParent):
                               bus_to=bus_to,
                               active=active,
                               reducible=False,
+                              design_rate=design_rate,
                               rate=rate,
                               cost=cost,
                               mttf=mttf,
@@ -308,8 +470,8 @@ class VSC(BranchParent):
         self._control1_val_prof: ProfileFloat = ProfileFloat(default_value=self._control1_val)
         self._control1_val_min = float(control1_val_min)
         self._control1_val_max = float(control1_val_max)
-        self._control1_droop = float(control1_droop)
-        self._control1_droop_prof: ProfileFloat = ProfileFloat(default_value=self._control1_droop)
+        self._control1_val_droop = float(control1_droop)
+        self._control1_val_droop_prof: ProfileFloat = ProfileFloat(default_value=self._control1_val_droop)
         self._control1_droop_val = float(control1_droop_val)
         self._control1_droop_val_prof: ProfileFloat = ProfileFloat(default_value=self._control1_droop_val)
         self._control1_droop_val_min = float(control1_droop_val_min)
@@ -662,47 +824,47 @@ class VSC(BranchParent):
         self._control1_val_max = float(val)
 
     @property
-    def control1_droop(self) -> float:
+    def control1_val_droop(self) -> float:
         """
-        Get ``control1_droop``.
+        Get ``control1_val_droop``.
 
         :return: float
         """
-        return self._control1_droop
+        return self._control1_val_droop
 
-    @control1_droop.setter
-    def control1_droop(self, val: float) -> None:
+    @control1_val_droop.setter
+    def control1_val_droop(self, val: float) -> None:
         """
-        Set ``control1_droop``.
+        Set ``control1_val_droop``.
 
         :param val: Value to assign.
         :return: None
         """
-        self._control1_droop = float(val)
+        self._control1_val_droop = float(val)
 
     @property
-    def control1_droop_prof(self) -> ProfileFloat:
+    def control1_val_droop_prof(self) -> ProfileFloat:
         """
         Cost profile
         :return: Profile
         """
-        return self._control1_droop_prof
+        return self._control1_val_droop_prof
 
-    @control1_droop_prof.setter
-    def control1_droop_prof(self, val: ProfileFloat | np.ndarray):
+    @control1_val_droop_prof.setter
+    def control1_val_droop_prof(self, val: ProfileFloat | np.ndarray):
         if isinstance(val, ProfileFloat):
-            self._control1_droop_prof = val
+            self._control1_val_droop_prof = val
         elif isinstance(val, np.ndarray):
-            self._control1_droop_prof.set(arr=val)
+            self._control1_val_droop_prof.set(arr=val)
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a profile')
 
-    def get_control1_droop_at(self, t: int | None) -> float:
+    def get_control1_val_droop_at(self, t: int | None) -> float:
         """
         :param t:
         :return:
         """
-        return get_at(self.control1_droop, self.control1_droop_prof, t)
+        return get_at(self.control1_val_droop, self.control1_val_droop_prof, t)
 
     @property
     def control1_droop_val(self) -> float:

@@ -19,7 +19,7 @@ import VeraGridEngine.api as gce
 from VeraGridEngine.Simulations.Rms.problems.rms_problem_phasor import RmsProblemPhasor
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
 from VeraGridEngine.Simulations.Rms.numerical.back_euler_fx import BackEulerImplicitIntegration
-from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms
+from VeraGridEngine.Utils.Symbolic.bus_rms_template import initialize_bus_rms
 from VeraGridEngine.Templates.Rms.bus_phasor_rms_template import initialize_bus_phasor_rms
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.Templates.Rms.line_phasor_rms_template import get_line_phasor_rms_template
@@ -27,7 +27,7 @@ from VeraGridEngine.Templates.Rms.load_rms_template import get_load_rms_template
 from VeraGridEngine.Templates.Rms.load_phasor_current_rms_template import get_load_phasor_current_rms_template
 from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template_rms
 from VeraGridEngine.Templates.Rms.genqec_phasor_rms_template import get_complete_generator_template_phasor
-from VeraGridEngine.Templates.templates_common_functions import set_rms_model
+from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_rms_model
 from VeraGridEngine.Devices.Events.rms_event import RmsEvent
 from VeraGridEngine.Devices.Events.rms_events_group import RmsEventsGroup
 from VeraGridEngine.enumerations import DynamicIntegrationMethod, RmsInitializationMethod
@@ -128,8 +128,8 @@ def test_phasor_validation():
     
     # For phasor grid, use current-based load model
     load_mdl_phasor = get_load_phasor_current_rms_template(grid_phasor.var_factory).block
-    load_mdl_phasor.connect([load_mdl_phasor.in_vars[0]], [bus1_phasor.rms_model.out_vars[0]])
-    load_mdl_phasor.connect([load_mdl_phasor.in_vars[1]], [bus1_phasor.rms_model.out_vars[1]])
+    grid_phasor.var_factory.add_connections([load_mdl_phasor.in_vars[0]], [bus1_phasor.rms_model.out_vars[0]])
+    grid_phasor.var_factory.add_connections([load_mdl_phasor.in_vars[1]], [bus1_phasor.rms_model.out_vars[1]])
     # Current values will be set after power flow
     set_rms_model(device=load_phasor, model=load_mdl_phasor, var_factory=grid_phasor.var_factory)
     
@@ -138,8 +138,8 @@ def test_phasor_validation():
     # Use set_rms_model for proper current balance accumulation
     set_rms_model(device=line_phasor, model=line_phasor_mdl, var_factory=grid_phasor.var_factory)
 
-    genqec_phasor.connect([genqec_phasor.in_vars[0]], [bus0_phasor.rms_model.out_vars[0]])
-    genqec_phasor.connect([genqec_phasor.in_vars[1]], [bus0_phasor.rms_model.out_vars[1]])
+    grid_phasor.var_factory.add_connections([genqec_phasor.in_vars[0]], [bus0_phasor.rms_model.out_vars[0]])
+    grid_phasor.var_factory.add_connections([genqec_phasor.in_vars[1]], [bus0_phasor.rms_model.out_vars[1]])
     set_rms_model(device=gen_phasor, model=genqec_phasor, var_factory=grid_phasor.var_factory)
     # Note: line and load models attached via set_rms_model for proper current balance
     
@@ -248,13 +248,13 @@ def test_phasor_validation():
     print("\n[8] Comparing results...")
 
     
-    # For phasor: find omega in genqec_phasor (name is "omegaGen0")
-    omega_var_phasor = find_name_in_block("omegaGen0", genqec_phasor)
+    # For phasor: find omega in genqec_phasor using the stable symbolic name.
+    omega_var_phasor = find_name_in_block("omega", genqec_phasor)
     omega_idx_phasor = problem_phasor.get_var_idx(omega_var_phasor)
     omega_phasor = y_phasor[:, omega_idx_phasor]
 
-    # For phasor: find delta in genqec_phasor (name is "deltaGen0")
-    delta_var_phasor = find_name_in_block("deltaGen0", genqec_phasor)
+    # For phasor: find delta in genqec_phasor using the stable symbolic name.
+    delta_var_phasor = find_name_in_block("delta", genqec_phasor)
     delta_idx_phasor = problem_phasor.get_var_idx(delta_var_phasor)
     delta_phasor = y_phasor[:, delta_idx_phasor]
     

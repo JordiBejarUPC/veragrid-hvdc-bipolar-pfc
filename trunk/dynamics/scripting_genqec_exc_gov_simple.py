@@ -11,16 +11,15 @@ from matplotlib import pyplot as plt
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Simulations.Rms.problems.rms_problem_dae import RmsProblemDae
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
-from VeraGridEngine.Simulations.Rms.rms_results import RmsResults
 from VeraGridEngine.Simulations.Rms.numerical.back_euler_fx import BackEulerImplicitIntegration
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.Templates.Rms.load_rms_template import get_load_rms_template
 from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template_rms
-from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms
-from VeraGridEngine.Templates.templates_common_functions import set_rms_model
+from VeraGridEngine.Utils.Symbolic.bus_rms_template import initialize_bus_rms
+from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_rms_model
 from VeraGridEngine.Devices.Events.rms_events_group import RmsEventsGroup
 
-from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DynamicIntegrationMethod, RmsInitializationMethod
+from VeraGridEngine.enumerations import DynamicIntegrationMethod, RmsInitializationMethod, DynamicEventTransitionType
 from VeraGridEngine.Devices.Events.rms_event import RmsEvent
 import VeraGridEngine.api as gce
 
@@ -100,8 +99,8 @@ def find_name_in_block(name: str, block: Block):
 #
 # big_gen1 = Block(children=[genqec_mdl])
 #
-# big_gen1.external_mapping.update({VarPowerFlowRefferenceType.P: genqec_mdl.out_vars[0]})
-# big_gen1.external_mapping.update({VarPowerFlowRefferenceType.Q: genqec_mdl.out_vars[1]})
+# big_gen1.external_mapping.update({VarPowerFlowReferenceType.P: genqec_mdl.out_vars[0]})
+# big_gen1.external_mapping.update({VarPowerFlowReferenceType.Q: genqec_mdl.out_vars[1]})
 #
 # # add models to dyn_host
 # line0.rms_model = line_mdl
@@ -143,7 +142,7 @@ for bus in grid.buses:
 
 
 # Lines
-line0 = gce.Line(name="line 0-2", bus_from=bus0, bus_to=bus1, r=0.029585798816568046, x=0.07100591715976332, b=0.03,
+line0 = gce.Line(name="line 0-2", bus_from=bus0, bus_to=bus1, r=0.029585, x=0.071005, b=0.03,
                  rate=900.0)
 grid.add_line(line0)
 
@@ -172,8 +171,8 @@ line_mdl = get_line_rms_template(grid.var_factory).block
 load_mdl = get_load_rms_template(grid.var_factory).block
 
 # set models parameters
-load_mdl.set_parameter_in_model(var_name="Pl0", new_value=-0.0999999)
-load_mdl.set_parameter_in_model(var_name="Ql0", new_value=-0.009999999862208533)
+# load_mdl.set_parameter_in_model(var_name="Pl0", new_value=-0.0999999)
+# load_mdl.set_parameter_in_model(var_name="Ql0", new_value=-0.009999999862208533)
 
 ######################################################################################################
 # Add models to devices
@@ -191,10 +190,13 @@ set_rms_model(device=load, model=load_mdl, var_factory= grid.var_factory)
 ######################################################################################################
 
 Pl0 = find_name_in_block('Pl0', load_mdl)
+
 events_group = RmsEventsGroup(name="simulation1")
 grid.add_rms_events_group(events_group)
-event = RmsEvent(device=load, parameter=Pl0, time=0.1, value=-0.098, group=events_group)
+event = RmsEvent(device=load, parameter=Pl0, time=0.1, value=-0.098, group=events_group, transition_type=DynamicEventTransitionType.Step)
 grid.add_rms_event(event)
+
+gce.save_file(grid, "my_saved_grid.veragrid")
 
 # gce.save_file(grid=grid, filename="saved_grid_1.veragrid")
 # grid_opened = gce.open_file("saved_grid_1.veragrid")
@@ -227,7 +229,8 @@ rms_events_group_names = np.array(0)
 # uid_save = [var.uid for var in vars_to_save]
 
 
-
+gce.save_file(grid=grid, filename="../../src/tests/data/grids/2bus_genqec_load_test.veragrid")
+grid1 = gce.open_file("../../src/tests/data/grids/2bus_genqec_load_test.veragrid")
 ######################################################################################################
 # Power flow
 ######################################################################################################
@@ -310,13 +313,14 @@ t, y, well_initialized, converged = solver.simulate()
 #
 xlim = options.simulation_time
 
+# The complete generator model now exposes stable machine variable names.
 omega = find_name_in_block("omega", genqec_mdl)
 Pg = genqec_mdl.out_vars[0]
 Qg = genqec_mdl.out_vars[1]
-Ir = find_name_in_block("Ir", genqec_mdl)
-Efd = find_name_in_block("Efd", genqec_mdl)
+Ir = find_name_in_block("IRPu", genqec_mdl)
+Efd = find_name_in_block("Vf", genqec_mdl)
 Te = find_name_in_block("Te", genqec_mdl)
-Vm = find_name_in_block("Vm", genqec_mdl)
+Vm = genqec_mdl.in_vars[0]
 
 u_gov1 = find_name_in_block("u_gov1", genqec_mdl)
 y_subexciter = find_name_in_block("y_subexciter1", genqec_mdl)

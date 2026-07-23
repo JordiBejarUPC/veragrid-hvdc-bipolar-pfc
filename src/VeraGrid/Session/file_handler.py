@@ -109,8 +109,15 @@ class FileOpenThread(QThread):
                                 options=self.options)
 
         if self.options.crash_on_errors:
-            self.circuit = file_handler.open(text_func=self.progress_text.emit,
+            try:
+                self.circuit = file_handler.open(text_func=self.progress_text.emit,
                                              progress_func=self.progress_signal.emit)
+            except FileNotFoundError as e:
+                self.valid = False
+                self.logger.add_error(msg=str(e))
+                self.progress_text.emit('Error loading')
+                self.done_signal.emit()
+                return
         else:
             try:
                 self.circuit = file_handler.open(text_func=self.progress_text.emit,
@@ -233,13 +240,18 @@ class FileSaveThread(QThread):
             self.logger = file_handler.save()
         except PermissionError:
             self.logger.add_error("File permission denied. Do you have the file open? Do you have write permissions?")
+        except Exception as e:
+            # Never let the thread die silently: post_file_save() (which re-enables the GC that
+            # was disabled for the save) is connected to done_signal, so done_signal must always
+            # be emitted, even on an unexpected failure.
+            self.logger.add_error(f"Unexpected error while saving: {e}")
+        finally:
+            self.valid = True
 
-        self.valid = True
+            # post events
+            self.progress_text.emit('Done!')
 
-        # post events
-        self.progress_text.emit('Done!')
-
-        self.done_signal.emit()
+            self.done_signal.emit()
 
     def cancel(self):
         """

@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import os
 import sys
-from typing import Dict, Tuple, cast
+from typing import Dict, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -29,15 +29,15 @@ else:
 import VeraGridEngine.api as gce
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_dae import EmtProblemDae
-from VeraGridEngine.Simulations.EMT.solvers.structural_compiled_solver import StructuralCompiledSolver
 from VeraGridEngine.Simulations.EMT.solvers.jit_symbolic_solver import JitSymbolicSolver
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowOptions
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results import PowerFlowResults
-from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_template
+from VeraGridEngine.Utils.Symbolic.bus_emt_template import get_bus_emt_template
 from VeraGridEngine.Templates.Emt.converter_emt_template import get_full_pseudo_emt_converter
 from VeraGridEngine.Templates.Emt.dc_load_emt_template import get_dc_load_emt_template
-from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template
-from VeraGridEngine.Templates.templates_common_functions import set_emt_model
+from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template_with_ref
+from VeraGridEngine.Templates.Emt.transformer_emt_template import get_transformer_emt_template
+from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_emt_model
 from VeraGridEngine.Utils.Symbolic.block import Block, find_name_in_block
 from VeraGridEngine.Utils.Symbolic.symbolic import Var
 from VeraGridEngine.enumerations import (
@@ -50,13 +50,14 @@ from VeraGridEngine.enumerations import (
 
 """Minimal EMT example with Thevenin source, pseudo-EMT converter and DC R load."""
 
-def build_grid() -> Tuple[gce.MultiCircuit, gce.Bus, gce.Bus, gce.Generator, gce.VSC, gce.Load]:
+def build_grid() -> Tuple[gce.MultiCircuit, gce.Bus, gce.Bus, gce.Bus, gce.Generator, gce.Transformer2W, gce.VSC, gce.Load]:
     """
     Build a minimal AC/DC network for the pseudo-EMT converter demo.
 
-    The AC side is represented by a slack bus with a Thevenin-equivalent EMT
-    generator. The converter connects this AC bus to a DC bus feeding a resistive
-    DC load around a nominal operating point.
+    The AC side uses a slack/source bus and a separate converter PCC connected
+    through a small transformer. This avoids the degenerate case where the
+    converter sits directly on the slack bus and the PF reports zero AC-side
+    converter power even though the DC side is loaded.
 
     :return:
         Tuple with the grid and the key devices used by the example.
@@ -67,8 +68,10 @@ def build_grid() -> Tuple[gce.MultiCircuit, gce.Bus, gce.Bus, gce.Generator, gce
         fbase=50.0,
     )
 
-    bus_ac: gce.Bus = gce.Bus(name="Bus_AC", Vnom=230.0, is_slack=True)
+    bus_slack_ac: gce.Bus = gce.Bus(name="Bus_SLACK_AC", Vnom=230.0, is_slack=True)
+    bus_ac: gce.Bus = gce.Bus(name="Bus_AC", Vnom=230.0)
     bus_dc: gce.Bus = gce.Bus(name="Bus_DC", Vnom=320.0, is_dc=True)
+    grid.add_bus(bus_slack_ac)
     grid.add_bus(bus_ac)
     grid.add_bus(bus_dc)
 
@@ -80,7 +83,19 @@ def build_grid() -> Tuple[gce.MultiCircuit, gce.Bus, gce.Bus, gce.Generator, gce
         r1=0.001,
         x1=0.04,
     )
-    grid.add_generator(bus_ac, generator)
+    grid.add_generator(bus_slack_ac, generator)
+
+    transformer: gce.Transformer2W = gce.Transformer2W(
+        name="AC_Thevenin_Link",
+        bus_from=bus_slack_ac,
+        bus_to=bus_ac,
+        rate=grid.Sbase,
+        r=1.0e-5,
+        x=1.0e-5,
+        tap_module=1.0,
+        tap_phase=0.0,
+    )
+    grid.add_transformer2w(transformer)
 
     p_transfer_mw: float = 30.0
     q_transfer_mvar: float = 0.0
@@ -89,9 +104,13 @@ def build_grid() -> Tuple[gce.MultiCircuit, gce.Bus, gce.Bus, gce.Generator, gce
         bus_from=bus_dc,
         bus_to=bus_ac,
         rate=grid.Sbase,
-        control1=ConverterControlType.Vm_dc,
+        # For this VSC orientation (`bus_from=DC`, `bus_to=AC`), negative `Pdc`
+        # means the converter imports power from the AC side into the DC bus.
+        # That is the consistent PF operating point for feeding the positive DC
+        # load below.
+        control1=ConverterControlType.Pdc,
         control2=ConverterControlType.Qac,
-        control1_val=1.0,
+        control1_val=-p_transfer_mw,
         control2_val=q_transfer_mvar,
     )
     grid.add_vsc(converter)
@@ -99,16 +118,17 @@ def build_grid() -> Tuple[gce.MultiCircuit, gce.Bus, gce.Bus, gce.Generator, gce
     dc_load: gce.Load = gce.Load(name="DC_R_Load", P=p_transfer_mw, Q=0.0)
     grid.add_load(bus_dc, dc_load)
 
-    return grid, bus_ac, bus_dc, generator, converter, dc_load
+    return grid, bus_slack_ac, bus_ac, bus_dc, generator, transformer, converter, dc_load
 
 
 def attach_emt_models(
     grid: gce.MultiCircuit,
     generator: gce.Generator,
+    transformer: gce.Transformer2W,
     converter: gce.VSC,
     dc_load: gce.Load,
     pf_results: PowerFlowResults,
-) -> Tuple[Block, Block, Block]:
+) -> Tuple[Block, Block, Block, Block]:
     """
     Attach EMT models to the Thevenin source, converter and DC load.
 
@@ -126,18 +146,17 @@ def attach_emt_models(
     :param pf_results:
         Balanced power-flow results used to seed losses and EMT initialization.
     :return:
-        Attached EMT blocks for generator, converter and DC load.
+        Attached EMT blocks for generator, transformer, converter and DC load.
     """
     bus: gce.Bus
     for bus in grid.buses:
         get_bus_emt_template(grid, bus)
 
-    gen_mdl: Block = get_generator_thevenin_rl_emt_template(vf=grid.var_factory).block
+    gen_mdl: Block = get_generator_thevenin_rl_emt_template_with_ref(vf=grid.var_factory).block
+    transformer_mdl: Block = get_transformer_emt_template(vf=grid.var_factory, name="ac_thevenin_link_emt").block
 
-    # converter.control1 = ConverterControlType.Pdc
-    # converter.control2 = ConverterControlType.Qac
-    # converter.control1_val = float(dc_load.P)
-    # converter.control2_val = 0.0
+    # The PF uses `Pdc/Qac` to create the non-zero operating point. The EMT case
+    # then switches to `Vm_dc/Qac` around that seeded operating point.
     converter.control1 = ConverterControlType.Vm_dc
     converter.control2 = ConverterControlType.Qac
     converter.control1_val = 1.0
@@ -147,11 +166,13 @@ def attach_emt_models(
         vf=grid.var_factory,
     ).block
 
+    vsc_mdl.set_parameter_in_model(var_name="sbase_pseudo_converter_emt", new_value=grid.Sbase)
     vsc_mdl.set_parameter_in_model(var_name="R_eq_pseudo_converter_emt", new_value=0.03)
     vsc_mdl.set_parameter_in_model(var_name="L_eq_pseudo_converter_emt", new_value=0.12)
     vsc_mdl.set_parameter_in_model(var_name="C_dc_pseudo_converter_emt", new_value=0.08)
     vsc_mdl.set_parameter_in_model(var_name="R_dc_pseudo_converter_emt", new_value=1e6)
     vsc_mdl.set_parameter_in_model(var_name="R_dc_term_pseudo_converter_emt", new_value=0.0001)
+    vsc_mdl.set_parameter_in_model(var_name="P0_pseudo_converter_emt", new_value=float(dc_load.P))
     vsc_mdl.set_parameter_in_model(var_name="pll_kp_pseudo_converter_emt", new_value=40.0)
     vsc_mdl.set_parameter_in_model(var_name="pll_ki_pseudo_converter_emt", new_value=400.0)
     vsc_mdl.set_parameter_in_model(var_name="i_kp_pseudo_converter_emt", new_value=0.6)
@@ -174,10 +195,11 @@ def attach_emt_models(
     ).block
 
     set_emt_model(device=generator, model=gen_mdl, var_factory=grid.var_factory)
+    set_emt_model(device=transformer, model=transformer_mdl, var_factory=grid.var_factory)
     set_emt_model(device=converter, model=vsc_mdl, var_factory=grid.var_factory)
     set_emt_model(device=dc_load, model=dc_load_mdl, var_factory=grid.var_factory)
 
-    return gen_mdl, vsc_mdl, dc_load_mdl
+    return gen_mdl, transformer_mdl, vsc_mdl, dc_load_mdl
 
 
 def build_power_flow_options() -> PowerFlowOptions:
@@ -227,24 +249,24 @@ def build_problem(grid: gce.MultiCircuit, pf_results: PowerFlowResults) -> EmtPr
         time_step=2.0e-5,
         simulation_time=0.15,
         tolerance=1e-6,
-        solver_type=EmtSolverTypes.StructuralCompiled,
+        solver_type=EmtSolverTypes.Symbolic,
         initialization_method=EmtInitializationMethod.Explicit,
         integration_method=DynamicIntegrationMethod.DaeTrapezoidal,
-        verbose=1,
+        verbose=0,
     )
     return EmtProblemDae(grid=grid, options=options, pf_results_3ph=None, pf_results=pf_results)
 
 
-def build_solver(problem: EmtProblemDae) -> StructuralCompiledSolver|JitSymbolicSolver:
+def build_solver(problem: EmtProblemDae) -> JitSymbolicSolver:
     """
-    Build the compiled EMT solver backend.
+    Build the EMT solver backend.
 
     :param problem:
         EMT problem.
     :return:
         Configured solver.
     """
-    solver: StructuralCompiledSolver = StructuralCompiledSolver(
+    return JitSymbolicSolver(
         problem=problem,
         t0=0.0,
         t_end=problem.options.simulation_time,
@@ -253,10 +275,7 @@ def build_solver(problem: EmtProblemDae) -> StructuralCompiledSolver|JitSymbolic
         pred_method=DynamicIntegrationMethod.OdeEuler,
         dense_threshold=0,
         verbose=False,
-        auto_build=False,
     )
-    solver._build_vectorized_backend(problem.options.integration_method)
-    return solver
 
 
 def get_signal(problem: EmtProblemDae, root_block: Block, variable_name: str, y: np.ndarray) -> np.ndarray:
@@ -419,7 +438,7 @@ def main() -> None:
     :return:
         None.
     """
-    grid, bus_ac, bus_dc, generator, converter, dc_load = build_grid()
+    grid, _bus_slack_ac, bus_ac, bus_dc, generator, transformer, converter, dc_load = build_grid()
     pf_results: PowerFlowResults = run_power_flow(grid)
 
     print("Balanced power flow results")
@@ -430,9 +449,10 @@ def main() -> None:
     print(pf_results.get_bus_df())
     print(pf_results.get_branch_df())
 
-    gen_mdl, vsc_mdl, dc_load_mdl = attach_emt_models(
+    gen_mdl, _transformer_mdl, vsc_mdl, dc_load_mdl = attach_emt_models(
         grid=grid,
         generator=generator,
+        transformer=transformer,
         converter=converter,
         dc_load=dc_load,
         pf_results=pf_results,

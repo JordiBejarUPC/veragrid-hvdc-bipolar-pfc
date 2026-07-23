@@ -7,8 +7,9 @@ from typing import Tuple
 import numpy as np
 from scipy.sparse import csc_matrix, coo_matrix
 import VeraGridEngine.Topology.topology as tp
-from VeraGridEngine.basic_structures import CxVec, Vec, IntVec, BoolVec, StrVec, ObjVec
-from VeraGridEngine.enumerations import GeneratorType
+from VeraGridEngine.basic_structures import CxVec, Vec, IntVec, BoolVec, StrVec, Logger
+from VeraGridEngine.enumerations import GeneratorControlMode
+from VeraGridEngine.Utils.compare import compare_arr
 
 
 class GeneratorData:
@@ -27,7 +28,7 @@ class GeneratorData:
         self.names: StrVec = np.empty(nelm, dtype=object)
         self.idtag: StrVec = np.empty(nelm, dtype=object)
 
-        self.controllable: BoolVec = np.zeros(nelm, dtype=bool)
+        self.control_mode_int: IntVec = np.zeros(nelm, dtype=int)  # int representation of GeneratorControlMode
         self.installed_p: Vec = np.zeros(nelm, dtype=float)
 
         self.active: BoolVec = np.zeros(nelm, dtype=bool)
@@ -39,6 +40,8 @@ class GeneratorData:
         self.q: Vec = np.zeros(nelm, dtype=float)
 
         self.v: Vec = np.zeros(nelm, dtype=float)
+        self.k_droop: Vec = np.zeros(nelm, dtype=float)
+        self.dead_band: Vec = np.zeros(nelm, dtype=float)
 
         self.qmin: Vec = np.zeros(nelm, dtype=float)
         self.qmax: Vec = np.zeros(nelm, dtype=float)
@@ -68,7 +71,7 @@ class GeneratorData:
         self.Rr: Vec = np.zeros(nelm, dtype=float)
         self.Xr: Vec = np.zeros(nelm, dtype=float)
 
-        self.type: ObjVec = np.full(self.nelm, fill_value=GeneratorType.Synchronous, dtype=object)
+        self.tpe_int: IntVec = np.zeros(self.nelm, dtype=int)  # GeneratorType values
 
         self.dispatchable: BoolVec = np.zeros(nelm, dtype=bool)
         self.must_run: BoolVec = np.zeros(nelm, dtype=bool)
@@ -112,7 +115,7 @@ class GeneratorData:
         data.names = self.names[elm_idx]
         data.idtag = self.idtag[elm_idx]
 
-        data.controllable = self.controllable[elm_idx]
+        data.control_mode_int = self.control_mode_int[elm_idx]
         data.installed_p = self.installed_p[elm_idx]
 
         data.active = self.active[elm_idx]
@@ -122,6 +125,8 @@ class GeneratorData:
         data.p3_star = self.p3_star[elm_idx_3]
         data.q = self.q[elm_idx]
         data.v = self.v[elm_idx]
+        data.k_droop = self.k_droop[elm_idx]
+        data.dead_band = self.dead_band[elm_idx]
 
         data.qmin = self.qmin[elm_idx]
         data.qmax = self.qmax[elm_idx]
@@ -158,7 +163,7 @@ class GeneratorData:
         data.Rr = self.Rr[elm_idx]
         data.Xr = self.Xr[elm_idx]
 
-        data.type = self.type[elm_idx]
+        data.tpe_int = self.tpe_int[elm_idx]
 
         data.dispatchable = self.dispatchable[elm_idx]
         data.must_run = self.must_run[elm_idx]
@@ -198,6 +203,10 @@ class GeneratorData:
             new_i = bus_map_arr[i]
             self.bus_idx[k] = new_i
 
+            control_bus_idx = self.controllable_bus_idx[k]
+            if control_bus_idx >= 0:
+                self.controllable_bus_idx[k] = bus_map_arr[control_bus_idx]
+
     def size(self) -> int:
         """
         Get size of the structure
@@ -217,7 +226,7 @@ class GeneratorData:
         data.names = self.names.copy()
         data.idtag = self.idtag.copy()
 
-        data.controllable = self.controllable.copy()
+        data.control_mode_int = self.control_mode_int.copy()
         data.installed_p = self.installed_p.copy()
 
         data.active = self.active.copy()
@@ -226,6 +235,8 @@ class GeneratorData:
         data.p3_star = self.p3_star.copy()
         data.q = self.q.copy()
         data.v = self.v.copy()
+        data.k_droop = self.k_droop.copy()
+        data.dead_band = self.dead_band.copy()
 
         data.qmin = self.qmin.copy()
         data.qmax = self.qmax.copy()
@@ -252,7 +263,7 @@ class GeneratorData:
         data.Rr = self.Rr.copy()
         data.Xr = self.Xr.copy()
 
-        data.type = self.type.copy()
+        data.tpe_int = self.tpe_int.copy()
 
         data.dispatchable = self.dispatchable.copy()
         data.must_run = self.must_run.copy()
@@ -281,6 +292,16 @@ class GeneratorData:
         data.is_at_dc_bus = self.is_at_dc_bus.copy()
 
         return data
+
+    def compare(self, other: "GeneratorData", tol: float, logger: Logger) -> None:
+        """
+        Compare generator fields used by NumericalCircuit.compare().
+        """
+        compare_arr(self.active, other.active, tol, 'GenData', 'active', logger)
+        compare_arr(self.p, other.p, tol, 'GenData', 'P', logger)
+        compare_arr(self.v, other.v, tol, 'GenData', 'Vset', logger)
+        compare_arr(self.qmin, other.qmin, tol, 'GenData', 'Qmin', logger)
+        compare_arr(self.qmax, other.qmax, tol, 'GenData', 'Qmax', logger)
 
     def get_injections(self) -> CxVec:
         """
@@ -443,7 +464,9 @@ class GeneratorData:
         Get the indices of controllable generators
         :return: idx_controllable, idx_non_controllable
         """
-        return np.where(self.controllable == 1)[0], np.where(self.controllable == 0)[0]
+        v_idx = GeneratorControlMode.V.idx()
+        return (np.where(self.control_mode_int == v_idx)[0],
+                np.where(self.control_mode_int != v_idx)[0])
 
     def get_gen_indices_at_buses(self, bus_indices: IntVec) -> IntVec:
 
@@ -451,7 +474,42 @@ class GeneratorData:
         for i in self.bus_idx:
             if i in bus_indices:
                 res.append(i)
+            else:
+                pass
         return np.array(res)
+
+    def get_dispatchable_active_indices_per_area(self,
+                                                 bus_area_indices: IntVec,
+                                                 area_count: int) -> list[IntVec]:
+        """
+        Get the active dispatchable generator indices grouped by area.
+
+        :param bus_area_indices: Area index of each bus. A value of ``-1`` means
+                                 that the bus does not belong to any area.
+        :param area_count: Number of declared areas.
+        :return: List where position ``a`` stores the generator-index array for area ``a``.
+        """
+        area_generators: list[list[int]] = list()
+        for _ in range(area_count):
+            area_generators.append(list())
+
+        for gen_idx in range(self.nelm):
+            if self.active[gen_idx] and self.dispatchable[gen_idx]:
+                bus_idx = self.bus_idx[gen_idx]
+                area_idx = bus_area_indices[bus_idx]
+
+                if 0 <= area_idx < area_count:
+                    area_generators[area_idx].append(gen_idx)
+                else:
+                    pass
+            else:
+                pass
+
+        grouped_indices: list[IntVec] = list()
+        for generator_indices in area_generators:
+            grouped_indices.append(np.array(generator_indices, dtype=int))
+
+        return grouped_indices
 
     def get_C_bus_elm(self) -> csc_matrix:
         """

@@ -1,17 +1,22 @@
 # VeraGrid
 
 VeraGrid is a top tier power systems planning and simulation software.
-As such, it has all the static analysis studies that you can think of, plus
-linear and non-linear optimization functions. Some of these functions are
-well known, while others you may have never heard of as they are a
-product of cutting-edge research.
+As such, it has all the analysis studies that you can think of, such as
+linear and non-linear optimization functions, RMS, EMT, short circuit, 
+stochastic, blackout cascading, investments evaluations and many more. 
+Some of these functions are well known, while others you may have never 
+heard of as they are a product of cutting-edge research.
 
 
 ![VeraGrid_banner.png](pics/VeraGrid_banner.png)[](![Ver(pics/VeraGrid_banner.png))
 ![VeraGrid](pics/VeraGrid_yt.png)
 
-[![Codacy Badge](https://api.codacy.com/project/badge/Grade/75e794c9bcfd49bda1721b9ba8f6c790)](https://app.codacy.com/app/SanPen/VeraGrid?utm_source=github.com&utm_medium=referral&utm_content=SanPen/VeraGrid&utm_campaign=Badge_Grade_Dashboard)
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/13016/badge)](https://www.bestpractices.dev/projects/13016)
+[![Dependency Graph](https://github.com/SanPen/VeraGrid/actions/workflows/dependabot/update-graph/badge.svg)](https://github.com/SanPen/VeraGrid/actions/workflows/dependabot/update-graph)
+[![Scorecard supply-chain security](https://github.com/SanPen/VeraGrid/actions/workflows/scorecard.yml/badge.svg)](https://github.com/SanPen/VeraGrid/actions/workflows/scorecard.yml)
+[![CodeQL](https://github.com/SanPen/VeraGrid/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/SanPen/VeraGrid/actions/workflows/github-code-scanning/codeql)
 [![Documentation Status](https://readthedocs.org/projects/veragrid/badge/?version=latest)](https://veragrid.readthedocs.io/en/latest/?badge=latest) [![Build Status](https://travis-ci.org/SanPen/VeraGrid.svg?branch=master)](https://travis-ci.org/SanPen/VeraGrid)
+[![LF Energy Landscape](https://img.shields.io/badge/LF%20Energy%20Landscape-5699C6)](https://landscape.lfenergy.org/?item=energy-systems--modeling-and-optimization--veragrid)
 [![DOI](https://www.zenodo.org/badge/49583206.svg)](https://www.zenodo.org/badge/latestdoi/49583206)
 [![Downloads](https://static.pepy.tech/personalized-badge/veragrid?period=total&units=abbreviation&left_color=grey&right_color=green&left_text=Downloads)](https://pepy.tech/project/veragrid)
 [![Chat](https://img.shields.io/badge/join-chat-green)](https://matrix.to/#/#veragrid:matrix.org)
@@ -120,15 +125,17 @@ VeraGrid is packed with features:
 - AC Continuation power flow
 - Contingency analysis (Power flow and LODF variants)
 - Sigma analysis (one-shot stability analysis)
-- Investments analysis
-- Bus-branch schematic
-- Substation-line map diagram
-- Time series and snapshot for most simulations
-- Overhead tower designer
-- Inputs analysis
-- Model bug report and repair
-- Import many formats (PSSe .raw/rawx, epc, dgs, matpower, pypsa, json, cim, cgmes)
-- Export in many formats (veragrid .xlsx/.veragrid/.json, cgmes, psse .raw/.rawx)
+- RMS simulation in positive sequence.
+- EMT simulation in unbalanced ABC formulation.
+- Investments analysis.
+- Bus-branch schematic.
+- Substation-line map diagram.
+- Time series and snapshot for most simulations.
+- Overhead tower designer.
+- Inputs analysis.
+- Model bug report and repair.
+- Import many formats (PSSe .raw/rawx, epc, dgs, matpower, pypsa, json, cim, cgmes).
+- Export in many formats (veragrid .xlsx/.veragrid/.json, matpower, cgmes, psse .raw/.rawx).
 
 All of these are industry tested algorithms, some of which surpass most commercially available software.
 The aim is to be a drop-in replacement for the expensive and less usable commercial
@@ -143,6 +150,18 @@ We have included extra materials to work with. These are included in the standal
 - [Grids](https://github.com/SanPen/VeraGrid/tree/master/Grids_and_profiles/grids) from IEEE and other open projects.
 - [Equipment catalogue](https://veragrid.readthedocs.io/en/latest/data_sheets.html) (Wires, Cables and Transformers)
   ready to use in VeraGrid.
+
+## Project information
+
+- Documentation: https://veragrid.readthedocs.io/
+- Source repository: https://github.com/SanPen/VeraGrid
+- Bug reports and feature requests: https://github.com/SanPen/VeraGrid/issues
+- Support and discussion: [SUPPORT.md](SUPPORT.md)
+- Contributing guide: [CONTRIBUTING.md](CONTRIBUTING.md)
+- Build instructions: [BUILD.md](BUILD.md)
+- Test and quality checks: [TESTING.md](TESTING.md)
+- Security policy: [SECURITY.md](SECURITY.md)
+- Release process: [RELEASE.md](RELEASE.md)
 
 ## Tutorials and examples
 
@@ -163,7 +182,7 @@ And of course, VeraGrid solves all Matpower 8 provided grids, solving the contin
 
 [![VeraGrid](Grids_and_profiles/matpower_benchmark/n_buses_vs_time.png)]
 
-Find the results at the [benchmarks page](https://veragrid.readthedocs.io/en/latest/rst_source/development/benchmarks.html) 
+Find the results at the [benchmarks page](https://veragrid.readthedocs.io/en/latest/md_source/power_flow.html#benchmark) 
 for more details.
 
 _Results simulated with AMD 9750x and 64 GB of RAM under Ubuntu 24.04.

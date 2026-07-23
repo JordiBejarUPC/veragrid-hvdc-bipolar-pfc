@@ -58,6 +58,10 @@ from dynamics_emt.support.switched_converter_handover_case import (
 )
 
 
+DEMO_FILTER_R_EQ_PU: float = 0.04
+DEMO_FILTER_L_EQ_PU: float = 1.5
+
+
 def build_demo_emt_options() -> EmtOptions:
     """
     Build the recommended EMT options for the interactive switched-converter demo.
@@ -87,6 +91,8 @@ def main() -> SwitchedConverterHandoverTrace:
         open_saved_plot=True,
         plot_file_name="switched_converter_handover_demo.png",
         emt_options=build_demo_emt_options(),
+        r_eq_pu=DEMO_FILTER_R_EQ_PU,
+        l_eq_pu=DEMO_FILTER_L_EQ_PU,
     )
     return trace
 

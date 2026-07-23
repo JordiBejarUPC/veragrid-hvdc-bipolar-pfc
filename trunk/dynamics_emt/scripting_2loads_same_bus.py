@@ -5,7 +5,6 @@
 
 from __future__ import annotations
 
-import os
 import sys
 from pathlib import Path
 from typing import Any, List, Optional, Tuple
@@ -24,12 +23,12 @@ from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_dae import EmtProblemDae
 from VeraGridEngine.Simulations.EMT.solvers.jit_symbolic_solver import JitSymbolicSolver
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowOptions
-from VeraGridEngine.Simulations.PowerFlow.power_flow_driver_3ph import PowerFlowDriver3Ph
-from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_template
+from VeraGridEngine.Simulations.PowerFlow3ph.power_flow_driver_3ph import PowerFlowDriver3Ph
+from VeraGridEngine.Utils.Symbolic.bus_emt_template import get_bus_emt_template
 from VeraGridEngine.Templates.Emt.load_zip_emt_template import get_load_ZIP_emt_template
 from VeraGridEngine.Templates.Emt.pi_line_emt_template import get_pi_line_emt_template
-from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template
-from VeraGridEngine.Templates.templates_common_functions import set_emt_model
+from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template_with_ref
+from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_emt_model
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic import Var
 from VeraGridEngine.enumerations import (
@@ -244,7 +243,7 @@ def attach_emt_models(
     """
     bus: Bus
     line_block: Block = get_pi_line_emt_template(vf=grid.var_factory, phN=False, phA=True, phB=True, phC=True).block
-    generator_block: Block = get_generator_thevenin_rl_emt_template(vf=grid.var_factory).block
+    generator_block: Block = get_generator_thevenin_rl_emt_template_with_ref(vf=grid.var_factory).block
     load_1_block: Block = get_load_ZIP_emt_template(vf=grid.var_factory, phA=True, phB=True, phC=True, name="Load1_ZIP").block
     load_2_block: Block = get_load_ZIP_emt_template(vf=grid.var_factory, phA=True, phB=True, phC=True, name="Load2_ZIP").block
 
@@ -280,12 +279,12 @@ def configure_zip_load_impedance(grid: MultiCircuit, load_block: Block) -> None:
     :return: None.
     """
     coefficient_names: List[Tuple[str, float]] = list([
-        (f"a1_{load_block.name}", 1.0),
-        (f"a2_{load_block.name}", 0.0),
-        (f"a3_{load_block.name}", 0.0),
-        (f"a4_{load_block.name}", 1.0),
-        (f"a5_{load_block.name}", 0.0),
-        (f"a6_{load_block.name}", 0.0),
+        (f"a1", 1.0),
+        (f"a2", 0.0),
+        (f"a3", 0.0),
+        (f"a4", 1.0),
+        (f"a5", 0.0),
+        (f"a6", 0.0),
     ])
     coefficient_index: int = 0
 
@@ -644,31 +643,31 @@ def export_plots_two_loads_same_bus(
     generator_currents: np.ndarray = extract_three_phase_matrix(problem, y_values, tuple(generator_block.out_vars[:3]))
 
     load_1_currents: np.ndarray = np.column_stack((
-        get_state_series(problem, load_1_block, f'i_A_{load_1_block.name}', y_values),
-        get_state_series(problem, load_1_block, f'i_B_{load_1_block.name}', y_values),
-        get_state_series(problem, load_1_block, f'i_C_{load_1_block.name}', y_values),
+        get_state_series(problem, load_1_block, f'i_A', y_values),
+        get_state_series(problem, load_1_block, f'i_B', y_values),
+        get_state_series(problem, load_1_block, f'i_C', y_values),
     ))
     load_2_currents: np.ndarray = np.column_stack((
-        get_state_series(problem, load_2_block, f'i_A_{load_2_block.name}', y_values),
-        get_state_series(problem, load_2_block, f'i_B_{load_2_block.name}', y_values),
-        get_state_series(problem, load_2_block, f'i_C_{load_2_block.name}', y_values),
+        get_state_series(problem, load_2_block, f'i_A', y_values),
+        get_state_series(problem, load_2_block, f'i_B', y_values),
+        get_state_series(problem, load_2_block, f'i_C', y_values),
     ))
     total_load_currents: np.ndarray = -(load_1_currents + load_2_currents)
 
     line_series_currents: np.ndarray = np.column_stack((
-        get_state_series(problem, line_block, 'i_ser_Pi_A', y_values),
-        get_state_series(problem, line_block, 'i_ser_Pi_B', y_values),
-        get_state_series(problem, line_block, 'i_ser_Pi_C', y_values),
+        get_state_series(problem, line_block, 'i_ser_A', y_values),
+        get_state_series(problem, line_block, 'i_ser_B', y_values),
+        get_state_series(problem, line_block, 'i_ser_C', y_values),
     ))
     line_from_shunt_currents: np.ndarray = np.column_stack((
-        get_state_series(problem, line_block, 'i_cap_f_Pi_A', y_values),
-        get_state_series(problem, line_block, 'i_cap_f_Pi_B', y_values),
-        get_state_series(problem, line_block, 'i_cap_f_Pi_C', y_values),
+        get_state_series(problem, line_block, 'i_cap_f_A', y_values),
+        get_state_series(problem, line_block, 'i_cap_f_B', y_values),
+        get_state_series(problem, line_block, 'i_cap_f_C', y_values),
     ))
     line_to_shunt_currents: np.ndarray = np.column_stack((
-        get_state_series(problem, line_block, 'i_cap_t_Pi_A', y_values),
-        get_state_series(problem, line_block, 'i_cap_t_Pi_B', y_values),
-        get_state_series(problem, line_block, 'i_cap_t_Pi_C', y_values),
+        get_state_series(problem, line_block, 'i_cap_t_A', y_values),
+        get_state_series(problem, line_block, 'i_cap_t_B', y_values),
+        get_state_series(problem, line_block, 'i_cap_t_C', y_values),
     ))
 
     output_directory.mkdir(parents=True, exist_ok=True)
@@ -833,8 +832,8 @@ def main() -> None:
     )
     expected_total_current_a = expected_load_1_current_a + expected_load_2_current_a
 
-    initialized_load_1_current_a = get_external_init_value(problem, load_1_block, f"i_A_{load_1_block.name}")
-    initialized_load_2_current_a = get_external_init_value(problem, load_2_block, f"i_A_{load_2_block.name}")
+    initialized_load_1_current_a = get_external_init_value(problem, load_1_block, f"i_A")
+    initialized_load_2_current_a = get_external_init_value(problem, load_2_block, f"i_A")
 
     assert_close(
         label="Load1 phase-A EMT initialization",

@@ -7,10 +7,9 @@ from __future__ import annotations
 import numpy as np
 
 from VeraGridEngine.DataStructures.branch_parent_data import BranchParentData
-from VeraGridEngine.enumerations import WindingsConnection, ShuntConnectionType
 from VeraGridEngine.Utils.Sparse.sparse_array import SparseObjectArray
-from VeraGridEngine.basic_structures import Vec, IntVec, ObjVec, CxVec, Logger
-from typing import List, Tuple, Set
+from VeraGridEngine.Utils.compare import compare_arr
+from VeraGridEngine.basic_structures import Vec, IntVec, CxVec, Logger
 
 
 class PassiveBranchData(BranchParentData):
@@ -41,9 +40,9 @@ class PassiveBranchData(BranchParentData):
         self.G2: Vec = np.zeros(self.nelm, dtype=float)
         self.B2: Vec = np.zeros(self.nelm, dtype=float)
 
-        self.conn: ObjVec = np.full(self.nelm, fill_value=WindingsConnection.GG, dtype=object)
-        self.conn_f: ObjVec = np.full(self.nelm, fill_value=ShuntConnectionType.NeutralStar, dtype=object)
-        self.conn_t: ObjVec = np.full(self.nelm, fill_value=ShuntConnectionType.NeutralStar, dtype=object)
+        self.conn: IntVec = np.zeros(self.nelm,  dtype=int)
+        self.conn_f: IntVec = np.zeros(self.nelm,  dtype=int)
+        self.conn_t: IntVec = np.zeros(self.nelm,  dtype=int)
 
         self.m_taps = SparseObjectArray(n=self.nelm)
         self.tau_taps = SparseObjectArray(n=self.nelm)
@@ -183,3 +182,16 @@ class PassiveBranchData(BranchParentData):
         # handle """superconductor branches"""
         if self.R[k] == 0.0 and self.X[k] == 0.0:
             self.reducible[k] = 1
+
+    def compare(self, other: "PassiveBranchData", tol: float, logger: Logger) -> None:
+        """
+        Compare passive-branch fields used by NumericalCircuit.compare().
+        """
+        super().compare(other=other, tol=tol, logger=logger)
+        compare_arr(self.R, other.R, tol, 'BranchData', 'r', logger)
+        compare_arr(self.X, other.X, tol, 'BranchData', 'x', logger)
+        compare_arr(self.G, other.G, tol, 'BranchData', 'g', logger)
+        compare_arr(self.B, other.B, tol, 'BranchData', 'b', logger)
+        compare_arr(self.G0, other.G0, tol, 'BranchData', 'g0', logger)
+        compare_arr(self.virtual_tap_f, other.virtual_tap_f, tol, 'BranchData', 'vtap_f', logger)
+        compare_arr(self.virtual_tap_t, other.virtual_tap_t, tol, 'BranchData', 'vtap_t', logger)

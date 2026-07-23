@@ -1,0 +1,88 @@
+= Belgovia Grid – CGMES Model Package
+:author: ENTSO-E / Contributors
+:revnumber: CGMES 3.0 – NCP 2.4
+:revdate: {docdate}
+
+== Introduction
+
+This ReadMe complements the machine-readable link:https://github.com/entsoe/relicapgrid/blob/cgmes-3.0_ncp-2.4_tc-1.1/Instance/Belgovia/Grid/manifest.ttl[manifest] and provides a human-readable description of the **Belgovia Grid CGMES package** within the
+*ReliCapGrid* repository.
+
+Belgovia is a synthetic power system model(Individual Grid Model, IGM) created for testing, demonstration, and interoperability purposes.  
+It does not represent a real TSO grid.
+
+The model is compliant with the *Common Grid Model Exchange Standard (CGMES)*, as defined by ENTSO-E and based on IEC CIM standards.
+
+== Model Scope and Content
+
+The Belgovia model represents a single control area and dataset includes the following CGMES profiles:
+
+* EQ – Equipment
+* TP – Topology
+* SSH – Steady State Hypothesis
+* SV – State Variables 
+
+== Purpose and Intended Use
+
+The Belgovia Grid model is intended for:
+
+* CGMES interoperability and conformance testing
+* Toolchain validation (import/export, profile support)
+* Network Code and Regional Coordination test scenarios
+* Training, documentation, and demonstration purposes
+* Power system analysis (e.g. load flow, contingency analysis)
+
+== Package Structure and Serializations
+
+The package is provided in multiple serializations:
+
+* `cimxml/` –  Authoritative CGMES exchange files (RDF/XML) according to *IEC 61970-600-1*, aligned with *IEC 61970-552:2016*.  
+  This is the primary format used by CGMES-compliant tools.
+
+* `jsonld/` –  
+  CIM JSON-LD representations aligned with *IEC 61970-553* (under development), enabling integration with semantic and data-driven tooling.
+  This serialization is not currently provided and may be added in the future to support semantic and data-driven tooling.
+
+* `trig/` – link:https://www.w3.org/TR/trig/[TriG] representation for improved readability and semantic inspection.
+  This serialization is **optional and not currently included** in this package.
+
+== Authoritative Representation
+
+The authoritative representation of the model is maintained in:
+
+`cimxml/`
+
+All other serializations are derived from this source:
+
+* JSON-LD is generated from CIM XML
+* TriG is generated from CIM XML
+
+[quote]
+____
+CIM XML SHALL be treated as the authoritative exchange format for this package unless otherwise explicitly stated.
+____
+
+== Validation Approach
+
+The model is designed to be compatible with:
+
+* CGMES 3.0 profile definitions
+* SHACL constraints representing profile rules and semantic validation
+
+Typical validation activities include:
+
+* RDF/XML syntax checks
+* Profile and SHACL-based conformance checks
+* Semantic consistency verification
+* Functional testing using CGMES-capable power system tools
+
+The CIM XML representation is expected to be compatible with power flow tools supporting CGMES.
+
+== Changelog
+
+Changes to this package follow the governance and release practices of the ReliCapGrid repository.
+
+Updates may include:
+* Structural adjustments aligned with CGMES evolution
+* Corrections and clarifications of existing data
+* Additions to support new test scenarios

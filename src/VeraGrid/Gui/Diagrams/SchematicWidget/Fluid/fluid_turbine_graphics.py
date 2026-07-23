@@ -7,8 +7,8 @@ from typing import TYPE_CHECKING
 from PySide6.QtGui import QPen
 from PySide6.QtWidgets import (QMenu)
 from VeraGridEngine.Devices.Fluid.fluid_turbine import FluidTurbine
-from VeraGrid.Gui.Diagrams.generic_graphics import ACTIVE, DEACTIVATED, Circle
-from VeraGrid.Gui.gui_functions import add_menu_entry
+from VeraGrid.Gui.Diagrams.generic_graphics import ACTIVE, DEACTIVATED, FluidTurbineSymbol
+from VeraGrid.Gui.gui_functions import add_menu_entry, translate_context_menu_text
 from VeraGrid.Gui.Diagrams.SchematicWidget.Injections.injections_template_graphics import InjectionTemplateGraphicItem
 
 if TYPE_CHECKING:  # Only imports the below statements during type checking
@@ -35,9 +35,7 @@ class FluidTurbineGraphicItem(InjectionTemplateGraphicItem):
                                               w=40,
                                               h=40)
 
-        self.set_glyph(
-            glyph=Circle(self, 40, 40, "T", self.update_nexus)
-        )
+        self.set_glyph(glyph=FluidTurbineSymbol(self, 40, 40))
 
     def recolour_mode(self) -> None:
         """
@@ -65,22 +63,22 @@ class FluidTurbineGraphicItem(InjectionTemplateGraphicItem):
         @return:
         """
         menu = QMenu()
-        menu.addSection("Turbine")
+        menu.addSection(translate_context_menu_text("Turbine"))
 
         add_menu_entry(menu=menu,
-                       text="Plot fluid profiles",
+                       text=translate_context_menu_text("Plot fluid profiles"),
                        icon_path=":/Icons/icons/plot.png",
                        function_ptr=self.plot)
 
         menu.addSeparator()
 
         add_menu_entry(menu=menu,
-                       text="Delete",
+                       text=translate_context_menu_text("Delete"),
                        icon_path=":/Icons/icons/delete3.png",
                        function_ptr=self.delete)
 
         add_menu_entry(menu=menu,
-                       text="Change bus",
+                       text=translate_context_menu_text("Change bus"),
                        icon_path=":/Icons/icons/move_bus.png",
                        function_ptr=self.change_bus)
 

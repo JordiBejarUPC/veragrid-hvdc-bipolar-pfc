@@ -2,14 +2,32 @@
 
 ## Supported Versions
 
+Security fixes are applied to the `master` branch and to the latest released
+version of the VeraGrid packages.
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 5.1.x   | :white_check_mark: |
-| 5.0.x   | :x:                |
-| 4.0.x   | :x:                |
-| < 4.0   | :x:                |
+Older releases may not receive security updates.
 
 ## Reporting a Vulnerability
 
-If you find a bug or any other issue, please report it as an issue.
+Do not report security vulnerabilities through public GitHub issues,
+discussions, or pull requests.
+
+Report vulnerabilities privately by email to:
+
+- `spenate@eroots.tech`
+
+Please include:
+
+- A clear description of the issue and affected component.
+- Steps to reproduce, proof of concept, or a minimal test case.
+- The VeraGrid version, package name, commit hash, and environment details.
+- Any known impact, affected inputs, or suggested remediation.
+
+We will review the report, confirm impact, and coordinate remediation and
+disclosure as appropriate.
+
+We aim to acknowledge new vulnerability reports within 14 days and usually much sooner for clear, reproducible issues.
+
+## Disclosure
+
+Please allow time for investigation and a fix before public disclosure.

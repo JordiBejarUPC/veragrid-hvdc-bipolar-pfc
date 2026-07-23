@@ -17,7 +17,7 @@ from VeraGridEngine.Utils.Symbolic.symbolic import expression2numba, _emit_one, 
 from VeraGridEngine.Utils.Symbolic.block import Block, Expr, Var, block2implicit
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results import PowerFlowResults
-from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, ConverterControlType
+from VeraGridEngine.enumerations import VarPowerFlowReferenceType, ConverterControlType
 from VeraGridEngine.basic_structures import Logger, ObjVec, BoolVec
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Expr, Const, expression2numba, _emit_event_params_eq, \
     _heaviside, piecewise, \
@@ -275,23 +275,23 @@ def init_explicit(bus, region: Block, sys_block, init_guess, seen_vars, sys_vars
         # fill general init guess
         
         if bus.is_dc:
-            init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.Vdc].uid,
-                        mdl.external_mapping[VarPowerFlowRefferenceType.Vdc].name)] = init_guess[
-                (bus_rms_mdl.external_mapping[VarPowerFlowRefferenceType.Vdc].uid,
-                 bus_rms_mdl.external_mapping[VarPowerFlowRefferenceType.Vdc].name)]
-            init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.P].uid,
-                        mdl.external_mapping[VarPowerFlowRefferenceType.P].name)] = init_guess[
-                (bus_rms_mdl.external_mapping[VarPowerFlowRefferenceType.P].uid,
-                 bus_rms_mdl.external_mapping[VarPowerFlowRefferenceType.P].name)]
+            init_guess[(mdl.external_mapping[VarPowerFlowReferenceType.Vdc].uid,
+                        mdl.external_mapping[VarPowerFlowReferenceType.Vdc].name)] = init_guess[
+                (bus_rms_mdl.external_mapping[VarPowerFlowReferenceType.Vdc].uid,
+                 bus_rms_mdl.external_mapping[VarPowerFlowReferenceType.Vdc].name)]
+            init_guess[(mdl.external_mapping[VarPowerFlowReferenceType.P].uid,
+                        mdl.external_mapping[VarPowerFlowReferenceType.P].name)] = init_guess[
+                (bus_rms_mdl.external_mapping[VarPowerFlowReferenceType.P].uid,
+                 bus_rms_mdl.external_mapping[VarPowerFlowReferenceType.P].name)]
         else:   
-            init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.P].uid,
-                        mdl.external_mapping[VarPowerFlowRefferenceType.P].name)] = init_guess[
-                (bus_rms_mdl.external_mapping[VarPowerFlowRefferenceType.P].uid,
-                 bus_rms_mdl.external_mapping[VarPowerFlowRefferenceType.P].name)]
-            init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.Q].uid,
-                        mdl.external_mapping[VarPowerFlowRefferenceType.Q].name)] = init_guess[
-                (bus_rms_mdl.external_mapping[VarPowerFlowRefferenceType.Q].uid,
-                 bus_rms_mdl.external_mapping[VarPowerFlowRefferenceType.Q].name)]
+            init_guess[(mdl.external_mapping[VarPowerFlowReferenceType.P].uid,
+                        mdl.external_mapping[VarPowerFlowReferenceType.P].name)] = init_guess[
+                (bus_rms_mdl.external_mapping[VarPowerFlowReferenceType.P].uid,
+                 bus_rms_mdl.external_mapping[VarPowerFlowReferenceType.P].name)]
+            init_guess[(mdl.external_mapping[VarPowerFlowReferenceType.Q].uid,
+                        mdl.external_mapping[VarPowerFlowReferenceType.Q].name)] = init_guess[
+                (bus_rms_mdl.external_mapping[VarPowerFlowReferenceType.Q].uid,
+                 bus_rms_mdl.external_mapping[VarPowerFlowReferenceType.Q].name)]
         mdl_vars = mdl.algebraic_vars + mdl.state_vars + mdl.diff_vars
 
         for var in mdl_vars:
@@ -502,10 +502,10 @@ def pseudo_transient(bus_index, bus_block, region_system, region_time, x0: np.nd
     reference_vars:List[Var] = list()
 
     #We add the buses variables to the model
-    Pg = region_system.external_mapping[VarPowerFlowRefferenceType.P]
-    Qg = region_system.external_mapping[VarPowerFlowRefferenceType.Q]
-    Vm = bus_block.external_mapping[VarPowerFlowRefferenceType.Vm]
-    Va = bus_block.external_mapping[VarPowerFlowRefferenceType.Va]
+    Pg = region_system.external_mapping[VarPowerFlowReferenceType.P]
+    Qg = region_system.external_mapping[VarPowerFlowReferenceType.Q]
+    Vm = bus_block.external_mapping[VarPowerFlowReferenceType.Vm]
+    Va = bus_block.external_mapping[VarPowerFlowReferenceType.Va]
 
     delete_vars_from_block(region_system, [Pg, Qg])
     connection_block = Block()
@@ -630,19 +630,19 @@ def compose_system_block(time: Var, grid: MultiCircuit,
         #  to be addressed when multiple devices are connected to the same bus.
         # (Shunt Load, for the benchmark case, two generators,...)
         if elm.is_dc:
-            init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.Vdc].uid,
-                    mdl.external_mapping[VarPowerFlowRefferenceType.Vdc].name)] = float(np.abs(res.voltage[i]))
-            init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.P].uid,
-                        mdl.external_mapping[VarPowerFlowRefferenceType.P].name)] = float(np.real(res.Sbus[i] / grid.Sbase))
+            init_guess[(mdl.external_mapping[VarPowerFlowReferenceType.Vdc].uid,
+                    mdl.external_mapping[VarPowerFlowReferenceType.Vdc].name)] = float(np.abs(res.voltage[i]))
+            init_guess[(mdl.external_mapping[VarPowerFlowReferenceType.P].uid,
+                        mdl.external_mapping[VarPowerFlowReferenceType.P].name)] = float(np.real(res.Sbus[i] / grid.Sbase))
         else:
-            init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.Vm].uid,
-                        mdl.external_mapping[VarPowerFlowRefferenceType.Vm].name)] = float(np.abs(res.voltage[i]))
-            init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.Va].uid,
-                        mdl.external_mapping[VarPowerFlowRefferenceType.Va].name)] = float(np.angle(res.voltage[i]))
-            init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.P].uid,
-                        mdl.external_mapping[VarPowerFlowRefferenceType.P].name)] = float(np.real(res.Sbus[i] / grid.Sbase))
-            init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.Q].uid,
-                        mdl.external_mapping[VarPowerFlowRefferenceType.Q].name)] = float(np.imag(res.Sbus[i] / grid.Sbase))
+            init_guess[(mdl.external_mapping[VarPowerFlowReferenceType.Vm].uid,
+                        mdl.external_mapping[VarPowerFlowReferenceType.Vm].name)] = float(np.abs(res.voltage[i]))
+            init_guess[(mdl.external_mapping[VarPowerFlowReferenceType.Va].uid,
+                        mdl.external_mapping[VarPowerFlowReferenceType.Va].name)] = float(np.angle(res.voltage[i]))
+            init_guess[(mdl.external_mapping[VarPowerFlowReferenceType.P].uid,
+                        mdl.external_mapping[VarPowerFlowReferenceType.P].name)] = float(np.real(res.Sbus[i] / grid.Sbase))
+            init_guess[(mdl.external_mapping[VarPowerFlowReferenceType.Q].uid,
+                        mdl.external_mapping[VarPowerFlowReferenceType.Q].name)] = float(np.imag(res.Sbus[i] / grid.Sbase))
 
         sys_block.add(mdl)
 
@@ -667,14 +667,14 @@ def compose_system_block(time: Var, grid: MultiCircuit,
 
         # fill init_guess
         if (not elm.bus_from.is_dc) and (not elm.bus_to.is_dc):
-            init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.Pf].uid,
-                        mdl.external_mapping[VarPowerFlowRefferenceType.Pf].name)] = Sf[i].real
-            init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.Qf].uid,
-                        mdl.external_mapping[VarPowerFlowRefferenceType.Qf].name)] = Sf[i].imag
-            init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.Pt].uid,
-                        mdl.external_mapping[VarPowerFlowRefferenceType.Pt].name)] = St[i].real
-            init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.Qt].uid,
-                        mdl.external_mapping[VarPowerFlowRefferenceType.Qt].name)] = St[i].imag
+            init_guess[(mdl.external_mapping[VarPowerFlowReferenceType.Pf].uid,
+                        mdl.external_mapping[VarPowerFlowReferenceType.Pf].name)] = Sf[i].real
+            init_guess[(mdl.external_mapping[VarPowerFlowReferenceType.Qf].uid,
+                        mdl.external_mapping[VarPowerFlowReferenceType.Qf].name)] = Sf[i].imag
+            init_guess[(mdl.external_mapping[VarPowerFlowReferenceType.Pt].uid,
+                        mdl.external_mapping[VarPowerFlowReferenceType.Pt].name)] = St[i].real
+            init_guess[(mdl.external_mapping[VarPowerFlowReferenceType.Qt].uid,
+                        mdl.external_mapping[VarPowerFlowReferenceType.Qt].name)] = St[i].imag
 
         sys_block.add(mdl)
 
@@ -711,19 +711,19 @@ def compose_system_block(time: Var, grid: MultiCircuit,
         St_vsc = res.St_vsc / grid.Sbase
         Sf_vsc = (res.Pfn_vsc[i] + res.Pfp_vsc[i])/grid.Sbase
         # fill init_guess
-        init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.Pf].uid,
-                    mdl.external_mapping[VarPowerFlowRefferenceType.Pf].name)] = Sf_vsc
-        init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.Pt].uid,
-                    mdl.external_mapping[VarPowerFlowRefferenceType.Pt].name)] = St_vsc[i].real
-        init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.Qt].uid,
-                    mdl.external_mapping[VarPowerFlowRefferenceType.Qt].name)] = St_vsc[i].imag
+        init_guess[(mdl.external_mapping[VarPowerFlowReferenceType.Pf].uid,
+                    mdl.external_mapping[VarPowerFlowReferenceType.Pf].name)] = Sf_vsc
+        init_guess[(mdl.external_mapping[VarPowerFlowReferenceType.Pt].uid,
+                    mdl.external_mapping[VarPowerFlowReferenceType.Pt].name)] = St_vsc[i].real
+        init_guess[(mdl.external_mapping[VarPowerFlowReferenceType.Qt].uid,
+                    mdl.external_mapping[VarPowerFlowReferenceType.Qt].name)] = St_vsc[i].imag
         
         # Initialize Vdc from the DC bus (bus_from)
         dc_bus_model = elm.bus_from.rms_model
-        init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.Vdc].uid,
-                    mdl.external_mapping[VarPowerFlowRefferenceType.Vdc].name)] = init_guess[
-            (dc_bus_model.external_mapping[VarPowerFlowRefferenceType.Vdc].uid,
-             dc_bus_model.external_mapping[VarPowerFlowRefferenceType.Vdc].name)] 
+        init_guess[(mdl.external_mapping[VarPowerFlowReferenceType.Vdc].uid,
+                    mdl.external_mapping[VarPowerFlowReferenceType.Vdc].name)] = init_guess[
+            (dc_bus_model.external_mapping[VarPowerFlowReferenceType.Vdc].uid,
+             dc_bus_model.external_mapping[VarPowerFlowReferenceType.Vdc].name)]
 
     # injections
     # get injection devices grouped by buses
@@ -758,11 +758,11 @@ def compose_system_block(time: Var, grid: MultiCircuit,
     # del buses P, Q
     for i, elm in enumerate(grid.buses):
         mdl = elm.rms_model
-        del init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.P].uid,
-                        mdl.external_mapping[VarPowerFlowRefferenceType.P].name)]
+        del init_guess[(mdl.external_mapping[VarPowerFlowReferenceType.P].uid,
+                        mdl.external_mapping[VarPowerFlowReferenceType.P].name)]
         if not elm.is_dc:
-            del init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.Q].uid,
-                            mdl.external_mapping[VarPowerFlowRefferenceType.Q].name)]
+            del init_guess[(mdl.external_mapping[VarPowerFlowReferenceType.Q].uid,
+                            mdl.external_mapping[VarPowerFlowReferenceType.Q].name)]
 
     return time, sys_block, init_guess
 
@@ -850,12 +850,12 @@ def initialize_rms(grid: MultiCircuit,
         f = bus_dict[elm.bus_from]
         t = bus_dict[elm.bus_to]
         # add variable to conservation equations of the bus to which the element is connected
-        setP(P, P_used, f, -mdl.E(VarPowerFlowRefferenceType.Pf))
-        setP(P, P_used, t, -mdl.E(VarPowerFlowRefferenceType.Pt))
+        setP(P, P_used, f, -mdl.E(VarPowerFlowReferenceType.Pf))
+        setP(P, P_used, t, -mdl.E(VarPowerFlowReferenceType.Pt))
         if not elm.bus_from.is_dc:
-            setQ(Q, Q_used, f, -mdl.E(VarPowerFlowRefferenceType.Qf))
+            setQ(Q, Q_used, f, -mdl.E(VarPowerFlowReferenceType.Qf))
         if not elm.bus_to.is_dc:
-            setQ(Q, Q_used, t, -mdl.E(VarPowerFlowRefferenceType.Qt))
+            setQ(Q, Q_used, t, -mdl.E(VarPowerFlowReferenceType.Qt))
 
         for var in elm.rms_model.get_all_vars():
             vars2device[var.uid] = elm
@@ -887,9 +887,9 @@ def initialize_rms(grid: MultiCircuit,
         mdl = elm.rms_model
         # add variable to conservation equations of the bus to which the element is connected
         k = bus_dict[elm.bus]
-        setP(P, P_used, k, mdl.E(VarPowerFlowRefferenceType.P))
+        setP(P, P_used, k, mdl.E(VarPowerFlowReferenceType.P))
         if not elm.bus.is_dc:
-            setQ(Q, Q_used, k, mdl.E(VarPowerFlowRefferenceType.Q))
+            setQ(Q, Q_used, k, mdl.E(VarPowerFlowReferenceType.Q))
 
         for var in elm.rms_model.get_all_vars():
             vars2device[var.uid] = elm

@@ -12,13 +12,13 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..",
 import VeraGridEngine.api as vge
 import numpy as np
 import matplotlib.pyplot as plt
-from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms
+from VeraGridEngine.Utils.Symbolic.bus_rms_template import initialize_bus_rms
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.Templates.Rms.pvd1_rms_template import get_pvd1_complete_rms_template
 from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template_rms
-from VeraGridEngine.Templates.templates_common_functions import set_rms_model
+from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_rms_model
 from VeraGridEngine.Utils.Symbolic.block import Block
-from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
+from VeraGridEngine.enumerations import VarPowerFlowReferenceType
 from VeraGridEngine.Devices.Events.rms_events_group import RmsEventsGroup
 from VeraGridEngine.Devices.Events.rms_event import RmsEvent
 from VeraGridEngine.Simulations.Rms.rms_problem_factory import build_rms_problem
@@ -37,8 +37,8 @@ def find_name_in_block(name: str, block: Block):
 
 
 def build_constant_pq_generator_model(vf, name: str) -> Block:
-    vm = vf.add_var(f"Vm_{name}", VarPowerFlowRefferenceType.Vm)
-    va = vf.add_var(f"Va_{name}", VarPowerFlowRefferenceType.Va)
+    vm = vf.add_var(f"Vm_{name}", VarPowerFlowReferenceType.Vm)
+    va = vf.add_var(f"Va_{name}", VarPowerFlowReferenceType.Va)
     p = vf.add_var(f"P_{name}")
     q = vf.add_var(f"Q_{name}")
     p0 = vf.add_var(f"P0_{name}")
@@ -51,10 +51,10 @@ def build_constant_pq_generator_model(vf, name: str) -> Block:
         init_eqs={p0: p, q0: q},
         event_dict={p0: vf.add_const(None), q0: vf.add_const(None)},
         external_mapping={
-            VarPowerFlowRefferenceType.Vm: vm,
-            VarPowerFlowRefferenceType.Va: va,
-            VarPowerFlowRefferenceType.P: p,
-            VarPowerFlowRefferenceType.Q: q,
+            VarPowerFlowReferenceType.Vm: vm,
+            VarPowerFlowReferenceType.Va: va,
+            VarPowerFlowReferenceType.P: p,
+            VarPowerFlowReferenceType.Q: q,
         },
         out_vars=[p, q],
     )
@@ -99,8 +99,8 @@ def initialize_rms_models(grid: vge.MultiCircuit):
 
     for line in grid.lines:
         line_model = get_line_rms_template(vfactory=vf, name=f"Line_{line.name}").block
-        line_model.connect([line_model.in_vars[0], line_model.in_vars[1]], [line.bus_from.rms_model.out_vars[0], line.bus_from.rms_model.out_vars[1]])
-        line_model.connect([line_model.in_vars[2], line_model.in_vars[3]], [line.bus_to.rms_model.out_vars[0], line.bus_to.rms_model.out_vars[1]])
+        grid.var_factory.add_connections([line_model.in_vars[0], line_model.in_vars[1]], [line.bus_from.rms_model.out_vars[0], line.bus_from.rms_model.out_vars[1]])
+        grid.var_factory.add_connections([line_model.in_vars[2], line_model.in_vars[3]], [line.bus_to.rms_model.out_vars[0], line.bus_to.rms_model.out_vars[1]])
         line_model.unify_blocks()
         line.rms_model = line_model
 
@@ -110,7 +110,7 @@ def initialize_rms_models(grid: vge.MultiCircuit):
 
     pv_gen = grid.generators[1]
     pvd1_model = get_pvd1_complete_rms_template(vfactory=vf, name=f"PVD1_{pv_gen.name}").block
-    pvd1_model.connect([pvd1_model.in_vars[0], pvd1_model.in_vars[1]], [pv_gen.bus.rms_model.out_vars[0], pv_gen.bus.rms_model.out_vars[1]])
+    grid.var_factory.add_connections([pvd1_model.in_vars[0], pvd1_model.in_vars[1]], [pv_gen.bus.rms_model.out_vars[0], pv_gen.bus.rms_model.out_vars[1]])
     pvd1_model.unify_blocks()
     pv_gen.rms_model = pvd1_model
 

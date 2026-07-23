@@ -7,7 +7,6 @@ import cProfile
 from matplotlib import pyplot as plt
 
 from VeraGridEngine.Utils.Symbolic.block import Block
-from VeraGridEngine.Utils.Symbolic.symbolic_io import block_deep_copy
 
 from VeraGridEngine.Devices.Dynamic.dynamic_model_host import DynamicModelHost
 from VeraGridEngine.Simulations.Rms.problems.rms_problem_dae import RmsProblemDae
@@ -15,11 +14,10 @@ from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
 from VeraGridEngine.Simulations.Rms.numerical.back_euler_fx import BackEulerImplicitIntegration
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.Templates.Rms.load_rms_template import get_load_rms_template
-from VeraGridEngine.Templates.Rms.load1_rms_template import get_load1_rms_template
 from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template_rms
-from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms
+from VeraGridEngine.Utils.Symbolic.bus_rms_template import initialize_bus_rms
 
-from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DynamicIntegrationMethod, RmsInitializationMethod
+from VeraGridEngine.enumerations import VarPowerFlowReferenceType, DynamicIntegrationMethod, RmsInitializationMethod
 from VeraGridEngine.Devices.Aggregation import RmsEvent
 import VeraGridEngine.api as gce
 
@@ -122,42 +120,42 @@ load1_mdl = get_load_rms_template(grid.var_factory).block
 
 # connection with buses
 
-genqec0_mdl.connect([genqec0_mdl.in_vars[0]], [bus0.rms_model.out_vars[0]])
-genqec0_mdl.connect([genqec0_mdl.in_vars[1]], [bus0.rms_model.out_vars[1]])
+grid.var_factory.add_connections([genqec0_mdl.in_vars[0]], [bus0.rms_model.out_vars[0]])
+grid.var_factory.add_connections([genqec0_mdl.in_vars[1]], [bus0.rms_model.out_vars[1]])
 
-genqec1_mdl.connect([genqec1_mdl.in_vars[0]], [bus0.rms_model.out_vars[0]])
-genqec1_mdl.connect([genqec1_mdl.in_vars[1]], [bus0.rms_model.out_vars[1]])
+grid.var_factory.add_connections([genqec1_mdl.in_vars[0]], [bus0.rms_model.out_vars[0]])
+grid.var_factory.add_connections([genqec1_mdl.in_vars[1]], [bus0.rms_model.out_vars[1]])
 
-line0_mdl.connect([line0_mdl.in_vars[0]], [bus0.rms_model.out_vars[0]])
-line0_mdl.connect([line0_mdl.in_vars[1]], [bus0.rms_model.out_vars[1]])
+grid.var_factory.add_connections([line0_mdl.in_vars[0]], [bus0.rms_model.out_vars[0]])
+grid.var_factory.add_connections([line0_mdl.in_vars[1]], [bus0.rms_model.out_vars[1]])
 
-line0_mdl.connect([line0_mdl.in_vars[2]], [bus1.rms_model.out_vars[0]])
-line0_mdl.connect([line0_mdl.in_vars[3]], [bus1.rms_model.out_vars[1]])
+grid.var_factory.add_connections([line0_mdl.in_vars[2]], [bus1.rms_model.out_vars[0]])
+grid.var_factory.add_connections([line0_mdl.in_vars[3]], [bus1.rms_model.out_vars[1]])
 
-line1_mdl.connect([line1_mdl.in_vars[0]], [bus0.rms_model.out_vars[0]])
-line1_mdl.connect([line1_mdl.in_vars[1]], [bus0.rms_model.out_vars[1]])
+grid.var_factory.add_connections([line1_mdl.in_vars[0]], [bus0.rms_model.out_vars[0]])
+grid.var_factory.add_connections([line1_mdl.in_vars[1]], [bus0.rms_model.out_vars[1]])
 
-line1_mdl.connect([line1_mdl.in_vars[2]], [bus1.rms_model.out_vars[0]])
-line1_mdl.connect([line1_mdl.in_vars[3]], [bus1.rms_model.out_vars[1]])
+grid.var_factory.add_connections([line1_mdl.in_vars[2]], [bus1.rms_model.out_vars[0]])
+grid.var_factory.add_connections([line1_mdl.in_vars[3]], [bus1.rms_model.out_vars[1]])
 
 # u_gov = find_name_in_block("u_gov1", gov1_mdl)
 
-load0_mdl.connect([load0_mdl.in_vars[0]], [bus1.rms_model.out_vars[0]])
-load0_mdl.connect([load0_mdl.in_vars[1]], [bus1.rms_model.out_vars[1]])
+grid.var_factory.add_connections([load0_mdl.in_vars[0]], [bus1.rms_model.out_vars[0]])
+grid.var_factory.add_connections([load0_mdl.in_vars[1]], [bus1.rms_model.out_vars[1]])
 
-load1_mdl.connect([load1_mdl.in_vars[0]], [bus1.rms_model.out_vars[0]])
-load1_mdl.connect([load1_mdl.in_vars[1]], [bus1.rms_model.out_vars[1]])
+grid.var_factory.add_connections([load1_mdl.in_vars[0]], [bus1.rms_model.out_vars[0]])
+grid.var_factory.add_connections([load1_mdl.in_vars[1]], [bus1.rms_model.out_vars[1]])
 
 # external mapping
 
 big_gen0 = Block(children=[genqec0_mdl])
 big_gen1 = Block(children=[genqec1_mdl])
 
-big_gen0.external_mapping.update({VarPowerFlowRefferenceType.P: genqec0_mdl.out_vars[0]})
-big_gen0.external_mapping.update({VarPowerFlowRefferenceType.Q: genqec0_mdl.out_vars[1]})
+big_gen0.external_mapping.update({VarPowerFlowReferenceType.P: genqec0_mdl.out_vars[0]})
+big_gen0.external_mapping.update({VarPowerFlowReferenceType.Q: genqec0_mdl.out_vars[1]})
 
-big_gen1.external_mapping.update({VarPowerFlowRefferenceType.P: genqec1_mdl.out_vars[0]})
-big_gen1.external_mapping.update({VarPowerFlowRefferenceType.Q: genqec1_mdl.out_vars[1]})
+big_gen1.external_mapping.update({VarPowerFlowReferenceType.P: genqec1_mdl.out_vars[0]})
+big_gen1.external_mapping.update({VarPowerFlowReferenceType.Q: genqec1_mdl.out_vars[1]})
 
 # add models to dyn_host
 line0_dynhost.model = line0_mdl

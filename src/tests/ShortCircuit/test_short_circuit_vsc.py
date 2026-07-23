@@ -2,7 +2,37 @@ import VeraGridEngine.api as vge
 from VeraGridEngine import PowerFlowOptions, ShortCircuitOptions
 from VeraGridEngine.enumerations import ConverterControlType, MethodShortCircuit, ConverterFaultControlType
 from VeraGridEngine.Simulations.PowerFlow.power_flow_options import SolverType
+from VeraGridEngine.Simulations.PowerFlow.Formulations.pf_full_acdc_with_negative_poles import PfAcDcWithNegativePoles
+from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.newton_raphson_fx import newton_raphson_fx
 import numpy as np
+
+
+def solve_with_autodiff(grid, pf_options):
+    """
+    Solve the AC/DC power flow forcing the finite-difference Jacobian.
+    """
+    logger = vge.Logger()
+    nc = vge.compile_numerical_circuit_at(grid, t_idx=None,
+                                          use_stored_guess=pf_options.use_stored_guess,
+                                          control_taps_modules=pf_options.control_taps_modules,
+                                          control_taps_phase=pf_options.control_taps_phase,
+                                          control_remote_voltage=pf_options.control_remote_voltage,
+                                          consider_grounded_buses=len(grid.vsc_devices) > 0)
+    Qmax, Qmin = nc.get_reactive_power_limits()
+    problem = PfAcDcWithNegativePoles(V0=nc.bus_data.Vbus.copy(),
+                                      S0=nc.get_power_injections_pu(),
+                                      I0=nc.get_current_injections_pu(),
+                                      Y0=-nc.get_admittance_injections_pu(),
+                                      Qmin=Qmin, Qmax=Qmax,
+                                      nc=nc, options=pf_options, logger=logger)
+    problem.use_autodiff_jacobian = True
+
+    return newton_raphson_fx(problem=problem,
+                             tol=pf_options.tolerance,
+                             max_iter=pf_options.max_iter,
+                             trust=pf_options.trust_radius,
+                             verbose=pf_options.verbose,
+                             logger=logger)
 
 
 def test_short_circuit_vsc_3buses():
@@ -221,7 +251,10 @@ def test_dgs_parse_droop_vsc():
     the same short-circuit current like in PowerFactory.
     Finally, the WindTurbine element in PowerFactory, has to be converted into one VSC and one DC bus.
     """
-    grid = vge.open_file('data/grids/test_droop_vsc.dgs')
+    grid = vge.open_file('data/grids/test_droop_vsc.dgs',
+                         options=vge.FileOpenOptions(
+                             dgs_use_vsc_for_injections=True
+                         ))
 
     # ------------------------------------------------------------------------------------------------------------------
     #   AC/DC Power Flow under healthy conditions
@@ -263,7 +296,10 @@ def test_dgs_parse_external_grid_sc():
     is correctly replicated in VeraGrid from PowerFactory, and that the short-circuit results matches the RMS dynamic
     simulation of PowerFactory.
     """
-    grid = vge.open_file('data/grids/test_ieee14_external_grid.dgs')
+    grid = vge.open_file('data/grids/test_ieee14_external_grid.dgs',
+                         options=vge.FileOpenOptions(
+                             dgs_use_vsc_for_injections=True
+                         ))
 
     # ------------------------------------------------------------------------------------------------------------------
     #   AC/DC Power Flow under healthy conditions
@@ -307,7 +343,10 @@ def test_dgs_parse_static_var_system():
     This test is performed to the modified IEEE 14-bus system with 8 VSCs, in order to check that the static var systems
     (SVS) are correctly replicated in VeraGrid from PowerFactory, and that the power flow results are the same.
     """
-    grid = vge.open_file('data/grids/test_ieee14_svs.dgs')
+    grid = vge.open_file('data/grids/test_ieee14_svs.dgs',
+                         options=vge.FileOpenOptions(
+                             dgs_use_vsc_for_injections=True
+                         ))
 
     # ------------------------------------------------------------------------------------------------------------------
     #   AC/DC Power Flow under healthy conditions
@@ -315,14 +354,15 @@ def test_dgs_parse_static_var_system():
     pf_options = PowerFlowOptions(solver_type=SolverType.NR,
                                   retry_with_other_methods=False,
                                   limit_i_vsc=False)
-    res_pf = vge.power_flow(grid=grid, options=pf_options)
+    res_pf = solve_with_autodiff(grid, pf_options)
+    assert res_pf.converged
 
     power_factory = np.array([
         1.000000, 0.968810, 0.924416, 0.958790, 0.966401, 0.983399, 0.972619, 0.978596, 0.977300, 0.983301, 1.000000, 0.985477, 0.999711,
         0.987028, 0.970710, 0.992464, 0.988444, 0.990187, 0.998693, 0.993241, 0.998585,
         1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0])
 
-    assert np.allclose(np.abs(res_pf.voltage), power_factory, atol=1e-6)
+    assert np.allclose(np.abs(res_pf.V), power_factory, atol=1e-6)
 
 
 def test_dgs_parse_series_reactance_common_impedance():
@@ -351,7 +391,10 @@ def test_dgs_parse_ward_and_asynchronous():
     behaving as Ward Equivalents and also that the Asynchronous Generators (AG) are correctly replicated in VeraGrid
     from PowerFactory, and that the power flow results are the same.
     """
-    grid = vge.open_file('data/grids/test_ieee14_ward_asynchronous.dgs')
+    grid = vge.open_file('data/grids/test_ieee14_ward_asynchronous.dgs',
+                         options=vge.FileOpenOptions(
+                             dgs_use_vsc_for_injections=True
+                         ))
 
     # ------------------------------------------------------------------------------------------------------------------
     #   AC/DC Power Flow under healthy conditions

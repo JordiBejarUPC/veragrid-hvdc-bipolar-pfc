@@ -15,18 +15,16 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..',
 
 import VeraGridEngine as gce
 from VeraGridEngine.Devices.Substation.bus import Bus
-from VeraGridEngine.Devices.Injections.generator import Generator
 from VeraGridEngine.Devices.Branches.line import Line
 from VeraGridEngine.Devices.Injections.load import Load
-from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms
+from VeraGridEngine.Utils.Symbolic.bus_rms_template import initialize_bus_rms
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.Templates.Rms.load_zip_template import ZIPLoadBuild
 from VeraGridEngine.Templates.Rms.genrow_rms_template import get_genrow_rms_template
-from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowDriver
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
 from VeraGridEngine.Simulations.Rms.problems.rms_problem_dae import RmsProblemDae
 from VeraGridEngine.Simulations.Rms.numerical.back_euler_fx import BackEulerImplicitIntegration
-from VeraGridEngine.enumerations import DynamicIntegrationMethod, RmsInitializationMethod, VarPowerFlowRefferenceType
+from VeraGridEngine.enumerations import DynamicIntegrationMethod, RmsInitializationMethod, VarPowerFlowReferenceType
 from VeraGridEngine.Utils.Symbolic import Block
 
 
@@ -101,13 +99,13 @@ def setup_rms_models_expanded(grid):
         
         bus = gen.bus
         print(f"   Connecting Gen {gen.name} to Bus {bus.name}...")
-        genrow_mdl.connect([genrow_mdl.in_vars[0]], [bus.rms_model.out_vars[0]])  # Vm
-        genrow_mdl.connect([genrow_mdl.in_vars[1]], [bus.rms_model.out_vars[1]])  # Va
+        grid.var_factory.add_connections([genrow_mdl.in_vars[0]], [bus.rms_model.out_vars[0]])  # Vm
+        grid.var_factory.add_connections([genrow_mdl.in_vars[1]], [bus.rms_model.out_vars[1]])  # Va
         genrow_mdl.unify_blocks()
         
         big_gen = Block(children=[genrow_mdl])
-        big_gen.external_mapping.update({VarPowerFlowRefferenceType.P: genrow_mdl.out_vars[0]})
-        big_gen.external_mapping.update({VarPowerFlowRefferenceType.Q: genrow_mdl.out_vars[1]})
+        big_gen.external_mapping.update({VarPowerFlowReferenceType.P: genrow_mdl.out_vars[0]})
+        big_gen.external_mapping.update({VarPowerFlowReferenceType.Q: genrow_mdl.out_vars[1]})
         big_gen.unify_blocks()
         
         gen.rms_model = big_gen
@@ -125,7 +123,7 @@ def setup_rms_models_expanded(grid):
         
         bus = load.bus
         print(f"   Connecting Load {load.name} to Bus {bus.name}...")
-        load_mdl.connect([load_mdl.in_vars[0]], [bus.rms_model.out_vars[0]])  # Vm
+        grid.var_factory.add_connections([load_mdl.in_vars[0]], [bus.rms_model.out_vars[0]])  # Vm
         load_mdl.unify_blocks()
         
         load.rms_model = load_mdl
@@ -139,11 +137,11 @@ def setup_rms_models_expanded(grid):
         from_bus = line.bus_from
         to_bus = line.bus_to
         print(f"   Connecting Line {line.name} ({from_bus.name} → {to_bus.name})...")
-        
-        line_mdl.connect([line_mdl.in_vars[0]], [from_bus.rms_model.out_vars[0]])  # Vmf
-        line_mdl.connect([line_mdl.in_vars[1]], [from_bus.rms_model.out_vars[1]])  # Vaf
-        line_mdl.connect([line_mdl.in_vars[2]], [to_bus.rms_model.out_vars[0]])    # Vmt
-        line_mdl.connect([line_mdl.in_vars[3]], [to_bus.rms_model.out_vars[1]])    # Vat
+
+        grid.var_factory.add_connections([line_mdl.in_vars[0]], [from_bus.rms_model.out_vars[0]])  # Vmf
+        grid.var_factory.add_connections([line_mdl.in_vars[1]], [from_bus.rms_model.out_vars[1]])  # Vaf
+        grid.var_factory.add_connections([line_mdl.in_vars[2]], [to_bus.rms_model.out_vars[0]])    # Vmt
+        grid.var_factory.add_connections([line_mdl.in_vars[3]], [to_bus.rms_model.out_vars[1]])    # Vat
         line_mdl.unify_blocks()
         
         line.rms_model = line_mdl

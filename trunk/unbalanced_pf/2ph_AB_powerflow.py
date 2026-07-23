@@ -1,7 +1,6 @@
 import numpy as np
-import pandas as pd
 import VeraGridEngine.api as gce
-from VeraGridEngine.Simulations.PowerFlow.Formulations.pf_basic_formulation_3ph import PfBasicFormulation3Ph
+from VeraGridEngine.Simulations.PowerFlow3ph.Formulations.pf_basic_formulation_3ph import PfBasicFormulation3Ph
 from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.newton_raphson_fx import newton_raphson_fx
 
 def power_flow_3ph(grid, t_idx=None):

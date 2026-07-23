@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Tuple, Callable, List, Any, Dict, Union, Set
+from typing import Tuple, Callable, List, Any, Dict, Union, Set, Optional
 import time
 import hashlib
 
@@ -34,6 +34,7 @@ from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import (
 from VeraGridEngine.Utils.emt_boundary_update_wrapper import BoundaryUpdateWrapper
 from VeraGridEngine.Utils.Symbolic.jit_compiler import EagerEquationCompiler, EquationCompiler, MatrixVectorizedCompiler, _compile_to_file
 from VeraGridEngine.Simulations.EMT.solvers.structural_compiled_solver import StructuralCompiledSparseFactorizationManager
+from VeraGridEngine.Simulations.driver_template import DummySignal
 from VeraGridEngine.Utils.NumericalMethods.external_sparse_solver_interface import SparseLinearSolverBackendProvider
 from VeraGridEngine.enumerations import DynamicIntegrationMethod
 from VeraGridEngine.basic_structures import Vec, Mat
@@ -65,7 +66,7 @@ def _build_backend_cache_token(
     :rtype: str
     """
     payload: str = "|".join([method.name, str(n_rows), str(n_cols), str(len(group_keys))])
-    return hashlib.md5(payload.encode("utf-8")).hexdigest()[:16]
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:16]
 
 
 def fill_full_parameter_buffer(runtime_params: Vec, static_params: Vec, full_params_out: Vec) -> None:
@@ -129,53 +130,148 @@ def evaluate_vectorized_residual(
     return float(np.max(np.abs(residual_out)))
 
 
+def _dense_lu_bundle_solve(bundle: DenseSolveBundle, rhs: Vec) -> Vec:
+    """
+    Solve one dense LU system.
+
+    :param bundle: Dense LU bundle ``(factorization, matrix)``.
+    :param rhs: Right-hand side vector.
+    :return: Solution vector.
+    """
+    return lu_solve(bundle[0], rhs)
+
+
+def _dense_lu_bundle_fallback(bundle: DenseSolveBundle, rhs: Vec) -> Vec:
+    """
+    Solve one dense fallback least-squares system.
+
+    :param bundle: Dense LU bundle ``(factorization, matrix)``.
+    :param rhs: Right-hand side vector.
+    :return: Fallback solution vector.
+    """
+    return dense_lstsq_fallback(bundle[1], rhs)
+
+
+def _dense_lu_bundle_matrix(bundle: DenseSolveBundle) -> np.ndarray:
+    """
+    Return the dense Jacobian matrix stored in one LU bundle.
+
+    :param bundle: Dense LU bundle ``(factorization, matrix)``.
+    :return: Dense Jacobian matrix.
+    """
+    return bundle[1]
+
+
+def _sparse_factor_manager_solve(manager: StructuralCompiledSparseFactorizationManager, rhs: Vec) -> Vec:
+    """
+    Solve one sparse linear system through the factor manager.
+
+    :param manager: Sparse factorization manager.
+    :param rhs: Right-hand side vector.
+    :return: Solution vector.
+    """
+    return manager.solve(rhs)
+
+
+def _sparse_factor_manager_fallback(manager: StructuralCompiledSparseFactorizationManager, rhs: Vec) -> Vec:
+    """
+    Solve one sparse fallback least-squares system.
+
+    :param manager: Sparse factorization manager.
+    :param rhs: Right-hand side vector.
+    :return: Fallback solution vector.
+    """
+    return sparse_lsqr_fallback(manager.get_active_matrix(), rhs)
+
+
+def _sparse_factor_manager_matrix(manager: StructuralCompiledSparseFactorizationManager) -> csc_matrix:
+    """
+    Return the active sparse Jacobian matrix held by one factor manager.
+
+    :param manager: Sparse factorization manager.
+    :return: Active sparse Jacobian matrix.
+    """
+    return manager.get_active_matrix()
+
+
+class LegacyResidualEvaluatorAdapter:
+    """
+    Adapt one legacy 8-argument residual callable to the fixed 7-argument solver interface.
+    """
+
+    __slots__ = ["_residual_callable", "_vec_flat_args"]
+
+    def __init__(self, residual_callable: Callable[..., Any], vec_flat_args: Vec) -> None:
+        """
+        Build one legacy residual adapter.
+
+        :param residual_callable: Legacy residual callable.
+        :param vec_flat_args: Legacy flat vectorized arguments.
+        :return: None.
+        """
+        self._residual_callable = residual_callable
+        self._vec_flat_args = vec_flat_args
+
+    def __call__(
+            self,
+            states: Vec,
+            params: Vec,
+            history: Vec,
+            d_history: Vec,
+            h: float,
+            history2: Vec,
+            out: Vec,
+    ) -> None:
+        """
+        Evaluate the wrapped legacy residual callable.
+
+        :param states: Current Newton iterate.
+        :param params: Full parameter vector.
+        :param history: Previous accepted state.
+        :param d_history: Previous derivative vector.
+        :param h: Effective local time step.
+        :param history2: Secondary state history.
+        :param out: Residual output buffer.
+        :return: None.
+        """
+        self._residual_callable(states, params, history, d_history, h, self._vec_flat_args, out, history2)
+
+
 def build_residual_evaluator(
-        residual_dispatcher: Callable[..., Any],
-        vec_flat_args: Any | None,
+        residual_dispatcher: FusedResidualDispatcher | DirectResidualDispatcher,
+        vec_flat_args: Optional[Vec] = None,
 ) -> Callable[[Vec, Vec, Vec, Vec, float, Vec, Vec], None]:
     """
     Build one fixed-signature residual evaluator for the current dispatcher.
 
-    This resolves the dispatcher signature once per simulation so the Newton hot
-    path does not pay per-call tuple unpacking or compatibility branching.
+    The fused and direct dispatchers expose the same ``evaluate()`` API, so the
+    Newton hot path can call one fixed-signature method without any dynamic
+    attribute probing or signature branching.
 
-    :param residual_dispatcher: Residual dispatcher or test double.
-    :type residual_dispatcher: Callable[..., Any]
-    :param vec_flat_args: Flat runtime args used by some test doubles.
-    :type vec_flat_args: Any | None
+    :param residual_dispatcher: Residual dispatcher.
+    :type residual_dispatcher: FusedResidualDispatcher | DirectResidualDispatcher
+    :param vec_flat_args: Optional flat vectorized argument buffer used by legacy residual callables.
+    :type vec_flat_args: Optional[Vec]
     :return: Residual evaluator with signature ``(states, params, history,
         d_history, h, history2, out)``.
     :rtype: Callable[[Vec, Vec, Vec, Vec, float, Vec, Vec], None]
     """
-    direct_evaluator = getattr(residual_dispatcher, "evaluate", None)
-
-    if callable(direct_evaluator):
-        return direct_evaluator
-
-    if vec_flat_args is None:
-        def residual_evaluator(
-                states: Vec,
-                params: Vec,
-                history: Vec,
-                d_history: Vec,
-                h: float,
-                history2: Vec,
-                out: Vec,
-        ) -> None:
-            residual_dispatcher(states, params, history, d_history, h, history2, out)
+    if isinstance(residual_dispatcher, (FusedResidualDispatcher, DirectResidualDispatcher)):
+        return residual_dispatcher.evaluate
     else:
-        def residual_evaluator(
-                states: Vec,
-                params: Vec,
-                history: Vec,
-                d_history: Vec,
-                h: float,
-                history2: Vec,
-                out: Vec,
-        ) -> None:
-            residual_dispatcher(states, params, history, d_history, h, vec_flat_args, out, history2)
+        pass
 
-    return residual_evaluator
+    if callable(residual_dispatcher):
+        legacy_vec_flat_args: Vec
+
+        if vec_flat_args is None:
+            legacy_vec_flat_args = np.zeros(0, dtype=np.float64)
+        else:
+            legacy_vec_flat_args = vec_flat_args
+
+        return LegacyResidualEvaluatorAdapter(residual_dispatcher, legacy_vec_flat_args)
+    else:
+        raise TypeError("Unsupported residual dispatcher type")
 
 
 # ==============================================================================
@@ -236,7 +332,7 @@ def _canonicalize_node(
 
         elif target_uid in param_uids:
             if target_uid not in param_slots:
-                param_name: str = getattr(node, 'name', f'uid_{target_uid}')
+                param_name: str = node.name
                 param_slots[target_uid] = f"__PARAM_{param_name}_{target_uid}__"
 
             return param_slots[target_uid]
@@ -244,7 +340,7 @@ def _canonicalize_node(
         else:
             raise RuntimeError(
                 f"Canonicalization found Var not classified as runtime or parameter: "
-                f"name={getattr(node, 'name', '<?>')}, target_uid={target_uid}"
+                f"name={node.name}, target_uid={target_uid}"
             )
 
     elif isinstance(node, Const):
@@ -685,41 +781,79 @@ def _compile_master_jacobian_kernel(ad_kernel: Callable[..., Any], n_colors: int
     :return: Jacobian dispatcher.
     :rtype: Callable[..., Any]
     """
-    def master_jacobian(
-            states: Vec,
-            seed_matrix: Mat,
-            params: Vec,
-            history: Vec,
-            d_history: Vec,
-            h: float,
-            history2: Vec,
-            data: Vec,
-            color_ptr: np.ndarray,
-            col_ptr: np.ndarray,
-            row_idx: np.ndarray,
-            data_idx: np.ndarray,
-            work_jvp: Mat,
-    ) -> None:
+    return StructuralVectorizedMasterJacobianDispatcher(ad_kernel=ad_kernel, n_colors=n_colors)
+
+
+class StructuralVectorizedMasterJacobianDispatcher:
+    """
+    Callable dispatcher that evaluates one generic AD kernel across all colors.
+    """
+
+    __slots__ = ("_ad_kernel", "_n_colors")
+
+    def __init__(self, ad_kernel: Callable[..., Any], n_colors: int) -> None:
+        """
+        Store the generic AD kernel and the number of graph colors.
+
+        :param ad_kernel: Generic AD kernel reused across graph colors.
+        :param n_colors: Number of graph colors.
+        :return: None.
+        """
+        self._ad_kernel: Callable[..., Any] = ad_kernel
+        self._n_colors: int = n_colors
+
+    def __call__(self,
+                 states: Vec,
+                 seed_matrix: Mat,
+                 params: Vec,
+                 history: Vec,
+                 d_history: Vec,
+                 h: float,
+                 history2: Vec,
+                 data: Vec,
+                 color_ptr: np.ndarray,
+                 col_ptr: np.ndarray,
+                 row_idx: np.ndarray,
+                 data_idx: np.ndarray,
+                 work_jvp: Mat) -> None:
+        """
+        Evaluate all color JVPs and scatter them into CSC storage.
+
+        :param states: Current Newton iterate.
+        :param seed_matrix: Coloring seed matrix.
+        :param params: Full parameter vector.
+        :param history: Previous accepted state.
+        :param d_history: Previous derivative vector.
+        :param h: Effective time step.
+        :param history2: Secondary history vector.
+        :param data: CSC numeric data buffer.
+        :param color_ptr: Color-to-column pointer array.
+        :param col_ptr: Column-to-scatter pointer array.
+        :param row_idx: Row indices used by the scatter map.
+        :param data_idx: CSC data positions used by the scatter map.
+        :param work_jvp: Reusable JVP work buffer.
+        :return: None.
+        """
         color_index: int = 0
 
-        while color_index < n_colors:
+        while color_index < self._n_colors:
             local_jvp: Vec = work_jvp[color_index]
-            ad_kernel(states, seed_matrix[color_index], params, history, d_history, h, local_jvp, history2)
+            self._ad_kernel(states, seed_matrix[color_index], params, history, d_history, h, local_jvp, history2)
             _scatter_color_jvp_to_csc_data(local_jvp, data, color_ptr, col_ptr, row_idx, data_idx, color_index)
             color_index += 1
-
-    return master_jacobian
 
 
 class Predictor:
     """
     Computes an explicit predictor for the Newton initial guess x_iter.
     """
-    __slots__ = ['n_states']
+    __slots__ = ['n_states', 'algebraic_derivative_by_index']
 
     def __init__(self,
-                 n_states: int) -> None:
+                 n_states: int,
+                 algebraic_derivative_by_index: Dict[int, float] | None = None) -> None:
         self.n_states = n_states
+        self.algebraic_derivative_by_index = dict() if algebraic_derivative_by_index is None else algebraic_derivative_by_index
 
     def predict(self,
                 x_iter: Vec,
@@ -764,6 +898,8 @@ class Predictor:
         """
         ns = self.n_states
         x_iter[:ns] = x_prev[:ns] + h * dx_prev[:ns]
+        for idx, derivative in self.algebraic_derivative_by_index.items():
+            x_iter[idx] = x_prev[idx] + h * derivative
         return x_iter
 
 class EquationGroup:
@@ -812,26 +948,34 @@ class EquationGroup:
 
 class SparseADJacobian:
     __slots__ = [
-        'verbose', 'equations', 'variables', 'parameters', 'method', 'dtype',
+        'verbose', 'equations', 'variables', 'parameters', 'diff_vars', 'method', 'dtype',
         'n_rows', 'n_cols', 'var_map', 'col_rows', 'J', 'colors', 'n_colors',
         'color_groups', 'color_ptr', 'color_cols', 'col_ptr', 'row_idx', 'data_idx',
         '_compiler', '_ad_kernel', '_master_dispatcher', '_seed_matrix', '_jvp_work_buffer', '_data_buffer'
     ]
     def __init__(
-            self, equations: List[Any], variables: List[Any], parameters: List[Any],
-            method: DynamicIntegrationMethod, use_cse: bool = True, dtype=np.float64, verbose: bool = False,
-    ):
+            self,
+            equations: List[Expr],
+            variables: List[Var],
+            parameters: List[Var],
+            diff_vars: List[Var],
+            method: DynamicIntegrationMethod,
+            use_cse: bool = True,
+            dtype: Any = np.float64,
+            verbose: bool = False,
+    ) -> None:
         self.verbose = verbose
         self.equations = equations
         self.variables = variables
         self.parameters = parameters
+        self.diff_vars = diff_vars
         self.method = method
         self.dtype = dtype
 
         self.n_rows = len(equations)
         self.n_cols = len(variables)
 
-        self.var_map: Dict[int, int] = dict({id(v): i for i, v in enumerate(variables)})
+        self.var_map: Dict[int, int] = dict({v.uid: i for i, v in enumerate(variables)})
 
         # Sparsity detection
         col_rows: List[List[int]] = list([list() for _ in range(self.n_cols)])
@@ -849,9 +993,9 @@ class SparseADJacobian:
 
                     match node:
                         case Var():
-                            uids.add(id(node))
+                            uids.add(node.uid)
                             if node.base_var is not None:
-                                uids.add(id(node.base_var))
+                                uids.add(node.base_var.uid)
                             else:
                                 pass
 
@@ -932,7 +1076,7 @@ class SparseADJacobian:
         self.col_ptr, self.row_idx, self.data_idx = col_ptr, row_idx, data_idx
 
         # Compile the generic eager AD kernel once and reuse it across graph colors.
-        self._compiler = EagerEquationCompiler(variables=variables, parameters=parameters, method=method)
+        self._compiler = EagerEquationCompiler(variables=variables, parameters=parameters, diff_vars=diff_vars, method=method)
         k_name = f"advec_step_generic_{method.name}_{self.n_rows}_{self.n_cols}"
         py_ad, signature_tpe = self._compiler.compile_ad_kernel(
             equations,
@@ -992,7 +1136,13 @@ class SparseADJacobian:
                 pass
         return colors, int(max_color + 1)
 
-    def __call__(self, states, params, history, d_history, h, history2=None) -> csc_matrix:
+    def __call__(self,
+                 states: Vec,
+                 params: Vec,
+                 history: Vec,
+                 d_history: Vec,
+                 h: float,
+                 history2: Vec | None = None) -> csc_matrix:
         if history2 is None:
             history2 = history
 
@@ -1044,7 +1194,8 @@ class StructuralVectorizedSolver:
         'jit_jacobians_ad', 'vectorized_ready', '_last_sim_loop_time', '_newton_diag_config', '_vectorized_warmup_done',
         '_predictor', '_runtime_param_count', '_static_parameter_buffer', '_full_parameter_buffer', '_residual_buffer',
         '_trial_state_buffer', '_trial_residual_buffer', '_trial_residual_evaluator',
-        '_backend_build_stats', '_last_runtime_stats', '_sparse_solver_backend_provider', '_sparse_factorization_manager'
+        '_backend_build_stats', '_last_runtime_stats', '_sparse_solver_backend_provider', '_sparse_factorization_manager', '_cancel_checker', '_progress_signal',
+        '_diff_base_var_indices'
     ]
 
     def __init__(self,
@@ -1059,7 +1210,9 @@ class StructuralVectorizedSolver:
                  newton_max_iter: int = 20,
                  auto_vectorization: bool = True,
                  sparse_solver_backend_provider: SparseLinearSolverBackendProvider | None = None,
-                 newton_diag_config: NewtonDiagnosticsConfig | None = None)-> None:
+                 newton_diag_config: NewtonDiagnosticsConfig | None = None,
+                 progress_signal: DummySignal | None = None,
+                 cancel_checker: Callable[[], bool] | None = None)-> None:
         """
         :param problem: The DAE problem definition.
         :param t0: Initial time.
@@ -1072,13 +1225,15 @@ class StructuralVectorizedSolver:
         :param newton_max_iter: Maximum Newton iterations per local EMT substep.
         :param sparse_solver_backend_provider: Sparse linear solver backend provider.
         :type sparse_solver_backend_provider: SparseLinearSolverBackendProvider | None
+        :param progress_signal: Optional progress signal updated during the simulation loop.
+        :type progress_signal: DummySignal | None
         """
         self.problem = problem
         self.t0 = t0
         self.t_end = t_end
         self.h = h
         self.method = method
-        self.pred_method = pred_method
+        self.pred_method = DynamicIntegrationMethod.OdeEuler if pred_method is None else pred_method
         self.dense_threshold = dense_threshold
         self.verbose = verbose
         self.newton_max_iter: int = int(newton_max_iter)
@@ -1109,6 +1264,11 @@ class StructuralVectorizedSolver:
         self._n_diff = len(self._diff_vars)
 
         self.uid2idx_vars = {v.uid: i for i, v in enumerate(self.sorted_vars)}
+        self._diff_base_var_indices = np.full(self._n_diff, -1, dtype=np.int64)
+        for diff_idx, diff_var in enumerate(self._diff_vars):
+            base_var = getattr(diff_var, "base_var", None)
+            if base_var is not None:
+                self._diff_base_var_indices[diff_idx] = self.uid2idx_vars.get(base_var.uid, -1)
 
         self._event_parameters = self.problem.get_variable_parameters()
         self._parameters = self.problem.get_constant_parameters()
@@ -1118,7 +1278,16 @@ class StructuralVectorizedSolver:
         self.vectorized_ready = False
         self._last_sim_loop_time = 0.0
         self._vectorized_warmup_done = False
-        self._predictor = Predictor(n_states=self._n_state)
+        algebraic_predictor_derivatives = getattr(problem, "algebraic_predictor_derivatives", {})
+        algebraic_derivative_by_index: Dict[int, float] = {}
+        for var_uid, derivative in algebraic_predictor_derivatives.items():
+            var_idx = self.uid2idx_vars.get(var_uid, None)
+            if var_idx is not None and var_idx >= self._n_state:
+                algebraic_derivative_by_index[var_idx] = float(derivative)
+        self._predictor = Predictor(
+            n_states=self._n_state,
+            algebraic_derivative_by_index=algebraic_derivative_by_index,
+        )
         self._runtime_param_count: int = len(self._event_parameters)
         self._static_parameter_buffer: Vec = np.asarray(
             [float(constant.value) for constant in self._parameters_values],
@@ -1136,11 +1305,13 @@ class StructuralVectorizedSolver:
         self._last_runtime_stats: Dict[str, float] = dict()
         self._sparse_solver_backend_provider = sparse_solver_backend_provider
         self._sparse_factorization_manager = None
+        self._progress_signal: DummySignal | None = progress_signal
+        self._cancel_checker = cancel_checker
 
         if auto_vectorization:
             self.auto_detect_vectorization(method)
 
-    def auto_detect_vectorization(self, method: DynamicIntegrationMethod = None):
+    def auto_detect_vectorization(self, method: DynamicIntegrationMethod | None = None) -> None:
         """
         Infers the algebraic structure of the DAE system (clustering) and compiles
         the vectorized matrix kernels.
@@ -1194,7 +1365,7 @@ class StructuralVectorizedSolver:
             )
 
             # Cluster by structural signature
-            eq_hash = hashlib.md5(sig_str.encode()).hexdigest()
+            eq_hash = hashlib.sha256(sig_str.encode("utf-8")).hexdigest()
 
             if eq_hash in groups:
                 group = groups[eq_hash]
@@ -1210,7 +1381,7 @@ class StructuralVectorizedSolver:
                 if idx is None:
                     raise RuntimeError(
                         f"Runtime variable missing in uid2idx_vars. "
-                        f"eq={i}, var={getattr(v, 'name', '<?>')}, target_uid={target_uid}"
+                        f"eq={i}, var={v.name}, target_uid={target_uid}"
                     )
 
                 var_indices.append(idx)
@@ -1249,7 +1420,7 @@ class StructuralVectorizedSolver:
         all_params.extend(self._event_parameters)
         all_params.extend(self._parameters)
 
-        vec_compiler = EagerEquationCompiler(self.sorted_vars, all_params, method=method)
+        vec_compiler = EagerEquationCompiler(self.sorted_vars, all_params, diff_vars=self._diff_vars, method=method)
 
         residual_compile_t0: float = time.perf_counter()
 
@@ -1311,7 +1482,7 @@ class StructuralVectorizedSolver:
 
         if method not in self.jit_jacobians_ad:
             self.jit_jacobians_ad[method] = SparseADJacobian(
-                full_eq_list, self.sorted_vars, all_params, method, verbose=self.verbose
+                full_eq_list, self.sorted_vars, all_params, self._diff_vars, method, verbose=self.verbose
             )
 
         self.vec_jacobian = self.jit_jacobians_ad[method]
@@ -1438,20 +1609,20 @@ class StructuralVectorizedSolver:
 
         if diagnostics_enabled:
             dense_solve = with_newton_diagnostics(
-                lambda bundle, rhs: lu_solve(bundle[0], rhs),
-                fallback_solve=lambda bundle, rhs: dense_lstsq_fallback(bundle[1], rhs),
+                _dense_lu_bundle_solve,
+                fallback_solve=_dense_lu_bundle_fallback,
                 collector=trace_collector,
                 config=diag_cfg,
                 solver_name="dense_lu",
-                matrix_getter=lambda bundle: bundle[1],
+                matrix_getter=_dense_lu_bundle_matrix,
             )
             sparse_solve = with_newton_diagnostics(
-                lambda manager, rhs: manager.solve(rhs),
-                fallback_solve=lambda manager, rhs: sparse_lsqr_fallback(manager.get_active_matrix(), rhs),
+                _sparse_factor_manager_solve,
+                fallback_solve=_sparse_factor_manager_fallback,
                 collector=trace_collector,
                 config=diag_cfg,
                 solver_name="emt_sparse_backend",
-                matrix_getter=lambda manager: manager.get_active_matrix(),
+                matrix_getter=_sparse_factor_manager_matrix,
             )
         else:
             pass
@@ -1492,6 +1663,14 @@ class StructuralVectorizedSolver:
             pass
 
         for i in range(steps):
+
+            if self._progress_signal is not None:
+                self.problem.report_progress2(i, steps)
+            else:
+                pass
+
+            if self._cancel_checker is not None and self._cancel_checker():
+                return t[:i + 1].copy(), y[:i + 1, :].copy(), dy[:i + 1, :].copy(), well_initialized, converged
 
             t_step_start: float = float(t[i])
             t_step_target: float = float(t[i + 1])
@@ -1559,7 +1738,11 @@ class StructuralVectorizedSolver:
                         pass
 
                 # PREDICTOR
-                if i == 0 and is_first_local_step and method == DynamicIntegrationMethod.DaeTrapezoidal:
+                if (
+                    i == 0
+                    and is_first_local_step
+                    and method in {DynamicIntegrationMethod.DaeBackEuler, DynamicIntegrationMethod.DaeTrapezoidal}
+                ):
                     self._predictor.predict(
                         x_iter=x_iter,
                         x_prev=x_prev,
@@ -1657,6 +1840,12 @@ class StructuralVectorizedSolver:
                             assert sparse_factor_manager is not None
                             delta = sparse_factor_manager.solve(-res_global)
 
+                    max_step_inf = getattr(diag_cfg, "max_newton_step_inf", None)
+                    if max_step_inf is not None and max_step_inf > 0.0:
+                        step_inf = float(np.max(np.abs(delta))) if delta.size > 0 else 0.0
+                        if step_inf > max_step_inf:
+                            delta *= float(max_step_inf) / step_inf
+
                     if diag_cfg.enable_backtracking:
                         self._trial_residual_evaluator.set_context(
                             residual_evaluator=residual_evaluator,
@@ -1687,10 +1876,17 @@ class StructuralVectorizedSolver:
                         well_initialized = False
 
                 if method == DynamicIntegrationMethod.DaeTrapezoidal:
-                    dx_prev[:self._n_state] = (
-                            (2.0 / h_eff) * (x_iter[:self._n_state] - x_prev[:self._n_state])
-                            - dx_prev[:self._n_state]
-                    )
+                    if self._n_diff == 0:
+                        dx_prev[:self._n_state] = (
+                                (2.0 / h_eff) * (x_iter[:self._n_state] - x_prev[:self._n_state])
+                                - dx_prev[:self._n_state]
+                        )
+                    else:
+                        for diff_idx, base_idx in enumerate(self._diff_base_var_indices):
+                            if base_idx >= 0:
+                                dx_prev[diff_idx] = (2.0 / h_eff) * (x_iter[base_idx] - x_prev[base_idx]) - dx_prev[diff_idx]
+                            else:
+                                pass
                 elif method == DynamicIntegrationMethod.DaeBDF2:
                     x_prev2[:] = x_prev
                     dx_prev[:self._n_state] = (

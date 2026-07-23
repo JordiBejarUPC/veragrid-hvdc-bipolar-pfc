@@ -76,7 +76,7 @@ for k in range(nbr):
 
             if val > threshold:
 
-                P = nc.bus_data.srap_availbale_power[idx[i]]
+                P = nc.bus_data.srap_available_power[idx[i]]
                 gens = np.where(nc.generator_data.get_bus_indices() == idx[i])[0]
 
                 marginP = 0
@@ -146,7 +146,7 @@ for k in range(nbr):
 
                 for i, val in enumerate(ptdf_line):
                     if val > threshold:
-                        P = nc.bus_data.srap_availbale_power[i]
+                        P = nc.bus_data.srap_available_power[i]
                         if P > 0:
                             print(f"\tbus {i} can help: {val}")
 
@@ -166,7 +166,7 @@ for k in range(nbr):
         for i, val in enumerate(ptdf_line):
             if val > threshold:
 
-                P = nc.bus_data.srap_availbale_power[i]
+                P = nc.bus_data.srap_available_power[i]
                 if P > 0:
                     print(f"\tbus {i} can help: {val}")
 

@@ -18,8 +18,10 @@ from VeraGridEngine.Devices.types import BRANCH_TYPES, FluidPath
 from VeraGridEngine.enumerations import DeviceType
 from VeraGrid.Gui.Diagrams.generic_graphics import ACTIVE, DEACTIVATED
 from VeraGrid.Gui.Diagrams.generic_graphics import GenericDiagramWidget
-from VeraGrid.Gui.gui_functions import add_menu_entry
-from VeraGrid.Gui.DeviceEditors.LineEditor.line_editor import LineEditor
+from VeraGrid.Gui.gui_functions import add_menu_entry, translate_context_menu_text
+from VeraGrid.Gui.DeviceEditors.DcLineEditor.dc_line_device_editor import DcLineDeviceEditorDialog
+from VeraGrid.Gui.DeviceEditors.LineEditor.line_device_editor import LineDeviceEditorDialog
+from VeraGrid.Gui.DeviceEditors.TemplateDeviceEditor.template_device_editor import TemplateDeviceEditor
 from VeraGrid.Gui.messages import error_msg
 from VeraGrid.Gui.messages import yes_no_question
 
@@ -65,6 +67,12 @@ class MapLineContainer(GenericDiagramWidget, QGraphicsItemGroup):
         self._context_lat: float | None = None
         self._context_lon: float | None = None
         self._context_scene_pos: QPointF | None = None
+        self._last_export_color: QColor | None = None
+        self._last_export_style: Qt.PenStyle | None = None
+        self._last_export_power_from: complex | None = None
+        self._last_export_power_to: complex | None = None
+        self._last_export_hvdc_power_from: float | None = None
+        self._last_export_hvdc_power_to: float | None = None
 
     @property
     def api_object(self) -> Union[BRANCH_TYPES, FluidPath]:
@@ -253,21 +261,56 @@ class MapLineContainer(GenericDiagramWidget, QGraphicsItemGroup):
         :param tool_tip: tool tip text
         :return:
         """
+        export_mode: bool = self.editor.is_video_export_active()
+        update_hidden_segments: bool = not export_mode or self.segments_drawn
+
+        # During export, avoid repainting the full line hierarchy when the visible state is unchanged.
+        if export_mode:
+            if self._last_export_color is not None and self._last_export_style is not None:
+                if self._last_export_color == color and self._last_export_style == style:
+                    return
+                else:
+                    pass
+            else:
+                pass
+        else:
+            pass
+
         self.color = QColor(color)
         self.style = style
 
-        for segment in self.segments_list:
-            segment.setToolTip(tool_tip)
-            segment.set_colour(color=color, style=style)
+        # When the map is not in edit mode the visible representation is the polyline, not the hidden segments.
+        # Export can therefore skip touching every hidden segment without changing the rendered output.
+        if update_hidden_segments:
+            for segment in self.segments_list:
+                if export_mode:
+                    pass
+                else:
+                    segment.setToolTip(tool_tip)
+                segment.set_colour(color=color, style=style)
+        else:
+            pass
 
         if self.polyline is not None:
-            self.polyline.setToolTip(tool_tip)
+            if export_mode:
+                pass
+            else:
+                self.polyline.setToolTip(tool_tip)
             polyline_pen = QPen(self.color,
                                 self.width,
                                 self.style,
                                 Qt.PenCapStyle.RoundCap,
                                 Qt.PenJoinStyle.RoundJoin)
             self.polyline.set_pen(polyline_pen)
+        else:
+            pass
+
+        if export_mode:
+            self._last_export_color = QColor(self.color)
+            self._last_export_style = self.style
+        else:
+            self._last_export_color = None
+            self._last_export_style = None
 
     def update_connectors(self) -> None:
         """
@@ -481,85 +524,85 @@ class MapLineContainer(GenericDiagramWidget, QGraphicsItemGroup):
         Show the line context menu for the given click position.
         """
         menu = QMenu()
-        menu.addSection("Line")
+        menu.addSection(translate_context_menu_text("Line"))
 
         add_menu_entry(menu=menu,
-                       text="Active",
+                       text=translate_context_menu_text("Active"),
                        function_ptr=self.enable_disable_toggle,
                        checkeable=True,
                        checked_value=self.api_object.active)
 
         add_menu_entry(menu=menu,
-                       text="Draw labels",
+                       text=translate_context_menu_text("Draw labels"),
                        function_ptr=self.enable_disable_label_drawing,
                        checkeable=True,
                        checked_value=self.draw_labels)
 
         add_menu_entry(menu=menu,
-                       text="Editor",
+                       text=translate_context_menu_text("Editor"),
                        function_ptr=self.call_editor,
                        icon_path=":/Icons/icons/edit.png")
 
         add_menu_entry(menu=menu,
-                       text="Calculate total length",
+                       text=translate_context_menu_text("Calculate total length"),
                        function_ptr=self.calculate_total_length_toast,
                        icon_path=":/Icons/icons/ruler.png")
 
         add_menu_entry(menu=menu,
-                       text="Consolidate selected objects coordinates",
+                       text=translate_context_menu_text("Consolidate selected objects coordinates"),
                        function_ptr=self.editor.consolidate_object_coordinates,
                        icon_path=":/Icons/icons/assign_to_profile.png")
 
         menu.addSeparator()
 
         add_menu_entry(menu=menu,
-                       text="Merge selected lines",
+                       text=translate_context_menu_text("Merge selected lines"),
                        function_ptr=self._run_merge_selected_lines,
                        icon_path=":/Icons/icons/fusion.png")
 
         menu.addSeparator()
 
         add_menu_entry(menu=menu,
-                       text="Split line to selected substation (In-Out)",
+                       text=translate_context_menu_text("Split line to selected substation (In-Out)"),
                        function_ptr=self._run_split_line_to_substation,
                        icon_path=":/Icons/icons/divide.png")
 
         add_menu_entry(menu=menu,
-                       text="Change substation connection of the line",
+                       text=translate_context_menu_text("Change substation connection of the line"),
                        function_ptr=self._run_change_line_connection,
                        icon_path=":/Icons/icons/move_bus.png")
 
         add_menu_entry(menu=menu,
-                       text="Plot profiles",
+                       text=translate_context_menu_text("Plot profiles"),
                        function_ptr=self.plot_profiles,
                        icon_path=":/Icons/icons/plot.png")
 
         self._context_scene_pos = scene_pos
         self._context_lat, self._context_lon = self.editor.to_lat_lon(x=scene_pos.x(), y=scene_pos.y())
         add_menu_entry(menu=menu,
-                       text="Open in Street view",
+                       text=translate_context_menu_text("Open in Street view"),
                        function_ptr=self._open_street_view_context,
                        icon_path=":/Icons/icons/map.png")
 
         add_menu_entry(menu=menu,
-                       text="Assign rate to profile",
+                       text=translate_context_menu_text("Assign rate to profile"),
                        function_ptr=self.assign_rate_to_profile,
                        icon_path=":/Icons/icons/assign_to_profile.png")
 
         add_menu_entry(menu=menu,
-                       text="Assign active state to profile",
+                       text=translate_context_menu_text("Assign active state to profile"),
                        function_ptr=self.assign_status_to_profile,
                        icon_path=":/Icons/icons/assign_to_profile.png")
 
         add_menu_entry(menu=menu,
-                       text="Add point",
+                       text=translate_context_menu_text("Add point"),
                        function_ptr=self._add_point_from_context,
                        icon_path=":/Icons/icons/cn_icon.png")
 
         menu.addSeparator()
 
         add_menu_entry(menu=menu,
-                       text="Delete",
+                       text=translate_context_menu_text("Delete"),
                        function_ptr=self.delete,
                        icon_path=":/Icons/icons/delete_schematic.png")
 
@@ -603,13 +646,29 @@ class MapLineContainer(GenericDiagramWidget, QGraphicsItemGroup):
         for segment in self.segments_list:
             segment.draw_labels = self.draw_labels
 
+    def open_device_editor(self) -> bool:
+        """
+        Open the editor for this map branch.
+
+        :return: ``True`` when an editor was opened.
+        """
+        circuit = self.editor.circuit
+
+        if self.api_object.device_type == DeviceType.LineDevice:
+            dialog = LineDeviceEditorDialog(api_object=self.api_object, circuit=circuit)
+        elif self.api_object.device_type == DeviceType.DCLineDevice:
+            dialog = DcLineDeviceEditorDialog(api_object=self.api_object, circuit=circuit)
+        else:
+            dialog = TemplateDeviceEditor(api_object=self.api_object, circuit=circuit)
+
+        dialog.exec()
+        return True
+
     def call_editor(self) -> None:
         """
-        Open the branch editor dialogue.
+        Open the specific branch editor dialogue.
         """
-        _ = self.api_object.get_max_bus_nominal_voltage()
-        dlg = LineEditor(line=self.api_object, grid=self.editor.circuit)
-        dlg.exec()
+        self.open_device_editor()
 
     def plot_profiles(self) -> None:
         """
@@ -877,8 +936,27 @@ class MapLineContainer(GenericDiagramWidget, QGraphicsItemGroup):
         :param St:
         :return:
         """
-        for segment in self.segments_list:
-            segment.set_arrows_with_power(Sf=Sf, St=St)
+        export_mode: bool = self.editor.is_video_export_active()
+        update_hidden_segments: bool = not export_mode or self.segments_drawn
+
+        # During export, skip rebuilding arrow geometry when the flow values are identical.
+        if export_mode:
+            if self._last_export_power_from == Sf and self._last_export_power_to == St:
+                return
+            else:
+                pass
+        else:
+            pass
+
+        # Hidden segments do not contribute to the exported image, so avoid updating their arrow items.
+        if update_hidden_segments:
+            for segment in self.segments_list:
+                segment.set_arrows_with_power(Sf=Sf, St=St)
+        else:
+            pass
+
+        self._last_export_power_from = Sf
+        self._last_export_power_to = St
 
     def set_arrows_with_hvdc_power(self, Pf: float, Pt: float) -> None:
         """
@@ -887,8 +965,27 @@ class MapLineContainer(GenericDiagramWidget, QGraphicsItemGroup):
         :param Pt:
         :return:
         """
-        for segment in self.segments_list:
-            segment.set_arrows_with_hvdc_power(Pf=Pf, Pt=Pt)
+        export_mode: bool = self.editor.is_video_export_active()
+        update_hidden_segments: bool = not export_mode or self.segments_drawn
+
+        # During export, skip rebuilding arrow geometry when the HVDC flow values are identical.
+        if export_mode:
+            if self._last_export_hvdc_power_from == Pf and self._last_export_hvdc_power_to == Pt:
+                return
+            else:
+                pass
+        else:
+            pass
+
+        # Hidden segments do not contribute to the exported image, so avoid updating their arrow items.
+        if update_hidden_segments:
+            for segment in self.segments_list:
+                segment.set_arrows_with_hvdc_power(Pf=Pf, Pt=Pt)
+        else:
+            pass
+
+        self._last_export_hvdc_power_from = Pf
+        self._last_export_hvdc_power_to = Pt
 
     def calculate_total_length(self) -> float:
         """
@@ -898,8 +995,8 @@ class MapLineContainer(GenericDiagramWidget, QGraphicsItemGroup):
         
         :return: Total length in kilometers
         """
-        from VeraGrid.Gui.Diagrams.MapWidget.grid_map_widget import haversine_distance
-        
+        from VeraGridEngine.Utils.GeographicalMethods.haversine_distance import haversine_distance
+
         # Get all connection points (substations and intermediate points)
         connection_points = []
         

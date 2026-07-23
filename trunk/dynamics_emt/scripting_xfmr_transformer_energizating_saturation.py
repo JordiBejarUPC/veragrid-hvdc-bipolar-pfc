@@ -20,7 +20,7 @@ if REPO_ROOT not in sys.path:
     sys.path.insert(0, REPO_ROOT)
 
 from pathlib import Path
-from typing import List, Dict
+from typing import List
 
 from trunk.dynamics_emt.support.emt_plot_exports import (
     get_plot_results_directory,
@@ -37,18 +37,18 @@ from VeraGridEngine.Devices.Events.emt_events_group import EmtEventsGroup
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_dae import EmtProblemDae
 from VeraGridEngine.Simulations.EMT.solvers.structural_compiled_solver import StructuralCompiledSolver
-from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_template
+from VeraGridEngine.Utils.Symbolic.bus_emt_template import get_bus_emt_template
 from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import (
-    get_generator_thevenin_rl_emt_template,
+    get_generator_thevenin_rl_emt_template_with_ref,
 )
 from VeraGridEngine.Devices.Injections.load import Load
 from VeraGridEngine.Templates.Emt.load_RLC_emt_template import get_shunt_r_emt_template
 from VeraGridEngine.enumerations import ShuntConnectionType
 
 from VeraGridEngine.Templates.Emt.xfmr_emt_template import get_xfmr_emt_template
-from VeraGridEngine.Templates.templates_common_functions import set_emt_model
+from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_emt_model
 
-from VeraGridEngine.Simulations.PowerFlow.power_flow_driver_3ph import PowerFlowDriver3Ph
+from VeraGridEngine.Simulations.PowerFlow3ph.power_flow_driver_3ph import PowerFlowDriver3Ph
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowOptions
 from VeraGridEngine.enumerations import BranchImpedanceMode, SolverType
 
@@ -485,7 +485,7 @@ def build_grid_and_run(event_time: float) -> dict[str, Any]:
         get_bus_emt_template(grid, bus)
 
     xfmr_mdl = get_xfmr_emt_template(vf=grid.var_factory, name="xfmr_sat_test").block
-    gen_mdl = get_generator_thevenin_rl_emt_template(vf=grid.var_factory, name="gen_sat_test").block
+    gen_mdl = get_generator_thevenin_rl_emt_template_with_ref(vf=grid.var_factory, name="gen_sat_test").block
     load_mdl = get_shunt_r_emt_template(vf=grid.var_factory, phA=True, phB=True, phC=True).block
 
     set_emt_model(device=xfmr, model=xfmr_mdl, var_factory=grid.var_factory)
@@ -509,9 +509,9 @@ def build_grid_and_run(event_time: float) -> dict[str, Any]:
     xfmr_mdl.set_parameter_in_model(var_name="xfmr_core_b_prime_xfmr_sat_test", new_value=0.15) # 0.25
 
     # Secondary almost open.
-    load_mdl.set_parameter_in_model(var_name="R_A_Shunt_R_3ph", new_value=1e9)
-    load_mdl.set_parameter_in_model(var_name="R_B_Shunt_R_3ph", new_value=1e9)
-    load_mdl.set_parameter_in_model(var_name="R_C_Shunt_R_3ph", new_value=1e9)
+    load_mdl.set_parameter_in_model(var_name="R_A", new_value=1e9)
+    load_mdl.set_parameter_in_model(var_name="R_B", new_value=1e9)
+    load_mdl.set_parameter_in_model(var_name="R_C", new_value=1e9)
 
     ##################################################################################################
     # Generator breaker-less energization
@@ -618,13 +618,13 @@ def build_grid_and_run(event_time: float) -> dict[str, Any]:
     ##################################################################################################
     # Extract trajectories
     ##################################################################################################
-    vA_hv = get_series(problem, y, "v_A_Bus_HV_emt_template")
-    vB_hv = get_series(problem, y, "v_B_Bus_HV_emt_template")
-    vC_hv = get_series(problem, y, "v_C_Bus_HV_emt_template")
+    vA_hv = get_series(problem, y, "v_A")
+    vB_hv = get_series(problem, y, "v_B")
+    vC_hv = get_series(problem, y, "v_C")
 
-    vA_lv = get_series(problem, y, "v_A_Bus_LV_emt_template")
-    vB_lv = get_series(problem, y, "v_B_Bus_LV_emt_template")
-    vC_lv = get_series(problem, y, "v_C_Bus_LV_emt_template")
+    vA_lv = get_series(problem, y, "v_A")
+    vB_lv = get_series(problem, y, "v_B")
+    vC_lv = get_series(problem, y, "v_C")
 
     ifA = get_series(problem, y, "if_A_xfmr_sat_test")
     ifB = get_series(problem, y, "if_B_xfmr_sat_test")

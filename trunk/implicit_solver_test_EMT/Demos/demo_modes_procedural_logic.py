@@ -619,7 +619,12 @@ def run_case(
     block.unify_blocks()
 
     glob_time: Var = vf.add_var("t_glob")
-    problem = GenericEmtProblem(sys_block=block, glob_time=glob_time)
+    static_parameter_values_mapping: Dict[Var, Const] = dict(block.parameters)
+    problem = GenericEmtProblem(
+        sys_block=block,
+        glob_time=glob_time,
+        static_parameter_values_mapping=static_parameter_values_mapping,
+    )
 
     solver = JitSymbolicSolver(
         problem=problem,
@@ -648,7 +653,12 @@ def run_boolean_operator_case(
     block, vars_map = create_boolean_operator_logic_system(vf=vf)
     block.unify_blocks()
 
-    problem = GenericEmtProblem(sys_block=block, glob_time=vf.add_var("t_glob_bool_demo"))
+    static_parameter_values_mapping: Dict[Var, Const] = dict(block.parameters)
+    problem = GenericEmtProblem(
+        sys_block=block,
+        glob_time=vf.add_var("t_glob_bool_demo"),
+        static_parameter_values_mapping=static_parameter_values_mapping,
+    )
     base_updater = build_boundary_updater_from_block(problem)
     assert base_updater is not None
 
@@ -683,7 +693,12 @@ def run_analog_flipflop_case(
     block, vars_map = create_analog_flipflop_logic_system(vf=vf)
     block.unify_blocks()
 
-    problem = GenericEmtProblem(sys_block=block, glob_time=vf.add_var("t_glob_af_demo"))
+    static_parameter_values_mapping: Dict[Var, Const] = dict(block.parameters)
+    problem = GenericEmtProblem(
+        sys_block=block,
+        glob_time=vf.add_var("t_glob_af_demo"),
+        static_parameter_values_mapping=static_parameter_values_mapping,
+    )
     base_updater = build_boundary_updater_from_block(problem)
     assert base_updater is not None
 

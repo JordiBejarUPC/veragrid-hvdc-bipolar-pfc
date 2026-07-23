@@ -16,7 +16,8 @@ from VeraGridEngine.enumerations import DeviceType, FaultType, SchematicBranchEn
 from VeraGridEngine.Devices.Parents.editable_device import EditableDevice
 from VeraGridEngine.Devices.types import FLUID_TYPES
 
-from VeraGrid.Gui.Diagrams.generic_graphics import ACTIVE, FONT_SCALE, GenericDiagramWidget
+from VeraGrid.Gui.DeviceEditors.TemplateDeviceEditor.template_device_editor import TemplateDeviceEditor
+from VeraGrid.Gui.Diagrams.generic_graphics import ACTIVE, FONT_SCALE, GenericDiagramWidget, DraggableLabelItem
 from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.slot_geometry import (SchematicAttachmentSlot,
                                                                           build_explicit_slot_key,
                                                                           clamp_attachment_alignment,
@@ -31,7 +32,7 @@ from VeraGrid.Gui.Diagrams.SchematicWidget.Fluid.fluid_turbine_graphics import F
 from VeraGrid.Gui.Diagrams.SchematicWidget.Fluid.fluid_pump_graphics import FluidPumpGraphicItem
 from VeraGrid.Gui.Diagrams.SchematicWidget.Fluid.fluid_p2x_graphics import FluidP2xGraphicItem
 from VeraGrid.Gui.messages import yes_no_question, error_msg
-from VeraGrid.Gui.gui_functions import add_menu_entry
+from VeraGrid.Gui.gui_functions import add_menu_entry, translate_context_menu_text
 
 if TYPE_CHECKING:  # Only imports the below statements during type checking
     from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.line_graphics_template import LineGraphicTemplateItem
@@ -80,9 +81,11 @@ class FluidNodeGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         self.style = ACTIVE['style']
 
         # Label:
-        self.label = QtWidgets.QGraphicsTextItem(self.api_object.name if self.api_object is not None else "", self)
+        self.label = DraggableLabelItem(self)
         self.label.setDefaultTextColor(ACTIVE['text'])
+        self.label.document().setDocumentMargin(0.0)
         self.label.setScale(FONT_SCALE)
+        self.label.setPlainText(self.api_object.name if self.api_object is not None else "")
 
         # square
         self.tile = QtWidgets.QGraphicsRectItem(0, 0, 20, 20, self)
@@ -157,6 +160,16 @@ class FluidNodeGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         """
         self.label.setPlainText(val)
 
+    def open_device_editor(self) -> bool:
+        """
+        Open the generic device editor for this fluid node.
+
+        :return: ``True`` when the editor was opened.
+        """
+        dialog = TemplateDeviceEditor(api_object=self.api_object, circuit=self.editor.circuit)
+        dialog.exec()
+        return True
+
     def mousePressEvent(self, event: QGraphicsSceneMouseEvent) -> None:
         """
         mouse press: display the editor
@@ -165,6 +178,18 @@ class FluidNodeGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         """
         if self.api_object is not None:
             self.editor.set_editor_model(api_object=self.api_object)
+
+    def mouseDoubleClickEvent(self, event: QGraphicsSceneMouseEvent) -> None:
+        """
+        Open the fluid-node editor on double click.
+
+        :param event: Mouse event.
+        :return: ``None``.
+        """
+        if self.api_object is not None:
+            self.open_device_editor()
+        else:
+            pass
 
     def mouseMoveEvent(self, event: QGraphicsSceneMouseEvent) -> None:
         """
@@ -260,7 +285,7 @@ class FluidNodeGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         x0 = 0
 
         # center label:
-        self.label.setPos(self.w + 5, -20)
+        self.label.set_anchor_position(QPointF(self.w + 5.0, -20.0))
 
         # lower
         self._terminal.setPos(x0, y0)
@@ -423,51 +448,64 @@ class FluidNodeGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         @return:
         """
         menu = QMenu()
-        menu.addSection("Fluid node")
+        menu.addSection(translate_context_menu_text("Fluid node"))
 
         add_menu_entry(menu=menu,
-                       text="Plot electrical profiles",
+                       text=translate_context_menu_text("Editor"),
+                       icon_path=":/Icons/icons/edit.png",
+                       function_ptr=self.edit)
+
+        add_menu_entry(menu=menu,
+                       text=translate_context_menu_text("Plot electrical profiles"),
                        icon_path=":/Icons/icons/plot.png",
                        function_ptr=self.plot_electrical_profiles)
 
         add_menu_entry(menu=menu,
-                       text="Plot fluid profiles",
+                       text=translate_context_menu_text("Plot fluid profiles"),
                        icon_path=":/Icons/icons/plot.png",
                        function_ptr=self.plot_fluid_profiles)
 
         add_menu_entry(menu=menu,
-                       text="Arrange",
+                       text=translate_context_menu_text("Arrange"),
                        icon_path=":/Icons/icons/automatic_layout.png",
                        function_ptr=self.arrange_children)
 
         add_menu_entry(menu=menu,
-                       text="Delete all the connections",
+                       text=translate_context_menu_text("Delete all the connections"),
                        icon_path=":/Icons/icons/delete_conn.png",
                        function_ptr=lambda: self.delete_all_connections(ask=True, delete_from_db=True))
 
         add_menu_entry(menu=menu,
-                       text="Delete",
+                       text=translate_context_menu_text("Delete"),
                        icon_path=":/Icons/icons/delete3.png",
                        function_ptr=self.remove)
 
-        menu.addSection("Add")
+        menu.addSection(translate_context_menu_text("Add"))
 
         add_menu_entry(menu=menu,
-                       text="Turbine",
+                       text=translate_context_menu_text("Turbine"),
                        icon_path=":/Icons/icons/add_gen.png",
                        function_ptr=self.add_turbine)
 
         add_menu_entry(menu=menu,
-                       text="Pump",
+                       text=translate_context_menu_text("Pump"),
                        icon_path=":/Icons/icons/add_gen.png",
                        function_ptr=self.add_pump)
 
         add_menu_entry(menu=menu,
-                       text="P2X",
+                       text=translate_context_menu_text("P2X"),
                        icon_path=":/Icons/icons/add_gen.png",
                        function_ptr=self.add_p2x)
 
         menu.exec_(event.screenPos())
+
+    def edit(self) -> None:
+        """
+        Open the appropriate editor dialogue.
+
+        :return: ``None``.
+        """
+        self.open_device_editor()
 
     def get_terminal(self) -> BarTerminalItem:
         """
@@ -897,6 +935,7 @@ class FluidNodeGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
 
         _grph = FluidTurbineGraphicItem(parent=self, api_obj=api_obj, editor=self.editor)
         self._child_graphics.append(_grph)
+        self.reset_child_to_auto_layout(child_graphic=_grph)
         if self.editor.is_loading_diagram():
             pass
         else:
@@ -916,6 +955,7 @@ class FluidNodeGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
 
         _grph = FluidPumpGraphicItem(parent=self, api_obj=api_obj, editor=self.editor)
         self._child_graphics.append(_grph)
+        self.reset_child_to_auto_layout(child_graphic=_grph)
         if self.editor.is_loading_diagram():
             pass
         else:
@@ -935,11 +975,64 @@ class FluidNodeGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
 
         _grph = FluidP2xGraphicItem(parent=self, api_obj=api_obj, editor=self.editor)
         self._child_graphics.append(_grph)
+        self.reset_child_to_auto_layout(child_graphic=_grph)
         if self.editor.is_loading_diagram():
             pass
         else:
             self.arrange_children()
         return _grph
+
+    def reset_child_to_auto_layout(self, child_graphic: FLUID_CHILD_GRAPHICS) -> None:
+        """
+        Reset one freshly created fluid child to automatic dock placement.
+
+        The injection template seeds a temporary graphics position during construction.
+        That position must not become persisted manual placement metadata for new
+        fluid devices, otherwise every sibling keeps the same coordinates.
+
+        :param child_graphic: Newly created child graphic.
+        :return: ``None``.
+        """
+        dock = self.editor.diagram.get_dock(child_graphic.api_object)
+        dock["side"] = str(dock.get("side", SchematicAttachmentSlot.BOTTOM.value))
+        dock["order"] = self.get_next_child_dock_order(side_key=parse_attachment_slot(dock["side"]))
+        dock["offset"] = 0.0
+        dock["auto_layout"] = True
+        dock.pop("alignment", None)
+        dock.pop("anchor_x", None)
+        dock.pop("anchor_y", None)
+        dock.pop("child_anchor_x", None)
+        dock.pop("child_anchor_y", None)
+        self.editor.diagram.set_dock(child_graphic.api_object, dock)
+
+    def get_next_child_dock_order(self, side_key: SchematicAttachmentSlot) -> int:
+        """
+        Compute the next automatic child order for one fluid-node side.
+
+        :param side_key: Dock side.
+        :return: One-based order value.
+        """
+        max_order: int = 0
+        child_graphic: FLUID_CHILD_GRAPHICS
+
+        for child_graphic in self._child_graphics:
+            if child_graphic.api_object is None:
+                pass
+            else:
+                dock = self.editor.diagram.get_dock(child_graphic.api_object)
+                child_side = parse_attachment_slot(str(dock.get("side", SchematicAttachmentSlot.BOTTOM.value)))
+
+                if child_side != side_key:
+                    pass
+                else:
+                    child_order = int(dock.get("order", 0))
+
+                    if child_order > max_order:
+                        max_order = child_order
+                    else:
+                        pass
+
+        return max_order + 1
 
     def delete_all_connections(self, ask: bool, delete_from_db: bool) -> None:
         """

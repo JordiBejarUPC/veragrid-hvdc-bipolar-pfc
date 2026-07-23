@@ -15,16 +15,15 @@ from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.common_functions impo
     compute_asynchronous_generator_q,
     polar_to_rect,
 )
-from VeraGridEngine.enumerations import (FaultType, MethodShortCircuit, PhasesShortCircuit, ConverterControlType,
-                                         GeneratorType)
+from VeraGridEngine.enumerations import FaultType, MethodShortCircuit, PhasesShortCircuit, ConverterControlType, GeneratorType
 from VeraGridEngine.basic_structures import CxVec, Vec, IntVec
-from VeraGridEngine.Simulations.PowerFlow.Formulations.pf_basic_formulation_3ph import (compute_ybus,
-                                                                                        compute_current_loads,
-                                                                                        compute_power_loads,
-                                                                                        compute_ybus_generator,
-                                                                                        expand_magnitudes,
-                                                                                        expand_indices_3ph,
-                                                                                        expand3ph)
+from VeraGridEngine.Simulations.PowerFlow3ph.Formulations.pf_basic_formulation_3ph import (compute_ybus,
+                                                                                           compute_current_loads,
+                                                                                           compute_power_loads,
+                                                                                           compute_ybus_generator,
+                                                                                           expand_magnitudes,
+                                                                                           expand_indices_3ph,
+                                                                                           expand3ph)
 from VeraGridEngine.Simulations.PowerFlow.power_flow_options import PowerFlowOptions
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results import PowerFlowResults
 from VeraGridEngine.Simulations.PowerFlow.Formulations.pf_full_acdc_with_negative_poles_sc import \
@@ -664,7 +663,7 @@ def short_circuit_abc(nc: NumericalCircuit,
         U = Vpf[gen_idx[i] + idx4]
         Y = Ygen[np.ix_(gen_idx[i] + idx4, gen_idx[i] + idx4)]
         I = np.conj(S[np.ix_(gen_idx[i] + idx4)] / U)
-        E = U + np.linalg.solve(Y.toarray(), I)
+        E = U + spsolve(Y, I)
         Inorton_i = Y @ E
         Inorton[np.ix_(gen_idx[i] + idx3)] = Inorton_i
 
@@ -927,9 +926,9 @@ def short_circuit_vsc(nc: NumericalCircuit,
             Egen = Ugen + Igen / Ygen[gen_bus]
             I0_linear[gen_bus] += Ygen[gen_bus] * Egen
 
-        for vsc_i in range(len(nc.vsc_data.control1)):
-            nc.vsc_data.control1[vsc_i] = ConverterControlType.Fault1
-            nc.vsc_data.control2[vsc_i] = ConverterControlType.Fault2
+        for vsc_i in range(len(nc.vsc_data.control1_int)):
+            nc.vsc_data.control1_int[vsc_i] = ConverterControlType.Fault1.idx()
+            nc.vsc_data.control2_int[vsc_i] = ConverterControlType.Fault2.idx()
 
         if len(indices.vd) > 0:
 

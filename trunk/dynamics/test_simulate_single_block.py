@@ -18,10 +18,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
-from VeraGridEngine.Templates.predefined_blocks import gain, adder, substract, integrator
 from VeraGridEngine.Utils.Symbolic.block import Block
-from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const
-
+from VeraGridEngine.Utils.Symbolic.symbolic import Var
 
 # Tolerance for assertions
 ABS_TOL = 0.01

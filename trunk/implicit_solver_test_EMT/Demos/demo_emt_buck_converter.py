@@ -108,7 +108,12 @@ def run_case(backend_str: str) -> Tuple[np.ndarray, np.ndarray, np.ndarray, floa
     # glob_time = Var("t_glob")
     glob_time = vf.add_var("t_glob")
 
-    problem = GenericEmtProblem(sys_block=block, glob_time=glob_time)
+    static_parameter_values_mapping: Dict[Var, Const] = dict(block.parameters)
+    problem = GenericEmtProblem(
+        sys_block=block,
+        glob_time=glob_time,
+        static_parameter_values_mapping=static_parameter_values_mapping,
+    )
     problem.set_newton_trace_collector(NewtonTraceCollector())
 
     integration_method = DynamicIntegrationMethod.DaeTrapezoidal

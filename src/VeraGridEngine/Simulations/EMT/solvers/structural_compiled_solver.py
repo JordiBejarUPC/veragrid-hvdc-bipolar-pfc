@@ -41,6 +41,7 @@ from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import (
     get_solver_forced_event_time,
     resolve_solver_boundary_updater,
 )
+from VeraGridEngine.Simulations.driver_template import DummySignal
 from VeraGridEngine.enumerations import DynamicIntegrationMethod
 from VeraGridEngine.basic_structures import Mat, Vec
 
@@ -146,7 +147,7 @@ def _safe_njit(
         str(fastmath),
         str(cache),
     ])
-    cache_key = hashlib.md5(cache_payload.encode("utf-8")).hexdigest()
+    cache_key = hashlib.sha256(cache_payload.encode("utf-8")).hexdigest()
     cached_kernel = COMPILED_NUMBA_KERNEL_CACHE.get(cache_key)
 
     if cached_kernel is None:
@@ -267,6 +268,70 @@ def _build_fill_full_parameter_signature() -> Any:
     return types.void(float64_vector_tpe, float64_vector_tpe, float64_vector_tpe)
 
 
+def _dense_lu_bundle_solve(bundle: DenseSolveBundle, rhs: Vec) -> Vec:
+    """
+    Solve one dense LU linear system.
+
+    :param bundle: Dense LU bundle ``(factorization, matrix)``.
+    :param rhs: Right-hand side vector.
+    :return: Solution vector.
+    """
+    return lu_solve(bundle[0], rhs)
+
+
+def _dense_lu_bundle_fallback(bundle: DenseSolveBundle, rhs: Vec) -> Vec:
+    """
+    Solve one dense fallback least-squares system.
+
+    :param bundle: Dense LU bundle ``(factorization, matrix)``.
+    :param rhs: Right-hand side vector.
+    :return: Fallback solution vector.
+    """
+    return dense_lstsq_fallback(bundle[1], rhs)
+
+
+def _dense_lu_bundle_matrix(bundle: DenseSolveBundle) -> np.ndarray:
+    """
+    Return the dense matrix stored in one LU bundle.
+
+    :param bundle: Dense LU bundle ``(factorization, matrix)``.
+    :return: Dense Jacobian matrix.
+    """
+    return bundle[1]
+
+
+def _sparse_factor_manager_solve(factor_manager: "StructuralCompiledSparseFactorizationManager", rhs: Vec) -> Vec:
+    """
+    Solve one sparse linear system through the compiled sparse factor manager.
+
+    :param factor_manager: Sparse factorization manager.
+    :param rhs: Right-hand side vector.
+    :return: Solution vector.
+    """
+    return factor_manager.solve(rhs)
+
+
+def _sparse_factor_manager_fallback(factor_manager: "StructuralCompiledSparseFactorizationManager", rhs: Vec) -> Vec:
+    """
+    Solve one sparse fallback least-squares system.
+
+    :param factor_manager: Sparse factorization manager.
+    :param rhs: Right-hand side vector.
+    :return: Fallback solution vector.
+    """
+    return factor_manager.solve_fallback(rhs)
+
+
+def _sparse_factor_manager_matrix(factor_manager: "StructuralCompiledSparseFactorizationManager") -> csc_matrix:
+    """
+    Return the active sparse Jacobian matrix held by the factor manager.
+
+    :param factor_manager: Sparse factorization manager.
+    :return: Active sparse Jacobian matrix.
+    """
+    return factor_manager.get_active_matrix()
+
+
 def _build_permute_csc_signature() -> Any:
     """
     Return the eager signature of the CSC permutation helper.
@@ -358,7 +423,7 @@ def _canonicalize_symbolic_node(
             if runtime_uid in parameter_slots:
                 pass
             else:
-                parameter_name: str = getattr(node, 'name', f'uid_{runtime_uid}')
+                parameter_name: str = node.name
                 parameter_slots[runtime_uid] = f"__PARAM_{parameter_name}_{runtime_uid}__"
 
             return parameter_slots[runtime_uid]
@@ -487,6 +552,161 @@ def _build_full_residual_equations(
     return full_eqs
 
 
+def _build_structural_residual_debug_info(state_vars: List[Var],
+                                          algebraic_vars: List[Var],
+                                          state_eqs: List[Expr],
+                                          algebraic_eqs: List[Expr],
+                                          uid2idx_vars: Dict[int, int]) -> List[Dict[str, Any]]:
+    """
+    Build metadata aligned with the structural residual ordering.
+
+    :param state_vars: Ordered state variables.
+    :type state_vars: List[Var]
+    :param algebraic_vars: Ordered algebraic variables.
+    :type algebraic_vars: List[Var]
+    :param state_eqs: Differential right-hand sides.
+    :type state_eqs: List[Expr]
+    :param algebraic_eqs: Algebraic constraints.
+    :type algebraic_eqs: List[Expr]
+    :param uid2idx_vars: Runtime uid-to-index lookup.
+    :type uid2idx_vars: Dict[int, int]
+    :return: Residual metadata list.
+    :rtype: List[Dict[str, Any]]
+    """
+    debug_info: List[Dict[str, Any]] = list()
+    state_index: int = 0
+    algebraic_index: int = 0
+
+    while state_index < len(state_eqs):
+        state_var: Var = state_vars[state_index]
+        debug_info.append({
+            "kind": "STATE",
+            "label": f"d_{state_var.name} - rhs_{state_var.name}",
+            "var_name": state_var.name,
+            "state_idx": uid2idx_vars.get(state_var.uid, None),
+        })
+        state_index += 1
+
+    while algebraic_index < len(algebraic_eqs):
+        if algebraic_index < len(algebraic_vars):
+            algebraic_var: Var = algebraic_vars[algebraic_index]
+            debug_info.append({
+                "kind": "ALG",
+                "label": f"alg for {algebraic_var.name}",
+                "var_name": algebraic_var.name,
+                "state_idx": uid2idx_vars.get(algebraic_var.uid, None),
+            })
+        else:
+            debug_info.append({
+                "kind": "ALG",
+                "label": f"ALG_EQ_{algebraic_index}",
+                "var_name": f"<no algebraic var for eq {algebraic_index}>",
+                "state_idx": None,
+            })
+        algebraic_index += 1
+
+    return debug_info
+
+
+def _format_structural_residual_zero_division_message(failed_index: int | None,
+                                                      debug_info: List[Dict[str, Any]] | None) -> str:
+    """
+    Format one divide-by-zero diagnostic for the structural residual path.
+
+    :param failed_index: Residual index when known.
+    :type failed_index: int | None
+    :param debug_info: Residual metadata.
+    :type debug_info: List[Dict[str, Any]] | None
+    :return: Diagnostic message.
+    :rtype: str
+    """
+    if failed_index is None:
+        return "StructuralCompiled residual evaluation failed with division by zero; failing residual index could not be resolved."
+    else:
+        pass
+
+    if debug_info is None:
+        return f"StructuralCompiled residual evaluation failed with division by zero at residual index {failed_index}."
+    else:
+        pass
+
+    if failed_index < 0 or failed_index >= len(debug_info):
+        return f"StructuralCompiled residual evaluation failed with division by zero at residual index {failed_index}."
+    else:
+        pass
+
+    info: Dict[str, Any] = debug_info[failed_index]
+    kind: Any = info.get("kind", "UNK")
+    label: Any = info.get("label", f"residual_{failed_index}")
+    var_name: Any = info.get("var_name", "<?>")
+    return (
+        f"StructuralCompiled residual evaluation failed with division by zero at residual index {failed_index} "
+        f"[{kind}] for '{var_name}' ({label})."
+    )
+
+
+def _locate_failing_residual_with_single_equation_kernels(equations: List[Expr],
+                                                          variables: List[Var],
+                                                          parameters: List[Var],
+                                                          method: DynamicIntegrationMethod,
+                                                          states: Vec,
+                                                          params: Vec,
+                                                          history: Vec,
+                                                          d_history: Vec,
+                                                          h: float,
+                                                          history2: Vec) -> int | None:
+    """
+    Locate the first residual index that fails under one-equation Python kernels.
+
+    :param equations: Full residual equation list.
+    :type equations: List[Expr]
+    :param variables: Ordered runtime variables.
+    :type variables: List[Var]
+    :param parameters: Ordered parameter list.
+    :type parameters: List[Var]
+    :param method: Implicit integration method.
+    :type method: DynamicIntegrationMethod
+    :param states: Current Newton iterate.
+    :type states: Vec
+    :param params: Full parameter vector.
+    :type params: Vec
+    :param history: Previous state vector.
+    :type history: Vec
+    :param d_history: Previous derivative vector.
+    :type d_history: Vec
+    :param h: Local time step.
+    :type h: float
+    :param history2: Secondary history vector.
+    :type history2: Vec
+    :return: Failing residual index or ``None``.
+    :rtype: int | None
+    """
+    compiler: EagerEquationCompiler = EagerEquationCompiler(variables=variables, parameters=parameters, method=method)
+    equation_index: int = 0
+
+    while equation_index < len(equations):
+        equation_list: List[Expr] = list([equations[equation_index]])
+        out_vec: Vec = np.zeros(1, dtype=np.float64)
+        py_kernel: Callable[..., Any]
+        signature_tpe: object
+        py_kernel, signature_tpe = compiler.compile(
+            equations=equation_list,
+            func_name=f"structural_single_eq_debug_{equation_index}",
+            use_cse=True,
+            offset=0,
+            inplace=True,
+        )
+        _unused_signature_tpe: object = signature_tpe
+
+        try:
+            py_kernel(states, params, history, d_history, h, out_vec, history2)
+            equation_index += 1
+        except ZeroDivisionError:
+            return equation_index
+
+    return None
+
+
 def _build_parameter_uid_set(
         variable_parameters: List[Var],
         constant_parameters: List[Var],
@@ -534,7 +754,7 @@ def _build_backend_cache_token(
     :rtype: str
     """
     payload: str = "|".join([method.name, str(n_rows), str(n_cols), str(len(group_keys))])
-    return hashlib.md5(payload.encode("utf-8")).hexdigest()[:16]
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:16]
 
 
 def _greedy_color_columns(col_rows: List[List[int]], n_rows: int) -> Tuple[Int32Vector, int, List[List[int]]]:
@@ -1358,30 +1578,66 @@ def _compile_master_jacobian_kernel(
     """
     _unused = cache_token
 
-    def master_jacobian(
-            states: Vec,
-            seed_matrix: Float64Matrix,
-            params: Vec,
-            history: Vec,
-            d_history: Vec,
-            h: float,
-            history2: Vec,
-            data: Vec,
-            color_ptr: Int32Vector,
-            col_ptr: Int32Vector,
-            row_idx: Int32Vector,
-            data_idx: Int32Vector,
-            work_jvp: Float64Matrix,
-    ) -> None:
+    return StructuralCompiledMasterJacobianDispatcher(ad_kernel=ad_kernel, n_colors=n_colors)
+
+
+class StructuralCompiledMasterJacobianDispatcher:
+    """
+    Callable dispatcher that evaluates structural AD colors into CSC storage.
+    """
+
+    __slots__ = ("_ad_kernel", "_n_colors")
+
+    def __init__(self, ad_kernel: Callable[..., Any], n_colors: int) -> None:
+        """
+        Store the generic AD kernel and the number of graph colors.
+
+        :param ad_kernel: Generic AD kernel reused across colors.
+        :param n_colors: Number of graph colors.
+        :return: None.
+        """
+        self._ad_kernel: Callable[..., Any] = ad_kernel
+        self._n_colors: int = n_colors
+
+    def __call__(self,
+                 states: Vec,
+                 seed_matrix: Float64Matrix,
+                 params: Vec,
+                 history: Vec,
+                 d_history: Vec,
+                 h: float,
+                 history2: Vec,
+                 data: Vec,
+                 color_ptr: Int32Vector,
+                 col_ptr: Int32Vector,
+                 row_idx: Int32Vector,
+                 data_idx: Int32Vector,
+                 work_jvp: Float64Matrix) -> None:
+        """
+        Evaluate one full structural AD sweep and scatter it into CSC storage.
+
+        :param states: Current Newton iterate.
+        :param seed_matrix: Coloring seed matrix.
+        :param params: Full parameter vector.
+        :param history: Previous accepted state.
+        :param d_history: Previous derivative vector.
+        :param h: Effective time step.
+        :param history2: Secondary history vector.
+        :param data: CSC numeric data buffer.
+        :param color_ptr: Color-to-column pointer array.
+        :param col_ptr: Column-to-scatter pointer array.
+        :param row_idx: Row indices used by the scatter map.
+        :param data_idx: CSC data positions used by the scatter map.
+        :param work_jvp: Reusable JVP work buffer.
+        :return: None.
+        """
         color_index: int = 0
 
-        while color_index < n_colors:
+        while color_index < self._n_colors:
             local_jvp: Float64Vector = work_jvp[color_index]
-            ad_kernel(states, seed_matrix[color_index], params, history, d_history, h, local_jvp, history2)
+            self._ad_kernel(states, seed_matrix[color_index], params, history, d_history, h, local_jvp, history2)
             _scatter_color_jvp_to_csc_data(local_jvp, data, color_ptr, col_ptr, row_idx, data_idx, color_index)
             color_index += 1
-
-    return master_jacobian
 
 
 class StructuralCompiledResidualAssembler:
@@ -1484,10 +1740,39 @@ class StructuralCompiledDirectResidualAssembler:
     Residual assembler backed by one monolithic in-place kernel.
     """
 
-    __slots__ = ["_kernel", "_build_stats"]
+    __slots__ = ["_kernel", "_equations", "_variables", "_parameters", "_method", "_debug_info", "_build_stats"]
 
-    def __init__(self, kernel: Callable[..., Any]) -> None:
+    def __init__(self,
+                 kernel: Callable[..., Any],
+                 equations: List[Expr],
+                 variables: List[Var],
+                 parameters: List[Var],
+                 method: DynamicIntegrationMethod,
+                 debug_info: List[Dict[str, Any]] | None) -> None:
+        """
+        Create the direct residual assembler.
+
+        :param kernel: Residual kernel.
+        :type kernel: Callable[..., Any]
+        :param equations: Full residual equation list.
+        :type equations: List[Expr]
+        :param variables: Ordered runtime variables.
+        :type variables: List[Var]
+        :param parameters: Ordered parameter list.
+        :type parameters: List[Var]
+        :param method: Implicit integration method.
+        :type method: DynamicIntegrationMethod
+        :param debug_info: Residual metadata aligned with the kernel ordering.
+        :type debug_info: List[Dict[str, Any]] | None
+        :return: None
+        :rtype: None
+        """
         self._kernel = kernel
+        self._equations = equations
+        self._variables = variables
+        self._parameters = parameters
+        self._method = method
+        self._debug_info = debug_info
         self._build_stats = {
             "dispatcher_build_s": 0.0,
             "buffer_alloc_s": 0.0,
@@ -1504,7 +1789,24 @@ class StructuralCompiledDirectResidualAssembler:
             history2: Vec,
             data_out: Vec,
     ) -> None:
-        self._kernel(states, params, history, d_history, h, data_out, history2)
+        try:
+            self._kernel(states, params, history, d_history, h, data_out, history2)
+        except ZeroDivisionError as exc:
+            failed_index: int | None = _locate_failing_residual_with_single_equation_kernels(
+                equations=self._equations,
+                variables=self._variables,
+                parameters=self._parameters,
+                method=self._method,
+                states=states,
+                params=params,
+                history=history,
+                d_history=d_history,
+                h=h,
+                history2=history2,
+            )
+            raise ZeroDivisionError(
+                _format_structural_residual_zero_division_message(failed_index, self._debug_info)
+            ) from exc
 
     def get_work_buffer(self) -> None:
         return None
@@ -2084,6 +2386,8 @@ class StructuralCompiledSolver:
         "_newton_diag_config",
         "_sparse_factorization_manager",
         "_sparse_solver_backend_provider",
+        "_cancel_checker",
+        "_progress_signal",
     ]
 
     def __init__(
@@ -2101,6 +2405,8 @@ class StructuralCompiledSolver:
             warmup_policy: StructuralCompiledWarmupPolicy = StructuralCompiledWarmupPolicy.Adaptive,
             sparse_solver_backend_provider: SparseLinearSolverBackendProvider | None = None,
             newton_diag_config: NewtonDiagnosticsConfig | None = None,
+            progress_signal: DummySignal | None = None,
+            cancel_checker: Callable[[], bool] | None = None,
     ) -> None:
         """
         Create the structural compiled EMT solver.
@@ -2129,6 +2435,8 @@ class StructuralCompiledSolver:
         :type warmup_policy: StructuralCompiledWarmupPolicy
         :param sparse_solver_backend_provider: Sparse linear solver backend provider.
         :type sparse_solver_backend_provider: SparseLinearSolverBackendProvider | None
+        :param progress_signal: Optional progress signal updated during the simulation loop.
+        :type progress_signal: DummySignal | None
         :return: None
         :rtype: None
         """
@@ -2214,6 +2522,8 @@ class StructuralCompiledSolver:
         self._last_runtime_stats: Dict[str, float] = dict()
         self._predictor = StructuralCompiledPredictor(self._n_state)
         self._backend_build_stats: Dict[str, float] = dict()
+        self._progress_signal: DummySignal | None = progress_signal
+        self._cancel_checker = cancel_checker
 
         if auto_build:
             self._build_vectorized_backend(method)
@@ -2388,8 +2698,23 @@ class StructuralCompiledSolver:
 
         # The residual assembler owns the reusable grouped work buffers.
         t_residual_assembler_start: float = time.perf_counter()
+        residual_debug_info: List[Dict[str, Any]] = _build_structural_residual_debug_info(
+            self._state_vars,
+            self._algebraic_vars,
+            self._state_eqs,
+            self._algebraic_eqs,
+            self._uid2idx_vars,
+        )
+
         if use_direct_residual:
-            self._residual_assembler = StructuralCompiledDirectResidualAssembler(compiled_residual)
+            self._residual_assembler = StructuralCompiledDirectResidualAssembler(
+                compiled_residual,
+                full_eqs,
+                self._sorted_vars,
+                all_parameters,
+                method,
+                residual_debug_info,
+            )
         else:
             self._residual_assembler = StructuralCompiledResidualAssembler(kernel_specs, backend_cache_token)
         residual_assembler_s: float = time.perf_counter() - t_residual_assembler_start
@@ -2672,20 +2997,20 @@ class StructuralCompiledSolver:
 
         if diagnostics_enabled:
             dense_solve = with_newton_diagnostics(
-                lambda bundle, rhs: lu_solve(bundle[0], rhs),
-                fallback_solve=lambda bundle, rhs: dense_lstsq_fallback(bundle[1], rhs),
+                _dense_lu_bundle_solve,
+                fallback_solve=_dense_lu_bundle_fallback,
                 collector=trace_collector,
                 config=diag_cfg,
                 solver_name="dense_lu",
-                matrix_getter=lambda bundle: bundle[1],
+                matrix_getter=_dense_lu_bundle_matrix,
             )
             sparse_solve = with_newton_diagnostics(
-                lambda factor_manager, rhs: factor_manager.solve(rhs),
-                fallback_solve=lambda factor_manager, rhs: factor_manager.solve_fallback(rhs),
+                _sparse_factor_manager_solve,
+                fallback_solve=_sparse_factor_manager_fallback,
                 collector=trace_collector,
                 config=diag_cfg,
                 solver_name="superlu",
-                matrix_getter=lambda factor_manager: factor_manager.get_active_matrix(),
+                matrix_getter=_sparse_factor_manager_matrix,
             )
         else:
             pass
@@ -2708,6 +3033,14 @@ class StructuralCompiledSolver:
 
         step_index: int = 0
         while step_index < steps:
+            if self._progress_signal is not None:
+                self._problem.report_progress2(step_index, steps)
+            else:
+                pass
+
+            if self._cancel_checker is not None and self._cancel_checker():
+                return t[:step_index + 1].copy(), y[:step_index + 1, :].copy(), dy[:step_index + 1, :].copy(), well_initialized, converged
+
             t_step_start: float = float(t[step_index])
             t_step_target: float = float(t[step_index + 1])
             t_local_prev: float = t_step_start

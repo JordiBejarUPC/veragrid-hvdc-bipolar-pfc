@@ -42,20 +42,22 @@ def detect_substations(grid: MultiCircuit, r_x_threshold=1e-3) -> None:
 
     # create a connectivity matrix only with transformers and lines with small (r+x)
     branches: List[BRANCH_TYPES] = list()
+
+    # these are devices that are supposed to "live" within a substation
     reducible_types = [
         DeviceType.Transformer2WDevice,
         DeviceType.WindingDevice,
         DeviceType.SeriesReactanceDevice,
-        DeviceType.VscDevice
-    ]  # these are devices that are supposed to "live" within a substation
+        DeviceType.VscDevice,
+        DeviceType.UpfcDevice
+    ]
 
     for br in grid.get_branches(add_hvdc=True, add_vsc=True, add_switch=True):
         if br.reducible or br.device_type in reducible_types:
             branches.append(br)
-        elif br.device_type == DeviceType.LineDevice:
-            if br.R > 0.0 or br.X > 0.0:
-                if (br.R + br.X) <= r_x_threshold:
-                    branches.append(br)
+        else:
+            if 0.0 > br.get_weight() <= r_x_threshold:
+                branches.append(br)
 
     # build the connectivity matrix
     nbr = len(branches)
@@ -88,7 +90,7 @@ def detect_substations(grid: MultiCircuit, r_x_threshold=1e-3) -> None:
     islands = find_islands(adj=A, active=bus_active)
 
     for is_idx, island in enumerate(islands):
-        bus0 = grid.get_buses()[island[0]]
+        bus0: dev.Bus = grid.get_buses()[island[0]]
 
         sub = get_bus_group_substation(bus_indices=island, buses=buses)
 
@@ -104,7 +106,7 @@ def detect_substations(grid: MultiCircuit, r_x_threshold=1e-3) -> None:
         # set the substation, and get the different voltages
         voltages = set()
         for i in island:
-            bus = buses[i]
+            bus: dev.Bus = buses[i]
             bus.substation = sub
             voltages.add(bus.Vnom)
 
@@ -119,7 +121,7 @@ def detect_substations(grid: MultiCircuit, r_x_threshold=1e-3) -> None:
 
         # assign the VL's
         for i in island:
-            bus = buses[i]
+            bus: dev.Bus = buses[i]
             bus.voltage_level = voltages_vl[bus.Vnom]
 
 

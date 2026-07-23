@@ -20,7 +20,7 @@ from VeraGridEngine.Devices.Injections.generator import Generator
 from VeraGridEngine.Devices.Branches.line import Line
 from VeraGridEngine.Devices.Branches.hvdc_line import HvdcLine
 from VeraGridEngine.Devices.Injections.load import Load
-from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms
+from VeraGridEngine.Utils.Symbolic.bus_rms_template import initialize_bus_rms
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.Templates.Rms.load_zip_template import ZIPLoadBuild
 from VeraGridEngine.Templates.Rms.genrow_rms_template import get_genrow_rms_template
@@ -32,7 +32,7 @@ from VeraGridEngine.Compilers.circuit_to_data import compile_numerical_circuit_a
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
 from VeraGridEngine.Simulations.Rms.problems.rms_problem_dae import RmsProblemDae
 from VeraGridEngine.Simulations.Rms.numerical.back_euler_fx import BackEulerImplicitIntegration
-from VeraGridEngine.enumerations import DynamicIntegrationMethod, RmsInitializationMethod, VarPowerFlowRefferenceType
+from VeraGridEngine.enumerations import DynamicIntegrationMethod, RmsInitializationMethod, VarPowerFlowReferenceType
 from VeraGridEngine.Utils.Symbolic import Block
 from VeraGridEngine.basic_structures import Logger
 
@@ -62,14 +62,14 @@ def create_hvdc_grid():
     # Generators
     gen1 = Generator(
         name="Gen 1", P=50.0, vset=1.0, Snom=100.0,
-        x1=0.3, r1=0.0, freq=60.0, M=10.0, D=5.0,
+        x1=0.3, r1=0.0, freq=60.0, D=5.0,
         tm0=1.0, vf=1.0, omega_ref=1.0, Kp=0.0, Ki=0.0
     )
     grid.add_generator(bus1, gen1)
     
     gen3 = Generator(
         name="Gen 3", P=30.0, vset=1.05, Snom=100.0,
-        x1=0.3, r1=0.0, freq=60.0, M=10.0, D=5.0,
+        x1=0.3, r1=0.0, freq=60.0, D=5.0,
         tm0=0.5, vf=1.0, omega_ref=1.0, Kp=0.0, Ki=0.0,
     )
     grid.add_generator(bus3, gen3)
@@ -116,13 +116,13 @@ def setup_rms_models(grid):
         genrow_mdl = template.block
         
         bus = gen.bus
-        genrow_mdl.connect([genrow_mdl.in_vars[0]], [bus.rms_model.out_vars[0]])
-        genrow_mdl.connect([genrow_mdl.in_vars[1]], [bus.rms_model.out_vars[1]])
+        grid.var_factory.add_connections([genrow_mdl.in_vars[0]], [bus.rms_model.out_vars[0]])
+        grid.var_factory.add_connections([genrow_mdl.in_vars[1]], [bus.rms_model.out_vars[1]])
         genrow_mdl.unify_blocks()
         
         big_gen = Block(children=[genrow_mdl])
-        big_gen.external_mapping.update({VarPowerFlowRefferenceType.P: genrow_mdl.out_vars[0]})
-        big_gen.external_mapping.update({VarPowerFlowRefferenceType.Q: genrow_mdl.out_vars[1]})
+        big_gen.external_mapping.update({VarPowerFlowReferenceType.P: genrow_mdl.out_vars[0]})
+        big_gen.external_mapping.update({VarPowerFlowReferenceType.Q: genrow_mdl.out_vars[1]})
         big_gen.unify_blocks()
         
         gen.rms_model = big_gen
@@ -133,10 +133,10 @@ def setup_rms_models(grid):
         
         from_bus = line.bus_from
         to_bus = line.bus_to
-        line_mdl.connect([line_mdl.in_vars[0]], [from_bus.rms_model.out_vars[0]])
-        line_mdl.connect([line_mdl.in_vars[1]], [from_bus.rms_model.out_vars[1]])
-        line_mdl.connect([line_mdl.in_vars[2]], [to_bus.rms_model.out_vars[0]])
-        line_mdl.connect([line_mdl.in_vars[3]], [to_bus.rms_model.out_vars[1]])
+        grid.var_factory.add_connections([line_mdl.in_vars[0]], [from_bus.rms_model.out_vars[0]])
+        grid.var_factory.add_connections([line_mdl.in_vars[1]], [from_bus.rms_model.out_vars[1]])
+        grid.var_factory.add_connections([line_mdl.in_vars[2]], [to_bus.rms_model.out_vars[0]])
+        grid.var_factory.add_connections([line_mdl.in_vars[3]], [to_bus.rms_model.out_vars[1]])
         line_mdl.unify_blocks()
         
         line.rms_model = line_mdl
@@ -151,7 +151,7 @@ def setup_rms_models(grid):
         load_mdl = load_template.block
         
         bus = load.bus
-        load_mdl.connect([load_mdl.in_vars[0]], [bus.rms_model.out_vars[0]])
+        grid.var_factory.add_connections([load_mdl.in_vars[0]], [bus.rms_model.out_vars[0]])
         load_mdl.unify_blocks()
         
         load.rms_model = load_mdl

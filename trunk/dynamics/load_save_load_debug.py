@@ -164,7 +164,7 @@ def load_save_load_rms() -> None:
         os.makedirs("output")
 
     # fname = '2bus_gen_load_evt.veragrid'
-    fname = 'working_gen_load_grid.veragrid'
+    fname = '2bus_genqec_load_test.veragrid'
     # fname = "saved_grid_1.veragrid"
 
     # open the main grid

@@ -48,7 +48,7 @@ from datetime import datetime, timedelta
 
 import pandas as pd
 
-from VeraGrid.Gui.DeviceEditors.SolarPowerWizard import get_pv_lib_weather_df
+from VeraGrid.Gui.DeviceEditors.GeneratorEditor.SolarPowerWizard import get_pv_lib_weather_df
 
 
 def main() -> None:

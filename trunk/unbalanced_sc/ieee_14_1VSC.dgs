@@ -1,0 +1,427 @@
+********************************************************************************
+* Created with VeraGrid
+********************************************************************************
+
+$$General;ID(a:40);Descr(a:40);Val(a:40)
+********************************************************************************
+* ID: a:40: DGS field ID (a:40)
+* Descr: a:40: DGS field Descr (a:40)
+* Val: a:40: DGS field Val (a:40)
+********************************************************************************
+1;Version;5.0
+
+$$ElmGenstat;ID(a:40);loc_name(a:40);fold_id(p);bus1(p);outserv(i);sgn(r);cosn(r);ngnum(i);pgini(r);qgini(r);av_mode(a);ip_ctrl(i);cCategory(a:40);c_pmod(a:40)
+********************************************************************************
+* ID: a:40: DGS field ID (a:40)
+* loc_name: a:40: DGS field loc_name (a:40)
+* fold_id: p: DGS field fold_id (p)
+* bus1: p: DGS field bus1 (p)
+* outserv: i: DGS field outserv (i)
+* sgn: r: DGS field sgn (r)
+* cosn: r: DGS field cosn (r)
+* ngnum: i: DGS field ngnum (i)
+* pgini: r: DGS field pgini (r)
+* qgini: r: DGS field qgini (r)
+* av_mode: a: DGS field av_mode (a)
+* ip_ctrl: i: DGS field ip_ctrl (i)
+* cCategory: a:40: plant types
+* c_pmod: a:40: plant model
+********************************************************************************
+47;Static Generator(1);;;0;9999.0;0.9900000237132254;1;9.0;1.282429;;0;;
+49;Static Generator(2);;;0;9999.0;0.9900000237132254;1;9.0;1.282429;;0;;
+51;Static Generator(3);;;0;9999.0;0.9900000237132254;1;9.0;1.282429;;0;;
+53;Static Generator(4);;;0;9999.0;0.9900000237132254;1;9.0;1.282429;;0;;
+55;Static Generator(5);;;0;9999.0;0.9900000237132254;1;9.0;1.282429;;0;;
+57;Static Generator(6);;;0;9999.0;0.9900000237132254;1;9.0;1.282429;;0;;
+59;Static Generator;;;0;9999.0;0.9900000237132254;1;9.0;1.282429;;0;;
+
+$$ElmLne;ID(a:40);loc_name(a:40);fold_id(p);typ_id(p);dline(r);chr_name(a:20);fline(r);outserv(i);pStoch(p);for_name(a:50);GPScoords:SIZEROW(i);GPScoords:SIZECOL(i);nlnum(i);inAir(i)
+********************************************************************************
+* ID: a:40: DGS field ID (a:40)
+* loc_name: a:40: DGS field loc_name (a:40)
+* fold_id: p: DGS field fold_id (p)
+* typ_id: p: DGS field typ_id (p)
+* dline: r: DGS field dline (r)
+* chr_name: a:20: DGS field chr_name (a:20)
+* fline: r: Derating factor
+* outserv: i: DGS field outserv (i)
+* pStoch: p: DGS field pStoch (p)
+* for_name: a:50: DGS field for_name (a:50)
+* GPScoords:SIZEROW: i: DGS field GPScoords:SIZEROW (i)
+* GPScoords:SIZECOL: i: DGS field GPScoords:SIZECOL (i)
+* nlnum: i: DGS field nlnum (i)
+* inAir: i: DGS field inAir (i)
+********************************************************************************
+89;LN_01-02-a;;67;1.0;;1.0;0;;;0;0;1;0
+92;LN_01-02-b;;67;1.0;;1.0;0;;;0;0;1;0
+95;LN_01-05;;68;1.0;;1.0;0;;;0;0;1;0
+98;LN_02-03;;69;1.0;;1.0;0;;;0;0;1;0
+101;LN_02-04;;70;1.0;;1.0;0;;;0;0;1;0
+104;LN_02-05;;71;1.0;;1.0;0;;;0;0;1;0
+107;LN_03-04;;72;1.0;;1.0;0;;;0;0;1;0
+110;LN_04-05;;73;1.0;;1.0;0;;;0;0;1;0
+113;LN_06-11;;74;1.0;;1.0;0;;;0;0;1;0
+116;LN_06-12;;75;1.0;;1.0;0;;;0;0;1;0
+119;LN_06-13;;76;1.0;;1.0;0;;;0;0;1;0
+122;LN_09-10;;77;1.0;;1.0;0;;;0;0;1;0
+125;LN_09-14;;78;1.0;;1.0;0;;;0;0;1;0
+128;LN_10-11;;79;1.0;;1.0;0;;;0;0;1;0
+131;LN_12-13;;80;1.0;;1.0;0;;;0;0;1;0
+134;LN_13-14;;81;1.0;;1.0;0;;;0;0;1;0
+
+$$ElmLod;ID(a:40);loc_name(a:40);fold_id(p);typ_id(p);chr_name(a:20);plini(r);qlini(r);scale0(r);outserv(i);for_name(a:50);mode_inp(a:3);slini(r);coslini(r);pf_recap(i);i_scale(i);classif(a:20)
+********************************************************************************
+* ID: a:40: DGS field ID (a:40)
+* loc_name: a:40: DGS field loc_name (a:40)
+* fold_id: p: DGS field fold_id (p)
+* typ_id: p: DGS field typ_id (p)
+* chr_name: a:20: DGS field chr_name (a:20)
+* plini: r: DGS field plini (r)
+* qlini: r: DGS field qlini (r)
+* scale0: r: DGS field scale0 (r)
+* outserv: i: DGS field outserv (i)
+* for_name: a:50: DGS field for_name (a:50)
+* mode_inp: a:3: DGS field mode_inp (a:3)
+* slini: r: DGS field slini (r)
+* coslini: r: DGS field coslini (r)
+* pf_recap: i: DGS field pf_recap (i)
+* i_scale: i: DGS field i_scale (i)
+* classif: a:20: DGS field classif (a:20)
+********************************************************************************
+25;LD_02;;;;21.7;12.7;1.0;0;;;0.0;0.0;0;0;
+27;LD_03;;;;94.2;19.0;1.0;0;;;0.0;0.0;0;0;
+29;LD_04;;;;47.8;-3.9;1.0;0;;;0.0;0.0;0;0;
+31;LD_05;;;;7.6;1.6;1.0;0;;;0.0;0.0;0;0;
+33;LD_06;;;;11.2;7.5;1.0;0;;;0.0;0.0;0;0;
+35;LD_09;;;;29.5;16.6;1.0;0;;;0.0;0.0;0;0;
+37;LD_10;;;;9.0;5.8;1.0;0;;;0.0;0.0;0;0;
+39;LD_11;;;;3.5;1.8;1.0;0;;;0.0;0.0;0;0;
+41;LD_12;;;;6.1;1.6;1.0;0;;;0.0;0.0;0;0;
+43;LD_13;;;;13.5;5.8;1.0;0;;;0.0;0.0;0;0;
+45;LD_14;;;;14.9;5.0;1.0;0;;;0.0;0.0;0;0;
+
+$$ElmNet;ID(a:40);loc_name(a:40);fold_id(p);frnom(r);for_name(a:50);pDiagram(p)
+********************************************************************************
+* ID: a:40: DGS field ID (a:40)
+* loc_name: a:40: DGS field loc_name (a:40)
+* fold_id: p: DGS field fold_id (p)
+* frnom: r: Nominal Frequency in Hz
+* for_name: a:50: DGS field for_name (a:50)
+* pDiagram: p: Diagram in IntGrfnet
+********************************************************************************
+2;Grid;;50.0;;
+
+$$ElmSym;ID(a:40);loc_name(a:40);fold_id(p);typ_id(p);ngnum(i);i_mot(i);chr_name(a:20);outserv(i);pgini(r);qgini(r);usetp(r);iv_mode(i);q_min(r);q_max(r);Pmin_uc(r);Pmax_uc(r);iqtype(i);for_name(a:50);cCategory(a);cosgini(r);pf_recap(i);av_mode(a);phtech(i);ip_ctrl(i);c_pmod(a:40)
+********************************************************************************
+* ID: a:40: DGS field ID (a:40)
+* loc_name: a:40: DGS field loc_name (a:40)
+* fold_id: p: DGS field fold_id (p)
+* typ_id: p: DGS field typ_id (p)
+* ngnum: i: DGS field ngnum (i)
+* i_mot: i: DGS field i_mot (i)
+* chr_name: a:20: DGS field chr_name (a:20)
+* outserv: i: DGS field outserv (i)
+* pgini: r: DGS field pgini (r)
+* qgini: r: DGS field qgini (r)
+* usetp: r: DGS field usetp (r)
+* iv_mode: i: DGS field iv_mode (i)
+* q_min: r: DGS field q_min (r)
+* q_max: r: DGS field q_max (r)
+* Pmin_uc: r: DGS field Pmin_uc (r)
+* Pmax_uc: r: DGS field Pmax_uc (r)
+* iqtype: i: DGS field iqtype (i)
+* for_name: a:50: DGS field for_name (a:50)
+* cCategory: a: DGS field cCategory (a)
+* cosgini: r: DGS field cosgini (r)
+* pf_recap: i: DGS field pf_recap (i)
+* av_mode: a: DGS field av_mode (a)
+* phtech: i: DGS field phtech (i)
+* ip_ctrl: i: Reference machine
+* c_pmod: a:40: plant model
+********************************************************************************
+62;gen@BB_01;;61;1;0;;0;0.0;0.0;1.0;0;-99.99;99.99;0.0;9999.0;0;;;0.0;0;constv;0;1;
+65;gen@Bus DC 14;;64;1;0;;0;0.0;0.0;1.0;0;-99.99;99.99;0.0;9999.0;0;;;0.0;0;constv;0;1;
+
+$$ElmTerm;ID(a:40);loc_name(a:40);fold_id(p);typ_id(p);iUsage(i);uknom(r);chr_name(a:20);outserv(i);cpZone(p);phtech(i);for_name(a:50);systype(i);unknom(r);iminus(i);GPSlat(r);GPSlon(r);vtarget(r);m:u(r);m:phiu(r)
+********************************************************************************
+* ID: a:40: DGS field ID (a:40)
+* loc_name: a:40: DGS field loc_name (a:40)
+* fold_id: p: DGS field fold_id (p)
+* typ_id: p: DGS field typ_id (p)
+* iUsage: i: DGS field iUsage (i)
+* uknom: r: DGS field uknom (r)
+* chr_name: a:20: DGS field chr_name (a:20)
+* outserv: i: DGS field outserv (i)
+* cpZone: p: DGS field cpZone (p)
+* phtech: i: DGS field phtech (i)
+* for_name: a:50: DGS field for_name (a:50)
+* systype: i: DGS field systype (i)
+* unknom: r: DGS field unknom (r)
+* iminus: i: DGS field iminus (i)
+* GPSlat: r: DGS field GPSlat (r)
+* GPSlon: r: DGS field GPSlon (r)
+* vtarget: r: DGS field vtarget (r)
+* m:u: r: DGS field m:u (r)
+* m:phiu: r: DGS field m:phiu (r)
+********************************************************************************
+3;BB_01;;;0;132.0;;0;;0;;0;76.2102355330306;0;0.0;0.0;0.0;0.0;0.0
+4;BB_02;;;0;132.0;;0;;0;;0;76.2102355330306;0;0.0;0.0;0.0;0.0;0.0
+5;BB_03;;;0;132.0;;0;;0;;0;76.2102355330306;0;0.0;0.0;0.0;0.0;0.0
+6;BB_04;;;0;132.0;;0;;0;;0;76.2102355330306;0;0.0;0.0;0.0;0.0;0.0
+7;BB_05;;;0;132.0;;0;;0;;0;76.2102355330306;0;0.0;0.0;0.0;0.0;0.0
+8;BB_06;;;0;33.0;;0;;0;;0;19.05255888325765;0;0.0;0.0;0.0;0.0;0.0
+9;BB_07;;;0;1.0;;0;;0;;0;0.5773502691896258;0;0.0;0.0;0.0;0.0;0.0
+10;BB_09;;;0;33.0;;0;;0;;0;19.05255888325765;0;0.0;0.0;0.0;0.0;0.0
+11;BB_10;;;0;33.0;;0;;0;;0;19.05255888325765;0;0.0;0.0;0.0;0.0;0.0
+12;BB_11;;;0;33.0;;0;;0;;0;19.05255888325765;0;0.0;0.0;0.0;0.0;0.0
+13;BB_12;;;0;33.0;;0;;0;;0;19.05255888325765;0;0.0;0.0;0.0;0.0;0.0
+14;BB_13;;;0;33.0;;0;;0;;0;19.05255888325765;0;0.0;0.0;0.0;0.0;0.0
+15;BB_14;;;0;33.0;;0;;0;;0;19.05255888325765;0;0.0;0.0;0.0;0.0;0.0
+16;BB_VSC_02;;;0;0.4;;0;;0;;0;0.23094010767585033;0;0.0;0.0;0.0;0.0;0.0
+17;BB_VSC_03;;;0;0.4;;0;;0;;0;0.23094010767585033;0;0.0;0.0;0.0;0.0;0.0
+18;BB_VSC_06;;;0;0.4;;0;;0;;0;0.23094010767585033;0;0.0;0.0;0.0;0.0;0.0
+19;BB_VSC_07;;;0;0.4;;0;;0;;0;0.23094010767585033;0;0.0;0.0;0.0;0.0;0.0
+20;BB_VSC_10;;;0;0.4;;0;;0;;0;0.23094010767585033;0;0.0;0.0;0.0;0.0;0.0
+21;BB_VSC_12;;;0;0.4;;0;;0;;0;0.23094010767585033;0;0.0;0.0;0.0;0.0;0.0
+22;BB_VSC_13;;;0;0.4;;0;;0;;0;0.23094010767585033;0;0.0;0.0;0.0;0.0;0.0
+23;BB_VSC_14;;;0;0.4;;0;;0;;0;0.23094010767585033;0;0.0;0.0;0.0;0.0;0.0
+24;Bus DC 14;;;0;0.4;;0;;0;;0;0.23094010767585033;0;0.0;0.0;0.0;0.0;0.0
+
+$$ElmTr2;ID(a:40);loc_name(a:40);fold_id(p);typ_id(p);outserv(i);nntap(i);sernum(a:20);constr(i);chr_name(a:20);cgnd_h(i);cgnd_l(i);i_auto(i);ntrcn(i);ratfac(r);for_name(a:50);ntnum(i);usetp(r);usp_low(r);usp_up(r);t2ldc(i);mTaps_SIZEROW(i);mTaps_SIZECOL(i)
+********************************************************************************
+* ID: a:40: DGS field ID (a:40)
+* loc_name: a:40: DGS field loc_name (a:40)
+* fold_id: p: DGS field fold_id (p)
+* typ_id: p: DGS field typ_id (p)
+* outserv: i: Out of Service
+* nntap: i: Tap Changer 1: Tap Position
+* sernum: a:20: Serial Number (a:20)
+* constr: i: Year of Construction
+* chr_name: a:20: DGS field chr_name (a:20)
+* cgnd_h: i: Internal Grounding Impedance, HV Side: Star Point:Connected:Not connected
+* cgnd_l: i: Internal Grounding Impedance, LV Side: Star Point:Connected:Not connected
+* i_auto: i: Auto Transformer
+* ntrcn: i: Controller, Tap Changer 1: Automatic Tap Changing
+* ratfac: r: Rating Factor
+* for_name: a:50: DGS field for_name (a:50)
+* ntnum: i: DGS field ntnum (i)
+* usetp: r: DGS field usetp (r)
+* usp_low: r: DGS field usp_low (r)
+* usp_up: r: DGS field usp_up (r)
+* t2ldc: i: DGS field t2ldc (i)
+* mTaps_SIZEROW: i: DGS field mTaps:SIZEROW (i)
+* mTaps_SIZECOL: i: DGS field mTaps:SIZECOL (i)
+********************************************************************************
+137;TR_04-07;;82;0;0;;0;;0;0;0;0;1;;1;0.0;0.0;0.0;0;0;0
+140;TR_04-09;;83;0;0;;0;;0;0;0;0;1;;1;0.0;0.0;0.0;0;0;0
+143;TR_05-06;;84;0;0;;0;;0;0;0;0;1;;1;0.0;0.0;0.0;0;0;0
+146;TR_07-09;;85;0;0;;0;;0;0;0;0;1;;1;0.0;0.0;0.0;0;0;0
+149;TR_VSC_02;;87;0;0;;0;;0;0;0;0;1;;1;0.0;0.0;0.0;0;0;0
+152;TR_VSC_03;;87;0;0;;0;;0;0;0;0;1;;1;0.0;0.0;0.0;0;0;0
+155;TR_VSC_06;;88;0;0;;0;;0;0;0;0;1;;1;0.0;0.0;0.0;0;0;0
+158;TR_VSC_07;;86;0;0;;0;;0;0;0;0;1;;1;0.0;0.0;0.0;0;0;0
+161;TR_VSC_10;;88;0;0;;0;;0;0;0;0;1;;1;0.0;0.0;0.0;0;0;0
+164;TR_VSC_12;;88;0;0;;0;;0;0;0;0;1;;1;0.0;0.0;0.0;0;0;0
+167;TR_VSC_13;;88;0;0;;0;;0;0;0;0;1;;1;0.0;0.0;0.0;0;0;0
+170;TR_VSC_14;;88;0;0;;0;;0;0;0;0;1;;1;0.0;0.0;0.0;0;0;0
+
+$$General;ID(a:40);Descr(a:40);Val(a:40)
+********************************************************************************
+* ID: a:40: DGS field ID (a:40)
+* Descr: a:40: DGS field Descr (a:40)
+* Val: a:40: DGS field Val (a:40)
+********************************************************************************
+1;Version;5.0
+
+$$StaCubic;ID(a:40);loc_name(a:40);fold_id(p);chr_name(a:20);obj_bus(i);obj_id(p);for_name(a:50);it2p1(i);it2p2(i);it2p3(i)
+********************************************************************************
+* ID: a:40: DGS field ID (a:40)
+* loc_name: a:40: DGS field loc_name (a:40)
+* fold_id: p: DGS field fold_id (p)
+* chr_name: a:20: DGS field chr_name (a:20)
+* obj_bus: i: DGS field obj_bus (i)
+* obj_id: p: DGS field obj_id (p)
+* for_name: a:50: DGS field for_name (a:50)
+* it2p1: i: DGS field it2p1 (i)
+* it2p2: i: DGS field it2p2 (i)
+* it2p3: i: DGS field it2p3 (i)
+********************************************************************************
+26;StaCubic_26;4;;0;25;;0;0;0
+28;StaCubic_28;5;;0;27;;0;0;0
+30;StaCubic_30;6;;0;29;;0;0;0
+32;StaCubic_32;7;;0;31;;0;0;0
+34;StaCubic_34;8;;0;33;;0;0;0
+36;StaCubic_36;10;;0;35;;0;0;0
+38;StaCubic_38;11;;0;37;;0;0;0
+40;StaCubic_40;12;;0;39;;0;0;0
+42;StaCubic_42;13;;0;41;;0;0;0
+44;StaCubic_44;14;;0;43;;0;0;0
+46;StaCubic_46;15;;0;45;;0;0;0
+48;StaCubic_48;17;;0;47;;0;0;0
+50;StaCubic_50;18;;0;49;;0;0;0
+52;StaCubic_52;19;;0;51;;0;0;0
+54;StaCubic_54;20;;0;53;;0;0;0
+56;StaCubic_56;21;;0;55;;0;0;0
+58;StaCubic_58;22;;0;57;;0;0;0
+60;StaCubic_60;16;;0;59;;0;0;0
+63;StaCubic_63;3;;0;62;;0;0;0
+66;StaCubic_66;24;;0;65;;0;0;0
+90;StaCubic_90;3;;0;89;;0;0;0
+91;StaCubic_91;4;;1;89;;0;0;0
+93;StaCubic_93;3;;0;92;;0;0;0
+94;StaCubic_94;4;;1;92;;0;0;0
+96;StaCubic_96;3;;0;95;;0;0;0
+97;StaCubic_97;7;;1;95;;0;0;0
+99;StaCubic_99;4;;0;98;;0;0;0
+100;StaCubic_100;5;;1;98;;0;0;0
+102;StaCubic_102;4;;0;101;;0;0;0
+103;StaCubic_103;6;;1;101;;0;0;0
+105;StaCubic_105;4;;0;104;;0;0;0
+106;StaCubic_106;7;;1;104;;0;0;0
+108;StaCubic_108;5;;0;107;;0;0;0
+109;StaCubic_109;6;;1;107;;0;0;0
+111;StaCubic_111;6;;0;110;;0;0;0
+112;StaCubic_112;7;;1;110;;0;0;0
+114;StaCubic_114;8;;0;113;;0;0;0
+115;StaCubic_115;12;;1;113;;0;0;0
+117;StaCubic_117;8;;0;116;;0;0;0
+118;StaCubic_118;13;;1;116;;0;0;0
+120;StaCubic_120;8;;0;119;;0;0;0
+121;StaCubic_121;14;;1;119;;0;0;0
+123;StaCubic_123;10;;0;122;;0;0;0
+124;StaCubic_124;11;;1;122;;0;0;0
+126;StaCubic_126;10;;0;125;;0;0;0
+127;StaCubic_127;15;;1;125;;0;0;0
+129;StaCubic_129;11;;0;128;;0;0;0
+130;StaCubic_130;12;;1;128;;0;0;0
+132;StaCubic_132;13;;0;131;;0;0;0
+133;StaCubic_133;14;;1;131;;0;0;0
+135;StaCubic_135;14;;0;134;;0;0;0
+136;StaCubic_136;15;;1;134;;0;0;0
+138;StaCubic_138;6;;0;137;;0;0;0
+139;StaCubic_139;9;;1;137;;0;0;0
+141;StaCubic_141;6;;0;140;;0;0;0
+142;StaCubic_142;10;;1;140;;0;0;0
+144;StaCubic_144;7;;0;143;;0;0;0
+145;StaCubic_145;8;;1;143;;0;0;0
+147;StaCubic_147;10;;0;146;;0;0;0
+148;StaCubic_148;9;;1;146;;0;0;0
+150;StaCubic_150;4;;0;149;;0;0;0
+151;StaCubic_151;16;;1;149;;0;0;0
+153;StaCubic_153;5;;0;152;;0;0;0
+154;StaCubic_154;17;;1;152;;0;0;0
+156;StaCubic_156;8;;0;155;;0;0;0
+157;StaCubic_157;18;;1;155;;0;0;0
+159;StaCubic_159;9;;0;158;;0;0;0
+160;StaCubic_160;19;;1;158;;0;0;0
+162;StaCubic_162;11;;0;161;;0;0;0
+163;StaCubic_163;20;;1;161;;0;0;0
+165;StaCubic_165;13;;0;164;;0;0;0
+166;StaCubic_166;21;;1;164;;0;0;0
+168;StaCubic_168;14;;0;167;;0;0;0
+169;StaCubic_169;22;;1;167;;0;0;0
+171;StaCubic_171;15;;0;170;;0;0;0
+172;StaCubic_172;23;;1;170;;0;0;0
+
+$$TypLne;ID(a:40);loc_name(a:40);fold_id(p);uline(r);sline(r);aohl_(a:3);rline(r);xline(r);cline(r);rline0(r);xline0(r);cline0(r);rtemp(r);Ithr(r);chr_name(a:20);nlnph(i);nneutral(i);for_name(a:50);InomAir(r);cohl_(i);tmax(r);systp(i);frnom(r);mlei(a:2);bline(r);bline0(r)
+********************************************************************************
+* ID: a:40: DGS field ID (a:40)
+* loc_name: a:40: DGS field loc_name (a:40)
+* fold_id: p: DGS field fold_id (p)
+* uline: r: DGS field uline (r)
+* sline: r: DGS field sline (r)
+* aohl_: a:3: DGS field aohl_ (a:3)
+* rline: r: DGS field rline (r)
+* xline: r: DGS field xline (r)
+* cline: r: DGS field cline (r)
+* rline0: r: DGS field rline0 (r)
+* xline0: r: DGS field xline0 (r)
+* cline0: r: DGS field cline0 (r)
+* rtemp: r: DGS field rtemp (r)
+* Ithr: r: DGS field Ithr (r)
+* chr_name: a:20: DGS field chr_name (a:20)
+* nlnph: i: Phases:1:2:3
+* nneutral: i: DGS field nneutral (i)
+* for_name: a:50: DGS field for_name (a:50)
+* InomAir: r: DGS field InomAir (r)
+* cohl_: i: DGS field cohl_ (i)
+* tmax: r: DGS field tmax (r)
+* systp: i: DGS field systp (i)
+* frnom: r: DGS field frnom (r)
+* mlei: a:2: DGS field mlei (a:2)
+* bline: r: DGS field bline (r)
+* bline0: r: DGS field bline0 (r)
+********************************************************************************
+67;LN_type_ 01-02;;132.0;1.0;cab;6.753542;20.61956;0.0;13.507084;41.23912;0.0;20.0;0.0;;3;0;;1.0;0;80.0;0;0.0;;151.5152;303.0304
+68;LN_type_ 01-05;;132.0;1.0;cab;9.414187;38.8625;0.0;18.828374;77.725;0.0;20.0;0.0;;3;0;;1.0;0;80.0;0;0.0;;282.3691;564.7382
+69;LN_type_ 02-03;;132.0;1.0;cab;8.187537;34.49428;0.0;16.375074;68.98856;0.0;20.0;0.0;;3;0;;1.0;0;80.0;0;0.0;;251.3774;502.7548
+70;LN_type_ 02-04;;132.0;1.0;cab;10.12509;30.722;0.0;20.25018;61.444;0.0;20.0;0.0;;3;0;;1.0;0;80.0;0;0.0;;214.6465;429.293
+71;LN_type_ 02-05;;132.0;1.0;cab;9.922968;30.29685;0.0;19.845936;60.5937;0.0;20.0;0.0;;3;0;;1.0;0;80.0;0;0.0;;195.1331;390.2662
+72;LN_type_ 03-04;;132.0;1.0;cab;11.67582;29.80027;0.0;23.35164;59.60054;0.0;20.0;0.0;;3;0;;1.0;0;80.0;0;0.0;;198.5767;397.1534
+73;LN_type_ 04-05;;132.0;1.0;cab;2.326104;7.337246;0.0;4.652208;14.674492;0.0;20.0;0.0;;3;0;;1.0;0;80.0;0;0.0;;73.46189;146.92378
+74;LN_type_ 06-11;;33.0;1.0;cab;1.034332;2.166021;0.0;2.068664;4.332042;0.0;20.0;0.0;;3;0;;1.0;0;80.0;0;0.0;;0.0;0.0
+75;LN_type_ 06-12;;33.0;1.0;cab;1.33849;2.785771;0.0;2.67698;5.571542;0.0;20.0;0.0;;3;0;;1.0;0;80.0;0;0.0;;0.0;0.0
+76;LN_type_ 06-13;;33.0;1.0;cab;0.720373;1.41864;0.0;1.440746;2.83728;0.0;20.0;0.0;;3;0;;1.0;0;80.0;0;0.0;;0.0;0.0
+77;LN_type_ 09-10;;33.0;1.0;cab;0.34641;0.920205;0.0;0.69282;1.84041;0.0;20.0;0.0;;3;0;;1.0;0;80.0;0;0.0;;0.0;0.0
+78;LN_type_ 09-14;;33.0;1.0;cab;1.384228;2.944439;0.0;2.768456;5.888878;0.0;20.0;0.0;;3;0;;1.0;0;80.0;0;0.0;;0.0;0.0
+79;LN_type_ 10-11;;33.0;1.0;cab;0.893524;2.091643;0.0;1.787048;4.183286;0.0;20.0;0.0;;3;0;;1.0;0;80.0;0;0.0;;0.0;0.0
+80;LN_type_ 12-13;;33.0;1.0;cab;2.405819;2.176693;0.0;4.811638;4.353386;0.0;20.0;0.0;;3;0;;1.0;0;80.0;0;0.0;;0.0;0.0
+81;LN_type_ 13-14;;33.0;1.0;cab;1.861428;3.789938;0.0;3.722856;7.579876;0.0;20.0;0.0;;3;0;;1.0;0;80.0;0;0.0;;0.0;0.0
+
+$$TypSym;ID(a:40);loc_name(a:40);fold_id(p);sgn(r);ugn(r);cosn(r);Q_min(r);Q_max(r);q_min(r);q_max(r);for_name(a:50);nphase(i)
+********************************************************************************
+* ID: a:40: DGS field ID (a:40)
+* loc_name: a:40: DGS field loc_name (a:40)
+* fold_id: p: DGS field fold_id (p)
+* sgn: r: DGS field sgn (r)
+* ugn: r: Rated voltage in kV
+* cosn: r: DGS field cosn (r)
+* Q_min: r: DGS field Q_min (r)
+* Q_max: r: DGS field Q_max (r)
+* q_min: r: DGS field q_min (r)
+* q_max: r: DGS field q_max (r)
+* for_name: a:50: DGS field for_name (a:50)
+* nphase: i: DGS field nphase (i)
+********************************************************************************
+61;gen@BB_01;;9999.0;132.0;0.8;0.0;0.0;0.0;0.0;;3
+64;gen@Bus DC 14;;9999.0;0.4;1.0;0.0;0.0;0.0;0.0;;3
+
+$$TypTr2;ID(a:40);loc_name(a:40);fold_id(p);strn(r);frnom(r);utrn_h(r);utrn_l(r);uktr(r);pcutr(r);uk0tr(r);ur0tr(r);tr2cn_h(a:2);tr2cn_l(a:2);nt2ag(r);curmg(r);pfe(r);zx0hl_n(r);tap_side(i);dutap(r);phitr(r);nntap0(i);ntpmn(i);ntpmx(i);manuf(a:20);chr_name(a:20);for_name(a:50);nt2ph(i);itapch(i)
+********************************************************************************
+* ID: a:40: Unique identifier for DGS file
+* loc_name: a:40: Name
+* fold_id: p: In Folder
+* strn: r: Rated Power in MVA
+* frnom: r: Nominal Frequency in Hz
+* utrn_h: r: Rated Voltage: HV-Side in kV
+* utrn_l: r: Rated Voltage: LV-Side in kV
+* uktr: r: Positive Sequence Impedance: Short-Circuit Voltage uk in %
+* pcutr: r: Positive Sequence Impedance: Copper Losses in kW
+* uk0tr: r: Zero Sequence Impedance: Short-Circuit Voltage uk0 in %
+* ur0tr: r: Zero Sequence Impedance: SHC-Voltage (Re(uk0)) uk0r in %
+* tr2cn_h: a:2: Vector Group: HV-Side:Y :YN:Z :ZN:D
+* tr2cn_l: a:2: Vector Group: LV-Side:Y :YN:Z :ZN:D
+* nt2ag: r: Vector Group: Phase Shift in *30deg
+* curmg: r: Magnetizing Impedance: No Load Current in %
+* pfe: r: Magnetizing Impedance: No Load Losses in kW
+* zx0hl_n: r: Zero Sequence Magnetizing Impedance: Mag. Impedance/uk0
+* tap_side: i: Tap Changer 1: at Side:HV:LV
+* dutap: r: Additional Voltage per Tap in %
+* phitr: r: Phase of du in deg
+* nntap0: i: Neutral Position
+* ntpmn: i: Minimum Position
+* ntpmx: i: Maximum Position
+* manuf: a:20: Manufacturer
+* chr_name: a:20: Characteristic Name
+* for_name: a:50: DGS field for_name (a:50)
+* nt2ph: i: DGS field nt2ph (i)
+* itapch: i: DGS field itapch (i)
+********************************************************************************
+82;TR_type_04-07;;100.0;0.0;132.0;1.0;20.912;0.0;0.0;0.0;Y;Y;0.0;0.0;0.0;0.0;0;0.0;0.0;0;0;0;;;;3;0
+83;TR_type_04-09;;100.0;0.0;132.0;33.0;55.618;0.0;0.0;0.0;Y;Y;0.0;0.0;0.0;0.0;0;0.0;0.0;0;0;0;;;;3;0
+84;TR_type_05-06;;100.0;0.0;132.0;33.0;25.202;0.0;0.0;0.0;Y;Y;0.0;0.0;0.0;0.0;0;0.0;0.0;0;0;0;;;;3;0
+85;TR_type_07-09;;100.0;0.0;33.0;1.0;11.001;0.0;0.0;0.0;Y;Y;0.0;0.0;0.0;0.0;0;0.0;0.0;0;0;0;;;;3;0
+86;TR_type_34_MVA_1/0.4_kV;;12.0;0.0;1.0;0.4;10.0;0.0;0.0;0.0;Y;Y;0.0;0.0;0.0;0.0;0;0.0;0.0;0;0;0;;;;3;0
+87;TR_type_34_MVA_132/0.4_kV;;12.0;0.0;132.0;0.4;10.0;0.0;0.0;0.0;Y;Y;0.0;0.0;0.0;0.0;0;0.0;0.0;0;0;0;;;;3;0
+88;TR_type_34_MVA_33/0.4_kV;;12.0;0.0;33.0;0.4;10.0;0.0;0.0;0.0;Y;Y;0.0;0.0;0.0;0.0;0;0.0;0.0;0;0;0;;;;3;0
+

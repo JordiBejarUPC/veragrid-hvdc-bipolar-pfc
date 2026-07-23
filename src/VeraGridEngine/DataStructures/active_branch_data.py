@@ -7,7 +7,8 @@ from __future__ import annotations
 
 import numpy as np
 from VeraGridEngine.Utils.Sparse.sparse_array import SparseObjectArray
-from VeraGridEngine.basic_structures import Vec, IntVec, ObjVec, CxVec, Logger
+from VeraGridEngine.basic_structures import Vec, IntVec, CxVec, Logger
+from VeraGridEngine.Utils.compare import compare_arr
 
 
 class ActiveBranchData:
@@ -30,8 +31,8 @@ class ActiveBranchData:
         self.tap_angle: Vec = np.zeros(nelm, dtype=float)
         self.tap_angle_min: Vec = np.full(nelm, fill_value=-6.28, dtype=float)
         self.tap_angle_max: Vec = np.full(nelm, fill_value=6.28, dtype=float)
-        self.tap_module_control_mode: ObjVec = np.zeros(self.nelm, dtype=object)
-        self.tap_phase_control_mode: ObjVec = np.zeros(self.nelm, dtype=object)
+        self.tap_module_control_mode: IntVec = np.zeros(self.nelm, dtype=int)
+        self.tap_phase_control_mode: IntVec = np.zeros(self.nelm, dtype=int)
         self.tap_controlled_buses: IntVec = np.zeros(self.nelm, dtype=int)
 
         self.Pset: Vec = np.zeros(nelm, dtype=float)  # always over the controlled side
@@ -134,6 +135,17 @@ class ActiveBranchData:
 
         return data
 
+    def remap(self, bus_map_arr: IntVec) -> None:
+        """
+        Remapping of the branch-controlled bus indices.
+        :param bus_map_arr: array of old-to-new buses
+        """
+        for k in range(self.nelm):
+            if self.is_controlled[k]:
+                bus_idx = self.tap_controlled_buses[k]
+                if bus_idx >= 0:
+                    self.tap_controlled_buses[k] = bus_map_arr[bus_idx]
+
     @property
     def tap(self) -> CxVec:
         """
@@ -141,3 +153,10 @@ class ActiveBranchData:
         :return:
         """
         return self.tap_module * np.exp(1.0j * self.tap_angle)
+
+    def compare(self, other: "ActiveBranchData", tol: float, logger: Logger) -> None:
+        """
+        Compare active-branch fields used by NumericalCircuit.compare().
+        """
+        compare_arr(self.tap_module, other.tap_module, tol, 'BranchData', 'tap_module', logger)
+        compare_arr(self.tap_angle, other.tap_angle, tol, 'BranchData', 'tap_angle', logger)

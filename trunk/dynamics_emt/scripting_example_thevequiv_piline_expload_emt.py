@@ -17,13 +17,13 @@ from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_dae import EmtProblemDae
 from VeraGridEngine.Simulations.EMT.solvers.structural_compiled_solver import StructuralCompiledSolver
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowOptions
-from VeraGridEngine.Simulations.PowerFlow.power_flow_driver_3ph import PowerFlowDriver3Ph
-from VeraGridEngine.Simulations.PowerFlow.power_flow_results_3ph import PowerFlowResults3Ph
-from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_template
+from VeraGridEngine.Simulations.PowerFlow3ph.power_flow_driver_3ph import PowerFlowDriver3Ph
+from VeraGridEngine.Simulations.PowerFlow3ph.power_flow_results_3ph import PowerFlowResults3Ph
+from VeraGridEngine.Utils.Symbolic.bus_emt_template import get_bus_emt_template
 from VeraGridEngine.Templates.Emt.load_exponential_emt_template import get_exponential_load_emt
 from VeraGridEngine.Templates.Emt.pi_line_emt_template import get_pi_line_emt_template
-from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template
-from VeraGridEngine.Templates.templates_common_functions import set_emt_model
+from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template_with_ref
+from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_emt_model
 from VeraGridEngine.Utils.Symbolic.block import Block, find_name_in_block
 from VeraGridEngine.Utils.Symbolic.symbolic import Var
 from VeraGridEngine.enumerations import DynamicIntegrationMethod, EmtInitializationMethod, EmtSolverTypes, ShuntConnectionType
@@ -117,16 +117,16 @@ def attach_emt_models(
     for bus in grid.buses:
         get_bus_emt_template(grid, bus)
 
-    gen_mdl: Block = get_generator_thevenin_rl_emt_template(vf=grid.var_factory).block
+    gen_mdl: Block = get_generator_thevenin_rl_emt_template_with_ref(vf=grid.var_factory).block
     line_mdl = get_pi_line_emt_template(vf = grid.var_factory, phN = False, phA = True, phB = True, phC = True, name = "Pi").block
     load_mdl: Block = get_exponential_load_emt(vf=grid.var_factory, phA=True, phB=True, phC=True).block
 
     # ``a = 2`` reproduces an impedance-like active-power dependence. This keeps the
     # example aligned with the original resistive load while exercising the new EMT
     # exponential-load initialization chain.
-    load_mdl.set_parameter_in_model(var_name="a_EXP_Load_EMT_3ph", new_value=2.0)
-    load_mdl.set_parameter_in_model(var_name="b_EXP_Load_EMT_3ph", new_value=2.0)
-    load_mdl.set_parameter_in_model(var_name="V0_EXP_Load_EMT_3ph", new_value=float(np.sqrt(2.0)))
+    load_mdl.set_parameter_in_model(var_name="a", new_value=2.0)
+    load_mdl.set_parameter_in_model(var_name="b", new_value=2.0)
+    load_mdl.set_parameter_in_model(var_name="V0", new_value=float(np.sqrt(2.0)))
 
     set_emt_model(device=generator, model=gen_mdl, var_factory=grid.var_factory)
     set_emt_model(device=line0, model=line_mdl, var_factory=grid.var_factory)
@@ -297,12 +297,12 @@ def build_plot_data(
     """
     data: Dict[str, np.ndarray] = dict()
 
-    data["v_bus0_a"] = get_signal(problem, bus0.emt_model, "v_A_Bus0_emt_template", y)
-    data["v_bus0_b"] = get_signal(problem, bus0.emt_model, "v_B_Bus0_emt_template", y)
-    data["v_bus0_c"] = get_signal(problem, bus0.emt_model, "v_C_Bus0_emt_template", y)
-    data["v_bus1_a"] = get_signal(problem, bus1.emt_model, "v_A_Bus1_emt_template", y)
-    data["v_bus1_b"] = get_signal(problem, bus1.emt_model, "v_B_Bus1_emt_template", y)
-    data["v_bus1_c"] = get_signal(problem, bus1.emt_model, "v_C_Bus1_emt_template", y)
+    data["v_bus0_a"] = get_signal(problem, bus0.emt_model, "v_A", y)
+    data["v_bus0_b"] = get_signal(problem, bus0.emt_model, "v_B", y)
+    data["v_bus0_c"] = get_signal(problem, bus0.emt_model, "v_C", y)
+    data["v_bus1_a"] = get_signal(problem, bus1.emt_model, "v_A", y)
+    data["v_bus1_b"] = get_signal(problem, bus1.emt_model, "v_B", y)
+    data["v_bus1_c"] = get_signal(problem, bus1.emt_model, "v_C", y)
 
     data["i_gen_a"] = get_signal(problem, gen_mdl, "i_A_emt_thevenin_eq_generator_template", y)
     data["i_line_f_a"] = get_signal(problem, line_mdl, "if_Pi_A", y)

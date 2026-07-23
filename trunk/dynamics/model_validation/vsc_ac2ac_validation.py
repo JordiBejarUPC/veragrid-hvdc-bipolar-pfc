@@ -32,15 +32,14 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 from VeraGridEngine.Utils.Symbolic.block import Block
-from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms
+from VeraGridEngine.Utils.Symbolic.bus_rms_template import initialize_bus_rms
 from VeraGridEngine.Simulations.Rms.problems.rms_problem_dae import RmsProblemDae
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
 from VeraGridEngine.Simulations.Rms.numerical.back_euler_fx import BackEulerImplicitIntegration
 from VeraGridEngine.Utils.Symbolic.symbolic_io import block_deep_copy
-from VeraGridEngine.enumerations import (VarPowerFlowRefferenceType, 
-                                        DynamicIntegrationMethod, 
-                                        RmsInitializationMethod,
-                                        ConverterControlType)
+from VeraGridEngine.enumerations import (DynamicIntegrationMethod,
+                                         RmsInitializationMethod,
+                                         ConverterControlType)
 import VeraGridEngine.api as gce
 
 # Import the VSC AC2AC model
@@ -219,9 +218,9 @@ def setup_vsc_model(grid, vsc):
     
     # Connect inputs to bus RMS models
     # vsc_block.in_vars = [vac, theta_ac, vdc]
-    vsc_block.connect([vsc_block.in_vars[0]], [bus_ac.rms_model.model.out_vars[0]])  # vac
-    vsc_block.connect([vsc_block.in_vars[1]], [bus_ac.rms_model.model.out_vars[1]])  # theta_ac
-    vsc_block.connect([vsc_block.in_vars[2]], [bus_dc.rms_model.model.out_vars[0]])  # vdc
+    grid.var_factory.add_connections([vsc_block.in_vars[0]], [bus_ac.rms_model.model.out_vars[0]])  # vac
+    grid.var_factory.add_connections([vsc_block.in_vars[1]], [bus_ac.rms_model.model.out_vars[1]])  # theta_ac
+    grid.var_factory.add_connections([vsc_block.in_vars[2]], [bus_dc.rms_model.model.out_vars[0]])  # vdc
     
     vsc.rms_model = vsc_block
     

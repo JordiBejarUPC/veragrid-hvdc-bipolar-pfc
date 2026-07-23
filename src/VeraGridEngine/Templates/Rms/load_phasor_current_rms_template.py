@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: MPL-2.0
 
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
-from VeraGridEngine.enumerations import ParamPowerFlowRefferenceType, VarPowerFlowRefferenceType, DeviceType
+from VeraGridEngine.enumerations import ParamPowerFlowReferenceType, VarPowerFlowReferenceType, DeviceType
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 
 
@@ -30,8 +30,8 @@ def get_load_phasor_current_rms_template(vfactory: VarFactory, name:str = '') ->
 
     # Phasor inputs: Vr, Vi
     inputs = [
-        vfactory.add_var("Vr_" + name),
-        vfactory.add_var("Vi_" + name)
+        vfactory.add_var("Vr", VarPowerFlowReferenceType.Vr),
+        vfactory.add_var("Vi", VarPowerFlowReferenceType.Vi)
     ]
 
     # Constant power set-points (injection convention)
@@ -63,18 +63,20 @@ def get_load_phasor_current_rms_template(vfactory: VarFactory, name:str = '') ->
     ]
 
     templ.block.external_mapping = {
-        VarPowerFlowRefferenceType.Vr: inputs[0],
-        VarPowerFlowRefferenceType.Vi: inputs[1],
-        VarPowerFlowRefferenceType.Ir: Ir,
-        VarPowerFlowRefferenceType.Ii: Ii
+        VarPowerFlowReferenceType.Vr: inputs[0],
+        VarPowerFlowReferenceType.Vi: inputs[1],
+        VarPowerFlowReferenceType.Ir: Ir,
+        VarPowerFlowReferenceType.Ii: Ii
     }
 
     templ.block.api_obj_mapping = {
-        ParamPowerFlowRefferenceType.Pl0: Pl0,
-        ParamPowerFlowRefferenceType.Ql0: Ql0,
+        ParamPowerFlowReferenceType.Pl0: Pl0,
+        ParamPowerFlowReferenceType.Ql0: Ql0,
     }
 
     templ.block.init_eqs = {
+        vr_aux: vr,
+        vi_aux: vi,
         Pl0: vr * Ir + vi * Ii,
         Ql0: vi * Ir - vr * Ii,
     }

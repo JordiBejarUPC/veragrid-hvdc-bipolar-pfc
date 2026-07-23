@@ -11,9 +11,8 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_options import PowerFlowOpt
 from VeraGridEngine.Devices.Events.contingency_group import ContingencyGroup
 from VeraGridEngine.Devices.Aggregation.inter_aggregation_info import InterAggregationInfo
 from VeraGridEngine.Simulations.options_template import OptionsTemplate
-from VeraGridEngine.basic_structures import Vec
+from VeraGridEngine.basic_structures import Vec, CxVec
 from VeraGridEngine.Devices.Parents.editable_device import GCProp
-
 
 
 class OptimalPowerFlowOptions(OptionsTemplate):
@@ -39,6 +38,7 @@ class OptimalPowerFlowOptions(OptionsTemplate):
         GCProp(key="consider_ramps", tpe=bool),
         GCProp(key="consider_time_up_down", tpe=bool),
         GCProp(key="area_spinning_reserve", tpe=bool),
+        GCProp(key="quadratic_costs", tpe=bool),
         GCProp(key="report_formulation", tpe=bool),
         GCProp(key="generate_report", tpe=bool),
         GCProp(key="acopf_mode", tpe=AcOpfMode),
@@ -51,6 +51,7 @@ class OptimalPowerFlowOptions(OptionsTemplate):
         GCProp(key="robust", tpe=bool),
         GCProp(key="acopf_v0", tpe=Vec),
         GCProp(key="acopf_S0", tpe=Vec),
+        GCProp(key="acopf_pf_converged", tpe=bool),
     )
 
     def __init__(self,
@@ -62,13 +63,14 @@ class OptimalPowerFlowOptions(OptionsTemplate):
                  mip_solver=MIPSolvers.HIGHS,
                  power_flow_options: Union[None, PowerFlowOptions] = None,
                  consider_contingencies=False,
-                 contingency_groups_used: List[ContingencyGroup] = (),
+                 contingency_groups_used: List[ContingencyGroup] | None = None,
                  skip_generation_limits=False,
                  lodf_tolerance=0.001,
                  inter_aggregation_info: InterAggregationInfo | None = None,
                  consider_ramps=False,
                  consider_time_up_down=False,
                  area_spinning_reserve=False,
+                 quadratic_costs: bool = False,
                  use_glsk_as_cost: bool = False,
                  add_losses_approximation: bool = False,
                  report_formulation: bool = False,
@@ -80,8 +82,9 @@ class OptimalPowerFlowOptions(OptionsTemplate):
                  ips_init_with_pf: bool = False,
                  ips_control_q_limits: bool = False,
                  acopf_mode: AcOpfMode = AcOpfMode.ACOPFstd,
-                 acopf_v0: Vec | None = None,
-                 acopf_S0: Vec | None = None,
+                 acopf_v0: CxVec | None = None,
+                 acopf_S0: CxVec | None = None,
+                 acopf_pf_converged: bool = True,
                  robust: bool = False,
                  mip_framework: MIPFramework = MIPFramework.PuLP):
         """
@@ -100,6 +103,7 @@ class OptimalPowerFlowOptions(OptionsTemplate):
         :param consider_ramps:
         :param consider_time_up_down:
         :param area_spinning_reserve:
+        :param quadratic_costs:
         :param use_glsk_as_cost: if true, the GLSK values are used instead of the traditional costs
         :param report_formulation:
         :param generate_report:
@@ -112,6 +116,7 @@ class OptimalPowerFlowOptions(OptionsTemplate):
         :param acopf_mode:
         :param acopf_S0: Sbus initial solution
         :param acopf_v0: Voltage initial solution
+        :param acopf_pf_converged: Whether the PF state used as ACOPF seed actually converged
         """
         OptionsTemplate.__init__(self, name="Optimal power flow options")
 
@@ -131,7 +136,9 @@ class OptimalPowerFlowOptions(OptionsTemplate):
 
         self.consider_contingencies = consider_contingencies
 
-        self.contingency_groups_used: List[ContingencyGroup] = contingency_groups_used
+        self.contingency_groups_used: List[ContingencyGroup] = (contingency_groups_used
+                                                                if contingency_groups_used is not None
+                                                                else [])
 
         self.lodf_tolerance = lodf_tolerance
 
@@ -144,6 +151,8 @@ class OptimalPowerFlowOptions(OptionsTemplate):
         self.consider_time_up_down = consider_time_up_down
 
         self.area_spinning_reserve = area_spinning_reserve
+
+        self.quadratic_costs = quadratic_costs
 
         self.use_glsk_as_cost = use_glsk_as_cost
 
@@ -173,6 +182,4 @@ class OptimalPowerFlowOptions(OptionsTemplate):
 
         self.acopf_v0 = acopf_v0
         self.acopf_S0 = acopf_S0
-
-
-
+        self.acopf_pf_converged = acopf_pf_converged

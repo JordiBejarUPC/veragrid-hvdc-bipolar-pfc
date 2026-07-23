@@ -816,7 +816,7 @@ def add_vsc_data(circuit: MultiCircuit,
         vsc.setAllPdcSet(elm.Pset)
         vsc.setAllVacSet(elm.vset)
         vsc.setAllVdcSet(elm.vset)
-        vsc.k_droop = elm.control1_droop
+        vsc.k_droop = elm.control1_val_droop
 
         vsc.alpha1 = elm.alpha1
         vsc.alpha2 = elm.alpha2
@@ -1277,7 +1277,7 @@ def newton_pa_pf(circuit: MultiCircuit,
                               pf_options=pf_options,
                               time_indices=time_indices,
                               n_threads=n_threads,
-                              V0=circuit.get_voltage_guess() if pf_opt.use_stored_guess else None)
+                              V0=circuit.get_voltage_guess_at(None) if pf_opt.use_stored_guess else None)
 
     return pf_res
 
@@ -1438,7 +1438,7 @@ def newton_pa_nonlinear_opf(circuit: MultiCircuit,
                                  time_indices=time_indices,
                                  n_threads=n_threads,
                                  mute_pg_bar=False,
-                                 V0=circuit.get_voltage_guess() if pf_opt.use_stored_guess else None)
+                                 V0=circuit.get_voltage_guess_at(None) if pf_opt.use_stored_guess else None)
 
     return pf_res
 

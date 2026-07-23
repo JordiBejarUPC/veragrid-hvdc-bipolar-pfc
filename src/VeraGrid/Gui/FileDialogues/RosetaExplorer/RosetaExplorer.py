@@ -20,19 +20,29 @@ from VeraGrid.Gui.gui_functions import add_menu_entry, populate_cim_item_childre
 from VeraGrid.Gui.object_model import ObjectsModel
 from VeraGrid.Gui.pandas_model import PandasModel
 from VeraGridEngine.IO.cim.cgmes.cgmes_circuit import CgmesCircuit
-from VeraGridEngine.IO.raw.devices.psse_circuit import PsseCircuit
+from VeraGridEngine.IO.raw.psse_circuit import PsseCircuit
 from VeraGridEngine.IO.cim.db.db_handler import DbHandler
 from VeraGridEngine.data_logger import DataLogger
 from VeraGrid.Gui.python_console import PythonConsole
 
 
-def clear_qt_layout(layout):
+def clear_qt_layout(layout: QtWidgets.QLayout) -> None:
     """
     Remove all widgets from a layout object
     :param layout:
     """
-    for i in reversed(range(layout.count())):
-        layout.itemAt(i).widget().deleteLater()
+    while layout.count():
+        item = layout.takeAt(0)
+        widget = item.widget()
+        child_layout = item.layout()
+
+        if child_layout is not None:
+            clear_qt_layout(child_layout)
+            child_layout.deleteLater()
+        elif widget is not None:
+            # Fully detach the widget now so stale layout items do not outlive it.
+            widget.setParent(None)
+            widget.deleteLater()
 
 
 ########################################################################################################################
@@ -441,9 +451,12 @@ class RosetaExplorerGUI(QMainWindow):
         context_menu = QtWidgets.QMenu(parent=self.ui.propertiesTableView)
 
         add_menu_entry(menu=context_menu,
-                       text="Copy",
+                       text=self.tr("Copy"),
                        icon_path=":/Icons/icons/copy.png",
                        function_ptr=self.copy_table_to_clipboard)
+
+        mapped_pos: QtCore.QPoint = self.ui.propertiesTableView.viewport().mapToGlobal(pos)
+        context_menu.exec(mapped_pos)
 
     def copy_table_to_clipboard(self) -> None:
         """

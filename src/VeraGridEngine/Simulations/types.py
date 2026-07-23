@@ -21,7 +21,9 @@ from VeraGridEngine.Simulations.OPF.opf_driver import OptimalPowerFlowDriver, Op
 from VeraGridEngine.Simulations.OPF.opf_ts_driver import (OptimalPowerFlowTimeSeriesDriver,
                                                           OptimalPowerFlowTimeSeriesResults)
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowDriver, PowerFlowResults
-from VeraGridEngine.Simulations.PowerFlow.power_flow_driver_3ph import PowerFlowDriver3Ph, PowerFlowResults3Ph
+from VeraGridEngine.Simulations.PowerFlow3ph.power_flow_driver_3ph import PowerFlowDriver3Ph, PowerFlowResults3Ph
+from VeraGridEngine.Simulations.PowerFlow3ph.power_flow_ts_driver_3ph import (
+    PowerFlowTimeSeriesDriver3Ph, PowerFlowTimeSeriesResults3Ph)
 from VeraGridEngine.Simulations.PowerFlow.power_flow_ts_driver import (PowerFlowTimeSeriesDriver,
                                                                        PowerFlowTimeSeriesResults)
 from VeraGridEngine.Simulations.ShortCircuitStudies.short_circuit_driver import ShortCircuitDriver, ShortCircuitResults
@@ -40,6 +42,8 @@ from VeraGridEngine.Simulations.NTC.ntc_driver import (
     OptimalNetTransferCapacityDriver, OptimalNetTransferCapacityResults)
 from VeraGridEngine.Simulations.NTC.ntc_ts_driver import (OptimalNetTransferCapacityTimeSeriesDriver,
                                                           OptimalNetTransferCapacityTimeSeriesResults)
+from VeraGridEngine.Simulations.NodalCapacity.nodal_capacity_driver import (NodalCapacityDriver,
+                                                                            NodalCapacityResults)
 from VeraGridEngine.Simulations.NodalCapacity.nodal_capacity_ts_driver import (NodalCapacityTimeSeriesDriver,
                                                                                NodalCapacityTimeSeriesResults)
 from VeraGridEngine.Simulations.Topology.node_groups_driver import NodeGroupsDriver
@@ -67,6 +71,7 @@ DRIVER_OBJECTS = Union[
     OptimalPowerFlowTimeSeriesDriver,
     PowerFlowDriver,
     PowerFlowDriver3Ph,
+    PowerFlowTimeSeriesDriver3Ph,
     PowerFlowTimeSeriesDriver,
     StateEstimationDriver,
     ShortCircuitDriver,
@@ -80,6 +85,7 @@ DRIVER_OBJECTS = Union[
     InputsAnalysisDriver,
     InvestmentsEvaluationDriver,
     CatalogueOptimizationDriver,
+    NodalCapacityDriver,
     NodalCapacityTimeSeriesDriver,
     ReliabilityStudyDriver,
     RmsSimulationDriver,
@@ -100,6 +106,7 @@ RESULTS_OBJECTS = Union[
     OptimalPowerFlowTimeSeriesResults,
     PowerFlowResults,
     PowerFlowResults3Ph,
+    PowerFlowTimeSeriesResults3Ph,
     PowerFlowTimeSeriesResults,
     ShortCircuitResults,
     StochasticPowerFlowResults,
@@ -111,6 +118,7 @@ RESULTS_OBJECTS = Union[
     NodeGroupsResults,
     InputsAnalysisResults,
     InvestmentsEvaluationResults,
+    NodalCapacityResults,
     NodalCapacityTimeSeriesResults,
     ReliabilityResults,
     StateEstimationResults,

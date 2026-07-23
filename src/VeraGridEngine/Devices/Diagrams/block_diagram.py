@@ -127,6 +127,8 @@ class BlockDiagram:
         self.con_data: Dict[int, BlockDiagramConnection] = dict()
 
 
+    def empty(self) -> bool:
+        return not self.node_data and not self.con_data
 
     def copy(self):
         """
@@ -183,7 +185,7 @@ class BlockDiagram:
             state_outs=list() if state_outs is None else state_outs,
             algeb_ins=algeb_ins,
             algeb_outs=list() if algeb_outs is None else algeb_outs,
-            color="#C0C0C0" if color is None else color,  # light blue as default
+            color="#f5fdff" if color is None else color,
             sub_diagram=subdiagram
         )
 
@@ -193,7 +195,7 @@ class BlockDiagram:
                    device_uid_to: int,
                    port_number_from: int,
                    port_number_to: int,
-                   color: str,
+                   color: str | None = None,
                    elbow_points: List[Tuple[float, float]] = None):
         """
         :param connectionitem_uid:
