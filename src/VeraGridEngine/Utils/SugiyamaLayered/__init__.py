@@ -14,11 +14,10 @@ from VeraGridEngine.Utils.SugiyamaLayered.model import (
     SugiyamaPort,
     SugiyamaPrimitive,
 )
-from VeraGridEngine.Utils.SugiyamaLayered.options import SUGIYAMA_LAYERED_DEFAULTS, SugiyamaOptionResolver
+from VeraGridEngine.Utils.SugiyamaLayered.options import SugiyamaOptionResolver, build_default_option_registry
 from VeraGridEngine.Utils.SugiyamaLayered.pipeline import PipelineReport
 
 __all__ = [
-    "SUGIYAMA_LAYERED_DEFAULTS",
     "SugiyamaEdge",
     "SugiyamaEdgeSection",
     "SugiyamaGraph",
@@ -29,6 +28,7 @@ __all__ = [
     "SugiyamaPrimitive",
     "SugiyamaOptionResolver",
     "PipelineReport",
+    "build_default_option_registry",
     "graph_from_sugiyama_json",
     "graph_to_sugiyama_json",
 ]

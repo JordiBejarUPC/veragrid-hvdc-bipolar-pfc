@@ -9,6 +9,15 @@ from typing import Any
 
 from VeraGridEngine.Utils.SugiyamaLayered.Phases.long_edges import VirtualNode
 from VeraGridEngine.Utils.SugiyamaLayered.model import SugiyamaEdge, SugiyamaEdgeSection, SugiyamaNode, SugiyamaPort
+from VeraGridEngine.Utils.SugiyamaLayered.options import (
+    EdgeRoutingMode,
+    LayoutDirection,
+    PortAlignment,
+    PortConstraint,
+    PortSide,
+    SelfLoopDistribution,
+    coerce_enum_value,
+)
 from VeraGridEngine.Utils.SugiyamaLayered.pipeline import LayoutContext, LayoutPhaseBase
 
 
@@ -31,22 +40,22 @@ def _owner_of_port(context: LayoutContext, port_id: str) -> SugiyamaNode | None:
     return None
 
 
-def _port_side(port: SugiyamaPort) -> str:
+def _port_side(port: SugiyamaPort) -> PortSide:
     """Return the explicit side of one port.
 
     :param port: Port to inspect.
     :returns: Normalized side name.
     """
     side_value: Any = (
-        port.layout_options.get("org.vera.sugiyama.port.side", None)
-        or port.properties.get("side", None)
+        port.get_layout_option("org.vera.sugiyama.port.side", None)
+        or port.get_property("side", None)
         or ""
     )
-    side: str = str(side_value).upper()
+    side: PortSide = coerce_enum_value(PortSide, side_value, PortSide.UNDEFINED)
     return side
 
 
-def _port_side_rank(side: str) -> int:
+def _port_side_rank(side: PortSide) -> int:
     """Return the stable rank of one port side.
 
     :param side: Side name.
@@ -54,16 +63,16 @@ def _port_side_rank(side: str) -> int:
     """
     rank: int = 4
 
-    if side == "WEST":
+    if side is PortSide.WEST:
         rank = 0
     else:
-        if side == "NORTH":
+        if side is PortSide.NORTH:
             rank = 1
         else:
-            if side == "SOUTH":
+            if side is PortSide.SOUTH:
                 rank = 2
             else:
-                if side == "EAST":
+                if side is PortSide.EAST:
                     rank = 3
                 else:
                     rank = 4
@@ -97,7 +106,7 @@ def _port_sort_key(port: SugiyamaPort) -> tuple[int, int, str]:
     :returns: Stable ordering key.
     """
     side_rank: int = _port_side_rank(_port_side(port))
-    index_value: Any = port.properties.get("port_index", 0)
+    index_value: Any = port.get_property("port_index", 0)
     index: int = _read_integer_candidate(index_value) or 0
     return side_rank, index, port.identifier
 
@@ -135,7 +144,7 @@ def _port_groups(node: SugiyamaNode) -> tuple[list[SugiyamaPort], list[SugiyamaP
     port: SugiyamaPort
 
     for port in sorted_ports:
-        role: str = str(port.properties.get("role", "")).lower()
+        role: str = str(port.get_property("role", "")).lower()
         if role == "input":
             input_ports.append(port)
         else:
@@ -147,7 +156,7 @@ def _port_groups(node: SugiyamaNode) -> tuple[list[SugiyamaPort], list[SugiyamaP
     return input_ports, output_ports
 
 
-def _effective_port_side(port: SugiyamaPort, role: str, direction: str) -> str:
+def _effective_port_side(port: SugiyamaPort, role: str, direction: LayoutDirection) -> PortSide:
     """Resolve the effective side of one port.
 
     :param port: Port to inspect.
@@ -155,27 +164,27 @@ def _effective_port_side(port: SugiyamaPort, role: str, direction: str) -> str:
     :param direction: Layout direction.
     :returns: Effective side name.
     """
-    explicit_side: str = _port_side(port)
-    resolved_side: str = explicit_side
+    explicit_side: PortSide = _port_side(port)
+    resolved_side: PortSide = explicit_side
 
-    if explicit_side and explicit_side != "UNDEFINED":
+    if explicit_side is not PortSide.UNDEFINED:
         resolved_side = explicit_side
     else:
-        if direction == "LEFT":
-            resolved_side = "WEST" if role == "output" else "EAST"
+        if direction is LayoutDirection.LEFT:
+            resolved_side = PortSide.WEST if role == "output" else PortSide.EAST
         else:
-            if direction == "DOWN":
-                resolved_side = "SOUTH" if role == "output" else "NORTH"
+            if direction is LayoutDirection.DOWN:
+                resolved_side = PortSide.SOUTH if role == "output" else PortSide.NORTH
             else:
-                if direction == "UP":
-                    resolved_side = "NORTH" if role == "output" else "SOUTH"
+                if direction is LayoutDirection.UP:
+                    resolved_side = PortSide.NORTH if role == "output" else PortSide.SOUTH
                 else:
-                    resolved_side = "EAST" if role == "output" else "WEST"
+                    resolved_side = PortSide.EAST if role == "output" else PortSide.WEST
 
     return resolved_side
 
 
-def _port_alignment(node: SugiyamaNode, context: LayoutContext) -> str:
+def _port_alignment(node: SugiyamaNode, context: LayoutContext) -> PortAlignment:
     """Return the default port alignment of one node.
 
     :param node: Node to inspect.
@@ -186,44 +195,49 @@ def _port_alignment(node: SugiyamaNode, context: LayoutContext) -> str:
         context.graph.layout_options,
         node.layout_options,
     )
-    value: Any = options.get("org.vera.sugiyama.portAlignment.default", "CENTER")
-    alignment: str = str(value).upper()
+    value: Any = options.get("org.vera.sugiyama.portAlignment.default", PortAlignment.CENTER)
+    alignment: PortAlignment = coerce_enum_value(PortAlignment, value, PortAlignment.CENTER)
     return alignment
 
 
-def _layout_direction(context: LayoutContext) -> str:
+def _layout_direction(context: LayoutContext) -> LayoutDirection:
     """Return the normalized layout direction.
 
     :param context: Shared pipeline context.
     :returns: Layout direction.
     """
     options: dict[str, Any] = context.option_resolver.resolve_for_element(context.graph.layout_options)
-    direction_value: Any = options.get("org.vera.sugiyama.direction", "RIGHT")
-    direction: str = str(direction_value).upper()
+    direction: LayoutDirection = options.get("org.vera.sugiyama.direction", LayoutDirection.RIGHT)
     return direction
 
 
-def _self_loop_distribution(context: LayoutContext) -> str:
+def _self_loop_distribution(context: LayoutContext) -> SelfLoopDistribution:
     """Return the self-loop routing preference.
 
     :param context: Shared pipeline context.
     :returns: Self-loop distribution policy.
     """
     options: dict[str, Any] = context.option_resolver.resolve_for_element(context.graph.layout_options)
-    distribution_value: Any = options.get("org.vera.sugiyama.layered.edgeRouting.selfLoopDistribution", "NORTH")
-    distribution: str = str(distribution_value).upper()
+    distribution_value: Any = options.get(
+        "org.vera.sugiyama.layered.edgeRouting.selfLoopDistribution",
+        SelfLoopDistribution.NORTH,
+    )
+    distribution: SelfLoopDistribution = coerce_enum_value(
+        SelfLoopDistribution,
+        distribution_value,
+        SelfLoopDistribution.NORTH,
+    )
     return distribution
 
 
-def _edge_routing_mode(context: LayoutContext) -> str:
+def _edge_routing_mode(context: LayoutContext) -> EdgeRoutingMode:
     """Return the edge routing mode.
 
     :param context: Shared pipeline context.
     :returns: Routing mode.
     """
     options: dict[str, Any] = context.option_resolver.resolve_for_element(context.graph.layout_options)
-    mode_value: Any = options.get("org.vera.sugiyama.edgeRouting", "ORTHOGONAL")
-    mode: str = str(mode_value).upper()
+    mode: EdgeRoutingMode = options.get("org.vera.sugiyama.edgeRouting", EdgeRoutingMode.ORTHOGONAL)
     return mode
 
 
@@ -245,7 +259,7 @@ def _feedback_edges_enabled(context: LayoutContext) -> bool:
     return is_enabled
 
 
-def _node_port_constraints(node: SugiyamaNode, context: LayoutContext) -> str:
+def _node_port_constraints(node: SugiyamaNode, context: LayoutContext) -> PortConstraint:
     """Return the port-constraint policy of one node.
 
     :param node: Node to inspect.
@@ -256,8 +270,8 @@ def _node_port_constraints(node: SugiyamaNode, context: LayoutContext) -> str:
         context.graph.layout_options,
         node.layout_options,
     )
-    value: Any = options.get("org.vera.sugiyama.portConstraints", "UNDEFINED")
-    constraints: str = str(value).upper()
+    value: Any = options.get("org.vera.sugiyama.portConstraints", PortConstraint.UNDEFINED)
+    constraints: PortConstraint = coerce_enum_value(PortConstraint, value, PortConstraint.UNDEFINED)
     return constraints
 
 
@@ -269,7 +283,7 @@ def _port_anchor(context: LayoutContext, endpoint_id: str, role: str) -> tuple[f
     :param role: Endpoint role, usually ``input`` or ``output``.
     :returns: Anchor point or ``None``.
     """
-    direction: str = _layout_direction(context)
+    direction: LayoutDirection = _layout_direction(context)
     node_by_id: dict[str, SugiyamaNode] = context.graph.node_by_id()
     node: SugiyamaNode | None = node_by_id.get(endpoint_id, None)
     port: SugiyamaPort | None = None
@@ -297,10 +311,10 @@ def _port_anchor(context: LayoutContext, endpoint_id: str, role: str) -> tuple[f
                 output_ports: list[SugiyamaPort]
                 input_ports, output_ports = _port_groups(node)
                 ports: list[SugiyamaPort] = output_ports if role == "output" else input_ports
-                constraints: str = _node_port_constraints(node, context)
+                constraints: PortConstraint = _node_port_constraints(node, context)
 
                 if port not in ports:
-                    if constraints in {"FIXED_ORDER", "FIXED_SIDE"}:
+                    if constraints in {PortConstraint.FIXED_ORDER, PortConstraint.FIXED_SIDE}:
                         candidate_ports: list[SugiyamaPort] = list(ports)
                         candidate_ports.append(port)
                         ports = _sort_ports(candidate_ports)
@@ -321,25 +335,25 @@ def _port_anchor(context: LayoutContext, endpoint_id: str, role: str) -> tuple[f
                 else:
                     norm = 0.5
 
-                alignment: str = _port_alignment(node, context)
-                if alignment == "BEGIN":
+                alignment: PortAlignment = _port_alignment(node, context)
+                if alignment is PortAlignment.BEGIN:
                     norm = min(norm, 0.25 if len(ports) > 1 else 0.5)
                 else:
-                    if alignment == "END":
+                    if alignment is PortAlignment.END:
                         norm = max(norm, 0.75 if len(ports) > 1 else 0.5)
                     else:
                         norm = norm
 
-                side: str = _effective_port_side(port, role, direction)
-                if side in {"NORTH", "SOUTH"}:
+                side: PortSide = _effective_port_side(port, role, direction)
+                if side in {PortSide.NORTH, PortSide.SOUTH}:
                     anchor_x: float = node.x + norm * node.width
-                    anchor_y: float = node.y if side == "NORTH" else node.y + node.height
+                    anchor_y: float = node.y if side is PortSide.NORTH else node.y + node.height
                     return anchor_x, anchor_y
                 else:
-                    if side == "EAST":
+                    if side is PortSide.EAST:
                         return node.x + node.width, node.y + norm * node.height
                     else:
-                        if side == "WEST":
+                        if side is PortSide.WEST:
                             return node.x, node.y + norm * node.height
                         else:
                             if role == "output":
@@ -524,7 +538,7 @@ def _feedback_path(
     end: tuple[float, float],
     bounds: tuple[float, float, float, float],
     index: int,
-    direction: str,
+    direction: LayoutDirection,
 ) -> list[tuple[float, float]]:
     """Build a path for one feedback edge.
 
@@ -541,15 +555,15 @@ def _feedback_path(
     bottom: float = bounds[3]
     route_gap: float = 80.0 + index * 18.0
 
-    if direction == "LEFT":
+    if direction is LayoutDirection.LEFT:
         outer_x: float = left - route_gap
         return _clean([start, (outer_x, start[1]), (outer_x, end[1]), end])
     else:
-        if direction == "DOWN":
+        if direction is LayoutDirection.DOWN:
             outer_y: float = bottom + route_gap
             return _clean([start, (start[0], outer_y), (end[0], outer_y), end])
         else:
-            if direction == "UP":
+            if direction is LayoutDirection.UP:
                 outer_y = top - route_gap
                 return _simplify_path([start, (start[0], outer_y), (end[0], outer_y), end])
             else:
@@ -565,8 +579,8 @@ def _self_loop_path(
     start: tuple[float, float],
     end: tuple[float, float],
     index: int,
-    direction: str,
-    distribution: str,
+    direction: LayoutDirection,
+    distribution: SelfLoopDistribution,
 ) -> list[tuple[float, float]]:
     """Build a path for one self-loop.
 
@@ -580,27 +594,27 @@ def _self_loop_path(
     """
     route_gap: float = 80.0 + index * 18.0
 
-    if distribution == "SOUTH":
+    if distribution is SelfLoopDistribution.SOUTH:
         outer_y: float = node.y + node.height + route_gap
         return _simplify_path([start, (start[0], outer_y), (end[0], outer_y), end])
     else:
-        if distribution == "WEST":
+        if distribution is SelfLoopDistribution.WEST:
             outer_x: float = node.x - route_gap
             return _simplify_path([start, (outer_x, start[1]), (outer_x, end[1]), end])
         else:
-            if distribution == "EAST":
+            if distribution is SelfLoopDistribution.EAST:
                 outer_x = node.x + node.width + route_gap
                 return _simplify_path([start, (outer_x, start[1]), (outer_x, end[1]), end])
             else:
-                if direction == "LEFT":
+                if direction is LayoutDirection.LEFT:
                     outer_x = node.x - route_gap
                     return _simplify_path([start, (outer_x, start[1]), (outer_x, end[1]), end])
                 else:
-                    if direction == "DOWN":
+                    if direction is LayoutDirection.DOWN:
                         outer_y = node.y + node.height + route_gap
                         return _simplify_path([start, (start[0], outer_y), (end[0], outer_y), end])
                     else:
-                        if direction == "UP":
+                        if direction is LayoutDirection.UP:
                             outer_y = node.y - route_gap
                             return _simplify_path([start, (start[0], outer_y), (end[0], outer_y), end])
                         else:
@@ -615,7 +629,7 @@ def _same_layer_path(
     start: tuple[float, float],
     end: tuple[float, float],
     index: int,
-    direction: str,
+    direction: LayoutDirection,
 ) -> list[tuple[float, float]]:
     """Build a detoured path between nodes on the same layer.
 
@@ -627,15 +641,15 @@ def _same_layer_path(
     """
     route_gap: float = 36.0 + index * 12.0
 
-    if direction == "LEFT":
+    if direction is LayoutDirection.LEFT:
         detour_x: float = min(start[0], end[0]) - route_gap
         return _simplify_path([start, (detour_x, start[1]), (detour_x, end[1]), end])
     else:
-        if direction == "DOWN":
+        if direction is LayoutDirection.DOWN:
             detour_y: float = max(start[1], end[1]) + route_gap
             return _simplify_path([start, (start[0], detour_y), (end[0], detour_y), end])
         else:
-            if direction == "UP":
+            if direction is LayoutDirection.UP:
                 detour_y = min(start[1], end[1]) - route_gap
                 return _simplify_path([start, (start[0], detour_y), (end[0], detour_y), end])
             else:
@@ -646,7 +660,7 @@ def _same_layer_path(
 def _standard_path(
     points: list[tuple[float, float]],
     index_offset: float = 0.0,
-    direction: str = "RIGHT",
+    direction: LayoutDirection = LayoutDirection.RIGHT,
 ) -> list[tuple[float, float]]:
     """Route a polyline using orthogonal midpoints.
 
@@ -669,7 +683,7 @@ def _standard_path(
             if is_last_segment:
                 routed.append(target_point)
             else:
-                if direction in {"DOWN", "UP"}:
+                if direction in {LayoutDirection.DOWN, LayoutDirection.UP}:
                     mid_y: float = (source_point[1] + target_point[1]) / 2.0 + index_offset
                     routed.extend([(source_point[0], mid_y), (target_point[0], mid_y), target_point])
                 else:
@@ -682,7 +696,7 @@ def _standard_path(
 def _polyline_path(
     points: list[tuple[float, float]],
     index_offset: float = 0.0,
-    direction: str = "RIGHT",
+    direction: LayoutDirection = LayoutDirection.RIGHT,
 ) -> list[tuple[float, float]]:
     """Route a path in polyline mode.
 
@@ -697,7 +711,7 @@ def _polyline_path(
         if len(points) == 2:
             start: tuple[float, float] = points[0]
             end: tuple[float, float] = points[1]
-            if direction in {"DOWN", "UP"}:
+            if direction in {LayoutDirection.DOWN, LayoutDirection.UP}:
                 mid_y: float = (start[1] + end[1]) / 2.0 + index_offset
                 return _simplify_path([start, (start[0], mid_y), end])
             else:
@@ -817,7 +831,7 @@ def _detour_path(
     start: tuple[float, float],
     end: tuple[float, float],
     bounds: tuple[float, float, float, float],
-    direction: str,
+    direction: LayoutDirection,
     index: int,
 ) -> list[tuple[float, float]]:
     """Build a coarse detour path around the whole graph.
@@ -835,15 +849,15 @@ def _detour_path(
     bottom: float = bounds[3]
     gap: float = 56.0 + index * 12.0
 
-    if direction == "LEFT":
+    if direction is LayoutDirection.LEFT:
         detour_x: float = left - gap
         return _clean([start, (detour_x, start[1]), (detour_x, end[1]), end])
     else:
-        if direction == "DOWN":
+        if direction is LayoutDirection.DOWN:
             detour_y: float = bottom + gap
             return _clean([start, (start[0], detour_y), (end[0], detour_y), end])
         else:
-            if direction == "UP":
+            if direction is LayoutDirection.UP:
                 detour_y = top - gap
                 return _simplify_path([start, (start[0], detour_y), (end[0], detour_y), end])
             else:
@@ -1111,8 +1125,8 @@ def _route_regular_edge(
     virtual_positions: dict[str, tuple[float, float]],
     expanded_nodes: dict[str, VirtualNode],
     pair_counts: dict[tuple[str, str], int],
-    routing_mode: str,
-    direction: str,
+    routing_mode: EdgeRoutingMode,
+    direction: LayoutDirection,
     rectangles: list[tuple[str, float, float, float, float]],
     bounds: tuple[float, float, float, float],
 ) -> list[tuple[float, float]]:
@@ -1146,7 +1160,7 @@ def _route_regular_edge(
     path: list[tuple[float, float]] = list()
     ignored_nodes: set[str] = {source_id, target_id}
 
-    if routing_mode in {"POLYLINE", "SPLINES"}:
+    if routing_mode in {EdgeRoutingMode.POLYLINE, EdgeRoutingMode.SPLINES}:
         path = _polyline_path(chain_points, index_offset=offset, direction=direction)
     else:
         path = _standard_path(chain_points, index_offset=offset, direction=direction)
@@ -1177,30 +1191,30 @@ class EdgeRoutingPhase(LayoutPhaseBase):
         :param context: Shared pipeline context.
         :returns: ``None``.
         """
-        edge_paths: dict[str, list[str]] = context.phase_state.get("edge_paths", dict())
-        virtual_positions: dict[str, tuple[float, float]] = context.phase_state.get("virtual_positions", dict())
-        expanded_nodes: dict[str, VirtualNode] = context.phase_state.get("expanded_nodes", dict())
+        edge_paths: dict[str, list[str]] = context.phase_state.edge_paths
+        virtual_positions: dict[str, tuple[float, float]] = context.phase_state.virtual_positions
+        expanded_nodes: dict[str, VirtualNode] = context.phase_state.expanded_nodes
         feedback_edges: set[str] = set()
         bounds: tuple[float, float, float, float] = _all_node_bounds(context)
         rectangles: list[tuple[str, float, float, float, float]] = _node_rects(context)
-        direction: str = _layout_direction(context)
-        routing_mode: str = _edge_routing_mode(context)
-        self_loop_distribution: str = _self_loop_distribution(context)
-        layer_of: dict[str, int] = context.phase_state.get("layer_of", dict())
+        direction: LayoutDirection = _layout_direction(context)
+        routing_mode: EdgeRoutingMode = _edge_routing_mode(context)
+        self_loop_distribution: SelfLoopDistribution = _self_loop_distribution(context)
+        layer_of: dict[str, int] = context.phase_state.layer_of
         pair_counts: dict[tuple[str, str], int] = dict()
         feedback_index: int = 0
         self_loop_index: int = 0
         edge: SugiyamaEdge
 
         if _feedback_edges_enabled(context):
-            feedback_edges = set(context.phase_state.get("feedback_edges", list()))
+            feedback_edges = set(context.phase_state.feedback_edges)
         else:
             feedback_edges = set()
 
         # The router handles self-loops, feedback edges, same-layer edges and regular
         # edges separately because each class needs a different orthogonal template.
         for edge in context.graph.edges:
-            edge.sections.clear()
+            edge.clear_sections()
 
             if edge.sources and edge.targets:
                 source_endpoint: str = edge.sources[0]
@@ -1209,8 +1223,8 @@ class EdgeRoutingPhase(LayoutPhaseBase):
                 end: tuple[float, float] | None = _port_anchor(context, target_endpoint, "input")
 
                 if start is not None and end is not None:
-                    source_id: str = str(edge.properties.get("source_uid", ""))
-                    target_id: str = str(edge.properties.get("target_uid", ""))
+                    source_id: str = str(edge.get_property("source_uid", ""))
+                    target_id: str = str(edge.get_property("target_uid", ""))
                     source_node: SugiyamaNode | None = context.graph.node_by_id().get(source_id, None)
 
                     if source_id and source_id == target_id and source_node is not None:
@@ -1222,7 +1236,7 @@ class EdgeRoutingPhase(LayoutPhaseBase):
                             direction,
                             self_loop_distribution,
                         )
-                        edge.sections.append(_build_section(self_loop_path))
+                        edge.append_section(_build_section(self_loop_path))
                         self_loop_index += 1
                     else:
                         if edge.identifier in feedback_edges:
@@ -1233,7 +1247,7 @@ class EdgeRoutingPhase(LayoutPhaseBase):
                                 feedback_index,
                                 direction,
                             )
-                            edge.sections.append(_build_section(feedback_path))
+                            edge.append_section(_build_section(feedback_path))
                             feedback_index += 1
                         else:
                             source_layer: int | None = layer_of.get(source_id, None)
@@ -1247,7 +1261,7 @@ class EdgeRoutingPhase(LayoutPhaseBase):
                                     pair_index,
                                     direction,
                                 )
-                                edge.sections.append(_build_section(same_layer_path))
+                                edge.append_section(_build_section(same_layer_path))
                             else:
                                 regular_path: list[tuple[float, float]] = _route_regular_edge(
                                     start,
@@ -1264,8 +1278,8 @@ class EdgeRoutingPhase(LayoutPhaseBase):
                                     rectangles,
                                     bounds,
                                 )
-                                edge.sections.append(_build_section(regular_path))
+                                edge.append_section(_build_section(regular_path))
                 else:
-                    edge.sections.clear()
+                    edge.clear_sections()
             else:
-                edge.sections.clear()
+                edge.clear_sections()

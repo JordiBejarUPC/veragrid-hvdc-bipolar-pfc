@@ -12,6 +12,7 @@ from VeraGridEngine.Utils.SugiyamaLayered.model import (
     SugiyamaNode,
     SugiyamaPort,
 )
+from VeraGridEngine.Utils.SugiyamaLayered.options import LayoutDirection, PortSide, coerce_enum_value
 from VeraGridEngine.Utils.SugiyamaLayered.pipeline import LayoutContext, LayoutPhaseBase
 
 
@@ -387,10 +388,10 @@ def _shift_layout(context: LayoutContext, dx: float, dy: float) -> None:
                     bend_point: tuple[float, float]
                     for bend_point in section.bend_points:
                         shifted_bend_points.append((bend_point[0] + dx, bend_point[1] + dy))
-                    section.bend_points.clear()
-                    section.bend_points.extend(shifted_bend_points)
+                    section.clear_bend_points()
+                    section.extend_bend_points(shifted_bend_points)
                 else:
-                    section.bend_points.clear()
+                    section.clear_bend_points()
 
             for label in edge.labels:
                 if label.x is not None:
@@ -406,34 +407,33 @@ def _shift_layout(context: LayoutContext, dx: float, dy: float) -> None:
         dx = dx
 
 
-def _layout_direction(context: LayoutContext) -> str:
+def _layout_direction(context: LayoutContext) -> LayoutDirection:
     """Return the layout direction.
 
     :param context: Shared pipeline context.
     :returns: Normalized layout direction.
     """
     options: dict[str, object] = context.option_resolver.resolve_for_element(context.graph.layout_options)
-    direction_value: object = options.get("org.vera.sugiyama.direction", "RIGHT")
-    direction: str = str(direction_value).upper()
+    direction: LayoutDirection = options.get("org.vera.sugiyama.direction", LayoutDirection.RIGHT)
     return direction
 
 
-def _port_side(port: SugiyamaPort) -> str:
+def _port_side(port: SugiyamaPort) -> PortSide:
     """Return the explicit port side.
 
     :param port: Port to inspect.
     :returns: Normalized port side.
     """
     side_value: object = (
-        port.layout_options.get("org.vera.sugiyama.port.side", None)
-        or port.properties.get("side", None)
+        port.get_layout_option("org.vera.sugiyama.port.side", None)
+        or port.get_property("side", None)
         or ""
     )
-    side: str = str(side_value).upper()
+    side: PortSide = coerce_enum_value(PortSide, side_value, PortSide.UNDEFINED)
     return side
 
 
-def _effective_port_side(port: SugiyamaPort, role: str, direction: str) -> str:
+def _effective_port_side(port: SugiyamaPort, role: str, direction: LayoutDirection) -> PortSide:
     """Resolve the effective side of a port.
 
     :param port: Port to inspect.
@@ -441,22 +441,22 @@ def _effective_port_side(port: SugiyamaPort, role: str, direction: str) -> str:
     :param direction: Layout direction.
     :returns: Effective port side.
     """
-    explicit_side: str = _port_side(port)
-    resolved_side: str = explicit_side
+    explicit_side: PortSide = _port_side(port)
+    resolved_side: PortSide = explicit_side
 
-    if explicit_side and explicit_side != "UNDEFINED":
+    if explicit_side is not PortSide.UNDEFINED:
         resolved_side = explicit_side
     else:
-        if direction == "LEFT":
-            resolved_side = "WEST" if role == "output" else "EAST"
+        if direction is LayoutDirection.LEFT:
+            resolved_side = PortSide.WEST if role == "output" else PortSide.EAST
         else:
-            if direction == "DOWN":
-                resolved_side = "SOUTH" if role == "output" else "NORTH"
+            if direction is LayoutDirection.DOWN:
+                resolved_side = PortSide.SOUTH if role == "output" else PortSide.NORTH
             else:
-                if direction == "UP":
-                    resolved_side = "NORTH" if role == "output" else "SOUTH"
+                if direction is LayoutDirection.UP:
+                    resolved_side = PortSide.NORTH if role == "output" else PortSide.SOUTH
                 else:
-                    resolved_side = "EAST" if role == "output" else "WEST"
+                    resolved_side = PortSide.EAST if role == "output" else PortSide.WEST
 
     return resolved_side
 
@@ -481,7 +481,7 @@ def _place_node_labels(node: SugiyamaNode) -> None:
             label.y = None
 
 
-def _place_port_labels(node: SugiyamaNode, direction: str) -> None:
+def _place_port_labels(node: SugiyamaNode, direction: LayoutDirection) -> None:
     """Place labels attached to the ports of one node.
 
     :param node: Node whose ports are processed.
@@ -494,18 +494,18 @@ def _place_port_labels(node: SugiyamaNode, direction: str) -> None:
         label: SugiyamaLabel
         for label in port.labels:
             if port.x is not None and port.y is not None:
-                role: str = str(port.properties.get("role", "")).lower()
-                side: str = _effective_port_side(port, role, direction)
+                role: str = str(port.get_property("role", "")).lower()
+                side: PortSide = _effective_port_side(port, role, direction)
 
-                if side == "WEST":
+                if side is PortSide.WEST:
                     label.x = port.x - label.width - 4.0
                     label.y = port.y + max((port.height - label.height) / 2.0, 0.0)
                 else:
-                    if side == "EAST":
+                    if side is PortSide.EAST:
                         label.x = port.x + port.width + 4.0
                         label.y = port.y + max((port.height - label.height) / 2.0, 0.0)
                     else:
-                        if side == "NORTH":
+                        if side is PortSide.NORTH:
                             label.x = port.x + max((port.width - label.width) / 2.0, 0.0)
                             label.y = port.y - label.height - 4.0
                         else:
@@ -559,7 +559,7 @@ class LabelPlacementPhase(LayoutPhaseBase):
         :param context: Shared pipeline context.
         :returns: ``None``.
         """
-        direction: str = _layout_direction(context)
+        direction: LayoutDirection = _layout_direction(context)
         node: SugiyamaNode
         edge: SugiyamaEdge
 

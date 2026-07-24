@@ -9,6 +9,7 @@ from collections import deque
 from typing import Any
 
 from VeraGridEngine.Utils.SugiyamaLayered.model import SugiyamaNode
+from VeraGridEngine.Utils.SugiyamaLayered.options import ConsiderModelOrderStrategy, LayeringStrategy
 from VeraGridEngine.Utils.SugiyamaLayered.pipeline import LayoutContext, LayoutPhaseBase
 
 
@@ -44,13 +45,13 @@ def _node_model_order(node_id: str, fallback: int, node_by_id: dict[str, Sugiyam
 
     if node is not None:
         candidates: tuple[Any, Any, Any, Any] = (
-            node.properties.get("modelOrder", None),
-            node.properties.get("model_order", None),
-            node.layout_options.get(
+            node.get_property("modelOrder", None),
+            node.get_property("model_order", None),
+            node.get_layout_option(
                 "org.vera.sugiyama.layered.considerModelOrder.groupModelOrder.layeringId",
                 None,
             ),
-            node.layout_options.get(
+            node.get_layout_option(
                 "org.vera.sugiyama.layered.considerModelOrder.groupModelOrder.cycleBreakingId",
                 None,
             ),
@@ -132,22 +133,26 @@ def _consider_model_order_enabled(context: LayoutContext) -> bool:
     :returns: ``True`` when model-order hints are enabled.
     """
     options: dict[str, Any] = context.option_resolver.resolve_for_element(context.graph.layout_options)
-    strategy_value: Any = options.get("org.vera.sugiyama.layered.considerModelOrder.strategy", "NONE")
-    normalized_strategy: str = str(strategy_value).upper()
-    is_enabled: bool = normalized_strategy != "NONE"
+    strategy_value: ConsiderModelOrderStrategy = options.get(
+        "org.vera.sugiyama.layered.considerModelOrder.strategy",
+        ConsiderModelOrderStrategy.NONE,
+    )
+    is_enabled: bool = strategy_value is not ConsiderModelOrderStrategy.NONE
     return is_enabled
 
 
-def _layering_strategy(context: LayoutContext) -> str:
+def _layering_strategy(context: LayoutContext) -> LayeringStrategy:
     """Return the configured layering strategy.
 
     :param context: Pipeline execution context.
-    :returns: Normalized strategy name.
+    :returns: Configured strategy.
     """
     options: dict[str, Any] = context.option_resolver.resolve_for_element(context.graph.layout_options)
-    strategy_value: Any = options.get("org.vera.sugiyama.layered.layering.strategy", "NETWORK_SIMPLEX")
-    normalized_strategy: str = str(strategy_value).upper()
-    return normalized_strategy
+    strategy_value: LayeringStrategy = options.get(
+        "org.vera.sugiyama.layered.layering.strategy",
+        LayeringStrategy.NETWORK_SIMPLEX,
+    )
+    return strategy_value
 
 
 def _topological_order(
@@ -420,9 +425,9 @@ def _node_layer_constraint(node: SugiyamaNode | None) -> str:
 
     if node is not None:
         value: Any = (
-            node.properties.get("layer_constraint", None)
-            or node.properties.get("layerConstraint", None)
-            or node.layout_options.get("org.vera.sugiyama.layered.layering.layerConstraint", None)
+            node.get_property("layer_constraint", None)
+            or node.get_property("layerConstraint", None)
+            or node.get_layout_option("org.vera.sugiyama.layered.layering.layerConstraint", None)
             or ""
         )
         constraint = str(value).upper()
@@ -442,9 +447,9 @@ def _node_layer_id(node: SugiyamaNode | None) -> int | None:
 
     if node is not None:
         value: Any = (
-            node.properties.get("layer_id", None)
-            or node.properties.get("layerId", None)
-            or node.layout_options.get("org.vera.sugiyama.layered.layering.layerId", None)
+            node.get_property("layer_id", None)
+            or node.get_property("layerId", None)
+            or node.get_layout_option("org.vera.sugiyama.layered.layering.layerId", None)
         )
         candidate_layer: int | None = _read_integer_candidate(value)
         if candidate_layer is not None and candidate_layer >= 0:
@@ -640,9 +645,9 @@ class LayeringPhase(LayoutPhaseBase):
         node_ids: list[str] = [node.identifier for node in context.graph.children]
         node_by_id: dict[str, SugiyamaNode] = context.graph.node_by_id()
         prefer_model_order: bool = _consider_model_order_enabled(context)
-        strategy: str = _layering_strategy(context)
-        successors: dict[str, set[str]] = context.phase_state.get("dag_successors", dict())
-        predecessors: dict[str, set[str]] = context.phase_state.get("dag_predecessors", dict())
+        strategy: LayeringStrategy = _layering_strategy(context)
+        successors: dict[str, set[str]] = context.phase_state.dag_successors
+        predecessors: dict[str, set[str]] = context.phase_state.dag_predecessors
 
         # The layering phase requires a complete DAG view; when previous phases did not
         # populate adjacency we still create empty tables so all downstream code sees a
@@ -668,11 +673,11 @@ class LayeringPhase(LayoutPhaseBase):
         )
         layer_of: dict[str, int] = _longest_path_layers(order, predecessors)
 
-        if strategy in {"NETWORK_SIMPLEX", "INTERACTIVE"}:
+        if strategy in {LayeringStrategy.NETWORK_SIMPLEX, LayeringStrategy.INTERACTIVE}:
             _compact_to_sinks(order, layer_of, successors)
             _promote_nodes(order, layer_of, predecessors, successors)
         else:
-            if strategy in {"LONGEST_PATH", "LONGEST_PATH_SOURCE"}:
+            if strategy in {LayeringStrategy.LONGEST_PATH, LayeringStrategy.LONGEST_PATH_SOURCE}:
                 strategy = strategy
             else:
                 _compact_to_sinks(order, layer_of, successors)
@@ -680,9 +685,11 @@ class LayeringPhase(LayoutPhaseBase):
         _apply_constraints(node_by_id, layer_of, order, predecessors)
         normalized_layer_of: dict[str, int] = _normalize_layers(layer_of)
 
-        context.phase_state["topological_order"] = order
-        context.phase_state["layer_of"] = normalized_layer_of
-        context.report.notes.append(
+        context.phase_state.topological_order.clear()
+        context.phase_state.topological_order.extend(order)
+        context.phase_state.layer_of.clear()
+        context.phase_state.layer_of.update(normalized_layer_of)
+        context.report.add_note(
             "Layering uses longest-path assignment, sink compaction, local node promotion, "
             "basic layer constraints and layer normalization.",
         )

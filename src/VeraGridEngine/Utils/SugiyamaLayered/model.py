@@ -79,6 +79,54 @@ class SugiyamaPrimitive:
         """
         return self._properties
 
+    def get_layout_option(self, option_id: str, default: Any = None) -> Any:
+        """Return one layout option value.
+
+        :param option_id: Layout option identifier.
+        :type option_id: str
+        :param default: Fallback value when the option does not exist.
+        :type default: Any
+        :return: Stored value or fallback.
+        :rtype: Any
+        """
+        return self._layout_options.get(option_id, default)
+
+    def set_layout_option(self, option_id: str, value: Any) -> None:
+        """Store one layout option value.
+
+        :param option_id: Layout option identifier.
+        :type option_id: str
+        :param value: Value to store.
+        :type value: Any
+        :return: None.
+        :rtype: None
+        """
+        self._layout_options[option_id] = value
+
+    def get_property(self, property_id: str, default: Any = None) -> Any:
+        """Return one custom property value.
+
+        :param property_id: Property identifier.
+        :type property_id: str
+        :param default: Fallback value when the property does not exist.
+        :type default: Any
+        :return: Stored value or fallback.
+        :rtype: Any
+        """
+        return self._properties.get(property_id, default)
+
+    def set_property(self, property_id: str, value: Any) -> None:
+        """Store one custom property value.
+
+        :param property_id: Property identifier.
+        :type property_id: str
+        :param value: Value to store.
+        :type value: Any
+        :return: None.
+        :rtype: None
+        """
+        self._properties[property_id] = value
+
 
 class SugiyamaLabel(SugiyamaPrimitive):
     """Text label attached to one graph primitive.
@@ -341,6 +389,24 @@ class SugiyamaPort(SugiyamaPrimitive):
         """
         return self._labels
 
+    def append_label(self, label: SugiyamaLabel) -> None:
+        """Append one label to the port.
+
+        :param label: Label to append.
+        :type label: SugiyamaLabel
+        :return: None.
+        :rtype: None
+        """
+        self._labels.append(label)
+
+    def clear_labels(self) -> None:
+        """Remove all labels from the port.
+
+        :return: None.
+        :rtype: None
+        """
+        self._labels.clear()
+
 
 class SugiyamaNode(SugiyamaPrimitive):
     """Node manipulated by the layered layout pipeline.
@@ -523,6 +589,70 @@ class SugiyamaNode(SugiyamaPrimitive):
         """
         self._children = value
 
+    def append_label(self, label: SugiyamaLabel) -> None:
+        """Append one label to the node.
+
+        :param label: Label to append.
+        :type label: SugiyamaLabel
+        :return: None.
+        :rtype: None
+        """
+        self._labels.append(label)
+
+    def clear_labels(self) -> None:
+        """Remove all labels from the node.
+
+        :return: None.
+        :rtype: None
+        """
+        self._labels.clear()
+
+    def append_port(self, port: SugiyamaPort) -> None:
+        """Append one port to the node.
+
+        :param port: Port to append.
+        :type port: SugiyamaPort
+        :return: None.
+        :rtype: None
+        """
+        self._ports.append(port)
+
+    def clear_ports(self) -> None:
+        """Remove all ports from the node.
+
+        :return: None.
+        :rtype: None
+        """
+        self._ports.clear()
+
+    def append_child(self, child: SugiyamaNode) -> None:
+        """Append one child to the node.
+
+        :param child: Child node to append.
+        :type child: SugiyamaNode
+        :return: None.
+        :rtype: None
+        """
+        self._children.append(child)
+
+    def set_children(self, children: list[SugiyamaNode]) -> None:
+        """Replace the child list explicitly.
+
+        :param children: New child nodes.
+        :type children: list[SugiyamaNode]
+        :return: None.
+        :rtype: None
+        """
+        self._children = list(children)
+
+    def clear_children(self) -> None:
+        """Remove all child nodes.
+
+        :return: None.
+        :rtype: None
+        """
+        self._children.clear()
+
     @property
     def parent(self) -> PrimitiveId | None:
         """Return the parent identifier.
@@ -639,6 +769,34 @@ class SugiyamaEdgeSection:
         """
         return self._bend_points
 
+    def append_bend_point(self, point: tuple[float, float]) -> None:
+        """Append one bend point.
+
+        :param point: Bend point to append.
+        :type point: tuple[float, float]
+        :return: None.
+        :rtype: None
+        """
+        self._bend_points.append(point)
+
+    def extend_bend_points(self, points: list[tuple[float, float]]) -> None:
+        """Append several bend points.
+
+        :param points: Bend points to append.
+        :type points: list[tuple[float, float]]
+        :return: None.
+        :rtype: None
+        """
+        self._bend_points.extend(points)
+
+    def clear_bend_points(self) -> None:
+        """Remove all bend points.
+
+        :return: None.
+        :rtype: None
+        """
+        self._bend_points.clear()
+
 
 class SugiyamaEdge(SugiyamaPrimitive):
     """Directed edge between one or more endpoints.
@@ -738,6 +896,42 @@ class SugiyamaEdge(SugiyamaPrimitive):
         :rtype: list[SugiyamaEdgeSection]
         """
         return self._sections
+
+    def append_label(self, label: SugiyamaLabel) -> None:
+        """Append one label to the edge.
+
+        :param label: Label to append.
+        :type label: SugiyamaLabel
+        :return: None.
+        :rtype: None
+        """
+        self._labels.append(label)
+
+    def clear_labels(self) -> None:
+        """Remove all labels from the edge.
+
+        :return: None.
+        :rtype: None
+        """
+        self._labels.clear()
+
+    def append_section(self, section: SugiyamaEdgeSection) -> None:
+        """Append one routed section to the edge.
+
+        :param section: Section to append.
+        :type section: SugiyamaEdgeSection
+        :return: None.
+        :rtype: None
+        """
+        self._sections.append(section)
+
+    def clear_sections(self) -> None:
+        """Remove all routed sections from the edge.
+
+        :return: None.
+        :rtype: None
+        """
+        self._sections.clear()
 
 
 class SugiyamaGraph(SugiyamaPrimitive):
@@ -863,6 +1057,60 @@ class SugiyamaGraph(SugiyamaPrimitive):
         :rtype: list[SugiyamaEdge]
         """
         return self._edges
+
+    def append_child(self, child: SugiyamaNode) -> None:
+        """Append one root node to the graph.
+
+        :param child: Root node to append.
+        :type child: SugiyamaNode
+        :return: None.
+        :rtype: None
+        """
+        self._children.append(child)
+
+    def clear_children(self) -> None:
+        """Remove all root nodes from the graph.
+
+        :return: None.
+        :rtype: None
+        """
+        self._children.clear()
+
+    def append_edge(self, edge: SugiyamaEdge) -> None:
+        """Append one edge to the graph.
+
+        :param edge: Edge to append.
+        :type edge: SugiyamaEdge
+        :return: None.
+        :rtype: None
+        """
+        self._edges.append(edge)
+
+    def clear_edges(self) -> None:
+        """Remove all edges from the graph.
+
+        :return: None.
+        :rtype: None
+        """
+        self._edges.clear()
+
+    def append_label(self, label: SugiyamaLabel) -> None:
+        """Append one label to the graph.
+
+        :param label: Label to append.
+        :type label: SugiyamaLabel
+        :return: None.
+        :rtype: None
+        """
+        self._labels.append(label)
+
+    def clear_labels(self) -> None:
+        """Remove all labels from the graph.
+
+        :return: None.
+        :rtype: None
+        """
+        self._labels.clear()
 
     @property
     def labels(self) -> list[SugiyamaLabel]:

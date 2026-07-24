@@ -9,6 +9,7 @@ from typing import Any
 
 from VeraGridEngine.Utils.SugiyamaLayered.Phases.long_edges import VirtualNode
 from VeraGridEngine.Utils.SugiyamaLayered.model import SugiyamaNode
+from VeraGridEngine.Utils.SugiyamaLayered.options import ConsiderModelOrderStrategy, CrossingMinimizationStrategy
 from VeraGridEngine.Utils.SugiyamaLayered.pipeline import LayoutContext, LayoutPhaseBase
 
 
@@ -174,13 +175,13 @@ def _node_model_order(
         node: SugiyamaNode | None = node_by_id.get(node_id, None)
         if node is not None:
             candidates: tuple[Any, Any, Any, Any] = (
-                node.properties.get("modelOrder", None),
-                node.properties.get("model_order", None),
-                node.layout_options.get(
+                node.get_property("modelOrder", None),
+                node.get_property("model_order", None),
+                node.get_layout_option(
                     "org.vera.sugiyama.layered.considerModelOrder.groupModelOrder.crossingMinimizationId",
                     None,
                 ),
-                node.layout_options.get(
+                node.get_layout_option(
                     "org.vera.sugiyama.layered.considerModelOrder.groupModelOrder.cycleBreakingId",
                     None,
                 ),
@@ -205,22 +206,26 @@ def _consider_model_order_enabled(context: LayoutContext) -> bool:
     :returns: ``True`` when the feature is enabled.
     """
     options: dict[str, Any] = context.option_resolver.resolve_for_element(context.graph.layout_options)
-    strategy_value: Any = options.get("org.vera.sugiyama.layered.considerModelOrder.strategy", "NONE")
-    normalized_strategy: str = str(strategy_value).upper()
-    is_enabled: bool = normalized_strategy != "NONE"
+    strategy_value: ConsiderModelOrderStrategy = options.get(
+        "org.vera.sugiyama.layered.considerModelOrder.strategy",
+        ConsiderModelOrderStrategy.NONE,
+    )
+    is_enabled: bool = strategy_value is not ConsiderModelOrderStrategy.NONE
     return is_enabled
 
 
-def _crossing_strategy(context: LayoutContext) -> str:
+def _crossing_strategy(context: LayoutContext) -> CrossingMinimizationStrategy:
     """Return the configured crossing-minimization strategy.
 
     :param context: Shared pipeline context.
-    :returns: Normalized strategy name.
+    :returns: Configured strategy.
     """
     options: dict[str, Any] = context.option_resolver.resolve_for_element(context.graph.layout_options)
-    strategy_value: Any = options.get("org.vera.sugiyama.layered.crossingMinimization.strategy", "LAYER_SWEEP")
-    normalized_strategy: str = str(strategy_value).upper()
-    return normalized_strategy
+    strategy_value: CrossingMinimizationStrategy = options.get(
+        "org.vera.sugiyama.layered.crossingMinimization.strategy",
+        CrossingMinimizationStrategy.LAYER_SWEEP,
+    )
+    return strategy_value
 
 
 def _dummy_bias(node_id: str, expanded_nodes: dict[str, VirtualNode]) -> float:
@@ -707,10 +712,10 @@ class CrossingMinimizationPhase(LayoutPhaseBase):
         :param context: Shared pipeline context.
         :returns: ``None``.
         """
-        expanded_layers: dict[int, list[str]] = context.phase_state.get("expanded_layers", dict())
-        expanded_edges: list[tuple[str, str, str, int]] = context.phase_state.get("expanded_edges", list())
-        expanded_nodes: dict[str, VirtualNode] = context.phase_state.get("expanded_nodes", dict())
-        edge_paths: dict[str, list[str]] = context.phase_state.get("edge_paths", dict())
+        expanded_layers: dict[int, list[str]] = context.phase_state.expanded_layers
+        expanded_edges: list[tuple[str, str, str, int]] = context.phase_state.expanded_edges
+        expanded_nodes: dict[str, VirtualNode] = context.phase_state.expanded_nodes
+        edge_paths: dict[str, list[str]] = context.phase_state.edge_paths
         node_by_id: dict[str, SugiyamaNode] = context.graph.node_by_id()
         prefer_model_order: bool = _consider_model_order_enabled(context)
         strategy: str = _crossing_strategy(context)
@@ -726,13 +731,17 @@ class CrossingMinimizationPhase(LayoutPhaseBase):
             best_crossings: int = _total_crossings(best_layers, successors)
             layer_ids: list[int] = sorted(layers)
 
-            if strategy == "NONE":
+            if strategy is CrossingMinimizationStrategy.NONE:
                 order_in_layer: dict[str, int] = _build_order_in_layer(best_layers)
-                context.phase_state["ordered_layers"] = best_layers
-                context.phase_state["expanded_successors"] = successors
-                context.phase_state["expanded_predecessors"] = predecessors
-                context.phase_state["order_in_layer"] = order_in_layer
-                context.report.notes.append("Crossing minimization disabled by strategy option.")
+                context.phase_state.ordered_layers.clear()
+                context.phase_state.ordered_layers.update(best_layers)
+                context.phase_state.expanded_successors.clear()
+                context.phase_state.expanded_successors.update(successors)
+                context.phase_state.expanded_predecessors.clear()
+                context.phase_state.expanded_predecessors.update(predecessors)
+                context.phase_state.order_in_layer.clear()
+                context.phase_state.order_in_layer.update(order_in_layer)
+                context.report.add_note("Crossing minimization disabled by strategy option.")
             else:
                 sweep_index: int
                 for sweep_index in range(8):
@@ -791,13 +800,17 @@ class CrossingMinimizationPhase(LayoutPhaseBase):
                         best_crossings = best_crossings
 
                 order_in_layer = _build_order_in_layer(best_layers)
-                context.phase_state["ordered_layers"] = best_layers
-                context.phase_state["expanded_successors"] = successors
-                context.phase_state["expanded_predecessors"] = predecessors
-                context.phase_state["order_in_layer"] = order_in_layer
-                context.report.notes.append(
+                context.phase_state.ordered_layers.clear()
+                context.phase_state.ordered_layers.update(best_layers)
+                context.phase_state.expanded_successors.clear()
+                context.phase_state.expanded_successors.update(successors)
+                context.phase_state.expanded_predecessors.clear()
+                context.phase_state.expanded_predecessors.update(predecessors)
+                context.phase_state.order_in_layer.clear()
+                context.phase_state.order_in_layer.update(order_in_layer)
+                context.report.add_note(
                     "Crossing minimization runs alternating barycenter/median sweeps with "
                     f"local transpose; best crossing count={best_crossings}.",
                 )
         else:
-            context.phase_state["ordered_layers"] = dict()
+            context.phase_state.ordered_layers.clear()

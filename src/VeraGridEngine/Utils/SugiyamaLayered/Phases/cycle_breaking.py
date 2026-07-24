@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from VeraGridEngine.Utils.SugiyamaLayered.options import ConsiderModelOrderStrategy, CycleBreakingStrategy
 from VeraGridEngine.Utils.SugiyamaLayered.pipeline import LayoutContext, LayoutPhaseBase
 
 
@@ -96,9 +97,9 @@ def _edge_direction_priority(edge: object | None) -> int:
         return 0
     else:
         candidates = (
-            edge.properties.get("directionPriority", None),
-            edge.properties.get("direction_priority", None),
-            edge.layout_options.get("org.vera.sugiyama.layered.priority.direction", None),
+            edge.get_property("directionPriority", None),
+            edge.get_property("direction_priority", None),
+            edge.get_layout_option("org.vera.sugiyama.layered.priority.direction", None),
         )
 
         for value in candidates:
@@ -132,9 +133,9 @@ def _node_model_order(node_id: str, node_order: dict[str, int], node_by_id: dict
         return node_order.get(node_id, 0)
     else:
         candidates = (
-            node.properties.get("modelOrder", None),
-            node.properties.get("model_order", None),
-            node.layout_options.get("org.vera.sugiyama.layered.considerModelOrder.groupModelOrder.cycleBreakingId", None),
+            node.get_property("modelOrder", None),
+            node.get_property("model_order", None),
+            node.get_layout_option("org.vera.sugiyama.layered.considerModelOrder.groupModelOrder.cycleBreakingId", None),
         )
 
         for value in candidates:
@@ -164,7 +165,7 @@ def _node_kind_bias(node_id: str, node_by_id: dict[str, object]) -> int:
     if node is None:
         return 0
     else:
-        kind_name: str = str(node.properties.get("kind", "")).upper()
+        kind_name: str = str(node.get_property("kind", "")).upper()
 
         if kind_name == "INPUT_CONN":
             return 2
@@ -184,12 +185,19 @@ def _consider_model_order_strength(context: LayoutContext) -> int:
     :rtype: int
     """
     options: dict[str, object] = context.option_resolver.resolve_for_element(context.graph.layout_options)
-    strategy_name: str = str(options.get("org.vera.sugiyama.layered.considerModelOrder.strategy", "NONE")).upper()
+    strategy_name: ConsiderModelOrderStrategy = options.get(
+        "org.vera.sugiyama.layered.considerModelOrder.strategy",
+        ConsiderModelOrderStrategy.NONE,
+    )
 
-    if strategy_name == "NONE":
+    if strategy_name is ConsiderModelOrderStrategy.NONE:
         return 0
     else:
-        if strategy_name in {"NODES", "NODES_AND_EDGES", "PREFER_NODES"}:
+        if strategy_name in {
+            ConsiderModelOrderStrategy.NODES,
+            ConsiderModelOrderStrategy.NODES_AND_EDGES,
+            ConsiderModelOrderStrategy.PREFER_NODES,
+        }:
             return 1
         else:
             return 0
@@ -212,16 +220,20 @@ def _feedback_edges_enabled(context: LayoutContext) -> bool:
         return bool(value)
 
 
-def _cycle_breaking_strategy(context: LayoutContext) -> str:
+def _cycle_breaking_strategy(context: LayoutContext) -> CycleBreakingStrategy:
     """Resolve the cycle-breaking strategy.
 
     :param context: Shared pipeline context.
     :type context: LayoutContext
     :return: Strategy name.
-    :rtype: str
+    :rtype: CycleBreakingStrategy
     """
     options: dict[str, object] = context.option_resolver.resolve_for_element(context.graph.layout_options)
-    return str(options.get("org.vera.sugiyama.layered.cycleBreaking.strategy", "GREEDY")).upper()
+    strategy_name: CycleBreakingStrategy = options.get(
+        "org.vera.sugiyama.layered.cycleBreaking.strategy",
+        CycleBreakingStrategy.GREEDY,
+    )
+    return strategy_name
 
 
 def _flatten_edges(context: LayoutContext) -> tuple[list[FlatEdge], list[str]]:
@@ -674,7 +686,7 @@ class CycleBreakingPhase(LayoutPhaseBase):
 
         weighted_out, weighted_in = _build_weighted_adjacency(node_ids, flat_edges, edge_by_id)
 
-        if strategy_name == "NONE":
+        if strategy_name is CycleBreakingStrategy.NONE:
             greedy_order = list(node_ids)
         else:
             greedy_order = _greedy_order(
@@ -755,19 +767,27 @@ class CycleBreakingPhase(LayoutPhaseBase):
                     )
                 )
 
-        context.phase_state["flat_edges"] = flat_edges
-        context.phase_state["node_order"] = greedy_order
-        context.phase_state["reversed_edges"] = reversed_edges
-        context.phase_state["feedback_edges"] = feedback_edges
-        context.phase_state["dag_successors"] = dag_successors
-        context.phase_state["dag_predecessors"] = dag_predecessors
-        context.phase_state["oriented_edges"] = oriented_edges
+        context.phase_state.flat_edges.clear()
+        context.phase_state.flat_edges.extend(flat_edges)
+        context.phase_state.node_order.clear()
+        context.phase_state.node_order.extend(greedy_order)
+        context.phase_state.reversed_edges.clear()
+        context.phase_state.reversed_edges.update(reversed_edges)
+        context.phase_state.feedback_edges.clear()
+        context.phase_state.feedback_edges.update(feedback_edges)
+        context.phase_state.dag_successors.clear()
+        context.phase_state.dag_successors.update(dag_successors)
+        context.phase_state.dag_predecessors.clear()
+        context.phase_state.dag_predecessors.update(dag_predecessors)
+        context.phase_state.oriented_edges.clear()
+        context.phase_state.oriented_edges.extend(oriented_edges)
 
         if len(skipped_edges) > 0:
-            context.phase_state["skipped_edges"] = skipped_edges
+            context.phase_state.skipped_edges.clear()
+            context.phase_state.skipped_edges.update(skipped_edges)
         else:
-            pass
+            context.phase_state.skipped_edges.clear()
 
-        context.report.notes.append(
+        context.report.add_note(
             f"Cycle breaking oriented {len(oriented_edges)} flat edge(s) and reversed {len(reversed_edges)}."
         )

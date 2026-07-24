@@ -9,6 +9,14 @@ from typing import Any
 
 from VeraGridEngine.Utils.SugiyamaLayered.Phases.long_edges import VirtualNode
 from VeraGridEngine.Utils.SugiyamaLayered.model import SugiyamaNode, SugiyamaPort
+from VeraGridEngine.Utils.SugiyamaLayered.options import (
+    FixedAlignment,
+    LayoutDirection,
+    PortAlignment,
+    PortConstraint,
+    PortSide,
+    coerce_enum_value,
+)
 from VeraGridEngine.Utils.SugiyamaLayered.pipeline import LayoutContext, LayoutPhaseBase
 
 
@@ -69,46 +77,47 @@ def _node_width(
     return _node_dimensions(node_id, expanded_nodes, node_by_id)[0]
 
 
-def _layout_direction(context: LayoutContext) -> str:
+def _layout_direction(context: LayoutContext) -> LayoutDirection:
     """Return the normalized layout direction.
 
     :param context: Shared pipeline context.
     :returns: Layout direction.
     """
     options: dict[str, Any] = context.option_resolver.resolve_for_element(context.graph.layout_options)
-    direction_value: Any = options.get("org.vera.sugiyama.direction", "RIGHT")
-    direction: str = str(direction_value).upper()
+    direction: LayoutDirection = options.get("org.vera.sugiyama.direction", LayoutDirection.RIGHT)
     return direction
 
 
-def _fixed_alignment(context: LayoutContext) -> str:
+def _fixed_alignment(context: LayoutContext) -> FixedAlignment:
     """Return the configured fixed Brandes-Koepf alignment.
 
     :param context: Shared pipeline context.
     :returns: Fixed alignment option.
     """
     options: dict[str, Any] = context.option_resolver.resolve_for_element(context.graph.layout_options)
-    alignment_value: Any = options.get("org.vera.sugiyama.layered.nodePlacement.bk.fixedAlignment", "NONE")
-    alignment: str = str(alignment_value).upper()
+    alignment: FixedAlignment = options.get(
+        "org.vera.sugiyama.layered.nodePlacement.bk.fixedAlignment",
+        FixedAlignment.NONE,
+    )
     return alignment
 
 
-def _port_side(port: SugiyamaPort) -> str:
+def _port_side(port: SugiyamaPort) -> PortSide:
     """Return the explicit side of one port.
 
     :param port: Port to inspect.
     :returns: Normalized side name.
     """
     side_value: Any = (
-        port.layout_options.get("org.vera.sugiyama.port.side", None)
-        or port.properties.get("side", None)
+        port.get_layout_option("org.vera.sugiyama.port.side", None)
+        or port.get_property("side", None)
         or ""
     )
-    side: str = str(side_value).upper()
+    side: PortSide = coerce_enum_value(PortSide, side_value, PortSide.UNDEFINED)
     return side
 
 
-def _effective_port_side(port: SugiyamaPort, role: str, direction: str) -> str:
+def _effective_port_side(port: SugiyamaPort, role: str, direction: LayoutDirection) -> PortSide:
     """Resolve the effective side of one port.
 
     :param port: Port to inspect.
@@ -116,27 +125,27 @@ def _effective_port_side(port: SugiyamaPort, role: str, direction: str) -> str:
     :param direction: Layout direction.
     :returns: Effective side name.
     """
-    explicit_side: str = _port_side(port)
-    resolved_side: str = explicit_side
+    explicit_side: PortSide = _port_side(port)
+    resolved_side: PortSide = explicit_side
 
-    if explicit_side and explicit_side != "UNDEFINED":
+    if explicit_side is not PortSide.UNDEFINED:
         resolved_side = explicit_side
     else:
-        if direction == "LEFT":
-            resolved_side = "WEST" if role == "output" else "EAST"
+        if direction is LayoutDirection.LEFT:
+            resolved_side = PortSide.WEST if role == "output" else PortSide.EAST
         else:
-            if direction == "DOWN":
-                resolved_side = "SOUTH" if role == "output" else "NORTH"
+            if direction is LayoutDirection.DOWN:
+                resolved_side = PortSide.SOUTH if role == "output" else PortSide.NORTH
             else:
-                if direction == "UP":
-                    resolved_side = "NORTH" if role == "output" else "SOUTH"
+                if direction is LayoutDirection.UP:
+                    resolved_side = PortSide.NORTH if role == "output" else PortSide.SOUTH
                 else:
-                    resolved_side = "EAST" if role == "output" else "WEST"
+                    resolved_side = PortSide.EAST if role == "output" else PortSide.WEST
 
     return resolved_side
 
 
-def _port_side_rank(side: str) -> int:
+def _port_side_rank(side: PortSide) -> int:
     """Return the stable rank of one port side.
 
     :param side: Side name.
@@ -144,16 +153,16 @@ def _port_side_rank(side: str) -> int:
     """
     rank: int = 4
 
-    if side == "WEST":
+    if side is PortSide.WEST:
         rank = 0
     else:
-        if side == "NORTH":
+        if side is PortSide.NORTH:
             rank = 1
         else:
-            if side == "SOUTH":
+            if side is PortSide.SOUTH:
                 rank = 2
             else:
-                if side == "EAST":
+                if side is PortSide.EAST:
                     rank = 3
                 else:
                     rank = 4
@@ -187,7 +196,7 @@ def _port_sort_key(port: SugiyamaPort) -> tuple[int, int, str]:
     :returns: Stable ordering key.
     """
     side_rank: int = _port_side_rank(_port_side(port))
-    index_value: Any = port.properties.get("port_index", 0)
+    index_value: Any = port.get_property("port_index", 0)
     index: int = _read_integer_candidate(index_value) or 0
     return side_rank, index, port.identifier
 
@@ -213,7 +222,7 @@ def _sort_ports(ports: list[SugiyamaPort]) -> list[SugiyamaPort]:
     return sorted_ports
 
 
-def _port_alignment(node: SugiyamaNode, context: LayoutContext, side: str) -> str:
+def _port_alignment(node: SugiyamaNode, context: LayoutContext, side: PortSide) -> PortAlignment:
     """Return the alignment policy for one node side.
 
     :param node: Node to inspect.
@@ -225,13 +234,16 @@ def _port_alignment(node: SugiyamaNode, context: LayoutContext, side: str) -> st
         context.graph.layout_options,
         node.layout_options,
     )
-    side_key: str = f"org.vera.sugiyama.portAlignment.{side.lower()}"
-    value: Any = options.get(side_key, None) or options.get("org.vera.sugiyama.portAlignment.default", "CENTER")
-    alignment: str = str(value).upper()
+    side_key: str = f"org.vera.sugiyama.portAlignment.{side.name.lower()}"
+    value: Any = options.get(side_key, None) or options.get(
+        "org.vera.sugiyama.portAlignment.default",
+        PortAlignment.CENTER,
+    )
+    alignment: PortAlignment = coerce_enum_value(PortAlignment, value, PortAlignment.CENTER)
     return alignment
 
 
-def _node_port_constraints(node: SugiyamaNode, context: LayoutContext) -> str:
+def _node_port_constraints(node: SugiyamaNode, context: LayoutContext) -> PortConstraint:
     """Return the port-constraint policy of one node.
 
     :param node: Node to inspect.
@@ -242,12 +254,12 @@ def _node_port_constraints(node: SugiyamaNode, context: LayoutContext) -> str:
         context.graph.layout_options,
         node.layout_options,
     )
-    value: Any = options.get("org.vera.sugiyama.portConstraints", "UNDEFINED")
-    constraints: str = str(value).upper()
+    value: Any = options.get("org.vera.sugiyama.portConstraints", PortConstraint.UNDEFINED)
+    constraints: PortConstraint = coerce_enum_value(PortConstraint, value, PortConstraint.UNDEFINED)
     return constraints
 
 
-def _align_norm(norm: float, alignment: str, count: int) -> float:
+def _align_norm(norm: float, alignment: PortAlignment, count: int) -> float:
     """Adjust a normalized side coordinate according to the alignment option.
 
     :param norm: Raw normalized coordinate.
@@ -257,10 +269,10 @@ def _align_norm(norm: float, alignment: str, count: int) -> float:
     """
     adjusted_norm: float = norm
 
-    if alignment == "BEGIN":
+    if alignment is PortAlignment.BEGIN:
         adjusted_norm = min(norm, 0.25 if count > 1 else 0.5)
     else:
-        if alignment == "END":
+        if alignment is PortAlignment.END:
             adjusted_norm = max(norm, 0.75 if count > 1 else 0.5)
         else:
             adjusted_norm = norm
@@ -274,55 +286,55 @@ def _assign_port_positions(context: LayoutContext) -> None:
     :param context: Shared pipeline context.
     :returns: ``None``.
     """
-    direction: str = _layout_direction(context)
+    direction: LayoutDirection = _layout_direction(context)
     node: SugiyamaNode
 
     # Port coordinates are derived last because they depend on the final node box and
     # on the side chosen from layout direction and explicit constraints.
     for node in context.graph.children:
         if node.x is not None and node.y is not None and node.ports:
-            constraints: str = _node_port_constraints(node, context)
-            grouped_ports: dict[str, list[SugiyamaPort]] = dict()
-            grouped_ports["WEST"] = list()
-            grouped_ports["EAST"] = list()
-            grouped_ports["NORTH"] = list()
-            grouped_ports["SOUTH"] = list()
-            grouped_ports["UNDEFINED"] = list()
+            constraints: PortConstraint = _node_port_constraints(node, context)
+            grouped_ports: dict[PortSide, list[SugiyamaPort]] = dict()
+            grouped_ports[PortSide.WEST] = list()
+            grouped_ports[PortSide.EAST] = list()
+            grouped_ports[PortSide.NORTH] = list()
+            grouped_ports[PortSide.SOUTH] = list()
+            grouped_ports[PortSide.UNDEFINED] = list()
 
             sorted_ports: list[SugiyamaPort] = _sort_ports(node.ports)
             port: SugiyamaPort
             for port in sorted_ports:
-                role: str = str(port.properties.get("role", "")).lower()
-                effective_side: str = _effective_port_side(port, role, direction)
+                role: str = str(port.get_property("role", "")).lower()
+                effective_side: PortSide = _effective_port_side(port, role, direction)
                 target_ports: list[SugiyamaPort] = grouped_ports.get(effective_side, None) or list()
                 target_ports.append(port)
                 grouped_ports[effective_side] = target_ports
 
-            side: str
+            side: PortSide
             ports_on_side: list[SugiyamaPort]
             for side, ports_on_side in grouped_ports.items():
                 if ports_on_side:
-                    alignment_side: str = side if side != "UNDEFINED" else "EAST"
-                    alignment: str = _port_alignment(node, context, alignment_side)
+                    alignment_side: PortSide = side if side is not PortSide.UNDEFINED else PortSide.EAST
+                    alignment: PortAlignment = _port_alignment(node, context, alignment_side)
                     count: int = len(ports_on_side)
                     port_index: int
                     for port_index, port in enumerate(ports_on_side):
-                        if constraints in {"FIXED_POS", "FIXED_RATIO"} and port.x is not None and port.y is not None:
+                        if constraints in {PortConstraint.FIXED_POS, PortConstraint.FIXED_RATIO} and port.x is not None and port.y is not None:
                             port.x = port.x
                             port.y = port.y
                         else:
                             norm: float = (port_index + 1) / (count + 1) if count else 0.5
                             norm = _align_norm(norm, alignment, count)
 
-                            if side == "WEST":
+                            if side is PortSide.WEST:
                                 port.x = node.x - port.width / 2.0
                                 port.y = node.y + norm * node.height - port.height / 2.0
                             else:
-                                if side == "NORTH":
+                                if side is PortSide.NORTH:
                                     port.x = node.x + norm * node.width - port.width / 2.0
                                     port.y = node.y - port.height / 2.0
                                 else:
-                                    if side == "SOUTH":
+                                    if side is PortSide.SOUTH:
                                         port.x = node.x + norm * node.width - port.width / 2.0
                                         port.y = node.y + node.height - port.height / 2.0
                                     else:
@@ -386,9 +398,9 @@ def _assign_node_coordinates(
     :param y_of_node: Orthogonal coordinate per node.
     :returns: Virtual positions and primary-axis layer coordinates.
     """
-    direction: str = _layout_direction(context)
-    vertical_flow: bool = direction in {"DOWN", "UP"}
-    reverse_flow: bool = direction in {"LEFT", "UP"}
+    direction: LayoutDirection = _layout_direction(context)
+    vertical_flow: bool = direction in {LayoutDirection.DOWN, LayoutDirection.UP}
+    reverse_flow: bool = direction in {LayoutDirection.LEFT, LayoutDirection.UP}
     layer_positions: dict[int, float] = dict()
     current_position: float = 0.0
     virtual_positions: dict[str, tuple[float, float]] = dict()
@@ -928,7 +940,7 @@ def _positions_from_blocks(blocks: list[list[str]], block_y: dict[int, float]) -
 
 
 def _available_alignment_passes(
-    fixed_alignment: str,
+    fixed_alignment: FixedAlignment,
     predecessors: dict[str, set[str]],
     successors: dict[str, set[str]],
 ) -> list[tuple[dict[str, set[str]], bool]]:
@@ -939,18 +951,18 @@ def _available_alignment_passes(
     :param successors: Successor adjacency.
     :returns: Alignment pass definitions.
     """
-    all_passes: dict[str, tuple[dict[str, set[str]], bool]] = dict()
+    all_passes: dict[FixedAlignment, tuple[dict[str, set[str]], bool]] = dict()
     passes: list[tuple[dict[str, set[str]], bool]] = list()
 
-    all_passes["LEFT_UP"] = (predecessors, False)
-    all_passes["RIGHT_UP"] = (predecessors, True)
-    all_passes["LEFT_DOWN"] = (successors, False)
-    all_passes["RIGHT_DOWN"] = (successors, True)
+    all_passes[FixedAlignment.LEFT_UP] = (predecessors, False)
+    all_passes[FixedAlignment.RIGHT_UP] = (predecessors, True)
+    all_passes[FixedAlignment.LEFT_DOWN] = (successors, False)
+    all_passes[FixedAlignment.RIGHT_DOWN] = (successors, True)
 
     if fixed_alignment in all_passes:
         passes.append(all_passes[fixed_alignment])
     else:
-        pass_key: str
+        pass_key: FixedAlignment
         for pass_key in all_passes:
             passes.append(all_passes[pass_key])
 
@@ -999,7 +1011,7 @@ def _compute_vertical_coordinates(
     expanded_nodes: dict[str, VirtualNode],
     node_by_id: dict[str, SugiyamaNode],
     spacing_y: float,
-    fixed_alignment: str,
+    fixed_alignment: FixedAlignment,
 ) -> dict[str, float]:
     """Compute orthogonal coordinates with multi-pass block alignment.
 
@@ -1165,7 +1177,7 @@ def _tile_components(
     components: list[list[str]],
     edge_paths: dict[str, list[str]],
     spacing_components: float,
-    direction: str,
+    direction: LayoutDirection,
 ) -> None:
     """Separate disconnected components along the primary layout axis.
 
@@ -1230,7 +1242,7 @@ def _tile_components(
             else:
                 component_bounds = component_bounds
 
-        vertical_flow: bool = direction in {"DOWN", "UP"}
+        vertical_flow: bool = direction in {LayoutDirection.DOWN, LayoutDirection.UP}
         cursor: float = 0.0
 
         for component_index, bounds in enumerate(component_bounds):
@@ -1334,7 +1346,7 @@ def _resolve_node_overlaps(
     expanded_nodes: dict[str, VirtualNode],
     spacing_x: float,
     spacing_y: float,
-    direction: str,
+    direction: LayoutDirection,
 ) -> None:
     """Resolve residual node overlaps by local displacement.
 
@@ -1345,7 +1357,7 @@ def _resolve_node_overlaps(
     :param direction: Layout direction.
     :returns: ``None``.
     """
-    horizontal_flow: bool = direction in {"RIGHT", "LEFT"}
+    horizontal_flow: bool = direction in {LayoutDirection.RIGHT, LayoutDirection.LEFT}
     primary_gap: float = spacing_x if horizontal_flow else spacing_y
     secondary_gap: float = spacing_y if horizontal_flow else spacing_x
     iteration: int
@@ -1467,16 +1479,16 @@ class NodePlacementPhase(LayoutPhaseBase):
         spacing_x: float = float(graph_options["org.vera.sugiyama.layered.spacing.nodeNodeBetweenLayers"])
         spacing_y: float = float(graph_options["org.vera.sugiyama.spacing.nodeNode"])
         spacing_components: float = float(graph_options["org.vera.sugiyama.spacing.componentComponent"])
-        direction: str = _layout_direction(context)
-        fixed_alignment: str = _fixed_alignment(context)
-        ordered_layers: dict[int, list[str]] = context.phase_state.get("ordered_layers", dict())
-        expanded_nodes: dict[str, VirtualNode] = context.phase_state.get("expanded_nodes", dict())
-        edge_paths: dict[str, list[str]] = context.phase_state.get("edge_paths", dict())
-        predecessors: dict[str, set[str]] = context.phase_state.get("expanded_predecessors", dict())
-        successors: dict[str, set[str]] = context.phase_state.get("expanded_successors", dict())
-        components: list[list[str]] = context.phase_state.get("components", list())
+        direction: LayoutDirection = _layout_direction(context)
+        fixed_alignment: FixedAlignment = _fixed_alignment(context)
+        ordered_layers: dict[int, list[str]] = context.phase_state.ordered_layers
+        expanded_nodes: dict[str, VirtualNode] = context.phase_state.expanded_nodes
+        edge_paths: dict[str, list[str]] = context.phase_state.edge_paths
+        predecessors: dict[str, set[str]] = context.phase_state.expanded_predecessors
+        successors: dict[str, set[str]] = context.phase_state.expanded_successors
+        components: list[list[str]] = context.phase_state.components
         layer_of: dict[str, int] = _build_layer_of(ordered_layers)
-        order_in_layer: dict[str, int] = context.phase_state.get("order_in_layer", dict())
+        order_in_layer: dict[str, int] = context.phase_state.order_in_layer
         node_by_id: dict[str, SugiyamaNode] = context.graph.node_by_id()
 
         # The phase first computes orthogonal coordinates from aligned blocks, then
@@ -1546,9 +1558,12 @@ class NodePlacementPhase(LayoutPhaseBase):
 
         _assign_port_positions(context)
 
-        context.phase_state["virtual_positions"] = virtual_positions
-        context.phase_state["layer_x"] = layer_positions
-        context.phase_state["y_of_node"] = y_of_node
-        context.report.notes.append(
+        context.phase_state.virtual_positions.clear()
+        context.phase_state.virtual_positions.update(virtual_positions)
+        context.phase_state.layer_x.clear()
+        context.phase_state.layer_x.update(layer_positions)
+        context.phase_state.y_of_node.clear()
+        context.phase_state.y_of_node.update(y_of_node)
+        context.report.add_note(
             "Node placement uses a Brandes-Koepf-style multi-pass vertical alignment.",
         )

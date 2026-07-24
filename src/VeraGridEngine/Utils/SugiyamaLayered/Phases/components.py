@@ -93,5 +93,6 @@ class ConnectedComponentsPhase(LayoutPhaseBase):
 
                 components.append(component)
 
-        context.phase_state["components"] = components
-        context.report.notes.append(f"Detected {len(components)} connected component(s).")
+        context.phase_state.components.clear()
+        context.phase_state.components.extend(components)
+        context.report.add_note(f"Detected {len(components)} connected component(s).")

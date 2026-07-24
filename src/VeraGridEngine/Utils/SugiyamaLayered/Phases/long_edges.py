@@ -149,9 +149,9 @@ def _node_model_order(node_id: str, fallback: int, node_by_id: dict[str, object]
         return fallback
     else:
         candidates = (
-            node.properties.get("modelOrder", None),
-            node.properties.get("model_order", None),
-            node.layout_options.get("org.vera.sugiyama.layered.considerModelOrder.groupModelOrder.cycleBreakingId", None),
+            node.get_property("modelOrder", None),
+            node.get_property("model_order", None),
+            node.get_layout_option("org.vera.sugiyama.layered.considerModelOrder.groupModelOrder.cycleBreakingId", None),
         )
 
         for value in candidates:
@@ -243,23 +243,11 @@ class LongEdgePhase(LayoutPhaseBase):
         :return: None.
         :rtype: None
         """
-        layer_of_obj: object = context.phase_state.get("layer_of", dict())
-        oriented_edges_obj: object = context.phase_state.get("oriented_edges", list())
-        layer_of: dict[str, int]
-        oriented_edges: list[dict[str, str | bool | None]]
-
-        if isinstance(layer_of_obj, dict):
-            layer_of = layer_of_obj
-        else:
-            layer_of = dict()
-
-        if isinstance(oriented_edges_obj, list):
-            oriented_edges = oriented_edges_obj
-        else:
-            oriented_edges = list()
+        layer_of: dict[str, int] = context.phase_state.layer_of
+        oriented_edges: list[dict[str, str | bool | None]] = context.phase_state.oriented_edges
 
         node_by_id: dict[str, object] = context.graph.node_by_id()
-        topological_order_obj: object = context.phase_state.get("topological_order", list())
+        topological_order_obj: list[str] = context.phase_state.topological_order
         node_order: dict[str, int] = dict()
         expanded_nodes: dict[str, VirtualNode] = dict()
         expanded_layers: dict[int, list[str]] = dict()
@@ -269,11 +257,8 @@ class LongEdgePhase(LayoutPhaseBase):
         dummy_size: float = 12.0
         dummy_counter: int = 0
 
-        if isinstance(topological_order_obj, list):
-            for index, node_id in enumerate(topological_order_obj):
-                node_order[str(node_id)] = index
-        else:
-            pass
+        for index, node_id in enumerate(topological_order_obj):
+            node_order[str(node_id)] = index
 
         for node in context.graph.children:
             expanded_nodes[node.identifier] = VirtualNode(
@@ -339,11 +324,16 @@ class LongEdgePhase(LayoutPhaseBase):
         for layer_index, node_ids in expanded_layers.items():
             expanded_layers[layer_index] = _sort_expanded_layer_nodes(node_ids, expanded_nodes)
 
-        context.phase_state["long_edges"] = sorted(set(long_edges))
-        context.phase_state["expanded_nodes"] = expanded_nodes
-        context.phase_state["expanded_layers"] = expanded_layers
-        context.phase_state["expanded_edges"] = expanded_edges
-        context.phase_state["edge_paths"] = edge_paths
-        context.report.notes.append(
+        context.phase_state.long_edges.clear()
+        context.phase_state.long_edges.extend(sorted(set(long_edges)))
+        context.phase_state.expanded_nodes.clear()
+        context.phase_state.expanded_nodes.update(expanded_nodes)
+        context.phase_state.expanded_layers.clear()
+        context.phase_state.expanded_layers.update(expanded_layers)
+        context.phase_state.expanded_edges.clear()
+        context.phase_state.expanded_edges.extend(expanded_edges)
+        context.phase_state.edge_paths.clear()
+        context.phase_state.edge_paths.update(edge_paths)
+        context.report.add_note(
             f"Long-edge expansion inserted {dummy_counter} dummy node(s) across {len(set(long_edges))} edge(s)."
         )

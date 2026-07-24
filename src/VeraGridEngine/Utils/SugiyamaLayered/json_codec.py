@@ -64,7 +64,7 @@ def _parse_node(data: dict[str, Any], parent: str | None = None) -> SugiyamaNode
             }
         },
     )
-    node.children = [_parse_node(child, parent=node.identifier) for child in data.get("children", [])]
+    node.set_children([_parse_node(child, parent=node.identifier) for child in data.get("children", [])])
     return node
 
 
