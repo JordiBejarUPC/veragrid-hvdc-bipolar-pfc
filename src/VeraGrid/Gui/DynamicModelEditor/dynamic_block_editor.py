@@ -8,7 +8,7 @@ import copy
 from typing import List, Dict, Optional, Any, Tuple
 from PySide6 import QtWidgets, QtGui, QtCore
 from PySide6.QtWidgets import (QGraphicsItem, QMenu, QDialog, QVBoxLayout, QDialogButtonBox, QLineEdit)
-from PySide6.QtGui import (QAction, QDropEvent, QDragEnterEvent, QDragMoveEvent, QColor)
+from PySide6.QtGui import (QAction, QDropEvent, QDragEnterEvent, QDragMoveEvent)
 from PySide6.QtCore import Qt, QPointF, Signal
 
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_graphics import PairedItem
@@ -52,9 +52,8 @@ from VeraGridEngine.Utils.Symbolic.symbolic import (symbolic_to_string, string_t
                                                     Const, Comparison)
 from VeraGridEngine.Utils.Symbolic.symbolic_io import duplicate_block
 from VeraGridEngine.Utils.Symbolic.bus_rms_template import get_bus_rms_algebraic_vars
-from VeraGridEngine.Utils.Symbolic.SugiyamaLayered import (
+from VeraGridEngine.Utils.SugiyamaLayered import (
     SugiyamaEdge,
-    SugiyamaEdgeSection,
     SugiyamaGraph,
     SugiyamaLayeredPythonEngine,
     SugiyamaNode,

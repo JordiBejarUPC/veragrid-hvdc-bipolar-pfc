@@ -9,8 +9,8 @@ from dataclasses import dataclass, field
 from time import perf_counter
 from typing import Protocol
 
-from VeraGridEngine.Utils.Symbolic.SugiyamaLayered.model import SugiyamaGraph
-from VeraGridEngine.Utils.Symbolic.SugiyamaLayered.options import SugiyamaOptionResolver
+from VeraGridEngine.Utils.SugiyamaLayered.model import SugiyamaGraph
+from VeraGridEngine.Utils.SugiyamaLayered.options import SugiyamaOptionResolver
 
 
 @dataclass
