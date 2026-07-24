@@ -3353,6 +3353,7 @@ class RmsProblemTypes(Enum):
     Tensygrid       = "Tensygrid"
     PowerBalance    = "RmsProblemDae"
     PowerBalanceVectorized = "RmsProblemDaeVectorized"
+    PowerBalanceFullVectorized = "RmsProblemDaeFullVectorized"
     CurrentBalance  = "RmsProblemPhasor"
     Multilinear     = "RmsProblemMultilinear"
 

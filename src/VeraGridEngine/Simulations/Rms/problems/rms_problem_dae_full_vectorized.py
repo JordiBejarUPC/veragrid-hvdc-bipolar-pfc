@@ -280,7 +280,7 @@ def get_all_uids_from_block_composition_dict(block_composition_dict: Dict[int, L
     return [uid for uids in block_composition_dict.values() for uid in uids]
 
 
-class RmsProblemDaeVec(RmsProblemTemplate):
+class RmsProblemDaeFullVec(RmsProblemTemplate):
     """
     DAE (Differential-Algebraic Equation) class to store and manage.
 
@@ -307,7 +307,9 @@ class RmsProblemDaeVec(RmsProblemTemplate):
                  options: RmsOptions,
                  pf_results: PowerFlowResults,
                  progress_signal: DummySignal | None = None,
-                 progress_text: DummySignal | None = None, ):
+                 progress_text: DummySignal | None = None,
+                 cancel_checker=False
+                 ):
         """
 
         :param grid:
@@ -2805,32 +2807,46 @@ class RmsProblemDaeVec(RmsProblemTemplate):
             self._prof_timings['rhs_algeb_filler_total'] = self._prof_timings.get('rhs_algeb_filler_total', 0.0) + _t1 - _t0
             self._prof_timings['rhs_algeb_scatter_total'] = self._prof_timings.get('rhs_algeb_scatter_total', 0.0) + time.time() - _t1
 
-            # energy balance equations vectorized:
+            # Only root device-equivalence classes contribute to the network
+            # power balance. Internal sub-block classes can have algebraic RHS
+            # functions too, but they do not own bus mappings and therefore
+            # must be skipped here.
             if model_type in self.line_model_types:
+                bus_from_list = self.mdl_index2busfrom.get(model_type)
+                bus_to_list = self.mdl_index2busto.get(model_type)
+
+                if bus_from_list is None or bus_to_list is None:
+                    continue
+
                 Pf_value_array = rhs_algeb[-4]
                 Pt_value_array = rhs_algeb[-3]
                 Qf_value_array = rhs_algeb[-2]
                 Qt_value_array = rhs_algeb[-1]
                 for i, value in enumerate(Pf_value_array):
-                    bus_num = self.mdl_index2busfrom[model_type][i]
+                    bus_num = bus_from_list[i]
                     setP(self.P_vec, self.P_used_vec, bus_num, value)
                 for i, value in enumerate(Pt_value_array):
-                    bus_num = self.mdl_index2busto[model_type][i]
+                    bus_num = bus_to_list[i]
                     setP(self.P_vec, self.P_used_vec, bus_num, value)
                 for i, value in enumerate(Qf_value_array):
-                    bus_num = self.mdl_index2busfrom[model_type][i]
+                    bus_num = bus_from_list[i]
                     setQ(self.Q_vec, self.Q_used_vec, bus_num, value)
                 for i, value in enumerate(Qt_value_array):
-                    bus_num = self.mdl_index2busto[model_type][i]
+                    bus_num = bus_to_list[i]
                     setQ(self.Q_vec, self.Q_used_vec, bus_num, value)
             else:
+                bus_list = self.mdl_index2bus.get(model_type)
+
+                if bus_list is None:
+                    continue
+
                 P_value_array = rhs_algeb[-2]
                 Q_value_array = rhs_algeb[-1]
                 for i, value in enumerate(P_value_array):
-                    bus_num = self.mdl_index2bus[model_type][i]
+                    bus_num = bus_list[i]
                     setP(self.P_vec, self.P_used_vec, bus_num, value)
                 for i, value in enumerate(Q_value_array):
-                    bus_num = self.mdl_index2bus[model_type][i]
+                    bus_num = bus_list[i]
                     setQ(self.Q_vec, self.Q_used_vec, bus_num, value)
 
         rhs_energy_balance = np.empty(2 * n)

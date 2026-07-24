@@ -12,7 +12,7 @@ from VeraGridEngine.Utils.Sparse.csc import pack_4_by_4_scipy
 from VeraGridEngine.basic_structures import Vec, Mat
 
 
-class BackEulerImplicitIntegrationVec:
+class BackEulerImplicitIntegrationFullVec:
 
     def __init__(self,
                  problem: RmsProblemDaeVec,
@@ -20,7 +20,10 @@ class BackEulerImplicitIntegrationVec:
                  t_end: float,
                  h: float,
                  max_iter: int,
-                 tolerance: float = 1e-7):
+                 tolerance: float = 1e-7,
+                cancel_checker = False
+
+    ):
         """
         Initializes an object to solve a given DAE (Differential-Algebraic Equation) problem using numerical
         methods. This constructor sets up the time grid and prepares storage for results.
