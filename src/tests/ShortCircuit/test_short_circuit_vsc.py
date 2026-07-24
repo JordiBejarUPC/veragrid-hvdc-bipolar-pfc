@@ -312,7 +312,6 @@ def test_dgs_parse_external_grid_sc():
     # ------------------------------------------------------------------------------------------------------------------
     #   AC/DC Short-Circuit with converter's current limitation
     # ------------------------------------------------------------------------------------------------------------------
-
     grid.add_short_circuit_event(
         vge.ShortCircuitEvent(
             device=grid.buses[12],
