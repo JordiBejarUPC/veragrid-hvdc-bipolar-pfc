@@ -145,7 +145,7 @@ class RmsSimulationDriver(DriverTemplate):
         rms_events_group_idtags: StrVec = np.array([str(elm.idtag) for elm in rms_events_groups])
 
         # self.options.problem_type = RmsProblemTypes.PowerBalanceVectorized
-        self.options.problem_type = RmsProblemTypes.PowerBalanceFullVectorized
+        # self.options.problem_type = RmsProblemTypes.PowerBalanceFullVectorized
 
         if self.is_cancel():
             self.report_text("Cancelled!")
@@ -209,7 +209,7 @@ class RmsSimulationDriver(DriverTemplate):
                         f"Simulating RMS event group  {rms_events_group.name} with "
                         f"{self.options.integration_method.value}"
                     )
-                    solver = BackEulerImplicitIntegrationFullVec(
+                    solver = BackEulerImplicitIntegration(
                         problem=problem,
                         t0=0,
                         t_end=self.options.simulation_time,
@@ -226,7 +226,7 @@ class RmsSimulationDriver(DriverTemplate):
                         f"Simulating RMS event group  {rms_events_group.name} with back euler as fallback"
                     )
 
-                    solver = BackEulerImplicitIntegrationFullVec(
+                    solver = BackEulerImplicitIntegration(
                         problem=problem,
                         t0=0,
                         t_end=self.options.simulation_time,
