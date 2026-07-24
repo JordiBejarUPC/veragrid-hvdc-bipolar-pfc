@@ -284,7 +284,7 @@ def test_emt_editor_exposes_basic_block_catalog_under_basic() -> None:
     assert native_item.child(0).text() == "Arithmetic"
     assert _find_index_by_label(editor.library.library_model, "Scaling and Products").isValid()
     assert not _find_index_by_label(editor.library.library_model, "Arithmetic and Products").isValid()
-    assert _count_descriptor_leaves(editor, native_item) == 545
+    assert _count_descriptor_leaves(editor, native_item) == 542
 
     editor.close()
 
@@ -298,7 +298,7 @@ def test_rms_editor_exposes_basic_block_catalog_under_basic() -> None:
     assert basic_item.text() == "Basic"
     assert basic_item.rowCount() == 1
     assert native_item.text() == "Native"
-    assert _count_descriptor_leaves(editor, native_item) == 545
+    assert _count_descriptor_leaves(editor, native_item) == 542
 
     editor.close()
 
@@ -573,31 +573,6 @@ def test_lookup_array_linear_dialog_supports_custom_axis_labels_and_preview() ->
     assert dialog._preview_dialog.windowTitle() == "Nonlinear resistor EMT V-I curve"
     dialog._preview_dialog.close()
     dialog.close()
-
-
-def test_lookup_array_linear_descriptor_uses_modal_points_to_build_block(override_attrs) -> None:
-    editor = _build_editor(DynamicSimulationMode.EMT)
-    descriptor = get_basic_block_catalog_descriptor_by_key()["lookup_array_linear"]
-
-    class _DialogStub:
-        def __init__(self, block_label: str, initial_points=None, parent=None) -> None:
-            _unused = (block_label, initial_points, parent)
-
-        def exec(self) -> int:
-            return int(QtWidgets.QDialog.DialogCode.Accepted)
-
-        def get_points(self) -> tuple[list[float], list[float]]:
-            return [0.0, 2.0, 4.0], [0.0, 20.0, 40.0]
-
-    override_attrs.setattr(dynamic_block_editor_module, "LookupArrayLinearDialog", _DialogStub)
-    block_item = editor.create_library_payload_item(descriptor, 10.0, 20.0)
-
-    assert block_item is not None
-    assert any(var.name.startswith("arr_x3_") for var in block_item.subsys.event_dict.keys())
-    assert any(var.name.startswith("arr_y3_") for var in block_item.subsys.event_dict.keys())
-
-    editor.has_unapplied_changes = False
-    editor.close()
 
 #
 # def test_jmarti_line_emt_block_builds_sequence_fit_and_persists_diagnostics(override_attrs) -> None:
@@ -1111,57 +1086,6 @@ def test_lookup_matrix_linear_descriptor_uses_modal_matrix_to_build_block(overri
 
     editor.has_unapplied_changes = False
     editor.close()
-
-
-def test_inverse_lookup_array_linear_descriptor_uses_modal_points_to_build_block(override_attrs) -> None:
-    editor = _build_editor(DynamicSimulationMode.EMT)
-    descriptor = get_basic_block_catalog_descriptor_by_key()["inverse_lookup_array_linear"]
-
-    class _DialogStub:
-        def __init__(self, block_label: str, initial_points=None, parent=None) -> None:
-            _unused = (block_label, initial_points, parent)
-
-        def exec(self) -> int:
-            return int(QtWidgets.QDialog.DialogCode.Accepted)
-
-        def get_points(self) -> tuple[list[float], list[float]]:
-            return [0.0, 1.0, 2.0], [0.0, 10.0, 20.0]
-
-    override_attrs.setattr(dynamic_block_editor_module, "LookupArrayLinearDialog", _DialogStub)
-    block_item = editor.create_library_payload_item(descriptor, 10.0, 20.0)
-
-    assert block_item is not None
-    assert any(var.name.startswith("arr_x3_") for var in block_item.subsys.event_dict.keys())
-    assert any(var.name.startswith("arr_y3_") for var in block_item.subsys.event_dict.keys())
-
-    editor.has_unapplied_changes = False
-    editor.close()
-
-
-def test_lookup_array_spline_descriptor_uses_modal_points_to_build_block(override_attrs) -> None:
-    editor = _build_editor(DynamicSimulationMode.EMT)
-    descriptor = get_basic_block_catalog_descriptor_by_key()["lookup_array_spline"]
-
-    class _DialogStub:
-        def __init__(self, block_label: str, initial_points=None, parent=None) -> None:
-            _unused = (block_label, initial_points, parent)
-
-        def exec(self) -> int:
-            return int(QtWidgets.QDialog.DialogCode.Accepted)
-
-        def get_points(self) -> tuple[list[float], list[float]]:
-            return [0.0, 1.0, 2.0], [0.0, 10.0, 20.0]
-
-    override_attrs.setattr(dynamic_block_editor_module, "LookupArrayLinearDialog", _DialogStub)
-    block_item = editor.create_library_payload_item(descriptor, 10.0, 20.0)
-
-    assert block_item is not None
-    assert any(var.name.startswith("arr_x3_") for var in block_item.subsys.event_dict.keys())
-    assert any(var.name.startswith("arr_y3_") for var in block_item.subsys.event_dict.keys())
-
-    editor.has_unapplied_changes = False
-    editor.close()
-
 
 def test_lookup_matrix_spline_descriptor_uses_modal_matrix_to_build_block(override_attrs) -> None:
     editor = _build_editor(DynamicSimulationMode.EMT)
