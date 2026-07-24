@@ -18,6 +18,7 @@ from VeraGridEngine.Simulations.Rms.problems.rms_problem_dae import RmsProblemDa
 from VeraGridEngine.Simulations.Rms.problems.rms_problem_dae_vectorized import RmsProblemDaeVec
 from VeraGridEngine.Simulations.Rms.numerical.back_euler_fx import BackEulerImplicitIntegration
 from VeraGridEngine.Simulations.Rms.numerical.back_euler_fx_vectorized import BackEulerImplicitIntegrationVec
+from VeraGridEngine.Simulations.Rms.numerical.back_euler_fx_full_vectorized import BackEulerImplicitIntegrationFullVec
 from VeraGridEngine.enumerations import EngineType, SimulationTypes, DynamicIntegrationMethod
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowResults
 from VeraGridEngine.basic_structures import Vec, StrVec
@@ -144,6 +145,7 @@ class RmsSimulationDriver(DriverTemplate):
         rms_events_group_idtags: StrVec = np.array([str(elm.idtag) for elm in rms_events_groups])
 
         # self.options.problem_type = RmsProblemTypes.PowerBalanceVectorized
+        self.options.problem_type = RmsProblemTypes.PowerBalanceFullVectorized
 
         if self.is_cancel():
             self.report_text("Cancelled!")
@@ -207,7 +209,7 @@ class RmsSimulationDriver(DriverTemplate):
                         f"Simulating RMS event group  {rms_events_group.name} with "
                         f"{self.options.integration_method.value}"
                     )
-                    solver = BackEulerImplicitIntegration(
+                    solver = BackEulerImplicitIntegrationFullVec(
                         problem=problem,
                         t0=0,
                         t_end=self.options.simulation_time,
@@ -224,7 +226,7 @@ class RmsSimulationDriver(DriverTemplate):
                         f"Simulating RMS event group  {rms_events_group.name} with back euler as fallback"
                     )
 
-                    solver = BackEulerImplicitIntegration(
+                    solver = BackEulerImplicitIntegrationFullVec(
                         problem=problem,
                         t0=0,
                         t_end=self.options.simulation_time,
