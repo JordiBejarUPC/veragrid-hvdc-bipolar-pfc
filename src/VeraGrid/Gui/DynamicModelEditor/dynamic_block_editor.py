@@ -52,7 +52,7 @@ from VeraGridEngine.Utils.Symbolic.symbolic import (symbolic_to_string, string_t
                                                     Const, Comparison)
 from VeraGridEngine.Utils.Symbolic.symbolic_io import duplicate_block
 from VeraGridEngine.Utils.Symbolic.bus_rms_template import get_bus_rms_algebraic_vars
-from VeraGridEngine.Utils.Symbolic.elk_layered_python import (
+from VeraGridEngine.Utils.Symbolic.sugiyama_layered import (
     SugiyamaEdge,
     SugiyamaEdgeSection,
     SugiyamaGraph,
@@ -1024,6 +1024,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                     target_port=target_port,
                     diagram=self.diagram,
                     editor=self,
+                    route_style="RETICULAR",
+                    locked=False,
                 )
                 connection.recolour()
                 self.scene.addItem(connection)
@@ -1033,7 +1035,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                     device_uid_to=item_dest.subsys.uid,
                     port_number_from=source_port.index,
                     port_number_to=target_port.index,
-                    color=connection.pen().color().name()
+                    color=connection.pen().color().name(),
+                    route_style=connection.route_style,
+                    locked=connection.route_locked,
                 )
 
     def generate_block_item_for_block(self, block_model: Block,
@@ -1344,6 +1348,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 diagram=self.diagram,
                 con_uid=int(edge.identifier),
                 elbow_points=elbow_points,
+                route_style="RETICULAR",
+                locked=False,
                 editor=self,
             )
             connection.recolour()
@@ -3352,6 +3358,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                                     target_port=block_item.inputs[input_index],
                                     diagram=self.diagram,
                                     editor=self,
+                                    route_style="RETICULAR",
+                                    locked=False,
                                 )
                                 connection_item.recolour()
                                 self.scene.addItem(connection_item)
@@ -3377,6 +3385,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                                     target_port=protected_item.inputs[0],
                                     diagram=self.diagram,
                                     editor=self,
+                                    route_style="RETICULAR",
+                                    locked=False,
                                 )
                                 connection_item.recolour()
                                 self.scene.addItem(connection_item)
@@ -3542,6 +3552,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                         target_port=target_port,
                         diagram=self.diagram,
                         editor=self,
+                        route_style="RETICULAR",
+                        locked=False,
                     )
                     connection.recolour()
                     self.scene.addItem(connection)
@@ -5858,6 +5870,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                         diagram=self.diagram,
                         con_uid=uid,
                         elbow_points=elbow_points,
+                        route_style=con.route_style,
+                        locked=con.locked,
                         editor=self,
                     )
                     connection.recolour()
