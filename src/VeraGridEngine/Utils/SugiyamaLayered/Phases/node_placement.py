@@ -5,174 +5,434 @@
 
 from __future__ import annotations
 
-from VeraGridEngine.Utils.SugiyamaLayered.pipeline import LayoutContext
+from typing import Any
+
+from VeraGridEngine.Utils.SugiyamaLayered.Phases.long_edges import VirtualNode
+from VeraGridEngine.Utils.SugiyamaLayered.model import SugiyamaNode, SugiyamaPort
+from VeraGridEngine.Utils.SugiyamaLayered.pipeline import LayoutContext, LayoutPhaseBase
 
 
-def _node_dimensions(node_id: str, expanded_nodes, node_by_id) -> tuple[float, float]:
-    node_info = expanded_nodes.get(node_id)
+def _node_dimensions(
+    node_id: str,
+    expanded_nodes: dict[str, VirtualNode],
+    node_by_id: dict[str, SugiyamaNode],
+) -> tuple[float, float]:
+    """Return the width and height of one expanded node.
+
+    :param node_id: Node identifier.
+    :param expanded_nodes: Expanded-node lookup.
+    :param node_by_id: Original graph node lookup.
+    :returns: Node width and height.
+    """
+    dimensions: tuple[float, float] = (30.0, 30.0)
+    node_info: VirtualNode | None = expanded_nodes.get(node_id, None)
+
     if node_info is not None:
-        return node_info.width, node_info.height
-    node = node_by_id.get(node_id)
-    if node is not None:
-        return node.width, node.height
-    return 30.0, 30.0
+        dimensions = (node_info.width, node_info.height)
+    else:
+        node: SugiyamaNode | None = node_by_id.get(node_id, None)
+        if node is not None:
+            dimensions = (node.width, node.height)
+        else:
+            dimensions = dimensions
+
+    return dimensions
 
 
-def _node_height(node_id: str, expanded_nodes, node_by_id) -> float:
+def _node_height(
+    node_id: str,
+    expanded_nodes: dict[str, VirtualNode],
+    node_by_id: dict[str, SugiyamaNode],
+) -> float:
+    """Return the height of one expanded node.
+
+    :param node_id: Node identifier.
+    :param expanded_nodes: Expanded-node lookup.
+    :param node_by_id: Original graph node lookup.
+    :returns: Node height.
+    """
     return _node_dimensions(node_id, expanded_nodes, node_by_id)[1]
 
 
-def _node_width(node_id: str, expanded_nodes, node_by_id) -> float:
+def _node_width(
+    node_id: str,
+    expanded_nodes: dict[str, VirtualNode],
+    node_by_id: dict[str, SugiyamaNode],
+) -> float:
+    """Return the width of one expanded node.
+
+    :param node_id: Node identifier.
+    :param expanded_nodes: Expanded-node lookup.
+    :param node_by_id: Original graph node lookup.
+    :returns: Node width.
+    """
     return _node_dimensions(node_id, expanded_nodes, node_by_id)[0]
 
 
 def _layout_direction(context: LayoutContext) -> str:
-    options = context.option_resolver.resolve_for_element(context.graph.layout_options)
-    return str(options.get("org.vera.sugiyama.direction", "RIGHT")).upper()
+    """Return the normalized layout direction.
+
+    :param context: Shared pipeline context.
+    :returns: Layout direction.
+    """
+    options: dict[str, Any] = context.option_resolver.resolve_for_element(context.graph.layout_options)
+    direction_value: Any = options.get("org.vera.sugiyama.direction", "RIGHT")
+    direction: str = str(direction_value).upper()
+    return direction
 
 
 def _fixed_alignment(context: LayoutContext) -> str:
-    options = context.option_resolver.resolve_for_element(context.graph.layout_options)
-    return str(options.get("org.vera.sugiyama.layered.nodePlacement.bk.fixedAlignment", "NONE")).upper()
+    """Return the configured fixed Brandes-Koepf alignment.
+
+    :param context: Shared pipeline context.
+    :returns: Fixed alignment option.
+    """
+    options: dict[str, Any] = context.option_resolver.resolve_for_element(context.graph.layout_options)
+    alignment_value: Any = options.get("org.vera.sugiyama.layered.nodePlacement.bk.fixedAlignment", "NONE")
+    alignment: str = str(alignment_value).upper()
+    return alignment
 
 
-def _port_side(port) -> str:
-    side = (
-        port.layout_options.get("org.vera.sugiyama.port.side")
-        or port.properties.get("side")
+def _port_side(port: SugiyamaPort) -> str:
+    """Return the explicit side of one port.
+
+    :param port: Port to inspect.
+    :returns: Normalized side name.
+    """
+    side_value: Any = (
+        port.layout_options.get("org.vera.sugiyama.port.side", None)
+        or port.properties.get("side", None)
         or ""
     )
-    return str(side).upper()
+    side: str = str(side_value).upper()
+    return side
 
 
-def _effective_port_side(port, role: str, direction: str) -> str:
-    side = _port_side(port)
-    if side and side != "UNDEFINED":
-        return side
-    if direction == "LEFT":
-        return "WEST" if role == "output" else "EAST"
-    if direction == "DOWN":
-        return "SOUTH" if role == "output" else "NORTH"
-    if direction == "UP":
-        return "NORTH" if role == "output" else "SOUTH"
-    return "EAST" if role == "output" else "WEST"
+def _effective_port_side(port: SugiyamaPort, role: str, direction: str) -> str:
+    """Resolve the effective side of one port.
+
+    :param port: Port to inspect.
+    :param role: Port role string.
+    :param direction: Layout direction.
+    :returns: Effective side name.
+    """
+    explicit_side: str = _port_side(port)
+    resolved_side: str = explicit_side
+
+    if explicit_side and explicit_side != "UNDEFINED":
+        resolved_side = explicit_side
+    else:
+        if direction == "LEFT":
+            resolved_side = "WEST" if role == "output" else "EAST"
+        else:
+            if direction == "DOWN":
+                resolved_side = "SOUTH" if role == "output" else "NORTH"
+            else:
+                if direction == "UP":
+                    resolved_side = "NORTH" if role == "output" else "SOUTH"
+                else:
+                    resolved_side = "EAST" if role == "output" else "WEST"
+
+    return resolved_side
 
 
-def _port_sort_key(port) -> tuple[int, int, str]:
-    side_rank = {
-        "WEST": 0,
-        "NORTH": 1,
-        "SOUTH": 2,
-        "EAST": 3,
-    }.get(_port_side(port), 4)
-    index = int(port.properties.get("port_index", 0))
-    return (side_rank, index, port.identifier)
+def _port_side_rank(side: str) -> int:
+    """Return the stable rank of one port side.
+
+    :param side: Side name.
+    :returns: Stable numeric rank.
+    """
+    rank: int = 4
+
+    if side == "WEST":
+        rank = 0
+    else:
+        if side == "NORTH":
+            rank = 1
+        else:
+            if side == "SOUTH":
+                rank = 2
+            else:
+                if side == "EAST":
+                    rank = 3
+                else:
+                    rank = 4
+
+    return rank
 
 
-def _port_alignment(node, context: LayoutContext, side: str) -> str:
-    options = context.option_resolver.resolve_for_element(
+def _read_integer_candidate(value: Any) -> int | None:
+    """Parse an optional integer value.
+
+    :param value: Raw value to parse.
+    :returns: Parsed integer or ``None``.
+    """
+    parsed_value: int | None = None
+
+    if value is not None:
+        try:
+            parsed_value = int(value)
+        except (TypeError, ValueError):
+            parsed_value = None
+    else:
+        parsed_value = None
+
+    return parsed_value
+
+
+def _port_sort_key(port: SugiyamaPort) -> tuple[int, int, str]:
+    """Return the stable ordering key for one port.
+
+    :param port: Port to rank.
+    :returns: Stable ordering key.
+    """
+    side_rank: int = _port_side_rank(_port_side(port))
+    index_value: Any = port.properties.get("port_index", 0)
+    index: int = _read_integer_candidate(index_value) or 0
+    return side_rank, index, port.identifier
+
+
+def _sort_ports(ports: list[SugiyamaPort]) -> list[SugiyamaPort]:
+    """Sort ports deterministically.
+
+    :param ports: Ports to sort.
+    :returns: Sorted ports.
+    """
+    decorated_ports: list[tuple[tuple[int, int, str], SugiyamaPort]] = list()
+    sorted_ports: list[SugiyamaPort] = list()
+    port: SugiyamaPort
+
+    for port in ports:
+        decorated_ports.append((_port_sort_key(port), port))
+
+    decorated_ports.sort()
+
+    for _, resolved_port in decorated_ports:
+        sorted_ports.append(resolved_port)
+
+    return sorted_ports
+
+
+def _port_alignment(node: SugiyamaNode, context: LayoutContext, side: str) -> str:
+    """Return the alignment policy for one node side.
+
+    :param node: Node to inspect.
+    :param context: Shared pipeline context.
+    :param side: Side name.
+    :returns: Port-alignment policy.
+    """
+    options: dict[str, Any] = context.option_resolver.resolve_for_element(
         context.graph.layout_options,
-        getattr(node, "layout_options", {}),
+        node.layout_options,
     )
-    side_key = f"org.vera.sugiyama.portAlignment.{side.lower()}"
-    value = options.get(side_key) or options.get("org.vera.sugiyama.portAlignment.default", "CENTER")
-    return str(value).upper()
+    side_key: str = f"org.vera.sugiyama.portAlignment.{side.lower()}"
+    value: Any = options.get(side_key, None) or options.get("org.vera.sugiyama.portAlignment.default", "CENTER")
+    alignment: str = str(value).upper()
+    return alignment
 
 
-def _node_port_constraints(node, context: LayoutContext) -> str:
-    options = context.option_resolver.resolve_for_element(
+def _node_port_constraints(node: SugiyamaNode, context: LayoutContext) -> str:
+    """Return the port-constraint policy of one node.
+
+    :param node: Node to inspect.
+    :param context: Shared pipeline context.
+    :returns: Port-constraint policy.
+    """
+    options: dict[str, Any] = context.option_resolver.resolve_for_element(
         context.graph.layout_options,
-        getattr(node, "layout_options", {}),
+        node.layout_options,
     )
-    return str(options.get("org.vera.sugiyama.portConstraints", "UNDEFINED")).upper()
+    value: Any = options.get("org.vera.sugiyama.portConstraints", "UNDEFINED")
+    constraints: str = str(value).upper()
+    return constraints
 
 
 def _align_norm(norm: float, alignment: str, count: int) -> float:
+    """Adjust a normalized side coordinate according to the alignment option.
+
+    :param norm: Raw normalized coordinate.
+    :param alignment: Alignment mode.
+    :param count: Number of ports on the side.
+    :returns: Adjusted normalized coordinate.
+    """
+    adjusted_norm: float = norm
+
     if alignment == "BEGIN":
-        return min(norm, 0.25 if count > 1 else 0.5)
-    if alignment == "END":
-        return max(norm, 0.75 if count > 1 else 0.5)
-    return norm
+        adjusted_norm = min(norm, 0.25 if count > 1 else 0.5)
+    else:
+        if alignment == "END":
+            adjusted_norm = max(norm, 0.75 if count > 1 else 0.5)
+        else:
+            adjusted_norm = norm
+
+    return adjusted_norm
 
 
-def _assign_port_positions(context: LayoutContext, node_by_id) -> None:
-    direction = _layout_direction(context)
+def _assign_port_positions(context: LayoutContext) -> None:
+    """Assign port coordinates once node coordinates are known.
+
+    :param context: Shared pipeline context.
+    :returns: ``None``.
+    """
+    direction: str = _layout_direction(context)
+    node: SugiyamaNode
+
+    # Port coordinates are derived last because they depend on the final node box and
+    # on the side chosen from layout direction and explicit constraints.
     for node in context.graph.children:
-        if node.x is None or node.y is None or not node.ports:
-            continue
+        if node.x is not None and node.y is not None and node.ports:
+            constraints: str = _node_port_constraints(node, context)
+            grouped_ports: dict[str, list[SugiyamaPort]] = dict()
+            grouped_ports["WEST"] = list()
+            grouped_ports["EAST"] = list()
+            grouped_ports["NORTH"] = list()
+            grouped_ports["SOUTH"] = list()
+            grouped_ports["UNDEFINED"] = list()
 
-        constraints = _node_port_constraints(node, context)
+            sorted_ports: list[SugiyamaPort] = _sort_ports(node.ports)
+            port: SugiyamaPort
+            for port in sorted_ports:
+                role: str = str(port.properties.get("role", "")).lower()
+                effective_side: str = _effective_port_side(port, role, direction)
+                target_ports: list[SugiyamaPort] = grouped_ports.get(effective_side, None) or list()
+                target_ports.append(port)
+                grouped_ports[effective_side] = target_ports
 
-        grouped: dict[str, list] = {"WEST": [], "EAST": [], "NORTH": [], "SOUTH": [], "UNDEFINED": []}
-        for port in sorted(node.ports, key=_port_sort_key):
-            role = str(port.properties.get("role", "")).lower()
-            effective_side = _effective_port_side(port, role, direction)
-            grouped.setdefault(effective_side, []).append(port)
+            side: str
+            ports_on_side: list[SugiyamaPort]
+            for side, ports_on_side in grouped_ports.items():
+                if ports_on_side:
+                    alignment_side: str = side if side != "UNDEFINED" else "EAST"
+                    alignment: str = _port_alignment(node, context, alignment_side)
+                    count: int = len(ports_on_side)
+                    port_index: int
+                    for port_index, port in enumerate(ports_on_side):
+                        if constraints in {"FIXED_POS", "FIXED_RATIO"} and port.x is not None and port.y is not None:
+                            port.x = port.x
+                            port.y = port.y
+                        else:
+                            norm: float = (port_index + 1) / (count + 1) if count else 0.5
+                            norm = _align_norm(norm, alignment, count)
 
-        for side, ports in grouped.items():
-            if not ports:
-                continue
-            alignment = _port_alignment(node, context, side if side != "UNDEFINED" else "east")
-            count = len(ports)
-            for idx, port in enumerate(ports):
-                if constraints in {"FIXED_POS", "FIXED_RATIO"} and port.x is not None and port.y is not None:
-                    continue
-                norm = (idx + 1) / (count + 1) if count else 0.5
-                norm = _align_norm(norm, alignment, count)
-                if side == "WEST":
-                    port.x = node.x - port.width / 2.0
-                    port.y = node.y + norm * node.height - port.height / 2.0
-                elif side == "NORTH":
-                    port.x = node.x + norm * node.width - port.width / 2.0
-                    port.y = node.y - port.height / 2.0
-                elif side == "SOUTH":
-                    port.x = node.x + norm * node.width - port.width / 2.0
-                    port.y = node.y + node.height - port.height / 2.0
+                            if side == "WEST":
+                                port.x = node.x - port.width / 2.0
+                                port.y = node.y + norm * node.height - port.height / 2.0
+                            else:
+                                if side == "NORTH":
+                                    port.x = node.x + norm * node.width - port.width / 2.0
+                                    port.y = node.y - port.height / 2.0
+                                else:
+                                    if side == "SOUTH":
+                                        port.x = node.x + norm * node.width - port.width / 2.0
+                                        port.y = node.y + node.height - port.height / 2.0
+                                    else:
+                                        port.x = node.x + node.width - port.width / 2.0
+                                        port.y = node.y + norm * node.height - port.height / 2.0
                 else:
-                    port.x = node.x + node.width - port.width / 2.0
-                    port.y = node.y + norm * node.height - port.height / 2.0
+                    grouped_ports = grouped_ports
+        else:
+            node = node
+
+
+def _layer_extent(
+    node_ids: list[str],
+    expanded_nodes: dict[str, VirtualNode],
+    node_by_id: dict[str, SugiyamaNode],
+    vertical_flow: bool,
+) -> float:
+    """Return the primary-axis extent of one layer.
+
+    :param node_ids: Node identifiers in the layer.
+    :param expanded_nodes: Expanded-node lookup.
+    :param node_by_id: Original graph node lookup.
+    :param vertical_flow: Whether layers are stacked vertically.
+    :returns: Layer extent along the primary axis.
+    """
+    extent: float = 30.0
+    current_extent: float = 30.0
+    node_id: str
+
+    for node_id in node_ids:
+        if vertical_flow:
+            current_extent = _node_height(node_id, expanded_nodes, node_by_id)
+        else:
+            current_extent = _node_width(node_id, expanded_nodes, node_by_id)
+
+        if current_extent > extent:
+            extent = current_extent
+        else:
+            extent = extent
+
+    return extent
 
 
 def _assign_node_coordinates(
     context: LayoutContext,
     ordered_layers: dict[int, list[str]],
-    expanded_nodes,
-    node_by_id,
+    expanded_nodes: dict[str, VirtualNode],
+    node_by_id: dict[str, SugiyamaNode],
     spacing_x: float,
     spacing_y: float,
     y_of_node: dict[str, float],
 ) -> tuple[dict[str, tuple[float, float]], dict[int, float]]:
-    direction = _layout_direction(context)
-    vertical_flow = direction in {"DOWN", "UP"}
-    reverse_flow = direction in {"LEFT", "UP"}
+    """Assign primary-axis coordinates to nodes once orthogonal positions are known.
 
-    layer_positions: dict[int, float] = {}
-    current_pos = 0.0
-    for layer_idx, node_ids in sorted(ordered_layers.items()):
-        layer_positions[layer_idx] = current_pos
+    :param context: Shared pipeline context.
+    :param ordered_layers: Ordered nodes per layer.
+    :param expanded_nodes: Expanded-node lookup.
+    :param node_by_id: Original graph node lookup.
+    :param spacing_x: Horizontal spacing between layers.
+    :param spacing_y: Vertical spacing between layers.
+    :param y_of_node: Orthogonal coordinate per node.
+    :returns: Virtual positions and primary-axis layer coordinates.
+    """
+    direction: str = _layout_direction(context)
+    vertical_flow: bool = direction in {"DOWN", "UP"}
+    reverse_flow: bool = direction in {"LEFT", "UP"}
+    layer_positions: dict[int, float] = dict()
+    current_position: float = 0.0
+    virtual_positions: dict[str, tuple[float, float]] = dict()
+
+    # Layer positions along the flow direction are computed first so all nodes in the
+    # same layer can share the same primary-axis coordinate.
+    layer_id: int
+    node_ids: list[str]
+    for layer_id, node_ids in sorted(ordered_layers.items()):
+        layer_positions[layer_id] = current_position
+        layer_extent: float = _layer_extent(node_ids, expanded_nodes, node_by_id, vertical_flow)
         if vertical_flow:
-            current_pos += max((_node_height(node_id, expanded_nodes, node_by_id) for node_id in node_ids), default=30.0) + spacing_y
+            current_position += layer_extent + spacing_y
         else:
-            current_pos += max((_node_width(node_id, expanded_nodes, node_by_id) for node_id in node_ids), default=30.0) + spacing_x
+            current_position += layer_extent + spacing_x
 
-    max_layer_pos = max(layer_positions.values(), default=0.0)
-    virtual_positions: dict[str, tuple[float, float]] = {}
+    max_layer_position: float = max(layer_positions.values(), default=0.0)
 
-    for layer_idx, node_ids in sorted(ordered_layers.items()):
-        layer_pos = layer_positions[layer_idx]
+    for layer_id, node_ids in sorted(ordered_layers.items()):
+        layer_position: float = layer_positions[layer_id]
         if reverse_flow:
-            layer_pos = max_layer_pos - layer_pos
+            layer_position = max_layer_position - layer_position
+        else:
+            layer_position = layer_position
+
+        node_id: str
         for node_id in node_ids:
-            orth_pos = y_of_node.get(node_id, 0.0)
+            orthogonal_position: float = y_of_node.get(node_id, 0.0)
             if vertical_flow:
-                x = orth_pos
-                y = layer_pos
+                virtual_positions[node_id] = (orthogonal_position, layer_position)
             else:
-                x = layer_pos
-                y = orth_pos
-            virtual_positions[node_id] = (x, y)
+                virtual_positions[node_id] = (layer_position, orthogonal_position)
 
     return virtual_positions, layer_positions
+
+
+def _neighbor_sort_key(node_id: str, order_in_layer: dict[str, int]) -> tuple[int, str]:
+    """Return the stable key for one neighbor lookup.
+
+    :param node_id: Neighbor identifier.
+    :param order_in_layer: Position of nodes inside their layer.
+    :returns: Stable sorting key.
+    """
+    return order_in_layer.get(node_id, 0), node_id
 
 
 def _ordered_neighbors(
@@ -180,7 +440,26 @@ def _ordered_neighbors(
     neighbors: dict[str, set[str]],
     order_in_layer: dict[str, int],
 ) -> list[str]:
-    return sorted(neighbors.get(node_id, set()), key=lambda other: order_in_layer.get(other, 0))
+    """Return neighbors ordered by their in-layer position.
+
+    :param node_id: Node whose neighbors are requested.
+    :param neighbors: Adjacency mapping.
+    :param order_in_layer: Position of nodes inside their layer.
+    :returns: Ordered neighbor identifiers.
+    """
+    decorated_neighbors: list[tuple[tuple[int, str], str]] = list()
+    ordered: list[str] = list()
+    neighbor_id: str
+
+    for neighbor_id in neighbors.get(node_id, set()):
+        decorated_neighbors.append((_neighbor_sort_key(neighbor_id, order_in_layer), neighbor_id))
+
+    decorated_neighbors.sort()
+
+    for _, resolved_neighbor in decorated_neighbors:
+        ordered.append(resolved_neighbor)
+
+    return ordered
 
 
 def _median_neighbor(
@@ -188,10 +467,38 @@ def _median_neighbor(
     neighbors: dict[str, set[str]],
     order_in_layer: dict[str, int],
 ) -> str | None:
-    ordered = _ordered_neighbors(node_id, neighbors, order_in_layer)
-    if not ordered:
-        return None
-    return ordered[(len(ordered) - 1) // 2]
+    """Return the median neighbor of one node.
+
+    :param node_id: Node whose median neighbor is requested.
+    :param neighbors: Adjacency mapping.
+    :param order_in_layer: Position of nodes inside their layer.
+    :returns: Median neighbor or ``None``.
+    """
+    ordered: list[str] = _ordered_neighbors(node_id, neighbors, order_in_layer)
+    median_id: str | None = None
+
+    if ordered:
+        median_id = ordered[(len(ordered) - 1) // 2]
+    else:
+        median_id = None
+
+    return median_id
+
+
+def _collect_all_layer_nodes(ordered_layers: dict[int, list[str]], layer_ids: list[int]) -> list[str]:
+    """Collect all node identifiers from the ordered layers.
+
+    :param ordered_layers: Ordered nodes per layer.
+    :param layer_ids: Layer identifiers in traversal order.
+    :returns: Flattened node identifiers.
+    """
+    all_nodes: list[str] = list()
+    layer_id: int
+
+    for layer_id in layer_ids:
+        all_nodes.extend(ordered_layers[layer_id])
+
+    return all_nodes
 
 
 def _alignment_pass(
@@ -201,50 +508,88 @@ def _alignment_pass(
     neighbors: dict[str, set[str]],
     reverse_layers: bool,
 ) -> tuple[dict[str, str], dict[str, str]]:
-    all_nodes = [node_id for layer_idx in layer_ids for node_id in ordered_layers[layer_idx]]
-    root = {node_id: node_id for node_id in all_nodes}
-    align = {node_id: node_id for node_id in all_nodes}
+    """Run one Brandes-Koepf alignment pass.
 
-    traversed_layers = list(layer_ids)
+    :param ordered_layers: Ordered nodes per layer.
+    :param layer_ids: Layer identifiers in traversal order.
+    :param order_in_layer: Position of nodes inside their layer.
+    :param neighbors: Adjacency mapping used by the pass.
+    :param reverse_layers: Whether the pass traverses layers in reverse order.
+    :returns: Root and alignment maps.
+    """
+    all_nodes: list[str] = _collect_all_layer_nodes(ordered_layers, layer_ids)
+    root: dict[str, str] = dict()
+    align: dict[str, str] = dict()
+    traversed_layers: list[int] = list(layer_ids)
+    node_id: str
+
+    for node_id in all_nodes:
+        root[node_id] = node_id
+        align[node_id] = node_id
+
     if reverse_layers:
         traversed_layers = list(reversed(traversed_layers))
+    else:
+        traversed_layers = traversed_layers
 
-    for layer_idx in traversed_layers:
-        layer = list(ordered_layers[layer_idx])
+    # Each pass aligns nodes to median neighbors to build vertical blocks that later
+    # share a common orthogonal coordinate.
+    layer_id: int
+    for layer_id in traversed_layers:
+        layer_nodes: list[str] = list(ordered_layers[layer_id])
+        barrier: int = -1
+
         if reverse_layers:
-            layer.reverse()
-            barrier = len(ordered_layers[layer_idx])
+            layer_nodes.reverse()
+            barrier = len(ordered_layers[layer_id])
         else:
             barrier = -1
 
-        for node_id in layer:
-            median = _median_neighbor(node_id, neighbors, order_in_layer)
-            if median is None:
-                continue
-            median_pos = order_in_layer.get(median, 0)
-            can_align = median_pos < barrier if reverse_layers else median_pos > barrier
-            if can_align and align[node_id] == node_id:
-                align[median] = node_id
-                root[node_id] = root[median]
-                barrier = median_pos
+        for node_id in layer_nodes:
+            median_id: str | None = _median_neighbor(node_id, neighbors, order_in_layer)
+            if median_id is not None:
+                median_position: int = order_in_layer.get(median_id, 0)
+                can_align: bool = median_position < barrier if reverse_layers else median_position > barrier
+
+                if can_align and align[node_id] == node_id:
+                    align[median_id] = node_id
+                    root[node_id] = root[median_id]
+                    barrier = median_position
+                else:
+                    barrier = barrier
+            else:
+                barrier = barrier
 
     return root, align
 
 
 def _build_blocks(root: dict[str, str], align: dict[str, str]) -> list[list[str]]:
+    """Build aligned blocks from root and alignment mappings.
+
+    :param root: Block-root mapping.
+    :param align: Successor alignment mapping.
+    :returns: Blocks of vertically aligned nodes.
+    """
     visited: set[str] = set()
-    blocks: list[list[str]] = []
+    blocks: list[list[str]] = list()
+    node_id: str
+
     for node_id in root:
-        if node_id in visited or root[node_id] != node_id:
-            continue
-        block = [node_id]
-        visited.add(node_id)
-        current = node_id
-        while align[current] != current:
-            current = align[current]
-            block.append(current)
-            visited.add(current)
-        blocks.append(block)
+        if node_id not in visited and root[node_id] == node_id:
+            block: list[str] = list()
+            current_id: str = node_id
+            block.append(current_id)
+            visited.add(current_id)
+
+            while align[current_id] != current_id:
+                current_id = align[current_id]
+                block.append(current_id)
+                visited.add(current_id)
+
+            blocks.append(block)
+        else:
+            visited = visited
+
     return blocks
 
 
@@ -254,24 +599,213 @@ def _block_neighbors(
     order_in_layer: dict[str, int],
     blocks: list[list[str]],
     block_of: dict[str, int],
-    block_idx: int,
+    block_index: int,
 ) -> set[int]:
-    neighbors: set[int] = set()
-    for node_id in blocks[block_idx]:
-        layer_idx = layer_of[node_id]
-        order_idx = order_in_layer[node_id]
-        layer = ordered_layers[layer_idx]
-        if order_idx > 0:
-            left_node = layer[order_idx - 1]
-            left_block = block_of[left_node]
-            if left_block != block_idx:
-                neighbors.add(left_block)
-        if order_idx < len(layer) - 1:
-            right_node = layer[order_idx + 1]
-            right_block = block_of[right_node]
-            if right_block != block_idx:
-                neighbors.add(right_block)
-    return neighbors
+    """Return adjacent block indices sharing a layer neighborhood.
+
+    :param ordered_layers: Ordered nodes per layer.
+    :param layer_of: Layer index per node.
+    :param order_in_layer: Position of nodes inside their layer.
+    :param blocks: Block contents.
+    :param block_of: Block index per node.
+    :param block_index: Block being inspected.
+    :returns: Neighbor block indices.
+    """
+    neighbor_blocks: set[int] = set()
+    node_id: str
+
+    for node_id in blocks[block_index]:
+        layer_id: int = layer_of[node_id]
+        order_index: int = order_in_layer[node_id]
+        layer_nodes: list[str] = ordered_layers[layer_id]
+
+        if order_index > 0:
+            left_node_id: str = layer_nodes[order_index - 1]
+            left_block_index: int = block_of[left_node_id]
+            if left_block_index != block_index:
+                neighbor_blocks.add(left_block_index)
+            else:
+                neighbor_blocks = neighbor_blocks
+        else:
+            neighbor_blocks = neighbor_blocks
+
+        if order_index < len(layer_nodes) - 1:
+            right_node_id: str = layer_nodes[order_index + 1]
+            right_block_index: int = block_of[right_node_id]
+            if right_block_index != block_index:
+                neighbor_blocks.add(right_block_index)
+            else:
+                neighbor_blocks = neighbor_blocks
+        else:
+            neighbor_blocks = neighbor_blocks
+
+    return neighbor_blocks
+
+
+def _initial_block_offsets(
+    ordered_layers: dict[int, list[str]],
+    layer_of: dict[str, int],
+    order_in_layer: dict[str, int],
+    blocks: list[list[str]],
+    block_of: dict[str, int],
+    expanded_nodes: dict[str, VirtualNode],
+    node_by_id: dict[str, SugiyamaNode],
+    spacing_y: float,
+) -> tuple[dict[int, float], dict[int, float]]:
+    """Build initial block positions and heights.
+
+    :param ordered_layers: Ordered nodes per layer.
+    :param layer_of: Layer index per node.
+    :param order_in_layer: Position of nodes inside their layer.
+    :param blocks: Block contents.
+    :param block_of: Block index per node.
+    :param expanded_nodes: Expanded-node lookup.
+    :param node_by_id: Original graph node lookup.
+    :param spacing_y: Vertical node spacing.
+    :returns: Initial block offsets and heights.
+    """
+    block_y: dict[int, float] = dict()
+    block_height: dict[int, float] = dict()
+    block_index: int
+    block_nodes: list[str]
+
+    for block_index, block_nodes in enumerate(blocks):
+        first_node_id: str = block_nodes[0]
+        layer_id: int = layer_of[first_node_id]
+        order_index: int = order_in_layer[first_node_id]
+        preceding_nodes: list[str] = ordered_layers[layer_id][:order_index]
+        base_y: float = 0.0
+        node_id: str
+
+        for node_id in preceding_nodes:
+            if block_of[node_id] != block_index:
+                base_y += _node_height(node_id, expanded_nodes, node_by_id) + spacing_y
+            else:
+                base_y = base_y
+
+        block_y[block_index] = base_y
+        block_height[block_index] = max(
+            _node_height(node_id, expanded_nodes, node_by_id)
+            for node_id in block_nodes
+        )
+
+    return block_y, block_height
+
+
+def _block_min_allowed(
+    block_index: int,
+    block_nodes: list[str],
+    ordered_layers: dict[int, list[str]],
+    layer_of: dict[str, int],
+    order_in_layer: dict[str, int],
+    blocks: list[list[str]],
+    block_of: dict[str, int],
+    block_y: dict[int, float],
+    expanded_nodes: dict[str, VirtualNode],
+    node_by_id: dict[str, SugiyamaNode],
+    spacing_y: float,
+) -> float:
+    """Return the minimum feasible vertical coordinate for one block.
+
+    :param block_index: Block being placed.
+    :param block_nodes: Nodes inside the block.
+    :param ordered_layers: Ordered nodes per layer.
+    :param layer_of: Layer index per node.
+    :param order_in_layer: Position of nodes inside their layer.
+    :param blocks: Block contents.
+    :param block_of: Block index per node.
+    :param block_y: Current block positions.
+    :param expanded_nodes: Expanded-node lookup.
+    :param node_by_id: Original graph node lookup.
+    :param spacing_y: Vertical node spacing.
+    :returns: Minimum feasible y coordinate.
+    """
+    minimum_y: float = 0.0
+    neighbor_block_index: int
+
+    for neighbor_block_index in sorted(
+        _block_neighbors(ordered_layers, layer_of, order_in_layer, blocks, block_of, block_index)
+    ):
+        node_id: str
+        other_node_id: str
+        for node_id in block_nodes:
+            for other_node_id in blocks[neighbor_block_index]:
+                same_layer: bool = layer_of[node_id] == layer_of[other_node_id]
+                is_left_neighbor: bool = order_in_layer[other_node_id] < order_in_layer[node_id]
+                if same_layer and is_left_neighbor:
+                    candidate_y: float = (
+                        block_y[neighbor_block_index]
+                        + _node_height(other_node_id, expanded_nodes, node_by_id)
+                        + spacing_y
+                    )
+                    if candidate_y > minimum_y:
+                        minimum_y = candidate_y
+                    else:
+                        minimum_y = minimum_y
+                else:
+                    minimum_y = minimum_y
+
+    return minimum_y
+
+
+def _block_barycenter_target(
+    block_nodes: list[str],
+    block_height: float,
+    block_of: dict[str, int],
+    block_y: dict[int, float],
+    predecessors: dict[str, set[str]],
+    successors: dict[str, set[str]],
+    expanded_nodes: dict[str, VirtualNode],
+    node_by_id: dict[str, SugiyamaNode],
+) -> float | None:
+    """Return the barycentric target position for one block.
+
+    :param block_nodes: Nodes inside the block.
+    :param block_height: Height of the block.
+    :param block_of: Block index per node.
+    :param block_y: Current block positions.
+    :param predecessors: Predecessor adjacency.
+    :param successors: Successor adjacency.
+    :param expanded_nodes: Expanded-node lookup.
+    :param node_by_id: Original graph node lookup.
+    :returns: Target y coordinate or ``None``.
+    """
+    barycenters: list[float] = list()
+    node_id: str
+
+    # The block target is based on adjacent blocks so vertically aligned chains stay
+    # close to the center of their incident edges.
+    for node_id in block_nodes:
+        connected_blocks: list[str] = list()
+        neighbor_node_id: str
+
+        for neighbor_node_id in predecessors.get(node_id, set()):
+            if neighbor_node_id in block_of:
+                connected_blocks.append(neighbor_node_id)
+            else:
+                connected_blocks = connected_blocks
+
+        for neighbor_node_id in successors.get(node_id, set()):
+            if neighbor_node_id in block_of:
+                connected_blocks.append(neighbor_node_id)
+            else:
+                connected_blocks = connected_blocks
+
+        if connected_blocks:
+            total_center: float = 0.0
+            for neighbor_node_id in connected_blocks:
+                total_center += (
+                    block_y[block_of[neighbor_node_id]]
+                    + _node_height(neighbor_node_id, expanded_nodes, node_by_id) / 2.0
+                )
+            barycenters.append(total_center / len(connected_blocks))
+        else:
+            barycenters = barycenters
+
+    if barycenters:
+        return (sum(barycenters) / len(barycenters)) - block_height / 2.0
+    else:
+        return None
 
 
 def _compact_blocks(
@@ -280,83 +814,170 @@ def _compact_blocks(
     order_in_layer: dict[str, int],
     blocks: list[list[str]],
     block_of: dict[str, int],
-    expanded_nodes,
-    node_by_id,
+    expanded_nodes: dict[str, VirtualNode],
+    node_by_id: dict[str, SugiyamaNode],
     predecessors: dict[str, set[str]],
     successors: dict[str, set[str]],
     spacing_y: float,
 ) -> dict[int, float]:
-    block_y: dict[int, float] = {}
-    block_height: dict[int, float] = {}
+    """Compact vertical blocks while respecting layer order.
 
-    for block_idx, block in enumerate(blocks):
-        first_node = block[0]
-        layer_idx = layer_of[first_node]
-        order_idx = order_in_layer[first_node]
-        preceding_nodes = ordered_layers[layer_idx][:order_idx]
-        base_y = 0.0
-        for node_id in preceding_nodes:
-            if block_of[node_id] == block_idx:
-                continue
-            base_y += _node_height(node_id, expanded_nodes, node_by_id) + spacing_y
-        block_y[block_idx] = base_y
-        block_height[block_idx] = max(_node_height(node_id, expanded_nodes, node_by_id) for node_id in block)
+    :param ordered_layers: Ordered nodes per layer.
+    :param layer_of: Layer index per node.
+    :param order_in_layer: Position of nodes inside their layer.
+    :param blocks: Block contents.
+    :param block_of: Block index per node.
+    :param expanded_nodes: Expanded-node lookup.
+    :param node_by_id: Original graph node lookup.
+    :param predecessors: Predecessor adjacency.
+    :param successors: Successor adjacency.
+    :param spacing_y: Vertical node spacing.
+    :returns: Vertical coordinate per block.
+    """
+    block_y: dict[int, float]
+    block_height: dict[int, float]
+    block_y, block_height = _initial_block_offsets(
+        ordered_layers,
+        layer_of,
+        order_in_layer,
+        blocks,
+        block_of,
+        expanded_nodes,
+        node_by_id,
+        spacing_y,
+    )
 
-    changed = True
-    iteration = 0
+    changed: bool = True
+    iteration: int = 0
+
+    # A bounded relaxation loop is enough here because the block system is only a
+    # heuristic refinement of the in-layer ordering produced by previous phases.
     while changed and iteration < 24:
         iteration += 1
         changed = False
-        for block_idx, block in enumerate(blocks):
-            min_allowed = 0.0
-            for neighbor_block in sorted(
-                _block_neighbors(
-                    ordered_layers=ordered_layers,
-                    layer_of=layer_of,
-                    order_in_layer=order_in_layer,
-                    blocks=blocks,
-                    block_of=block_of,
-                    block_idx=block_idx,
-                )
-            ):
-                for node_id in block:
-                    for other in blocks[neighbor_block]:
-                        if layer_of[node_id] == layer_of[other] and order_in_layer[other] < order_in_layer[node_id]:
-                            min_allowed = max(
-                                min_allowed,
-                                block_y[neighbor_block] + _node_height(other, expanded_nodes, node_by_id) + spacing_y,
-                            )
 
-            barycenters = []
-            for node_id in block:
-                connected_blocks = [
-                    other
-                    for other in (predecessors.get(node_id, set()) | successors.get(node_id, set()))
-                    if other in block_of
-                ]
-                if not connected_blocks:
-                    continue
-                barycenters.append(
-                    sum(
-                        block_y[block_of[other]] + _node_height(other, expanded_nodes, node_by_id) / 2.0
-                        for other in connected_blocks
-                    ) / len(connected_blocks)
-                )
-            target = (sum(barycenters) / len(barycenters)) - block_height[block_idx] / 2.0 if barycenters else block_y[block_idx]
-            new_y = max(min_allowed, target)
-            if abs(new_y - block_y[block_idx]) > 1e-6:
-                block_y[block_idx] = new_y
+        block_index: int
+        block_nodes: list[str]
+        for block_index, block_nodes in enumerate(blocks):
+            minimum_y: float = _block_min_allowed(
+                block_index,
+                block_nodes,
+                ordered_layers,
+                layer_of,
+                order_in_layer,
+                blocks,
+                block_of,
+                block_y,
+                expanded_nodes,
+                node_by_id,
+                spacing_y,
+            )
+            target_y: float | None = _block_barycenter_target(
+                block_nodes,
+                block_height[block_index],
+                block_of,
+                block_y,
+                predecessors,
+                successors,
+                expanded_nodes,
+                node_by_id,
+            )
+            desired_y: float = block_y[block_index]
+            if target_y is not None:
+                desired_y = target_y
+            else:
+                desired_y = desired_y
+
+            new_y: float = max(minimum_y, desired_y)
+            if abs(new_y - block_y[block_index]) > 1e-6:
+                block_y[block_index] = new_y
                 changed = True
+            else:
+                changed = changed
 
     return block_y
 
 
 def _positions_from_blocks(blocks: list[list[str]], block_y: dict[int, float]) -> dict[str, float]:
-    y_of_node: dict[str, float] = {}
-    for block_idx, block in enumerate(blocks):
-        for node_id in block:
-            y_of_node[node_id] = block_y[block_idx]
+    """Expand block coordinates into node coordinates.
+
+    :param blocks: Block contents.
+    :param block_y: Vertical coordinate per block.
+    :returns: Vertical coordinate per node.
+    """
+    y_of_node: dict[str, float] = dict()
+    block_index: int
+    block_nodes: list[str]
+
+    for block_index, block_nodes in enumerate(blocks):
+        node_id: str
+        for node_id in block_nodes:
+            y_of_node[node_id] = block_y[block_index]
+
     return y_of_node
+
+
+def _available_alignment_passes(
+    fixed_alignment: str,
+    predecessors: dict[str, set[str]],
+    successors: dict[str, set[str]],
+) -> list[tuple[dict[str, set[str]], bool]]:
+    """Return the alignment passes requested by the fixed-alignment option.
+
+    :param fixed_alignment: Fixed-alignment option.
+    :param predecessors: Predecessor adjacency.
+    :param successors: Successor adjacency.
+    :returns: Alignment pass definitions.
+    """
+    all_passes: dict[str, tuple[dict[str, set[str]], bool]] = dict()
+    passes: list[tuple[dict[str, set[str]], bool]] = list()
+
+    all_passes["LEFT_UP"] = (predecessors, False)
+    all_passes["RIGHT_UP"] = (predecessors, True)
+    all_passes["LEFT_DOWN"] = (successors, False)
+    all_passes["RIGHT_DOWN"] = (successors, True)
+
+    if fixed_alignment in all_passes:
+        passes.append(all_passes[fixed_alignment])
+    else:
+        pass_key: str
+        for pass_key in all_passes:
+            passes.append(all_passes[pass_key])
+
+    return passes
+
+
+def _build_block_of(blocks: list[list[str]]) -> dict[str, int]:
+    """Build the block index of every node.
+
+    :param blocks: Block contents.
+    :returns: Block index per node.
+    """
+    block_of: dict[str, int] = dict()
+    block_index: int
+    block_nodes: list[str]
+
+    for block_index, block_nodes in enumerate(blocks):
+        node_id: str
+        for node_id in block_nodes:
+            block_of[node_id] = block_index
+
+    return block_of
+
+
+def _median_of_values(values: list[float]) -> float:
+    """Return the median of a non-empty numeric list.
+
+    :param values: Numeric values.
+    :returns: Median value.
+    """
+    ordered_values: list[float] = sorted(values)
+    middle_index: int = len(ordered_values) // 2
+
+    if len(ordered_values) % 2 == 1:
+        return ordered_values[middle_index]
+    else:
+        return (ordered_values[middle_index - 1] + ordered_values[middle_index]) / 2.0
 
 
 def _compute_vertical_coordinates(
@@ -365,63 +986,78 @@ def _compute_vertical_coordinates(
     order_in_layer: dict[str, int],
     predecessors: dict[str, set[str]],
     successors: dict[str, set[str]],
-    expanded_nodes,
-    node_by_id,
+    expanded_nodes: dict[str, VirtualNode],
+    node_by_id: dict[str, SugiyamaNode],
     spacing_y: float,
     fixed_alignment: str,
 ) -> dict[str, float]:
-    layer_ids = sorted(ordered_layers)
-    variants: list[dict[str, float]] = []
-    all_passes = {
-        "LEFT_UP": (predecessors, False),
-        "RIGHT_UP": (predecessors, True),
-        "LEFT_DOWN": (successors, False),
-        "RIGHT_DOWN": (successors, True),
-    }
-    if fixed_alignment in all_passes:
-        passes = [all_passes[fixed_alignment]]
-    else:
-        passes = list(all_passes.values())
+    """Compute orthogonal coordinates with multi-pass block alignment.
 
-    for neighbors, reverse_layers in passes:
+    :param ordered_layers: Ordered nodes per layer.
+    :param layer_of: Layer index per node.
+    :param order_in_layer: Position of nodes inside their layer.
+    :param predecessors: Predecessor adjacency.
+    :param successors: Successor adjacency.
+    :param expanded_nodes: Expanded-node lookup.
+    :param node_by_id: Original graph node lookup.
+    :param spacing_y: Vertical node spacing.
+    :param fixed_alignment: Fixed Brandes-Koepf alignment.
+    :returns: Orthogonal coordinate per node.
+    """
+    layer_ids: list[int] = sorted(ordered_layers)
+    variants: list[dict[str, float]] = list()
+    passes: list[tuple[dict[str, set[str]], bool]] = _available_alignment_passes(
+        fixed_alignment,
+        predecessors,
+        successors,
+    )
+
+    pass_neighbors: dict[str, set[str]]
+    reverse_layers: bool
+    for pass_neighbors, reverse_layers in passes:
+        root: dict[str, str]
+        align: dict[str, str]
         root, align = _alignment_pass(
-            ordered_layers=ordered_layers,
-            layer_ids=layer_ids,
-            order_in_layer=order_in_layer,
-            neighbors=neighbors,
-            reverse_layers=reverse_layers,
+            ordered_layers,
+            layer_ids,
+            order_in_layer,
+            pass_neighbors,
+            reverse_layers,
         )
-        blocks = _build_blocks(root, align)
-        block_of = {
-            node_id: block_idx
-            for block_idx, block in enumerate(blocks)
-            for node_id in block
-        }
-        block_y = _compact_blocks(
-            ordered_layers=ordered_layers,
-            layer_of=layer_of,
-            order_in_layer=order_in_layer,
-            blocks=blocks,
-            block_of=block_of,
-            expanded_nodes=expanded_nodes,
-            node_by_id=node_by_id,
-            predecessors=predecessors,
-            successors=successors,
-            spacing_y=spacing_y,
+        blocks: list[list[str]] = _build_blocks(root, align)
+        block_of: dict[str, int] = _build_block_of(blocks)
+        block_y: dict[int, float] = _compact_blocks(
+            ordered_layers,
+            layer_of,
+            order_in_layer,
+            blocks,
+            block_of,
+            expanded_nodes,
+            node_by_id,
+            predecessors,
+            successors,
+            spacing_y,
         )
         variants.append(_positions_from_blocks(blocks, block_y))
 
-    y_of_node: dict[str, float] = {}
-    all_nodes = [node_id for layer_idx in layer_ids for node_id in ordered_layers[layer_idx]]
+    y_of_node: dict[str, float] = dict()
+    all_nodes: list[str] = _collect_all_layer_nodes(ordered_layers, layer_ids)
+    node_id: str
+
+    # The final orthogonal coordinate is the median across all alignment variants to
+    # reduce bias from any single sweep direction.
     for node_id in all_nodes:
-        coords = sorted(variant.get(node_id, 0.0) for variant in variants)
-        if not coords:
-            y_of_node[node_id] = 0.0
-        elif len(coords) % 2 == 1:
-            y_of_node[node_id] = coords[len(coords) // 2]
+        coordinates: list[float] = list()
+        variant: dict[str, float]
+
+        for variant in variants:
+            coordinates.append(variant.get(node_id, 0.0))
+
+        if coordinates:
+            y_of_node[node_id] = _median_of_values(coordinates)
         else:
-            mid = len(coords) // 2
-            y_of_node[node_id] = (coords[mid - 1] + coords[mid]) / 2.0
+            y_of_node[node_id] = 0.0
+
     return y_of_node
 
 
@@ -429,117 +1065,196 @@ def _stack_layer(
     node_ids: list[str],
     y_of_node: dict[str, float],
     spacing_y: float,
-    expanded_nodes,
-    node_by_id,
+    expanded_nodes: dict[str, VirtualNode],
+    node_by_id: dict[str, SugiyamaNode],
 ) -> None:
-    cursor_y = 0.0
+    """Resolve residual overlaps within one layer by vertical stacking.
+
+    :param node_ids: Node identifiers in the layer.
+    :param y_of_node: Orthogonal coordinate per node.
+    :param spacing_y: Vertical node spacing.
+    :param expanded_nodes: Expanded-node lookup.
+    :param node_by_id: Original graph node lookup.
+    :returns: ``None``.
+    """
+    cursor_y: float = 0.0
+    node_id: str
+
     for node_id in node_ids:
-        y = max(cursor_y, y_of_node.get(node_id, 0.0))
-        y_of_node[node_id] = y
-        cursor_y = y + _node_height(node_id, expanded_nodes, node_by_id) + spacing_y
+        node_y: float = max(cursor_y, y_of_node.get(node_id, 0.0))
+        y_of_node[node_id] = node_y
+        cursor_y = node_y + _node_height(node_id, expanded_nodes, node_by_id) + spacing_y
 
 
 def _straighten_dummy_chains(
     edge_paths: dict[str, list[str]],
     y_of_node: dict[str, float],
-    expanded_nodes,
-    node_by_id,
+    expanded_nodes: dict[str, VirtualNode],
+    node_by_id: dict[str, SugiyamaNode],
     ordered_layers: dict[int, list[str]],
     spacing_y: float,
 ) -> None:
-    desired_y: dict[str, float] = {}
+    """Interpolate dummy-node chains between their endpoints.
+
+    :param edge_paths: Expanded edge paths.
+    :param y_of_node: Orthogonal coordinate per node.
+    :param expanded_nodes: Expanded-node lookup.
+    :param node_by_id: Original graph node lookup.
+    :param ordered_layers: Ordered nodes per layer.
+    :param spacing_y: Vertical node spacing.
+    :returns: ``None``.
+    """
+    desired_y: dict[str, float] = dict()
+    path: list[str]
+
+    # Dummy chains are straightened after block alignment so long edges become more
+    # visually direct without rebuilding the whole placement.
     for path in edge_paths.values():
-        if len(path) <= 2:
-            continue
-        src = path[0]
-        dst = path[-1]
-        if src not in y_of_node or dst not in y_of_node:
-            continue
-        src_center = y_of_node[src] + _node_height(src, expanded_nodes, node_by_id) / 2.0
-        dst_center = y_of_node[dst] + _node_height(dst, expanded_nodes, node_by_id) / 2.0
-        steps = len(path) - 1
-        for idx, node_id in enumerate(path[1:-1], start=1):
-            node_info = expanded_nodes.get(node_id)
-            if node_info is None or not getattr(node_info, "is_dummy", False):
-                continue
-            interpolated = src_center + (dst_center - src_center) * (idx / steps)
-            desired_y[node_id] = interpolated - _node_height(node_id, expanded_nodes, node_by_id) / 2.0
+        if len(path) > 2:
+            source_id: str = path[0]
+            target_id: str = path[-1]
 
-    if not desired_y:
-        return
+            if source_id in y_of_node and target_id in y_of_node:
+                source_center: float = y_of_node[source_id] + _node_height(source_id, expanded_nodes, node_by_id) / 2.0
+                target_center: float = y_of_node[target_id] + _node_height(target_id, expanded_nodes, node_by_id) / 2.0
+                steps: int = len(path) - 1
+                index: int
+                node_id: str
 
-    for node_ids in ordered_layers.values():
-        for node_id in node_ids:
-            if node_id in desired_y:
-                y_of_node[node_id] = desired_y[node_id]
-        _stack_layer(node_ids, y_of_node, spacing_y, expanded_nodes, node_by_id)
+                for index, node_id in enumerate(path[1:-1], start=1):
+                    node_info: VirtualNode | None = expanded_nodes.get(node_id, None)
+                    if node_info is not None and node_info.is_dummy:
+                        interpolated_center: float = source_center + (target_center - source_center) * (index / steps)
+                        desired_y[node_id] = (
+                            interpolated_center - _node_height(node_id, expanded_nodes, node_by_id) / 2.0
+                        )
+                    else:
+                        desired_y = desired_y
+            else:
+                desired_y = desired_y
+        else:
+            desired_y = desired_y
+
+    if desired_y:
+        node_ids: list[str]
+        for node_ids in ordered_layers.values():
+            node_id: str
+            for node_id in node_ids:
+                if node_id in desired_y:
+                    y_of_node[node_id] = desired_y[node_id]
+                else:
+                    y_of_node = y_of_node
+            _stack_layer(node_ids, y_of_node, spacing_y, expanded_nodes, node_by_id)
+    else:
+        desired_y = desired_y
 
 
 def _tile_components(
     virtual_positions: dict[str, tuple[float, float]],
-    expanded_nodes,
+    expanded_nodes: dict[str, VirtualNode],
     components: list[list[str]],
     edge_paths: dict[str, list[str]],
     spacing_components: float,
     direction: str,
 ) -> None:
-    if len(components) <= 1:
-        return
+    """Separate disconnected components along the primary layout axis.
 
-    node_to_component: dict[str, int] = {}
-    for comp_idx, component in enumerate(components):
-        for node_id in component:
-            node_to_component[node_id] = comp_idx
+    :param virtual_positions: Current node positions.
+    :param expanded_nodes: Expanded-node lookup.
+    :param components: Connected components of original nodes.
+    :param edge_paths: Expanded edge paths.
+    :param spacing_components: Spacing between components.
+    :param direction: Layout direction.
+    :returns: ``None``.
+    """
+    if len(components) > 1:
+        node_to_component: dict[str, int] = dict()
+        component_index: int
+        component_nodes: list[str]
 
-    for path in edge_paths.values():
-        if not path:
-            continue
-        comp_idx = node_to_component.get(path[0])
-        if comp_idx is None:
-            continue
-        for node_id in path[1:-1]:
-            if node_id in expanded_nodes:
-                node_to_component[node_id] = comp_idx
+        for component_index, component_nodes in enumerate(components):
+            node_id: str
+            for node_id in component_nodes:
+                node_to_component[node_id] = component_index
 
-    component_bounds: list[tuple[float, float, float, float] | None] = [None] * len(components)
-    for node_id, (x, y) in virtual_positions.items():
-        comp_idx = node_to_component.get(node_id)
-        node_info = expanded_nodes.get(node_id)
-        if comp_idx is None or node_info is None:
-            continue
-        bounds = component_bounds[comp_idx]
-        right = x + node_info.width
-        bottom = y + node_info.height
-        if bounds is None:
-            component_bounds[comp_idx] = (x, y, right, bottom)
-        else:
-            left, top, curr_right, curr_bottom = bounds
-            component_bounds[comp_idx] = (
-                min(left, x),
-                min(top, y),
-                max(curr_right, right),
-                max(curr_bottom, bottom),
-            )
+        path: list[str]
+        for path in edge_paths.values():
+            if path:
+                owner_index: int | None = node_to_component.get(path[0], None)
+                if owner_index is not None:
+                    node_id: str
+                    for node_id in path[1:-1]:
+                        if node_id in expanded_nodes:
+                            node_to_component[node_id] = owner_index
+                        else:
+                            node_to_component = node_to_component
+                else:
+                    node_to_component = node_to_component
+            else:
+                node_to_component = node_to_component
 
-    vertical_flow = direction in {"DOWN", "UP"}
-    cursor = 0.0
-    for comp_idx, bounds in enumerate(component_bounds):
-        if bounds is None:
-            continue
-        left, top, right, bottom = bounds
-        if vertical_flow:
-            shift_x = 0.0
-            shift_y = cursor - top
-        else:
-            shift_x = cursor - left
-            shift_y = 0.0
-        if abs(shift_x) > 1e-9 or abs(shift_y) > 1e-9:
-            for node_id, owner_idx in node_to_component.items():
-                if owner_idx != comp_idx or node_id not in virtual_positions:
-                    continue
-                x, y = virtual_positions[node_id]
-                virtual_positions[node_id] = (x + shift_x, y + shift_y)
-        cursor += (bottom - top if vertical_flow else right - left) + spacing_components
+        component_bounds: list[tuple[float, float, float, float] | None] = [None] * len(components)
+        node_id: str
+        coordinates: tuple[float, float]
+
+        for node_id, coordinates in virtual_positions.items():
+            component_owner: int | None = node_to_component.get(node_id, None)
+            node_info: VirtualNode | None = expanded_nodes.get(node_id, None)
+
+            if component_owner is not None and node_info is not None:
+                x_value: float = coordinates[0]
+                y_value: float = coordinates[1]
+                right_value: float = x_value + node_info.width
+                bottom_value: float = y_value + node_info.height
+                current_bounds: tuple[float, float, float, float] | None = component_bounds[component_owner]
+
+                if current_bounds is None:
+                    component_bounds[component_owner] = (x_value, y_value, right_value, bottom_value)
+                else:
+                    component_bounds[component_owner] = (
+                        min(current_bounds[0], x_value),
+                        min(current_bounds[1], y_value),
+                        max(current_bounds[2], right_value),
+                        max(current_bounds[3], bottom_value),
+                    )
+            else:
+                component_bounds = component_bounds
+
+        vertical_flow: bool = direction in {"DOWN", "UP"}
+        cursor: float = 0.0
+
+        for component_index, bounds in enumerate(component_bounds):
+            if bounds is not None:
+                shift_x: float = 0.0
+                shift_y: float = 0.0
+
+                if vertical_flow:
+                    shift_x = 0.0
+                    shift_y = cursor - bounds[1]
+                else:
+                    shift_x = cursor - bounds[0]
+                    shift_y = 0.0
+
+                if abs(shift_x) > 1e-9 or abs(shift_y) > 1e-9:
+                    node_id = ""
+                    owner_index = 0
+                    for node_id, owner_index in node_to_component.items():
+                        if owner_index == component_index and node_id in virtual_positions:
+                            current_position: tuple[float, float] = virtual_positions[node_id]
+                            virtual_positions[node_id] = (
+                                current_position[0] + shift_x,
+                                current_position[1] + shift_y,
+                            )
+                        else:
+                            virtual_positions = virtual_positions
+                else:
+                    shift_x = shift_x
+
+                cursor += (bounds[3] - bounds[1] if vertical_flow else bounds[2] - bounds[0]) + spacing_components
+            else:
+                cursor = cursor
+    else:
+        components = components
 
 
 def _rectangles_overlap(
@@ -553,6 +1268,19 @@ def _rectangles_overlap(
     bottom_b: float,
     margin: float = 0.0,
 ) -> bool:
+    """Return whether two rectangles overlap.
+
+    :param left_a: Left coordinate of rectangle A.
+    :param top_a: Top coordinate of rectangle A.
+    :param right_a: Right coordinate of rectangle A.
+    :param bottom_a: Bottom coordinate of rectangle A.
+    :param left_b: Left coordinate of rectangle B.
+    :param top_b: Top coordinate of rectangle B.
+    :param right_b: Right coordinate of rectangle B.
+    :param bottom_b: Bottom coordinate of rectangle B.
+    :param margin: Optional separation margin.
+    :returns: ``True`` when rectangles overlap.
+    """
     return not (
         right_a + margin <= left_b
         or right_b + margin <= left_a
@@ -561,151 +1289,256 @@ def _rectangles_overlap(
     )
 
 
+def _position_sort_key(item: tuple[str, float, float, float, float]) -> tuple[float, float, str]:
+    """Return the stable sorting key for overlap resolution items.
+
+    :param item: Tuple describing one positioned node.
+    :returns: Stable sorting key.
+    """
+    return item[1], item[2], item[0]
+
+
+def _sort_position_items(items: list[tuple[str, float, float, float, float]]) -> list[tuple[str, float, float, float, float]]:
+    """Sort positioned nodes deterministically.
+
+    :param items: Position items.
+    :returns: Sorted items.
+    """
+    decorated_items: list[tuple[tuple[float, float, str], tuple[str, float, float, float, float]]] = list()
+    sorted_items: list[tuple[str, float, float, float, float]] = list()
+    item: tuple[str, float, float, float, float]
+
+    for item in items:
+        decorated_items.append((_position_sort_key(item), item))
+
+    decorated_items.sort()
+
+    for _, resolved_item in decorated_items:
+        sorted_items.append(resolved_item)
+
+    return sorted_items
+
+
 def _resolve_node_overlaps(
     virtual_positions: dict[str, tuple[float, float]],
-    expanded_nodes,
+    expanded_nodes: dict[str, VirtualNode],
     spacing_x: float,
     spacing_y: float,
     direction: str,
 ) -> None:
-    horizontal_flow = direction in {"RIGHT", "LEFT"}
-    primary_gap = spacing_x if horizontal_flow else spacing_y
-    secondary_gap = spacing_y if horizontal_flow else spacing_x
+    """Resolve residual node overlaps by local displacement.
 
-    for _ in range(16):
-        moved = False
-        items = []
-        for node_id, (x, y) in virtual_positions.items():
-            node_info = expanded_nodes.get(node_id)
-            if node_info is None:
-                continue
-            items.append((node_id, x, y, x + node_info.width, y + node_info.height))
-        items.sort(key=lambda item: (item[1], item[2], item[0]))
+    :param virtual_positions: Current node positions.
+    :param expanded_nodes: Expanded-node lookup.
+    :param spacing_x: Horizontal spacing.
+    :param spacing_y: Vertical spacing.
+    :param direction: Layout direction.
+    :returns: ``None``.
+    """
+    horizontal_flow: bool = direction in {"RIGHT", "LEFT"}
+    primary_gap: float = spacing_x if horizontal_flow else spacing_y
+    secondary_gap: float = spacing_y if horizontal_flow else spacing_x
+    iteration: int
 
-        for index, (node_id, left_a, top_a, right_a, bottom_a) in enumerate(items):
-            if moved:
-                break
-            for other_id, left_b, top_b, right_b, bottom_b in items[index + 1:]:
-                if not _rectangles_overlap(
-                    left_a,
-                    top_a,
-                    right_a,
-                    bottom_a,
-                    left_b,
-                    top_b,
-                    right_b,
-                    bottom_b,
-                    margin=2.0,
-                ):
-                    continue
+    # This final local pass only repairs remaining box overlaps; it intentionally
+    # preserves most of the previous placement structure.
+    for iteration in range(16):
+        moved: bool = False
+        items: list[tuple[str, float, float, float, float]] = list()
+        node_id: str
+        position: tuple[float, float]
 
-                other_info = expanded_nodes.get(other_id)
-                if other_info is None:
-                    continue
+        for node_id, position in virtual_positions.items():
+            node_info: VirtualNode | None = expanded_nodes.get(node_id, None)
+            if node_info is not None:
+                items.append(
+                    (
+                        node_id,
+                        position[0],
+                        position[1],
+                        position[0] + node_info.width,
+                        position[1] + node_info.height,
+                    )
+                )
+            else:
+                items = items
 
-                x_b, y_b = virtual_positions[other_id]
-                if horizontal_flow:
-                    same_column = abs(left_a - left_b) < max(primary_gap * 0.5, 1.0)
-                    if same_column:
-                        y_b = bottom_a + secondary_gap
+        items = _sort_position_items(items)
+
+        left_index: int
+        for left_index, left_item in enumerate(items):
+            if not moved:
+                right_item: tuple[str, float, float, float, float]
+                for right_item in items[left_index + 1:]:
+                    left_node_id: str = left_item[0]
+                    left_left: float = left_item[1]
+                    left_top: float = left_item[2]
+                    left_right: float = left_item[3]
+                    left_bottom: float = left_item[4]
+                    right_node_id: str = right_item[0]
+                    right_left: float = right_item[1]
+                    right_top: float = right_item[2]
+                    right_right: float = right_item[3]
+                    right_bottom: float = right_item[4]
+
+                    if _rectangles_overlap(
+                        left_left,
+                        left_top,
+                        left_right,
+                        left_bottom,
+                        right_left,
+                        right_top,
+                        right_right,
+                        right_bottom,
+                        margin=2.0,
+                    ):
+                        right_position: tuple[float, float] = virtual_positions[right_node_id]
+                        shifted_x: float = right_position[0]
+                        shifted_y: float = right_position[1]
+
+                        if horizontal_flow:
+                            same_column: bool = abs(left_left - right_left) < max(primary_gap * 0.5, 1.0)
+                            if same_column:
+                                shifted_y = left_bottom + secondary_gap
+                            else:
+                                shifted_x = left_right + primary_gap
+                        else:
+                            same_row: bool = abs(left_top - right_top) < max(primary_gap * 0.5, 1.0)
+                            if same_row:
+                                shifted_x = left_right + secondary_gap
+                            else:
+                                shifted_y = left_bottom + primary_gap
+
+                        virtual_positions[right_node_id] = (shifted_x, shifted_y)
+                        moved = True
+                        break
                     else:
-                        x_b = right_a + primary_gap
-                else:
-                    same_row = abs(top_a - top_b) < max(primary_gap * 0.5, 1.0)
-                    if same_row:
-                        x_b = right_a + secondary_gap
-                    else:
-                        y_b = bottom_a + primary_gap
-
-                virtual_positions[other_id] = (x_b, y_b)
-                moved = True
-                break
+                        moved = moved
+            else:
+                moved = moved
 
         if not moved:
             break
+        else:
+            iteration = iteration
 
 
-class NodePlacementPhase:
-    name = "node-placement"
+def _build_layer_of(ordered_layers: dict[int, list[str]]) -> dict[str, int]:
+    """Build the layer index of every node.
+
+    :param ordered_layers: Ordered nodes per layer.
+    :returns: Layer index per node.
+    """
+    layer_of: dict[str, int] = dict()
+    layer_id: int
+    node_ids: list[str]
+
+    for layer_id, node_ids in ordered_layers.items():
+        node_id: str
+        for node_id in node_ids:
+            layer_of[node_id] = layer_id
+
+    return layer_of
+
+
+class NodePlacementPhase(LayoutPhaseBase):
+    """Assign node and port coordinates for the layered layout."""
+
+    __slots__ = ()
+    name: str = "node-placement"
 
     def run(self, context: LayoutContext) -> None:
-        graph_options = context.option_resolver.resolve_for_element(context.graph.layout_options)
-        spacing_x = float(graph_options["org.vera.sugiyama.layered.spacing.nodeNodeBetweenLayers"])
-        spacing_y = float(graph_options["org.vera.sugiyama.spacing.nodeNode"])
-        spacing_components = float(graph_options["org.vera.sugiyama.spacing.componentComponent"])
-        direction = _layout_direction(context)
-        fixed_alignment = _fixed_alignment(context)
-        ordered_layers: dict[int, list[str]] = context.phase_state.get("ordered_layers", {})
-        expanded_nodes = context.phase_state.get("expanded_nodes", {})
-        edge_paths: dict[str, list[str]] = context.phase_state.get("edge_paths", {})
-        predecessors: dict[str, set[str]] = context.phase_state.get("expanded_predecessors", {})
-        successors: dict[str, set[str]] = context.phase_state.get("expanded_successors", {})
-        components: list[list[str]] = context.phase_state.get("components", [])
-        layer_of: dict[str, int] = {
-            node_id: layer_idx
-            for layer_idx, node_ids in ordered_layers.items()
-            for node_id in node_ids
-        }
-        order_in_layer: dict[str, int] = context.phase_state.get("order_in_layer", {})
-        node_by_id = context.graph.node_by_id()
+        """Execute the node-placement phase.
 
-        y_of_node = _compute_vertical_coordinates(
-            ordered_layers=ordered_layers,
-            layer_of=layer_of,
-            order_in_layer=order_in_layer,
-            predecessors=predecessors,
-            successors=successors,
-            expanded_nodes=expanded_nodes,
-            node_by_id=node_by_id,
-            spacing_y=spacing_y,
-            fixed_alignment=fixed_alignment,
+        :param context: Shared pipeline context.
+        :returns: ``None``.
+        """
+        graph_options: dict[str, Any] = context.option_resolver.resolve_for_element(context.graph.layout_options)
+        spacing_x: float = float(graph_options["org.vera.sugiyama.layered.spacing.nodeNodeBetweenLayers"])
+        spacing_y: float = float(graph_options["org.vera.sugiyama.spacing.nodeNode"])
+        spacing_components: float = float(graph_options["org.vera.sugiyama.spacing.componentComponent"])
+        direction: str = _layout_direction(context)
+        fixed_alignment: str = _fixed_alignment(context)
+        ordered_layers: dict[int, list[str]] = context.phase_state.get("ordered_layers", dict())
+        expanded_nodes: dict[str, VirtualNode] = context.phase_state.get("expanded_nodes", dict())
+        edge_paths: dict[str, list[str]] = context.phase_state.get("edge_paths", dict())
+        predecessors: dict[str, set[str]] = context.phase_state.get("expanded_predecessors", dict())
+        successors: dict[str, set[str]] = context.phase_state.get("expanded_successors", dict())
+        components: list[list[str]] = context.phase_state.get("components", list())
+        layer_of: dict[str, int] = _build_layer_of(ordered_layers)
+        order_in_layer: dict[str, int] = context.phase_state.get("order_in_layer", dict())
+        node_by_id: dict[str, SugiyamaNode] = context.graph.node_by_id()
+
+        # The phase first computes orthogonal coordinates from aligned blocks, then
+        # projects them onto the primary flow axis and finally derives port positions.
+        y_of_node: dict[str, float] = _compute_vertical_coordinates(
+            ordered_layers,
+            layer_of,
+            order_in_layer,
+            predecessors,
+            successors,
+            expanded_nodes,
+            node_by_id,
+            spacing_y,
+            fixed_alignment,
         )
+
         _straighten_dummy_chains(
-            edge_paths=edge_paths,
-            y_of_node=y_of_node,
-            expanded_nodes=expanded_nodes,
-            node_by_id=node_by_id,
-            ordered_layers=ordered_layers,
-            spacing_y=spacing_y,
+            edge_paths,
+            y_of_node,
+            expanded_nodes,
+            node_by_id,
+            ordered_layers,
+            spacing_y,
         )
+
+        node_ids: list[str]
         for _, node_ids in sorted(ordered_layers.items()):
             _stack_layer(node_ids, y_of_node, spacing_y, expanded_nodes, node_by_id)
 
+        virtual_positions: dict[str, tuple[float, float]]
+        layer_positions: dict[int, float]
         virtual_positions, layer_positions = _assign_node_coordinates(
-            context=context,
-            ordered_layers=ordered_layers,
-            expanded_nodes=expanded_nodes,
-            node_by_id=node_by_id,
-            spacing_x=spacing_x,
-            spacing_y=spacing_y,
-            y_of_node=y_of_node,
+            context,
+            ordered_layers,
+            expanded_nodes,
+            node_by_id,
+            spacing_x,
+            spacing_y,
+            y_of_node,
         )
 
         _tile_components(
-            virtual_positions=virtual_positions,
-            expanded_nodes=expanded_nodes,
-            components=components,
-            edge_paths=edge_paths,
-            spacing_components=spacing_components,
-            direction=direction,
+            virtual_positions,
+            expanded_nodes,
+            components,
+            edge_paths,
+            spacing_components,
+            direction,
         )
         _resolve_node_overlaps(
-            virtual_positions=virtual_positions,
-            expanded_nodes=expanded_nodes,
-            spacing_x=spacing_x,
-            spacing_y=spacing_y,
-            direction=direction,
+            virtual_positions,
+            expanded_nodes,
+            spacing_x,
+            spacing_y,
+            direction,
         )
 
-        for node_id, (x, y) in virtual_positions.items():
-            node = node_by_id.get(node_id)
+        node_id: str
+        coordinates: tuple[float, float]
+        for node_id, coordinates in virtual_positions.items():
+            node: SugiyamaNode | None = node_by_id.get(node_id, None)
             if node is not None:
-                node.x = x
-                node.y = y
+                node.x = coordinates[0]
+                node.y = coordinates[1]
+            else:
+                node = node
 
-        _assign_port_positions(context, node_by_id)
+        _assign_port_positions(context)
 
         context.phase_state["virtual_positions"] = virtual_positions
         context.phase_state["layer_x"] = layer_positions
         context.phase_state["y_of_node"] = y_of_node
-        context.report.notes.append("Node placement uses a Brandes-Koepf-style multi-pass vertical alignment.")
+        context.report.notes.append(
+            "Node placement uses a Brandes-Koepf-style multi-pass vertical alignment.",
+        )

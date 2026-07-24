@@ -1,11 +1,6 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
-# License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can obtain one at https://mozilla.org/MPL/2.0/.
-# SPDX-License-Identifier: MPL-2.0
+"""Top-level engine entry point for the Sugiyama layered package."""
 
 from __future__ import annotations
-
-from dataclasses import dataclass
 
 from VeraGridEngine.Utils.SugiyamaLayered.model import SugiyamaGraph
 from VeraGridEngine.Utils.SugiyamaLayered.options import SugiyamaOptionResolver
@@ -20,24 +15,62 @@ from VeraGridEngine.Utils.SugiyamaLayered.Phases.node_placement import NodePlace
 from VeraGridEngine.Utils.SugiyamaLayered.pipeline import LayoutContext, LayoutPipeline, PipelineReport
 
 
-@dataclass
 class EngineResult:
-    graph: SugiyamaGraph
-    report: PipelineReport
+    """Result container returned by the Sugiyama engine.
+
+    :param graph: Laid out graph.
+    :type graph: SugiyamaGraph
+    :param report: Pipeline execution report.
+    :type report: PipelineReport
+    """
+
+    __slots__ = ("_graph", "_report")
+
+    def __init__(self, graph: SugiyamaGraph, report: PipelineReport) -> None:
+        self._graph: SugiyamaGraph = graph
+        self._report: PipelineReport = report
+
+    @property
+    def graph(self) -> SugiyamaGraph:
+        """Return the laid out graph.
+
+        :return: Laid out graph.
+        :rtype: SugiyamaGraph
+        """
+        return self._graph
+
+    @property
+    def report(self) -> PipelineReport:
+        """Return the pipeline report.
+
+        :return: Pipeline report.
+        :rtype: PipelineReport
+        """
+        return self._report
 
 
 class SugiyamaLayeredPythonEngine:
-    """
-    Python-native layered layout engine scaffold.
+    """Python-native Sugiyama layered layout engine."""
 
-    The current implementation establishes the architecture and a deterministic
-    baseline pipeline. Additional heuristics and advanced options can still be
-    implemented phase by phase.
-    """
+    __slots__ = ("_option_resolver", "_pipeline")
 
-    def __init__(self, option_resolver: SugiyamaOptionResolver | None = None):
-        self.option_resolver = option_resolver or SugiyamaOptionResolver()
-        self.pipeline = LayoutPipeline(
+    def __init__(self, option_resolver: SugiyamaOptionResolver | None = None) -> None:
+        """Create the layered layout engine.
+
+        :param option_resolver: Optional option resolver override.
+        :type option_resolver: SugiyamaOptionResolver | None
+        :return: None.
+        :rtype: None
+        """
+        resolver: SugiyamaOptionResolver
+
+        if option_resolver is None:
+            resolver = SugiyamaOptionResolver()
+        else:
+            resolver = option_resolver
+
+        self._option_resolver: SugiyamaOptionResolver = resolver
+        self._pipeline: LayoutPipeline = LayoutPipeline(
             phases=[
                 ConnectedComponentsPhase(),
                 CycleBreakingPhase(),
@@ -50,7 +83,33 @@ class SugiyamaLayeredPythonEngine:
             ]
         )
 
+    @property
+    def option_resolver(self) -> SugiyamaOptionResolver:
+        """Return the engine option resolver.
+
+        :return: Option resolver.
+        :rtype: SugiyamaOptionResolver
+        """
+        return self._option_resolver
+
+    @property
+    def pipeline(self) -> LayoutPipeline:
+        """Return the configured layout pipeline.
+
+        :return: Layout pipeline.
+        :rtype: LayoutPipeline
+        """
+        return self._pipeline
+
     def compute(self, graph: SugiyamaGraph) -> EngineResult:
-        context = LayoutContext(graph=graph, option_resolver=self.option_resolver)
-        report = self.pipeline.run(context)
-        return EngineResult(graph=graph, report=report)
+        """Run the layered layout pipeline on one graph.
+
+        :param graph: Input graph.
+        :type graph: SugiyamaGraph
+        :return: Engine result with graph and report.
+        :rtype: EngineResult
+        """
+        context: LayoutContext = LayoutContext(graph=graph, option_resolver=self._option_resolver)
+        report: PipelineReport = self._pipeline.run(context)
+        result: EngineResult = EngineResult(graph=graph, report=report)
+        return result
