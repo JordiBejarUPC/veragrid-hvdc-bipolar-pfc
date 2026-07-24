@@ -7,6 +7,7 @@ from __future__ import annotations
 from VeraGridServer.db.database import (
     create_veragrid_schema,
     PostgreSqlConnectionSettings,
+    create_database_if_not_exists
 )
 
 
@@ -25,6 +26,7 @@ def main() -> int:
         user_name="admin",
         password="pgpwd",
     )
+    create_database_if_not_exists(settings=settings)
     table_names = create_veragrid_schema(settings=settings, schema_name="public")
 
     print(f"Created or reconciled schema 'veragrid' on {settings.host}:{settings.port}.")

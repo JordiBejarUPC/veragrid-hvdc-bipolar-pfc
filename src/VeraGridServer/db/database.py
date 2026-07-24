@@ -81,6 +81,14 @@ class CursorLike(Protocol):
         """
         ...
 
+    def fetchone(self) -> Any:
+        """
+        Fetch one row from the previous query.
+
+        :return: Driver-defined row object.
+        """
+        ...
+
 
 class ConnectionLike(Protocol):
     """
@@ -118,6 +126,54 @@ def quote_sql_identifier(identifier: str) -> str:
         pass
 
     return '"' + identifier.replace('"', '""') + '"'
+
+
+def create_database_if_not_exists(settings: PostgreSqlConnectionSettings,
+                                  maintenance_database: str = "postgres") -> bool:
+    """
+    Create the target PostgreSQL database when it does not exist yet.
+
+    PostgreSQL requires connecting to an existing maintenance database before
+    issuing ``CREATE DATABASE``, so this helper uses the provided server and
+    credentials but temporarily switches the database name for the check.
+
+    :param settings: Target PostgreSQL connection settings.
+    :param maintenance_database: Existing database used to manage databases.
+    :return: ``True`` when the database was created, ``False`` otherwise.
+    """
+    maintenance_settings: PostgreSqlConnectionSettings = PostgreSqlConnectionSettings(
+        host=settings.host,
+        port=settings.port,
+        database=maintenance_database,
+        user_name=settings.user_name,
+        password=settings.password,
+    )
+    connection_kwargs: Dict[str, Any] = build_connection_kwargs(settings=maintenance_settings)
+    created: bool = False
+
+    # PostgreSQL does not allow CREATE DATABASE inside a transaction, so this
+    # management connection must run in autocommit mode.
+    with psycopg.connect(autocommit=True, **connection_kwargs) as connection:
+        cursor: CursorLike = connection.cursor()
+
+        # The catalog lookup avoids a failing CREATE DATABASE call and keeps the
+        # utility re-runnable on machines where the database is already present.
+        cursor.execute(
+            "SELECT 1 FROM pg_database WHERE datname = %s",
+            (settings.database,),
+        )
+        row: Any = cursor.fetchone()
+
+        if row is None:
+            quoted_database_name: str = quote_sql_identifier(settings.database)
+            cursor.execute(f"CREATE DATABASE {quoted_database_name}")
+            created = True
+        else:
+            created = False
+
+        cursor.close()
+
+    return created
 
 
 def get_veragrid_object_table_names() -> List[str]:
@@ -166,7 +222,8 @@ def create_veragrid_schema(settings: PostgreSqlConnectionSettings,
     :param schema_name: Target PostgreSQL schema name.
     :return: Ordered list of created VeraGrid object table names.
     """
-    connection_kwargs: dict[str, Any] = build_connection_kwargs(settings=settings)
+    create_database_if_not_exists(settings=settings)
+    connection_kwargs: Dict[str, Any] = build_connection_kwargs(settings=settings)
 
     # The context manager keeps the example small and ensures the connection is
     # closed even when PostgreSQL rejects the credentials or the network fails.
@@ -234,6 +291,5 @@ def create_veragrid_schema(settings: PostgreSqlConnectionSettings,
         cursor.close()
 
     return object_table_names
-
 
 
