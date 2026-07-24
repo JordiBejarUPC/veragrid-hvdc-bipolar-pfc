@@ -12,7 +12,7 @@ import pytest
 
 TEST_DATA_DIR = Path(__file__).resolve().parents[1] / "data"
 SPEN_SHORT_CIRCUIT_GRID = TEST_DATA_DIR / "grids" / "SPEN_ShortCircuit_codex_export.dgs"
-SPEN_LOPA3_REFERENCE = TEST_DATA_DIR / "results" / "spen_lopa3_short_circuit_veragrid_reference.json"
+SPEN_LOPA3_REFERENCE = TEST_DATA_DIR / "grids" / "json" / "spen_lopa3_short_circuit_veragrid_reference.json"
 
 
 def _spen_short_circuit_pf_options() -> PowerFlowOptions:
