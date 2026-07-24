@@ -90,6 +90,14 @@ class CursorLike(Protocol):
         """
         ...
 
+    def fetchall(self) -> Any:
+        """
+        Fetch all rows from the previous query.
+
+        :return: Driver-defined row collection.
+        """
+        ...
+
 
 class ConnectionLike(Protocol):
     """
@@ -153,6 +161,82 @@ def log_database_operation(message: str) -> None:
     logger.setLevel(logging.INFO)
     logger.propagate = False
     logger.info(message)
+
+
+def add_column_if_not_exists(cursor: CursorLike,
+                             schema_name: str,
+                             table_name: str,
+                             column_name: str,
+                             column_definition: str) -> None:
+    """
+    Add one column to a table when it is missing.
+
+    :param cursor: Open database cursor.
+    :param schema_name: Target schema name.
+    :param table_name: Target table name.
+    :param column_name: Column name.
+    :param column_definition: PostgreSQL column definition.
+    :return: None.
+    """
+    quoted_schema_name: str = quote_sql_identifier(schema_name)
+    quoted_table_name: str = quote_sql_identifier(table_name)
+    quoted_column_name: str = quote_sql_identifier(column_name)
+
+    log_database_operation(
+        f"Ensuring column '{schema_name}.{table_name}.{column_name}' exists."
+    )
+    cursor.execute(
+        f"""
+        ALTER TABLE {quoted_schema_name}.{quoted_table_name}
+        ADD COLUMN IF NOT EXISTS {quoted_column_name} {column_definition}
+        """
+    )
+
+
+def add_constraint_if_not_exists(cursor: CursorLike,
+                                 schema_name: str,
+                                 table_name: str,
+                                 constraint_name: str,
+                                 constraint_sql: str) -> None:
+    """
+    Add one table constraint when it is missing.
+
+    :param cursor: Open database cursor.
+    :param schema_name: Target schema name.
+    :param table_name: Target table name.
+    :param constraint_name: Constraint name.
+    :param constraint_sql: SQL fragment after the constraint name.
+    :return: None.
+    """
+    quoted_schema_name: str = quote_sql_identifier(schema_name)
+    quoted_table_name: str = quote_sql_identifier(table_name)
+    quoted_constraint_name: str = quote_sql_identifier(constraint_name)
+
+    log_database_operation(
+        f"Ensuring constraint '{constraint_name}' exists on '{schema_name}.{table_name}'."
+    )
+    cursor.execute(
+        f"""
+        DO $$
+        BEGIN
+            IF NOT EXISTS (
+                SELECT 1
+                FROM pg_constraint AS c
+                INNER JOIN pg_class AS t ON c.conrelid = t.oid
+                INNER JOIN pg_namespace AS n ON t.relnamespace = n.oid
+                WHERE c.conname = '{constraint_name}'
+                  AND t.relname = '{table_name}'
+                  AND n.nspname = '{schema_name}'
+            ) THEN
+                ALTER TABLE {quoted_schema_name}.{quoted_table_name}
+                ADD CONSTRAINT {quoted_constraint_name}
+                {constraint_sql};
+            ELSE
+                NULL;
+            END IF;
+        END $$;
+        """
+    )
 
 
 def create_database_if_not_exists(settings: PostgreSqlConnectionSettings,
@@ -261,6 +345,8 @@ def create_veragrid_schema(settings: PostgreSqlConnectionSettings,
 
     - ``Users`` with ``(idtag, name, password)``
     - ``Models`` with ``(idtag, name, user, parent_model_idtag)``, linked to ``Users``
+    - ``ModelData`` with ``(model_idtag, circuit, time, symbolic_data)``,
+      linked to ``Models``
     - One table per VeraGrid object type with ``(idtag, data, model_idtag)``,
       linked to ``Models``
 
@@ -315,6 +401,9 @@ def create_veragrid_schema(settings: PostgreSqlConnectionSettings,
             )
             """
         )
+        add_column_if_not_exists(cursor, schema_name, "Users", "idtag", "TEXT")
+        add_column_if_not_exists(cursor, schema_name, "Users", "name", "TEXT")
+        add_column_if_not_exists(cursor, schema_name, "Users", "password", "TEXT")
 
         # Models hold the logical grid/container metadata. The "user" column name is
         # kept exactly as requested, and quoted because PostgreSQL treats USER as a
@@ -340,6 +429,65 @@ def create_veragrid_schema(settings: PostgreSqlConnectionSettings,
             )
             """
         )
+        add_column_if_not_exists(cursor, schema_name, "Models", "idtag", "TEXT")
+        add_column_if_not_exists(cursor, schema_name, "Models", "name", "TEXT")
+        add_column_if_not_exists(cursor, schema_name, "Models", "user", "TEXT")
+        add_column_if_not_exists(cursor, schema_name, "Models", "parent_model_idtag", "TEXT")
+        add_constraint_if_not_exists(
+            cursor=cursor,
+            schema_name=schema_name,
+            table_name="Models",
+            constraint_name="models_user_fk",
+            constraint_sql=(
+                f'FOREIGN KEY ("user") REFERENCES {quoted_schema_name}."Users"(idtag) '
+                f'ON DELETE RESTRICT'
+            ),
+        )
+        add_constraint_if_not_exists(
+            cursor=cursor,
+            schema_name=schema_name,
+            table_name="Models",
+            constraint_name="models_parent_model_fk",
+            constraint_sql=(
+                f'FOREIGN KEY (parent_model_idtag) REFERENCES {quoted_schema_name}."Models"(idtag) '
+                f'ON DELETE SET NULL'
+            ),
+        )
+
+        # The typed object tables do not carry the global circuit/time/symbolic
+        # payload that VeraGrid needs to rebuild a full MultiCircuit, so that
+        # payload is stored once per model in a dedicated companion table.
+        log_database_operation(
+            f"Creating table '{schema_name}.ModelData' if it does not exist."
+        )
+        cursor.execute(
+            f"""
+            CREATE TABLE IF NOT EXISTS {quoted_schema_name}."ModelData" (
+                model_idtag TEXT PRIMARY KEY,
+                circuit JSON NOT NULL,
+                time JSON NOT NULL,
+                symbolic_data JSON,
+                CONSTRAINT model_data_model_fk
+                    FOREIGN KEY (model_idtag)
+                    REFERENCES {quoted_schema_name}."Models"(idtag)
+                    ON DELETE CASCADE
+            )
+            """
+        )
+        add_column_if_not_exists(cursor, schema_name, "ModelData", "model_idtag", "TEXT")
+        add_column_if_not_exists(cursor, schema_name, "ModelData", "circuit", "JSON")
+        add_column_if_not_exists(cursor, schema_name, "ModelData", "time", "JSON")
+        add_column_if_not_exists(cursor, schema_name, "ModelData", "symbolic_data", "JSON")
+        add_constraint_if_not_exists(
+            cursor=cursor,
+            schema_name=schema_name,
+            table_name="ModelData",
+            constraint_name="model_data_model_fk",
+            constraint_sql=(
+                f'FOREIGN KEY (model_idtag) REFERENCES {quoted_schema_name}."Models"(idtag) '
+                f'ON DELETE CASCADE'
+            ),
+        )
 
         # Each VeraGrid object type gets its own payload table. The payload is kept
         # as JSON so the object structure can evolve without forcing a table redesign
@@ -363,6 +511,19 @@ def create_veragrid_schema(settings: PostgreSqlConnectionSettings,
                         ON DELETE CASCADE
                 )
                 """
+            )
+            add_column_if_not_exists(cursor, schema_name, table_name, "idtag", "TEXT")
+            add_column_if_not_exists(cursor, schema_name, table_name, "data", "JSON")
+            add_column_if_not_exists(cursor, schema_name, table_name, "model_idtag", "TEXT")
+            add_constraint_if_not_exists(
+                cursor=cursor,
+                schema_name=schema_name,
+                table_name=table_name,
+                constraint_name=constraint_name,
+                constraint_sql=(
+                    f'FOREIGN KEY (model_idtag) REFERENCES {quoted_schema_name}."Models"(idtag) '
+                    f'ON DELETE CASCADE'
+                ),
             )
 
         log_database_operation(

@@ -12,7 +12,11 @@ import psycopg
 from psycopg.types.json import Json
 
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
-from VeraGridEngine.IO.veragrid.pack_unpack import gather_model_as_jsons, get_objects_dictionary
+from VeraGridEngine.IO.veragrid.pack_unpack import (
+    gather_model_as_jsons,
+    get_objects_dictionary,
+    parse_veragrid_data,
+)
 from VeraGridServer.db.database import (
     ConnectionLike,
     CursorLike,
@@ -91,6 +95,39 @@ def ensure_model_row_exists(cursor: CursorLike,
         pass
 
 
+def ensure_model_row_does_not_exist(cursor: CursorLike,
+                                    schema_name: str,
+                                    model_idtag: str) -> bool:
+    """
+    Validate that one model row does not exist before creation.
+
+    :param cursor: Open database cursor.
+    :param schema_name: Target schema name.
+    :param model_idtag: Model identifier to validate.
+    :return: ``True`` when the model does not exist yet, ``False`` otherwise.
+    """
+    quoted_schema_name: str = quote_sql_identifier(schema_name)
+
+    # Create operations must not overwrite an existing model row implicitly, so
+    # the duplicate check happens before the insert.
+    log_database_operation(
+        f"Checking whether model '{model_idtag}' already exists in '{schema_name}.Models'."
+    )
+    cursor.execute(
+        f'SELECT 1 FROM {quoted_schema_name}."Models" WHERE idtag = %s',
+        (model_idtag,),
+    )
+    row: Any = cursor.fetchone()
+
+    if row is None:
+        return True
+    else:
+        log_database_operation(
+            f"Model '{model_idtag}' already exists in schema '{schema_name}', skipping creation."
+        )
+        return False
+
+
 def create_model(settings: PostgreSqlConnectionSettings,
                  model_name: str,
                  user_idtag: str,
@@ -127,23 +164,30 @@ def create_model(settings: PostgreSqlConnectionSettings,
     )
     with psycopg.connect(**connection_kwargs) as connection:
         cursor: CursorLike = connection.cursor()
+        can_create: bool = ensure_model_row_does_not_exist(
+            cursor=cursor,
+            schema_name=schema_name,
+            model_idtag=resolved_model_idtag,
+        )
+        if can_create:
+            # The model row carries the owning user foreign key and the visible name.
+            log_database_operation(
+                f"Inserting model '{resolved_model_idtag}' into '{schema_name}.Models'."
+            )
+            cursor.execute(
+                f'''
+                INSERT INTO {quoted_schema_name}."Models" (idtag, name, "user", parent_model_idtag)
+                VALUES (%s, %s, %s, %s)
+                ''',
+                (resolved_model_idtag, model_name, user_idtag, parent_model_idtag),
+            )
 
-        # The model row carries the owning user foreign key and the visible name.
-        log_database_operation(
-            f"Inserting model '{resolved_model_idtag}' into '{schema_name}.Models'."
-        )
-        cursor.execute(
-            f'''
-            INSERT INTO {quoted_schema_name}."Models" (idtag, name, "user", parent_model_idtag)
-            VALUES (%s, %s, %s, %s)
-            ''',
-            (resolved_model_idtag, model_name, user_idtag, parent_model_idtag),
-        )
-
-        log_database_operation(
-            f"Committing model metadata for '{resolved_model_idtag}'."
-        )
-        connection.commit()
+            log_database_operation(
+                f"Committing model metadata for '{resolved_model_idtag}'."
+            )
+            connection.commit()
+        else:
+            pass
         cursor.close()
 
     return resolved_model_idtag
@@ -355,6 +399,167 @@ def insert_model_object_rows(cursor: CursorLike,
             pass
 
 
+def upsert_model_payload_row(cursor: CursorLike,
+                             schema_name: str,
+                             model_data: Dict[str, Any],
+                             symbolic_data: Dict[str, Any],
+                             model_idtag: str) -> None:
+    """
+    Store the non-typed payload needed to rebuild one MultiCircuit.
+
+    :param cursor: Open database cursor.
+    :param schema_name: Target schema name.
+    :param model_data: Packed model JSON dictionary from VeraGrid.
+    :param symbolic_data: Packed symbolic JSON dictionary from VeraGrid.
+    :param model_idtag: Parent model identifier.
+    :return: None.
+    """
+    quoted_schema_name: str = quote_sql_identifier(schema_name)
+    circuit_data: Dict[str, Any] = model_data["circuit"]
+    time_data: Dict[str, Any] = model_data["time"]
+
+    # VeraGrid needs the circuit/time payload plus optional symbolic data to
+    # reconstruct the graph, profiles, and symbolic objects faithfully.
+    log_database_operation(
+        f"Upserting payload row into '{schema_name}.ModelData' for model '{model_idtag}'."
+    )
+    cursor.execute(
+        f'''
+        INSERT INTO {quoted_schema_name}."ModelData" (model_idtag, circuit, time, symbolic_data)
+        VALUES (%s, %s, %s, %s)
+        ON CONFLICT (model_idtag)
+        DO UPDATE SET
+            circuit = EXCLUDED.circuit,
+            time = EXCLUDED.time,
+            symbolic_data = EXCLUDED.symbolic_data
+        ''',
+        (
+            model_idtag,
+            Json(circuit_data),
+            Json(time_data),
+            Json(symbolic_data),
+        ),
+    )
+
+
+def get_model_payload_row(cursor: CursorLike,
+                          schema_name: str,
+                          model_idtag: str) -> Dict[str, Any]:
+    """
+    Read the stored non-typed payload for one model.
+
+    :param cursor: Open database cursor.
+    :param schema_name: Target schema name.
+    :param model_idtag: Model identifier.
+    :return: Payload dictionary with ``circuit``, ``time``, and ``symbolic_data``.
+    """
+    quoted_schema_name: str = quote_sql_identifier(schema_name)
+
+    log_database_operation(
+        f"Reading payload row from '{schema_name}.ModelData' for model '{model_idtag}'."
+    )
+    cursor.execute(
+        f'''
+        SELECT circuit, time, symbolic_data
+        FROM {quoted_schema_name}."ModelData"
+        WHERE model_idtag = %s
+        ''',
+        (model_idtag,),
+    )
+    row: Any = cursor.fetchone()
+
+    if row is None:
+        log_database_operation(
+            f"No payload row exists in '{schema_name}.ModelData' for model '{model_idtag}', falling back to typed tables only."
+        )
+        cursor.execute(
+            f'''
+            SELECT name
+            FROM {quoted_schema_name}."Models"
+            WHERE idtag = %s
+            ''',
+            (model_idtag,),
+        )
+        model_row: Any = cursor.fetchone()
+        model_name: str
+        if model_row is None:
+            model_name = model_idtag
+        else:
+            model_name = str(model_row[0])
+
+        # Legacy database snapshots stored only the typed object tables. VeraGrid
+        # can still rebuild from that data when we provide a minimal circuit/time
+        # shell for the parser.
+        return {
+            "circuit": {
+                "idtag": model_idtag,
+                "name": model_name,
+            },
+            "time": {
+                "unix": list(),
+                "prob": list(),
+                "snapshot_unix": None,
+            },
+            "symbolic_data": dict(),
+        }
+    else:
+        return {
+            "circuit": row[0],
+            "time": row[1],
+            "symbolic_data": dict() if row[2] is None else row[2],
+        }
+
+
+def get_model_json_payload(cursor: CursorLike,
+                           schema_name: str,
+                           model_idtag: str,
+                           table_mappings: Sequence[Tuple[str, str]]) -> Dict[str, Any]:
+    """
+    Rebuild the VeraGrid JSON bundle for one model from SQL storage.
+
+    :param cursor: Open database cursor.
+    :param schema_name: Target schema name.
+    :param model_idtag: Model identifier.
+    :param table_mappings: Serializer-to-table mappings to read.
+    :return: Dictionary compatible with ``parse_veragrid_data``.
+    """
+    quoted_schema_name: str = quote_sql_identifier(schema_name)
+    payload_row: Dict[str, Any] = get_model_payload_row(
+        cursor=cursor,
+        schema_name=schema_name,
+        model_idtag=model_idtag,
+    )
+    model_data: Dict[str, Any] = dict()
+
+    model_data["circuit"] = payload_row["circuit"]
+    model_data["time"] = payload_row["time"]
+
+    # Each typed table row already stores one serializer-ready JSON object, so
+    # the loader only needs to regroup those payloads under their original keys.
+    for json_key, table_name in table_mappings:
+        quoted_table_name: str = quote_sql_identifier(table_name)
+
+        log_database_operation(
+            f"Reading rows from '{schema_name}.{table_name}' for model '{model_idtag}'."
+        )
+        cursor.execute(
+            f'''
+            SELECT data
+            FROM {quoted_schema_name}.{quoted_table_name}
+            WHERE model_idtag = %s
+            ORDER BY idtag
+            ''',
+            (model_idtag,),
+        )
+        rows: Any = cursor.fetchall()
+        model_data[json_key] = [row[0] for row in rows]
+
+    return {
+        "model_data": model_data,
+        "symbolic_data": payload_row["symbolic_data"],
+    }
+
+
 def put_multicircuit_in_database(settings: PostgreSqlConnectionSettings,
                                  circuit: MultiCircuit,
                                  model_idtag: str,
@@ -381,6 +586,7 @@ def put_multicircuit_in_database(settings: PostgreSqlConnectionSettings,
         project_directory=project_directory,
     )
     model_data: Dict[str, Any] = packed_model["model_data"]
+    symbolic_data: Dict[str, Any] = packed_model["symbolic_data"]
     table_mappings: List[Tuple[str, str]] = get_supported_table_mappings()
 
     log_database_operation(
@@ -410,8 +616,61 @@ def put_multicircuit_in_database(settings: PostgreSqlConnectionSettings,
             model_idtag=model_idtag,
         )
 
+        upsert_model_payload_row(
+            cursor=cursor,
+            schema_name=schema_name,
+            model_data=model_data,
+            symbolic_data=symbolic_data,
+            model_idtag=model_idtag,
+        )
+
         log_database_operation(
             f"Committing MultiCircuit snapshot for model '{model_idtag}'."
         )
         connection.commit()
         cursor.close()
+
+
+def get_multicircuit_from_database(settings: PostgreSqlConnectionSettings,
+                                   model_idtag: str,
+                                   schema_name: str = "veragrid",
+                                   project_directory: Path | None = None) -> MultiCircuit:
+    """
+    Retrieve one stored model and rebuild it as a ``MultiCircuit``.
+
+    :param settings: PostgreSQL connection settings.
+    :param model_idtag: Model identifier.
+    :param schema_name: Target schema name.
+    :param project_directory: Optional project directory for path resolution.
+    :return: Rebuilt MultiCircuit instance.
+    """
+    create_veragrid_schema(settings=settings, schema_name=schema_name)
+    connection_kwargs: Dict[str, Any] = build_connection_kwargs(settings=settings)
+    table_mappings: List[Tuple[str, str]] = get_supported_table_mappings()
+
+    log_database_operation(
+        f"Connecting to database '{settings.database}' to rebuild MultiCircuit for model '{model_idtag}'."
+    )
+    with psycopg.connect(**connection_kwargs) as connection:
+        cursor: CursorLike = connection.cursor()
+
+        ensure_model_row_exists(
+            cursor=cursor,
+            schema_name=schema_name,
+            model_idtag=model_idtag,
+        )
+        packed_payload: Dict[str, Any] = get_model_json_payload(
+            cursor=cursor,
+            schema_name=schema_name,
+            model_idtag=model_idtag,
+            table_mappings=table_mappings,
+        )
+        cursor.close()
+
+    # The engine parser is the source of truth for rebuilding one complete
+    # MultiCircuit from the JSON payload, so the database layer stays a thin
+    # transport shim instead of a second deserialization implementation.
+    return parse_veragrid_data(
+        data=packed_payload,
+        project_directory=project_directory,
+    )

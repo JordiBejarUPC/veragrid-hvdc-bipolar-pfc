@@ -18,6 +18,43 @@ from VeraGridServer.db.database import (
 )
 
 
+def ensure_user_row_does_not_exist(cursor: CursorLike,
+                                   schema_name: str,
+                                   user_idtag: str) -> bool:
+    """
+    Validate that one user row does not exist before creation.
+
+    :param cursor: Open database cursor.
+    :param schema_name: Target schema name.
+    :param user_idtag: User identifier.
+    :return: ``True`` when the user does not exist yet, ``False`` otherwise.
+    """
+    quoted_schema_name: str = quote_sql_identifier(schema_name)
+
+    # Create operations must not silently overwrite existing rows, so the
+    # check happens before the insert and raises a clear application error.
+    log_database_operation(
+        f"Checking whether user '{user_idtag}' already exists in '{schema_name}.Users'."
+    )
+    cursor.execute(
+        f'''
+        SELECT 1
+        FROM {quoted_schema_name}."Users"
+        WHERE idtag = %s
+        ''',
+        (user_idtag,),
+    )
+    row: Any = cursor.fetchone()
+
+    if row is None:
+        return True
+    else:
+        log_database_operation(
+            f"User '{user_idtag}' already exists in schema '{schema_name}', skipping creation."
+        )
+        return False
+
+
 def create_user(settings: PostgreSqlConnectionSettings,
                 user_idtag: str,
                 user_name: str,
@@ -42,14 +79,22 @@ def create_user(settings: PostgreSqlConnectionSettings,
     )
     with psycopg.connect(**connection_kwargs) as connection:
         cursor: CursorLike = connection.cursor()
-        cursor.execute(
-            f'''
-            INSERT INTO {quoted_schema_name}."Users" (idtag, name, password)
-            VALUES (%s, %s, %s)
-            ''',
-            (user_idtag, user_name, password),
+        can_create: bool = ensure_user_row_does_not_exist(
+            cursor=cursor,
+            schema_name=schema_name,
+            user_idtag=user_idtag,
         )
-        connection.commit()
+        if can_create:
+            cursor.execute(
+                f'''
+                INSERT INTO {quoted_schema_name}."Users" (idtag, name, password)
+                VALUES (%s, %s, %s)
+                ''',
+                (user_idtag, user_name, password),
+            )
+            connection.commit()
+        else:
+            pass
         cursor.close()
 
 
