@@ -839,7 +839,7 @@ def short_circuit_vsc(nc: NumericalCircuit,
         q_async_pf = compute_asynchronous_generator_q(V=V_pf,
                                                       gen_bus_idx=nc.generator_data.bus_idx,
                                                       gen_active=nc.generator_data.active,
-                                                      gen_types=nc.generator_data.type,
+                                                      gen_types=nc.generator_data.tpe_int,
                                                       Rs=nc.generator_data.Rs,
                                                       Xs=nc.generator_data.Xs,
                                                       Xm=nc.generator_data.Xm,
@@ -867,7 +867,7 @@ def short_circuit_vsc(nc: NumericalCircuit,
                 valid_gen_buses.add(gen_bus)
             else:
                 invalid_gen_buses.add(gen_bus)
-                if nc.generator_data.type[gen_i] == GeneratorType.Asynchronous:
+                if nc.generator_data.tpe_int[gen_i] == GeneratorType.Asynchronous.idx():
                     dynamic_async_gen[gen_i] = True
                     dynamic_async_p[gen_bus] += nc.generator_data.p[gen_i] / nc.Sbase
                     dynamic_async_pf[gen_bus] += (

@@ -134,15 +134,15 @@ def compute_asynchronous_generator_q(
 
     for gen_idx in range(len(gen_bus_idx)):
         bus_idx = gen_bus_idx[gen_idx]
-        if gen_active[gen_idx] and bus_idx > -1 and gen_types[gen_idx] == GeneratorType.Asynchronous:
-            q[gen_idx] = solve_reactive_power(u=V[bus_idx],
-                                              Rs=Rs[gen_idx],
-                                              Xs=Xs[gen_idx],
-                                              Xm=Xm[gen_idx],
-                                              Rr=Rr[gen_idx],
-                                              Xr=Xr[gen_idx],
-                                              P=P[gen_idx],
-                                              Sr=Snom[gen_idx])
+        if gen_active[gen_idx] and bus_idx > -1 and gen_types[gen_idx] == GeneratorType.Asynchronous.idx():
+            q[gen_idx] = asynchronous_gen_q(u=V[bus_idx],
+                                            Rs=Rs[gen_idx],
+                                            Xs=Xs[gen_idx],
+                                            Xm=Xm[gen_idx],
+                                            Rr=Rr[gen_idx],
+                                            Xr=Xr[gen_idx],
+                                            P=P[gen_idx],
+                                            Sr=Snom[gen_idx])
 
     return q
 

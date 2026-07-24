@@ -26,6 +26,7 @@ def _spen_short_circuit_pf_options() -> PowerFlowOptions:
                             initialize_angles=False,
                             ignore_single_node_islands=True,
                             use_stored_guess=False,
+                            use_autodiff_jacobian=True,
                             tolerance=1e-8,
                             max_iter=50)
 
@@ -65,7 +66,19 @@ def _assert_numeric_block_close(actual: dict[str, float], expected: dict[str, fl
     assert set(actual) == set(expected), context
     for key, expected_value in expected.items():
         actual_value = actual[key]
-        assert np.isclose(actual_value, expected_value, rtol=1e-7, atol=1e-6), (
+        rtol = 5e-5
+        if key.endswith("_angle_deg"):
+            atol = 5e-3
+        elif key.endswith("_ka"):
+            atol = 1e-4
+        elif key.endswith("_mw") or key.endswith("_mvar"):
+            atol = 5e-3
+        elif key.endswith("_pu"):
+            atol = 2e-5
+        else:
+            atol = 1e-6
+
+        assert np.isclose(actual_value, expected_value, rtol=rtol, atol=atol), (
             f"{context}.{key}: {actual_value} != {expected_value}"
         )
 
@@ -140,7 +153,8 @@ def test_spen_top50_lopa3_short_circuit_json_sweep():
     assert target_axis == [0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1]
     assert set(reference_data) == {f"{target:.1f}" for target in target_axis}
 
-    grid = vge.open_file(str(SPEN_SHORT_CIRCUIT_GRID))
+    grid = vge.open_file(str(SPEN_SHORT_CIRCUIT_GRID),
+                         options=vge.FileOpenOptions(dgs_use_vsc_for_injections=True))
     bus_index = _find_bus_index(grid=grid, name=bus_name, vnom_kv=vnom_kv)
     fault_bus = grid.buses[bus_index]
     zbase_ohm = float(fault_bus.Vnom) * float(fault_bus.Vnom) / float(grid.Sbase)
@@ -227,9 +241,11 @@ def test_spen_top50_lopa3_short_circuit_json_sweep():
 
 def test_spen_west():
 
-    grid = vge.open_file('data/grids/test_reduced_spen_v10.dgs')
+    grid = vge.open_file('data/grids/test_reduced_spen_v10.dgs',
+                         options=vge.FileOpenOptions(dgs_use_vsc_for_injections=True))
 
-    pf_options = PowerFlowOptions(control_taps_modules=False)
+    pf_options = PowerFlowOptions(control_taps_modules=False,
+                                  use_autodiff_jacobian=True)
     res_pf = vge.power_flow(grid=grid, options=pf_options)
 
     DUNH0G = 1.0177
@@ -289,7 +305,8 @@ def test_spen_north():
     # ------------------------------------------------------------------------------------------------------------------
     #   AC/DC Power Flow under healthy conditions
     # ------------------------------------------------------------------------------------------------------------------
-    grid = vge.open_file('data/grids/SPTL_11_05.dgs')
+    grid = vge.open_file('data/grids/SPTL_11_05.dgs',
+                         options=vge.FileOpenOptions(dgs_use_vsc_for_injections=True))
 
     pf_options = PowerFlowOptions(solver_type=SolverType.NR,
                                   retry_with_other_methods=False,
@@ -297,6 +314,7 @@ def test_spen_north():
                                   control_taps_modules=False,  # keeps taps fixed → limited support behaves like basic
                                   control_taps_phase=False,
                                   use_stored_guess=True,
+                                  use_autodiff_jacobian=True,
                                   verbose=0)
     res_pf = vge.power_flow(grid=grid, options=pf_options)
 

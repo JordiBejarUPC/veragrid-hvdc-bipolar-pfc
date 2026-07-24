@@ -671,7 +671,7 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
         self.logger: Logger = logger
 
         # set to True to use the finite-difference Jacobian
-        self.use_autodiff_jacobian: bool = False
+        self.use_autodiff_jacobian: bool = self.options.use_autodiff_jacobian
 
         self.V0: CxVec = V0
         self.S0: CxVec = S0
@@ -2220,7 +2220,7 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
                                                        V=V,
                                                        gen_bus_idx=self.nc.generator_data.bus_idx,
                                                        gen_active=self.nc.generator_data.active,
-                                                       gen_types=self.nc.generator_data.type,
+                                                       gen_types=self.nc.generator_data.tpe_int,
                                                        Rs=self.nc.generator_data.Rs,
                                                        Xs=self.nc.generator_data.Xs,
                                                        Xm=self.nc.generator_data.Xm,
@@ -3239,7 +3239,7 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
                                                        V=self.V,
                                                        gen_bus_idx=self.nc.generator_data.bus_idx,
                                                        gen_active=self.nc.generator_data.active,
-                                                       gen_types=self.nc.generator_data.type,
+                                                       gen_types=self.nc.generator_data.tpe_int,
                                                        Rs=self.nc.generator_data.Rs,
                                                        Xs=self.nc.generator_data.Xs,
                                                        Xm=self.nc.generator_data.Xm,
@@ -3254,6 +3254,14 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
         St_vsc_pu = make_complex(self.Pt_vsc, self.Qt_vsc)
         Sf_hvdc_pu = make_complex(self.Pf_hvdc, self.Qf_hvdc)
         St_hvdc_pu = make_complex(self.Pt_hvdc, self.Qt_hvdc)
+        Fdcp = self.nc.vsc_data.F
+        Fdcn = self.nc.vsc_data.F_dcn
+        Vdc_p_vsc = self.Vm[Fdcp] * np.cos(self.Va[Fdcp])
+        Vdc_n_vsc = np.zeros(self.nc.vsc_data.nelm)
+        has_return = Fdcn > -1
+        Vdc_n_vsc[has_return] = self.Vm[Fdcn[has_return]] * np.cos(self.Va[Fdcn[has_return]])
+        Pfp_vsc_pu = self.Ifp_vsc * Vdc_p_vsc
+        Pfn_vsc_pu = -self.Ifp_vsc * Vdc_n_vsc
         Scalc_active = calc_flows_active_branch_per_bus(
             nbus=self.nc.bus_data.nbus,
             F_hvdc=self.nc.hvdc_data.F,
@@ -3263,8 +3271,9 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
             Fdcp_vsc=self.nc.vsc_data.F,
             Fdcn_vsc=self.nc.vsc_data.F_dcn,
             T_vsc=self.nc.vsc_data.T,
-            Pfp_vsc=self.Pfp_vsc,
-            Pfn_vsc=self.Pfn_vsc,
+            Vm=self.Vm,
+            Va=self.Va,
+            Ifp_vsc=self.Ifp_vsc,
             St_vsc=St_vsc_pu
         )
         dS = Scalc_passive + Scalc_active - Sbus_load
@@ -3273,14 +3282,8 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
             self.Pt_vsc[i] -= dS[T_vsc[i]].real
             self.Qt_vsc[i] -= dS[T_vsc[i]].imag
 
-        Fdcp = self.nc.vsc_data.F
-        Fdcn = self.nc.vsc_data.F_dcn
-        Vdc_p_vsc = self.Vm[Fdcp] * np.cos(self.Va[Fdcp])
-        Vdc_n_vsc = np.zeros(self.nc.vsc_data.nelm)
-        has_return = Fdcn > -1
-        Vdc_n_vsc[has_return] = self.Vm[Fdcn[has_return]] * np.cos(self.Va[Fdcn[has_return]])
-        Pfp_vsc = self.Ifp_vsc * Vdc_p_vsc * self.nc.Sbase
-        Pfn_vsc = -self.Ifp_vsc * Vdc_n_vsc * self.nc.Sbase
+        Pfp_vsc = Pfp_vsc_pu * self.nc.Sbase
+        Pfn_vsc = Pfn_vsc_pu * self.nc.Sbase
         Vfn = np.where(Fdcn > -1, self.V[Fdcn].real, 0.0)
         Vdc_vsc = self.V[Fdcp].real - Vfn
         St_vsc = make_complex(self.Pt_vsc, self.Qt_vsc) * self.nc.Sbase

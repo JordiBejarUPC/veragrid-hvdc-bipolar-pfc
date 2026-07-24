@@ -474,6 +474,10 @@ class ShortCircuitDriver(DriverTemplate):
             apply_temperature=self.pf_options.apply_temperature_correction,
             branch_tolerance_mode=self.pf_options.branch_impedance_tolerance_mode,
             opf_results=self.opf_results,
+            use_stored_guess=self.pf_options.use_stored_guess,
+            control_taps_modules=self.pf_options.control_taps_modules,
+            control_taps_phase=self.pf_options.control_taps_phase,
+            control_remote_voltage=self.pf_options.control_remote_voltage,
             logger=self.logger,
             fill_three_phase=True
         )

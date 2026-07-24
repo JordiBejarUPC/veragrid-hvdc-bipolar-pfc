@@ -24,7 +24,6 @@ from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.common_functions impo
 from VeraGridEngine.Simulations.PowerFlow.Formulations.pf_formulation_template import PfFormulationTemplate
 from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.common_functions import (compute_zip_power, compute_power,
                                                                                     polar_to_rect, voltage_q_droop,
-                                                                                    solve_reactive_power,
                                                                                     asynchronous_gen_q)
 from VeraGridEngine.enumerations import (TapPhaseControl, TapModuleControl, HvdcControlType, ConverterControlType,
                                          ConverterFaultControlType, GeneratorType)
@@ -737,16 +736,16 @@ class PfAcDcWithNegativePolesSc(PfFormulationTemplate):
             if (use_dynamic_q
                     and self.nc.generator_data.active[gen_idx]
                     and bus_idx > -1
-                    and self.nc.generator_data.type[gen_idx] == GeneratorType.Asynchronous):
+                    and self.nc.generator_data.tpe_int[gen_idx] == GeneratorType.Asynchronous.idx()):
                 try:
-                    q = solve_reactive_power(u=V[bus_idx],
-                                             Rs=self.nc.generator_data.Rs[gen_idx],
-                                             Xs=self.nc.generator_data.Xs[gen_idx],
-                                             Xm=self.nc.generator_data.Xm[gen_idx],
-                                             Rr=self.nc.generator_data.Rr[gen_idx],
-                                             Xr=self.nc.generator_data.Xr[gen_idx],
-                                             P=self.nc.generator_data.p[gen_idx],
-                                             Sr=self.nc.generator_data.snom[gen_idx])
+                    q = asynchronous_gen_q(u=V[bus_idx],
+                                           Rs=self.nc.generator_data.Rs[gen_idx],
+                                           Xs=self.nc.generator_data.Xs[gen_idx],
+                                           Xm=self.nc.generator_data.Xm[gen_idx],
+                                           Rr=self.nc.generator_data.Rr[gen_idx],
+                                           Xr=self.nc.generator_data.Xr[gen_idx],
+                                           P=self.nc.generator_data.p[gen_idx],
+                                           Sr=self.nc.generator_data.snom[gen_idx])
                 except ValueError:
                     vpf = abs(self.V0[bus_idx])
                     scale = abs(V[bus_idx]) ** 2 / (vpf * vpf + 1e-20)
@@ -770,8 +769,8 @@ class PfAcDcWithNegativePolesSc(PfFormulationTemplate):
         Initialize fault-controlled VSC P/Q unknowns from the prefault power-flow solution.
         """
         for vsc_i in self.u_vsc_pt:
-            if (self.nc.vsc_data.control1[vsc_i] == ConverterControlType.Fault1
-                    and self.nc.vsc_data.control2[vsc_i] == ConverterControlType.Fault2):
+            if (self.nc.vsc_data.control1_int[vsc_i] == ConverterControlType.Fault1.idx()
+                    and self.nc.vsc_data.control2_int[vsc_i] == ConverterControlType.Fault2.idx()):
                 pf_idx = self.nc.vsc_data.original_idx[vsc_i]
                 st_pf = self.St_vsc_pf[pf_idx] / self.nc.Sbase
                 self.Pt_vsc[vsc_i] = st_pf.real
@@ -1982,10 +1981,10 @@ class PfAcDcWithNegativePolesSc(PfFormulationTemplate):
                 )
 
         for vsc_i in self.u_vsc_pt:
-            if (self.nc.vsc_data.control1[vsc_i] == ConverterControlType.Fault1
-                    and self.nc.vsc_data.control2[vsc_i] == ConverterControlType.Fault2):
+            if (self.nc.vsc_data.control1_int[vsc_i] == ConverterControlType.Fault1.idx()
+                    and self.nc.vsc_data.control2_int[vsc_i] == ConverterControlType.Fault2.idx()):
 
-                if self.nc.vsc_data.fault_control[vsc_i] == ConverterFaultControlType.WECC_WT_Type_4B:
+                if self.nc.vsc_data.fault_control_int[vsc_i] == ConverterFaultControlType.WECC_WT_Type_4B.idx():
                     Pt_ref_[vsc_i], Qt_ref_[vsc_i] = wecc_wt_type_4b(
                         V_measured=V[self.nc.vsc_data.T[vsc_i]],
                         Vpf=abs(self.V0[self.nc.vsc_data.T[vsc_i]]),
@@ -1995,7 +1994,7 @@ class PfAcDcWithNegativePolesSc(PfFormulationTemplate):
                         vblkl=self.nc.vsc_data.min_ac_voltage[vsc_i]
                     )
 
-                elif self.nc.vsc_data.fault_control[vsc_i] == ConverterFaultControlType.Standard:
+                elif self.nc.vsc_data.fault_control_int[vsc_i] == ConverterFaultControlType.Standard.idx():
                     St_ref = self._standard_fault_vsc_power(vsc_i=vsc_i, V=V)
                     Pt_ref_[vsc_i] = St_ref.real
                     Qt_ref_[vsc_i] = St_ref.imag
@@ -2079,7 +2078,7 @@ class PfAcDcWithNegativePolesSc(PfFormulationTemplate):
             Imax = self.nc.vsc_data.rates[i] / self.nc.Sbase  # Assume 1.0 p.u. base voltage
 
             # print(f"Compute f current: {It_i}, Imax: {Imax}")
-            # print(f"Control 1: {self.nc.vsc_data.control1[i]}, Control 2: {self.nc.vsc_data.control2[i]}")
+            # print(f"Control 1: {self.nc.vsc_data.control1_int[i]}, Control 2: {self.nc.vsc_data.control2_int[i]}")
             # print('-------')
 
         if update_class_vars:
@@ -2166,12 +2165,7 @@ class PfAcDcWithNegativePolesSc(PfFormulationTemplate):
                     # the composition of x may have changed, so recompute
                     x = self.var2x()
 
-            # discrete shunt logic
-            if self.discrete_shunt_control.apply(Vm=self.Vm, adm=self.adm):
-                any_change = True
-
-            if self.qv_droop_control.apply(S0=self.S0, Vm=self.Vm):
-                any_change = True
+            # Discrete shunts and QV droop controls stay frozen during short-circuit events.
 
             # update Slack control
             # as before but noticed it can cause slow convergence
@@ -2283,8 +2277,8 @@ class PfAcDcWithNegativePolesSc(PfFormulationTemplate):
 
                     elif self.nc.vsc_data.fault_control_int[i] == ConverterFaultControlType.Standard.idx():
 
-                        if (self.nc.vsc_data.control1[i] == ConverterControlType.Fault1
-                                and self.nc.vsc_data.control2[i] == ConverterControlType.Fault2):
+                        if (self.nc.vsc_data.control1_int[i] == ConverterControlType.Fault1.idx()
+                                and self.nc.vsc_data.control2_int[i] == ConverterControlType.Fault2.idx()):
                             continue
 
                         It_i = np.sqrt(self.Pt_vsc[i] ** 2 + self.Qt_vsc[i] ** 2) / self.Vm[self.nc.vsc_data.T[i]]
@@ -2405,7 +2399,7 @@ class PfAcDcWithNegativePolesSc(PfFormulationTemplate):
                                                  f"{self.nc.vsc_data.control1_int[i]}")
 
                         if self.options.verbose > 1:
-                            print(f"VSC {i} control 2: {self.nc.vsc_data.control2[i]}")
+                            print(f"VSC {i} control 2: {self.nc.vsc_data.control2_int[i]}")
 
             # Check minimum AC voltage threshold for VSC disconnection
             n_disconnected_vscs = 0
@@ -2602,10 +2596,10 @@ class PfAcDcWithNegativePolesSc(PfFormulationTemplate):
         Pt_ref = self.Pt_vsc.copy()
         Qt_ref = self.Qt_vsc.copy()
         for vsc_i in self.u_vsc_pt:
-            if (self.nc.vsc_data.control1[vsc_i] == ConverterControlType.Fault1
-                    and self.nc.vsc_data.control2[vsc_i] == ConverterControlType.Fault2):
+            if (self.nc.vsc_data.control1_int[vsc_i] == ConverterControlType.Fault1.idx()
+                    and self.nc.vsc_data.control2_int[vsc_i] == ConverterControlType.Fault2.idx()):
 
-                if self.nc.vsc_data.fault_control[vsc_i] == ConverterFaultControlType.WECC_WT_Type_4B:
+                if self.nc.vsc_data.fault_control_int[vsc_i] == ConverterFaultControlType.WECC_WT_Type_4B.idx():
                     Pt_ref[vsc_i], Qt_ref[vsc_i] = wecc_wt_type_4b(
                         V_measured=V[self.nc.vsc_data.T[vsc_i]],
                         Vpf=abs(self.V0[self.nc.vsc_data.T[vsc_i]]),
@@ -2615,7 +2609,7 @@ class PfAcDcWithNegativePolesSc(PfFormulationTemplate):
                         vblkl=self.nc.vsc_data.min_ac_voltage[vsc_i]
                     )
 
-                elif self.nc.vsc_data.fault_control[vsc_i] == ConverterFaultControlType.Standard:
+                elif self.nc.vsc_data.fault_control_int[vsc_i] == ConverterFaultControlType.Standard.idx():
                     St_ref = self._standard_fault_vsc_power(vsc_i=vsc_i, V=V)
                     Pt_ref[vsc_i] = St_ref.real
                     Qt_ref[vsc_i] = St_ref.imag

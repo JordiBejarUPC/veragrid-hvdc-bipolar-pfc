@@ -44,7 +44,7 @@ def _get_generator_q_for_split(nc: NumericalCircuit, V: CxVec) -> Vec:
     q_async = compute_asynchronous_generator_q(V=V,
                                                gen_bus_idx=nc.generator_data.bus_idx,
                                                gen_active=nc.generator_data.active,
-                                               gen_types=nc.generator_data.type,
+                                               gen_types=nc.generator_data.tpe_int,
                                                Rs=nc.generator_data.Rs,
                                                Xs=nc.generator_data.Xs,
                                                Xm=nc.generator_data.Xm,
@@ -54,7 +54,8 @@ def _get_generator_q_for_split(nc: NumericalCircuit, V: CxVec) -> Vec:
                                                Snom=nc.generator_data.snom)
 
     for gen_idx in range(nc.generator_data.nelm):
-        if nc.generator_data.active[gen_idx] and nc.generator_data.type[gen_idx] == GeneratorType.Asynchronous:
+        if (nc.generator_data.active[gen_idx]
+                and nc.generator_data.tpe_int[gen_idx] == GeneratorType.Asynchronous.idx()):
             q0_gen[gen_idx] = q_async[gen_idx]
 
     return q0_gen
