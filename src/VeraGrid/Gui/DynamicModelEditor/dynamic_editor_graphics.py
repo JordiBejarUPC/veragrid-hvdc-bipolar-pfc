@@ -36,14 +36,6 @@ if TYPE_CHECKING:
     from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI
 
 
-def _new_uid() -> int:
-    return uuid.uuid4().int
-
-
-def _grid_node_f_cost_sort_key(node: Any) -> float:
-    return float(node.f_cost)
-
-
 def _build_port_tooltip(direction: str, index: int, variable_name: str) -> str:
     """
     Build one translated tooltip for a block-editor port.
@@ -285,6 +277,7 @@ class EditorGraphicsDefaultsLight:
     PORT_ITEM_COLOR: QColor = QColor("#03384f")
     VALIDATION_HICHLIGHTED_BORDER = QColor("#b42318")
 
+
 class EditorGraphicsCommonFeatures:
     VALIDATION_HICHLIGHTED_BORDER = QColor("#b42318")
     BLOCK_BORDER_SELECTED: QColor = QColor("#00bbff")
@@ -316,7 +309,6 @@ class EditorGraphicsCommonFeatures:
     MODAL_TEMPLATE_CONFIG_ATTR: str = "_modal_template_config"
 
 
-
 class BlockPositionChangedCallback:
     __slots__ = ("_editor", "_block_uid")
 
@@ -326,6 +318,7 @@ class BlockPositionChangedCallback:
 
     def __call__(self, x_pos: float, y_pos: float) -> None:
         self._editor.on_block_position_changed(self._block_uid, x_pos, y_pos)
+
 
 class Node:
     def __init__(self, name, data=None, parent=None):
@@ -607,7 +600,7 @@ class ConnectionItem(QGraphicsPathItem):
             self.editor: DynamicBlockEditorGUI | None = editor
         else:
             self.editor = source_port.subsystem.editor
-        self.uid: int = uid if uid is not None else _new_uid()
+        self.uid: int = uid if uid is not None else uuid.uuid4().int
         self.setZValue(-1)
         self.source_port: PortItem | BranchingItem = source_port
         self.target_port: PortItem | BranchingItem = target_port
@@ -676,8 +669,8 @@ class ConnectionItem(QGraphicsPathItem):
         self._rebuild_path_from_route(route_points, save=False)
 
     def _sanitize_full_route(
-        self,
-        route_points: list[tuple[float, float]] | None,
+            self,
+            route_points: list[tuple[float, float]] | None,
     ) -> list[tuple[float, float]]:
         start = self.source_port.scenePos()
         end = self.target_port.scenePos()
@@ -695,7 +688,8 @@ class ConnectionItem(QGraphicsPathItem):
         )
 
         if route_points is None:
-            persisted_points = [(pt.x(), pt.y()) for pt in self.elbow_points] if self.route_locked and self.elbow_points else []
+            persisted_points = [(pt.x(), pt.y()) for pt in
+                                self.elbow_points] if self.route_locked and self.elbow_points else []
         else:
             normalized_candidate = normalize_route_points(route_points)
             persisted_points = normalized_candidate[1:-1] if len(normalized_candidate) > 2 else []
@@ -719,13 +713,13 @@ class ConnectionItem(QGraphicsPathItem):
         if not self.route_locked:
             obstacles = self._build_obstacle_rectangles()
             must_reroute_reticular = (
-                self.route_style == "RETICULAR"
-                and not is_orthogonal_route(inner_route)
+                    self.route_style == "RETICULAR"
+                    and not is_orthogonal_route(inner_route)
             )
             if must_reroute_reticular or path_hits_rectangles(
-                inner_route,
-                obstacles,
-                margin=EditorGraphicsCommonFeatures.WIRE_BLOCK_MARGIN,
+                    inner_route,
+                    obstacles,
+                    margin=EditorGraphicsCommonFeatures.WIRE_BLOCK_MARGIN,
             ):
                 inner_route = reroute_around_rectangles(
                     inner_route,
@@ -767,21 +761,20 @@ class ConnectionItem(QGraphicsPathItem):
         item: QGraphicsItem
         for item in scene.items():
             if isinstance(
-                item,
-                (
-                    BlockItem,
-                    GenericBlockItem,
-                    PairedItem,
-                    RoundBaseArithmeticOpItem,
-                    RectBaseArithmeticOpItem,
-                    ProtectedConnectionBlockItem,
-                    UnOpItem,
-                ),
+                    item,
+                    (
+                            BlockItem,
+                            GenericBlockItem,
+                            PairedItem,
+                            RoundBaseArithmeticOpItem,
+                            RectBaseArithmeticOpItem,
+                            ProtectedConnectionBlockItem,
+                            UnOpItem,
+                    ),
             ):
                 rect = item.sceneBoundingRect()
                 obstacle_rects.append((rect.left(), rect.top(), rect.right(), rect.bottom()))
         return obstacle_rects
-
 
     def on_elbow_moved(self, index: int, new_pos: QPointF) -> None:
         return
@@ -1161,8 +1154,6 @@ class GenericBlockItem(QGraphicsRectItem):
         for output_label_item in self.output_labels:
             output_label_item.setDefaultTextColor(self.editor.colors_palet.BLOCK_TITLE)
 
-
-
     def recolour(self, use_custom_color: bool = False):
         if use_custom_color:
             pass
@@ -1281,7 +1272,6 @@ class GenericBlockItem(QGraphicsRectItem):
         """
         self._validation_highlighted = val
         self.update()
-
 
     def get_minimum_block_size(self) -> tuple[float, float]:
         port_rows: int = max(len(self.inputs), len(self.outputs), 1)
@@ -1558,7 +1548,6 @@ class PairedItem(QGraphicsPolygonItem):
             self.paired_items = [paired_item]
         else:
             self.paired_items.append(paired_item)
-
 
     def paint(self,
               painter: QPainter,
@@ -2560,7 +2549,8 @@ class DiagramScene(QGraphicsScene):
     def get_modal_template_metadata(self, block: Block | None) -> tuple[str | None, Dict[str, Any] | None]:
         return self.editor.get_modal_template_metadata(block)
 
-    def change_item_fill_color(self, item: BlockItem | GenericBlockItem | ConnectionItem | RoundBaseArithmeticOpItem | RectBaseArithmeticOpItem | PairedItem) -> None:
+    def change_item_fill_color(self,
+                               item: BlockItem | GenericBlockItem | ConnectionItem | RoundBaseArithmeticOpItem | RectBaseArithmeticOpItem | PairedItem) -> None:
         new_color: QColor = QColorDialog.getColor()
 
         if new_color.isValid():

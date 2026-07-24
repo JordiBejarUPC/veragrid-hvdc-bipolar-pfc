@@ -7,19 +7,17 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from .model import SugiyamaGraph
-from .options import SugiyamaOptionResolver
-from .phases import (
-    ConnectedComponentsPhase,
-    CrossingMinimizationPhase,
-    CycleBreakingPhase,
-    EdgeRoutingPhase,
-    LabelPlacementPhase,
-    LayeringPhase,
-    LongEdgePhase,
-    NodePlacementPhase,
-)
-from .pipeline import LayoutContext, LayoutPipeline, PipelineReport
+from VeraGridEngine.Utils.SugiyamaLayered.model import SugiyamaGraph
+from VeraGridEngine.Utils.SugiyamaLayered.options import SugiyamaOptionResolver
+from VeraGridEngine.Utils.SugiyamaLayered.Phases.components import ConnectedComponentsPhase
+from VeraGridEngine.Utils.SugiyamaLayered.Phases.crossing_minimization import CrossingMinimizationPhase
+from VeraGridEngine.Utils.SugiyamaLayered.Phases.cycle_breaking import CycleBreakingPhase
+from VeraGridEngine.Utils.SugiyamaLayered.Phases.edge_routing import EdgeRoutingPhase
+from VeraGridEngine.Utils.SugiyamaLayered.Phases.labels import LabelPlacementPhase
+from VeraGridEngine.Utils.SugiyamaLayered.Phases.layering import LayeringPhase
+from VeraGridEngine.Utils.SugiyamaLayered.Phases.long_edges import LongEdgePhase
+from VeraGridEngine.Utils.SugiyamaLayered.Phases.node_placement import NodePlacementPhase
+from VeraGridEngine.Utils.SugiyamaLayered.pipeline import LayoutContext, LayoutPipeline, PipelineReport
 
 
 @dataclass

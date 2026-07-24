@@ -1,0 +1,287 @@
+% Part: Cascading Disconnection of Converter-Interfaced DER
+% Include this from the main document with: \input{Parts/Part_FlexDis_Cascading}
+% Figures should be placed in the Figures/ directory of the Overleaf project.
+
+\section{Cascading Disconnection of Converter-Interfaced DER}
+\label{sec:cascading}
+
+\subsection{Problem Statement}
+\label{sec:problem}
+
+During a fault in a distribution network, voltage drops propagate through the system. Converter-interfaced distributed energy resources (DER) --- such as wind turbines, solar inverters, and battery storage --- are equipped with undervoltage protection. When the AC voltage at the converter terminal drops below a configurable threshold (\texttt{min\_ac\_voltage}), the converter disconnects from the grid. This disconnection reduces local generation, further depressing voltages in the surrounding area and potentially triggering additional converter disconnections --- a cascading effect.
+
+This study investigates three questions:
+\begin{enumerate}
+    \item How does the LVRT threshold (\texttt{min\_ac\_voltage}) affect the severity of cascading disconnections?
+    \item How many converters disconnect for a single fault at different locations across the network?
+    \item What is the total lost DER generation under different grid code requirements?
+\end{enumerate}
+
+
+\subsection{Grid Setup: IEEE 33-Bus Distribution Network}
+\label{sec:grid_setup}
+
+The study uses the IEEE 33-bus radial distribution network with the following characteristics:
+\begin{itemize}
+    \item 33 AC buses at 12.66~kV nominal voltage.
+    \item 32 loads (total $\approx 3.72$~MW), 37 lines (including 5 tie switches).
+    \item Single slack generator at Bus~1 (substation).
+\end{itemize}
+
+Four VSC converters are placed at end-of-feeder buses to emulate DER:
+
+\begin{table}[htbp]
+    \centering
+    \caption{VSC converter placement and rated power.}
+    \label{tab:vsc_placement}
+    \begin{tabular}{llll}
+        \toprule
+        \textbf{Converter} & \textbf{Bus} & \textbf{Power (MW)} & \textbf{DER Type} \\
+        \midrule
+        VSC~1 & Bus~18 & 0.20 & Wind turbine (end of main feeder) \\
+        VSC~2 & Bus~22 & 0.15 & Battery storage (branch from Bus~2) \\
+        VSC~3 & Bus~25 & 0.30 & Solar/Wind (branch from Bus~3) \\
+        VSC~4 & Bus~33 & 0.15 & Battery storage (branch from Bus~6) \\
+        \midrule
+        \multicolumn{2}{l}{\textbf{Total DER}} & \textbf{0.80} & $\approx 21\%$ of total load \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+The healthy-state power flow (Newton--Raphson) converges in 3 iterations, with a voltage range of $[0.928,\; 1.000]$~p.u. across all buses. Figure~\ref{fig:voltage_healthy} shows the healthy-state voltage profile, with VSC buses highlighted.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{Figures/voltage_profile_healthy.pdf}
+    \caption{Healthy-state voltage profile of the IEEE 33-bus network. VSC converter buses are highlighted in green.}
+    \label{fig:voltage_healthy}
+\end{figure}
+
+
+\subsection{LVRT Requirements --- European Grid Codes}
+\label{sec:lvrt}
+
+Low Voltage Ride-Through (LVRT) requirements specify the minimum voltage at which a converter must remain connected during a fault. The relevant regulatory frameworks are:
+
+\paragraph{EU Regulation 2016/631 (NC RfG).}
+Framework for generator connection requirements (Type~A--D). LVRT is mandatory for Type~B+ ($>0.8$~MW); specific parameters are set by national TSOs/DSOs.
+
+\paragraph{EN~50549-1:2019 (LV Distribution).}
+Continuous operating range: $0.80$--$1.00$~p.u. Below $0.80$~p.u.: time-limited operation; DER must resume 90\% power within 1~s of voltage recovery.
+
+\paragraph{VDE-AR-N 4105/4110 (Germany, LV/MV).}
+LV: ride through $\geq 150$~ms; MV: ride through $\geq 250$~ms. Modern codes require near-zero voltage ride-through for 140--250~ms.
+
+\paragraph{IEEE~1547-2018 (US, for comparison).}
+Category~I: trip below 0.50~p.u. after 160~ms. Category~III: ride through down to 0.30~p.u. for extended periods.
+
+
+\subsection{Study Scenarios}
+\label{sec:scenarios}
+
+Three \texttt{min\_ac\_voltage} thresholds are evaluated, representing different LVRT capabilities:
+
+\begin{table}[htbp]
+    \centering
+    \caption{Study scenarios and corresponding LVRT capability.}
+    \label{tab:scenarios}
+    \begin{tabular}{clp{8.5cm}}
+        \toprule
+        \textbf{Scenario} & \textbf{Threshold (p.u.)} & \textbf{Description} \\
+        \midrule
+        A & 0.85 & \textbf{No LVRT} --- Legacy/basic inverters without LVRT (pre-2018, Type~A small DER). Trips as soon as voltage leaves normal operating range. Worst case for cascading. \\
+        B & 0.50 & \textbf{Moderate LVRT} --- IEEE~1547 Category~I threshold, older European codes. Can sustain moderate voltage dips. \\
+        C & 0.10 & \textbf{Stringent LVRT} --- Modern EU-compliant (VDE~4110/4120, RfG Type~B+). Rides through deep faults (near-zero voltage for 140--250~ms). Best case. \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+
+\subsection{Short Circuit Methodology}
+\label{sec:methodology}
+
+The short circuit analysis uses the \texttt{sequences\_vsc} method implemented in VeraGrid, which performs a full AC/DC Newton--Raphson power flow during fault conditions:
+\begin{itemize}
+    \item Generators are modelled as Norton equivalents behind subtransient impedance.
+    \item VSC controls switch to Fault mode during the short circuit.
+    \item The \texttt{min\_ac\_voltage} disconnection logic is enforced by the solver: when the AC terminal voltage drops below the threshold, the converter is disconnected.
+\end{itemize}
+
+\paragraph{Fault configuration.}
+Three-phase bolted fault (LLLG), $Z_f = 10^{-6} + j\,10^{-6}\;\Omega$, applied individually at each of the 33 AC buses. The pre-fault state is taken from the converged Newton--Raphson power flow.
+
+\paragraph{Measured quantities.}
+For each fault location: (i)~voltage at each VSC AC bus during the fault, (ii)~number of VSCs disconnected ($V_\mathrm{ac} < \texttt{min\_ac\_voltage}$), (iii)~total lost DER generation (MW).
+
+
+\subsection{Results}
+\label{sec:results}
+
+\subsubsection{Cross-Scenario Comparison}
+
+Table~\ref{tab:cross_scenario} summarises the cascading severity across all three scenarios. While the worst-case fault (Bus~2, adjacent to the substation) disconnects all 4 VSCs regardless of the threshold, the average number of disconnections drops significantly with more stringent LVRT.
+
+\begin{table}[htbp]
+    \centering
+    \caption{Cross-scenario comparison of cascading disconnection severity.}
+    \label{tab:cross_scenario}
+    \begin{tabular}{lcccc}
+        \toprule
+        \textbf{Scenario} & \textbf{Faults w/ disc.} & \textbf{Max disc.} & \textbf{Avg disc.} & \textbf{Max lost (MW)} \\
+        \midrule
+        A --- No LVRT (0.85~p.u.)       & 32/33 (97\%) & 4/4 & 2.39 & 0.800 (100\%) \\
+        B --- Moderate LVRT (0.50~p.u.)  & 32/33 (97\%) & 4/4 & 1.61 & 0.800 (100\%) \\
+        C --- Stringent LVRT (0.10~p.u.) & 32/33 (97\%) & 4/4 & 1.36 & 0.800 (100\%) \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\textbf{Key finding:} Average VSC disconnections drop from 2.39 to 1.36 (43\% reduction) when moving from no LVRT to stringent LVRT requirements.
+
+
+\subsubsection{Disconnection Distribution}
+
+Table~\ref{tab:disc_distribution} shows how many VSCs disconnect per fault event across the three scenarios. The distribution shifts from multi-converter cascading (Scenario~A) to predominantly single-converter trips (Scenario~C).
+
+\begin{table}[htbp]
+    \centering
+    \caption{Number of fault locations resulting in $n$ VSC disconnections.}
+    \label{tab:disc_distribution}
+    \begin{tabular}{lccc}
+        \toprule
+        \textbf{\# VSCs disconnected} & \textbf{Scenario A} & \textbf{Scenario B} & \textbf{Scenario C} \\
+        \midrule
+        0 (no cascade)        &  1 &  1 &  1 \\
+        1 (local impact)      &  3 & 17 & 23 \\
+        2 (moderate cascade)  & 14 & 10 &  6 \\
+        3 (severe cascade)    & 12 &  4 &  2 \\
+        4 (total blackout)    &  3 &  1 &  1 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+In Scenario~A, most faults cause 2--3 VSC cascading disconnections. In Scenario~C, 70\% of faults only affect a single VSC (localised impact). Figure~\ref{fig:disconnection_summary} visualises this distribution shift.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{Figures/disconnection_summary.pdf}
+    \caption{Average cascading severity (top) and distribution of VSC disconnections per fault (bottom) across the three LVRT scenarios.}
+    \label{fig:disconnection_summary}
+\end{figure}
+
+
+\subsubsection{Short Circuit Voltage Profiles --- Fault at Bus~9}
+
+Bus~9 is selected as a representative fault location because it produces a different number of disconnections in each scenario (A:~3, B:~2, C:~1), clearly illustrating the effect of the LVRT threshold.
+
+Figure~\ref{fig:sc_combined} shows the during-fault voltage profile at all 33 buses for the three scenarios overlaid, with the respective disconnection thresholds indicated as dashed lines.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{Figures/sc_voltage_bus9_combined.pdf}
+    \caption{During-fault voltage profile at all buses for a 3-phase fault at Bus~9. Dashed lines indicate the disconnection threshold for each scenario.}
+    \label{fig:sc_combined}
+\end{figure}
+
+Figures~\ref{fig:sc_A}--\ref{fig:sc_C} show the individual scenario results in detail, with each VSC bus annotated with its status (disconnected or connected) and the measured voltage during the fault.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{Figures/sc_voltage_bus9_scenario_A.pdf}
+    \caption{Scenario A (0.85~p.u.) --- Fault at Bus~9: 3 out of 4 VSCs disconnect.}
+    \label{fig:sc_A}
+\end{figure}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{Figures/sc_voltage_bus9_scenario_B.pdf}
+    \caption{Scenario B (0.50~p.u.) --- Fault at Bus~9: 2 out of 4 VSCs disconnect.}
+    \label{fig:sc_B}
+\end{figure}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{Figures/sc_voltage_bus9_scenario_C.pdf}
+    \caption{Scenario C (0.10~p.u.) --- Fault at Bus~9: only 1 VSC disconnects.}
+    \label{fig:sc_C}
+\end{figure}
+
+
+\subsubsection{Post-Fault Steady-State Voltage Impact}
+
+After the fault clears, tripped VSCs remain disconnected and the system reaches a new steady state with reduced DER generation. Figure~\ref{fig:postfault_comparison} compares the post-fault voltage profiles against the healthy state.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{Figures/postfault_comparison.pdf}
+    \caption{Post-fault steady-state voltage comparison for a fault at Bus~9 across the three scenarios, relative to the healthy state.}
+    \label{fig:postfault_comparison}
+\end{figure}
+
+Figures~\ref{fig:postfault_A}--\ref{fig:postfault_C} show the individual scenario analysis with during-fault voltages (top) and the healthy vs.\ post-fault steady-state comparison (bottom).
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{Figures/postfault_scenario_A.pdf}
+    \caption{Scenario A --- During-fault voltages (top) and post-fault steady-state voltage drop due to 3 tripped VSCs (bottom).}
+    \label{fig:postfault_A}
+\end{figure}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{Figures/postfault_scenario_B.pdf}
+    \caption{Scenario B --- During-fault voltages (top) and post-fault steady-state voltage drop due to 2 tripped VSCs (bottom).}
+    \label{fig:postfault_B}
+\end{figure}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{Figures/postfault_scenario_C.pdf}
+    \caption{Scenario C --- During-fault voltages (top) and post-fault steady-state voltage drop due to 1 tripped VSC (bottom).}
+    \label{fig:postfault_C}
+\end{figure}
+
+
+\subsubsection{VSC Vulnerability Analysis}
+
+Table~\ref{tab:vsc_vulnerability} shows how often each VSC disconnects across all 33 fault locations, for each scenario.
+
+\begin{table}[htbp]
+    \centering
+    \caption{Number of fault locations (out of 33) causing each VSC to disconnect.}
+    \label{tab:vsc_vulnerability}
+    \begin{tabular}{llccc}
+        \toprule
+        \textbf{Converter} & \textbf{Location} & \textbf{Scenario A} & \textbf{Scenario B} & \textbf{Scenario C} \\
+        \midrule
+        VSC Bus~18 & End of main feeder     & 31 & 17 & 17 \\
+        VSC Bus~33 & Branch from Bus~6      & 29 & 14 & 12 \\
+        VSC Bus~25 & Branch from Bus~3      & 12 &  6 &  3 \\
+        VSC Bus~22 & Short branch from Bus~2 &  7 &  4 &  4 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\paragraph{Most vulnerable: VSC Bus~18.}
+Disconnects in 31 out of 33 fault locations in Scenario~A. Located at the end of the longest feeder (Bus~1~$\to$~\ldots~$\to$~Bus~18), it is electrically the farthest from the substation and experiences the deepest voltage dips.
+
+\paragraph{Most resilient: VSC Bus~22.}
+Only disconnects for 4--7 faults depending on scenario. Connected on a short branch from Bus~2, it is electrically close to the substation and its voltage remains above the threshold for most fault locations.
+
+\paragraph{Bus~1 (substation)} is the only fault location where no VSC disconnects in any scenario.
+
+
+\subsection{Conclusions and Policy Implications}
+\label{sec:conclusions}
+
+\paragraph{Cascading amplifier effect.}
+Higher disconnection thresholds (0.85~p.u.) cause even moderate voltage dips to trigger cascading disconnection --- a positive feedback loop that amplifies the fault impact.
+
+\paragraph{Stringent LVRT reduces cascading by 43\%.}
+Average VSCs disconnected per fault drop from 2.39 (no LVRT) to 1.36 (stringent LVRT). Multi-converter cascading events (2+ VSCs) decrease from 29/33 to 9/33 fault locations.
+
+\paragraph{Network topology matters.}
+End-of-feeder converters (Bus~18) are most vulnerable to cascading, while short-branch converters (Bus~22) are naturally resilient. Converter placement strategy should consider electrical distance from the substation.
+
+\paragraph{Policy implication.}
+Mandating stringent LVRT requirements (as per modern grid codes EN~50549, VDE~4110) is essential for limiting cascading DER loss in distribution networks with high DER penetration.
