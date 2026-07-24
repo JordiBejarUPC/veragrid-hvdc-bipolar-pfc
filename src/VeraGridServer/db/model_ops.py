@@ -95,6 +95,40 @@ def ensure_model_row_exists(cursor: CursorLike,
         pass
 
 
+def row_exists(cursor: CursorLike,
+               schema_name: str,
+               table_name: str,
+               where_sql: str,
+               parameters: Tuple[Any, ...]) -> bool:
+    """
+    Check whether one row exists in a table.
+
+    :param cursor: Open database cursor.
+    :param schema_name: Target schema name.
+    :param table_name: Target table name.
+    :param where_sql: SQL condition without the ``WHERE`` keyword.
+    :param parameters: Positional parameters for the condition.
+    :return: ``True`` when the row exists, ``False`` otherwise.
+    """
+    quoted_schema_name: str = quote_sql_identifier(schema_name)
+    quoted_table_name: str = quote_sql_identifier(table_name)
+
+    cursor.execute(
+        f"""
+        SELECT 1
+        FROM {quoted_schema_name}.{quoted_table_name}
+        WHERE {where_sql}
+        """,
+        parameters,
+    )
+    row: Any = cursor.fetchone()
+
+    if row is None:
+        return False
+    else:
+        return True
+
+
 def ensure_model_row_does_not_exist(cursor: CursorLike,
                                     schema_name: str,
                                     model_idtag: str) -> bool:
@@ -381,20 +415,36 @@ def insert_model_object_rows(cursor: CursorLike,
         )
 
         if isinstance(entries, list):
-            for entry in entries:
+            for object_index, entry in enumerate(entries):
                 object_idtag: str = str(entry["idtag"])
-
-                cursor.execute(
-                    f"""
-                    INSERT INTO {quoted_schema_name}.{quoted_table_name} (idtag, data, model_idtag)
-                    VALUES (%s, %s, %s)
-                    ON CONFLICT (idtag)
-                    DO UPDATE SET
-                        data = EXCLUDED.data,
-                        model_idtag = EXCLUDED.model_idtag
-                    """,
-                    (object_idtag, Json(entry), model_idtag),
+                exists: bool = row_exists(
+                    cursor=cursor,
+                    schema_name=schema_name,
+                    table_name=table_name,
+                    where_sql="model_idtag = %s AND idtag = %s",
+                    parameters=(model_idtag, object_idtag),
                 )
+
+                # Device-table writes must query first so the storage logic is
+                # explicit about whether it is inserting a new row or updating
+                # an existing snapshot row.
+                if exists:
+                    cursor.execute(
+                        f"""
+                        UPDATE {quoted_schema_name}.{quoted_table_name}
+                        SET data = %s, object_index = %s
+                        WHERE model_idtag = %s AND idtag = %s
+                        """,
+                        (Json(entry), object_index, model_idtag, object_idtag),
+                    )
+                else:
+                    cursor.execute(
+                        f"""
+                        INSERT INTO {quoted_schema_name}.{quoted_table_name} (idtag, data, object_index, model_idtag)
+                        VALUES (%s, %s, %s, %s)
+                        """,
+                        (object_idtag, Json(entry), object_index, model_idtag),
+                    )
         else:
             pass
 
@@ -423,23 +473,43 @@ def upsert_model_payload_row(cursor: CursorLike,
     log_database_operation(
         f"Upserting payload row into '{schema_name}.ModelData' for model '{model_idtag}'."
     )
-    cursor.execute(
-        f'''
-        INSERT INTO {quoted_schema_name}."ModelData" (model_idtag, circuit, time, symbolic_data)
-        VALUES (%s, %s, %s, %s)
-        ON CONFLICT (model_idtag)
-        DO UPDATE SET
-            circuit = EXCLUDED.circuit,
-            time = EXCLUDED.time,
-            symbolic_data = EXCLUDED.symbolic_data
-        ''',
-        (
-            model_idtag,
-            Json(circuit_data),
-            Json(time_data),
-            Json(symbolic_data),
-        ),
+    exists: bool = row_exists(
+        cursor=cursor,
+        schema_name=schema_name,
+        table_name="ModelData",
+        where_sql="model_idtag = %s",
+        parameters=(model_idtag,),
     )
+
+    # The model payload is one row per model, so the write path queries first
+    # and then performs the matching INSERT or UPDATE explicitly.
+    if exists:
+        cursor.execute(
+            f'''
+            UPDATE {quoted_schema_name}."ModelData"
+            SET circuit = %s, time = %s, symbolic_data = %s
+            WHERE model_idtag = %s
+            ''',
+            (
+                Json(circuit_data),
+                Json(time_data),
+                Json(symbolic_data),
+                model_idtag,
+            ),
+        )
+    else:
+        cursor.execute(
+            f'''
+            INSERT INTO {quoted_schema_name}."ModelData" (model_idtag, circuit, time, symbolic_data)
+            VALUES (%s, %s, %s, %s)
+            ''',
+            (
+                model_idtag,
+                Json(circuit_data),
+                Json(time_data),
+                Json(symbolic_data),
+            ),
+        )
 
 
 def get_model_payload_row(cursor: CursorLike,
@@ -547,7 +617,7 @@ def get_model_json_payload(cursor: CursorLike,
             SELECT data
             FROM {quoted_schema_name}.{quoted_table_name}
             WHERE model_idtag = %s
-            ORDER BY idtag
+            ORDER BY object_index
             ''',
             (model_idtag,),
         )

@@ -239,6 +239,80 @@ def add_constraint_if_not_exists(cursor: CursorLike,
     )
 
 
+def ensure_device_table_composite_primary_key(cursor: CursorLike,
+                                              schema_name: str,
+                                              table_name: str,
+                                              constraint_name: str) -> None:
+    """
+    Ensure one device table uses ``(model_idtag, idtag)`` as its primary key.
+
+    Existing legacy single-column primary keys are replaced in place so the same
+    device idtag can appear in different models without colliding.
+
+    :param cursor: Open database cursor.
+    :param schema_name: Target schema name.
+    :param table_name: Target table name.
+    :param constraint_name: Desired primary-key constraint name.
+    :return: None.
+    """
+    quoted_schema_name: str = quote_sql_identifier(schema_name)
+    quoted_table_name: str = quote_sql_identifier(table_name)
+    quoted_constraint_name: str = quote_sql_identifier(constraint_name)
+
+    log_database_operation(
+        f"Ensuring composite primary key '(model_idtag, idtag)' exists on '{schema_name}.{table_name}'."
+    )
+    cursor.execute(
+        f"""
+        DO $$
+        DECLARE
+            current_constraint_name TEXT;
+            current_columns TEXT[];
+        BEGIN
+            SELECT
+                c.conname,
+                array_agg(att.attname ORDER BY ord.ordinality)
+            INTO current_constraint_name, current_columns
+            FROM pg_constraint AS c
+            INNER JOIN pg_class AS t ON c.conrelid = t.oid
+            INNER JOIN pg_namespace AS n ON t.relnamespace = n.oid
+            INNER JOIN unnest(c.conkey) WITH ORDINALITY AS ord(attnum, ordinality) ON TRUE
+            INNER JOIN pg_attribute AS att
+                ON att.attrelid = t.oid
+               AND att.attnum = ord.attnum
+            WHERE c.contype = 'p'
+              AND t.relname = '{table_name}'
+              AND n.nspname = '{schema_name}'
+            GROUP BY c.conname;
+
+            IF current_constraint_name IS NULL THEN
+                EXECUTE format(
+                    'ALTER TABLE %I.%I ADD CONSTRAINT %I PRIMARY KEY (model_idtag, idtag)',
+                    '{schema_name}',
+                    '{table_name}',
+                    '{constraint_name}'
+                );
+            ELSIF current_columns = ARRAY['model_idtag', 'idtag'] THEN
+                NULL;
+            ELSE
+                EXECUTE format(
+                    'ALTER TABLE %I.%I DROP CONSTRAINT %I',
+                    '{schema_name}',
+                    '{table_name}',
+                    current_constraint_name
+                );
+                EXECUTE format(
+                    'ALTER TABLE %I.%I ADD CONSTRAINT %I PRIMARY KEY (model_idtag, idtag)',
+                    '{schema_name}',
+                    '{table_name}',
+                    '{constraint_name}'
+                );
+            END IF;
+        END $$;
+        """
+    )
+
+
 def create_database_if_not_exists(settings: PostgreSqlConnectionSettings,
                                   maintenance_database: str = "postgres") -> bool:
     """
@@ -347,7 +421,7 @@ def create_veragrid_schema(settings: PostgreSqlConnectionSettings,
     - ``Models`` with ``(idtag, name, user, parent_model_idtag)``, linked to ``Users``
     - ``ModelData`` with ``(model_idtag, circuit, time, symbolic_data)``,
       linked to ``Models``
-    - One table per VeraGrid object type with ``(idtag, data, model_idtag)``,
+    - One table per VeraGrid object type with ``(model_idtag, idtag, data, object_index)``,
       linked to ``Models``
 
     :param settings: Open DB-API compatible PostgreSQL connection.
@@ -495,6 +569,7 @@ def create_veragrid_schema(settings: PostgreSqlConnectionSettings,
         for table_name in object_table_names:
             quoted_table_name: str = quote_sql_identifier(table_name)
             constraint_name: str = f"{table_name}_model_fk".lower().replace(" ", "_")
+            primary_key_name: str = f"{table_name}_pkey".lower().replace(" ", "_")
 
             log_database_operation(
                 f"Creating table '{schema_name}.{table_name}' if it does not exist."
@@ -502,9 +577,12 @@ def create_veragrid_schema(settings: PostgreSqlConnectionSettings,
             cursor.execute(
                 f"""
                 CREATE TABLE IF NOT EXISTS {quoted_schema_name}.{quoted_table_name} (
-                    idtag TEXT PRIMARY KEY,
-                    data JSON NOT NULL,
                     model_idtag TEXT NOT NULL,
+                    idtag TEXT NOT NULL,
+                    data JSON NOT NULL,
+                    object_index INTEGER NOT NULL,
+                    CONSTRAINT {quote_sql_identifier(primary_key_name)}
+                        PRIMARY KEY (model_idtag, idtag),
                     CONSTRAINT {quote_sql_identifier(constraint_name)}
                         FOREIGN KEY (model_idtag)
                         REFERENCES {quoted_schema_name}."Models"(idtag)
@@ -514,7 +592,14 @@ def create_veragrid_schema(settings: PostgreSqlConnectionSettings,
             )
             add_column_if_not_exists(cursor, schema_name, table_name, "idtag", "TEXT")
             add_column_if_not_exists(cursor, schema_name, table_name, "data", "JSON")
+            add_column_if_not_exists(cursor, schema_name, table_name, "object_index", "INTEGER")
             add_column_if_not_exists(cursor, schema_name, table_name, "model_idtag", "TEXT")
+            ensure_device_table_composite_primary_key(
+                cursor=cursor,
+                schema_name=schema_name,
+                table_name=table_name,
+                constraint_name=primary_key_name,
+            )
             add_constraint_if_not_exists(
                 cursor=cursor,
                 schema_name=schema_name,
