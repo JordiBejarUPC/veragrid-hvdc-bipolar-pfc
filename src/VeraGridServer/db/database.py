@@ -259,8 +259,8 @@ def create_veragrid_schema(settings: PostgreSqlConnectionSettings,
 
     The created structure is:
 
-    - ``Users`` with ``(idtag, name)``
-    - ``Models`` with ``(idtag, name, user)``, linked to ``Users``
+    - ``Users`` with ``(idtag, name, password)``
+    - ``Models`` with ``(idtag, name, user, parent_model_idtag)``, linked to ``Users``
     - One table per VeraGrid object type with ``(idtag, data, model_idtag)``,
       linked to ``Models``
 
@@ -310,7 +310,8 @@ def create_veragrid_schema(settings: PostgreSqlConnectionSettings,
             f"""
             CREATE TABLE IF NOT EXISTS {quoted_schema_name}."Users" (
                 idtag TEXT PRIMARY KEY,
-                name TEXT NOT NULL
+                name TEXT NOT NULL,
+                password TEXT NOT NULL
             )
             """
         )
@@ -327,10 +328,15 @@ def create_veragrid_schema(settings: PostgreSqlConnectionSettings,
                 idtag TEXT PRIMARY KEY,
                 name TEXT NOT NULL,
                 "user" TEXT NOT NULL,
+                parent_model_idtag TEXT,
                 CONSTRAINT models_user_fk
                     FOREIGN KEY ("user")
                     REFERENCES {quoted_schema_name}."Users"(idtag)
-                    ON DELETE RESTRICT
+                    ON DELETE RESTRICT,
+                CONSTRAINT models_parent_model_fk
+                    FOREIGN KEY (parent_model_idtag)
+                    REFERENCES {quoted_schema_name}."Models"(idtag)
+                    ON DELETE SET NULL
             )
             """
         )
@@ -369,4 +375,3 @@ def create_veragrid_schema(settings: PostgreSqlConnectionSettings,
         cursor.close()
 
     return object_table_names
-
