@@ -4,7 +4,7 @@ import pandas as pd
 import multiprocessing as mp
 import VeraGridEngine as gce
 
-folder = "/home/santi/matpower8.0b1/data"
+folder = "/home/santi/matpower8.1/data"
 
 
 def run_grid(fname):
