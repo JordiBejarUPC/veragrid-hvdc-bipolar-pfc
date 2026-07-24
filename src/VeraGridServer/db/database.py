@@ -3,6 +3,7 @@ Database schema helpers for VeraGridServer.
 """
 
 from __future__ import annotations
+import logging
 import psycopg
 from typing import Any, Dict, List, Protocol, Sequence
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
@@ -128,6 +129,32 @@ def quote_sql_identifier(identifier: str) -> str:
     return '"' + identifier.replace('"', '""') + '"'
 
 
+def log_database_operation(message: str) -> None:
+    """
+    Emit one database operation log line to the standard logging system.
+
+    :param message: Operation description to log.
+    :return: None.
+    """
+    logger: logging.Logger = logging.getLogger("VeraGridServer.db")
+
+    # The handler is attached only once so repeated database calls do not emit
+    # duplicated lines while still writing to the normal process stderr stream.
+    if len(logger.handlers) == 0:
+        handler: logging.StreamHandler = logging.StreamHandler()
+        formatter: logging.Formatter = logging.Formatter(
+            fmt="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+        )
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
+    else:
+        pass
+
+    logger.setLevel(logging.INFO)
+    logger.propagate = False
+    logger.info(message)
+
+
 def create_database_if_not_exists(settings: PostgreSqlConnectionSettings,
                                   maintenance_database: str = "postgres") -> bool:
     """
@@ -151,6 +178,13 @@ def create_database_if_not_exists(settings: PostgreSqlConnectionSettings,
     connection_kwargs: Dict[str, Any] = build_connection_kwargs(settings=maintenance_settings)
     created: bool = False
 
+    # The first connection goes to a maintenance database because PostgreSQL can
+    # only create databases from an already existing database context.
+    log_database_operation(
+        f"Connecting to maintenance database '{maintenance_database}' on "
+        f"{settings.host}:{settings.port} to verify database '{settings.database}'."
+    )
+
     # PostgreSQL does not allow CREATE DATABASE inside a transaction, so this
     # management connection must run in autocommit mode.
     with psycopg.connect(autocommit=True, **connection_kwargs) as connection:
@@ -158,6 +192,9 @@ def create_database_if_not_exists(settings: PostgreSqlConnectionSettings,
 
         # The catalog lookup avoids a failing CREATE DATABASE call and keeps the
         # utility re-runnable on machines where the database is already present.
+        log_database_operation(
+            f"Checking whether database '{settings.database}' already exists."
+        )
         cursor.execute(
             "SELECT 1 FROM pg_database WHERE datname = %s",
             (settings.database,),
@@ -166,11 +203,20 @@ def create_database_if_not_exists(settings: PostgreSqlConnectionSettings,
 
         if row is None:
             quoted_database_name: str = quote_sql_identifier(settings.database)
+            log_database_operation(
+                f"Creating PostgreSQL database '{settings.database}'."
+            )
             cursor.execute(f"CREATE DATABASE {quoted_database_name}")
             created = True
         else:
+            log_database_operation(
+                f"Database '{settings.database}' already exists, skipping creation."
+            )
             created = False
 
+        log_database_operation(
+            f"Closing maintenance cursor for database '{maintenance_database}'."
+        )
         cursor.close()
 
     return created
@@ -222,24 +268,44 @@ def create_veragrid_schema(settings: PostgreSqlConnectionSettings,
     :param schema_name: Target PostgreSQL schema name.
     :return: Ordered list of created VeraGrid object table names.
     """
-    create_database_if_not_exists(settings=settings)
+    created_database: bool = create_database_if_not_exists(settings=settings)
     connection_kwargs: Dict[str, Any] = build_connection_kwargs(settings=settings)
+
+    if created_database:
+        log_database_operation(
+            f"Database '{settings.database}' was created and is ready for schema setup."
+        )
+    else:
+        log_database_operation(
+            f"Database '{settings.database}' already existed, continuing with schema setup."
+        )
+
+    # The second connection targets the real application database where the
+    # schema and tables must be reconciled.
+    log_database_operation(
+        f"Connecting to application database '{settings.database}' on "
+        f"{settings.host}:{settings.port}."
+    )
 
     # The context manager keeps the example small and ensures the connection is
     # closed even when PostgreSQL rejects the credentials or the network fails.
     with psycopg.connect(**connection_kwargs) as connection:
-
-
         cursor: CursorLike = connection.cursor()
         object_table_names: List[str] = get_veragrid_object_table_names()
         quoted_schema_name: str = quote_sql_identifier(schema_name)
 
         # The schema boundary isolates the VeraGrid persistence objects from any
         # other application tables and keeps the DDL idempotent across deployments.
+        log_database_operation(
+            f"Creating schema '{schema_name}' if it does not exist."
+        )
         cursor.execute(f"CREATE SCHEMA IF NOT EXISTS {quoted_schema_name}")
 
         # Users are the root owner records, so the Models table can safely point to
         # them through a foreign key in the next step.
+        log_database_operation(
+            f"Creating table '{schema_name}.Users' if it does not exist."
+        )
         cursor.execute(
             f"""
             CREATE TABLE IF NOT EXISTS {quoted_schema_name}."Users" (
@@ -252,6 +318,9 @@ def create_veragrid_schema(settings: PostgreSqlConnectionSettings,
         # Models hold the logical grid/container metadata. The "user" column name is
         # kept exactly as requested, and quoted because PostgreSQL treats USER as a
         # special keyword.
+        log_database_operation(
+            f"Creating table '{schema_name}.Models' if it does not exist."
+        )
         cursor.execute(
             f"""
             CREATE TABLE IF NOT EXISTS {quoted_schema_name}."Models" (
@@ -273,6 +342,9 @@ def create_veragrid_schema(settings: PostgreSqlConnectionSettings,
             quoted_table_name: str = quote_sql_identifier(table_name)
             constraint_name: str = f"{table_name}_model_fk".lower().replace(" ", "_")
 
+            log_database_operation(
+                f"Creating table '{schema_name}.{table_name}' if it does not exist."
+            )
             cursor.execute(
                 f"""
                 CREATE TABLE IF NOT EXISTS {quoted_schema_name}.{quoted_table_name} (
@@ -287,9 +359,14 @@ def create_veragrid_schema(settings: PostgreSqlConnectionSettings,
                 """
             )
 
+        log_database_operation(
+            f"Committing schema changes for database '{settings.database}'."
+        )
         connection.commit()
+        log_database_operation(
+            f"Closing schema cursor for database '{settings.database}'."
+        )
         cursor.close()
 
     return object_table_names
-
 
