@@ -1304,31 +1304,36 @@ def split_bus_quantity(
         control_count_value = control_count_per_bus[bus_idx]
 
         if control_count_value > 0:
-            if qrange_control_value > atol:
-                # Clip the residual controlling request to the combined
-                # controlling capability of generators and batteries.
-                if qcontrol_required_value < qmin_control_value:
-                    qcontrol_limited_value = qmin_control_value
-                else:
-                    if qcontrol_required_value > qmax_control_value:
-                        qcontrol_limited_value = qmax_control_value
+            # Reject non-finite aggregate limits before normalizing because a
+            # NaN bus capability would otherwise leak into the sharing factor.
+            if np.isfinite(qrange_control_value) and np.isfinite(qcontrol_required_value):
+                if qrange_control_value > atol:
+                    # Clip the residual controlling request to the combined
+                    # controlling capability of generators and batteries.
+                    if qcontrol_required_value < qmin_control_value:
+                        qcontrol_limited_value = qmin_control_value
                     else:
-                        qcontrol_limited_value = qcontrol_required_value
+                        if qcontrol_required_value > qmax_control_value:
+                            qcontrol_limited_value = qmax_control_value
+                        else:
+                            qcontrol_limited_value = qcontrol_required_value
 
-                # Compute the normalized bus loading factor.
-                qshare_value = (qcontrol_limited_value - qmin_control_value) / qrange_control_value
+                    # Compute the normalized bus loading factor.
+                    qshare_value = (qcontrol_limited_value - qmin_control_value) / qrange_control_value
 
-                # Numerical safety after clipping.
-                if qshare_value < 0.0:
+                    # Numerical safety after clipping.
+                    if qshare_value < 0.0:
+                        qshare_per_bus[bus_idx] = 0.0
+                    else:
+                        if qshare_value > 1.0:
+                            qshare_per_bus[bus_idx] = 1.0
+                        else:
+                            qshare_per_bus[bus_idx] = qshare_value
+                else:
+                    # There are controlling elements, but their aggregate reactive
+                    # range is zero. They will be assigned their Qmin values.
                     qshare_per_bus[bus_idx] = 0.0
-                else:
-                    if qshare_value > 1.0:
-                        qshare_per_bus[bus_idx] = 1.0
-                    else:
-                        qshare_per_bus[bus_idx] = qshare_value
             else:
-                # There are controlling elements, but their aggregate reactive
-                # range is zero. They will be assigned their Qmin values.
                 qshare_per_bus[bus_idx] = 0.0
         else:
             # There are no online controlling elements at this bus.
@@ -1348,7 +1353,12 @@ def split_bus_quantity(
                 qmax_gen_value = Qmax_gen[gen_idx]
                 qrange_gen_value = qmax_gen_value - qmin_gen_value
 
-                q_gen[gen_idx] = qmin_gen_value + qshare_per_bus[bus_idx] * qrange_gen_value
+                # Reject non-finite limits before reconstructing the device Q
+                # because 0 * NaN still raises an invalid warning in NumPy.
+                if np.isfinite(qmin_gen_value) and np.isfinite(qmax_gen_value):
+                    q_gen[gen_idx] = qmin_gen_value + qshare_per_bus[bus_idx] * qrange_gen_value
+                else:
+                    q_gen[gen_idx] = 0.0
             elif control_mode_int_gen[gen_idx] == qv_droop_val_gen:
                 # Recompute the same droop law so the reported per-generator Q
                 # matches the fixed contribution used in the bus decomposition.
@@ -1405,7 +1415,12 @@ def split_bus_quantity(
                 qmax_batt_value = Qmax_batt[batt_idx]
                 qrange_batt_value = qmax_batt_value - qmin_batt_value
 
-                q_batt[batt_idx] = qmin_batt_value + qshare_per_bus[bus_idx] * qrange_batt_value
+                # Reject non-finite limits before reconstructing the device Q
+                # because 0 * NaN still raises an invalid warning in NumPy.
+                if np.isfinite(qmin_batt_value) and np.isfinite(qmax_batt_value):
+                    q_batt[batt_idx] = qmin_batt_value + qshare_per_bus[bus_idx] * qrange_batt_value
+                else:
+                    q_batt[batt_idx] = 0.0
             else:
                 q_batt[batt_idx] = Q0_batt[batt_idx]
         else:
@@ -1570,24 +1585,29 @@ def split_reactive_power_between_generators_and_batteries(
         control_count_value = control_count_per_bus[bus_idx]
 
         if control_count_value > 0:
-            if qrange_control_value > atol:
-                if qcontrol_required_value < qmin_control_value:
-                    qcontrol_limited_value = qmin_control_value
-                else:
-                    if qcontrol_required_value > qmax_control_value:
-                        qcontrol_limited_value = qmax_control_value
+            # Reject non-finite aggregate limits before normalizing because a
+            # NaN bus capability would otherwise leak into the sharing factor.
+            if np.isfinite(qrange_control_value) and np.isfinite(qcontrol_required_value):
+                if qrange_control_value > atol:
+                    if qcontrol_required_value < qmin_control_value:
+                        qcontrol_limited_value = qmin_control_value
                     else:
-                        qcontrol_limited_value = qcontrol_required_value
+                        if qcontrol_required_value > qmax_control_value:
+                            qcontrol_limited_value = qmax_control_value
+                        else:
+                            qcontrol_limited_value = qcontrol_required_value
 
-                qshare_value = (qcontrol_limited_value - qmin_control_value) / qrange_control_value
+                    qshare_value = (qcontrol_limited_value - qmin_control_value) / qrange_control_value
 
-                if qshare_value < 0.0:
+                    if qshare_value < 0.0:
+                        qshare_per_bus[bus_idx] = 0.0
+                    else:
+                        if qshare_value > 1.0:
+                            qshare_per_bus[bus_idx] = 1.0
+                        else:
+                            qshare_per_bus[bus_idx] = qshare_value
+                else:
                     qshare_per_bus[bus_idx] = 0.0
-                else:
-                    if qshare_value > 1.0:
-                        qshare_per_bus[bus_idx] = 1.0
-                    else:
-                        qshare_per_bus[bus_idx] = qshare_value
             else:
                 qshare_per_bus[bus_idx] = 0.0
         else:
@@ -1601,7 +1621,12 @@ def split_reactive_power_between_generators_and_batteries(
                 qmin_gen_value = Qmin_gen[gen_idx]
                 qmax_gen_value = Qmax_gen[gen_idx]
                 qrange_gen_value = qmax_gen_value - qmin_gen_value
-                q_gen[gen_idx] = qmin_gen_value + qshare_per_bus[bus_idx] * qrange_gen_value
+                # Reject non-finite limits before reconstructing the device Q
+                # because 0 * NaN still raises an invalid warning in NumPy.
+                if np.isfinite(qmin_gen_value) and np.isfinite(qmax_gen_value):
+                    q_gen[gen_idx] = qmin_gen_value + qshare_per_bus[bus_idx] * qrange_gen_value
+                else:
+                    q_gen[gen_idx] = 0.0
             elif control_mode_int_gen[gen_idx] == qv_droop_val_gen:
                 delta_v = Vset_gen[gen_idx] - Vm[bus_idx]
                 q_droop_value = 0.0
@@ -1649,7 +1674,12 @@ def split_reactive_power_between_generators_and_batteries(
                 qmin_batt_value = Qmin_batt[batt_idx]
                 qmax_batt_value = Qmax_batt[batt_idx]
                 qrange_batt_value = qmax_batt_value - qmin_batt_value
-                q_batt[batt_idx] = qmin_batt_value + qshare_per_bus[bus_idx] * qrange_batt_value
+                # Reject non-finite limits before reconstructing the device Q
+                # because 0 * NaN still raises an invalid warning in NumPy.
+                if np.isfinite(qmin_batt_value) and np.isfinite(qmax_batt_value):
+                    q_batt[batt_idx] = qmin_batt_value + qshare_per_bus[bus_idx] * qrange_batt_value
+                else:
+                    q_batt[batt_idx] = 0.0
             else:
                 q_batt[batt_idx] = Q0_batt[batt_idx]
         else:
@@ -1760,19 +1790,25 @@ def split_slack_bus_quantity_between_generators_and_batteries(
 
         if slack_bus_mask[bus_idx]:
             if control_count_value > 0:
-                if qrange_control_value > atol:
-                    # Slack-bus reporting must reproduce the solved bus balance
-                    # exactly, even when the final value exceeds the declared
-                    # operating limits. Therefore the normalized factor is not
-                    # clipped to [0, 1] here.
-                    qshare_per_bus[bus_idx] = (
-                        (qcontrol_required_value - qmin_control_value) / qrange_control_value
-                    )
+                # The slack-bus report path also needs finite inputs before
+                # normalizing because it intentionally skips clipping.
+                if np.isfinite(qrange_control_value) and np.isfinite(qcontrol_required_value):
+                    if qrange_control_value > atol:
+                        # Slack-bus reporting must reproduce the solved bus balance
+                        # exactly, even when the final value exceeds the declared
+                        # operating limits. Therefore the normalized factor is not
+                        # clipped to [0, 1] here.
+                        qshare_per_bus[bus_idx] = (
+                            (qcontrol_required_value - qmin_control_value) / qrange_control_value
+                        )
+                    else:
+                        qshare_per_bus[bus_idx] = 0.0
+                        qflat_extra_per_bus[bus_idx] = (
+                            (qcontrol_required_value - qmin_control_value) / control_count_value
+                        )
                 else:
                     qshare_per_bus[bus_idx] = 0.0
-                    qflat_extra_per_bus[bus_idx] = (
-                        (qcontrol_required_value - qmin_control_value) / control_count_value
-                    )
+                    qflat_extra_per_bus[bus_idx] = 0.0
             else:
                 qshare_per_bus[bus_idx] = 0.0
         else:
@@ -1786,10 +1822,13 @@ def split_slack_bus_quantity_between_generators_and_batteries(
                 qmin_gen_value: float = Qmin_gen[gen_idx]
                 qmax_gen_value: float = Qmax_gen[gen_idx]
                 qrange_gen_value: float = qmax_gen_value - qmin_gen_value
-                if qrange_control_per_bus[bus_idx] > atol:
-                    q_gen[gen_idx] = qmin_gen_value + qshare_per_bus[bus_idx] * qrange_gen_value
+                if np.isfinite(qmin_gen_value) and np.isfinite(qmax_gen_value):
+                    if qrange_control_per_bus[bus_idx] > atol:
+                        q_gen[gen_idx] = qmin_gen_value + qshare_per_bus[bus_idx] * qrange_gen_value
+                    else:
+                        q_gen[gen_idx] = qmin_gen_value + qflat_extra_per_bus[bus_idx]
                 else:
-                    q_gen[gen_idx] = qmin_gen_value + qflat_extra_per_bus[bus_idx]
+                    q_gen[gen_idx] = 0.0
             else:
                 q_gen[gen_idx] = Q0_gen[gen_idx]
         else:
@@ -1803,10 +1842,13 @@ def split_slack_bus_quantity_between_generators_and_batteries(
                 qmin_batt_value: float = Qmin_batt[batt_idx]
                 qmax_batt_value: float = Qmax_batt[batt_idx]
                 qrange_batt_value: float = qmax_batt_value - qmin_batt_value
-                if qrange_control_per_bus[bus_idx] > atol:
-                    q_batt[batt_idx] = qmin_batt_value + qshare_per_bus[bus_idx] * qrange_batt_value
+                if np.isfinite(qmin_batt_value) and np.isfinite(qmax_batt_value):
+                    if qrange_control_per_bus[bus_idx] > atol:
+                        q_batt[batt_idx] = qmin_batt_value + qshare_per_bus[bus_idx] * qrange_batt_value
+                    else:
+                        q_batt[batt_idx] = qmin_batt_value + qflat_extra_per_bus[bus_idx]
                 else:
-                    q_batt[batt_idx] = qmin_batt_value + qflat_extra_per_bus[bus_idx]
+                    q_batt[batt_idx] = 0.0
             else:
                 q_batt[batt_idx] = Q0_batt[batt_idx]
         else:
