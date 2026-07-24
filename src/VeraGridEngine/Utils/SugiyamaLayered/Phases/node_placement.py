@@ -590,6 +590,16 @@ def _build_blocks(root: dict[str, str], align: dict[str, str]) -> list[list[str]
         else:
             visited = visited
 
+    # The alignment pass can leave orphan nodes when a previous median link is
+    # superseded by a later one. Those nodes still exist in the layered order and
+    # must receive a singleton block so downstream compaction sees a total mapping.
+    for node_id in root:
+        if node_id not in visited:
+            blocks.append([node_id])
+            visited.add(node_id)
+        else:
+            visited = visited
+
     return blocks
 
 

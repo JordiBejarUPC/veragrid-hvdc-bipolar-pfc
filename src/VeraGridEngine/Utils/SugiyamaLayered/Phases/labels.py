@@ -387,9 +387,10 @@ def _shift_layout(context: LayoutContext, dx: float, dy: float) -> None:
                     bend_point: tuple[float, float]
                     for bend_point in section.bend_points:
                         shifted_bend_points.append((bend_point[0] + dx, bend_point[1] + dy))
-                    section.bend_points = shifted_bend_points
+                    section.bend_points.clear()
+                    section.bend_points.extend(shifted_bend_points)
                 else:
-                    section.bend_points = section.bend_points
+                    section.bend_points.clear()
 
             for label in edge.labels:
                 if label.x is not None:

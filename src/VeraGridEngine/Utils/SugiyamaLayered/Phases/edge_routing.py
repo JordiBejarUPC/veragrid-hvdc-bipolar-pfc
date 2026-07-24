@@ -1200,7 +1200,7 @@ class EdgeRoutingPhase(LayoutPhaseBase):
         # The router handles self-loops, feedback edges, same-layer edges and regular
         # edges separately because each class needs a different orthogonal template.
         for edge in context.graph.edges:
-            edge.sections = list()
+            edge.sections.clear()
 
             if edge.sources and edge.targets:
                 source_endpoint: str = edge.sources[0]
@@ -1266,6 +1266,6 @@ class EdgeRoutingPhase(LayoutPhaseBase):
                                 )
                                 edge.sections.append(_build_section(regular_path))
                 else:
-                    edge.sections = edge.sections
+                    edge.sections.clear()
             else:
-                edge.sections = edge.sections
+                edge.sections.clear()
