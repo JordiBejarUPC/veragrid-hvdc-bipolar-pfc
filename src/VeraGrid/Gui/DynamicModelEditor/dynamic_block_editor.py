@@ -52,7 +52,7 @@ from VeraGridEngine.Utils.Symbolic.symbolic import (symbolic_to_string, string_t
                                                     Const, Comparison)
 from VeraGridEngine.Utils.Symbolic.symbolic_io import duplicate_block
 from VeraGridEngine.Utils.Symbolic.bus_rms_template import get_bus_rms_algebraic_vars
-from VeraGridEngine.Utils.Symbolic.sugiyama_layered import (
+from VeraGridEngine.Utils.Symbolic.SugiyamaLayered import (
     SugiyamaEdge,
     SugiyamaEdgeSection,
     SugiyamaGraph,

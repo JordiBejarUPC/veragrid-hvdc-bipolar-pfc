@@ -7,7 +7,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from .model import SugiyamaEdge, SugiyamaEdgeSection, SugiyamaGraph, SugiyamaLabel, SugiyamaNode, SugiyamaPort
+from VeraGridEngine.Utils.Symbolic.SugiyamaLayered.model import (SugiyamaEdge, SugiyamaEdgeSection, SugiyamaGraph,
+                                                                 SugiyamaLabel, SugiyamaNode, SugiyamaPort)
 
 
 def _parse_label(data: dict[str, Any]) -> SugiyamaLabel:

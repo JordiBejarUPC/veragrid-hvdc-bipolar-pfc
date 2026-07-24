@@ -7,9 +7,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from .model import SugiyamaGraph
-from .options import SugiyamaOptionResolver
-from .phases import (
+from VeraGridEngine.Utils.Symbolic.SugiyamaLayered.model import SugiyamaGraph
+from VeraGridEngine.Utils.Symbolic.SugiyamaLayered.options import SugiyamaOptionResolver
+from VeraGridEngine.Utils.Symbolic.SugiyamaLayered.phases import (
     ConnectedComponentsPhase,
     CrossingMinimizationPhase,
     CycleBreakingPhase,
@@ -19,7 +19,7 @@ from .phases import (
     LongEdgePhase,
     NodePlacementPhase,
 )
-from .pipeline import LayoutContext, LayoutPipeline, PipelineReport
+from VeraGridEngine.Utils.Symbolic.SugiyamaLayered.pipeline import LayoutContext, LayoutPipeline, PipelineReport
 
 
 @dataclass

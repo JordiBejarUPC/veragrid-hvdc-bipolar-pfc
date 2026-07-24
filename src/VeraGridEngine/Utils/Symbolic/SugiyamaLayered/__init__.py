@@ -3,9 +3,9 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 
-from .engine import SugiyamaLayeredPythonEngine
-from .json_codec import graph_from_sugiyama_json, graph_to_sugiyama_json
-from .model import (
+from VeraGridEngine.Utils.Symbolic.SugiyamaLayered.engine import SugiyamaLayeredPythonEngine
+from VeraGridEngine.Utils.Symbolic.SugiyamaLayered.json_codec import graph_from_sugiyama_json, graph_to_sugiyama_json
+from VeraGridEngine.Utils.Symbolic.SugiyamaLayered.model import (
     SugiyamaEdge,
     SugiyamaEdgeSection,
     SugiyamaGraph,
@@ -14,8 +14,8 @@ from .model import (
     SugiyamaPort,
     SugiyamaPrimitive,
 )
-from .options import SUGIYAMA_LAYERED_DEFAULTS, SugiyamaOptionResolver
-from .pipeline import PipelineReport
+from VeraGridEngine.Utils.Symbolic.SugiyamaLayered.options import SUGIYAMA_LAYERED_DEFAULTS, SugiyamaOptionResolver
+from VeraGridEngine.Utils.Symbolic.SugiyamaLayered.pipeline import PipelineReport
 
 __all__ = [
     "SUGIYAMA_LAYERED_DEFAULTS",
