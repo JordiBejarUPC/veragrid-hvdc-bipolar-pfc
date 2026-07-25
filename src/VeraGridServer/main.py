@@ -11,6 +11,7 @@ from VeraGridServer.endpoints import register_in_master
 from VeraGridServer.endpoints import register_sub_servers
 from VeraGridServer.endpoints import calculations
 from VeraGridServer.endpoints import jobs
+from VeraGridServer.db.database import create_veragrid_schema, log_database_operation
 from VeraGridServer.settings import settings
 from cryptography import x509
 from cryptography.x509.oid import NameOID
@@ -28,6 +29,23 @@ app.include_router(jobs.router)
 
 # Store WebSocket connections in a set
 __connections__ = set()
+
+
+@app.on_event("startup")
+async def ensure_database_schema_on_startup() -> None:
+    """
+    Create the configured PostgreSQL database and schema on server startup.
+
+    :return: None.
+    """
+    database_settings = settings.get_database_settings()
+
+    if database_settings is None:
+        log_database_operation(
+            "Server startup skipped database creation because the database settings are incomplete."
+        )
+    else:
+        create_veragrid_schema(settings=database_settings)
 
 def verify_api_key(api_key: str = Header(None)):
     """

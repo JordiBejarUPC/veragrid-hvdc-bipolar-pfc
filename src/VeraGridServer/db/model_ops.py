@@ -1,5 +1,5 @@
 """
-Model persistence operations for the VeraGrid PostgreSQL store.
+File and model persistence operations for the VeraGrid PostgreSQL store.
 """
 
 from __future__ import annotations
@@ -12,13 +12,13 @@ import psycopg
 from psycopg.types.json import Json
 
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
+from VeraGridEngine.Devices.multiverse import MultiVerse, ScenarioNode
 from VeraGridEngine.IO.veragrid.pack_unpack import (
     gather_model_as_jsons,
     get_objects_dictionary,
     parse_veragrid_data,
 )
 from VeraGridServer.db.database import (
-    ConnectionLike,
     CursorLike,
     PostgreSqlConnectionSettings,
     build_connection_kwargs,
@@ -33,24 +33,20 @@ def get_supported_table_mappings() -> List[Tuple[str, str]]:
     """
     Build the serializer-bucket to SQL-table mapping supported by the schema.
 
-    The JSON serializer uses the object keys from ``get_objects_dictionary()``,
-    while the schema uses the device type value as the table name. This helper
-    bridges both naming systems and filters out buckets with no backing table.
-
     :return: Ordered list of ``(json_key, table_name)`` pairs.
     """
     object_types: Dict[str, Any] = get_objects_dictionary()
     available_table_names: set[str] = set(get_veragrid_object_table_names())
     mappings: List[Tuple[str, str]] = list()
 
-    # The pack/unpack layer keeps one legacy branch bucket that is not stored as
-    # its own table in the current schema, so we skip it explicitly.
+    # The serializer still exposes one legacy branch bucket that is not backed
+    # by a dedicated SQL table in the current schema, so it must be skipped.
     if "branch" in object_types:
         del object_types["branch"]
     else:
         pass
 
-    # Only buckets backed by real schema tables can be persisted safely.
+    # Only buckets backed by physical tables can be persisted safely.
     for json_key, template_elm in object_types.items():
         table_name: str = template_elm.device_type.value
 
@@ -62,37 +58,6 @@ def get_supported_table_mappings() -> List[Tuple[str, str]]:
             )
 
     return mappings
-
-
-def ensure_model_row_exists(cursor: CursorLike,
-                            schema_name: str,
-                            model_idtag: str) -> None:
-    """
-    Validate that one model row already exists before storing objects into it.
-
-    :param cursor: Open database cursor.
-    :param schema_name: Target schema name.
-    :param model_idtag: Model identifier to validate.
-    :return: None.
-    :raises ValueError: If the model does not exist.
-    """
-    quoted_schema_name: str = quote_sql_identifier(schema_name)
-
-    # The object tables are children of Models, so failing early keeps the
-    # snapshot write from creating orphan rows or partial data.
-    log_database_operation(
-        f"Checking whether model '{model_idtag}' exists in '{schema_name}.Models'."
-    )
-    cursor.execute(
-        f'SELECT 1 FROM {quoted_schema_name}."Models" WHERE idtag = %s',
-        (model_idtag,),
-    )
-    row: Any = cursor.fetchone()
-
-    if row is None:
-        raise ValueError(f"Model '{model_idtag}' does not exist in schema '{schema_name}'")
-    else:
-        pass
 
 
 def row_exists(cursor: CursorLike,
@@ -129,27 +94,185 @@ def row_exists(cursor: CursorLike,
         return True
 
 
+def resolve_circuit_idtag(circuit: MultiCircuit) -> str:
+    """
+    Ensure one circuit has a stable idtag and return it.
+
+    :param circuit: Circuit to inspect.
+    :return: Stable circuit identifier.
+    """
+    current_idtag: Any = circuit.idtag
+
+    if current_idtag is None:
+        resolved_idtag: str = str(uuid4())
+        circuit.idtag = resolved_idtag
+    else:
+        current_text: str = str(current_idtag).strip()
+        if len(current_text) == 0:
+            resolved_idtag = str(uuid4())
+            circuit.idtag = resolved_idtag
+        else:
+            resolved_idtag = current_text
+            circuit.idtag = resolved_idtag
+
+    return resolved_idtag
+
+
+def ensure_file_row_exists(cursor: CursorLike,
+                           schema_name: str,
+                           file_idtag: str) -> None:
+    """
+    Validate that one file row already exists.
+
+    :param cursor: Open database cursor.
+    :param schema_name: Target schema name.
+    :param file_idtag: File identifier to validate.
+    :return: None.
+    """
+    quoted_schema_name: str = quote_sql_identifier(schema_name)
+
+    log_database_operation(
+        f"Checking whether file '{file_idtag}' exists in '{schema_name}.Files'."
+    )
+    cursor.execute(
+        f'SELECT 1 FROM {quoted_schema_name}."Files" WHERE idtag = %s',
+        (file_idtag,),
+    )
+    row: Any = cursor.fetchone()
+
+    if row is None:
+        raise ValueError(f"File '{file_idtag}' does not exist in schema '{schema_name}'")
+    else:
+        pass
+
+
+def get_file_owner_idtag(cursor: CursorLike,
+                         schema_name: str,
+                         file_idtag: str) -> str:
+    """
+    Read the owning user identifier for one file.
+
+    :param cursor: Open database cursor.
+    :param schema_name: Target schema name.
+    :param file_idtag: File identifier.
+    :return: Owning user identifier.
+    """
+    quoted_schema_name: str = quote_sql_identifier(schema_name)
+
+    cursor.execute(
+        f'''
+        SELECT "user"
+        FROM {quoted_schema_name}."Files"
+        WHERE idtag = %s
+        ''',
+        (file_idtag,),
+    )
+    row: Any = cursor.fetchone()
+
+    if row is None:
+        raise ValueError(f"File '{file_idtag}' does not exist in schema '{schema_name}'")
+    elif row[0] is None:
+        raise ValueError(f"File '{file_idtag}' does not have an owning user in schema '{schema_name}'")
+    else:
+        return str(row[0])
+
+
+def upsert_file_row(cursor: CursorLike,
+                    schema_name: str,
+                    file_idtag: str,
+                    file_name: str,
+                    user_idtag: str) -> None:
+    """
+    Insert or update one file metadata row.
+
+    :param cursor: Open database cursor.
+    :param schema_name: Target schema name.
+    :param file_idtag: File identifier.
+    :param file_name: Human-readable file name.
+    :param user_idtag: Owning user identifier.
+    :return: None.
+    """
+    quoted_schema_name: str = quote_sql_identifier(schema_name)
+
+    # File-level saves own the top-level artifact metadata, so the row is
+    # upserted before any child model rows are rewritten.
+    log_database_operation(
+        f"Upserting file '{file_idtag}' into '{schema_name}.Files'."
+    )
+    cursor.execute(
+        f'''
+        INSERT INTO {quoted_schema_name}."Files" (idtag, name, "user")
+        VALUES (%s, %s, %s)
+        ON CONFLICT (idtag) DO UPDATE
+        SET name = EXCLUDED.name, "user" = EXCLUDED."user"
+        ''',
+        (file_idtag, file_name, user_idtag),
+    )
+
+
+def ensure_model_row_exists(cursor: CursorLike,
+                            schema_name: str,
+                            file_idtag: str,
+                            model_idtag: str) -> None:
+    """
+    Validate that one model row already exists before storing objects into it.
+
+    :param cursor: Open database cursor.
+    :param schema_name: Target schema name.
+    :param file_idtag: Parent file identifier.
+    :param model_idtag: Model identifier to validate.
+    :return: None.
+    """
+    quoted_schema_name: str = quote_sql_identifier(schema_name)
+
+    # Object rows depend on the model metadata row, so the validation happens
+    # before any payload write to avoid orphaned persistence rows.
+    log_database_operation(
+        f"Checking whether model '{model_idtag}' exists in '{schema_name}.Models' for file '{file_idtag}'."
+    )
+    cursor.execute(
+        f'''
+        SELECT 1
+        FROM {quoted_schema_name}."Models"
+        WHERE file_idtag = %s AND idtag = %s
+        ''',
+        (file_idtag, model_idtag),
+    )
+    row: Any = cursor.fetchone()
+
+    if row is None:
+        raise ValueError(
+            f"Model '{model_idtag}' does not exist in file '{file_idtag}' within schema '{schema_name}'"
+        )
+    else:
+        pass
+
+
 def ensure_model_row_does_not_exist(cursor: CursorLike,
                                     schema_name: str,
+                                    file_idtag: str,
                                     model_idtag: str) -> bool:
     """
     Validate that one model row does not exist before creation.
 
     :param cursor: Open database cursor.
     :param schema_name: Target schema name.
+    :param file_idtag: Parent file identifier.
     :param model_idtag: Model identifier to validate.
     :return: ``True`` when the model does not exist yet, ``False`` otherwise.
     """
     quoted_schema_name: str = quote_sql_identifier(schema_name)
 
-    # Create operations must not overwrite an existing model row implicitly, so
-    # the duplicate check happens before the insert.
     log_database_operation(
-        f"Checking whether model '{model_idtag}' already exists in '{schema_name}.Models'."
+        f"Checking whether model '{model_idtag}' already exists in '{schema_name}.Models' for file '{file_idtag}'."
     )
     cursor.execute(
-        f'SELECT 1 FROM {quoted_schema_name}."Models" WHERE idtag = %s',
-        (model_idtag,),
+        f'''
+        SELECT 1
+        FROM {quoted_schema_name}."Models"
+        WHERE file_idtag = %s AND idtag = %s
+        ''',
+        (file_idtag, model_idtag),
     )
     row: Any = cursor.fetchone()
 
@@ -157,102 +280,80 @@ def ensure_model_row_does_not_exist(cursor: CursorLike,
         return True
     else:
         log_database_operation(
-            f"Model '{model_idtag}' already exists in schema '{schema_name}', skipping creation."
+            f"Model '{model_idtag}' already exists in file '{file_idtag}', skipping creation."
         )
         return False
 
 
-def create_model(settings: PostgreSqlConnectionSettings,
-                 model_name: str,
-                 user_idtag: str,
-                 parent_model_idtag: str | None = None,
-                 model_idtag: str | None = None,
-                 schema_name: str = "veragrid") -> str:
+def create_file(settings: PostgreSqlConnectionSettings,
+                file_name: str,
+                user_idtag: str,
+                file_idtag: str | None = None,
+                schema_name: str = "veragrid") -> str:
     """
-    Create or update one model row and return its identifier.
-
-    When ``model_idtag`` is not provided, the function creates one with
-    ``uuid.uuid4().hex`` as requested.
+    Create one file row and return its identifier.
 
     :param settings: PostgreSQL connection settings.
-    :param model_name: Human-readable model name.
+    :param file_name: Human-readable file name.
     :param user_idtag: Owning user identifier.
-    :param parent_model_idtag: Optional parent model identifier.
-    :param model_idtag: Optional pre-existing model identifier.
+    :param file_idtag: Optional pre-existing file identifier.
     :param schema_name: Target schema name.
-    :return: Model identifier.
+    :return: File identifier.
     """
-    resolved_model_idtag: str
-    if model_idtag is None:
-        resolved_model_idtag = uuid4().hex
+    resolved_file_idtag: str
+    if file_idtag is None:
+        resolved_file_idtag = str(uuid4())
     else:
-        resolved_model_idtag = model_idtag
+        resolved_file_idtag = file_idtag
 
-    # The schema must exist before any model metadata can be upserted.
     create_veragrid_schema(settings=settings, schema_name=schema_name)
     connection_kwargs: Dict[str, Any] = build_connection_kwargs(settings=settings)
     quoted_schema_name: str = quote_sql_identifier(schema_name)
 
     log_database_operation(
-        f"Connecting to database '{settings.database}' to create model '{resolved_model_idtag}'."
+        f"Connecting to database '{settings.database}' to create file '{resolved_file_idtag}'."
     )
     with psycopg.connect(**connection_kwargs) as connection:
         cursor: CursorLike = connection.cursor()
-        can_create: bool = ensure_model_row_does_not_exist(
+        upsert_file_row(
             cursor=cursor,
             schema_name=schema_name,
-            model_idtag=resolved_model_idtag,
+            file_idtag=resolved_file_idtag,
+            file_name=file_name,
+            user_idtag=user_idtag,
         )
-        if can_create:
-            # The model row carries the owning user foreign key and the visible name.
-            log_database_operation(
-                f"Inserting model '{resolved_model_idtag}' into '{schema_name}.Models'."
-            )
-            cursor.execute(
-                f'''
-                INSERT INTO {quoted_schema_name}."Models" (idtag, name, "user", parent_model_idtag)
-                VALUES (%s, %s, %s, %s)
-                ''',
-                (resolved_model_idtag, model_name, user_idtag, parent_model_idtag),
-            )
-
-            log_database_operation(
-                f"Committing model metadata for '{resolved_model_idtag}'."
-            )
-            connection.commit()
-        else:
-            pass
+        connection.commit()
         cursor.close()
 
-    return resolved_model_idtag
+    return resolved_file_idtag
 
 
-def get_model(settings: PostgreSqlConnectionSettings,
-              model_idtag: str,
-              schema_name: str = "veragrid") -> Dict[str, str | None] | None:
+def get_file(settings: PostgreSqlConnectionSettings,
+             file_idtag: str,
+             schema_name: str = "veragrid") -> Dict[str, str] | None:
     """
-    Read one model row.
+    Read one file row.
 
     :param settings: PostgreSQL connection settings.
-    :param model_idtag: Model identifier.
+    :param file_idtag: File identifier.
     :param schema_name: Target schema name.
-    :return: Model row dictionary or ``None``.
+    :return: File row dictionary or ``None``.
     """
     connection_kwargs: Dict[str, Any] = build_connection_kwargs(settings=settings)
     quoted_schema_name: str = quote_sql_identifier(schema_name)
 
     log_database_operation(
-        f"Connecting to database '{settings.database}' to read model '{model_idtag}'."
+        f"Connecting to database '{settings.database}' to read file '{file_idtag}'."
     )
     with psycopg.connect(**connection_kwargs) as connection:
         cursor: CursorLike = connection.cursor()
         cursor.execute(
             f'''
-            SELECT idtag, name, "user", parent_model_idtag
-            FROM {quoted_schema_name}."Models"
+            SELECT idtag, name, "user", created_at
+            FROM {quoted_schema_name}."Files"
             WHERE idtag = %s
             ''',
-            (model_idtag,),
+            (file_idtag,),
         )
         row: Any = cursor.fetchone()
         cursor.close()
@@ -264,23 +365,129 @@ def get_model(settings: PostgreSqlConnectionSettings,
             "idtag": str(row[0]),
             "name": str(row[1]),
             "user": str(row[2]),
+            "created_at": str(row[3]),
+        }
+
+
+def create_model(settings: PostgreSqlConnectionSettings,
+                 file_idtag: str,
+                 model_name: str,
+                 parent_model_idtag: str | None = None,
+                 model_idtag: str | None = None,
+                 schema_name: str = "veragrid") -> str:
+    """
+    Create one model row inside one file and return its identifier.
+
+    :param settings: PostgreSQL connection settings.
+    :param file_idtag: Parent file identifier.
+    :param model_name: Human-readable model name.
+    :param parent_model_idtag: Optional parent model identifier.
+    :param model_idtag: Optional pre-existing model identifier.
+    :param schema_name: Target schema name.
+    :return: Model identifier.
+    """
+    resolved_model_idtag: str
+    if model_idtag is None:
+        resolved_model_idtag = str(uuid4())
+    else:
+        resolved_model_idtag = model_idtag
+
+    create_veragrid_schema(settings=settings, schema_name=schema_name)
+    connection_kwargs: Dict[str, Any] = build_connection_kwargs(settings=settings)
+    quoted_schema_name: str = quote_sql_identifier(schema_name)
+
+    log_database_operation(
+        f"Connecting to database '{settings.database}' to create model '{resolved_model_idtag}' in file '{file_idtag}'."
+    )
+    with psycopg.connect(**connection_kwargs) as connection:
+        cursor: CursorLike = connection.cursor()
+        ensure_file_row_exists(cursor=cursor, schema_name=schema_name, file_idtag=file_idtag)
+        owner_idtag: str = get_file_owner_idtag(
+            cursor=cursor,
+            schema_name=schema_name,
+            file_idtag=file_idtag,
+        )
+        can_create: bool = ensure_model_row_does_not_exist(
+            cursor=cursor,
+            schema_name=schema_name,
+            file_idtag=file_idtag,
+            model_idtag=resolved_model_idtag,
+        )
+        if can_create:
+            log_database_operation(
+                f"Inserting model '{resolved_model_idtag}' into '{schema_name}.Models' for file '{file_idtag}'."
+            )
+            cursor.execute(
+                f'''
+                INSERT INTO {quoted_schema_name}."Models" (file_idtag, idtag, name, "user", parent_model_idtag)
+                VALUES (%s, %s, %s, %s, %s)
+                ''',
+                (file_idtag, resolved_model_idtag, model_name, owner_idtag, parent_model_idtag),
+            )
+            connection.commit()
+        else:
+            pass
+        cursor.close()
+
+    return resolved_model_idtag
+
+
+def get_model(settings: PostgreSqlConnectionSettings,
+              file_idtag: str,
+              model_idtag: str,
+              schema_name: str = "veragrid") -> Dict[str, str | None] | None:
+    """
+    Read one model row.
+
+    :param settings: PostgreSQL connection settings.
+    :param file_idtag: Parent file identifier.
+    :param model_idtag: Model identifier.
+    :param schema_name: Target schema name.
+    :return: Model row dictionary or ``None``.
+    """
+    connection_kwargs: Dict[str, Any] = build_connection_kwargs(settings=settings)
+    quoted_schema_name: str = quote_sql_identifier(schema_name)
+
+    log_database_operation(
+        f"Connecting to database '{settings.database}' to read model '{model_idtag}' from file '{file_idtag}'."
+    )
+    with psycopg.connect(**connection_kwargs) as connection:
+        cursor: CursorLike = connection.cursor()
+        cursor.execute(
+            f'''
+            SELECT file_idtag, idtag, name, parent_model_idtag
+            FROM {quoted_schema_name}."Models"
+            WHERE file_idtag = %s AND idtag = %s
+            ''',
+            (file_idtag, model_idtag),
+        )
+        row: Any = cursor.fetchone()
+        cursor.close()
+
+    if row is None:
+        return None
+    else:
+        return {
+            "file_idtag": str(row[0]),
+            "idtag": str(row[1]),
+            "name": str(row[2]),
             "parent_model_idtag": None if row[3] is None else str(row[3]),
         }
 
 
 def update_model(settings: PostgreSqlConnectionSettings,
+                 file_idtag: str,
                  model_idtag: str,
                  model_name: str,
-                 user_idtag: str,
                  parent_model_idtag: str | None = None,
                  schema_name: str = "veragrid") -> None:
     """
     Update one existing model row.
 
     :param settings: PostgreSQL connection settings.
+    :param file_idtag: Parent file identifier.
     :param model_idtag: Model identifier.
     :param model_name: Human-readable model name.
-    :param user_idtag: Owning user identifier.
     :param parent_model_idtag: Optional parent model identifier.
     :param schema_name: Target schema name.
     :return: None.
@@ -289,23 +496,54 @@ def update_model(settings: PostgreSqlConnectionSettings,
     quoted_schema_name: str = quote_sql_identifier(schema_name)
 
     log_database_operation(
-        f"Connecting to database '{settings.database}' to update model '{model_idtag}'."
+        f"Connecting to database '{settings.database}' to update model '{model_idtag}' in file '{file_idtag}'."
     )
     with psycopg.connect(**connection_kwargs) as connection:
         cursor: CursorLike = connection.cursor()
         cursor.execute(
             f'''
             UPDATE {quoted_schema_name}."Models"
-            SET name = %s, "user" = %s, parent_model_idtag = %s
+            SET name = %s, parent_model_idtag = %s
+            WHERE file_idtag = %s AND idtag = %s
+            ''',
+            (model_name, parent_model_idtag, file_idtag, model_idtag),
+        )
+        connection.commit()
+        cursor.close()
+
+
+def delete_file(settings: PostgreSqlConnectionSettings,
+                file_idtag: str,
+                schema_name: str = "veragrid") -> None:
+    """
+    Delete one file row and its dependent models.
+
+    :param settings: PostgreSQL connection settings.
+    :param file_idtag: File identifier.
+    :param schema_name: Target schema name.
+    :return: None.
+    """
+    connection_kwargs: Dict[str, Any] = build_connection_kwargs(settings=settings)
+    quoted_schema_name: str = quote_sql_identifier(schema_name)
+
+    log_database_operation(
+        f"Connecting to database '{settings.database}' to delete file '{file_idtag}'."
+    )
+    with psycopg.connect(**connection_kwargs) as connection:
+        cursor: CursorLike = connection.cursor()
+        cursor.execute(
+            f'''
+            DELETE FROM {quoted_schema_name}."Files"
             WHERE idtag = %s
             ''',
-            (model_name, user_idtag, parent_model_idtag, model_idtag),
+            (file_idtag,),
         )
         connection.commit()
         cursor.close()
 
 
 def delete_model(settings: PostgreSqlConnectionSettings,
+                 file_idtag: str,
                  model_idtag: str,
                  cascade: bool = False,
                  schema_name: str = "veragrid") -> None:
@@ -313,6 +551,7 @@ def delete_model(settings: PostgreSqlConnectionSettings,
     Delete one model row, optionally removing child models first.
 
     :param settings: PostgreSQL connection settings.
+    :param file_idtag: Parent file identifier.
     :param model_idtag: Model identifier.
     :param cascade: Delete child models before deleting this model.
     :param schema_name: Target schema name.
@@ -322,21 +561,21 @@ def delete_model(settings: PostgreSqlConnectionSettings,
     quoted_schema_name: str = quote_sql_identifier(schema_name)
 
     log_database_operation(
-        f"Connecting to database '{settings.database}' to delete model '{model_idtag}'."
+        f"Connecting to database '{settings.database}' to delete model '{model_idtag}' from file '{file_idtag}'."
     )
     with psycopg.connect(**connection_kwargs) as connection:
         cursor: CursorLike = connection.cursor()
 
         if cascade:
             log_database_operation(
-                f"Cascade deletion enabled for model '{model_idtag}', deleting child models first."
+                f"Cascade deletion enabled for model '{model_idtag}' in file '{file_idtag}', deleting child models first."
             )
             cursor.execute(
                 f'''
                 DELETE FROM {quoted_schema_name}."Models"
-                WHERE parent_model_idtag = %s
+                WHERE file_idtag = %s AND parent_model_idtag = %s
                 ''',
-                (model_idtag,),
+                (file_idtag, model_idtag),
             )
         else:
             pass
@@ -344,9 +583,9 @@ def delete_model(settings: PostgreSqlConnectionSettings,
         cursor.execute(
             f'''
             DELETE FROM {quoted_schema_name}."Models"
-            WHERE idtag = %s
+            WHERE file_idtag = %s AND idtag = %s
             ''',
-            (model_idtag,),
+            (file_idtag, model_idtag),
         )
         connection.commit()
         cursor.close()
@@ -399,8 +638,7 @@ def insert_model_object_rows(cursor: CursorLike,
     quoted_schema_name: str = quote_sql_identifier(schema_name)
 
     # Each bucket contains the homogeneous JSON objects already serialized by
-    # the VeraGrid engine, so the database layer only has to route them to the
-    # matching typed tables without reshaping the payload.
+    # the engine, so the database layer only routes them to the typed tables.
     for json_key, table_name in table_mappings:
         quoted_table_name: str = quote_sql_identifier(table_name)
         entries: Any = model_data.get(json_key, list())
@@ -425,9 +663,6 @@ def insert_model_object_rows(cursor: CursorLike,
                     parameters=(model_idtag, object_idtag),
                 )
 
-                # Device-table writes must query first so the storage logic is
-                # explicit about whether it is inserting a new row or updating
-                # an existing snapshot row.
                 if exists:
                     cursor.execute(
                         f"""
@@ -468,8 +703,6 @@ def upsert_model_payload_row(cursor: CursorLike,
     circuit_data: Dict[str, Any] = model_data["circuit"]
     time_data: Dict[str, Any] = model_data["time"]
 
-    # VeraGrid needs the circuit/time payload plus optional symbolic data to
-    # reconstruct the graph, profiles, and symbolic objects faithfully.
     log_database_operation(
         f"Upserting payload row into '{schema_name}.ModelData' for model '{model_idtag}'."
     )
@@ -481,8 +714,6 @@ def upsert_model_payload_row(cursor: CursorLike,
         parameters=(model_idtag,),
     )
 
-    # The model payload is one row per model, so the write path queries first
-    # and then performs the matching INSERT or UPDATE explicitly.
     if exists:
         cursor.execute(
             f'''
@@ -557,9 +788,6 @@ def get_model_payload_row(cursor: CursorLike,
         else:
             model_name = str(model_row[0])
 
-        # Legacy database snapshots stored only the typed object tables. VeraGrid
-        # can still rebuild from that data when we provide a minimal circuit/time
-        # shell for the parser.
         return {
             "circuit": {
                 "idtag": model_idtag,
@@ -604,8 +832,6 @@ def get_model_json_payload(cursor: CursorLike,
     model_data["circuit"] = payload_row["circuit"]
     model_data["time"] = payload_row["time"]
 
-    # Each typed table row already stores one serializer-ready JSON object, so
-    # the loader only needs to regroup those payloads under their original keys.
     for json_key, table_name in table_mappings:
         quoted_table_name: str = quote_sql_identifier(table_name)
 
@@ -630,20 +856,110 @@ def get_model_json_payload(cursor: CursorLike,
     }
 
 
+def get_file_model_rows(cursor: CursorLike,
+                        schema_name: str,
+                        file_idtag: str) -> List[Dict[str, str | None]]:
+    """
+    Read all model metadata rows for one file.
+
+    :param cursor: Open database cursor.
+    :param schema_name: Target schema name.
+    :param file_idtag: File identifier.
+    :return: Ordered model metadata rows.
+    """
+    quoted_schema_name: str = quote_sql_identifier(schema_name)
+
+    log_database_operation(
+        f"Reading model metadata rows for file '{file_idtag}' from '{schema_name}.Models'."
+    )
+    cursor.execute(
+        f'''
+        SELECT file_idtag, idtag, name, parent_model_idtag
+        FROM {quoted_schema_name}."Models"
+        WHERE file_idtag = %s
+        ORDER BY parent_model_idtag NULLS FIRST, idtag
+        ''',
+        (file_idtag,),
+    )
+    rows: Any = cursor.fetchall()
+    model_rows: List[Dict[str, str | None]] = list()
+
+    for row in rows:
+        model_rows.append(
+            {
+                "file_idtag": str(row[0]),
+                "idtag": str(row[1]),
+                "name": str(row[2]),
+                "parent_model_idtag": None if row[3] is None else str(row[3]),
+            }
+        )
+
+    return model_rows
+
+
+def get_base_model_idtag_for_file(cursor: CursorLike,
+                                  schema_name: str,
+                                  file_idtag: str) -> str:
+    """
+    Resolve the base model identifier for one file.
+
+    :param cursor: Open database cursor.
+    :param schema_name: Target schema name.
+    :param file_idtag: File identifier.
+    :return: Base model identifier.
+    """
+    model_rows: List[Dict[str, str | None]] = get_file_model_rows(
+        cursor=cursor,
+        schema_name=schema_name,
+        file_idtag=file_idtag,
+    )
+    base_model_rows: List[Dict[str, str | None]] = list()
+
+    for model_row in model_rows:
+        if model_row["parent_model_idtag"] is None:
+            base_model_rows.append(model_row)
+        else:
+            pass
+
+    if len(base_model_rows) == 1:
+        return str(base_model_rows[0]["idtag"])
+    elif len(base_model_rows) == 0:
+        raise ValueError(f"File '{file_idtag}' does not contain a base model")
+    else:
+        raise ValueError(f"File '{file_idtag}' contains more than one base model")
+
+
+def find_model_node(multiverse: MultiVerse,
+                    model_idtag: str) -> ScenarioNode:
+    """
+    Find one multiverse node by its circuit idtag.
+
+    :param multiverse: Loaded multiverse.
+    :param model_idtag: Target model identifier.
+    :return: Matching scenario node.
+    """
+    node: ScenarioNode
+    for node in multiverse.iter_nodes_depth_first():
+        if node.circuit.idtag == model_idtag:
+            return node
+        else:
+            pass
+
+    raise ValueError(f"Model '{model_idtag}' was not found in the loaded multiverse")
+
+
 def put_multicircuit_in_database(settings: PostgreSqlConnectionSettings,
                                  circuit: MultiCircuit,
+                                 file_idtag: str,
                                  model_idtag: str,
                                  schema_name: str = "veragrid",
                                  project_directory: Path | None = None) -> None:
     """
     Persist one ``MultiCircuit`` snapshot into the typed VeraGrid SQL tables.
 
-    The function expects that the model row was created beforehand. It then
-    clears the previous object snapshot for that model and writes the current
-    JSON representation produced by the VeraGrid serializer.
-
     :param settings: PostgreSQL connection settings.
     :param circuit: VeraGrid circuit to persist.
+    :param file_idtag: Parent file identifier.
     :param model_idtag: Existing parent model identifier.
     :param schema_name: Target schema name.
     :param project_directory: Optional project directory for the serializer.
@@ -660,7 +976,7 @@ def put_multicircuit_in_database(settings: PostgreSqlConnectionSettings,
     table_mappings: List[Tuple[str, str]] = get_supported_table_mappings()
 
     log_database_operation(
-        f"Connecting to database '{settings.database}' to persist MultiCircuit into model '{model_idtag}'."
+        f"Connecting to database '{settings.database}' to persist MultiCircuit into model '{model_idtag}' from file '{file_idtag}'."
     )
     with psycopg.connect(**connection_kwargs) as connection:
         cursor: CursorLike = connection.cursor()
@@ -668,6 +984,7 @@ def put_multicircuit_in_database(settings: PostgreSqlConnectionSettings,
         ensure_model_row_exists(
             cursor=cursor,
             schema_name=schema_name,
+            file_idtag=file_idtag,
             model_idtag=model_idtag,
         )
 
@@ -694,53 +1011,362 @@ def put_multicircuit_in_database(settings: PostgreSqlConnectionSettings,
             model_idtag=model_idtag,
         )
 
-        log_database_operation(
-            f"Committing MultiCircuit snapshot for model '{model_idtag}'."
-        )
         connection.commit()
         cursor.close()
 
 
-def get_multicircuit_from_database(settings: PostgreSqlConnectionSettings,
-                                   model_idtag: str,
-                                   schema_name: str = "veragrid",
-                                   project_directory: Path | None = None) -> MultiCircuit:
+def put_multiverse_in_database(settings: PostgreSqlConnectionSettings,
+                               multiverse: MultiVerse,
+                               file_idtag: str,
+                               user_idtag: str,
+                               file_name: str | None = None,
+                               schema_name: str = "veragrid",
+                               project_directory: Path | None = None) -> None:
     """
-    Retrieve one stored model and rebuild it as a ``MultiCircuit``.
+    Persist one ``MultiVerse`` into one file row and its child model rows.
 
     :param settings: PostgreSQL connection settings.
-    :param model_idtag: Model identifier.
+    :param multiverse: VeraGrid multiverse to persist.
+    :param file_idtag: Parent file identifier.
+    :param user_idtag: Owning user identifier for every stored model row.
+    :param file_name: Optional file name override.
+    :param schema_name: Target schema name.
+    :param project_directory: Optional project directory for the serializer.
+    :return: None.
+    """
+    create_veragrid_schema(settings=settings, schema_name=schema_name)
+    connection_kwargs: Dict[str, Any] = build_connection_kwargs(settings=settings)
+    table_mappings: List[Tuple[str, str]] = get_supported_table_mappings()
+
+    multiverse.commit_current()
+    nodes: List[ScenarioNode] = list(multiverse.iter_nodes_depth_first())
+
+    if len(nodes) == 0:
+        raise ValueError("The MultiVerse does not contain any models to persist")
+    else:
+        pass
+
+    resolved_file_name: str
+    if file_name is None:
+        root_name: str | None = nodes[0].circuit.name
+        if root_name is None or len(root_name.strip()) == 0:
+            resolved_file_name = file_idtag
+        else:
+            resolved_file_name = root_name
+    else:
+        resolved_file_name = file_name
+
+    # The file save rewrites the complete model tree so stale child rows are
+    # removed once, up front, and then recreated in current tree order.
+    log_database_operation(
+        f"Connecting to database '{settings.database}' to persist MultiVerse into file '{file_idtag}'."
+    )
+    with psycopg.connect(**connection_kwargs) as connection:
+        cursor: CursorLike = connection.cursor()
+        upsert_file_row(
+            cursor=cursor,
+            schema_name=schema_name,
+            file_idtag=file_idtag,
+            file_name=resolved_file_name,
+            user_idtag=user_idtag,
+        )
+
+        quoted_schema_name: str = quote_sql_identifier(schema_name)
+        cursor.execute(
+            f'''
+            DELETE FROM {quoted_schema_name}."Models"
+            WHERE file_idtag = %s
+            ''',
+            (file_idtag,),
+        )
+
+        node: ScenarioNode
+        for node in nodes:
+            model_idtag: str = resolve_circuit_idtag(node.circuit)
+            model_name_raw: str | None = node.circuit.name
+            model_name: str
+            if model_name_raw is None or len(model_name_raw.strip()) == 0:
+                model_name = model_idtag
+            else:
+                model_name = model_name_raw
+
+            parent_model_idtag: str | None
+            if node.parent is None:
+                parent_model_idtag = None
+            else:
+                parent_model_idtag = resolve_circuit_idtag(node.parent.circuit)
+
+            cursor.execute(
+                f'''
+                INSERT INTO {quoted_schema_name}."Models" (file_idtag, idtag, name, "user", parent_model_idtag)
+                VALUES (%s, %s, %s, %s, %s)
+                ''',
+                (file_idtag, model_idtag, model_name, user_idtag, parent_model_idtag),
+            )
+
+        for node in nodes:
+            model_idtag = resolve_circuit_idtag(node.circuit)
+            packed_model: Dict[str, Any] = gather_model_as_jsons(
+                circuit=node.circuit,
+                project_directory=project_directory,
+            )
+            model_data: Dict[str, Any] = packed_model["model_data"]
+            symbolic_data: Dict[str, Any] = packed_model["symbolic_data"]
+
+            insert_model_object_rows(
+                cursor=cursor,
+                schema_name=schema_name,
+                table_mappings=table_mappings,
+                model_data=model_data,
+                model_idtag=model_idtag,
+            )
+            upsert_model_payload_row(
+                cursor=cursor,
+                schema_name=schema_name,
+                model_data=model_data,
+                symbolic_data=symbolic_data,
+                model_idtag=model_idtag,
+            )
+
+        connection.commit()
+        cursor.close()
+
+
+def get_multiverse_from_database(settings: PostgreSqlConnectionSettings,
+                                 file_idtag: str,
+                                 schema_name: str = "veragrid",
+                                 project_directory: Path | None = None) -> MultiVerse:
+    """
+    Retrieve one stored file and rebuild it as a ``MultiVerse``.
+
+    :param settings: PostgreSQL connection settings.
+    :param file_idtag: File identifier.
     :param schema_name: Target schema name.
     :param project_directory: Optional project directory for path resolution.
-    :return: Rebuilt MultiCircuit instance.
+    :return: Rebuilt ``MultiVerse`` instance.
     """
     create_veragrid_schema(settings=settings, schema_name=schema_name)
     connection_kwargs: Dict[str, Any] = build_connection_kwargs(settings=settings)
     table_mappings: List[Tuple[str, str]] = get_supported_table_mappings()
 
     log_database_operation(
-        f"Connecting to database '{settings.database}' to rebuild MultiCircuit for model '{model_idtag}'."
+        f"Connecting to database '{settings.database}' to rebuild MultiVerse for file '{file_idtag}'."
     )
     with psycopg.connect(**connection_kwargs) as connection:
         cursor: CursorLike = connection.cursor()
-
-        ensure_model_row_exists(
+        ensure_file_row_exists(cursor=cursor, schema_name=schema_name, file_idtag=file_idtag)
+        model_rows: List[Dict[str, str | None]] = get_file_model_rows(
             cursor=cursor,
             schema_name=schema_name,
-            model_idtag=model_idtag,
+            file_idtag=file_idtag,
         )
-        packed_payload: Dict[str, Any] = get_model_json_payload(
+        circuit_by_model_idtag: Dict[str, MultiCircuit] = dict()
+
+        model_row: Dict[str, str | None]
+        for model_row in model_rows:
+            model_idtag: str = str(model_row["idtag"])
+            packed_payload: Dict[str, Any] = get_model_json_payload(
+                cursor=cursor,
+                schema_name=schema_name,
+                model_idtag=model_idtag,
+                table_mappings=table_mappings,
+            )
+            circuit_by_model_idtag[model_idtag] = parse_veragrid_data(
+                data=packed_payload,
+                project_directory=project_directory,
+            )
+
+        cursor.close()
+
+    multiverse: MultiVerse = MultiVerse()
+    node_by_model_idtag: Dict[str, ScenarioNode] = dict()
+    pending_rows: List[Dict[str, str | None]] = list(model_rows)
+
+    while len(pending_rows) > 0:
+        progressed: bool = False
+        next_pending_rows: List[Dict[str, str | None]] = list()
+
+        for model_row in pending_rows:
+            model_idtag = str(model_row["idtag"])
+            parent_model_idtag = model_row["parent_model_idtag"]
+
+            if parent_model_idtag is None:
+                parent_node_id: int | None = None
+            elif parent_model_idtag in node_by_model_idtag:
+                parent_node_id = node_by_model_idtag[parent_model_idtag].node_id
+            else:
+                parent_node_id = -1
+
+            if parent_node_id == -1:
+                next_pending_rows.append(model_row)
+            else:
+                node: ScenarioNode = multiverse.create_node(
+                    data=circuit_by_model_idtag[model_idtag],
+                    parent_id=parent_node_id,
+                    position=None,
+                )
+                node_by_model_idtag[model_idtag] = node
+                progressed = True
+
+        if progressed:
+            pending_rows = next_pending_rows
+        else:
+            raise ValueError(f"Could not resolve parent links for file '{file_idtag}'")
+
+    if multiverse.roots_number() > 0:
+        root_node: ScenarioNode = multiverse.root_nodes[0]
+        multiverse.activate_scenario(root_node.node_id)
+    else:
+        raise ValueError(f"File '{file_idtag}' does not contain any stored models")
+
+    return multiverse
+
+
+def get_multicircuit_from_database(settings: PostgreSqlConnectionSettings,
+                                   file_idtag: str,
+                                   model_idtag: str | None = None,
+                                   schema_name: str = "veragrid",
+                                   project_directory: Path | None = None) -> MultiCircuit:
+    """
+    Retrieve one stored model as a composed ``MultiCircuit``.
+
+    When ``model_idtag`` is omitted, the base model for the file is returned.
+
+    :param settings: PostgreSQL connection settings.
+    :param file_idtag: File identifier.
+    :param model_idtag: Optional model identifier.
+    :param schema_name: Target schema name.
+    :param project_directory: Optional project directory for path resolution.
+    :return: Rebuilt composed ``MultiCircuit`` instance.
+    """
+    multiverse: MultiVerse = get_multiverse_from_database(
+        settings=settings,
+        file_idtag=file_idtag,
+        schema_name=schema_name,
+        project_directory=project_directory,
+    )
+
+    resolved_model_idtag: str
+    if model_idtag is None:
+        root_node: ScenarioNode = multiverse.root_nodes[0]
+        resolved_model_idtag = str(root_node.circuit.idtag)
+    else:
+        resolved_model_idtag = model_idtag
+
+    target_node: ScenarioNode = find_model_node(
+        multiverse=multiverse,
+        model_idtag=resolved_model_idtag,
+    )
+    return multiverse.checkout(target_node)
+
+
+def get_file_models_json(settings: PostgreSqlConnectionSettings,
+                         file_idtag: str,
+                         schema_name: str = "veragrid") -> Dict[str, Any] | None:
+    """
+    Read one file with its model metadata as JSON-like dictionaries.
+
+    :param settings: PostgreSQL connection settings.
+    :param file_idtag: File identifier.
+    :param schema_name: Target schema name.
+    :return: File dictionary with nested model rows, or ``None``.
+    """
+    connection_kwargs: Dict[str, Any] = build_connection_kwargs(settings=settings)
+
+    log_database_operation(
+        f"Connecting to database '{settings.database}' to read file-model JSON for file '{file_idtag}'."
+    )
+    with psycopg.connect(**connection_kwargs) as connection:
+        cursor: CursorLike = connection.cursor()
+        file_row: Dict[str, str] | None = get_file(
+            settings=settings,
+            file_idtag=file_idtag,
+            schema_name=schema_name,
+        )
+
+        if file_row is None:
+            cursor.close()
+            return None
+        else:
+            pass
+
+        model_rows: List[Dict[str, str | None]] = get_file_model_rows(
             cursor=cursor,
             schema_name=schema_name,
-            model_idtag=model_idtag,
-            table_mappings=table_mappings,
+            file_idtag=file_idtag,
         )
         cursor.close()
 
-    # The engine parser is the source of truth for rebuilding one complete
-    # MultiCircuit from the JSON payload, so the database layer stays a thin
-    # transport shim instead of a second deserialization implementation.
-    return parse_veragrid_data(
-        data=packed_payload,
-        project_directory=project_directory,
+    return {
+        "idtag": file_row["idtag"],
+        "name": file_row["name"],
+        "user": file_row["user"],
+        "created_at": file_row["created_at"],
+        "models": [
+            {
+                "idtag": str(model_row["idtag"]),
+                "name": str(model_row["name"]),
+                "parent_model_idtag": None if model_row["parent_model_idtag"] is None else str(model_row["parent_model_idtag"]),
+                "is_base_model": model_row["parent_model_idtag"] is None,
+            }
+            for model_row in model_rows
+        ],
+    }
+
+
+def get_files_with_models_json(settings: PostgreSqlConnectionSettings,
+                               schema_name: str = "veragrid") -> List[Dict[str, Any]]:
+    """
+    Read every file and the models it contains as JSON-like dictionaries.
+
+    :param settings: PostgreSQL connection settings.
+    :param schema_name: Target schema name.
+    :return: Ordered list of file dictionaries with nested model rows.
+    """
+    connection_kwargs: Dict[str, Any] = build_connection_kwargs(settings=settings)
+    quoted_schema_name: str = quote_sql_identifier(schema_name)
+    files_json: List[Dict[str, Any]] = list()
+
+    log_database_operation(
+        f"Connecting to database '{settings.database}' to read all file-model JSON rows."
     )
+    with psycopg.connect(**connection_kwargs) as connection:
+        cursor: CursorLike = connection.cursor()
+        cursor.execute(
+            f'''
+            SELECT idtag, name, "user", created_at
+            FROM {quoted_schema_name}."Files"
+            ORDER BY name, idtag
+            '''
+        )
+        file_rows: Any = cursor.fetchall()
+
+        file_row: Any
+        for file_row in file_rows:
+            file_idtag: str = str(file_row[0])
+            model_rows: List[Dict[str, str | None]] = get_file_model_rows(
+                cursor=cursor,
+                schema_name=schema_name,
+                file_idtag=file_idtag,
+            )
+            files_json.append(
+                {
+                    "idtag": file_idtag,
+                    "name": str(file_row[1]),
+                    "user": str(file_row[2]),
+                    "created_at": str(file_row[3]),
+                    "models": [
+                        {
+                            "idtag": str(model_row["idtag"]),
+                            "name": str(model_row["name"]),
+                            "parent_model_idtag": None if model_row["parent_model_idtag"] is None else str(model_row["parent_model_idtag"]),
+                            "is_base_model": model_row["parent_model_idtag"] is None,
+                        }
+                        for model_row in model_rows
+                    ],
+                }
+            )
+
+        cursor.close()
+
+    return files_json

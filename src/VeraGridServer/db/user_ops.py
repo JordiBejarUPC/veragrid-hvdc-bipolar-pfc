@@ -59,6 +59,7 @@ def create_user(settings: PostgreSqlConnectionSettings,
                 user_idtag: str,
                 user_name: str,
                 password: str,
+                organization_idtag: str,
                 schema_name: str = "veragrid") -> None:
     """
     Create one user row.
@@ -67,6 +68,7 @@ def create_user(settings: PostgreSqlConnectionSettings,
     :param user_idtag: User identifier.
     :param user_name: User display name.
     :param password: User password.
+    :param organization_idtag: Owning organization identifier.
     :param schema_name: Target schema name.
     :return: None.
     """
@@ -87,10 +89,10 @@ def create_user(settings: PostgreSqlConnectionSettings,
         if can_create:
             cursor.execute(
                 f'''
-                INSERT INTO {quoted_schema_name}."Users" (idtag, name, password)
-                VALUES (%s, %s, %s)
+                INSERT INTO {quoted_schema_name}."Users" (idtag, name, password, organization_idtag)
+                VALUES (%s, %s, %s, %s)
                 ''',
-                (user_idtag, user_name, password),
+                (user_idtag, user_name, password, organization_idtag),
             )
             connection.commit()
         else:
@@ -119,7 +121,7 @@ def get_user(settings: PostgreSqlConnectionSettings,
         cursor: CursorLike = connection.cursor()
         cursor.execute(
             f'''
-            SELECT idtag, name, password
+            SELECT idtag, name, password, organization_idtag
             FROM {quoted_schema_name}."Users"
             WHERE idtag = %s
             ''',
@@ -135,6 +137,7 @@ def get_user(settings: PostgreSqlConnectionSettings,
             "idtag": str(row[0]),
             "name": str(row[1]),
             "password": str(row[2]),
+            "organization_idtag": str(row[3]),
         }
 
 
@@ -142,6 +145,7 @@ def update_user(settings: PostgreSqlConnectionSettings,
                 user_idtag: str,
                 user_name: str,
                 password: str,
+                organization_idtag: str,
                 schema_name: str = "veragrid") -> None:
     """
     Update one existing user row.
@@ -150,6 +154,7 @@ def update_user(settings: PostgreSqlConnectionSettings,
     :param user_idtag: User identifier.
     :param user_name: User display name.
     :param password: User password.
+    :param organization_idtag: Owning organization identifier.
     :param schema_name: Target schema name.
     :return: None.
     """
@@ -164,10 +169,10 @@ def update_user(settings: PostgreSqlConnectionSettings,
         cursor.execute(
             f'''
             UPDATE {quoted_schema_name}."Users"
-            SET name = %s, password = %s
+            SET name = %s, password = %s, organization_idtag = %s
             WHERE idtag = %s
             ''',
-            (user_name, password, user_idtag),
+            (user_name, password, organization_idtag, user_idtag),
         )
         connection.commit()
         cursor.close()
@@ -178,11 +183,11 @@ def delete_user(settings: PostgreSqlConnectionSettings,
                 cascade: bool = False,
                 schema_name: str = "veragrid") -> None:
     """
-    Delete one user row, optionally removing its models first.
+    Delete one user row, optionally removing its files first.
 
     :param settings: PostgreSQL connection settings.
     :param user_idtag: User identifier.
-    :param cascade: Delete the user's models before deleting the user.
+    :param cascade: Delete the user's files before deleting the user.
     :param schema_name: Target schema name.
     :return: None.
     """
@@ -197,11 +202,11 @@ def delete_user(settings: PostgreSqlConnectionSettings,
 
         if cascade:
             log_database_operation(
-                f"Cascade deletion enabled for user '{user_idtag}', deleting dependent models first."
+                f"Cascade deletion enabled for user '{user_idtag}', deleting dependent files first."
             )
             cursor.execute(
                 f'''
-                DELETE FROM {quoted_schema_name}."Models"
+                DELETE FROM {quoted_schema_name}."Files"
                 WHERE "user" = %s
                 ''',
                 (user_idtag,),

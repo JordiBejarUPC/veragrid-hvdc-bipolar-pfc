@@ -239,28 +239,34 @@ def add_constraint_if_not_exists(cursor: CursorLike,
     )
 
 
-def ensure_device_table_composite_primary_key(cursor: CursorLike,
-                                              schema_name: str,
-                                              table_name: str,
-                                              constraint_name: str) -> None:
+def ensure_primary_key_columns(cursor: CursorLike,
+                               schema_name: str,
+                               table_name: str,
+                               constraint_name: str,
+                               column_names: Sequence[str]) -> None:
     """
-    Ensure one device table uses ``(model_idtag, idtag)`` as its primary key.
-
-    Existing legacy single-column primary keys are replaced in place so the same
-    device idtag can appear in different models without colliding.
+    Ensure one table primary key matches the requested ordered columns.
 
     :param cursor: Open database cursor.
     :param schema_name: Target schema name.
     :param table_name: Target table name.
     :param constraint_name: Desired primary-key constraint name.
+    :param column_names: Ordered primary-key column names.
     :return: None.
     """
+    if len(column_names) == 0:
+        raise ValueError("At least one primary-key column is required")
+    else:
+        pass
+
     quoted_schema_name: str = quote_sql_identifier(schema_name)
     quoted_table_name: str = quote_sql_identifier(table_name)
     quoted_constraint_name: str = quote_sql_identifier(constraint_name)
+    expected_columns_sql: str = ", ".join(f"'{column_name}'" for column_name in column_names)
+    primary_key_sql: str = ", ".join(quote_sql_identifier(column_name) for column_name in column_names)
 
     log_database_operation(
-        f"Ensuring composite primary key '(model_idtag, idtag)' exists on '{schema_name}.{table_name}'."
+        f"Ensuring primary key {tuple(column_names)} exists on '{schema_name}.{table_name}'."
     )
     cursor.execute(
         f"""
@@ -287,12 +293,12 @@ def ensure_device_table_composite_primary_key(cursor: CursorLike,
 
             IF current_constraint_name IS NULL THEN
                 EXECUTE format(
-                    'ALTER TABLE %I.%I ADD CONSTRAINT %I PRIMARY KEY (model_idtag, idtag)',
+                    'ALTER TABLE %I.%I ADD CONSTRAINT %I PRIMARY KEY ({primary_key_sql})',
                     '{schema_name}',
                     '{table_name}',
                     '{constraint_name}'
                 );
-            ELSIF current_columns = ARRAY['model_idtag', 'idtag'] THEN
+            ELSIF current_columns = ARRAY[{expected_columns_sql}] THEN
                 NULL;
             ELSE
                 EXECUTE format(
@@ -302,7 +308,7 @@ def ensure_device_table_composite_primary_key(cursor: CursorLike,
                     current_constraint_name
                 );
                 EXECUTE format(
-                    'ALTER TABLE %I.%I ADD CONSTRAINT %I PRIMARY KEY (model_idtag, idtag)',
+                    'ALTER TABLE %I.%I ADD CONSTRAINT %I PRIMARY KEY ({primary_key_sql})',
                     '{schema_name}',
                     '{table_name}',
                     '{constraint_name}'
@@ -310,6 +316,120 @@ def ensure_device_table_composite_primary_key(cursor: CursorLike,
             END IF;
         END $$;
         """
+    )
+
+
+def ensure_default_admin_user(cursor: CursorLike,
+                              schema_name: str) -> None:
+    """
+    Insert the default admin user when it is missing.
+
+    :param cursor: Open database cursor.
+    :param schema_name: Target schema name.
+    :return: None.
+    """
+    quoted_schema_name: str = quote_sql_identifier(schema_name)
+
+    # The seeded administrator row gives a fresh schema one known login that
+    # can own initial models before any explicit user management happens.
+    log_database_operation(
+        f"Ensuring default admin user exists in '{schema_name}.Users'."
+    )
+    cursor.execute(
+        f'''
+        INSERT INTO {quoted_schema_name}."Users" (idtag, name, password, organization_idtag)
+        VALUES (%s, %s, %s, %s)
+        ON CONFLICT (idtag) DO UPDATE
+        SET name = EXCLUDED.name,
+            password = EXCLUDED.password,
+            organization_idtag = EXCLUDED.organization_idtag
+        ''',
+        ("admin", "admin", "veragrid is great", "admin"),
+    )
+
+
+def ensure_default_admin_organization(cursor: CursorLike,
+                                      schema_name: str) -> None:
+    """
+    Insert the default admin organization when it is missing.
+
+    :param cursor: Open database cursor.
+    :param schema_name: Target schema name.
+    :return: None.
+    """
+    quoted_schema_name: str = quote_sql_identifier(schema_name)
+
+    # The seeded administrator user must belong to one stable organization, so
+    # the organization row is created before the default user row.
+    log_database_operation(
+        f"Ensuring default admin organization exists in '{schema_name}.Organization'."
+    )
+    cursor.execute(
+        f'''
+        INSERT INTO {quoted_schema_name}."Organization" (idtag, name)
+        VALUES (%s, %s)
+        ON CONFLICT (idtag) DO NOTHING
+        ''',
+        ("admin", "admin"),
+    )
+
+
+def ensure_device_table_composite_primary_key(cursor: CursorLike,
+                                              schema_name: str,
+                                              table_name: str,
+                                              constraint_name: str) -> None:
+    """
+    Ensure one device table uses ``(model_idtag, idtag)`` as its primary key.
+
+    Existing legacy single-column primary keys are replaced in place so the same
+    device idtag can appear in different models without colliding.
+
+    :param cursor: Open database cursor.
+    :param schema_name: Target schema name.
+    :param table_name: Target table name.
+    :param constraint_name: Desired primary-key constraint name.
+    :return: None.
+    """
+    ensure_primary_key_columns(
+        cursor=cursor,
+        schema_name=schema_name,
+        table_name=table_name,
+        constraint_name=constraint_name,
+        column_names=("model_idtag", "idtag"),
+    )
+
+
+def backfill_legacy_model_file_rows(cursor: CursorLike,
+                                    schema_name: str) -> None:
+    """
+    Assign one synthetic file row to each legacy model missing ``file_idtag``.
+
+    :param cursor: Open database cursor.
+    :param schema_name: Target schema name.
+    :return: None.
+    """
+    quoted_schema_name: str = quote_sql_identifier(schema_name)
+
+    # Legacy schemas stored standalone models without a file container. The
+    # smallest migration is to map each root-level model to its own file id.
+    log_database_operation(
+        f"Backfilling legacy file rows for models in '{schema_name}.Models'."
+    )
+    cursor.execute(
+        f'''
+        INSERT INTO {quoted_schema_name}."Files" (idtag, name)
+        SELECT idtag, name
+        FROM {quoted_schema_name}."Models"
+        WHERE file_idtag IS NULL
+        ON CONFLICT (idtag) DO NOTHING
+        '''
+    )
+    cursor.execute(
+        f'''
+        UPDATE {quoted_schema_name}."Models"
+        SET file_idtag = idtag
+        WHERE file_idtag IS NULL
+        '''
     )
 
 
@@ -417,8 +537,11 @@ def create_veragrid_schema(settings: PostgreSqlConnectionSettings,
 
     The created structure is:
 
-    - ``Users`` with ``(idtag, name, password)``
-    - ``Models`` with ``(idtag, name, user, parent_model_idtag)``, linked to ``Users``
+    - ``Files`` with ``(idtag, name, user, created_at)``
+    - ``Organization`` with ``(idtag, name)``
+    - ``Users`` with ``(idtag, name, password, organization_idtag)``
+    - ``Models`` with ``(file_idtag, idtag, name, user, parent_model_idtag)``,
+      linked to ``Files`` and ``Users``
     - ``ModelData`` with ``(model_idtag, circuit, time, symbolic_data)``,
       linked to ``Models``
     - One table per VeraGrid object type with ``(model_idtag, idtag, data, object_index)``,
@@ -461,8 +584,24 @@ def create_veragrid_schema(settings: PostgreSqlConnectionSettings,
         )
         cursor.execute(f"CREATE SCHEMA IF NOT EXISTS {quoted_schema_name}")
 
-        # Users are the root owner records, so the Models table can safely point to
-        # them through a foreign key in the next step.
+        # Organizations own users. The default admin organization is seeded
+        # before the default admin user so the FK target already exists.
+        log_database_operation(
+            f"Creating table '{schema_name}.Organization' if it does not exist."
+        )
+        cursor.execute(
+            f"""
+            CREATE TABLE IF NOT EXISTS {quoted_schema_name}."Organization" (
+                idtag TEXT PRIMARY KEY,
+                name TEXT NOT NULL
+            )
+            """
+        )
+        add_column_if_not_exists(cursor, schema_name, "Organization", "idtag", "TEXT")
+        add_column_if_not_exists(cursor, schema_name, "Organization", "name", "TEXT")
+        ensure_default_admin_organization(cursor=cursor, schema_name=schema_name)
+
+        # Users are owned by organizations and later own files.
         log_database_operation(
             f"Creating table '{schema_name}.Users' if it does not exist."
         )
@@ -471,31 +610,92 @@ def create_veragrid_schema(settings: PostgreSqlConnectionSettings,
             CREATE TABLE IF NOT EXISTS {quoted_schema_name}."Users" (
                 idtag TEXT PRIMARY KEY,
                 name TEXT NOT NULL,
-                password TEXT NOT NULL
+                password TEXT NOT NULL,
+                organization_idtag TEXT NOT NULL,
+                CONSTRAINT users_organization_fk
+                    FOREIGN KEY (organization_idtag)
+                    REFERENCES {quoted_schema_name}."Organization"(idtag)
+                    ON DELETE RESTRICT
             )
             """
         )
         add_column_if_not_exists(cursor, schema_name, "Users", "idtag", "TEXT")
         add_column_if_not_exists(cursor, schema_name, "Users", "name", "TEXT")
         add_column_if_not_exists(cursor, schema_name, "Users", "password", "TEXT")
+        add_column_if_not_exists(cursor, schema_name, "Users", "organization_idtag", "TEXT")
+        add_constraint_if_not_exists(
+            cursor=cursor,
+            schema_name=schema_name,
+            table_name="Users",
+            constraint_name="users_organization_fk",
+            constraint_sql=(
+                f'FOREIGN KEY (organization_idtag) REFERENCES {quoted_schema_name}."Organization"(idtag) '
+                f'ON DELETE RESTRICT'
+            ),
+        )
+        ensure_default_admin_user(cursor=cursor, schema_name=schema_name)
+
+        # Files are the top-level persisted artifacts. A file can contain one base
+        # model plus optional delta models that together form one MultiVerse.
+        log_database_operation(
+            f"Creating table '{schema_name}.Files' if it does not exist."
+        )
+        cursor.execute(
+            f"""
+            CREATE TABLE IF NOT EXISTS {quoted_schema_name}."Files" (
+                idtag TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                "user" TEXT,
+                CONSTRAINT files_user_fk
+                    FOREIGN KEY ("user")
+                    REFERENCES {quoted_schema_name}."Users"(idtag)
+                    ON DELETE RESTRICT,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+            """
+        )
+        add_column_if_not_exists(cursor, schema_name, "Files", "idtag", "TEXT")
+        add_column_if_not_exists(cursor, schema_name, "Files", "name", "TEXT")
+        add_column_if_not_exists(cursor, schema_name, "Files", "user", "TEXT")
+        add_column_if_not_exists(
+            cursor,
+            schema_name,
+            "Files",
+            "created_at",
+            "TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP",
+        )
+        add_constraint_if_not_exists(
+            cursor=cursor,
+            schema_name=schema_name,
+            table_name="Files",
+            constraint_name="files_user_fk",
+            constraint_sql=(
+                f'FOREIGN KEY ("user") REFERENCES {quoted_schema_name}."Users"(idtag) '
+                f'ON DELETE RESTRICT'
+            ),
+        )
 
         # Models hold the logical grid/container metadata. The "user" column name is
-        # kept exactly as requested, and quoted because PostgreSQL treats USER as a
-        # special keyword.
+        # kept exactly as requested, and quoted because PostgreSQL treats USER as
+        # a special keyword. The composite key attaches each model to one file.
         log_database_operation(
             f"Creating table '{schema_name}.Models' if it does not exist."
         )
         cursor.execute(
             f"""
             CREATE TABLE IF NOT EXISTS {quoted_schema_name}."Models" (
-                idtag TEXT PRIMARY KEY,
+                file_idtag TEXT NOT NULL,
+                idtag TEXT NOT NULL,
                 name TEXT NOT NULL,
-                "user" TEXT NOT NULL,
                 parent_model_idtag TEXT,
-                CONSTRAINT models_user_fk
-                    FOREIGN KEY ("user")
-                    REFERENCES {quoted_schema_name}."Users"(idtag)
-                    ON DELETE RESTRICT,
+                CONSTRAINT models_pkey
+                    PRIMARY KEY (file_idtag, idtag),
+                CONSTRAINT models_idtag_key
+                    UNIQUE (idtag),
+                CONSTRAINT models_file_fk
+                    FOREIGN KEY (file_idtag)
+                    REFERENCES {quoted_schema_name}."Files"(idtag)
+                    ON DELETE CASCADE,
                 CONSTRAINT models_parent_model_fk
                     FOREIGN KEY (parent_model_idtag)
                     REFERENCES {quoted_schema_name}."Models"(idtag)
@@ -503,18 +703,35 @@ def create_veragrid_schema(settings: PostgreSqlConnectionSettings,
             )
             """
         )
+        add_column_if_not_exists(cursor, schema_name, "Models", "file_idtag", "TEXT")
         add_column_if_not_exists(cursor, schema_name, "Models", "idtag", "TEXT")
         add_column_if_not_exists(cursor, schema_name, "Models", "name", "TEXT")
-        add_column_if_not_exists(cursor, schema_name, "Models", "user", "TEXT")
         add_column_if_not_exists(cursor, schema_name, "Models", "parent_model_idtag", "TEXT")
+        cursor.execute(
+            f'ALTER TABLE {quoted_schema_name}."Models" ALTER COLUMN file_idtag SET NOT NULL'
+        )
         add_constraint_if_not_exists(
             cursor=cursor,
             schema_name=schema_name,
             table_name="Models",
-            constraint_name="models_user_fk",
+            constraint_name="models_file_idtag_idtag_key",
+            constraint_sql="UNIQUE (file_idtag, idtag)",
+        )
+        add_constraint_if_not_exists(
+            cursor=cursor,
+            schema_name=schema_name,
+            table_name="Models",
+            constraint_name="models_idtag_key",
+            constraint_sql="UNIQUE (idtag)",
+        )
+        add_constraint_if_not_exists(
+            cursor=cursor,
+            schema_name=schema_name,
+            table_name="Models",
+            constraint_name="models_file_fk",
             constraint_sql=(
-                f'FOREIGN KEY ("user") REFERENCES {quoted_schema_name}."Users"(idtag) '
-                f'ON DELETE RESTRICT'
+                f'FOREIGN KEY (file_idtag) REFERENCES {quoted_schema_name}."Files"(idtag) '
+                f'ON DELETE CASCADE'
             ),
         )
         add_constraint_if_not_exists(
