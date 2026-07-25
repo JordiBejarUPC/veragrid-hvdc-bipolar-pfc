@@ -11,11 +11,11 @@ import pytest
 
 
 TEST_DATA_DIR = Path(__file__).resolve().parents[1] / "data"
-SPEN_SHORT_CIRCUIT_GRID = TEST_DATA_DIR / "grids" / "SPEN_ShortCircuit_codex_export.dgs"
-SPEN_LOPA3_REFERENCE = TEST_DATA_DIR / "grids" / "json" / "spen_lopa3_short_circuit_veragrid_reference.json"
+SP_SHORT_CIRCUIT_GRID = TEST_DATA_DIR / "grids" / "shortcircuit_sp.dgs"
+SP_LOPA3_REFERENCE = TEST_DATA_DIR / "grids" / "json" / "sp_lopa3_short_circuit_veragrid_reference.json"
 
 
-def _spen_short_circuit_pf_options() -> PowerFlowOptions:
+def _sp_short_circuit_pf_options() -> PowerFlowOptions:
     return PowerFlowOptions(solver_type=SolverType.NR,
                             retry_with_other_methods=True,
                             control_q=False,
@@ -139,8 +139,8 @@ def _changed_wind_generator_blocks(grid: vge.MultiCircuit,
 
 
 @pytest.mark.slow
-def test_spen_top50_lopa3_short_circuit_json_sweep():
-    with SPEN_LOPA3_REFERENCE.open(encoding="utf-8") as fh:
+def test_sp_top50_lopa3_short_circuit_json_sweep():
+    with SP_LOPA3_REFERENCE.open(encoding="utf-8") as fh:
         reference = json.load(fh)
 
     bus_name = reference["metadata"]["bus"]
@@ -153,13 +153,13 @@ def test_spen_top50_lopa3_short_circuit_json_sweep():
     assert target_axis == [0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1]
     assert set(reference_data) == {f"{target:.1f}" for target in target_axis}
 
-    grid = vge.open_file(str(SPEN_SHORT_CIRCUIT_GRID),
+    grid = vge.open_file(str(SP_SHORT_CIRCUIT_GRID),
                          options=vge.FileOpenOptions(dgs_use_vsc_for_injections=True))
     bus_index = _find_bus_index(grid=grid, name=bus_name, vnom_kv=vnom_kv)
     fault_bus = grid.buses[bus_index]
     zbase_ohm = float(fault_bus.Vnom) * float(fault_bus.Vnom) / float(grid.Sbase)
 
-    pf_options = _spen_short_circuit_pf_options()
+    pf_options = _sp_short_circuit_pf_options()
     pf_results = vge.power_flow(grid=grid, options=pf_options)
 
     assert np.all(pf_results.converged)
@@ -239,9 +239,9 @@ def test_spen_top50_lopa3_short_circuit_json_sweep():
             )
 
 
-def test_spen_west():
+def test_sp_west():
 
-    grid = vge.open_file('data/grids/test_reduced_spen_v10.dgs',
+    grid = vge.open_file('data/grids/test_reduced_sp_v10.dgs',
                          options=vge.FileOpenOptions(dgs_use_vsc_for_injections=True))
 
     pf_options = PowerFlowOptions(control_taps_modules=False,
@@ -277,7 +277,7 @@ def test_spen_west():
     assert np.allclose(np.abs(res_pf.voltage[6]), BLKS0G, atol=1e-4)
 
 
-def test_spen_north():
+def test_sp_north():
 
     v_powerfactory = np.array([
         1.024555, 1.015524, 1.015895, 1.034784, 1.031238, 1.024810, 1.074590, 1.074605,
@@ -305,7 +305,7 @@ def test_spen_north():
     # ------------------------------------------------------------------------------------------------------------------
     #   AC/DC Power Flow under healthy conditions
     # ------------------------------------------------------------------------------------------------------------------
-    grid = vge.open_file('data/grids/SPTL_11_05.dgs',
+    grid = vge.open_file('data/grids/11_05_sp.dgs',
                          options=vge.FileOpenOptions(dgs_use_vsc_for_injections=True))
 
     pf_options = PowerFlowOptions(solver_type=SolverType.NR,
