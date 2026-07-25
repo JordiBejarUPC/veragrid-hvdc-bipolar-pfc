@@ -402,11 +402,6 @@ def create_model(settings: PostgreSqlConnectionSettings,
     with psycopg.connect(**connection_kwargs) as connection:
         cursor: CursorLike = connection.cursor()
         ensure_file_row_exists(cursor=cursor, schema_name=schema_name, file_idtag=file_idtag)
-        owner_idtag: str = get_file_owner_idtag(
-            cursor=cursor,
-            schema_name=schema_name,
-            file_idtag=file_idtag,
-        )
         can_create: bool = ensure_model_row_does_not_exist(
             cursor=cursor,
             schema_name=schema_name,
@@ -419,10 +414,10 @@ def create_model(settings: PostgreSqlConnectionSettings,
             )
             cursor.execute(
                 f'''
-                INSERT INTO {quoted_schema_name}."Models" (file_idtag, idtag, name, "user", parent_model_idtag)
-                VALUES (%s, %s, %s, %s, %s)
+                INSERT INTO {quoted_schema_name}."Models" (file_idtag, idtag, name, parent_model_idtag)
+                VALUES (%s, %s, %s, %s)
                 ''',
-                (file_idtag, resolved_model_idtag, model_name, owner_idtag, parent_model_idtag),
+                (file_idtag, resolved_model_idtag, model_name, parent_model_idtag),
             )
             connection.commit()
         else:
@@ -1098,10 +1093,10 @@ def put_multiverse_in_database(settings: PostgreSqlConnectionSettings,
 
             cursor.execute(
                 f'''
-                INSERT INTO {quoted_schema_name}."Models" (file_idtag, idtag, name, "user", parent_model_idtag)
-                VALUES (%s, %s, %s, %s, %s)
+                INSERT INTO {quoted_schema_name}."Models" (file_idtag, idtag, name, parent_model_idtag)
+                VALUES (%s, %s, %s, %s)
                 ''',
-                (file_idtag, model_idtag, model_name, user_idtag, parent_model_idtag),
+                (file_idtag, model_idtag, model_name, parent_model_idtag),
             )
 
         for node in nodes:

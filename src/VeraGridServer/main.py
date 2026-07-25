@@ -12,6 +12,7 @@ from VeraGridServer.endpoints import register_sub_servers
 from VeraGridServer.endpoints import calculations
 from VeraGridServer.endpoints import jobs
 from VeraGridServer.endpoints import admin
+from VeraGridServer.endpoints import file_management
 from VeraGridServer.db.database import create_veragrid_schema, log_database_operation
 from VeraGridServer.settings import settings
 from cryptography import x509
@@ -28,6 +29,7 @@ app.include_router(register_sub_servers.router)
 app.include_router(calculations.router)
 app.include_router(jobs.router)
 app.include_router(admin.router)
+app.include_router(file_management.router)
 
 # Store WebSocket connections in a set
 __connections__ = set()
