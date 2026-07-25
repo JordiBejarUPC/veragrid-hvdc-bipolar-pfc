@@ -141,6 +141,87 @@ def get_user(settings: PostgreSqlConnectionSettings,
         }
 
 
+def get_users_json(settings: PostgreSqlConnectionSettings,
+                   schema_name: str = "veragrid") -> list[Dict[str, str]]:
+    """
+    Read every user row as JSON-like dictionaries.
+
+    :param settings: PostgreSQL connection settings.
+    :param schema_name: Target schema name.
+    :return: Ordered user dictionaries.
+    """
+    connection_kwargs: Dict[str, Any] = build_connection_kwargs(settings=settings)
+    quoted_schema_name: str = quote_sql_identifier(schema_name)
+    users_json: list[Dict[str, str]] = list()
+
+    log_database_operation(
+        f"Connecting to database '{settings.database}' to read every user row."
+    )
+    with psycopg.connect(**connection_kwargs) as connection:
+        cursor: CursorLike = connection.cursor()
+        cursor.execute(
+            f'''
+            SELECT idtag, name, organization_idtag
+            FROM {quoted_schema_name}."Users"
+            ORDER BY organization_idtag, name, idtag
+            '''
+        )
+        rows: Any = cursor.fetchall()
+        cursor.close()
+
+    row: Any
+    for row in rows:
+        users_json.append(
+            {
+                "idtag": str(row[0]),
+                "name": str(row[1]),
+                "organization_idtag": str(row[2]),
+            }
+        )
+
+    return users_json
+
+
+def get_organizations_json(settings: PostgreSqlConnectionSettings,
+                           schema_name: str = "veragrid") -> list[Dict[str, str]]:
+    """
+    Read every organization row as JSON-like dictionaries.
+
+    :param settings: PostgreSQL connection settings.
+    :param schema_name: Target schema name.
+    :return: Ordered organization dictionaries.
+    """
+    connection_kwargs: Dict[str, Any] = build_connection_kwargs(settings=settings)
+    quoted_schema_name: str = quote_sql_identifier(schema_name)
+    organizations_json: list[Dict[str, str]] = list()
+
+    log_database_operation(
+        f"Connecting to database '{settings.database}' to read every organization row."
+    )
+    with psycopg.connect(**connection_kwargs) as connection:
+        cursor: CursorLike = connection.cursor()
+        cursor.execute(
+            f'''
+            SELECT idtag, name
+            FROM {quoted_schema_name}."Organization"
+            ORDER BY name, idtag
+            '''
+        )
+        rows: Any = cursor.fetchall()
+        cursor.close()
+
+    row: Any
+    for row in rows:
+        organizations_json.append(
+            {
+                "idtag": str(row[0]),
+                "name": str(row[1]),
+            }
+        )
+
+    return organizations_json
+
+
 def update_user(settings: PostgreSqlConnectionSettings,
                 user_idtag: str,
                 user_name: str,

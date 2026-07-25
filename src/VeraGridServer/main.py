@@ -5,12 +5,13 @@
 import os
 import hmac
 from fastapi import FastAPI, Header, HTTPException, Response, Query
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
 
 from VeraGridServer.endpoints import register_in_master
 from VeraGridServer.endpoints import register_sub_servers
 from VeraGridServer.endpoints import calculations
 from VeraGridServer.endpoints import jobs
+from VeraGridServer.endpoints import admin
 from VeraGridServer.db.database import create_veragrid_schema, log_database_operation
 from VeraGridServer.settings import settings
 from cryptography import x509
@@ -26,6 +27,7 @@ app.include_router(register_in_master.router)
 app.include_router(register_sub_servers.router)
 app.include_router(calculations.router)
 app.include_router(jobs.router)
+app.include_router(admin.router)
 
 # Store WebSocket connections in a set
 __connections__ = set()
@@ -82,7 +84,7 @@ async def read_root():
     Root
     :return: string
     """
-    return {"message": "VeraGrid server running", "status": "ok"}
+    return RedirectResponse(url="/admin", status_code=303)
 
 
 @app.get('/favicon.ico', include_in_schema=False)
