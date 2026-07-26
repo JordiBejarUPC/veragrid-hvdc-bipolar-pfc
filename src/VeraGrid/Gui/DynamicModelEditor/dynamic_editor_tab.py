@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import List, Optional
+from typing import List, Optional, Dict
 
 from PySide6 import QtWidgets
 from PySide6.QtCore import Signal
@@ -19,7 +19,7 @@ from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_breadcrumb import DynamicEdi
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_navigation import DynamicEditorNavigation
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
-from VeraGridEngine.enumerations import DynamicSimulationMode
+from VeraGridEngine.enumerations import DynamicSimulationMode, BlockType
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_models import clone_block_for_editing, copy_block_state
 
@@ -150,6 +150,7 @@ class DynamicEditorTab(QtWidgets.QWidget):
         self.current_theme = current_theme
         self._templates_list = templates_list if templates_list is not None else list()
         self._dynamic_editor_entry: DynamicEditorEntry | None = None
+        self._block2blocktype: Dict[int, BlockType] = dict()
 
         # ---- Document + Navigation ----
         document = DynamicEditorDocument(block)
@@ -221,7 +222,7 @@ class DynamicEditorTab(QtWidgets.QWidget):
         :param block: Child block to navigate into.
         :return: None.
         """
-        prepare_block_for_editing(block, self._var_factory)
+        block, self._block2blocktype = prepare_block_for_editing(block, self._var_factory)
         self._navigation.open_child(block)
         self._replace_editor()
 
@@ -278,6 +279,7 @@ class DynamicEditorTab(QtWidgets.QWidget):
             modal=False,
             workspace_embedded=True,
             document=self._navigation.document,
+            block2blocktype=self._block2blocktype
         )
         if self._editor is not None:
             self._editor.set_navigation_delegate(self)

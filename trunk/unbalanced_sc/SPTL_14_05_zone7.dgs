@@ -1,0 +1,538 @@
+********************************************************************************
+* Created with VeraGrid
+********************************************************************************
+
+$$General;ID(a:40);Descr(a:40);Val(a:40)
+********************************************************************************
+* ID: a:40: DGS field ID (a:40)
+* Descr: a:40: DGS field Descr (a:40)
+* Val: a:40: DGS field Val (a:40)
+********************************************************************************
+1;Version;5.0
+
+$$ElmGenstat;ID(a:40);loc_name(a:40);fold_id(p);bus1(p);outserv(i);sgn(r);cosn(r);ngnum(i);pgini(r);qgini(r);av_mode(a);mode_inp(a:6);ip_ctrl(i);cCategory(a:40);c_pmod(a:40);ddroop(r);usp_max(r);usp_min(r);usetp(r);cQ_min(r);cQ_max(r)
+********************************************************************************
+* ID: a:40: Unique identifier for DGS file
+* loc_name: a:40: Name
+* fold_id: p: In Folder
+* bus1: p: Connected Terminal Cubicle
+* outserv: i: Out of Service
+* sgn: r: Rated Apparent Power in MVA
+* cosn: r: Rated Power Factor
+* ngnum: i: Number of Parallel Units
+* pgini: r: Active Power Setpoint in MW
+* qgini: r: Reactive Power Setpoint in MVAr
+* av_mode: a: Active Power Control Mode
+* mode_inp: a:6: Dispatch: Input mode
+* ip_ctrl: i: Reference Machine Flag
+* cCategory: a:40: plant types
+* c_pmod: a:40: plant model
+* ddroop: r: Voltage droop value [%]
+* usp_max: r: Maximum voltage setpoint [pu]
+* usp_min: r: Minimum voltage setpoint [pu]
+* usetp: r: Specified voltage setpoint [pu]
+* cQ_min: r: Minimum reactive power to inject/absorb [MVAr]
+* cQ_max: r: Maximum reactive power to inject/absorb [MVAr]
+********************************************************************************
+37;EMH_BERW3-_H2;2;;0;100.0;0.0;1;0.0;0.0;;;0;;;0.0;0.0;0.0;0.0;0.0;0.0
+40;EMH_ECCL3-_H2;2;;0;100.0;0.0;1;0.0;0.0;;;0;;;0.0;0.0;0.0;0.0;0.0;0.0
+43;EMH_GALA3-_H2;2;;0;100.0;1.0;1;0.3;0.0;;;0;;;0.0;0.0;0.0;0.0;0.0;0.0
+46;EMO_BERW3-_N2;2;;0;100.0;1.0;1;0.3;0.0;;;0;;;0.0;0.0;0.0;0.0;0.0;0.0
+49;EMO_ECCL3-_N2;2;;0;100.0;1.0;1;0.1;0.0;;;0;;;0.0;0.0;0.0;0.0;0.0;0.0
+52;EMO_GALA3-_N2;2;;0;100.0;1.0;1;2.0;0.0;;;0;;;0.0;0.0;0.0;0.0;0.0;0.0
+55;EMS_BERW3-_S2;2;;0;100.0;0.0;1;0.0;0.0;;;0;;;0.0;0.0;0.0;0.0;0.0;0.0
+58;EMS_ECCL3-_S2;2;;0;100.0;0.0;1;0.0;0.0;;;0;;;0.0;0.0;0.0;0.0;0.0;0.0
+61;EMS_GALA3-_S2;2;;0;100.0;0.0;1;0.0;0.0;;;0;;;0.0;0.0;0.0;0.0;0.0;0.0
+64;EMP_BERW3-_P2;2;;0;100.0;1.0;1;0.0;0.0;;;0;stor;;0.0;0.0;0.0;0.0;0.0;0.0
+67;EMP_ECCL3-_P2;2;;0;100.0;1.0;1;0.0;0.0;;;0;stor;;0.0;0.0;0.0;0.0;0.0;0.0
+70;EMP_GALA3-_P2;2;;0;100.0;1.0;1;0.0;0.0;;;0;stor;;0.0;0.0;0.0;0.0;0.0;0.0
+
+$$ElmLne;ID(a:40);loc_name(a:40);fold_id(p);typ_id(p);dline(r);chr_name(a:20);fline(r);outserv(i);pStoch(p);for_name(a:50);GPScoords:SIZEROW(i);GPScoords:SIZECOL(i);nlnum(i);inAir(i)
+********************************************************************************
+* ID: a:40: Unique identifier for DGS file
+* loc_name: a:40: Name
+* fold_id: p: In Folder
+* typ_id: p: Type in TypLne
+* dline: r: Line Length in km
+* chr_name: a:20: Characteristic Name
+* fline: r: Derating factor
+* outserv: i: Out of Service
+* pStoch: p: Reference to Stochastic Model
+* for_name: a:50: Foreign Key
+* GPScoords:SIZEROW: i: Number of Stored GPS Coordinate Rows
+* GPScoords:SIZECOL: i: Number of Stored GPS Coordinate Columns
+* nlnum: i: Number of Parallel Line Systems
+* inAir: i: Installation Flag: In Air: Underground/Other
+********************************************************************************
+92;lne_BERW1Q_ECCL1-_1;2;91;21.54;;1.0;0;;;0;0;1;0
+97;lne_BERW1Q_ECCL1-_2;2;77;0.31;;1.0;0;;;0;0;1;0
+103;lne_BERW1R_ECCL1-_1;2;102;21.54;;1.0;0;;;0;0;1;0
+108;lne_BERW1R_ECCL1-_2;2;77;0.27;;1.0;0;;;0;0;1;0
+114;lne_ECCL1-_ECCL1A_1;2;113;4.19;;1.0;0;;;0;0;1;0
+120;lne_GALA1-_GALA1A_1;2;119;0.3;;1.0;0;;;0;0;1;0
+126;lne_GALA1A_ECCL1A_1;2;125;26.88;;1.0;0;;;0;0;1;0
+132;lne_ECCL1-_ECCL1B_1;2;131;4.19;;1.0;0;;;0;0;1;0
+138;lne_GALA1-_GALA1B_1;2;137;0.3;;1.0;0;;;0;0;1;0
+144;lne_GALA1B_ECCL1B_1;2;143;26.45;;1.0;0;;;0;0;1;0
+149;lne_BERW3-_ECCL3-_1;2;78;999.99;;1.0;0;;;0;0;1;0
+154;lne_ECCL3-_GALA3-_1;2;79;48.15;;1.0;0;;;0;0;1;0
+159;lne_GALA1-_HAWI1B_1;2;80;23.55;;1.0;0;;;0;0;1;0
+164;lne_GALA3-_LOPA3-_1;2;81;10.0;;1.0;0;;;0;0;1;0
+
+$$ElmLod;ID(a:40);loc_name(a:40);fold_id(p);typ_id(p);chr_name(a:20);plini(r);qlini(r);scale0(r);outserv(i);for_name(a:50);mode_inp(a:3);slini(r);coslini(r);pf_recap(i);i_scale(i);classif(a:20)
+********************************************************************************
+* ID: a:40: DGS field ID (a:40)
+* loc_name: a:40: DGS field loc_name (a:40)
+* fold_id: p: DGS field fold_id (p)
+* typ_id: p: DGS field typ_id (p)
+* chr_name: a:20: DGS field chr_name (a:20)
+* plini: r: DGS field plini (r)
+* qlini: r: DGS field qlini (r)
+* scale0: r: DGS field scale0 (r)
+* outserv: i: DGS field outserv (i)
+* for_name: a:50: DGS field for_name (a:50)
+* mode_inp: a:3: DGS field mode_inp (a:3)
+* slini: r: DGS field slini (r)
+* coslini: r: DGS field coslini (r)
+* pf_recap: i: DGS field pf_recap (i)
+* i_scale: i: DGS field i_scale (i)
+* classif: a:20: DGS field classif (a:20)
+********************************************************************************
+22;lod_BERW3-_1;2;3;;23.083;-3.247;1.0;0;;DEF;23.310253065979353;0.9902509395613974;0;1;
+25;lod_ECCL3-_1;2;3;;19.499;-2.735;1.0;0;;DEF;19.689876231200643;0.9903058694245025;0;1;
+28;lod_GALA3-_1;2;3;;28.415;1.072;1.0;0;;DEF;28.435214242203273;0.999289112365003;0;1;
+31;lod_MARM0J_1;2;3;;1.3675;0.8545;1.0;0;;DEF;1.6125217827986076;0.8480505594328401;0;1;
+34;lod_MARM0K_1;2;3;;1.3675;0.8545;1.0;0;;DEF;1.6125217827986076;0.8480505594328401;0;1;
+
+$$ElmNet;ID(a:40);loc_name(a:40);fold_id(p);frnom(r);for_name(a:50);pDiagram(p)
+********************************************************************************
+* ID: a:40: DGS field ID (a:40)
+* loc_name: a:40: DGS field loc_name (a:40)
+* fold_id: p: DGS field fold_id (p)
+* frnom: r: Nominal Frequency in Hz
+* for_name: a:50: DGS field for_name (a:50)
+* pDiagram: p: Diagram in IntGrfnet
+********************************************************************************
+2;Base Scenario;;50.0;;
+
+$$ElmSym;ID(a:40);loc_name(a:40);fold_id(p);typ_id(p);ngnum(i);i_mot(i);chr_name(a:20);outserv(i);pgini(r);qgini(r);usetp(r);iv_mode(i);q_min(r);q_max(r);Pmin_uc(r);Pmax_uc(r);iqtype(i);for_name(a:50);cCategory(a);cosgini(r);pf_recap(i);av_mode(a);phtech(i);ip_ctrl(i);c_pmod(a:40)
+********************************************************************************
+* ID: a:40: Unique identifier for DGS file
+* loc_name: a:40: Name
+* fold_id: p: In Folder
+* typ_id: p: Type in TypSym
+* ngnum: i: Number of Parallel Machines
+* i_mot: i: Operating Mode: Generator:Motor
+* chr_name: a:20: Characteristic Name
+* outserv: i: Out of Service
+* pgini: r: Active Power Setpoint in MW
+* qgini: r: Reactive Power Setpoint in MVAr
+* usetp: r: Voltage Setpoint in p.u.
+* iv_mode: i: Voltage Control Mode Code
+* q_min: r: Minimum Reactive Power Limit in MVAr
+* q_max: r: Maximum Reactive Power Limit in MVAr
+* Pmin_uc: r: Minimum Active Power Limit in MW
+* Pmax_uc: r: Maximum Active Power Limit in MW
+* iqtype: i: Reactive Power Capability Mode Code
+* for_name: a:50: Foreign Key
+* cCategory: a: Generator Category
+* cosgini: r: Initial Power Factor
+* pf_recap: i: Power Factor Sign: Overexcited:Underexcited
+* av_mode: a: Active Power Control Mode
+* phtech: i: Phase Technology Code
+* ip_ctrl: i: Reference machine
+* c_pmod: a:40: plant model
+********************************************************************************
+74;External Grid;2;73;1;0;;0;0.0;0.0;1.0;0;-99.99;99.99;0.0;9999.0;0;;;0.0;0;constv;0;0;
+
+$$ElmTerm;ID(a:40);loc_name(a:40);fold_id(p);typ_id(p);iUsage(i);uknom(r);chr_name(a:20);outserv(i);cpZone(p);phtech(i);for_name(a:50);systype(i);unknom(r);iminus(i);GPSlat(r);GPSlon(r);vtarget(r);m:u(r);m:phiu(r)
+********************************************************************************
+* ID: a:40: Unique identifier for DGS file
+* loc_name: a:40: Name
+* fold_id: p: In Folder
+* typ_id: p: Type in TypBar
+* iUsage: i: Usage: Busbar:Junction Node:Internal Node
+* uknom: r: Nominal Voltage Line-Line in kV
+* chr_name: a:20: Characteristic Name
+* outserv: i: Out of Service
+* cpZone: p: Zone in ElmZone
+* phtech: i: Phase Technology Code
+* for_name: a:50: Foreign Key
+* systype: i: System Type: AC:DC:AC/BI
+* unknom: r: Nominal Voltage Line-Ground in kV
+* iminus: i: DC Polarity: Positive:Negative:Neutral
+* GPSlat: r: Latitude / Northing in deg
+* GPSlon: r: Longitude / Easting in deg
+* vtarget: r: Voltage Control Target in p.u.
+* m:u: r: Measured Voltage Magnitude in p.u.
+* m:phiu: r: Measured Voltage Angle in deg
+********************************************************************************
+4;BERW1Q;;;0;132.0;;0;;0;;0;76.2102355330306;0;0.0;0.0;1.0;0.0;0.0
+5;BERW1R;;;0;132.0;;0;;0;;0;76.2102355330306;0;0.0;0.0;1.0;0.0;0.0
+6;BERW3-;;;0;33.0;;0;;0;;0;19.05255888325765;0;0.0;0.0;1.0;0.0;0.0
+7;ECCL1-;;;0;132.0;;0;;0;;0;76.2102355330306;0;0.0;0.0;1.0;0.0;0.0
+8;ECCL3-;;;0;33.0;;0;;0;;0;19.05255888325765;0;0.0;0.0;1.0;0.0;0.0
+9;GALA1-;;;0;132.0;;0;;0;;0;76.2102355330306;0;0.0;0.0;1.0;0.0;0.0
+10;GALA3-;;;0;33.0;;0;;0;;0;19.05255888325765;0;0.0;0.0;1.0;0.0;0.0
+11;HAWI1B;;;0;132.0;;0;;0;;0;76.2102355330306;0;0.0;0.0;1.0;0.0;0.0
+12;LOPA0G;;;0;0.69;;0;;0;;0;0.39837168574084175;0;0.0;0.0;1.0;0.0;0.0
+13;LOPA3-;;;0;33.0;;0;;0;;0;19.05255888325765;0;0.0;0.0;1.0;0.0;0.0
+14;MARM0J;;;0;25.0;;0;;0;;0;14.433756729740645;0;0.0;0.0;1.0;0.0;0.0
+15;MARM0K;;;0;25.0;;0;;0;;0;14.433756729740645;0;0.0;0.0;1.0;0.0;0.0
+16;BL001;;;0;132.0;;0;;0;;0;76.2102355330306;0;0.0;0.0;1.0;0.0;0.0
+17;BL001;;;0;132.0;;0;;0;;0;76.2102355330306;0;0.0;0.0;1.0;0.0;0.0
+18;ECCL1A;;;0;132.0;;0;;0;;0;76.2102355330306;0;0.0;0.0;1.0;0.0;0.0
+19;GALA1A;;;0;132.0;;0;;0;;0;76.2102355330306;0;0.0;0.0;1.0;0.0;0.0
+20;ECCL1B;;;0;132.0;;0;;0;;0;76.2102355330306;0;0.0;0.0;1.0;0.0;0.0
+21;GALA1B;;;0;132.0;;0;;0;;0;76.2102355330306;0;0.0;0.0;1.0;0.0;0.0
+
+$$ElmTr2;ID(a:40);loc_name(a:40);fold_id(p);typ_id(p);outserv(i);nntap(i);sernum(a:20);constr(i);chr_name(a:20);cgnd_h(i);cgnd_l(i);i_auto(i);ntrcn(i);ratfac(r);for_name(a:50);ntnum(i);usetp(r);usp_low(r);usp_up(r);t2ldc(i);mTaps_SIZEROW(i);mTaps_SIZECOL(i)
+********************************************************************************
+* ID: a:40: Unique identifier for DGS file
+* loc_name: a:40: Name
+* fold_id: p: In Folder
+* typ_id: p: Type in TypTr2
+* outserv: i: Out of Service
+* nntap: i: Tap Changer 1: Tap Position
+* sernum: a:20: Serial Number (a:20)
+* constr: i: Year of Construction
+* chr_name: a:20: Characteristic Name
+* cgnd_h: i: Internal Grounding Impedance, HV Side: Star Point:Connected:Not connected
+* cgnd_l: i: Internal Grounding Impedance, LV Side: Star Point:Connected:Not connected
+* i_auto: i: Auto Transformer
+* ntrcn: i: Controller, Tap Changer 1: Automatic Tap Changing
+* ratfac: r: Rating Factor
+* for_name: a:50: Foreign Key
+* ntnum: i: Number of Parallel Transformers
+* usetp: r: Voltage Setpoint in p.u.
+* usp_low: r: Lower Voltage Band in p.u.
+* usp_up: r: Upper Voltage Band in p.u.
+* t2ldc: i: Line Drop Compensation Enabled
+* mTaps_SIZEROW: i: Number of Stored Tap Table Rows
+* mTaps_SIZECOL: i: Number of Stored Tap Table Columns
+********************************************************************************
+170;trf_BERW1Q_BERW3-_1;2;169;0;0;;0;;0;0;0;1;1;;1;1.01;0.99;1.01;0;0;0
+176;trf_BERW1Q_MARM0J_1;2;175;0;0;;0;;0;0;0;0;1;;1;1.0;0.99;1.01;0;0;0
+182;trf_BERW1R_BERW3-_1;2;181;0;0;;0;;0;0;0;1;1;;1;1.01;0.99;1.01;0;0;0
+188;trf_BERW1R_MARM0K_1;2;187;0;0;;0;;0;0;0;0;1;;1;1.0;0.99;1.01;0;0;0
+194;trf_ECCL1-_ECCL3-_1;2;193;0;0;;0;;0;0;0;1;1;;1;1.01;0.99;1.01;0;0;0
+200;trf_ECCL1-_ECCL3-_2;2;199;0;0;;0;;0;0;0;1;1;;1;1.01;0.99;1.01;0;0;0
+206;trf_GALA1-_GALA3-_1;2;205;0;0;;0;;0;0;0;1;1;;1;1.01;0.99;1.01;0;0;0
+212;trf_GALA1-_GALA3-_2;2;211;0;0;;0;;0;0;0;1;1;;1;1.01;0.99;1.01;0;0;0
+218;trf_LOPA3-_LOPA0G_1;2;217;0;0;;0;;0;0;0;0;1;;1;1.0;0.99;1.01;0;0;0
+
+$$General;ID(a:40);Descr(a:40);Val(a:40)
+********************************************************************************
+* ID: a:40: DGS field ID (a:40)
+* Descr: a:40: DGS field Descr (a:40)
+* Val: a:40: DGS field Val (a:40)
+********************************************************************************
+1;Version;5.0
+
+$$StaCubic;ID(a:40);loc_name(a:40);fold_id(p);chr_name(a:20);obj_bus(i);obj_id(p);for_name(a:50);it2p1(i);it2p2(i);it2p3(i)
+********************************************************************************
+* ID: a:40: Unique identifier for DGS file
+* loc_name: a:40: Name
+* fold_id: p: In Folder
+* chr_name: a:20: Characteristic Name
+* obj_bus: i: Bus Terminal Index within the Connected Device
+* obj_id: p: Connected PowerFactory Object
+* for_name: a:50: Foreign Key
+* it2p1: i: Phase-to-Phase Connection Flag 1
+* it2p2: i: Phase-to-Phase Connection Flag 2
+* it2p3: i: Phase-to-Phase Connection Flag 3
+********************************************************************************
+23;StaCubic_23;6;;0;22;;0;1;2
+26;StaCubic_26;8;;0;25;;0;1;2
+29;StaCubic_29;10;;0;28;;0;1;2
+32;StaCubic_32;14;;0;31;;0;1;2
+35;StaCubic_35;15;;0;34;;0;1;2
+38;StaCubic_38;6;;0;37;;0;1;2
+41;StaCubic_41;8;;0;40;;0;1;2
+44;StaCubic_44;10;;0;43;;0;1;2
+47;StaCubic_47;6;;0;46;;0;1;2
+50;StaCubic_50;8;;0;49;;0;1;2
+53;StaCubic_53;10;;0;52;;0;1;2
+56;StaCubic_56;6;;0;55;;0;1;2
+59;StaCubic_59;8;;0;58;;0;1;2
+62;StaCubic_62;10;;0;61;;0;1;2
+65;StaCubic_65;6;;0;64;;0;1;2
+68;StaCubic_68;8;;0;67;;0;1;2
+71;StaCubic_71;10;;0;70;;0;1;2
+75;StaCubic_75;7;;0;74;;0;1;2
+93;StaCubic_93;4;;0;92;;0;1;2
+95;StaCubic_95;16;;1;92;;0;1;2
+98;StaCubic_98;16;;0;97;;0;1;2
+100;StaCubic_100;7;;1;97;;0;1;2
+104;StaCubic_104;5;;0;103;;0;1;2
+106;StaCubic_106;17;;1;103;;0;1;2
+109;StaCubic_109;17;;0;108;;0;1;2
+111;StaCubic_111;7;;1;108;;0;1;2
+115;StaCubic_115;18;;0;114;;0;1;2
+117;StaCubic_117;7;;1;114;;0;1;2
+121;StaCubic_121;9;;0;120;;0;1;2
+123;StaCubic_123;19;;1;120;;0;1;2
+127;StaCubic_127;19;;0;126;;0;1;2
+129;StaCubic_129;18;;1;126;;0;1;2
+133;StaCubic_133;20;;0;132;;0;1;2
+135;StaCubic_135;7;;1;132;;0;1;2
+139;StaCubic_139;9;;0;138;;0;1;2
+141;StaCubic_141;21;;1;138;;0;1;2
+145;StaCubic_145;21;;0;144;;0;1;2
+147;StaCubic_147;20;;1;144;;0;1;2
+150;StaCubic_150;6;;0;149;;0;1;2
+152;StaCubic_152;8;;1;149;;0;1;2
+155;StaCubic_155;8;;0;154;;0;1;2
+157;StaCubic_157;10;;1;154;;0;1;2
+160;StaCubic_160;9;;0;159;;0;1;2
+162;StaCubic_162;11;;1;159;;0;1;2
+165;StaCubic_165;10;;0;164;;0;1;2
+167;StaCubic_167;13;;1;164;;0;1;2
+171;StaCubic_171;4;;0;170;;0;1;2
+173;StaCubic_173;6;;1;170;;0;1;2
+177;StaCubic_177;4;;0;176;;0;1;2
+179;StaCubic_179;14;;1;176;;0;1;2
+183;StaCubic_183;5;;0;182;;0;1;2
+185;StaCubic_185;6;;1;182;;0;1;2
+189;StaCubic_189;5;;0;188;;0;1;2
+191;StaCubic_191;15;;1;188;;0;1;2
+195;StaCubic_195;7;;0;194;;0;1;2
+197;StaCubic_197;8;;1;194;;0;1;2
+201;StaCubic_201;7;;0;200;;0;1;2
+203;StaCubic_203;8;;1;200;;0;1;2
+207;StaCubic_207;9;;0;206;;0;1;2
+209;StaCubic_209;10;;1;206;;0;1;2
+213;StaCubic_213;9;;0;212;;0;1;2
+215;StaCubic_215;10;;1;212;;0;1;2
+219;StaCubic_219;13;;0;218;;0;1;2
+221;StaCubic_221;12;;1;218;;0;1;2
+
+$$StaSwitch;ID(a:40);loc_name(a:40);fold_id(p);on_off(i);typ_id(p);iUse(i);for_name(a:50);aUsage(a)
+********************************************************************************
+* ID: a:40: Unique identifier for DGS file
+* loc_name: a:40: Name
+* fold_id: p: In Folder
+* on_off: i: Switch Position: Open:Closed
+* typ_id: p: Type in TypSwitch
+* iUse: i: Switch Use Code
+* for_name: a:50: Foreign Key
+* aUsage: a: Switch Usage String
+********************************************************************************
+24;StaSwitch_24;23;1;;0;;cbk
+27;StaSwitch_27;26;1;;0;;cbk
+30;StaSwitch_30;29;1;;0;;cbk
+33;StaSwitch_33;32;1;;0;;cbk
+36;StaSwitch_36;35;1;;0;;cbk
+39;StaSwitch_39;38;1;;0;;cbk
+42;StaSwitch_42;41;1;;0;;cbk
+45;StaSwitch_45;44;1;;0;;cbk
+48;StaSwitch_48;47;1;;0;;cbk
+51;StaSwitch_51;50;1;;0;;cbk
+54;StaSwitch_54;53;1;;0;;cbk
+57;StaSwitch_57;56;1;;0;;cbk
+60;StaSwitch_60;59;1;;0;;cbk
+63;StaSwitch_63;62;1;;0;;cbk
+66;StaSwitch_66;65;1;;0;;cbk
+69;StaSwitch_69;68;1;;0;;cbk
+72;StaSwitch_72;71;1;;0;;cbk
+76;StaSwitch_76;75;1;;0;;cbk
+94;StaSwitch_94;93;1;;0;;cbk
+96;StaSwitch_96;95;1;;0;;cbk
+99;StaSwitch_99;98;1;;0;;cbk
+101;StaSwitch_101;100;1;;0;;cbk
+105;StaSwitch_105;104;1;;0;;cbk
+107;StaSwitch_107;106;1;;0;;cbk
+110;StaSwitch_110;109;1;;0;;cbk
+112;StaSwitch_112;111;1;;0;;cbk
+116;StaSwitch_116;115;1;;0;;cbk
+118;StaSwitch_118;117;1;;0;;cbk
+122;StaSwitch_122;121;1;;0;;cbk
+124;StaSwitch_124;123;1;;0;;cbk
+128;StaSwitch_128;127;1;;0;;cbk
+130;StaSwitch_130;129;1;;0;;cbk
+134;StaSwitch_134;133;1;;0;;cbk
+136;StaSwitch_136;135;1;;0;;cbk
+140;StaSwitch_140;139;1;;0;;cbk
+142;StaSwitch_142;141;1;;0;;cbk
+146;StaSwitch_146;145;1;;0;;cbk
+148;StaSwitch_148;147;1;;0;;cbk
+151;StaSwitch_151;150;1;;0;;cbk
+153;StaSwitch_153;152;1;;0;;cbk
+156;StaSwitch_156;155;1;;0;;cbk
+158;StaSwitch_158;157;1;;0;;cbk
+161;StaSwitch_161;160;1;;0;;cbk
+163;StaSwitch_163;162;1;;0;;cbk
+166;StaSwitch_166;165;1;;0;;cbk
+168;StaSwitch_168;167;1;;0;;cbk
+172;StaSwitch_172;171;1;;0;;cbk
+174;StaSwitch_174;173;1;;0;;cbk
+178;StaSwitch_178;177;1;;0;;cbk
+180;StaSwitch_180;179;1;;0;;cbk
+184;StaSwitch_184;183;1;;0;;cbk
+186;StaSwitch_186;185;1;;0;;cbk
+190;StaSwitch_190;189;1;;0;;cbk
+192;StaSwitch_192;191;1;;0;;cbk
+196;StaSwitch_196;195;1;;0;;cbk
+198;StaSwitch_198;197;1;;0;;cbk
+202;StaSwitch_202;201;1;;0;;cbk
+204;StaSwitch_204;203;1;;0;;cbk
+208;StaSwitch_208;207;1;;0;;cbk
+210;StaSwitch_210;209;1;;0;;cbk
+214;StaSwitch_214;213;1;;0;;cbk
+216;StaSwitch_216;215;1;;0;;cbk
+220;StaSwitch_220;219;1;;0;;cbk
+222;StaSwitch_222;221;1;;0;;cbk
+
+$$TypLne;ID(a:40);loc_name(a:40);fold_id(p);uline(r);sline(r);aohl_(a:3);rline(r);xline(r);cline(r);rline0(r);xline0(r);cline0(r);rtemp(r);Ithr(r);chr_name(a:20);nlnph(i);nneutral(i);for_name(a:50);InomAir(r);cohl_(i);tmax(r);systp(i);frnom(r);mlei(a:2);bline(r);bline0(r)
+********************************************************************************
+* ID: a:40: Unique identifier for DGS file
+* loc_name: a:40: Name
+* fold_id: p: In Folder
+* uline: r: Rated Voltage in kV
+* sline: r: Rated Apparent Power in MVA
+* aohl_: a:3: Installation Type: OHL:CAB
+* rline: r: Positive-Sequence Resistance in Ohm/km
+* xline: r: Positive-Sequence Reactance in Ohm/km
+* cline: r: Positive-Sequence Capacitance in uF/km
+* rline0: r: Zero-Sequence Resistance in Ohm/km
+* xline0: r: Zero-Sequence Reactance in Ohm/km
+* cline0: r: Zero-Sequence Capacitance in uF/km
+* rtemp: r: Reference Temperature in degC
+* Ithr: r: Thermal Current Rating in kA
+* chr_name: a:20: Characteristic Name
+* nlnph: i: Phases:1:2:3
+* nneutral: i: Number of Neutral Conductors
+* for_name: a:50: Foreign Key
+* InomAir: r: Continuous Current Rating in Air in kA
+* cohl_: i: Conductor Arrangement Code
+* tmax: r: Maximum Conductor Temperature in degC
+* systp: i: System Type Code
+* frnom: r: Nominal Frequency in Hz
+* mlei: a:2: Line Model Type Code
+* bline: r: Positive-Sequence Susceptance in uS/km
+* bline0: r: Zero-Sequence Susceptance in uS/km
+********************************************************************************
+77;1000 mm2 132kV XLPE Al/Al Flat 200;2;132.0;1.0;cab;0.031724;0.169261;0.0;0.179012;1.566944;0.0;20.0;0.0;;3;0;;1.0;0;80.0;0;0.0;;80.02013;80.02013
+78;tlne_BERW3-_ECCL3-_1;2;33.0;0.419891;cab;0.005211;0.005838;0.0;0.008115;0.019848;0.0;20.0;0.0;;3;0;;0.419891;0;80.0;0;0.0;;0.0;0.0
+79;tlne_ECCL3-_GALA3-_1;2;33.0;0.239688;cab;0.197221;0.313571;0.0;0.890949;1.53151;0.0;20.0;0.0;;3;0;;0.239688;0;80.0;0;0.0;;0.820056;0.820057
+80;tlne_GALA1-_HAWI1B_1;2;132.0;0.57735;cab;0.089598;0.198582;0.0;0.171207;0.494309;0.0;20.0;0.0;;3;0;;0.57735;0;80.0;0;0.0;;18.4483;18.4483
+81;tlne_GALA3-_LOPA3-_1;2;33.0;1.74955;cab;0.039999;0.104;0.0;0.039999;0.104;0.0;20.0;0.0;;3;0;;1.74955;0;80.0;0;0.0;;102.847;102.847
+91;lne_BERW1Q_ECCL1-_1_type;2;132.0;0.73;cab;0.1306377411046435;0.4040888185892897;0.0;0.32075256501857785;1.006010682132509;0.0;20.0;0.0;;3;0;;0.73;0;80.0;0;0.0;;2.865113565010049;1.7812051790394126
+102;lne_BERW1R_ECCL1-_1_type;2;132.0;0.73;cab;0.1306377411046435;0.4040888185892897;0.0;0.32075256501857785;1.006010682132509;0.0;20.0;0.0;;3;0;;0.73;0;80.0;0;0.0;;2.865113565010049;1.7812051790394126
+113;lne_ECCL1-_ECCL1A_1_type;2;132.0;0.58;cab;0.1582377411046435;0.40149165691296157;0.0;0.34835256501857775;1.003413520456181;0.0;20.0;0.0;;3;0;;0.58;0;80.0;0;0.0;;2.8518238481807345;1.775731217386336
+119;lne_GALA1-_GALA1A_1_type;2;132.0;0.58;cab;0.15787958441384553;0.356576021106289;0.0;0.3660071197892346;1.0505672577539622;0.0;20.0;0.0;;3;0;;0.58;0;80.0;0;0.0;;3.215967520355404;1.6598311088369548
+125;lne_GALA1A_ECCL1A_1_type;2;132.0;0.58;cab;0.15788476539464338;0.41039589238949475;0.0;0.3659967578276391;0.9429275151875504;0.0;20.0;0.0;;3;0;;0.58;0;80.0;0;0.0;;2.7864399510668973;1.8457189739413649
+131;lne_ECCL1-_ECCL1B_1_type;2;132.0;0.58;cab;0.1582377411046435;0.40149165691296157;0.0;0.34835256501857775;1.003413520456181;0.0;20.0;0.0;;3;0;;0.58;0;80.0;0;0.0;;2.8518238481807345;1.775731217386336
+137;lne_GALA1-_GALA1B_1_type;2;132.0;0.58;cab;0.15787958441384553;0.356576021106289;0.0;0.3660071197892346;1.0505672577539622;0.0;20.0;0.0;;3;0;;0.58;0;80.0;0;0.0;;3.2159675203554037;1.6598311088369546
+143;lne_GALA1B_ECCL1B_1_type;2;132.0;0.58;cab;0.1582377411046435;0.40149165691296157;0.0;0.34835256501857786;1.003413520456181;0.0;20.0;0.0;;3;0;;0.58;0;80.0;0;0.0;;2.8489722377461497;1.6592775714360257
+
+$$TypLod;ID(a:40);loc_name(a:40);fold_id(p);kpu(r);kqu(r);systp(i);phtech(i);for_name(a:50);aP(r);bP(r);kpu0(r);kpu1(r);aQ(r);bQ(r);kqu0(r);kqu1(r)
+********************************************************************************
+* ID: a:40: DGS field ID (a:40)
+* loc_name: a:40: DGS field loc_name (a:40)
+* fold_id: p: DGS field fold_id (p)
+* kpu: r: DGS field kpu (r)
+* kqu: r: DGS field kqu (r)
+* systp: i: DGS field systp (i)
+* phtech: i: DGS field phtech (i)
+* for_name: a:50: DGS field for_name (a:50)
+* aP: r: DGS field aP (r)
+* bP: r: DGS field bP (r)
+* kpu0: r: DGS field kpu0 (r)
+* kpu1: r: DGS field kpu1 (r)
+* aQ: r: DGS field aQ (r)
+* bQ: r: DGS field bQ (r)
+* kqu0: r: DGS field kqu0 (r)
+* kqu1: r: DGS field kqu1 (r)
+********************************************************************************
+3;Default Load Type;2;2.0;2.0;0;0;;1.0;0.0;0.0;1.0;1.0;0.0;0.0;1.0
+
+$$TypSym;ID(a:40);loc_name(a:40);fold_id(p);sgn(r);ugn(r);cosn(r);xd(r);xq(r);xdsss(r);rstr(r);xdsat(r);satur(i);Q_min(r);Q_max(r);q_min(r);q_max(r);for_name(a:50);nphase(i);nslty(i);x0sy(r);r0sy(r);x2sy(r);r2sy(r);iopt_data(i);xds(r);xqs(r);xl(r);xdss(r);xqss(r);xrlq(r);tds(r);tqs(r);tdss(r);tqss(r)
+********************************************************************************
+* ID: a:40: Unique identifier for DGS file
+* loc_name: a:40: Name
+* fold_id: p: In Folder
+* sgn: r: Rated Apparent Power in MVA
+* ugn: r: Rated voltage in kV
+* cosn: r: Rated Power Factor
+* xd: r: Synchronous d-Axis Reactance in p.u.
+* xq: r: Synchronous q-Axis Reactance in p.u.
+* xdsss: r: Subtransient d-Axis Reactance in p.u.
+* rstr: r: Stator Resistance in p.u.
+* xdsat: r: Saturated d-Axis Reactance in p.u.
+* satur: i: Magnetic Saturation Enabled
+* Q_min: r: Minimum Reactive Power Capability in MVAr
+* Q_max: r: Maximum Reactive Power Capability in MVAr
+* q_min: r: Minimum Reactive Power Limit in MVAr
+* q_max: r: Maximum Reactive Power Limit in MVAr
+* for_name: a:50: Foreign Key
+* nphase: i: Number of Phases
+* nslty: i: Neutral Grounding Type Code
+* x0sy: r: Zero-Sequence Reactance in p.u.
+* r0sy: r: Zero-Sequence Resistance in p.u.
+* x2sy: r: Negative-Sequence Reactance in p.u.
+* r2sy: r: Negative-Sequence Resistance in p.u.
+* iopt_data: i: Machine Data Option Code
+* xds: r: Transient d-Axis Reactance in p.u.
+* xqs: r: Transient q-Axis Reactance in p.u.
+* xl: r: Leakage Reactance in p.u.
+* xdss: r: Subtransient d-Axis Reactance in p.u.
+* xqss: r: Subtransient q-Axis Reactance in p.u.
+* xrlq: r: q-Axis Damper Leakage Reactance in p.u.
+* tds: r: Transient Open-Circuit Time Constant Tdo' in s
+* tqs: r: Transient Open-Circuit Time Constant Tqo' in s
+* tdss: r: Subtransient Open-Circuit Time Constant Tdo'' in s
+* tqss: r: Subtransient Open-Circuit Time Constant Tqo'' in s
+********************************************************************************
+73;External Grid;2;9999.0;132.0;0.8;0.0;0.0;0.0;0.0;0.0;0;0.0;0.0;0.0;0.0;;3;0;0.0;0.0;0.0;0.0;0;0.0;0.0;0.0;0.0;0.0;0.0;0.0;0.0;0.0;0.0
+
+$$TypTr2;ID(a:40);loc_name(a:40);fold_id(p);strn(r);frnom(r);utrn_h(r);utrn_l(r);uktr(r);pcutr(r);uk0tr(r);ur0tr(r);tr2cn_h(a:2);tr2cn_l(a:2);nt2ag(r);curmg(r);pfe(r);zx0hl_n(r);tap_side(i);dutap(r);phitr(r);nntap0(i);ntpmn(i);ntpmx(i);manuf(a:20);chr_name(a:20);for_name(a:50);nt2ph(i);itapch(i)
+********************************************************************************
+* ID: a:40: Unique identifier for DGS file
+* loc_name: a:40: Name
+* fold_id: p: In Folder
+* strn: r: Rated Power in MVA
+* frnom: r: Nominal Frequency in Hz
+* utrn_h: r: Rated Voltage: HV-Side in kV
+* utrn_l: r: Rated Voltage: LV-Side in kV
+* uktr: r: Positive Sequence Impedance: Short-Circuit Voltage uk in %
+* pcutr: r: Positive Sequence Impedance: Copper Losses in kW
+* uk0tr: r: Zero Sequence Impedance: Short-Circuit Voltage uk0 in %
+* ur0tr: r: Zero Sequence Impedance: SHC-Voltage (Re(uk0)) uk0r in %
+* tr2cn_h: a:2: Vector Group: HV-Side:Y :YN:Z :ZN:D
+* tr2cn_l: a:2: Vector Group: LV-Side:Y :YN:Z :ZN:D
+* nt2ag: r: Vector Group: Phase Shift in *30deg
+* curmg: r: Magnetizing Impedance: No Load Current in %
+* pfe: r: Magnetizing Impedance: No Load Losses in kW
+* zx0hl_n: r: Zero Sequence Magnetizing Impedance: Mag. Impedance/uk0
+* tap_side: i: Tap Changer 1: at Side:HV:LV
+* dutap: r: Additional Voltage per Tap in %
+* phitr: r: Phase of du in deg
+* nntap0: i: Neutral Position
+* ntpmn: i: Minimum Position
+* ntpmx: i: Maximum Position
+* manuf: a:20: Manufacturer
+* chr_name: a:20: Characteristic Name
+* for_name: a:50: Foreign Key
+* nt2ph: i: Number of Phases
+* itapch: i: Tap Changer Type Code
+********************************************************************************
+82;Type_BERW_GRIDT1 (132/33kV);2;60.0;0.0;132.0;33.0;15.89;348.59;0.0;0.0;YN;D;0.0;0.032;18.21;0.0;0;0.0;0.0;0;0;0;;;;3;0
+83;Type_BERW_GRIDT2 (132/33kV);2;60.0;0.0;132.0;33.0;15.94;284.83;0.0;0.0;YN;D;0.0;0.0353;20.281;0.0;0;0.0;0.0;0;0;0;;;;3;0
+84;Type_ECCL_GRIDT1 (132/33kV);2;60.0;0.0;132.0;33.0;16.142;379.44;0.0;0.0;YN;D;0.0;0.0;0.0;0.0;0;0.0;0.0;0;0;0;;;;3;0
+85;Type_ECCL_GRIDT2 (132/33kV);2;60.0;0.0;132.0;33.0;16.051;374.4;0.0;0.0;YN;D;0.0;0.0;0.0;0.0;0;0.0;0.0;0;0;0;;;;3;0
+86;ttrf_GALA1-_GALA3-_GT1(Test.Cert.);2;90.0;0.0;132.0;33.0;23.34;349.222;0.0;0.0;YN;D;0.0;0.04;26.464;0.0;0;0.0;0.0;0;0;0;;;;3;0
+87;ttrf_GALA1-_GALA3-_GT2(Test.Cert.);2;90.0;0.0;132.0;33.0;23.95;360.6;0.0;0.0;YN;D;0.0;0.025;18.22;0.0;0;0.0;0.0;0;0;0;;;;3;0
+88;Type_MARM_GRIDT1 (132/25kV 3P);2;10.0;0.0;132.0;25.0;5.602;9.33;0.0;0.0;D;D;0.0;0.0;0.0;0.0;0;0.0;0.0;0;0;0;;;;3;0
+89;Type_MARM_GRIDT2 (132/25kV 3P);2;10.0;0.0;132.0;25.0;5.602;9.33;0.0;0.0;D;D;0.0;0.0;0.0;0.0;0;0.0;0.0;0;0;0;;;;3;0
+90;ttrf_LOPA3-_LOPA0G_1;2;42.0;0.0;32.6156;0.69;6.00761;125.95;0.0;0.0;D;Y;0.0;0.0;0.0;0.0;0;0.0;0.0;0;0;0;;;;3;0
+169;type from trf_BERW1Q_BERW3-_1;2;60.0;50.0;132.0;33.0;15.890000000264838;348.5900000058098;0.0;0.0;YN;D;0.0;0.03832070931959127;7.287775947403175;0.0;0;0.0;0.0;0;0;0;;;;3;0
+175;type from trf_BERW1Q_MARM0J_1;2;10.0;50.0;132.0;25.0;5.6020000005602;9.330000000933;0.0;0.0;D;D;0.0;0.0;0.0;0.0;0;0.0;0.0;0;0;0;;;;3;0
+181;type from trf_BERW1R_BERW3-_1;2;60.0;50.0;132.0;33.0;15.94000000026566;284.8300000047471;0.0;0.0;YN;D;0.0;0.046040498838043974;7.962786056047115;0.0;0;0.0;0.0;0;0;0;;;;3;0
+187;type from trf_BERW1R_MARM0K_1;2;10.0;50.0;132.0;25.0;5.6020000005602;9.330000000933;0.0;0.0;D;D;0.0;0.0;0.0;0.0;0;0.0;0.0;0;0;0;;;;3;0
+193;type from trf_ECCL1-_ECCL3-_1;2;60.0;50.0;132.0;33.0;16.142000000269032;379.4400000063239;0.0;0.0;YN;D;0.0;0.0;0.0;0.0;0;0.0;0.0;0;0;0;;;;3;0
+199;type from trf_ECCL1-_ECCL3-_2;2;60.0;50.0;132.0;33.0;16.051000000267514;374.40000000623985;0.0;0.0;YN;D;0.0;0.0;0.0;0.0;0;0.0;0.0;0;0;0;;;;3;0
+205;type from trf_GALA1-_GALA3-_1;2;90.0;50.0;132.0;33.0;23.340000000259334;349.2220000038802;0.0;0.0;YN;D;0.0;0.06501244611924423;39.66747279366928;0.0;0;0.0;0.0;0;0;0;;;;3;0
+211;type from trf_GALA1-_GALA3-_2;2;90.0;50.0;132.0;33.0;23.95000000026611;360.6000000040067;0.0;0.0;YN;D;0.0;0.04262024304397657;22.506174533729762;0.0;0;0.0;0.0;0;0;0;;;;3;0
+217;type from trf_LOPA3-_LOPA0G_1;2;42.0;50.0;33.0;0.69;6.0076100001430355;125.9500000029988;0.0;0.0;D;Y;0.0;0.0;0.0;0.0;0;0.0;0.0;0;0;0;;;;3;0
+

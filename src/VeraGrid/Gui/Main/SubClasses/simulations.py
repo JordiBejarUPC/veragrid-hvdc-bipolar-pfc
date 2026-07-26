@@ -1878,6 +1878,9 @@ class SimulationsMain(TimeEventsMain):
                         sc_options = sim.ShortCircuitOptions()
 
                         pf_options = self.get_selected_power_flow_options()
+                        if any(sc.method == MethodShortCircuit.sequences_vsc
+                               for sc in self.circuit.short_circuit_event):
+                            pf_options.limit_i_vsc = True
 
                         drv = sim.ShortCircuitDriver(grid=self.circuit,
                                                      options=sc_options,
