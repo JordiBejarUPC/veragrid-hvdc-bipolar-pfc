@@ -12,65 +12,71 @@ from PySide6.QtCore import (QCoreApplication, QDate, QDateTime, QLocale,
     QMetaObject, QObject, QPoint, QRect,
     QSize, QTime, QUrl, Qt)
 from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
-    QFont, QFontDatabase, QGradient, QIcon,
+    QAction, QFont, QFontDatabase, QGradient, QIcon,
     QImage, QKeySequence, QLinearGradient, QPainter,
     QPalette, QPixmap, QRadialGradient, QTransform)
-from PySide6.QtWidgets import (QAbstractButton, QApplication, QDialog, QDialogButtonBox,
+from PySide6.QtWidgets import (QAbstractButton, QApplication, QDialog,
     QFormLayout, QGroupBox, QHBoxLayout, QHeaderView,
-    QLabel, QPushButton, QSizePolicy, QSpacerItem,
-    QSplitter, QTreeView, QVBoxLayout, QWidget)
+    QLabel, QSizePolicy, QSplitter,
+    QToolBar, QTreeView, QVBoxLayout, QWidget)
+
+from VeraGrid.Gui.Icons.icons_rc import *
 
 class Ui_ServerFileDialog(object):
     def setupUi(self, ServerFileDialog):
         if not ServerFileDialog.objectName():
             ServerFileDialog.setObjectName(u"ServerFileDialog")
         ServerFileDialog.resize(1040, 720)
+        icon = QIcon()
+        icon.addFile(u":/Icons/icons/server.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        ServerFileDialog.setWindowIcon(icon)
+        self.actionRefresh = QAction(ServerFileDialog)
+        self.actionRefresh.setObjectName(u"actionRefresh")
+        icon1 = QIcon()
+        icon1.addFile(u":/Icons/icons/sync.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.actionRefresh.setIcon(icon1)
+        self.actionLoadFile = QAction(ServerFileDialog)
+        self.actionLoadFile.setObjectName(u"actionLoadFile")
+        icon2 = QIcon()
+        icon2.addFile(u":/Icons/icons/server.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.actionLoadFile.setIcon(icon2)
+        self.actionLoadBase = QAction(ServerFileDialog)
+        self.actionLoadBase.setObjectName(u"actionLoadBase")
+        icon3 = QIcon()
+        icon3.addFile(u":/Icons/icons/grid_icon.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.actionLoadBase.setIcon(icon3)
+        self.actionLoadModel = QAction(ServerFileDialog)
+        self.actionLoadModel.setObjectName(u"actionLoadModel")
+        icon4 = QIcon()
+        icon4.addFile(u":/Icons/icons/schematic.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.actionLoadModel.setIcon(icon4)
+        self.actionSaveCurrent = QAction(ServerFileDialog)
+        self.actionSaveCurrent.setObjectName(u"actionSaveCurrent")
+        icon5 = QIcon()
+        icon5.addFile(u":/Icons/icons/save.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.actionSaveCurrent.setIcon(icon5)
+        self.actionDeleteSelected = QAction(ServerFileDialog)
+        self.actionDeleteSelected.setObjectName(u"actionDeleteSelected")
+        icon6 = QIcon()
+        icon6.addFile(u":/Icons/icons/delete_db.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.actionDeleteSelected.setIcon(icon6)
         self.verticalLayout = QVBoxLayout(ServerFileDialog)
         self.verticalLayout.setObjectName(u"verticalLayout")
-        self.titleLabel = QLabel(ServerFileDialog)
-        self.titleLabel.setObjectName(u"titleLabel")
-        self.titleLabel.setWordWrap(True)
+        self.toolBar = QToolBar(ServerFileDialog)
+        self.toolBar.setObjectName(u"toolBar")
+        self.toolBar.setIconSize(QSize(24, 24))
+        self.toolBar.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+        self.toolBar.addAction(self.actionRefresh)
+        self.toolBar.addSeparator()
+        self.toolBar.addAction(self.actionLoadFile)
+        self.toolBar.addAction(self.actionLoadBase)
+        self.toolBar.addAction(self.actionLoadModel)
+        self.toolBar.addSeparator()
+        self.toolBar.addAction(self.actionSaveCurrent)
+        self.toolBar.addSeparator()
+        self.toolBar.addAction(self.actionDeleteSelected)
 
-        self.verticalLayout.addWidget(self.titleLabel)
-
-        self.toolbarLayout = QHBoxLayout()
-        self.toolbarLayout.setObjectName(u"toolbarLayout")
-        self.refreshButton = QPushButton(ServerFileDialog)
-        self.refreshButton.setObjectName(u"refreshButton")
-
-        self.toolbarLayout.addWidget(self.refreshButton)
-
-        self.loadFileButton = QPushButton(ServerFileDialog)
-        self.loadFileButton.setObjectName(u"loadFileButton")
-
-        self.toolbarLayout.addWidget(self.loadFileButton)
-
-        self.loadBaseButton = QPushButton(ServerFileDialog)
-        self.loadBaseButton.setObjectName(u"loadBaseButton")
-
-        self.toolbarLayout.addWidget(self.loadBaseButton)
-
-        self.loadModelButton = QPushButton(ServerFileDialog)
-        self.loadModelButton.setObjectName(u"loadModelButton")
-
-        self.toolbarLayout.addWidget(self.loadModelButton)
-
-        self.saveCurrentButton = QPushButton(ServerFileDialog)
-        self.saveCurrentButton.setObjectName(u"saveCurrentButton")
-
-        self.toolbarLayout.addWidget(self.saveCurrentButton)
-
-        self.deleteButton = QPushButton(ServerFileDialog)
-        self.deleteButton.setObjectName(u"deleteButton")
-
-        self.toolbarLayout.addWidget(self.deleteButton)
-
-        self.horizontalSpacer = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
-
-        self.toolbarLayout.addItem(self.horizontalSpacer)
-
-
-        self.verticalLayout.addLayout(self.toolbarLayout)
+        self.verticalLayout.addWidget(self.toolBar)
 
         self.mainSplitter = QSplitter(ServerFileDialog)
         self.mainSplitter.setObjectName(u"mainSplitter")
@@ -81,12 +87,14 @@ class Ui_ServerFileDialog(object):
         self.filesTreeView.setUniformRowHeights(True)
         self.filesTreeView.setItemsExpandable(True)
         self.filesTreeView.setRootIsDecorated(True)
+        self.filesTreeView.setMinimumWidth(640)
         self.mainSplitter.addWidget(self.filesTreeView)
         self.detailWidget = QWidget(self.mainSplitter)
         self.detailWidget.setObjectName(u"detailWidget")
         self.detailLayout = QVBoxLayout(self.detailWidget)
         self.detailLayout.setObjectName(u"detailLayout")
         self.detailLayout.setContentsMargins(0, 0, 0, 0)
+        self.detailWidget.setMinimumWidth(280)
         self.selectionGroupBox = QGroupBox(self.detailWidget)
         self.selectionGroupBox.setObjectName(u"selectionGroupBox")
         self.formLayout = QFormLayout(self.selectionGroupBox)
@@ -187,18 +195,8 @@ class Ui_ServerFileDialog(object):
         self.mainSplitter.addWidget(self.detailWidget)
 
         self.verticalLayout.addWidget(self.mainSplitter)
-
-        self.statusLabel = QLabel(ServerFileDialog)
-        self.statusLabel.setObjectName(u"statusLabel")
-        self.statusLabel.setWordWrap(True)
-
-        self.verticalLayout.addWidget(self.statusLabel)
-
-        self.buttonBox = QDialogButtonBox(ServerFileDialog)
-        self.buttonBox.setObjectName(u"buttonBox")
-        self.buttonBox.setStandardButtons(QDialogButtonBox.Close)
-
-        self.verticalLayout.addWidget(self.buttonBox)
+        self.mainSplitter.setStretchFactor(0, 5)
+        self.mainSplitter.setStretchFactor(1, 2)
 
 
         self.retranslateUi(ServerFileDialog)
@@ -208,13 +206,18 @@ class Ui_ServerFileDialog(object):
 
     def retranslateUi(self, ServerFileDialog):
         ServerFileDialog.setWindowTitle(QCoreApplication.translate("ServerFileDialog", u"Server Files", None))
-        self.titleLabel.setText(QCoreApplication.translate("ServerFileDialog", u"Browse database files and models through the connected VeraGrid server", None))
-        self.refreshButton.setText(QCoreApplication.translate("ServerFileDialog", u"Refresh", None))
-        self.loadFileButton.setText(QCoreApplication.translate("ServerFileDialog", u"Load File", None))
-        self.loadBaseButton.setText(QCoreApplication.translate("ServerFileDialog", u"Load Base Model", None))
-        self.loadModelButton.setText(QCoreApplication.translate("ServerFileDialog", u"Load Selected Model", None))
-        self.saveCurrentButton.setText(QCoreApplication.translate("ServerFileDialog", u"Save Current Project", None))
-        self.deleteButton.setText(QCoreApplication.translate("ServerFileDialog", u"Delete Selected", None))
+        self.actionRefresh.setText(QCoreApplication.translate("ServerFileDialog", u"Refresh", None))
+        self.actionRefresh.setToolTip(QCoreApplication.translate("ServerFileDialog", u"Reload the server file tree", None))
+        self.actionLoadFile.setText(QCoreApplication.translate("ServerFileDialog", u"Load File", None))
+        self.actionLoadFile.setToolTip(QCoreApplication.translate("ServerFileDialog", u"Load the full selected multiverse", None))
+        self.actionLoadBase.setText(QCoreApplication.translate("ServerFileDialog", u"Load Base Model", None))
+        self.actionLoadBase.setToolTip(QCoreApplication.translate("ServerFileDialog", u"Load only the selected file base model", None))
+        self.actionLoadModel.setText(QCoreApplication.translate("ServerFileDialog", u"Load Selected Model", None))
+        self.actionLoadModel.setToolTip(QCoreApplication.translate("ServerFileDialog", u"Load the selected scenario branch as one flat circuit", None))
+        self.actionSaveCurrent.setText(QCoreApplication.translate("ServerFileDialog", u"Save Current Project", None))
+        self.actionSaveCurrent.setToolTip(QCoreApplication.translate("ServerFileDialog", u"Upload the current project into the selected server file or model", None))
+        self.actionDeleteSelected.setText(QCoreApplication.translate("ServerFileDialog", u"Delete Selected", None))
+        self.actionDeleteSelected.setToolTip(QCoreApplication.translate("ServerFileDialog", u"Delete the selected file or model from the server database", None))
         self.selectionGroupBox.setTitle(QCoreApplication.translate("ServerFileDialog", u"Selection", None))
         self.kindTitleLabel.setText(QCoreApplication.translate("ServerFileDialog", u"Type", None))
         self.kindValueLabel.setText(QCoreApplication.translate("ServerFileDialog", u"-", None))
@@ -231,7 +234,5 @@ class Ui_ServerFileDialog(object):
         self.createdTitleLabel.setText(QCoreApplication.translate("ServerFileDialog", u"Created at", None))
         self.createdValueLabel.setText(QCoreApplication.translate("ServerFileDialog", u"-", None))
         self.helpGroupBox.setTitle(QCoreApplication.translate("ServerFileDialog", u"Actions", None))
-        self.helpLabel.setText(QCoreApplication.translate("ServerFileDialog", u"Choose a file to load the full multiverse, load only the base model, save the current project back into that file, or delete it. Choose a model to load or delete only that branch.", None))
-        self.statusLabel.setText(QCoreApplication.translate("ServerFileDialog", u"Ready.", None))
+        self.helpLabel.setText(QCoreApplication.translate("ServerFileDialog", u"Delete removes the selected file or the selected model branch from the server database after confirmation.", None))
     # retranslateUi
-

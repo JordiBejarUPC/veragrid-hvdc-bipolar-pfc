@@ -705,15 +705,21 @@ class IoMain(ScenariosMain):
             extensions such as ``.xml`` or ``.zip`` open one selector dialogue.
         :return: None.
         """
-        if len(filenames) > 0:
+        normalized_filenames: List[str]
+        if isinstance(filenames, str):
+            normalized_filenames = [filenames]
+        else:
+            normalized_filenames = filenames
 
-            for f_name in filenames:
+        if len(normalized_filenames) > 0:
+
+            for f_name in normalized_filenames:
                 if not os.path.exists(f_name):
                     error_msg(text=self.tr("The file does not exist :( \n {file_name}").format(file_name=f_name),
                               title=self.tr("File opening"))
                     return
 
-            self.file_name = filenames[0]
+            self.file_name = normalized_filenames[0]
 
             # store the working directory
             self.project_directory = os.path.dirname(self.file_name)
@@ -723,7 +729,7 @@ class IoMain(ScenariosMain):
 
             options = filedrv.FileOpenOptions()
 
-            file_name = filenames if len(filenames) > 1 else filenames[0]
+            file_name = normalized_filenames if len(normalized_filenames) > 1 else normalized_filenames[0]
 
             # try to determine the file type
             options.file_type = determine_file_type(file_name)

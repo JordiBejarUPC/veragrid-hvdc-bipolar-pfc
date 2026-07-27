@@ -1166,10 +1166,16 @@ def get_multiverse_from_database(settings: PostgreSqlConnectionSettings,
                 model_idtag=model_idtag,
                 table_mappings=table_mappings,
             )
-            circuit_by_model_idtag[model_idtag] = parse_veragrid_data(
+            # The SQL model row is the stable scenario identity. Some legacy
+            # payloads still store a different circuit idtag inside ModelData,
+            # so the parsed circuit must be rebound to the model row idtag
+            # before the multiverse tree is rebuilt.
+            loaded_circuit: MultiCircuit = parse_veragrid_data(
                 data=packed_payload,
                 project_directory=project_directory,
             )
+            loaded_circuit.idtag = model_idtag
+            circuit_by_model_idtag[model_idtag] = loaded_circuit
 
         cursor.close()
 

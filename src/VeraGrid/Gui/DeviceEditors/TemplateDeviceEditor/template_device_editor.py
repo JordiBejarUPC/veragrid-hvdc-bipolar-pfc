@@ -10,6 +10,11 @@ from typing import Any, Sequence
 import numpy as np
 from PySide6 import QtCore, QtGui, QtWidgets
 from VeraGrid.Gui.associations_model import AssociationsModel
+from VeraGrid.Gui.DeviceEditors.AdmittanceMatrixEditor.admittance_matrix_editor import (
+    AdmittanceMatrixEditorWidget,
+    project_admittance_matrix_to_phase_state,
+)
+from VeraGrid.Gui.DeviceEditors.LineLocationsEditor.line_locations_editor import LineLocationsEditorWidget
 from VeraGrid.Gui.DeviceEditors.TemplateDeviceEditor.template_device_editor_gui import Ui_TemplateDeviceEditorDialog
 from VeraGrid.Gui.gui_functions import ComboDelegate, FloatDelegate, IntDelegate, TextDelegate, ComplexDelegate
 from VeraGrid.Gui.Widgets.matplotlibwidget import MatplotlibWidget
@@ -19,11 +24,13 @@ from VeraGrid.Gui.spread_sheet_table import SpreadsheetTableView
 from VeraGrid.Gui.table_view_header_wrap import HeaderViewWithWordWrap
 from VeraGrid.Gui.toast_widget import ToastManager
 import VeraGrid.Gui.gui_functions as gf
+from VeraGridEngine.Devices.Branches.line import Line
 from VeraGridEngine.Devices.Associations.association import Associations
 from VeraGridEngine.Devices.Parents.editable_device import EditableDevice, GCProp
+from VeraGridEngine.Devices.Parents.shunt_parent import ShuntParent
 from VeraGridEngine.Devices.Profiles import AnyProfile
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
-from VeraGridEngine.enumerations import DeviceType, PrpCat, GeneratorControlMode
+from VeraGridEngine.enumerations import DeviceType, PrpCat, GeneratorControlMode, SubObjectType
 
 
 
@@ -371,6 +378,12 @@ class TemplateDeviceEditor(QtWidgets.QDialog):
         self.association_properties: list[GCProp] = self._get_association_properties()
         self.associations_model: AssociationsModel | None = None
         self._populate_associations_combo_box()
+        self.admittance_matrix_properties: list[GCProp] = self._get_admittance_matrix_properties()
+        self.admittance_matrix_widgets: dict[str, AdmittanceMatrixEditorWidget] = dict()
+        self._build_admittance_matrix_tab()
+        self.line_locations_properties: list[GCProp] = self._get_line_locations_properties()
+        self.line_locations_widgets: dict[str, LineLocationsEditorWidget] = dict()
+        self._build_line_locations_tab()
 
         # Configure and connect the slider and dialog actions.
         n_time_steps: int = self._get_available_time_steps()
@@ -497,6 +510,103 @@ class TemplateDeviceEditor(QtWidgets.QDialog):
         self.properties_table_view.verticalHeader().setSectionResizeMode(
             QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
 
+    def apply_admittance_matrix_changes(self) -> None:
+        """
+        Apply the edited admittance matrices back to the API object.
+        """
+        if len(self.admittance_matrix_properties) > 0:
+            prop: GCProp
+            for prop in self.admittance_matrix_properties:
+                if prop.name in self.admittance_matrix_widgets:
+                    edited_value = self.admittance_matrix_widgets[prop.name].get_value()
+                    self.api_object.set_value(prop=prop, t_idx=None, value=edited_value)
+                else:
+                    pass
+
+            self.properties_model.set_time_index(time_index=self._get_current_time_index())
+            self.show_info_toast("Admittance values applied")
+        else:
+            pass
+
+    def compute_admittance_matrix_from_sequence_values(self) -> None:
+        """
+        Compute the admittance matrices from the existing sequence values on the API object.
+        """
+        if self._admittance_compute_supports_current_phase_selection():
+            if isinstance(self.api_object, Line):
+                self._compute_admittance_matrix_from_sequence_values_on_supported_object()
+            else:
+                if isinstance(self.api_object, ShuntParent):
+                    self._compute_admittance_matrix_from_sequence_values_on_supported_object()
+                else:
+                    self.show_warning_toast("This device does not support sequence-based admittance computation")
+        else:
+            self.show_warning_toast("Only A/B/C phase combinations can be computed from sequence values")
+
+    def _compute_admittance_matrix_from_sequence_values_on_supported_object(self) -> None:
+        """
+        Run the existing object-level sequence-to-matrix conversion and project it to the selected phase subsets.
+        """
+        phase_state_by_property: dict[str, dict[str, bool]] = dict()
+        prop: GCProp
+
+        for prop in self.admittance_matrix_properties:
+            if prop.name in self.admittance_matrix_widgets:
+                phase_state_by_property[prop.name] = self.admittance_matrix_widgets[prop.name].get_phase_state()
+            else:
+                pass
+
+        self.api_object.fill_3_phase_from_sequence()
+
+        for prop in self.admittance_matrix_properties:
+            if prop.name in phase_state_by_property:
+                matrix_value = self.api_object.get_snapshot_value(prop=prop)
+                projected_value = project_admittance_matrix_to_phase_state(
+                    admittance_matrix=matrix_value,
+                    phase_state=phase_state_by_property[prop.name],
+                )
+                self.api_object.set_value(prop=prop, t_idx=None, value=projected_value)
+            else:
+                pass
+
+        self._reload_admittance_matrix_widgets_from_object()
+        self.properties_model.set_time_index(time_index=self._get_current_time_index())
+        self.show_info_toast("Admittance values computed from sequence data")
+
+    def _admittance_compute_supports_current_phase_selection(self) -> bool:
+        """
+        Check whether every admittance widget currently uses one supported sequence-computation phase subset.
+
+        :return: ``True`` when all admittance widgets only use A/B/C subsets with ``N=False``.
+        """
+        prop: GCProp
+        for prop in self.admittance_matrix_properties:
+            if prop.name in self.admittance_matrix_widgets:
+                phase_state = self.admittance_matrix_widgets[prop.name].get_phase_state()
+                if phase_state["N"]:
+                    return False
+                else:
+                    if phase_state["A"] or phase_state["B"] or phase_state["C"]:
+                        pass
+                    else:
+                        return False
+            else:
+                pass
+
+        return True
+
+    def _reload_admittance_matrix_widgets_from_object(self) -> None:
+        """
+        Reload the admittance-matrix widgets from the current API object values.
+        """
+        prop: GCProp
+        for prop in self.admittance_matrix_properties:
+            if prop.name in self.admittance_matrix_widgets:
+                matrix_value = self.api_object.get_snapshot_value(prop=prop)
+                self.admittance_matrix_widgets[prop.name].set_value(admittance_matrix=matrix_value)
+            else:
+                pass
+
     def _get_profile_properties(self) -> list[GCProp]:
         """
         Get ordered property list that has profile backing values.
@@ -522,6 +632,138 @@ class TemplateDeviceEditor(QtWidgets.QDialog):
         assoc_props, assoc_indices = self.api_object.get_association_properties()
         _ = assoc_indices
         return list(assoc_props)
+
+    def _get_admittance_matrix_properties(self) -> list[GCProp]:
+        """
+        Get ordered property list that stores admittance matrices.
+
+        :return: Admittance-matrix property list.
+        """
+        admittance_properties: list[GCProp] = list()
+        for prop in self.api_object.property_list:
+            if prop.tpe == SubObjectType.AdmittanceMatrix:
+                admittance_properties.append(prop)
+            else:
+                pass
+        return admittance_properties
+
+    def _get_line_locations_properties(self) -> list[GCProp]:
+        """
+        Get ordered property list that stores line locations.
+
+        :return: Line-locations property list.
+        """
+        line_locations_properties: list[GCProp] = list()
+        for prop in self.api_object.property_list:
+            if prop.tpe == SubObjectType.LineLocations:
+                line_locations_properties.append(prop)
+            else:
+                pass
+        return line_locations_properties
+
+    def _build_admittance_matrix_tab(self) -> None:
+        """
+        Build the shared admittance-matrix editor tab when the device exposes those properties.
+        """
+        if len(self.admittance_matrix_properties) > 0:
+            admittance_tab: QtWidgets.QWidget = QtWidgets.QWidget(self.tab_widget)
+            admittance_layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(admittance_tab)
+
+            # Keep the instructions in the tab so the phase controls explain why the matrix resizes.
+            info_label: QtWidgets.QLabel = QtWidgets.QLabel(
+                "Enable the active phases and edit the dense complex admittance matrix.",
+                admittance_tab,
+            )
+            info_label.setWordWrap(True)
+            admittance_layout.addWidget(info_label)
+
+            prop: GCProp
+            for prop in self.admittance_matrix_properties:
+                matrix_value = self.api_object.get_snapshot_value(prop=prop)
+                editor_widget: AdmittanceMatrixEditorWidget = AdmittanceMatrixEditorWidget(
+                    admittance_matrix=matrix_value,
+                    title=prop.name,
+                    description=prop.definition,
+                    parent=admittance_tab,
+                )
+                self.admittance_matrix_widgets[prop.name] = editor_widget
+                admittance_layout.addWidget(editor_widget)
+
+            button_layout: QtWidgets.QHBoxLayout = QtWidgets.QHBoxLayout()
+            compute_button: QtWidgets.QPushButton = QtWidgets.QPushButton(
+                "Compute from sequence values",
+                admittance_tab,
+            )
+            compute_button.setIcon(QtGui.QIcon(":/Icons/icons/automatic_layout.png"))
+            compute_button.clicked.connect(self.compute_admittance_matrix_from_sequence_values)
+            apply_button: QtWidgets.QPushButton = QtWidgets.QPushButton("Accept", admittance_tab)
+            apply_button.setIcon(QtGui.QIcon(":/Icons/icons/accept.png"))
+            apply_button.clicked.connect(self.apply_admittance_matrix_changes)
+            button_layout.addWidget(compute_button)
+            button_layout.addStretch()
+            button_layout.addWidget(apply_button)
+            admittance_layout.addLayout(button_layout)
+
+            tab_index: int = self.tab_widget.addTab(admittance_tab, "Admittance")
+            self.tab_widget.setTabIcon(tab_index, QtGui.QIcon(":/Icons/icons/edit.png"))
+        else:
+            pass
+
+    def _build_line_locations_tab(self) -> None:
+        """
+        Build the shared line-locations editor tab when the device exposes those properties.
+        """
+        if len(self.line_locations_properties) > 0:
+            locations_tab: QtWidgets.QWidget = QtWidgets.QWidget(self.tab_widget)
+            locations_layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(locations_tab)
+
+            info_label: QtWidgets.QLabel = QtWidgets.QLabel(
+                "Edit the polyline points used by this branch geometry.",
+                locations_tab,
+            )
+            info_label.setWordWrap(True)
+            locations_layout.addWidget(info_label)
+
+            prop: GCProp
+            for prop in self.line_locations_properties:
+                line_locations_value = self.api_object.get_snapshot_value(prop=prop)
+                editor_widget: LineLocationsEditorWidget = LineLocationsEditorWidget(
+                    line_locations=line_locations_value,
+                    parent=locations_tab,
+                )
+                self.line_locations_widgets[prop.name] = editor_widget
+                locations_layout.addWidget(editor_widget)
+
+            button_layout: QtWidgets.QHBoxLayout = QtWidgets.QHBoxLayout()
+            apply_button: QtWidgets.QPushButton = QtWidgets.QPushButton("Accept", locations_tab)
+            apply_button.setIcon(QtGui.QIcon(":/Icons/icons/accept.png"))
+            apply_button.clicked.connect(self.apply_line_locations_changes)
+            button_layout.addStretch()
+            button_layout.addWidget(apply_button)
+            locations_layout.addLayout(button_layout)
+
+            tab_index: int = self.tab_widget.addTab(locations_tab, "Locations")
+            self.tab_widget.setTabIcon(tab_index, QtGui.QIcon(":/Icons/icons/edit.png"))
+        else:
+            pass
+
+    def apply_line_locations_changes(self) -> None:
+        """
+        Apply the edited line-locations objects back to the API object.
+        """
+        if len(self.line_locations_properties) > 0:
+            prop: GCProp
+            for prop in self.line_locations_properties:
+                if prop.name in self.line_locations_widgets:
+                    edited_value = self.line_locations_widgets[prop.name].get_value()
+                    self.api_object.set_value(prop=prop, t_idx=None, value=edited_value)
+                else:
+                    pass
+
+            self.properties_model.set_time_index(time_index=self._get_current_time_index())
+            self.show_info_toast("Locations applied")
+        else:
+            pass
 
     def _populate_associations_combo_box(self) -> None:
         """

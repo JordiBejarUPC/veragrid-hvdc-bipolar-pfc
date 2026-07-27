@@ -6,6 +6,7 @@ import os
 import sys
 import uvicorn
 import argparse
+from pathlib import Path
 
 PACKAGE_PARENT = '..'
 SCRIPT_DIR = os.path.dirname(os.path.realpath(os.path.join(os.getcwd(), os.path.expanduser(__file__))))
@@ -15,6 +16,24 @@ from VeraGridServer.main import app
 from VeraGridServer.settings import settings
 from VeraGridServer.generate_ssl_key import generate_ssl_certificate, get_my_ip
 from VeraGridServer.__version__ import __VeraGridServer_VERSION__
+
+
+def resolve_server_runtime_file_path(file_name: str) -> str:
+    """
+    Resolve one server runtime file path relative to the server package directory.
+
+    :param file_name: Candidate file path from the CLI or caller.
+    :return: Absolute filesystem path.
+    """
+    base_directory: Path = Path(__file__).resolve().parent
+    requested_path: Path = Path(file_name)
+
+    # Relative TLS file names must live next to the server package so the
+    # runtime can generate and reuse them consistently from any cwd.
+    if requested_path.is_absolute():
+        return str(requested_path)
+    else:
+        return str(base_directory / requested_path)
 
 
 def start_server(key_file_name: str = "key.pem", cert_file_name: str = "cert.pem",
@@ -45,6 +64,8 @@ def start_server(key_file_name: str = "key.pem", cert_file_name: str = "cert.pem
 
     # find out my IP
     host = get_my_ip()
+    resolved_key_file_name: str = resolve_server_runtime_file_path(file_name=key_file_name)
+    resolved_cert_file_name: str = resolve_server_runtime_file_path(file_name=cert_file_name)
 
     print(f"""
 ┓┏      ┏┓  • ┓┏┓({__VeraGridServer_VERSION__} Alpha) 
@@ -57,8 +78,8 @@ def start_server(key_file_name: str = "key.pem", cert_file_name: str = "cert.pem
         generate_ssl_certificate(
             ip=host,
             domain=domain,
-            key_file_name=key_file_name,
-            cert_file_name=cert_file_name
+            key_file_name=resolved_key_file_name,
+            cert_file_name=resolved_cert_file_name
         )
 
     # extra attributed on launch
@@ -77,7 +98,7 @@ def start_server(key_file_name: str = "key.pem", cert_file_name: str = "cert.pem
 
     if secure:
         uvicorn.run(app,
-                    host=host, port=port, ssl_keyfile=key_file_name, ssl_certfile=cert_file_name)
+                    host=host, port=port, ssl_keyfile=resolved_key_file_name, ssl_certfile=resolved_cert_file_name)
     else:
         uvicorn.run(app,
                     host=host, port=port)
