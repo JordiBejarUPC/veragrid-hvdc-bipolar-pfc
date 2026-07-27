@@ -5,6 +5,9 @@ from typing import Sequence
 
 from PySide6 import QtCore, QtWidgets
 
+from VeraGrid.Gui.DeviceEditors.AdmittanceMatrixEditor.admittance_matrix_editor_gui import (
+    Ui_AdmittanceMatrixEditorWidget,
+)
 from VeraGrid.Gui.gui_functions import ComplexDelegate
 from VeraGridEngine.Devices.admittance_matrix import AdmittanceMatrix
 
@@ -333,15 +336,7 @@ class AdmittanceMatrixEditorWidget(QtWidgets.QWidget):
     Reusable editor widget for one :class:`AdmittanceMatrix`.
     """
 
-    __slots__ = (
-        "_title_label",
-        "_phase_n_check_box",
-        "_phase_a_check_box",
-        "_phase_b_check_box",
-        "_phase_c_check_box",
-        "_matrix_table_view",
-        "_matrix_model",
-    )
+    __slots__ = ("ui", "_matrix_model")
 
     def __init__(self,
                  admittance_matrix: AdmittanceMatrix,
@@ -357,44 +352,22 @@ class AdmittanceMatrixEditorWidget(QtWidgets.QWidget):
         :param parent: Optional Qt parent.
         """
         QtWidgets.QWidget.__init__(self, parent)
+        self.ui = Ui_AdmittanceMatrixEditorWidget()
+        self.ui.setupUi(self)
+        self.ui.titleLabel.setText(f"<b>{title}</b><br/>{description}")
 
-        main_layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(self)
-        header_layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout()
-        phases_layout: QtWidgets.QHBoxLayout = QtWidgets.QHBoxLayout()
-
-        self._title_label = QtWidgets.QLabel(f"<b>{title}</b><br/>{description}", self)
-        header_layout.addWidget(self._title_label)
-
-        self._phase_n_check_box = QtWidgets.QCheckBox("N", self)
-        self._phase_a_check_box = QtWidgets.QCheckBox("A", self)
-        self._phase_b_check_box = QtWidgets.QCheckBox("B", self)
-        self._phase_c_check_box = QtWidgets.QCheckBox("C", self)
-
-        phases_layout.addWidget(QtWidgets.QLabel("Phases:", self))
-        phases_layout.addWidget(self._phase_n_check_box)
-        phases_layout.addWidget(self._phase_a_check_box)
-        phases_layout.addWidget(self._phase_b_check_box)
-        phases_layout.addWidget(self._phase_c_check_box)
-        phases_layout.addStretch()
-
-        self._matrix_table_view = QtWidgets.QTableView(self)
-        self._matrix_model = AdmittanceMatrixTableModel(admittance_matrix=admittance_matrix, parent=self._matrix_table_view)
-        self._matrix_table_view.setModel(self._matrix_model)
-        self._matrix_table_view.setItemDelegate(ComplexDelegate(self._matrix_table_view))
-        self._matrix_table_view.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeMode.Stretch)
-        self._matrix_table_view.verticalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeMode.Stretch)
-
-        main_layout.addLayout(header_layout)
-        main_layout.addLayout(phases_layout)
-        main_layout.addWidget(self._matrix_table_view)
+        self._matrix_model = AdmittanceMatrixTableModel(admittance_matrix=admittance_matrix, parent=self.ui.matrixTableView)
+        self.ui.matrixTableView.setModel(self._matrix_model)
+        self.ui.matrixTableView.setItemDelegate(ComplexDelegate(self.ui.matrixTableView))
+        self.ui.matrixTableView.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeMode.Stretch)
+        self.ui.matrixTableView.verticalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeMode.Stretch)
 
         self._apply_phase_state_to_check_boxes(phase_state=self._matrix_model.get_phase_state())
 
-        # The check boxes are the single source of truth for matrix size changes.
-        self._phase_n_check_box.toggled.connect(self._on_phase_n_toggled)
-        self._phase_a_check_box.toggled.connect(self._on_phase_a_toggled)
-        self._phase_b_check_box.toggled.connect(self._on_phase_b_toggled)
-        self._phase_c_check_box.toggled.connect(self._on_phase_c_toggled)
+        self.ui.phaseNCheckBox.toggled.connect(self._on_phase_n_toggled)
+        self.ui.phaseACheckBox.toggled.connect(self._on_phase_a_toggled)
+        self.ui.phaseBCheckBox.toggled.connect(self._on_phase_b_toggled)
+        self.ui.phaseCCheckBox.toggled.connect(self._on_phase_c_toggled)
 
     def get_value(self) -> AdmittanceMatrix:
         """
@@ -428,10 +401,10 @@ class AdmittanceMatrixEditorWidget(QtWidgets.QWidget):
         :param phase_state: Mapping of phase label to enabled flag.
         """
         check_boxes: Sequence[tuple[QtWidgets.QCheckBox, str]] = (
-            (self._phase_n_check_box, "N"),
-            (self._phase_a_check_box, "A"),
-            (self._phase_b_check_box, "B"),
-            (self._phase_c_check_box, "C"),
+            (self.ui.phaseNCheckBox, "N"),
+            (self.ui.phaseACheckBox, "A"),
+            (self.ui.phaseBCheckBox, "B"),
+            (self.ui.phaseCCheckBox, "C"),
         )
 
         check_box: QtWidgets.QCheckBox

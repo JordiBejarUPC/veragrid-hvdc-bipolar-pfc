@@ -10,10 +10,11 @@ from typing import Any, Sequence
 import numpy as np
 from PySide6 import QtCore, QtGui, QtWidgets
 from VeraGrid.Gui.associations_model import AssociationsModel
-from VeraGrid.Gui.DeviceEditors.TemplateDeviceEditor.admittance_matrix_editor import (
+from VeraGrid.Gui.DeviceEditors.AdmittanceMatrixEditor.admittance_matrix_editor import (
     AdmittanceMatrixEditorWidget,
     project_admittance_matrix_to_phase_state,
 )
+from VeraGrid.Gui.DeviceEditors.LineLocationsEditor.line_locations_editor import LineLocationsEditorWidget
 from VeraGrid.Gui.DeviceEditors.TemplateDeviceEditor.template_device_editor_gui import Ui_TemplateDeviceEditorDialog
 from VeraGrid.Gui.gui_functions import ComboDelegate, FloatDelegate, IntDelegate, TextDelegate, ComplexDelegate
 from VeraGrid.Gui.Widgets.matplotlibwidget import MatplotlibWidget
@@ -380,6 +381,9 @@ class TemplateDeviceEditor(QtWidgets.QDialog):
         self.admittance_matrix_properties: list[GCProp] = self._get_admittance_matrix_properties()
         self.admittance_matrix_widgets: dict[str, AdmittanceMatrixEditorWidget] = dict()
         self._build_admittance_matrix_tab()
+        self.line_locations_properties: list[GCProp] = self._get_line_locations_properties()
+        self.line_locations_widgets: dict[str, LineLocationsEditorWidget] = dict()
+        self._build_line_locations_tab()
 
         # Configure and connect the slider and dialog actions.
         n_time_steps: int = self._get_available_time_steps()
@@ -643,6 +647,20 @@ class TemplateDeviceEditor(QtWidgets.QDialog):
                 pass
         return admittance_properties
 
+    def _get_line_locations_properties(self) -> list[GCProp]:
+        """
+        Get ordered property list that stores line locations.
+
+        :return: Line-locations property list.
+        """
+        line_locations_properties: list[GCProp] = list()
+        for prop in self.api_object.property_list:
+            if prop.tpe == SubObjectType.LineLocations:
+                line_locations_properties.append(prop)
+            else:
+                pass
+        return line_locations_properties
+
     def _build_admittance_matrix_tab(self) -> None:
         """
         Build the shared admittance-matrix editor tab when the device exposes those properties.
@@ -688,6 +706,62 @@ class TemplateDeviceEditor(QtWidgets.QDialog):
 
             tab_index: int = self.tab_widget.addTab(admittance_tab, "Admittance")
             self.tab_widget.setTabIcon(tab_index, QtGui.QIcon(":/Icons/icons/edit.png"))
+        else:
+            pass
+
+    def _build_line_locations_tab(self) -> None:
+        """
+        Build the shared line-locations editor tab when the device exposes those properties.
+        """
+        if len(self.line_locations_properties) > 0:
+            locations_tab: QtWidgets.QWidget = QtWidgets.QWidget(self.tab_widget)
+            locations_layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(locations_tab)
+
+            info_label: QtWidgets.QLabel = QtWidgets.QLabel(
+                "Edit the polyline points used by this branch geometry.",
+                locations_tab,
+            )
+            info_label.setWordWrap(True)
+            locations_layout.addWidget(info_label)
+
+            prop: GCProp
+            for prop in self.line_locations_properties:
+                line_locations_value = self.api_object.get_snapshot_value(prop=prop)
+                editor_widget: LineLocationsEditorWidget = LineLocationsEditorWidget(
+                    line_locations=line_locations_value,
+                    parent=locations_tab,
+                )
+                self.line_locations_widgets[prop.name] = editor_widget
+                locations_layout.addWidget(editor_widget)
+
+            button_layout: QtWidgets.QHBoxLayout = QtWidgets.QHBoxLayout()
+            apply_button: QtWidgets.QPushButton = QtWidgets.QPushButton("Accept", locations_tab)
+            apply_button.setIcon(QtGui.QIcon(":/Icons/icons/accept.png"))
+            apply_button.clicked.connect(self.apply_line_locations_changes)
+            button_layout.addStretch()
+            button_layout.addWidget(apply_button)
+            locations_layout.addLayout(button_layout)
+
+            tab_index: int = self.tab_widget.addTab(locations_tab, "Locations")
+            self.tab_widget.setTabIcon(tab_index, QtGui.QIcon(":/Icons/icons/edit.png"))
+        else:
+            pass
+
+    def apply_line_locations_changes(self) -> None:
+        """
+        Apply the edited line-locations objects back to the API object.
+        """
+        if len(self.line_locations_properties) > 0:
+            prop: GCProp
+            for prop in self.line_locations_properties:
+                if prop.name in self.line_locations_widgets:
+                    edited_value = self.line_locations_widgets[prop.name].get_value()
+                    self.api_object.set_value(prop=prop, t_idx=None, value=edited_value)
+                else:
+                    pass
+
+            self.properties_model.set_time_index(time_index=self._get_current_time_index())
+            self.show_info_toast("Locations applied")
         else:
             pass
 
