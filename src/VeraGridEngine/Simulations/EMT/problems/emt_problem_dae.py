@@ -635,12 +635,21 @@ def _get_source_seed_weight(injection: Any) -> float:
     """
     Return the weight used to distribute bus residual among source-like injections.
 
-    ``Snom`` is used whenever it is positive. Otherwise, a unit weight is used.
+    ``Snom`` is used for source devices that expose an apparent-power base.
+    Otherwise, a unit weight is used. This keeps EMT host devices such as shunts
+    from being forced to expose generator-style ratings.
 
     :param injection: Injection device.
     :return: Residual-allocation weight.
     """
-    snom_value: float = float(injection.Snom)
+    if injection.device_type in {
+        DeviceType.GeneratorDevice,
+        DeviceType.BatteryDevice,
+        DeviceType.StaticGeneratorDevice,
+    }:
+        snom_value: float = float(injection.Snom)
+    else:
+        snom_value = 0.0
 
     if snom_value > 0.0:
         return snom_value
@@ -4525,15 +4534,25 @@ class EmtProblemDae(EmtProblemTemplate):
             # The Thevenin generator templates reconstruct an internal balanced emf
             # from the PF seed. Those internal variables are not externally mapped,
             # so they must be preserved explicitly across the later native-init pass.
-            # The Thevenin generator needs its PF-derived internal emf/current seed
-            # even when it is the only generator at the bus; otherwise its source
-            # current can be left in the per-phase PF convention and violate KCL.
-            if injection.device_type == DeviceType.GeneratorDevice and self._is_thevenin_generator_model(mdl=mdl):
+            # Multi-generator buses and balanced-PF Thevenin slack sources need
+            # preserved internal seeds so the later native-init pass does not
+            # disturb the PF-consistent operating point.
+            if (
+                    injection.device_type == DeviceType.GeneratorDevice
+                    and (generator_count_same_bus > 1 or self.power_flow_results_3ph is None)
+                    and self._is_thevenin_generator_model(mdl=mdl)
+            ):
+                if self.power_flow_results_3ph is None:
+                    current_scale: float = 3.0
+                else:
+                    current_scale = 1.0
+
                 self._seed_thevenin_internal_emf_from_pf(
                     injection=injection,
                     mdl=mdl,
                     phase_power=phase_power,
                     voltage_vector=voltage_vector,
+                    current_scale=current_scale,
                 )
             else:
                 pass
@@ -4580,6 +4599,7 @@ class EmtProblemDae(EmtProblemTemplate):
             mdl: Block,
             phase_power: np.ndarray,
             voltage_vector: np.ndarray,
+            current_scale: float,
     ) -> None:
         """
         Preserve the PF-consistent internal emf initialization of Thevenin generators.
@@ -4597,6 +4617,7 @@ class EmtProblemDae(EmtProblemTemplate):
         :param mdl: Working EMT model of the generator.
         :param phase_power: Complex power seed in NABC order.
         :param voltage_vector: Complex bus-voltage seed in NABC order.
+        :param current_scale: Current scaling needed to convert the PF seed to the EMT KCL basis.
         :return: None.
         """
         c_sqrt_2: float = float(np.sqrt(2.0))
@@ -4626,13 +4647,12 @@ class EmtProblemDae(EmtProblemTemplate):
         else:
             current_c = 0.0 + 0.0j
 
-        # Balanced PF seeds store per-phase complex power, while the Thevenin EMT
-        # source current states participate directly in the bus KCL against branch
-        # terminal currents. In the balanced EMT convention those KCL currents are
-        # the three-phase current basis, not the per-phase power current.
-        current_a *= 3.0
-        current_b *= 3.0
-        current_c *= 3.0
+        # Balanced PF and 3-phase PF expose different phase-current bases. The
+        # caller provides the explicit conversion factor so the resulting source
+        # current states match the EMT KCL equations.
+        current_a *= current_scale
+        current_b *= current_scale
+        current_c *= current_scale
 
         # The positive-sequence phasors define the same operating point used by the
         # explicit-init equations inside the Thevenin template.
