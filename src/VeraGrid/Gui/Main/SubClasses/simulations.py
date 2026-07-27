@@ -42,7 +42,7 @@ from VeraGridEngine.enumerations import (DeviceType, AvailableTransferMode, Solv
                                          ReliabilityMode, OpfDispatchMode, DynamicIntegrationMethod,
                                          RmsInitializationMethod, EmtInitializationMethod, EmtSolverTypes,
                                          MethodShortCircuit,
-                                         DynamicSimulationMode)
+                                         DynamicSimulationMode, RmsProblemTypes, EmtProblemTypes)
 
 
 def get_valid_controls_start_tolerance_index(tolerance_idx: int,
@@ -277,10 +277,20 @@ class SimulationsMain(TimeEventsMain):
                           translate=self.tr)
         )
 
+
+
         self.ui.rms_initialization_method_comboBox.setModel(
             gf.ComboModel(enum_values=[RmsInitializationMethod.Explicit,
                                        RmsInitializationMethod.PseudoTransient],
                           translate=self.tr)
+
+        )
+
+        self.ui.rms_problem_comboBox.setModel(
+            gf.ComboModel(enum_values=[RmsProblemTypes.PowerBalance,
+                                       RmsProblemTypes.PowerBalance],
+                          translate=self.tr)
+
         )
 
         # emt simulation
@@ -296,6 +306,12 @@ class SimulationsMain(TimeEventsMain):
                                        EmtInitializationMethod.ConsistentNewton,
                                        EmtInitializationMethod.PseudoTransient,
                                        EmtInitializationMethod.Auto],
+                          translate=self.tr)
+        )
+
+        self.ui.emt_problem_comboBox.setModel(
+            gf.ComboModel(enum_values=[EmtProblemTypes.CurrentBalance,
+                                       EmtProblemTypes.CurrentBalance],
                           translate=self.tr)
         )
 
@@ -1053,6 +1069,7 @@ class SimulationsMain(TimeEventsMain):
             tolerance=1.0 / (10.0 ** self.ui.tolerance_rms_spinBox.value()),
             integration_method=self.ui.rms_integration_method_comboBox.currentData(),
             initialization_method=self.ui.rms_initialization_method_comboBox.currentData(),
+            problem_type=self.ui.rms_problem_comboBox.currentData()
         )
 
         return ops
@@ -1081,6 +1098,7 @@ class SimulationsMain(TimeEventsMain):
             integration_method=self.ui.emt_integration_method_comboBox.currentData(),
             initialization_method=self.ui.emt_initialization_method_comboBox.currentData(),
             solver_type=self.ui.emt_solver_type_comboBox.currentData(),
+            problem_type=self.ui.emt_problem_comboBox.currentData()
         )
 
         return ops
@@ -1392,86 +1410,86 @@ class SimulationsMain(TimeEventsMain):
 
                 if not self.session.is_this_running(SimulationTypes.EmtDynamic_run):
 
-                    logger = self.circuit.check_emt_models()
-                    if logger.has_errors():
-                        # Show dialogue
-                        dlg = LogsDialogue(name="EMT pre simulation check",
-                                           logger=logger)
-                        dlg.setModal(True)
-                        dlg.exec()
-                        return
+                    # logger = self.circuit.check_emt_models()
+                    # if logger.has_errors():
+                    #     # Show dialogue
+                    #     dlg = LogsDialogue(name="EMT pre simulation check",
+                    #                        logger=logger)
+                    #     dlg.setModal(True)
+                    #     dlg.exec()
+                    #     return
+                    # else:
+
+                    if not len(self.circuit.emt_events_groups) == 0:
+                        self.run_emt()
+
+                        # self.remove_simulation(SimulationTypes.EmtDynamic_run)
+                        #
+                        # _, pf_results_3ph = self.session.power_flow_3ph
+                        #
+                        # _, pf_results = self.session.power_flow
+                        #
+                        # emt_options = self.get_selected_emt_simulation_options()
+                        # if emt_options.simulation_time > 0.0:
+                        #     if pf_results_3ph is not None:
+                        #
+                        #         self.add_simulation(SimulationTypes.EmtDynamic_run)
+                        #         self.ui.progress_label.setText('Running emt simulation...')
+                        #         QtGui.QGuiApplication.processEvents()
+                        #         self.LOCK()
+                        #
+                        #         drv = sim.EmtSimulationDriver(grid=self.circuit,
+                        #                                       options=self.get_selected_emt_simulation_options(),
+                        #                                       pf_results_3ph=pf_results_3ph)
+                        #
+                        #         self.session.run(drv,
+                        #                          post_func=self.post_emt,
+                        #                          prog_func=self.ui.progressBar.setValue,
+                        #                          text_func=self.ui.progress_label.setText)
+                        #
+                        #     elif pf_results is not None:
+                        #
+                        #         # self.add_simulation(SimulationTypes.RmsDynamic_run)
+                        #         self.ui.progress_label.setText(
+                        #             'Running emt simulation from balanced power flow results ...')
+                        #         QtGui.QGuiApplication.processEvents()
+                        #         self.LOCK()
+                        #
+                        #         drv = sim.EmtSimulationDriver(grid=self.circuit,
+                        #                                       options=self.get_selected_emt_simulation_options(),
+                        #                                       pf_results=pf_results)
+                        #
+                        #         self.session.run(drv,
+                        #                          post_func=self.post_emt,
+                        #                          prog_func=self.ui.progressBar.setValue,
+                        #                          text_func=self.ui.progress_label.setText)
+                        #
+                        #     else:
+                        #         info_msg('Run a power flow simulation first.\n'
+                        #                  'The results are needed to initialize this simulation.')
+                        #
+                        # else:
+                        #     info_msg('The simulation time is 0. Change it to a proper time in settings.')
+
                     else:
+                        mode: DynamicSimulationMode = DynamicSimulationMode.EMT
+                        missing_group_message = "No EMT Events Group found, please create one before running a EMT simulation."
+                        created_group_message_body_prefix: str = "New group name"
+                        created_group_message_title = "EMT group Created"
 
-                        if not len(self.circuit.emt_events_groups) == 0:
+                        created_group: EmtEventsGroup | None = create_dynamic_events_group_with_dialog(
+                            circuit=self.circuit,
+                            mode=mode,
+                            parent=None,
+                            missing_group_message=missing_group_message,
+                            created_group_message_title=created_group_message_title,
+                            created_group_message_body_prefix=created_group_message_body_prefix,
+                        )
+
+                        if created_group is not None:
                             self.run_emt()
-
-                            # self.remove_simulation(SimulationTypes.EmtDynamic_run)
-                            #
-                            # _, pf_results_3ph = self.session.power_flow_3ph
-                            #
-                            # _, pf_results = self.session.power_flow
-                            #
-                            # emt_options = self.get_selected_emt_simulation_options()
-                            # if emt_options.simulation_time > 0.0:
-                            #     if pf_results_3ph is not None:
-                            #
-                            #         self.add_simulation(SimulationTypes.EmtDynamic_run)
-                            #         self.ui.progress_label.setText('Running emt simulation...')
-                            #         QtGui.QGuiApplication.processEvents()
-                            #         self.LOCK()
-                            #
-                            #         drv = sim.EmtSimulationDriver(grid=self.circuit,
-                            #                                       options=self.get_selected_emt_simulation_options(),
-                            #                                       pf_results_3ph=pf_results_3ph)
-                            #
-                            #         self.session.run(drv,
-                            #                          post_func=self.post_emt,
-                            #                          prog_func=self.ui.progressBar.setValue,
-                            #                          text_func=self.ui.progress_label.setText)
-                            #
-                            #     elif pf_results is not None:
-                            #
-                            #         # self.add_simulation(SimulationTypes.RmsDynamic_run)
-                            #         self.ui.progress_label.setText(
-                            #             'Running emt simulation from balanced power flow results ...')
-                            #         QtGui.QGuiApplication.processEvents()
-                            #         self.LOCK()
-                            #
-                            #         drv = sim.EmtSimulationDriver(grid=self.circuit,
-                            #                                       options=self.get_selected_emt_simulation_options(),
-                            #                                       pf_results=pf_results)
-                            #
-                            #         self.session.run(drv,
-                            #                          post_func=self.post_emt,
-                            #                          prog_func=self.ui.progressBar.setValue,
-                            #                          text_func=self.ui.progress_label.setText)
-                            #
-                            #     else:
-                            #         info_msg('Run a power flow simulation first.\n'
-                            #                  'The results are needed to initialize this simulation.')
-                            #
-                            # else:
-                            #     info_msg('The simulation time is 0. Change it to a proper time in settings.')
-
                         else:
-                            mode: DynamicSimulationMode = DynamicSimulationMode.EMT
-                            missing_group_message = "No EMT Events Group found, please create one before running a EMT simulation."
-                            created_group_message_body_prefix: str = "New group name"
-                            created_group_message_title = "EMT group Created"
-
-                            created_group: EmtEventsGroup | None = create_dynamic_events_group_with_dialog(
-                                circuit=self.circuit,
-                                mode=mode,
-                                parent=None,
-                                missing_group_message=missing_group_message,
-                                created_group_message_title=created_group_message_title,
-                                created_group_message_body_prefix=created_group_message_body_prefix,
-                            )
-
-                            if created_group is not None:
-                                self.run_emt()
-                            else:
-                                info_msg(f"No EMT Events Group was added. The EMT simulation can't run.")
+                            info_msg(f"No EMT Events Group was added. The EMT simulation can't run.")
 
 
                 else:
