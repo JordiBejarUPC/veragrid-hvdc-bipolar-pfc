@@ -2994,7 +2994,7 @@ def _get_scale_factor(scale0: float, logger: Logger, name: str) -> float:
     return s
 
 
-def _extract_load_pq(elmlod: ElmLod, logger: Logger) -> Tuple[float, float]:
+def _extract_load_pq(elmlod: ElmLod, logger: Logger) -> Tuple[float, float, float, float, float, float, float, float]:
     """
     Extract load pq.
 
@@ -3004,33 +3004,54 @@ def _extract_load_pq(elmlod: ElmLod, logger: Logger) -> Tuple[float, float]:
     """
     name = elmlod.loc_name or _ref_id(elmlod.ID) or "Load"
 
-    # Primary: direct P/Q
-    p = elmlod.plini
-    q = elmlod.qlini
+    if elmlod.i_sym == 1:
 
-    # Fallback: S + cos(phi)
-    if p == 0.0 and q == 0.0:
-        s = elmlod.slini
-        cosphi = elmlod.coslini
+        # Apply scaling
+        scale = _get_scale_factor(scale0=elmlod.scale0, logger=logger, name=name)
 
-        if s != 0.0 and cosphi != 0.0:
-            cosphi = max(min(cosphi, 1.0), -1.0)
-            p = s * cosphi
-            sinphi = math.sqrt(max(0.0, 1.0 - cosphi * cosphi))
-            q = s * sinphi
-            logger.add_warning(
-                f"P/Q not provided, derived from slini/coslini.",
-                device=name,
-                device_class="ElmLod",
-                value=q,
-            )
+        # Active Power [MW]
+        pa = elmlod.plinir * scale
+        pb = elmlod.plinis * scale
+        pc = elmlod.plinit * scale
+        p = pa + pb + pc
 
-    # Apply scaling
-    scale = _get_scale_factor(scale0=elmlod.scale0, logger=logger, name=name)
-    p *= scale
-    q *= scale
+        # Reactive Power [MVAr]
+        qa = elmlod.qlinir * scale
+        qb = elmlod.qlinis * scale
+        qc = elmlod.qlinit * scale
+        q = qa + qb + qc
 
-    return p, q
+    else:
+        # Primary: direct P/Q
+        p = elmlod.plini
+        q = elmlod.qlini
+
+        # Fallback: S + cos(phi)
+        if p == 0.0 and q == 0.0:
+            s = elmlod.slini
+            cosphi = elmlod.coslini
+
+            if s != 0.0 and cosphi != 0.0:
+                cosphi = max(min(cosphi, 1.0), -1.0)
+                p = s * cosphi
+                sinphi = math.sqrt(max(0.0, 1.0 - cosphi * cosphi))
+                q = s * sinphi
+                logger.add_warning(
+                    f"P/Q not provided, derived from slini/coslini.",
+                    device=name,
+                    device_class="ElmLod",
+                    value=q,
+                )
+
+        # Apply scaling
+        scale = _get_scale_factor(scale0=elmlod.scale0, logger=logger, name=name)
+        p *= scale
+        q *= scale
+
+        pa, pb, pc = 0.0, 0.0, 0.0 # Balanced active power
+        qa, qb, qc = 0.0, 0.0, 0.0  # Balanced reactive power
+
+    return p, pa, pb, pc, q, qa, qb, qc
 
 
 def convert_dgs_ward_equivalent_to_load(elmvac: ElmVac,
@@ -3099,14 +3120,21 @@ def convert_dgs_to_load(elmlod: ElmLod,
                             cubics_by_objid=cubics_by_objid,
                             bus_by_term_id=bus_by_term_id)
 
-    p_mw, q_mvar = _extract_load_pq(elmlod=elmlod, logger=logger)
+    p_mw, pa_mw, pb_mw, pc_mw, q_mvar, qa_mvar, qb_mvar, qc_mvar = _extract_load_pq(elmlod=elmlod, logger=logger)
 
     load = dev.Load(
         name=elmlod.loc_name or f"Load_{_ref_id(elmlod.ID)}",
         P=p_mw,
+        P1=pa_mw,
+        P2=pb_mw,
+        P3=pc_mw,
         Q=q_mvar,
+        Q1=qa_mvar,
+        Q2=qb_mvar,
+        Q3=qc_mvar,
         active=not bool(elmlod.outserv)
     )
+    # Add the connection type
 
     return bus, load
 
