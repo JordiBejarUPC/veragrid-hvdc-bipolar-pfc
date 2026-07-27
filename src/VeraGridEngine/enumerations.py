@@ -4616,3 +4616,10 @@ class DynamicTableModelMode(Enum):
     VARIABLES = "variables"
     PARAMETERS = "parameters"
     EQUATIONS = "equations"
+
+class DynEditorGraphicsModes(Enum):
+    """
+    Modes to definr editor colouring
+    """
+    DARK = "Dark"
+    LIGHT = "Light"

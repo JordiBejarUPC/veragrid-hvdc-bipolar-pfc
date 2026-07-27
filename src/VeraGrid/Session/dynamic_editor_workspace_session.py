@@ -15,7 +15,7 @@ from VeraGrid.Session.dynamic_editor_entries import DynamicEditorEntry
 from VeraGrid.Session.dynamic_editor_entries import build_dynamic_editor_entry
 from VeraGrid.Session.dynamic_editor_entries import get_block_for_entry
 from VeraGrid.Session.dynamic_editor_entries import get_templates_for_entry
-from VeraGridEngine.enumerations import DynamicSimulationMode
+from VeraGridEngine.enumerations import DynamicSimulationMode, DynEditorGraphicsModes
 
 if TYPE_CHECKING:
     from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_workspace_window import DynamicEditorWorkspaceWindow
@@ -65,7 +65,7 @@ class DynamicEditorWorkspaceSession(QtCore.QObject):
         self._pending_drag_workspace: DynamicEditorWorkspaceWindow | None = None
         self._retained_workspaces: List[DynamicEditorWorkspaceWindow] = list()
         self._retained_pages: List[DynamicEditorTab | DynamicBlockEditorGUI] = list()
-        self.current_theme: str = ""
+        self.current_theme: DynEditorGraphicsModes = DynEditorGraphicsModes.LIGHT
 
     def register_workspace(self, workspace: "DynamicEditorWorkspaceWindow") -> None:
         """

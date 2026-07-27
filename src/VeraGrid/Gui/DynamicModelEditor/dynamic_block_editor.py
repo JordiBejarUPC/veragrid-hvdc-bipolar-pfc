@@ -16,7 +16,7 @@ from VeraGridEngine.Devices.Parents.branch_parent import BranchParent
 
 from VeraGridEngine.Devices.Parents.injection_parent import InjectionParent
 from VeraGridEngine.enumerations import DeviceType, VarPowerFlowReferenceType, ParamPowerFlowReferenceType, \
-    DynamicSimulationMode, DynamicTableModelMode
+    DynamicSimulationMode, DynamicTableModelMode, DynEditorGraphicsModes
 from VeraGridEngine.Utils.Symbolic.bus_rms_template import initialize_bus_rms
 from VeraGridEngine.Utils.Symbolic.bus_emt_template import get_bus_emt_template, \
     get_bus_emt_algebraic_vars
@@ -180,7 +180,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                  var_factory: VarFactory,
                  api_object: ALL_DEV_TYPES,
                  circuit: MultiCircuit,
-                 current_theme: str,
+                 current_theme: DynEditorGraphicsModes,
                  mode: DynamicSimulationMode = DynamicSimulationMode.RMS,
                  templates_list: Optional[List[RmsModelTemplate | EmtModelTemplate | FmuTemplate]] = None,
                  is_root_editor=False,
@@ -267,7 +267,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.dynamic_editor_entry: DynamicEditorEntry | None = None
         self._prepared_to_delete: bool = False
         self.colors_palet: graph.EditorGraphicsDefaultsDark | graph.EditorGraphicsDefaultsLight = graph.EditorGraphicsDefaultsDark()
-        self.current_theme: str = current_theme
+        self.current_theme: DynEditorGraphicsModes = current_theme
         self.set_colors_palet()
 
         self.root_block: Block = root_block
@@ -509,7 +509,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.rebuild_scene_from_diagram()
 
     def set_colors_palet(self):
-        if self.current_theme == "Dark":
+        if self.current_theme == DynEditorGraphicsModes.DARK:
             self.colors_palet = graph.EditorGraphicsDefaultsDark()
         else:
             self.colors_palet = graph.EditorGraphicsDefaultsLight()
@@ -6109,7 +6109,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         Set the dark mode
         :return:
         """
-        self.current_theme = "Dark"
+        self.current_theme = DynEditorGraphicsModes.DARK
         self.set_colors_palet()
         for item in self.scene.items():
             if isinstance(item, (graph.GenericBlockItem, graph.PairedItem, graph.ConnectionItem, graph.RectBaseArithmeticOpItem,
@@ -6121,7 +6121,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         Set the dark mode
         :return:
         """
-        self.current_theme = "Light"
+        self.current_theme = DynEditorGraphicsModes.LIGHT
         self.set_colors_palet()
         for item in self.scene.items():
             if isinstance(item, (graph.GenericBlockItem, graph.PairedItem, graph.ConnectionItem, graph.RectBaseArithmeticOpItem,
@@ -6144,7 +6144,7 @@ if __name__ == "__main__":
         current_block=bl,
         api_object=device,
         circuit=MultiCircuit(),
-        current_theme= "Dark",
+        current_theme= DynEditorGraphicsModes.DARK,
     )
     window.show()
     app.exec_()
