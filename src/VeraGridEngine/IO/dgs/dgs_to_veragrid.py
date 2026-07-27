@@ -1494,7 +1494,7 @@ I0: float = 0.5, Sbase: float = 100,
         trafo4w.Pfe = Pfe
         trafo4w.I0 = I0
 
-            
+
 
 
 def _apply_tr4_winding_tap_data(
@@ -3285,7 +3285,7 @@ def convert_dgs_staticgen_to_vsc(elmgenstat: ElmGenstat,
                      is_dc=True,
                      is_slack=True,
                      xpos=ac_bus.x,
-                     ypos=ac_bus.y - 200, )
+                     ypos=ac_bus.y - 200)
 
     vsc_name = _get_non_empty_name(elmgenstat.loc_name, f"VSC_{_ref_id(elmgenstat.ID)}")
     vsc_name = _get_parallel_device_name(vsc_name, parallel_index, parallel_count)
@@ -4149,8 +4149,8 @@ def convert_dgs_to_generator(elmsym: ElmSym,
 
     # Optional sequence data from type (best-effort, may not exist in all exports)
     if typsym is not None:
-        r1 = typsym.rstr
-        x1 = typsym.xd
+        r1 = typsym.rstr * baseMVA / snom
+        x1 = typsym.xstr * baseMVA / snom
 
         if r1 != 0.0 or x1 != 0.0:
             gen.R1 = float(r1)
@@ -4505,7 +4505,8 @@ def _add_elmgenstat_devices(dgs_grid: DgsCircuit,
                     parallel_count=parallel_count
                 )
                 grid.add_generator(bus=bus, api_obj=gen)
-            elif elmgenstat.cCategory == 'Storage':
+
+            elif elmgenstat.cCategory == 'Storage' and elmgenstat.av_mode == 'constq':
                 bus, battery = convert_dgs_staticgen_to_battery(
                     elmgenstat=elmgenstat,
                     stacubic_dict=stacubic_dict,
@@ -4517,6 +4518,21 @@ def _add_elmgenstat_devices(dgs_grid: DgsCircuit,
                     parallel_count=parallel_count
                 )
                 grid.add_battery(bus=bus, api_obj=battery)
+
+            elif elmgenstat.cCategory == 'Storage' and elmgenstat.av_mode == 'vdroop':
+                dc_bus, vsc = convert_dgs_staticgen_to_vsc(
+                    elmgenstat=elmgenstat,
+                    stacubic_dict=stacubic_dict,
+                    buses=grid.buses,
+                    logger=logger,
+                    cubics_by_objid=cubics_by_objid,
+                    bus_by_term_id=bus_by_term_id,
+                    parallel_index=parallel_index,
+                    parallel_count=parallel_count
+                )
+                grid.add_bus(dc_bus)
+                grid.add_vsc(vsc)
+
             elif elmgenstat.av_mode == 'constv':
                 bus, gen = convert_dgs_staticgen_to_gen(
                     elmgenstat=elmgenstat,

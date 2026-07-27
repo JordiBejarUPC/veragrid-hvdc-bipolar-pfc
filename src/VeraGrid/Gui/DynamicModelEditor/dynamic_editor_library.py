@@ -14,10 +14,10 @@ from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Devices.Dynamic.fmu_template import FmuTemplate
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
-from VeraGridEngine.Templates.BasicBlockCatalog import BasicBlockTemplateDescriptor, get_editor_ready_basic_block_catalog_descriptors
+from VeraGridEngine.Templates.BasicBlockCatalog import BasicBlockTemplateDescriptor, \
+    get_editor_ready_basic_block_catalog_descriptors
 from VeraGridEngine.Templates.BasicBlockCatalog.catalog import build_basic_block_catalog_branch_skeleton
 from VeraGridEngine.enumerations import BlockType
-
 
 
 def _new_uid() -> int:
@@ -38,6 +38,7 @@ class LibraryLeafSpec:
     label: str
     payload: object
     search_text: str = ""
+
 
 class DynamicsLibraryTreeModel(QtGui.QStandardItemModel):
     __slots__ = ("_block_role", "_mime_type", "_drag_token_role", "_drag_payloads")
@@ -105,7 +106,6 @@ class DynamicsLibraryTreeModel(QtGui.QStandardItemModel):
         return mime_data
 
 
-
 class LibraryTreeFilterProxyModel(QtCore.QSortFilterProxyModel):
     __slots__ = ("_search_role",)
 
@@ -134,14 +134,11 @@ class LibraryTreeFilterProxyModel(QtCore.QSortFilterProxyModel):
             return super().supportedDragActions()
 
 
-
-
-
 class DynamicEditorLibrary:
     def __init__(self,
-                     api_object: ALL_DEV_TYPES,
-                     mode: DynamicSimulationMode = DynamicSimulationMode.RMS,
-                     templates_list: Optional[List[RmsModelTemplate | EmtModelTemplate | FmuTemplate]] = None):
+                 api_object: ALL_DEV_TYPES,
+                 mode: DynamicSimulationMode = DynamicSimulationMode.RMS,
+                 templates_list: Optional[List[RmsModelTemplate | EmtModelTemplate | FmuTemplate]] = None):
 
         self.api_object = api_object
         self.mode = mode
@@ -309,7 +306,6 @@ class DynamicEditorLibrary:
         # build and add library model
         self.library_model = self.build_library_tree_model()
 
-
     def build_library_tree_model(self) -> DynamicsLibraryTreeModel:
         """
         Build the source tree-view model for dynamic library.
@@ -321,8 +317,6 @@ class DynamicEditorLibrary:
         :return:
         :rtype:
         """
-
-
 
         model: DynamicsLibraryTreeModel = DynamicsLibraryTreeModel(self.block_role, self.mime_type)
         model.setHorizontalHeaderLabels(["Dynamic library"])
@@ -388,10 +382,15 @@ def build_basic_library_branch() -> Dict[str, Any]:
             LibraryLeafSpec("Const", BlockType.CONST),
             LibraryLeafSpec("Gain", BlockType.GAIN),
             LibraryLeafSpec("Sum", BlockType.SUM),
-            LibraryLeafSpec("Substr", BlockType.SUBSTR),
             LibraryLeafSpec("Product", BlockType.PRODUCT),
-            LibraryLeafSpec("Divide", BlockType.DIVIDE),
             LibraryLeafSpec("Abs", BlockType.ABS),
+        ],
+        "Arrays and matrices": [
+            LibraryLeafSpec("Inverse Lookup array (linear)", BlockType.INVERSE_LOOKUP_ARRAY),
+            LibraryLeafSpec("Lookup array (linear)", BlockType.LOOKUP_ARRAY_LINEAR),
+            LibraryLeafSpec("Lookup array (spline)", BlockType.LOOKUP_ARRAY_SPLINE),
+            LibraryLeafSpec("Lookup matrix (linear)", BlockType.LOOKUP_MATRIX_LINEAR),
+            LibraryLeafSpec("Lookup matrix (spline)", BlockType.LOOKUP_MATRIX_SPLINE),
         ],
     }
 
@@ -455,6 +454,7 @@ def is_supported_library_payload(item_data: object) -> bool:
     else:
         return False
 
+
 def insert_library_leaf(branch: Dict[str, Any], category_path: tuple[str, ...], leaf: LibraryLeafSpec) -> None:
     """
     Insert one library leaf into a nested dictionary branch.
@@ -473,6 +473,7 @@ def insert_library_leaf(branch: Dict[str, Any], category_path: tuple[str, ...], 
             insert_library_leaf(child_branch, category_path[1:], leaf)
         else:
             raise TypeError(f"Category '{head}' is already used as a leaf collection")
+
 
 def set_library_item_icon(item: QtGui.QStandardItem, payload: object) -> None:
     """

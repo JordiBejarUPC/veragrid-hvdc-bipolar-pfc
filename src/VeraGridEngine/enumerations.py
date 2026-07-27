@@ -317,6 +317,7 @@ class SolverType(Enum):
     """
 
     NR = 'Newton Raphson'
+    NR_PC = 'Newton Raphson Predictor-Corrector'
     GAUSS = 'Gauss-Seidel'
     Decoupled_LU = 'Decoupled-LU Decomposition'
     GN = "Gauss-Newton"
@@ -1316,6 +1317,30 @@ class TerminalType(Enum):
         :return:
         """
         return list(enum_item.value for enum_item in cls)
+
+
+
+class WaveformSequenceType(Enum):
+    """
+        Squence points type
+    """
+
+class V_I_CurveSequenceType(Enum):
+    """
+        Squence points type
+    """
+
+class X_Y_SequenceType(Enum):
+    """
+        Squence points type
+    """
+
+class X_Y_Z_Matrix(Enum):
+    """
+        Squence points type
+    """
+
+
 
 
 class WindingType(str, Enum):
@@ -2552,6 +2577,7 @@ class ResultTypes(Enum):
     GeneratorReactivePowerC = 'Generator reactive power C'
 
     GeneratorCost = 'Generator cost'
+    GeneratorReserve = 'Generator reserve'
     GeneratorFuels = 'Generator fuels'
     GeneratorEmissions = 'Generator emissions'
     GeneratorProducing = 'Generator producing'
@@ -2573,7 +2599,7 @@ class ResultTypes(Enum):
     ShuntNeutralVoltage = 'Shunt neutral voltage'
 
     BusVoltagePolarPlot = 'Voltage plot'
-    BusNodalCapacity = "Nodal capacity"
+    BusNodalCapacity = "Bus nodal capacity"
 
     # OPF-NTC
     HvdcOverloads = 'HVDC overloads'
@@ -2956,6 +2982,7 @@ class SimulationTypes(Enum):
     InvestmentsEvaluation_run = 'Investments evaluation'
     CatalogueOptimization_run = 'Catalogue optimization'
     TopologyProcessor_run = 'Topology Processor'
+    NodalCapacity_run = 'Nodal capacity'
     NodalCapacityTimeSeries_run = 'Nodal capacity time series'
     Reliability_run = "Reliability"
     RmsDynamic_run = "RMS Dynamic"
@@ -3326,6 +3353,7 @@ class RmsProblemTypes(Enum):
     Tensygrid       = "Tensygrid"
     PowerBalance    = "RmsProblemDae"
     PowerBalanceVectorized = "RmsProblemDaeVectorized"
+    PowerBalanceFullVectorized = "RmsProblemDaeFullVectorized"
     CurrentBalance  = "RmsProblemPhasor"
     Multilinear     = "RmsProblemMultilinear"
 
@@ -4312,10 +4340,55 @@ class BlockType(Enum):
     CONST = "CONST"
     GAIN = "GAIN"
     SUM = "SUM"
-    SUBSTR = "SUBSTR"
-    PRODUCT = "PRODUCT"
     DIVIDE = "Divide"
+    PRODUCT = "PRODUCT"
     ABS = "Abs"
+    INTEGRATOR = "Integrator"
+    POWER = "Power"
+    SIN = "Sin"
+    COS = "Cos"
+    TAN = "Tan"
+    EXP = "Exp"
+    LOG = "Log"
+    LOG10 = "Log10"
+    SQRT = "Sqrt"
+    ASIN = "Asin"
+    ACOS = "Acos"
+    ATAN = "Atan"
+    SINH = "Sinh"
+    COSH = "Cosh"
+    TANH = "Tanh"
+    FLOOR = "Floor"
+    CEIL = "Ceil"
+    ROUND = "Round"
+    REAL = "Real"
+    IMAG = "Imag"
+    CONJ = "Conj"
+    ANGLE = "Angle"
+    HEAVISIDE = "Heaviside"
+    RAND = "Rand"
+    ATAN2 = "Atan2"
+    MIN = "Min"
+    MAX = "Max"
+
+    NOTYPE = "Notype"
+
+    # common basic arrays and matrices
+
+    INVERSE_LOOKUP_ARRAY = "INVERSE_LOOKUP_ARRAY"
+    INVERSE_LOOKUP_ARRAY_OBJECT = "INVERSE_LOOKUP_ARRAY_OBJECT"
+    INVERSE_LOOKUP_ARRAY_LINEAR_NOCLIPPING = "INVERSE_LOOKUP_ARRAY_LINEAR_NOCLIPPING"
+    LOOKUP_ARRAY_LINEAR = "LOOKUP_ARRAY_LINEAR"
+    LOOKUP_ARRAY_SPLINE = "LOOKUP_ARRAY_SPLINE"
+    LOOKUP_ARRAY_LINEAR_FIXED = "LOOKUP_ARRAY_LINEAR_FIXED"
+    LOOKUP_ARRAY_LINEAR_VARIABLE = "LOOKUP_ARRAY_LINEAR_VARIABLE"
+    LOOKUP_ARRAY_OBJECT_LINEAR_NOCLIPPING = "LOOKUP_ARRAY_OBJECT_LINEAR_NOCLIPPING"
+    LOOKUP_ARRAY_OBJECT = "LOOKUP_ARRAY_OBJECT"
+    LOOKUP_ARRAY_OBJECT_SPLINE = "LOOKUP_MATRIX_LINEAR"
+    LOOKUP_MATRIX_LINEAR = "LOOKUP_MATRIX_LINEAR"
+    LOOKUP_MATRIX_SPLINE = "LOOKUP_MATRIX_SPLINE"
+    LOOKUP_MATRIX_LINEAR_OBJECT = "LOOKUP_MATRIX_LINEAR_OBJECT"
+    LOOKUP_MATRIX_SPLINE_OBJECT = "LOOKUP_MATRIX_SPLINE_OBJECT"
 
     # RMS
     GENRAW = "GENRAW"

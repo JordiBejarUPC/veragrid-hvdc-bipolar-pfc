@@ -10,8 +10,9 @@ import pytest
 from PySide6 import QtWidgets
 
 import VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor as dynamic_block_editor_module
+from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_graphics import ProtectedConnectionBlockItem
 from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI
-from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import ValidationSection
+from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_validation import ValidationSection
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_validation import add_validation_port_detail
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_validation import format_validation_block_label
 import VeraGridEngine.Templates.Emt as emt_templates
@@ -256,12 +257,13 @@ def _build_editor(api_object: ALL_DEV_TYPES) -> DynamicBlockEditorGUI:
     _get_app()
     editor: DynamicBlockEditorGUI = DynamicBlockEditorGUI(
         var_factory=VarFactory(),
-        block=Block(),
+        current_block=Block(),
         api_object=api_object,
+        current_theme="Light",
         circuit=MultiCircuit(),
         mode=DynamicSimulationMode.EMT,
         templates_list=list(),
-        main_editor=False,
+        is_root_editor=False,
         modal=False,
     )
     return editor
@@ -326,12 +328,12 @@ def _connect_root_interface_ref(editor: DynamicBlockEditorGUI, reference: VarPow
     :return: None.
     """
     scene_item: object
-    protected_item: dynamic_block_editor_module.ProtectedConnectionBlockItem
+    protected_item: ProtectedConnectionBlockItem
     reference_var: Var | None = None
     connection_stub: object = object()
 
     for scene_item in editor.scene.items():
-        if isinstance(scene_item, dynamic_block_editor_module.ProtectedConnectionBlockItem):
+        if isinstance(scene_item, ProtectedConnectionBlockItem):
             protected_item = scene_item
             if protected_item.subsys is not None:
                 if len(protected_item.subsys.out_vars) > 0:
@@ -372,7 +374,7 @@ def _find_protected_item_by_name(editor: DynamicBlockEditorGUI, item_name: str):
     scene_item: object
 
     for scene_item in editor.scene.items():
-        if isinstance(scene_item, dynamic_block_editor_module.ProtectedConnectionBlockItem):
+        if isinstance(scene_item, ProtectedConnectionBlockItem):
             if scene_item.name == item_name:
                 return scene_item
             else:
@@ -392,11 +394,11 @@ def _find_protected_item_by_ref(editor: DynamicBlockEditorGUI, reference: VarPow
     :return: Matching protected connection block item.
     """
     scene_item: object
-    protected_item: dynamic_block_editor_module.ProtectedConnectionBlockItem
+    protected_item: ProtectedConnectionBlockItem
     reference_var: Var | None
 
     for scene_item in editor.scene.items():
-        if isinstance(scene_item, dynamic_block_editor_module.ProtectedConnectionBlockItem):
+        if isinstance(scene_item, ProtectedConnectionBlockItem):
             protected_item = scene_item
             if protected_item.subsys is not None:
                 if len(protected_item.subsys.out_vars) > 0:

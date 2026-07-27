@@ -1,7 +1,9 @@
-import pytest
-from PySide6 import QtCore, QtGui, QtWidgets
+import sys
 from pathlib import Path
 import xml.etree.ElementTree as ET
+
+import pytest
+from PySide6 import QtCore, QtGui, QtWidgets
 
 from VeraGrid.Gui.ShortCircuitEditor.short_circuit_selector import ShortCircuitSelector
 from VeraGrid.Gui.AboutDialogue.about_dialogue import translate_about_dialog
@@ -64,6 +66,8 @@ def test_requested_language_prefers_first_ui_language() -> None:
         ("हिंदी", ApplicationLanguage.HINDI),
         ("Japanese", ApplicationLanguage.JAPANESE),
         ("日本語", ApplicationLanguage.JAPANESE),
+        ("Korean", ApplicationLanguage.KOREAN),
+        ("한국어", ApplicationLanguage.KOREAN),
         ("Mandarin", ApplicationLanguage.CHINESE),
         ("普通话", ApplicationLanguage.CHINESE),
         ("Español", ApplicationLanguage.SPANISH),
@@ -120,6 +124,34 @@ def test_short_circuit_selector_uses_combo_data_not_display_text(qt_app: object)
     assert isinstance(phase, PhasesShortCircuit)
 
 
+def test_short_circuit_selector_rebuilds_method_combo_without_transient_none(qt_app: object,
+                                                                             monkeypatch: pytest.MonkeyPatch) -> None:
+    """
+    Rebuilding the method combo should not emit a transient selection with no enum data.
+    """
+    _unused_app: object = qt_app
+    errors: list[BaseException] = list()
+
+    def collect_qt_slot_exception(exc_type: type[BaseException],
+                                  exc_value: BaseException,
+                                  traceback: object) -> None:
+        """
+        Collect exceptions raised from Qt signal handlers.
+        """
+        del exc_type
+        del traceback
+        errors.append(exc_value)
+
+    monkeypatch.setattr(sys, "excepthook", collect_qt_slot_exception)
+
+    dialog = ShortCircuitSelector()
+    dialog.ui.cb_fault.setCurrentIndex(1)
+    QtWidgets.QApplication.processEvents()
+
+    assert errors == []
+    assert isinstance(dialog.ui.cb_method.currentData(), MethodShortCircuit)
+
+
 def test_install_translators_loads_spanish_catalog(qt_app: object) -> None:
     """
     The startup loader should install the compiled VeraGrid translation catalog.
@@ -152,6 +184,11 @@ def test_install_translators_loads_spanish_catalog(qt_app: object) -> None:
             ApplicationLanguage.JAPANESE,
             "ファイル",
             "日本語",
+        ),
+        (
+            ApplicationLanguage.KOREAN,
+            "파일",
+            "한국어",
         ),
         (
             ApplicationLanguage.BASQUE,
@@ -244,6 +281,7 @@ def test_install_translators_load_additional_catalogs(
         ApplicationLanguage.SYSTEM,
         ApplicationLanguage.ENGLISH,
         ApplicationLanguage.JAPANESE,
+        ApplicationLanguage.KOREAN,
         ApplicationLanguage.BASQUE,
         ApplicationLanguage.GALICIAN,
         ApplicationLanguage.ARABIC,
@@ -322,6 +360,7 @@ def test_hindi_main_window_menu_titles_render_in_ui(qt_app: object) -> None:
     "language",
     [
         ApplicationLanguage.JAPANESE,
+        ApplicationLanguage.KOREAN,
         ApplicationLanguage.BASQUE,
         ApplicationLanguage.GALICIAN,
         ApplicationLanguage.ARABIC,
@@ -359,6 +398,7 @@ def test_plugin_reload_action_translation_exists(
     ("language", "about_text", "dashboard_text"),
     [
         (ApplicationLanguage.HINDI, "VeraGrid के बारे में", "ग्रिड स्वास्थ्य डैशबोर्ड"),
+        (ApplicationLanguage.KOREAN, "VeraGrid 소개", "그리드 상태 대시보드"),
         (ApplicationLanguage.SPANISH, "Acerca de VeraGrid", "Panel de salud de la red"),
     ],
 )
@@ -409,6 +449,7 @@ def test_hindi_simulation_runtime_strings_use_simulations_context(
     [
         (ApplicationLanguage.ENGLISH, "English"),
         (ApplicationLanguage.JAPANESE, "日本語"),
+        (ApplicationLanguage.KOREAN, "한국어"),
         (ApplicationLanguage.HINDI, "हिंदी"),
         (ApplicationLanguage.CANTONESE, "廣東話"),
         (ApplicationLanguage.SPANISH, "Español"),
@@ -433,6 +474,7 @@ def test_language_selector_uses_stable_endonyms(
     ("active_language", "selector_language", "selector_text"),
     [
         (ApplicationLanguage.SPANISH, ApplicationLanguage.JAPANESE, "日本語"),
+        (ApplicationLanguage.KOREAN, ApplicationLanguage.KOREAN, "한국어"),
         (ApplicationLanguage.CATALAN, ApplicationLanguage.FRENCH, "Français"),
         (ApplicationLanguage.GERMAN, ApplicationLanguage.GREEK, "Ελληνικά"),
         (ApplicationLanguage.ITALIAN, ApplicationLanguage.JAPANESE, "日本語"),

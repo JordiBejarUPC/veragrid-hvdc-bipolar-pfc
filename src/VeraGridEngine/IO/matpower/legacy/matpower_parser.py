@@ -14,6 +14,7 @@ import VeraGridEngine.Devices as dev
 import VeraGridEngine.IO.matpower.legacy.matpower_branch_definitions as matpower_branches
 import VeraGridEngine.IO.matpower.legacy.matpower_bus_definitions as matpower_buses
 import VeraGridEngine.IO.matpower.legacy.matpower_gen_definitions as matpower_gen
+from VeraGridEngine.IO.matpower.matpower_utils import parse_matlab_float
 from VeraGridEngine.IO.matpower.veragrid_to_matpower import build_matpower_case_dict
 
 
@@ -79,7 +80,7 @@ def txt2mat(txt: str, line_splitter=';', to_float=True):
         # fill-in the data
         for j, val in enumerate(vec):
             if to_float:
-                arr[i, j] = float(val)
+                arr[i, j] = parse_matlab_float(val)
             else:
                 arr[i, j] = val.strip().replace("'", "")
 
@@ -447,8 +448,10 @@ def parse_branches_data(circuit: MultiCircuit,
 
                 rate = max(table[i, [matpower_branches.RATE_A, matpower_branches.RATE_B, matpower_branches.RATE_C]])
 
-                if rate == 0.0:
-                    # in matpower rate=0 means not limited by rating
+                if rate == 0.0 or rate >= 99999.0:
+                    # In MATPOWER, rate=0 means not limited by rating.
+                    # PGLIB also uses 99999 as an explicit placeholder for
+                    # effectively-unbounded thermal ratings.
                     rate = 10000
                     monitor_loading = False
                 else:
@@ -499,8 +502,10 @@ def parse_branches_data(circuit: MultiCircuit,
 
                 rate = table[i, matpower_branches.RATE_A]
 
-                if rate == 0.0:
-                    # in matpower rate=0 means not limited by rating
+                if rate == 0.0 or rate >= 99999.0:
+                    # In MATPOWER, rate=0 means not limited by rating.
+                    # PGLIB also uses 99999 as an explicit placeholder for
+                    # effectively-unbounded thermal ratings.
                     rate = 10000
                     monitor_loading = False
                 else:
@@ -535,8 +540,10 @@ def parse_branches_data(circuit: MultiCircuit,
             else:
                 rate = table[i, matpower_branches.RATE_A]
 
-                if rate == 0.0:
-                    # in matpower rate=0 means not limited by rating
+                if rate == 0.0 or rate >= 99999.0:
+                    # In MATPOWER, rate=0 means not limited by rating.
+                    # PGLIB also uses 99999 as an explicit placeholder for
+                    # effectively-unbounded thermal ratings.
                     rate = 10000
                     monitor_loading = False
                 else:
@@ -563,8 +570,10 @@ def parse_branches_data(circuit: MultiCircuit,
 
                 rate = table[i, matpower_branches.RATE_A]
 
-                if rate == 0.0:
-                    # in matpower rate=0 means not limited by rating
+                if rate == 0.0 or rate >= 99999.0:
+                    # In MATPOWER, rate=0 means not limited by rating.
+                    # PGLIB also uses 99999 as an explicit placeholder for
+                    # effectively-unbounded thermal ratings.
                     rate = 10000
                     monitor_loading = False
                 else:
@@ -590,8 +599,10 @@ def parse_branches_data(circuit: MultiCircuit,
 
                 rate = table[i, matpower_branches.RATE_A]
 
-                if rate == 0.0:
-                    # in matpower rate=0 means not limited by rating
+                if rate == 0.0 or rate >= 99999.0:
+                    # In MATPOWER, rate=0 means not limited by rating.
+                    # PGLIB also uses 99999 as an explicit placeholder for
+                    # effectively-unbounded thermal ratings.
                     rate = 10000
                     monitor_loading = False
                 else:
@@ -746,28 +757,21 @@ def read_matpower_file(filename: str, logger: Logger) -> Dict[str, np.ndarray]:
     return data
 
 
-def parse_matpower_file(filename, export=False) -> [MultiCircuit, Logger]:
+def parse_matpower_file(filename) -> Tuple[MultiCircuit, Logger]:
     """
-
-    Args:
-        filename:
-        export:
-
-    Returns:
-
+    Read MatPower file
+    :param filename: MatPower file
+    :return: MultiCircuit (if successful), Logger
     """
-
-    # declare circuit
-    circuit = MultiCircuit()
-
     logger = Logger()
 
     data = read_matpower_file(filename, logger)
 
     if 'bus' in data.keys():
-        circuit = interpret_data_v1(circuit, data, logger)
+        circuit = interpret_data_v1(data, logger)
     else:
         logger.add_error('No bus data')
+        raise Exception("No bus data found in MatPower file:(")
 
     return circuit, logger
 

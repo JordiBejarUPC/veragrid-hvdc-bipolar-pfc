@@ -5,12 +5,15 @@
 import os
 import hmac
 from fastapi import FastAPI, Header, HTTPException, Response, Query
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
 
 from VeraGridServer.endpoints import register_in_master
 from VeraGridServer.endpoints import register_sub_servers
 from VeraGridServer.endpoints import calculations
 from VeraGridServer.endpoints import jobs
+from VeraGridServer.endpoints import admin
+from VeraGridServer.endpoints import file_management
+from VeraGridServer.db.database import create_veragrid_schema, log_database_operation
 from VeraGridServer.settings import settings
 from cryptography import x509
 from cryptography.x509.oid import NameOID
@@ -25,9 +28,28 @@ app.include_router(register_in_master.router)
 app.include_router(register_sub_servers.router)
 app.include_router(calculations.router)
 app.include_router(jobs.router)
+app.include_router(admin.router)
+app.include_router(file_management.router)
 
 # Store WebSocket connections in a set
 __connections__ = set()
+
+
+@app.on_event("startup")
+async def ensure_database_schema_on_startup() -> None:
+    """
+    Create the configured PostgreSQL database and schema on server startup.
+
+    :return: None.
+    """
+    database_settings = settings.get_database_settings()
+
+    if database_settings is None:
+        log_database_operation(
+            "Server startup skipped database creation because the database settings are incomplete."
+        )
+    else:
+        create_veragrid_schema(settings=database_settings)
 
 def verify_api_key(api_key: str = Header(None)):
     """
@@ -64,7 +86,7 @@ async def read_root():
     Root
     :return: string
     """
-    return {"message": "VeraGrid server running", "status": "ok"}
+    return RedirectResponse(url="/admin", status_code=303)
 
 
 @app.get('/favicon.ico', include_in_schema=False)

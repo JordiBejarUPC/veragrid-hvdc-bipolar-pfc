@@ -3258,6 +3258,7 @@ class EmtProblemDae(EmtProblemTemplate):
                             if mapped_var is None:
                                 mapped_var = external_mapping.get(VarPowerFlowReferenceType.Vdc, None)
                             if mapped_var is not None:
+                                # Todo: insted of this function use add_connection method from var_factory
                                 mdl.update_model(mapped_var, v_dc)
                             else:
                                 pass

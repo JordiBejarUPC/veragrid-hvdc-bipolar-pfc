@@ -21,7 +21,9 @@ def start_server(key_file_name: str = "key.pem", cert_file_name: str = "cert.pem
                  port: int = 8000, domain="localhost",
                  master_host: str = "", master_port: int = 0,
                  username: str = "", password: str = "", is_master: bool = True,
-                 secure: bool = True):
+                 secure: bool = True,
+                 db_host: str = "", db_port: int = 0,
+                 db_name: str = "", db_user: str = "", db_password: str = ""):
     """
     Start server function
     :param key_file_name: name of the key file that the server generates
@@ -34,6 +36,11 @@ def start_server(key_file_name: str = "key.pem", cert_file_name: str = "cert.pem
     :param password: Password to authenticate with
     :param is_master: Whether the server is master or not
     :param secure: Whether the server is secure or not (if it looks for the certificates or not)
+    :param db_host: PostgreSQL host name.
+    :param db_port: PostgreSQL port number.
+    :param db_name: PostgreSQL database name.
+    :param db_user: PostgreSQL user name.
+    :param db_password: PostgreSQL password.
     """
 
     # find out my IP
@@ -62,6 +69,11 @@ def start_server(key_file_name: str = "key.pem", cert_file_name: str = "cert.pem
     settings.this_port = port
     settings.this_username = username
     settings.this_password = password
+    settings.db_host = db_host
+    settings.db_port = db_port
+    settings.db_name = db_name
+    settings.db_user = db_user
+    settings.db_password = db_password
 
     if secure:
         uvicorn.run(app,
@@ -102,6 +114,11 @@ if __name__ == "__main__":
     parser.add_argument("--master_port", type=int, default=80, help="Port of the master instance")
     parser.add_argument("--user", type=str, default="", help="username")
     parser.add_argument("--pwd", type=str, default="", help="Password")
+    parser.add_argument("--db_host", type=str, default="", help="PostgreSQL host")
+    parser.add_argument("--db_port", type=int, default=0, help="PostgreSQL port")
+    parser.add_argument("--db_name", type=str, default="", help="PostgreSQL database name")
+    parser.add_argument("--db_user", type=str, default="", help="PostgreSQL user")
+    parser.add_argument("--db_password", type=str, default="", help="PostgreSQL password")
 
     # Parse arguments
     args = parser.parse_args()
@@ -119,4 +136,9 @@ if __name__ == "__main__":
                  secure=args.secure,
                  is_master=args.master,
                  username=args.user,
-                 password=args.pwd)
+                 password=args.pwd,
+                 db_host=args.db_host,
+                 db_port=args.db_port,
+                 db_name=args.db_name,
+                 db_user=args.db_user,
+                 db_password=args.db_password)
