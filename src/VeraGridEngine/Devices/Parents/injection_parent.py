@@ -177,18 +177,10 @@ class InjectionParent(DynamicDevice):
         ),
 
         GCProp(
-            prop_name='phN',
-            units='',
-            tpe=bool,
-            definition='Is the neutral connected?',
-            cat=[PrpCat.SC, PrpCat.PF3, PrpCat.EMT],
-        ),
-
-        GCProp(
             prop_name='phA',
             units='',
             tpe=bool,
-            definition='Is the phase A connected?',
+            definition='Is phase A connected?',
             cat=[PrpCat.SC, PrpCat.PF3, PrpCat.EMT],
         ),
 
@@ -196,7 +188,7 @@ class InjectionParent(DynamicDevice):
             prop_name='phB',
             units='',
             tpe=bool,
-            definition='Is the phase B connected?',
+            definition='Is phase B connected?',
             cat=[PrpCat.SC, PrpCat.PF3, PrpCat.EMT],
         ),
 
@@ -204,7 +196,7 @@ class InjectionParent(DynamicDevice):
             prop_name='phC',
             units='',
             tpe=bool,
-            definition='Is the phase C connected?',
+            definition='Is phase C connected?',
             cat=[PrpCat.SC, PrpCat.PF3, PrpCat.EMT],
         ),
 
@@ -289,7 +281,7 @@ class InjectionParent(DynamicDevice):
 
         self._conn: ShuntConnectionType = ShuntConnectionType.GroundedStar
 
-        self._phN: bool = True
+        self._phN: bool = False
         self._phA: bool = True
         self._phB: bool = True
         self._phC: bool = True
@@ -424,9 +416,11 @@ class InjectionParent(DynamicDevice):
         if isinstance(val, ShuntConnectionType):
             self._conn = val
 
-            # if self.auto_update_enabled:
-                # TODO: think if to modify the phN based on this
-                # pass
+            if self.auto_update_enabled:
+                if self._conn == ShuntConnectionType.NeutralStar:
+                    self.phN = True
+                else:
+                    self.phN = False
 
     def get_S_with_sign(self) -> complex:
         """
