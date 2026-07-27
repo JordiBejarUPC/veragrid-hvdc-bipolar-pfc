@@ -3,6 +3,7 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
+
 from typing import Union, List, TYPE_CHECKING, Tuple
 import numpy as np
 
@@ -174,6 +175,15 @@ class InjectionParent(DynamicDevice):
             definition='Connection type for 3-phase studies',
             cat=[PrpCat.SC, PrpCat.PF3],
             dyn_ref=ParamPowerFlowReferenceType.injection_connection_type,
+        ),
+
+        GCProp(
+            prop_name='phN',
+            units='',
+            tpe=bool,
+            definition='Is the neutral connected?',
+            cat=[PrpCat.SC, PrpCat.PF3, PrpCat.EMT],
+            display=False,
         ),
 
         GCProp(
