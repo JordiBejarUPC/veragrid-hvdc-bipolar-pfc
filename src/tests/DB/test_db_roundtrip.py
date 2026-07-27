@@ -4,6 +4,7 @@ from pathlib import Path
 
 import psycopg
 import pytest
+from psycopg.types.json import Json
 
 import VeraGridEngine.api as vge
 from VeraGridServer.db.database import PostgreSqlConnectionSettings
@@ -217,5 +218,70 @@ def test_multiverse_db_roundtrip_and_file_json_when_local_db_is_available() -> N
             for entry in file_json["models"]
         )
         assert any(file_entry["idtag"] == file_idtag for file_entry in all_files_json)
+    finally:
+        delete_file(settings=settings, file_idtag=file_idtag)
+
+
+def test_get_multicircuit_uses_model_row_idtag_when_payload_idtag_differs() -> None:
+    """
+    Rebind a loaded circuit to the SQL model idtag when legacy payloads disagree.
+
+    :return: None.
+    """
+    settings: PostgreSqlConnectionSettings = _get_local_db_settings()
+    _skip_when_local_db_is_unavailable(settings=settings)
+
+    source_grid: vge.MultiCircuit = vge.open_file(str(GRID_FOLDER / "case14.gridcal"))
+    file_idtag: str = create_file(
+        settings=settings,
+        file_name="case14_db_payload_idtag_mismatch",
+        user_idtag="admin",
+    )
+    model_idtag: str = create_model(
+        settings=settings,
+        file_idtag=file_idtag,
+        model_name="case14_db_payload_idtag_mismatch_model",
+    )
+
+    try:
+        put_multicircuit_in_database(
+            settings=settings,
+            circuit=source_grid,
+            file_idtag=file_idtag,
+            model_idtag=model_idtag,
+        )
+
+        with psycopg.connect(
+            host=settings.host,
+            port=settings.port,
+            dbname=settings.database,
+            user=settings.user_name,
+            password=settings.password,
+        ) as connection:
+            cursor = connection.cursor()
+            cursor.execute(
+                '''
+                UPDATE veragrid."ModelData"
+                SET circuit = jsonb_set(circuit::jsonb, '{idtag}', %s::jsonb, true)::json
+                WHERE model_idtag = %s
+                ''',
+                (Json("legacy_payload_idtag"), model_idtag),
+            )
+            connection.commit()
+            cursor.close()
+
+        loaded_multiverse: vge.MultiVerse = get_multiverse_from_database(
+            settings=settings,
+            file_idtag=file_idtag,
+        )
+        loaded_grid: vge.MultiCircuit = get_multicircuit_from_database(
+            settings=settings,
+            file_idtag=file_idtag,
+            model_idtag=model_idtag,
+        )
+
+        assert loaded_multiverse.root_nodes[0].circuit.idtag == model_idtag
+        assert loaded_grid.idtag == model_idtag
+        _assert_circuits_equal(source_grid, loaded_grid)
     finally:
         delete_file(settings=settings, file_idtag=file_idtag)

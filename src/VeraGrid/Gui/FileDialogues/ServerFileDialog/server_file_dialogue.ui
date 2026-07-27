@@ -13,75 +13,32 @@
   <property name="windowTitle">
    <string>Server Files</string>
   </property>
+  <property name="windowIcon">
+   <iconset resource="../../Icons/icons.qrc">
+    <normaloff>:/Icons/icons/server.png</normaloff>:/Icons/icons/server.png</iconset>
+  </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
-    <widget class="QLabel" name="titleLabel">
-     <property name="text">
-      <string>Browse database files and models through the connected VeraGrid server</string>
+    <widget class="QToolBar" name="toolBar">
+     <property name="iconSize">
+      <size>
+       <width>24</width>
+       <height>24</height>
+      </size>
      </property>
-     <property name="wordWrap">
-      <bool>true</bool>
+     <property name="toolButtonStyle">
+      <enum>Qt::ToolButtonTextBesideIcon</enum>
      </property>
+     <addaction name="actionRefresh"/>
+     <addaction name="separator"/>
+     <addaction name="actionLoadFile"/>
+     <addaction name="actionLoadBase"/>
+     <addaction name="actionLoadModel"/>
+     <addaction name="separator"/>
+     <addaction name="actionSaveCurrent"/>
+     <addaction name="separator"/>
+     <addaction name="actionDeleteSelected"/>
     </widget>
-   </item>
-   <item>
-    <layout class="QHBoxLayout" name="toolbarLayout">
-     <item>
-      <widget class="QPushButton" name="refreshButton">
-       <property name="text">
-        <string>Refresh</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QPushButton" name="loadFileButton">
-       <property name="text">
-        <string>Load File</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QPushButton" name="loadBaseButton">
-       <property name="text">
-        <string>Load Base Model</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QPushButton" name="loadModelButton">
-       <property name="text">
-        <string>Load Selected Model</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QPushButton" name="saveCurrentButton">
-       <property name="text">
-        <string>Save Current Project</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QPushButton" name="deleteButton">
-       <property name="text">
-        <string>Delete Selected</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <spacer name="horizontalSpacer">
-       <property name="orientation">
-        <enum>Qt::Horizontal</enum>
-       </property>
-       <property name="sizeHint" stdset="0">
-        <size>
-         <width>40</width>
-         <height>20</height>
-        </size>
-       </property>
-      </spacer>
-     </item>
-    </layout>
    </item>
    <item>
     <widget class="QSplitter" name="mainSplitter">
@@ -89,6 +46,12 @@
       <enum>Qt::Horizontal</enum>
      </property>
      <widget class="QTreeView" name="filesTreeView">
+      <property name="minimumSize">
+       <size>
+        <width>640</width>
+        <height>0</height>
+       </size>
+      </property>
       <property name="alternatingRowColors">
        <bool>true</bool>
       </property>
@@ -103,7 +66,25 @@
       </property>
      </widget>
      <widget class="QWidget" name="detailWidget">
+      <property name="minimumSize">
+       <size>
+        <width>280</width>
+        <height>0</height>
+       </size>
+      </property>
       <layout class="QVBoxLayout" name="detailLayout">
+       <property name="leftMargin">
+        <number>0</number>
+       </property>
+       <property name="topMargin">
+        <number>0</number>
+       </property>
+       <property name="rightMargin">
+        <number>0</number>
+       </property>
+       <property name="bottomMargin">
+        <number>0</number>
+       </property>
        <item>
         <widget class="QGroupBox" name="selectionGroupBox">
          <property name="title">
@@ -241,7 +222,7 @@
           <item>
            <widget class="QLabel" name="helpLabel">
             <property name="text">
-             <string>Choose a file to load the full multiverse, load only the base model, save the current project back into that file, or delete it. Choose a model to load or delete only that branch.</string>
+             <string>Delete removes the selected file or the selected model branch from the server database after confirmation.</string>
             </property>
             <property name="wordWrap">
              <bool>true</bool>
@@ -255,25 +236,82 @@
      </widget>
     </widget>
    </item>
-   <item>
-    <widget class="QLabel" name="statusLabel">
-     <property name="text">
-      <string>Ready.</string>
-     </property>
-     <property name="wordWrap">
-      <bool>true</bool>
-     </property>
-    </widget>
-   </item>
-   <item>
-    <widget class="QDialogButtonBox" name="buttonBox">
-     <property name="standardButtons">
-      <set>QDialogButtonBox::Close</set>
-     </property>
-    </widget>
-   </item>
   </layout>
+  <action name="actionRefresh">
+   <property name="icon">
+    <iconset resource="../../Icons/icons.qrc">
+     <normaloff>:/Icons/icons/sync.png</normaloff>:/Icons/icons/sync.png</iconset>
+   </property>
+   <property name="text">
+    <string>Refresh</string>
+   </property>
+   <property name="toolTip">
+    <string>Reload the server file tree</string>
+   </property>
+  </action>
+  <action name="actionLoadFile">
+   <property name="icon">
+    <iconset resource="../../Icons/icons.qrc">
+     <normaloff>:/Icons/icons/server.png</normaloff>:/Icons/icons/server.png</iconset>
+   </property>
+   <property name="text">
+    <string>Load File</string>
+   </property>
+   <property name="toolTip">
+    <string>Load the full selected multiverse</string>
+   </property>
+  </action>
+  <action name="actionLoadBase">
+   <property name="icon">
+    <iconset resource="../../Icons/icons.qrc">
+     <normaloff>:/Icons/icons/grid_icon.png</normaloff>:/Icons/icons/grid_icon.png</iconset>
+   </property>
+   <property name="text">
+    <string>Load Base Model</string>
+   </property>
+   <property name="toolTip">
+    <string>Load only the selected file base model</string>
+   </property>
+  </action>
+  <action name="actionLoadModel">
+   <property name="icon">
+    <iconset resource="../../Icons/icons.qrc">
+     <normaloff>:/Icons/icons/schematic.png</normaloff>:/Icons/icons/schematic.png</iconset>
+   </property>
+   <property name="text">
+    <string>Load Selected Model</string>
+   </property>
+   <property name="toolTip">
+    <string>Load the selected scenario branch as one flat circuit</string>
+   </property>
+  </action>
+  <action name="actionSaveCurrent">
+   <property name="icon">
+    <iconset resource="../../Icons/icons.qrc">
+     <normaloff>:/Icons/icons/save.png</normaloff>:/Icons/icons/save.png</iconset>
+   </property>
+   <property name="text">
+    <string>Save Current Project</string>
+   </property>
+   <property name="toolTip">
+    <string>Upload the current project into the selected server file or model</string>
+   </property>
+  </action>
+  <action name="actionDeleteSelected">
+   <property name="icon">
+    <iconset resource="../../Icons/icons.qrc">
+     <normaloff>:/Icons/icons/delete_db.png</normaloff>:/Icons/icons/delete_db.png</iconset>
+   </property>
+   <property name="text">
+    <string>Delete Selected</string>
+   </property>
+   <property name="toolTip">
+    <string>Delete the selected file or model from the server database</string>
+   </property>
+  </action>
  </widget>
- <resources/>
+ <resources>
+  <include location="../../Icons/icons.qrc"/>
+ </resources>
  <connections/>
 </ui>
