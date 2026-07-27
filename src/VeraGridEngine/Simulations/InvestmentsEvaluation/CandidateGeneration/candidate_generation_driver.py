@@ -9,13 +9,14 @@ from typing import Dict, List, Optional, Set, Tuple
 import numpy as np
 
 import VeraGridEngine.Devices as dev
-from VeraGridEngine.basic_structures import Vec
+from VeraGridEngine.basic_structures import Vec, IntVec
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Compilers.circuit_to_data import compile_numerical_circuit_at
 from VeraGridEngine.DataStructures.numerical_circuit import NumericalCircuit
 from VeraGridEngine.Simulations.driver_template import DriverTemplate
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowDriver
 from VeraGridEngine.Simulations.PowerFlow.power_flow_options import PowerFlowOptions
+from VeraGridEngine.Simulations.PowerFlow.power_flow_ts_driver import PowerFlowTimeSeriesDriver
 from VeraGridEngine.Simulations.LinearFactors.linear_analysis import LinearAnalysis
 from VeraGridEngine.Utils.GeographicalMethods.haversine_distance import haversine_distance
 from VeraGridEngine.Simulations.InvestmentsEvaluation.CandidateGeneration.candidate_generation_options import (
@@ -36,6 +37,10 @@ class CandidateGenerationDriver(DriverTemplate):
       3. PTDF-ranked reinforcements: new-line corridors and rating upgrades.
       4. Shortlist: candidates ranked by relief, annotated with the violations they relieve.
       5. Fresh AC power flow verification of the top candidate(s).
+
+    With ``options.use_time_series`` set, step 0 first scans the grid's time series for the
+    hour with the most combined branch overloads and bus voltage violations, and the whole
+    pipeline above then runs at that single hour instead of the grid's current snapshot values.
     """
     __slots__ = ("options", "pf_options")
 
@@ -58,16 +63,60 @@ class CandidateGenerationDriver(DriverTemplate):
     # ----------------------------------------------------------------------------------------------
     # Low-level helpers
     # ----------------------------------------------------------------------------------------------
-    def _run_ac_pf(self, grid: MultiCircuit) -> Tuple[bool, Vec]:
+    def _run_ac_pf(self, grid: MultiCircuit, t_idx: Optional[int] = None) -> Tuple[bool, Vec]:
         """
         Run a fresh AC power flow and return (converged, active-power branch flows in MW).
 
         :param grid: The grid to solve.
+        :param t_idx: Time index to solve at, or None for the grid's snapshot values.
         :return: (converged, Sf.real) with Sf in compiled branch order.
         """
-        pf = PowerFlowDriver(grid=grid, options=self.pf_options)
+        pf = PowerFlowDriver(grid=grid, options=self.pf_options, t_idx=t_idx)
         pf.run()
         return bool(pf.results.converged), np.asarray(pf.results.Sf.real, dtype=float)
+
+    def _find_critical_snapshot(self, time_indices: IntVec) -> Tuple[int, int, int, List[str]]:
+        """
+        Scan a base-case-only (N-0) AC power-flow time series and locate the single most critical
+        hour: the one with the most combined branch overloads and bus voltage violations.
+
+        :param time_indices: Time steps to scan.
+        :return: (critical time index (global axis), overloaded-branch count at that hour,
+                 voltage-violated-bus count at that hour, per-bus voltage violation report).
+        """
+        ts_driver = PowerFlowTimeSeriesDriver(grid=self.grid, options=self.pf_options,
+                                              time_indices=time_indices)
+        ts_driver.run()
+
+        # Topology/limits are assumed static across the scanned window, so one structural
+        # compilation is enough to get rates, monitorable branches and bus voltage limits.
+        nc = compile_numerical_circuit_at(self.grid, t_idx=int(time_indices[0]))
+        pbd = nc.passive_branch_data
+        monitorable = np.array([pbd.active[i] and pbd.rates[i] > 0.0 for i in range(nc.nbr)], dtype=bool)
+
+        loading = np.abs(ts_driver.results.loading)
+        n_overload = np.sum((loading > self.options.base_overload_threshold) & monitorable[None, :], axis=1)
+
+        vm = np.abs(ts_driver.results.voltage)
+        vmin = nc.bus_data.Vmin
+        vmax = nc.bus_data.Vmax
+        voltage_violated = (vm < vmin[None, :]) | (vm > vmax[None, :])
+        n_voltage = np.sum(voltage_violated, axis=1)
+
+        criticality = n_overload + n_voltage
+        local_idx = int(np.argmax(criticality))
+        t_critical = int(time_indices[local_idx])
+
+        voltage_report: List[str] = list()
+        bus_names = nc.bus_data.names
+        for i in range(nc.nbus):
+            if voltage_violated[local_idx, i]:
+                bound = "Vmax" if vm[local_idx, i] > vmax[i] else "Vmin"
+                limit = vmax[i] if bound == "Vmax" else vmin[i]
+                voltage_report.append(f"{str(bus_names[i])}: {vm[local_idx, i]:.3f} pu "
+                                     f"({'>' if bound == 'Vmax' else '<'} {bound} {limit:.3f} pu)")
+
+        return t_critical, int(n_overload[local_idx]), int(n_voltage[local_idx]), voltage_report
 
     @staticmethod
     def _screen(nc: NumericalCircuit,
@@ -301,13 +350,15 @@ class CandidateGenerationDriver(DriverTemplate):
     # ----------------------------------------------------------------------------------------------
     def _verify(self,
                 candidate: ReinforcementCandidate,
-                original_keys: Set[Tuple[str, str]]) -> str:
+                original_keys: Set[Tuple[str, str]],
+                t_idx: Optional[int] = None) -> str:
         """
         Apply the candidate to a copy of the grid, re-run AC PF + N-1 screening, and report whether
         its targeted violations are cleared and whether any new violations appeared.
 
         :param candidate: Candidate to verify.
         :param original_keys: Identities of all violations found in the original screening.
+        :param t_idx: Time index to verify at, or None for the grid's snapshot values.
         :return: One-line verification report.
         """
         candidate.verified = True
@@ -330,14 +381,14 @@ class CandidateGenerationDriver(DriverTemplate):
                     br.rate = candidate.new_rate
                     break
 
-        converged, base_flow = self._run_ac_pf(cpy)
+        converged, base_flow = self._run_ac_pf(cpy, t_idx=t_idx)
         if not converged:
             candidate.verification_converged = False
             return f"{candidate.label()}: verification power flow did NOT converge."
 
         candidate.verification_converged = True
 
-        nc = compile_numerical_circuit_at(cpy)
+        nc = compile_numerical_circuit_at(cpy, t_idx=t_idx)
         if len(base_flow) != nc.nbr:
             # Cannot map flows onto branches reliably; treat as not verifiable.
             candidate.verification_converged = False
@@ -369,9 +420,33 @@ class CandidateGenerationDriver(DriverTemplate):
         self.tic()
         results = CandidateGenerationResults()
 
+        # --- Step 0: locate the critical snapshot (time-series mode only) ---
+        t_idx: Optional[int] = None
+        if self.options.use_time_series:
+            if not self.grid.has_time_series:
+                self.logger.add_error("Time-series mode requested but the grid has no time series; "
+                                      "aborting.")
+                self.results = results
+                self.toc()
+                return
+
+            time_indices = (self.options.time_indices if self.options.time_indices is not None
+                            else self.grid.get_all_time_indices())
+
+            self.report_text("Scanning time series for the critical snapshot...")
+            t_critical, n_overload, n_voltage, voltage_report = self._find_critical_snapshot(time_indices)
+
+            t_idx = t_critical
+            results.critical_time_idx = t_critical
+            time_array = self.grid.get_time_array()
+            results.critical_time_label = str(time_array[t_critical]) if time_array is not None else ""
+            results.n_overloaded_at_critical = n_overload
+            results.n_voltage_violated_at_critical = n_voltage
+            results.voltage_violation_report = voltage_report
+
         # --- Step 1: base case AC power flow ---
         self.report_text("Base case AC power flow...")
-        converged, base_flow = self._run_ac_pf(self.grid)
+        converged, base_flow = self._run_ac_pf(self.grid, t_idx=t_idx)
         results.base_case_converged = converged
 
         if not converged:
@@ -383,7 +458,7 @@ class CandidateGenerationDriver(DriverTemplate):
         # Compile once for screening + linear factors (own bus ordering == circuit.get_buses()).
         buses = self.grid.get_buses()
         bus_dict = {bus: i for i, bus in enumerate(buses)}
-        nc = compile_numerical_circuit_at(self.grid, bus_dict=bus_dict)
+        nc = compile_numerical_circuit_at(self.grid, bus_dict=bus_dict, t_idx=t_idx)
 
         if len(base_flow) != nc.nbr:
             self.logger.add_error("Branch count mismatch between power flow and compilation; aborting.",
@@ -437,7 +512,7 @@ class CandidateGenerationDriver(DriverTemplate):
         original_keys = {self._violation_key(v) for v in violations}
         for cand in candidates[:max(0, self.options.verify_top_k)]:
             self.report_text("Verifying top candidate(s)...")
-            results.verification_report.append(self._verify(cand, original_keys))
+            results.verification_report.append(self._verify(cand, original_keys, t_idx=t_idx))
 
         self.results = results
         self.toc()

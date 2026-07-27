@@ -21,6 +21,7 @@ from VeraGridEngine.Simulations.InvestmentsEvaluation.CandidateGeneration.candid
 from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import SchematicWidget
 from VeraGrid.Gui.Diagrams.MapWidget.grid_map_widget import GridMapWidget
 from VeraGrid.Gui.general_dialogues import LogsDialogue
+from VeraGrid.Gui.messages import warning_msg
 
 if TYPE_CHECKING:
     from VeraGrid.Gui.Main.SubClasses.simulations import SimulationsMain
@@ -118,11 +119,25 @@ class CandidateInvestmentsWindow(QtWidgets.QDialog):
         self.add_button.setEnabled(False)
         self.candidate_list.clear()
         self._candidates.clear()
+
+        grid = self.app.circuit
+        if grid.has_time_series and not self.app.ts_flag():
+            warning_msg("This grid model has a time series, activate time series mode to run the "
+                       "candidate investments generator feature.")
+            self.report_text.setPlainText("")
+            return
+
         self.report_text.setPlainText("Running...")
         QtGui.QGuiApplication.processEvents()
 
-        options = CandidateGenerationOptions(top_n_corridors=self.top_n_spin.value(),
-                                             verify_top_k=self.verify_top_k_spin.value())
+        if grid.has_time_series:
+            options = CandidateGenerationOptions(top_n_corridors=self.top_n_spin.value(),
+                                                 verify_top_k=self.verify_top_k_spin.value(),
+                                                 use_time_series=True,
+                                                 time_indices=self.app.get_time_indices())
+        else:
+            options = CandidateGenerationOptions(top_n_corridors=self.top_n_spin.value(),
+                                                 verify_top_k=self.verify_top_k_spin.value())
         pf_options = self.app.get_selected_power_flow_options()
 
         driver = CandidateGenerationDriver(grid=self.app.circuit,

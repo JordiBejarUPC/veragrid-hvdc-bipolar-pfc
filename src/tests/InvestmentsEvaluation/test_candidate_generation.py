@@ -4,6 +4,8 @@
 # SPDX-License-Identifier: MPL-2.0
 import os
 
+import numpy as np
+
 import VeraGridEngine.api as gce
 import VeraGridEngine.Devices as dev
 from VeraGridEngine.basic_structures import Logger
@@ -172,6 +174,87 @@ def test_candidate_apply_creates_investments():
     # The base grid is untouched until the investments are applied: original rate and active state.
     assert upgrade_cand.target_branch.rate == old_rate
     assert upgrade_cand.target_branch.active is True
+
+
+def _two_bus_with_growing_load():
+    """
+    Tiny 2-bus, 3-hour grid where the line is fine at hour 0 but overloads by hour 2 as the load
+    grows, so the critical-snapshot scan has an unambiguous hour to pick.
+    """
+    grid = gce.MultiCircuit()
+    grid.create_profiles(steps=3, step_length=1, step_unit="h")
+
+    bus1 = dev.Bus('Bus 1', Vnom=20)
+    grid.add_bus(bus1)
+    grid.add_generator(bus1, dev.Generator('Slack Generator', vset=1.0))
+
+    bus2 = dev.Bus('Bus 2', Vnom=20)
+    grid.add_bus(bus2)
+    load = dev.Load('load 2', P=10.0, Q=0.0)
+    grid.add_load(bus2, load)
+    load.P_prof = np.array([10.0, 20.0, 60.0])
+    load.Q_prof = np.array([0.0, 0.0, 0.0])
+
+    grid.add_line(dev.Line(bus1, bus2, name='line 1-2', r=0.001, x=0.01, b=0.0, rate=50.0))
+
+    return grid
+
+
+def test_candidate_generation_time_series_critical_snapshot():
+    """
+    With ``use_time_series=True`` the generator scans the time series, picks the hour with the
+    most violations (hour 2, once the load outgrows the line's rating), and sizes its candidate
+    against that hour's flow rather than hour 0's.
+    """
+    grid = _two_bus_with_growing_load()
+
+    drv = CandidateGenerationDriver(
+        grid=grid,
+        options=CandidateGenerationOptions(use_time_series=True, verify_top_k=1),
+    )
+    drv.run()
+    results = drv.results
+
+    assert results.critical_time_idx == 2
+    assert results.n_overloaded_at_critical == 1
+
+    assert results.base_case_converged is True
+    assert len(results.base_violations) == 1
+
+    # Both an upgrade and a competing new-line duplicate are generated for the overloaded line;
+    # the upgrade must be sized against hour 2's ~60 MW flow, not hour 0's ~10 MW.
+    upgrade_candidates = [c for c in results.candidates if c.kind == UPGRADE]
+    assert len(upgrade_candidates) == 1
+    assert upgrade_candidates[0].new_rate >= 55.0
+
+    assert "Critical snapshot" in results.summary_text()
+
+
+def test_candidate_generation_time_series_requires_grid_time_series():
+    """
+    ``use_time_series=True`` on a snapshot-only grid (no time profile at all) aborts cleanly with
+    a logged error instead of running against nonexistent time series data.
+    """
+    grid = gce.MultiCircuit()
+    bus1 = dev.Bus('Bus 1', Vnom=20)
+    grid.add_bus(bus1)
+    grid.add_generator(bus1, dev.Generator('Slack Generator', vset=1.0))
+    bus2 = dev.Bus('Bus 2', Vnom=20)
+    grid.add_bus(bus2)
+    grid.add_load(bus2, dev.Load('load 2', P=10.0, Q=0.0))
+    grid.add_line(dev.Line(bus1, bus2, name='line 1-2', r=0.001, x=0.01, b=0.0, rate=50.0))
+
+    assert grid.has_time_series is False
+
+    drv = CandidateGenerationDriver(
+        grid=grid,
+        options=CandidateGenerationOptions(use_time_series=True),
+    )
+    drv.run()
+    results = drv.results
+
+    assert results.base_case_converged is False
+    assert results.critical_time_idx is None
 
 
 def test_no_violations_no_candidates():

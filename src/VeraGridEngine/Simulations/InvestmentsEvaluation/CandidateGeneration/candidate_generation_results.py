@@ -176,6 +176,12 @@ class ReinforcementCandidate:
             upgraded.rate = self.new_rate
             upgraded.active = False
             upgraded.name = self.target_branch.name + " (upgraded)"
+            # copy() inherits the source branch's (all-active) time profile; the scalar assignment
+            # above does not touch it, so without this the copy would read as active at every hour
+            # of a time-series grid until the investment activates it.
+            upgraded_active_prof = upgraded.get_profile('active')
+            if upgraded_active_prof is not None:
+                upgraded_active_prof.fill(False)
             circuit.add_branch(upgraded)
 
             # One investment activates the uprated copy...
@@ -208,6 +214,13 @@ class CandidateGenerationResults:
         self.candidates: List[ReinforcementCandidate] = list()
         self.verification_report: List[str] = list()
 
+        # Populated only when the generator ran in time-series critical-snapshot mode.
+        self.critical_time_idx: Optional[int] = None
+        self.critical_time_label: str = ""
+        self.n_overloaded_at_critical: int = 0
+        self.n_voltage_violated_at_critical: int = 0
+        self.voltage_violation_report: List[str] = list()
+
     @property
     def base_violations(self) -> List[ViolationRecord]:
         """Base-case (N) violations."""
@@ -232,6 +245,19 @@ class CandidateGenerationResults:
         the N-1 violation list, and the verification outcome for the top candidate(s).
         """
         lines: List[str] = list()
+
+        # Critical snapshot (only present in time-series mode)
+        if self.critical_time_idx is not None:
+            lines.append("=== Critical snapshot (time series) ===")
+            lines.append(f"Time index: {self.critical_time_idx}" +
+                        (f" ({self.critical_time_label})" if self.critical_time_label else ""))
+            lines.append(f"Overloaded branches: {self.n_overloaded_at_critical}")
+            lines.append(f"Voltage-violated buses: {self.n_voltage_violated_at_critical}")
+            if len(self.voltage_violation_report):
+                lines.append("Voltage violations (flagged only, not addressed by candidates):")
+                for line in self.voltage_violation_report:
+                    lines.append("  " + line)
+            lines.append("")
 
         # Step 1: base case
         lines.append("=== Base case AC power flow ===")
