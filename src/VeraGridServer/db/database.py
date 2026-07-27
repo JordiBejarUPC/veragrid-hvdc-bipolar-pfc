@@ -4,8 +4,9 @@ Database schema helpers for VeraGridServer.
 
 from __future__ import annotations
 import logging
+import re
 import psycopg
-from typing import Any, Dict, List, Protocol, Sequence
+from typing import Any, Dict, List, Protocol, Sequence, Tuple
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 
 
@@ -14,14 +15,15 @@ class PostgreSqlConnectionSettings:
     Small container for PostgreSQL connection settings.
     """
 
-    __slots__ = ("host", "port", "database", "user_name", "password")
+    __slots__ = ("host", "port", "database", "user_name", "password", "schema_name")
 
     def __init__(self,
                  host: str,
                  port: int,
                  database: str,
                  user_name: str,
-                 password: str) -> None:
+                 password: str,
+                 schema_name: str = "veragrid") -> None:
         """
         Build one PostgreSQL connection settings object.
 
@@ -30,6 +32,7 @@ class PostgreSqlConnectionSettings:
         :param database: Database name.
         :param user_name: Login user name.
         :param password: Login password.
+        :param schema_name: Target PostgreSQL schema name.
         :return: None.
         """
         self.host: str = host
@@ -37,6 +40,7 @@ class PostgreSqlConnectionSettings:
         self.database: str = database
         self.user_name: str = user_name
         self.password: str = password
+        self.schema_name: str = schema_name
 
 
 def build_connection_kwargs(settings: PostgreSqlConnectionSettings) -> Dict[str, Any]:
@@ -57,6 +61,62 @@ def build_connection_kwargs(settings: PostgreSqlConnectionSettings) -> Dict[str,
     connection_kwargs["password"] = settings.password
 
     return connection_kwargs
+
+
+def normalize_device_table_name(device_name: str) -> str:
+    """
+    Convert one VeraGrid device label into a PostgreSQL-safe snake_case table name.
+
+    :param device_name: Original device label from the engine catalogue.
+    :return: Normalized table name.
+    """
+    stripped_name: str = device_name.strip()
+
+    # Device labels can contain spaces, dashes, or CamelCase fragments. The
+    # first substitution keeps acronym boundaries readable before lowercasing.
+    first_pass_name: str = re.sub(r"(.)([A-Z][a-z]+)", r"\1_\2", stripped_name)
+
+    # The second substitution splits trailing capitals and digits so names such
+    # as "HVDCLine" and "Bus3Phase" remain stable after normalization.
+    second_pass_name: str = re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", first_pass_name)
+
+    # PostgreSQL identifiers should not preserve whitespace or punctuation from
+    # the UI label, so every non-alphanumeric run collapses into one underscore.
+    collapsed_name: str = re.sub(r"[^0-9A-Za-z]+", "_", second_pass_name)
+    normalized_name: str = collapsed_name.strip("_").lower()
+
+    if len(normalized_name) == 0:
+        return "device"
+    else:
+        return normalized_name
+
+
+def get_veragrid_object_table_name_pairs() -> List[Tuple[str, str]]:
+    """
+    Inspect ``MultiCircuit`` and return legacy and normalized device table names.
+
+    :return: Ordered list of ``(raw_table_name, normalized_table_name)`` pairs.
+    """
+    circuit: MultiCircuit = MultiCircuit()
+    discovered_names: Dict[str, None] = dict()
+    ordered_pairs: List[Tuple[str, str]] = list()
+
+    # The template items are the authoritative list of object kinds supported by
+    # the current MultiCircuit implementation, so both legacy and normalized SQL
+    # names must be derived from that list instead of a duplicated registry.
+    for template_item in circuit.template_items():
+        raw_table_name: str = template_item.device_type.value
+        normalized_table_name: str = normalize_device_table_name(raw_table_name)
+
+        # Multiple engine aliases can normalize to the same SQL table. The
+        # dictionary keeps only the first authoritative raw name per table.
+        if normalized_table_name not in discovered_names:
+            discovered_names[normalized_table_name] = None
+            ordered_pairs.append((raw_table_name, normalized_table_name))
+        else:
+            pass
+
+    return ordered_pairs
 
 
 class CursorLike(Protocol):
@@ -433,6 +493,65 @@ def backfill_legacy_model_file_rows(cursor: CursorLike,
     )
 
 
+def rename_legacy_device_tables(cursor: CursorLike,
+                                schema_name: str,
+                                table_name_pairs: Sequence[Tuple[str, str]]) -> None:
+    """
+    Rename legacy device tables to normalized snake_case names when needed.
+
+    :param cursor: Open database cursor.
+    :param schema_name: Target schema name.
+    :param table_name_pairs: Ordered ``(raw_name, normalized_name)`` pairs.
+    :return: None.
+    """
+    quoted_schema_name: str = quote_sql_identifier(schema_name)
+
+    # Existing deployments can already contain quoted legacy names such as
+    # "Country". Renaming them in place preserves the rows and avoids primary
+    # key index collisions when the normalized lowercase table is created.
+    for raw_table_name, normalized_table_name in table_name_pairs:
+        if raw_table_name == normalized_table_name:
+            continue
+        else:
+            pass
+
+        log_database_operation(
+            f"Renaming legacy table '{schema_name}.{raw_table_name}' to "
+            f"'{schema_name}.{normalized_table_name}' when required."
+        )
+        cursor.execute(
+            f"""
+            DO $$
+            BEGIN
+                IF EXISTS (
+                    SELECT 1
+                    FROM information_schema.tables
+                    WHERE table_schema = '{schema_name}'
+                      AND table_name = '{raw_table_name}'
+                ) THEN
+                    IF EXISTS (
+                        SELECT 1
+                        FROM information_schema.tables
+                        WHERE table_schema = '{schema_name}'
+                          AND table_name = '{normalized_table_name}'
+                    ) THEN
+                        NULL;
+                    ELSE
+                        EXECUTE format(
+                            'ALTER TABLE %I.%I RENAME TO %I',
+                            '{schema_name}',
+                            '{raw_table_name}',
+                            '{normalized_table_name}'
+                        );
+                    END IF;
+                ELSE
+                    NULL;
+                END IF;
+            END $$;
+            """
+        )
+
+
 def create_database_if_not_exists(settings: PostgreSqlConnectionSettings,
                                   maintenance_database: str = "postgres") -> bool:
     """
@@ -509,29 +628,18 @@ def get_veragrid_object_table_names() -> List[str]:
 
     :return: Ordered list of distinct table names.
     """
-    circuit: MultiCircuit = MultiCircuit()
-    discovered_names: Dict[str, None] = dict()
     ordered_names: List[str] = list()
+    table_name_pairs: List[Tuple[str, str]] = get_veragrid_object_table_name_pairs()
 
-    # The template items are the authoritative list of object kinds supported by
-    # the current MultiCircuit implementation, so we derive the database tables
-    # from that list instead of maintaining a second manual registry.
-    for template_item in circuit.template_items():
-        table_name: str = template_item.device_type.value
-
-        # Some names can be grouped or repeated through aliases in the engine;
-        # the dictionary preserves uniqueness while the list preserves order.
-        if table_name not in discovered_names:
-            discovered_names[table_name] = None
-            ordered_names.append(table_name)
-        else:
-            pass
+    # The public schema API only exposes normalized table names, but the pair
+    # helper keeps the raw labels available for legacy-table migrations.
+    for _raw_table_name, normalized_table_name in table_name_pairs:
+        ordered_names.append(normalized_table_name)
 
     return ordered_names
 
 
-def create_veragrid_schema(settings: PostgreSqlConnectionSettings,
-                           schema_name: str = "veragrid") -> List[str]:
+def create_veragrid_schema(settings: PostgreSqlConnectionSettings) -> List[str]:
     """
     Create the PostgreSQL schema used to persist VeraGrid models and objects.
 
@@ -548,9 +656,9 @@ def create_veragrid_schema(settings: PostgreSqlConnectionSettings,
       linked to ``Models``
 
     :param settings: Open DB-API compatible PostgreSQL connection.
-    :param schema_name: Target PostgreSQL schema name.
     :return: Ordered list of created VeraGrid object table names.
     """
+    schema_name: str = settings.schema_name
     created_database: bool = create_database_if_not_exists(settings=settings)
     connection_kwargs: Dict[str, Any] = build_connection_kwargs(settings=settings)
 
@@ -575,6 +683,7 @@ def create_veragrid_schema(settings: PostgreSqlConnectionSettings,
     with psycopg.connect(**connection_kwargs) as connection:
         cursor: CursorLike = connection.cursor()
         object_table_names: List[str] = get_veragrid_object_table_names()
+        table_name_pairs: List[Tuple[str, str]] = get_veragrid_object_table_name_pairs()
         quoted_schema_name: str = quote_sql_identifier(schema_name)
 
         # The schema boundary isolates the VeraGrid persistence objects from any
@@ -583,6 +692,11 @@ def create_veragrid_schema(settings: PostgreSqlConnectionSettings,
             f"Creating schema '{schema_name}' if it does not exist."
         )
         cursor.execute(f"CREATE SCHEMA IF NOT EXISTS {quoted_schema_name}")
+        rename_legacy_device_tables(
+            cursor=cursor,
+            schema_name=schema_name,
+            table_name_pairs=table_name_pairs,
+        )
 
         # Organizations own users. The default admin organization is seeded
         # before the default admin user so the FK target already exists.

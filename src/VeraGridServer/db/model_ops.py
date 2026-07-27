@@ -25,6 +25,7 @@ from VeraGridServer.db.database import (
     create_veragrid_schema,
     get_veragrid_object_table_names,
     log_database_operation,
+    normalize_device_table_name,
     quote_sql_identifier,
 )
 
@@ -48,13 +49,15 @@ def get_supported_table_mappings() -> List[Tuple[str, str]]:
 
     # Only buckets backed by physical tables can be persisted safely.
     for json_key, template_elm in object_types.items():
-        table_name: str = template_elm.device_type.value
+        raw_table_name: str = template_elm.device_type.value
+        table_name: str = normalize_device_table_name(raw_table_name)
 
         if table_name in available_table_names:
             mappings.append((json_key, table_name))
         else:
             log_database_operation(
-                f"Skipping serializer bucket '{json_key}' because table '{table_name}' is not present in the schema."
+                f"Skipping serializer bucket '{json_key}' because table '{table_name}' "
+                f"(from device label '{raw_table_name}') is not present in the schema."
             )
 
     return mappings
@@ -288,8 +291,7 @@ def ensure_model_row_does_not_exist(cursor: CursorLike,
 def create_file(settings: PostgreSqlConnectionSettings,
                 file_name: str,
                 user_idtag: str,
-                file_idtag: str | None = None,
-                schema_name: str = "veragrid") -> str:
+                file_idtag: str | None = None) -> str:
     """
     Create one file row and return its identifier.
 
@@ -297,16 +299,16 @@ def create_file(settings: PostgreSqlConnectionSettings,
     :param file_name: Human-readable file name.
     :param user_idtag: Owning user identifier.
     :param file_idtag: Optional pre-existing file identifier.
-    :param schema_name: Target schema name.
     :return: File identifier.
     """
+    schema_name: str = settings.schema_name
     resolved_file_idtag: str
     if file_idtag is None:
         resolved_file_idtag = str(uuid4())
     else:
         resolved_file_idtag = file_idtag
 
-    create_veragrid_schema(settings=settings, schema_name=schema_name)
+    create_veragrid_schema(settings=settings)
     connection_kwargs: Dict[str, Any] = build_connection_kwargs(settings=settings)
     quoted_schema_name: str = quote_sql_identifier(schema_name)
 
@@ -329,16 +331,15 @@ def create_file(settings: PostgreSqlConnectionSettings,
 
 
 def get_file(settings: PostgreSqlConnectionSettings,
-             file_idtag: str,
-             schema_name: str = "veragrid") -> Dict[str, str] | None:
+             file_idtag: str) -> Dict[str, str] | None:
     """
     Read one file row.
 
     :param settings: PostgreSQL connection settings.
     :param file_idtag: File identifier.
-    :param schema_name: Target schema name.
     :return: File row dictionary or ``None``.
     """
+    schema_name: str = settings.schema_name
     connection_kwargs: Dict[str, Any] = build_connection_kwargs(settings=settings)
     quoted_schema_name: str = quote_sql_identifier(schema_name)
 
@@ -373,8 +374,7 @@ def create_model(settings: PostgreSqlConnectionSettings,
                  file_idtag: str,
                  model_name: str,
                  parent_model_idtag: str | None = None,
-                 model_idtag: str | None = None,
-                 schema_name: str = "veragrid") -> str:
+                 model_idtag: str | None = None) -> str:
     """
     Create one model row inside one file and return its identifier.
 
@@ -383,16 +383,16 @@ def create_model(settings: PostgreSqlConnectionSettings,
     :param model_name: Human-readable model name.
     :param parent_model_idtag: Optional parent model identifier.
     :param model_idtag: Optional pre-existing model identifier.
-    :param schema_name: Target schema name.
     :return: Model identifier.
     """
+    schema_name: str = settings.schema_name
     resolved_model_idtag: str
     if model_idtag is None:
         resolved_model_idtag = str(uuid4())
     else:
         resolved_model_idtag = model_idtag
 
-    create_veragrid_schema(settings=settings, schema_name=schema_name)
+    create_veragrid_schema(settings=settings)
     connection_kwargs: Dict[str, Any] = build_connection_kwargs(settings=settings)
     quoted_schema_name: str = quote_sql_identifier(schema_name)
 
@@ -429,17 +429,16 @@ def create_model(settings: PostgreSqlConnectionSettings,
 
 def get_model(settings: PostgreSqlConnectionSettings,
               file_idtag: str,
-              model_idtag: str,
-              schema_name: str = "veragrid") -> Dict[str, str | None] | None:
+              model_idtag: str) -> Dict[str, str | None] | None:
     """
     Read one model row.
 
     :param settings: PostgreSQL connection settings.
     :param file_idtag: Parent file identifier.
     :param model_idtag: Model identifier.
-    :param schema_name: Target schema name.
     :return: Model row dictionary or ``None``.
     """
+    schema_name: str = settings.schema_name
     connection_kwargs: Dict[str, Any] = build_connection_kwargs(settings=settings)
     quoted_schema_name: str = quote_sql_identifier(schema_name)
 
@@ -474,8 +473,7 @@ def update_model(settings: PostgreSqlConnectionSettings,
                  file_idtag: str,
                  model_idtag: str,
                  model_name: str,
-                 parent_model_idtag: str | None = None,
-                 schema_name: str = "veragrid") -> None:
+                 parent_model_idtag: str | None = None) -> None:
     """
     Update one existing model row.
 
@@ -484,9 +482,9 @@ def update_model(settings: PostgreSqlConnectionSettings,
     :param model_idtag: Model identifier.
     :param model_name: Human-readable model name.
     :param parent_model_idtag: Optional parent model identifier.
-    :param schema_name: Target schema name.
     :return: None.
     """
+    schema_name: str = settings.schema_name
     connection_kwargs: Dict[str, Any] = build_connection_kwargs(settings=settings)
     quoted_schema_name: str = quote_sql_identifier(schema_name)
 
@@ -508,16 +506,15 @@ def update_model(settings: PostgreSqlConnectionSettings,
 
 
 def delete_file(settings: PostgreSqlConnectionSettings,
-                file_idtag: str,
-                schema_name: str = "veragrid") -> None:
+                file_idtag: str) -> None:
     """
     Delete one file row and its dependent models.
 
     :param settings: PostgreSQL connection settings.
     :param file_idtag: File identifier.
-    :param schema_name: Target schema name.
     :return: None.
     """
+    schema_name: str = settings.schema_name
     connection_kwargs: Dict[str, Any] = build_connection_kwargs(settings=settings)
     quoted_schema_name: str = quote_sql_identifier(schema_name)
 
@@ -540,8 +537,7 @@ def delete_file(settings: PostgreSqlConnectionSettings,
 def delete_model(settings: PostgreSqlConnectionSettings,
                  file_idtag: str,
                  model_idtag: str,
-                 cascade: bool = False,
-                 schema_name: str = "veragrid") -> None:
+                 cascade: bool = False) -> None:
     """
     Delete one model row, optionally removing child models first.
 
@@ -549,9 +545,9 @@ def delete_model(settings: PostgreSqlConnectionSettings,
     :param file_idtag: Parent file identifier.
     :param model_idtag: Model identifier.
     :param cascade: Delete child models before deleting this model.
-    :param schema_name: Target schema name.
     :return: None.
     """
+    schema_name: str = settings.schema_name
     connection_kwargs: Dict[str, Any] = build_connection_kwargs(settings=settings)
     quoted_schema_name: str = quote_sql_identifier(schema_name)
 
@@ -947,7 +943,6 @@ def put_multicircuit_in_database(settings: PostgreSqlConnectionSettings,
                                  circuit: MultiCircuit,
                                  file_idtag: str,
                                  model_idtag: str,
-                                 schema_name: str = "veragrid",
                                  project_directory: Path | None = None) -> None:
     """
     Persist one ``MultiCircuit`` snapshot into the typed VeraGrid SQL tables.
@@ -956,11 +951,11 @@ def put_multicircuit_in_database(settings: PostgreSqlConnectionSettings,
     :param circuit: VeraGrid circuit to persist.
     :param file_idtag: Parent file identifier.
     :param model_idtag: Existing parent model identifier.
-    :param schema_name: Target schema name.
     :param project_directory: Optional project directory for the serializer.
     :return: None.
     """
-    create_veragrid_schema(settings=settings, schema_name=schema_name)
+    schema_name: str = settings.schema_name
+    create_veragrid_schema(settings=settings)
     connection_kwargs: Dict[str, Any] = build_connection_kwargs(settings=settings)
     packed_model: Dict[str, Any] = gather_model_as_jsons(
         circuit=circuit,
@@ -1015,7 +1010,6 @@ def put_multiverse_in_database(settings: PostgreSqlConnectionSettings,
                                file_idtag: str,
                                user_idtag: str,
                                file_name: str | None = None,
-                               schema_name: str = "veragrid",
                                project_directory: Path | None = None) -> None:
     """
     Persist one ``MultiVerse`` into one file row and its child model rows.
@@ -1025,11 +1019,11 @@ def put_multiverse_in_database(settings: PostgreSqlConnectionSettings,
     :param file_idtag: Parent file identifier.
     :param user_idtag: Owning user identifier for every stored model row.
     :param file_name: Optional file name override.
-    :param schema_name: Target schema name.
     :param project_directory: Optional project directory for the serializer.
     :return: None.
     """
-    create_veragrid_schema(settings=settings, schema_name=schema_name)
+    schema_name: str = settings.schema_name
+    create_veragrid_schema(settings=settings)
     connection_kwargs: Dict[str, Any] = build_connection_kwargs(settings=settings)
     table_mappings: List[Tuple[str, str]] = get_supported_table_mappings()
 
@@ -1129,18 +1123,17 @@ def put_multiverse_in_database(settings: PostgreSqlConnectionSettings,
 
 def get_multiverse_from_database(settings: PostgreSqlConnectionSettings,
                                  file_idtag: str,
-                                 schema_name: str = "veragrid",
                                  project_directory: Path | None = None) -> MultiVerse:
     """
     Retrieve one stored file and rebuild it as a ``MultiVerse``.
 
     :param settings: PostgreSQL connection settings.
     :param file_idtag: File identifier.
-    :param schema_name: Target schema name.
     :param project_directory: Optional project directory for path resolution.
     :return: Rebuilt ``MultiVerse`` instance.
     """
-    create_veragrid_schema(settings=settings, schema_name=schema_name)
+    schema_name: str = settings.schema_name
+    create_veragrid_schema(settings=settings)
     connection_kwargs: Dict[str, Any] = build_connection_kwargs(settings=settings)
     table_mappings: List[Tuple[str, str]] = get_supported_table_mappings()
 
@@ -1226,7 +1219,6 @@ def get_multiverse_from_database(settings: PostgreSqlConnectionSettings,
 def get_multicircuit_from_database(settings: PostgreSqlConnectionSettings,
                                    file_idtag: str,
                                    model_idtag: str | None = None,
-                                   schema_name: str = "veragrid",
                                    project_directory: Path | None = None) -> MultiCircuit:
     """
     Retrieve one stored model as a composed ``MultiCircuit``.
@@ -1236,14 +1228,12 @@ def get_multicircuit_from_database(settings: PostgreSqlConnectionSettings,
     :param settings: PostgreSQL connection settings.
     :param file_idtag: File identifier.
     :param model_idtag: Optional model identifier.
-    :param schema_name: Target schema name.
     :param project_directory: Optional project directory for path resolution.
     :return: Rebuilt composed ``MultiCircuit`` instance.
     """
     multiverse: MultiVerse = get_multiverse_from_database(
         settings=settings,
         file_idtag=file_idtag,
-        schema_name=schema_name,
         project_directory=project_directory,
     )
 
@@ -1262,16 +1252,15 @@ def get_multicircuit_from_database(settings: PostgreSqlConnectionSettings,
 
 
 def get_file_models_json(settings: PostgreSqlConnectionSettings,
-                         file_idtag: str,
-                         schema_name: str = "veragrid") -> Dict[str, Any] | None:
+                         file_idtag: str) -> Dict[str, Any] | None:
     """
     Read one file with its model metadata as JSON-like dictionaries.
 
     :param settings: PostgreSQL connection settings.
     :param file_idtag: File identifier.
-    :param schema_name: Target schema name.
     :return: File dictionary with nested model rows, or ``None``.
     """
+    schema_name: str = settings.schema_name
     connection_kwargs: Dict[str, Any] = build_connection_kwargs(settings=settings)
 
     log_database_operation(
@@ -1282,7 +1271,6 @@ def get_file_models_json(settings: PostgreSqlConnectionSettings,
         file_row: Dict[str, str] | None = get_file(
             settings=settings,
             file_idtag=file_idtag,
-            schema_name=schema_name,
         )
 
         if file_row is None:
@@ -1315,15 +1303,14 @@ def get_file_models_json(settings: PostgreSqlConnectionSettings,
     }
 
 
-def get_files_with_models_json(settings: PostgreSqlConnectionSettings,
-                               schema_name: str = "veragrid") -> List[Dict[str, Any]]:
+def get_files_with_models_json(settings: PostgreSqlConnectionSettings) -> List[Dict[str, Any]]:
     """
     Read every file and the models it contains as JSON-like dictionaries.
 
     :param settings: PostgreSQL connection settings.
-    :param schema_name: Target schema name.
     :return: Ordered list of file dictionaries with nested model rows.
     """
+    schema_name: str = settings.schema_name
     connection_kwargs: Dict[str, Any] = build_connection_kwargs(settings=settings)
     quoted_schema_name: str = quote_sql_identifier(schema_name)
     files_json: List[Dict[str, Any]] = list()

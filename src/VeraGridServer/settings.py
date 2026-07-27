@@ -19,6 +19,7 @@ class ExtraSettings:
         self.db_name: str = ""
         self.db_user: str = ""
         self.db_password: str = ""
+        self.db_schema: str = "veragrid"
 
     def has_database_configuration(self) -> bool:
         """
@@ -50,6 +51,7 @@ class ExtraSettings:
                 database=self.db_name,
                 user_name=self.db_user,
                 password=self.db_password,
+                schema_name=self.db_schema,
             )
         else:
             return None

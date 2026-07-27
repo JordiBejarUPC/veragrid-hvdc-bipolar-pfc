@@ -59,8 +59,7 @@ def create_user(settings: PostgreSqlConnectionSettings,
                 user_idtag: str,
                 user_name: str,
                 password: str,
-                organization_idtag: str,
-                schema_name: str = "veragrid") -> None:
+                organization_idtag: str) -> None:
     """
     Create one user row.
 
@@ -69,10 +68,10 @@ def create_user(settings: PostgreSqlConnectionSettings,
     :param user_name: User display name.
     :param password: User password.
     :param organization_idtag: Owning organization identifier.
-    :param schema_name: Target schema name.
     :return: None.
     """
-    create_veragrid_schema(settings=settings, schema_name=schema_name)
+    schema_name: str = settings.schema_name
+    create_veragrid_schema(settings=settings)
     connection_kwargs: Dict[str, Any] = build_connection_kwargs(settings=settings)
     quoted_schema_name: str = quote_sql_identifier(schema_name)
 
@@ -101,16 +100,15 @@ def create_user(settings: PostgreSqlConnectionSettings,
 
 
 def get_user(settings: PostgreSqlConnectionSettings,
-             user_idtag: str,
-             schema_name: str = "veragrid") -> Dict[str, str] | None:
+             user_idtag: str) -> Dict[str, str] | None:
     """
     Read one user row.
 
     :param settings: PostgreSQL connection settings.
     :param user_idtag: User identifier.
-    :param schema_name: Target schema name.
     :return: User row dictionary or ``None``.
     """
+    schema_name: str = settings.schema_name
     connection_kwargs: Dict[str, Any] = build_connection_kwargs(settings=settings)
     quoted_schema_name: str = quote_sql_identifier(schema_name)
 
@@ -141,15 +139,14 @@ def get_user(settings: PostgreSqlConnectionSettings,
         }
 
 
-def get_users_json(settings: PostgreSqlConnectionSettings,
-                   schema_name: str = "veragrid") -> list[Dict[str, str]]:
+def get_users_json(settings: PostgreSqlConnectionSettings) -> list[Dict[str, str]]:
     """
     Read every user row as JSON-like dictionaries.
 
     :param settings: PostgreSQL connection settings.
-    :param schema_name: Target schema name.
     :return: Ordered user dictionaries.
     """
+    schema_name: str = settings.schema_name
     connection_kwargs: Dict[str, Any] = build_connection_kwargs(settings=settings)
     quoted_schema_name: str = quote_sql_identifier(schema_name)
     users_json: list[Dict[str, str]] = list()
@@ -182,15 +179,14 @@ def get_users_json(settings: PostgreSqlConnectionSettings,
     return users_json
 
 
-def get_organizations_json(settings: PostgreSqlConnectionSettings,
-                           schema_name: str = "veragrid") -> list[Dict[str, str]]:
+def get_organizations_json(settings: PostgreSqlConnectionSettings) -> list[Dict[str, str]]:
     """
     Read every organization row as JSON-like dictionaries.
 
     :param settings: PostgreSQL connection settings.
-    :param schema_name: Target schema name.
     :return: Ordered organization dictionaries.
     """
+    schema_name: str = settings.schema_name
     connection_kwargs: Dict[str, Any] = build_connection_kwargs(settings=settings)
     quoted_schema_name: str = quote_sql_identifier(schema_name)
     organizations_json: list[Dict[str, str]] = list()
@@ -226,8 +222,7 @@ def update_user(settings: PostgreSqlConnectionSettings,
                 user_idtag: str,
                 user_name: str,
                 password: str,
-                organization_idtag: str,
-                schema_name: str = "veragrid") -> None:
+                organization_idtag: str) -> None:
     """
     Update one existing user row.
 
@@ -236,9 +231,9 @@ def update_user(settings: PostgreSqlConnectionSettings,
     :param user_name: User display name.
     :param password: User password.
     :param organization_idtag: Owning organization identifier.
-    :param schema_name: Target schema name.
     :return: None.
     """
+    schema_name: str = settings.schema_name
     connection_kwargs: Dict[str, Any] = build_connection_kwargs(settings=settings)
     quoted_schema_name: str = quote_sql_identifier(schema_name)
 
@@ -261,17 +256,16 @@ def update_user(settings: PostgreSqlConnectionSettings,
 
 def delete_user(settings: PostgreSqlConnectionSettings,
                 user_idtag: str,
-                cascade: bool = False,
-                schema_name: str = "veragrid") -> None:
+                cascade: bool = False) -> None:
     """
     Delete one user row, optionally removing its files first.
 
     :param settings: PostgreSQL connection settings.
     :param user_idtag: User identifier.
     :param cascade: Delete the user's files before deleting the user.
-    :param schema_name: Target schema name.
     :return: None.
     """
+    schema_name: str = settings.schema_name
     connection_kwargs: Dict[str, Any] = build_connection_kwargs(settings=settings)
     quoted_schema_name: str = quote_sql_identifier(schema_name)
 

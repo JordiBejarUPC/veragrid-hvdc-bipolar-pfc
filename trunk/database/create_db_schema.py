@@ -25,11 +25,12 @@ def main() -> int:
         database="veragrid",
         user_name="admin",
         password="pgpwd",
+        schema_name="veragrid",
     )
     create_database_if_not_exists(settings=settings)
-    table_names = create_veragrid_schema(settings=settings, schema_name="public")
+    table_names = create_veragrid_schema(settings=settings)
 
-    print(f"Created or reconciled schema 'veragrid' on {settings.host}:{settings.port}.")
+    print(f"Created or reconciled schema '{settings.schema_name}' on {settings.host}:{settings.port}.")
     print(f"Detected {len(table_names)} VeraGrid object tables.")
 
     return 0
