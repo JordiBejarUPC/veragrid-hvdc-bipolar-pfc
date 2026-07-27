@@ -8,10 +8,11 @@ from typing import Any, Dict, List
 
 from PySide6 import QtWidgets
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QStandardItem, QStandardItemModel
+from PySide6.QtGui import QIcon, QStandardItem, QStandardItemModel
 
 from VeraGrid.Gui.FileDialogues.ServerFileDialog.server_file_dialogue import Ui_ServerFileDialog
 from VeraGrid.Gui.messages import yes_no_question
+from VeraGrid.Gui.toast_widget import ToastManager
 
 
 class ServerFileDialogue(QtWidgets.QDialog):
@@ -23,6 +24,7 @@ class ServerFileDialogue(QtWidgets.QDialog):
         "ui",
         "_app",
         "_model",
+        "toast_manager",
     )
 
     _ROLE_KIND: int = int(Qt.ItemDataRole.UserRole) + 1
@@ -42,33 +44,50 @@ class ServerFileDialogue(QtWidgets.QDialog):
         self._app: Any = app
         self.ui = Ui_ServerFileDialog()
         self.ui.setupUi(self)
+        self.toast_manager: ToastManager = ToastManager(parent=self, position_top=False)
 
         self._model: QStandardItemModel = QStandardItemModel()
         self._model.setHorizontalHeaderLabels(["Name", "Kind", "Identifier", "Owner / Parent", "Created"])
         self.ui.filesTreeView.setModel(self._model)
         self.ui.filesTreeView.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows)
         self.ui.filesTreeView.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.SingleSelection)
+        self.ui.filesTreeView.header().setStretchLastSection(False)
+        self.ui.filesTreeView.header().setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeMode.Stretch)
+        self.ui.filesTreeView.header().setSectionResizeMode(1, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
+        self.ui.filesTreeView.header().setSectionResizeMode(2, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
+        self.ui.filesTreeView.header().setSectionResizeMode(3, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
+        self.ui.filesTreeView.header().setSectionResizeMode(4, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
         self.ui.filesTreeView.selectionModel().selectionChanged.connect(self.update_selection_details)
 
-        self.ui.refreshButton.clicked.connect(self.refresh_tree)
-        self.ui.loadFileButton.clicked.connect(self.load_selected_file)
-        self.ui.loadBaseButton.clicked.connect(self.load_selected_base_model)
-        self.ui.loadModelButton.clicked.connect(self.load_selected_model)
-        self.ui.saveCurrentButton.clicked.connect(self.save_current_project)
-        self.ui.deleteButton.clicked.connect(self.delete_selected_item)
-        self.ui.buttonBox.rejected.connect(self.reject)
+        self.ui.actionRefresh.triggered.connect(self.refresh_tree)
+        self.ui.actionLoadFile.triggered.connect(self.load_selected_file)
+        self.ui.actionLoadBase.triggered.connect(self.load_selected_base_model)
+        self.ui.actionLoadModel.triggered.connect(self.load_selected_model)
+        self.ui.actionSaveCurrent.triggered.connect(self.save_current_project)
+        self.ui.actionDeleteSelected.triggered.connect(self.delete_selected_item)
         self.ui.filesTreeView.doubleClicked.connect(self.on_tree_double_clicked)
 
         self.refresh_tree()
 
-    def set_status_text(self, text: str) -> None:
+    def show_info_toast(self, text: str, duration: int = 2000) -> None:
         """
-        Update the status text in the dialogue footer.
+        Show one informational toast scoped to this dialog.
 
-        :param text: Status text.
+        :param text: Message text.
+        :param duration: Toast duration in milliseconds.
         :return: None.
         """
-        self.ui.statusLabel.setText(text)
+        self.toast_manager.show_info_toast(message=text, duration=duration)
+
+    def show_warning_toast(self, text: str, duration: int = 2000) -> None:
+        """
+        Show one warning toast scoped to this dialog.
+
+        :param text: Message text.
+        :param duration: Toast duration in milliseconds.
+        :return: None.
+        """
+        self.toast_manager.show_warning_toast(message=text, duration=duration)
 
     def refresh_tree(self) -> None:
         """
@@ -77,13 +96,16 @@ class ServerFileDialogue(QtWidgets.QDialog):
         :return: None.
         """
         self._model.removeRows(0, self._model.rowCount())
-        self.set_status_text("Refreshing server file tree...")
 
         files_payload: List[Dict[str, Any]] = self._app.server_driver.list_database_files_tree()
+        file_icon: QIcon = QIcon(":/Icons/icons/server.png")
+        base_model_icon: QIcon = QIcon(":/Icons/icons/grid_icon.png")
+        delta_model_icon: QIcon = QIcon(":/Icons/icons/schematic.png")
         file_payload: Dict[str, Any]
 
         for file_payload in files_payload:
             file_item_name: QStandardItem = QStandardItem(str(file_payload["name"]))
+            file_item_name.setIcon(file_icon)
             file_item_kind: QStandardItem = QStandardItem("File")
             file_item_id: QStandardItem = QStandardItem(str(file_payload["idtag"]))
             file_item_owner: QStandardItem = QStandardItem(str(file_payload["user"]))
@@ -107,6 +129,10 @@ class ServerFileDialogue(QtWidgets.QDialog):
             model_payload: Dict[str, Any]
             for model_payload in file_payload["models"]:
                 model_item_name: QStandardItem = QStandardItem(str(model_payload["name"]))
+                if bool(model_payload["is_base_model"]):
+                    model_item_name.setIcon(base_model_icon)
+                else:
+                    model_item_name.setIcon(delta_model_icon)
                 model_item_kind: QStandardItem = QStandardItem(
                     "Base model" if bool(model_payload["is_base_model"]) else "Delta model"
                 )
@@ -141,7 +167,7 @@ class ServerFileDialogue(QtWidgets.QDialog):
         self.ui.filesTreeView.resizeColumnToContents(1)
         self.ui.filesTreeView.resizeColumnToContents(2)
         self.update_selection_details()
-        self.set_status_text(f"Loaded {len(files_payload)} server files.")
+        self.show_info_toast(f"Loaded {len(files_payload)} server files.")
 
     def get_selected_item(self) -> QStandardItem | None:
         """
@@ -208,33 +234,33 @@ class ServerFileDialogue(QtWidgets.QDialog):
             self.ui.modelIdValueLabel.setText("-")
             self.ui.ownerValueLabel.setText("-")
             self.ui.createdValueLabel.setText("-")
-            self.ui.loadFileButton.setEnabled(False)
-            self.ui.loadBaseButton.setEnabled(False)
-            self.ui.loadModelButton.setEnabled(False)
-            self.ui.saveCurrentButton.setEnabled(False)
-            self.ui.deleteButton.setEnabled(False)
+            self.ui.actionLoadFile.setEnabled(False)
+            self.ui.actionLoadBase.setEnabled(False)
+            self.ui.actionLoadModel.setEnabled(False)
+            self.ui.actionSaveCurrent.setEnabled(False)
+            self.ui.actionDeleteSelected.setEnabled(False)
         else:
             if model_payload is None:
                 self.ui.kindValueLabel.setText("File")
                 self.ui.modelNameValueLabel.setText("-")
                 self.ui.modelIdValueLabel.setText("-")
-                self.ui.loadModelButton.setEnabled(False)
+                self.ui.actionLoadModel.setEnabled(False)
             else:
                 self.ui.kindValueLabel.setText(
                     "Base model" if bool(model_payload["is_base_model"]) else "Delta model"
                 )
                 self.ui.modelNameValueLabel.setText(str(model_payload["name"]))
                 self.ui.modelIdValueLabel.setText(str(model_payload["idtag"]))
-                self.ui.loadModelButton.setEnabled(True)
+                self.ui.actionLoadModel.setEnabled(True)
 
             self.ui.fileNameValueLabel.setText(str(file_payload["name"]))
             self.ui.fileIdValueLabel.setText(str(file_payload["idtag"]))
             self.ui.ownerValueLabel.setText(str(file_payload["user"]))
             self.ui.createdValueLabel.setText(str(file_payload["created_at"]))
-            self.ui.loadFileButton.setEnabled(True)
-            self.ui.loadBaseButton.setEnabled(True)
-            self.ui.saveCurrentButton.setEnabled(True)
-            self.ui.deleteButton.setEnabled(True)
+            self.ui.actionLoadFile.setEnabled(True)
+            self.ui.actionLoadBase.setEnabled(True)
+            self.ui.actionSaveCurrent.setEnabled(True)
+            self.ui.actionDeleteSelected.setEnabled(True)
 
     def load_selected_file(self) -> None:
         """
@@ -245,9 +271,8 @@ class ServerFileDialogue(QtWidgets.QDialog):
         file_payload: Dict[str, Any] | None = self.get_selected_file_payload()
 
         if file_payload is None:
-            self.set_status_text("Select one file first.")
+            self.show_warning_toast("Select one file first.")
         else:
-            self.set_status_text("Downloading selected file from server...")
             self._app.load_remote_database_entry(
                 file_idtag=str(file_payload["idtag"]),
                 file_name=str(file_payload["name"]),
@@ -265,9 +290,8 @@ class ServerFileDialogue(QtWidgets.QDialog):
         file_payload: Dict[str, Any] | None = self.get_selected_file_payload()
 
         if file_payload is None:
-            self.set_status_text("Select one file first.")
+            self.show_warning_toast("Select one file first.")
         else:
-            self.set_status_text("Downloading base model from server...")
             self._app.load_remote_database_entry(
                 file_idtag=str(file_payload["idtag"]),
                 file_name=str(file_payload["name"]),
@@ -286,9 +310,8 @@ class ServerFileDialogue(QtWidgets.QDialog):
         model_payload: Dict[str, Any] | None = self.get_selected_model_payload()
 
         if file_payload is None or model_payload is None:
-            self.set_status_text("Select one model first.")
+            self.show_warning_toast("Select one model first.")
         else:
-            self.set_status_text("Downloading selected model from server...")
             self._app.load_remote_database_entry(
                 file_idtag=str(file_payload["idtag"]),
                 file_name=str(file_payload["name"]),
@@ -307,15 +330,15 @@ class ServerFileDialogue(QtWidgets.QDialog):
         model_payload: Dict[str, Any] | None = self.get_selected_model_payload()
 
         if file_payload is None:
-            self.set_status_text("Select one file first.")
+            self.show_warning_toast("Select one file first.")
         else:
-            self.set_status_text("Uploading current project to server...")
             self._app.save_remote_database_entry(
                 file_idtag=str(file_payload["idtag"]),
                 file_name=str(file_payload["name"]),
                 model_idtag="" if model_payload is None else str(model_payload["idtag"]),
             )
             self.refresh_tree()
+            self.show_info_toast("Current project uploaded.")
 
     def delete_selected_item(self) -> None:
         """
@@ -327,7 +350,7 @@ class ServerFileDialogue(QtWidgets.QDialog):
         model_payload: Dict[str, Any] | None = self.get_selected_model_payload()
 
         if file_payload is None:
-            self.set_status_text("Select one file or model first.")
+            self.show_warning_toast("Select one file or model first.")
         elif model_payload is None:
             ok: bool = yes_no_question(
                 text=self.tr("Delete the selected file and every model inside it?"),
@@ -337,8 +360,9 @@ class ServerFileDialogue(QtWidgets.QDialog):
             if ok:
                 self._app.delete_remote_database_file(file_idtag=str(file_payload["idtag"]))
                 self.refresh_tree()
+                self.show_info_toast("Server file deleted.")
             else:
-                self.set_status_text("Deletion cancelled.")
+                self.show_warning_toast("Deletion cancelled.")
         else:
             ok = yes_no_question(
                 text=self.tr("Delete the selected model from the server database?"),
@@ -351,8 +375,9 @@ class ServerFileDialogue(QtWidgets.QDialog):
                     model_idtag=str(model_payload["idtag"]),
                 )
                 self.refresh_tree()
+                self.show_info_toast("Server model deleted.")
             else:
-                self.set_status_text("Deletion cancelled.")
+                self.show_warning_toast("Deletion cancelled.")
 
     def on_tree_double_clicked(self) -> None:
         """

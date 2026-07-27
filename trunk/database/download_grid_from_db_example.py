@@ -31,6 +31,7 @@ def main() -> int:
     grid: vg.MultiCircuit = get_multicircuit_from_database(
         settings=settings,
         model_idtag=model_idtag,
+        file_idtag="pegase2869",
     )
 
     vg.save_file(grid=grid, filename=output_file)
