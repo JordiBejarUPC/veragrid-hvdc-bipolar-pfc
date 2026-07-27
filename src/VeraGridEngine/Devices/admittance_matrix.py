@@ -56,11 +56,10 @@ class AdmittanceMatrix:
 
         self.__values: CxMat = np.zeros((size, size), dtype=complex)
 
-        # TODO: Why is this not bool?
-        self._phN: int = 0
-        self._phA: int = 0
-        self._phB: int = 0
-        self._phC: int = 0
+        self._phN: bool = False
+        self._phA: bool = False
+        self._phB: bool = False
+        self._phC: bool = False
 
     def copy(self) -> AdmittanceMatrix:
         """
@@ -90,11 +89,11 @@ class AdmittanceMatrix:
         return self._phN
 
     @phN.setter
-    def phN(self, val: int):
-        if isinstance(val, int):
+    def phN(self, val: bool):
+        if isinstance(val, bool):
             self._phN = val
         else:
-            raise ValueError(f'{val} is not an int')
+            raise ValueError(f'{val} is not a bool')
 
     @property
     def phA(self):
@@ -105,33 +104,33 @@ class AdmittanceMatrix:
         return self._phA
 
     @phA.setter
-    def phA(self, val: int):
-        if isinstance(val, int):
+    def phA(self, val: bool):
+        if isinstance(val, bool):
             self._phA = val
         else:
-            raise ValueError(f'{val} is not an int')
+            raise ValueError(f'{val} is not a bool')
 
     @property
     def phB(self):
         return self._phB
 
     @phB.setter
-    def phB(self, val: int):
-        if isinstance(val, int):
+    def phB(self, val: bool):
+        if isinstance(val, bool):
             self._phB = val
         else:
-            raise ValueError(f'{val} is not an int')
+            raise ValueError(f'{val} is not a bool')
 
     @property
     def phC(self):
         return self._phC
 
     @phC.setter
-    def phC(self, val: int):
-        if isinstance(val, int):
+    def phC(self, val: bool):
+        if isinstance(val, bool):
             self._phC = val
         else:
-            raise ValueError(f'{val} is not an int')
+            raise ValueError(f'{val} is not a bool')
 
     @property
     def size(self) -> int:
@@ -157,7 +156,7 @@ class AdmittanceMatrix:
         else:
             raise ValueError("AdmittanceMatrix only supports complex numpy arrays")
 
-    def to_dict(self) -> Dict[str, Union[str, float]]:
+    def to_dict(self) -> Dict[str, Union[str, float, bool]]:
         """
         Get a dictionary representation of the tap
         :return:
@@ -172,7 +171,7 @@ class AdmittanceMatrix:
             "phase_c": self._phC,
         }
 
-    def parse(self, data: Dict[str, Union[str, float, int]]) -> None:
+    def parse(self, data: Dict[str, Union[str, float, bool]]) -> None:
         """
         Parse the tap data
         :param data: dictionary representation of the tap
@@ -182,10 +181,10 @@ class AdmittanceMatrix:
 
         data_r = list_to_matrix(data.get("values_r", None), self.__size)
         data_i = list_to_matrix(data.get("values_i", None), self.__size)
-        self.phN = data.get("phase_n", 0)
-        self.phA = data.get("phase_a", 0)
-        self.phB = data.get("phase_b", 0)
-        self.phC = data.get("phase_c", 0)
+        self.phN = bool(data.get("phase_n", False))
+        self.phA = bool(data.get("phase_a", False))
+        self.phB = bool(data.get("phase_b", False))
+        self.phC = bool(data.get("phase_c", False))
 
         self.values = data_r + 1j * data_i
 
