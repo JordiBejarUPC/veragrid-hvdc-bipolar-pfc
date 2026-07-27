@@ -4543,17 +4543,11 @@ class EmtProblemDae(EmtProblemTemplate):
                     and (generator_count_same_bus > 1 or self.power_flow_results_3ph is None)
                     and self._is_thevenin_generator_model(mdl=mdl)
             ):
-                if self.power_flow_results_3ph is None:
-                    current_scale: float = 3.0
-                else:
-                    current_scale = 1.0
-
                 self._seed_thevenin_internal_emf_from_pf(
                     injection=injection,
                     mdl=mdl,
                     phase_power=phase_power,
                     voltage_vector=voltage_vector,
-                    current_scale=current_scale,
                 )
             else:
                 pass
@@ -4600,7 +4594,6 @@ class EmtProblemDae(EmtProblemTemplate):
             mdl: Block,
             phase_power: np.ndarray,
             voltage_vector: np.ndarray,
-            current_scale: float,
     ) -> None:
         """
         Preserve the PF-consistent internal emf initialization of Thevenin generators.
@@ -4618,7 +4611,6 @@ class EmtProblemDae(EmtProblemTemplate):
         :param mdl: Working EMT model of the generator.
         :param phase_power: Complex power seed in NABC order.
         :param voltage_vector: Complex bus-voltage seed in NABC order.
-        :param current_scale: Current scaling needed to convert the PF seed to the EMT KCL basis.
         :return: None.
         """
         c_sqrt_2: float = float(np.sqrt(2.0))
@@ -4647,13 +4639,6 @@ class EmtProblemDae(EmtProblemTemplate):
             current_c = np.conj(power_c / phase_c)
         else:
             current_c = 0.0 + 0.0j
-
-        # Balanced PF and 3-phase PF expose different phase-current bases. The
-        # caller provides the explicit conversion factor so the resulting source
-        # current states match the EMT KCL equations.
-        current_a *= current_scale
-        current_b *= current_scale
-        current_c *= current_scale
 
         # The positive-sequence phasors define the same operating point used by the
         # explicit-init equations inside the Thevenin template.
