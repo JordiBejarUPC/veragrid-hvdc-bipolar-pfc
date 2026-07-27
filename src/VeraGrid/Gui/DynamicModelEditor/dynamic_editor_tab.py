@@ -203,10 +203,12 @@ class DynamicEditorTab(QtWidgets.QWidget):
     def set_dark_mode(self) -> None:
         if self._editor is not None:
             self._editor.set_dark_mode()
+            self.current_theme = "Dark"
 
     def set_light_mode(self) -> None:
         if self._editor is not None:
             self._editor.set_light_mode()
+            self.current_theme = "Light"
 
     # ------------------------------------------------------------------
     # Navigation — always over the working tree
