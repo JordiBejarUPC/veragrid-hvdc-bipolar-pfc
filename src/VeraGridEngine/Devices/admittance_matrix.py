@@ -38,6 +38,15 @@ class AdmittanceMatrix:
     This is the admittance matrix to store the three-phases admittance of a branch
     """
 
+    __slots__ = (
+        "__size",
+        "__values",
+        "_phN",
+        "_phA",
+        "_phB",
+        "_phC",
+    )
+
     def __init__(self, size: int = 0):
         """
         Constructor
@@ -47,6 +56,7 @@ class AdmittanceMatrix:
 
         self.__values: CxMat = np.zeros((size, size), dtype=complex)
 
+        # TODO: Why is this not bool?
         self._phN: int = 0
         self._phA: int = 0
         self._phB: int = 0

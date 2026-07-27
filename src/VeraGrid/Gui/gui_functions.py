@@ -11,7 +11,7 @@ from PySide6 import QtCore, QtWidgets, QtGui
 from collections import defaultdict
 
 from VeraGridEngine import X_Y_SequenceType
-from VeraGridEngine.basic_structures import IntVec
+from VeraGridEngine.basic_structures import IntVec, BoolVec
 from VeraGridEngine.data_logger import DataLogger
 from VeraGridEngine.IO.cim.cgmes.cgmes_circuit import CgmesCircuit, CGMES_ASSETS
 from VeraGridEngine.IO.cim.cgmes.base import Base as CgmesBase
@@ -687,7 +687,7 @@ def get_list_model(lst: Sequence[Union[str, ALL_DEV_TYPES]],
     return list_model
 
 
-def get_elm_chck_list_model(lst: List[ALL_DEV_TYPES], check_status: IntVec) -> QtGui.QStandardItemModel:
+def get_elm_chck_list_model(lst: List[ALL_DEV_TYPES], check_status: BoolVec) -> QtGui.QStandardItemModel:
     """
     Pass a list to a list model
     """
