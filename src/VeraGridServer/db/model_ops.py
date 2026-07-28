@@ -22,7 +22,6 @@ from VeraGridServer.db.database import (
     CursorLike,
     PostgreSqlConnectionSettings,
     build_connection_kwargs,
-    create_veragrid_schema,
     get_veragrid_object_table_names,
     log_database_operation,
     normalize_device_table_name,
@@ -339,7 +338,6 @@ def create_file(settings: PostgreSqlConnectionSettings,
     else:
         resolved_file_idtag = file_idtag
 
-    create_veragrid_schema(settings=settings)
     connection_kwargs: Dict[str, Any] = build_connection_kwargs(settings=settings)
     quoted_schema_name: str = quote_sql_identifier(schema_name)
 
@@ -426,7 +424,6 @@ def create_model(settings: PostgreSqlConnectionSettings,
     acquire_database_file_lock(settings=settings, file_idtag=file_idtag)
 
     try:
-        create_veragrid_schema(settings=settings)
         connection_kwargs: Dict[str, Any] = build_connection_kwargs(settings=settings)
         quoted_schema_name: str = quote_sql_identifier(schema_name)
 
@@ -679,8 +676,9 @@ def insert_model_object_rows(cursor: CursorLike,
     """
     quoted_schema_name: str = quote_sql_identifier(schema_name)
 
-    # Each bucket contains the homogeneous JSON objects already serialized by
-    # the engine, so the database layer only routes them to the typed tables.
+    # Each bucket contains homogeneous JSON objects already serialized by the
+    # engine, so one batched upsert per table is enough and avoids one SQL round
+    # trip per object row.
     for json_key, table_name in table_mappings:
         quoted_table_name: str = quote_sql_identifier(table_name)
         entries: Any = model_data.get(json_key, list())
@@ -694,36 +692,75 @@ def insert_model_object_rows(cursor: CursorLike,
             f"Inserting {row_count} rows into '{schema_name}.{table_name}' from serializer bucket '{json_key}'."
         )
 
-        if isinstance(entries, list):
+        if isinstance(entries, list) and row_count > 0:
+            batch_parameters: List[Tuple[str, Json, int, str]] = list()
+            object_index: int
+            entry: Dict[str, Any]
             for object_index, entry in enumerate(entries):
                 object_idtag: str = str(entry["idtag"])
-                exists: bool = row_exists(
-                    cursor=cursor,
-                    schema_name=schema_name,
-                    table_name=table_name,
-                    where_sql="model_idtag = %s AND idtag = %s",
-                    parameters=(model_idtag, object_idtag),
-                )
+                batch_parameters.append((object_idtag, Json(entry), object_index, model_idtag))
 
-                if exists:
-                    cursor.execute(
-                        f"""
-                        UPDATE {quoted_schema_name}.{quoted_table_name}
-                        SET data = %s, object_index = %s
-                        WHERE model_idtag = %s AND idtag = %s
-                        """,
-                        (Json(entry), object_index, model_idtag, object_idtag),
-                    )
-                else:
-                    cursor.execute(
-                        f"""
-                        INSERT INTO {quoted_schema_name}.{quoted_table_name} (idtag, data, object_index, model_idtag)
-                        VALUES (%s, %s, %s, %s)
-                        """,
-                        (object_idtag, Json(entry), object_index, model_idtag),
-                    )
+            cursor.executemany(
+                f"""
+                INSERT INTO {quoted_schema_name}.{quoted_table_name} (idtag, data, object_index, model_idtag)
+                VALUES (%s, %s, %s, %s)
+                ON CONFLICT (model_idtag, idtag) DO UPDATE
+                SET data = EXCLUDED.data,
+                    object_index = EXCLUDED.object_index
+                """,
+                batch_parameters,
+            )
         else:
             pass
+
+
+def insert_model_metadata_rows(cursor: CursorLike,
+                               schema_name: str,
+                               file_idtag: str,
+                               nodes: Sequence[ScenarioNode]) -> None:
+    """
+    Insert the model metadata rows for one full multiverse save in one batch.
+
+    :param cursor: Open database cursor.
+    :param schema_name: Target schema name.
+    :param file_idtag: Parent file identifier.
+    :param nodes: Ordered multiverse nodes to persist.
+    :return: None.
+    """
+    quoted_schema_name: str = quote_sql_identifier(schema_name)
+    batch_parameters: List[Tuple[str, str, str, str | None]] = list()
+    node: ScenarioNode
+
+    for node in nodes:
+        model_idtag: str = resolve_circuit_idtag(node.circuit)
+        model_name_raw: str | None = node.circuit.name
+        model_name: str
+        if model_name_raw is None or len(model_name_raw.strip()) == 0:
+            model_name = model_idtag
+        else:
+            model_name = model_name_raw
+
+        parent_model_idtag: str | None
+        if node.parent is None:
+            parent_model_idtag = None
+        else:
+            parent_model_idtag = resolve_circuit_idtag(node.parent.circuit)
+
+        batch_parameters.append((file_idtag, model_idtag, model_name, parent_model_idtag))
+
+    if len(batch_parameters) > 0:
+        log_database_operation(
+            f"Inserting {len(batch_parameters)} rows into '{schema_name}.Models' for file '{file_idtag}'."
+        )
+        cursor.executemany(
+            f'''
+            INSERT INTO {quoted_schema_name}."Models" (file_idtag, idtag, name, parent_model_idtag)
+            VALUES (%s, %s, %s, %s)
+            ''',
+            batch_parameters,
+        )
+    else:
+        pass
 
 
 def upsert_model_payload_row(cursor: CursorLike,
@@ -1009,7 +1046,6 @@ def put_multicircuit_in_database(settings: PostgreSqlConnectionSettings,
     acquire_database_file_lock(settings=settings, file_idtag=file_idtag)
 
     try:
-        create_veragrid_schema(settings=settings)
         connection_kwargs: Dict[str, Any] = build_connection_kwargs(settings=settings)
         packed_model: Dict[str, Any] = gather_model_as_jsons(
             circuit=circuit,
@@ -1082,7 +1118,6 @@ def put_multiverse_in_database(settings: PostgreSqlConnectionSettings,
     acquire_database_file_lock(settings=settings, file_idtag=file_idtag)
 
     try:
-        create_veragrid_schema(settings=settings)
         connection_kwargs: Dict[str, Any] = build_connection_kwargs(settings=settings)
         table_mappings: List[Tuple[str, str]] = get_supported_table_mappings()
 
@@ -1127,30 +1162,12 @@ def put_multiverse_in_database(settings: PostgreSqlConnectionSettings,
                 ''',
                 (file_idtag,),
             )
-
-            node: ScenarioNode
-            for node in nodes:
-                model_idtag: str = resolve_circuit_idtag(node.circuit)
-                model_name_raw: str | None = node.circuit.name
-                model_name: str
-                if model_name_raw is None or len(model_name_raw.strip()) == 0:
-                    model_name = model_idtag
-                else:
-                    model_name = model_name_raw
-
-                parent_model_idtag: str | None
-                if node.parent is None:
-                    parent_model_idtag = None
-                else:
-                    parent_model_idtag = resolve_circuit_idtag(node.parent.circuit)
-
-                cursor.execute(
-                    f'''
-                    INSERT INTO {quoted_schema_name}."Models" (file_idtag, idtag, name, parent_model_idtag)
-                    VALUES (%s, %s, %s, %s)
-                    ''',
-                    (file_idtag, model_idtag, model_name, parent_model_idtag),
-                )
+            insert_model_metadata_rows(
+                cursor=cursor,
+                schema_name=schema_name,
+                file_idtag=file_idtag,
+                nodes=nodes,
+            )
 
             for node in nodes:
                 model_idtag = resolve_circuit_idtag(node.circuit)
@@ -1194,7 +1211,6 @@ def get_multiverse_from_database(settings: PostgreSqlConnectionSettings,
     :return: Rebuilt ``MultiVerse`` instance.
     """
     schema_name: str = settings.schema_name
-    create_veragrid_schema(settings=settings)
     connection_kwargs: Dict[str, Any] = build_connection_kwargs(settings=settings)
     table_mappings: List[Tuple[str, str]] = get_supported_table_mappings()
 

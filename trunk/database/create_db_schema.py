@@ -19,14 +19,24 @@ def main() -> int:
     """
 
 
-    settings = PostgreSqlConnectionSettings(
-        host="localhost",
+    # settings = PostgreSqlConnectionSettings(
+    #     host="localhost",
+    #     port=5432,
+    #     database="veragrid",
+    #     user_name="admin",
+    #     password="pgpwd",
+    #     schema_name="veragrid",
+    # )
+
+    settings: PostgreSqlConnectionSettings = PostgreSqlConnectionSettings(
+        host="10.8.0.124",
         port=5432,
         database="veragrid",
-        user_name="admin",
-        password="pgpwd",
+        user_name="postgres",
+        password="Map.160222",
         schema_name="veragrid",
     )
+
     create_database_if_not_exists(settings=settings)
     table_names = create_veragrid_schema(settings=settings)
 

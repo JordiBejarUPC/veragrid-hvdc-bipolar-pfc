@@ -12,7 +12,6 @@ from VeraGridServer.db.database import (
     CursorLike,
     PostgreSqlConnectionSettings,
     build_connection_kwargs,
-    create_veragrid_schema,
     log_database_operation,
     quote_sql_identifier,
 )
@@ -71,7 +70,6 @@ def create_user(settings: PostgreSqlConnectionSettings,
     :return: None.
     """
     schema_name: str = settings.schema_name
-    create_veragrid_schema(settings=settings)
     connection_kwargs: Dict[str, Any] = build_connection_kwargs(settings=settings)
     quoted_schema_name: str = quote_sql_identifier(schema_name)
 

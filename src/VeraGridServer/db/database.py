@@ -134,6 +134,16 @@ class CursorLike(Protocol):
         """
         ...
 
+    def executemany(self, operation: str, parameters_seq: Sequence[Sequence[Any]]) -> Any:
+        """
+        Execute one SQL operation against many positional parameter sets.
+
+        :param operation: SQL statement to execute.
+        :param parameters_seq: Ordered parameter sequences.
+        :return: Driver-defined execution result.
+        """
+        ...
+
     def close(self) -> None:
         """
         Close the cursor.
@@ -869,9 +879,9 @@ def create_veragrid_schema(settings: PostgreSqlConnectionSettings) -> List[str]:
             f"""
             CREATE TABLE IF NOT EXISTS {quoted_schema_name}."ModelData" (
                 model_idtag TEXT PRIMARY KEY,
-                circuit JSON NOT NULL,
-                time JSON NOT NULL,
-                symbolic_data JSON,
+                circuit JSONB NOT NULL,
+                time JSONB NOT NULL,
+                symbolic_data JSONB,
                 CONSTRAINT model_data_model_fk
                     FOREIGN KEY (model_idtag)
                     REFERENCES {quoted_schema_name}."Models"(idtag)
@@ -880,9 +890,9 @@ def create_veragrid_schema(settings: PostgreSqlConnectionSettings) -> List[str]:
             """
         )
         add_column_if_not_exists(cursor, schema_name, "ModelData", "model_idtag", "TEXT")
-        add_column_if_not_exists(cursor, schema_name, "ModelData", "circuit", "JSON")
-        add_column_if_not_exists(cursor, schema_name, "ModelData", "time", "JSON")
-        add_column_if_not_exists(cursor, schema_name, "ModelData", "symbolic_data", "JSON")
+        add_column_if_not_exists(cursor, schema_name, "ModelData", "circuit", "JSONB")
+        add_column_if_not_exists(cursor, schema_name, "ModelData", "time", "JSONB")
+        add_column_if_not_exists(cursor, schema_name, "ModelData", "symbolic_data", "JSONB")
         add_constraint_if_not_exists(
             cursor=cursor,
             schema_name=schema_name,
@@ -895,7 +905,7 @@ def create_veragrid_schema(settings: PostgreSqlConnectionSettings) -> List[str]:
         )
 
         # Each VeraGrid object type gets its own payload table. The payload is kept
-        # as JSON so the object structure can evolve without forcing a table redesign
+        # as JSONB so the object structure can evolve without forcing a table redesign
         # for every engine-side property change.
         for table_name in object_table_names:
             quoted_table_name: str = quote_sql_identifier(table_name)
@@ -910,7 +920,7 @@ def create_veragrid_schema(settings: PostgreSqlConnectionSettings) -> List[str]:
                 CREATE TABLE IF NOT EXISTS {quoted_schema_name}.{quoted_table_name} (
                     model_idtag TEXT NOT NULL,
                     idtag TEXT NOT NULL,
-                    data JSON NOT NULL,
+                    data JSONB NOT NULL,
                     object_index INTEGER NOT NULL,
                     CONSTRAINT {quote_sql_identifier(primary_key_name)}
                         PRIMARY KEY (model_idtag, idtag),
@@ -922,7 +932,7 @@ def create_veragrid_schema(settings: PostgreSqlConnectionSettings) -> List[str]:
                 """
             )
             add_column_if_not_exists(cursor, schema_name, table_name, "idtag", "TEXT")
-            add_column_if_not_exists(cursor, schema_name, table_name, "data", "JSON")
+            add_column_if_not_exists(cursor, schema_name, table_name, "data", "JSONB")
             add_column_if_not_exists(cursor, schema_name, table_name, "object_index", "INTEGER")
             add_column_if_not_exists(cursor, schema_name, table_name, "model_idtag", "TEXT")
             ensure_device_table_composite_primary_key(
