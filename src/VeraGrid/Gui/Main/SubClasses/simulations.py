@@ -289,7 +289,7 @@ class SimulationsMain(TimeEventsMain):
 
         self.ui.rms_problem_comboBox.setModel(
             gf.ComboModel(enum_values=[RmsProblemTypes.PowerBalance,
-                                       RmsProblemTypes.PowerBalance],
+                                       RmsProblemTypes.PowerBalanceVectorized],
                           translate=self.tr)
 
         )

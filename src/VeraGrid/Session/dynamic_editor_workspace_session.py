@@ -54,6 +54,7 @@ class DynamicEditorWorkspaceSession(QtCore.QObject):
         """
         Initialize the shared session state for one workspace family.
 
+        :param current_theme:
         :return: None.
         """
         super().__init__()
@@ -65,7 +66,7 @@ class DynamicEditorWorkspaceSession(QtCore.QObject):
         self._pending_drag_workspace: DynamicEditorWorkspaceWindow | None = None
         self._retained_workspaces: List[DynamicEditorWorkspaceWindow] = list()
         self._retained_pages: List[DynamicEditorTab | DynamicBlockEditorGUI] = list()
-        self.current_theme: DynEditorGraphicsModes = DynEditorGraphicsModes.LIGHT
+        self.current_theme: DynEditorGraphicsModes = DynEditorGraphicsModes.DARK
 
     def register_workspace(self, workspace: "DynamicEditorWorkspaceWindow") -> None:
         """
@@ -362,7 +363,7 @@ class DynamicEditorWorkspaceSession(QtCore.QObject):
         Set the dark mode
         :return:
         """
-        self.current_theme = "Dark"
+        self.current_theme = DynEditorGraphicsModes.DARK
         for ws in self._open_workspaces:
             ws.set_dark_mode()
 
@@ -371,6 +372,6 @@ class DynamicEditorWorkspaceSession(QtCore.QObject):
                 Set the dark mode
                 :return:
                 """
-        self.current_theme = "Light"
+        self.current_theme = DynEditorGraphicsModes.LIGHT
         for ws in self._open_workspaces:
             ws.set_light_mode()
