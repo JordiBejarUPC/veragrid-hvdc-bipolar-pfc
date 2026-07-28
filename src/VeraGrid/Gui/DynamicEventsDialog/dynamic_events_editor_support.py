@@ -22,6 +22,105 @@ from VeraGridEngine.enumerations import DynamicEventTransitionType, DynamicSimul
 EVENT_TIME_TOLERANCE: float = 1.0e-9
 
 
+class EventRowData:
+    """
+    Typed payload extracted from one editable event row.
+    """
+
+    __slots__ = (
+        "parameter",
+        "target_time",
+        "end_time",
+        "value",
+        "group",
+        "force_step_alignment",
+        "transition_type",
+    )
+
+    def __init__(self,
+                 parameter: Var,
+                 target_time: float,
+                 end_time: float | None,
+                 value: float,
+                 group: RmsEventsGroup | EmtEventsGroup,
+                 force_step_alignment: bool,
+                 transition_type: DynamicEventTransitionType) -> None:
+        """
+        Build one typed row payload.
+
+        :param parameter: Target runtime parameter.
+        :param target_time: Event start time.
+        :param end_time: Optional ramp end time.
+        :param value: Target runtime value.
+        :param group: Selected events group.
+        :param force_step_alignment: Exact-alignment flag for EMT mode parameters.
+        :param transition_type: Step or ramp transition profile.
+        :return: None.
+        """
+        self.parameter: Var = parameter
+        self.target_time: float = float(target_time)
+        self.end_time: float | None = end_time
+        self.value: float = float(value)
+        self.group: RmsEventsGroup | EmtEventsGroup = group
+        self.force_step_alignment: bool = bool(force_step_alignment)
+        self.transition_type: DynamicEventTransitionType = transition_type
+
+
+class SwitchSequenceData:
+    """
+    Typed payload produced by the switch-sequence dialog.
+    """
+
+    __slots__ = (
+        "parameter",
+        "group",
+        "times",
+        "values",
+    )
+
+    def __init__(self,
+                 parameter: Var,
+                 group: EmtEventsGroup,
+                 times: List[float],
+                 values: List[float]) -> None:
+        """
+        Build one switch-sequence payload.
+
+        :param parameter: Mode parameter toggled by the sequence.
+        :param group: Target EMT events group.
+        :param times: Ordered switching times.
+        :param values: Ordered switching values.
+        :return: None.
+        """
+        self.parameter: Var = parameter
+        self.group: EmtEventsGroup = group
+        self.times: List[float] = times
+        self.values: List[float] = values
+
+    def to_dict(self) -> Dict[str, object]:
+        """
+        Preserve the historical dialog API expected by callers and tests.
+
+        :return: Dictionary view of the payload.
+        """
+        payload: Dict[str, object] = dict()
+        payload["parameter"] = self.parameter
+        payload["group"] = self.group
+        payload["times"] = list(self.times)
+        payload["values"] = list(self.values)
+        return payload
+
+
+def _switch_sequence_pair_sort_key(pair: tuple[float, float]) -> float:
+    """
+    Return the stable ordering key for one switch-sequence pair.
+
+    :param pair: ``(time, value)`` sequence item.
+    :return: Time component used for sorting.
+    """
+    return float(pair[0])
+
+
 class EventValidationEntry:
     """
     Normalized dynamic-event entry used by overlap validation.
@@ -267,10 +366,10 @@ def _format_validation_entry(entry: EventValidationEntry) -> str:
     message: str
 
     if entry.transition_type == DynamicEventTransitionType.Ramp:
-        transition_name = QtCore.QCoreApplication.translate("DynamicEventDialogue", "Ramp")
+        transition_name = QtCore.QCoreApplication.translate("DynamicEventEditor", "Ramp")
         message = (
             QtCore.QCoreApplication.translate(
-                "DynamicEventDialogue",
+                "DynamicEventEditor",
                 "{origin}: {transition}, parameter={parameter}, time={time:.4f} s, "
                 "end_time={end_time:.4f} s, value={value:.6f}",
             ).format(
@@ -283,10 +382,10 @@ def _format_validation_entry(entry: EventValidationEntry) -> str:
             )
         )
     else:
-        transition_name = QtCore.QCoreApplication.translate("DynamicEventDialogue", "Step")
+        transition_name = QtCore.QCoreApplication.translate("DynamicEventEditor", "Step")
         message = (
             QtCore.QCoreApplication.translate(
-                "DynamicEventDialogue",
+                "DynamicEventEditor",
                 "{origin}: {transition}, parameter={parameter}, time={time:.4f} s, value={value:.6f}",
             ).format(
                 origin=entry.origin,
@@ -311,13 +410,13 @@ def _build_overlap_conflict_message(conflicts: Sequence[EventValidationConflict]
     conflict: EventValidationConflict
 
     message_lines.append(
-        QtCore.QCoreApplication.translate("DynamicEventDialogue", "Some events are overlapped and cannot be applied.")
+        QtCore.QCoreApplication.translate("DynamicEventEditor", "Some events are overlapped and cannot be applied.")
     )
     message_lines.append("")
 
     for conflict in conflicts:
         message_lines.append(
-            QtCore.QCoreApplication.translate("DynamicEventDialogue", "Group: {group_name}").format(
+            QtCore.QCoreApplication.translate("DynamicEventEditor", "Group: {group_name}").format(
                 group_name=conflict.group.name,
             )
         )
@@ -328,6 +427,16 @@ def _build_overlap_conflict_message(conflicts: Sequence[EventValidationConflict]
     return "\n".join(message_lines).rstrip()
 
 
+def _validation_entry_sort_key(entry: EventValidationEntry) -> tuple[float, float, float]:
+    """
+    Return the stable ordering key used by overlap validation.
+
+    :param entry: Validation entry to sort.
+    :return: ``(start_time, end_time, value)`` sort key.
+    """
+    return entry.start_time, entry.end_time, entry.value
+
+
 def _sort_validation_entries(entries: Sequence[EventValidationEntry]) -> List[EventValidationEntry]:
     """
     Return validation entries ordered by start, end and value.
@@ -335,7 +444,7 @@ def _sort_validation_entries(entries: Sequence[EventValidationEntry]) -> List[Ev
     :param entries: Entries to sort.
     :return: Sorted list.
     """
-    return sorted(entries, key=lambda item: (item.start_time, item.end_time, item.value))
+    return sorted(entries, key=_validation_entry_sort_key)
 
 
 def _find_overlapping_event_conflicts(entries: Sequence[EventValidationEntry]) -> List[EventValidationConflict]:
@@ -452,9 +561,9 @@ def create_dynamic_events_group_with_dialog(circuit: MultiCircuit,
     # at least one event-group asset. Reusing this flow keeps event creation
     # semantics identical across the GUI.
     if mode == DynamicSimulationMode.RMS:
-        dialog_title = QtCore.QCoreApplication.translate("DynamicEventDialogue", "No RMS Events Group")
+        dialog_title = QtCore.QCoreApplication.translate("DynamicEventEditor", "No RMS Events Group")
     else:
-        dialog_title = QtCore.QCoreApplication.translate("DynamicEventDialogue", "No EMT Events Group")
+        dialog_title = QtCore.QCoreApplication.translate("DynamicEventEditor", "No EMT Events Group")
 
     if parent is not None:
         QtWidgets.QMessageBox.information(parent, dialog_title, missing_group_message)
@@ -479,7 +588,7 @@ def create_dynamic_events_group_with_dialog(circuit: MultiCircuit,
             QtWidgets.QMessageBox.information(
                 parent,
                 created_group_message_title,
-                QtCore.QCoreApplication.translate("DynamicEventDialogue", "{prefix}: {group_name}").format(
+                QtCore.QCoreApplication.translate("DynamicEventEditor", "{prefix}: {group_name}").format(
                     prefix=created_group_message_body_prefix,
                     group_name=group_name,
                 )
@@ -492,22 +601,52 @@ def create_dynamic_events_group_with_dialog(circuit: MultiCircuit,
 
 
 class EventRow:
-    """Encapsulates a row in the RMS/EMT event table."""
+    """
+    Encapsulate one editable row in the RMS/EMT event table.
+    """
+
+    __slots__ = (
+        "__weakref__",
+        "table",
+        "row",
+        "mode",
+        "mode_parameter_uids",
+        "param_combo",
+        "time_spin",
+        "value_spin",
+        "transition_combo",
+        "end_time_spin",
+        "group_combo",
+        "force_alignment_check",
+    )
 
     def __init__(self,
-                 table,
-                 row,
-                 parameters_list,
-                 events_groups_list,
+                 table: QtWidgets.QTableWidget,
+                 row: int,
+                 parameters_list: List[Var],
+                 events_groups_list: List[RmsEventsGroup] | List[EmtEventsGroup],
                  mode: DynamicSimulationMode,
-                 mode_parameter_uids: Set[int] | None = None):
-        self.table = table
-        self.row = row
-        self.mode = mode
+                 mode_parameter_uids: Set[int] | None = None) -> None:
+        """
+        Build one dynamic-event editor row.
+
+        :param table: Parent table that owns the row widgets.
+        :param row: Physical row index inside the table.
+        :param parameters_list: Candidate runtime parameters.
+        :param events_groups_list: Candidate RMS/EMT event groups.
+        :param mode: Selected simulation family.
+        :param mode_parameter_uids: EMT mode-parameter identifiers.
+        :return: None.
+        """
+        self.table: QtWidgets.QTableWidget = table
+        self.row: int = row
+        self.mode: DynamicSimulationMode = mode
         self.mode_parameter_uids: Set[int] = set() if mode_parameter_uids is None else set(mode_parameter_uids)
 
-        # --- Checkbox ---
-        checkbox = QtWidgets.QTableWidgetItem()
+        # Stage 1: create the checkbox that marks rows for removal without
+        # relying on selection state, because the table intentionally disables
+        # row selection for safer editing.
+        checkbox: QtWidgets.QTableWidgetItem = QtWidgets.QTableWidgetItem()
         checkbox.setFlags(
             QtCore.Qt.ItemFlag.ItemIsUserCheckable |
             QtCore.Qt.ItemFlag.ItemIsEnabled
@@ -515,13 +654,15 @@ class EventRow:
         checkbox.setCheckState(QtCore.Qt.CheckState.Unchecked)
         table.setItem(row, 0, checkbox)
 
-        # --- Parameter selector ---
+        # Stage 2: populate the runtime-parameter selector from the symbolic
+        # model so the user can only pick parameters the solver actually owns.
         self.param_combo = QtWidgets.QComboBox()
-        for var in parameters_list:
-            self.param_combo.addItem(var.name, var)
+        parameter: Var
+        for parameter in parameters_list:
+            self.param_combo.addItem(parameter.name, parameter)
         table.setCellWidget(row, 1, self.param_combo)
 
-        # --- Time spinbox ---
+        # Stage 3: create the numerical editors that define the event payload.
         self.time_spin = QtWidgets.QDoubleSpinBox()
         self.time_spin.setDecimals(4)
         self.time_spin.setRange(0.0, 1e9)
@@ -529,24 +670,25 @@ class EventRow:
         self.time_spin.setSuffix(" s")
         table.setCellWidget(row, 2, self.time_spin)
 
-        # --- Value spinbox ---
         self.value_spin = QtWidgets.QDoubleSpinBox()
         self.value_spin.setDecimals(6)
         self.value_spin.setRange(-1e9, 1e9)
         self.value_spin.setSingleStep(0.01)
         table.setCellWidget(row, 3, self.value_spin)
 
+        # Stage 4: create transition-specific widgets only for dynamic modes
+        # that support both steps and ramps, so the row shape matches the table.
         self.transition_combo: QtWidgets.QComboBox | None = None
         self.end_time_spin: QtWidgets.QDoubleSpinBox | None = None
 
         if self.mode == DynamicSimulationMode.EMT or self.mode == DynamicSimulationMode.RMS:
             self.transition_combo = QtWidgets.QComboBox()
             self.transition_combo.addItem(
-                QtCore.QCoreApplication.translate("DynamicEventDialogue", "Step"),
+                QtCore.QCoreApplication.translate("DynamicEventEditor", "Step"),
                 DynamicEventTransitionType.Step,
             )
             self.transition_combo.addItem(
-                QtCore.QCoreApplication.translate("DynamicEventDialogue", "Ramp"),
+                QtCore.QCoreApplication.translate("DynamicEventEditor", "Ramp"),
                 DynamicEventTransitionType.Ramp,
             )
             table.setCellWidget(row, 4, self.transition_combo)
@@ -562,7 +704,8 @@ class EventRow:
         else:
             pass
 
-        # --- Event group selector ---
+        # Stage 5: attach the event-group selector because event ownership is
+        # resolved against those persisted group assets during simulation.
         self.group_combo = QtWidgets.QComboBox()
         for group in events_groups_list:
             self.group_combo.addItem(group.name, group)
@@ -571,6 +714,8 @@ class EventRow:
         else:
             table.setCellWidget(row, 4, self.group_combo)
 
+        # Stage 6: EMT mode parameters optionally expose exact-step alignment,
+        # because discrete mode changes must sometimes happen on the solver step.
         self.force_alignment_check: QtWidgets.QCheckBox | None = None
         if self.mode == DynamicSimulationMode.EMT:
             self.force_alignment_check = QtWidgets.QCheckBox()
@@ -583,31 +728,52 @@ class EventRow:
         else:
             pass
 
-    def is_checked(self):
-        item = self.table.item(self.row, 0)
+    def is_checked(self) -> bool:
+        """
+        Return whether the removal checkbox is selected.
+
+        :return: True when the row is marked for removal.
+        """
+        item: QtWidgets.QTableWidgetItem | None = self.table.item(self.row, 0)
         return item and item.checkState() == QtCore.Qt.CheckState.Checked
 
-    def get_data(self):
-        """Return validated row data."""
-        param = self.param_combo.currentData()
-        group = self.group_combo.currentData()
+    def get_data(self) -> EventRowData:
+        """
+        Build a typed payload from the current widget values.
+
+        :return: Validated row payload.
+        """
+        param: object = self.param_combo.currentData()
+        group: object = self.group_combo.currentData()
 
         if param is None or group is None:
-            raise ValueError(QtCore.QCoreApplication.translate("DynamicEventDialogue", "Missing fields"))
+            raise ValueError(QtCore.QCoreApplication.translate("DynamicEventEditor", "Missing fields"))
+        else:
+            pass
 
-        t = self.time_spin.value()
-        v = self.value_spin.value()
-        transition_type = DynamicEventTransitionType.Step
-        end_time = None
+        if not isinstance(param, Var):
+            raise TypeError(QtCore.QCoreApplication.translate("DynamicEventEditor", "parameter must be Var"))
+        else:
+            pass
+
+        if not isinstance(group, (RmsEventsGroup, EmtEventsGroup)):
+            raise TypeError(QtCore.QCoreApplication.translate("DynamicEventEditor", "group has invalid type"))
+        else:
+            pass
+
+        target_time: float = self.time_spin.value()
+        value: float = self.value_spin.value()
+        transition_type: DynamicEventTransitionType = DynamicEventTransitionType.Step
+        end_time: float | None = None
 
         if self.transition_combo is not None:
-            transition_data = self.transition_combo.currentData()
+            transition_data: object = self.transition_combo.currentData()
             if isinstance(transition_data, DynamicEventTransitionType):
                 transition_type = transition_data
             else:
                 raise TypeError(
                     QtCore.QCoreApplication.translate(
-                        "DynamicEventDialogue",
+                        "DynamicEventEditor",
                         "transition_type must be DynamicEventTransitionType",
                     )
                 )
@@ -624,10 +790,23 @@ class EventRow:
         else:
             force_step_alignment = False
 
-        return param, t, end_time, v, group, force_step_alignment, transition_type
+        # Stage 7: return one typed object so the editor can validate and store
+        # rows without depending on positional tuples or ad-hoc dictionaries.
+        return EventRowData(parameter=param,
+                            target_time=target_time,
+                            end_time=end_time,
+                            value=value,
+                            group=group,
+                            force_step_alignment=force_step_alignment,
+                            transition_type=transition_type)
 
-    def add_group(self, group):
-        """Add a new group option to the combo."""
+    def add_group(self, group: RmsEventsGroup | EmtEventsGroup) -> None:
+        """
+        Add one newly created event group to the combo box.
+
+        :param group: New RMS/EMT events group.
+        :return: None.
+        """
         self.group_combo.addItem(group.name, group)
 
     def set_data(self,
@@ -763,11 +942,26 @@ class SwitchSequenceRow:
     Encapsulates one row in the switch sequence helper dialog.
     """
 
-    def __init__(self, table: QtWidgets.QTableWidget, row: int) -> None:
-        self.table = table
-        self.row = row
+    __slots__ = (
+        "__weakref__",
+        "table",
+        "row",
+        "time_spin",
+        "state_combo",
+    )
 
-        checkbox = QtWidgets.QTableWidgetItem()
+    def __init__(self, table: QtWidgets.QTableWidget, row: int) -> None:
+        """
+        Build one switch-sequence row.
+
+        :param table: Parent table that owns the row widgets.
+        :param row: Physical row index inside the table.
+        :return: None.
+        """
+        self.table: QtWidgets.QTableWidget = table
+        self.row: int = row
+
+        checkbox: QtWidgets.QTableWidgetItem = QtWidgets.QTableWidgetItem()
         checkbox.setFlags(QtCore.Qt.ItemFlag.ItemIsUserCheckable | QtCore.Qt.ItemFlag.ItemIsEnabled)
         checkbox.setCheckState(QtCore.Qt.CheckState.Unchecked)
         table.setItem(row, 0, checkbox)
@@ -805,28 +999,52 @@ class SwitchSequenceDialog(QtWidgets.QDialog):
     Helper dialog that expands one switch opening and reclosing plan into EMT event rows.
     """
 
+    __slots__ = (
+        "mode_parameters",
+        "events_groups",
+        "rows",
+        "_data",
+        "parameter_combo",
+        "group_combo",
+        "sequence_table",
+        "add_row_btn",
+        "remove_row_btn",
+    )
+
     def __init__(self,
                  mode_parameters: List[Var],
                  events_groups: List[EmtEventsGroup],
                  parent: QtWidgets.QWidget | None = None) -> None:
+        """
+        Build the switch-sequence helper dialog.
+
+        :param mode_parameters: Discrete mode parameters eligible for switching.
+        :param events_groups: Available EMT events groups.
+        :param parent: Optional parent widget.
+        :return: None.
+        """
         super().__init__(parent)
         self.setWindowTitle(self.tr("Switch Sequence Wizard"))
         self.setMinimumWidth(520)
-        self.mode_parameters = mode_parameters
-        self.events_groups = events_groups
+        self.mode_parameters: List[Var] = mode_parameters
+        self.events_groups: List[EmtEventsGroup] = events_groups
         self.rows: List[SwitchSequenceRow] = list()
-        self.data: Dict[str, object] = dict()
+        self._data: SwitchSequenceData | None = None
 
-        layout = QtWidgets.QVBoxLayout(self)
-        form_layout = QtWidgets.QFormLayout()
+        # Stage 1: build the static form that chooses the discrete parameter
+        # and the persisted events group receiving the expanded sequence.
+        layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(self)
+        form_layout: QtWidgets.QFormLayout = QtWidgets.QFormLayout()
         layout.addLayout(form_layout)
 
         self.parameter_combo = QtWidgets.QComboBox()
+        parameter: Var
         for parameter in mode_parameters:
             self.parameter_combo.addItem(parameter.name, parameter)
         form_layout.addRow(self.tr("Mode Parameter"), self.parameter_combo)
 
         self.group_combo = QtWidgets.QComboBox()
+        group: EmtEventsGroup
         for group in events_groups:
             self.group_combo.addItem(group.name, group)
         form_layout.addRow(self.tr("Group"), self.group_combo)
@@ -839,14 +1057,18 @@ class SwitchSequenceDialog(QtWidgets.QDialog):
         self.sequence_table.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.NoSelection)
         layout.addWidget(self.sequence_table)
 
-        buttons_layout = QtWidgets.QHBoxLayout()
+        # Stage 2: expose row-level editing controls that let the user build
+        # the ordered switching sequence explicitly.
+        buttons_layout: QtWidgets.QHBoxLayout = QtWidgets.QHBoxLayout()
         self.add_row_btn = QtWidgets.QPushButton(self.tr("Add Sequence Step"))
         self.remove_row_btn = QtWidgets.QPushButton(self.tr("Remove Selected Rows"))
         buttons_layout.addWidget(self.add_row_btn)
         buttons_layout.addWidget(self.remove_row_btn)
         layout.addLayout(buttons_layout)
 
-        dialog_buttons = QtWidgets.QDialogButtonBox(
+        # Stage 3: keep confirmation at the bottom so the sequence is validated
+        # only after all rows have been normalized and sorted.
+        dialog_buttons: QtWidgets.QDialogButtonBox = QtWidgets.QDialogButtonBox(
             QtWidgets.QDialogButtonBox.StandardButton.Ok | QtWidgets.QDialogButtonBox.StandardButton.Cancel,
             self,
         )
@@ -860,29 +1082,47 @@ class SwitchSequenceDialog(QtWidgets.QDialog):
         self.add_row()
 
     def add_row(self) -> None:
-        row_index = self.sequence_table.rowCount()
+        """
+        Append one editable step to the switch sequence.
+
+        :return: None.
+        """
+        row_index: int = self.sequence_table.rowCount()
         self.sequence_table.insertRow(row_index)
-        row = SwitchSequenceRow(self.sequence_table, row_index)
+        row: SwitchSequenceRow = SwitchSequenceRow(self.sequence_table, row_index)
         self.rows.append(row)
 
     def remove_checked_rows(self) -> None:
-        rows_to_remove = [row for row in self.rows if row.is_checked()]
+        """
+        Remove every sequence row marked for deletion.
+
+        :return: None.
+        """
+        rows_to_remove: List[SwitchSequenceRow] = [row for row in self.rows if row.is_checked()]
 
         if len(rows_to_remove) == 0:
             QtWidgets.QMessageBox.information(self,
                                               self.tr("Switch Sequence"),
                                               self.tr("Please check at least one row to remove."))
         else:
+            row: SwitchSequenceRow
             for row in reversed(rows_to_remove):
                 self.sequence_table.removeRow(row.row)
                 self.rows.remove(row)
 
-            for index, row in enumerate(self.rows):
-                row.row = index
+            index: int
+            reindexed_row: SwitchSequenceRow
+            for index, reindexed_row in enumerate(self.rows):
+                reindexed_row.row = index
 
     def accept_dialog(self) -> None:
-        parameter = self.parameter_combo.currentData()
-        group = self.group_combo.currentData()
+        """
+        Validate the discrete sequence and store it as typed payload.
+
+        :return: None.
+        """
+        parameter: object = self.parameter_combo.currentData()
+        group: object = self.group_combo.currentData()
         times: list[float] = list()
         values: list[float] = list()
         row: SwitchSequenceRow
@@ -895,6 +1135,14 @@ class SwitchSequenceDialog(QtWidgets.QDialog):
         else:
             pass
 
+        if not isinstance(parameter, Var) or not isinstance(group, EmtEventsGroup):
+            QtWidgets.QMessageBox.warning(self,
+                                          self.tr("Switch Sequence"),
+                                          self.tr("The selected parameter or group is invalid."))
+            return
+        else:
+            pass
+
         if len(self.rows) == 0:
             QtWidgets.QMessageBox.warning(self,
                                           self.tr("Switch Sequence"),
@@ -903,374 +1151,56 @@ class SwitchSequenceDialog(QtWidgets.QDialog):
         else:
             pass
 
+        # Stage 4: read every row before sorting so the dialog preserves the
+        # explicit user input and then normalizes it into monotonic time order.
         for row in self.rows:
             target_time, state_value = row.get_data()
             times.append(target_time)
             values.append(state_value)
 
-        sorted_pairs = sorted(zip(times, values), key=lambda item: float(item[0]))
-        self.data = dict({
-            "parameter": parameter,
-            "group": group,
-            "times": [float(item[0]) for item in sorted_pairs],
-            "values": [float(item[1]) for item in sorted_pairs],
-        })
+        sorted_pairs: List[tuple[float, float]] = sorted(zip(times, values), key=_switch_sequence_pair_sort_key)
+        sorted_times: List[float] = [float(item[0]) for item in sorted_pairs]
+        sorted_values: List[float] = [float(item[1]) for item in sorted_pairs]
+        self._data = SwitchSequenceData(parameter=parameter,
+                                        group=group,
+                                        times=sorted_times,
+                                        values=sorted_values)
         self.accept()
 
     def get_data(self) -> Dict[str, object]:
-        return self.data
-
-class DynamicEventDialogue(QtWidgets.QDialog):
-
-    def __init__(
-        self,
-        circuit: MultiCircuit,
-        parameters_list: List[Var],
-        target_device_name: str,
-        mode: DynamicSimulationMode,
-        mode_parameter_uids: Set[int] | None = None,
-        parent=None,
-    ):
-        super().__init__(parent)
-
-        self.mode = mode
-
-        if self.mode == DynamicSimulationMode.RMS:
-            self.setWindowTitle(self.tr("RMS Event Editor"))
-        elif self.mode == DynamicSimulationMode.EMT:
-            self.setWindowTitle(self.tr("EMT Event Editor"))
-        self.setMinimumWidth(600)
-
-        self.circuit = circuit
-        self.parameters_list = parameters_list
-        self.target_device_name = target_device_name
-        self.mode_parameter_uids: Set[int] = set() if mode_parameter_uids is None else set(mode_parameter_uids)
-
-        self.rows: List[EventRow] = []
-
-        self.data = {
-            "parameters": [],
-            "target_times": [],
-            "end_times": [],
-            "values": [],
-            "groups": [],
-            "force_step_alignment": [],
-            "transition_types": [],
-        }
-
-        # ---- Main Layout ----
-        layout = QtWidgets.QVBoxLayout(self)
-
-        # --- Device label ---
-        label_device = QtWidgets.QLabel(
-            f"<b>{self.tr('Target device:')}</b> {target_device_name}"
-        )
-        layout.addWidget(label_device)
-
-        # --- Events Table ---
-        if self.mode == DynamicSimulationMode.EMT or self.mode == DynamicSimulationMode.RMS:
-            self.table = QtWidgets.QTableWidget(0, 8)
-            self.table.setHorizontalHeaderLabels(
-                ["",
-                 self.tr("Parameter"),
-                 self.tr("Time"),
-                 self.tr("New Value"),
-                 self.tr("Transition"),
-                 self.tr("End Time"),
-                 self.tr("Group"),
-                 self.tr("Align Step")]
-            )
-        else:
-            self.table = QtWidgets.QTableWidget(0, 5)
-            self.table.setHorizontalHeaderLabels(
-                ["", self.tr("Parameter"), self.tr("Time"), self.tr("New Value"), self.tr("Group")]
-            )
-
-        self.table.horizontalHeader().setSectionResizeMode(
-            0, QtWidgets.QHeaderView.ResizeMode.ResizeToContents
-        )
-
-        self.table.horizontalHeader().setStretchLastSection(True)
-
-        self.table.verticalHeader().setVisible(False)
-
-        self.table.setSelectionMode(
-            QtWidgets.QAbstractItemView.SelectionMode.NoSelection
-        )
-
-        layout.addWidget(self.table)
-
-        # --- Groups controls ---
-        groups_layout = QtWidgets.QHBoxLayout()
-
-        self.new_group_btn = QtWidgets.QPushButton(self.tr("➕ New Event Group"))
-
-        groups_layout.addStretch()
-        groups_layout.addWidget(self.new_group_btn)
-
-        layout.addLayout(groups_layout)
-
-
-        # --- Table control buttons ---
-        table_button_layout = QtWidgets.QHBoxLayout()
-
-        self.add_row_btn = QtWidgets.QPushButton(self.tr("➕ Add New Event"))
-        self.remove_row_btn = QtWidgets.QPushButton(self.tr("❌ Remove Selected Rows"))
-
-        table_button_layout.addWidget(self.add_row_btn)
-        table_button_layout.addWidget(self.remove_row_btn)
-
-        layout.addLayout(table_button_layout)
-
-        self.switch_sequence_btn: QtWidgets.QPushButton | None = None
-        if self.mode == DynamicSimulationMode.EMT:
-            self.switch_sequence_btn = QtWidgets.QPushButton(self.tr("Switch Sequence Wizard"))
-            layout.addWidget(self.switch_sequence_btn)
-        else:
-            pass
-
-        # --- Bottom buttons ---
-        button_layout = QtWidgets.QHBoxLayout()
-
-        self.ok_button = QtWidgets.QPushButton(self.tr("✅ Add Events"))
-        self.cancel_button = QtWidgets.QPushButton(self.tr("Cancel"))
-
-        button_layout.addStretch()
-        button_layout.addWidget(self.ok_button)
-        button_layout.addWidget(self.cancel_button)
-
-        layout.addLayout(button_layout)
-
-        # --- Connections ---
-        self.add_row_btn.clicked.connect(self.add_row)
-        self.remove_row_btn.clicked.connect(self.remove_checked_rows)
-        self.ok_button.clicked.connect(self.accept_dialog)
-        self.cancel_button.clicked.connect(self.reject)
-        self.new_group_btn.clicked.connect(self.create_event_group)
-
-        if self.switch_sequence_btn is not None:
-            self.switch_sequence_btn.clicked.connect(self.open_switch_sequence_dialog)
-        else:
-            pass
-
-    def add_row(self):
-        """Add a new row to the table."""
-        row_index = self.table.rowCount()
-        self.table.insertRow(row_index)
-
-        if self.mode == DynamicSimulationMode.RMS:
-
-            row = EventRow(
-                self.table,
-                row_index,
-                self.parameters_list,
-                self.circuit.rms_events_groups,
-                self.mode,
-                self.mode_parameter_uids,
-            )
-            self.rows.append(row)
-            return row
-
-        elif self.mode == DynamicSimulationMode.EMT:
-
-            row = EventRow(
-                self.table,
-                row_index,
-                self.parameters_list,
-                self.circuit.emt_events_groups,
-                self.mode,
-                self.mode_parameter_uids,
-            )
-            self.rows.append(row)
-            return row
-        else:
-            return None
-
-    def remove_checked_rows(self):
-        """Remove rows where checkbox is checked."""
-
-        rows_to_remove = [r for r in self.rows if r.is_checked()]
-
-        if not rows_to_remove:
-            QtWidgets.QMessageBox.information(
-                self,
-                self.tr("No Rows Selected"),
-                self.tr("Please check at least one row to remove."),
-            )
-            return
-
-        for row in reversed(rows_to_remove):
-            self.table.removeRow(row.row)
-            self.rows.remove(row)
-
-        # Reindex rows
-        for i, row in enumerate(self.rows):
-            row.row = i
-
-    def create_event_group(self):
         """
-        Open the shared RMS/EMT events-group creation workflow.
+        Return the historical dictionary view expected by callers and tests.
 
-        :return: None.
+        :return: Dictionary payload for compatibility.
         """
-        missing_group_message: str
-        created_group_message_title: str
-        created_group_message_body_prefix: str = self.tr("New group name")
-
-        if self.mode == DynamicSimulationMode.RMS:
-            missing_group_message = self.tr("No RMS Events Group found, please create one before adding an event.")
-            created_group_message_title = self.tr("RMS group Created")
+        if self._data is None:
+            return dict()
         else:
-            missing_group_message = self.tr("No EMT Events Group found, please create one before adding an event.")
-            created_group_message_title = self.tr("EMT group Created")
-
-        new_group: RmsEventsGroup | EmtEventsGroup | None = create_dynamic_events_group_with_dialog(
-            circuit=self.circuit,
-            mode=self.mode,
-            parent=self,
-            missing_group_message=missing_group_message,
-            created_group_message_title=created_group_message_title,
-            created_group_message_body_prefix=created_group_message_body_prefix,
-        )
-
-        if new_group is not None:
-            row: EventRow
-            for row in self.rows:
-                row.add_group(new_group)
-        else:
-            pass
-
-    def open_switch_sequence_dialog(self) -> None:
-        """
-        Open the helper dialog that expands one switch open/close sequence into EMT event rows.
-
-        :return: None.
-        """
-        mode_parameters: list[Var] = list()
-        parameter: Var
-
-        for parameter in self.parameters_list:
-            if parameter.uid in self.mode_parameter_uids and parameter.name.startswith("switch_closed_mode_"):
-                mode_parameters.append(parameter)
-            else:
-                pass
-
-        if len(mode_parameters) == 0:
-            QtWidgets.QMessageBox.information(
-                self,
-                self.tr("Switch Sequence"),
-                self.tr("No switch EMT mode parameter is available in this device."),
-            )
-            return
-        else:
-            pass
-
-        dialog = SwitchSequenceDialog(mode_parameters=mode_parameters,
-                                      events_groups=self.circuit.emt_events_groups,
-                                      parent=self)
-
-        if dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted:
-            sequence_data = dialog.get_data()
-        else:
-            return
-
-        index: int
-        for index in range(len(sequence_data["times"])):
-            row = self.add_row()
-            if row is not None:
-                row.set_data(
-                    parameter=sequence_data["parameter"],
-                    target_time=float(sequence_data["times"][index]),
-                    value=float(sequence_data["values"][index]),
-                    group=sequence_data["group"],
-                    force_step_alignment=True,
-                    transition_type=DynamicEventTransitionType.Step,
-                    end_time=None,
-                )
-            else:
-                pass
-
-    def accept_dialog(self):
-        """Validate and collect event data."""
-
-        if not self.rows:
-            QtWidgets.QMessageBox.warning(
-                self,
-                self.tr("No Events"),
-                self.tr("Please add at least one event before confirming."),
-            )
-            return
-
-        parameters = []
-        target_times = []
-        end_times = []
-        values = []
-        groups = []
-        force_step_alignment_flags = []
-        transition_types = []
-        validation_entries: List[EventValidationEntry] = list()
-
-        for i, row in enumerate(self.rows):
-
-            try:
-                param, t, end_time, v, group, force_step_alignment, transition_type = row.get_data()
-
-            except Exception as exc:
-
-                QtWidgets.QMessageBox.warning(
-                    self,
-                    self.tr("Invalid Input"),
-                    self.tr("Row {row_number}: {message}").format(row_number=i + 1, message=exc),
-                )
-                return
-
-            parameters.append(param)
-            target_times.append(t)
-            end_times.append(end_time)
-            values.append(v)
-            groups.append(group)
-            force_step_alignment_flags.append(force_step_alignment)
-            transition_types.append(transition_type)
-
-            validation_origin: str = self.tr("New row {row_number}").format(row_number=i + 1)
-            validation_entries.append(_build_validation_entry(parameter=param,
-                                                              start_time=float(t),
-                                                              end_time=end_time,
-                                                              value=float(v),
-                                                              group=group,
-                                                              transition_type=transition_type,
-                                                              origin=validation_origin))
-
-        validation_error_message: str | None = _validate_dynamic_event_entries(circuit=self.circuit,
-                                                                               mode=self.mode,
-                                                                               new_entries=validation_entries)
-
-        if validation_error_message is not None:
-            QtWidgets.QMessageBox.warning(self,
-                                          self.tr("Overlapping Events"),
-                                          validation_error_message)
-            return
-        else:
-            pass
-
-        self.data["parameters"] = parameters
-        self.data["target_times"] = target_times
-        self.data["end_times"] = end_times
-        self.data["values"] = values
-        self.data["groups"] = groups
-        self.data["force_step_alignment"] = force_step_alignment_flags
-        self.data["transition_types"] = transition_types
-        self.accept()
-
-    def get_data(self) -> Dict[str, List]:
-        """Return collected data."""
-        return self.data
+            return self._data.to_dict()
 
 class DynamicEventsGroupsDialog(QtWidgets.QDialog):
+    """
+    Name-entry dialog used to create one RMS or EMT events group.
+    """
+
+    __slots__ = (
+        "mode",
+        "_name",
+        "name_label",
+        "name_edit",
+        "buttons",
+    )
 
     def __init__(self,
                  mode: DynamicSimulationMode,
-                 parent=None):
+                 parent: QtWidgets.QWidget | None = None) -> None:
+        """
+        Build the events-group creation dialog.
+
+        :param mode: Dynamic simulation family that determines the title.
+        :param parent: Optional parent widget.
+        :return: None.
+        """
         super().__init__(parent)
 
         self.mode = mode
@@ -1281,9 +1211,10 @@ class DynamicEventsGroupsDialog(QtWidgets.QDialog):
         self.setModal(True)
         self.setMinimumWidth(300)
 
-        self._name: str|None = None
+        self._name: str | None = None
 
-        # Widgets
+        # Stage 1: keep the dialog focused on a single explicit choice, the
+        # canonical name of the persisted events group asset.
         self.name_label = QtWidgets.QLabel(self.tr("Name:"))
         self.name_edit = QtWidgets.QLineEdit()
         self.name_edit.setPlaceholderText(self.tr("Enter group name"))
@@ -1294,7 +1225,8 @@ class DynamicEventsGroupsDialog(QtWidgets.QDialog):
             QtWidgets.QDialogButtonBox.StandardButton.Cancel
         )
 
-        # Layout
+        # Stage 2: build the minimal form that validates the name before the
+        # calling workflow mutates the circuit state.
         form_layout = QtWidgets.QFormLayout()
         form_layout.addRow(self.name_label, self.name_edit)
 
@@ -1302,16 +1234,19 @@ class DynamicEventsGroupsDialog(QtWidgets.QDialog):
         main_layout.addLayout(form_layout)
         main_layout.addWidget(self.buttons)
 
-        # Connections
+        # Stage 3: connect both button acceptance and return-press to the same
+        # validation path so the workflow stays consistent across input styles.
         self.buttons.accepted.connect(self.accept_dialog)
         self.buttons.rejected.connect(self.reject)
         self.name_edit.returnPressed.connect(self.accept_dialog)
 
-    def accept_dialog(self):
+    def accept_dialog(self) -> None:
         """
-        Validate the input and store the name
+        Validate the input and store the name.
+
+        :return: None.
         """
-        name = self.name_edit.text().strip()
+        name: str = self.name_edit.text().strip()
 
         if not name:
             QtWidgets.QMessageBox.warning(
@@ -1320,12 +1255,19 @@ class DynamicEventsGroupsDialog(QtWidgets.QDialog):
                 self.tr("The name cannot be empty.")
             )
             return
+        else:
+            pass
 
         self._name = name
         self.accept()
 
     def get_name(self) -> str:
         """
-        Returns the entered name
+        Return the validated group name.
+
+        :return: Group name text.
         """
-        return self._name
+        if self._name is None:
+            return ""
+        else:
+            return self._name
