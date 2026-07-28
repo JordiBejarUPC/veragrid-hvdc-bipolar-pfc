@@ -15,6 +15,7 @@ voltage in the same run.
 from __future__ import annotations
 
 from pathlib import Path
+import os
 import sys
 from typing import Any
 
@@ -141,6 +142,8 @@ def build_qaxis_signal_mapping() -> list[tuple[str, str, str]]:
         ("omega_pll", "omega_pll_switched_converter_emt", "omega_pll_pseudo_converter_emt"),
         ("v_q", "v_q_switched_converter_emt_plant", "v_q_pseudo_converter_emt"),
         ("v_q_pll_f", "v_q_pll_f_switched_converter_emt", "v_q_pseudo_converter_emt"),
+        ("P", "P_switched_converter_emt", "P_pseudo_converter_emt"),
+        ("P_f", "P_f_switched_converter_emt", "P_f_pseudo_converter_emt"),
         ("Q", "Q_switched_converter_emt", "Q_pseudo_converter_emt"),
         ("Q_f", "Q_f_switched_converter_emt", "Q_f_pseudo_converter_emt"),
         ("i_q_ref", "i_q_ref_switched_converter_emt", "i_q_ref_pseudo_converter_emt"),
@@ -170,6 +173,9 @@ def build_daxis_bridge_trace_names() -> list[str]:
         "v_q_cap",
         "v_conv_d",
         "v_conv_q",
+        "v_conv_a",
+        "v_conv_b",
+        "v_conv_c",
     ])
     return trace_names
 
@@ -364,7 +370,7 @@ def plot_trace_comparison(
     signal_name: str
     axis_index: int = 0
 
-    figure, axes = plt.subplots(len(signal_names), 1, figsize=(11.5, 17.0), sharex=True)
+    figure, axes = plt.subplots(len(signal_names), 1, figsize=(11.5, max(17.0, 1.8 * float(len(signal_names)))), sharex=True)
 
     while axis_index < len(signal_names):
         axis = axes[axis_index]
@@ -392,7 +398,21 @@ def require_problem_var(problem: EmtProblemDae, variable_name: str) -> Any:
     :return: Matching symbolic variable.
     """
     variable: Any = find_name_in_block(variable_name, problem.sys_block)
-    assert variable is not None
+    if variable is None:
+        fallback_names: tuple[str, ...] = (
+            "v_ref_common_inj", "v_ref_a_raw", "v_cmd_d_u", "v_cmd_q_u",
+            "v_conv_a", "v_conv_b", "v_conv_c", "v_cmd_d", "v_cmd_q", "v_cmd_0",
+            "i_d_ref", "i_q_ref", "v_lim", "m_a", "m_b", "m_c", "m_a_u", "k_v_conv", "gate_a", "gate_b",
+            "gate_c", "v_ref_a", "v_ref_b", "v_ref_c", "v_dc", "i_A", "i_B", "i_C", "i_d",
+            "i_q", "P_f", "Q_f", "i_dc", "theta_pll", "v_cmd_norm",
+            "v_pi_d_u", "v_pi_q_u", "omega_pll", "v_d", "v_q",
+            "v_q_pll_f", "v_conv_d", "v_conv_q", "P", "Q",
+        )
+        for fallback_name in fallback_names:
+            if variable_name.startswith(f"{fallback_name}_"):
+                variable = find_name_in_block(fallback_name, problem.sys_block)
+                break
+    assert variable is not None, f"Missing problem variable: {variable_name}"
     return variable
 
 
@@ -419,7 +439,13 @@ def get_problem_parameter_value(problem: EmtProblemDae, variable_name: str) -> f
     :return: Numeric parameter value.
     """
     variable: Any = find_name_anywhere_in_block(block=problem.sys_block, variable_name=variable_name)
-    assert variable is not None
+    if variable is None:
+        fallback_names: tuple[str, ...] = ("omega_sw", "carrier_phase", "t_enable_sw", "k_v_conv", "vdc_floor")
+        for fallback_name in fallback_names:
+            if variable_name.startswith(f"{fallback_name}_"):
+                variable = find_name_anywhere_in_block(block=problem.sys_block, variable_name=fallback_name)
+                break
+    assert variable is not None, f"Missing problem parameter: {variable_name}"
 
     if variable.uid in problem.uid2idx_event_params:
         return float(problem.event_params_values[problem.uid2idx_event_params[variable.uid]])
@@ -534,6 +560,29 @@ def compute_dq0_from_held_phase_values(
     )
     zero_arr: np.ndarray = np.full_like(theta_arr, fill_value=c13 * (float(phase_a_value) + float(phase_b_value) + float(phase_c_value)))
     return d_arr, q_arr, zero_arr
+
+
+def compute_abc_from_dq0_values(
+        theta_arr: np.ndarray,
+        d_arr: np.ndarray,
+        q_arr: np.ndarray,
+        zero_arr: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """
+    Reconstruct abc phase traces from dq0 traces using the converter EMT convention.
+
+    :param theta_arr: PLL angle trace.
+    :param d_arr: D-axis trace.
+    :param q_arr: Q-axis trace.
+    :param zero_arr: Zero-sequence trace.
+    :return: Tuple ``(phase_a_arr, phase_b_arr, phase_c_arr)``.
+    """
+    theta_b_arr: np.ndarray = theta_arr - (2.0 * np.pi / 3.0)
+    theta_c_arr: np.ndarray = theta_arr + (2.0 * np.pi / 3.0)
+    phase_a_arr: np.ndarray = d_arr * np.sin(theta_arr) - q_arr * np.cos(theta_arr) + zero_arr
+    phase_b_arr: np.ndarray = d_arr * np.sin(theta_b_arr) - q_arr * np.cos(theta_b_arr) + zero_arr
+    phase_c_arr: np.ndarray = d_arr * np.sin(theta_c_arr) - q_arr * np.cos(theta_c_arr) + zero_arr
+    return phase_a_arr, phase_b_arr, phase_c_arr
 
 
 def build_full_pwm_intervals(
@@ -693,15 +742,17 @@ def apply_common_converter_tuning(converter_model: Block, model_name: str, l_eq_
         converter_model.set_parameter_in_model(var_name=parameter_name, new_value=parameter_value)
 
 
-def build_comparison_emt_options() -> EmtOptions:
+def build_comparison_emt_options(time_step: float, simulation_time: float) -> EmtOptions:
     """
     Build the EMT options used by the pseudo vs switched q-axis comparison.
 
+    :param time_step: EMT integration time step in seconds.
+    :param simulation_time: EMT simulation horizon in seconds.
     :return: EMT options instance.
     """
     options: EmtOptions = EmtOptions(
-        time_step=1.0e-5,
-        simulation_time=5.0e-3,
+        time_step=time_step,
+        simulation_time=simulation_time,
         tolerance=1.0e-6,
         solver_type=EmtSolverTypes.Symbolic,
         integration_method=DynamicIntegrationMethod.DaeTrapezoidal,
@@ -710,6 +761,22 @@ def build_comparison_emt_options() -> EmtOptions:
     )
     options.newton_max_iter = 20
     return options
+
+
+def suffixed_plot_file_name(file_name: str, plot_suffix: str) -> str:
+    """
+    Append the optional plot suffix before the PNG extension.
+
+    :param file_name: Base PNG file name.
+    :param plot_suffix: Suffix appended before the extension, or empty string.
+    :return: Suffixed PNG file name.
+    """
+    if plot_suffix == "":
+        suffixed_name: str = file_name
+    else:
+        path: Path = Path(file_name)
+        suffixed_name = f"{path.stem}_{plot_suffix}{path.suffix}"
+    return suffixed_name
 
 
 def build_problem(grid: gce.MultiCircuit, pf_results: PowerFlowResults, options: EmtOptions) -> EmtProblemDae:
@@ -1004,13 +1071,21 @@ def build_daxis_bridge_traces(artifacts: ConverterCaseArtifacts) -> dict[str, np
     v_d_name: str
     v_conv_d_name: str
     v_conv_q_name: str
+    v_conv_a_name: str
+    v_conv_b_name: str
+    v_conv_c_name: str
     traces: dict[str, np.ndarray] = dict()
     i_d_arr: np.ndarray
     i_q_arr: np.ndarray
     omega_pll_arr: np.ndarray
     v_pi_d_u_arr: np.ndarray
     v_cmd_d_arr: np.ndarray
+    v_cmd_q_arr: np.ndarray
+    v_cmd_0_arr: np.ndarray
     v_lim_arr: np.ndarray
+    phase_a_arr: np.ndarray
+    phase_b_arr: np.ndarray
+    phase_c_arr: np.ndarray
 
     if model_name.startswith("switched"):
         i_d_name = f"i_d_{model_name}_plant"
@@ -1018,18 +1093,26 @@ def build_daxis_bridge_traces(artifacts: ConverterCaseArtifacts) -> dict[str, np
         v_d_name = f"v_d_{model_name}_plant"
         v_conv_d_name = f"v_conv_d_{model_name}"
         v_conv_q_name = f"v_conv_q_{model_name}"
+        v_conv_a_name = f"v_conv_a_{model_name}"
+        v_conv_b_name = f"v_conv_b_{model_name}"
+        v_conv_c_name = f"v_conv_c_{model_name}"
     else:
         i_d_name = f"i_d_{model_name}"
         i_q_name = f"i_q_{model_name}"
         v_d_name = f"v_d_{model_name}"
         v_conv_d_name = f"v_cmd_d_{model_name}"
         v_conv_q_name = f"v_cmd_q_{model_name}"
+        v_conv_a_name = ""
+        v_conv_b_name = ""
+        v_conv_c_name = ""
 
     i_d_arr = get_signal(problem=problem, state_traj=state_traj, variable_name=i_d_name)
     i_q_arr = get_signal(problem=problem, state_traj=state_traj, variable_name=i_q_name)
     omega_pll_arr = get_signal(problem=problem, state_traj=state_traj, variable_name=f"omega_pll_{model_name}")
     v_pi_d_u_arr = get_signal(problem=problem, state_traj=state_traj, variable_name=f"v_pi_d_u_{model_name}")
     v_cmd_d_arr = get_signal(problem=problem, state_traj=state_traj, variable_name=f"v_cmd_d_{model_name}")
+    v_cmd_q_arr = get_signal(problem=problem, state_traj=state_traj, variable_name=f"v_cmd_q_{model_name}")
+    v_cmd_0_arr = get_signal(problem=problem, state_traj=state_traj, variable_name=f"v_cmd_0_{model_name}")
     v_lim_arr = get_signal(problem=problem, state_traj=state_traj, variable_name=f"v_lim_{model_name}")
 
     traces["i_d_ref"] = get_signal(problem=problem, state_traj=state_traj, variable_name=f"i_d_ref_{model_name}")
@@ -1045,6 +1128,20 @@ def build_daxis_bridge_traces(artifacts: ConverterCaseArtifacts) -> dict[str, np
     traces["v_q_cap"] = np.sqrt(np.maximum(v_lim_arr * v_lim_arr - v_cmd_d_arr * v_cmd_d_arr, 1.0e-10))
     traces["v_conv_d"] = get_signal(problem=problem, state_traj=state_traj, variable_name=v_conv_d_name)
     traces["v_conv_q"] = get_signal(problem=problem, state_traj=state_traj, variable_name=v_conv_q_name)
+    if model_name.startswith("switched"):
+        traces["v_conv_a"] = get_signal(problem=problem, state_traj=state_traj, variable_name=v_conv_a_name)
+        traces["v_conv_b"] = get_signal(problem=problem, state_traj=state_traj, variable_name=v_conv_b_name)
+        traces["v_conv_c"] = get_signal(problem=problem, state_traj=state_traj, variable_name=v_conv_c_name)
+    else:
+        phase_a_arr, phase_b_arr, phase_c_arr = compute_abc_from_dq0_values(
+            theta_arr=get_signal(problem=problem, state_traj=state_traj, variable_name=f"theta_pll_{model_name}"),
+            d_arr=v_cmd_d_arr,
+            q_arr=v_cmd_q_arr,
+            zero_arr=v_cmd_0_arr,
+        )
+        traces["v_conv_a"] = phase_a_arr
+        traces["v_conv_b"] = phase_b_arr
+        traces["v_conv_c"] = phase_c_arr
 
     return traces
 
@@ -1085,6 +1182,8 @@ def compute_interval_averaged_bridge_comparison(
         ("v_conv_q_avg", np.zeros(interval_count, dtype=float)),
         ("v_ref_hold_d_avg", np.zeros(interval_count, dtype=float)),
         ("v_ref_hold_q_avg", np.zeros(interval_count, dtype=float)),
+        ("v_duty_hold_d_avg", np.zeros(interval_count, dtype=float)),
+        ("v_duty_hold_q_avg", np.zeros(interval_count, dtype=float)),
         ("v_cmd_d_avg", np.zeros(interval_count, dtype=float)),
         ("v_cmd_q_avg", np.zeros(interval_count, dtype=float)),
         ("pseudo_v_cmd_d_avg", np.zeros(interval_count, dtype=float)),
@@ -1098,6 +1197,7 @@ def compute_interval_averaged_bridge_comparison(
         ("interval_count", float(interval_count)),
     ])
     theta_pll_arr: np.ndarray = get_signal(problem=switched_problem, state_traj=switched_artifacts.state_traj, variable_name="theta_pll_switched_converter_emt")
+    vdc_floor: float = get_problem_parameter_value(problem=switched_problem, variable_name="vdc_floor_switched_converter_emt")
     sampled_v_ref_a_name: str
     sampled_v_ref_b_name: str
     sampled_v_ref_c_name: str
@@ -1115,6 +1215,11 @@ def compute_interval_averaged_bridge_comparison(
     v_ref_a_arr: np.ndarray = get_signal(problem=switched_problem, state_traj=switched_artifacts.state_traj, variable_name=sampled_v_ref_a_name)
     v_ref_b_arr: np.ndarray = get_signal(problem=switched_problem, state_traj=switched_artifacts.state_traj, variable_name=sampled_v_ref_b_name)
     v_ref_c_arr: np.ndarray = get_signal(problem=switched_problem, state_traj=switched_artifacts.state_traj, variable_name=sampled_v_ref_c_name)
+    m_a_arr: np.ndarray = get_signal(problem=switched_problem, state_traj=switched_artifacts.state_traj, variable_name="m_a_switched_converter_emt_plant_bridge")
+    m_b_arr: np.ndarray = get_signal(problem=switched_problem, state_traj=switched_artifacts.state_traj, variable_name="m_b_switched_converter_emt_plant_bridge")
+    m_c_arr: np.ndarray = get_signal(problem=switched_problem, state_traj=switched_artifacts.state_traj, variable_name="m_c_switched_converter_emt_plant_bridge")
+    k_v_conv_arr: np.ndarray = get_signal(problem=switched_problem, state_traj=switched_artifacts.state_traj, variable_name="k_v_conv_switched_converter_emt_plant_bridge")
+    v_dc_arr: np.ndarray = get_signal(problem=switched_problem, state_traj=switched_artifacts.state_traj, variable_name="v_dc_switched_converter_emt")
     v_conv_d_arr: np.ndarray = get_signal(problem=switched_problem, state_traj=switched_artifacts.state_traj, variable_name="v_conv_d_switched_converter_emt")
     v_conv_q_arr: np.ndarray = get_signal(problem=switched_problem, state_traj=switched_artifacts.state_traj, variable_name="v_conv_q_switched_converter_emt")
     v_cmd_d_arr: np.ndarray = get_signal(problem=switched_problem, state_traj=switched_artifacts.state_traj, variable_name="v_cmd_d_switched_converter_emt")
@@ -1131,7 +1236,17 @@ def compute_interval_averaged_bridge_comparison(
     v_ref_c_hold: float
     v_ref_hold_d_seg_arr: np.ndarray
     v_ref_hold_q_seg_arr: np.ndarray
+    v_duty_hold_d_seg_arr: np.ndarray
+    v_duty_hold_q_seg_arr: np.ndarray
     _unused_zero_seg_arr: np.ndarray
+    m_a_hold: float
+    m_b_hold: float
+    m_c_hold: float
+    m_mean_hold: float
+    v_leg_scale_hold: float
+    v_duty_a_hold: float
+    v_duty_b_hold: float
+    v_duty_c_hold: float
 
     while interval_index < interval_count:
         interval_start_s, interval_end_s = intervals[interval_index]
@@ -1190,6 +1305,25 @@ def compute_interval_averaged_bridge_comparison(
         )
         signals["v_ref_hold_d_avg"][interval_index] = float(np.trapezoid(v_ref_hold_d_seg_arr, theta_seg_t_arr) / (interval_end_s - interval_start_s))
         signals["v_ref_hold_q_avg"][interval_index] = float(np.trapezoid(v_ref_hold_q_seg_arr, theta_seg_t_arr) / (interval_end_s - interval_start_s))
+        m_a_hold = sample_trace_at_time(time_arr=switched_time_arr, signal_arr=m_a_arr, sample_time_s=interval_start_s)
+        m_b_hold = sample_trace_at_time(time_arr=switched_time_arr, signal_arr=m_b_arr, sample_time_s=interval_start_s)
+        m_c_hold = sample_trace_at_time(time_arr=switched_time_arr, signal_arr=m_c_arr, sample_time_s=interval_start_s)
+        m_mean_hold = (m_a_hold + m_b_hold + m_c_hold) / 3.0
+        v_leg_scale_hold = sample_trace_at_time(time_arr=switched_time_arr, signal_arr=k_v_conv_arr, sample_time_s=interval_start_s) * max(
+            sample_trace_at_time(time_arr=switched_time_arr, signal_arr=v_dc_arr, sample_time_s=interval_start_s),
+            vdc_floor,
+        )
+        v_duty_a_hold = (m_a_hold - m_mean_hold) * v_leg_scale_hold
+        v_duty_b_hold = (m_b_hold - m_mean_hold) * v_leg_scale_hold
+        v_duty_c_hold = (m_c_hold - m_mean_hold) * v_leg_scale_hold
+        v_duty_hold_d_seg_arr, v_duty_hold_q_seg_arr, _unused_zero_seg_arr = compute_dq0_from_held_phase_values(
+            theta_arr=theta_seg_arr,
+            phase_a_value=v_duty_a_hold,
+            phase_b_value=v_duty_b_hold,
+            phase_c_value=v_duty_c_hold,
+        )
+        signals["v_duty_hold_d_avg"][interval_index] = float(np.trapezoid(v_duty_hold_d_seg_arr, theta_seg_t_arr) / (interval_end_s - interval_start_s))
+        signals["v_duty_hold_q_avg"][interval_index] = float(np.trapezoid(v_duty_hold_q_seg_arr, theta_seg_t_arr) / (interval_end_s - interval_start_s))
         interval_index += 1
 
     return interval_mid_arr, signals, metadata
@@ -1213,9 +1347,11 @@ def print_interval_averaged_bridge_comparison(
     component_name: str
     realized_key: str
     held_key: str
+    duty_key: str
     switched_cmd_key: str
     pseudo_cmd_key: str
     q_realized_minus_held: float
+    q_realized_minus_duty: float
     q_held_minus_switched_cmd: float
 
     print("=" * 100)
@@ -1235,33 +1371,39 @@ def print_interval_averaged_bridge_comparison(
     tail_slice = slice(len(interval_mid_arr) - tail_count, len(interval_mid_arr))
     print(f"tail intervals   : last {tail_count} full carrier half-periods")
     print("-" * 100)
-    print("component   | realized_avg  | held_ref_avg  | switched_cmd  | pseudo_cmd    | real-held     | held-swcmd")
+    print("component   | realized_avg  | held_ref_avg  | duty_ref_avg  | switched_cmd  | pseudo_cmd    | real-held     | real-duty")
     print("-" * 100)
 
-    for component_name, realized_key, held_key, switched_cmd_key, pseudo_cmd_key in list([
-        ("d-axis", "v_conv_d_avg", "v_ref_hold_d_avg", "v_cmd_d_avg", "pseudo_v_cmd_d_avg"),
-        ("q-axis", "v_conv_q_avg", "v_ref_hold_q_avg", "v_cmd_q_avg", "pseudo_v_cmd_q_avg"),
+    for component_name, realized_key, held_key, duty_key, switched_cmd_key, pseudo_cmd_key in list([
+        ("d-axis", "v_conv_d_avg", "v_ref_hold_d_avg", "v_duty_hold_d_avg", "v_cmd_d_avg", "pseudo_v_cmd_d_avg"),
+        ("q-axis", "v_conv_q_avg", "v_ref_hold_q_avg", "v_duty_hold_q_avg", "v_cmd_q_avg", "pseudo_v_cmd_q_avg"),
     ]):
         print(
             f"{component_name:<11} | "
             f"{float(np.mean(interval_signals[realized_key][tail_slice])):>13.6f} | "
             f"{float(np.mean(interval_signals[held_key][tail_slice])):>13.6f} | "
+            f"{float(np.mean(interval_signals[duty_key][tail_slice])):>13.6f} | "
             f"{float(np.mean(interval_signals[switched_cmd_key][tail_slice])):>13.6f} | "
             f"{float(np.mean(interval_signals[pseudo_cmd_key][tail_slice])):>13.6f} | "
             f"{float(np.mean(interval_signals[realized_key][tail_slice] - interval_signals[held_key][tail_slice])):>13.6f} | "
-            f"{float(np.mean(interval_signals[held_key][tail_slice] - interval_signals[switched_cmd_key][tail_slice])):>13.6f}"
+            f"{float(np.mean(interval_signals[realized_key][tail_slice] - interval_signals[duty_key][tail_slice])):>13.6f}"
         )
 
     q_realized_minus_held = float(np.mean(interval_signals["v_conv_q_avg"][tail_slice] - interval_signals["v_ref_hold_q_avg"][tail_slice]))
+    q_realized_minus_duty = float(np.mean(interval_signals["v_conv_q_avg"][tail_slice] - interval_signals["v_duty_hold_q_avg"][tail_slice]))
     q_held_minus_switched_cmd = float(np.mean(interval_signals["v_ref_hold_q_avg"][tail_slice] - interval_signals["v_cmd_q_avg"][tail_slice]))
     print("-" * 100)
 
-    if abs(q_realized_minus_held) < 0.25 * abs(q_held_minus_switched_cmd):
-        print("Interpretation: interval-averaged bridge q-voltage follows the held sampled phase reference much more closely than the dq command")
-        print("Interpretation: the dominant residual defect points to PWM timing / zero-order-hold behaviour, not to dq reconstruction")
+    if abs(q_realized_minus_duty) < 0.25 * abs(q_realized_minus_held):
+        print("Interpretation: interval-averaged bridge q-voltage follows the sampled duty reference much more closely than held phase voltage")
+        print("Interpretation: the previous plot was comparing against the wrong held quantity for scheduled PWM gates")
     else:
-        print("Interpretation: interval-averaged bridge q-voltage is still far from the held sampled phase reference")
-        print("Interpretation: inspect carrier scheduling and phase-voltage reconstruction before attributing the mismatch to dq hold timing alone")
+        if abs(q_realized_minus_held) < 0.25 * abs(q_held_minus_switched_cmd):
+            print("Interpretation: interval-averaged bridge q-voltage follows the held sampled phase reference much more closely than the dq command")
+            print("Interpretation: the dominant residual defect points to PWM timing / zero-order-hold behaviour, not to dq reconstruction")
+        else:
+            print("Interpretation: interval-averaged bridge q-voltage is still far from the held sampled phase reference and sampled duty reference")
+            print("Interpretation: inspect carrier scheduling and phase-voltage reconstruction before attributing the mismatch to dq hold timing alone")
 
 
 def plot_interval_averaged_bridge_comparison(
@@ -1290,6 +1432,7 @@ def plot_interval_averaged_bridge_comparison(
 
     axis_d.plot(interval_mid_arr, interval_signals["v_conv_d_avg"], marker="o", label="switched v_conv_d avg")
     axis_d.plot(interval_mid_arr, interval_signals["v_ref_hold_d_avg"], marker="s", label="held phase-ref dq avg", linestyle="--")
+    axis_d.plot(interval_mid_arr, interval_signals["v_duty_hold_d_avg"], marker="x", label="held duty dq avg", linestyle="--")
     axis_d.plot(interval_mid_arr, interval_signals["v_cmd_d_avg"], marker="^", label="switched v_cmd_d avg", linestyle=":")
     axis_d.plot(interval_mid_arr, interval_signals["pseudo_v_cmd_d_avg"], label="pseudo v_cmd_d avg", linestyle="-.")
     axis_d.grid(True)
@@ -1299,6 +1442,7 @@ def plot_interval_averaged_bridge_comparison(
 
     axis_q.plot(interval_mid_arr, interval_signals["v_conv_q_avg"], marker="o", label="switched v_conv_q avg")
     axis_q.plot(interval_mid_arr, interval_signals["v_ref_hold_q_avg"], marker="s", label="held phase-ref dq avg", linestyle="--")
+    axis_q.plot(interval_mid_arr, interval_signals["v_duty_hold_q_avg"], marker="x", label="held duty dq avg", linestyle="--")
     axis_q.plot(interval_mid_arr, interval_signals["v_cmd_q_avg"], marker="^", label="switched v_cmd_q avg", linestyle=":")
     axis_q.plot(interval_mid_arr, interval_signals["pseudo_v_cmd_q_avg"], label="pseudo v_cmd_q avg", linestyle="-.")
     axis_q.grid(True)
@@ -1317,7 +1461,10 @@ def main() -> None:
 
     :return: None.
     """
-    options: EmtOptions = build_comparison_emt_options()
+    time_step: float = float(os.environ.get("VERAGRID_SWITCHED_QAXIS_TIME_STEP", "1.0e-5"))
+    simulation_time: float = float(os.environ.get("VERAGRID_SWITCHED_QAXIS_SIM_TIME", "5.0e-3"))
+    plot_suffix: str = os.environ.get("VERAGRID_SWITCHED_QAXIS_PLOT_SUFFIX", "")
+    options: EmtOptions = build_comparison_emt_options(time_step=time_step, simulation_time=simulation_time)
     grid_sw: gce.MultiCircuit
     bus_ac_sw: gce.Bus
     bus_dc_sw: gce.Bus
@@ -1432,7 +1579,7 @@ def main() -> None:
         title="Q-AXIS TEMPORAL DIVERGENCE (PSEUDO-EQUIVALENT SWITCHED VIEW)",
     )
 
-    pseudo_view_save_path = get_plot_output_path(file_name="switched_converter_qaxis_trace_compare_pseudo_view.png")
+    pseudo_view_save_path = get_plot_output_path(file_name=suffixed_plot_file_name("switched_converter_qaxis_trace_compare_pseudo_view.png", plot_suffix=plot_suffix))
     plot_trace_comparison(
         time_arr=switched_artifacts.time_arr,
         switched_signals=switched_signals_pseudo_view,
@@ -1472,7 +1619,7 @@ def main() -> None:
         metadata=interval_metadata,
     )
 
-    interval_pseudo_view_save_path = get_plot_output_path(file_name="switched_converter_bridge_interval_average_compare_pseudo_view.png")
+    interval_pseudo_view_save_path = get_plot_output_path(file_name=suffixed_plot_file_name("switched_converter_bridge_interval_average_compare_pseudo_view.png", plot_suffix=plot_suffix))
     plot_interval_averaged_bridge_comparison(
         interval_mid_arr=interval_mid_arr,
         interval_signals=interval_signals_pseudo_view,

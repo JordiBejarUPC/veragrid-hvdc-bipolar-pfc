@@ -24,6 +24,7 @@ from VeraGridEngine.Devices.Events.emt_event import EmtEvent
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_dae import EmtProblemDae
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.Simulations.EMT.emt_solver_factory import build_emt_solver
+from VeraGridEngine.Simulations.EMT.initialization_emt import run_emt_native_initialization
 from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_emt_model
 import VeraGridEngine.Utils.Symbolic.symbolic as sym
 from VeraGridEngine.Utils.Symbolic.diagnostic import NewtonDiagnosticsConfig
@@ -32,7 +33,7 @@ import VeraGridEngine.api as gce
 
 
 PLOT_OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "gfl_vsc_emt_internal_filter_validation_plots")
-_DEFAULT_INTEGRATION_METHOD_NAME = os.environ.get("VERAGRID_GFL_EMT_INTEGRATION_METHOD", "DaeBackEuler")
+_DEFAULT_INTEGRATION_METHOD_NAME = os.environ.get("VERAGRID_GFL_EMT_INTEGRATION_METHOD", "DaeTrapezoidal")
 _DEFAULT_KP_ICL = "0.1" if _DEFAULT_INTEGRATION_METHOD_NAME == "DaeTrapezoidal" else "1.0"
 _DEFAULT_KI_ICL = "2.0" if _DEFAULT_INTEGRATION_METHOD_NAME == "DaeTrapezoidal" else "20.0"
 Q_CONTROL_KP_POL = float(os.environ.get("VERAGRID_GFL_EMT_KP_POL", "0.6"))
@@ -42,12 +43,14 @@ CURRENT_CONTROL_KI_ICL = float(os.environ.get("VERAGRID_GFL_EMT_KI_ICL", _DEFAUL
 PLL_KP = float(os.environ.get("VERAGRID_GFL_EMT_KP_PLL", "0.01"))
 PLL_KI = float(os.environ.get("VERAGRID_GFL_EMT_KI_PLL", "0.05"))
 DC_LINK_CAPACITANCE = float(os.environ.get("VERAGRID_GFL_EMT_CDC", "10.0"))
-VERAGRID_GFL_EMT_TIME_STEP = float(os.environ.get("VERAGRID_GFL_EMT_TIME_STEP", "1e-5"))
-VERAGRID_GFL_EMT_SIM_TIME = float(os.environ.get("VERAGRID_GFL_EMT_SIM_TIME", "0.5"))
-VERAGRID_GFL_EMT_WARMUP_TIME = float(os.environ.get("VERAGRID_GFL_EMT_WARMUP_TIME", "0.2"))
+VERAGRID_GFL_EMT_TIME_STEP = float(os.environ.get("VERAGRID_GFL_EMT_TIME_STEP", "1e-4"))
+VERAGRID_GFL_EMT_SIM_TIME = float(os.environ.get("VERAGRID_GFL_EMT_SIM_TIME", "1.0"))
+VERAGRID_GFL_EMT_WARMUP_TIME = float(os.environ.get("VERAGRID_GFL_EMT_WARMUP_TIME", "0.0"))
 P_REF_EVENT_ENABLED = os.environ.get("VERAGRID_GFL_EMT_PREF_EVENT", "1") != "0"
 P_REF_EVENT_TIME = float(os.environ.get("VERAGRID_GFL_EMT_PREF_EVENT_TIME", "0.25"))
-P_REF_EVENT_DELTA = float(os.environ.get("VERAGRID_GFL_EMT_PREF_EVENT_DELTA", "0.005"))
+P_REF_EVENT_DELTA = float(os.environ.get("VERAGRID_GFL_EMT_PREF_EVENT_DELTA", "0.000"))
+INIT_DIAGNOSTIC_TOP_N = int(os.environ.get("VERAGRID_GFL_EMT_INIT_DIAG_TOP_N", "25"))
+POST_SEED_INITIALIZATION_METHOD_NAME = os.environ.get("VERAGRID_GFL_EMT_POST_SEED_INIT", "")
 
 
 def find_name_in_block(name: str, block: Block):
@@ -102,21 +105,37 @@ def set_event_value_in_block(vf, name: str, block: Block, value: float) -> bool:
 def set_problem_runtime_value(problem: EmtProblemDae, vf, block: Block, name: str, value: float) -> None:
     problem.set_internal_runtime_if_exists(block, name, value)
     var = find_name_in_block(name, block)
-    if var is None:
-        return
-
     uid2idx = getattr(problem, "_uid2idx_event_params", getattr(problem, "uid2idx_event_params", {}))
-    if var.uid not in uid2idx:
+    runtime_vars = []
+    if var is not None and var.uid in uid2idx:
+        runtime_vars.append(var)
+
+    for candidate in problem.get_variable_parameters():
+        candidate_name = getattr(candidate, "name", "")
+        if candidate_name == name or candidate_name.startswith(f"{name}_"):
+            if candidate.uid in uid2idx and all(existing.uid != candidate.uid for existing in runtime_vars):
+                runtime_vars.append(candidate)
+
+    if not runtime_vars:
         return
 
-    idx = uid2idx[var.uid]
     const_value = vf.add_const(float(value))
-    problem._event_params_values[idx] = float(value)
-    problem._event_parameters_eqs[idx] = const_value
-    if hasattr(problem, "_runtime_parameter_eqs0"):
-        problem._runtime_parameter_eqs0[idx] = const_value
-    if hasattr(problem, "_runtime_all_eqs_source"):
-        problem._runtime_all_eqs_source[idx] = const_value
+    for runtime_var in runtime_vars:
+        idx = uid2idx[runtime_var.uid]
+        problem._event_params_values[idx] = float(value)
+        problem._event_parameters_eqs[idx] = const_value
+        if hasattr(problem, "_runtime_parameter_eqs0"):
+            problem._runtime_parameter_eqs0[idx] = const_value
+        if hasattr(problem, "_runtime_all_eqs_source"):
+            problem._runtime_all_eqs_source[idx] = const_value
+        if hasattr(problem, "_runtime_continuous_slice") and hasattr(problem, "_runtime_continuous_eqs"):
+            continuous_slice = problem._runtime_continuous_slice
+            if continuous_slice.start <= idx < continuous_slice.stop:
+                problem._runtime_continuous_eqs[idx - continuous_slice.start] = const_value
+        if hasattr(problem, "_runtime_mode_slice") and hasattr(problem, "_runtime_mode_eqs"):
+            mode_slice = problem._runtime_mode_slice
+            if mode_slice.start <= idx < mode_slice.stop:
+                problem._runtime_mode_eqs[idx - mode_slice.start] = const_value
 
 
 def pf_voltage_abc(grid: gce.MultiCircuit, pf_results, bus: gce.Bus) -> tuple[float, float, float]:
@@ -311,6 +330,208 @@ def print_vsc_seed_values(problem: EmtProblemDae, vsc_mdl: Block) -> None:
             print(f"  {name}={x0[idx]: .9e}")
 
 
+def build_eval_uid_bindings(problem: EmtProblemDae, x: np.ndarray, dx: np.ndarray | None, t_value: float) -> dict[int, float]:
+    bindings = {problem.glob_time.uid: float(t_value)}
+    for var in problem.get_state_vars() + problem.get_algebraic_vars():
+        idx = problem._uid2idx_vars.get(var.uid, None)
+        if idx is not None:
+            bindings[var.uid] = float(x[idx])
+
+    if dx is not None:
+        uid2idx_diff = getattr(problem, "uid2idx_diff", getattr(problem, "_uid2idx_diff", {}))
+        for var in problem.get_diff_vars():
+            idx = uid2idx_diff.get(var.uid, None)
+            if idx is not None and idx < len(dx):
+                bindings[var.uid] = float(dx[idx])
+
+    runtime_params = problem.def_event_params_fn(problem.event_params_values.copy(), float(t_value))
+    for var in problem.get_variable_parameters():
+        idx = problem._uid2idx_event_params.get(var.uid, None)
+        if idx is not None:
+            bindings[var.uid] = float(runtime_params[idx])
+
+    for var, value in zip(problem.get_constant_parameters(), problem.get_parameters_values()):
+        bindings[var.uid] = float(value.value)
+
+    return bindings
+
+
+def eval_expr_with_bindings(expr, bindings: dict[int, float]) -> float:
+    if hasattr(expr, "eval_uid"):
+        return float(expr.eval_uid(bindings))
+    return float(expr)
+
+
+def evaluate_state_rhs(problem: EmtProblemDae, x: np.ndarray, dx: np.ndarray | None, t_value: float) -> np.ndarray:
+    bindings = build_eval_uid_bindings(problem, x, dx, t_value)
+    rhs = np.zeros(len(problem.get_state_eqs()), dtype=float)
+    for i, eq in enumerate(problem.get_state_eqs()):
+        rhs[i] = eval_expr_with_bindings(eq, bindings)
+    return rhs
+
+
+def evaluate_algebraic_residuals(problem: EmtProblemDae, x: np.ndarray, dx: np.ndarray | None, t_value: float) -> np.ndarray:
+    bindings = build_eval_uid_bindings(problem, x, dx, t_value)
+    residuals = np.zeros(len(problem.get_algebraic_eqs()), dtype=float)
+    for i, eq in enumerate(problem.get_algebraic_eqs()):
+        residuals[i] = eval_expr_with_bindings(eq, bindings)
+    return residuals
+
+
+def print_ranked_diagnostics(title: str, rows: list[tuple[float, str]], top_n: int = INIT_DIAGNOSTIC_TOP_N) -> None:
+    print(title)
+    if not rows:
+        print("  <none>")
+        return
+
+    for _, text in sorted(rows, key=lambda item: item[0], reverse=True)[:top_n]:
+        print(f"  {text}")
+
+
+def wrapped_angle_delta(value_end: float, value_start: float) -> float:
+    return float((value_end - value_start + np.pi) % (2.0 * np.pi) - np.pi)
+
+
+def print_initialization_diagnostics(problem: EmtProblemDae, vsc_mdl: Block, t: np.ndarray, y: np.ndarray, dy: np.ndarray, x0_seed: np.ndarray, dx0_seed: np.ndarray) -> None:
+    if y.size == 0:
+        return
+
+    x_accepted0 = np.asarray(y[0, :], dtype=float)
+    x_first = np.asarray(y[min(1, y.shape[0] - 1), :], dtype=float)
+    x_last = np.asarray(y[-1, :], dtype=float)
+    dx_accepted0 = np.asarray(dy[0, :], dtype=float) if dy is not None and dy.size else dx0_seed
+    dx_first = np.asarray(dy[min(1, dy.shape[0] - 1), :], dtype=float) if dy is not None and dy.size else dx0_seed
+    dx_last = np.asarray(dy[-1, :], dtype=float) if dy is not None and dy.size else dx0_seed
+    t0 = float(t[0])
+    t_first = float(t[min(1, len(t) - 1)])
+    t_last = float(t[-1])
+
+    print("Initialization diagnostics:")
+    print(f"  ||accepted x0 - seed x0||_inf = {np.max(np.abs(x_accepted0 - x0_seed)):.9e}")
+    print(f"  ||xlast - seed x0||_inf      = {np.max(np.abs(x_last - x0_seed)):.9e}")
+    print(f"  ||accepted dx0 - seed dx0||_inf = {np.max(np.abs(dx_accepted0 - dx0_seed)):.9e}")
+
+    focused_names = (
+        "i_line_q", "i_q_ref", "u_Pac_ctrl", "xi_Pac_ctrl", "P", "P_ref",
+        "i_line_d", "i_d_ref", "u_Qac_ctrl", "xi_Qac_ctrl", "Q", "Q_ref",
+    )
+    focused_rows = []
+    focused_indices = []
+    for name in focused_names:
+        var = find_name_in_block(name, vsc_mdl)
+        idx = None if var is None else problem._uid2idx_vars.get(var.uid, None)
+        if idx is not None:
+            focused_indices.append((name, idx))
+            focused_rows.append(
+                f"{name}: x0={x0_seed[idx]: .9e}, x1={x_first[idx]: .9e}, "
+                f"xlast={x_last[idx]: .9e}, x1-x0={x_first[idx] - x0_seed[idx]: .9e}, "
+                f"xlast-x0={x_last[idx] - x0_seed[idx]: .9e}"
+            )
+    print("Focused VSC control start/end values:")
+    for row in focused_rows:
+        print(f"  {row}")
+
+    if focused_indices:
+        sample_count = min(6, y.shape[0])
+        print("Focused VSC control first samples:")
+        for k in range(sample_count):
+            values = ", ".join(f"{name}={y[k, idx]: .6e}" for name, idx in focused_indices)
+            print(f"  k={k}, t={float(t[k]):.9e}: {values}")
+
+    state_vars = problem.get_state_vars()
+    alg_vars = problem.get_algebraic_vars()
+    all_vars = state_vars + alg_vars
+    seed_to_last_rows = []
+    seed_to_first_rows = []
+    seed_to_last_no_angle_rows = []
+    wrapped_angle_rows = []
+    unseeded_rows = []
+    for var in all_vars:
+        idx = problem._uid2idx_vars.get(var.uid, None)
+        if idx is None:
+            continue
+        delta_last = float(x_last[idx] - x0_seed[idx])
+        delta_first = float(x_first[idx] - x0_seed[idx])
+        if abs(delta_last) > 1.0e-10:
+            seed_to_last_rows.append((abs(delta_last), f"{var.name}: seed={x0_seed[idx]: .9e}, xlast={x_last[idx]: .9e}, delta={delta_last: .9e}"))
+            if "theta" in var.name.lower() or "angle" in var.name.lower():
+                wrapped_delta = wrapped_angle_delta(float(x_last[idx]), float(x0_seed[idx]))
+                wrapped_angle_rows.append((abs(wrapped_delta), f"{var.name}: seed={x0_seed[idx]: .9e}, xlast={x_last[idx]: .9e}, raw_delta={delta_last: .9e}, wrapped_delta={wrapped_delta: .9e}"))
+            else:
+                seed_to_last_no_angle_rows.append((abs(delta_last), f"{var.name}: seed={x0_seed[idx]: .9e}, xlast={x_last[idx]: .9e}, delta={delta_last: .9e}"))
+        if abs(delta_first) > 1.0e-10:
+            seed_to_first_rows.append((abs(delta_first), f"{var.name}: seed={x0_seed[idx]: .9e}, x1={x_first[idx]: .9e}, delta={delta_first: .9e}"))
+        if var.uid not in problem.init_guess and abs(x_last[idx]) > 1.0e-10:
+            unseeded_rows.append((abs(x_last[idx]), f"{var.name}: seed-default=0, xlast={x_last[idx]: .9e}"))
+
+    print_ranked_diagnostics("Largest xlast - seeded x0 differences:", seed_to_last_rows)
+    print_ranked_diagnostics("Largest xlast - seeded x0 differences excluding angles:", seed_to_last_no_angle_rows)
+    print_ranked_diagnostics("Wrapped angle xlast - seeded x0 differences:", wrapped_angle_rows)
+    print_ranked_diagnostics("Largest first-step x1 - seeded x0 differences:", seed_to_first_rows)
+    print_ranked_diagnostics("Unseeded variables that settle non-zero:", unseeded_rows)
+
+    rhs0 = evaluate_state_rhs(problem, x0_seed, dx0_seed, t0)
+    rhs_first = evaluate_state_rhs(problem, x_first, dx_first, t_first)
+    rhs_last = evaluate_state_rhs(problem, x_last, dx_last, t_last)
+    uid2idx_diff = getattr(problem, "uid2idx_diff", getattr(problem, "_uid2idx_diff", {}))
+    base_uid_to_diff_var = {
+        diff_var.base_var.uid: diff_var
+        for diff_var in problem.get_diff_vars()
+        if getattr(diff_var, "base_var", None) is not None
+    }
+    dx_seed_rows = []
+    dx_last_delta_rows = []
+    dx_first_delta_rows = []
+    dx_first_rows = []
+    dx_last_rows = []
+    missing_dx_rows = []
+    for i, var in enumerate(state_vars):
+        diff_var = getattr(var, "diff_var", None)
+        if diff_var is not None and diff_var.uid not in uid2idx_diff:
+            diff_var = None
+        if diff_var is None:
+            diff_var = base_uid_to_diff_var.get(var.uid, None)
+        if diff_var is None and i < len(problem.get_diff_vars()):
+            # Some assembled/copied blocks lose the back-reference from state Var
+            # to DiffVar. The solver still stores dx in state-equation order.
+            diff_var = problem.get_diff_vars()[i]
+        diff_idx = None if diff_var is None else uid2idx_diff.get(diff_var.uid, None)
+        if diff_idx is None:
+            continue
+
+        seed_residual = float(dx0_seed[diff_idx] - rhs0[i])
+        first_residual = float(dx_first[diff_idx] - rhs_first[i])
+        last_residual = float(dx_last[diff_idx] - rhs_last[i])
+        dx_first_delta = float(dx_first[diff_idx] - dx0_seed[diff_idx])
+        dx_last_delta = float(dx_last[diff_idx] - dx0_seed[diff_idx])
+        if abs(dx_first_delta) > 1.0e-10:
+            dx_first_delta_rows.append((abs(dx_first_delta), f"{var.name}/{diff_var.name}: dx0={dx0_seed[diff_idx]: .9e}, dx1={dx_first[diff_idx]: .9e}, delta={dx_first_delta: .9e}"))
+        if abs(dx_last_delta) > 1.0e-10:
+            dx_last_delta_rows.append((abs(dx_last_delta), f"{var.name}/{diff_var.name}: dx0={dx0_seed[diff_idx]: .9e}, dxlast={dx_last[diff_idx]: .9e}, delta={dx_last_delta: .9e}"))
+        dx_seed_rows.append((abs(seed_residual), f"{var.name}/{diff_var.name}: dx0={dx0_seed[diff_idx]: .9e}, rhs0={rhs0[i]: .9e}, dx0-rhs0={seed_residual: .9e}"))
+        dx_first_rows.append((abs(first_residual), f"{var.name}/{diff_var.name}: dx1={dx_first[diff_idx]: .9e}, rhs1={rhs_first[i]: .9e}, dx1-rhs1={first_residual: .9e}"))
+        dx_last_rows.append((abs(last_residual), f"{var.name}/{diff_var.name}: dxlast={dx_last[diff_idx]: .9e}, rhslast={rhs_last[i]: .9e}, dxlast-rhs={last_residual: .9e}"))
+        if diff_var.uid not in problem.diff_init_guess and abs(rhs0[i]) > 1.0e-10:
+            missing_dx_rows.append((abs(rhs0[i]), f"{var.name}/{diff_var.name}: dx0-default=0, rhs0={rhs0[i]: .9e}"))
+
+    print_ranked_diagnostics("Largest dxlast - seeded dx0 differences:", dx_last_delta_rows)
+    print_ranked_diagnostics("Largest first-step dx1 - seeded dx0 differences:", dx_first_delta_rows)
+    print_ranked_diagnostics("Largest seeded dx0 - RHS(x0) mismatches:", dx_seed_rows)
+    print_ranked_diagnostics("Largest accepted first-step dx1 - RHS(x1) mismatches:", dx_first_rows)
+    print_ranked_diagnostics("Largest final dxlast - RHS(xlast) mismatches:", dx_last_rows)
+    print_ranked_diagnostics("Unseeded differential variables with non-zero RHS at x0:", missing_dx_rows)
+
+    alg0 = evaluate_algebraic_residuals(problem, x0_seed, dx0_seed, t0)
+    alg_last = evaluate_algebraic_residuals(problem, x_last, dx_last, t_last)
+    alg_rows0 = []
+    alg_rows_last = []
+    for i, eq in enumerate(problem.get_algebraic_eqs()):
+        alg_rows0.append((abs(float(alg0[i])), f"alg_eq[{i}]: residual0={alg0[i]: .9e}, eq={eq}"))
+        alg_rows_last.append((abs(float(alg_last[i])), f"alg_eq[{i}]: residuallast={alg_last[i]: .9e}, eq={eq}"))
+    print_ranked_diagnostics("Largest algebraic residuals at seeded x0:", alg_rows0)
+    print_ranked_diagnostics("Largest algebraic residuals at xlast:", alg_rows_last)
+
+
 def apply_solution_as_initial_guess(problem: EmtProblemDae, y: np.ndarray, dy: np.ndarray) -> None:
     final_y = np.asarray(y[-1, :], dtype=float)
     for var in list(problem.get_state_vars()) + list(problem.get_algebraic_vars()):
@@ -344,6 +565,23 @@ def run_emt(problem: EmtProblemDae, options: EmtOptions, t_end: float):
         ),
     )
     return solver.simulate()
+
+
+def run_post_seed_initialization_if_requested(problem: EmtProblemDae, options: EmtOptions) -> None:
+    if not POST_SEED_INITIALIZATION_METHOD_NAME:
+        return
+
+    method = EmtInitializationMethod[POST_SEED_INITIALIZATION_METHOD_NAME]
+    previous_method = options.initialization_method
+    options.initialization_method = method
+    report = run_emt_native_initialization(problem=problem, options=options)
+    options.initialization_method = previous_method
+    print(
+        "Post-seed native initialization: "
+        f"requested={method.name}, used={report.method_used.name}, status={report.status.name}, "
+        f"res0={report.initial_residual_inf:.9e}, resf={report.final_residual_inf:.9e}, "
+        f"newton={report.newton_iterations}, ptc={report.pseudo_transient_steps}"
+    )
 
 
 def add_internal_filter_block(grid: gce.MultiCircuit, vsc_mdl: Block) -> None:
@@ -621,8 +859,8 @@ def build_emt_models(grid, line23, vsc1, gen1, dc_source, pf_results, bus_dc, bu
 
     line23_idx = grid.lines.index(line23)
     line23_s_from = complex(pf_results.Sf[line23_idx]) / grid.Sbase
-    p_ref0 = float(np.real(line23_s_from))
-    q_ref0 = float(np.imag(line23_s_from))
+    p_ref0 = -float(np.real(line23_s_from))
+    q_ref0 = -float(np.imag(line23_s_from))
     vq_ref0 = park_dq_value(best_theta_ref, va_pcc0, vb_pcc0, vc_pcc0)[1]
 
     for name, value in (
@@ -672,28 +910,35 @@ def seed_internal_filter_guess(problem, grid, pf_results, vsc_mdl, dc_source_mdl
     vq_c = vq_g + r_filter * i_q + x_filter * i_d
     va_conv, vb_conv, vc_conv = inverse_park_value(theta_ref, vd_c, vq_c)
     ia, ib, ic = inverse_park_value(theta_ref, i_d, i_q)
+    ia_filter = -ia
+    ib_filter = -ib
+    ic_filter = -ic
+    i_d_filter = -i_d
+    i_q_filter = -i_q
     vdc0 = abs(pf_results.voltage[grid.buses.index(bus_dc)])
-    p_conv = -(va_conv * ia + vb_conv * ib + vc_conv * ic) / 3.0
+    p_meas = (va2 * ia_filter + vb2 * ib_filter + vc2 * ic_filter) / 3.0
+    q_meas = ((vb2 - vc2) * ia_filter + (vc2 - va2) * ib_filter + (va2 - vb2) * ic_filter) / (3.0 * np.sqrt(3.0))
+    p_conv = -(va_conv * ia_filter + vb_conv * ib_filter + vc_conv * ic_filter) / 3.0
     omega_base = 2.0 * np.pi * grid.fBase
-    dia = omega_base * (va2 - va_conv - r_filter * ia) / x_filter
-    dib = omega_base * (vb2 - vb_conv - r_filter * ib) / x_filter
-    dic = omega_base * (vc2 - vc_conv - r_filter * ic) / x_filter
-    vd_hat = vd_c - (vd_g - x_filter * i_q)
-    vq_hat = vq_c - (vq_g + x_filter * i_d)
+    dia = omega_base * (va2 - va_conv - r_filter * ia_filter) / x_filter
+    dib = omega_base * (vb2 - vb_conv - r_filter * ib_filter) / x_filter
+    dic = omega_base * (vc2 - vc_conv - r_filter * ic_filter) / x_filter
+    vd_hat = vd_c - (vd_g + r_filter * i_d_filter - x_filter * i_q_filter)
+    vq_hat = vq_c - (vq_g + r_filter * i_q_filter + x_filter * i_d_filter)
 
     values = {
-        'P': s_to.real,
-        'Q': s_to.imag,
-        'P_f': s_to.real,
-        'Q_f': s_to.imag,
-        'Pt_vsc': -s_to.real,
-        'Qt_vsc': -s_to.imag,
-        'i_a_f': ia,
-        'i_b_f': ib,
-        'i_c_f': ic,
-        'i_filter_A': ia,
-        'i_filter_B': ib,
-        'i_filter_C': ic,
+        'P': p_meas,
+        'Q': q_meas,
+        'P_f': p_meas,
+        'Q_f': q_meas,
+        'Pt_vsc': -p_meas,
+        'Qt_vsc': -q_meas,
+        'i_a_f': ia_filter,
+        'i_b_f': ib_filter,
+        'i_c_f': ic_filter,
+        'i_filter_A': ia_filter,
+        'i_filter_B': ib_filter,
+        'i_filter_C': ic_filter,
         'i_dc': p_conv / vdc0,
         'P_conv': p_conv,
         'theta': -theta_ref,
@@ -703,10 +948,10 @@ def seed_internal_filter_guess(problem, grid, pf_results, vsc_mdl, dc_source_mdl
         'vg_q': vq_g,
         'vc_d': vd_c,
         'vc_q': vq_c,
-        'i_line_d': i_d,
-        'i_line_q': i_q,
-        'i_d_ref': i_d,
-        'i_q_ref': i_q,
+        'i_line_d': i_d_filter,
+        'i_line_q': i_q_filter,
+        'i_d_ref': i_d_filter,
+        'i_q_ref': i_q_filter,
         'v_d_c': vd_c,
         'v_q_c': vq_c,
         'va_v': va_conv,
@@ -719,8 +964,8 @@ def seed_internal_filter_guess(problem, grid, pf_results, vsc_mdl, dc_source_mdl
         'u_vd_hat': 0.0,
         'u_vq_hat': 0.0,
         'Vdc_cap': vdc0,
-        'xi_Pac_ctrl': i_q / Q_CONTROL_KI_POL,
-        'xi_Qac_ctrl': i_d / Q_CONTROL_KI_POL,
+        'xi_Pac_ctrl': i_q_filter / Q_CONTROL_KI_POL,
+        'xi_Qac_ctrl': i_d_filter / Q_CONTROL_KI_POL,
         'xi_vd_hat': vd_hat / CURRENT_CONTROL_KI_ICL,
         'xi_vq_hat': vq_hat / CURRENT_CONTROL_KI_ICL,
         'u_PLL_pi': vd_g,
@@ -729,7 +974,7 @@ def seed_internal_filter_guess(problem, grid, pf_results, vsc_mdl, dc_source_mdl
         set_init_if_exists(problem, vsc_mdl, name, value)
 
     dc_current = p_conv / vdc0
-    for name, value in (('i_dc_dc_voltage_source', dc_current), ('V_src_dc_voltage_source', vdc0 + dc_current / 100.0)):
+    for name, value in (('i_dc', dc_current), ('i_dc_dc_voltage_source', dc_current)):
         var = find_name_in_block(name, dc_source_mdl)
         if var is not None:
             if var.uid in problem._uid2idx_vars:
@@ -737,9 +982,11 @@ def seed_internal_filter_guess(problem, grid, pf_results, vsc_mdl, dc_source_mdl
             elif var.uid in problem.uid2idx_event_params:
                 problem.event_params_values[problem.uid2idx_event_params[var.uid]] = float(value)
 
+    set_problem_runtime_value(problem, grid.var_factory, dc_source_mdl, 'V_src', vdc0 + dc_current / 100.0)
+
     for name, value in (
-        ('P_ref', s_to.real),
-        ('Q_ref', s_to.imag),
+        ('P_ref', p_meas),
+        ('Q_ref', q_meas),
         ('Vm_ac_ref', vq_g),
         ('Kp_pol', Q_CONTROL_KP_POL),
         ('Ki_pol', Q_CONTROL_KI_POL),
@@ -762,6 +1009,26 @@ def seed_internal_filter_guess(problem, grid, pf_results, vsc_mdl, dc_source_mdl
         diff_var = find_name_in_block(name, vsc_mdl)
         if diff_var is not None:
             problem.diff_init_guess[diff_var.uid] = float(value)
+
+    # The active/reactive power PI blocks expose derivative variables for both
+    # the error signal and the reference output. At the PF operating point the
+    # errors are initialized to zero, so their startup derivatives should also be
+    # zero. Leaving them to automatic completion can make i_q_ref/i_d_ref jump on
+    # the first trapezoidal step even though i_ref == i at t=0.
+    for name in ('dt_1_i_q_ref', 'dt_1_u_Pac_ctrl', 'dt_1_i_d_ref', 'dt_1_u_Qac_ctrl'):
+        diff_var = find_name_in_block(name, vsc_mdl)
+        if diff_var is not None:
+            problem.diff_init_guess[diff_var.uid] = 0.0
+
+    # The GFL PI blocks are represented as algebraic equations involving
+    # derivative variables, e.g. dt_i_q_ref = Ki * u_Pac_ctrl + Kp * dt_u_Pac_ctrl.
+    # At the seeded operating point the power errors are zero, so keep both the
+    # PI input derivative and output derivative at zero to avoid a first-step
+    # trapezoidal predictor kick in i_q_ref/i_d_ref.
+    for name in ('dt_1_i_q_ref', 'dt_1_i_d_ref', 'dt_1_u_Pac_ctrl', 'dt_1_u_Qac_ctrl'):
+        diff_var = find_name_in_block(name, vsc_mdl)
+        if diff_var is not None:
+            problem.diff_init_guess[diff_var.uid] = 0.0
 
 
 def main() -> None:
@@ -789,6 +1056,7 @@ def main() -> None:
     )
     problem = EmtProblemDae(grid=grid, options=options, pf_results=pf_results)
     seed_internal_filter_guess(problem, grid, pf_results, vsc_mdl, dc_source_mdl, line23, bus_dc, bus2, theta_ref)
+    run_post_seed_initialization_if_requested(problem, options)
     print_problem_structure(problem)
     print_vsc_seed_values(problem, vsc_mdl)
 
@@ -804,6 +1072,8 @@ def main() -> None:
             print(f"EMT warm-up converged: {warm_converged}")
             apply_solution_as_initial_guess(problem, yw, dyw)
 
+        x0_run = problem.get_x0().copy()
+        dx0_run = problem.get_dx0().copy()
         t, y, dy, well_initialized, converged = run_emt(
             problem=problem,
             options=options,
@@ -816,6 +1086,7 @@ def main() -> None:
     print(f"EMT well initialized: {well_initialized}")
     print(f"EMT converged: {converged}")
     print(f"Solved samples: {len(t)}")
+    print_initialization_diagnostics(problem, vsc_mdl, t, y, dy, x0_run, dx0_run)
 
     for name in ('P', 'Q', 'v_d_c', 'v_q_c', 'vg_d', 'vg_q', 'i_line_d', 'i_line_q'):
         var = find_name_in_block(name, vsc_mdl)

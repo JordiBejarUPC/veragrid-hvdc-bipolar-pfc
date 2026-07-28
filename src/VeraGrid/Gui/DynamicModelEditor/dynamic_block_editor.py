@@ -3230,16 +3230,18 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         for child_block in self.main_block.children:
             if child_block.uid in existing_node_uids:
                 pass
-            elif len(child_block.in_vars) == 1 and len(child_block.out_vars) == 0 and child_block.name.startswith(
-                    "net_conn_"):
+            elif (len(child_block.in_vars) == 1
+                  and len(child_block.out_vars) == 0
+                  and child_block.name.startswith("net_conn_")):
                 # Defensive guard for editor-generated output interface wrappers.
                 pass
-            elif len(child_block.in_vars) == 0 and len(child_block.out_vars) == 1 and child_block.name.startswith(
-                    ("v_", "Vdc_")):
+            elif (len(child_block.in_vars) == 0
+                  and len(child_block.out_vars) == 1
+                  and child_block.name.startswith(("v_", "Vdc_"))):
                 # Defensive guard for editor-generated input interface wrappers.
                 pass
             else:
-                self.generate_block_item_for_block(child_block)
+                self.generate_block_item_for_block(child_block, x_pos=0, y_pos=0)  # TODO: Fill coordinates from layout
 
     def _rebuild_missing_non_interface_connections(self) -> None:
         """
