@@ -4,8 +4,6 @@ Small example to create one model row and store a MultiCircuit in PostgreSQL.
 
 from __future__ import annotations
 
-from uuid import uuid4
-
 import VeraGridEngine as vg
 from VeraGridServer.db.database import PostgreSqlConnectionSettings
 from VeraGridServer.db.model_ops import create_model, put_multicircuit_in_database, create_file
@@ -24,6 +22,7 @@ def main() -> int:
         database="veragrid",
         user_name="admin",
         password="pgpwd",
+        schema_name="veragrid",
     )
 
     fname = "/home/santi/Git/eRoots/VeraGrid/Grids_and_profiles/grids/2869 Pegase.gridcal"
@@ -63,7 +62,10 @@ def main() -> int:
         file_idtag=file_idtag,
     )
 
-    print(f"Stored model '{model_idtag}' in database '{settings.database}'.")
+    print(
+        f"Stored model '{model_idtag}' in database '{settings.database}' "
+        f"schema '{settings.schema_name}'."
+    )
     return 0
 
 
