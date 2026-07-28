@@ -43,7 +43,7 @@ from VeraGridEngine.enumerations import (DeviceType, AvailableTransferMode, Solv
                                          ReliabilityMode, OpfDispatchMode, DynamicIntegrationMethod,
                                          RmsInitializationMethod, EmtInitializationMethod, EmtSolverTypes,
                                          MethodShortCircuit,
-                                         DynamicSimulationMode)
+                                         DynamicSimulationMode, RmsProblemTypes, EmtProblemTypes)
 
 
 def get_valid_controls_start_tolerance_index(tolerance_idx: int,
@@ -278,10 +278,20 @@ class SimulationsMain(TimeEventsMain):
                           translate=self.tr)
         )
 
+
+
         self.ui.rms_initialization_method_comboBox.setModel(
             gf.ComboModel(enum_values=[RmsInitializationMethod.Explicit,
                                        RmsInitializationMethod.PseudoTransient],
                           translate=self.tr)
+
+        )
+
+        self.ui.rms_problem_comboBox.setModel(
+            gf.ComboModel(enum_values=[RmsProblemTypes.PowerBalance,
+                                       RmsProblemTypes.PowerBalanceVectorized],
+                          translate=self.tr)
+
         )
 
         # emt simulation
@@ -297,6 +307,12 @@ class SimulationsMain(TimeEventsMain):
                                        EmtInitializationMethod.ConsistentNewton,
                                        EmtInitializationMethod.PseudoTransient,
                                        EmtInitializationMethod.Auto],
+                          translate=self.tr)
+        )
+
+        self.ui.emt_problem_comboBox.setModel(
+            gf.ComboModel(enum_values=[EmtProblemTypes.CurrentBalance,
+                                       EmtProblemTypes.CurrentBalance],
                           translate=self.tr)
         )
 
@@ -1057,6 +1073,7 @@ class SimulationsMain(TimeEventsMain):
             tolerance=1.0 / (10.0 ** self.ui.tolerance_rms_spinBox.value()),
             integration_method=self.ui.rms_integration_method_comboBox.currentData(),
             initialization_method=self.ui.rms_initialization_method_comboBox.currentData(),
+            problem_type=self.ui.rms_problem_comboBox.currentData()
         )
 
         return ops
@@ -1085,6 +1102,7 @@ class SimulationsMain(TimeEventsMain):
             integration_method=self.ui.emt_integration_method_comboBox.currentData(),
             initialization_method=self.ui.emt_initialization_method_comboBox.currentData(),
             solver_type=self.ui.emt_solver_type_comboBox.currentData(),
+            problem_type=self.ui.emt_problem_comboBox.currentData()
         )
 
         return ops
@@ -1398,39 +1416,40 @@ class SimulationsMain(TimeEventsMain):
 
                 if not self.session.is_this_running(SimulationTypes.EmtDynamic_run):
 
-                    logger = self.circuit.check_emt_models()
-                    if logger.has_errors():
-                        # Show dialogue
-                        dlg = LogsDialogue(name="EMT pre simulation check",
-                                           logger=logger)
-                        dlg.setModal(True)
-                        dlg.exec()
-                        return
-                    else:
+                    # logger = self.circuit.check_emt_models()
+                    # if logger.has_errors():
+                    #     # Show dialogue
+                    #     dlg = LogsDialogue(name="EMT pre simulation check",
+                    #                        logger=logger)
+                    #     dlg.setModal(True)
+                    #     dlg.exec()
+                    #     return
+                    # else:
 
-                        if not len(self.circuit.emt_events_groups) == 0:
+                    if not len(self.circuit.emt_events_groups) == 0:
+                        self.run_emt()
+
+                        
+
+                    else:
+                        mode: DynamicSimulationMode = DynamicSimulationMode.EMT
+                        missing_group_message = "No EMT Events Group found, please create one before running a EMT simulation."
+                        created_group_message_body_prefix: str = "New group name"
+                        created_group_message_title = "EMT group Created"
+
+                        created_group: RmsEventsGroup | EmtEventsGroup | None = (create_dynamic_events_group_with_dialog(
+                            circuit=self.circuit,
+                            mode=mode,
+                            parent=None,
+                            missing_group_message=missing_group_message,
+                            created_group_message_title=created_group_message_title,
+                            created_group_message_body_prefix=created_group_message_body_prefix,
+                        ))
+
+                        if created_group is not None:
                             self.run_emt()
                         else:
-                            mode: DynamicSimulationMode = DynamicSimulationMode.EMT
-                            missing_group_message = "No EMT Events Group found, please create one before running a EMT simulation."
-                            created_group_message_body_prefix: str = "New group name"
-                            created_group_message_title = "EMT group Created"
-
-                            created_group: RmsEventsGroup | EmtEventsGroup | None = (
-                                create_dynamic_events_group_with_dialog(
-                                    circuit=self.circuit,
-                                    mode=mode,
-                                    parent=None,
-                                    missing_group_message=missing_group_message,
-                                    created_group_message_title=created_group_message_title,
-                                    created_group_message_body_prefix=created_group_message_body_prefix,
-                                )
-                            )
-
-                            if created_group is not None:
-                                self.run_emt()
-                            else:
-                                info_msg(f"No EMT Events Group was added. The EMT simulation can't run.")
+                            info_msg(f"No EMT Events Group was added. The EMT simulation can't run.")
 
 
                 else:

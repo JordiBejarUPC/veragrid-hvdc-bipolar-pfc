@@ -4,7 +4,6 @@
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
 
-from pydoc import visiblename
 from typing import Union, List, TYPE_CHECKING, Tuple
 import numpy as np
 

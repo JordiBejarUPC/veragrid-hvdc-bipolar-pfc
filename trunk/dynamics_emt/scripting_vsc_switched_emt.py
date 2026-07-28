@@ -115,7 +115,7 @@ def main() -> None:
 
     :return: None.
     """
-    run_switched_vsc_case(enable_plots=False, save_plot=True, open_saved_plot=True)
+    run_switched_vsc_case(enable_plots=False, save_plot=True, open_saved_plot=False)
 
 
 if __name__ == "__main__":
