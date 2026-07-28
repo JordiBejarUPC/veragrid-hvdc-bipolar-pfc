@@ -275,8 +275,34 @@ class VarFactory(EditableDevice):
 
     def add_connection(self, var_to_subs: Var, incoming_var: Var):
 
+        if var_to_subs.non_mutable_uid == incoming_var.non_mutable_uid:
+            return
+        else:
+            pass
+
         if not incoming_var.non_mutable_uid in self._vars_connected_dict:
             self._vars_connected_dict[incoming_var.non_mutable_uid] = list()
+        else:
+            pass
+
+        existing_connections: List[Connection] = self._vars_connected_dict[incoming_var.non_mutable_uid]
+        existing_connection: Connection
+        for existing_connection in existing_connections:
+            if existing_connection.non_mutable_uid == var_to_subs.non_mutable_uid:
+                return
+            else:
+                pass
+
+        reverse_connections: List[Connection] | None = self._vars_connected_dict.get(var_to_subs.non_mutable_uid, None)
+        reverse_connection: Connection
+        if reverse_connections is None:
+            pass
+        else:
+            for reverse_connection in reverse_connections:
+                if reverse_connection.non_mutable_uid == incoming_var.non_mutable_uid:
+                    return
+                else:
+                    pass
 
         connection = Connection(var_to_subs.non_mutable_uid, var_to_subs.name, var_to_subs.uid)
         self._vars_connected_dict[incoming_var.non_mutable_uid].append(connection)
