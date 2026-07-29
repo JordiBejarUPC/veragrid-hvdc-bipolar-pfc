@@ -252,6 +252,7 @@ class CandidateGenerationDriver(DriverTemplate):
             cand.new_rate = float(new_rate)
             cand.relieved_violations = list(vlist)
             cand.score = float(sum(v.excess for v in vlist))
+            cand.capex = cand.new_rate ** 2
             candidates.append(cand)
 
         return candidates
@@ -341,6 +342,7 @@ class CandidateGenerationDriver(DriverTemplate):
             cand.name = f"{buses[a].name} - {buses[b].name}"
             cand.relieved_violations = relieved
             cand.score = float(score)
+            cand.capex = cand.rate ** 2
             candidates.append(cand)
 
         return candidates
@@ -379,6 +381,11 @@ class CandidateGenerationDriver(DriverTemplate):
             for br in cpy.get_branches(add_switch=True):
                 if br.idtag == target_idtag:
                     br.rate = candidate.new_rate
+                    # A t_idx-based compile (time-series mode) resolves rate through rate_prof,
+                    # not the scalar - without this the verification PF would still see old_rate.
+                    br_rate_prof = br.get_profile('rate')
+                    if br_rate_prof is not None:
+                        br_rate_prof.fill(candidate.new_rate)
                     break
 
         converged, base_flow = self._run_ac_pf(cpy, t_idx=t_idx)

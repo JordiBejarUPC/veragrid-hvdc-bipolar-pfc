@@ -176,12 +176,16 @@ class ReinforcementCandidate:
             upgraded.rate = self.new_rate
             upgraded.active = False
             upgraded.name = self.target_branch.name + " (upgraded)"
-            # copy() inherits the source branch's (all-active) time profile; the scalar assignment
-            # above does not touch it, so without this the copy would read as active at every hour
-            # of a time-series grid until the investment activates it.
+            # copy() inherits the source branch's time profiles (all-active rate=old_rate); the
+            # scalar assignments above don't touch them, and any t_idx-based compile (time-series
+            # mode) resolves active/rate through the profile, not the scalar - so without this the
+            # copy would read as active at every hour, at the OLD rate, until fixed here.
             upgraded_active_prof = upgraded.get_profile('active')
             if upgraded_active_prof is not None:
                 upgraded_active_prof.fill(False)
+            upgraded_rate_prof = upgraded.get_profile('rate')
+            if upgraded_rate_prof is not None:
+                upgraded_rate_prof.fill(self.new_rate)
             circuit.add_branch(upgraded)
 
             # One investment activates the uprated copy...
