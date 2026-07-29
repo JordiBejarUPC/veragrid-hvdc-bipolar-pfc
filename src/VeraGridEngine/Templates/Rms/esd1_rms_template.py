@@ -212,6 +212,7 @@ def get_esd1_rms_template(vfactory: VarFactory, name: str = "ESD1 RMS template")
     block.out_vars = [p, q]
 
     templ.block.children.append(block)
+    templ.block.name = name
     templ.block.external_mapping = block.external_mapping
     templ.block.api_obj_mapping = block.api_obj_mapping
     templ.block.in_vars = inputs

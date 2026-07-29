@@ -151,7 +151,8 @@ for bus in circuit.buses:
     get_bus_emt_template(grid=circuit, bus=bus)
 
 gen_mdl = get_generator_thevenin_rl_emt_template_with_ref(vf=circuit.var_factory).block
-trafo_mdl = get_transformer_emt_template(vf=circuit.var_factory, name=transformer.name).block
+trafo_templ = get_transformer_emt_template(vf=circuit.var_factory, name=transformer.name)
+trafo_mdl = trafo_templ.block.children[0]
 load_mdl = get_shunt_r_emt_template(vf=circuit.var_factory, phA=True, phB=True, phC=True, name=load.name).block
 
 set_emt_model(device=gen1, model=gen_mdl, var_factory=circuit.var_factory)

@@ -217,7 +217,7 @@ def get_gfm_emt_template(vf: VarFactory, name: str = "VSC_GridForming") -> EmtMo
         Pe, Qe, i_dc,
     ]
 
-    templ.block = Block(
+    block: Block = Block(
         state_eqs=state_eqs,
         state_vars=state_vars,
         algebraic_eqs=algebraic_eqs,
@@ -226,12 +226,12 @@ def get_gfm_emt_template(vf: VarFactory, name: str = "VSC_GridForming") -> EmtMo
         out_vars=[i_A, i_B, i_C, i_dc],
     )
 
-    templ.block.diff_vars = [d_i_A, d_i_B, d_i_C, d_theta, d_omega, d_Epk]
+    block.diff_vars = [d_i_A, d_i_B, d_i_C, d_theta, d_omega, d_Epk]
 
     # External mapping. The four ``Vpk`` / ``phi_v`` / ``Ipk`` / ``phi``
     # entries are what the EMT bridge populates from the PF positive-
     # sequence solution (see ``_set_vsc_pf_positive_sequence``).
-    templ.block.external_mapping = {
+    block.external_mapping = {
         VarPowerFlowReferenceType.v_A: v_A,
         VarPowerFlowReferenceType.v_B: v_B,
         VarPowerFlowReferenceType.v_C: v_C,
@@ -248,7 +248,7 @@ def get_gfm_emt_template(vf: VarFactory, name: str = "VSC_GridForming") -> EmtMo
     }
 
     # API-object mapping.
-    templ.block.api_obj_mapping = {
+    block.api_obj_mapping = {
         ParamPowerFlowReferenceType.omega_base: omega_base,
         ParamPowerFlowReferenceType.R1: R_s,
         ParamPowerFlowReferenceType.X1: X_s,
@@ -259,7 +259,7 @@ def get_gfm_emt_template(vf: VarFactory, name: str = "VSC_GridForming") -> EmtMo
     # the bridge. ``P_ref``, ``Q_ref``, ``V_ref`` are pinned by
     # ``init_eqs`` to the analytical PF steady-state values, so the
     # droop input is zero at ``t = 0``.
-    templ.block.event_dict = {
+    block.event_dict = {
         omega_base: vf.add_const(2.0 * np.pi * 50.0),
         R_s: vf.add_const(0.01),
         X_s: vf.add_const(0.1),
@@ -286,7 +286,7 @@ def get_gfm_emt_template(vf: VarFactory, name: str = "VSC_GridForming") -> EmtMo
     # change during simulation, so the consistency Newton has nothing to
     # shift — the explicit init already places the system on the exact
     # steady-state sinusoidal trajectory.
-    templ.block.init_eqs = {
+    block.init_eqs = {
         # Bus AC sample at t = 0 — pin v_A/v_B/v_C so KCL sees the same
         # values that the analytical EMF formula assumes.
         v_A: v_A_init_expr,
@@ -338,7 +338,7 @@ def get_gfm_emt_template(vf: VarFactory, name: str = "VSC_GridForming") -> EmtMo
     d_i_A_init_expr = omega_base * Ipk_ref * sym.cos(theta_i_init_expr)
     d_i_B_init_expr = omega_base * Ipk_ref * sym.cos(theta_i_init_expr - two_pi_over_3)
     d_i_C_init_expr = omega_base * Ipk_ref * sym.cos(theta_i_init_expr + two_pi_over_3)
-    templ.block.diff_init_eqs = {
+    block.diff_init_eqs = {
         d_i_A: d_i_A_init_expr,
         d_i_B: d_i_B_init_expr,
         d_i_C: d_i_C_init_expr,
@@ -346,5 +346,11 @@ def get_gfm_emt_template(vf: VarFactory, name: str = "VSC_GridForming") -> EmtMo
         d_omega: vf.add_const(0.0),
         d_Epk: vf.add_const(0.0),
     }
+
+    templ.block.children.append(block)
+    templ.block.external_mapping = block.external_mapping
+    templ.block.api_obj_mapping = block.api_obj_mapping
+    templ.block.in_vars = block.in_vars
+    templ.block.out_vars = block.out_vars
 
     return templ
