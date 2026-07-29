@@ -10,7 +10,7 @@ from VeraGridEngine.basic_structures import Logger, Mat, IntVec
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.enumerations import (WindingsConnection, BuildStatus, TapPhaseControl,
                                          TapModuleControl, TapChangerTypes, WindingType, PrpCat,
-                                         ParamPowerFlowReferenceType, SubObjectType)
+                                         ParamPowerFlowReferenceType)
 from VeraGridEngine.Devices.Parents.controllable_branch_parent import ControllableBranchParent
 from VeraGridEngine.Devices.Branches.transformer_type import TransformerType, reverse_transformer_short_circuit_study
 from VeraGridEngine.Devices.Parents.editable_device import DeviceType, GCProp
@@ -32,8 +32,6 @@ class Transformer2W(ControllableBranchParent):
         '_conn_t',
         '_vector_group_number',
         '_phases',
-        '_phases_f',
-        '_phases_t',
     )
 
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
@@ -122,30 +120,6 @@ class Transformer2W(ControllableBranchParent):
                           'phase = vector_group_number · 30º',
             cat=[PrpCat.TP, PrpCat.PF3, PrpCat.SC],
             dyn_ref=ParamPowerFlowReferenceType.transformer_connection_clock,
-        ),
-        GCProp(
-            prop_name='phases',
-            units='',
-            tpe=SubObjectType.Array,
-            definition='Active phase conductors. 0=N, 1=A, 2=B, 3=C.',
-            editable=False,
-            cat=[PrpCat.PF3, PrpCat.SC],
-        ),
-        GCProp(
-            prop_name='phases_f',
-            units='',
-            tpe=SubObjectType.Array,
-            definition='Active phase conductors at the from side. 0=N, 1=A, 2=B, 3=C.',
-            editable=False,
-            cat=[PrpCat.PF3, PrpCat.SC],
-        ),
-        GCProp(
-            prop_name='phases_t',
-            units='',
-            tpe=SubObjectType.Array,
-            definition='Active phase conductors at the to side. 0=N, 1=A, 2=B, 3=C.',
-            editable=False,
-            cat=[PrpCat.PF3, PrpCat.SC],
         ),
         GCProp(
             prop_name='template',
@@ -361,8 +335,6 @@ class Transformer2W(ControllableBranchParent):
         self._conn_t: WindingType = WindingType.GroundedStar
         self._vector_group_number: int = 0
         self._phases: IntVec = np.array([1, 2, 3])
-        self._phases_f: IntVec | None = None
-        self._phases_t: IntVec | None = None
 
         # TODO: do we need to edit the phases vector?
 
@@ -406,43 +378,11 @@ class Transformer2W(ControllableBranchParent):
         return self._phases
 
     @phases.setter
-    def phases(self, val: IntVec | list | tuple):
+    def phases(self, val: IntVec):
         if isinstance(val, np.ndarray):
-            self._phases = val.astype(int, copy=False)
-        elif isinstance(val, (list, tuple)):
-            self._phases = np.array(val, dtype=int)
+            self._phases = val
         else:
-            raise Exception("phases must be a numpy array (IntVec), list or tuple")
-
-    @property
-    def phases_f(self) -> IntVec | None:
-        return self._phases_f
-
-    @phases_f.setter
-    def phases_f(self, val: IntVec | list | tuple | None):
-        if val is None:
-            self._phases_f = None
-        elif isinstance(val, np.ndarray):
-            self._phases_f = val.astype(int, copy=False)
-        elif isinstance(val, (list, tuple)):
-            self._phases_f = np.array(val, dtype=int)
-        else:
-            raise Exception("phases_f must be a numpy array (IntVec), list, tuple or None")
-
-    @property
-    def phases_t(self) -> IntVec | None:
-        return self._phases_t
-
-    @phases_t.setter
-    def phases_t(self, val: IntVec | list | tuple | None):
-        if val is None:
-            self._phases_t = None
-        elif isinstance(val, np.ndarray):
-            self._phases_t = val.astype(int, copy=False)
-        elif isinstance(val, (list, tuple)):
-            self._phases_t = np.array(val, dtype=int)
-        else:
-            raise Exception("phases_t must be a numpy array (IntVec), list, tuple or None")
+            raise Exception("phases must be a numpy array (IntVec)")
 
     def set_hv_and_lv(self, HV: float | None, LV: float | None):
         """
@@ -738,41 +678,33 @@ class Transformer2W(ControllableBranchParent):
 
         return phaseN, phaseA, phaseB, phaseC
 
-    @staticmethod
-    def _get_phase_incidence_vector(phases: IntVec | None,
-                                    logger: Logger,
-                                    device_name: str) -> np.ndarray | None:
+    def _get_phase_incidence_vector(self, logger: Logger) -> np.ndarray | None:
         """
-        Get the NABC incidence vector for an explicitly connected winding.
+        Get the NABC incidence vector for a single-phase transformer.
         """
-        if phases is None:
-            return None
-        else:
-            pass
-
-        if len(phases) == 0 or len(phases) > 2:
+        if len(self.phases) == 0 or len(self.phases) > 2:
             return None
         else:
             pass
 
         incidence = np.zeros(4, dtype=float)
         sign = 1.0
-        for phase in phases:
+        for phase in self.phases:
             phase_idx = int(phase)
             if 0 <= phase_idx <= 3:
                 incidence[phase_idx] += sign
                 sign = -1.0
             else:
                 logger.add_error(
-                    f"transformer_admittance: Incorrect phase value {phase_idx} in {device_name}",
-                    device=device_name
+                    f"transformer_admittance: Incorrect phase value {phase_idx} in {self.name}",
+                    device=self.name
                 )
                 return None
 
         if np.allclose(incidence, 0.0):
             logger.add_error(
                 "transformer_admittance: Empty phase incidence vector",
-                device=device_name
+                device=self.name
             )
             return None
         else:
@@ -789,19 +721,17 @@ class Transformer2W(ControllableBranchParent):
         """
         Get a conductor-explicit primitive for a single-phase transformer.
         """
-        a_f = self._get_phase_incidence_vector(phases=self.phases_f, logger=logger, device_name=self.name)
-        a_t = self._get_phase_incidence_vector(phases=self.phases_t, logger=logger, device_name=self.name)
-
-        if a_f is None or a_t is None:
+        incidence = self._get_phase_incidence_vector(logger=logger)
+        if incidence is None:
             return None
         else:
             pass
 
         return (
-            yff * np.outer(a_f, a_f),
-            yft * np.outer(a_f, a_t),
-            ytf * np.outer(a_t, a_f),
-            ytt * np.outer(a_t, a_t),
+            yff * np.outer(incidence, incidence),
+            yft * np.outer(incidence, incidence),
+            ytf * np.outer(incidence, incidence),
+            ytt * np.outer(incidence, incidence),
         )
 
     def transformer_admittance(self,

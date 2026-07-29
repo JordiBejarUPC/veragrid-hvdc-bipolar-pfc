@@ -574,106 +574,6 @@ def _get_veragrid_phase_vector_from_cubic(cubic: StaCubic,
     return np.array(phases, dtype=int)
 
 
-def _get_veragrid_phase_vectors_from_cubicles(element_id: str,
-                                             phase_count: int,
-                                             cubics_by_objid: Dict[str, List[StaCubic]],
-                                             bus_by_term_id: Dict[str, dev.Bus],
-                                             bus_from: dev.Bus,
-                                             bus_to: dev.Bus,
-                                             logger: Logger,
-                                             device_name: str,
-                                             device_class: str) -> Tuple[np.ndarray | None,
-                                                                         np.ndarray | None,
-                                                                         np.ndarray | None]:
-    """
-    Get VeraGrid phase vectors for a two-terminal element from PowerFactory cubicles.
-
-    PowerFactory uses 0=a, 1=b, 2=c, 3=N. VeraGrid uses 0=N, 1=a, 2=b, 3=c.
-    The returned from/to vectors preserve PowerFactory cubicle slot order.
-    """
-    cbs: List[StaCubic] = cubics_by_objid.get(_ref_id(element_id), list())
-    if len(cbs) == 0:
-        logger.add_warning(
-            "No StaCubic found to infer phases.",
-            device=device_name,
-            device_class=device_class,
-        )
-        return None, None, None
-    else:
-        pass
-
-    invalid_values: Set[str] = set()
-    phases_f: np.ndarray | None = None
-    phases_t: np.ndarray | None = None
-    vectors: List[np.ndarray] = list()
-    vg_phase_set: Set[int] = set()
-
-    for cubic in cbs:
-        phases = _get_veragrid_phase_vector_from_cubic(cubic=cubic,
-                                                       phase_count=phase_count,
-                                                       invalid_values=invalid_values)
-        if len(phases) == 0:
-            continue
-        else:
-            pass
-
-        vectors.append(phases)
-        vg_phase_set.update(int(phase) for phase in phases)
-
-        term_id = _ref_id(cubic.fold_id)
-        bus = bus_by_term_id.get(term_id, None) if term_id is not None else None
-        if bus is bus_from:
-            phases_f = phases
-        elif bus is bus_to:
-            phases_t = phases
-        else:
-            pass
-
-    if len(invalid_values) > 0:
-        logger.add_warning(
-            "Invalid StaCubic phase index ignored.",
-            device=device_name,
-            device_class=device_class,
-            value=str(sorted(invalid_values)),
-            expected_value="cPhInfo chars a,b,c,N or it2p 0=a, 1=b, 2=c, 3=N",
-        )
-    else:
-        pass
-
-    if len(vectors) == 0:
-        logger.add_warning(
-            "No StaCubic phase found.",
-            device=device_name,
-            device_class=device_class,
-        )
-        return None, None, None
-    else:
-        pass
-
-    if (phases_f is None or phases_t is None) and len(vectors) == 2:
-        ordered_cubics = sorted(cbs, key=_stacubic_obj_bus_sort_key)
-        ordered_vectors = [
-            _get_veragrid_phase_vector_from_cubic(cubic=cubic,
-                                                  phase_count=phase_count,
-                                                  invalid_values=set())
-            for cubic in ordered_cubics
-        ]
-        if len(ordered_vectors[0]) > 0 and len(ordered_vectors[1]) > 0:
-            logger.add_warning(
-                "Could not match StaCubic phases to both transformer sides; using cubicle order.",
-                device=device_name,
-                device_class=device_class,
-            )
-            phases_f = ordered_vectors[0] if phases_f is None else phases_f
-            phases_t = ordered_vectors[1] if phases_t is None else phases_t
-        else:
-            pass
-    else:
-        pass
-
-    return np.array(sorted(vg_phase_set), dtype=int), phases_f, phases_t
-
-
 def _build_neutral_grounded_terminal_ids(dgs_grid: DgsCircuit,
                                          cubics_by_objid: Dict[str, List[StaCubic]]) -> Set[str]:
     """
@@ -2354,21 +2254,16 @@ def convert_dgs_to_transformer(tr2: ElmTr2,
     trafo.rate = float(trafo.rate) * float(tr2.ratfac)
 
     transformer_phase_count = int(typtr2_raw.nt2ph)
-    phases, phases_f, phases_t = _get_veragrid_phase_vectors_from_cubicles(
+    phases = _get_veragrid_phases_from_cubicles(
         element_id=tr2.ID,
         phase_count=transformer_phase_count,
         cubics_by_objid=cubics_by_objid,
-        bus_by_term_id=bus_by_term_id,
-        bus_from=bus_vg_from,
-        bus_to=bus_vg_to,
         logger=logger,
         device_name=transformer_name,
         device_class="ElmTr2",
     )
     if phases is not None:
         trafo.phases = phases
-        trafo.phases_f = phases_f
-        trafo.phases_t = phases_t
     else:
         pass
 
