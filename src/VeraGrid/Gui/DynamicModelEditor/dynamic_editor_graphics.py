@@ -64,7 +64,7 @@ def duplicate_paired_item(original: PairedItem) -> PairedItem | None:
 
     blk_new = Block(
         # algebraic_vars=[shared_var],
-        out_vars=[shared_var],
+        out_vars=[from_items[0].subsys.in_vars[0]],
         name=original.name,
     )
 
@@ -2610,7 +2610,7 @@ class DiagramScene(QGraphicsScene):
         item: QGraphicsItem
         for item in self.items(event.scenePos()):
             if isinstance(item,
-                          (GenericBlockItem, ConnectionItem, RoundBaseArithmeticOpItem, RectBaseArithmeticOpItem)):
+                          (GenericBlockItem, ConnectionItem, RoundBaseArithmeticOpItem, RectBaseArithmeticOpItem, UnOpItem)):
                 menu: QMenu = QMenu()
                 if item is not None:
                     self.context_item = item

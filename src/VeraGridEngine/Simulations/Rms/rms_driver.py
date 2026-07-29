@@ -209,15 +209,28 @@ class RmsSimulationDriver(DriverTemplate):
                         f"Simulating RMS event group  {rms_events_group.name} with "
                         f"{self.options.integration_method.value}"
                     )
-                    solver = BackEulerImplicitIntegration(
-                        problem=problem,
-                        t0=0,
-                        t_end=self.options.simulation_time,
-                        h=self.options.time_step,
-                        max_iter=self.options.max_iter,
-                        tolerance=self.options.tolerance,
-                        cancel_checker=self.is_cancel,
-                    )
+
+                    if self.options.problem_type == RmsProblemTypes.PowerBalance:
+                        solver = BackEulerImplicitIntegration(
+                            problem=problem,
+                            t0=0,
+                            t_end=self.options.simulation_time,
+                            h=self.options.time_step,
+                            max_iter=self.options.max_iter,
+                            tolerance=self.options.tolerance,
+                            cancel_checker=self.is_cancel,
+                        )
+
+                    elif self.options.problem_type == RmsProblemTypes.PowerBalanceVectorized:
+                        solver = BackEulerImplicitIntegrationVec(
+                            problem=problem,
+                            t0=0,
+                            t_end=self.options.simulation_time,
+                            h=self.options.time_step,
+                            max_iter=self.options.max_iter,
+                            tolerance=self.options.tolerance,
+                            cancel_checker=self.is_cancel,
+                        )
 
                 else:
                     self.logger.add_info("Falling back to DAE-BackEuler method")
@@ -226,15 +239,27 @@ class RmsSimulationDriver(DriverTemplate):
                         f"Simulating RMS event group  {rms_events_group.name} with back euler as fallback"
                     )
 
-                    solver = BackEulerImplicitIntegration(
-                        problem=problem,
-                        t0=0,
-                        t_end=self.options.simulation_time,
-                        h=self.options.time_step,
-                        max_iter=self.options.max_iter,
-                        tolerance=self.options.tolerance,
-                        cancel_checker=self.is_cancel,
-                    )
+                    if self.options.problem_type == RmsProblemTypes.PowerBalance:
+                        solver = BackEulerImplicitIntegration(
+                            problem=problem,
+                            t0=0,
+                            t_end=self.options.simulation_time,
+                            h=self.options.time_step,
+                            max_iter=self.options.max_iter,
+                            tolerance=self.options.tolerance,
+                            cancel_checker=self.is_cancel,
+                        )
+
+                    elif self.options.problem_type == RmsProblemTypes.PowerBalanceVectorized:
+                        solver = BackEulerImplicitIntegrationVec(
+                            problem=problem,
+                            t0=0,
+                            t_end=self.options.simulation_time,
+                            h=self.options.time_step,
+                            max_iter=self.options.max_iter,
+                            tolerance=self.options.tolerance,
+                            cancel_checker=self.is_cancel,
+                        )
                 
                 _t_start = time.time()
                 self.results.initial_parameter_value_maps[group_idx] = _collect_rms_group_initial_parameter_values(problem=problem)

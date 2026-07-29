@@ -29,6 +29,7 @@ def main() -> int:
         db_name="veragrid",
         db_user="admin",
         db_password="pgpwd",
+        db_schema="veragrid",
     )
     return 0
 

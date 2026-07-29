@@ -16,7 +16,7 @@ from VeraGridEngine.Devices.Parents.branch_parent import BranchParent
 
 from VeraGridEngine.Devices.Parents.injection_parent import InjectionParent
 from VeraGridEngine.enumerations import DeviceType, VarPowerFlowReferenceType, ParamPowerFlowReferenceType, \
-    DynamicSimulationMode, DynamicTableModelMode
+    DynamicSimulationMode, DynamicTableModelMode, DynEditorGraphicsModes
 from VeraGridEngine.Utils.Symbolic.bus_rms_template import initialize_bus_rms
 from VeraGridEngine.Utils.Symbolic.bus_emt_template import get_bus_emt_template, \
     get_bus_emt_algebraic_vars
@@ -180,7 +180,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                  var_factory: VarFactory,
                  api_object: ALL_DEV_TYPES,
                  circuit: MultiCircuit,
-                 current_theme: str,
+                 current_theme: DynEditorGraphicsModes,
                  mode: DynamicSimulationMode = DynamicSimulationMode.RMS,
                  templates_list: Optional[List[RmsModelTemplate | EmtModelTemplate | FmuTemplate]] = None,
                  is_root_editor=False,
@@ -267,7 +267,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.dynamic_editor_entry: DynamicEditorEntry | None = None
         self._prepared_to_delete: bool = False
         self.colors_palet: graph.EditorGraphicsDefaultsDark | graph.EditorGraphicsDefaultsLight = graph.EditorGraphicsDefaultsDark()
-        self.current_theme: str = current_theme
+        self.current_theme: DynEditorGraphicsModes = current_theme
         self.set_colors_palet()
 
         self.root_block: Block = root_block
@@ -432,10 +432,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         self.ui.toolBox.currentChanged.connect(self.handle_side_panel_page_changed)
         self.scene.selectionChanged.connect(self.on_scene_selection_changed)
-        if self.mode == DynamicSimulationMode.EMT and self.is_root_editor:
-            self._ensure_full_emt_editor_interface()
-        else:
-            pass
+        # if self.mode == DynamicSimulationMode.EMT and self.is_root_editor:
+        #     self._ensure_full_emt_editor_interface()
+        # else:
+        #     pass
 
         dialog_models._ensure_block_tree_names(self.main_block, prefix="block")
 
@@ -509,7 +509,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.rebuild_scene_from_diagram()
 
     def set_colors_palet(self):
-        if self.current_theme == "Dark":
+        if self.current_theme == DynEditorGraphicsModes.DARK:
             self.colors_palet = graph.EditorGraphicsDefaultsDark()
         else:
             self.colors_palet = graph.EditorGraphicsDefaultsLight()
@@ -1353,6 +1353,46 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             )
             connection.recolour()
             self.scene.addItem(connection)
+
+    def generate_block_item_for_block_old(self, block_model: Block) -> GenericBlockItem | None:
+        """
+        Create and place a block item in the canvas scene.
+
+        :param block_model:
+
+        :return:
+        """
+        item_name: str = f"{block_model.name}"
+
+        if block_model is not None:
+            item = GenericBlockItem(
+                var_factory=self.var_factory,
+                subsys=block_model,
+                api_object=self.api_object,
+                mode=self.mode,
+                name=item_name,
+                position_changed_callback=self._build_position_changed_callback(block_model.uid)
+            )
+
+            # The symbolic block has to be attached first so the graphics item can build its ports from it.
+
+            x, y = self._calculate_next_block_position(item)
+            item.setPos(QtCore.QPointF(x, y))
+            self.scene.addItem(item)
+
+            self.diagram.add_node(
+                name=item_name,
+                x=x,
+                y=y,
+                tpe="",
+                device_uid=block_model.uid
+            )
+
+            self.mark_unapplied_changes()
+
+            return item
+        else:
+            return None
 
     def _calculate_next_block_position(self, item: graph.GenericBlockItem) -> tuple[float, float]:
         """
@@ -6071,7 +6111,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         Set the dark mode
         :return:
         """
-        self.current_theme = "Dark"
+        self.current_theme = DynEditorGraphicsModes.DARK
         self.set_colors_palet()
         for item in self.scene.items():
             if isinstance(item, (graph.GenericBlockItem, graph.PairedItem, graph.ConnectionItem, graph.RectBaseArithmeticOpItem,
@@ -6083,7 +6123,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         Set the dark mode
         :return:
         """
-        self.current_theme = "Light"
+        self.current_theme = DynEditorGraphicsModes.LIGHT
         self.set_colors_palet()
         for item in self.scene.items():
             if isinstance(item, (graph.GenericBlockItem, graph.PairedItem, graph.ConnectionItem, graph.RectBaseArithmeticOpItem,
@@ -6106,7 +6146,7 @@ if __name__ == "__main__":
         current_block=bl,
         api_object=device,
         circuit=MultiCircuit(),
-        current_theme= "Dark",
+        current_theme= DynEditorGraphicsModes.DARK,
     )
     window.show()
     app.exec_()

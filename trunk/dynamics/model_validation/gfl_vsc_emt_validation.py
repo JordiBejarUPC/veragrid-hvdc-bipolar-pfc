@@ -48,7 +48,7 @@ profiler.enable()
 
 def find_name_in_block(name: str, block: Block):
     """Recursively find a variable by name in the block and all its children."""
-    def find_match(search_block: Block, allow_prefix: bool):
+    def find_match(search_block: Block, target_name: str, allow_prefix: bool):
         block_vars = (
             search_block.algebraic_vars
             + search_block.state_vars
@@ -59,23 +59,40 @@ def find_name_in_block(name: str, block: Block):
             + list(search_block.parameters.keys())
         )
         for var in block_vars:
-            if name == var.name or (allow_prefix and var.name.startswith(f"{name}_")):
+            if target_name == var.name or (allow_prefix and var.name.startswith(f"{target_name}_")):
                 return var
 
         for mdl in search_block.children:
-            res = find_match(mdl, allow_prefix)
+            res = find_match(mdl, target_name, allow_prefix)
             if res is not None:
                 return res
 
         return None
 
-    exact = find_match(block, allow_prefix=False)
+    exact = find_match(block, name, allow_prefix=False)
     if exact is not None:
         return exact
 
-    prefixed = find_match(block, allow_prefix=True)
+    prefixed = find_match(block, name, allow_prefix=True)
     if prefixed is not None:
         return prefixed
+
+    # The PI-line template names terminal/capacitor currents by phase only
+    # (e.g. ``it_A``), while this validation script historically addressed them
+    # with the line label included (e.g. ``it_Pi12_A``).
+    for prefix in ("if_", "it_", "i_cap_f_", "i_cap_t_"):
+        if name.startswith(prefix):
+            phase = name.rsplit("_", 1)[-1]
+            if phase in ("N", "A", "B", "C"):
+                phase_only_name = f"{prefix}{phase}"
+
+                phase_only = find_match(block, phase_only_name, allow_prefix=False)
+                if phase_only is not None:
+                    return phase_only
+
+                phase_only = find_match(block, phase_only_name, allow_prefix=True)
+                if phase_only is not None:
+                    return phase_only
 
     return None
 
@@ -722,12 +739,22 @@ grid.add_bus(bus3)
 for bus in grid.buses:
     get_bus_emt_template(grid, bus)
 
-# Define AC lines
+# Define AC lines. Environment multipliers make it easy to isolate whether the
+# observed PCC oscillation is a line/filter mode or a weak-grid Thevenin mode.
+LINE12_R_SCALE = float(os.environ.get("VERAGRID_GFL_EMT_LINE12_R_SCALE", "1.0"))
+LINE12_X_SCALE = float(os.environ.get("VERAGRID_GFL_EMT_LINE12_X_SCALE", "1.0"))
+LINE23_R_SCALE = float(os.environ.get("VERAGRID_GFL_EMT_LINE23_R_SCALE", "1.0"))
+LINE23_X_SCALE = float(os.environ.get("VERAGRID_GFL_EMT_LINE23_X_SCALE", "1.0"))
+THEVENIN_R_SCALE = float(os.environ.get("VERAGRID_GFL_EMT_THEVENIN_R_SCALE", "1.0"))
+THEVENIN_X_SCALE = float(os.environ.get("VERAGRID_GFL_EMT_THEVENIN_X_SCALE", "1.0"))
+
+base_line_r = 3.0 * 0.029585798816568046
+base_line_x = 3.0 * 0.07100591715976332
 line12 = gce.Line(name="line 1-2", bus_from=bus1, bus_to=bus2,
-                  r=3.0 * 0.029585798816568046, x=3.0 * 0.07100591715976332, b=0.03 / 3.0,
+                  r=LINE12_R_SCALE * base_line_r, x=LINE12_X_SCALE * base_line_x, b=0.03 / 3.0,
                   rate=900.0)
 line23 = gce.Line(name="line 2-3", bus_from=bus2, bus_to=bus3,
-                  r=3.0 * 0.029585798816568046, x=3.0 * 0.07100591715976332, b=0.03 / 3.0,
+                  r=LINE23_R_SCALE * base_line_r, x=LINE23_X_SCALE * base_line_x, b=0.03 / 3.0,
                   rate=900.0)
 vsc_filter_l = line12.X
 
@@ -766,7 +793,14 @@ vsc1 = gce.VSC(name='VSC1', bus_from=bus_dc, bus_to=bus1, rate=100, alpha1=0.0, 
 
 # Define a minimal Thevenin slack source for the EMT grid. The power-flow slack
 # supplies the converter losses, but the EMT model is the Thevenin template below.
-gen1 = gce.Generator(name='Gen_Thev', vset=1.00, Snom=grid.Sbase, freq=50.0, r1=0.001, x1=0.04)
+gen1 = gce.Generator(
+    name='Gen_Thev',
+    vset=1.00,
+    Snom=grid.Sbase,
+    freq=50.0,
+    r1=THEVENIN_R_SCALE * 0.001,
+    x1=THEVENIN_X_SCALE * 0.04,
+)
 
 # DC load matches the working pseudo-EMT example: PF establishes a non-zero
 # converter transfer, then EMT starts from that seeded operating point.
@@ -929,12 +963,13 @@ if P_REF_EVENT_ENABLED:
         f"delta={P_REF_EVENT_DELTA:.9e}"
     )
 
-VERAGRID_GFL_EMT_TIME_STEP = float(os.environ.get("VERAGRID_GFL_EMT_TIME_STEP", "5e-6"))
-VERAGRID_GFL_EMT_SIM_TIME = float(os.environ.get("VERAGRID_GFL_EMT_SIM_TIME", "0.01"))
+VERAGRID_GFL_EMT_TIME_STEP = float(os.environ.get("VERAGRID_GFL_EMT_TIME_STEP", "1e-5"))
+VERAGRID_GFL_EMT_SIM_TIME = float(os.environ.get("VERAGRID_GFL_EMT_SIM_TIME", "0.5"))
 INTEGRATION_METHOD = DynamicIntegrationMethod[_DEFAULT_INTEGRATION_METHOD_NAME]
 INITIALIZATION_METHOD = EmtInitializationMethod[
     os.environ.get("VERAGRID_GFL_EMT_INITIALIZATION_METHOD", "Explicit")
 ]
+_DEFAULT_INTEGRATION_METHOD_NAME = DynamicIntegrationMethod.DaeBackEuler
 
 options = EmtOptions(time_step=VERAGRID_GFL_EMT_TIME_STEP,
                      simulation_time=VERAGRID_GFL_EMT_SIM_TIME,
@@ -1753,6 +1788,42 @@ if np.any(pre_event):
     va_pcc_trace = y[:, problem.get_var_idx(v_A_bus2)]
     vb_pcc_trace = y[:, problem.get_var_idx(v_B_bus2)]
     vc_pcc_trace = y[:, problem.get_var_idx(v_C_bus2)]
+    alpha_pcc_trace = (2.0 * va_pcc_trace - vb_pcc_trace - vc_pcc_trace) / 3.0
+    beta_pcc_trace = (vb_pcc_trace - vc_pcc_trace) / np.sqrt(3.0)
+    vmag_pcc_trace = np.sqrt(alpha_pcc_trace * alpha_pcc_trace + beta_pcc_trace * beta_pcc_trace)
+    vzero_pcc_trace = (va_pcc_trace + vb_pcc_trace + vc_pcc_trace) / 3.0
+    fixed_theta_trace = -theta_trace[0] - 2.0 * np.pi * grid.fBase * t
+    fixed_d_trace, fixed_q_trace = park_dq_from_abc(
+        fixed_theta_trace,
+        va_pcc_trace,
+        vb_pcc_trace,
+        vc_pcc_trace,
+    )
+    pll_d_trace = y[:, problem.get_var_idx(v_d_g)]
+    pll_q_trace = y[:, problem.get_var_idx(v_q_g)]
+    print("B2 abc voltage diagnostic:")
+    print(
+        f"  positive-sequence magnitude: t0={vmag_pcc_trace[0]: .9e}, "
+        f"pre_min={np.min(vmag_pcc_trace[pre_event]): .9e}, "
+        f"pre_max={np.max(vmag_pcc_trace[pre_event]): .9e}, "
+        f"pre_delta_max={np.max(np.abs(vmag_pcc_trace[pre_event] - vmag_pcc_trace[0])): .9e}"
+    )
+    print(
+        f"  zero-sequence max |v0|={np.max(np.abs(vzero_pcc_trace[pre_event])): .9e}, "
+        f"phase delta max: A={np.max(np.abs(va_pcc_trace[pre_event] - va_pcc_trace[0])): .9e}, "
+        f"B={np.max(np.abs(vb_pcc_trace[pre_event] - vb_pcc_trace[0])): .9e}, "
+        f"C={np.max(np.abs(vc_pcc_trace[pre_event] - vc_pcc_trace[0])): .9e}"
+    )
+    print(
+        f"  PLL-frame d/q: d_delta={np.max(np.abs(pll_d_trace[pre_event] - pll_d_trace[0])): .9e}, "
+        f"q_delta={np.max(np.abs(pll_q_trace[pre_event] - pll_q_trace[0])): .9e}"
+    )
+    print(
+        f"  fixed-50Hz-frame d/q: d_delta={np.max(np.abs(fixed_d_trace[pre_event] - fixed_d_trace[0])): .9e}, "
+        f"q_delta={np.max(np.abs(fixed_q_trace[pre_event] - fixed_q_trace[0])): .9e}"
+    )
+    print(f"  B2 vmag first samples: {vmag_pcc_trace[pre_event][:5]}")
+    print(f"  B2 fixed-frame d first samples: {fixed_d_trace[pre_event][:5]}")
     park_convention_traces = [
         ("theta", *park_dq_from_abc(theta_trace, va_pcc_trace, vb_pcc_trace, vc_pcc_trace)),
         ("-theta", *park_dq_from_abc(-theta_trace, va_pcc_trace, vb_pcc_trace, vc_pcc_trace)),

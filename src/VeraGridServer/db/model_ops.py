@@ -22,11 +22,12 @@ from VeraGridServer.db.database import (
     CursorLike,
     PostgreSqlConnectionSettings,
     build_connection_kwargs,
-    create_veragrid_schema,
     get_veragrid_object_table_names,
     log_database_operation,
+    normalize_device_table_name,
     quote_sql_identifier,
 )
+from VeraGridServer.settings import settings as server_settings
 
 
 def get_supported_table_mappings() -> List[Tuple[str, str]]:
@@ -48,16 +49,48 @@ def get_supported_table_mappings() -> List[Tuple[str, str]]:
 
     # Only buckets backed by physical tables can be persisted safely.
     for json_key, template_elm in object_types.items():
-        table_name: str = template_elm.device_type.value
+        raw_table_name: str = template_elm.device_type.value
+        table_name: str = normalize_device_table_name(raw_table_name)
 
         if table_name in available_table_names:
             mappings.append((json_key, table_name))
         else:
             log_database_operation(
-                f"Skipping serializer bucket '{json_key}' because table '{table_name}' is not present in the schema."
+                f"Skipping serializer bucket '{json_key}' because table '{table_name}' "
+                f"(from device label '{raw_table_name}') is not present in the schema."
             )
 
     return mappings
+
+
+def acquire_database_file_lock(settings: PostgreSqlConnectionSettings,
+                               file_idtag: str) -> None:
+    """
+    Acquire the process-local mutex for one stored file write path.
+
+    :param settings: PostgreSQL connection settings.
+    :param file_idtag: Stored file identifier.
+    :return: None.
+    """
+    server_settings.acquire_database_file_lock(
+        schema_name=settings.schema_name,
+        file_idtag=file_idtag,
+    )
+
+
+def release_database_file_lock(settings: PostgreSqlConnectionSettings,
+                               file_idtag: str) -> None:
+    """
+    Release the process-local mutex for one stored file write path.
+
+    :param settings: PostgreSQL connection settings.
+    :param file_idtag: Stored file identifier.
+    :return: None.
+    """
+    server_settings.release_database_file_lock(
+        schema_name=settings.schema_name,
+        file_idtag=file_idtag,
+    )
 
 
 def row_exists(cursor: CursorLike,
@@ -288,8 +321,7 @@ def ensure_model_row_does_not_exist(cursor: CursorLike,
 def create_file(settings: PostgreSqlConnectionSettings,
                 file_name: str,
                 user_idtag: str,
-                file_idtag: str | None = None,
-                schema_name: str = "veragrid") -> str:
+                file_idtag: str | None = None) -> str:
     """
     Create one file row and return its identifier.
 
@@ -297,16 +329,15 @@ def create_file(settings: PostgreSqlConnectionSettings,
     :param file_name: Human-readable file name.
     :param user_idtag: Owning user identifier.
     :param file_idtag: Optional pre-existing file identifier.
-    :param schema_name: Target schema name.
     :return: File identifier.
     """
+    schema_name: str = settings.schema_name
     resolved_file_idtag: str
     if file_idtag is None:
         resolved_file_idtag = str(uuid4())
     else:
         resolved_file_idtag = file_idtag
 
-    create_veragrid_schema(settings=settings, schema_name=schema_name)
     connection_kwargs: Dict[str, Any] = build_connection_kwargs(settings=settings)
     quoted_schema_name: str = quote_sql_identifier(schema_name)
 
@@ -329,16 +360,15 @@ def create_file(settings: PostgreSqlConnectionSettings,
 
 
 def get_file(settings: PostgreSqlConnectionSettings,
-             file_idtag: str,
-             schema_name: str = "veragrid") -> Dict[str, str] | None:
+             file_idtag: str) -> Dict[str, str] | None:
     """
     Read one file row.
 
     :param settings: PostgreSQL connection settings.
     :param file_idtag: File identifier.
-    :param schema_name: Target schema name.
     :return: File row dictionary or ``None``.
     """
+    schema_name: str = settings.schema_name
     connection_kwargs: Dict[str, Any] = build_connection_kwargs(settings=settings)
     quoted_schema_name: str = quote_sql_identifier(schema_name)
 
@@ -373,8 +403,7 @@ def create_model(settings: PostgreSqlConnectionSettings,
                  file_idtag: str,
                  model_name: str,
                  parent_model_idtag: str | None = None,
-                 model_idtag: str | None = None,
-                 schema_name: str = "veragrid") -> str:
+                 model_idtag: str | None = None) -> str:
     """
     Create one model row inside one file and return its identifier.
 
@@ -383,63 +412,66 @@ def create_model(settings: PostgreSqlConnectionSettings,
     :param model_name: Human-readable model name.
     :param parent_model_idtag: Optional parent model identifier.
     :param model_idtag: Optional pre-existing model identifier.
-    :param schema_name: Target schema name.
     :return: Model identifier.
     """
+    schema_name: str = settings.schema_name
     resolved_model_idtag: str
     if model_idtag is None:
         resolved_model_idtag = str(uuid4())
     else:
         resolved_model_idtag = model_idtag
 
-    create_veragrid_schema(settings=settings, schema_name=schema_name)
-    connection_kwargs: Dict[str, Any] = build_connection_kwargs(settings=settings)
-    quoted_schema_name: str = quote_sql_identifier(schema_name)
+    acquire_database_file_lock(settings=settings, file_idtag=file_idtag)
 
-    log_database_operation(
-        f"Connecting to database '{settings.database}' to create model '{resolved_model_idtag}' in file '{file_idtag}'."
-    )
-    with psycopg.connect(**connection_kwargs) as connection:
-        cursor: CursorLike = connection.cursor()
-        ensure_file_row_exists(cursor=cursor, schema_name=schema_name, file_idtag=file_idtag)
-        can_create: bool = ensure_model_row_does_not_exist(
-            cursor=cursor,
-            schema_name=schema_name,
-            file_idtag=file_idtag,
-            model_idtag=resolved_model_idtag,
+    try:
+        connection_kwargs: Dict[str, Any] = build_connection_kwargs(settings=settings)
+        quoted_schema_name: str = quote_sql_identifier(schema_name)
+
+        log_database_operation(
+            f"Connecting to database '{settings.database}' to create model '{resolved_model_idtag}' in file '{file_idtag}'."
         )
-        if can_create:
-            log_database_operation(
-                f"Inserting model '{resolved_model_idtag}' into '{schema_name}.Models' for file '{file_idtag}'."
+        with psycopg.connect(**connection_kwargs) as connection:
+            cursor: CursorLike = connection.cursor()
+            ensure_file_row_exists(cursor=cursor, schema_name=schema_name, file_idtag=file_idtag)
+            can_create: bool = ensure_model_row_does_not_exist(
+                cursor=cursor,
+                schema_name=schema_name,
+                file_idtag=file_idtag,
+                model_idtag=resolved_model_idtag,
             )
-            cursor.execute(
-                f'''
-                INSERT INTO {quoted_schema_name}."Models" (file_idtag, idtag, name, parent_model_idtag)
-                VALUES (%s, %s, %s, %s)
-                ''',
-                (file_idtag, resolved_model_idtag, model_name, parent_model_idtag),
-            )
-            connection.commit()
-        else:
-            pass
-        cursor.close()
+            if can_create:
+                log_database_operation(
+                    f"Inserting model '{resolved_model_idtag}' into '{schema_name}.Models' for file '{file_idtag}'."
+                )
+                cursor.execute(
+                    f'''
+                    INSERT INTO {quoted_schema_name}."Models" (file_idtag, idtag, name, parent_model_idtag)
+                    VALUES (%s, %s, %s, %s)
+                    ''',
+                    (file_idtag, resolved_model_idtag, model_name, parent_model_idtag),
+                )
+                connection.commit()
+            else:
+                pass
+            cursor.close()
+    finally:
+        release_database_file_lock(settings=settings, file_idtag=file_idtag)
 
     return resolved_model_idtag
 
 
 def get_model(settings: PostgreSqlConnectionSettings,
               file_idtag: str,
-              model_idtag: str,
-              schema_name: str = "veragrid") -> Dict[str, str | None] | None:
+              model_idtag: str) -> Dict[str, str | None] | None:
     """
     Read one model row.
 
     :param settings: PostgreSQL connection settings.
     :param file_idtag: Parent file identifier.
     :param model_idtag: Model identifier.
-    :param schema_name: Target schema name.
     :return: Model row dictionary or ``None``.
     """
+    schema_name: str = settings.schema_name
     connection_kwargs: Dict[str, Any] = build_connection_kwargs(settings=settings)
     quoted_schema_name: str = quote_sql_identifier(schema_name)
 
@@ -474,8 +506,7 @@ def update_model(settings: PostgreSqlConnectionSettings,
                  file_idtag: str,
                  model_idtag: str,
                  model_name: str,
-                 parent_model_idtag: str | None = None,
-                 schema_name: str = "veragrid") -> None:
+                 parent_model_idtag: str | None = None) -> None:
     """
     Update one existing model row.
 
@@ -484,64 +515,72 @@ def update_model(settings: PostgreSqlConnectionSettings,
     :param model_idtag: Model identifier.
     :param model_name: Human-readable model name.
     :param parent_model_idtag: Optional parent model identifier.
-    :param schema_name: Target schema name.
     :return: None.
     """
-    connection_kwargs: Dict[str, Any] = build_connection_kwargs(settings=settings)
-    quoted_schema_name: str = quote_sql_identifier(schema_name)
+    schema_name: str = settings.schema_name
+    acquire_database_file_lock(settings=settings, file_idtag=file_idtag)
 
-    log_database_operation(
-        f"Connecting to database '{settings.database}' to update model '{model_idtag}' in file '{file_idtag}'."
-    )
-    with psycopg.connect(**connection_kwargs) as connection:
-        cursor: CursorLike = connection.cursor()
-        cursor.execute(
-            f'''
-            UPDATE {quoted_schema_name}."Models"
-            SET name = %s, parent_model_idtag = %s
-            WHERE file_idtag = %s AND idtag = %s
-            ''',
-            (model_name, parent_model_idtag, file_idtag, model_idtag),
+    try:
+        connection_kwargs: Dict[str, Any] = build_connection_kwargs(settings=settings)
+        quoted_schema_name: str = quote_sql_identifier(schema_name)
+
+        log_database_operation(
+            f"Connecting to database '{settings.database}' to update model '{model_idtag}' in file '{file_idtag}'."
         )
-        connection.commit()
-        cursor.close()
+        with psycopg.connect(**connection_kwargs) as connection:
+            cursor: CursorLike = connection.cursor()
+            cursor.execute(
+                f'''
+                UPDATE {quoted_schema_name}."Models"
+                SET name = %s, parent_model_idtag = %s
+                WHERE file_idtag = %s AND idtag = %s
+                ''',
+                (model_name, parent_model_idtag, file_idtag, model_idtag),
+            )
+            connection.commit()
+            cursor.close()
+    finally:
+        release_database_file_lock(settings=settings, file_idtag=file_idtag)
 
 
 def delete_file(settings: PostgreSqlConnectionSettings,
-                file_idtag: str,
-                schema_name: str = "veragrid") -> None:
+                file_idtag: str) -> None:
     """
     Delete one file row and its dependent models.
 
     :param settings: PostgreSQL connection settings.
     :param file_idtag: File identifier.
-    :param schema_name: Target schema name.
     :return: None.
     """
-    connection_kwargs: Dict[str, Any] = build_connection_kwargs(settings=settings)
-    quoted_schema_name: str = quote_sql_identifier(schema_name)
+    schema_name: str = settings.schema_name
+    acquire_database_file_lock(settings=settings, file_idtag=file_idtag)
 
-    log_database_operation(
-        f"Connecting to database '{settings.database}' to delete file '{file_idtag}'."
-    )
-    with psycopg.connect(**connection_kwargs) as connection:
-        cursor: CursorLike = connection.cursor()
-        cursor.execute(
-            f'''
-            DELETE FROM {quoted_schema_name}."Files"
-            WHERE idtag = %s
-            ''',
-            (file_idtag,),
+    try:
+        connection_kwargs: Dict[str, Any] = build_connection_kwargs(settings=settings)
+        quoted_schema_name: str = quote_sql_identifier(schema_name)
+
+        log_database_operation(
+            f"Connecting to database '{settings.database}' to delete file '{file_idtag}'."
         )
-        connection.commit()
-        cursor.close()
+        with psycopg.connect(**connection_kwargs) as connection:
+            cursor: CursorLike = connection.cursor()
+            cursor.execute(
+                f'''
+                DELETE FROM {quoted_schema_name}."Files"
+                WHERE idtag = %s
+                ''',
+                (file_idtag,),
+            )
+            connection.commit()
+            cursor.close()
+    finally:
+        release_database_file_lock(settings=settings, file_idtag=file_idtag)
 
 
 def delete_model(settings: PostgreSqlConnectionSettings,
                  file_idtag: str,
                  model_idtag: str,
-                 cascade: bool = False,
-                 schema_name: str = "veragrid") -> None:
+                 cascade: bool = False) -> None:
     """
     Delete one model row, optionally removing child models first.
 
@@ -549,41 +588,46 @@ def delete_model(settings: PostgreSqlConnectionSettings,
     :param file_idtag: Parent file identifier.
     :param model_idtag: Model identifier.
     :param cascade: Delete child models before deleting this model.
-    :param schema_name: Target schema name.
     :return: None.
     """
-    connection_kwargs: Dict[str, Any] = build_connection_kwargs(settings=settings)
-    quoted_schema_name: str = quote_sql_identifier(schema_name)
+    schema_name: str = settings.schema_name
+    acquire_database_file_lock(settings=settings, file_idtag=file_idtag)
 
-    log_database_operation(
-        f"Connecting to database '{settings.database}' to delete model '{model_idtag}' from file '{file_idtag}'."
-    )
-    with psycopg.connect(**connection_kwargs) as connection:
-        cursor: CursorLike = connection.cursor()
+    try:
+        connection_kwargs: Dict[str, Any] = build_connection_kwargs(settings=settings)
+        quoted_schema_name: str = quote_sql_identifier(schema_name)
 
-        if cascade:
-            log_database_operation(
-                f"Cascade deletion enabled for model '{model_idtag}' in file '{file_idtag}', deleting child models first."
-            )
+        log_database_operation(
+            f"Connecting to database '{settings.database}' to delete model '{model_idtag}' from file '{file_idtag}'."
+        )
+        with psycopg.connect(**connection_kwargs) as connection:
+            cursor: CursorLike = connection.cursor()
+
+            if cascade:
+                log_database_operation(
+                    f"Cascade deletion enabled for model '{model_idtag}' in file '{file_idtag}', deleting child models first."
+                )
+                cursor.execute(
+                    f'''
+                    DELETE FROM {quoted_schema_name}."Models"
+                    WHERE file_idtag = %s AND parent_model_idtag = %s
+                    ''',
+                    (file_idtag, model_idtag),
+                )
+            else:
+                pass
+
             cursor.execute(
                 f'''
                 DELETE FROM {quoted_schema_name}."Models"
-                WHERE file_idtag = %s AND parent_model_idtag = %s
+                WHERE file_idtag = %s AND idtag = %s
                 ''',
                 (file_idtag, model_idtag),
             )
-        else:
-            pass
-
-        cursor.execute(
-            f'''
-            DELETE FROM {quoted_schema_name}."Models"
-            WHERE file_idtag = %s AND idtag = %s
-            ''',
-            (file_idtag, model_idtag),
-        )
-        connection.commit()
-        cursor.close()
+            connection.commit()
+            cursor.close()
+    finally:
+        release_database_file_lock(settings=settings, file_idtag=file_idtag)
 
 
 def delete_existing_model_object_rows(cursor: CursorLike,
@@ -632,8 +676,9 @@ def insert_model_object_rows(cursor: CursorLike,
     """
     quoted_schema_name: str = quote_sql_identifier(schema_name)
 
-    # Each bucket contains the homogeneous JSON objects already serialized by
-    # the engine, so the database layer only routes them to the typed tables.
+    # Each bucket contains homogeneous JSON objects already serialized by the
+    # engine, so one batched upsert per table is enough and avoids one SQL round
+    # trip per object row.
     for json_key, table_name in table_mappings:
         quoted_table_name: str = quote_sql_identifier(table_name)
         entries: Any = model_data.get(json_key, list())
@@ -647,36 +692,75 @@ def insert_model_object_rows(cursor: CursorLike,
             f"Inserting {row_count} rows into '{schema_name}.{table_name}' from serializer bucket '{json_key}'."
         )
 
-        if isinstance(entries, list):
+        if isinstance(entries, list) and row_count > 0:
+            batch_parameters: List[Tuple[str, Json, int, str]] = list()
+            object_index: int
+            entry: Dict[str, Any]
             for object_index, entry in enumerate(entries):
                 object_idtag: str = str(entry["idtag"])
-                exists: bool = row_exists(
-                    cursor=cursor,
-                    schema_name=schema_name,
-                    table_name=table_name,
-                    where_sql="model_idtag = %s AND idtag = %s",
-                    parameters=(model_idtag, object_idtag),
-                )
+                batch_parameters.append((object_idtag, Json(entry), object_index, model_idtag))
 
-                if exists:
-                    cursor.execute(
-                        f"""
-                        UPDATE {quoted_schema_name}.{quoted_table_name}
-                        SET data = %s, object_index = %s
-                        WHERE model_idtag = %s AND idtag = %s
-                        """,
-                        (Json(entry), object_index, model_idtag, object_idtag),
-                    )
-                else:
-                    cursor.execute(
-                        f"""
-                        INSERT INTO {quoted_schema_name}.{quoted_table_name} (idtag, data, object_index, model_idtag)
-                        VALUES (%s, %s, %s, %s)
-                        """,
-                        (object_idtag, Json(entry), object_index, model_idtag),
-                    )
+            cursor.executemany(
+                f"""
+                INSERT INTO {quoted_schema_name}.{quoted_table_name} (idtag, data, object_index, model_idtag)
+                VALUES (%s, %s, %s, %s)
+                ON CONFLICT (model_idtag, idtag) DO UPDATE
+                SET data = EXCLUDED.data,
+                    object_index = EXCLUDED.object_index
+                """,
+                batch_parameters,
+            )
         else:
             pass
+
+
+def insert_model_metadata_rows(cursor: CursorLike,
+                               schema_name: str,
+                               file_idtag: str,
+                               nodes: Sequence[ScenarioNode]) -> None:
+    """
+    Insert the model metadata rows for one full multiverse save in one batch.
+
+    :param cursor: Open database cursor.
+    :param schema_name: Target schema name.
+    :param file_idtag: Parent file identifier.
+    :param nodes: Ordered multiverse nodes to persist.
+    :return: None.
+    """
+    quoted_schema_name: str = quote_sql_identifier(schema_name)
+    batch_parameters: List[Tuple[str, str, str, str | None]] = list()
+    node: ScenarioNode
+
+    for node in nodes:
+        model_idtag: str = resolve_circuit_idtag(node.circuit)
+        model_name_raw: str | None = node.circuit.name
+        model_name: str
+        if model_name_raw is None or len(model_name_raw.strip()) == 0:
+            model_name = model_idtag
+        else:
+            model_name = model_name_raw
+
+        parent_model_idtag: str | None
+        if node.parent is None:
+            parent_model_idtag = None
+        else:
+            parent_model_idtag = resolve_circuit_idtag(node.parent.circuit)
+
+        batch_parameters.append((file_idtag, model_idtag, model_name, parent_model_idtag))
+
+    if len(batch_parameters) > 0:
+        log_database_operation(
+            f"Inserting {len(batch_parameters)} rows into '{schema_name}.Models' for file '{file_idtag}'."
+        )
+        cursor.executemany(
+            f'''
+            INSERT INTO {quoted_schema_name}."Models" (file_idtag, idtag, name, parent_model_idtag)
+            VALUES (%s, %s, %s, %s)
+            ''',
+            batch_parameters,
+        )
+    else:
+        pass
 
 
 def upsert_model_payload_row(cursor: CursorLike,
@@ -947,7 +1031,6 @@ def put_multicircuit_in_database(settings: PostgreSqlConnectionSettings,
                                  circuit: MultiCircuit,
                                  file_idtag: str,
                                  model_idtag: str,
-                                 schema_name: str = "veragrid",
                                  project_directory: Path | None = None) -> None:
     """
     Persist one ``MultiCircuit`` snapshot into the typed VeraGrid SQL tables.
@@ -956,58 +1039,62 @@ def put_multicircuit_in_database(settings: PostgreSqlConnectionSettings,
     :param circuit: VeraGrid circuit to persist.
     :param file_idtag: Parent file identifier.
     :param model_idtag: Existing parent model identifier.
-    :param schema_name: Target schema name.
     :param project_directory: Optional project directory for the serializer.
     :return: None.
     """
-    create_veragrid_schema(settings=settings, schema_name=schema_name)
-    connection_kwargs: Dict[str, Any] = build_connection_kwargs(settings=settings)
-    packed_model: Dict[str, Any] = gather_model_as_jsons(
-        circuit=circuit,
-        project_directory=project_directory,
-    )
-    model_data: Dict[str, Any] = packed_model["model_data"]
-    symbolic_data: Dict[str, Any] = packed_model["symbolic_data"]
-    table_mappings: List[Tuple[str, str]] = get_supported_table_mappings()
+    schema_name: str = settings.schema_name
+    acquire_database_file_lock(settings=settings, file_idtag=file_idtag)
 
-    log_database_operation(
-        f"Connecting to database '{settings.database}' to persist MultiCircuit into model '{model_idtag}' from file '{file_idtag}'."
-    )
-    with psycopg.connect(**connection_kwargs) as connection:
-        cursor: CursorLike = connection.cursor()
-
-        ensure_model_row_exists(
-            cursor=cursor,
-            schema_name=schema_name,
-            file_idtag=file_idtag,
-            model_idtag=model_idtag,
+    try:
+        connection_kwargs: Dict[str, Any] = build_connection_kwargs(settings=settings)
+        packed_model: Dict[str, Any] = gather_model_as_jsons(
+            circuit=circuit,
+            project_directory=project_directory,
         )
+        model_data: Dict[str, Any] = packed_model["model_data"]
+        symbolic_data: Dict[str, Any] = packed_model["symbolic_data"]
+        table_mappings: List[Tuple[str, str]] = get_supported_table_mappings()
 
-        delete_existing_model_object_rows(
-            cursor=cursor,
-            schema_name=schema_name,
-            table_mappings=table_mappings,
-            model_idtag=model_idtag,
+        log_database_operation(
+            f"Connecting to database '{settings.database}' to persist MultiCircuit into model '{model_idtag}' from file '{file_idtag}'."
         )
+        with psycopg.connect(**connection_kwargs) as connection:
+            cursor: CursorLike = connection.cursor()
 
-        insert_model_object_rows(
-            cursor=cursor,
-            schema_name=schema_name,
-            table_mappings=table_mappings,
-            model_data=model_data,
-            model_idtag=model_idtag,
-        )
+            ensure_model_row_exists(
+                cursor=cursor,
+                schema_name=schema_name,
+                file_idtag=file_idtag,
+                model_idtag=model_idtag,
+            )
 
-        upsert_model_payload_row(
-            cursor=cursor,
-            schema_name=schema_name,
-            model_data=model_data,
-            symbolic_data=symbolic_data,
-            model_idtag=model_idtag,
-        )
+            delete_existing_model_object_rows(
+                cursor=cursor,
+                schema_name=schema_name,
+                table_mappings=table_mappings,
+                model_idtag=model_idtag,
+            )
 
-        connection.commit()
-        cursor.close()
+            insert_model_object_rows(
+                cursor=cursor,
+                schema_name=schema_name,
+                table_mappings=table_mappings,
+                model_data=model_data,
+                model_idtag=model_idtag,
+            )
+
+            upsert_model_payload_row(
+                cursor=cursor,
+                schema_name=schema_name,
+                model_data=model_data,
+                symbolic_data=symbolic_data,
+                model_idtag=model_idtag,
+            )
+
+            connection.commit()
+            cursor.close()
+    finally:
+        release_database_file_lock(settings=settings, file_idtag=file_idtag)
 
 
 def put_multiverse_in_database(settings: PostgreSqlConnectionSettings,
@@ -1015,7 +1102,6 @@ def put_multiverse_in_database(settings: PostgreSqlConnectionSettings,
                                file_idtag: str,
                                user_idtag: str,
                                file_name: str | None = None,
-                               schema_name: str = "veragrid",
                                project_directory: Path | None = None) -> None:
     """
     Persist one ``MultiVerse`` into one file row and its child model rows.
@@ -1025,122 +1111,106 @@ def put_multiverse_in_database(settings: PostgreSqlConnectionSettings,
     :param file_idtag: Parent file identifier.
     :param user_idtag: Owning user identifier for every stored model row.
     :param file_name: Optional file name override.
-    :param schema_name: Target schema name.
     :param project_directory: Optional project directory for the serializer.
     :return: None.
     """
-    create_veragrid_schema(settings=settings, schema_name=schema_name)
-    connection_kwargs: Dict[str, Any] = build_connection_kwargs(settings=settings)
-    table_mappings: List[Tuple[str, str]] = get_supported_table_mappings()
+    schema_name: str = settings.schema_name
+    acquire_database_file_lock(settings=settings, file_idtag=file_idtag)
 
-    multiverse.commit_current()
-    nodes: List[ScenarioNode] = list(multiverse.iter_nodes_depth_first())
+    try:
+        connection_kwargs: Dict[str, Any] = build_connection_kwargs(settings=settings)
+        table_mappings: List[Tuple[str, str]] = get_supported_table_mappings()
 
-    if len(nodes) == 0:
-        raise ValueError("The MultiVerse does not contain any models to persist")
-    else:
-        pass
+        multiverse.commit_current()
+        nodes: List[ScenarioNode] = list(multiverse.iter_nodes_depth_first())
 
-    resolved_file_name: str
-    if file_name is None:
-        root_name: str | None = nodes[0].circuit.name
-        if root_name is None or len(root_name.strip()) == 0:
-            resolved_file_name = file_idtag
+        if len(nodes) == 0:
+            raise ValueError("The MultiVerse does not contain any models to persist")
         else:
-            resolved_file_name = root_name
-    else:
-        resolved_file_name = file_name
+            pass
 
-    # The file save rewrites the complete model tree so stale child rows are
-    # removed once, up front, and then recreated in current tree order.
-    log_database_operation(
-        f"Connecting to database '{settings.database}' to persist MultiVerse into file '{file_idtag}'."
-    )
-    with psycopg.connect(**connection_kwargs) as connection:
-        cursor: CursorLike = connection.cursor()
-        upsert_file_row(
-            cursor=cursor,
-            schema_name=schema_name,
-            file_idtag=file_idtag,
-            file_name=resolved_file_name,
-            user_idtag=user_idtag,
-        )
-
-        quoted_schema_name: str = quote_sql_identifier(schema_name)
-        cursor.execute(
-            f'''
-            DELETE FROM {quoted_schema_name}."Models"
-            WHERE file_idtag = %s
-            ''',
-            (file_idtag,),
-        )
-
-        node: ScenarioNode
-        for node in nodes:
-            model_idtag: str = resolve_circuit_idtag(node.circuit)
-            model_name_raw: str | None = node.circuit.name
-            model_name: str
-            if model_name_raw is None or len(model_name_raw.strip()) == 0:
-                model_name = model_idtag
+        resolved_file_name: str
+        if file_name is None:
+            root_name: str | None = nodes[0].circuit.name
+            if root_name is None or len(root_name.strip()) == 0:
+                resolved_file_name = file_idtag
             else:
-                model_name = model_name_raw
+                resolved_file_name = root_name
+        else:
+            resolved_file_name = file_name
 
-            parent_model_idtag: str | None
-            if node.parent is None:
-                parent_model_idtag = None
-            else:
-                parent_model_idtag = resolve_circuit_idtag(node.parent.circuit)
+        # The file save rewrites the complete model tree so stale child rows are
+        # removed once, up front, and then recreated in current tree order.
+        log_database_operation(
+            f"Connecting to database '{settings.database}' to persist MultiVerse into file '{file_idtag}'."
+        )
+        with psycopg.connect(**connection_kwargs) as connection:
+            cursor: CursorLike = connection.cursor()
+            upsert_file_row(
+                cursor=cursor,
+                schema_name=schema_name,
+                file_idtag=file_idtag,
+                file_name=resolved_file_name,
+                user_idtag=user_idtag,
+            )
 
+            quoted_schema_name: str = quote_sql_identifier(schema_name)
             cursor.execute(
                 f'''
-                INSERT INTO {quoted_schema_name}."Models" (file_idtag, idtag, name, parent_model_idtag)
-                VALUES (%s, %s, %s, %s)
+                DELETE FROM {quoted_schema_name}."Models"
+                WHERE file_idtag = %s
                 ''',
-                (file_idtag, model_idtag, model_name, parent_model_idtag),
+                (file_idtag,),
             )
-
-        for node in nodes:
-            model_idtag = resolve_circuit_idtag(node.circuit)
-            packed_model: Dict[str, Any] = gather_model_as_jsons(
-                circuit=node.circuit,
-                project_directory=project_directory,
-            )
-            model_data: Dict[str, Any] = packed_model["model_data"]
-            symbolic_data: Dict[str, Any] = packed_model["symbolic_data"]
-
-            insert_model_object_rows(
+            insert_model_metadata_rows(
                 cursor=cursor,
                 schema_name=schema_name,
-                table_mappings=table_mappings,
-                model_data=model_data,
-                model_idtag=model_idtag,
-            )
-            upsert_model_payload_row(
-                cursor=cursor,
-                schema_name=schema_name,
-                model_data=model_data,
-                symbolic_data=symbolic_data,
-                model_idtag=model_idtag,
+                file_idtag=file_idtag,
+                nodes=nodes,
             )
 
-        connection.commit()
-        cursor.close()
+            for node in nodes:
+                model_idtag = resolve_circuit_idtag(node.circuit)
+                packed_model: Dict[str, Any] = gather_model_as_jsons(
+                    circuit=node.circuit,
+                    project_directory=project_directory,
+                )
+                model_data: Dict[str, Any] = packed_model["model_data"]
+                symbolic_data: Dict[str, Any] = packed_model["symbolic_data"]
+
+                insert_model_object_rows(
+                    cursor=cursor,
+                    schema_name=schema_name,
+                    table_mappings=table_mappings,
+                    model_data=model_data,
+                    model_idtag=model_idtag,
+                )
+                upsert_model_payload_row(
+                    cursor=cursor,
+                    schema_name=schema_name,
+                    model_data=model_data,
+                    symbolic_data=symbolic_data,
+                    model_idtag=model_idtag,
+                )
+
+            connection.commit()
+            cursor.close()
+    finally:
+        release_database_file_lock(settings=settings, file_idtag=file_idtag)
 
 
 def get_multiverse_from_database(settings: PostgreSqlConnectionSettings,
                                  file_idtag: str,
-                                 schema_name: str = "veragrid",
                                  project_directory: Path | None = None) -> MultiVerse:
     """
     Retrieve one stored file and rebuild it as a ``MultiVerse``.
 
     :param settings: PostgreSQL connection settings.
     :param file_idtag: File identifier.
-    :param schema_name: Target schema name.
     :param project_directory: Optional project directory for path resolution.
     :return: Rebuilt ``MultiVerse`` instance.
     """
-    create_veragrid_schema(settings=settings, schema_name=schema_name)
+    schema_name: str = settings.schema_name
     connection_kwargs: Dict[str, Any] = build_connection_kwargs(settings=settings)
     table_mappings: List[Tuple[str, str]] = get_supported_table_mappings()
 
@@ -1226,7 +1296,6 @@ def get_multiverse_from_database(settings: PostgreSqlConnectionSettings,
 def get_multicircuit_from_database(settings: PostgreSqlConnectionSettings,
                                    file_idtag: str,
                                    model_idtag: str | None = None,
-                                   schema_name: str = "veragrid",
                                    project_directory: Path | None = None) -> MultiCircuit:
     """
     Retrieve one stored model as a composed ``MultiCircuit``.
@@ -1236,14 +1305,12 @@ def get_multicircuit_from_database(settings: PostgreSqlConnectionSettings,
     :param settings: PostgreSQL connection settings.
     :param file_idtag: File identifier.
     :param model_idtag: Optional model identifier.
-    :param schema_name: Target schema name.
     :param project_directory: Optional project directory for path resolution.
     :return: Rebuilt composed ``MultiCircuit`` instance.
     """
     multiverse: MultiVerse = get_multiverse_from_database(
         settings=settings,
         file_idtag=file_idtag,
-        schema_name=schema_name,
         project_directory=project_directory,
     )
 
@@ -1262,16 +1329,15 @@ def get_multicircuit_from_database(settings: PostgreSqlConnectionSettings,
 
 
 def get_file_models_json(settings: PostgreSqlConnectionSettings,
-                         file_idtag: str,
-                         schema_name: str = "veragrid") -> Dict[str, Any] | None:
+                         file_idtag: str) -> Dict[str, Any] | None:
     """
     Read one file with its model metadata as JSON-like dictionaries.
 
     :param settings: PostgreSQL connection settings.
     :param file_idtag: File identifier.
-    :param schema_name: Target schema name.
     :return: File dictionary with nested model rows, or ``None``.
     """
+    schema_name: str = settings.schema_name
     connection_kwargs: Dict[str, Any] = build_connection_kwargs(settings=settings)
 
     log_database_operation(
@@ -1282,7 +1348,6 @@ def get_file_models_json(settings: PostgreSqlConnectionSettings,
         file_row: Dict[str, str] | None = get_file(
             settings=settings,
             file_idtag=file_idtag,
-            schema_name=schema_name,
         )
 
         if file_row is None:
@@ -1315,15 +1380,14 @@ def get_file_models_json(settings: PostgreSqlConnectionSettings,
     }
 
 
-def get_files_with_models_json(settings: PostgreSqlConnectionSettings,
-                               schema_name: str = "veragrid") -> List[Dict[str, Any]]:
+def get_files_with_models_json(settings: PostgreSqlConnectionSettings) -> List[Dict[str, Any]]:
     """
     Read every file and the models it contains as JSON-like dictionaries.
 
     :param settings: PostgreSQL connection settings.
-    :param schema_name: Target schema name.
     :return: Ordered list of file dictionaries with nested model rows.
     """
+    schema_name: str = settings.schema_name
     connection_kwargs: Dict[str, Any] = build_connection_kwargs(settings=settings)
     quoted_schema_name: str = quote_sql_identifier(schema_name)
     files_json: List[Dict[str, Any]] = list()

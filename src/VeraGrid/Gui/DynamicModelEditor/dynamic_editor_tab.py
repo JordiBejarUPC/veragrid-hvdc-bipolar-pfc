@@ -19,7 +19,7 @@ from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_breadcrumb import DynamicEdi
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_navigation import DynamicEditorNavigation
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
-from VeraGridEngine.enumerations import DynamicSimulationMode, BlockType
+from VeraGridEngine.enumerations import DynamicSimulationMode, BlockType, DynEditorGraphicsModes
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_models import clone_block_for_editing, copy_block_state
 
@@ -136,7 +136,7 @@ class DynamicEditorTab(QtWidgets.QWidget):
             block: Block,
             api_object: ALL_DEV_TYPES,
             circuit: MultiCircuit,
-            current_theme: str,
+            current_theme: DynEditorGraphicsModes,
             mode: DynamicSimulationMode,
             templates_list: Optional[List[RmsModelTemplate | EmtModelTemplate | FmuTemplate]] = None,
             parent: QtWidgets.QWidget | None = None,
@@ -203,10 +203,12 @@ class DynamicEditorTab(QtWidgets.QWidget):
     def set_dark_mode(self) -> None:
         if self._editor is not None:
             self._editor.set_dark_mode()
+            self.current_theme = DynEditorGraphicsModes.DARK
 
     def set_light_mode(self) -> None:
         if self._editor is not None:
             self._editor.set_light_mode()
+            self.current_theme = DynEditorGraphicsModes.LIGHT
 
     # ------------------------------------------------------------------
     # Navigation — always over the working tree

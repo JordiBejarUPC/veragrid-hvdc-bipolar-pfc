@@ -77,6 +77,13 @@ def find_name_in_block(name: str, block: Block):
     if prefixed is not None:
         return prefixed
 
+    parts = name.split("_")
+    if len(parts) == 3 and parts[0] in {"if", "it", "vf", "vt"} and parts[2] in {"A", "B", "C", "N"}:
+        legacy_line_name = f"{parts[0]}_{parts[2]}"
+        legacy_match = find_name_in_block(legacy_line_name, block)
+        if legacy_match is not None:
+            return legacy_match
+
     return None
 
 
@@ -94,23 +101,40 @@ def set_event_value_in_block(name: str, block: Block, value: float) -> bool:
 
 
 def set_problem_runtime_value(problem, block: Block, name: str, value: float) -> None:
-    var = find_name_in_block(name, block)
     problem.set_internal_runtime_if_exists(block, name, value)
-    if var is None:
-        return
-
     uid2idx = getattr(problem, "_uid2idx_event_params", getattr(problem, "uid2idx_event_params", {}))
-    if var.uid not in uid2idx:
+    runtime_vars = []
+    var = find_name_in_block(name, block)
+    if var is not None and var.uid in uid2idx:
+        runtime_vars.append(var)
+
+    for candidate in problem.get_variable_parameters():
+        candidate_name = getattr(candidate, "name", "")
+        if candidate_name == name or candidate_name.startswith(f"{name}_"):
+            if candidate.uid in uid2idx and all(existing.uid != candidate.uid for existing in runtime_vars):
+                runtime_vars.append(candidate)
+
+    if not runtime_vars:
         return
 
-    idx = uid2idx[var.uid]
     value_float = float(value)
-    problem._event_params_values[idx] = value_float
-    problem._event_parameters_eqs[idx] = Const(value_float)
-    if hasattr(problem, "_runtime_all_eqs_source"):
-        problem._runtime_all_eqs_source[idx] = Const(value_float)
-    if hasattr(problem, "_runtime_parameter_eqs0"):
-        problem._runtime_parameter_eqs0[idx] = Const(value_float)
+    const_value = Const(value_float)
+    for runtime_var in runtime_vars:
+        idx = uid2idx[runtime_var.uid]
+        problem._event_params_values[idx] = value_float
+        problem._event_parameters_eqs[idx] = const_value
+        if hasattr(problem, "_runtime_all_eqs_source"):
+            problem._runtime_all_eqs_source[idx] = const_value
+        if hasattr(problem, "_runtime_parameter_eqs0"):
+            problem._runtime_parameter_eqs0[idx] = const_value
+        if hasattr(problem, "_runtime_continuous_slice") and hasattr(problem, "_runtime_continuous_eqs"):
+            continuous_slice = problem._runtime_continuous_slice
+            if continuous_slice.start <= idx < continuous_slice.stop:
+                problem._runtime_continuous_eqs[idx - continuous_slice.start] = const_value
+        if hasattr(problem, "_runtime_mode_slice") and hasattr(problem, "_runtime_mode_eqs"):
+            mode_slice = problem._runtime_mode_slice
+            if mode_slice.start <= idx < mode_slice.stop:
+                problem._runtime_mode_eqs[idx - mode_slice.start] = const_value
 
 
 def set_problem_runtime_var_value(problem, var, value: float) -> None:
@@ -125,6 +149,14 @@ def set_problem_runtime_var_value(problem, var, value: float) -> None:
         problem._runtime_all_eqs_source[idx] = Const(value_float)
     if hasattr(problem, "_runtime_parameter_eqs0"):
         problem._runtime_parameter_eqs0[idx] = Const(value_float)
+    if hasattr(problem, "_runtime_continuous_slice") and hasattr(problem, "_runtime_continuous_eqs"):
+        continuous_slice = problem._runtime_continuous_slice
+        if continuous_slice.start <= idx < continuous_slice.stop:
+            problem._runtime_continuous_eqs[idx - continuous_slice.start] = Const(value_float)
+    if hasattr(problem, "_runtime_mode_slice") and hasattr(problem, "_runtime_mode_eqs"):
+        mode_slice = problem._runtime_mode_slice
+        if mode_slice.start <= idx < mode_slice.stop:
+            problem._runtime_mode_eqs[idx - mode_slice.start] = Const(value_float)
 
 
 PLOT_OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "statcom_emt_validation_plots")
@@ -166,7 +198,7 @@ def get_dc_link_capacitor_emt_block(vf, capacitance_f: float, name: str = "dc_li
         },
     )
     block.name = name
-    block.tpe = DeviceType.GeneratorDevice
+    block.tpe = DeviceType.ShuntDevice
     return block
 
 
@@ -854,10 +886,9 @@ vsc1 = gce.VSC(name='VSC1', bus_from=bus_dc, bus_to=bus1, rate=100, alpha1=0.0, 
 # Define generators
 gen1 = gce.Generator(name='Gen1', P=5.0, vset=1.00, Snom=grid.Sbase, freq=50.0, r1=0.001, x1=1.7)
 
-# Static zero-power placeholder; its EMT model is the STATCOM DC-link capacitor.
-# A Shunt would be conceptually closer, but the EMT DC injection seeding path expects Snom.
-gen3 = gce.Generator(name='DC Link Capacitor', P=0.0, vset=1.03)
-grid.add_generator(bus=bus_dc, api_obj=gen3)
+# Static zero-admittance host; its EMT model is the STATCOM DC-link capacitor.
+statcom_dc_capacitor_device = gce.Shunt(name='STATCOM DC Link Capacitor', G=0.0, B=0.0)
+grid.add_shunt(bus=bus_dc, api_obj=statcom_dc_capacitor_device)
 
 ###############
 # Add to the grid
@@ -922,7 +953,7 @@ dc_capacitor = get_dc_link_capacitor_emt_block(
 set_emt_model(device=line12, model=line12_mdl, var_factory=grid.var_factory)
 set_emt_model(device=line23, model=line23_mdl, var_factory=grid.var_factory)
 set_emt_model(device=gen1, model=genrow_mdl1, var_factory=grid.var_factory)
-set_emt_model(device=gen3, model=dc_capacitor, var_factory=grid.var_factory)
+set_emt_model(device=statcom_dc_capacitor_device, model=dc_capacitor, var_factory=grid.var_factory)
 set_emt_model(device=vsc1, model=vsc_mdl, var_factory=grid.var_factory)
 
 grid.var_factory.add_connections(
@@ -1009,8 +1040,6 @@ set_event_value_in_block('Kp_pll', vsc_mdl, PLL_KP)
 set_event_value_in_block('Ki_pll', vsc_mdl, PLL_KI)
 set_event_value_in_block('L', vsc_mdl, vsc_filter_l)
 set_event_value_in_block('Cdc', vsc_mdl, DC_LINK_CAPACITANCE)
-
-V_src = find_name_in_block('V_src_dc_voltage_source', gen3.emt_model)
 
 # Find appropriate reference variable based on control mode
 if CONTROL1_MODE == ConverterControlType.Vm_dc:
@@ -1118,6 +1147,7 @@ def seed_gfl_vsc_initial_guess(problem, vsc, pf_results, converter_bus, grid_bus
     iq0 = 2.0 * p0 / vq0
 
     l0 = vsc_filter_l
+    r0 = line12.R
     omega0 = 1.0
     vc_a0 = value_of(find_name_in_block('v_A', converter_bus.emt_model))
     vc_b0 = value_of(find_name_in_block('v_B', converter_bus.emt_model))
@@ -1205,6 +1235,10 @@ def seed_gfl_vsc_initial_guess(problem, vsc, pf_results, converter_bus, grid_bus
         'u_PLL_pi': vd0,
         'u_vd_hat': 0.0,
         'u_vq_hat': 0.0,
+        'xi_Pac_ctrl': iq0 / Q_CONTROL_KI_POL,
+        'xi_Qac_ctrl': id0 / Q_CONTROL_KI_POL,
+        'xi_vd_hat': vd_hat0 / CURRENT_CONTROL_KI_ICL,
+        'xi_vq_hat': vq_hat0 / CURRENT_CONTROL_KI_ICL,
     }
     for name, value in values.items():
         var = find_name_in_block(name, vsc_working_model)
@@ -1271,6 +1305,7 @@ def seed_gfl_vsc_initial_guess(problem, vsc, pf_results, converter_bus, grid_bus
     set_runtime_value('Kp_pll', PLL_KP)
     set_runtime_value('Ki_pll', PLL_KI)
     set_runtime_value('L', vsc_filter_l)
+    set_runtime_value('R', r0)
     set_runtime_value('Cdc', DC_LINK_CAPACITANCE)
     return None
 
