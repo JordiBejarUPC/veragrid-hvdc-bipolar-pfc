@@ -42,7 +42,8 @@ def start_server(key_file_name: str = "key.pem", cert_file_name: str = "cert.pem
                  username: str = "", password: str = "", is_master: bool = True,
                  secure: bool = True,
                  db_host: str = "", db_port: int = 0,
-                 db_name: str = "", db_user: str = "", db_password: str = ""):
+                 db_name: str = "", db_user: str = "", db_password: str = "",
+                 db_schema: str = "veragrid"):
     """
     Start server function
     :param key_file_name: name of the key file that the server generates
@@ -60,6 +61,7 @@ def start_server(key_file_name: str = "key.pem", cert_file_name: str = "cert.pem
     :param db_name: PostgreSQL database name.
     :param db_user: PostgreSQL user name.
     :param db_password: PostgreSQL password.
+    :param db_schema: PostgreSQL schema name.
     """
 
     # find out my IP
@@ -95,6 +97,7 @@ def start_server(key_file_name: str = "key.pem", cert_file_name: str = "cert.pem
     settings.db_name = db_name
     settings.db_user = db_user
     settings.db_password = db_password
+    settings.db_schema = db_schema
 
     if secure:
         uvicorn.run(app,
@@ -140,6 +143,7 @@ if __name__ == "__main__":
     parser.add_argument("--db_name", type=str, default="", help="PostgreSQL database name")
     parser.add_argument("--db_user", type=str, default="", help="PostgreSQL user")
     parser.add_argument("--db_password", type=str, default="", help="PostgreSQL password")
+    parser.add_argument("--db_schema", type=str, default="veragrid", help="PostgreSQL schema name")
 
     # Parse arguments
     args = parser.parse_args()
@@ -162,4 +166,5 @@ if __name__ == "__main__":
                  db_port=args.db_port,
                  db_name=args.db_name,
                  db_user=args.db_user,
-                 db_password=args.db_password)
+                 db_password=args.db_password,
+                 db_schema=args.db_schema)

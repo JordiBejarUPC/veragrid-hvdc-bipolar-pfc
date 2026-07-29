@@ -7,7 +7,11 @@ import pytest
 from psycopg.types.json import Json
 
 import VeraGridEngine.api as vge
-from VeraGridServer.db.database import PostgreSqlConnectionSettings
+from VeraGridServer.db.database import (
+    PostgreSqlConnectionSettings,
+    get_veragrid_object_table_names,
+    normalize_device_table_name,
+)
 from VeraGridServer.db.model_ops import (
     create_file,
     create_model,
@@ -140,6 +144,32 @@ def test_schema_creation_seeds_default_admin_user_when_local_db_is_available() -
     assert admin_user["name"] == "admin"
     assert admin_user["password"] == "veragrid is great"
     assert admin_user["organization_idtag"] == "admin"
+
+
+def test_normalize_device_table_name_returns_snake_case_names() -> None:
+    """
+    Verify device labels are normalized into snake_case PostgreSQL table names.
+
+    :return: None.
+    """
+    assert normalize_device_table_name("Overhead Line Type") == "overhead_line_type"
+    assert normalize_device_table_name("HVDCLine") == "hvdc_line"
+    assert normalize_device_table_name("Bus 3 Phase") == "bus_3_phase"
+
+
+def test_all_generated_device_table_names_are_snake_case() -> None:
+    """
+    Verify the discovered device table catalogue is already snake_case.
+
+    :return: None.
+    """
+    table_names: list[str] = get_veragrid_object_table_names()
+
+    assert len(table_names) > 0
+    assert all(len(table_name) > 0 for table_name in table_names)
+    assert all(" " not in table_name for table_name in table_names)
+    assert all(table_name == table_name.lower() for table_name in table_names)
+    assert all("__" not in table_name for table_name in table_names)
 
 
 def test_multiverse_db_roundtrip_and_file_json_when_local_db_is_available() -> None:
