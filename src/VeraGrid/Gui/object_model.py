@@ -390,29 +390,7 @@ class ObjectsModel(WrappableTableModel):
 
         return None
 
-    @staticmethod
-    def _coerce_enum_value(enum_tpe: EnumMeta, value: Any) -> Any:
-        """
-        Convert values returned by Qt editors back to the registered Enum type.
-        """
-
-        if isinstance(value, enum_tpe):
-            return value
-
-        try:
-            return enum_tpe(value)
-        except (TypeError, ValueError):
-            if isinstance(value, str):
-                try:
-                    return enum_tpe[value]
-                except KeyError:
-                    for enum_value in enum_tpe:
-                        if str(enum_value) == value:
-                            return enum_value
-
-        return value
-
-    def setData(self, index: QtCore.QModelIndex, value: Any, role: Union[int, None] = None) -> bool:
+    def setData(self, index: QtCore.QModelIndex, value: Union[float, str], role: Union[int, None] = None) -> bool:
         """
         Set data by simple editor (whatever text)
         :param index:
@@ -445,8 +423,6 @@ class ObjectsModel(WrappableTableModel):
                     if prop.tpe is ContingencyGroup and value != "":
                         # if isinstance(value, RmsModelTemplate):
                         value2 = ContingencyGroup(value)
-                    elif isinstance(prop.tpe, EnumMeta):
-                        value2 = self._coerce_enum_value(prop.tpe, value)
                     else:
                         value2 = value
 

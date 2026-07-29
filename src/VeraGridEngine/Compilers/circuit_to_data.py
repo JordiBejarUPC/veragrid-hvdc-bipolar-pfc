@@ -1717,16 +1717,6 @@ def get_branch_data(
 
         # handle """superconductor branches"""
         data.detect_superconductor_at(ii)
-        if data.reducible[ii] and not elm.reducible:
-            has_tap = (not np.isclose(ctrl_data.tap_module[ii], 1.0)) or (not np.isclose(ctrl_data.tap_angle[ii], 0.0))
-            has_phase_info = data.phN[ii] or data.phA[ii] or data.phB[ii] or data.phC[ii]
-            has_all_abc_phases = data.phA[ii] and data.phB[ii] and data.phC[ii]
-            if has_tap or (has_phase_info and not has_all_abc_phases):
-                data.reducible[ii] = False
-            else:
-                pass
-        else:
-            pass
 
         ii += 1
 

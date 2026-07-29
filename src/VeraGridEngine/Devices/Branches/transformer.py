@@ -518,41 +518,36 @@ class Transformer2W(ControllableBranchParent):
         self.HV = max(self.bus_from.Vnom, self.bus_to.Vnom)
         self.LV = min(self.bus_from.Vnom, self.bus_to.Vnom)
 
-    def fix_inconsistencies(self,
-                            logger: Logger,
-                            maximum_difference=0.1,
-                            check_nominal_voltages: bool = True) -> bool:
+    def fix_inconsistencies(self, logger: Logger, maximum_difference=0.1) -> bool:
         """
         Fix the inconsistencies
         :param logger:
         :param maximum_difference: proportion to be under or above
         (i.e. Transformer HV=41.9, bus HV=45 41.9/45 = 0.93 -> 0.9 <= 0.93 <= 1.1, so it's ok
-        :param check_nominal_voltages: correct rated voltages against connected bus nominal voltages
         :return: were there any errors?
         """
         errors = False
-        if check_nominal_voltages:
-            HV = max(self.bus_from.Vnom, self.bus_to.Vnom)
-            LV = min(self.bus_from.Vnom, self.bus_to.Vnom)
+        HV = max(self.bus_from.Vnom, self.bus_to.Vnom)
+        LV = min(self.bus_from.Vnom, self.bus_to.Vnom)
 
-            if self.LV > self.HV:
-                logger.add_warning("HV > LV", self.name, self.HV, HV)
-                self.HV, self.LV = self.LV, self.HV
-                errors = True
+        if self.LV > self.HV:
+            logger.add_warning("HV > LV", self.name, self.HV, HV)
+            self.HV, self.LV = self.LV, self.HV
+            errors = True
 
-            rHV = self.HV / HV
-            rLV = self.LV / LV
-            LB = 1 - maximum_difference
-            UB = 1 + maximum_difference
-            if not (LB <= rHV <= UB):
-                logger.add_warning("Corrected transformer HV", self.name, self.HV, HV)
-                self.HV = HV
-                errors = True
+        rHV = self.HV / HV
+        rLV = self.LV / LV
+        LB = 1 - maximum_difference
+        UB = 1 + maximum_difference
+        if not (LB <= rHV <= UB):
+            logger.add_warning("Corrected transformer HV", self.name, self.HV, HV)
+            self.HV = HV
+            errors = True
 
-            if not (LB <= rLV <= UB):
-                logger.add_warning("Corrected transformer LV", self.name, self.LV, LV)
-                self.LV = LV
-                errors = True
+        if not (LB <= rLV <= UB):
+            logger.add_warning("Corrected transformer LV", self.name, self.LV, LV)
+            self.LV = LV
+            errors = True
 
         if self.R < 0.0:
             logger.add_warning("Corrected transformer R<0", self.name, self.R, -self.R)
@@ -678,62 +673,6 @@ class Transformer2W(ControllableBranchParent):
 
         return phaseN, phaseA, phaseB, phaseC
 
-    def _get_phase_incidence_vector(self, logger: Logger) -> np.ndarray | None:
-        """
-        Get the NABC incidence vector for a single-phase transformer.
-        """
-        if len(self.phases) == 0 or len(self.phases) > 2:
-            return None
-        else:
-            pass
-
-        incidence = np.zeros(4, dtype=float)
-        sign = 1.0
-        for phase in self.phases:
-            phase_idx = int(phase)
-            if 0 <= phase_idx <= 3:
-                incidence[phase_idx] += sign
-                sign = -1.0
-            else:
-                logger.add_error(
-                    f"transformer_admittance: Incorrect phase value {phase_idx} in {self.name}",
-                    device=self.name
-                )
-                return None
-
-        if np.allclose(incidence, 0.0):
-            logger.add_error(
-                "transformer_admittance: Empty phase incidence vector",
-                device=self.name
-            )
-            return None
-        else:
-            pass
-
-        return incidence
-
-    def single_phase_transformer_admittance(self,
-                                           yff: complex,
-                                           yft: complex,
-                                           ytf: complex,
-                                           ytt: complex,
-                                           logger: Logger) -> Tuple[Mat, Mat, Mat, Mat] | None:
-        """
-        Get a conductor-explicit primitive for a single-phase transformer.
-        """
-        incidence = self._get_phase_incidence_vector(logger=logger)
-        if incidence is None:
-            return None
-        else:
-            pass
-
-        return (
-            yff * np.outer(incidence, incidence),
-            yft * np.outer(incidence, incidence),
-            ytf * np.outer(incidence, incidence),
-            ytt * np.outer(incidence, incidence),
-        )
-
     def transformer_admittance(self,
                                vtap_f: float,
                                vtap_t: float,
@@ -766,16 +705,6 @@ class Transformer2W(ControllableBranchParent):
         yft = -ys / (self.tap_module * np.exp(-1.0j * (self.tap_phase + phase_displacement)) * vtap_f * vtap_t)
         ytf = -ys / (self.tap_module * np.exp(1.0j * (self.tap_phase + phase_displacement)) * vtap_t * vtap_f)
         ytt = (ys + ysh / 2) / (vtap_t * vtap_t)
-
-        single_phase_admittance = self.single_phase_transformer_admittance(yff=yff,
-                                                                           yft=yft,
-                                                                           ytf=ytf,
-                                                                           ytt=ytt,
-                                                                           logger=logger)
-        if single_phase_admittance is not None:
-            return single_phase_admittance
-        else:
-            pass
 
         if conn_y_from and conn_y_to:  # Yy
             Yff = np.array([
