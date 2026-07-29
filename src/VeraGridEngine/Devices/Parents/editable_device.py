@@ -131,9 +131,32 @@ def smart_compare(a, b, atol=1.e-10):
     b :Second object to compare.
     :return: bool
     """
+    if a is b:
+        return True
+
+    if a is None or b is None:
+        return a is b
+
+    if isinstance(a, np.ndarray) or isinstance(b, np.ndarray):
+        a_arr = np.asarray(a)
+        b_arr = np.asarray(b)
+
+        if a_arr.shape != b_arr.shape:
+            return False
+
+        if np.issubdtype(a_arr.dtype, np.number) and np.issubdtype(b_arr.dtype, np.number):
+            return bool(np.all(np.isclose(a_arr, b_arr, atol=atol)))
+
+        return bool(np.array_equal(a_arr, b_arr))
+
     if isinstance(a, float) and isinstance(b, float):
         return np.isclose(a, b, atol=atol)
-    return a == b
+
+    comparison = a == b
+    if isinstance(comparison, np.ndarray):
+        return bool(np.all(comparison))
+
+    return comparison
 
 
 class GCProp:
@@ -1243,7 +1266,10 @@ class EditableDevice(metaclass=EditableDeviceMeta):
 
             if isinstance(gc_prop.tpe, SubObjectType):
                 # This is a complex object, make a deep copy
-                setattr(new_obj, prop_name, value.copy())
+                if value is None:
+                    setattr(new_obj, prop_name, None)
+                else:
+                    setattr(new_obj, prop_name, value.copy())
             else:
                 setattr(new_obj, prop_name, value)
 

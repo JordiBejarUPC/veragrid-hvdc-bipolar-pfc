@@ -2166,6 +2166,7 @@ class StaCubic(DGSElement):
         DgsProperty('it2p1', 'i', 'Phase-to-Phase Connection Flag 1', py_name='it2p1'),
         DgsProperty('it2p2', 'i', 'Phase-to-Phase Connection Flag 2', py_name='it2p2'),
         DgsProperty('it2p3', 'i', 'Phase-to-Phase Connection Flag 3', py_name='it2p3'),
+        DgsProperty('cPhInfo', 'a', 'Phase information string', py_name='cPhInfo'),
     ]
 
     def __init__(self) -> None:
@@ -2179,6 +2180,7 @@ class StaCubic(DGSElement):
         self.it2p1: int = 0
         self.it2p2: int = 0
         self.it2p3: int = 0
+        self.cPhInfo: str = ""
 
 
 class StaSwitch(DGSElement):

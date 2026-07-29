@@ -2722,7 +2722,15 @@ class MultiCircuit(Assets):
                                         value=v2,
                                         expected_value=v1)
                             elif prop.tpe == SubObjectType.Array:
-                                if len(v1) != len(v2):
+                                if v1 is None or v2 is None:
+                                    if v1 is not v2:
+                                        logger.add_error(
+                                            msg="Different array values",
+                                            device_class=template_elm.device_type.value,
+                                            device_property=prop.name,
+                                            value=v2,
+                                            expected_value=v1)
+                                elif len(v1) != len(v2):
                                     logger.add_error(
                                         msg="Different array length",
                                         device_class=template_elm.device_type.value,
@@ -2730,7 +2738,15 @@ class MultiCircuit(Assets):
                                         value=v2,
                                         expected_value=v1)
                                 else:
-                                    if not np.all(np.isclose(v1, v2, atol=tolerance)):
+                                    a1 = np.asarray(v1)
+                                    a2 = np.asarray(v2)
+
+                                    if np.issubdtype(a1.dtype, np.number) and np.issubdtype(a2.dtype, np.number):
+                                        same_array = bool(np.all(np.isclose(a1, a2, atol=tolerance)))
+                                    else:
+                                        same_array = bool(np.array_equal(a1, a2))
+
+                                    if not same_array:
                                         logger.add_error(
                                             msg="Different array values",
                                             device_class=template_elm.device_type.value,

@@ -733,7 +733,12 @@ def veragrid_object_to_json(elm: ALL_DEV_TYPES,
                 data[name] = None
 
         elif prop.tpe == SubObjectType.Array:
-            data[name] = list(obj)
+            if obj is None:
+                data[name] = None
+            elif isinstance(obj, np.ndarray):
+                data[name] = obj.tolist()
+            else:
+                data[name] = np.asarray(obj).tolist()
 
         else:
             # if the object is not of a primary type, get the idtag instead
