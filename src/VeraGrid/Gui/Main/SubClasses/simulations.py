@@ -919,12 +919,10 @@ class SimulationsMain(TimeEventsMain):
         drv = drv_dict.get(current_study_name, None)
         if drv is not None:
             if drv.results is not None:
-                if drv.results.time_indices is not None:
-                    if len(drv.results.time_indices):
-                        a = drv.results.time_indices[0]
-                        b = drv.results.time_indices[-1]
-                        self.ui.diagram_step_slider.setRange(a, b)
-                        self.ui.diagram_step_slider.setValue(a)
+                if drv.results.time_array is not None:
+                    if len(drv.results.time_array):
+                        self.ui.diagram_step_slider.setRange(0, len(drv.results.time_array) - 1)
+                        self.ui.diagram_step_slider.setValue(0)
                     else:
                         self.setup_time_sliders()
                 else:
