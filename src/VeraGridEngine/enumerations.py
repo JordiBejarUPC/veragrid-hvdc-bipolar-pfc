@@ -4522,6 +4522,7 @@ class ProceduralLogicType(Enum):
     StartupHandover = "startup_handover"
     ValveState = "valve_state"
     ThreePhaseCarrierPwm = "three_phase_carrier_pwm"
+    ThreePhaseCarrierSampledModulation = "three_phase_carrier_sampled_modulation"
 
     def __str__(self) -> str:
         return str(self.value)
@@ -4616,3 +4617,10 @@ class DynamicTableModelMode(Enum):
     VARIABLES = "variables"
     PARAMETERS = "parameters"
     EQUATIONS = "equations"
+
+class DynEditorGraphicsModes(Enum):
+    """
+    Modes to definr editor colouring
+    """
+    DARK = "Dark"
+    LIGHT = "Light"

@@ -333,20 +333,24 @@ class AdmittanceMatrixTableModel(QtCore.QAbstractTableModel):
 
 class AdmittanceMatrixEditorWidget(QtWidgets.QWidget):
     """
-    Reusable editor widget for one :class:`AdmittanceMatrix`.
+    Reusable editor widget for the ``ys`` and ``ysh`` admittance matrices.
     """
 
-    __slots__ = ("ui", "_matrix_model")
+    __slots__ = ("ui", "_ys_model", "_ysh_model")
+    compute_requested = QtCore.Signal()
+    accept_requested = QtCore.Signal()
 
     def __init__(self,
-                 admittance_matrix: AdmittanceMatrix,
+                 ys_admittance_matrix: AdmittanceMatrix | None,
+                 ysh_admittance_matrix: AdmittanceMatrix | None,
                  title: str,
                  description: str,
                  parent: QtWidgets.QWidget | None = None) -> None:
         """
         Build the editor widget.
 
-        :param admittance_matrix: Initial value copied into the widget.
+        :param ys_admittance_matrix: Initial ``ys`` value copied into the widget.
+        :param ysh_admittance_matrix: Initial ``ysh`` value copied into the widget.
         :param title: User-facing matrix title.
         :param description: Short description shown above the table.
         :param parent: Optional Qt parent.
@@ -354,37 +358,84 @@ class AdmittanceMatrixEditorWidget(QtWidgets.QWidget):
         QtWidgets.QWidget.__init__(self, parent)
         self.ui = Ui_AdmittanceMatrixEditorWidget()
         self.ui.setupUi(self)
-        self.ui.titleLabel.setText(f"<b>{title}</b><br/>{description}")
+        self.ui.titleLabel.setText(title)
+        self.ui.descriptionLabel.setText(description)
+        self._ys_model: AdmittanceMatrixTableModel | None = None
+        self._ysh_model: AdmittanceMatrixTableModel | None = None
 
-        self._matrix_model = AdmittanceMatrixTableModel(admittance_matrix=admittance_matrix, parent=self.ui.matrixTableView)
-        self.ui.matrixTableView.setModel(self._matrix_model)
-        self.ui.matrixTableView.setItemDelegate(ComplexDelegate(self.ui.matrixTableView))
-        self.ui.matrixTableView.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeMode.Stretch)
-        self.ui.matrixTableView.verticalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeMode.Stretch)
+        if ys_admittance_matrix is not None:
+            self._ys_model = AdmittanceMatrixTableModel(
+                admittance_matrix=ys_admittance_matrix,
+                parent=self.ui.matrixTableView,
+            )
+            self.ui.matrixTableView.setModel(self._ys_model)
+            self._configure_table(table_view=self.ui.matrixTableView)
+            self.ui.matrixTableView.setVisible(True)
+        else:
+            self.ui.matrixTableView.setVisible(False)
 
-        self._apply_phase_state_to_check_boxes(phase_state=self._matrix_model.get_phase_state())
+        if ysh_admittance_matrix is not None:
+            self._ysh_model = AdmittanceMatrixTableModel(
+                admittance_matrix=ysh_admittance_matrix,
+                parent=self.ui.yshTableView,
+            )
+            self.ui.yshTableView.setModel(self._ysh_model)
+            self._configure_table(table_view=self.ui.yshTableView)
+            self.ui.yshLabel.setVisible(True)
+            self.ui.yshTableView.setVisible(True)
+        else:
+            self.ui.yshLabel.setVisible(False)
+            self.ui.yshTableView.setVisible(False)
+
+        self._apply_phase_state_to_check_boxes(phase_state=self.get_phase_state())
 
         self.ui.phaseNCheckBox.toggled.connect(self._on_phase_n_toggled)
         self.ui.phaseACheckBox.toggled.connect(self._on_phase_a_toggled)
         self.ui.phaseBCheckBox.toggled.connect(self._on_phase_b_toggled)
         self.ui.phaseCCheckBox.toggled.connect(self._on_phase_c_toggled)
+        self.ui.computeButton.clicked.connect(self.compute_requested.emit)
+        self.ui.acceptButton.clicked.connect(self.accept_requested.emit)
 
-    def get_value(self) -> AdmittanceMatrix:
+    def get_admittance_matrices(self) -> dict[str, AdmittanceMatrix]:
         """
-        Return the edited admittance matrix.
+        Return the edited admittance matrices.
 
-        :return: Edited value copy.
+        :return: Edited values keyed by property name.
         """
-        return self._matrix_model.to_admittance_matrix()
+        admittance_matrices: dict[str, AdmittanceMatrix] = dict()
 
-    def set_value(self, admittance_matrix: AdmittanceMatrix) -> None:
-        """
-        Replace the edited state with one object value.
+        if self._ys_model is not None:
+            admittance_matrices["ys"] = self._ys_model.to_admittance_matrix()
+        else:
+            pass
 
-        :param admittance_matrix: New source value.
+        if self._ysh_model is not None:
+            admittance_matrices["ysh"] = self._ysh_model.to_admittance_matrix()
+        else:
+            pass
+
+        return admittance_matrices
+
+    def set_admittance_matrices(self,
+                                ys_admittance_matrix: AdmittanceMatrix | None,
+                                ysh_admittance_matrix: AdmittanceMatrix | None) -> None:
         """
-        self._matrix_model.load_from_admittance_matrix(admittance_matrix=admittance_matrix)
-        self._apply_phase_state_to_check_boxes(phase_state=self._matrix_model.get_phase_state())
+        Replace the edited state with the provided object values.
+
+        :param ys_admittance_matrix: New ``ys`` source value.
+        :param ysh_admittance_matrix: New ``ysh`` source value.
+        """
+        if ys_admittance_matrix is not None and self._ys_model is not None:
+            self._ys_model.load_from_admittance_matrix(admittance_matrix=ys_admittance_matrix)
+        else:
+            pass
+
+        if ysh_admittance_matrix is not None and self._ysh_model is not None:
+            self._ysh_model.load_from_admittance_matrix(admittance_matrix=ysh_admittance_matrix)
+        else:
+            pass
+
+        self._apply_phase_state_to_check_boxes(phase_state=self.get_phase_state())
 
     def get_phase_state(self) -> dict[str, bool]:
         """
@@ -392,7 +443,27 @@ class AdmittanceMatrixEditorWidget(QtWidgets.QWidget):
 
         :return: Mapping of phase label to enabled flag.
         """
-        return self._matrix_model.get_phase_state()
+        if self._ys_model is not None:
+            return self._ys_model.get_phase_state()
+        elif self._ysh_model is not None:
+            return self._ysh_model.get_phase_state()
+        else:
+            phase_state: dict[str, bool] = dict()
+            phase_state["N"] = False
+            phase_state["A"] = False
+            phase_state["B"] = False
+            phase_state["C"] = False
+            return phase_state
+
+    def _configure_table(self, table_view: QtWidgets.QTableView) -> None:
+        """
+        Configure one admittance-matrix table view.
+
+        :param table_view: Target table view.
+        """
+        table_view.setItemDelegate(ComplexDelegate(table_view))
+        table_view.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeMode.Stretch)
+        table_view.verticalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeMode.Stretch)
 
     def _apply_phase_state_to_check_boxes(self, phase_state: dict[str, bool]) -> None:
         """
@@ -420,7 +491,7 @@ class AdmittanceMatrixEditorWidget(QtWidgets.QWidget):
 
         :param checked: Target state.
         """
-        self._matrix_model.set_phase_enabled("N", checked)
+        self._set_phase_enabled(phase_label="N", checked=checked)
 
     def _on_phase_a_toggled(self, checked: bool) -> None:
         """
@@ -428,7 +499,7 @@ class AdmittanceMatrixEditorWidget(QtWidgets.QWidget):
 
         :param checked: Target state.
         """
-        self._matrix_model.set_phase_enabled("A", checked)
+        self._set_phase_enabled(phase_label="A", checked=checked)
 
     def _on_phase_b_toggled(self, checked: bool) -> None:
         """
@@ -436,7 +507,7 @@ class AdmittanceMatrixEditorWidget(QtWidgets.QWidget):
 
         :param checked: Target state.
         """
-        self._matrix_model.set_phase_enabled("B", checked)
+        self._set_phase_enabled(phase_label="B", checked=checked)
 
     def _on_phase_c_toggled(self, checked: bool) -> None:
         """
@@ -444,4 +515,21 @@ class AdmittanceMatrixEditorWidget(QtWidgets.QWidget):
 
         :param checked: Target state.
         """
-        self._matrix_model.set_phase_enabled("C", checked)
+        self._set_phase_enabled(phase_label="C", checked=checked)
+
+    def _set_phase_enabled(self, phase_label: str, checked: bool) -> None:
+        """
+        Apply one phase toggle to every visible admittance matrix model.
+
+        :param phase_label: Phase identifier.
+        :param checked: Target state.
+        """
+        if self._ys_model is not None:
+            self._ys_model.set_phase_enabled(phase_label, checked)
+        else:
+            pass
+
+        if self._ysh_model is not None:
+            self._ysh_model.set_phase_enabled(phase_label, checked)
+        else:
+            pass

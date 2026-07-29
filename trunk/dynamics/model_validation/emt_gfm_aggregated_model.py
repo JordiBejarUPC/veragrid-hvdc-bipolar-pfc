@@ -287,8 +287,8 @@ def build_emt_gfm_aggregated_model(
         diff_vars=[dtheta, d_p_lp, d_q_lp, d_z_vd, d_z_vq, d_z_id, d_z_iq, d_i_g_a, d_i_g_b, d_i_g_c, d_i_c_a, d_i_c_b, d_i_c_c, d_v_f_a, d_v_f_b, d_v_f_c],
         event_dict={
             Rf: vf.add_const(0.02), Lf: vf.add_const(0.15), Rc: vf.add_const(0.01), Lc: vf.add_const(0.1),
-            Cf: vf.add_const(0.05), Rcap: vf.add_const(1e6), Kdp: vf.add_const(0.05), Kdq: vf.add_const(0.05),
-            fn: vf.add_const(50.0), omega_base: vf.add_const(2.0 * math.pi * 50.0), Kp: vf.add_const(0.05), Ki: vf.add_const(50.0), tau_p: vf.add_const(0.01),
+            Cf: vf.add_const(0.05), Rcap: vf.add_const(1e6), Kdp: vf.add_const(0.1), Kdq: vf.add_const(0.005),
+            fn: vf.add_const(50.0), omega_base: vf.add_const(2.0 * math.pi * 50.0), Kp: vf.add_const(0.00075), Ki: vf.add_const(0.2), tau_p: vf.add_const(0.01),
             tau_q: vf.add_const(0.01), i_max: vf.add_const(1.2), a0: vf.add_const(0.0), a1: vf.add_const(0.0), a2: vf.add_const(0.0),
             p_ref: vf.add_const(None), q_ref: vf.add_const(None), v_ref: vf.add_const(None),
         },
