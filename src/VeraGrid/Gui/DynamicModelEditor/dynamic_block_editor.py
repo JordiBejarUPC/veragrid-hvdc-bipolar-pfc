@@ -528,7 +528,12 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 # once we have all the items created and well positioned we build the connections
 
 
-            elif not self.main_block.children and not self.main_block.is_eq_decomposable():
+            elif not self.main_block.children:
+                if self.main_block.in_vars or self.main_block.out_vars:
+                    self.generate_block_item_for_block(self.main_block, 480.0, 260.0)
+                else:
+                    pass
+
                 self.add_connection_items()
 
 
@@ -3903,7 +3908,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         )
 
         if confirmed:
-            deletable_items: List[graph.BlockItem | graph.GenericBlockItem | graph.RoundBaseArithmeticOpItem | graph.RectBaseArithmeticOpItem] = list()
+            deletable_items: List[graph.BlockItem | graph.GenericBlockItem | graph.RoundBaseArithmeticOpItem | graph.RectBaseArithmeticOpItem | graph.PairedItem] = list()
             scene_item: QGraphicsItem
 
             for scene_item in self.scene.items():
@@ -3911,12 +3916,12 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                     pass
                 else:
                     if isinstance(scene_item,
-                                  (graph.BlockItem, graph.GenericBlockItem, graph.RoundBaseArithmeticOpItem, graph.RectBaseArithmeticOpItem)):
+                                  (graph.BlockItem, graph.GenericBlockItem, graph.RoundBaseArithmeticOpItem, graph.RectBaseArithmeticOpItem, graph.PairedItem)):
                         deletable_items.append(scene_item)
                     else:
                         pass
 
-            deletable_item: graph.BlockItem | graph.GenericBlockItem | graph.RoundBaseArithmeticOpItem | graph.RectBaseArithmeticOpItem
+            deletable_item: graph.BlockItem | graph.GenericBlockItem | graph.RoundBaseArithmeticOpItem | graph.RectBaseArithmeticOpItem | graph.PairedItem
 
             if len(deletable_items) == 0:
                 self._selected_side_block = None
