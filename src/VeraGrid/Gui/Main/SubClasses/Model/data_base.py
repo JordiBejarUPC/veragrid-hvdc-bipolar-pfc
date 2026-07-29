@@ -28,8 +28,6 @@ from VeraGridEngine.Topology.detect_substations import detect_substations, detec
 from VeraGrid.Gui.Analysis.object_plot_analysis import object_histogram_analysis
 from VeraGrid.Gui.messages import yes_no_question, warning_msg, info_msg
 from VeraGrid.Gui.Main.SubClasses.Model.diagrams import DiagramsMain
-from VeraGrid.Gui.DeviceEditors.LineEditor.line_device_editor import LineDeviceEditorDialog
-from VeraGrid.Gui.DeviceEditors.DcLineEditor.dc_line_device_editor import DcLineDeviceEditorDialog
 from VeraGrid.Gui.DeviceEditors.LoadDesigner.load_device_editor import LoadDeviceEditorDialog
 from VeraGrid.Gui.DeviceEditors.GeneratorEditor.generator_editor import GeneratorEditorDialog
 from VeraGrid.Gui.DeviceEditors.VscEditor.vsc_device_editor import VscDeviceEditorDialog
@@ -46,6 +44,7 @@ from VeraGrid.Gui.DeviceEditors.Transformer3wEditor.transformer3w_device_editor 
 from VeraGrid.Gui.DeviceEditors.ControllableShuntEditor.controllable_shunt_device_editor import (
     ControllableShuntDeviceEditorDialog,
 )
+from VeraGrid.Gui.DeviceEditors.device_editor_factory import build_device_editor_dialog
 from VeraGrid.Gui.DeviceEditors.TemplateDeviceEditor.template_device_editor import TemplateDeviceEditor
 from VeraGrid.Gui.Icons.icon_associations import device_type_icons
 
@@ -1024,12 +1023,8 @@ class DataBaseTableMain(DiagramsMain):
                         self.tower_builder_window.resize(int(1.81 * 700.0), 700)
                         self.tower_builder_window.exec()
 
-                    elif elm_type == DeviceType.LineDevice.value:
-                        dlg = LineDeviceEditorDialog(api_object=elm, circuit=self.circuit)
-                        dlg.exec()
-
-                    elif elm_type == DeviceType.DCLineDevice.value:
-                        dlg = DcLineDeviceEditorDialog(api_object=elm, circuit=self.circuit)
+                    elif elm_type == DeviceType.LineDevice.value or elm_type == DeviceType.DCLineDevice.value:
+                        dlg = build_device_editor_dialog(api_object=elm, circuit=self.circuit)
                         if dlg.exec():
                             pass
 

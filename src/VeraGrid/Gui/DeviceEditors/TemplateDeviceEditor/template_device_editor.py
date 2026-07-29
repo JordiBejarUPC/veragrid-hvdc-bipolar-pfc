@@ -379,7 +379,7 @@ class TemplateDeviceEditor(QtWidgets.QDialog):
         self.associations_model: AssociationsModel | None = None
         self._populate_associations_combo_box()
         self.admittance_matrix_properties: list[GCProp] = self._get_admittance_matrix_properties()
-        self.admittance_matrix_widgets: dict[str, AdmittanceMatrixEditorWidget] = dict()
+        self.admittance_matrix_widget: AdmittanceMatrixEditorWidget | None = None
         self._build_admittance_matrix_tab()
         self.line_locations_properties: list[GCProp] = self._get_line_locations_properties()
         self.line_locations_widgets: dict[str, LineLocationsEditorWidget] = dict()
@@ -514,12 +514,12 @@ class TemplateDeviceEditor(QtWidgets.QDialog):
         """
         Apply the edited admittance matrices back to the API object.
         """
-        if len(self.admittance_matrix_properties) > 0:
+        if len(self.admittance_matrix_properties) > 0 and self.admittance_matrix_widget is not None:
+            edited_values: dict[str, object] = self.admittance_matrix_widget.get_admittance_matrices()
             prop: GCProp
             for prop in self.admittance_matrix_properties:
-                if prop.name in self.admittance_matrix_widgets:
-                    edited_value = self.admittance_matrix_widgets[prop.name].get_value()
-                    self.api_object.set_value(prop=prop, t_idx=None, value=edited_value)
+                if prop.name in edited_values:
+                    self.api_object.set_value(prop=prop, t_idx=None, value=edited_values[prop.name])
                 else:
                     pass
 
@@ -550,11 +550,12 @@ class TemplateDeviceEditor(QtWidgets.QDialog):
         phase_state_by_property: dict[str, dict[str, bool]] = dict()
         prop: GCProp
 
-        for prop in self.admittance_matrix_properties:
-            if prop.name in self.admittance_matrix_widgets:
-                phase_state_by_property[prop.name] = self.admittance_matrix_widgets[prop.name].get_phase_state()
-            else:
-                pass
+        if self.admittance_matrix_widget is not None:
+            shared_phase_state: dict[str, bool] = self.admittance_matrix_widget.get_phase_state()
+            for prop in self.admittance_matrix_properties:
+                phase_state_by_property[prop.name] = dict(shared_phase_state)
+        else:
+            pass
 
         self.api_object.fill_3_phase_from_sequence()
 
@@ -579,33 +580,33 @@ class TemplateDeviceEditor(QtWidgets.QDialog):
 
         :return: ``True`` when all admittance widgets only use A/B/C subsets with ``N=False``.
         """
-        prop: GCProp
-        for prop in self.admittance_matrix_properties:
-            if prop.name in self.admittance_matrix_widgets:
-                phase_state = self.admittance_matrix_widgets[prop.name].get_phase_state()
-                if phase_state["N"]:
-                    return False
-                else:
-                    if phase_state["A"] or phase_state["B"] or phase_state["C"]:
-                        pass
-                    else:
-                        return False
+        if self.admittance_matrix_widget is not None:
+            phase_state: dict[str, bool] = self.admittance_matrix_widget.get_phase_state()
+            if phase_state["N"]:
+                return False
             else:
-                pass
-
-        return True
+                if phase_state["A"] or phase_state["B"] or phase_state["C"]:
+                    return True
+                else:
+                    return False
+        else:
+            return True
 
     def _reload_admittance_matrix_widgets_from_object(self) -> None:
         """
         Reload the admittance-matrix widgets from the current API object values.
         """
-        prop: GCProp
-        for prop in self.admittance_matrix_properties:
-            if prop.name in self.admittance_matrix_widgets:
-                matrix_value = self.api_object.get_snapshot_value(prop=prop)
-                self.admittance_matrix_widgets[prop.name].set_value(admittance_matrix=matrix_value)
-            else:
-                pass
+        if self.admittance_matrix_widget is not None:
+            ys_prop: GCProp | None = self._get_named_admittance_matrix_property(prop_name="ys")
+            ysh_prop: GCProp | None = self._get_named_admittance_matrix_property(prop_name="ysh")
+            ys_value = self.api_object.get_snapshot_value(prop=ys_prop) if ys_prop is not None else None
+            ysh_value = self.api_object.get_snapshot_value(prop=ysh_prop) if ysh_prop is not None else None
+            self.admittance_matrix_widget.set_admittance_matrices(
+                ys_admittance_matrix=ys_value,
+                ysh_admittance_matrix=ysh_value,
+            )
+        else:
+            pass
 
     def _get_profile_properties(self) -> list[GCProp]:
         """
@@ -647,6 +648,21 @@ class TemplateDeviceEditor(QtWidgets.QDialog):
                 pass
         return admittance_properties
 
+    def _get_named_admittance_matrix_property(self, prop_name: str) -> GCProp | None:
+        """
+        Return one admittance-matrix property by name when available.
+
+        :param prop_name: Requested property name.
+        :return: Matching property or ``None``.
+        """
+        prop: GCProp
+        for prop in self.admittance_matrix_properties:
+            if prop.name == prop_name:
+                return prop
+            else:
+                pass
+        return None
+
     def _get_line_locations_properties(self) -> list[GCProp]:
         """
         Get ordered property list that stores line locations.
@@ -677,32 +693,21 @@ class TemplateDeviceEditor(QtWidgets.QDialog):
             info_label.setWordWrap(True)
             admittance_layout.addWidget(info_label)
 
-            prop: GCProp
-            for prop in self.admittance_matrix_properties:
-                matrix_value = self.api_object.get_snapshot_value(prop=prop)
-                editor_widget: AdmittanceMatrixEditorWidget = AdmittanceMatrixEditorWidget(
-                    admittance_matrix=matrix_value,
-                    title=prop.name,
-                    description=prop.definition,
-                    parent=admittance_tab,
-                )
-                self.admittance_matrix_widgets[prop.name] = editor_widget
-                admittance_layout.addWidget(editor_widget)
+            ys_prop: GCProp | None = self._get_named_admittance_matrix_property(prop_name="ys")
+            ysh_prop: GCProp | None = self._get_named_admittance_matrix_property(prop_name="ysh")
+            ys_value = self.api_object.get_snapshot_value(prop=ys_prop) if ys_prop is not None else None
+            ysh_value = self.api_object.get_snapshot_value(prop=ysh_prop) if ysh_prop is not None else None
 
-            button_layout: QtWidgets.QHBoxLayout = QtWidgets.QHBoxLayout()
-            compute_button: QtWidgets.QPushButton = QtWidgets.QPushButton(
-                "Compute from sequence values",
-                admittance_tab,
+            self.admittance_matrix_widget = AdmittanceMatrixEditorWidget(
+                ys_admittance_matrix=ys_value,
+                ysh_admittance_matrix=ysh_value,
+                title="Admittance matrices",
+                description="Edit the dense complex admittance matrices exposed by this device.",
+                parent=admittance_tab,
             )
-            compute_button.setIcon(QtGui.QIcon(":/Icons/icons/automatic_layout.png"))
-            compute_button.clicked.connect(self.compute_admittance_matrix_from_sequence_values)
-            apply_button: QtWidgets.QPushButton = QtWidgets.QPushButton("Accept", admittance_tab)
-            apply_button.setIcon(QtGui.QIcon(":/Icons/icons/accept.png"))
-            apply_button.clicked.connect(self.apply_admittance_matrix_changes)
-            button_layout.addWidget(compute_button)
-            button_layout.addStretch()
-            button_layout.addWidget(apply_button)
-            admittance_layout.addLayout(button_layout)
+            self.admittance_matrix_widget.compute_requested.connect(self.compute_admittance_matrix_from_sequence_values)
+            self.admittance_matrix_widget.accept_requested.connect(self.apply_admittance_matrix_changes)
+            admittance_layout.addWidget(self.admittance_matrix_widget)
 
             tab_index: int = self.tab_widget.addTab(admittance_tab, "Admittance")
             self.tab_widget.setTabIcon(tab_index, QtGui.QIcon(":/Icons/icons/edit.png"))
