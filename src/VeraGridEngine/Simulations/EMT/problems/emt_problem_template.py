@@ -40,6 +40,34 @@ def _get_external_mapping(mdl: Block) -> Optional[Dict[Any, Var]]:
         return external_mapping
 
 
+def _collect_block_tree_sequence(root_block: Block) -> List[Block]:
+    """
+    Return the symbolic block tree in root-first traversal order.
+
+    The EMT engine must inspect the full block hierarchy because editor-facing
+    wrappers may expose connection variables at the root while the real dynamic
+    equations live in child blocks.
+
+    :param root_block: Root symbolic block.
+    :return: Ordered block list including the root and every descendant.
+    """
+    ordered_blocks: List[Block] = list()
+    pending_blocks: List[Block] = list([root_block])
+    pending_index: int = 0
+    current_block: Block
+    child_block: Block
+
+    while pending_index < len(pending_blocks):
+        current_block = pending_blocks[pending_index]
+        pending_index += 1
+        ordered_blocks.append(current_block)
+
+        for child_block in current_block.children:
+            pending_blocks.append(child_block)
+
+    return ordered_blocks
+
+
 class EmtBoundaryUpdateProtocol(Protocol):
     """
     Structural protocol implemented by EMT boundary update providers.
@@ -232,31 +260,48 @@ class EmtProblemTemplate(ABC):
         self._glob_time: Var = glob_time
         self._newton_trace_collector: Optional[Any] = None
 
-        self._state_vars: List[Var] = self.sys_block.state_vars
-        self._algebraic_vars: List[Var] = self.sys_block.algebraic_vars
-        self._state_eqs: List[Any] = self.sys_block.state_eqs
-        self._algebraic_eqs: List[Any] = self.sys_block.algebraic_eqs
-        self._diff_vars: List[Var] = self.sys_block.diff_vars
+        block_sequence: List[Block] = _collect_block_tree_sequence(self.sys_block)
+        block_item: Block
+        runtime_var: Var
+        runtime_expr: Any
+        const_var: Var
+        const_expr: Const
 
-        self._static_parameter_values: Dict[Var, Const] = static_parameter_values_mapping
-        self._constant_parameters: List[Var] = list(self._static_parameter_values.keys())
-        self._parameters_values: List[Const] = list(self._static_parameter_values.values())
+        self._state_vars: List[Var] = list()
+        self._algebraic_vars: List[Var] = list()
+        self._state_eqs: List[Any] = list()
+        self._algebraic_eqs: List[Any] = list()
+        self._diff_vars: List[Var] = list()
 
-        self._variable_parameters: List[Var] = list()
-        self._event_parameters_eqs: List[Any] = list()
-
+        self._static_parameter_values: Dict[Var, Const] = dict()
         self._variable_parameters: List[Var] = list()
         self._event_parameters_eqs: List[Any] = list()
         self._runtime_mode_uids: set[int] = set()
 
-        if self.sys_block.event_dict:
-            self._variable_parameters.extend(list(self.sys_block.event_dict.keys()))
-            self._event_parameters_eqs.extend(list(self.sys_block.event_dict.values()))
+        for block_item in block_sequence:
+            self._state_vars.extend(block_item.state_vars)
+            self._algebraic_vars.extend(block_item.algebraic_vars)
+            self._state_eqs.extend(block_item.state_eqs)
+            self._algebraic_eqs.extend(block_item.algebraic_eqs)
+            self._diff_vars.extend(block_item.diff_vars)
 
-        self._variable_parameters.extend(list(self.sys_block.mode_dict.keys()))
-        self._event_parameters_eqs.extend(list(self.sys_block.mode_dict.values()))
-        for v in self.sys_block.mode_dict.keys():
-            self._runtime_mode_uids.add(v.uid)
+            for const_var, const_expr in block_item.parameters.items():
+                self._static_parameter_values[const_var] = const_expr
+
+            for runtime_var, runtime_expr in block_item.event_dict.items():
+                self._variable_parameters.append(runtime_var)
+                self._event_parameters_eqs.append(runtime_expr)
+
+            for runtime_var, runtime_expr in block_item.mode_dict.items():
+                self._variable_parameters.append(runtime_var)
+                self._event_parameters_eqs.append(runtime_expr)
+                self._runtime_mode_uids.add(runtime_var.uid)
+
+        for const_var, const_expr in static_parameter_values_mapping.items():
+            self._static_parameter_values[const_var] = const_expr
+
+        self._constant_parameters: List[Var] = list(self._static_parameter_values.keys())
+        self._parameters_values: List[Const] = list(self._static_parameter_values.values())
 
         self._runtime_all_parameters_source: List[Var] = list(self._variable_parameters)
         self._runtime_all_eqs_source: List[Any] = list(self._event_parameters_eqs)
