@@ -944,43 +944,47 @@ class LinearMultiContingency:
                                  base_flow: ObjVec,
                                  injections: ObjVec,
                                  hvdc_flow: ObjVec | None = None,
-                                 vsc_flow: ObjVec | None = None) -> Tuple[ObjVec, BoolVec, IntVec]:
+                                 vsc_flow: ObjVec | None = None,
+                                 row_filter: BoolVec | None = None) -> Tuple[ObjVec, BoolVec, IntVec]:
         """
         Get contingency flows using the LP interface equations
         :param base_flow: Base branch flows (nbranch)
         :param injections: Bus injections (nbus)
         :param hvdc_flow: Base HvdcLine flows (n_hvdc)
         :param vsc_flow: Base Vsc flows (n_vsc)
-        :return: New flows (nbranch)
+        :param row_filter: per-branch flag, True for the branches the caller is going to constrain.
+        :return: New flows (nbranch), the mask of branches that changed, and their indices
         """
         mask: BoolVec = np.zeros(len(base_flow), dtype=bool)
         flow: ObjVec = base_flow.copy()
-        changed_idx: IntVec = np.zeros(0, dtype=int)
 
         if len(self.branch_indices) > 0:
-            inc, changed_idx = lpDot1D_changes(self.mlodf_factors, base_flow[self.branch_indices])
-            if len(changed_idx) > 0:
-                mask[changed_idx] = True
-                flow[changed_idx] += inc[changed_idx]
+            inc, block_idx = lpDot1D_changes(self.mlodf_factors, base_flow[self.branch_indices], row_filter)
+            if len(block_idx) > 0:
+                mask[block_idx] = True
+                flow[block_idx] += inc[block_idx]
 
         if len(self.hvdc_indices) > 0 and hvdc_flow is not None:
-            inc, changed_idx = lpDot1D_changes(self.hvdc_odf, hvdc_flow[self.hvdc_indices])
-            if len(changed_idx) > 0:
-                mask[changed_idx] = True
-                flow[changed_idx] += inc[changed_idx]
+            inc, block_idx = lpDot1D_changes(self.hvdc_odf, hvdc_flow[self.hvdc_indices], row_filter)
+            if len(block_idx) > 0:
+                mask[block_idx] = True
+                flow[block_idx] += inc[block_idx]
 
         if len(self.vsc_indices) > 0 and vsc_flow is not None:
-            inc, changed_idx = lpDot1D_changes(self.vsc_odf, vsc_flow[self.vsc_indices])
-            if len(changed_idx) > 0:
-                mask[changed_idx] = True
-                flow[changed_idx] += inc[changed_idx]
+            inc, block_idx = lpDot1D_changes(self.vsc_odf, vsc_flow[self.vsc_indices], row_filter)
+            if len(block_idx) > 0:
+                mask[block_idx] = True
+                flow[block_idx] += inc[block_idx]
 
         if len(self.bus_indices) > 0:
             injection_delta: ObjVec = self.injections_factor * injections[self.bus_indices]
-            inc, changed_idx = lpDot1D_changes(self.compensated_ptdf_factors, injection_delta)
-            if len(changed_idx) > 0:
-                mask[changed_idx] = True
-                flow[changed_idx] += inc[changed_idx]
+            inc, block_idx = lpDot1D_changes(self.compensated_ptdf_factors, injection_delta, row_filter)
+            if len(block_idx) > 0:
+                mask[block_idx] = True
+                flow[block_idx] += inc[block_idx]
+
+        # Derive the changed indices from the accumulated mask
+        changed_idx: IntVec = np.flatnonzero(mask)
 
         return flow, mask, changed_idx
 
