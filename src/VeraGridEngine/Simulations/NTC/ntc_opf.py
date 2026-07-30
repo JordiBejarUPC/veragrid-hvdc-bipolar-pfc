@@ -1784,7 +1784,7 @@ def add_linear_branches_formulation(t_idx: int,
                     # is a phase shifter device (like phase shifter transformer or VSC with P control)
                     prob.add_cst(
                         cst=branch_vars.flows[t_idx, m] == bk * (bus_vars.Va[t_idx, fr] -
-                                                                 bus_vars.Va[t_idx, to] +
+                                                                 bus_vars.Va[t_idx, to] -
                                                                  branch_vars.tap_angles[t_idx, m]),
                         name=join("ac_flows_ps_", [t_idx, m], "_")
                     )
@@ -1797,7 +1797,7 @@ def add_linear_branches_formulation(t_idx: int,
                         # rest of the branches
                         prob.add_cst(
                             cst=branch_vars.flows[t_idx, m] == bk * (bus_vars.Va[t_idx, fr] -
-                                                                     bus_vars.Va[t_idx, to] +
+                                                                     bus_vars.Va[t_idx, to] -
                                                                      branch_vars.tap_angles[t_idx, m]),
                             name=join("ac_flow_ps_fix", [t_idx, m], "_")
                         )
@@ -3041,7 +3041,8 @@ def run_linear_ntc_opf(grid: MultiCircuit,
                             logger=logger)
 
         # compute the power flow
-        branch_flows = ls.get_flows(Pbus.real)
+        # get_flows works in MW while this formulation works in p.u., so convert in and out
+        branch_flows = ls.get_flows(Pbus.real * nc.Sbase) / nc.Sbase
         branch_loading = branch_flows / (nc.passive_branch_data.rates / nc.Sbase + 1e-20)
 
         # compute the sensitivity to the exchange

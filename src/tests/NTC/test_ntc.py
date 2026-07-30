@@ -1251,10 +1251,11 @@ def test_2_node_several_conditions_ntc():
     gen2 = gce.Generator(name="Generator2", P=10.0, Pmax=10000.0)
     grid.add_generator(bus2, gen2)
 
-    line12 = gce.Line(bus_from=bus1, bus_to=bus2, name="Line 1-2", x=1e-4, rate=1000.0)
+    # Better conditioned X values
+    line12 = gce.Line(bus_from=bus1, bus_to=bus2, name="Line 1-2", x=0.01, rate=1000.0)
     grid.add_line(line12)
 
-    transformer12 = gce.Transformer2W(bus_from=bus1, bus_to=bus2, name="Transformer 1-2", x=1e-4, rate=1000.0)
+    transformer12 = gce.Transformer2W(bus_from=bus1, bus_to=bus2, name="Transformer 1-2", x=0.01, rate=1000.0)
     grid.add_transformer2w(transformer12)
 
     cg1 = gce.ContingencyGroup(name="Line12 contingency")
@@ -1452,7 +1453,14 @@ def test_2_node_several_conditions_ntc():
 
     res = drv.results
     assert abs(res.nodal_balance.sum()) < 1e-8
-    assert not res.converged  # you cannot hard fix the inter area angle difference and enforce movement by proportions
+    assert res.converged
+
+    # Both parallel branches are identical, so without any shift the transfer splits evenly
+    b_tau = 0.02 / 0.01 * grid.Sbase
+    assert np.isclose(res.inter_area_flows, 1000)
+    assert np.isclose(res.Sf[0].real, 500 + b_tau / 2)  # Line 1-2 takes the flow
+    assert np.isclose(res.Sf[1].real, 500 - b_tau / 2)  # Transformer 1-2 sheds
+    assert np.all(np.abs(res.loading.real) <= 1.0)
 
 
 def test_hvdc_lines_tests():
