@@ -22,6 +22,7 @@ class BusRmsTemplate(RmsModelTemplate):
         "_block",
         "Vm",
         "Va",
+        "Vdc",
     )
 
     def __init__(self, vf: VarFactory, is_dc:bool=False, name: str = "rms_bus_template"):
@@ -92,9 +93,9 @@ def get_bus_rms_algebraic_vars(bus_rms_model: Block) ->Tuple[Var | None, Var | N
     :return: Tuple with two positions to preserve the project API
     """
     mapping = bus_rms_model.external_mapping
-    Vdc = mapping[VarPowerFlowReferenceType.Vdc]
-    Vm = mapping[VarPowerFlowReferenceType.Vm]
-    Va = mapping[VarPowerFlowReferenceType.Va]
+    Vdc = mapping.get(VarPowerFlowReferenceType.Vdc)
+    Vm = mapping.get(VarPowerFlowReferenceType.Vm)
+    Va = mapping.get(VarPowerFlowReferenceType.Va)
     if Vdc is not None and Vm is None and Va is  None:
         return Vdc, None, None
     elif Vdc is None and Vm is not None and Va is not None:

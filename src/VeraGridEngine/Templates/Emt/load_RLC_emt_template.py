@@ -13,6 +13,7 @@ from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Templates.template_definition import TemplateDefinition, TemplateProp
 from VeraGridEngine.Utils.Symbolic.block import Block, Expr, Var
+from VeraGridEngine.Utils.Symbolic.symbolic import max
 from VeraGridEngine.enumerations import BlockType, DeviceType, ParamPowerFlowReferenceType, ShuntConnectionType, VarPowerFlowReferenceType, WindingType
 
 
@@ -1169,7 +1170,11 @@ def get_shunt_r_emt_template(
 
         # The event dictionary holds the algebraic resistance definition so EMT
         # events can still alter the effective resistor without core changes.
-        block.event_dict[resistance_var] = vnom_var ** 2 / pl0_var
+        # Some EMT workflows intentionally map conductance-backed PF data into
+        # this shunt-R template, which can leave ``Pl0`` at zero until one later
+        # explicit override or scheduled event writes the intended resistance.
+        # Clamp the denominator so the runtime parameter vector stays finite.
+        block.event_dict[resistance_var] = vnom_var ** 2 / max(pl0_var, 1.0e-9)
 
         current_var: Var = vf.add_var(
             name=f"i_{phase_label}",
