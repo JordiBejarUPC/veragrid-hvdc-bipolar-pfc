@@ -296,8 +296,8 @@ class SimulationsMain(TimeEventsMain):
 
         # emt simulation
         self.ui.emt_integration_method_comboBox.setModel(
-            gf.ComboModel(enum_values=[DynamicIntegrationMethod.DaeBackEuler,
-                                       DynamicIntegrationMethod.DaeTrapezoidal,
+            gf.ComboModel(enum_values=[DynamicIntegrationMethod.DaeTrapezoidal,
+                                       DynamicIntegrationMethod.DaeBackEuler,
                                        DynamicIntegrationMethod.DaeBDF2],
                           translate=self.tr)
         )
