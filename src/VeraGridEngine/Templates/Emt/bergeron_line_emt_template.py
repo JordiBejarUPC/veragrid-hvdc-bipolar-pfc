@@ -217,14 +217,22 @@ def get_bergeron_line_emt_template(
     vf_vars = [vf.add_var(name=f"vf_{ph_label}", reference=vf_keys[ph_label]) for ph_label in active_ph]
     vt_vars = [vf.add_var(name=f"vt_{ph_label}", reference=vt_keys[ph_label]) for ph_label in active_ph]
 
-    templ.block.in_vars = vf_vars + vt_vars
+    block: Block = Block()
+    block.in_vars = vf_vars + vt_vars
 
 
     ih_f = [vf.add_var(f"Ih_f_{ph}") for ph in active_ph]
     ih_t = [vf.add_var(f"Ih_t_{ph}") for ph in active_ph]
 
     # I history
-    templ.block.event_dict = {p: vf.add_const(0.0) for p in (ih_f + ih_t)}
+    block.event_dict = {p: vf.add_const(0.0) for p in (ih_f + ih_t)}
+    block.out_vars = list()
+
+    templ.block.children.append(block)
+    templ.block.external_mapping = block.external_mapping
+    templ.block.api_obj_mapping = block.api_obj_mapping
+    templ.block.in_vars = block.in_vars
+    templ.block.out_vars = block.out_vars
 
 
     return templ

@@ -13,7 +13,7 @@ from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Utils.Symbolic.block import Block, Var
 from VeraGridEngine.enumerations import DeviceType
 from VeraGridEngine.Utils.Symbolic.bus_rms_template import initialize_bus_rms
-from VeraGridEngine.Utils.Symbolic.bus_emt_template import BusEmtTemplate
+from VeraGridEngine.Utils.Symbolic.bus_emt_template import BusEmtTemplate, get_bus_emt_template
 from VeraGridEngine.Devices.Parents.dynamic_bus_parent import EmtBusConnectionSide, EmtBusConnectedModelRecord
 
 
@@ -791,8 +791,16 @@ def connect_bus_variables_rms(device: Any, model:Block, var_factory: VarFactory 
     :return:
     :rtype:
     """
-
-    if device.device_type in [DeviceType.BranchDevice, DeviceType.LineDevice, DeviceType.Transformer2WDevice, DeviceType.Transformer3WDevice]:
+    if device.device_type in [DeviceType.BranchDevice,
+                              DeviceType.LineDevice,
+                              DeviceType.Transformer2WDevice,
+                              DeviceType.Transformer3WDevice,
+                              DeviceType.DCLineDevice,
+                              DeviceType.HVDCLineDevice,
+                              DeviceType.SwitchDevice,
+                              DeviceType.SeriesReactanceDevice,
+                              DeviceType.UpfcDevice,
+                              DeviceType.VscDevice]:
         # Check if using phasor or polar coordinates by looking at bus model outputs
         bus_model = device.bus_from.rms_model
         if bus_model.empty():
@@ -873,81 +881,32 @@ def connect_pending_injection_bus_variables_emt(bus: Any,
                 bus.remove_pending_emt_device(pending_device)
 
 
-def build_emt_bus_mask_from_existing_model(bus_model: Block) -> list[bool]:
+def initialize_bus_emt_from_local_device_context(bus: Any,
+                                                 var_factory: VarFactory) -> None:
     """
-    Build the AC phase mask already materialized in one EMT bus model.
+    Materialize one minimal EMT bus shell from the local bus context.
 
-    The shared EMT attachment flow must preserve the phases that already exist on
-    one bus because other connected EMT devices may already depend on them. This
-    helper reads the current bus external mapping and converts it into the
-    canonical ``[N, A, B, C]`` phase mask used by the bus-shell ensure logic.
+    When the GUI assigns one single-bus EMT template before any branch template
+    exists, there is no topology-derived phase mask available yet. In that case
+    the fallback shell must still be materialized immediately so the device can
+    bind its voltage inputs. The default shell matches the existing bus-mask
+    fallback contract: AC buses expose ABC and DC buses expose ``Vdc``.
 
-    :param bus_model: Existing EMT bus block.
-    :return: Phase mask ordered as ``[N, A, B, C]``.
-    """
-    external_mapping: dict[Any, Var | None] = bus_model.external_mapping
-    mask: list[bool] = list([False, False, False, False])
-
-    mask[0] = external_mapping.get(VarPowerFlowReferenceType.v_N, None) is not None
-    mask[1] = external_mapping.get(VarPowerFlowReferenceType.v_A, None) is not None
-    mask[2] = external_mapping.get(VarPowerFlowReferenceType.v_B, None) is not None
-    mask[3] = external_mapping.get(VarPowerFlowReferenceType.v_C, None) is not None
-
-    return mask
-
-
-def ensure_bus_emt_shell(bus: Any,
-                         required_mask: list[bool],
-                         var_factory: VarFactory) -> bool:
-    """
-    Ensure that one bus owns one EMT shell covering the required phases.
-
-    The EMT assignment algorithm must materialize a missing bus shell on first
-    use and expand one existing AC shell only when one newly attached device
-    requires additional phases.
-
-    :param bus: Bus whose EMT shell must exist.
-    :param required_mask: Required AC phase mask ordered as ``[N, A, B, C]``.
+    :param bus: Bus whose EMT shell must be initialized.
     :param var_factory: Shared symbolic variable factory.
-    :return: ``True`` when the bus shell had to be rebuilt.
+    :return: None.
     """
-    bus_shell_rebuilt: bool = False
+    default_mask: list[bool]
 
     if bus.is_dc:
-        if bus.emt_model.empty():
-            bus.emt_model = BusEmtTemplate(vf=var_factory,
-                                           mask=list([False, False, False, False]),
-                                           is_dc=True,
-                                           name=f"{bus.name}_emt_template").block
-            bus_shell_rebuilt = True
-        else:
-            pass
+        default_mask = list([False, False, False, False])
     else:
-        if bus.emt_model.empty():
-            bus.emt_model = BusEmtTemplate(vf=var_factory,
-                                           mask=required_mask,
-                                           is_dc=False,
-                                           name=f"{bus.name}_emt_template").block
-            bus_shell_rebuilt = True
-        else:
-            existing_mask: list[bool] = build_emt_bus_mask_from_existing_model(bus.emt_model)
-            merged_mask: list[bool] = list([False, False, False, False])
+        default_mask = list([False, True, True, True])
 
-            merged_mask[0] = existing_mask[0] or required_mask[0]
-            merged_mask[1] = existing_mask[1] or required_mask[1]
-            merged_mask[2] = existing_mask[2] or required_mask[2]
-            merged_mask[3] = existing_mask[3] or required_mask[3]
-
-            if merged_mask != existing_mask:
-                bus.emt_model = BusEmtTemplate(vf=var_factory,
-                                               mask=merged_mask,
-                                               is_dc=False,
-                                               name=f"{bus.name}_emt_template").block
-                bus_shell_rebuilt = True
-            else:
-                pass
-
-    return bus_shell_rebuilt
+    bus.emt_model = BusEmtTemplate(vf=var_factory,
+                                   mask=default_mask,
+                                   is_dc=bus.is_dc,
+                                   name=f"{bus.name}_emt").block
 
 
 def _connect_branch_emt_model_to_bus(device: Any,
@@ -988,22 +947,15 @@ def _connect_branch_emt_model_to_bus(device: Any,
             else:
                 pass
 
-
 def attach_emt_model_to_buses(device: Any,
                               model: Block,
-                              var_factory: VarFactory,
-                              bus_mask: list[bool] | None = None,
-                              from_mask: list[bool] | None = None,
-                              to_mask: list[bool] | None = None) -> None:
+                              var_factory: VarFactory) -> None:
     """
     Attach one EMT model to its bus shells using one shared engine workflow.
 
     :param device: Device owning the EMT model.
     :param model: Materialized EMT model block to attach.
     :param var_factory: Shared symbolic variable factory.
-    :param bus_mask: Required single-bus mask for injection devices.
-    :param from_mask: Required from-side mask for branch devices.
-    :param to_mask: Required to-side mask for branch devices.
     :return: None.
     """
     branch_devices: list[DeviceType] = list([DeviceType.BranchDevice,
@@ -1025,24 +977,11 @@ def attach_emt_model_to_buses(device: Any,
     unregister_connected_emt_model_from_attached_buses(device=device)
 
     if device.device_type in branch_devices:
-        from_required_mask: list[bool]
-        to_required_mask: list[bool]
-        from_bus_rebuilt: bool
-        to_bus_rebuilt: bool
-
-        if from_mask is None:
-            from_required_mask = list([False, False, False, False])
+        if device.bus_from.emt_model.empty():
+            raise ValueError(f"Connection Bus EMT model cannot be empty, initialize {device.bus_from.name} EMT model")
         else:
-            from_required_mask = from_mask
+            pass
 
-        if to_mask is None:
-            to_required_mask = list([False, False, False, False])
-        else:
-            to_required_mask = to_mask
-
-        from_bus_rebuilt = ensure_bus_emt_shell(bus=device.bus_from,
-                                                required_mask=from_required_mask,
-                                                var_factory=var_factory)
         _connect_branch_emt_model_to_bus(device=device,
                                          model=model,
                                          bus=device.bus_from,
@@ -1052,16 +991,12 @@ def attach_emt_model_to_buses(device: Any,
                                      device=device,
                                      model=model,
                                      side=EmtBusConnectionSide.FROM)
-        if from_bus_rebuilt:
-            reconnect_registered_emt_models_for_bus(bus=device.bus_from,
-                                                    var_factory=var_factory)
+
+        if device.bus_to.emt_model.empty():
+            raise ValueError(f"Connection Bus EMT model cannot be empty, initialize {device.bus_to.name} EMT model")
         else:
             pass
-        connect_pending_injection_bus_variables_emt(device.bus_from, var_factory)
 
-        to_bus_rebuilt = ensure_bus_emt_shell(bus=device.bus_to,
-                                              required_mask=to_required_mask,
-                                              var_factory=var_factory)
         _connect_branch_emt_model_to_bus(device=device,
                                          model=model,
                                          bus=device.bus_to,
@@ -1071,12 +1006,6 @@ def attach_emt_model_to_buses(device: Any,
                                      device=device,
                                      model=model,
                                      side=EmtBusConnectionSide.TO)
-        if to_bus_rebuilt:
-            reconnect_registered_emt_models_for_bus(bus=device.bus_to,
-                                                    var_factory=var_factory)
-        else:
-            pass
-        connect_pending_injection_bus_variables_emt(device.bus_to, var_factory)
 
         # Non-VSC branch devices expose bus-side EMT voltage contracts through
         # root external-mapping vars such as ``vf_A`` and ``vt_A``. The symbolic
@@ -1092,21 +1021,8 @@ def attach_emt_model_to_buses(device: Any,
             synchronize_saved_emt_root_contract_identity(device=device)
             synchronize_saved_emt_root_contract_from_bus(device=device)
     else:
-        single_bus_required_mask: list[bool]
-
-        if bus_mask is None:
-            if device.bus.is_dc:
-                single_bus_required_mask = list([False, False, False, False])
-            else:
-                single_bus_required_mask = list([False, True, True, True])
-        else:
-            single_bus_required_mask = bus_mask
-
-        ensure_bus_emt_shell(bus=device.bus,
-                             required_mask=single_bus_required_mask,
-                             var_factory=var_factory)
         if device.bus.emt_model.empty():
-            pass
+            raise ValueError(f"Connection Bus EMT model cannot be empty, initialize {device.bus.name} EMT model")
         else:
             connect_injection_emt(device.bus.emt_model, model, var_factory)
             register_connected_emt_model(bus=device.bus,
@@ -1196,16 +1112,32 @@ def connect_bus_variables_emt(device: Any,
         else:
             pass
 
+        if device.bus_from.emt_model.empty():
+            if grid is None:
+                initialize_bus_emt_from_local_device_context(bus=device.bus_from,
+                                                             var_factory=var_factory)
+            else:
+                get_bus_emt_template(grid=grid, bus=device.bus_from)
+        else:
+            pass
+
         if not device.bus_to.is_dc:
             to_required_mask = _get_branch_ac_phase_mask(device)
         else:
             pass
 
+        if device.bus_to.emt_model.empty():
+            if grid is None:
+                initialize_bus_emt_from_local_device_context(bus=device.bus_to,
+                                                             var_factory=var_factory)
+            else:
+                get_bus_emt_template(grid=grid, bus=device.bus_to)
+        else:
+            pass
+
         attach_emt_model_to_buses(device=device,
                                   model=model,
-                                  var_factory=var_factory,
-                                  from_mask=from_required_mask,
-                                  to_mask=to_required_mask)
+                                  var_factory=var_factory)
     else:
         single_bus_required_mask: list[bool]
 
@@ -1214,10 +1146,23 @@ def connect_bus_variables_emt(device: Any,
         else:
             single_bus_required_mask = list([False, True, True, True])
 
+        if device.bus.emt_model.empty():
+            if grid is not None:
+                get_bus_emt_template(grid=grid, bus=device.bus)
+            elif allow_deferred_connection:
+                # GUI template assignment can happen before any branch has
+                # materialized the bus EMT shell. Build the local fallback bus
+                # shell directly instead of storing one back-reference to the grid.
+                initialize_bus_emt_from_local_device_context(bus=device.bus,
+                                                             var_factory=var_factory)
+            else:
+                pass
+        else:
+            pass
+
         attach_emt_model_to_buses(device=device,
                                   model=model,
-                                  var_factory=var_factory,
-                                  bus_mask=single_bus_required_mask)
+                                  var_factory=var_factory)
 
 
 def set_rms_model(device: Any, model:Block, var_factory: VarFactory):
@@ -1228,7 +1173,16 @@ def set_rms_model(device: Any, model:Block, var_factory: VarFactory):
     """
     # connect bus variables
 
-    if device.device_type in [DeviceType.BranchDevice, DeviceType.LineDevice, DeviceType.Transformer2WDevice, DeviceType.Transformer3WDevice]:
+    if device.device_type in [DeviceType.BranchDevice,
+                              DeviceType.LineDevice,
+                              DeviceType.Transformer2WDevice,
+                              DeviceType.Transformer3WDevice,
+                              DeviceType.DCLineDevice,
+                              DeviceType.HVDCLineDevice,
+                              DeviceType.SwitchDevice,
+                              DeviceType.SeriesReactanceDevice,
+                              DeviceType.UpfcDevice,
+                              DeviceType.VscDevice]:
         # Check if using phasor or polar coordinates by looking at bus model outputs
         bus_model = device.bus_from.rms_model
         if not bus_model.empty():
@@ -1605,54 +1559,15 @@ def set_emt_model(device: Any, model: Block, var_factory: VarFactory):
     :param var_factory: Factory to register simulation variables
     :return: None
     """
-    # 1. Connect bus variables depending on the device type
-    if device.device_type in [DeviceType.BranchDevice,
-                              DeviceType.LineDevice,
-                              DeviceType.DCLineDevice,
-                              DeviceType.HVDCLineDevice,
-                              DeviceType.SwitchDevice,
-                              DeviceType.SeriesReactanceDevice,
-                              DeviceType.UpfcDevice,
-                              DeviceType.Transformer2WDevice,
-                              DeviceType.Transformer3WDevice]:
+    # Route all callers through the shared attachment path so branch and
+    # injection EMT models preserve the same root external contract used by the
+    # editor-driven template setters and topology validation.
+    attach_emt_model_to_buses(device=device,
+                              model=model,
+                              var_factory=var_factory)
 
-        # Bus FROM connection
-        bus_from_model = device.bus_from.emt_model
-        if not bus_from_model.empty():
-            connect_line_emt_from(bus_from_model, model, var_factory)
-        else:
-            raise ValueError(f"Connection Bus EMT model cannot be empty, initialize {device.bus_from.name} EMT model")
-
-        # Bus TO connection
-        bus_to_model = device.bus_to.emt_model
-        if not bus_to_model.empty():
-            connect_line_emt_to(bus_to_model, model, var_factory)
-        else:
-            raise ValueError(f"Connection Bus EMT model cannot be empty, initialize {device.bus_to.name} EMT model")
-
-    elif device.device_type == DeviceType.VscDevice:
-
-        # VSC: bus_from is DC, bus_to is AC
-        bus_from_model = device.bus_from.emt_model
-        if not bus_from_model.empty():
-            connect_vsc_emt_from(bus_from_model, model, var_factory, is_dc_bus=device.bus_from.is_dc)
-        else:
-            raise ValueError(f"Connection Bus EMT model cannot be empty, initialize {device.bus_from.name} EMT model")
-
-        bus_to_model = device.bus_to.emt_model
-        if not bus_to_model.empty():
-            connect_vsc_emt_to(bus_to_model, model, var_factory, is_dc_bus=device.bus_to.is_dc)
-        else:
-            raise ValueError(f"Connection Bus EMT model cannot be empty, initialize {device.bus_to.name} EMT model")
-
-    else:
-        # Generic device connection (e.g., Loads, Generators connected to a single bus)
-        if not device.bus.emt_model.empty():
-            connect_injection_emt(device.bus.emt_model, model, var_factory)
-        else:
-            raise ValueError(f"Connection Bus EMT model cannot be empty, initialize {device.bus.name} EMT model")
-
-    # 2. Unify blocks and register all variables in the VarFactory
+    # Register all variables in the VarFactory after the shared attachment path
+    # has rebound the model to the live bus shells.
     model.unify_blocks()
 
     for vr in model.algebraic_vars:
@@ -1665,5 +1580,6 @@ def set_emt_model(device: Any, model: Block, var_factory: VarFactory):
     for vr in model.diff_vars:
         var_factory.register_var(device, vr)
 
-    # 3. Assign the configured model to the device
+    # ``attach_emt_model_to_buses()`` already materialized ``device.emt_model``.
+    # Re-assign the unified root so callers keep the flattened runtime block.
     device.emt_model = model

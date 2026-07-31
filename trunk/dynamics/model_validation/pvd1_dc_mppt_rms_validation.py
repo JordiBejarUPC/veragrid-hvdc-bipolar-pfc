@@ -33,6 +33,13 @@ def find_name_in_block(name: str, block: Block):
     return None
 
 
+def get_pvd1_internal_block(block: Block) -> Block:
+    for child in block.children:
+        if child.name.startswith("PVD1_") or child.name == "PVD1 DC-MPPT RMS template":
+            return child
+    return block
+
+
 def create_grid() -> vge.MultiCircuit:
     grid = vge.MultiCircuit(name="PVD1 DC-MPPT RMS validation", Sbase=100.0)
 
@@ -158,14 +165,15 @@ def plot_results(grid: vge.MultiCircuit, results, file_name: str = "pvd1_dc_mppt
 
     pv_gen = grid.generators[1]
     if pv_gen.rms_model is not None:
-        plot_var(ax_dc, pv_gen.rms_model, "Pavail", "Pavail")
-        plot_var(ax_dc, pv_gen.rms_model, "Pmppt", "Pmppt")
-        plot_var(ax_dc, pv_gen.rms_model, "P_sum", "P_sum")
+        pvd1_block = get_pvd1_internal_block(pv_gen.rms_model)
+        plot_var(ax_dc, pvd1_block, "Pavail", "Pavail")
+        plot_var(ax_dc, pvd1_block, "Pmppt", "Pmppt")
+        plot_var(ax_dc, pvd1_block, "P_sum", "P_sum")
 
-        plot_var(ax_pq, pv_gen.rms_model, "P_pvd1", "P_pvd1")
-        plot_var(ax_pq, pv_gen.rms_model, "Q_pvd1", "Q_pvd1")
-        plot_var(ax_pq, pv_gen.rms_model, "Ip_cmd", "Ip_cmd")
-        plot_var(ax_pq, pv_gen.rms_model, "Iq_cmd", "Iq_cmd")
+        plot_var(ax_pq, pvd1_block, "P_pvd1", "P_pvd1")
+        plot_var(ax_pq, pvd1_block, "Q_pvd1", "Q_pvd1")
+        plot_var(ax_pq, pvd1_block, "Ip_cmd", "Ip_cmd")
+        plot_var(ax_pq, pvd1_block, "Iq_cmd", "Iq_cmd")
 
     for bus in grid.buses:
         if bus.rms_model is not None:

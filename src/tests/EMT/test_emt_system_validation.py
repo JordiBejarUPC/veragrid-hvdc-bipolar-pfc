@@ -336,7 +336,8 @@ def test_vsc_emt_passes_validation():
     pf_results, pf_res_3ph = run_power_flow(grid)
 
     gen_mdl = get_generator_thevenin_rl_emt_template_with_ref(vf=grid.var_factory).block
-    trafo_mdl = get_transformer_emt_template(vf=grid.var_factory, name=transformer.name).block
+    trafo_templ = get_transformer_emt_template(vf=grid.var_factory, name=transformer.name)
+    trafo_mdl = trafo_templ.block.children[0]
     vsc_mdl = get_emt_ideal_converter(
         vf=grid.var_factory,
         name=vsc.name,
@@ -431,7 +432,8 @@ def test_switched_vsc_emt_passes_validation_and_switches_gates() -> None:
     pf_res_3ph = None
 
     gen_mdl = get_generator_thevenin_rl_emt_template_with_ref(vf=grid.var_factory).block
-    trafo_mdl = get_transformer_emt_template(vf=grid.var_factory, name=transformer.name).block
+    trafo_templ = get_transformer_emt_template(vf=grid.var_factory, name=transformer.name)
+    trafo_mdl = trafo_templ.block.children[0]
     vsc_mdl = get_switched_emt_converter(vf=grid.var_factory, name=vsc.name).block
     dc_load_mdl = get_dc_load_emt_template(vf=grid.var_factory, name="dc_load_emt_switched").block
 

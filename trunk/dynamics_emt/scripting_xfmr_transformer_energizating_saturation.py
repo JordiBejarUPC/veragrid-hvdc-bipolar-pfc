@@ -484,7 +484,8 @@ def build_grid_and_run(event_time: float) -> dict[str, Any]:
     for bus in grid.buses:
         get_bus_emt_template(grid, bus)
 
-    xfmr_mdl = get_xfmr_emt_template(vf=grid.var_factory, name="xfmr_sat_test").block
+    xfmr_templ = get_xfmr_emt_template(vf=grid.var_factory, name="xfmr_sat_test")
+    xfmr_mdl = xfmr_templ.block.children[0]
     gen_mdl = get_generator_thevenin_rl_emt_template_with_ref(vf=grid.var_factory, name="gen_sat_test").block
     load_mdl = get_shunt_r_emt_template(vf=grid.var_factory, phA=True, phB=True, phC=True).block
 

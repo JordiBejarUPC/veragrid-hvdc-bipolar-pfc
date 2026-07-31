@@ -4,6 +4,7 @@
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
 from typing import Tuple, Optional, TYPE_CHECKING
+from VeraGridEngine.basic_structures import Logger
 
 from VeraGridEngine.enumerations import DeviceType
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
@@ -99,18 +100,17 @@ class BusEmtTemplate(EmtModelTemplate):
         """
         return self._block
 
-
-def get_bus_emt_template(grid: MultiCircuit,
-                         bus: Bus):
+def get_bus_mask(grid: MultiCircuit,
+                 bus: Bus,
+                 logger: Logger|None = None):
     """
-    Initialize 3ph bus block
-    A bus will have the phases of the branches connected to it
+    Get de bus mask according to the branch phases that are connected to that bus.
     :param grid: Multicircuit
     :param bus: Bus
-    :return:
+    :param logger: logger
+    :return: mask [bool,bool,bool,bool]
     """
 
-    vf = grid.var_factory
     mask = [False, False, False, False]  # [N, A, B, C]
     if not bus.is_dc:
         ys_phase_device_types = {
@@ -125,8 +125,6 @@ def get_bus_emt_template(grid: MultiCircuit,
             DeviceType.SeriesReactanceDevice,
             DeviceType.UpfcDevice,
             DeviceType.SwitchDevice,
-            DeviceType.HVDCLineDevice,
-            DeviceType.DCLineDevice,
         }
 
         for branch in grid.get_branches_iter(add_vsc=True, add_switch=True, add_hvdc=True):
@@ -137,9 +135,15 @@ def get_bus_emt_template(grid: MultiCircuit,
                     mask[2] |= bool(branch.ys.phB)
                     mask[3] |= bool(branch.ys.phC)
                 elif branch.device_type in transformer_phase_device_types:
-                    mask[1] = True
-                    mask[2] = True
-                    mask[3] = True
+                    mask[0] = branch.transformer_phases(logger=logger)[0]
+                    mask[1] = branch.transformer_phases(logger=logger)[1]
+                    mask[2] = branch.transformer_phases(logger=logger)[2]
+                    mask[3] = branch.transformer_phases(logger=logger)[3]
+                elif branch.device_type == DeviceType.VscDevice:
+                    mask[0] = branch.phN
+                    mask[1] = branch.phA
+                    mask[2] = branch.phB
+                    mask[3] = branch.phC
                 elif branch.device_type in abc_phase_device_types:
                     mask[1] = True
                     mask[2] = True
@@ -159,8 +163,27 @@ def get_bus_emt_template(grid: MultiCircuit,
         else:
             pass
 
+    return mask
+
+def get_bus_emt_template(grid: MultiCircuit,
+                         bus: Bus,
+                         logger: Logger|None = None):
+    """
+    Initialize 3ph bus block
+    A bus will have the phases of the branches connected to it
+    :param grid: Multicircuit
+    :param bus: Bus
+    :param logger: logger
+    :return:
+    """
+
+    vf = grid.var_factory
+    mask = get_bus_mask(grid=grid,
+                        bus=bus,
+                        logger= logger)
     # choose template depending on the number of phases
-    bus.emt_model = BusEmtTemplate(vf=vf, mask=mask, is_dc=bus.is_dc, name=f"{bus.name}_emt_template").block
+    bus.emt_model = BusEmtTemplate(vf=vf, mask=mask, is_dc=bus.is_dc, name=f"{bus.name}_emt").block
+
 def get_bus_emt_algebraic_vars(bus_emt_model: Block) -> Tuple[
     Optional[Var], Optional[Var], Optional[Var], Optional[Var]]:
     """
