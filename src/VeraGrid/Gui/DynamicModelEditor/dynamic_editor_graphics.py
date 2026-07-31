@@ -20,18 +20,6 @@ from VeraGridEngine.enumerations import BlockType
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Expr, BinOp, UnOp
 from VeraGridEngine.enumerations import DynamicSimulationMode
-from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_routing import (
-    build_stub_point,
-    build_default_connection_route,
-    is_orthogonal_route,
-    merge_route_with_endpoints,
-    move_polyline_route_segment,
-    normalize_route_points,
-    orthogonalize_route_points,
-    path_hits_rectangles,
-    reroute_around_rectangles,
-)
-
 if TYPE_CHECKING:
     from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI
 
@@ -215,6 +203,40 @@ def _refresh_block_item_connections(item: QGraphicsItem) -> None:
         conn: Any
         for conn in connections:
             conn.update_path()
+
+
+def _notify_block_item_manual_route_drag(item: QGraphicsItem, started: bool) -> None:
+    """
+    Notify every connection attached to one movable block that a manual endpoint drag
+    has started or ended.
+    """
+    ports = list(getattr(item, "inputs", [])) + list(getattr(item, "outputs", []))
+    port: Any
+
+    for port in ports:
+        connections = getattr(port, "connections", None) or []
+        conn: Any
+        for conn in connections:
+            if isinstance(conn, ConnectionItem):
+                if started:
+                    conn.begin_manual_block_drag(port)
+                else:
+                    conn.end_manual_block_drag(port)
+            else:
+                pass
+
+
+def _port_stub_axis(side: str | None) -> str:
+    """
+    Return the dominant stub axis for one connection side.
+
+    :param side: Attachment side of the port on the block.
+    :return: ``"x"`` for horizontal stubs and ``"y"`` for vertical stubs.
+    """
+    if side in ("left", "right"):
+        return "x"
+    else:
+        return "y"
 
 
 def _finalize_block_drop(item: QGraphicsItem, margin: float = 6.0) -> None:
@@ -560,6 +582,8 @@ class BranchingItem(QGraphicsEllipseItem):
         self.index: int = index
         self.connections: List["ConnectionItem"] | None = None
         self.base_var: Var | None = None
+        self.owner_connection: "ConnectionItem" | None = None
+        self.routing_node_id: int | None = None
 
     def hoverEnterEvent(self, event: QtWidgets.QGraphicsSceneHoverEvent) -> None:
         QApplication.setOverrideCursor(Qt.CursorShape.PointingHandCursor)
@@ -591,9 +615,6 @@ class ConnectionItem(QGraphicsPathItem):
                  diagram=None,
                  con_uid=None,
                  uid=None,
-                 elbow_points: List[QPointF] | None = None,
-                 route_style: str = "RETICULAR",
-                 locked: bool = False,
                  editor: DynamicBlockEditorGUI | None = None):
         super().__init__()
         if editor is not None:
@@ -606,8 +627,6 @@ class ConnectionItem(QGraphicsPathItem):
         self.target_port: PortItem | BranchingItem = target_port
         self.diagram = diagram
         self.con_uid = con_uid if con_uid is not None else self.uid
-        self.route_style: str = str(route_style).upper()
-        self.route_locked: bool = bool(locked)
 
         if self.source_port.connections is None:
             self.source_port.connections = list()
@@ -628,23 +647,9 @@ class ConnectionItem(QGraphicsPathItem):
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable, False)
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable, True)
         self.setAcceptedMouseButtons(Qt.MouseButton.LeftButton)
-
-        self.elbow_points: List[QPointF] = elbow_points if elbow_points is not None else list()
         self._dragging_segment: int = -1
-        self._original_path_elements: List[QPointF] = list()
+        self._drag_start_scene_pos: QPointF | None = None
         self.update_path()
-
-        if self.diagram is not None:
-            self.diagram.add_branch(
-                connectionitem_uid=self.con_uid,
-                device_uid_from=self.source_port.subsystem.subsys.uid,
-                device_uid_to=self.target_port.subsystem.subsys.uid,
-                port_number_from=self.source_port.index,
-                port_number_to=self.target_port.index,
-                elbow_points=[(pt.x(), pt.y()) for pt in self.elbow_points],
-                route_style=self.route_style,
-                locked=self.route_locked,
-            )
 
     def recolour_mode(self):
         if self.editor is not None:
@@ -664,147 +669,50 @@ class ConnectionItem(QGraphicsPathItem):
         else:
             self.recolour_mode()
 
+    def _uses_routing_graph(self) -> bool:
+        """
+        Return whether this connection is currently owned by the new routing engine.
+
+        :return: Ownership state.
+        """
+        if self.editor is not None:
+            return self.editor.supports_routing_graph_connection(self)
+        else:
+            return False
+
     def update_path(self) -> None:
-        route_points = self._sanitize_full_route(None)
-        self._rebuild_path_from_route(route_points, save=False)
-
-    def _sanitize_full_route(
-            self,
-            route_points: list[tuple[float, float]] | None,
-    ) -> list[tuple[float, float]]:
-        start = self.source_port.scenePos()
-        end = self.target_port.scenePos()
-        source_side = self._connection_side_for_port(self.source_port)
-        target_side = self._connection_side_for_port(self.target_port)
-        start_stub = build_stub_point(
-            (start.x(), start.y()),
-            source_side,
-            EditorGraphicsCommonFeatures.WIRE_TERMINAL_STUB_LENGTH,
-        )
-        end_stub = build_stub_point(
-            (end.x(), end.y()),
-            target_side,
-            EditorGraphicsCommonFeatures.WIRE_TERMINAL_STUB_LENGTH,
-        )
-
-        if route_points is None:
-            persisted_points = [(pt.x(), pt.y()) for pt in
-                                self.elbow_points] if self.route_locked and self.elbow_points else []
+        if self._uses_routing_graph():
+            if self.editor is not None:
+                if self.editor.sync_connection_with_routing_graph(self):
+                    return
+                else:
+                    return
+            else:
+                return
         else:
-            normalized_candidate = normalize_route_points(route_points)
-            persisted_points = normalized_candidate[1:-1] if len(normalized_candidate) > 2 else []
+            return
 
-        if self.route_locked and persisted_points:
-            inner_route = merge_route_with_endpoints(
-                start=start_stub,
-                end=end_stub,
-                persisted_points=persisted_points,
-            )
-            if self.route_style == "RETICULAR" and not is_orthogonal_route(inner_route):
-                inner_route = orthogonalize_route_points(inner_route)
-        else:
-            inner_route = build_default_connection_route(
-                start=start_stub,
-                end=end_stub,
-                route_style=self.route_style,
-                elbow_offset=EditorGraphicsCommonFeatures.WIRE_ELBOW_OFFSET,
-            )
+    def begin_manual_block_drag(self, port: PortItem | BranchingItem) -> None:
+        """
+        Legacy manual-route dragging no longer exists.
 
-        if not self.route_locked:
-            obstacles = self._build_obstacle_rectangles()
-            must_reroute_reticular = (
-                    self.route_style == "RETICULAR"
-                    and not is_orthogonal_route(inner_route)
-            )
-            if must_reroute_reticular or path_hits_rectangles(
-                    inner_route,
-                    obstacles,
-                    margin=EditorGraphicsCommonFeatures.WIRE_BLOCK_MARGIN,
-            ):
-                inner_route = reroute_around_rectangles(
-                    inner_route,
-                    obstacles,
-                    start_side=source_side,
-                    end_side=target_side,
-                    clearance=EditorGraphicsCommonFeatures.WIRE_BLOCK_CLEARANCE,
-                    margin=EditorGraphicsCommonFeatures.WIRE_BLOCK_MARGIN,
-                )
+        :param port: Port whose owning block has started moving.
+        :return: None.
+        """
+        del port
 
-        full_route = [(start.x(), start.y())]
-        full_route.extend(inner_route)
-        full_route.append((end.x(), end.y()))
-        return full_route
+    def end_manual_block_drag(self, port: PortItem | BranchingItem) -> None:
+        """
+        Legacy manual-route dragging no longer exists.
 
-    def _connection_side_for_port(self, port: PortItem | BranchingItem) -> str | None:
-        if isinstance(port, BranchingItem):
-            return None
-        parent = port.subsystem
-        if not isinstance(parent, QGraphicsRectItem):
-            return "left" if port.is_input else "right"
-
-        rect = parent.rect()
-        local = port.pos()
-        distances = {
-            "left": abs(local.x() - rect.left()),
-            "right": abs(local.x() - rect.right()),
-            "top": abs(local.y() - rect.top()),
-            "bottom": abs(local.y() - rect.bottom()),
-        }
-        return min(distances, key=distances.get)
-
-    def _build_obstacle_rectangles(self) -> list[tuple[float, float, float, float]]:
-        scene = self.scene()
-        if scene is None:
-            return []
-
-        obstacle_rects: list[tuple[float, float, float, float]] = []
-        item: QGraphicsItem
-        for item in scene.items():
-            if isinstance(
-                    item,
-                    (
-                            BlockItem,
-                            GenericBlockItem,
-                            PairedItem,
-                            RoundBaseArithmeticOpItem,
-                            RectBaseArithmeticOpItem,
-                            ProtectedConnectionBlockItem,
-                            UnOpItem,
-                    ),
-            ):
-                rect = item.sceneBoundingRect()
-                obstacle_rects.append((rect.left(), rect.top(), rect.right(), rect.bottom()))
-        return obstacle_rects
+        :param port: Port whose owning block has finished moving.
+        :return: None.
+        """
+        del port
 
     def on_elbow_moved(self, index: int, new_pos: QPointF) -> None:
-        return
-
-    def _save_elbow_points(self) -> None:
-        if self.con_uid in self.diagram.con_data:
-            route_points = self.get_route_points_for_editing()
-            if len(route_points) > 2:
-                persisted_points = route_points[1:-1]
-            else:
-                persisted_points = list()
-            self.diagram.con_data[self.con_uid].elbow_points = persisted_points
-            self.diagram.con_data[self.con_uid].route_style = self.route_style
-            self.diagram.con_data[self.con_uid].locked = self.route_locked
-        else:
-            pass
-
-    def set_route_style(self, route_style: str) -> None:
-        self.route_style = str(route_style).upper()
-        if not self.route_locked:
-            self.elbow_points = list()
-        self.update_path()
-        self._save_elbow_points()
-
-    def set_route_locked(self, locked: bool) -> None:
-        self.route_locked = bool(locked)
-        if not self.route_locked:
-            self.elbow_points = list()
-        self.update_path()
-        self._save_elbow_points()
+        del index
+        del new_pos
 
     def get_route_points_for_editing(self) -> list[tuple[float, float]]:
         """
@@ -812,79 +720,146 @@ class ConnectionItem(QGraphicsPathItem):
         """
         path: QPainterPath = self.path()
         if path.isEmpty():
-            return []
+            return list()
 
         points: list[tuple[float, float]] = []
         index: int
         for index in range(path.elementCount()):
             element = path.elementAt(index)
             points.append((float(element.x), float(element.y)))
-        return normalize_route_points(points)
+        return points
 
-    def _segment_hit_test(self, pos: QPointF, threshold: float = 12.0) -> tuple:
-        path: QPainterPath = self.path()
-        if path.isEmpty():
+    def find_segment_at_scene_position(
+            self,
+            pos: QPointF,
+            threshold: float = 12.0,
+            editable_only: bool = True,
+    ) -> tuple[int, bool]:
+        """
+        Return the path segment index under one scene position.
+
+        :param pos: Scene position to inspect.
+        :param threshold: Hit-test tolerance.
+        :param editable_only: Whether only editable drag segments are allowed.
+        :return: Tuple ``(segment_index, is_horizontal)`` or ``(-1, False)``.
+        """
+        if self._uses_routing_graph():
+            if self.editor is not None:
+                return self._find_routing_graph_segment_at_scene_position(
+                    pos=pos,
+                    threshold=threshold,
+                    editable_only=editable_only,
+                )
+            else:
+                return -1, False
+        else:
+            return -1, False
+
+    def _find_routing_graph_segment_at_scene_position(
+            self,
+            pos: QPointF,
+            threshold: float,
+            editable_only: bool,
+    ) -> tuple[int, bool]:
+        """
+        Return the routing-graph segment under one scene position.
+
+        :param pos: Scene position to inspect.
+        :param threshold: Hit-test tolerance.
+        :param editable_only: Whether only editable drag segments are allowed.
+        :return: Tuple ``(segment_index, is_horizontal)`` or ``(-1, False)``.
+        """
+        if self.editor is None:
             return -1, False
         else:
             pass
 
-        elements: List[QPointF] = list()
-        i: int
-        for i in range(path.elementCount()):
-            elem = path.elementAt(i)
-            elements.append(QPointF(elem.x, elem.y))
-
-        if len(elements) < 2:
+        ordered_segments: List[Tuple[int, QPointF, QPointF]] = self.editor.get_connection_routing_graph_segments(self)
+        if len(ordered_segments) == 0:
             return -1, False
         else:
             pass
 
-        for i in range(1, len(elements) - 2):
-            p1: QPointF = elements[i]
-            p2: QPointF = elements[i + 1]
+        editable_segment_indices: List[int] = list()
+        if editable_only:
+            if len(ordered_segments) >= 3:
+                if len(ordered_segments) == 3:
+                    editable_segment_indices.append(1)
+                else:
+                    pass
 
-            dy: float = abs(p2.y() - p1.y())
-            dx: float = abs(p2.x() - p1.x())
+                interior_segment_index: int
+                for interior_segment_index in range(2, len(ordered_segments) - 2):
+                    editable_segment_indices.append(interior_segment_index)
+            else:
+                pass
+        else:
+            segment_index: int
+            for segment_index in range(len(ordered_segments)):
+                editable_segment_indices.append(segment_index)
 
-            if dy < 1:
-                if p1.y() - threshold <= pos.y() <= p1.y() + threshold:
-                    if min(p1.x(), p2.x()) - threshold <= pos.x() <= max(p1.x(), p2.x()) + threshold:
-                        return i, True
+        if len(editable_segment_indices) == 0:
+            return -1, False
+        else:
+            pass
+
+        segment_index = 0
+        for segment_index in editable_segment_indices:
+            segment_entry: Tuple[int, QPointF, QPointF] = ordered_segments[segment_index]
+            start_point: QPointF = segment_entry[1]
+            end_point: QPointF = segment_entry[2]
+            delta_y: float = abs(end_point.y() - start_point.y())
+            delta_x: float = abs(end_point.x() - start_point.x())
+
+            if delta_y < 1.0:
+                if start_point.y() - threshold <= pos.y() <= start_point.y() + threshold:
+                    if min(start_point.x(), end_point.x()) - threshold <= pos.x() <= max(start_point.x(), end_point.x()) + threshold:
+                        return segment_index, True
                     else:
                         pass
                 else:
                     pass
-            elif dx < 1:
-                if p1.x() - threshold <= pos.x() <= p1.x() + threshold:
-                    if min(p1.y(), p2.y()) - threshold <= pos.y() <= max(p1.y(), p2.y()) + threshold:
-                        return i, False
+            elif delta_x < 1.0:
+                if start_point.x() - threshold <= pos.x() <= start_point.x() + threshold:
+                    if min(start_point.y(), end_point.y()) - threshold <= pos.y() <= max(start_point.y(), end_point.y()) + threshold:
+                        return segment_index, False
                     else:
                         pass
                 else:
                     pass
             else:
-                min_x: float = min(p1.x(), p2.x()) - threshold
-                max_x: float = max(p1.x(), p2.x()) + threshold
-                min_y: float = min(p1.y(), p2.y()) - threshold
-                max_y: float = max(p1.y(), p2.y()) + threshold
-                if min_x <= pos.x() <= max_x and min_y <= pos.y() <= max_y:
-                    return i, False
+                minimum_x: float = min(start_point.x(), end_point.x()) - threshold
+                maximum_x: float = max(start_point.x(), end_point.x()) + threshold
+                minimum_y: float = min(start_point.y(), end_point.y()) - threshold
+                maximum_y: float = max(start_point.y(), end_point.y()) + threshold
+                if minimum_x <= pos.x() <= maximum_x and minimum_y <= pos.y() <= maximum_y:
+                    return segment_index, False
                 else:
                     pass
 
         return -1, False
 
+    def _segment_hit_test(self, pos: QPointF, threshold: float = 12.0) -> tuple:
+        """
+        Return the editable segment under one scene position.
+
+        :param pos: Scene position to inspect.
+        :param threshold: Hit-test tolerance.
+        :return: Tuple ``(segment_index, is_horizontal)`` or ``(-1, False)``.
+        """
+        return self.find_segment_at_scene_position(
+            pos=pos,
+            threshold=threshold,
+            editable_only=True,
+        )
+
     def mousePressEvent(self, event: QtWidgets.QGraphicsSceneMouseEvent) -> None:
         scene_pos: QPointF = event.scenePos()
         seg_idx, is_horizontal = self._segment_hit_test(scene_pos)
         if seg_idx >= 0:
+            del is_horizontal
             self._dragging_segment = seg_idx
-            self._original_path_elements = list()
-            path: QPainterPath = self.path()
-            i: int
-            for i in range(path.elementCount()):
-                elem = path.elementAt(i)
-                self._original_path_elements.append(QPointF(elem.x, elem.y))
+            self._drag_start_scene_pos = QPointF(scene_pos)
             event.accept()
             return
         else:
@@ -893,55 +868,57 @@ class ConnectionItem(QGraphicsPathItem):
 
     def mouseMoveEvent(self, event: QtWidgets.QGraphicsSceneMouseEvent) -> None:
         if self._dragging_segment >= 0:
-            new_pos: QPointF = event.scenePos()
-            path: QPainterPath = self.path()
-            elements: List[QPointF] = list()
-            i: int
-            for i in range(path.elementCount()):
-                elem = path.elementAt(i)
-                elements.append(QPointF(elem.x, elem.y))
-
-            if not elements or self._dragging_segment >= len(elements) - 1:
+            if self._drag_start_scene_pos is None:
                 super().mouseMoveEvent(event)
                 return
             else:
                 pass
 
-            seg_idx: int = self._dragging_segment
-            p1: QPointF = elements[seg_idx]
-            p2: QPointF = elements[seg_idx + 1]
-            delta_x = new_pos.x() - p1.x() if abs(p2.x() - p1.x()) < 1 else 0.0
-            delta_y = new_pos.y() - p1.y() if abs(p2.y() - p1.y()) < 1 else 0.0
-            moved_route = move_polyline_route_segment(
-                self.get_route_points_for_editing(),
-                segment_index=seg_idx,
-                delta_x=delta_x,
-                delta_y=delta_y,
-            )
-            self.route_locked = True
-            self._rebuild_path_from_route(self._sanitize_full_route(moved_route))
-            event.accept()
-            return
+            if self._uses_routing_graph() and self.editor is not None:
+                new_pos_for_engine: QPointF = event.scenePos()
+                original_elements_for_engine: List[QPointF] = list()
+                path: QPainterPath = self.path()
+                element_index: int
+                for element_index in range(path.elementCount()):
+                    path_element = path.elementAt(element_index)
+                    original_elements_for_engine.append(QPointF(path_element.x, path_element.y))
+                if self._dragging_segment < len(original_elements_for_engine) - 1:
+                    segment_start: QPointF = original_elements_for_engine[self._dragging_segment]
+                    segment_end: QPointF = original_elements_for_engine[self._dragging_segment + 1]
+                    engine_delta_x: float = 0.0
+                    engine_delta_y: float = 0.0
+
+                    if abs(segment_end.x() - segment_start.x()) < 1.0:
+                        engine_delta_x = new_pos_for_engine.x() - self._drag_start_scene_pos.x()
+                    else:
+                        pass
+
+                    if abs(segment_end.y() - segment_start.y()) < 1.0:
+                        engine_delta_y = new_pos_for_engine.y() - self._drag_start_scene_pos.y()
+                    else:
+                        pass
+
+                    if self.editor.move_connection_segment_with_routing_graph(
+                            self,
+                            segment_index=self._dragging_segment,
+                            delta_x=engine_delta_x,
+                            delta_y=engine_delta_y,
+                    ):
+                        self._drag_start_scene_pos = QPointF(new_pos_for_engine)
+                        event.accept()
+                        return
+                    else:
+                        event.accept()
+                        return
+                else:
+                    event.accept()
+                    return
+            else:
+                event.accept()
+                return
         else:
             pass
         super().mouseMoveEvent(event)
-
-    def _rebuild_path_from_route(self, route_points: List[tuple[float, float]], save: bool = True) -> None:
-        normalized_points = normalize_route_points(route_points)
-        if len(normalized_points) < 2:
-            return
-
-        path = QPainterPath(QPointF(normalized_points[0][0], normalized_points[0][1]))
-        point: tuple[float, float]
-        for point in normalized_points[1:]:
-            path.lineTo(point[0], point[1])
-        self.setPath(path)
-
-        self.elbow_points = [QPointF(x, y) for x, y in normalized_points[1:-1]]
-        self._sync_elbow_items()
-
-        if save:
-            self._save_elbow_points()
 
     def _sync_elbow_items(self) -> None:
         scene = self.scene()
@@ -951,16 +928,27 @@ class ConnectionItem(QGraphicsPathItem):
         for item in list(scene.items()):
             if isinstance(item, ElbowItem) and item.connection_item is self:
                 scene.removeItem(item)
-
-    def _rebuild_path_from_elements(self, elements: List[QPointF]) -> None:
-        self._rebuild_path_from_route([(pt.x(), pt.y()) for pt in elements])
+            elif isinstance(item, BranchingItem) and item.owner_connection is self:
+                scene.removeItem(item)
+        if self._uses_routing_graph():
+            pass
+        else:
+            pass
 
     def mouseReleaseEvent(self, event: QtWidgets.QGraphicsSceneMouseEvent) -> None:
         if self._dragging_segment >= 0:
             self._dragging_segment = -1
-            self._original_path_elements = list()
-            event.accept()
-            return
+            self._drag_start_scene_pos = None
+            if self._uses_routing_graph() and self.editor is not None:
+                if self.editor.finalize_connection_routing_graph_drag(self):
+                    event.accept()
+                    return
+                else:
+                    event.accept()
+                    return
+            else:
+                event.accept()
+                return
         else:
             pass
         super().mouseReleaseEvent(event)
@@ -1076,6 +1064,15 @@ class ElbowItem(QGraphicsEllipseItem):
         else:
             self.recolour_mode()
 
+    def contextMenuEvent(self, event: QtWidgets.QGraphicsSceneContextMenuEvent) -> None:
+        """
+        Show the default elbow context menu behaviour.
+
+        :param event: Qt context-menu event.
+        :return: None.
+        """
+        super().contextMenuEvent(event)
+
 
 class GenericBlockItem(QGraphicsRectItem):
     def __init__(self,
@@ -1170,10 +1167,16 @@ class GenericBlockItem(QGraphicsRectItem):
             event.accept()
             return
 
+        if event.button() == Qt.MouseButton.LeftButton:
+            _notify_block_item_manual_route_drag(self, started=True)
+        else:
+            pass
+
         super().mousePressEvent(event)
 
     def mouseReleaseEvent(self, event):
         super().mouseReleaseEvent(event)
+        _notify_block_item_manual_route_drag(self, started=False)
         _finalize_block_drop(self)
 
     def mouseDoubleClickEvent(self, event):
@@ -1610,8 +1613,16 @@ class PairedItem(QGraphicsPolygonItem):
         else:
             super().contextMenuEvent(event)
 
+    def mousePressEvent(self, event):
+        if event.button() == Qt.MouseButton.LeftButton:
+            _notify_block_item_manual_route_drag(self, started=True)
+        else:
+            pass
+        super().mousePressEvent(event)
+
     def mouseReleaseEvent(self, event):
         super().mouseReleaseEvent(event)
+        _notify_block_item_manual_route_drag(self, started=False)
         _finalize_block_drop(self)
 
     def itemChange(self, change, value):
@@ -1868,8 +1879,16 @@ class BlockItem(QGraphicsRectItem):
         QApplication.restoreOverrideCursor()
         self.update()
 
+    def mousePressEvent(self, event: QtWidgets.QGraphicsSceneMouseEvent) -> None:
+        if event.button() == Qt.MouseButton.LeftButton:
+            _notify_block_item_manual_route_drag(self, started=True)
+        else:
+            pass
+        super().mousePressEvent(event)
+
     def mouseReleaseEvent(self, event: QtWidgets.QGraphicsSceneMouseEvent) -> None:
         super().mouseReleaseEvent(event)
+        _notify_block_item_manual_route_drag(self, started=False)
         _finalize_block_drop(self)
 
     def itemChange(self, change: QGraphicsItem.GraphicsItemChange, value: Any) -> Any:
@@ -2244,8 +2263,16 @@ class RoundBaseArithmeticOpItem(QGraphicsEllipseItem):
         painter.setPen(self.pen())
         painter.drawEllipse(rect)
 
+    def mousePressEvent(self, event: QtWidgets.QGraphicsSceneMouseEvent) -> None:
+        if event.button() == Qt.MouseButton.LeftButton:
+            _notify_block_item_manual_route_drag(self, started=True)
+        else:
+            pass
+        super().mousePressEvent(event)
+
     def mouseReleaseEvent(self, event: QtWidgets.QGraphicsSceneMouseEvent) -> None:
         super().mouseReleaseEvent(event)
+        _notify_block_item_manual_route_drag(self, started=False)
         _finalize_block_drop(self)
 
     def itemChange(self, change: QGraphicsItem.GraphicsItemChange, value: Any) -> Any:
@@ -2435,8 +2462,16 @@ class RectBaseArithmeticOpItem(QGraphicsRectItem):
         painter.setPen(self.pen())
         painter.drawRoundedRect(rect, 6.0, 6.0)
 
+    def mousePressEvent(self, event: QtWidgets.QGraphicsSceneMouseEvent) -> None:
+        if event.button() == Qt.MouseButton.LeftButton:
+            _notify_block_item_manual_route_drag(self, started=True)
+        else:
+            pass
+        super().mousePressEvent(event)
+
     def mouseReleaseEvent(self, event: QtWidgets.QGraphicsSceneMouseEvent) -> None:
         super().mouseReleaseEvent(event)
+        _notify_block_item_manual_route_drag(self, started=False)
         _finalize_block_drop(self)
 
     def itemChange(self, change: QGraphicsItem.GraphicsItemChange, value: Any) -> Any:
@@ -2594,18 +2629,6 @@ class DiagramScene(QGraphicsScene):
         else:
             pass
 
-    def set_context_connection_route_style(self, route_style: str) -> None:
-        if isinstance(self.context_item, ConnectionItem):
-            self.context_item.set_route_style(route_style)
-        else:
-            pass
-
-    def set_context_connection_route_locked(self, locked: bool) -> None:
-        if isinstance(self.context_item, ConnectionItem):
-            self.context_item.set_route_locked(locked)
-        else:
-            pass
-
     def contextMenuEvent(self, event: QtWidgets.QGraphicsSceneContextMenuEvent) -> None:
         item: QGraphicsItem
         for item in self.items(event.scenePos()):
@@ -2616,39 +2639,24 @@ class DiagramScene(QGraphicsScene):
                     self.context_item = item
 
                     remove_action: QAction = QAction("Remove", menu)
-                    remove_action.triggered.connect(self.remove_context_item)
                     menu.addAction(remove_action)
 
                     color_action: QAction = QAction("Change Color", menu)
-                    color_action.triggered.connect(self.recolor_context_item)
                     menu.addAction(color_action)
 
                     if isinstance(item, ConnectionItem):
-                        route_style_menu = menu.addMenu("Route Style")
+                        connection_item: ConnectionItem = item
+                        del connection_item
 
-                        reticular_action: QAction = QAction("Reticular", route_style_menu)
-                        reticular_action.setCheckable(True)
-                        reticular_action.setChecked(item.route_style == "RETICULAR")
-                        reticular_action.triggered.connect(
-                            lambda checked=False: self.set_context_connection_route_style("RETICULAR")
-                        )
-                        route_style_menu.addAction(reticular_action)
+                    selected_action: QAction | None = menu.exec(event.screenPos())
 
-                        straight_action: QAction = QAction("Straight", route_style_menu)
-                        straight_action.setCheckable(True)
-                        straight_action.setChecked(item.route_style == "STRAIGHT")
-                        straight_action.triggered.connect(
-                            lambda checked=False: self.set_context_connection_route_style("STRAIGHT")
-                        )
-                        route_style_menu.addAction(straight_action)
+                    if selected_action is remove_action:
+                        self.remove_context_item()
+                    elif selected_action is color_action:
+                        self.recolor_context_item()
+                    else:
+                        pass
 
-                        lock_action: QAction = QAction("Lock Manual Route", menu)
-                        lock_action.setCheckable(True)
-                        lock_action.setChecked(item.route_locked)
-                        lock_action.triggered.connect(self.set_context_connection_route_locked)
-                        menu.addAction(lock_action)
-
-                    menu.exec(event.screenPos())
                     self.context_item = None
                 return
 
@@ -2693,17 +2701,6 @@ class DiagramScene(QGraphicsScene):
                 else:
                     pass
 
-            if isinstance(item, BranchingItem):
-                self.source_port = item
-                path = QPainterPath(item.scenePos())
-                try:
-                    is_dark = darkdetect.theme() == "Dark"
-                except ImportError:
-                    is_dark = False
-
-                pen = QPen(QColor("white"), 1, Qt.PenStyle.DashLine) if is_dark else QPen(Qt.PenStyle.DashLine)
-                self.temp_line = self.addPath(path, pen)
-                return
             else:
                 pass
 
@@ -2757,6 +2754,11 @@ class DiagramScene(QGraphicsScene):
         super().mouseDoubleClickEvent(event)
 
     def connect_ports(self, source_port: PortItem | BranchingItem, target_port: PortItem) -> None:
+        if isinstance(source_port, BranchingItem):
+            return
+        else:
+            pass
+
         source_block: BlockItem | GenericBlockItem | PairedItem | RoundBaseArithmeticOpItem | RectBaseArithmeticOpItem = source_port.subsystem
         target_block: BlockItem | GenericBlockItem | PairedItem | RoundBaseArithmeticOpItem | RectBaseArithmeticOpItem = target_port.subsystem
 
@@ -2767,7 +2769,6 @@ class DiagramScene(QGraphicsScene):
                 diagram=self.editor.diagram,
                 editor=self.editor,
             )
-            connection.recolour()
 
             dst_var: Var = source_block.subsys.out_vars[source_port.index]
             target_input_var: Var = target_block.subsys.in_vars[target_port.index]
@@ -2780,18 +2781,6 @@ class DiagramScene(QGraphicsScene):
                 self.editor.var_factory.add_connection(target_input_var, dst_var)
                 if not isinstance(target_block, (RoundBaseArithmeticOpItem, RectBaseArithmeticOpItem)):
                     target_block.refresh_port_metadata()
-            self.addItem(connection)
-
-            self.editor.diagram.add_branch(
-                connectionitem_uid=connection.uid,
-                device_uid_from=source_block.subsys.uid,
-                device_uid_to=target_block.subsys.uid,
-                port_number_from=source_port.index,
-                port_number_to=target_port.index,
-                color=connection.pen().color().name(),
-                elbow_points=list(),
-                route_style=connection.route_style,
-                locked=connection.route_locked,
-            )
+            self.editor.attach_new_connection_item(connection)
         else:
             pass

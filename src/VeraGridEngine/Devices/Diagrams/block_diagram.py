@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
 
-from typing import Dict, Any, Sequence, List, Tuple
+from typing import Dict, Any, Sequence
 from dataclasses import dataclass
 
 
@@ -82,27 +82,36 @@ class BlockDiagramConnection:
     port_number_from: int
     port_number_to: int
     color: str
-    elbow_points: List[Tuple[float, float]] = None
-    route_style: str = "RETICULAR"
-    locked: bool = False
-    
-    def __post_init__(self):
-        if self.elbow_points is None:
-            self.elbow_points = []
+    routing_payload: Dict[str, Any] | None = None
+
+    def is_routing_graph_managed(self) -> bool:
+        """
+        Return whether this connection stores a new-engine routing payload.
+
+        :return: ``True`` when the new routing payload exists.
+        """
+        if self.routing_payload is not None:
+            return True
+        else:
+            return False
 
     def get_connection_dict(self):
         """
         get as a dictionary point
         :return:
         """
-        return {'from_uid': self.from_uid,
-                'to_uid': self.to_uid,
-                'port_number_from': self.port_number_from,
-                'port_number_to': self.port_number_to,
-                'color': self.color,
-                'elbow_points': self.elbow_points,
-                'route_style': self.route_style,
-                'locked': self.locked}
+        data: Dict[str, Any] = {
+            'from_uid': self.from_uid,
+            'to_uid': self.to_uid,
+            'port_number_from': self.port_number_from,
+            'port_number_to': self.port_number_to,
+            'color': self.color,
+        }
+        if self.is_routing_graph_managed():
+            data['routing_payload'] = self.routing_payload
+        else:
+            pass
+        return data
 
     def copy(self):
         return BlockDiagramConnection(
@@ -111,9 +120,7 @@ class BlockDiagramConnection:
             port_number_from=self.port_number_from,
             port_number_to=self.port_number_to,
             color=self.color,
-            elbow_points=list(self.elbow_points),
-            route_style=self.route_style,
-            locked=self.locked,
+            routing_payload=dict(self.routing_payload) if self.routing_payload is not None else None,
         )
 
 
@@ -202,9 +209,7 @@ class BlockDiagram:
                    port_number_from: int,
                    port_number_to: int,
                    color: str | None = None,
-                   elbow_points: List[Tuple[float, float]] = None,
-                   route_style: str = "RETICULAR",
-                   locked: bool = False):
+                   routing_payload: Dict[str, Any] | None = None):
         """
         :param connectionitem_uid:
         :param device_uid_from:
@@ -212,7 +217,6 @@ class BlockDiagram:
         :param port_number_from:
         :param port_number_to:
         :param color:
-        :param elbow_points:
         :return:
         """
 
@@ -222,9 +226,7 @@ class BlockDiagram:
             port_number_from=port_number_from,
             port_number_to=port_number_to,
             color=color,
-            elbow_points=elbow_points if elbow_points is not None else [],
-            route_style=route_style,
-            locked=locked,
+            routing_payload=dict(routing_payload) if routing_payload is not None else None,
         )
 
     def get_node_data_dict(self) -> Dict[int, Dict[str, Any]]:
@@ -301,15 +303,16 @@ class BlockDiagram:
         """
         self.con_data = dict()
         for uid, con in con_data.items():
+            routing_payload: Dict[str, Any] | None = (
+                dict(con.get('routing_payload', None))
+                if con.get('routing_payload', None) is not None
+                else None
+            )
             self.con_data[int(uid)] = (BlockDiagramConnection(
                 from_uid=con['from_uid'],
                 to_uid=con['to_uid'],
                 port_number_from=con['port_number_from'],
                 port_number_to=con['port_number_to'],
                 color=con['color'],
-                elbow_points=con.get('elbow_points', []),
-                route_style=con.get('route_style', 'RETICULAR'),
-                locked=bool(con.get('locked', False)),
+                routing_payload=routing_payload,
             ))
-
-
