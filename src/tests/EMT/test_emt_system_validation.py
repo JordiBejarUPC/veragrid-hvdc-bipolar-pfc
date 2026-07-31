@@ -250,6 +250,17 @@ def test_pi_line_rload_emt_passes_validation():
 # =============================================================================
 
 def test_bergeron_line_rload_emt_passes_validation():
+    """
+    Validate the Bergeron EMT line workflow with the current history-var naming.
+
+    The Bergeron runtime now resolves history event parameters using the compact
+    root names ``Ih_f_<phase>`` and ``Ih_t_<phase>`` instead of the older
+    line-name-qualified form. This test asserts that the template exposes those
+    runtime parameters before building the EMT problem.
+
+    :return: None.
+    :rtype: None
+    """
     grid = gce.MultiCircuit(Sbase=2.0, fbase=50.0)
     vnom = 10
 
@@ -289,6 +300,20 @@ def test_bergeron_line_rload_emt_passes_validation():
     gen_mdl = get_generator_thevenin_rl_emt_template_with_ref(vf=grid.var_factory).block
     line_mdl = get_bergeron_line_emt_template(vf=grid.var_factory).block
     load_mdl = get_shunt_r_emt_template(vf=grid.var_factory, phA=True, phB=True, phC=True).block
+
+    history_var_names: set[str] = set()
+    history_block = None
+    history_var = None
+    for history_block in line_mdl.get_all_blocks():
+        for history_var in history_block.event_dict.keys():
+            history_var_names.add(str(history_var.name))
+
+    assert "Ih_f_A" in history_var_names
+    assert "Ih_f_B" in history_var_names
+    assert "Ih_f_C" in history_var_names
+    assert "Ih_t_A" in history_var_names
+    assert "Ih_t_B" in history_var_names
+    assert "Ih_t_C" in history_var_names
 
 
     set_emt_model(device=gen0, model=gen_mdl, var_factory=grid.var_factory)
