@@ -3,7 +3,7 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 import numpy as np
-from VeraGridEngine.enumerations import DeviceType, TapPhaseControl, TapModuleControl, WindingType, ParamPowerFlowReferenceType
+from VeraGridEngine.enumerations import DeviceType, WindingType, ParamPowerFlowReferenceType
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Devices.Branches.transformer import Transformer2W
@@ -79,10 +79,10 @@ class TrafoRmsTemplate(RmsModelTemplate):
         # print(f"vtap  p is {vtap_f}")
         # print(f"vtap  t is {vtap_t}")
         # print(f'ys is {ys} ysh is {ysh}')
-        Vmf = vf.add_var('Vmf', VarPowerFlowReferenceType.Vmf)
-        Vaf = vf.add_var('Vaf', VarPowerFlowReferenceType.Vaf)
-        Vmt = vf.add_var('Vmt', VarPowerFlowReferenceType.Vmt)
-        Vat = vf.add_var('Vat', VarPowerFlowReferenceType.Vat)
+        Vmf = vf.add_var('Vmf', reference=VarPowerFlowReferenceType.Vmf)
+        Vaf = vf.add_var('Vaf', reference=VarPowerFlowReferenceType.Vaf)
+        Vmt = vf.add_var('Vmt', reference=VarPowerFlowReferenceType.Vmt)
+        Vat = vf.add_var('Vat', reference=VarPowerFlowReferenceType.Vat)
         inputs = [Vmf, Vaf, Vmt, Vat]
         # Calculate phase displacement matching transformer_admittance logic
         # Use conn attribute (preserves user intent) instead of conn_f/conn_t (may be overwritten by template)

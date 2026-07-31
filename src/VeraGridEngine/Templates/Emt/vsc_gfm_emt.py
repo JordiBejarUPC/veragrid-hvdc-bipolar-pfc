@@ -350,6 +350,7 @@ def get_gfm_emt_template(vf: VarFactory, name: str = "VSC_GridForming") -> EmtMo
     templ.block.children.append(block)
     templ.block.external_mapping = block.external_mapping
     templ.block.api_obj_mapping = block.api_obj_mapping
+    templ.block.parameters = block.parameters
     templ.block.in_vars = block.in_vars
     templ.block.out_vars = block.out_vars
 

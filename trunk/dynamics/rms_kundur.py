@@ -4,14 +4,15 @@ from __future__ import annotations
 
 import time
 
-from VeraGridEngine.enumerations import VarPowerFlowReferenceType, DynamicIntegrationMethod, RmsInitializationMethod
+from typing import Any
+
+from VeraGridEngine.enumerations import DynamicIntegrationMethod, RmsInitializationMethod
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.Devices.Injections.generator import Generator
 from VeraGridEngine.Devices.Branches.line import Line
 
-from VeraGridEngine.Simulations.Rms.problems.rms_problem_dae import RmsProblemDae
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
-from VeraGridEngine.Simulations.Rms.numerical.back_euler_fx import BackEulerImplicitIntegration
+from VeraGridEngine.Simulations.Rms.rms_driver import RmsSimulationDriver
 
 from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template_rms
 
@@ -19,6 +20,7 @@ from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 
 from VeraGridEngine.Templates.Rms.load_rms_template import get_load_rms_template
 from VeraGridEngine.Utils.Symbolic.bus_rms_template import initialize_bus_rms
+from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_rms_model
 
 from VeraGridEngine.Utils.Symbolic import Block
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowOptions
@@ -29,18 +31,42 @@ import VeraGridEngine.api as gce
 # pr = profile.Profile()
 # pr.disable()
 
-def find_name_in_block(name: str, block: Block):
+def find_name_in_block(name: str, block: Block) -> Any | None:
+    """
+    Search one symbolic block hierarchy for a variable by name.
+
+    :param name: Symbolic variable name to locate.
+    :type name: str
+    :param block: Root block to inspect.
+    :type block: Block
+    :return: Matching symbolic object when found, otherwise ``None``.
+    :rtype: Any | None
+    """
+    var: Any
     for var in block.algebraic_vars + block.state_vars + list(block.event_dict.keys()):
         if name == var.name:
             return var
+        else:
+            pass
 
+    mdl: Block
     for mdl in block.children:
-        res = find_name_in_block(name, mdl)
+        res: Any | None = find_name_in_block(name, mdl)
         if res is not None:
             return res
+        else:
+            pass
+
+    return None
 
 
-def rms_kundur():
+def rms_kundur() -> None:
+    """
+    Build and run the Kundur RMS benchmark using the standard RMS scripting flow.
+
+    :return: None.
+    :rtype: None
+    """
     ###########################################################################################################################
     # Build VeraGrid object
     ###########################################################################################################################
@@ -553,53 +579,35 @@ def rms_kundur():
     load2_mdl.connect([load2_mdl.in_vars[0]], [bus9.rms_model.out_vars[0]])
     load2_mdl.connect([load2_mdl.in_vars[1]], [bus9.rms_model.out_vars[1]])
 
-    # external mapping
+    # Attach RMS models through the standard helper so model wiring and device
+    # ownership follow the same path used by RMS tests and the GUI scripting flow.
+    set_rms_model(device=gen1, model=genqec_mdl1, var_factory=grid.var_factory)
+    set_rms_model(device=gen2, model=genqec_mdl2, var_factory=grid.var_factory)
+    set_rms_model(device=gen3, model=genqec_mdl3, var_factory=grid.var_factory)
+    set_rms_model(device=gen4, model=genqec_mdl4, var_factory=grid.var_factory)
 
-    big_gen1 = Block(children=[genqec_mdl1])
-    big_gen2 = Block(children=[genqec_mdl2])
-    big_gen3 = Block(children=[genqec_mdl3])
-    big_gen4 = Block(children=[genqec_mdl4])
+    set_rms_model(device=line0, model=line0_mdl, var_factory=grid.var_factory)
+    set_rms_model(device=line1, model=line1_mdl, var_factory=grid.var_factory)
+    set_rms_model(device=line2, model=line2_mdl, var_factory=grid.var_factory)
+    set_rms_model(device=line3, model=line3_mdl, var_factory=grid.var_factory)
+    set_rms_model(device=line4, model=line4_mdl, var_factory=grid.var_factory)
+    set_rms_model(device=line5, model=line5_mdl, var_factory=grid.var_factory)
+    set_rms_model(device=line6, model=line6_mdl, var_factory=grid.var_factory)
+    set_rms_model(device=line7, model=line7_mdl, var_factory=grid.var_factory)
+    set_rms_model(device=line8, model=line8_mdl, var_factory=grid.var_factory)
+    set_rms_model(device=line9, model=line9_mdl, var_factory=grid.var_factory)
+    set_rms_model(device=line10, model=line10_mdl, var_factory=grid.var_factory)
+    set_rms_model(device=line11, model=line11_mdl, var_factory=grid.var_factory)
+    set_rms_model(device=line12, model=line12_mdl, var_factory=grid.var_factory)
+    set_rms_model(device=line13, model=line13_mdl, var_factory=grid.var_factory)
 
-    big_gen1.external_mapping.update({VarPowerFlowReferenceType.P: genqec_mdl1.out_vars[0]})
-    big_gen1.external_mapping.update({VarPowerFlowReferenceType.Q: genqec_mdl1.out_vars[1]})
+    set_rms_model(device=trafo_G1, model=trafo1_mdl, var_factory=grid.var_factory)
+    set_rms_model(device=trafo_G2, model=trafo2_mdl, var_factory=grid.var_factory)
+    set_rms_model(device=trafo_G3, model=trafo3_mdl, var_factory=grid.var_factory)
+    set_rms_model(device=trafo_G4, model=trafo4_mdl, var_factory=grid.var_factory)
 
-    big_gen2.external_mapping.update({VarPowerFlowReferenceType.P: genqec_mdl2.out_vars[0]})
-    big_gen2.external_mapping.update({VarPowerFlowReferenceType.Q: genqec_mdl2.out_vars[1]})
-
-    big_gen3.external_mapping.update({VarPowerFlowReferenceType.P: genqec_mdl3.out_vars[0]})
-    big_gen3.external_mapping.update({VarPowerFlowReferenceType.Q: genqec_mdl3.out_vars[1]})
-
-    big_gen4.external_mapping.update({VarPowerFlowReferenceType.P: genqec_mdl4.out_vars[0]})
-    big_gen4.external_mapping.update({VarPowerFlowReferenceType.Q: genqec_mdl4.out_vars[1]})
-
-    # attach rms models to Veragrid objects
-    gen1.rms_model = big_gen1
-    gen2.rms_model = big_gen2
-    gen3.rms_model = big_gen3
-    gen4.rms_model = big_gen4
-
-    line0.rms_model = line0_mdl
-    line1.rms_model = line1_mdl
-    line2.rms_model = line2_mdl
-    line3.rms_model = line3_mdl
-    line4.rms_model = line4_mdl
-    line5.rms_model = line5_mdl
-    line6.rms_model = line6_mdl
-    line7.rms_model = line7_mdl
-    line8.rms_model = line8_mdl
-    line9.rms_model = line9_mdl
-    line10.rms_model = line10_mdl
-    line11.rms_model = line11_mdl
-    line12.rms_model = line12_mdl
-    line13.rms_model = line13_mdl
-
-    trafo_G1.rms_model = trafo1_mdl
-    trafo_G2.rms_model = trafo2_mdl
-    trafo_G3.rms_model = trafo3_mdl
-    trafo_G4.rms_model = trafo4_mdl
-
-    load1.rms_model = load1_mdl
-    load2.rms_model = load2_mdl
+    set_rms_model(device=load1, model=load1_mdl, var_factory=grid.var_factory)
+    set_rms_model(device=load2, model=load2_mdl, var_factory=grid.var_factory)
 
     grid.add_line(line0)
     grid.add_line(line1)
@@ -665,29 +673,11 @@ def rms_kundur():
                          use_init_values=False,
                          max_iter=1000,
                          verbose=0)
-    total_init_time: float = 0
+    total_simulation_time: float = 0.0
     t0 = time.perf_counter()
 
-    problem = RmsProblemDae(grid=grid,
-                            options=options,
-                            pf_results=res)
-    total_init_time += time.perf_counter() - t0
-    print(f"total init time: {total_init_time}")
-
-
-
-    solver = BackEulerImplicitIntegration(
-        problem=problem,
-        t0=0,
-        t_end=options.simulation_time,
-        h=options.time_step,
-        max_iter=options.max_iter
-    )
-
-    total_simulation_time: float = 0
-    t0 = time.perf_counter()
-
-    t, y, well_init, converged = solver.simulate()
+    driver: RmsSimulationDriver = RmsSimulationDriver(grid=grid, options=options, pf_results=res)
+    driver.run()
 
     total_simulation_time += time.perf_counter() - t0
     print(f"total simulation time: {total_simulation_time}")
