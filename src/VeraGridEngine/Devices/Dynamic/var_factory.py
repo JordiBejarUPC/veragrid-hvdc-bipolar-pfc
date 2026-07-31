@@ -494,7 +494,9 @@ class VarFactory(EditableDevice):
             else:
                 key_power_flow_ref = None
 
-            obj = Var(name=data["name"], uid=data["uid"], shared_reference=key_ref, reference=key_power_flow_ref, non_mutable_uid=data["non_mutable_uid"])
+            # obj = Var(name=data["name"], uid=data["uid"], shared_reference=key_ref, reference=key_power_flow_ref, non_mutable_uid=data["non_mutable_uid"])
+            obj = Var(name=data.get("name"), uid=data.get("uid"), shared_reference=key_ref, reference=key_power_flow_ref,
+                      non_mutable_uid=data.get("non_mutable_uid"))
             if ref_data_dict is not None:
                 ref_data_uid = ref_data_dict["uid"]
                 if ref_data_uid is not None:
