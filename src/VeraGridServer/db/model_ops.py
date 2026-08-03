@@ -1199,6 +1199,64 @@ def put_multiverse_in_database(settings: PostgreSqlConnectionSettings,
         release_database_file_lock(settings=settings, file_idtag=file_idtag)
 
 
+def _coerce_ints_to_floats(node: Any) -> Any:
+    """
+    Recursively coerce ``int`` leaves to ``float`` inside one JSON value.
+
+    PostgreSQL's ``jsonb`` type normalizes whole-number-valued floats (e.g.
+    ``-5.76e+16``) into bare integer literals on storage/retrieval. Python's
+    ``json`` module then parses those literals back as native ``int``, and a
+    numpy array built from a list mixing ``int`` and ``float`` can silently
+    fall back to ``dtype=object`` once an ``int`` exceeds the exact-integer
+    range of ``int64``. ``VeraGridEngine``'s ``AdmittanceMatrix`` requires a
+    strict complex dtype and raises on that ``object`` array, so any
+    sufficiently large admittance value round-tripped through this database
+    fails to load. This is a database round-trip workaround, not a fix for
+    whatever produced the oversized admittance values in the first place.
+
+    :param node: JSON-decoded value (dict, list, or scalar).
+    :return: Same structure with every non-bool ``int`` leaf converted to ``float``.
+    """
+    if isinstance(node, dict):
+        return {key: _coerce_ints_to_floats(value) for key, value in node.items()}
+    elif isinstance(node, list):
+        return [_coerce_ints_to_floats(value) for value in node]
+    elif isinstance(node, bool):
+        # bool is a subclass of int, and JSON booleans must stay booleans.
+        return node
+    elif isinstance(node, int):
+        return float(node)
+    else:
+        return node
+
+
+def _sanitize_admittance_matrix_payload(packed_payload: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Defensively coerce ``values_r``/``values_i`` leaves to ``float`` throughout one packed payload.
+
+    See :func:`_coerce_ints_to_floats` for why this is necessary. Scoped to
+    only these two key names so nothing else in the payload (sizes, indices,
+    booleans, enums) is touched.
+
+    :param packed_payload: Packed model JSON dictionary as read from the database.
+    :return: Same structure with every ``values_r``/``values_i`` leaf coerced to ``float``.
+    """
+    if isinstance(packed_payload, dict):
+        sanitized: Dict[str, Any] = dict()
+        key: str
+        value: Any
+        for key, value in packed_payload.items():
+            if key in ("values_r", "values_i"):
+                sanitized[key] = _coerce_ints_to_floats(value)
+            else:
+                sanitized[key] = _sanitize_admittance_matrix_payload(value)
+        return sanitized
+    elif isinstance(packed_payload, list):
+        return [_sanitize_admittance_matrix_payload(item) for item in packed_payload]
+    else:
+        return packed_payload
+
+
 def get_multiverse_from_database(settings: PostgreSqlConnectionSettings,
                                  file_idtag: str,
                                  project_directory: Path | None = None) -> MultiVerse:
@@ -1236,6 +1294,7 @@ def get_multiverse_from_database(settings: PostgreSqlConnectionSettings,
                 model_idtag=model_idtag,
                 table_mappings=table_mappings,
             )
+            packed_payload = _sanitize_admittance_matrix_payload(packed_payload)
             # The SQL model row is the stable scenario identity. Some legacy
             # payloads still store a different circuit idtag inside ModelData,
             # so the parsed circuit must be rebound to the model row idtag
