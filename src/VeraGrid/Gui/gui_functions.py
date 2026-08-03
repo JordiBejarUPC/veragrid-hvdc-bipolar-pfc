@@ -2287,7 +2287,9 @@ class WindingTypeDelegate(QtWidgets.QItemDelegate):
             ("Neutral Star (Yn)", WindingType.NeutralStar),
             ("Floating Star (Y)", WindingType.FloatingStar),
             ("Delta", WindingType.Delta),
-            ("ZigZag (Z)", WindingType.ZigZag),
+            ("Grounded ZigZag (Zg)", WindingType.GroundedZigZag),
+            ("Neutral ZigZag (Zn)", WindingType.NeutralZigZag),
+            ("Floating ZigZag (Z)", WindingType.FloatingZigZag),
         ]
 
     @QtCore.Slot()

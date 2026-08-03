@@ -913,8 +913,8 @@ def _convert_pf_tr2_connection(code: str) -> WindingType | None:
         "D": WindingType.Delta,
         "Y": WindingType.NeutralStar,
         "YN": WindingType.GroundedStar,
-        "Z": WindingType.ZigZag,
-        "ZN": WindingType.ZigZag,
+        "Z": WindingType.FloatingZigZag,
+        "ZN": WindingType.NeutralZigZag,
     }
 
     if c in conversion_dict:
@@ -1706,6 +1706,64 @@ def convert_dgs_to_transformer(tr2: ElmTr2,
     #   - TypTr2.ntpmx   : maximum position (integer)
     #   - TypTr2.tap_side: side where the tap-changer is located (typically 0=HV, 1=LV)
     #   - ElmTr2.nntap   : current position (integer)
+    #   - TypTr2.tr2cn_h : high voltage side connection
+    #   - TypTr2.tr2cn_l : low voltage side connection
+
+    if bus_vg_from.Vnom > bus_vg_to.Vnom:
+
+        if typtr2_raw.tr2cn_h == "Y":
+            trafo.conn_f = WindingType.FloatingStar
+        elif typtr2_raw.tr2cn_h == "YN":
+            trafo.conn_f = WindingType.NeutralStar
+        elif typtr2_raw.tr2cn_h == "Z":
+            trafo.conn_f = WindingType.FloatingZigZag
+        elif typtr2_raw.tr2cn_h == "ZN":
+            trafo.conn_f = WindingType.NeutralZigZag
+        elif typtr2_raw.tr2cn_h == "D":
+            trafo.conn_f = WindingType.Delta
+        else:
+            trafo.conn_f = WindingType.GroundedStar
+
+        if typtr2_raw.tr2cn_l == "Y":
+            trafo.conn_t = WindingType.FloatingStar
+        elif typtr2_raw.tr2cn_l == "YN":
+            trafo.conn_t = WindingType.NeutralStar
+        elif typtr2_raw.tr2cn_l == "Z":
+            trafo.conn_t = WindingType.FloatingZigZag
+        elif typtr2_raw.tr2cn_l == "ZN":
+            trafo.conn_t = WindingType.NeutralZigZag
+        elif typtr2_raw.tr2cn_l == "D":
+            trafo.conn_t = WindingType.Delta
+        else:
+            trafo.conn_t = WindingType.GroundedStar
+
+    else:
+
+        if typtr2_raw.tr2cn_h == "Y":
+            trafo.conn_t = WindingType.FloatingStar
+        elif typtr2_raw.tr2cn_h == "YN":
+            trafo.conn_t = WindingType.NeutralStar
+        elif typtr2_raw.tr2cn_h == "Z":
+            trafo.conn_t = WindingType.FloatingZigZag
+        elif typtr2_raw.tr2cn_h == "ZN":
+            trafo.conn_t = WindingType.NeutralZigZag
+        elif typtr2_raw.tr2cn_h == "D":
+            trafo.conn_t = WindingType.Delta
+        else:
+            trafo.conn_t = WindingType.GroundedStar
+
+        if typtr2_raw.tr2cn_l == "Y":
+            trafo.conn_f = WindingType.FloatingStar
+        elif typtr2_raw.tr2cn_l == "YN":
+            trafo.conn_f = WindingType.NeutralStar
+        elif typtr2_raw.tr2cn_l == "Z":
+            trafo.conn_f = WindingType.FloatingZigZag
+        elif typtr2_raw.tr2cn_l == "ZN":
+            trafo.conn_f = WindingType.NeutralZigZag
+        elif typtr2_raw.tr2cn_l == "D":
+            trafo.conn_f = WindingType.Delta
+        else:
+            trafo.conn_f = WindingType.GroundedStar
 
     if int(typtr2_raw.itapch) != 0 and trafo.tap_changer.total_positions > 0:
         tap_position = int(tr2.nntap) - int(typtr2_raw.ntpmn)
