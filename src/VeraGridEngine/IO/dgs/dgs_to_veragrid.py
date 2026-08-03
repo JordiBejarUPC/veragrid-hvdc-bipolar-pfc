@@ -1713,10 +1713,14 @@ def convert_dgs_to_transformer(tr2: ElmTr2,
 
         if typtr2_raw.tr2cn_h == "Y":
             trafo.conn_f = WindingType.FloatingStar
+        elif typtr2_raw.tr2cn_h == "YN" and tr2.cgnd_h == 0:
+            trafo.conn_f = WindingType.GroundedStar
         elif typtr2_raw.tr2cn_h == "YN":
             trafo.conn_f = WindingType.NeutralStar
         elif typtr2_raw.tr2cn_h == "Z":
             trafo.conn_f = WindingType.FloatingZigZag
+        elif typtr2_raw.tr2cn_h == "ZN" and tr2.cgnd_h == 0:
+            trafo.conn_f = WindingType.GroundedZigZag
         elif typtr2_raw.tr2cn_h == "ZN":
             trafo.conn_f = WindingType.NeutralZigZag
         elif typtr2_raw.tr2cn_h == "D":
@@ -1726,10 +1730,14 @@ def convert_dgs_to_transformer(tr2: ElmTr2,
 
         if typtr2_raw.tr2cn_l == "Y":
             trafo.conn_t = WindingType.FloatingStar
+        elif typtr2_raw.tr2cn_l == "YN" and tr2.cgnd_l == 0:
+            trafo.conn_t = WindingType.GroundedStar
         elif typtr2_raw.tr2cn_l == "YN":
             trafo.conn_t = WindingType.NeutralStar
         elif typtr2_raw.tr2cn_l == "Z":
             trafo.conn_t = WindingType.FloatingZigZag
+        elif typtr2_raw.tr2cn_l == "ZN" and tr2.cgnd_l == 0:
+            trafo.conn_t = WindingType.GroundedZigZag
         elif typtr2_raw.tr2cn_l == "ZN":
             trafo.conn_t = WindingType.NeutralZigZag
         elif typtr2_raw.tr2cn_l == "D":
@@ -1741,10 +1749,14 @@ def convert_dgs_to_transformer(tr2: ElmTr2,
 
         if typtr2_raw.tr2cn_h == "Y":
             trafo.conn_t = WindingType.FloatingStar
+        elif typtr2_raw.tr2cn_h == "YN" and tr2.cgnd_h == 0:
+            trafo.conn_t = WindingType.GroundedStar
         elif typtr2_raw.tr2cn_h == "YN":
             trafo.conn_t = WindingType.NeutralStar
         elif typtr2_raw.tr2cn_h == "Z":
             trafo.conn_t = WindingType.FloatingZigZag
+        elif typtr2_raw.tr2cn_h == "ZN" and tr2.cgnd_h == 0:
+            trafo.conn_t = WindingType.GroundedZigZag
         elif typtr2_raw.tr2cn_h == "ZN":
             trafo.conn_t = WindingType.NeutralZigZag
         elif typtr2_raw.tr2cn_h == "D":
@@ -1754,10 +1766,14 @@ def convert_dgs_to_transformer(tr2: ElmTr2,
 
         if typtr2_raw.tr2cn_l == "Y":
             trafo.conn_f = WindingType.FloatingStar
+        elif typtr2_raw.tr2cn_l == "YN" and tr2.cgnd_l == 0:
+            trafo.conn_f = WindingType.GroundedStar
         elif typtr2_raw.tr2cn_l == "YN":
             trafo.conn_f = WindingType.NeutralStar
         elif typtr2_raw.tr2cn_l == "Z":
             trafo.conn_f = WindingType.FloatingZigZag
+        elif typtr2_raw.tr2cn_l == "ZN" and tr2.cgnd_l == 0:
+            trafo.conn_f = WindingType.GroundedZigZag
         elif typtr2_raw.tr2cn_l == "ZN":
             trafo.conn_f = WindingType.NeutralZigZag
         elif typtr2_raw.tr2cn_l == "D":
