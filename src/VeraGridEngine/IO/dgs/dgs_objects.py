@@ -1369,6 +1369,8 @@ class ElmTr2(DGSElement):
         DgsProperty('t2ldc', 'i', 'Line Drop Compensation Enabled', py_name='t2ldc'),
         DgsProperty('mTaps_SIZEROW', 'i', 'Number of Stored Tap Table Rows', py_name='mTaps_SIZEROW'),
         DgsProperty('mTaps_SIZECOL', 'i', 'Number of Stored Tap Table Columns', py_name='mTaps_SIZECOL'),
+        DgsProperty('i_eahv', 'i', 'HV-side, phase 2 internally grounded.', py_name='i_eahv'),
+        DgsProperty('i_ealv', 'i', 'LV-side, phase 2 internally grounded.', py_name='i_ealv'),
     ]
 
     def __init__(self) -> None:
@@ -1394,6 +1396,8 @@ class ElmTr2(DGSElement):
         self.t2ldc: int = 0
         self.mTaps_SIZEROW: int = 0
         self.mTaps_SIZECOL: int = 0
+        self.i_eahv: int = 0
+        self.i_ealv: int = 0
 
 
 class ElmTr3(DGSElement):
@@ -2166,6 +2170,7 @@ class StaCubic(DGSElement):
         DgsProperty('it2p1', 'i', 'Phase-to-Phase Connection Flag 1', py_name='it2p1'),
         DgsProperty('it2p2', 'i', 'Phase-to-Phase Connection Flag 2', py_name='it2p2'),
         DgsProperty('it2p3', 'i', 'Phase-to-Phase Connection Flag 3', py_name='it2p3'),
+        DgsProperty('cPhInfo', 'a', 'Connected phases information', py_name='cPhInfo'),
     ]
 
     def __init__(self) -> None:
@@ -2179,6 +2184,7 @@ class StaCubic(DGSElement):
         self.it2p1: int = 0
         self.it2p2: int = 0
         self.it2p3: int = 0
+        self.cPhInfo: str = ""
 
 
 class StaSwitch(DGSElement):

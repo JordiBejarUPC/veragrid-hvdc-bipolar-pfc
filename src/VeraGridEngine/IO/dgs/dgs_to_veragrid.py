@@ -1713,7 +1713,8 @@ def convert_dgs_to_transformer(tr2: ElmTr2,
 
         if typtr2_raw.tr2cn_h == "Y":
             trafo.conn_f = WindingType.FloatingStar
-        elif typtr2_raw.tr2cn_h == "YN" and tr2.cgnd_h == 0:
+        elif ((typtr2_raw.tr2cn_h == "YN" and tr2.cgnd_h == 0) or
+              (typtr2_raw.nt2ph == 2 and (typtr2_raw.tr2cn_h == "D" or typtr2_raw.tr2cn_h == "Y") and tr2.i_eahv == 1)):
             trafo.conn_f = WindingType.GroundedStar
         elif typtr2_raw.tr2cn_h == "YN":
             trafo.conn_f = WindingType.NeutralStar
@@ -1730,7 +1731,8 @@ def convert_dgs_to_transformer(tr2: ElmTr2,
 
         if typtr2_raw.tr2cn_l == "Y":
             trafo.conn_t = WindingType.FloatingStar
-        elif typtr2_raw.tr2cn_l == "YN" and tr2.cgnd_l == 0:
+        elif ((typtr2_raw.tr2cn_l == "YN" and tr2.cgnd_l == 0) or
+            (typtr2_raw.nt2ph == 2 and (typtr2_raw.tr2cn_l == "D" or typtr2_raw.tr2cn_l == "Y") and tr2.i_ealv == 1)):
             trafo.conn_t = WindingType.GroundedStar
         elif typtr2_raw.tr2cn_l == "YN":
             trafo.conn_t = WindingType.NeutralStar
@@ -1749,7 +1751,8 @@ def convert_dgs_to_transformer(tr2: ElmTr2,
 
         if typtr2_raw.tr2cn_h == "Y":
             trafo.conn_t = WindingType.FloatingStar
-        elif typtr2_raw.tr2cn_h == "YN" and tr2.cgnd_h == 0:
+        elif ((typtr2_raw.tr2cn_h == "YN" and tr2.cgnd_h == 0) or
+            (typtr2_raw.nt2ph == 2 and (typtr2_raw.tr2cn_h == "D" or typtr2_raw.tr2cn_h == "Y") and tr2.i_eahv == 1)):
             trafo.conn_t = WindingType.GroundedStar
         elif typtr2_raw.tr2cn_h == "YN":
             trafo.conn_t = WindingType.NeutralStar
@@ -1766,7 +1769,8 @@ def convert_dgs_to_transformer(tr2: ElmTr2,
 
         if typtr2_raw.tr2cn_l == "Y":
             trafo.conn_f = WindingType.FloatingStar
-        elif typtr2_raw.tr2cn_l == "YN" and tr2.cgnd_l == 0:
+        elif ((typtr2_raw.tr2cn_l == "YN" and tr2.cgnd_l == 0) or
+            (typtr2_raw.nt2ph == 2 and (typtr2_raw.tr2cn_l == "D" or typtr2_raw.tr2cn_l == "Y") and tr2.i_ealv == 1)):
             trafo.conn_f = WindingType.GroundedStar
         elif typtr2_raw.tr2cn_l == "YN":
             trafo.conn_f = WindingType.NeutralStar
@@ -1780,6 +1784,21 @@ def convert_dgs_to_transformer(tr2: ElmTr2,
             trafo.conn_f = WindingType.Delta
         else:
             trafo.conn_f = WindingType.GroundedStar
+
+    cubicles = cubics_by_objid.get(_ref_id(tr2.ID), [])
+    cubicles = sorted(cubicles, key=_stacubic_obj_bus_sort_key)
+    cph_info = cubicles[0].cPhInfo if cubicles else ""
+    txt = cph_info.strip().upper()
+    phases = []
+    if "N" in txt:
+        phases.append(0)
+    if "A" in txt:
+        phases.append(1)
+    if "B" in txt:
+        phases.append(2)
+    if "C" in txt:
+        phases.append(3)
+    trafo.phases = np.array(phases, dtype=int)
 
     if int(typtr2_raw.itapch) != 0 and trafo.tap_changer.total_positions > 0:
         tap_position = int(tr2.nntap) - int(typtr2_raw.ntpmn)
