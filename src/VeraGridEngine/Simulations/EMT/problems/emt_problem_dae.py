@@ -4007,7 +4007,6 @@ class EmtProblemDae(EmtProblemTemplate):
                     else:
                         v_n, v_a, v_b, v_c = get_bus_emt_algebraic_vars(bus_working_models[terminal_bus])
                         terminal_voltage_vars: List[Any] = list([v_n, v_a, v_b, v_c])
-
                         if external_mapping is not None:
                             for ph in range(4):
                                 mapped_var = external_mapping.get(terminal_keys[ph], None)
@@ -4159,7 +4158,6 @@ class EmtProblemDae(EmtProblemTemplate):
             else:
                 v_n, v_a, v_b, v_c = get_bus_emt_algebraic_vars(inj_bus_mdl)
                 inj_bus_voltage_vars: List[Any] = list([v_n, v_a, v_b, v_c])
-
                 if inj_external_mapping is not None:
                     for ph in range(4):
                         mapped_var = inj_external_mapping.get(ph_v_keys[ph], None)
@@ -4576,6 +4574,19 @@ class EmtProblemDae(EmtProblemTemplate):
 
                 unique_names[candidate_name] = var.uid
                 mapped_uids.add(var.uid)
+
+                # GUI plot selectors and legacy result consumers use several
+                # human-readable device-qualified spellings. Publish those aliases
+                # as well so plotting remains robust across scripting, GUI editor,
+                # and persisted EMT result workflows.
+                for alias_name in [
+                    f"{var.name} - {device_name}",
+                    f"{var.name}_{device_name}",
+                ]:
+                    if alias_name in unique_names and unique_names[alias_name] != var.uid:
+                        unique_names[f"{alias_name}{device_idtag}"] = var.uid
+                    else:
+                        unique_names[alias_name] = var.uid
 
         for var in self.state_and_algebraic_vars():
             if var.uid in mapped_uids:

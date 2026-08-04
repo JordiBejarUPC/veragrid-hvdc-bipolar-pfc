@@ -57,7 +57,8 @@ from VeraGridEngine.Utils.SugiyamaLayered import (
     SugiyamaPort,
 )
 from VeraGrid.Gui.DynamicModelEditor.dyn_template_editor_dialogue import DynTemplatesEditorDialog
-from VeraGridEngine.enumerations import BlockType
+from VeraGrid.Gui.DynamicModelEditor.RoutingQt import QtRoutingSession
+from VeraGridEngine.enumerations import BlockType, RoutingAxis
 from VeraGridEngine.Devices.Diagrams.block_diagram import BlockDiagram
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Expr
 from dataclasses import dataclass
@@ -128,6 +129,92 @@ def build_emt_branch_bus_mask_from_refs(
         pass
 
     return mask
+
+
+def _disconnect_qt_signal(signal_obj: Any, slot: Any) -> None:
+    """
+    Disconnect one Qt signal/slot pair while tolerating already-cleared state.
+
+    Dynamic editor teardown runs along several paths: navigation replacement,
+    tab close, workspace close, and window close. Some of those paths can call
+    cleanup after Qt has already removed part of the object tree, so signal
+    disconnects must be best-effort instead of fatal.
+
+    :param signal_obj: Qt signal object.
+    :param slot: Connected slot callable.
+    :return: None.
+    """
+    try:
+        signal_obj.disconnect(slot)
+    except (RuntimeError, TypeError):
+        pass
+
+
+def _dispose_layout_widget(layout: QtWidgets.QLayout | None, widget: QtWidgets.QWidget | None) -> None:
+    """
+    Detach and queue one child widget for Qt-side destruction.
+
+    The editor creates several helper widgets dynamically and inserts them into
+    existing layouts. Removing them from the layout and parent tree before
+    ``deleteLater()`` reduces the chance of stale C++ widgets surviving until
+    Python wrapper finalization.
+
+    :param layout: Layout that currently hosts the widget.
+    :param widget: Widget to remove.
+    :return: None.
+    """
+    if layout is not None and widget is not None:
+        layout.removeWidget(widget)
+        widget.setParent(None)
+        widget.deleteLater()
+    else:
+        pass
+
+
+def _clear_table_view_model(view: QtWidgets.QAbstractItemView | None) -> None:
+    """
+    Clear the installed model from one item view.
+
+    Detaching the model breaks Qt ownership chains between the view, proxy,
+    source model, and editors before the view subtree is deleted.
+
+    :param view: View whose model should be cleared.
+    :return: None.
+    """
+    if view is not None:
+        view.setModel(None)
+    else:
+        pass
+
+
+def _dispose_qobject(obj: QtCore.QObject | None) -> None:
+    """
+    Detach one QObject from its parent and queue it for deletion.
+
+    :param obj: QObject to dispose.
+    :return: None.
+    """
+    if obj is not None:
+        obj.setParent(None)
+        obj.deleteLater()
+    else:
+        pass
+
+
+def _dispose_dynamic_editor_library(library: DynamicEditorLibrary | None) -> None:
+    """
+    Dispose the Qt model owned by one dynamic-editor library wrapper.
+
+    ``DynamicEditorLibrary`` is a plain Python object, not a ``QObject``. Its
+    source tree model is the Qt-owned resource that needs explicit teardown.
+
+    :param library: Library wrapper to dispose.
+    :return: None.
+    """
+    if library is not None:
+        _dispose_qobject(library.library_model)
+    else:
+        pass
 
 class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
     """
@@ -249,6 +336,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.has_unapplied_changes: bool = False
         self.dynamic_editor_entry: DynamicEditorEntry | None = None
         self._prepared_to_delete: bool = False
+        self._qt_routing_session: QtRoutingSession = QtRoutingSession()
         self.colors_palet: graph.EditorGraphicsDefaultsDark | graph.EditorGraphicsDefaultsLight = graph.EditorGraphicsDefaultsDark()
         self.current_theme: DynEditorGraphicsModes = current_theme
         self.set_colors_palet()
@@ -564,6 +652,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         """
         if self._navigation_delegate is not None:
             self._navigation_delegate.navigate_to_block(block)
+
 
     def changeEvent(self, event: QtCore.QEvent) -> None:
         """
@@ -1049,8 +1138,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                     target_port=target_port,
                     diagram=self.diagram,
                     editor=self,
-                    route_style="RETICULAR",
-                    locked=False,
                 )
                 connection.recolour()
                 self.scene.addItem(connection)
@@ -1061,8 +1148,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                     port_number_from=source_port.index,
                     port_number_to=target_port.index,
                     color=connection.pen().color().name(),
-                    route_style=connection.route_style,
-                    locked=connection.route_locked,
                 )
 
     def generate_block_item_for_block(self, block_model: Block,
@@ -1369,17 +1454,11 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             except IndexError:
                 continue
 
-            section = edge.sections[0] if edge.sections else None
-            bend_points = section.bend_points if section is not None else []
-            elbow_points = [QPointF(x, y) for x, y in bend_points]
             connection = graph.ConnectionItem(
                 source_port=src_port,
                 target_port=dst_port,
                 diagram=self.diagram,
                 con_uid=int(edge.identifier),
-                elbow_points=elbow_points,
-                route_style="RETICULAR",
-                locked=False,
                 editor=self,
             )
             connection.recolour()
@@ -1842,6 +1921,297 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 self.var_factory.remove_connection(target_var, dst_var)
                 if not isinstance(target_port.subsystem, (graph.RoundBaseArithmeticOpItem, graph.RectBaseArithmeticOpItem)):
                     target_port.subsystem.refresh_port_metadata()
+
+    def supports_routing_graph_connection(self, item: graph.ConnectionItem) -> bool:
+        """
+        Return whether one connection can be delegated to the new routing engine.
+
+        :param item: Connection item to inspect.
+        :return: Delegation state.
+        """
+        # New connections are expected to be owned by the new routing engine.
+        # The only remaining gate here is the current adapter limitation: the
+        # Qt bridge still supports only direct port-to-port endpoints.
+        if isinstance(item.source_port, graph.PortItem) and isinstance(item.target_port, graph.PortItem):
+            return True
+        else:
+            return False
+
+    def register_connection_item(self, item: graph.ConnectionItem) -> None:
+        """
+        Register one connection item in the diagram persistence model.
+
+        :param item: Connection item to register.
+        :return: None.
+        """
+        connection_record = self.diagram.con_data.get(item.con_uid, None)
+        source_port = item.source_port
+        target_port = item.target_port
+
+        if connection_record is None:
+            self.diagram.add_branch(
+                connectionitem_uid=item.con_uid,
+                device_uid_from=source_port.subsystem.subsys.uid,
+                device_uid_to=target_port.subsystem.subsys.uid,
+                port_number_from=source_port.index,
+                port_number_to=target_port.index,
+                color=item.pen().color().name(),
+            )
+            connection_record = self.diagram.con_data.get(item.con_uid, None)
+        else:
+            connection_record.from_uid = source_port.subsystem.subsys.uid
+            connection_record.to_uid = target_port.subsystem.subsys.uid
+            connection_record.port_number_from = source_port.index
+            connection_record.port_number_to = target_port.index
+            connection_record.color = item.pen().color().name()
+
+        if connection_record is None:
+            pass
+        elif self.supports_routing_graph_connection(item):
+            self.persist_connection_routing_graph_payload(item)
+        else:
+            pass
+
+    def attach_new_connection_item(self, item: graph.ConnectionItem) -> None:
+        """
+        Attach one newly created connection item to the scene and persistence.
+
+        :param item: Connection item to attach.
+        :return: None.
+        """
+        item.recolour()
+        self.scene.addItem(item)
+        self.register_connection_item(item)
+        if self.supports_routing_graph_connection(item):
+            self.sync_connection_with_routing_graph(item)
+        else:
+            pass
+
+    def restore_connection_item(self, item: graph.ConnectionItem, hydrate_graph_payload: bool) -> None:
+        """
+        Restore one persisted connection item into the scene.
+
+        :param item: Connection item to restore.
+        :param hydrate_graph_payload: Whether one stored routing payload must be imported.
+        :return: None.
+        """
+        item.recolour()
+        self.scene.addItem(item)
+        if hydrate_graph_payload:
+            self.hydrate_connection_routing_graph_payload(item)
+        else:
+            pass
+
+    def sync_connection_with_routing_graph(self, item: graph.ConnectionItem) -> bool:
+        """
+        Synchronize one connection item through the new Qt routing bridge.
+
+        :param item: Connection item to synchronize.
+        :return: ``True`` when the new engine updated the path.
+        """
+        if self.supports_routing_graph_connection(item):
+            if isinstance(item.source_port, graph.PortItem) and isinstance(item.target_port, graph.PortItem):
+                connection_record = self.diagram.con_data.get(item.con_uid, None)
+                session_has_graph: bool = self._qt_routing_session.has_connection(item.con_uid)
+                if connection_record is not None and connection_record.routing_payload is not None and not session_has_graph:
+                    imported: bool = self._qt_routing_session.import_connection_payload(
+                        connection_uid=item.con_uid,
+                        payload=dict(connection_record.routing_payload),
+                    )
+                    if imported:
+                        painter_path = self._qt_routing_session.build_connection_path(item.con_uid)
+                        if painter_path is None:
+                            return False
+                        else:
+                            item.setPath(painter_path)
+                            item._sync_elbow_items()
+                            return True
+                    else:
+                        pass
+                else:
+                    pass
+
+                self._qt_routing_session.synchronize_connection_graph(
+                    connection_uid=item.con_uid,
+                    source_port=item.source_port,
+                    destination_port=item.target_port,
+                )
+                painter_path = self._qt_routing_session.build_connection_path(item.con_uid)
+                if painter_path is None:
+                    return False
+                else:
+                    item.setPath(painter_path)
+                    self.persist_connection_routing_graph_payload(item)
+                    item._sync_elbow_items()
+                    return True
+            else:
+                return False
+        else:
+            return False
+
+    def move_connection_segment_with_routing_graph(
+            self,
+            item: graph.ConnectionItem,
+            segment_index: int,
+            delta_x: float,
+            delta_y: float,
+    ) -> bool:
+        """
+        Move one connection segment through the new routing engine.
+
+        :param item: Connection item to edit.
+        :param segment_index: Segment index inside the primary rendered polyline.
+        :param delta_x: Requested horizontal translation.
+        :param delta_y: Requested vertical translation.
+        :return: ``True`` when the new engine updated the path.
+        """
+        if self.supports_routing_graph_connection(item):
+            if isinstance(item.source_port, graph.PortItem) and isinstance(item.target_port, graph.PortItem):
+                self._qt_routing_session.synchronize_connection_graph(
+                    connection_uid=item.con_uid,
+                    source_port=item.source_port,
+                    destination_port=item.target_port,
+                )
+                ordered_segments = self._qt_routing_session.get_ordered_segments(item.con_uid)
+                if 0 <= segment_index < len(ordered_segments):
+                    route_segment = ordered_segments[segment_index]
+                else:
+                    return False
+
+                coordinate_offset: float
+                segment_axis = self._qt_routing_session.get_graph(item.con_uid).get_segment_axis(
+                    route_segment.get_segment_id()
+                ) if self._qt_routing_session.get_graph(item.con_uid) is not None else None
+                if segment_axis is None:
+                    return False
+                elif segment_axis == RoutingAxis.HORIZONTAL:
+                    coordinate_offset = float(delta_y)
+                else:
+                    coordinate_offset = float(delta_x)
+
+                moved = self._qt_routing_session.move_segment(
+                    connection_uid=item.con_uid,
+                    segment_id=route_segment.get_segment_id(),
+                    coordinate_offset=coordinate_offset,
+                )
+                if moved:
+                    painter_path = self._qt_routing_session.build_connection_path(item.con_uid)
+                    if painter_path is None:
+                        return False
+                    else:
+                        item.setPath(painter_path)
+                        self.persist_connection_routing_graph_payload(item)
+                        item._sync_elbow_items()
+                        return True
+                else:
+                    return False
+            else:
+                return False
+        else:
+            return False
+
+    def finalize_connection_routing_graph_drag(self, item: graph.ConnectionItem) -> bool:
+        """
+        Finalize one routing-engine-managed drag by refreshing the connection path.
+
+        :param item: Connection item to refresh.
+        :return: ``True`` when the new engine handled the refresh.
+        """
+        return self.sync_connection_with_routing_graph(item)
+
+    def get_connection_routing_graph_segments(self, item: graph.ConnectionItem) -> List[Tuple[int, QPointF, QPointF]]:
+        """
+        Return the ordered rendered segments of one routing-graph connection.
+
+        :param item: Connection item to inspect.
+        :return: Ordered tuples ``(segment_id, start_point, end_point)``.
+        """
+        segment_entries: List[Tuple[int, QPointF, QPointF]] = list()
+        if self.supports_routing_graph_connection(item):
+            route_segment = None
+            for route_segment in self._qt_routing_session.get_ordered_segments(item.con_uid):
+                segment_points = self._qt_routing_session.get_segment_path_points(
+                    item.con_uid,
+                    route_segment.get_segment_id(),
+                )
+                if segment_points is None:
+                    pass
+                else:
+                    segment_entries.append(
+                        (
+                            route_segment.get_segment_id(),
+                            segment_points[0],
+                            segment_points[1],
+                        )
+                    )
+            return segment_entries
+        else:
+            return segment_entries
+
+    def persist_connection_routing_graph_payload(self, item: graph.ConnectionItem) -> bool:
+        """
+        Persist the serialized routing-graph payload of one connection.
+
+        :param item: Connection item to persist.
+        :return: ``True`` when one payload was written.
+        """
+        if self.supports_routing_graph_connection(item):
+            connection_record = self.diagram.con_data.get(item.con_uid, None)
+            if connection_record is None:
+                return False
+            else:
+                payload = self._qt_routing_session.export_connection_payload(item.con_uid)
+                if payload is None:
+                    return False
+                else:
+                    connection_record.routing_payload = dict(payload)
+                    return True
+        else:
+            return False
+
+    def hydrate_connection_routing_graph_payload(self, item: graph.ConnectionItem) -> bool:
+        """
+        Hydrate one connection from one persisted routing-graph payload.
+
+        :param item: Connection item to hydrate.
+        :return: ``True`` when one payload was imported and rendered.
+        """
+        if self.supports_routing_graph_connection(item):
+            connection_record = self.diagram.con_data.get(item.con_uid, None)
+            if connection_record is None:
+                return False
+            elif connection_record.routing_payload is None:
+                return False
+            else:
+                imported: bool = self._qt_routing_session.import_connection_payload(
+                    connection_uid=item.con_uid,
+                    payload=dict(connection_record.routing_payload),
+                )
+                if imported:
+                    painter_path = self._qt_routing_session.build_connection_path(item.con_uid)
+                    if painter_path is None:
+                        return False
+                    else:
+                        item.setPath(painter_path)
+                        item._sync_elbow_items()
+                        return True
+                else:
+                    return False
+        else:
+            return False
+
+    def unregister_connection_from_routing_graph(self, item: graph.ConnectionItem) -> bool:
+        """
+        Remove one connection item from the new routing-graph session.
+
+        :param item: Connection item to unregister.
+        :return: ``True`` when the session mapping existed and was removed.
+        """
+        if self.supports_routing_graph_connection(item):
+            removed: bool = self._qt_routing_session.remove_connection(item.con_uid)
+            return removed
+        else:
+            return False
 
     def remove_block_item(self,
                           item: graph.BlockItem | graph.GenericBlockItem | graph.RoundBaseArithmeticOpItem | graph.RectBaseArithmeticOpItem | graph.PairedItem) -> None:
@@ -2912,11 +3282,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                                     target_port=block_item.inputs[input_index],
                                     diagram=self.diagram,
                                     editor=self,
-                                    route_style="RETICULAR",
-                                    locked=False,
                                 )
-                                connection_item.recolour()
-                                self.scene.addItem(connection_item)
+                                self.attach_new_connection_item(connection_item)
                         else:
                             pass
                     else:
@@ -2939,11 +3306,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                                     target_port=protected_item.inputs[0],
                                     diagram=self.diagram,
                                     editor=self,
-                                    route_style="RETICULAR",
-                                    locked=False,
                                 )
-                                connection_item.recolour()
-                                self.scene.addItem(connection_item)
+                                self.attach_new_connection_item(connection_item)
                         else:
                             pass
                     else:
@@ -3106,11 +3470,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                         target_port=target_port,
                         diagram=self.diagram,
                         editor=self,
-                        route_style="RETICULAR",
-                        locked=False,
                     )
-                    connection.recolour()
-                    self.scene.addItem(connection)
+                    self.attach_new_connection_item(connection)
             else:
                 pass
 
@@ -4098,6 +4459,13 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             # root immediately after commit so EMT initialization sees the same
             # constant-parameter contract as the scripting/template path.
             dialog_models.synchronize_saved_emt_root_parameters_from_children(device=self.api_object)
+
+            # The previous saved EMT model may already have bus-propagation edges
+            # registered in the shared var-factory graph. Remove those stale
+            # edges before registering the freshly committed model vars so the
+            # next attach step does not accumulate old and new symbolic links.
+            dialog_models.unregister_saved_emt_model_var_connections_for_device(device=self.api_object,
+                                                                                var_factory=self.var_factory)
 
             # The committed editor block is a fresh symbolic clone. Register its
             # vars in the shared factory before reconnecting so bus-side uid
@@ -5301,26 +5669,22 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                     dst_port = None
 
                 if src_port is not None and dst_port is not None:
-                    elbow_points: List[QPointF] = [QPointF(x, y) for x, y in
-                                                   con.elbow_points] if con.elbow_points else []
                     connection: graph.ConnectionItem = graph.ConnectionItem(
                         src_port, dst_port,
                         diagram=self.diagram,
                         con_uid=uid,
-                        elbow_points=elbow_points,
-                        route_style=con.route_style,
-                        locked=con.locked,
                         editor=self,
                     )
-                    connection.recolour()
-                    self.scene.addItem(connection)
+                    self.restore_connection_item(connection, hydrate_graph_payload=True)
                 else:
                     pass
             else:
                 pass
 
         if self.mode == DynamicSimulationMode.EMT and self.is_root_editor:
-            pass
+            visible_non_interface_items: list[graph.GenericBlockItem] = self._collect_non_interface_scene_items()
+            self._rebuild_visible_symbolic_connections(visible_non_interface_items)
+            self._rebuild_editor_interface_graphical_connections(visible_non_interface_items)
         else:
             pass
 
@@ -5397,15 +5761,86 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         :return: None.
         """
-        try:
-            self.ui.toolBox.currentChanged.disconnect(self.handle_side_panel_page_changed)
-        except (RuntimeError, TypeError):
+        _disconnect_qt_signal(self.ui.toolBox.currentChanged, self.handle_side_panel_page_changed)
+        _disconnect_qt_signal(self.scene.selectionChanged, self.on_scene_selection_changed)
+
+    def _dispose_dynamic_search_widgets(self) -> None:
+        """
+        Remove dynamically inserted search boxes from the side panel layouts.
+
+        These line edits are created programmatically instead of by the .ui file,
+        so the editor should explicitly undo those insertions during teardown.
+
+        :return: None.
+        """
+        _dispose_layout_widget(self.ui.verticalLayout_7, self.variables_search)
+        self.variables_search = None
+        _dispose_layout_widget(self.ui.verticalLayout_8, self.parameters_search)
+        self.parameters_search = None
+        _dispose_layout_widget(self.ui.verticalLayout_9, self.equations_search)
+        self.equations_search = None
+
+    def _dispose_table_models(self) -> None:
+        """
+        Detach the table/tree models owned by the editor.
+
+        The editor owns several view-proxy-source chains. Clearing the models
+        from the views first shortens the QObject ownership graph before the
+        editor widget itself is queued for deletion.
+
+        :return: None.
+        """
+        _clear_table_view_model(self.ui.libraryTreeView)
+        _clear_table_view_model(self.ui.variablesTableView)
+        _clear_table_view_model(self.ui.parametersTableView)
+        _clear_table_view_model(self.ui.equationsTableView)
+
+        _dispose_qobject(self.library_proxy_model)
+        self.library_proxy_model = None
+        _dispose_qobject(self.variables_proxy)
+        self.variables_proxy = None
+        _dispose_qobject(self.parameters_proxy)
+        self.parameters_proxy = None
+        _dispose_qobject(self.equations_proxy)
+        self.equations_proxy = None
+
+        _dispose_qobject(self.library_find_shortcut)
+        self.library_find_shortcut = None
+
+        _dispose_dynamic_editor_library(self.library)
+        self.library = None
+        _dispose_qobject(self.variables_model)
+        self.variables_model = None
+        _dispose_qobject(self.parameters_model)
+        self.parameters_model = None
+        _dispose_qobject(self.equations_model)
+        self.equations_model = None
+
+    def _dispose_graphics_objects(self) -> None:
+        """
+        Dismantle the graphics scene/view subtree explicitly.
+
+        The dynamic editor builds a replacement graphics view at runtime and the
+        scene owns many C++ graphics items. Clearing and detaching both objects
+        eagerly prevents them from surviving until Python garbage collection.
+
+        :return: None.
+        """
+        if self.scene is not None:
+            self.scene.clear()
+        else:
             pass
 
-        try:
-            self.scene.selectionChanged.disconnect(self.on_scene_selection_changed)
-        except (RuntimeError, TypeError):
+        if self.ui.graphicsView is not None:
+            self.ui.verticalLayout_3.removeWidget(self.ui.graphicsView)
+            self.ui.graphicsView.setParent(None)
+            self.ui.graphicsView.deleteLater()
+            self.ui.graphicsView = None
+        else:
             pass
+
+        _dispose_qobject(self.scene)
+        self.scene = None
 
     def prepare_to_delete(self) -> None:
         """
@@ -5418,7 +5853,22 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         self._prepared_to_delete = True
         self.disconnect_editor_signals()
-        self.scene.clear()
+
+        # Tear down the side-panel models first so no item view keeps proxy/model
+        # objects alive after the parent editor starts disappearing.
+        self._dispose_table_models()
+
+        # Remove the dynamic line edits explicitly because they were inserted into
+        # the UI layouts at runtime and otherwise rely on deferred QObject cleanup.
+        self._dispose_dynamic_search_widgets()
+
+        # Finally dismantle the graphics subtree. This is the highest-risk part
+        # because it owns many binary Qt graphics objects behind Python wrappers.
+        self._dispose_graphics_objects()
+
+        self._navigation_delegate = None
+        self.dynamic_editor_entry = None
+        self.api_object = None
 
     def closeEvent(self, event: QtGui.QCloseEvent) -> None:
         """

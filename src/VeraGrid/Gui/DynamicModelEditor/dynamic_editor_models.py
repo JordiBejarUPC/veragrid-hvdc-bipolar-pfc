@@ -26,7 +26,8 @@ from VeraGridEngine.Utils.Symbolic.bus_rms_template import initialize_bus_rms
 from VeraGridEngine.Utils.Symbolic.templates_common_functions import register_connected_emt_model, connect_injection_emt, connect_line_emt_from, connect_line_emt_to, \
     unify_saved_emt_model_root_contract, synchronize_saved_emt_root_contract_identity, \
     synchronize_saved_emt_root_contract_from_bus, synchronize_saved_emt_root_parameters_from_children, \
-    register_saved_emt_model_vars_for_device, attach_emt_model_to_buses, EmtBusConnectionSide
+    register_saved_emt_model_vars_for_device, unregister_saved_emt_model_var_connections_for_device, \
+    attach_emt_model_to_buses, EmtBusConnectionSide
 from VeraGridEngine.Utils.Symbolic.symbolic import Const, Expr, Var, string_to_symbolic, symbolic_to_string
 from VeraGrid.Gui.gui_functions import ComboDelegate, TextDelegate
 from VeraGrid.Gui.wrappable_table_model import WrappableTableModel
@@ -1264,7 +1265,8 @@ def clone_template_diagram(diagram: BlockDiagram, uid_map: Dict[int, int]) -> Bl
             device_uid_to=uid_map.get(con.to_uid, con.to_uid),
             port_number_from=con.port_number_from,
             port_number_to=con.port_number_to,
-            color=con.color
+            color=con.color,
+            routing_payload=dict(con.routing_payload) if con.routing_payload is not None else None,
         )
 
     return cloned_diagram

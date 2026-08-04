@@ -3944,6 +3944,13 @@ class SimulationsMain(TimeEventsMain):
 
         self.remove_simulation(SimulationTypes.EmtDynamic_run)
 
+        logger = self.circuit.check_emt_models()
+        if logger.has_errors():
+            self.show_logs(name="EMT pre simulation check", logger=logger)
+            return
+        else:
+            pass
+
         _, pf_results_3ph = self.session.power_flow_3ph
 
         _, pf_results = self.session.power_flow
@@ -4071,6 +4078,7 @@ class SimulationsMain(TimeEventsMain):
         :return: None.
         """
         _, results = self.session.emt_dynamic_simulation
+        emt_driver, _unused_results = self.session.emt_dynamic_simulation
 
         if results is not None:
 
@@ -4128,6 +4136,17 @@ class SimulationsMain(TimeEventsMain):
                 self.show_info_toast("There are no active EMT event groups to report.")
 
         else:
+            if emt_driver is not None and emt_driver.logger.has_logs():
+                self.show_logs(logger=emt_driver.logger, name="EMT simulation logs")
+            else:
+                pass
+
+            emt_thread = self.session.threads.get(SimulationTypes.EmtDynamic_run, None)
+            if emt_thread is not None and emt_thread.logger.has_logs():
+                self.show_logs(logger=emt_thread.logger, name="EMT simulation error")
+            else:
+                pass
+
             warning_msg('There are no emt simulation results.', 'Emt simulation')
 
         if not self.session.is_anything_running():

@@ -1,8 +1,13 @@
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.
+# SPDX-License-Identifier: MPL-2.0
+
 from __future__ import annotations
 
 import math
 import uuid
-from typing import Any, Dict, List, Optional, TYPE_CHECKING
+from typing import Any, Dict, List, Optional, TYPE_CHECKING, Tuple
 
 from PySide6 import QtCore, QtGui, QtWidgets
 from PySide6.QtCore import QPointF, Qt
@@ -582,7 +587,7 @@ class BranchingItem(QGraphicsEllipseItem):
         self.index: int = index
         self.connections: List["ConnectionItem"] | None = None
         self.base_var: Var | None = None
-        self.owner_connection: "ConnectionItem" | None = None
+        self.owner_connection: ConnectionItem | None = None
         self.routing_node_id: int | None = None
 
     def hoverEnterEvent(self, event: QtWidgets.QGraphicsSceneHoverEvent) -> None:

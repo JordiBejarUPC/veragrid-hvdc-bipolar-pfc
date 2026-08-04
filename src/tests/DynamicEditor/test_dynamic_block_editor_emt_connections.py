@@ -531,3 +531,4 @@ def test_attach_editor_assigned_emt_branch_model_preserves_side_specific_root_ma
     assert mapping.get(VarPowerFlowReferenceType.vt_B, None) is not None
     assert mapping.get(VarPowerFlowReferenceType.v_A, None) is None
     assert mapping.get(VarPowerFlowReferenceType.v_B, None) is None
+

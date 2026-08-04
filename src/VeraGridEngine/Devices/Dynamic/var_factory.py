@@ -253,7 +253,34 @@ class VarFactory(EditableDevice):
     def connect_variables_by_uid(self,
                                  var_to_subs_non_mutable_uid: int,
                                  incoming_var_uid: int,
-                                 incoming_var_name: str) -> None:
+                                 incoming_var_name: str,
+                                 visited_non_mutable_uids: set[int] | None = None) -> None:
+        """
+        Propagate one incoming variable identity through the saved connection graph.
+
+        The connection registry can contain cycles when editor-side EMT models
+        reconnect root mapping vars that already alias back into the same live
+        symbolic chain. Track visited stable uids during one propagation walk so
+        the alias update remains finite even when the graph contains loops.
+
+        :param var_to_subs_non_mutable_uid: Stable uid of the variable to rewrite.
+        :param incoming_var_uid: Mutable uid that should be propagated.
+        :param incoming_var_name: Variable name that should be propagated.
+        :param visited_non_mutable_uids: Stable uids already processed in this walk.
+        :return: None.
+        """
+        next_visited_non_mutable_uids: set[int]
+        connection: Connection
+
+        if visited_non_mutable_uids is None:
+            next_visited_non_mutable_uids = set()
+        else:
+            next_visited_non_mutable_uids = visited_non_mutable_uids
+
+        if var_to_subs_non_mutable_uid in next_visited_non_mutable_uids:
+            return
+        else:
+            next_visited_non_mutable_uids.add(var_to_subs_non_mutable_uid)
 
         if var_to_subs_non_mutable_uid in self._var_dict:
             self._var_dict[var_to_subs_non_mutable_uid].uid = incoming_var_uid
@@ -271,7 +298,12 @@ class VarFactory(EditableDevice):
         # recursitity for previous connected vars
         if var_to_subs_non_mutable_uid in self._vars_connected_dict:
             for connection in self._vars_connected_dict[var_to_subs_non_mutable_uid]:
-                self.connect_variables_by_uid(connection.non_mutable_uid, incoming_var_uid, incoming_var_name)
+                self.connect_variables_by_uid(connection.non_mutable_uid,
+                                              incoming_var_uid,
+                                              incoming_var_name,
+                                              next_visited_non_mutable_uids)
+        else:
+            pass
 
     def add_connection(self, var_to_subs: Var, incoming_var: Var):
 

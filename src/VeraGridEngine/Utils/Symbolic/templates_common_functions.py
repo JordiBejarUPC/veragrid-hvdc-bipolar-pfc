@@ -326,6 +326,58 @@ def register_saved_emt_model_vars_for_device(device: Any,
         var_factory.register_var(device, diff_var)
 
 
+def unregister_saved_emt_model_var_connections_for_device(device: Any,
+                                                          var_factory: VarFactory) -> None:
+    """
+    Remove saved EMT var-factory connection edges currently associated to one device.
+
+    Reapplying one editor-built EMT model replaces the device symbolic vars, but
+    the shared var-factory connection graph keeps old propagated edges unless the
+    previous device-owned vars are detached explicitly. Those stale edges can
+    later alias old and new root contract vars together and create symbolic
+    cycles during bus reconnection.
+
+    :param device: Device whose saved EMT graph edges must be removed.
+    :param var_factory: Shared variable factory that owns the connection graph.
+    :return: None.
+    """
+    previous_device_vars: list[Var] | None = var_factory.vars_info.get(device, None)
+    previous_device_var_uids: set[int] = set()
+    connected_uid: int
+    outgoing_uid: int
+    existing_connections: list[Any]
+    kept_connections: list[Any]
+    connection: Any
+
+    if previous_device_vars is None:
+        return
+    else:
+        pass
+
+    for connection_var in previous_device_vars:
+        previous_device_var_uids.add(connection_var.non_mutable_uid)
+
+    for outgoing_uid, existing_connections in list(var_factory.get_connections_dict().items()):
+        kept_connections = list()
+
+        for connection in existing_connections:
+            if connection.non_mutable_uid in previous_device_var_uids:
+                pass
+            else:
+                kept_connections.append(connection)
+
+        if len(kept_connections) == 0:
+            del var_factory.get_connections_dict()[outgoing_uid]
+        else:
+            var_factory.get_connections_dict()[outgoing_uid] = kept_connections
+
+    for connected_uid in previous_device_var_uids:
+        if connected_uid in var_factory.get_connections_dict():
+            del var_factory.get_connections_dict()[connected_uid]
+        else:
+            pass
+
+
 def unify_saved_emt_model_root_contract(device: Any) -> None:
     """
     Unify one saved EMT model root external mapping with the actual root IO vars.
@@ -615,6 +667,8 @@ def synchronize_saved_emt_root_parameters_from_children(device: Any) -> None:
     child_block: Block
     parameter_var: Var
     parameter_value: Const
+    api_key: Any
+    api_var: Var | None
 
     if model.empty():
         return
@@ -627,6 +681,27 @@ def synchronize_saved_emt_root_parameters_from_children(device: Any) -> None:
                 pass
             else:
                 model.parameters[parameter_var] = parameter_value
+
+        # Editor-saved wrapper roots can keep static API mappings such as
+        # ``omega_base`` only on the generated child block. The EMT static
+        # parameter mapper later reads the root ``api_obj_mapping`` contract, so
+        # mirror missing child mappings into the root before assembly.
+        for api_key, api_var in child_block.api_obj_mapping.items():
+            if api_key in model.api_obj_mapping:
+                pass
+            else:
+                model.api_obj_mapping[api_key] = api_var
+
+            if api_var is None:
+                pass
+            else:
+                if api_var in child_block.parameters:
+                    if api_var in model.parameters:
+                        pass
+                    else:
+                        model.parameters[api_var] = child_block.parameters[api_var]
+                else:
+                    pass
 
 
 def ensure_bus_emt_model_matches_grid_mask(bus: Any,
@@ -1083,11 +1158,6 @@ def attach_emt_model_to_buses(device: Any,
                                              DeviceType.SeriesReactanceDevice,
                                              DeviceType.UpfcDevice,
                                              DeviceType.VscDevice])
-
-    # The shared attachment path must materialize the current block on the
-    # device first because registry cleanup and validation helpers compare live
-    # entries against ``device.emt_model``.
-    device.emt_model = model
 
     unregister_connected_emt_model_from_attached_buses(device=device)
 
@@ -1635,9 +1705,10 @@ def set_emt_model(device: Any, model: Block, var_factory: VarFactory):
     # Route all callers through the shared attachment path so branch and
     # injection EMT models preserve the same root external contract used by the
     # editor-driven template setters and topology validation.
-    attach_emt_model_to_buses(device=device,
+    connect_bus_variables_emt(device=device,
                               model=model,
-                              var_factory=var_factory)
+                              var_factory=var_factory,
+                              allow_deferred_connection=True)
     # EMT scripting must now preserve the same pre-build hierarchical runtime
     # shape produced by GUI template assignment. The shared EMT problem build
     # path performs the authoritative flattening stage for both workflows.
