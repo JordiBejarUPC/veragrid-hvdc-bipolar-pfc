@@ -4,7 +4,7 @@ import copy
 import re
 import uuid
 from enum import Enum
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional
 
 from PySide6 import QtCore, QtWidgets
 from PySide6.QtCore import Signal
@@ -20,17 +20,17 @@ from VeraGridEngine.Devices.Parents.branch_parent import BranchParent
 from VeraGridEngine.Devices.Parents.injection_parent import InjectionParent
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.Utils.Symbolic.block import Block
-from VeraGridEngine.Utils.Symbolic.bus_emt_template import BusEmtTemplate, get_bus_emt_template
+from VeraGridEngine.Utils.Symbolic.bus_emt_template import BusEmtTemplate
+from VeraGridEngine.Utils.Symbolic.bus_emt_template import get_bus_emt_algebraic_vars, get_bus_mask
 from VeraGridEngine.Utils.Symbolic.bus_rms_template import initialize_bus_rms
-from VeraGridEngine.Utils.Symbolic.templates_common_functions import unregister_connected_emt_model_from_attached_buses, \
-    register_connected_emt_model, connect_injection_emt, connect_line_emt_from, connect_line_emt_to, \
+from VeraGridEngine.Utils.Symbolic.templates_common_functions import register_connected_emt_model, connect_injection_emt, connect_line_emt_from, connect_line_emt_to, \
     unify_saved_emt_model_root_contract, synchronize_saved_emt_root_contract_identity, \
     synchronize_saved_emt_root_contract_from_bus, EmtBusConnectionSide
 from VeraGridEngine.Utils.Symbolic.symbolic import Const, Expr, Var, string_to_symbolic, symbolic_to_string
 from VeraGrid.Gui.gui_functions import ComboDelegate, TextDelegate
 from VeraGrid.Gui.wrappable_table_model import WrappableTableModel
 from VeraGridEngine.enumerations import DeviceType, DynamicSimulationMode, DynamicTableModelMode, \
-    ParamPowerFlowReferenceType, VarPowerFlowReferenceType
+    ParamPowerFlowReferenceType
 from VeraGrid.Gui.DynamicModelEditor.dynamic_latex_renderer import LatexEquationDelegate
 from VeraGridEngine.Utils.Symbolic.latex_printer import symbolic_to_latex
 
@@ -855,7 +855,7 @@ class WrappableBlockTableModel(WrappableTableModel):
                     if old_latex is not None:
                         self.latex_invalidation_requested.emit(old_latex)
                     return True
-                except Exception:  # TODO: Except what? why should there be an exception here?
+                except (SyntaxError, TypeError, ValueError):
                     return False
 
             if row.key_var is not None:
@@ -876,7 +876,7 @@ class WrappableBlockTableModel(WrappableTableModel):
             elif self.mode == DynamicTableModelMode.PARAMETERS:
                 try:
                     parsed_value = _parse_symbolic_editor_value(self.block, value)
-                except Exception:
+                except (SyntaxError, TypeError, ValueError):
                     return False
                 row.value = parsed_value
                 refresh_block_parameter_row_cache(row)
@@ -1347,9 +1347,24 @@ def _initialize_editor_assigned_emt_bus_model(bus: Bus,
                                               api_object: Any,
                                               circuit: MultiCircuit | None,
                                               var_factory: VarFactory) -> None:
+    bus_model_invalid: bool = False
+
     if bus.emt_model.empty():
+        bus_model_invalid = True
+    else:
+        try:
+            get_bus_emt_algebraic_vars(bus.emt_model)
+        except (AttributeError, TypeError, ValueError):
+            bus_model_invalid = True
+
+    if bus_model_invalid:
         if circuit is not None:
-            get_bus_emt_template(grid=circuit, bus=bus)
+            bus.emt_model = BusEmtTemplate(
+                vf=var_factory,
+                mask=get_bus_mask(grid=circuit, bus=bus),
+                is_dc=bus.is_dc,
+                name=f"{bus.name}_emt",
+            ).block
         elif bus.is_dc:
             bus.emt_model = BusEmtTemplate(
                 vf=var_factory,

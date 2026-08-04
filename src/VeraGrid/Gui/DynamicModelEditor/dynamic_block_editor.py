@@ -18,8 +18,7 @@ from VeraGridEngine.Devices.Parents.injection_parent import InjectionParent
 from VeraGridEngine.enumerations import DeviceType, VarPowerFlowReferenceType, ParamPowerFlowReferenceType, \
     DynamicSimulationMode, DynamicTableModelMode, DynEditorGraphicsModes
 from VeraGridEngine.Utils.Symbolic.bus_rms_template import initialize_bus_rms
-from VeraGridEngine.Utils.Symbolic.bus_emt_template import get_bus_emt_template, \
-    get_bus_emt_algebraic_vars
+from VeraGridEngine.Utils.Symbolic.bus_emt_template import get_bus_emt_algebraic_vars
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
@@ -62,6 +61,7 @@ from VeraGridEngine.enumerations import BlockType
 from VeraGridEngine.Devices.Diagrams.block_diagram import BlockDiagram
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Expr
 from dataclasses import dataclass
+from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_graphics import GenericBlockItem
 
 
 @dataclass
@@ -129,19 +129,6 @@ def build_emt_branch_bus_mask_from_refs(
 
     return mask
 
-# Todo: is this class necessary?
-class _FallbackDocument:
-    """
-    Minimal document shim for legacy callers that don't pass a document.
-
-    In the legacy code-path the editor edits the block directly (there is
-    no separate working copy), so ``commit()`` is a no-op.
-    """
-
-    def commit(self) -> None:
-        """No-op: edits already live on the block."""
-
-
 class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
     """
     DynamicModelEditorGUI
@@ -184,10 +171,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                  is_root_editor=False,
                  modal: bool = True,
                  workspace_embedded: bool = False,
-                 root_block: Block = Block(),
-                 current_block: Block = Block(),
+                 root_block: Block | None = None,
+                 current_block: Block | None = None,
                  document=None,
-                 block2blocktype: Dict[int, BlockType] = dict()):
+                 block2blocktype: Dict[int, BlockType] | None = None):
         """
         Initializes a dynamic block editor window.
 
@@ -214,8 +201,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param workspace_embedded: Whether the editor is hosted inside the tabbed dynamic-editor workspace.
         :param root_block: Top-level working block (from the document).
         :param current_block: Block currently being edited (from the working tree).
-        :param block: Deprecated — use ``current_block`` instead.
-        :param main_editor: Deprecated — use ``is_root_editor`` instead.
         :return: None.
         """
         super().__init__()
@@ -248,8 +233,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.is_root_editor = is_root_editor
         self.workspace_embedded = workspace_embedded
 
-        self._document = document if document is not None else _FallbackDocument()
-        self._block2blocktype: Dict[int, BlockType] = block2blocktype
+        self._document = document
+        self._block2blocktype: Dict[int, BlockType] = block2blocktype if block2blocktype is not None else dict()
         self._navigation_delegate = None
         self.templates_list: List[
             RmsModelTemplate | EmtModelTemplate | FmuTemplate] = templates_list if templates_list is not None else list()
@@ -268,8 +253,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.current_theme: DynEditorGraphicsModes = current_theme
         self.set_colors_palet()
 
-        self.root_block: Block = root_block
-        self.main_block: Block = current_block
+        self.root_block: Block = root_block if root_block is not None else Block()
+        self.main_block: Block = current_block if current_block is not None else Block()
 
         self.blocktype2templatebuilder = get_blocktype2template_builder_dict()
 
@@ -1082,7 +1067,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
     def generate_block_item_for_block(self, block_model: Block,
                                       x_pos: float,
-                                      y_pos: float) -> graph.GenericBlockItem:
+                                      y_pos: float) -> graph.GenericBlockItem | graph.RoundBaseArithmeticOpItem | graph.RectBaseArithmeticOpItem | graph.UnOpItem:
         """
         Create and place a block item in the canvas scene.
 
@@ -1099,8 +1084,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
             count: int = self.block_counters.get(block_type, 0) + 1
 
+            item: graph.RoundBaseArithmeticOpItem | graph.RectBaseArithmeticOpItem | graph.UnOpItem | graph.GenericBlockItem
+
             if len(block_model.in_vars) <= 3:
-                item: graph.RoundBaseArithmeticOpItem = graph.RoundBaseArithmeticOpItem(
+                item = graph.RoundBaseArithmeticOpItem(
                     var_factory=self.var_factory,
                     subsys=block_model,
                     block_type=block_type,
@@ -1108,7 +1095,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                     position_changed_callback=self.build_position_changed_callback(
                         block_model.uid))
             else:
-                item: graph.RectBaseArithmeticOpItem = graph.RectBaseArithmeticOpItem(
+                item = graph.RectBaseArithmeticOpItem(
                     var_factory=self.var_factory,
                     subsys=block_model,
                     block_type=block_type,
@@ -1127,13 +1114,16 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             )
 
         elif block_type in self.UNARY_MATH_BLOCK_TYPES:
+            assert block_type is not None
+            unary_block_type: BlockType = block_type
+
             item = graph.UnOpItem(
                 editor=self,
                 var_factory=self.var_factory,
                 subsys=block_model,
                 api_object=self.api_object,
                 mode=self.mode,
-                block_type=block_type,
+                block_type=unary_block_type,
                 name=item_name,
                 position_changed_callback=self.build_position_changed_callback(block_model.uid)
             )
@@ -1141,7 +1131,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 name=item_name,
                 x=x_pos,
                 y=y_pos,
-                tpe=block_type.name,
+                tpe=unary_block_type.name,
                 device_uid=block_model.uid
             )
 
@@ -1407,12 +1397,13 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         if block_model is not None:
             item = GenericBlockItem(
+                editor=self,
                 var_factory=self.var_factory,
                 subsys=block_model,
                 api_object=self.api_object,
                 mode=self.mode,
                 name=item_name,
-                position_changed_callback=self._build_position_changed_callback(block_model.uid)
+                position_changed_callback=self.build_position_changed_callback(block_model.uid)
             )
 
             # The symbolic block has to be attached first so the graphics item can build its ports from it.
@@ -4064,7 +4055,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             else:
                 pass
             # Persist the edited RMS block back into the original model object.
-            self._document.commit()
+            if self._document is not None:
+                self._document.commit()
+            else:
+                pass
             # Rebuild the connected bus helper models so the saved block stays
             # consistent with the rest of the dynamic network representation.
             dialog_models.initialize_connected_bus_models_for_editor_assignment(api_object=self.api_object,
@@ -4094,20 +4088,31 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             # just like the RMS save path does. The bus attachment helper is the
             # only stage that should connect the saved model to the bus shells.
             self._remove_shared_branch_emt_root_refs()
-            self._document.commit()
+            if self._document is not None:
+                self._document.commit()
+            else:
+                pass
+
+            # Saved EMT wrapper roots created through the GUI can keep some
+            # static parameters only in child blocks. Mirror them into the saved
+            # root immediately after commit so EMT initialization sees the same
+            # constant-parameter contract as the scripting/template path.
+            dialog_models.synchronize_saved_emt_root_parameters_from_children(device=self.api_object)
+
+            # The committed editor block is a fresh symbolic clone. Register its
+            # vars in the shared factory before reconnecting so bus-side uid
+            # propagation and EmtProblemDae external-mapping recovery see the
+            # same authoritative objects as the scripting/template path.
+            dialog_models.register_saved_emt_model_vars_for_device(device=self.api_object,
+                                                                   var_factory=self.var_factory)
 
             dialog_models.initialize_connected_bus_models_for_editor_assignment(api_object=self.api_object,
                                                                                 circuit=self.circuit,
                                                                                 var_factory=self.var_factory,
                                                                                 mode=self.mode)
-            if isinstance(self.api_object, InjectionParent):
-                dialog_models.attach_editor_assigned_emt_injection_model(api_object=self.api_object,
-                                                                         var_factory=self.var_factory)
-            elif isinstance(self.api_object, BranchParent):
-                dialog_models.attach_editor_assigned_emt_branch_model(api_object=self.api_object,
-                                                                      var_factory=self.var_factory)
-            else:
-                pass
+            dialog_models.attach_emt_model_to_buses(device=self.api_object,
+                                                    model=self.api_object.emt_model,
+                                                    var_factory=self.var_factory)
             # Mark the editor state as clean because all in-memory edits were
             # transferred back to the owned device model successfully.
             self.has_unapplied_changes = False
@@ -4407,26 +4412,23 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                             phase_is_fully_absent_at_root: bool = False
                             root_reference: VarPowerFlowReferenceType | None = None
 
-                            if block in self.main_block.in_vars or block in self.main_block.out_vars:
-                                root_reference = valid.get_var_reference(var=block)
-                            else:
-                                if node.tpe == BlockType.INPUT_CONN.name or node.tpe == BlockType.OUTPUT_CONN.name:
-                                    reference_var: Var | None = None
+                            if node.tpe == BlockType.INPUT_CONN.name or node.tpe == BlockType.OUTPUT_CONN.name:
+                                reference_var: Var | None = None
 
-                                    if node.tpe == BlockType.INPUT_CONN.name and len(block.out_vars) > 0:
-                                        reference_var = block.out_vars[0]
+                                if node.tpe == BlockType.INPUT_CONN.name and len(block.out_vars) > 0:
+                                    reference_var = block.out_vars[0]
+                                else:
+                                    if node.tpe == BlockType.OUTPUT_CONN.name and len(block.in_vars) > 0:
+                                        reference_var = block.in_vars[0]
                                     else:
-                                        if node.tpe == BlockType.OUTPUT_CONN.name and len(block.in_vars) > 0:
-                                            reference_var = block.in_vars[0]
-                                        else:
-                                            reference_var = None
+                                        reference_var = None
 
-                                    if reference_var is not None:
-                                        root_reference = valid.get_var_reference(var=reference_var)
-                                    else:
-                                        root_reference = None
+                                if reference_var is not None:
+                                    root_reference = valid.get_var_reference(var=reference_var)
                                 else:
                                     root_reference = None
+                            else:
+                                root_reference = None
 
                             if root_reference is not None:
                                 if root_reference in {
@@ -4559,7 +4561,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 if missing_input_names or missing_output_names:
                     block_label: str = node.name
 
-                    if block in self.main_block.in_vars or block in self.main_block.out_vars:
+                    if node.tpe == BlockType.INPUT_CONN.name or node.tpe == BlockType.OUTPUT_CONN.name:
                         # Root interface rows must point back to the visible protected
                         # connector node on canvas, not to the synthetic internal root
                         # variable name used by some rebuilt test/editor states.
@@ -5159,8 +5161,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.scene.clear()
 
         # Recreate nodes
-        signal_in_items: Dict[str, graph.PairedItem] = {}
-        signal_out_items: Dict[str, graph.PairedItem] = {}
+        signal_in_items: Dict[str, graph.PairedItem] = dict()
+        signal_out_items: Dict[str, graph.PairedItem] = dict()
 
         for uid, node in self.diagram.node_data.items():
             if node.tpe in BlockType.__members__:
@@ -5170,7 +5172,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
             block_model: Block = self.get_block_from_main_block(node.device_uid)
 
-            item = None
+            item: graph.PairedItem | graph.RoundBaseArithmeticOpItem | graph.RectBaseArithmeticOpItem | graph.UnOpItem | graph.GenericBlockItem | None = None
             if block_type == BlockType.INPUT_CONN or block_type == BlockType.OUTPUT_CONN:
                 block_item: graph.ProtectedConnectionBlockItem = graph.ProtectedConnectionBlockItem(editor=self,
                                                                                         var_factory=self.var_factory,
@@ -5218,7 +5220,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 count: int = self.block_counters.get(block_type, 0) + 1
 
                 if len(block_model.in_vars) <= 3:
-                    item: graph.RoundBaseArithmeticOpItem = graph.RoundBaseArithmeticOpItem(
+                    item = graph.RoundBaseArithmeticOpItem(
                         var_factory=self.var_factory,
                         subsys=block_model,
                         block_type=block_type,
@@ -5226,7 +5228,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                         position_changed_callback=self.build_position_changed_callback(
                             block_model.uid))
                 else:
-                    item: graph.RectBaseArithmeticOpItem = graph.RectBaseArithmeticOpItem(
+                    item = graph.RectBaseArithmeticOpItem(
                         var_factory=self.var_factory,
                         subsys=block_model,
                         block_type=block_type,
@@ -5239,13 +5241,16 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 item.recolour()
 
             elif block_type in self.UNARY_MATH_BLOCK_TYPES:
+                assert block_type is not None
+                unary_block_type: BlockType = block_type
+
                 item = graph.UnOpItem(
                     editor=self,
                     var_factory=self.var_factory,
                     subsys=block_model,
                     api_object=self.api_object,
                     mode=self.mode,
-                    block_type=block_type,
+                    block_type=unary_block_type,
                     name=block_model.name,
                     position_changed_callback=self.build_position_changed_callback(block_model.uid)
                 )
