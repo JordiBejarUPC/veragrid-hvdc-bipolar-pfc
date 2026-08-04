@@ -4,7 +4,7 @@ import copy
 import re
 import uuid
 from enum import Enum
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional
 
 from PySide6 import QtCore, QtWidgets
 from PySide6.QtCore import Signal
@@ -20,13 +20,18 @@ from VeraGridEngine.Devices.Parents.branch_parent import BranchParent
 from VeraGridEngine.Devices.Parents.injection_parent import InjectionParent
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.Utils.Symbolic.block import Block
-from VeraGridEngine.Utils.Symbolic.bus_emt_template import BusEmtTemplate, get_bus_emt_template
+from VeraGridEngine.Utils.Symbolic.bus_emt_template import BusEmtTemplate
+from VeraGridEngine.Utils.Symbolic.bus_emt_template import get_bus_emt_algebraic_vars, get_bus_mask
 from VeraGridEngine.Utils.Symbolic.bus_rms_template import initialize_bus_rms
+from VeraGridEngine.Utils.Symbolic.templates_common_functions import register_connected_emt_model, connect_injection_emt, connect_line_emt_from, connect_line_emt_to, \
+    unify_saved_emt_model_root_contract, synchronize_saved_emt_root_contract_identity, \
+    synchronize_saved_emt_root_contract_from_bus, synchronize_saved_emt_root_parameters_from_children, \
+    register_saved_emt_model_vars_for_device, attach_emt_model_to_buses, EmtBusConnectionSide
 from VeraGridEngine.Utils.Symbolic.symbolic import Const, Expr, Var, string_to_symbolic, symbolic_to_string
 from VeraGrid.Gui.gui_functions import ComboDelegate, TextDelegate
 from VeraGrid.Gui.wrappable_table_model import WrappableTableModel
 from VeraGridEngine.enumerations import DeviceType, DynamicSimulationMode, DynamicTableModelMode, \
-    ParamPowerFlowReferenceType, VarPowerFlowReferenceType
+    ParamPowerFlowReferenceType
 from VeraGrid.Gui.DynamicModelEditor.dynamic_latex_renderer import LatexEquationDelegate
 from VeraGridEngine.Utils.Symbolic.latex_printer import symbolic_to_latex
 
@@ -851,7 +856,7 @@ class WrappableBlockTableModel(WrappableTableModel):
                     if old_latex is not None:
                         self.latex_invalidation_requested.emit(old_latex)
                     return True
-                except Exception:  # TODO: Except what? why should there be an exception here?
+                except (SyntaxError, TypeError, ValueError):
                     return False
 
             if row.key_var is not None:
@@ -872,7 +877,7 @@ class WrappableBlockTableModel(WrappableTableModel):
             elif self.mode == DynamicTableModelMode.PARAMETERS:
                 try:
                     parsed_value = _parse_symbolic_editor_value(self.block, value)
-                except Exception:
+                except (SyntaxError, TypeError, ValueError):
                     return False
                 row.value = parsed_value
                 refresh_block_parameter_row_cache(row)
@@ -1259,8 +1264,7 @@ def clone_template_diagram(diagram: BlockDiagram, uid_map: Dict[int, int]) -> Bl
             device_uid_to=uid_map.get(con.to_uid, con.to_uid),
             port_number_from=con.port_number_from,
             port_number_to=con.port_number_to,
-            color=con.color,
-            routing_payload=dict(con.routing_payload) if con.routing_payload is not None else None,
+            color=con.color
         )
 
     return cloned_diagram
@@ -1343,73 +1347,25 @@ def _initialize_editor_assigned_rms_bus_model(bus: Bus, var_factory: VarFactory)
 def _initialize_editor_assigned_emt_bus_model(bus: Bus,
                                               api_object: Any,
                                               circuit: MultiCircuit | None,
-                                              var_factory: VarFactory,
-                                              editor_interface_refs: set[
-                                                                         VarPowerFlowReferenceType] | None = None) -> None:
+                                              var_factory: VarFactory) -> None:
+    bus_model_invalid: bool = False
+
     if bus.emt_model.empty():
-        if editor_interface_refs is not None:
-            mask: list[bool] | None = None
+        bus_model_invalid = True
+    else:
+        try:
+            get_bus_emt_algebraic_vars(bus.emt_model)
+        except (AttributeError, TypeError, ValueError):
+            bus_model_invalid = True
 
-            if isinstance(api_object, InjectionParent):
-                if api_object.bus is bus:
-                    mask = list([False, False, False, False])
-                    mask[0] = (VarPowerFlowReferenceType.v_N in editor_interface_refs
-                               or VarPowerFlowReferenceType.i_N in editor_interface_refs)
-                    mask[1] = (VarPowerFlowReferenceType.v_A in editor_interface_refs
-                               or VarPowerFlowReferenceType.i_A in editor_interface_refs)
-                    mask[2] = (VarPowerFlowReferenceType.v_B in editor_interface_refs
-                               or VarPowerFlowReferenceType.i_B in editor_interface_refs)
-                    mask[3] = (VarPowerFlowReferenceType.v_C in editor_interface_refs
-                               or VarPowerFlowReferenceType.i_C in editor_interface_refs)
-                else:
-                    mask = None
-            elif isinstance(api_object, BranchParent):
-                if api_object.bus_from is bus:
-                    mask = list([False, False, False, False])
-                    mask[0] = (VarPowerFlowReferenceType.vf_N in editor_interface_refs
-                               or VarPowerFlowReferenceType.if_N in editor_interface_refs)
-                    mask[1] = (VarPowerFlowReferenceType.vf_A in editor_interface_refs
-                               or VarPowerFlowReferenceType.if_A in editor_interface_refs)
-                    mask[2] = (VarPowerFlowReferenceType.vf_B in editor_interface_refs
-                               or VarPowerFlowReferenceType.if_B in editor_interface_refs)
-                    mask[3] = (VarPowerFlowReferenceType.vf_C in editor_interface_refs
-                               or VarPowerFlowReferenceType.if_C in editor_interface_refs)
-                elif api_object.bus_to is bus:
-                    mask = list([False, False, False, False])
-                    mask[0] = (VarPowerFlowReferenceType.vt_N in editor_interface_refs
-                               or VarPowerFlowReferenceType.it_N in editor_interface_refs)
-                    mask[1] = (VarPowerFlowReferenceType.vt_A in editor_interface_refs
-                               or VarPowerFlowReferenceType.it_A in editor_interface_refs)
-                    mask[2] = (VarPowerFlowReferenceType.vt_B in editor_interface_refs
-                               or VarPowerFlowReferenceType.it_B in editor_interface_refs)
-                    mask[3] = (VarPowerFlowReferenceType.vt_C in editor_interface_refs
-                               or VarPowerFlowReferenceType.it_C in editor_interface_refs)
-                else:
-                    mask = None
-            else:
-                mask = None
-        else:
-            mask = None
-
-        if mask is not None:
-            if bus.is_dc:
-                bus.emt_model = BusEmtTemplate(
-                    vf=var_factory,
-                    mask=list([False, False, False, False]),
-                    is_dc=True,
-                    name=f"{bus.name}_emt_template",
-                ).block
-            elif any(mask):
-                bus.emt_model = BusEmtTemplate(
-                    vf=var_factory,
-                    mask=mask,
-                    is_dc=False,
-                    name=f"{bus.name}_emt_template",
-                ).block
-            else:
-                pass
-        elif circuit is not None:
-            get_bus_emt_template(grid=circuit, bus=bus)
+    if bus_model_invalid:
+        if circuit is not None:
+            bus.emt_model = BusEmtTemplate(
+                vf=var_factory,
+                mask=get_bus_mask(grid=circuit, bus=bus),
+                is_dc=bus.is_dc,
+                name=f"{bus.name}_emt",
+            ).block
         elif bus.is_dc:
             bus.emt_model = BusEmtTemplate(
                 vf=var_factory,
@@ -1428,12 +1384,73 @@ def _initialize_editor_assigned_emt_bus_model(bus: Bus,
         pass
 
 
+def attach_editor_assigned_emt_injection_model(api_object: Any,
+                                               var_factory: VarFactory) -> None:
+    """
+    Attach one saved single-bus EMT model to the existing bus shell.
+
+    :param api_object: Injection device owning the EMT model.
+    :param var_factory: Shared variable factory.
+    :return: None.
+    """
+    if api_object.bus.emt_model.empty():
+        raise ValueError(f"Connection Bus EMT model cannot be empty, initialize {api_object.bus.name} EMT model")
+    else:
+        pass
+
+    connect_injection_emt(api_object.bus.emt_model, api_object.emt_model, var_factory)
+    register_connected_emt_model(bus=api_object.bus,
+                                 device=api_object,
+                                 model=api_object.emt_model,
+                                 side=EmtBusConnectionSide.BUS)
+    unify_saved_emt_model_root_contract(device=api_object)
+    synchronize_saved_emt_root_contract_identity(device=api_object)
+    synchronize_saved_emt_root_contract_from_bus(device=api_object)
+
+
+def attach_editor_assigned_emt_branch_model(api_object: Any,
+                                            var_factory: VarFactory) -> None:
+    """
+    Attach one saved branch EMT model to the existing terminal bus shells.
+
+    :param api_object: Branch-like device owning the EMT model.
+    :param var_factory: Shared variable factory.
+    :return: None.
+    """
+    if api_object.bus_from.emt_model.empty():
+        raise ValueError(f"Connection Bus EMT model cannot be empty, initialize {api_object.bus_from.name} EMT model")
+    else:
+        pass
+
+    if api_object.bus_to.emt_model.empty():
+        raise ValueError(f"Connection Bus EMT model cannot be empty, initialize {api_object.bus_to.name} EMT model")
+    else:
+        pass
+
+    connect_line_emt_from(api_object.bus_from.emt_model, api_object.emt_model, var_factory)
+    register_connected_emt_model(bus=api_object.bus_from,
+                                 device=api_object,
+                                 model=api_object.emt_model,
+                                 side=EmtBusConnectionSide.FROM)
+
+    connect_line_emt_to(api_object.bus_to.emt_model, api_object.emt_model, var_factory)
+    register_connected_emt_model(bus=api_object.bus_to,
+                                 device=api_object,
+                                 model=api_object.emt_model,
+                                 side=EmtBusConnectionSide.TO)
+
+    if api_object.device_type == DeviceType.VscDevice:
+        pass
+    else:
+        unify_saved_emt_model_root_contract(device=api_object)
+        synchronize_saved_emt_root_contract_identity(device=api_object)
+        synchronize_saved_emt_root_contract_from_bus(device=api_object)
+
+
 def initialize_connected_bus_models_for_editor_assignment(api_object: Any,
                                                           circuit: MultiCircuit | None,
                                                           var_factory: VarFactory,
-                                                          mode: DynamicSimulationMode,
-                                                          editor_interface_refs: set[
-                                                                                     VarPowerFlowReferenceType] | None = None) -> None:
+                                                          mode: DynamicSimulationMode) -> None:
     if isinstance(api_object, InjectionParent):
         bus: Bus | None = api_object.bus
         if bus is None:
@@ -1444,8 +1461,7 @@ def initialize_connected_bus_models_for_editor_assignment(api_object: Any,
             _initialize_editor_assigned_emt_bus_model(bus=bus,
                                                       api_object=api_object,
                                                       circuit=circuit,
-                                                      var_factory=var_factory,
-                                                      editor_interface_refs=editor_interface_refs)
+                                                      var_factory=var_factory)
         else:
             raise ValueError(f"Unsupported dynamic editor mode {mode}")
     elif isinstance(api_object, BranchParent):
@@ -1456,13 +1472,11 @@ def initialize_connected_bus_models_for_editor_assignment(api_object: Any,
             _initialize_editor_assigned_emt_bus_model(bus=api_object.bus_from,
                                                       api_object=api_object,
                                                       circuit=circuit,
-                                                      var_factory=var_factory,
-                                                      editor_interface_refs=editor_interface_refs)
+                                                      var_factory=var_factory)
             _initialize_editor_assigned_emt_bus_model(bus=api_object.bus_to,
                                                       api_object=api_object,
                                                       circuit=circuit,
-                                                      var_factory=var_factory,
-                                                      editor_interface_refs=editor_interface_refs)
+                                                      var_factory=var_factory)
         else:
             raise ValueError(f"Unsupported dynamic editor mode {mode}")
     else:

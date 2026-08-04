@@ -1196,6 +1196,7 @@ def get_shunt_r_emt_template(
     templ.block.name = resolved_name
     templ.block.external_mapping = block.external_mapping
     templ.block.api_obj_mapping = block.api_obj_mapping
+    templ.block.parameters = block.parameters
     templ.block.in_vars = block.in_vars
     templ.block.out_vars = block.out_vars
 
@@ -1288,6 +1289,7 @@ def get_shunt_l_emt_template(
     templ.block.name = resolved_name
     templ.block.external_mapping = block.external_mapping
     templ.block.api_obj_mapping = block.api_obj_mapping
+    templ.block.parameters = block.parameters
     templ.block.in_vars = block.in_vars
     templ.block.out_vars = block.out_vars
 
@@ -1390,6 +1392,7 @@ def get_shunt_c_emt_template(
     templ.block.name = resolved_name
     templ.block.external_mapping = block.external_mapping
     templ.block.api_obj_mapping = block.api_obj_mapping
+    templ.block.parameters = block.parameters
     templ.block.in_vars = block.in_vars
     templ.block.out_vars = block.out_vars
 

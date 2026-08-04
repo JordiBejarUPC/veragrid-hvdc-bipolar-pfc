@@ -16,6 +16,8 @@ from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Simulations.EMT.emt_driver import EmtSimulationDriver
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.Simulations.EMT.emt_results import EmtResults
+from VeraGridEngine.Simulations.EMT.problems.emt_problem_dae import EmtProblemDae
+from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowDriver
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowOptions
 from VeraGridEngine.Simulations.PowerFlow3ph.power_flow_driver_3ph import PowerFlowDriver3Ph
 from VeraGridEngine.Simulations.Rms.problems.rms_problem_dae import RmsProblemDae
@@ -313,6 +315,12 @@ def _build_gui_editor(qt_app: QtWidgets.QApplication,
     return editor
 
 
+def _run_balanced_pf(grid: MultiCircuit) -> Any:
+    power_flow: PowerFlowDriver = PowerFlowDriver(grid, _build_pf_options())
+    power_flow.run()
+    return power_flow.results
+
+
 def test_gui_editor_apply_changes_matches_scripting_for_emt(qt_app: QtWidgets.QApplication) -> None:
     """
     Compare the real EMT editor save path against EMT scripting assembly.
@@ -371,6 +379,112 @@ def test_gui_editor_apply_changes_matches_scripting_for_emt(qt_app: QtWidgets.QA
     assert list(script_results.variable_array) == list(gui_results.variable_array)
     assert np.allclose(script_results.values, gui_results.values, rtol=1e-8, atol=1e-8)
     assert np.allclose(script_results.diff_values, gui_results.diff_values, rtol=1e-8, atol=1e-8)
+
+
+def test_gui_editor_apply_changes_matches_scripting_for_emt_with_balanced_pf(
+        qt_app: QtWidgets.QApplication) -> None:
+    script_grid: MultiCircuit
+    script_gen: Generator
+    script_line: Line
+    script_load: Load
+    script_grid, script_gen, script_line, script_load = _build_two_bus_emt_grid()
+
+    bus_obj: Bus
+    for bus_obj in script_grid.buses:
+        get_bus_emt_template(script_grid, bus_obj)
+
+    set_emt_model(device=script_gen, model=get_generator_thevenin_rl_emt_template_with_ref(vf=script_grid.var_factory).block, var_factory=script_grid.var_factory)
+    set_emt_model(device=script_line, model=get_pi_line_emt_template(vf=script_grid.var_factory, phN=False, phA=True, phB=True, phC=True).block, var_factory=script_grid.var_factory)
+    set_emt_model(device=script_load, model=get_load_ZIP_emt_template(vf=script_grid.var_factory, phA=True, phB=True, phC=True).block, var_factory=script_grid.var_factory)
+
+    gui_grid: MultiCircuit
+    gui_gen: Generator
+    gui_line: Line
+    gui_load: Load
+    gui_grid, gui_gen, gui_line, gui_load = _build_two_bus_emt_grid()
+
+    gui_gen.emt_template = get_generator_thevenin_rl_emt_template_with_ref(vf=gui_grid.var_factory)
+    gui_line.emt_template = get_pi_line_emt_template(vf=gui_grid.var_factory, phN=False, phA=True, phB=True, phC=True)
+    gui_load.emt_template = get_load_ZIP_emt_template(vf=gui_grid.var_factory, phA=True, phB=True, phC=True)
+
+    gen_editor: DynamicBlockEditorGUI = _build_gui_editor(qt_app=qt_app, grid=gui_grid, api_object=gui_gen, mode=DynamicSimulationMode.EMT, root_block=gui_gen.emt_model)
+    line_editor: DynamicBlockEditorGUI = _build_gui_editor(qt_app=qt_app, grid=gui_grid, api_object=gui_line, mode=DynamicSimulationMode.EMT, root_block=gui_line.emt_model)
+    load_editor: DynamicBlockEditorGUI = _build_gui_editor(qt_app=qt_app, grid=gui_grid, api_object=gui_load, mode=DynamicSimulationMode.EMT, root_block=gui_load.emt_model)
+
+    gen_editor.apply_changes()
+    line_editor.apply_changes()
+    load_editor.apply_changes()
+    qt_app.processEvents()
+
+    script_pf_results: Any = _run_balanced_pf(script_grid)
+    gui_pf_results: Any = _run_balanced_pf(gui_grid)
+
+    script_problem: EmtProblemDae = EmtProblemDae(grid=script_grid, options=_build_emt_options(), pf_results=script_pf_results, pf_results_3ph=None)
+    gui_problem: EmtProblemDae = EmtProblemDae(grid=gui_grid, options=_build_emt_options(), pf_results=gui_pf_results, pf_results_3ph=None)
+
+    assert script_problem.initialization_report is not None
+    assert gui_problem.initialization_report is not None
+    assert script_problem.initialization_report.status == gui_problem.initialization_report.status
+    assert script_problem.get_states_number() == gui_problem.get_states_number()
+    assert script_problem.get_algebraic_var_number() == gui_problem.get_algebraic_var_number()
+
+    script_driver: EmtSimulationDriver = EmtSimulationDriver(grid=script_grid, options=_build_emt_options(), pf_results_3ph=None, pf_results=script_pf_results)
+    gui_driver: EmtSimulationDriver = EmtSimulationDriver(grid=gui_grid, options=_build_emt_options(), pf_results_3ph=None, pf_results=gui_pf_results)
+    script_driver.run()
+    gui_driver.run()
+
+    assert script_driver.results is not None
+    assert gui_driver.results is not None
+    assert np.array_equal(script_driver.results.converged, gui_driver.results.converged)
+    assert np.array_equal(script_driver.results.well_initialized, gui_driver.results.well_initialized)
+    assert np.allclose(script_driver.results.values, gui_driver.results.values, rtol=1e-8, atol=1e-8)
+
+
+def test_native_emt_template_assignment_matches_set_emt_model_with_balanced_pf() -> None:
+    script_grid: MultiCircuit
+    script_gen: Generator
+    script_line: Line
+    script_load: Load
+    script_grid, script_gen, script_line, script_load = _build_two_bus_emt_grid()
+
+    bus_obj: Bus
+    for bus_obj in script_grid.buses:
+        get_bus_emt_template(script_grid, bus_obj)
+
+    set_emt_model(device=script_gen, model=get_generator_thevenin_rl_emt_template_with_ref(vf=script_grid.var_factory).block, var_factory=script_grid.var_factory)
+    set_emt_model(device=script_line, model=get_pi_line_emt_template(vf=script_grid.var_factory, phN=False, phA=True, phB=True, phC=True).block, var_factory=script_grid.var_factory)
+    set_emt_model(device=script_load, model=get_load_ZIP_emt_template(vf=script_grid.var_factory, phA=True, phB=True, phC=True).block, var_factory=script_grid.var_factory)
+
+    template_grid: MultiCircuit
+    template_gen: Generator
+    template_line: Line
+    template_load: Load
+    template_grid, template_gen, template_line, template_load = _build_two_bus_emt_grid()
+
+    for bus_obj in template_grid.buses:
+        get_bus_emt_template(template_grid, bus_obj)
+
+    template_gen.emt_template = get_generator_thevenin_rl_emt_template_with_ref(vf=template_grid.var_factory)
+    template_line.emt_template = get_pi_line_emt_template(vf=template_grid.var_factory, phN=False, phA=True, phB=True, phC=True)
+    template_load.emt_template = get_load_ZIP_emt_template(vf=template_grid.var_factory, phA=True, phB=True, phC=True)
+
+    assert _collect_block_semantic_signature(template_gen.emt_model) == _collect_block_semantic_signature(script_gen.emt_model)
+    assert _collect_block_semantic_signature(template_line.emt_model) == _collect_block_semantic_signature(script_line.emt_model)
+    assert _collect_block_semantic_signature(template_load.emt_model) == _collect_block_semantic_signature(script_load.emt_model)
+
+    script_pf_results: Any = _run_balanced_pf(script_grid)
+    template_pf_results: Any = _run_balanced_pf(template_grid)
+
+    script_driver: EmtSimulationDriver = EmtSimulationDriver(grid=script_grid, options=_build_emt_options(), pf_results_3ph=None, pf_results=script_pf_results)
+    template_driver: EmtSimulationDriver = EmtSimulationDriver(grid=template_grid, options=_build_emt_options(), pf_results_3ph=None, pf_results=template_pf_results)
+    script_driver.run()
+    template_driver.run()
+
+    assert script_driver.results is not None
+    assert template_driver.results is not None
+    assert np.array_equal(script_driver.results.converged, template_driver.results.converged)
+    assert np.array_equal(script_driver.results.well_initialized, template_driver.results.well_initialized)
+    assert np.allclose(script_driver.results.values, template_driver.results.values, rtol=1e-8, atol=1e-8)
 
 
 def test_gui_editor_apply_changes_matches_scripting_for_rms(qt_app: QtWidgets.QApplication) -> None:

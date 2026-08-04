@@ -3959,7 +3959,8 @@ class SimulationsMain(TimeEventsMain):
 
                 drv = sim.EmtSimulationDriver(grid=self.circuit,
                                               options=self.get_selected_emt_simulation_options(),
-                                              pf_results_3ph=pf_results_3ph)
+                                              pf_results_3ph=pf_results_3ph,
+                                              pf_results=pf_results)
 
                 self.session.run(drv,
                                  post_func=self.post_emt,
