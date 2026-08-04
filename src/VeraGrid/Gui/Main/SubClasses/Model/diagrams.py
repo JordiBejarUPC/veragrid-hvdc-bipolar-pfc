@@ -48,8 +48,11 @@ from VeraGrid.Gui.Main.SubClasses.Model.compiled_arrays import CompiledArraysMai
 from VeraGrid.Gui.Main.object_select_window import ObjectSelectWindow, ListSelectWindow
 from VeraGrid.Gui.Diagrams.MapWidget.Tiles.TileProviders.cartodb import CartoDbTiles
 from VeraGrid.Gui.object_proxy_model import ObjectModelFilterProxy
-from VeraGrid.Gui.dynamic_events_editor_dialog import DynamicEventDialogue, DynamicEventsGroupsDialog
-from VeraGrid.Gui.dynamic_events_editor_dialog import collect_block_runtime_event_parameters
+from VeraGrid.Gui.DynamicEventsDialog.dynamic_events_editor import DynamicEventEditor
+from VeraGrid.Gui.DynamicEventsDialog.dynamic_events_editor_support import (
+    DynamicEventsGroupsDialog,
+    collect_block_runtime_event_parameters,
+)
 from VeraGrid.Gui.Diagrams.MapWidget.Substation.substation_graphic_item import SubstationGraphicItem
 from VeraGrid.Gui.ShortCircuitEditor.short_circuit_selector import ShortCircuitSelector
 from VeraGrid.Gui.general_dialogues import (CheckListDialogue, StartEndSelectionDialogue,
@@ -3211,11 +3214,11 @@ class DiagramsMain(CompiledArraysMain):
                     pass
                 # after creating a new events group or not, open eitherway the Events dialogue
                 rms_event_parameters, mode_parameter_uids = collect_block_runtime_event_parameters(target_device.rms_model)
-                rms_events_dialog = DynamicEventDialogue(circuit=self.circuit,
-                                                         parameters_list=rms_event_parameters,
-                                                         target_device_name=target_device.type_name + ": " + target_device.name,
-                                                         mode=mode,
-                                                         mode_parameter_uids=mode_parameter_uids)
+                rms_events_dialog = DynamicEventEditor(circuit=self.circuit,
+                                                       parameters_list=rms_event_parameters,
+                                                       target_device_name=target_device.type_name + ": " + target_device.name,
+                                                       mode=mode,
+                                                       mode_parameter_uids=mode_parameter_uids)
 
                 if rms_events_dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted:
 
@@ -3284,11 +3287,11 @@ class DiagramsMain(CompiledArraysMain):
 
                 # after creating a new events group or not, open eitherway the Events dialogue
                 emt_event_parameters, mode_parameter_uids = collect_block_runtime_event_parameters(target_device.emt_model)
-                emt_events_dialog = DynamicEventDialogue(circuit=self.circuit,
-                                                         parameters_list=emt_event_parameters,
-                                                         target_device_name=target_device.type_name + ": " + target_device.name,
-                                                         mode=mode,
-                                                         mode_parameter_uids=mode_parameter_uids)
+                emt_events_dialog = DynamicEventEditor(circuit=self.circuit,
+                                                       parameters_list=emt_event_parameters,
+                                                       target_device_name=target_device.type_name + ": " + target_device.name,
+                                                       mode=mode,
+                                                       mode_parameter_uids=mode_parameter_uids)
 
                 if emt_events_dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted:
 

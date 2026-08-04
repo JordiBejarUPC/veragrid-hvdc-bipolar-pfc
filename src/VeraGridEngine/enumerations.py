@@ -4624,3 +4624,35 @@ class DynEditorGraphicsModes(Enum):
     """
     DARK = "Dark"
     LIGHT = "Light"
+
+class RoutingAxis(Enum):
+    """
+    Enumerate the only valid orthogonal segment axes.
+
+    :returns: Enumeration values describing orthogonal axes.
+    """
+
+    HORIZONTAL = "horizontal"
+    VERTICAL = "vertical"
+
+class RoutingPortSide(Enum):
+    """
+    Enumerate the physical block side where one routing port is attached.
+
+    :returns: Enumeration values describing the physical port side.
+    """
+
+    LEFT = "left"
+    RIGHT = "right"
+    TOP = "top"
+    BOTTOM = "bottom"
+
+class RoutingValidationMessageLevel(Enum):
+    """
+    Enumerate validation message severities.
+
+    :returns: Enumeration values describing validation severity levels.
+    """
+
+    ERROR = "error"
+    WARNING = "warning"
