@@ -372,7 +372,8 @@ def get_grid_side_converter_control_GFL(vf: VarFactory, name: str = "G4L_grid_si
     vf.add_connection(VSM_mdl.in_vars[0], PLL_mdl.out_vars[0])
     # omega pll
     vf.add_connection(VSM_mdl.in_vars[1], PLL_mdl.out_vars[1])
-    # Use the measured bus voltage in the VSM frame directly as converter voltage command.
+    # Match the Simulink simplified path: measured Vqd is fed directly into the
+    # anti-rotation + inverse Clarke stage, using the VSM phase.
     vf.add_connection(inverse_park_mdl.in_vars[0], clark_park_transforms_mdl.out_vars[0])
     vf.add_connection(inverse_park_mdl.in_vars[1], clark_park_transforms_mdl.out_vars[1])
 
@@ -578,7 +579,7 @@ def get_PLL_GFL(vf: VarFactory, name: str = "G4L_PLL") -> EmtModelTemplate:
 
 def get_VSM_GFL(vf: VarFactory, name: str = "G4L_VSM") -> EmtModelTemplate:
     """
-    Virtual Synchronous Machine with Simulink-aligned startup angle for v3.
+    Virtual Synchronous Machine aligned with the active Simulink simplified block.
     """
     templ = EmtModelTemplate()
     templ.tpe = DeviceType.NoDevice
@@ -591,7 +592,6 @@ def get_VSM_GFL(vf: VarFactory, name: str = "G4L_VSM") -> EmtModelTemplate:
 
     Pac = vf.add_var(name=f"Pac_{name}")
     w_pll = vf.add_var(name=f"w_pll_{name}")
-    theta_pll = vf.add_var(name=f"theta_pll_{name}")
     v_A = vf.add_var(name=f"v_A_{name}", reference=VarPowerFlowReferenceType.v_A)
     v_B = vf.add_var(name=f"v_B_{name}", reference=VarPowerFlowReferenceType.v_B)
     v_C = vf.add_var(name=f"v_C_{name}", reference=VarPowerFlowReferenceType.v_C)
@@ -600,6 +600,7 @@ def get_VSM_GFL(vf: VarFactory, name: str = "G4L_VSM") -> EmtModelTemplate:
     i_C = vf.add_var(name=f"i_C_{name}", reference=VarPowerFlowReferenceType.i_C)
 
     P_ref = vf.add_var(name=f"P_ref_{name}")
+    theta_pll = vf.add_var(name=f"theta_pll_{name}")
     inputs =[theta_pll, w_pll, Pac, v_A, v_B, v_C, i_A, i_B, i_C]
 
     phase_vsm = vf.add_var(name=f"phase_vsm_{name}")
@@ -624,8 +625,9 @@ def get_VSM_GFL(vf: VarFactory, name: str = "G4L_VSM") -> EmtModelTemplate:
     k_p = vf.add_var(name=f"k_p_{name}")
 
     event_dict = {
-        P_ref: vf.add_const(-0.8),
-        # P_ref: vf.add_const(-0.2),
+        # Simulink simplified case uses P_GFM0 = 0.2 pu and then applies the
+        # active-power reference staircase through events.
+        P_ref: vf.add_const(-0.2),
         k_d: vf.add_const(kP * (C_pu / 2 * (1 / Zaparent) * omega_expr)),
         omega_ref: vf.add_const(omega_expr),
         H: vf.add_const(C_pu / (kH * 4)),
@@ -633,30 +635,39 @@ def get_VSM_GFL(vf: VarFactory, name: str = "G4L_VSM") -> EmtModelTemplate:
         k_p: vf.add_const(20),
     }
 
-    x = vf.add_var(name=f"x_{name}")
     y = vf.add_var(name=f"y_{name}")
     dy = vf.add_diff_var(name=f"dy_{name}", base_var=y)
+    pll_damping = vf.add_var(name=f"pll_damping_{name}")
+    one_minus_y = vf.add_var(name=f"one_minus_y_{name}")
+    p_over_sb = vf.add_var(name=f"p_over_sb_{name}")
+    p_balance = vf.add_var(name=f"p_balance_{name}")
 
     phase_vsm_init = vf.add_const(-np.pi / 2.0 - 0.4)
 
     templ.block = Block(
         state_eqs=[
-            ((1 - y) * k_p + P_ref - Pac + x) / (2 * sym.max(H, eps)),
+            p_balance / (2 * sym.max(H, eps)),
             omega_vsm,
         ],
         state_vars=[y, phase_vsm],
         diff_vars=[dy, d_phase_vsm],
         algebraic_eqs=[
-            x - ((w_pll / sym.max(omega_ref, eps)) - y) * k_d,
+            pll_damping - (((w_pll / sym.max(omega_ref, eps)) - y) * k_d),
+            one_minus_y - (1 - y),
+            p_over_sb - (Pac / sym.max(Sb, eps)),
+            p_balance - (one_minus_y * k_p + P_ref - p_over_sb + pll_damping),
             omega_vsm - (y * omega_ref),
 
         ],
-        algebraic_vars=[x,  omega_vsm],
+        algebraic_vars=[pll_damping, one_minus_y, p_over_sb, p_balance, omega_vsm],
         in_vars=inputs,
         out_vars=[phase_vsm, omega_vsm],
         init_eqs={
-            x: c0,
             y: vf.add_const(1.0),
+            pll_damping: c0,
+            one_minus_y: c0,
+            p_over_sb: Pac / sym.max(Sb, eps),
+            p_balance: c0,
             phase_vsm: phase_vsm_init,
             omega_vsm: omega_ref,
         },
@@ -779,7 +790,7 @@ def get_complete_load_template_G4L(vf: VarFactory, name: str = "G4L_complete_loa
     vf.add_connection(grid_side_ctrl_mdl.in_vars[3], grid_side_vsc_mdl.out_vars[0])
     vf.add_connection(grid_side_ctrl_mdl.in_vars[4], grid_side_vsc_mdl.out_vars[1])
     vf.add_connection(grid_side_ctrl_mdl.in_vars[5], grid_side_vsc_mdl.out_vars[2])
-    vf.add_connection(grid_side_ctrl_mdl.in_vars[6], grid_side_vsc_mdl.out_vars[4])
+    vf.add_connection(grid_side_ctrl_mdl.in_vars[6], grid_side_vsc_mdl.out_vars[3])
 
     templ.block.children.append(grid_side_vsc_mdl)
     templ.block.children.append(grid_side_ctrl_mdl)
