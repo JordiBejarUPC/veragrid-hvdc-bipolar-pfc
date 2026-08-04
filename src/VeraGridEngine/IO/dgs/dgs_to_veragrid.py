@@ -18,7 +18,8 @@ from VeraGridEngine.enumerations import (
     ConverterFaultControlType,
     GeneratorType,
     GeneratorControlMode,
-    BusGraphicType
+    BusGraphicType,
+    ShuntConnectionType
 )
 import VeraGridEngine.Devices as dev
 from VeraGridEngine.Devices.Branches.wire import Wire
@@ -3097,7 +3098,9 @@ def _extract_load_pq(elmlod: ElmLod, logger: Logger) -> Tuple[float, float, floa
     """
     name = elmlod.loc_name or _ref_id(elmlod.ID) or "Load"
 
-    if elmlod.i_sym == 1:
+    single_phase = "1" in elmlod.phtech
+
+    if elmlod.i_sym == 1 and single_phase == False:
 
         # Apply scaling
         scale = _get_scale_factor(scale0=elmlod.scale0, logger=logger, name=name)
@@ -3113,6 +3116,23 @@ def _extract_load_pq(elmlod: ElmLod, logger: Logger) -> Tuple[float, float, floa
         qb = elmlod.qlinis * scale
         qc = elmlod.qlinit * scale
         q = qa + qb + qc
+
+    elif elmlod.i_sym == 1 and single_phase == True:
+
+        # Apply scaling
+        scale = _get_scale_factor(scale0=elmlod.scale0, logger=logger, name=name)
+
+        # Active Power [MW]
+        pa = elmlod.plini * scale
+        p = pa
+
+        # Reactive Power [MVAr]
+        qa = elmlod.qlini * scale
+        q = qa
+
+        # Not connected phases
+        pb, pc = 0.0, 0.0
+        qb, qc = 0.0, 0.0
 
     else:
         # Primary: direct P/Q
@@ -3227,7 +3247,26 @@ def convert_dgs_to_load(elmlod: ElmLod,
         Q3=qc_mvar,
         active=not bool(elmlod.outserv)
     )
+
     # Add the connection type
+    if elmlod.phtech == "3PH-'D'":
+        load.conn = ShuntConnectionType.Delta
+    elif elmlod.phtech == "3PH PH-E":
+        load.conn = ShuntConnectionType.GroundedStar
+    elif elmlod.phtech == "3PH-'YN'":
+        load.conn = ShuntConnectionType.NeutralStar
+    elif elmlod.phtech == "2PH PH-E": # TODO: Review this connection
+        load.conn = ShuntConnectionType.GroundedStar
+    elif elmlod.phtech == "2PH-'YN'": # TODO: Review this connection
+        load.conn = ShuntConnectionType.NeutralStar
+    elif elmlod.phtech == "1PH PH-PH":
+        load.conn = ShuntConnectionType.Delta
+    elif elmlod.phtech == "1PH PH-N":
+        load.conn = ShuntConnectionType.NeutralStar
+    elif elmlod.phtech == "1PH PH-E":
+        load.conn = ShuntConnectionType.GroundedStar
+    else:
+        load.conn = ShuntConnectionType.GroundedStar
 
     return bus, load
 

@@ -944,6 +944,7 @@ class ElmLod(DGSElement):
         DgsProperty('pf_recap', 'i', 'DGS field pf_recap (i)', py_name='pf_recap'),
         DgsProperty('i_scale', 'i', 'DGS field i_scale (i)', py_name='i_scale'),
         DgsProperty('classif', 'a:20', 'DGS field classif (a:20)', py_name='classif'),
+        DgsProperty('phtech', 'a', 'Phase and connection technology', py_name='phtech'),
     ]
 
     def __init__(self) -> None:
@@ -970,6 +971,7 @@ class ElmLod(DGSElement):
         self.pf_recap: int = 0
         self.i_scale: int = 0
         self.classif: str = ""
+        self.phtech: str = ""
 
 
 class ElmLodlv(DGSElement):
