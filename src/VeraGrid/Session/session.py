@@ -115,7 +115,11 @@ class GcThread(QThread):
         """
         self.progress_signal.emit(0.0)
 
-        self.driver.run()
+        try:
+            self.driver.run()
+        except Exception as e:
+            self.logger.add_error(str(e))
+            self.progress_text.emit(f"Error: {str(e)}")
 
         self.progress_signal.emit(0.0)
         if self.__cancel__:
