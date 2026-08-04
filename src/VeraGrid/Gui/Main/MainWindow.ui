@@ -2844,7 +2844,11 @@
                       <string>Open the RMS pre-simulation dynamic plot editor</string>
                      </property>
                      <property name="text">
-                      <string>RMS plots</string>
+                      <string/>
+                     </property>
+                     <property name="icon">
+                      <iconset resource="../Icons/icons.qrc">
+                       <normaloff>:/Icons/icons/dyn.png</normaloff>:/Icons/icons/dyn.png</iconset>
                      </property>
                     </widget>
                    </item>
@@ -2854,7 +2858,11 @@
                       <string>Open the EMT pre-simulation dynamic plot editor</string>
                      </property>
                      <property name="text">
-                      <string>EMT plots</string>
+                      <string/>
+                     </property>
+                     <property name="icon">
+                      <iconset resource="../Icons/icons.qrc">
+                       <normaloff>:/Icons/icons/dyn_emt.png</normaloff>:/Icons/icons/dyn_emt.png</iconset>
                      </property>
                     </widget>
                    </item>
