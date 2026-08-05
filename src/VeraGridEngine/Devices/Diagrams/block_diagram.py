@@ -264,10 +264,23 @@ class BlockDiagram:
         :param data:
         :return:
         """
+        nodes_data: Dict[str, Any]
+        cons_data: Dict[str, Any]
 
-        self.parse_nodes(data["nodes_data"])
-        self.parse_branches(data["cons_data"])
-        self.status = data["status"]
+        # Legacy dynamic block diagrams can omit editor-only sections. Treat
+        # those omissions as an empty diagram so project loading remains
+        # tolerant across older saved files.
+        if data is None:
+            nodes_data = dict()
+            cons_data = dict()
+            self.status = None
+        else:
+            nodes_data = data.get("nodes_data", dict())
+            cons_data = data.get("cons_data", dict())
+            self.status = data.get("status", None)
+
+        self.parse_nodes(nodes_data)
+        self.parse_branches(cons_data)
 
 
     def parse_nodes(self, nodes_data) -> None:
@@ -279,21 +292,23 @@ class BlockDiagram:
             subdiagram = None
             if "sub_diagram" in node and node["sub_diagram"] is not None:
                 subdiagram = BlockDiagram()
-                subdiagram.parse_nodes(node["sub_diagram"]["nodes"])
-                subdiagram.parse_branches(node["sub_diagram"]["connections"])
+                subdiagram.parse_nodes(node["sub_diagram"].get("nodes", dict()))
+                subdiagram.parse_branches(node["sub_diagram"].get("connections", dict()))
+            else:
+                pass
 
             self.node_data[int(uid)] = BlockDiagramNode(
-                name=node['name'],
-                x=node['x'],
-                y=node['y'],
-                tpe=node['tpe'],
-                device_uid=node['device_uid'],
-                api_object_name=node['api_object_name'],
-                state_ins=node['state_ins'],
-                state_outs=node['state_outs'],
-                algeb_ins=node['algeb_ins'],
-                algeb_outs=node['algeb_outs'],
-                color=node['color'],
+                name=node.get('name', ''),
+                x=node.get('x', 0.0),
+                y=node.get('y', 0.0),
+                tpe=node.get('tpe', ''),
+                device_uid=node.get('device_uid', int(uid)),
+                api_object_name=node.get('api_object_name', ''),
+                state_ins=node.get('state_ins', 0),
+                state_outs=node.get('state_outs', list()),
+                algeb_ins=node.get('algeb_ins', 0),
+                algeb_outs=node.get('algeb_outs', list()),
+                color=node.get('color', '#f5fdff'),
                 sub_diagram=subdiagram
             )
 
@@ -309,10 +324,10 @@ class BlockDiagram:
                 else None
             )
             self.con_data[int(uid)] = (BlockDiagramConnection(
-                from_uid=con['from_uid'],
-                to_uid=con['to_uid'],
-                port_number_from=con['port_number_from'],
-                port_number_to=con['port_number_to'],
-                color=con['color'],
+                from_uid=con.get('from_uid', 0),
+                to_uid=con.get('to_uid', 0),
+                port_number_from=con.get('port_number_from', 0),
+                port_number_to=con.get('port_number_to', 0),
+                color=con.get('color', '#000000'),
                 routing_payload=routing_payload,
             ))

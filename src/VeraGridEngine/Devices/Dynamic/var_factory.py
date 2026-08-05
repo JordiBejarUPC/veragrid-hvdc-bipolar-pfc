@@ -471,15 +471,19 @@ class VarFactory(EditableDevice):
         """
         obj_dict: Dict[int, Var] = dict()
         for data in data_list:
-            assert data["type"] == "Var"
+            data_tpe: Any = data.get("type", None)
+            if data_tpe != "Var":
+                continue
+            else:
+                pass
 
             # Older persisted symbolic models may not store the power-flow
             # reference field, so keep loading those files by defaulting to None.
             key_ref = None
-            ref_data_dict: Any = data["shared_ref"]
+            ref_data_dict: Any = data.get("shared_ref", None)
             if ref_data_dict is not None:
-                ref_data_name = ref_data_dict["name"]
-                ref_data_uid = ref_data_dict["uid"]
+                ref_data_name = ref_data_dict.get("name", None)
+                ref_data_uid = ref_data_dict.get("uid", None)
                 key_ref: SharedVarReferenceType | None
 
                 if ref_data_name is not None and ref_data_uid is not None:
@@ -501,10 +505,32 @@ class VarFactory(EditableDevice):
                 key_power_flow_ref = None
 
             # obj = Var(name=data["name"], uid=data["uid"], shared_reference=key_ref, reference=key_power_flow_ref, non_mutable_uid=data["non_mutable_uid"])
-            obj = Var(name=data.get("name"), uid=data.get("uid"), shared_reference=key_ref, reference=key_power_flow_ref,
-                      non_mutable_uid=data.get("non_mutable_uid"))
+            obj_name: Any = data.get("name", "")
+            obj_uid: Any = data.get("uid", None)
+            obj_non_mutable_uid: Any = data.get("non_mutable_uid", None)
+
+            # Legacy symbolic entries can miss one of the identity keys. Reuse
+            # the surviving identifier so the rest of the dynamic block payload
+            # can still be reconstructed.
+            if obj_uid is None and obj_non_mutable_uid is None:
+                continue
+            else:
+                pass
+
+            if obj_uid is None:
+                obj_uid = obj_non_mutable_uid
+            else:
+                pass
+
+            if obj_non_mutable_uid is None:
+                obj_non_mutable_uid = obj_uid
+            else:
+                pass
+
+            obj = Var(name=obj_name, uid=obj_uid, shared_reference=key_ref, reference=key_power_flow_ref,
+                      non_mutable_uid=obj_non_mutable_uid)
             if ref_data_dict is not None:
-                ref_data_uid = ref_data_dict["uid"]
+                ref_data_uid = ref_data_dict.get("uid", None)
                 if ref_data_uid is not None:
                     if ref_data_uid in self._vars_references_dict:
                         self._vars_references_dict[ref_data_uid].append(obj)
@@ -534,7 +560,11 @@ class VarFactory(EditableDevice):
         """
         obj_dict: Dict[int, Var | Const | Var] = dict()
         for data in data_list:
-            assert data["type"] == "DiffVar"
+            data_tpe: Any = data.get("type", None)
+            if data_tpe != "DiffVar":
+                continue
+            else:
+                pass
 
             """
             lst.append({
@@ -547,20 +577,23 @@ class VarFactory(EditableDevice):
             # Recover the base variable first because differential variables
             # are linked to the already reconstructed algebraic/differential
             # chain. This preserves the original derivative hierarchy.
-            if data["base_var"] in self._var_dict.keys():
-                base_var = self._var_dict[data["base_var"]]
-            elif data["base_var"] in self._diff_var_dict.keys():
-                base_var = self._diff_var_dict[data["base_var"]]
+            base_var_uid: Any = data.get("base_var", None)
+            if base_var_uid in self._var_dict.keys():
+                base_var = self._var_dict[base_var_uid]
+            elif base_var_uid in self._diff_var_dict.keys():
+                base_var = self._diff_var_dict[base_var_uid]
+            elif base_var_uid in obj_dict.keys():
+                base_var = obj_dict[base_var_uid]
             else:
-                base_var = obj_dict[data["base_var"]]
+                continue
 
             # Older persisted symbolic models may not store the power-flow
             # reference field on differential variables either.
             key_ref: SharedVarReferenceType | None = None
-            ref_data_dict: Any = data["shared_ref"]
+            ref_data_dict: Any = data.get("shared_ref", None)
             if ref_data_dict is not None:
-                ref_data_name = ref_data_dict["name"]
-                ref_data_uid = ref_data_dict["uid"]
+                ref_data_name = ref_data_dict.get("name", None)
+                ref_data_uid = ref_data_dict.get("uid", None)
 
                 if ref_data_name is not None and ref_data_uid is not None:
                     if ref_data_name not in self._references_dict:
@@ -586,14 +619,26 @@ class VarFactory(EditableDevice):
             else:
                 reference_power_flow = None
 
-            obj = Var(name=data["name"],
-                      uid=data["uid"],
+            obj_name: Any = data.get("name", "")
+            obj_uid: Any = data.get("uid", None)
+            if obj_uid is None:
+                obj_uid = data.get("non_mutable_uid", None)
+            else:
+                pass
+
+            if obj_uid is None:
+                continue
+            else:
+                pass
+
+            obj = Var(name=obj_name,
+                      uid=obj_uid,
                       base_var=base_var,
                       shared_reference=key_ref,
                       reference=reference_power_flow)
 
             if ref_data_dict is not None:
-                ref_data_uid = ref_data_dict["uid"]
+                ref_data_uid = ref_data_dict.get("uid", None)
                 if ref_data_uid is not None:
                     if ref_data_uid in self._vars_references_dict:
                         self._vars_references_dict[ref_data_uid].append(obj)
@@ -653,11 +698,20 @@ class VarFactory(EditableDevice):
                 pass
 
             for conn_data in connections_list:
-                if conn_data["type"] == "Connection":
+                conn_tpe: Any = conn_data.get("type", None)
+                if conn_tpe == "Connection":
+                    conn_non_mutable_uid: Any = conn_data.get("non_mutable_uid", None)
+                    conn_name: Any = conn_data.get("name", "")
+                    conn_uid: Any = conn_data.get("uid", None)
+                    if conn_non_mutable_uid is None or conn_uid is None:
+                        continue
+                    else:
+                        pass
+
                     conn: Connection = Connection(
-                        non_mutable_uid=conn_data["non_mutable_uid"],
-                        name=conn_data["name"],
-                        uid=conn_data["uid"]
+                        non_mutable_uid=conn_non_mutable_uid,
+                        name=conn_name,
+                        uid=conn_uid
                     )
                     self._vars_connected_dict[uid_key].append(conn)
                 else:
