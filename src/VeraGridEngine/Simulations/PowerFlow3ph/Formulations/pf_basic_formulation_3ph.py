@@ -633,6 +633,42 @@ def compute_power_loads(bus_idx: IntVec,
             I[c2] -= Icn
             I[n2] += (Ian + Ibn + Icn)
 
+        elif star and a_connected and b_connected and n_connected:
+
+            Uan = V[a2] - V[n2]
+            Ubn = V[b2] - V[n2]
+
+            Ian = np.conj(Sstar[ab] / Uan)
+            Ibn = np.conj(Sstar[bc] / Ubn)
+
+            I[a2] -= Ian
+            I[b2] -= Ibn
+            I[n2] += (Ian + Ibn)
+
+        elif star and b_connected and c_connected and n_connected:
+
+            Ubn = V[b2] - V[n2]
+            Ucn = V[c2] - V[n2]
+
+            Ibn = np.conj(Sstar[bc] / Ubn)
+            Icn = np.conj(Sstar[ca] / Ucn)
+
+            I[b2] -= Ibn
+            I[c2] -= Icn
+            I[n2] += (Ibn + Icn)
+
+        elif star and a_connected and c_connected and n_connected:
+
+            Uan = V[a2] - V[n2]
+            Ucn = V[c2] - V[n2]
+
+            Ian = np.conj(Sstar[ab] / Uan)
+            Icn = np.conj(Sstar[ca] / Ucn)
+
+            I[a2] -= Ian
+            I[c2] -= Icn
+            I[n2] += (Ian + Icn)
+
         elif star and a_connected and n_connected:
 
             Uan = V[a2] - V[n2]
@@ -660,6 +696,27 @@ def compute_power_loads(bus_idx: IntVec,
                 I[a2] -= np.conj(Sstar[ab] / (V[a2]))
             if b2 >= 0:
                 I[b2] -= np.conj(Sstar[bc] / (V[b2]))
+            if c2 >= 0:
+                I[c2] -= np.conj(Sstar[ca] / (V[c2]))
+
+        elif star and a_connected and b_connected:
+
+            if a2 >= 0:
+                I[a2] -= np.conj(Sstar[ab] / (V[a2]))
+            if b2 >= 0:
+                I[b2] -= np.conj(Sstar[bc] / (V[b2]))
+
+        elif star and b_connected and c_connected:
+
+            if b2 >= 0:
+                I[b2] -= np.conj(Sstar[bc] / (V[b2]))
+            if c2 >= 0:
+                I[c2] -= np.conj(Sstar[ca] / (V[c2]))
+
+        elif star and a_connected and c_connected:
+
+            if a2 >= 0:
+                I[a2] -= np.conj(Sstar[ab] / (V[a2]))
             if c2 >= 0:
                 I[c2] -= np.conj(Sstar[ca] / (V[c2]))
 

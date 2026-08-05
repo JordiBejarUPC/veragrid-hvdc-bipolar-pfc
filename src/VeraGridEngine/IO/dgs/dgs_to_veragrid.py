@@ -3493,9 +3493,9 @@ def convert_dgs_to_load(elmlod: ElmLod,
         load.conn = ShuntConnectionType.GroundedStar
     elif elmlod.phtech == "3PH-'YN'":
         load.conn = ShuntConnectionType.NeutralStar
-    elif elmlod.phtech == "2PH PH-E": # TODO: Review this connection
+    elif elmlod.phtech == "2PH PH-E":
         load.conn = ShuntConnectionType.GroundedStar
-    elif elmlod.phtech == "2PH-'YN'": # TODO: Review this connection
+    elif elmlod.phtech == "2PH-'YN'":
         load.conn = ShuntConnectionType.NeutralStar
     elif elmlod.phtech == "1PH PH-PH":
         load.conn = ShuntConnectionType.Delta
