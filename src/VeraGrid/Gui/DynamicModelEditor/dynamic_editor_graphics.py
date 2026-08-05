@@ -1190,6 +1190,22 @@ class GenericBlockItem(QGraphicsRectItem):
     def set_subsystem(self, block: Block) -> None:
         self.subsys = block
 
+    def refresh_block_name(self) -> None:
+        """
+        Refresh the visible block name from the authoritative symbolic block.
+
+        :return: None.
+        """
+        if self.subsys is not None:
+            # The symbolic block owns the authoritative name. The graphics item
+            # mirrors that value so rename operations keep model and scene text in sync.
+            self.name = self.subsys.name
+            self.name_item.setPlainText(self.name)
+            self.update_name_position()
+            self.resize_to_content()
+        else:
+            pass
+
     def build_item(self) -> None:
         if self.subsys is not None:
             self.update_name_position()
@@ -1711,6 +1727,22 @@ class BlockItem(QGraphicsRectItem):
 
     def set_subsystem(self, block: Block) -> None:
         self.subsys = block
+
+    def refresh_block_name(self) -> None:
+        """
+        Refresh the visible block name from the authoritative symbolic block.
+
+        :return: None.
+        """
+        if self.subsys is not None:
+            # Compact block items also mirror the symbolic block name locally so
+            # the rendered label stays consistent after a rename from the editor.
+            self.name = self.subsys.name
+            self.name_item.setPlainText(self.name)
+            self.resize_to_content()
+            self._center_name()
+        else:
+            pass
 
     def build_item(self) -> None:
         if self.subsys is not None:
@@ -2634,6 +2666,17 @@ class DiagramScene(QGraphicsScene):
         else:
             pass
 
+    def rename_context_item(self) -> None:
+        """
+        Rename the current context block through the editor controller.
+
+        :return: None.
+        """
+        if isinstance(self.context_item, (GenericBlockItem, BlockItem)):
+            self.editor.rename_block_item(self.context_item)
+        else:
+            pass
+
     def contextMenuEvent(self, event: QtWidgets.QGraphicsSceneContextMenuEvent) -> None:
         item: QGraphicsItem
         for item in self.items(event.scenePos()):
@@ -2649,6 +2692,12 @@ class DiagramScene(QGraphicsScene):
                     color_action: QAction = QAction("Change Color", menu)
                     menu.addAction(color_action)
 
+                    if isinstance(item, (GenericBlockItem, BlockItem)):
+                        rename_action: QAction = QAction("Change Name", menu)
+                        menu.addAction(rename_action)
+                    else:
+                        rename_action = None
+
                     if isinstance(item, ConnectionItem):
                         connection_item: ConnectionItem = item
                         del connection_item
@@ -2659,6 +2708,8 @@ class DiagramScene(QGraphicsScene):
                         self.remove_context_item()
                     elif selected_action is color_action:
                         self.recolor_context_item()
+                    elif selected_action is rename_action:
+                        self.rename_context_item()
                     else:
                         pass
 

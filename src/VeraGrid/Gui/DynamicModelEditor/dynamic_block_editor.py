@@ -4339,6 +4339,116 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         if isinstance(item, (graph.GenericBlockItem, graph.BlockItem)):
             if item.subsys is not None:
                 self.request_navigate_to_block(item.subsys)
+            else:
+                pass
+        else:
+            pass
+
+    def open_block_rename_dialog(self,
+                                 current_name: str) -> tuple[bool, str]:
+        """
+        Open the modal dialog used to rename one block item.
+
+        :param current_name: Current block name shown to the user.
+        :return: Tuple ``(accepted, new_name)``.
+        """
+        dialog: QDialog = QDialog(self)
+        dialog.setWindowTitle(self.tr("Change Block Name"))
+        dialog.setModal(True)
+
+        layout: QVBoxLayout = QVBoxLayout(dialog)
+        name_edit: QLineEdit = QLineEdit(dialog)
+        name_edit.setText(current_name)
+        name_edit.selectAll()
+        layout.addWidget(name_edit)
+
+        button_box: QDialogButtonBox = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok |
+                                                        QDialogButtonBox.StandardButton.Cancel,
+                                                        dialog)
+        layout.addWidget(button_box)
+
+        button_box.accepted.connect(dialog.accept)
+        button_box.rejected.connect(dialog.reject)
+
+        accepted: bool = dialog.exec() == QDialog.DialogCode.Accepted
+        new_name: str = name_edit.text().strip()
+        return accepted, new_name
+
+    def refresh_editor_block_name_displays(self,
+                                           block: Block) -> None:
+        """
+        Refresh every visible editor label that mirrors one block name.
+
+        :param block: Renamed block.
+        :return: None.
+        """
+        scene_item: graph.BlockItem | graph.GenericBlockItem | graph.RoundBaseArithmeticOpItem | graph.RectBaseArithmeticOpItem | None
+        scene_item = self.get_scene_item_by_block_uid(block.uid)
+
+        if scene_item is not None:
+            if isinstance(scene_item, (graph.BlockItem, graph.GenericBlockItem)):
+                scene_item.refresh_block_name()
+            else:
+                pass
+        else:
+            pass
+
+        # Rebuild the side-panel models when the renamed block is the one that is
+        # currently inspected, because some table cells expose block names as context.
+        if self._selected_side_block is not None and self._selected_side_block.uid == block.uid:
+            self.refresh_active_side_panel()
+        else:
+            pass
+
+        # Breadcrumb buttons render ``block.name`` directly, so rebuilding the
+        # navigation path is enough to propagate the new label everywhere.
+        if self._navigation_delegate is not None:
+            self._navigation_delegate.refresh_breadcrumb()
+        else:
+            pass
+
+        self.scene.update()
+
+    def rename_block_item(self,
+                          item: graph.BlockItem | graph.GenericBlockItem) -> None:
+        """
+        Rename one visible block item through the editor-owned modal flow.
+
+        :param item: Scene block item selected from the context menu.
+        :return: None.
+        """
+        block: Block | None = item.subsys
+        accepted: bool
+        new_name: str
+
+        if block is None:
+            return
+        else:
+            pass
+
+        accepted, new_name = self.open_block_rename_dialog(block.name)
+
+        if not accepted:
+            return
+        else:
+            pass
+
+        if len(new_name) == 0:
+            self.toast_manager.show_warning_toast(self.tr("Block name cannot be empty"))
+            return
+        else:
+            pass
+
+        if new_name == block.name:
+            return
+        else:
+            pass
+
+        # Apply the rename to the symbolic model first. The graphics item only mirrors
+        # the block state, so every visible label refreshes from the authoritative model.
+        block.set_name(new_name)
+        self.refresh_editor_block_name_displays(block)
+        self.mark_unapplied_changes()
 
     def get_scene_item_by_block_uid(self,
                                     block_uid: int) -> graph.BlockItem | graph.GenericBlockItem | graph.RoundBaseArithmeticOpItem | graph.RectBaseArithmeticOpItem | None:

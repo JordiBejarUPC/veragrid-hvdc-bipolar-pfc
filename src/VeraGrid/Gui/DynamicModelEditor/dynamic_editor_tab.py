@@ -259,6 +259,14 @@ class DynamicEditorTab(QtWidgets.QWidget):
         self._navigation.go_to_root()
         self._replace_editor()
 
+    def refresh_breadcrumb(self) -> None:
+        """
+        Refresh the breadcrumb labels from the current navigation path.
+
+        :return: None.
+        """
+        self._refresh_breadcrumb()
+
     # ------------------------------------------------------------------
     # Editor delegation — forward commonly accessed attributes
     # ------------------------------------------------------------------
