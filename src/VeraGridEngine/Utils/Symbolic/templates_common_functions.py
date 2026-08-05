@@ -1262,24 +1262,30 @@ def connect_bus_variables_emt(device: Any,
 
     if device.device_type in branch_devices:
         if device.bus_from.emt_model.empty():
-            if grid is None:
-                initialize_bus_emt_from_local_device_context(bus=device.bus_from,
-                                                             var_factory=var_factory)
+            if allow_deferred_connection:
+                if grid is None:
+                    initialize_bus_emt_from_local_device_context(bus=device.bus_from,
+                                                                 var_factory=var_factory)
+                else:
+                    initialize_bus_emt_from_grid_with_fallback(bus=device.bus_from,
+                                                               grid=grid,
+                                                               var_factory=var_factory)
             else:
-                initialize_bus_emt_from_grid_with_fallback(bus=device.bus_from,
-                                                           grid=grid,
-                                                           var_factory=var_factory)
+                raise ValueError(f"Connection Bus EMT model cannot be empty, initialize {device.bus_from.name} EMT model")
         else:
             pass
 
         if device.bus_to.emt_model.empty():
-            if grid is None:
-                initialize_bus_emt_from_local_device_context(bus=device.bus_to,
-                                                             var_factory=var_factory)
+            if allow_deferred_connection:
+                if grid is None:
+                    initialize_bus_emt_from_local_device_context(bus=device.bus_to,
+                                                                 var_factory=var_factory)
+                else:
+                    initialize_bus_emt_from_grid_with_fallback(bus=device.bus_to,
+                                                               grid=grid,
+                                                               var_factory=var_factory)
             else:
-                initialize_bus_emt_from_grid_with_fallback(bus=device.bus_to,
-                                                           grid=grid,
-                                                           var_factory=var_factory)
+                raise ValueError(f"Connection Bus EMT model cannot be empty, initialize {device.bus_to.name} EMT model")
         else:
             pass
 
@@ -1288,18 +1294,16 @@ def connect_bus_variables_emt(device: Any,
                                   var_factory=var_factory)
     else:
         if device.bus.emt_model.empty():
-            if grid is not None:
-                initialize_bus_emt_from_grid_with_fallback(bus=device.bus,
-                                                           grid=grid,
-                                                           var_factory=var_factory)
-            elif allow_deferred_connection:
-                # GUI template assignment can happen before any branch has
-                # materialized the bus EMT shell. Build the local fallback bus
-                # shell directly instead of storing one back-reference to the grid.
-                initialize_bus_emt_from_local_device_context(bus=device.bus,
-                                                             var_factory=var_factory)
+            if allow_deferred_connection:
+                if grid is not None:
+                    initialize_bus_emt_from_grid_with_fallback(bus=device.bus,
+                                                               grid=grid,
+                                                               var_factory=var_factory)
+                else:
+                    initialize_bus_emt_from_local_device_context(bus=device.bus,
+                                                                 var_factory=var_factory)
             else:
-                pass
+                raise ValueError(f"Connection Bus EMT model cannot be empty, initialize {device.bus.name} EMT model")
         else:
             pass
 

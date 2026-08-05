@@ -1138,6 +1138,30 @@ def _get_external_mapping_var_if_present(
         return mapped_var
 
 
+def _mapped_var_already_matches_target(mapped_var: Optional[Var], target_var: Any) -> bool:
+    """
+    Return whether one external-mapping variable already matches its target shell variable.
+
+    The EMT attachment layer canonicalizes many root external mappings before the
+    problem builder starts. When the mapped variable already shares the target UID,
+    the builder can skip one substitution entry and keep the compatibility fallback
+    only for legacy or wrapper-root cases that still expose one stale mapping var.
+
+    :param mapped_var: Variable exposed through one root external mapping entry.
+    :param target_var: Authoritative bus-shell variable or ``None``.
+    :return: ``True`` when no substitution is required.
+    """
+    if mapped_var is None:
+        return False
+    else:
+        pass
+
+    if isinstance(target_var, Var):
+        return mapped_var.uid == target_var.uid
+    else:
+        return False
+
+
 def _get_array_entry_if_in_range(array_obj: Any, index: int) -> Optional[Any]:
     """
     Return one array entry only when the index is valid.
@@ -1912,6 +1936,10 @@ class EmtProblemDae(EmtProblemTemplate):
         validate_models_s: float = _toc(t_phase_start)
         t_phase_start = _tic()
 
+        self._validate_bus_emt_models_ready()
+        validate_models_s += _toc(t_phase_start)
+        t_phase_start = _tic()
+
         self._validate_dynamic_emt_interfaces()
         validate_interfaces_s: float = _toc(t_phase_start)
         t_phase_start = _tic()
@@ -2585,6 +2613,73 @@ class EmtProblemDae(EmtProblemTemplate):
             raise EmtInterfaceValidationError(error_msg)
         else:
             pass
+
+    def _validate_bus_emt_models_ready(self) -> None:
+        """
+        Validate that every bus exposes one ready-to-use EMT shell before build.
+
+        EMT problem assembly relies on canonical bus voltage shells that must
+        already exist when the problem constructor starts. The bus shell is not
+        created inside the problem anymore because doing so hides upstream model
+        materialization defects and makes the assembly contract harder to reason
+        about.
+
+        This validation therefore checks that every bus has one non-empty EMT
+        model with the correct domain interface and that no deferred single-bus
+        EMT devices remain pending at problem-construction time.
+
+        :raises EmtInterfaceValidationError: When one bus shell is missing,
+            incompatible with its domain, or still waiting for deferred devices.
+        :return: None.
+        """
+        errors: List[str] = list()
+        bus: Any
+
+        for bus in self.grid.buses:
+            bus_model: Block = bus.emt_model
+            pending_devices: List[Any] = bus.get_pending_emt_devices()
+
+            if bus_model.empty():
+                errors.append(
+                    f"  - Bus '{bus.name}' has no EMT bus shell. "
+                    f"Initialize bus.emt_model before constructing EmtProblemDae."
+                )
+            else:
+                supported_bus_voltage_refs: Set[VarPowerFlowReferenceType] = self._get_bus_voltage_refs(bus)
+
+                if bus.is_dc:
+                    if VarPowerFlowReferenceType.Vdc in supported_bus_voltage_refs:
+                        pass
+                    else:
+                        errors.append(
+                            f"  - Bus '{bus.name}' is DC but its EMT shell does not expose Vdc."
+                        )
+                else:
+                    if len(supported_bus_voltage_refs) > 0:
+                        pass
+                    else:
+                        errors.append(
+                            f"  - Bus '{bus.name}' is AC but its EMT shell exposes no AC phase voltage references."
+                        )
+
+            if len(pending_devices) == 0:
+                pass
+            else:
+                pending_names: List[str] = list()
+                pending_device: Any
+                for pending_device in pending_devices:
+                    pending_names.append(str(pending_device.name))
+
+                errors.append(
+                    f"  - Bus '{bus.name}' still has pending EMT device connections: {', '.join(pending_names)}."
+                )
+
+        if len(errors) == 0:
+            pass
+        else:
+            raise EmtInterfaceValidationError(
+                "EMT bus model readiness validation failed:\n" + "\n".join(errors)
+            )
 
     def _get_device_emt_disposition(self, device_type: DeviceType) -> str:
         """
@@ -3811,8 +3906,9 @@ class EmtProblemDae(EmtProblemTemplate):
         Build the local EMT bus-shell working models.
 
         This mirrors the explicit bus initialization stage used by RMS. The EMT
-        builder first decides the bus shells, and only afterwards processes branch
-        and injection devices against those authoritative bus voltage variables.
+        builder first copies the already validated canonical bus shells, and only
+        afterwards processes branch and injection devices against those
+        authoritative bus voltage variables.
 
         :param grid: Network model to assemble.
         :return: Mapping from bus objects to local working bus blocks.
@@ -3821,39 +3917,13 @@ class EmtProblemDae(EmtProblemTemplate):
         bus: Any
 
         for bus in grid.buses:
-            bus_model: Block | None = bus.emt_model
-            use_saved_bus_model: bool = False
-
-            if bus_model is None:
-                pass
-            else:
-                try:
-                    get_bus_emt_algebraic_vars(bus_model)
-                    use_saved_bus_model = True
-                except (AttributeError, ValueError, TypeError):
-                    use_saved_bus_model = False
-
-            if use_saved_bus_model:
-                bus_working_models[bus] = Block(
-                    algebraic_vars=list(bus_model.algebraic_vars),
-                    out_vars=list(bus_model.out_vars),
-                    external_mapping=dict(bus_model.external_mapping),
-                    api_obj_mapping=dict(bus_model.api_obj_mapping),
-                )
-            else:
-                local_bus_template: BusEmtTemplate = BusEmtTemplate(
-                    vf=grid.var_factory,
-                    mask=get_bus_mask(grid=grid, bus=bus, logger=self.logger),
-                    is_dc=bus.is_dc,
-                    name=f"{bus.name}_emt",
-                )
-                local_bus_block: Block = local_bus_template.block
-                bus_working_models[bus] = Block(
-                    algebraic_vars=list(local_bus_block.algebraic_vars),
-                    out_vars=list(local_bus_block.out_vars),
-                    external_mapping=dict(local_bus_block.external_mapping),
-                    api_obj_mapping=dict(local_bus_block.api_obj_mapping),
-                )
+            bus_model: Block = bus.emt_model
+            bus_working_models[bus] = Block(
+                algebraic_vars=list(bus_model.algebraic_vars),
+                out_vars=list(bus_model.out_vars),
+                external_mapping=dict(bus_model.external_mapping),
+                api_obj_mapping=dict(bus_model.api_obj_mapping),
+            )
 
         return bus_working_models
 
@@ -4452,7 +4522,10 @@ class EmtProblemDae(EmtProblemTemplate):
                         pass
 
                     if mapped_var is not None:
-                        voltage_connection_substitution[mapped_var] = v_dc
+                        if _mapped_var_already_matches_target(mapped_var=mapped_var, target_var=v_dc):
+                            pass
+                        else:
+                            voltage_connection_substitution[mapped_var] = v_dc
                     else:
                         pass
                 else:
@@ -4472,7 +4545,11 @@ class EmtProblemDae(EmtProblemTemplate):
                         terminal_voltage_var = terminal_voltage_vars[ph]
 
                         if mapped_var is not None and terminal_voltage_var is not None:
-                            voltage_connection_substitution[mapped_var] = terminal_voltage_var
+                            if _mapped_var_already_matches_target(mapped_var=mapped_var,
+                                                                 target_var=terminal_voltage_var):
+                                pass
+                            else:
+                                voltage_connection_substitution[mapped_var] = terminal_voltage_var
                         else:
                             pass
 
@@ -4725,7 +4802,10 @@ class EmtProblemDae(EmtProblemTemplate):
             if inj_external_mapping is not None:
                 mapped_var: Optional[Var] = inj_external_mapping.get(VarPowerFlowReferenceType.Vdc, None)
                 if mapped_var is not None:
-                    voltage_connection_substitution[mapped_var] = v_dc
+                    if _mapped_var_already_matches_target(mapped_var=mapped_var, target_var=v_dc):
+                        pass
+                    else:
+                        voltage_connection_substitution[mapped_var] = v_dc
                 else:
                     pass
             else:
@@ -4745,7 +4825,11 @@ class EmtProblemDae(EmtProblemTemplate):
                     inj_bus_voltage_var = inj_bus_voltage_vars[ph]
 
                     if mapped_var is not None and inj_bus_voltage_var is not None:
-                        voltage_connection_substitution[mapped_var] = inj_bus_voltage_var
+                        if _mapped_var_already_matches_target(mapped_var=mapped_var,
+                                                             target_var=inj_bus_voltage_var):
+                            pass
+                        else:
+                            voltage_connection_substitution[mapped_var] = inj_bus_voltage_var
                     else:
                         pass
 
