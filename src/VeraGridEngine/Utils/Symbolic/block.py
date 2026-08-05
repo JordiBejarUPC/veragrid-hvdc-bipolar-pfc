@@ -174,6 +174,17 @@ class Block:
         else:
             raise ValueError(f"Cannot set diagram with {val}")
 
+    def set_name(self, name: str) -> None:
+        """
+        Change the block name without changing the block identity.
+
+        :param name: New block name.
+        :return: None.
+        """
+        # Only the display and serialization name changes here. The block
+        # identity remains tied to the existing uid.
+        self.name = name
+
     def to_dict(self) -> Dict[str, Any]:
         """
         Get dictionary representation of this block
