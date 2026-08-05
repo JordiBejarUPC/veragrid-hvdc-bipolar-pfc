@@ -2,6 +2,46 @@
 
 This model represents the stabilizer block used with the EMT complete generator model.
 
+### Purpose
+
+It is the EMT damping controller that improves the oscillatory behavior of the synchronous generator by modulating the exciter auxiliary input.
+
+### Behavior
+
+- Receives generator speed as its input signal.
+- Filters the raw signal through an input transducer.
+- Removes the steady-state component through a washout stage.
+- Applies gain and lead-lag compensation.
+- Limits the final output before sending it to the exciter.
+
+### Characteristics
+
+- EMT stabilizer control block.
+- Intended for damping electromechanical oscillations in the composite generator package.
+- Not intended to be a standalone network device.
+
+## How it works
+
+The stabilizer reacts mainly to oscillatory speed deviations rather than steady-state offsets. The washout stage blocks the slow component, while the lead-lag stages shape the phase of the response so the resulting signal adds damping instead of amplifying oscillations.
+
+## Characteristic equations
+
+$$
+\frac{dy_1}{dt} = \frac{\omega - y_1}{t_6}
+$$
+
+$$
+\frac{dy_2}{dt} = \frac{y_1 - y_2}{t_5}
+$$
+
+$$
+y_3 = K_s (y_1 - y_2)
+$$
+
+$$
+V_{pss} = \mathrm{sat}(y_5, V_{PSS,min}, V_{PSS,max})
+$$
+
 ## Interface table
 
 | Category | Name | Meaning | Units |
@@ -23,3 +63,8 @@ This model represents the stabilizer block used with the EMT complete generator 
 | Parameter | `t4` | Lag time constant of the second lead-lag block | s |
 | Parameter | `t5` | Washout time constant | s |
 | Parameter | `t6` | Input transducer time constant | s |
+
+## How to use it
+
+- Use it together with the EMT `Complete generator`, `Exciter`, and machine block.
+- Tune it only when damping performance is relevant and a reliable generator operating point is already available.

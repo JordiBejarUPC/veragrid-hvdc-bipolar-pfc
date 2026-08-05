@@ -4,20 +4,26 @@ This model represents a positive-sequence two-winding transformer for RMS studie
 
 ### Purpose
 
-It is a positive-sequence two-winding transformer RMS branch model.
+It is a positive-sequence two-winding transformer RMS branch model. The template captures terminal power transfer, shunt magnetization effects, core losses, and off-nominal tap action without resolving fast electromagnetic winding dynamics.
 
 ### Behavior
 
 - Uses from-side and to-side voltage magnitudes and angles.
 - Computes active and reactive power at both transformer terminals.
 - Includes series admittance, core-loss terms, magnetizing terms, and tap scaling.
-- Represents tap module and tap phase shift as branch parameters.
+- Represents both tap magnitude and tap phase shift as branch parameters.
 
 ### Characteristics
 
 - Algebraic-only RMS transformer model.
-- Appropriate for positive-sequence RMS network studies.
+- Positive-sequence network representation.
+- Appropriate for RMS network studies with tap changers and transformer loss representation.
 - Does not model EMT winding transients or magnetic saturation transients.
+
+## How it works
+
+The block evaluates the power exchange between the two transformer terminals using an equivalent branch model. The off-nominal tap ratio rescales the electrical coupling between both sides, while the core-loss and magnetizing terms contribute additional shunt effects. The result is one steady-state-like transformer representation embedded inside the RMS dynamic simulation.
+
 ## Characteristic equations
 
 $$
@@ -58,4 +64,4 @@ Equivalent expressions are used for the to-side terminal powers.
 ## How to use it
 
 - Use it when transformer power transfer and tap representation are needed in RMS simulations.
-- Do not use it when phase-domain or electromagnetic winding dynamics are required.
+- Do not use it when phase-domain winding currents, saturation transients, or switching-frequency effects are required.

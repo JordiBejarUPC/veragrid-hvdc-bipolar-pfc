@@ -4,19 +4,27 @@ This model represents a positive-sequence RMS grid-forming voltage-source conver
 
 ### Purpose
 
-Represent a compact RMS grid-forming VSC through power-balance relationships and terminal power channels.
+It provides a compact grid-forming converter representation for RMS studies. The model focuses on terminal power exchange and converter losses rather than detailed modulation or inner current-control dynamics.
 
 ### Behavior
 
-- Uses AC terminal voltage magnitude and angle plus DC voltage input.
-- Computes a compact active-power balance relation with configurable loss coefficients.
-- Exposes active-power channels on both sides of the converter representation and one reactive-power reference channel.
+- Uses AC terminal voltage magnitude and angle together with a DC-side voltage input.
+- Represents the converter as a compact power-processing device between its AC-side and DC-side channels.
+- Computes one effective current magnitude from the active and reactive operating point.
+- Uses a polynomial loss law to relate the active power on both sides of the converter.
+- Exposes one reactive-power reference channel used by the surrounding VSC formulation.
 
 ### Characteristics
 
 - Very compact averaged converter representation.
-- Suitable for high-level RMS converter behavior studies.
-- Simpler than the EMT converter family and simpler than a detailed RMS converter control hierarchy.
+- Positive-sequence RMS model.
+- Suitable for high-level grid-forming converter behavior studies.
+- Simpler than the EMT converter family and simpler than a detailed RMS control hierarchy.
+
+## How it works
+
+The model does not reconstruct phase voltages, switching states, or modulation signals. Instead, it estimates the operating current magnitude from the power point and uses that current to evaluate conversion losses. This makes the block useful when the network-level impact of the converter matters more than the internal control implementation.
+
 ## Characteristic equations
 
 $$
@@ -47,5 +55,5 @@ $$
 
 ## How to use it
 
-- Use it when you want a very compact RMS converter representation.
-- Do not interpret it as a detailed EMT-style grid-forming implementation.
+- Use it when one compact RMS grid-forming converter is enough for the study objective.
+- Move to EMT or to a richer RMS controller structure when detailed current control, modulation, or waveform phenomena are important.

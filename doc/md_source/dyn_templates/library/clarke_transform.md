@@ -2,23 +2,38 @@
 
 ### Purpose
 
-The Clarke transform converts three-phase `abc` quantities into stationary orthogonal components such as `alpha-beta` or `alpha-beta-zero`.
+This block converts three-phase `abc` quantities into stationary `alpha-beta-0` quantities using the classical non-power-invariant scaling.
 
 ### Behavior
 
 - Receives phase quantities in `abc` form.
-- Produces stationary-frame components.
-- Is used to simplify control and analysis of three-phase systems.
+- Produces stationary-frame orthogonal components.
+- Is commonly used ahead of Park transforms and stationary-frame analysis blocks.
 
 ### Characteristics
 
-- Available in power-invariant and non-power-invariant variants.
-- Often used ahead of Park transforms and vector-control blocks.
+- Simpler scaling than the power-invariant version.
+- Widely used in classical three-phase control derivations.
 
 ## Characteristic equations
 
 $$
-\begin{bmatrix}x_\alpha \\ x_\beta \\ x_0\end{bmatrix} = T_C \begin{bmatrix}x_A \\ x_B \\ x_C\end{bmatrix}
+\begin{bmatrix}
+x_\alpha \\
+x_\beta \\
+x_0
+\end{bmatrix}
+=
+\begin{bmatrix}
+\frac{2}{3} & -\frac{1}{3} & -\frac{1}{3} \\
+0 & \frac{1}{\sqrt{3}} & -\frac{1}{\sqrt{3}} \\
+\frac{1}{3} & \frac{1}{3} & \frac{1}{3}
+\end{bmatrix}
+\begin{bmatrix}
+x_A \\
+x_B \\
+x_C
+\end{bmatrix}
 $$
 
 ## Interface table
@@ -28,11 +43,10 @@ $$
 | Input | `x_A` | Phase-A input quantity | model-dependent |
 | Input | `x_B` | Phase-B input quantity | model-dependent |
 | Input | `x_C` | Phase-C input quantity | model-dependent |
-| Output | `x_alpha` | Stationary alpha-axis component | model-dependent |
-| Output | `x_beta` | Stationary beta-axis component | model-dependent |
-| Output | `x_0` | Zero-sequence component in dq0-capable variants | model-dependent |
+| Output | `x_alpha` | Alpha-axis stationary component | model-dependent |
+| Output | `x_beta` | Beta-axis stationary component | model-dependent |
+| Output | `x_0` | Zero-sequence stationary component | model-dependent |
 
 ## How to use it
 
-- Use it when a three-phase signal must be analyzed or controlled in an orthogonal stationary frame.
-- Make sure the chosen variant matches the intended power-scaling convention.
+- Use this variant when the surrounding formulation assumes classical Clarke scaling rather than power invariance.

@@ -1,35 +1,16 @@
 # Limit
 
-### Purpose
-
-A limit block constrains a signal between lower and upper bounds.
-
-### Behavior
-
-- Receives one signal.
-- Clips the signal to a valid interval.
-- Protects downstream blocks from unrealistic or unsafe command values.
-
-### Characteristics
-
-- Often used around current references, voltage references, modulation indices, and mechanical commands.
-
-## Characteristic equations
+Limit clips an input to a configured upper range with a small tolerance parameter. Use it when you need a simple saturating ceiling behavior from a single input.
 
 $$
-y = \min(\max(x, x_{min}), x_{max})
+yo \le y_{max}
 $$
 
 ## Interface table
 
 | Category | Name | Meaning | Units |
 | --- | --- | --- | --- |
-| Input | `yi` | Signal to be limited | model-dependent |
-| Output | `yo` | Limited output signal | model-dependent |
-| Parameter | `vmin` | Lower limit | model-dependent |
-| Parameter | `vmax` | Upper limit | model-dependent |
-
-## How to use it
-
-- Use it whenever a physical variable cannot exceed a known range.
-- Make sure the limits use the same units as the signal being limited.
+| Input | `yi` | Signal to limit | model-dependent |
+| Output | `yo` | Limited output | same as `yi` |
+| Parameter | `eps` | Small tolerance used around the limit | same as `yi` |
+| Parameter | `y_max` | Upper limit | same as `yi` |

@@ -2,6 +2,47 @@
 
 This model represents a grid-forming voltage-source converter in EMT form.
 
+### Purpose
+
+It is the EMT grid-forming converter template used when the converter must establish its own voltage angle and magnitude instead of locking to an external grid reference.
+
+### Behavior
+
+- Uses three-phase terminal voltages and one DC-side voltage input.
+- Maintains an internal electrical angle and frequency.
+- Synthesizes an internal balanced three-phase emf behind a series output branch.
+- Measures active and reactive power at the AC interface.
+- Adjusts frequency and voltage magnitude through droop control.
+- Produces AC current injections and one implied DC current channel.
+
+### Characteristics
+
+- EMT grid-forming converter model.
+- Source-behind-impedance representation.
+- Suitable for islanded systems, weak-grid studies, and converter-dominated systems where the converter sets the local voltage reference.
+
+## How it works
+
+The converter behaves like a controlled internal three-phase source behind an output impedance. Its internal angle evolves from a frequency state, and that frequency is adjusted from active-power error through droop control. The internal emf magnitude is adjusted from reactive-power error through voltage droop. The branch impedance then determines the current exchanged with the network.
+
+## Characteristic equations
+
+$$
+\frac{d\theta}{dt} = \omega_{base}\,\omega
+$$
+
+$$
+\tau_\omega \frac{d\omega}{dt} = (\omega_{ref} - \omega) - K_{dp}(P_e - P_{ref})
+$$
+
+$$
+\tau_v \frac{dE_{pk}}{dt} = (V_{ref} - E_{pk}) - K_{dq}(Q_e - Q_{ref})
+$$
+
+$$
+\mathbf{i}_{abc} = \frac{\mathbf{e}_{abc} - \mathbf{v}_{abc}}{R_s + sL_s}
+$$
+
 ## Interface table
 
 | Category | Name | Meaning | Units |
@@ -38,3 +79,8 @@ This model represents a grid-forming voltage-source converter in EMT form.
 | Parameter | `phi_v_ref` | Initialization terminal-voltage angle used to seed the internal emf state | rad |
 | Parameter | `Ipk_ref` | Initialization peak-current magnitude used to align the EMT state with the solved operating point | pu |
 | Parameter | `phi_ref` | Initialization current-to-voltage phase relation used to align the EMT state with the solved operating point | rad |
+
+## How to use it
+
+- Use it when the converter must form the grid voltage rather than track it.
+- Do not replace a grid-following converter with this model unless the control philosophy of the study is truly grid-forming.

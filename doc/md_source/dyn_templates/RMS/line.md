@@ -17,7 +17,13 @@ It is a positive-sequence AC line model that computes sending-end and receiving-
 
 - Algebraic-only RMS branch model.
 - Intended for positive-sequence branch power-flow behavior inside RMS dynamic simulations.
+- Appropriate for electromechanical timescale studies.
 - Does not model phase-domain wave propagation or electromagnetic line detail.
+
+## How it works
+
+The template evaluates the standard positive-sequence branch power expressions using the terminal voltages at both ends of the line and the branch admittance parameters. When `u = 0`, the line contribution is suppressed; when `u = 1`, the full branch equations are applied.
+
 ## Characteristic equations
 
 $$
@@ -54,4 +60,4 @@ Equivalent expressions are used for `P_t` and `Q_t` at the receiving end.
 ## How to use it
 
 - Use this template when branch active and reactive powers are the quantities of interest in RMS simulations.
-- Do not use it when EMT traveling-wave or unbalanced phase-domain line behavior is needed.
+- Do not use it when EMT traveling-wave behavior, switching transients, or unbalanced phase-domain line behavior is needed.

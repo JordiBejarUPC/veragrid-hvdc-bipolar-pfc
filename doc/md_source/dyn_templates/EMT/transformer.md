@@ -2,6 +2,41 @@
 
 This model represents a three-phase transformer for EMT studies.
 
+### Purpose
+
+It is the EMT transformer used to exchange instantaneous three-phase voltages and currents between two electrical sides while preserving winding dynamics, magnetic coupling, and the chosen connection structure.
+
+### Behavior
+
+- Uses phase voltages at both transformer terminals and, when available, neutral-node voltages.
+- Evolves internal winding currents dynamically.
+- Produces current injections at both sides of the transformer.
+- Represents resistive losses, leakage effects, magnetic coupling, and off-nominal tap scaling.
+
+### Characteristics
+
+- EMT three-phase transformer model.
+- Appropriate for phase-domain transient simulations.
+- Supports neutral-related behavior when the chosen winding connection exposes neutral ports.
+
+## How it works
+
+The transformer is represented through coupled winding equations. The terminal voltages drive winding currents, the winding currents interact through mutual inductance, and the resulting current states are exported back to the EMT network as current injections. Compared with the RMS transformer, this block preserves fast electromagnetic dynamics and phase-domain behavior.
+
+## Characteristic equations
+
+Representative winding equations are:
+
+$$
+v_{f,phase} = R_1 i_{f,phase} + L_1 \frac{di_{f,phase}}{dt} + M \frac{di_{t,phase}}{dt}
+$$
+
+$$
+v_{t,phase} = R_2 i_{t,phase} + L_2 \frac{di_{t,phase}}{dt} + M \frac{di_{f,phase}}{dt}
+$$
+
+The exact equations depend on the chosen winding arrangement, tap ratio, and neutral exposure.
+
 ## Interface table
 
 | Category | Name | Meaning | Units |
@@ -41,3 +76,8 @@ This model represents a three-phase transformer for EMT studies.
 | Parameter | `trafo_m` | Mutual inductance coupling the two windings | pu s |
 | Parameter | `trafo_gm` | Magnetizing conductance or core-loss branch parameter | pu |
 | Parameter | `trafo_tap_ratio` | Off-nominal tap ratio applied between the two windings | pu |
+
+## How to use it
+
+- Use it for EMT simulations that need phase-domain transformer current and voltage behavior.
+- Prefer the RMS transformer only when high-frequency electromagnetic detail is unnecessary.
