@@ -173,7 +173,8 @@ def _get_cubic_phases(cubic: StaCubic, phase_map: PhaseMap) -> List[int]:
     Return the resolved N/A/B/C phases used by a cubicle.
 
     The returned order follows the element phase order ``it2p1``, ``it2p2``
-    and ``it2p3``. Unresolved conductors are omitted.
+    and ``it2p3``. Active conductors without an ``it2p`` slot, normally the
+    neutral of an ABCN cubicle, are appended. Unresolved conductors are omitted.
 
     :param cubic: PowerFactory cubicle.
     :param phase_map: Resolved terminal-conductor phase map.
@@ -184,14 +185,23 @@ def _get_cubic_phases(cubic: StaCubic, phase_map: PhaseMap) -> List[int]:
         return []
 
     active_indices = _get_cubic_active_phase_indices(cubic)
+    used_indices: Set[int] = set()
     phases: List[int] = []
 
     for attribute in ("it2p1", "it2p2", "it2p3"):
         local_index = int(getattr(cubic, attribute))
-        if local_index in active_indices:
+        if local_index in active_indices and local_index not in used_indices:
+            used_indices.add(local_index)
             phase = phase_map.get((terminal_id, local_index))
             if phase is not None:
                 phases.append(phase)
+
+    # StaCubic has only three it2p fields. In a four-wire ABCN cubicle the
+    # neutral is present in cPhInfo but has no explicit it2p slot.
+    for local_index in sorted(active_indices - used_indices):
+        phase = phase_map.get((terminal_id, local_index))
+        if phase is not None:
+            phases.append(phase)
 
     return phases
 
@@ -802,6 +812,7 @@ def convert_dgs_to_overhead_line_type_geometrical_parameters(
         typcon_by_id: Dict[str, TypCon],
         wire_by_id: Dict[str, Wire],
         default_frequency_hz: float,
+        phase_order: List[int] | None = None,
 ) -> dev.OverheadLineType:
     """
     Convert dgs to overhead line type geometrical parameters.
@@ -810,6 +821,7 @@ def convert_dgs_to_overhead_line_type_geometrical_parameters(
     :param typcon_by_id: typcon_by_id parameter.
     :param wire_by_id: wire_by_id parameter.
     :param default_frequency_hz: default_frequency_hz parameter.
+    :param phase_order: Resolved N/A/B/C phase of each physical conductor.
     :return: Function result.
     """
 
@@ -883,9 +895,26 @@ def convert_dgs_to_overhead_line_type_geometrical_parameters(
         else:
             pass
 
-    # Phase wires per circuit
+    # Phase wires per circuit. TypTow.xy_c always reserves coordinates for
+    # three conductors, but nphas states how many of them actually exist.
     # Expected xy_c row format: [xA, xB, xC, yA, yB, yC]
+    phase_cursor = 0
     for c_idx, ptr in enumerate(typtow.pcond_c):
+        if c_idx < len(typtow.nphas):
+            phase_count = int(typtow.nphas[c_idx])
+        else:
+            phase_count = 3
+        phase_count = max(0, min(phase_count, 3))
+
+        base_phase = 3 * int(c_idx)  # circuit 0 -> phases 1, 2, 3
+        circuit_phases: List[int] = []
+        for conductor_idx in range(phase_count):
+            if phase_order is not None and phase_cursor < len(phase_order):
+                circuit_phases.append(phase_order[phase_cursor])
+            else:
+                circuit_phases.append(base_phase + conductor_idx + 1)
+            phase_cursor += 1
+
         if ptr is not None:
 
             cid = _ref_id(ptr)
@@ -903,14 +932,18 @@ def convert_dgs_to_overhead_line_type_geometrical_parameters(
 
                     offsets = _bundle_offsets(n_sub=int(tc.ncsub), spacing_m=float(tc.dsubc))
 
-                    base_phase = 3 * int(c_idx)  # circuit 0 -> 0, circuit 1 -> 3, ...
-                    for dx, dy in offsets:
-                        ohl_type.wires_in_tower.append(
-                            WireInTower(wire=wire, xpos=xA + dx, ypos=yA + dy, phase=base_phase + 1))
-                        ohl_type.wires_in_tower.append(
-                            WireInTower(wire=wire, xpos=xB + dx, ypos=yB + dy, phase=base_phase + 2))
-                        ohl_type.wires_in_tower.append(
-                            WireInTower(wire=wire, xpos=xC + dx, ypos=yC + dy, phase=base_phase + 3))
+                    x_positions = (xA, xB, xC)
+                    y_positions = (yA, yB, yC)
+                    for conductor_idx, phase in enumerate(circuit_phases):
+                        for dx, dy in offsets:
+                            ohl_type.wires_in_tower.append(
+                                WireInTower(
+                                    wire=wire,
+                                    xpos=x_positions[conductor_idx] + dx,
+                                    ypos=y_positions[conductor_idx] + dy,
+                                    phase=phase,
+                                )
+                            )
                 else:
                     pass
             else:
@@ -5795,6 +5828,8 @@ def _add_typtow_templates(dgs_grid: DgsCircuit,
                           typcon_raw_dict: Dict[str, TypCon],
                           wire_type_dict: Dict[str, Wire],
                           typlne_dict: Dict[str, dev.SequenceLineType],
+                          cubics_by_objid: Dict[str, List[StaCubic]],
+                          phase_map: PhaseMap,
                           frequency: float,
                           logger: Logger) -> Dict[str, dev.OverheadLineType]:
     """
@@ -5805,6 +5840,8 @@ def _add_typtow_templates(dgs_grid: DgsCircuit,
     :param typcon_raw_dict: typcon_raw_dict parameter.
     :param wire_type_dict: wire_type_dict parameter.
     :param typlne_dict: typlne_dict parameter.
+    :param cubics_by_objid: Cubicles grouped by connected element.
+    :param phase_map: Resolved terminal-conductor phase map.
     :param frequency: frequency parameter.
     :param logger: logger parameter.
     :return: Function result.
@@ -5814,11 +5851,43 @@ def _add_typtow_templates(dgs_grid: DgsCircuit,
         tow_id = _ref_id(typtow.ID)
         if tow_id is not None:
             if typtow.i_mode == 0:
+                phase_counts = [
+                    max(0, min(int(typtow.nphas[index]), 3))
+                    if index < len(typtow.nphas)
+                    else 3
+                    for index in range(len(typtow.pcond_c))
+                ]
+                expected_conductors = sum(phase_counts)
+                phase_orders: Set[Tuple[int, ...]] = set()
+
+                # TypTow describes the physical circuits, while the line
+                # cubicles identify their electrical N/A/B/C conductors.
+                for line in dgs_grid.elmlnes:
+                    if _ref_id(line.typ_id) != tow_id:
+                        continue
+
+                    for cubic in cubics_by_objid.get(_ref_id(line.ID), []):
+                        phases = tuple(_get_cubic_phases(cubic=cubic, phase_map=phase_map))
+                        if len(phases) == expected_conductors:
+                            phase_orders.add(phases)
+
+                phase_order: List[int] | None = None
+                if len(phase_orders) == 1:
+                    phase_order = list(next(iter(phase_orders)))
+                elif len(phase_orders) > 1:
+                    logger.add_warning(
+                        "Tower type is used with different phase layouts; keeping circuit-local phases.",
+                        device=typtow.loc_name,
+                        device_class="TypTow",
+                        value=sorted(phase_orders),
+                    )
+
                 ohl_type = convert_dgs_to_overhead_line_type_geometrical_parameters(
                     typtow=typtow,
                     typcon_by_id=typcon_raw_dict,
                     wire_by_id=wire_type_dict,
                     default_frequency_hz=frequency,
+                    phase_order=phase_order,
                 )
                 overhead_line_type_dict[tow_id] = ohl_type
                 overhead_line_type_dict[typtow.ID] = ohl_type
@@ -6352,6 +6421,8 @@ def dgs_to_circuit(path: str,
         typcon_raw_dict=typcon_raw_dict,
         wire_type_dict=wire_type_dict,
         typlne_dict=typlne_dict,
+        cubics_by_objid=cubics_by_objid,
+        phase_map=phase_map,
         frequency=frequency,
         logger=logger,
     )
