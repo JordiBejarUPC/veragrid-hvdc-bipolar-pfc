@@ -210,6 +210,102 @@ class EmtInterfaceValidationError(ValueError):
         super().__init__(self.message)
 
 
+class EmtDeviceDisposition:
+    """
+    Enumeration-like holder describing how one ``DeviceType`` participates in EMT.
+
+    The EMT builder must make an explicit decision for every network device type
+    that can exist in a ``MultiCircuit``. Some device types participate directly
+    in the EMT electrical structure, while others are metadata-only from the EMT
+    point of view and must therefore resolve to an explicit no-op disposition.
+    """
+
+    __slots__ = ()
+
+    BUS_STRUCTURAL: str = "bus_structural"
+    BRANCH_STRUCTURAL: str = "branch_structural"
+    INJECTION_STRUCTURAL: str = "injection_structural"
+    NON_EMT_NOOP: str = "non_emt_noop"
+
+
+def _build_emt_device_type_disposition_table() -> Dict[DeviceType, str]:
+    """
+    Build the exhaustive ``DeviceType`` to EMT-disposition table.
+
+    The purpose of this table is architectural completeness. Every device type in
+    the public enumeration must map to one explicit EMT disposition so newly added
+    device types cannot silently inherit unrelated branch or injection behavior.
+
+    :return: Mapping from ``DeviceType`` to one EMT disposition string.
+    """
+    disposition_table: Dict[DeviceType, str] = dict()
+    device_tpe: DeviceType
+
+    for device_tpe in DeviceType:
+        disposition_table[device_tpe] = EmtDeviceDisposition.NON_EMT_NOOP
+
+    disposition_table[DeviceType.BusDevice] = EmtDeviceDisposition.BUS_STRUCTURAL
+
+    disposition_table[DeviceType.BranchDevice] = EmtDeviceDisposition.BRANCH_STRUCTURAL
+    disposition_table[DeviceType.LineDevice] = EmtDeviceDisposition.BRANCH_STRUCTURAL
+    disposition_table[DeviceType.Transformer2WDevice] = EmtDeviceDisposition.BRANCH_STRUCTURAL
+    disposition_table[DeviceType.Transformer3WDevice] = EmtDeviceDisposition.BRANCH_STRUCTURAL
+    disposition_table[DeviceType.TransformerNwDevice] = EmtDeviceDisposition.BRANCH_STRUCTURAL
+    disposition_table[DeviceType.WindingDevice] = EmtDeviceDisposition.BRANCH_STRUCTURAL
+    disposition_table[DeviceType.SeriesReactanceDevice] = EmtDeviceDisposition.BRANCH_STRUCTURAL
+    disposition_table[DeviceType.HVDCLineDevice] = EmtDeviceDisposition.BRANCH_STRUCTURAL
+    disposition_table[DeviceType.DCLineDevice] = EmtDeviceDisposition.BRANCH_STRUCTURAL
+    disposition_table[DeviceType.VscDevice] = EmtDeviceDisposition.BRANCH_STRUCTURAL
+    disposition_table[DeviceType.UpfcDevice] = EmtDeviceDisposition.BRANCH_STRUCTURAL
+    disposition_table[DeviceType.SwitchDevice] = EmtDeviceDisposition.BRANCH_STRUCTURAL
+
+    disposition_table[DeviceType.BatteryDevice] = EmtDeviceDisposition.INJECTION_STRUCTURAL
+    disposition_table[DeviceType.LoadDevice] = EmtDeviceDisposition.INJECTION_STRUCTURAL
+    disposition_table[DeviceType.CurrentInjectionDevice] = EmtDeviceDisposition.INJECTION_STRUCTURAL
+    disposition_table[DeviceType.ControllableShuntDevice] = EmtDeviceDisposition.INJECTION_STRUCTURAL
+    disposition_table[DeviceType.GeneratorDevice] = EmtDeviceDisposition.INJECTION_STRUCTURAL
+    disposition_table[DeviceType.StaticGeneratorDevice] = EmtDeviceDisposition.INJECTION_STRUCTURAL
+    disposition_table[DeviceType.ShuntDevice] = EmtDeviceDisposition.INJECTION_STRUCTURAL
+    disposition_table[DeviceType.ExternalGridDevice] = EmtDeviceDisposition.INJECTION_STRUCTURAL
+
+    return disposition_table
+
+
+def _validate_emt_device_type_disposition_table(disposition_table: Dict[DeviceType, str]) -> None:
+    """
+    Validate that the EMT disposition table covers the full ``DeviceType`` enum.
+
+    This check protects the EMT architecture against future enum growth. When one
+    new ``DeviceType`` is introduced, the EMT builder must still make an explicit
+    disposition decision instead of falling back to generic branch or injection
+    assumptions.
+
+    :param disposition_table: Mapping from ``DeviceType`` to EMT disposition.
+    :return: None.
+    """
+    missing_types: List[DeviceType] = list()
+    device_tpe: DeviceType
+
+    for device_tpe in DeviceType:
+        if device_tpe in disposition_table:
+            pass
+        else:
+            missing_types.append(device_tpe)
+
+    if len(missing_types) == 0:
+        pass
+    else:
+        missing_names: List[str] = list()
+        missing_tpe: DeviceType
+        for missing_tpe in missing_types:
+            missing_names.append(str(missing_tpe.name))
+
+        raise ValueError(
+            "EMT device disposition table is incomplete. Missing DeviceType entries: "
+            + ", ".join(missing_names)
+        )
+
+
 def _unique_keep_order(seq: List[Var]) -> List[Var]:
     """
     Remove duplicated variables by UID while preserving the first appearance order.
@@ -1758,6 +1854,8 @@ class EmtProblemDae(EmtProblemTemplate):
         self.logger = Logger()
         self.grid = grid
         self.options = options
+        self._device_type_disposition: Dict[DeviceType, str] = _build_emt_device_type_disposition_table()
+        _validate_emt_device_type_disposition_table(self._device_type_disposition)
         if pf_results_3ph is None:
             self.power_flow_results_3ph = pf_results_3Ph
         else:
@@ -1824,7 +1922,9 @@ class EmtProblemDae(EmtProblemTemplate):
         t_phase_start = _tic()
 
         sys_block.unify_blocks()
-        _deduplicate_block_entities(sys_block)
+        sys_block.state_vars = _unique_keep_order(sys_block.state_vars)
+        sys_block.algebraic_vars = _unique_keep_order(sys_block.algebraic_vars)
+        sys_block.diff_vars = _unique_keep_order(sys_block.diff_vars)
         # The EMT problem compiles the unified root block, so the static-parameter
         # table must be realigned with the final flattened symbolic graph before
         # compiler names are generated. Wrapper, GUI and cloned workflows can keep
@@ -2475,16 +2575,59 @@ class EmtProblemDae(EmtProblemTemplate):
         injection: Any
 
         for branch in self.grid.get_branches_iter(add_vsc=True, add_hvdc=True, add_switch=True):
-            errors.extend(self._validate_branch_emt_interface(branch))
+            errors.extend(self._validate_emt_device_interface(device=branch))
 
         for injection in self.grid.get_injection_devices_iter():
-            errors.extend(self._validate_injection_emt_interface(injection))
+            errors.extend(self._validate_emt_device_interface(device=injection))
 
         if len(errors) > 0:
             error_msg = "EMT interface validation failed:\n" + "\n".join(errors)
             raise EmtInterfaceValidationError(error_msg)
         else:
             pass
+
+    def _get_device_emt_disposition(self, device_type: DeviceType) -> str:
+        """
+        Return the explicit EMT disposition assigned to one ``DeviceType``.
+
+        :param device_type: Device type to classify.
+        :return: EMT disposition string.
+        """
+        disposition: Optional[str] = self._device_type_disposition.get(device_type, None)
+
+        if disposition is None:
+            raise ValueError(f"Missing EMT disposition for device type {device_type.name}")
+        else:
+            return disposition
+
+    def _validate_emt_device_interface(self, device: Any) -> List[str]:
+        """
+        Validate one EMT-capable device according to its explicit disposition.
+
+        The algorithm dispatches by ``DeviceType`` first so the EMT builder never
+        relies on broad branch/injection assumptions when deciding how one device
+        should be validated.
+
+        :param device: EMT-capable network device.
+        :return: List of validation errors.
+        """
+        disposition: str = self._get_device_emt_disposition(device.device_type)
+
+        if disposition == EmtDeviceDisposition.BRANCH_STRUCTURAL:
+            return self._validate_branch_emt_interface(device)
+        else:
+            if disposition == EmtDeviceDisposition.INJECTION_STRUCTURAL:
+                return self._validate_injection_emt_interface(device)
+            else:
+                if disposition == EmtDeviceDisposition.BUS_STRUCTURAL:
+                    return list()
+                else:
+                    if disposition == EmtDeviceDisposition.NON_EMT_NOOP:
+                        return list()
+                    else:
+                        raise ValueError(
+                            f"Unsupported EMT disposition '{disposition}' for device type {device.device_type.name}"
+                        )
 
     def _validate_injection_emt_interface(self, injection: Any) -> List[str]:
         """
@@ -3284,125 +3427,130 @@ class EmtProblemDae(EmtProblemTemplate):
         }
 
         for br in self.grid.get_branches_iter(add_vsc=True, add_hvdc=True, add_switch=True):
-            br_emt_model = br.emt_model
+            disposition: str = self._get_device_emt_disposition(br.device_type)
 
-            if br.device_type == DeviceType.LineDevice:
-                validate_line_phase_layout(branch=br, mdl=br_emt_model, logger=self.logger)
-            else:
-                pass
+            if disposition == EmtDeviceDisposition.BRANCH_STRUCTURAL:
+                br_emt_model: Block = br.emt_model
 
-            if br_emt_model is not None:
-                br_bus_from = br.bus_from
-                br_bus_to = br.bus_to
-                is_bergeron, is_jmarti = _is_history_runtime_line_block_name(br_emt_model.name)
-
-                if is_bergeron or is_jmarti:
-                    br_ys = br.ys
-
-                    if br_ys.phN:
-                        bus_phase_connections[(br_bus_from, VarPowerFlowReferenceType.v_N)].add(f"branch_from:{br.idtag}")
-                        bus_phase_connections[(br_bus_to, VarPowerFlowReferenceType.v_N)].add(f"branch_to:{br.idtag}")
-                    else:
-                        pass
-
-                    if br_ys.phA:
-                        bus_phase_connections[(br_bus_from, VarPowerFlowReferenceType.v_A)].add(f"branch_from:{br.idtag}")
-                        bus_phase_connections[(br_bus_to, VarPowerFlowReferenceType.v_A)].add(f"branch_to:{br.idtag}")
-                    else:
-                        pass
-
-                    if br_ys.phB:
-                        bus_phase_connections[(br_bus_from, VarPowerFlowReferenceType.v_B)].add(f"branch_from:{br.idtag}")
-                        bus_phase_connections[(br_bus_to, VarPowerFlowReferenceType.v_B)].add(f"branch_to:{br.idtag}")
-                    else:
-                        pass
-
-                    if br_ys.phC:
-                        bus_phase_connections[(br_bus_from, VarPowerFlowReferenceType.v_C)].add(f"branch_from:{br.idtag}")
-                        bus_phase_connections[(br_bus_to, VarPowerFlowReferenceType.v_C)].add(f"branch_to:{br.idtag}")
-                    else:
-                        pass
+                if br.device_type == DeviceType.LineDevice:
+                    validate_line_phase_layout(branch=br, mdl=br_emt_model, logger=self.logger)
                 else:
-                    # Deserialized EMT blocks may preserve branch terminal
-                    # references in nested external mappings even when the root
-                    # ``in_vars`` layout differs from a freshly rebuilt
-                    # template. Build the connectivity view from the recovered
-                    # hierarchical external mapping first, because those keys
-                    # are the canonical semantic contract used across the EMT
-                    # builder.
-                    branch_external_mapping: Optional[Dict[Any, Var]] = _get_external_mapping(br_emt_model)
-                    present_branch_refs: Set[VarPowerFlowReferenceType] = set()
+                    pass
 
-                    if branch_external_mapping is not None:
-                        branch_ref_key: Any
-                        branch_ref_var: Var | None
-                        for branch_ref_key, branch_ref_var in branch_external_mapping.items():
-                            if isinstance(branch_ref_key, VarPowerFlowReferenceType) and branch_ref_var is not None:
-                                present_branch_refs.add(branch_ref_key)
-                            else:
-                                pass
-                    else:
-                        pass
+                if br_emt_model is not None:
+                    br_bus_from: Any = br.bus_from
+                    br_bus_to: Any = br.bus_to
+                    is_bergeron: bool
+                    is_jmarti: bool
+                    is_bergeron, is_jmarti = _is_history_runtime_line_block_name(br_emt_model.name)
 
-                    # Freshly rebuilt models expose the same contract directly
-                    # on ``in_vars``. Keep that path as a fallback so both live
-                    # and deserialized models are handled uniformly.
-                    if len(present_branch_refs) == 0:
-                        in_var: Var
-                        for in_var in br_emt_model.in_vars:
-                            if in_var.ref is not None:
-                                present_branch_refs.add(in_var.ref)
-                            else:
-                                pass
-                    else:
-                        pass
+                    if is_bergeron or is_jmarti:
+                        br_ys: Any = br.ys
 
-                    branch_ref: VarPowerFlowReferenceType
-                    for branch_ref in present_branch_refs:
-                        if branch_ref in branch_phase_refs:
-                            bus_phase = phase_ref_to_bus_phase[branch_ref]
-
-                            if branch_ref in {
-                                VarPowerFlowReferenceType.vf_N,
-                                VarPowerFlowReferenceType.vf_A,
-                                VarPowerFlowReferenceType.vf_B,
-                                VarPowerFlowReferenceType.vf_C,
-                            }:
-                                bus_phase_connections[(br_bus_from, bus_phase)].add(f"branch_from:{br.idtag}")
-                            elif branch_ref in {
-                                VarPowerFlowReferenceType.vt_N,
-                                VarPowerFlowReferenceType.vt_A,
-                                VarPowerFlowReferenceType.vt_B,
-                                VarPowerFlowReferenceType.vt_C,
-                            }:
-                                bus_phase_connections[(br_bus_to, bus_phase)].add(f"branch_to:{br.idtag}")
-                            else:
-                                pass
-                        elif branch_ref in vsc_ac_phase_refs:
-                            if br_bus_to.is_dc:
-                                bus_phase_connections[(br_bus_from, branch_ref)].add(f"branch_from:{br.idtag}")
-                            else:
-                                bus_phase_connections[(br_bus_to, branch_ref)].add(f"branch_to:{br.idtag}")
+                        if br_ys.phN:
+                            bus_phase_connections[(br_bus_from, VarPowerFlowReferenceType.v_N)].add(f"branch_from:{br.idtag}")
+                            bus_phase_connections[(br_bus_to, VarPowerFlowReferenceType.v_N)].add(f"branch_to:{br.idtag}")
                         else:
                             pass
+
+                        if br_ys.phA:
+                            bus_phase_connections[(br_bus_from, VarPowerFlowReferenceType.v_A)].add(f"branch_from:{br.idtag}")
+                            bus_phase_connections[(br_bus_to, VarPowerFlowReferenceType.v_A)].add(f"branch_to:{br.idtag}")
+                        else:
+                            pass
+
+                        if br_ys.phB:
+                            bus_phase_connections[(br_bus_from, VarPowerFlowReferenceType.v_B)].add(f"branch_from:{br.idtag}")
+                            bus_phase_connections[(br_bus_to, VarPowerFlowReferenceType.v_B)].add(f"branch_to:{br.idtag}")
+                        else:
+                            pass
+
+                        if br_ys.phC:
+                            bus_phase_connections[(br_bus_from, VarPowerFlowReferenceType.v_C)].add(f"branch_from:{br.idtag}")
+                            bus_phase_connections[(br_bus_to, VarPowerFlowReferenceType.v_C)].add(f"branch_to:{br.idtag}")
+                        else:
+                            pass
+                    else:
+                        branch_external_mapping: Optional[Dict[Any, Var]] = _get_external_mapping(br_emt_model)
+                        present_branch_refs: Set[VarPowerFlowReferenceType] = set()
+
+                        if branch_external_mapping is not None:
+                            branch_ref_key: Any
+                            branch_ref_var: Var | None
+                            for branch_ref_key, branch_ref_var in branch_external_mapping.items():
+                                if isinstance(branch_ref_key, VarPowerFlowReferenceType) and branch_ref_var is not None:
+                                    present_branch_refs.add(branch_ref_key)
+                                else:
+                                    pass
+                        else:
+                            pass
+
+                        if len(present_branch_refs) == 0:
+                            in_var: Var
+                            for in_var in br_emt_model.in_vars:
+                                if in_var.ref is not None:
+                                    present_branch_refs.add(in_var.ref)
+                                else:
+                                    pass
+                        else:
+                            pass
+
+                        branch_ref: VarPowerFlowReferenceType
+                        for branch_ref in present_branch_refs:
+                            if branch_ref in branch_phase_refs:
+                                bus_phase: VarPowerFlowReferenceType = phase_ref_to_bus_phase[branch_ref]
+
+                                if branch_ref in {
+                                    VarPowerFlowReferenceType.vf_N,
+                                    VarPowerFlowReferenceType.vf_A,
+                                    VarPowerFlowReferenceType.vf_B,
+                                    VarPowerFlowReferenceType.vf_C,
+                                }:
+                                    bus_phase_connections[(br_bus_from, bus_phase)].add(f"branch_from:{br.idtag}")
+                                else:
+                                    if branch_ref in {
+                                        VarPowerFlowReferenceType.vt_N,
+                                        VarPowerFlowReferenceType.vt_A,
+                                        VarPowerFlowReferenceType.vt_B,
+                                        VarPowerFlowReferenceType.vt_C,
+                                    }:
+                                        bus_phase_connections[(br_bus_to, bus_phase)].add(f"branch_to:{br.idtag}")
+                                    else:
+                                        pass
+                            else:
+                                if branch_ref in vsc_ac_phase_refs:
+                                    if br_bus_to.is_dc:
+                                        bus_phase_connections[(br_bus_from, branch_ref)].add(f"branch_from:{br.idtag}")
+                                    else:
+                                        bus_phase_connections[(br_bus_to, branch_ref)].add(f"branch_to:{br.idtag}")
+                                else:
+                                    pass
+                else:
+                    pass
             else:
                 pass
 
         for inj in self.grid.get_injection_devices_iter():
-            inj_emt_model = inj.emt_model
+            disposition = self._get_device_emt_disposition(inj.device_type)
 
-            if inj_emt_model is not None:
-                inj_bus = inj.bus
-                for in_var in inj_emt_model.in_vars:
-                    if in_var.ref in ac_phases:
-                        bus_phase_connections[(inj_bus, in_var.ref)].add(f"injection:{inj.idtag}")
+            if disposition == EmtDeviceDisposition.INJECTION_STRUCTURAL:
+                inj_emt_model: Block = inj.emt_model
+
+                if inj_emt_model is not None:
+                    inj_bus: Any = inj.bus
+                    in_var: Var
+                    for in_var in inj_emt_model.in_vars:
+                        if in_var.ref in ac_phases:
+                            bus_phase_connections[(inj_bus, in_var.ref)].add(f"injection:{inj.idtag}")
+                        else:
+                            pass
+
+                    if _has_internal_grounding_link(inj_emt_model):
+                        bus_phase_connections[(inj_bus, VarPowerFlowReferenceType.v_N)].add(
+                            f"internal_ground:{inj.idtag}"
+                        )
                     else:
                         pass
-
-                if _has_internal_grounding_link(inj_emt_model):
-                    bus_phase_connections[(inj_bus, VarPowerFlowReferenceType.v_N)].add(
-                        f"internal_ground:{inj.idtag}"
-                    )
                 else:
                     pass
             else:
@@ -3658,6 +3806,993 @@ class EmtProblemDae(EmtProblemTemplate):
         else:
             pass
 
+    def _build_emt_bus_working_models(self, grid: MultiCircuit) -> Dict[Any, Block]:
+        """
+        Build the local EMT bus-shell working models.
+
+        This mirrors the explicit bus initialization stage used by RMS. The EMT
+        builder first decides the bus shells, and only afterwards processes branch
+        and injection devices against those authoritative bus voltage variables.
+
+        :param grid: Network model to assemble.
+        :return: Mapping from bus objects to local working bus blocks.
+        """
+        bus_working_models: Dict[Any, Block] = dict()
+        bus: Any
+
+        for bus in grid.buses:
+            bus_model: Block | None = bus.emt_model
+            use_saved_bus_model: bool = False
+
+            if bus_model is None:
+                pass
+            else:
+                try:
+                    get_bus_emt_algebraic_vars(bus_model)
+                    use_saved_bus_model = True
+                except (AttributeError, ValueError, TypeError):
+                    use_saved_bus_model = False
+
+            if use_saved_bus_model:
+                bus_working_models[bus] = Block(
+                    algebraic_vars=list(bus_model.algebraic_vars),
+                    out_vars=list(bus_model.out_vars),
+                    external_mapping=dict(bus_model.external_mapping),
+                    api_obj_mapping=dict(bus_model.api_obj_mapping),
+                )
+            else:
+                local_bus_template: BusEmtTemplate = BusEmtTemplate(
+                    vf=grid.var_factory,
+                    mask=get_bus_mask(grid=grid, bus=bus, logger=self.logger),
+                    is_dc=bus.is_dc,
+                    name=f"{bus.name}_emt",
+                )
+                local_bus_block: Block = local_bus_template.block
+                bus_working_models[bus] = Block(
+                    algebraic_vars=list(local_bus_block.algebraic_vars),
+                    out_vars=list(local_bus_block.out_vars),
+                    external_mapping=dict(local_bus_block.external_mapping),
+                    api_obj_mapping=dict(local_bus_block.api_obj_mapping),
+                )
+
+        return bus_working_models
+
+    def _build_emt_branch_device(self,
+                                 grid: MultiCircuit,
+                                 sys_block: Block,
+                                 branch: Any,
+                                 branch_index: int,
+                                 pf_branch_index: int,
+                                 bus_dict: Dict[Any, int],
+                                 bus_working_models: Dict[Any, Block],
+                                 i_kcl: Dict[int, List[Any]],
+                                 voltage_connection_substitution: Dict[Var, Var],
+                                 static_parameter_values_mapping: Dict[Var, Const],
+                                 ph_v_keys: List[VarPowerFlowReferenceType],
+                                 inj_i_keys: List[VarPowerFlowReferenceType],
+                                 br_if_keys: List[VarPowerFlowReferenceType],
+                                 br_it_keys: List[VarPowerFlowReferenceType],
+                                 br_vf_keys: List[VarPowerFlowReferenceType],
+                                 br_vt_keys: List[VarPowerFlowReferenceType],
+                                 vsc_idx_dict: Dict[str, int],
+                                 h: float,
+                                 sbase: float,
+                                 fbase: float) -> int:
+        """
+        Build one EMT branch device and merge it into the nodal structure.
+
+        :param grid: Network model.
+        :param sys_block: Global EMT system block.
+        :param branch: Branch device to process.
+        :param branch_index: Branch loop index.
+        :param pf_branch_index: Current PF branch index.
+        :param bus_dict: Bus to index mapping.
+        :param bus_working_models: Local bus working models.
+        :param i_kcl: KCL accumulators.
+        :param voltage_connection_substitution: Voltage substitution map.
+        :param static_parameter_values_mapping: Static parameter mapping.
+        :param ph_v_keys: AC bus voltage keys.
+        :param inj_i_keys: Shared AC current keys.
+        :param br_if_keys: From-side branch current keys.
+        :param br_it_keys: To-side branch current keys.
+        :param br_vf_keys: From-side branch voltage keys.
+        :param br_vt_keys: To-side branch voltage keys.
+        :param vsc_idx_dict: VSC idtag to PF index mapping.
+        :param h: EMT time step.
+        :param sbase: System base power.
+        :param fbase: System base frequency.
+        :return: Updated PF branch index.
+        """
+        disposition: str = self._get_device_emt_disposition(branch.device_type)
+
+        if disposition == EmtDeviceDisposition.BRANCH_STRUCTURAL:
+            pass
+        else:
+            return pf_branch_index
+
+        f: int = bus_dict[branch.bus_from]
+        t: int = bus_dict[branch.bus_to]
+        br_working_mdl: Block = branch.emt_model
+        original_root_parameters: Dict[Var, Const] = dict(br_working_mdl.parameters)
+
+        assign_static_api_object_mapping_for_device(
+            grid=grid,
+            device=branch,
+            mdl=br_working_mdl,
+            problem_mapping=static_parameter_values_mapping,
+            logger=self.logger,
+        )
+
+        _promote_child_static_parameters_to_wrapper_root(br_working_mdl)
+        mdl: Block = self._process_device_model(dev=branch, mdl=br_working_mdl, sys_block=sys_block)
+        _restore_wrapper_root_parameter_snapshot(br_working_mdl, original_root_parameters)
+
+        is_bergeron: bool
+        is_jmarti: bool
+        is_bergeron, is_jmarti = _is_history_runtime_line_block_name(mdl.name)
+        is_vsc: bool = branch.device_type == DeviceType.VscDevice
+        uses_branch_pf_slot: bool = branch.device_type not in {DeviceType.VscDevice, DeviceType.HVDCLineDevice}
+        current_pf_branch_index: int = pf_branch_index
+        vsc_index: int = vsc_idx_dict.get(branch.idtag, -1)
+
+        if uses_branch_pf_slot:
+            pf_branch_index += 1
+        else:
+            pass
+
+        self._build_branch_device_by_type(
+            grid=grid,
+            branch=branch,
+            mdl=mdl,
+            f=f,
+            t=t,
+            current_pf_branch_index=current_pf_branch_index,
+            bus_working_models=bus_working_models,
+            i_kcl=i_kcl,
+            voltage_connection_substitution=voltage_connection_substitution,
+            ph_v_keys=ph_v_keys,
+            inj_i_keys=inj_i_keys,
+            br_if_keys=br_if_keys,
+            br_it_keys=br_it_keys,
+            br_vf_keys=br_vf_keys,
+            br_vt_keys=br_vt_keys,
+            is_vsc=is_vsc,
+            vsc_index=vsc_index,
+            h=h,
+            sbase=sbase,
+            fbase=fbase,
+            is_bergeron=is_bergeron,
+            is_jmarti=is_jmarti,
+        )
+
+        if branch_index >= 0:
+            pass
+        else:
+            pass
+
+        return pf_branch_index
+
+    def _build_branch_device_by_type(self,
+                                     grid: MultiCircuit,
+                                     branch: Any,
+                                     mdl: Block,
+                                     f: int,
+                                     t: int,
+                                     current_pf_branch_index: int,
+                                     bus_working_models: Dict[Any, Block],
+                                     i_kcl: Dict[int, List[Any]],
+                                     voltage_connection_substitution: Dict[Var, Var],
+                                     ph_v_keys: List[VarPowerFlowReferenceType],
+                                     inj_i_keys: List[VarPowerFlowReferenceType],
+                                     br_if_keys: List[VarPowerFlowReferenceType],
+                                     br_it_keys: List[VarPowerFlowReferenceType],
+                                     br_vf_keys: List[VarPowerFlowReferenceType],
+                                     br_vt_keys: List[VarPowerFlowReferenceType],
+                                     is_vsc: bool,
+                                     vsc_index: int,
+                                     h: float,
+                                     sbase: float,
+                                     fbase: float,
+                                     is_bergeron: bool,
+                                     is_jmarti: bool) -> None:
+        """
+        Dispatch one branch build to the explicit ``DeviceType`` implementation.
+
+        :param grid: Network model.
+        :param branch: Branch device.
+        :param mdl: Registered working model.
+        :param f: From-bus index.
+        :param t: To-bus index.
+        :param current_pf_branch_index: PF branch index.
+        :param bus_working_models: Local bus working models.
+        :param i_kcl: KCL accumulators.
+        :param voltage_connection_substitution: Voltage substitution map.
+        :param ph_v_keys: AC bus voltage keys.
+        :param inj_i_keys: Shared AC current keys.
+        :param br_if_keys: From-side current keys.
+        :param br_it_keys: To-side current keys.
+        :param br_vf_keys: From-side voltage keys.
+        :param br_vt_keys: To-side voltage keys.
+        :param is_vsc: Whether the branch is a VSC.
+        :param vsc_index: VSC PF index.
+        :param h: EMT time step.
+        :param sbase: System base power.
+        :param fbase: System base frequency.
+        :param is_bergeron: Whether the line model is Bergeron.
+        :param is_jmarti: Whether the line model is JMarti.
+        :return: None.
+        """
+        if branch.device_type == DeviceType.LineDevice:
+            if is_bergeron or is_jmarti:
+                self._build_history_branch_device(
+                    grid=grid,
+                    branch=branch,
+                    mdl=mdl,
+                    f=f,
+                    t=t,
+                    current_pf_branch_index=current_pf_branch_index,
+                    bus_working_models=bus_working_models,
+                    i_kcl=i_kcl,
+                    ph_v_keys=ph_v_keys,
+                    h=h,
+                    sbase=sbase,
+                    fbase=fbase,
+                    is_bergeron=is_bergeron,
+                )
+            else:
+                self._build_generic_branch_device(
+                    grid=grid,
+                    branch=branch,
+                    mdl=mdl,
+                    f=f,
+                    t=t,
+                    current_pf_branch_index=current_pf_branch_index,
+                    bus_working_models=bus_working_models,
+                    i_kcl=i_kcl,
+                    voltage_connection_substitution=voltage_connection_substitution,
+                    inj_i_keys=list(),
+                    br_if_keys=br_if_keys,
+                    br_it_keys=br_it_keys,
+                    br_vf_keys=br_vf_keys,
+                    br_vt_keys=br_vt_keys,
+                    is_vsc=False,
+                    vsc_index=-1,
+                    sbase=sbase,
+                )
+        else:
+            if branch.device_type == DeviceType.Transformer2WDevice:
+                self._build_generic_branch_device(
+                    grid=grid,
+                    branch=branch,
+                    mdl=mdl,
+                    f=f,
+                    t=t,
+                    current_pf_branch_index=current_pf_branch_index,
+                    bus_working_models=bus_working_models,
+                    i_kcl=i_kcl,
+                    voltage_connection_substitution=voltage_connection_substitution,
+                    inj_i_keys=list(),
+                    br_if_keys=br_if_keys,
+                    br_it_keys=br_it_keys,
+                    br_vf_keys=br_vf_keys,
+                    br_vt_keys=br_vt_keys,
+                    is_vsc=False,
+                    vsc_index=-1,
+                    sbase=sbase,
+                )
+            else:
+                if branch.device_type == DeviceType.SeriesReactanceDevice:
+                    self._build_generic_branch_device(
+                        grid=grid,
+                        branch=branch,
+                        mdl=mdl,
+                        f=f,
+                        t=t,
+                        current_pf_branch_index=current_pf_branch_index,
+                        bus_working_models=bus_working_models,
+                        i_kcl=i_kcl,
+                        voltage_connection_substitution=voltage_connection_substitution,
+                        inj_i_keys=list(),
+                        br_if_keys=br_if_keys,
+                        br_it_keys=br_it_keys,
+                        br_vf_keys=br_vf_keys,
+                        br_vt_keys=br_vt_keys,
+                        is_vsc=False,
+                        vsc_index=-1,
+                        sbase=sbase,
+                    )
+                else:
+                    if branch.device_type == DeviceType.SwitchDevice:
+                        self._build_generic_branch_device(
+                            grid=grid,
+                            branch=branch,
+                            mdl=mdl,
+                            f=f,
+                            t=t,
+                            current_pf_branch_index=current_pf_branch_index,
+                            bus_working_models=bus_working_models,
+                            i_kcl=i_kcl,
+                            voltage_connection_substitution=voltage_connection_substitution,
+                            inj_i_keys=list(),
+                            br_if_keys=br_if_keys,
+                            br_it_keys=br_it_keys,
+                            br_vf_keys=br_vf_keys,
+                            br_vt_keys=br_vt_keys,
+                            is_vsc=False,
+                            vsc_index=-1,
+                            sbase=sbase,
+                        )
+                    else:
+                        if branch.device_type == DeviceType.DCLineDevice:
+                            self._build_generic_branch_device(
+                                grid=grid,
+                                branch=branch,
+                                mdl=mdl,
+                                f=f,
+                                t=t,
+                                current_pf_branch_index=current_pf_branch_index,
+                                bus_working_models=bus_working_models,
+                                i_kcl=i_kcl,
+                                voltage_connection_substitution=voltage_connection_substitution,
+                                inj_i_keys=list(),
+                                br_if_keys=br_if_keys,
+                                br_it_keys=br_it_keys,
+                                br_vf_keys=br_vf_keys,
+                                br_vt_keys=br_vt_keys,
+                                is_vsc=False,
+                                vsc_index=-1,
+                                sbase=sbase,
+                            )
+                        else:
+                            if branch.device_type == DeviceType.HVDCLineDevice:
+                                self._build_generic_branch_device(
+                                    grid=grid,
+                                    branch=branch,
+                                    mdl=mdl,
+                                    f=f,
+                                    t=t,
+                                    current_pf_branch_index=current_pf_branch_index,
+                                    bus_working_models=bus_working_models,
+                                    i_kcl=i_kcl,
+                                    voltage_connection_substitution=voltage_connection_substitution,
+                                    inj_i_keys=list(),
+                                    br_if_keys=br_if_keys,
+                                    br_it_keys=br_it_keys,
+                                    br_vf_keys=br_vf_keys,
+                                    br_vt_keys=br_vt_keys,
+                                    is_vsc=False,
+                                    vsc_index=-1,
+                                    sbase=sbase,
+                                )
+                            else:
+                                if branch.device_type == DeviceType.VscDevice:
+                                    self._build_generic_branch_device(
+                                        grid=grid,
+                                        branch=branch,
+                                        mdl=mdl,
+                                        f=f,
+                                        t=t,
+                                        current_pf_branch_index=current_pf_branch_index,
+                                        bus_working_models=bus_working_models,
+                                        i_kcl=i_kcl,
+                                        voltage_connection_substitution=voltage_connection_substitution,
+                                        inj_i_keys=inj_i_keys,
+                                        br_if_keys=br_if_keys,
+                                        br_it_keys=br_it_keys,
+                                        br_vf_keys=br_vf_keys,
+                                        br_vt_keys=br_vt_keys,
+                                        is_vsc=True,
+                                        vsc_index=vsc_index,
+                                        sbase=sbase,
+                                    )
+                                else:
+                                    self._build_generic_branch_device(
+                                        grid=grid,
+                                        branch=branch,
+                                        mdl=mdl,
+                                        f=f,
+                                        t=t,
+                                        current_pf_branch_index=current_pf_branch_index,
+                                        bus_working_models=bus_working_models,
+                                        i_kcl=i_kcl,
+                                        voltage_connection_substitution=voltage_connection_substitution,
+                                        inj_i_keys=inj_i_keys,
+                                        br_if_keys=br_if_keys,
+                                        br_it_keys=br_it_keys,
+                                        br_vf_keys=br_vf_keys,
+                                        br_vt_keys=br_vt_keys,
+                                        is_vsc=is_vsc,
+                                        vsc_index=vsc_index,
+                                        sbase=sbase,
+                                    )
+
+    def _build_history_branch_device(self,
+                                     grid: MultiCircuit,
+                                     branch: Any,
+                                     mdl: Block,
+                                     f: int,
+                                     t: int,
+                                     current_pf_branch_index: int,
+                                     bus_working_models: Dict[Any, Block],
+                                     i_kcl: Dict[int, List[Any]],
+                                     ph_v_keys: List[VarPowerFlowReferenceType],
+                                     h: float,
+                                     sbase: float,
+                                     fbase: float,
+                                     is_bergeron: bool) -> None:
+        """
+        Build one history-based line branch device.
+
+        :param grid: Network model.
+        :param branch: Branch device.
+        :param mdl: Registered working model.
+        :param f: From-bus index.
+        :param t: To-bus index.
+        :param current_pf_branch_index: PF branch index.
+        :param bus_working_models: Local bus working models.
+        :param i_kcl: KCL accumulators.
+        :param ph_v_keys: AC bus voltage keys.
+        :param h: EMT time step.
+        :param sbase: System base power.
+        :param fbase: System base frequency.
+        :param is_bergeron: ``True`` for Bergeron, ``False`` for JMarti.
+        :return: None.
+        """
+        v_f_vars: List[Any] = _get_bus_v_list(bus_block=bus_working_models[branch.bus_from], ph_v_keys=ph_v_keys)
+        v_t_vars: List[Any] = _get_bus_v_list(bus_block=bus_working_models[branch.bus_to], ph_v_keys=ph_v_keys)
+        rt: BergeronHistoryRuntime | JMartiHistoryRuntime
+
+        if is_bergeron:
+            rt = BergeronHistoryRuntime(line=branch, line_block=mdl, h=h, sbase=sbase, fbase=fbase)
+        else:
+            rt = JMartiHistoryRuntime(line=branch, line_block=mdl, h=h)
+
+        rt.bind_terminals(v_f_vars, v_t_vars)
+
+        if self.power_flow_results_3ph is not None:
+            if is_bergeron:
+                self._try_set_bergeron_pf_init(mdl=mdl, rt=rt, branch_index=current_pf_branch_index, f_bus_idx=f, t_bus_idx=t, sbase=grid.Sbase)
+            else:
+                self._try_set_jmarti_pf_init(mdl=mdl, rt=rt, branch_index=current_pf_branch_index, f_bus_idx=f, t_bus_idx=t, sbase=grid.Sbase)
+        else:
+            if self.power_flow_results is not None:
+                if self.options.verbose:
+                    if is_bergeron:
+                        print("Initializing bergeron line variables assuming a balanced power flow")
+                    else:
+                        print("Initializing JMARTI line variables assuming a balanced power flow")
+                else:
+                    pass
+
+                if is_bergeron:
+                    self._try_set_bergeron_pf_init_balanced(mdl=mdl, rt=rt, branch_index=current_pf_branch_index, f_bus_idx=f, t_bus_idx=t, sbase=grid.Sbase)
+                else:
+                    self._try_set_jmarti_pf_init_balanced(mdl=mdl, rt=rt, branch_index=current_pf_branch_index, f_bus_idx=f, t_bus_idx=t, sbase=grid.Sbase)
+            else:
+                if self.options.verbose:
+                    print("No Power Flow results given.")
+                else:
+                    pass
+
+        i_f_exprs: List[Any]
+        i_t_exprs: List[Any]
+        i_f_exprs, i_t_exprs = rt.get_nodal_injections()
+        ph: int = 0
+
+        while ph < 4:
+            if i_f_exprs[ph] is not None:
+                i_kcl[f][ph] = i_kcl[f][ph] - i_f_exprs[ph]
+            else:
+                pass
+
+            if i_t_exprs[ph] is not None:
+                i_kcl[t][ph] = i_kcl[t][ph] - i_t_exprs[ph]
+            else:
+                pass
+
+            ph += 1
+
+        self.history_models.append(rt)
+
+    def _build_generic_branch_device(self,
+                                     grid: MultiCircuit,
+                                     branch: Any,
+                                     mdl: Block,
+                                     f: int,
+                                     t: int,
+                                     current_pf_branch_index: int,
+                                     bus_working_models: Dict[Any, Block],
+                                     i_kcl: Dict[int, List[Any]],
+                                     voltage_connection_substitution: Dict[Var, Var],
+                                     inj_i_keys: List[VarPowerFlowReferenceType],
+                                     br_if_keys: List[VarPowerFlowReferenceType],
+                                     br_it_keys: List[VarPowerFlowReferenceType],
+                                     br_vf_keys: List[VarPowerFlowReferenceType],
+                                     br_vt_keys: List[VarPowerFlowReferenceType],
+                                     is_vsc: bool,
+                                     vsc_index: int,
+                                     sbase: float) -> None:
+        """
+        Build one non-history branch device.
+
+        :param grid: Network model.
+        :param branch: Branch device.
+        :param mdl: Registered working model.
+        :param f: From-bus index.
+        :param t: To-bus index.
+        :param current_pf_branch_index: PF branch index.
+        :param bus_working_models: Local bus working models.
+        :param i_kcl: KCL accumulators.
+        :param voltage_connection_substitution: Voltage substitution map.
+        :param inj_i_keys: Shared AC current keys.
+        :param br_if_keys: From-side current keys.
+        :param br_it_keys: To-side current keys.
+        :param br_vf_keys: From-side voltage keys.
+        :param br_vt_keys: To-side voltage keys.
+        :param is_vsc: Whether the branch is a VSC device.
+        :param vsc_index: VSC PF index.
+        :param sbase: System base power.
+        :return: None.
+        """
+        side_bus_indices: List[int] = list([f, t])
+        side_buses: List[Any] = list([branch.bus_from, branch.bus_to])
+        side_current_keys: List[List[VarPowerFlowReferenceType]] = list([br_if_keys, br_it_keys])
+        side_idx: int = 0
+
+        while side_idx < 2:
+            side_bus_idx: int = side_bus_indices[side_idx]
+            side_bus: Any = side_buses[side_idx]
+            current_keys: List[VarPowerFlowReferenceType] = side_current_keys[side_idx]
+
+            if side_bus.is_dc:
+                external_mapping_dc: Optional[Dict[Any, Var]] = _get_external_mapping(mdl)
+                dc_current_key: VarPowerFlowReferenceType = VarPowerFlowReferenceType.If_dc if side_idx == 0 else VarPowerFlowReferenceType.It_dc
+                side_dc_expr: Any | None = None
+
+                if external_mapping_dc is not None:
+                    side_dc_expr = external_mapping_dc.get(dc_current_key, None)
+                    if side_dc_expr is None:
+                        side_dc_expr = external_mapping_dc.get(VarPowerFlowReferenceType.Idc, None)
+                    else:
+                        pass
+                else:
+                    pass
+
+                if side_dc_expr is not None:
+                    i_kcl[side_bus_idx][0] = i_kcl[side_bus_idx][0] - side_dc_expr
+                else:
+                    pass
+            else:
+                ph: int = 0
+                while ph < 4:
+                    side_expr: Any | None
+
+                    if is_vsc:
+                        side_expr = _get_external_mapping_var_if_present(mdl=mdl, key=inj_i_keys[ph])
+                    else:
+                        side_expr = _get_external_mapping_var_if_present(mdl=mdl, key=current_keys[ph])
+
+                    if side_expr is not None:
+                        i_kcl[side_bus_idx][ph] = i_kcl[side_bus_idx][ph] - side_expr
+                    else:
+                        pass
+
+                    ph += 1
+
+            side_idx += 1
+
+        self._connect_branch_terminal_voltages(
+            branch=branch,
+            mdl=mdl,
+            bus_working_models=bus_working_models,
+            voltage_connection_substitution=voltage_connection_substitution,
+            br_vf_keys=br_vf_keys,
+            br_vt_keys=br_vt_keys,
+        )
+
+        if self.power_flow_results_3ph is not None:
+            if is_vsc and vsc_index >= 0:
+                self._try_set_vsc_branch_pf_init(mdl=mdl, f_bus_idx=f, t_bus_idx=t, sbase=sbase, vsc_index=vsc_index)
+            else:
+                self._try_set_branch_pf_init(mdl=mdl, branch_index=current_pf_branch_index, f_bus_idx=f, t_bus_idx=t, sbase=grid.Sbase, is_vsc=is_vsc, vsc_index=vsc_index)
+        else:
+            if self.power_flow_results is not None:
+                if self.options.verbose:
+                    print("Initializing branch variables assuming a balanced power flow")
+                else:
+                    pass
+
+                if is_vsc and vsc_index >= 0:
+                    self._try_set_vsc_branch_pf_init_balanced(mdl=mdl, f_bus_idx=f, t_bus_idx=t, sbase=sbase, vsc_index=vsc_index)
+                else:
+                    self._try_set_branch_pf_init_balanced(mdl=mdl, branch_index=current_pf_branch_index, f_bus_idx=f, t_bus_idx=t, sbase=grid.Sbase, is_vsc=is_vsc, vsc_index=vsc_index)
+            else:
+                if self.options.verbose:
+                    print("No Power Flow results given.")
+                else:
+                    pass
+
+    def _connect_branch_terminal_voltages(self,
+                                          branch: Any,
+                                          mdl: Block,
+                                          bus_working_models: Dict[Any, Block],
+                                          voltage_connection_substitution: Dict[Var, Var],
+                                          br_vf_keys: List[VarPowerFlowReferenceType],
+                                          br_vt_keys: List[VarPowerFlowReferenceType]) -> None:
+        """
+        Bind branch terminal voltage inputs to the authoritative bus-shell voltages.
+
+        :param branch: Branch device.
+        :param mdl: Registered working model.
+        :param bus_working_models: Local bus working models.
+        :param voltage_connection_substitution: Voltage substitution map.
+        :param br_vf_keys: From-side voltage keys.
+        :param br_vt_keys: To-side voltage keys.
+        :return: None.
+        """
+        terminal_buses: List[Any] = list([branch.bus_from, branch.bus_to])
+        terminal_voltage_keys: List[List[VarPowerFlowReferenceType]] = list([br_vf_keys, br_vt_keys])
+        term_idx: int = 0
+
+        while term_idx < 2:
+            terminal_bus: Any = terminal_buses[term_idx]
+            terminal_keys: List[VarPowerFlowReferenceType] = terminal_voltage_keys[term_idx]
+            external_mapping: Optional[Dict[Any, Var]] = _get_external_mapping(mdl)
+
+            if terminal_bus.is_dc:
+                v_dc: Any
+                v_dc, _, _, _ = get_bus_emt_algebraic_vars(bus_working_models[terminal_bus])
+
+                if external_mapping is not None:
+                    dc_voltage_key: VarPowerFlowReferenceType = VarPowerFlowReferenceType.Vf_dc if term_idx == 0 else VarPowerFlowReferenceType.Vt_dc
+                    mapped_var: Optional[Var] = external_mapping.get(dc_voltage_key, None)
+                    if mapped_var is None:
+                        mapped_var = external_mapping.get(VarPowerFlowReferenceType.Vdc, None)
+                    else:
+                        pass
+
+                    if mapped_var is not None:
+                        voltage_connection_substitution[mapped_var] = v_dc
+                    else:
+                        pass
+                else:
+                    pass
+            else:
+                v_n: Any
+                v_a: Any
+                v_b: Any
+                v_c: Any
+                v_n, v_a, v_b, v_c = get_bus_emt_algebraic_vars(bus_working_models[terminal_bus])
+                terminal_voltage_vars: List[Any] = list([v_n, v_a, v_b, v_c])
+
+                if external_mapping is not None:
+                    ph: int = 0
+                    while ph < 4:
+                        mapped_var = external_mapping.get(terminal_keys[ph], None)
+                        terminal_voltage_var = terminal_voltage_vars[ph]
+
+                        if mapped_var is not None and terminal_voltage_var is not None:
+                            voltage_connection_substitution[mapped_var] = terminal_voltage_var
+                        else:
+                            pass
+
+                        ph += 1
+                else:
+                    pass
+
+            term_idx += 1
+
+    def _build_emt_injection_device(self,
+                                    grid: MultiCircuit,
+                                    sys_block: Block,
+                                    injection: Any,
+                                    injection_index: int,
+                                    bus_dict: Dict[Any, int],
+                                    bus_working_models: Dict[Any, Block],
+                                    i_kcl: Dict[int, List[Any]],
+                                    voltage_connection_substitution: Dict[Var, Var],
+                                    static_parameter_values_mapping: Dict[Var, Const],
+                                    ph_v_keys: List[VarPowerFlowReferenceType],
+                                    inj_i_keys: List[VarPowerFlowReferenceType],
+                                    seed_store: Optional[EmtInjectionSeedStore],
+                                    generator_count_same_bus: Dict[int, int]) -> None:
+        """
+        Build one EMT injection device and merge it into the nodal structure.
+
+        :param grid: Network model.
+        :param sys_block: Global EMT system block.
+        :param injection: Injection device to process.
+        :param injection_index: Injection loop index.
+        :param bus_dict: Bus to index mapping.
+        :param bus_working_models: Local bus working models.
+        :param i_kcl: KCL accumulators.
+        :param voltage_connection_substitution: Voltage substitution map.
+        :param static_parameter_values_mapping: Static parameter mapping.
+        :param ph_v_keys: AC bus voltage keys.
+        :param inj_i_keys: Injection current keys.
+        :param seed_store: Precomputed injection seed store.
+        :param generator_count_same_bus: Number of generators per bus.
+        :return: None.
+        """
+        disposition: str = self._get_device_emt_disposition(injection.device_type)
+
+        if disposition == EmtDeviceDisposition.INJECTION_STRUCTURAL:
+            pass
+        else:
+            return
+
+        inj_working_mdl: Block = injection.emt_model
+        original_root_parameters: Dict[Var, Const] = dict(inj_working_mdl.parameters)
+
+        assign_static_api_object_mapping_for_device(
+            grid=grid,
+            device=injection,
+            mdl=inj_working_mdl,
+            problem_mapping=static_parameter_values_mapping,
+            logger=self.logger,
+        )
+
+        _promote_child_static_parameters_to_wrapper_root(inj_working_mdl)
+        mdl: Block = self._process_device_model(dev=injection, mdl=inj_working_mdl, sys_block=sys_block)
+        _restore_wrapper_root_parameter_snapshot(inj_working_mdl, original_root_parameters)
+
+        b: int = bus_dict[injection.bus]
+
+        # accumulate injection currents
+        if injection.bus.is_dc:
+            i_dc_expr: Any | None = _get_external_mapping_var_if_present(mdl=mdl, key=VarPowerFlowReferenceType.Idc)
+            _accumulate_kcl_current(i_kcl=i_kcl, bus_index=b, phase_index=0, current_expression=i_dc_expr, sign=1.0)
+        else:
+            ph: int = 0
+            while ph < 4:
+                i_expr: Any | None = _get_external_mapping_var_if_present(mdl=mdl, key=inj_i_keys[ph])
+                _accumulate_kcl_current(i_kcl=i_kcl, bus_index=b, phase_index=ph, current_expression=i_expr, sign=1.0)
+                ph += 1
+
+        self._connect_injection_bus_voltages(
+            injection=injection,
+            mdl=mdl,
+            bus_working_models=bus_working_models,
+            voltage_connection_substitution=voltage_connection_substitution,
+            ph_v_keys=ph_v_keys,
+        )
+
+        self._seed_injection_device_by_type(
+            injection=injection,
+            mdl=mdl,
+            bus_index=b,
+            seed_store=seed_store,
+            injection_index=injection_index,
+            generator_count_same_bus=generator_count_same_bus,
+            static_parameter_values_mapping=static_parameter_values_mapping,
+        )
+
+    def _seed_injection_device_by_type(self,
+                                       injection: Any,
+                                       mdl: Block,
+                                       bus_index: int,
+                                       seed_store: Optional[EmtInjectionSeedStore],
+                                       injection_index: int,
+                                       generator_count_same_bus: Dict[int, int],
+                                       static_parameter_values_mapping: Dict[Var, Const]) -> None:
+        """
+        Dispatch one injection seed application to the explicit ``DeviceType`` path.
+
+        :param injection: Injection device.
+        :param mdl: Registered working model.
+        :param bus_index: Bus index.
+        :param seed_store: Precomputed seed store.
+        :param injection_index: Injection loop index.
+        :param generator_count_same_bus: Number of generators per bus.
+        :param static_parameter_values_mapping: Static parameter mapping.
+        :return: None.
+        """
+        if seed_store is None:
+            if self.options.verbose:
+                print("No Power Flow results given.")
+            else:
+                pass
+            return
+        else:
+            pass
+
+        if injection.device_type == DeviceType.GeneratorDevice:
+            generator_count_local: int = int(generator_count_same_bus[bus_index])
+            self._apply_injection_seed(
+                injection=injection,
+                mdl=mdl,
+                bus_index=bus_index,
+                seed_store=seed_store,
+                injection_index=injection_index,
+                generator_count_same_bus=generator_count_local,
+            )
+
+            if not injection.bus.is_dc:
+                phase_power_seed: np.ndarray = seed_store.get_ac_seed(injection_index)
+                self._assign_generator_sharing_targets_from_seed(
+                    inj=injection,
+                    mdl=mdl,
+                    phase_power=phase_power_seed,
+                    generator_count_same_bus=generator_count_local,
+                    static_parameter_values_mapping=static_parameter_values_mapping,
+                )
+            else:
+                pass
+        else:
+            if injection.device_type == DeviceType.BatteryDevice:
+                self._apply_injection_seed(
+                    injection=injection,
+                    mdl=mdl,
+                    bus_index=bus_index,
+                    seed_store=seed_store,
+                    injection_index=injection_index,
+                    generator_count_same_bus=int(generator_count_same_bus[bus_index]),
+                )
+            else:
+                if injection.device_type == DeviceType.LoadDevice:
+                    self._apply_injection_seed(
+                        injection=injection,
+                        mdl=mdl,
+                        bus_index=bus_index,
+                        seed_store=seed_store,
+                        injection_index=injection_index,
+                        generator_count_same_bus=0,
+                    )
+                else:
+                    if injection.device_type == DeviceType.ExternalGridDevice:
+                        self._apply_injection_seed(
+                            injection=injection,
+                            mdl=mdl,
+                            bus_index=bus_index,
+                            seed_store=seed_store,
+                            injection_index=injection_index,
+                            generator_count_same_bus=0,
+                        )
+                    else:
+                        if injection.device_type == DeviceType.StaticGeneratorDevice:
+                            self._apply_injection_seed(
+                                injection=injection,
+                                mdl=mdl,
+                                bus_index=bus_index,
+                                seed_store=seed_store,
+                                injection_index=injection_index,
+                                generator_count_same_bus=0,
+                            )
+                        else:
+                            if injection.device_type == DeviceType.ShuntDevice:
+                                self._apply_injection_seed(
+                                    injection=injection,
+                                    mdl=mdl,
+                                    bus_index=bus_index,
+                                    seed_store=seed_store,
+                                    injection_index=injection_index,
+                                    generator_count_same_bus=0,
+                                )
+                            else:
+                                if injection.device_type == DeviceType.ControllableShuntDevice:
+                                    self._apply_injection_seed(
+                                        injection=injection,
+                                        mdl=mdl,
+                                        bus_index=bus_index,
+                                        seed_store=seed_store,
+                                        injection_index=injection_index,
+                                        generator_count_same_bus=0,
+                                    )
+                                else:
+                                    if injection.device_type == DeviceType.CurrentInjectionDevice:
+                                        self._apply_injection_seed(
+                                            injection=injection,
+                                            mdl=mdl,
+                                            bus_index=bus_index,
+                                            seed_store=seed_store,
+                                            injection_index=injection_index,
+                                            generator_count_same_bus=0,
+                                        )
+                                    else:
+                                        self._apply_injection_seed(
+                                            injection=injection,
+                                            mdl=mdl,
+                                            bus_index=bus_index,
+                                            seed_store=seed_store,
+                                            injection_index=injection_index,
+                                            generator_count_same_bus=int(generator_count_same_bus[bus_index]),
+                                        )
+
+
+    def _connect_injection_bus_voltages(self,
+                                        injection: Any,
+                                        mdl: Block,
+                                        bus_working_models: Dict[Any, Block],
+                                        voltage_connection_substitution: Dict[Var, Var],
+                                        ph_v_keys: List[VarPowerFlowReferenceType]) -> None:
+        """
+        Bind injection bus-voltage inputs to the authoritative bus-shell voltages.
+
+        :param injection: Injection device.
+        :param mdl: Registered working model.
+        :param bus_working_models: Local bus working models.
+        :param voltage_connection_substitution: Voltage substitution map.
+        :param ph_v_keys: AC bus voltage keys.
+        :return: None.
+        """
+        inj_external_mapping: Optional[Dict[Any, Var]] = _get_external_mapping(mdl)
+        inj_bus_mdl: Block = bus_working_models[injection.bus]
+
+        if injection.bus.is_dc:
+            v_dc: Any
+            v_dc, _, _, _ = get_bus_emt_algebraic_vars(inj_bus_mdl)
+
+            if inj_external_mapping is not None:
+                mapped_var: Optional[Var] = inj_external_mapping.get(VarPowerFlowReferenceType.Vdc, None)
+                if mapped_var is not None:
+                    voltage_connection_substitution[mapped_var] = v_dc
+                else:
+                    pass
+            else:
+                pass
+        else:
+            v_n: Any
+            v_a: Any
+            v_b: Any
+            v_c: Any
+            v_n, v_a, v_b, v_c = get_bus_emt_algebraic_vars(inj_bus_mdl)
+            inj_bus_voltage_vars: List[Any] = list([v_n, v_a, v_b, v_c])
+
+            if inj_external_mapping is not None:
+                ph: int = 0
+                while ph < 4:
+                    mapped_var = inj_external_mapping.get(ph_v_keys[ph], None)
+                    inj_bus_voltage_var = inj_bus_voltage_vars[ph]
+
+                    if mapped_var is not None and inj_bus_voltage_var is not None:
+                        voltage_connection_substitution[mapped_var] = inj_bus_voltage_var
+                    else:
+                        pass
+
+                    ph += 1
+            else:
+                pass
+
+    def _build_emt_bus_device(self,
+                              sys_block: Block,
+                              bus: Any,
+                              bus_index: int,
+                              bus_working_models: Dict[Any, Block]) -> None:
+        """
+        Register one EMT bus device and seed its PF initialization.
+
+        :param sys_block: Global EMT system block.
+        :param bus: Bus device.
+        :param bus_index: Bus index.
+        :param bus_working_models: Local bus working models.
+        :return: None.
+        """
+        disposition: str = self._get_device_emt_disposition(bus.device_type)
+
+        if disposition == EmtDeviceDisposition.BUS_STRUCTURAL:
+            pass
+        else:
+            return
+
+        bus_working_mdl: Block = bus_working_models[bus]
+        mdl: Block = self._process_device_model(dev=bus, mdl=bus_working_mdl, sys_block=sys_block)
+
+        if self.power_flow_results_3ph is not None:
+            self._try_set_bus_pf_init(bus=bus, mdl=mdl, bus_index=bus_index)
+        else:
+            if self.power_flow_results is not None:
+                if self.options.verbose:
+                    print("Initializing bus variables assuming a balanced power flow")
+                else:
+                    pass
+
+                self._try_set_bus_pf_init_balanced(bus=bus, mdl=mdl, bus_index=bus_index)
+            else:
+                if self.options.verbose:
+                    print("No Power Flow results given.")
+                else:
+                    pass
+
 
     # ---------------------------------------------------------------------
     # BUILD STRUCTURE
@@ -3686,46 +4821,8 @@ class EmtProblemDae(EmtProblemTemplate):
         :param static_parameter_values_mapping: Dictionary with static parameters and their values.
         :return: None.
         """
-        bus_working_models: Dict[Any, Block] = dict()
+        bus_working_models: Dict[Any, Block] = self._build_emt_bus_working_models(grid=grid)
         voltage_connection_substitution: Dict[Var, Var] = dict()
-
-        for bus in grid.buses:
-            bus_model: Block | None = bus.emt_model
-            use_saved_bus_model: bool = False
-
-            if bus_model is None:
-                pass
-            else:
-                try:
-                    get_bus_emt_algebraic_vars(bus_model)
-                    use_saved_bus_model = True
-                except (AttributeError, ValueError, TypeError):
-                    use_saved_bus_model = False
-
-            if use_saved_bus_model:
-                bus_working_models[bus] = Block(
-                    algebraic_vars=list(bus_model.algebraic_vars),
-                    out_vars=list(bus_model.out_vars),
-                    external_mapping=dict(bus_model.external_mapping),
-                    api_obj_mapping=dict(bus_model.api_obj_mapping),
-                )
-            else:
-                # Keep the grid immutable but do not trust persisted empty/stale
-                # bus EMT shells. Rebuild one local bus shell from the current
-                # topology so EMT assembly always has valid nodal voltage vars.
-                local_bus_template: BusEmtTemplate = BusEmtTemplate(
-                    vf=grid.var_factory,
-                    mask=get_bus_mask(grid=grid, bus=bus, logger=self.logger),
-                    is_dc=bus.is_dc,
-                    name=f"{bus.name}_emt",
-                )
-                local_bus_block: Block = local_bus_template.block
-                bus_working_models[bus] = Block(
-                    algebraic_vars=list(local_bus_block.algebraic_vars),
-                    out_vars=list(local_bus_block.out_vars),
-                    external_mapping=dict(local_bus_block.external_mapping),
-                    api_obj_mapping=dict(local_bus_block.api_obj_mapping),
-                )
 
         bus_dict: Dict[Any, int] = dict()
 
@@ -3804,272 +4901,28 @@ class EmtProblemDae(EmtProblemTemplate):
         pf_branch_index: int = 0
 
         for branch_idx, br in enumerate(grid.get_branches_iter(add_vsc=True, add_hvdc=True, add_switch=True)):
-            f: int = bus_dict[br.bus_from]
-            t: int = bus_dict[br.bus_to]
-            br_working_mdl: Block = br.emt_model
-            original_root_parameters: Dict[Var, Const] = dict(br_working_mdl.parameters)
-
-            # Static API-object parameters such as ``omega_base`` must be bound
-            # before the block is registered into the global problem. The EMT
-            # compiler-name tables are built from the system block contents, so
-            # every static parameter referenced by the device equations has to be
-            # present in ``mdl.parameters`` at collection time.
-            assign_static_api_object_mapping_for_device(
+            pf_branch_index = self._build_emt_branch_device(
                 grid=grid,
-                device=br,
-                mdl=br_working_mdl,
-                problem_mapping=static_parameter_values_mapping,
-                logger=self.logger,
+                sys_block=sys_block,
+                branch=br,
+                branch_index=branch_idx,
+                pf_branch_index=pf_branch_index,
+                bus_dict=bus_dict,
+                bus_working_models=bus_working_models,
+                i_kcl=I_kcl,
+                voltage_connection_substitution=voltage_connection_substitution,
+                static_parameter_values_mapping=static_parameter_values_mapping,
+                ph_v_keys=ph_v_keys,
+                inj_i_keys=inj_i_keys,
+                br_if_keys=br_if_keys,
+                br_it_keys=br_it_keys,
+                br_vf_keys=br_vf_keys,
+                br_vt_keys=br_vt_keys,
+                vsc_idx_dict=vsc_idx_dict,
+                h=h,
+                sbase=sbase,
+                fbase=fbase,
             )
-
-            _promote_child_static_parameters_to_wrapper_root(br_working_mdl)
-
-            mdl: Block = self._process_device_model(dev=br, mdl=br_working_mdl, sys_block=sys_block)
-            _restore_wrapper_root_parameter_snapshot(br_working_mdl, original_root_parameters)
-
-
-
-            is_bergeron, is_jmarti = _is_history_runtime_line_block_name(mdl.name)
-
-            is_vsc: bool = br.device_type == DeviceType.VscDevice
-            uses_branch_pf_slot: bool = br.device_type not in {DeviceType.VscDevice, DeviceType.HVDCLineDevice}
-            current_pf_branch_index: int = pf_branch_index
-            vsc_index: int = vsc_idx_dict.get(br.idtag, -1)
-
-            if uses_branch_pf_slot:
-                pf_branch_index += 1
-            else:
-                pass
-
-            if is_bergeron or is_jmarti:
-                v_f_vars: List[Any] = _get_bus_v_list(
-                    bus_block=bus_working_models[br.bus_from],
-                    ph_v_keys=ph_v_keys
-                )
-                v_t_vars: List[Any] = _get_bus_v_list(
-                    bus_block=bus_working_models[br.bus_to],
-                    ph_v_keys=ph_v_keys
-                )
-
-                if is_bergeron:
-                    rt: BergeronHistoryRuntime | JMartiHistoryRuntime = BergeronHistoryRuntime(
-                        line=br,
-                        line_block=mdl,
-                        h=h,
-                        sbase=sbase,
-                        fbase=fbase
-                    )
-                else:
-                    rt = JMartiHistoryRuntime(
-                        line=br,
-                        line_block=mdl,
-                        h=h,
-                    )
-                rt.bind_terminals(v_f_vars, v_t_vars)
-
-                if self.power_flow_results_3ph is not None:
-                    if is_bergeron:
-                        self._try_set_bergeron_pf_init(
-                            mdl=mdl,
-                            rt=rt,
-                            branch_index=current_pf_branch_index,
-                            f_bus_idx=f,
-                            t_bus_idx=t,
-                            sbase=grid.Sbase,
-                        )
-                    else:
-                        self._try_set_jmarti_pf_init(
-                            mdl=mdl,
-                            rt=rt,
-                            branch_index=current_pf_branch_index,
-                            f_bus_idx=f,
-                            t_bus_idx=t,
-                            sbase=grid.Sbase,
-                        )
-                else:
-                    if self.power_flow_results is not None:
-                        if self.options.verbose:
-                            if is_bergeron:
-                                print("Initializing bergeron line variables assuming a balanced power flow")
-                            else:
-                                print("Initializing JMARTI line variables assuming a balanced power flow")
-                        else:
-                            pass
-
-                        if is_bergeron:
-                            self._try_set_bergeron_pf_init_balanced(
-                                mdl=mdl,
-                                rt=rt,
-                                branch_index=current_pf_branch_index,
-                                f_bus_idx=f,
-                                t_bus_idx=t,
-                                sbase=grid.Sbase,
-                            )
-                        else:
-                            self._try_set_jmarti_pf_init_balanced(
-                                mdl=mdl,
-                                rt=rt,
-                                branch_index=current_pf_branch_index,
-                                f_bus_idx=f,
-                                t_bus_idx=t,
-                                sbase=grid.Sbase,
-                            )
-                    else:
-                        if self.options.verbose:
-                            print("No Power Flow results given.")
-                        else:
-                            pass
-
-                i_f_exprs: List[Any]
-                i_t_exprs: List[Any]
-                i_f_exprs, i_t_exprs = rt.get_nodal_injections()
-
-                for ph in range(4):
-                    if i_f_exprs[ph] is not None:
-                        I_kcl[f][ph] = I_kcl[f][ph] - i_f_exprs[ph]
-                    else:
-                        pass
-
-                    if i_t_exprs[ph] is not None:
-                        I_kcl[t][ph] = I_kcl[t][ph] - i_t_exprs[ph]
-                    else:
-                        pass
-
-                self.history_models.append(rt)
-
-            else:
-
-                side_bus_indices: List[int] = list([f, t])
-                side_buses: List[Any] = list([br.bus_from, br.bus_to])
-                side_current_keys: List[List[VarPowerFlowReferenceType]] = list([br_if_keys, br_it_keys])
-
-                for side_idx in range(2):
-                    side_bus_idx: int = side_bus_indices[side_idx]
-                    side_bus: Any = side_buses[side_idx]
-                    current_keys: List[VarPowerFlowReferenceType] = side_current_keys[side_idx]
-
-                    if side_bus.is_dc:
-                        external_mapping_dc: Optional[Dict[Any, Var]] = _get_external_mapping(mdl)
-                        dc_current_key: VarPowerFlowReferenceType = (
-                            VarPowerFlowReferenceType.If_dc
-                            if side_idx == 0
-                            else VarPowerFlowReferenceType.It_dc
-                        )
-                        side_dc_expr: Any | None = None
-                        if external_mapping_dc is not None:
-                            side_dc_expr = external_mapping_dc.get(dc_current_key, None)
-                            if side_dc_expr is None:
-                                side_dc_expr = external_mapping_dc.get(VarPowerFlowReferenceType.Idc, None)
-                        else:
-                            pass
-                        if side_dc_expr is not None:
-                            I_kcl[side_bus_idx][0] = I_kcl[side_bus_idx][0] - side_dc_expr
-                        else:
-                            pass
-                    else:
-                        for ph in range(4):
-                            if is_vsc:
-                                side_expr: Any | None = _get_external_mapping_var_if_present(mdl=mdl, key=inj_i_keys[ph])
-                            else:
-                                side_expr = _get_external_mapping_var_if_present(mdl=mdl, key=current_keys[ph])
-
-                            if side_expr is not None:
-                                I_kcl[side_bus_idx][ph] = I_kcl[side_bus_idx][ph] - side_expr
-                            else:
-                                pass
-
-                terminal_buses: List[Any] = list([br.bus_from, br.bus_to])
-                terminal_voltage_keys: List[List[VarPowerFlowReferenceType]] = list([br_vf_keys, br_vt_keys])
-
-                for term_idx in range(2):
-                    terminal_bus: Any = terminal_buses[term_idx]
-                    terminal_keys: List[VarPowerFlowReferenceType] = terminal_voltage_keys[term_idx]
-                    external_mapping: Optional[Dict[Any, Var]] = _get_external_mapping(mdl)
-
-                    if terminal_bus.is_dc:
-                        v_dc, _, _, _ = get_bus_emt_algebraic_vars(bus_working_models[terminal_bus])
-
-                        if external_mapping is not None:
-                            dc_voltage_key: VarPowerFlowReferenceType = (
-                                VarPowerFlowReferenceType.Vf_dc
-                                if term_idx == 0
-                                else VarPowerFlowReferenceType.Vt_dc
-                            )
-                            mapped_var: Optional[Var] = external_mapping.get(dc_voltage_key, None)
-                            if mapped_var is None:
-                                mapped_var = external_mapping.get(VarPowerFlowReferenceType.Vdc, None)
-                            if mapped_var is not None:
-                                voltage_connection_substitution[mapped_var] = v_dc
-                            else:
-                                pass
-                        else:
-                            pass
-                    else:
-                        v_n, v_a, v_b, v_c = get_bus_emt_algebraic_vars(bus_working_models[terminal_bus])
-                        terminal_voltage_vars: List[Any] = list([v_n, v_a, v_b, v_c])
-                        if external_mapping is not None:
-                            for ph in range(4):
-                                mapped_var = external_mapping.get(terminal_keys[ph], None)
-                                terminal_voltage_var = terminal_voltage_vars[ph]
-
-                                if mapped_var is not None and terminal_voltage_var is not None:
-                                    voltage_connection_substitution[mapped_var] = terminal_voltage_var
-                                else:
-                                    pass
-                        else:
-                            pass
-
-
-
-                if self.power_flow_results_3ph is not None:
-                    if is_vsc and vsc_index >= 0:
-                        self._try_set_vsc_branch_pf_init(
-                            mdl=mdl,
-                            f_bus_idx=f,
-                            t_bus_idx=t,
-                            sbase=sbase,
-                            vsc_index=vsc_index,
-                        )
-                    else:
-                        self._try_set_branch_pf_init(
-                            mdl=mdl,
-                            branch_index=current_pf_branch_index,
-                            f_bus_idx=f,
-                            t_bus_idx=t,
-                            sbase=grid.Sbase,
-                            is_vsc=is_vsc,
-                            vsc_index=vsc_index
-                        )
-                else:
-                    if self.power_flow_results is not None:
-                        if self.options.verbose:
-                            print("Initializing branch variables assuming a balanced power flow")
-                        else:
-                            pass
-
-                        if is_vsc and vsc_index >= 0:
-                            self._try_set_vsc_branch_pf_init_balanced(
-                                mdl=mdl,
-                                f_bus_idx=f,
-                                t_bus_idx=t,
-                                sbase=grid.Sbase,
-                                vsc_index=vsc_index,
-                            )
-                        else:
-                            self._try_set_branch_pf_init_balanced(
-                                mdl=mdl,
-                                branch_index=current_pf_branch_index,
-                                f_bus_idx=f,
-                                t_bus_idx=t,
-                                sbase=grid.Sbase,
-                                is_vsc=is_vsc,
-                                vsc_index=vsc_index
-                            )
-                    else:
-                        if self.options.verbose:
-                            print("No Power Flow results given.")
-                        else:
-                            pass
 
         # seed store to save the different injections in a bus
         seed_store: Optional[EmtInjectionSeedStore]
@@ -4093,111 +4946,21 @@ class EmtProblemDae(EmtProblemTemplate):
                 seed_store = None
 
         for injection_index, inj in enumerate(injection_devices):
-            inj_working_mdl: Block = inj.emt_model
-            original_root_parameters = dict(inj_working_mdl.parameters)
-
-            # Injection templates can also keep static symbolic parameters only in
-            # ``api_obj_mapping``. Bind them before device-model registration so
-            # the later compiler-name generation sees the full symbolic contract.
-            assign_static_api_object_mapping_for_device(
+            self._build_emt_injection_device(
                 grid=grid,
-                device=inj,
-                mdl=inj_working_mdl,
-                problem_mapping=static_parameter_values_mapping,
-                logger=self.logger,
+                sys_block=sys_block,
+                injection=inj,
+                injection_index=injection_index,
+                bus_dict=bus_dict,
+                bus_working_models=bus_working_models,
+                i_kcl=I_kcl,
+                voltage_connection_substitution=voltage_connection_substitution,
+                static_parameter_values_mapping=static_parameter_values_mapping,
+                ph_v_keys=ph_v_keys,
+                inj_i_keys=inj_i_keys,
+                seed_store=seed_store,
+                generator_count_same_bus=generator_count_same_bus,
             )
-
-            _promote_child_static_parameters_to_wrapper_root(inj_working_mdl)
-
-            mdl: Block = self._process_device_model(dev=inj, mdl=inj_working_mdl, sys_block= sys_block)
-            _restore_wrapper_root_parameter_snapshot(inj_working_mdl, original_root_parameters)
-
-
-
-            b: int = bus_dict[inj.bus]
-
-            if inj.bus.is_dc:
-                i_dc_expr: Any | None = _get_external_mapping_var_if_present(
-                    mdl=mdl,
-                    key=VarPowerFlowReferenceType.Idc,
-                )
-                _accumulate_kcl_current(
-                    i_kcl=I_kcl,
-                    bus_index=b,
-                    phase_index=0,
-                    current_expression=i_dc_expr,
-                    sign=1.0,
-                )
-            else:
-                ph: int = 0
-                while ph < 4:
-                    i_expr: Any | None = _get_external_mapping_var_if_present(mdl=mdl, key=inj_i_keys[ph])
-                    _accumulate_kcl_current(
-                        i_kcl=I_kcl,
-                        bus_index=b,
-                        phase_index=ph,
-                        current_expression=i_expr,
-                        sign=1.0,
-                    )
-                    ph += 1
-
-            inj_external_mapping: Optional[Dict[Any, Var]] = _get_external_mapping(mdl)
-            inj_bus_mdl: Block = bus_working_models[inj.bus]
-
-            if inj.bus.is_dc:
-                v_dc, _, _, _ = get_bus_emt_algebraic_vars(inj_bus_mdl)
-
-                if inj_external_mapping is not None:
-                    mapped_var = inj_external_mapping.get(VarPowerFlowReferenceType.Vdc, None)
-                    if mapped_var is not None:
-                        voltage_connection_substitution[mapped_var] = v_dc
-                    else:
-                        pass
-                else:
-                    pass
-            else:
-                v_n, v_a, v_b, v_c = get_bus_emt_algebraic_vars(inj_bus_mdl)
-                inj_bus_voltage_vars: List[Any] = list([v_n, v_a, v_b, v_c])
-                if inj_external_mapping is not None:
-                    for ph in range(4):
-                        mapped_var = inj_external_mapping.get(ph_v_keys[ph], None)
-                        inj_bus_voltage_var = inj_bus_voltage_vars[ph]
-
-                        if mapped_var is not None and inj_bus_voltage_var is not None:
-                            voltage_connection_substitution[mapped_var] = inj_bus_voltage_var
-                        else:
-                            pass
-                else:
-                    pass
-
-            if seed_store is None:
-                if self.options.verbose:
-                    print("No Power Flow results given.")
-                else:
-                    pass
-            else:
-                self._apply_injection_seed(
-                    injection=inj,
-                    mdl=mdl,
-                    bus_index=b,
-                    seed_store=seed_store,
-                    injection_index=injection_index,
-                    generator_count_same_bus=int(generator_count_same_bus[b]),
-                )
-
-            if inj.device_type == DeviceType.GeneratorDevice and not inj.bus.is_dc:
-                phase_power_seed: np.ndarray = seed_store.get_ac_seed(injection_index)
-                generator_count_local: int = int(generator_count_same_bus[b])
-
-                self._assign_generator_sharing_targets_from_seed(
-                    inj=inj,
-                    mdl=mdl,
-                    phase_power=phase_power_seed,
-                    generator_count_same_bus=generator_count_local,
-                    static_parameter_values_mapping= static_parameter_values_mapping,
-                )
-            else:
-                pass
 
         bus_idx_local: int = 0
         while bus_idx_local < len(grid.buses):
@@ -4212,32 +4975,12 @@ class EmtProblemDae(EmtProblemTemplate):
             bus_idx_local += 1
 
         for bus_idx, bus in enumerate(grid.buses):
-            bus_working_mdl: Block = bus_working_models[bus]
-            mdl: Block = self._process_device_model(dev=bus, mdl=bus_working_mdl, sys_block= sys_block)
-
-            if self.power_flow_results_3ph is not None:
-                self._try_set_bus_pf_init(
-                    bus=bus,
-                    mdl=mdl,
-                    bus_index=bus_idx
-                )
-            else:
-                if self.power_flow_results is not None:
-                    if self.options.verbose:
-                        print("Initializing bus variables assuming a balanced power flow")
-                    else:
-                        pass
-
-                    self._try_set_bus_pf_init_balanced(
-                        bus=bus,
-                        mdl=mdl,
-                        bus_index=bus_idx
-                    )
-                else:
-                    if self.options.verbose:
-                        print("No Power Flow results given.")
-                    else:
-                        pass
+            self._build_emt_bus_device(
+                sys_block=sys_block,
+                bus=bus,
+                bus_index=bus_idx,
+                bus_working_models=bus_working_models,
+            )
 
         for bus_idx, bus in enumerate(grid.buses):
             mdl: Block = bus_working_models[bus]
