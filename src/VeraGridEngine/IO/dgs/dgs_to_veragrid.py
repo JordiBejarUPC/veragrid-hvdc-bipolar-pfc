@@ -3441,7 +3441,9 @@ def convert_dgs_to_load(elmlod: ElmLod,
                         logger: Logger,
                         cubics_by_objid: Dict[str, List[StaCubic]],
                         bus_by_term_id: Dict[str, dev.Bus],
-                        phase_map: PhaseMap) -> Tuple[dev.Bus, dev.Load]:
+                        phase_map: PhaseMap,
+                        comldf: ComLdf | None,
+                        typlod: TypLod | None) -> Tuple[dev.Bus, dev.Load]:
     """
     Convert dgs to load.
 
@@ -3452,6 +3454,8 @@ def convert_dgs_to_load(elmlod: ElmLod,
     :param cubics_by_objid: cubics_by_objid parameter.
     :param bus_by_term_id: bus_by_term_id parameter.
     :param phase_map: Resolved terminal-conductor phase map.
+    :param comldf: PowerFactory load-flow configuration, if exported.
+    :param typlod: PowerFactory type referenced by the load, if available.
     :return: Function result.
     """
     bus = get_injection_bus(elm_id=elmlod.ID,
@@ -3473,18 +3477,68 @@ def convert_dgs_to_load(elmlod: ElmLod,
         logger=logger,
     )
 
-    load = dev.Load(
-        name=elmlod.loc_name or f"Load_{_ref_id(elmlod.ID)}",
-        P=p_mw,
-        P1=pa_mw,
-        P2=pb_mw,
-        P3=pc_mw,
-        Q=q_mvar,
-        Q1=qa_mvar,
-        Q2=qb_mvar,
-        Q3=qc_mvar,
-        active=not bool(elmlod.outserv)
+    use_voltage_dependency = comldf is not None and int(comldf.iopt_pq) == 1
+    is_constant_current = (
+        typlod is not None
+        and typlod.aP == 0.0
+        and typlod.bP == 1.0
+        and typlod.aQ == 0.0
+        and typlod.bQ == 1.0
     )
+    is_constant_impedance = (
+        typlod is not None
+        and typlod.aP == 0.0
+        and typlod.bP == 0.0
+        and typlod.aQ == 0.0
+        and typlod.bQ == 0.0
+    )
+
+    # Use the voltage-dependent model only when PowerFactory enables it.
+    if use_voltage_dependency and is_constant_current:
+
+        load = dev.Load(
+            name=elmlod.loc_name or f"Load_{_ref_id(elmlod.ID)}",
+            Ir=p_mw,
+            Ir1=pa_mw,
+            Ir2=pb_mw,
+            Ir3=pc_mw,
+            Ii=-1.0 * q_mvar,
+            Ii1=-1.0 * qa_mvar,
+            Ii2=-1.0 * qb_mvar,
+            Ii3=-1.0 * qc_mvar,
+            active=not bool(elmlod.outserv)
+        )
+
+    # Constant impedance loads
+    elif use_voltage_dependency and is_constant_impedance:
+
+        load = dev.Load(
+            name=elmlod.loc_name or f"Load_{_ref_id(elmlod.ID)}",
+            G=p_mw,
+            G1=pa_mw,
+            G2=pb_mw,
+            G3=pc_mw,
+            B=q_mvar,
+            B1=qa_mvar,
+            B2=qb_mvar,
+            B3=qc_mvar,
+            active=not bool(elmlod.outserv)
+        )
+
+    else:
+
+        load = dev.Load(
+            name=elmlod.loc_name or f"Load_{_ref_id(elmlod.ID)}",
+            P=p_mw,
+            P1=pa_mw,
+            P2=pb_mw,
+            P3=pc_mw,
+            Q=q_mvar,
+            Q1=qa_mvar,
+            Q2=qb_mvar,
+            Q3=qc_mvar,
+            active=not bool(elmlod.outserv)
+        )
 
     # Add the connection type
     if elmlod.phtech == "3PH-'D'":
@@ -4833,7 +4887,17 @@ def _add_elmlod_loads(dgs_grid: DgsCircuit,
     :param phase_map: Resolved terminal-conductor phase map.
     :return: Function result.
     """
+    comldf = dgs_grid.comldfs[0] if len(dgs_grid.comldfs) > 0 else None
+
+    typlod_by_id: Dict[str, TypLod] = dict()
+    for typlod in dgs_grid.typlods:
+        typlod_by_id[typlod.ID] = typlod
+        typlod_id = _ref_id(typlod.ID)
+        if typlod_id is not None:
+            typlod_by_id[typlod_id] = typlod
+
     for elmlod in dgs_grid.elmlods:
+        typlod = _resolve_pointer_dict_value(key=elmlod.typ_id, mapping=typlod_by_id)
         bus, load = convert_dgs_to_load(
             elmlod=elmlod,
             stacubic_dict=stacubic_dict,
@@ -4842,6 +4906,8 @@ def _add_elmlod_loads(dgs_grid: DgsCircuit,
             cubics_by_objid=cubics_by_objid,
             bus_by_term_id=bus_by_term_id,
             phase_map=phase_map,
+            comldf=comldf,
+            typlod=typlod,
         )
         grid.add_load(bus=bus, api_obj=load)
 

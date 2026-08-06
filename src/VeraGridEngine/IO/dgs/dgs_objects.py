@@ -853,6 +853,21 @@ class TypSind(DGSElement):
         self.Re: float = 0.0
         self.Xe: float = 0.0
 
+class ComLdf(DGSElement):
+    """PowerFactory Load Flow Calculation type (ComLdf)."""
+    element_type = 'ComLdf'
+    properties_list = [
+        DgsProperty('loc_name', 'a:40', 'DGS field loc_name (a:40)', py_name='loc_name'),
+        DgsProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
+        DgsProperty('iopt_pq', 'i', 'Consider Voltage Dependency of Loads', py_name='iopt_pq'),
+    ]
+
+    def __init__(self) -> None:
+        self.ID: str = ""
+        self.loc_name: str = ""
+        self.fold_id: str = ""
+        self.iopt_pq: int = 0
+
 
 class ElmLnesec(DGSElement):
     element_type = 'ElmLnesec'
