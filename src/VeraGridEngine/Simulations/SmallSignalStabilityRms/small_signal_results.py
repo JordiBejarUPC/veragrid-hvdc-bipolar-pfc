@@ -169,17 +169,36 @@ class SmallSignalStabilityRmsResults(ResultsTemplate):
                 return ResultsTable(
                     data=self.participation_factors,
                     index=np.array(self.stat_vars_array.astype(str), dtype=np.str_),
-                    columns=np.array([f"Mode {i}" for i in range(len(self.eigenvalues))], dtype=np.str_),
+                    columns=np.array(
+                        [
+                            (
+                                f"Mode {i}\nf={frequency:.3f} Hz"
+                                if np.isfinite(frequency)
+                                else f"Mode {i}"
+                            )
+                            for i, frequency in enumerate(self.conjugate_frequencies)
+                        ],
+                        dtype=np.str_
+                    ),
                     title="Participation factors for each eigenvalue",
                     idx_device_type=DeviceType.NoDevice,
                     cols_device_type=DeviceType.NoDevice
                 )
             else:
-                # TODO: adapt to generalized!
                 return ResultsTable(
                     data=self.participation_factors,
                     index=np.array(list(self.stat_vars_array.astype(str)) + list(self.algebraic_vars_array.astype(str)), dtype=np.str_),
-                    columns=np.array([f"Mode {i}" for i in range(len(self.eigenvalues))], dtype=np.str_),
+                    columns=np.array(
+                        [
+                            (
+                                f"Mode {i}\nf={frequency:.3f} Hz"
+                                if np.isfinite(frequency)
+                                else f"Mode {i}"
+                            )
+                            for i, frequency in enumerate(self.conjugate_frequencies)
+                        ],
+                        dtype=np.str_
+                    ),
                     title="Participation factors for each eigenvalue",
                     idx_device_type=DeviceType.NoDevice,
                     cols_device_type=DeviceType.NoDevice
