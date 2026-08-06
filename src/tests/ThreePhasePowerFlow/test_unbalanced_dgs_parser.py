@@ -346,3 +346,18 @@ def test_single_phase_impedance_neutralstar():
     assert np.allclose(np.abs(res.voltage_A[0]), Ua_reference, atol=4e-4)
     assert np.allclose(np.abs(res.voltage_B[0]), Ub_reference, atol=4e-4)
     assert np.allclose(np.abs(res.voltage_C[0]), Uc_reference, atol=4e-4)
+
+def test_single_phase_impedance_groundedstar():
+
+    grid = vge.open_file('data/grids/DGS/SinglePhaseImpedanceGroundedStar.dgs')
+
+    res = vge.power_flow3ph(grid=grid, options=vge.PowerFlowOptions(solver_type=SolverType.NR,
+                                                                    retry_with_other_methods=False))
+
+    Ua_reference = np.array([0.8743])
+    Ub_reference = np.array([1.1255])
+    Uc_reference = np.array([0.9617])
+
+    assert np.allclose(np.abs(res.voltage_A[0]), Ua_reference, atol=4e-4)
+    assert np.allclose(np.abs(res.voltage_B[0]), Ub_reference, atol=4e-4)
+    assert np.allclose(np.abs(res.voltage_C[0]), Uc_reference, atol=4e-4)
