@@ -480,20 +480,30 @@ def get_load_data(data: LoadData,
                     Y_abc = any([elm.get_Y1_at(t_idx), elm.get_Y2_at(t_idx), elm.get_Y3_at(t_idx)])
 
                     if not Y_abc:
-                        data.Y3_star[4 * ii + 0, 1] = -1 * elm.get_Y_at(t_idx) / 3
-                        data.Y3_star[4 * ii + 0, 2] = -1 * elm.get_Y_at(t_idx) / 3
-                        data.Y3_star[4 * ii + 0, 3] = -1 * elm.get_Y_at(t_idx) / 3
-                        data.Y3_star[4 * ii + 1, 1] = elm.get_Y_at(t_idx) / 3
-                        data.Y3_star[4 * ii + 2, 2] = elm.get_Y_at(t_idx) / 3
-                        data.Y3_star[4 * ii + 3, 3] = elm.get_Y_at(t_idx) / 3
+                        if elm.conn == ShuntConnectionType.NeutralStar:
+                            data.Y3_star[4 * ii + 0, 1] = -1 * elm.get_Y_at(t_idx) / 3
+                            data.Y3_star[4 * ii + 0, 2] = -1 * elm.get_Y_at(t_idx) / 3
+                            data.Y3_star[4 * ii + 0, 3] = -1 * elm.get_Y_at(t_idx) / 3
+                            data.Y3_star[4 * ii + 1, 1] = elm.get_Y_at(t_idx) / 3
+                            data.Y3_star[4 * ii + 2, 2] = elm.get_Y_at(t_idx) / 3
+                            data.Y3_star[4 * ii + 3, 3] = elm.get_Y_at(t_idx) / 3
+                        else:
+                            data.Y3_star[4 * ii + 1, 1] = elm.get_Y_at(t_idx) / 3
+                            data.Y3_star[4 * ii + 2, 2] = elm.get_Y_at(t_idx) / 3
+                            data.Y3_star[4 * ii + 3, 3] = elm.get_Y_at(t_idx) / 3
 
                     else:
-                        data.Y3_star[4 * ii + 0, 1] = -1 * elm.get_Y1_at(t_idx)
-                        data.Y3_star[4 * ii + 0, 2] = -1 * elm.get_Y2_at(t_idx)
-                        data.Y3_star[4 * ii + 0, 3] = -1 * elm.get_Y3_at(t_idx)
-                        data.Y3_star[4 * ii + 1, 1] = elm.get_Y1_at(t_idx)
-                        data.Y3_star[4 * ii + 2, 2] = elm.get_Y2_at(t_idx)
-                        data.Y3_star[4 * ii + 3, 3] = elm.get_Y3_at(t_idx)
+                        if elm.conn == ShuntConnectionType.NeutralStar:
+                            data.Y3_star[4 * ii + 0, 1] = -1 * elm.get_Y1_at(t_idx)
+                            data.Y3_star[4 * ii + 0, 2] = -1 * elm.get_Y2_at(t_idx)
+                            data.Y3_star[4 * ii + 0, 3] = -1 * elm.get_Y3_at(t_idx)
+                            data.Y3_star[4 * ii + 1, 1] = elm.get_Y1_at(t_idx)
+                            data.Y3_star[4 * ii + 2, 2] = elm.get_Y2_at(t_idx)
+                            data.Y3_star[4 * ii + 3, 3] = elm.get_Y3_at(t_idx)
+                        else:
+                            data.Y3_star[4 * ii + 1, 1] = elm.get_Y1_at(t_idx)
+                            data.Y3_star[4 * ii + 2, 2] = elm.get_Y2_at(t_idx)
+                            data.Y3_star[4 * ii + 3, 3] = elm.get_Y3_at(t_idx)
 
                 elif elm.conn == ShuntConnectionType.FloatingStar:
 

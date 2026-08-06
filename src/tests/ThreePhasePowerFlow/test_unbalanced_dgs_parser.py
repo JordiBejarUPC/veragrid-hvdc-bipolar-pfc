@@ -256,3 +256,18 @@ def test_three_phase_impedance_delta():
     assert np.allclose(np.abs(res.voltage_A[0]), Ua_reference, atol=1e-4)
     assert np.allclose(np.abs(res.voltage_B[0]), Ub_reference, atol=1e-4)
     assert np.allclose(np.abs(res.voltage_C[0]), Uc_reference, atol=1e-4)
+
+def test_three_phase_impedance_groundedstar():
+
+    grid = vge.open_file('data/grids/DGS/ThreePhaseImpedanceGroundedStar.dgs')
+
+    res = vge.power_flow3ph(grid=grid, options=vge.PowerFlowOptions(solver_type=SolverType.NR,
+                                                                    retry_with_other_methods=False))
+
+    Ua_reference = np.array([0.9442])
+    Ub_reference = np.array([0.9956])
+    Uc_reference = np.array([0.9977])
+
+    assert np.allclose(np.abs(res.voltage_A[0]), Ua_reference, atol=3e-4)
+    assert np.allclose(np.abs(res.voltage_B[0]), Ub_reference, atol=3e-4)
+    assert np.allclose(np.abs(res.voltage_C[0]), Uc_reference, atol=3e-4)
