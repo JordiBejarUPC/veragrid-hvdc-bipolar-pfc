@@ -42,7 +42,7 @@ from VeraGridEngine.enumerations import (DeviceType, AvailableTransferMode, Solv
                                          ContingencyFilteringMethods, InvestmentsEvaluationObjectives,
                                          ReliabilityMode, OpfDispatchMode, DynamicIntegrationMethod,
                                          RmsInitializationMethod, EmtInitializationMethod, EmtSolverTypes,
-                                         MethodShortCircuit,
+                                         MethodShortCircuit, SmallSignalEmtBuildTypes,
                                          DynamicSimulationMode, RmsProblemTypes, EmtProblemTypes)
 
 
@@ -323,6 +323,14 @@ class SimulationsMain(TimeEventsMain):
                                        EmtSolverTypes.Automatic],
                           translate=self.tr)
         )
+
+        # emt small-signal
+        # TODO: connect new settings
+        # self.ui.emt_sss_build_type_ComboBox.setModel(
+        #     gf.ComboModel(enum_values=[SmallSignalEmtBuildTypes.Arnoldi,
+        #                                SmallSignalEmtBuildTypes.HybridArnoldi],
+        #                   translate=self.tr)
+        # )
 
         # dictionaries for available results
         self.available_results_dict: Union[Dict[str, Dict[str, ResultTypes]], None] = dict()
@@ -1101,7 +1109,7 @@ class SimulationsMain(TimeEventsMain):
             tolerance=1.0 / (10.0 ** self.ui.tolerance_emt_spinBox.value()),
             integration_method=self.ui.emt_integration_method_comboBox.currentData(),
             initialization_method=self.ui.emt_initialization_method_comboBox.currentData(),
-            solver_type=self.ui.emt_solver_type_comboBox.currentData(),
+            solver_type=self.ui.emt_solver_type_comboBoxSmallSignalEmtBuildTypes,
             problem_type=self.ui.emt_problem_comboBox.currentData()
         )
 
@@ -1114,9 +1122,9 @@ class SimulationsMain(TimeEventsMain):
         """
         ops = sim.SmallSignalStabilityEmtOptions(
             k=self.ui.emt_small_signal_modes_number_spinBox.value(),
-            # target_period=self.ui.emt_sss_target_period_spinBox.value(),
+            target_period=self.ui.emt_sss_target_period_spinBox.value(),
             ss_assessment_time=self.ui.emt_ss_assessment_time_spinBox.value(),
-            # build_type=self.ui.emt_sss_build_type_spinBox.value(),
+            build_type=self.ui.emt_sss_build_type_ComboBox.currentData(),
         )
 
         return ops
