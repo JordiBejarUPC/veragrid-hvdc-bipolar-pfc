@@ -8705,7 +8705,7 @@
                    </widget>
                   </item>
                   <item row="10" column="3">
-                   <widget class="QSpinBox" name="emt_small_signal_modes_number_spinBox_2">
+                   <widget class="QSpinBox" name="emt_small_signal_modes_number_spinBox">
                     <property name="toolTip">
                      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Number of modes.&lt;br/&gt;If zero, all modes are included and the calculation is done using dense matrices.&lt;br/&gt;If a number of modes greater than zero is given the calculation is sparse.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                     </property>

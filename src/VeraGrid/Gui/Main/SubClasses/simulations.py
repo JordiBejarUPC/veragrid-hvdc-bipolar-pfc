@@ -1114,8 +1114,9 @@ class SimulationsMain(TimeEventsMain):
         """
         ops = sim.SmallSignalStabilityEmtOptions(
             k=self.ui.emt_small_signal_modes_number_spinBox.value(),
+            # target_period=self.ui.emt_sss_target_period_spinBox.value(),
             ss_assessment_time=self.ui.emt_ss_assessment_time_spinBox.value(),
-            # build_type=
+            # build_type=self.ui.emt_sss_build_type_spinBox.value(),
         )
 
         return ops
