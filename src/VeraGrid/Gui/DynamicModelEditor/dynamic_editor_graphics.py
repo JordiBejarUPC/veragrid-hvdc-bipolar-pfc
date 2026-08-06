@@ -44,45 +44,130 @@ def _build_port_tooltip(direction: str, index: int, variable_name: str) -> str:
     ).format(direction=direction, index=index, name=variable_name)
 
 
+def get_signal_pair_suffix(
+        block_name: str,
+        is_signal_input: bool,
+) -> str | None:
+    """
+    Return the persistent suffix used to associate one From/To signal pair.
+
+    Both historical names (``From_1``/``To_1``) and current names
+    (``From1``/``To1``) are accepted. The visible PairedItem label is not
+    used because it follows the propagated variable name and therefore changes
+    whenever the signal is reconnected.
+
+    :param block_name: Persistent symbolic block name.
+    :param is_signal_input: ``True`` for the From/input block.
+    :return: Pair suffix, or ``None`` when the block name is not recognizable.
+    """
+    prefix_candidates: tuple[str, str]
+    prefix: str
+    suffix: str
+
+    if is_signal_input:
+        prefix_candidates = ("From_", "From")
+    else:
+        prefix_candidates = ("To_", "To")
+
+    for prefix in prefix_candidates:
+        if block_name.startswith(prefix):
+            suffix = block_name[len(prefix):]
+            if len(suffix) > 0:
+                return suffix
+            else:
+                pass
+        else:
+            pass
+
+    return None
+
+
 def duplicate_paired_item(original: PairedItem) -> PairedItem | None:
+    """
+    Duplicate one To/output tag while preserving its From signal identity.
+
+    :param original: Existing To/output PairedItem selected by the user.
+    :return: Newly created output item, or ``None`` when duplication is invalid.
+    """
+    editor: DynamicBlockEditorGUI
+    paired_items: List[PairedItem]
+    paired_item: PairedItem
+    signal_input_item: PairedItem | None = None
+    canonical_var: Var | None
+    pair_suffix: str | None
+    block_name: str
+    block_model: Block
+    new_item: PairedItem
+
     if original.editor is None or original.is_signal_in or original.paired_items is None:
         return None
+    else:
+        editor = original.editor
+        paired_items = original.paired_items
 
-    editor = original.editor
-    from_items = original.paired_items
-    var_factory = original.var_factory
+    # A To tag must be associated with exactly one From-side owner. Ignore any
+    # malformed same-side entries that may survive from an older editor session.
+    for paired_item in paired_items:
+        if paired_item.is_signal_in and signal_input_item is None:
+            signal_input_item = paired_item
+        else:
+            pass
 
-    shared_var = var_factory.add_var("var_to")
-    shared_var.uid = from_items[0].subsys.in_vars[0].uid
+    if signal_input_item is None:
+        return None
+    else:
+        pass
 
-    blk_new = Block(
-        # algebraic_vars=[shared_var],
-        out_vars=[from_items[0].subsys.in_vars[0]],
-        name=original.name,
+    canonical_var = signal_input_item.get_signal_var()
+    if canonical_var is None or signal_input_item.subsys is None:
+        return None
+    else:
+        pass
+
+    # The symbolic block name is the persistent pair key. The visible item name
+    # follows the connected variable and must never be used for reconstruction.
+    pair_suffix = get_signal_pair_suffix(
+        block_name=signal_input_item.subsys.name,
+        is_signal_input=True,
     )
+    if pair_suffix is None:
+        pair_suffix = str(signal_input_item.subsys.uid)
+    else:
+        pass
 
-    editor.main_block.add(blk_new)
+    block_name = f"To{pair_suffix}"
+    block_model = Block(
+        out_vars=list([canonical_var]),
+        name=block_name,
+    )
+    editor.main_block.add(block_model)
 
     new_item = PairedItem(
         editor=editor,
-        var_factory=var_factory,
-        subsys=blk_new,
+        var_factory=original.var_factory,
+        subsys=block_model,
         api_object=original.api_object,
         mode=original.mode,
-        name=blk_new.name,
-        paired_items=from_items,
-        position_changed_callback=editor.build_position_changed_callback(blk_new.uid),
+        name=block_model.name,
+        paired_items=list([signal_input_item]),
+        position_changed_callback=editor.build_position_changed_callback(block_model.uid),
     )
 
     new_item.setPos(original.pos() + QPointF(0.0, 80.0))
-    from_items[0].set_paired_item(new_item)
     editor.scene.addItem(new_item)
     editor.diagram.add_node(
-        name=blk_new.name,
-        x=original.pos().x(),
-        y=original.pos().y() + 80.0,
+        name=block_model.name,
+        x=new_item.pos().x(),
+        y=new_item.pos().y(),
         tpe="signal_out",
-        device_uid=blk_new.uid,
+        device_uid=block_model.uid,
+    )
+
+    # The editor normalizes the symbolic variable object and migrates any
+    # VarFactory propagation edges owned by a legacy output identity.
+    editor._bind_signal_pair_items(
+        signal_input_item=signal_input_item,
+        signal_output_items=list([new_item]),
     )
 
     editor.mark_unapplied_changes()
@@ -1345,10 +1430,7 @@ class GenericBlockItem(QGraphicsRectItem):
             label_item: QGraphicsTextItem
             variable_name: str
             for i, port in enumerate(self.inputs):
-                if port.base_var is None:
-                    port.base_var = self.subsys.in_vars[i]
-                else:
-                    pass
+                port.base_var = self.subsys.in_vars[i]
                 variable_name = self.subsys.in_vars[i].name
                 port.setToolTip(_build_port_tooltip("Input", i, variable_name))
                 label_item = self.input_labels[i]
@@ -1356,10 +1438,7 @@ class GenericBlockItem(QGraphicsRectItem):
                     truncate_port_label(variable_name, EditorGraphicsCommonFeatures.PORT_LABEL_MAX_CHARS))
 
             for i, port in enumerate(self.outputs):
-                if port.base_var is None:
-                    port.base_var = self.subsys.out_vars[i]
-                else:
-                    pass
+                port.base_var = self.subsys.out_vars[i]
                 variable_name = self.subsys.out_vars[i].name
                 port.setToolTip(_build_port_tooltip("Output", i, variable_name))
                 label_item = self.output_labels[i]
@@ -1567,11 +1646,51 @@ class PairedItem(QGraphicsPolygonItem):
                 for conn in port.connections:
                     conn.update_path()
 
-    def set_paired_item(self, paired_item: PairedItem) -> None:
-        if self.paired_items is None:
-            self.paired_items = [paired_item]
+    def get_signal_var(self) -> Var | None:
+        """
+        Return the symbolic variable represented by this signal tag.
+
+        :return: Input or output signal variable, or ``None`` for an invalid block.
+        """
+        if self.subsys is None:
+            return None
+        elif len(self.subsys.in_vars) == 1 and len(self.subsys.out_vars) == 0:
+            return self.subsys.in_vars[0]
+        elif len(self.subsys.out_vars) == 1 and len(self.subsys.in_vars) == 0:
+            return self.subsys.out_vars[0]
         else:
+            return None
+
+    def refresh_variable_name(self) -> None:
+        """
+        Refresh the visible signal-pair label from its symbolic variable.
+
+        :return: None.
+        """
+        signal_var: Var | None = self.get_signal_var()
+
+        if signal_var is None:
+            pass
+        else:
+            self.name = signal_var.name
+            self.name_item.setPlainText(signal_var.name)
+            self._position_name_and_ports()
+
+    def set_paired_item(self, paired_item: PairedItem) -> None:
+        """
+        Add one associated signal tag without duplicating the relationship.
+
+        :param paired_item: Signal tag belonging to the same logical pair.
+        :return: None.
+        """
+        if paired_item is self:
+            pass
+        elif self.paired_items is None:
+            self.paired_items = list([paired_item])
+        elif paired_item not in self.paired_items:
             self.paired_items.append(paired_item)
+        else:
+            pass
 
     def paint(self,
               painter: QPainter,
@@ -1585,36 +1704,50 @@ class PairedItem(QGraphicsPolygonItem):
         painter.setBrush(self.brush())
         painter.drawPolygon(polygon)
 
-    def refresh_port_metadata(self) -> None:
+    def _refresh_local_port_metadata(self) -> None:
+        """
+        Refresh only this item, without recursively traversing paired tags.
+
+        :return: None.
+        """
+        i: int
+        port: PortItem
+        variable_name: str
+
         if self.subsys is not None:
-            i: int
-            port: PortItem
-            variable_name: str
             for i, port in enumerate(self.inputs):
-                if port.base_var is None:
-                    port.base_var = self.subsys.in_vars[i]
-                else:
-                    pass
+                port.base_var = self.subsys.in_vars[i]
                 variable_name = self.subsys.in_vars[i].name
                 port.setToolTip(_build_port_tooltip("Input", i, variable_name))
 
             for i, port in enumerate(self.outputs):
-                if port.base_var is None:
-                    port.base_var = self.subsys.out_vars[i]
-                else:
-                    pass
+                port.base_var = self.subsys.out_vars[i]
                 variable_name = self.subsys.out_vars[i].name
                 port.setToolTip(_build_port_tooltip("Output", i, variable_name))
         else:
             pass
 
-        if self.paired_items is not None:
-            for other in self.paired_items:
-                if other.paired_items is not None and self in other.paired_items:
-                    other.paired_items.remove(self)
-                other.refresh_port_metadata()
+        self.refresh_variable_name()
 
-                other.set_paired_item(self)
+    def refresh_port_metadata(self) -> None:
+        """
+        Refresh this signal tag and every associated tag exactly once.
+
+        :return: None.
+        """
+        paired_item: PairedItem
+
+        self._refresh_local_port_metadata()
+
+        # Pair refresh must not remove and re-add relationship entries. The old
+        # recursive implementation could leave asymmetric pair lists while one
+        # endpoint was being disconnected and immediately reconnected.
+        if self.paired_items is not None:
+            for paired_item in self.paired_items:
+                if paired_item is self:
+                    pass
+                else:
+                    paired_item._refresh_local_port_metadata()
         else:
             pass
 
@@ -1821,20 +1954,28 @@ class BlockItem(QGraphicsRectItem):
             label_item: QGraphicsTextItem
             variable_name: str
             for i, port in enumerate(self.inputs):
-                if port.base_var is None:
-                    port.base_var = self.subsys.in_vars[i]
-                else:
-                    pass
+                port.base_var = self.subsys.in_vars[i]
                 variable_name = self.subsys.in_vars[i].name
                 port.setToolTip(_build_port_tooltip("Input", i, variable_name))
-
-            for i, port in enumerate(self.outputs):
-                if port.base_var is None:
-                    port.base_var = self.subsys.out_vars[i]
+                if i < len(self.input_labels):
+                    label_item = self.input_labels[i]
+                    label_item.setPlainText(
+                        truncate_port_label(variable_name, EditorGraphicsCommonFeatures.PORT_LABEL_MAX_CHARS))
                 else:
                     pass
+
+            for i, port in enumerate(self.outputs):
+                port.base_var = self.subsys.out_vars[i]
                 variable_name = self.subsys.out_vars[i].name
                 port.setToolTip(_build_port_tooltip("Output", i, variable_name))
+                if i < len(self.output_labels):
+                    label_item = self.output_labels[i]
+                    label_item.setPlainText(
+                        truncate_port_label(variable_name, EditorGraphicsCommonFeatures.PORT_LABEL_MAX_CHARS))
+                else:
+                    pass
+
+            self.update_ports()
 
         else:
             pass
@@ -1948,8 +2089,26 @@ class BlockItem(QGraphicsRectItem):
             return super().itemChange(change, value)
 
 
+
 class ProtectedConnectionBlockItem(BlockItem):
-    pass
+    __slots__ = ()
+
+    def get_interface_var(self) -> Var | None:
+        """
+        Return the single symbolic variable represented by this root oval.
+
+        :return: Wrapped interface variable, or ``None`` for an invalid shape.
+        """
+        block_model: Block | None = self.subsys
+
+        if block_model is None:
+            return None
+        elif len(block_model.in_vars) == 1 and len(block_model.out_vars) == 0:
+            return block_model.in_vars[0]
+        elif len(block_model.in_vars) == 0 and len(block_model.out_vars) == 1:
+            return block_model.out_vars[0]
+        else:
+            return None
 
 
 class UnOpItem(BlockItem):
@@ -2229,18 +2388,12 @@ class RoundBaseArithmeticOpItem(QGraphicsEllipseItem):
             label_item: QGraphicsTextItem
             variable_name: str
             for i, port in enumerate(self.inputs):
-                if port.base_var is None:
-                    port.base_var = self.subsys.in_vars[i]
-                else:
-                    pass
+                port.base_var = self.subsys.in_vars[i]
                 variable_name = self.subsys.in_vars[i].name
                 port.setToolTip(_build_port_tooltip("Input", i, variable_name))
 
             for i, port in enumerate(self.outputs):
-                if port.base_var is None:
-                    port.base_var = self.subsys.out_vars[i]
-                else:
-                    pass
+                port.base_var = self.subsys.out_vars[i]
                 variable_name = self.subsys.out_vars[i].name
                 port.setToolTip(_build_port_tooltip("Output", i, variable_name))
 
@@ -2448,18 +2601,12 @@ class RectBaseArithmeticOpItem(QGraphicsRectItem):
             label_item: QGraphicsTextItem
             variable_name: str
             for i, port in enumerate(self.inputs):
-                if port.base_var is None:
-                    port.base_var = self.subsys.in_vars[i]
-                else:
-                    pass
+                port.base_var = self.subsys.in_vars[i]
                 variable_name = self.subsys.in_vars[i].name
                 port.setToolTip(_build_port_tooltip("Input", i, variable_name))
 
             for i, port in enumerate(self.outputs):
-                if port.base_var is None:
-                    port.base_var = self.subsys.out_vars[i]
-                else:
-                    pass
+                port.base_var = self.subsys.out_vars[i]
                 variable_name = self.subsys.out_vars[i].name
                 port.setToolTip(_build_port_tooltip("Output", i, variable_name))
 
@@ -2666,78 +2813,105 @@ class DiagramScene(QGraphicsScene):
         else:
             pass
 
+
     def rename_context_item(self) -> None:
         """
-        Rename the current context block through the editor controller.
+        Rename the current context item through the editor controller.
 
         :return: None.
         """
-        if isinstance(self.context_item, (GenericBlockItem, BlockItem)):
+        if isinstance(self.context_item, ProtectedConnectionBlockItem):
+            interface_var: Var | None = self.context_item.get_interface_var()
+            if interface_var is not None:
+                self.editor.rename_variable_item(self.context_item)
+            else:
+                self.editor.rename_block_item(self.context_item)
+        elif isinstance(self.context_item, BlockItem):
+            self.editor.rename_block_item(self.context_item)
+        elif isinstance(self.context_item, GenericBlockItem):
             self.editor.rename_block_item(self.context_item)
         else:
             pass
 
+
     def contextMenuEvent(self, event: QtWidgets.QGraphicsSceneContextMenuEvent) -> None:
+        """
+        Show the context menu for one diagram item.
+
+        :param event: Qt context-menu event.
+        :return: None.
+        """
         item: QGraphicsItem
         for item in self.items(event.scenePos()):
-            if isinstance(item,
-                          (GenericBlockItem, ConnectionItem, RoundBaseArithmeticOpItem, RectBaseArithmeticOpItem, UnOpItem)):
+            if isinstance(
+                    item,
+                    (GenericBlockItem, BlockItem, ConnectionItem,
+                     RoundBaseArithmeticOpItem, RectBaseArithmeticOpItem, UnOpItem),
+            ):
+                self.context_item = item
                 menu: QMenu = QMenu()
-                if item is not None:
-                    self.context_item = item
+                is_variable_item: bool = (
+                    isinstance(item, ProtectedConnectionBlockItem)
+                    and item.get_interface_var() is not None
+                )
+                remove_action: QAction | None
+                color_action: QAction | None
+                rename_action: QAction | None
 
-                    remove_action: QAction = QAction("Remove", menu)
+                # Root interface ovals are part of the device contract and can
+                # only be renamed from this menu.
+                if is_variable_item:
+                    remove_action = None
+                    color_action = None
+                else:
+                    remove_action = QAction("Remove", menu)
                     menu.addAction(remove_action)
-
-                    color_action: QAction = QAction("Change Color", menu)
+                    color_action = QAction("Change Color", menu)
                     menu.addAction(color_action)
 
-                    if isinstance(item, (GenericBlockItem, BlockItem)):
-                        rename_action: QAction = QAction("Change Name", menu)
-                        menu.addAction(rename_action)
+                if isinstance(item, (GenericBlockItem, BlockItem)):
+                    if is_variable_item:
+                        rename_action = QAction("Change Variable Name", menu)
                     else:
-                        rename_action = None
+                        rename_action = QAction("Change Name", menu)
+                    menu.addAction(rename_action)
+                else:
+                    rename_action = None
 
-                    if isinstance(item, ConnectionItem):
-                        connection_item: ConnectionItem = item
-                        del connection_item
+                selected_action: QAction | None = menu.exec(event.screenPos())
+                if remove_action is not None and selected_action is remove_action:
+                    self.remove_context_item()
+                elif color_action is not None and selected_action is color_action:
+                    self.recolor_context_item()
+                elif rename_action is not None and selected_action is rename_action:
+                    self.rename_context_item()
+                else:
+                    pass
 
-                    selected_action: QAction | None = menu.exec(event.screenPos())
-
-                    if selected_action is remove_action:
-                        self.remove_context_item()
-                    elif selected_action is color_action:
-                        self.recolor_context_item()
-                    elif selected_action is rename_action:
-                        self.rename_context_item()
-                    else:
-                        pass
-
-                    self.context_item = None
+                self.context_item = None
                 return
-
             elif isinstance(item, PairedItem):
-                menu: QMenu = QMenu()
-                if item is not None:
-                    self.context_item = item
+                self.context_item = item
+                menu = QMenu()
+                remove_action = QAction("Remove", menu)
+                menu.addAction(remove_action)
+                duplicate_action: QAction = QAction("Duplicate", menu)
+                menu.addAction(duplicate_action)
+                color_action = QAction("Change Color", menu)
+                menu.addAction(color_action)
 
-                    remove_action: QAction = QAction("Remove", menu)
-                    remove_action.triggered.connect(self.remove_context_item)
-                    menu.addAction(remove_action)
+                selected_action = menu.exec(event.screenPos())
+                if selected_action is remove_action:
+                    self.remove_context_item()
+                elif selected_action is duplicate_action:
+                    duplicate_paired_item(item)
+                elif selected_action is color_action:
+                    self.recolor_context_item()
+                else:
+                    pass
 
-                    duplicate_action = QAction("Duplicate", menu)
-                    duplicate_action.triggered.connect(lambda: duplicate_paired_item(item))
-                    menu.addAction(duplicate_action)
-
-                    color_action: QAction = QAction("Change Color", menu)
-                    color_action.triggered.connect(self.recolor_context_item)
-                    menu.addAction(color_action)
-
-                    menu.exec(event.screenPos())
-                    self.context_item = None
+                self.context_item = None
                 return
-
-
             else:
                 pass
 
@@ -2809,34 +2983,39 @@ class DiagramScene(QGraphicsScene):
                 return
         super().mouseDoubleClickEvent(event)
 
-    def connect_ports(self, source_port: PortItem | BranchingItem, target_port: PortItem) -> None:
+    def connect_ports(
+            self,
+            source_port: PortItem | BranchingItem,
+            target_port: PortItem,
+    ) -> None:
+        """
+        Create one live graphical and symbolic port connection.
+
+        :param source_port: Source output port.
+        :param target_port: Destination input port.
+        :return: None.
+        """
         if isinstance(source_port, BranchingItem):
             return
         else:
             pass
 
-        source_block: BlockItem | GenericBlockItem | PairedItem | RoundBaseArithmeticOpItem | RectBaseArithmeticOpItem = source_port.subsystem
-        target_block: BlockItem | GenericBlockItem | PairedItem | RoundBaseArithmeticOpItem | RectBaseArithmeticOpItem = target_port.subsystem
+        source_block: BlockItem | GenericBlockItem | PairedItem | \
+            RoundBaseArithmeticOpItem | RectBaseArithmeticOpItem = source_port.subsystem
+        target_block: BlockItem | GenericBlockItem | PairedItem | \
+            RoundBaseArithmeticOpItem | RectBaseArithmeticOpItem = target_port.subsystem
 
         if source_block.subsys is not None and target_block.subsys is not None:
             connection: ConnectionItem = ConnectionItem(
-                source_port,
-                target_port,
+                source_port=source_port,
+                target_port=target_port,
                 diagram=self.editor.diagram,
                 editor=self.editor,
             )
 
-            dst_var: Var = source_block.subsys.out_vars[source_port.index]
-            target_input_var: Var = target_block.subsys.in_vars[target_port.index]
-
-            if target_input_var.network_conn:
-                self.editor.var_factory.add_connection(dst_var, target_input_var)
-                if not isinstance(RoundBaseArithmeticOpItem, RectBaseArithmeticOpItem):
-                    source_block.refresh_port_metadata()
-            else:
-                self.editor.var_factory.add_connection(target_input_var, dst_var)
-                if not isinstance(target_block, (RoundBaseArithmeticOpItem, RectBaseArithmeticOpItem)):
-                    target_block.refresh_port_metadata()
-            self.editor.attach_new_connection_item(connection)
+            # The editor controller owns symbolic registration, persistence,
+            # endpoint refresh, and routing for every connection lifecycle.
+            self.editor.attach_new_connection_item(item=connection)
         else:
             pass
+
