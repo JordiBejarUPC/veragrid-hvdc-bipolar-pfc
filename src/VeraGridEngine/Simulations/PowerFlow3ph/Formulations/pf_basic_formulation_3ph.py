@@ -423,6 +423,42 @@ def compute_current_loads(bus_idx: IntVec,
             I[c2] -= Icn
             I[n2] += (Ian + Ibn + Icn)
 
+        elif star and a_connected and b_connected and n_connected:
+
+            Uan = V[a2] - V[n2]
+            Ubn = V[b2] - V[n2]
+
+            Ian = np.conj(Istar[ab]) * (Uan / abs(Uan))
+            Ibn = np.conj(Istar[bc]) * (Ubn / abs(Ubn))
+
+            I[a2] -= Ian
+            I[b2] -= Ibn
+            I[n2] += (Ian + Ibn)
+
+        elif star and b_connected and c_connected and n_connected:
+
+            Ubn = V[b2] - V[n2]
+            Ucn = V[c2] - V[n2]
+
+            Ibn = np.conj(Istar[bc]) * (Ubn / abs(Ubn))
+            Icn = np.conj(Istar[ca]) * (Ucn / abs(Ucn))
+
+            I[b2] -= Ibn
+            I[c2] -= Icn
+            I[n2] += (Ibn + Icn)
+
+        elif star and a_connected and c_connected and n_connected:
+
+            Uan = V[a2] - V[n2]
+            Ucn = V[c2] - V[n2]
+
+            Ian = np.conj(Istar[ab]) * (Uan / abs(Uan))
+            Icn = np.conj(Istar[ca]) * (Ucn / abs(Ucn))
+
+            I[a2] -= Ian
+            I[c2] -= Icn
+            I[n2] += (Ian + Icn)
+
         elif star and a_connected and n_connected:
 
             Uan = V[a2] - V[n2]

@@ -181,3 +181,18 @@ def test_two_phase_current_groundedstar():
     assert np.allclose(np.abs(res.voltage_A[0]), Ua_reference, atol=2e-4)
     assert np.allclose(np.abs(res.voltage_B[0]), Ub_reference, atol=2e-4)
     assert np.allclose(np.abs(res.voltage_C[0]), Uc_reference, atol=2e-4)
+
+def test_two_phase_current_neutralstar():
+
+    grid = vge.open_file('data/grids/DGS/TwoPhaseCurrentNeutralStar.dgs')
+
+    res = vge.power_flow3ph(grid=grid, options=vge.PowerFlowOptions(solver_type=SolverType.NR,
+                                                                    retry_with_other_methods=False))
+
+    Ua_reference = np.array([0.9664])
+    Ub_reference = np.array([0.9828])
+    Uc_reference = np.array([0.9973])
+
+    assert np.allclose(np.abs(res.voltage_A[0]), Ua_reference, atol=2e-4)
+    assert np.allclose(np.abs(res.voltage_B[0]), Ub_reference, atol=2e-4)
+    assert np.allclose(np.abs(res.voltage_C[0]), Uc_reference, atol=2e-4)
