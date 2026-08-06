@@ -3518,10 +3518,10 @@ def convert_dgs_to_load(elmlod: ElmLod,
             G1=pa_mw,
             G2=pb_mw,
             G3=pc_mw,
-            B=q_mvar,
-            B1=qa_mvar,
-            B2=qb_mvar,
-            B3=qc_mvar,
+            B=-1.0 * q_mvar,
+            B1=-1.0 * qa_mvar,
+            B2=-1.0 * qb_mvar,
+            B3=-1.0 * qc_mvar,
             active=not bool(elmlod.outserv)
         )
 
