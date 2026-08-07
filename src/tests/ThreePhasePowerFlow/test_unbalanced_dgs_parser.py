@@ -376,3 +376,33 @@ def test_single_phase_transformer_dd_non_auto_phase_a():
     assert np.allclose(np.abs(res.voltage_A[1:]), Ua_reference, atol=2e-4)
     assert np.allclose(np.abs(res.voltage_B[1:]), Ub_reference, atol=2e-4)
     assert np.allclose(np.abs(res.voltage_C[1:]), Uc_reference, atol=2e-4)
+
+def test_single_phase_transformer_dd_non_auto_phase_b():
+
+    grid = vge.open_file('data/grids/DGS/DDconnection_non_auto_phaseB.dgs')
+
+    res = vge.power_flow3ph(grid=grid, options=vge.PowerFlowOptions(solver_type=SolverType.NR,
+                                                                    retry_with_other_methods=False))
+
+    Ua_reference = np.array([0.9993, 0.0])
+    Ub_reference = np.array([0.9911, 0.9790])
+    Uc_reference = np.array([1.0029, 0.0])
+
+    assert np.allclose(np.abs(res.voltage_A[1:]), Ua_reference, atol=2e-4)
+    assert np.allclose(np.abs(res.voltage_B[1:]), Ub_reference, atol=2e-4)
+    assert np.allclose(np.abs(res.voltage_C[1:]), Uc_reference, atol=2e-4)
+
+def test_single_phase_transformer_dd_non_auto_phase_c():
+
+    grid = vge.open_file('data/grids/DGS/DDconnection_non_auto_phaseC.dgs')
+
+    res = vge.power_flow3ph(grid=grid, options=vge.PowerFlowOptions(solver_type=SolverType.NR,
+                                                                    retry_with_other_methods=False))
+
+    Ua_reference = np.array([1.0037, 0.0])
+    Ub_reference = np.array([0.9994, 0.0])
+    Uc_reference = np.array([0.9910, 0.9790])
+
+    assert np.allclose(np.abs(res.voltage_A[1:]), Ua_reference, atol=2e-4)
+    assert np.allclose(np.abs(res.voltage_B[1:]), Ub_reference, atol=2e-4)
+    assert np.allclose(np.abs(res.voltage_C[1:]), Uc_reference, atol=2e-4)
