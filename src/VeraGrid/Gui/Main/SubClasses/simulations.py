@@ -1109,7 +1109,7 @@ class SimulationsMain(TimeEventsMain):
             tolerance=1.0 / (10.0 ** self.ui.tolerance_emt_spinBox.value()),
             integration_method=self.ui.emt_integration_method_comboBox.currentData(),
             initialization_method=self.ui.emt_initialization_method_comboBox.currentData(),
-            solver_type=self.ui.emt_solver_type_comboBoxSmallSignalEmtBuildTypes,
+            solver_type=self.ui.emt_solver_type_comboBox.currentData(),
             problem_type=self.ui.emt_problem_comboBox.currentData()
         )
 
