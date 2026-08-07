@@ -406,3 +406,42 @@ def test_single_phase_transformer_dd_non_auto_phase_c():
     assert np.allclose(np.abs(res.voltage_A[1:]), Ua_reference, atol=2e-4)
     assert np.allclose(np.abs(res.voltage_B[1:]), Ub_reference, atol=2e-4)
     assert np.allclose(np.abs(res.voltage_C[1:]), Uc_reference, atol=2e-4)
+
+def test_single_phase_transformer_dd_non_auto_phases_ab():
+
+    grid = vge.open_file('data/grids/DGS/DDconnection_non_auto_phasesAB.dgs')
+
+    res = vge.power_flow3ph(grid=grid, options=vge.PowerFlowOptions(solver_type=SolverType.NR,
+                                                                    retry_with_other_methods=False))
+
+    U_reference = 2 * 0.8516 / np.sqrt(3)
+    U_result = np.abs(res.voltage_A[2] - res.voltage_B[2]) / np.sqrt(3)
+
+    assert np.allclose(U_result, U_reference, atol=3e-4)
+    assert np.allclose(np.abs(res.voltage_C[2]), np.array([0.0]), atol=3e-4)
+
+def test_single_phase_transformer_dd_non_auto_phases_bc():
+
+    grid = vge.open_file('data/grids/DGS/DDconnection_non_auto_phasesBC.dgs')
+
+    res = vge.power_flow3ph(grid=grid, options=vge.PowerFlowOptions(solver_type=SolverType.NR,
+                                                                    retry_with_other_methods=False))
+
+    U_reference = 2 * 0.8515 / np.sqrt(3)
+    U_result = np.abs(res.voltage_B[2] - res.voltage_C[2]) / np.sqrt(3)
+
+    assert np.allclose(U_result, U_reference, atol=3e-4)
+    assert np.allclose(np.abs(res.voltage_A[2]), np.array([0.0]), atol=3e-4)
+
+def test_single_phase_transformer_dd_non_auto_phases_ca():
+
+    grid = vge.open_file('data/grids/DGS/DDconnection_non_auto_phasesCA.dgs')
+
+    res = vge.power_flow3ph(grid=grid, options=vge.PowerFlowOptions(solver_type=SolverType.NR,
+                                                                    retry_with_other_methods=False))
+
+    U_reference = 2 * 0.8517 / np.sqrt(3)
+    U_result = np.abs(res.voltage_C[2] - res.voltage_A[2]) / np.sqrt(3)
+
+    assert np.allclose(U_result, U_reference, atol=3e-4)
+    assert np.allclose(np.abs(res.voltage_B[2]), np.array([0.0]), atol=3e-4)
