@@ -5742,6 +5742,28 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             return True
 
+    def _namespace_has_conflicting_block_name(
+            self,
+            block: Block,
+            candidate_name: str,
+    ) -> bool:
+        """
+        Return whether one candidate block name conflicts with another block.
+
+        :param block: Block being renamed.
+        :param candidate_name: Candidate new block name.
+        :return: ``True`` when another sibling block already uses the name.
+        """
+        other_block: Block
+
+        for other_block in self.main_block.children:
+            if other_block.uid != block.uid and other_block.name == candidate_name:
+                return True
+            else:
+                pass
+
+        return False
+
 
     def _get_authoritative_root_interface_var(
             self,
@@ -6127,18 +6149,25 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             pass
 
         if len(new_name) == 0:
-            self.toast_manager.show_warning_toast(self.tr("Block name cannot be empty"))
+            self.toast_manager.show_warning_toast(
+                self.tr("Block name cannot be empty")
+            )
+            return
+        elif not dialog_models.is_valid_symbol_name(new_name):
+            self.toast_manager.show_warning_toast(
+                self.tr("Block name is invalid")
+            )
+            return
+        elif self._namespace_has_conflicting_block_name(block, new_name):
+            self.toast_manager.show_warning_toast(
+                self.tr("Block name already exists")
+            )
+            return
+        elif new_name == block.name:
             return
         else:
             pass
 
-        if new_name == block.name:
-            return
-        else:
-            pass
-
-        # Apply the rename to the symbolic model first. The graphics item only mirrors
-        # the block state, so every visible label refreshes from the authoritative model.
         block.set_name(new_name)
         self.refresh_editor_block_name_displays(block)
         self.mark_unapplied_changes()
