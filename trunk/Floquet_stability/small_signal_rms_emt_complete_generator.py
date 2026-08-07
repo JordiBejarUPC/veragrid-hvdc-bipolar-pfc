@@ -158,14 +158,6 @@ def _format_complex_value(value: complex, decimals: int = 3) -> str:
 
     return f"{value.real:.{decimals}f}{value.imag:+.{decimals}f}j"
 
-
-def _format_complex_value(value: complex, decimals: int = 2) -> str:
-    """Format a complex number for display inside a table cell."""
-    if np.isclose(value.imag, 0.0):
-        return f"{value.real:.{decimals}f}"
-    return f"{value.real:.{decimals}f}{value.imag:+.{decimals}f}j"
-
-
 def _plot_single_participation_factors_table(
     pfactors: np.ndarray,
     title: str,
