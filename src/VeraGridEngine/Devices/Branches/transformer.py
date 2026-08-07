@@ -539,12 +539,16 @@ class Transformer2W(ControllableBranchParent):
         rLV = self.LV / LV
         LB = 1 - maximum_difference
         UB = 1 + maximum_difference
-        if not (LB <= rHV <= UB):
+        is_phase_to_neutral = len(self.phases) == 2 and 0 in self.phases
+        valid_hv = LB <= rHV <= UB or (is_phase_to_neutral and LB <= rHV * np.sqrt(3) <= UB)
+        valid_lv = LB <= rLV <= UB or (is_phase_to_neutral and LB <= rLV * np.sqrt(3) <= UB)
+
+        if not valid_hv:
             logger.add_warning("Corrected transformer HV", self.name, self.HV, HV)
             self.HV = HV
             errors = True
 
-        if not (LB <= rLV <= UB):
+        if not valid_lv:
             logger.add_warning("Corrected transformer LV", self.name, self.LV, LV)
             self.LV = LV
             errors = True
@@ -706,6 +710,30 @@ class Transformer2W(ControllableBranchParent):
         ytf = -ys / (self.tap_module * np.exp(1.0j * (self.tap_phase + phase_displacement)) * vtap_t * vtap_f)
         ytt = (ys + ysh / 2) / (vtap_t * vtap_t)
 
+        # Single-phase D-D and Y-Y transformers
+        single_phase_connections = (WindingType.Delta, WindingType.FloatingStar)
+        if (len(self.phases) == 2
+                and self.conn_f in single_phase_connections
+                and self.conn_t in single_phase_connections):
+            phase_1, phase_2 = self.phases
+            if not 0 <= phase_1 < phase_2 <= 3:
+                logger.add_error("transformer_admittance: Unknown phase pair", device=self.name)
+                zeros = np.zeros((4, 4), dtype=float)
+                return zeros, zeros, zeros, zeros
+
+            phase_pattern = np.zeros((4, 4), dtype=float)
+            phase_pattern[phase_1, phase_1] = 1.0
+            phase_pattern[phase_1, phase_2] = -1.0
+            phase_pattern[phase_2, phase_1] = -1.0
+            phase_pattern[phase_2, phase_2] = 1.0
+
+            Yff = yff * phase_pattern
+            Yft = yft * phase_pattern
+            Ytf = ytf * phase_pattern
+            Ytt = ytt * phase_pattern
+            return Yff, Yft, Ytf, Ytt
+
+        # Three Phase Transformer
         if conn_y_from and conn_y_to:  # Yy
             Yff = np.array([
                 [0, 0, 0, 0],

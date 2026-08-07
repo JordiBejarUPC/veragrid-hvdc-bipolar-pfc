@@ -1837,81 +1837,109 @@ def convert_dgs_to_transformer(tr2: ElmTr2,
     #   - TypTr2.tr2cn_h : high voltage side connection
     #   - TypTr2.tr2cn_l : low voltage side connection
 
+    # From-side is the HV-side
     if bus_vg_from.Vnom > bus_vg_to.Vnom:
 
-        if typtr2_raw.tr2cn_h == "Y":
-            trafo.conn_f = WindingType.FloatingStar
-        elif ((typtr2_raw.tr2cn_h == "YN" and tr2.cgnd_h == 0) or
-              (typtr2_raw.nt2ph == 2 and (typtr2_raw.tr2cn_h == "D" or typtr2_raw.tr2cn_h == "Y") and tr2.i_eahv == 1)):
-            trafo.conn_f = WindingType.GroundedStar
-        elif typtr2_raw.tr2cn_h == "YN":
-            trafo.conn_f = WindingType.NeutralStar
-        elif typtr2_raw.tr2cn_h == "Z":
-            trafo.conn_f = WindingType.FloatingZigZag
-        elif typtr2_raw.tr2cn_h == "ZN" and tr2.cgnd_h == 0:
-            trafo.conn_f = WindingType.GroundedZigZag
-        elif typtr2_raw.tr2cn_h == "ZN":
-            trafo.conn_f = WindingType.NeutralZigZag
-        elif typtr2_raw.tr2cn_h == "D":
-            trafo.conn_f = WindingType.Delta
-        else:
-            trafo.conn_f = WindingType.GroundedStar
+        # D-D (or Y-Y) Connection (non-auto transformer)
+        if typtr2_raw.tr2cn_h == 'D' and typtr2_raw.tr2cn_l == 'D' and tr2.i_auto == 0:
 
-        if typtr2_raw.tr2cn_l == "Y":
-            trafo.conn_t = WindingType.FloatingStar
-        elif ((typtr2_raw.tr2cn_l == "YN" and tr2.cgnd_l == 0) or
-            (typtr2_raw.nt2ph == 2 and (typtr2_raw.tr2cn_l == "D" or typtr2_raw.tr2cn_l == "Y") and tr2.i_ealv == 1)):
-            trafo.conn_t = WindingType.GroundedStar
-        elif typtr2_raw.tr2cn_l == "YN":
-            trafo.conn_t = WindingType.NeutralStar
-        elif typtr2_raw.tr2cn_l == "Z":
-            trafo.conn_t = WindingType.FloatingZigZag
-        elif typtr2_raw.tr2cn_l == "ZN" and tr2.cgnd_l == 0:
-            trafo.conn_t = WindingType.GroundedZigZag
-        elif typtr2_raw.tr2cn_l == "ZN":
-            trafo.conn_t = WindingType.NeutralZigZag
-        elif typtr2_raw.tr2cn_l == "D":
-            trafo.conn_t = WindingType.Delta
-        else:
-            trafo.conn_t = WindingType.GroundedStar
+            if tr2.i_eahv == 1:
+                trafo.conn_f = WindingType.GroundedStar
+            else:
+                trafo.conn_f = WindingType.Delta
 
-    else:
+            if tr2.i_ealv == 1:
+                trafo.conn_t = WindingType.GroundedStar
+            else:
+                trafo.conn_t = WindingType.Delta
 
-        if typtr2_raw.tr2cn_h == "Y":
-            trafo.conn_t = WindingType.FloatingStar
-        elif ((typtr2_raw.tr2cn_h == "YN" and tr2.cgnd_h == 0) or
-            (typtr2_raw.nt2ph == 2 and (typtr2_raw.tr2cn_h == "D" or typtr2_raw.tr2cn_h == "Y") and tr2.i_eahv == 1)):
-            trafo.conn_t = WindingType.GroundedStar
-        elif typtr2_raw.tr2cn_h == "YN":
-            trafo.conn_t = WindingType.NeutralStar
-        elif typtr2_raw.tr2cn_h == "Z":
-            trafo.conn_t = WindingType.FloatingZigZag
-        elif typtr2_raw.tr2cn_h == "ZN" and tr2.cgnd_h == 0:
-            trafo.conn_t = WindingType.GroundedZigZag
-        elif typtr2_raw.tr2cn_h == "ZN":
-            trafo.conn_t = WindingType.NeutralZigZag
-        elif typtr2_raw.tr2cn_h == "D":
-            trafo.conn_t = WindingType.Delta
-        else:
-            trafo.conn_t = WindingType.GroundedStar
+        elif typtr2_raw.tr2cn_h == 'Y' and typtr2_raw.tr2cn_l == 'Y' and tr2.i_auto == 0:
 
-        if typtr2_raw.tr2cn_l == "Y":
-            trafo.conn_f = WindingType.FloatingStar
-        elif ((typtr2_raw.tr2cn_l == "YN" and tr2.cgnd_l == 0) or
-            (typtr2_raw.nt2ph == 2 and (typtr2_raw.tr2cn_l == "D" or typtr2_raw.tr2cn_l == "Y") and tr2.i_ealv == 1)):
-            trafo.conn_f = WindingType.GroundedStar
-        elif typtr2_raw.tr2cn_l == "YN":
-            trafo.conn_f = WindingType.NeutralStar
-        elif typtr2_raw.tr2cn_l == "Z":
-            trafo.conn_f = WindingType.FloatingZigZag
-        elif typtr2_raw.tr2cn_l == "ZN" and tr2.cgnd_l == 0:
-            trafo.conn_f = WindingType.GroundedZigZag
-        elif typtr2_raw.tr2cn_l == "ZN":
-            trafo.conn_f = WindingType.NeutralZigZag
-        elif typtr2_raw.tr2cn_l == "D":
-            trafo.conn_f = WindingType.Delta
-        else:
-            trafo.conn_f = WindingType.GroundedStar
+            if tr2.i_eahv == 1:
+                trafo.conn_f = WindingType.GroundedStar
+            else:
+                trafo.conn_f = WindingType.NeutralStar
+
+            if tr2.i_eahv == 1:
+                trafo.conn_t = WindingType.GroundedStar
+            else:
+                trafo.conn_t = WindingType.NeutralStar
+
+
+        # if typtr2_raw.tr2cn_h == "Y":
+        #     trafo.conn_f = WindingType.FloatingStar
+        # elif ((typtr2_raw.tr2cn_h == "YN" and tr2.cgnd_h == 0) or
+        #       (typtr2_raw.nt2ph == 2 and (typtr2_raw.tr2cn_h == "D" or typtr2_raw.tr2cn_h == "Y") and tr2.i_eahv == 1)):
+        #     trafo.conn_f = WindingType.GroundedStar
+        # elif typtr2_raw.tr2cn_h == "YN":
+        #     trafo.conn_f = WindingType.NeutralStar
+        # elif typtr2_raw.tr2cn_h == "Z":
+        #     trafo.conn_f = WindingType.FloatingZigZag
+        # elif typtr2_raw.tr2cn_h == "ZN" and tr2.cgnd_h == 0:
+        #     trafo.conn_f = WindingType.GroundedZigZag
+        # elif typtr2_raw.tr2cn_h == "ZN":
+        #     trafo.conn_f = WindingType.NeutralZigZag
+        # elif typtr2_raw.tr2cn_h == "D":
+        #     trafo.conn_f = WindingType.Delta
+        # else:
+        #     trafo.conn_f = WindingType.GroundedStar
+        #
+        # if typtr2_raw.tr2cn_l == "Y":
+        #     trafo.conn_t = WindingType.FloatingStar
+        # elif ((typtr2_raw.tr2cn_l == "YN" and tr2.cgnd_l == 0) or
+        #     (typtr2_raw.nt2ph == 2 and (typtr2_raw.tr2cn_l == "D" or typtr2_raw.tr2cn_l == "Y") and tr2.i_ealv == 1)):
+        #     trafo.conn_t = WindingType.GroundedStar
+        # elif typtr2_raw.tr2cn_l == "YN":
+        #     trafo.conn_t = WindingType.NeutralStar
+        # elif typtr2_raw.tr2cn_l == "Z":
+        #     trafo.conn_t = WindingType.FloatingZigZag
+        # elif typtr2_raw.tr2cn_l == "ZN" and tr2.cgnd_l == 0:
+        #     trafo.conn_t = WindingType.GroundedZigZag
+        # elif typtr2_raw.tr2cn_l == "ZN":
+        #     trafo.conn_t = WindingType.NeutralZigZag
+        # elif typtr2_raw.tr2cn_l == "D":
+        #     trafo.conn_t = WindingType.Delta
+        # else:
+        #     trafo.conn_t = WindingType.GroundedStar
+
+    # To-side is the HV-side
+    #else:
+
+        # if typtr2_raw.tr2cn_h == "Y":
+        #     trafo.conn_t = WindingType.FloatingStar
+        # elif ((typtr2_raw.tr2cn_h == "YN" and tr2.cgnd_h == 0) or
+        #     (typtr2_raw.nt2ph == 2 and (typtr2_raw.tr2cn_h == "D" or typtr2_raw.tr2cn_h == "Y") and tr2.i_eahv == 1)):
+        #     trafo.conn_t = WindingType.GroundedStar
+        # elif typtr2_raw.tr2cn_h == "YN":
+        #     trafo.conn_t = WindingType.NeutralStar
+        # elif typtr2_raw.tr2cn_h == "Z":
+        #     trafo.conn_t = WindingType.FloatingZigZag
+        # elif typtr2_raw.tr2cn_h == "ZN" and tr2.cgnd_h == 0:
+        #     trafo.conn_t = WindingType.GroundedZigZag
+        # elif typtr2_raw.tr2cn_h == "ZN":
+        #     trafo.conn_t = WindingType.NeutralZigZag
+        # elif typtr2_raw.tr2cn_h == "D":
+        #     trafo.conn_t = WindingType.Delta
+        # else:
+        #     trafo.conn_t = WindingType.GroundedStar
+        #
+        # if typtr2_raw.tr2cn_l == "Y":
+        #     trafo.conn_f = WindingType.FloatingStar
+        # elif ((typtr2_raw.tr2cn_l == "YN" and tr2.cgnd_l == 0) or
+        #     (typtr2_raw.nt2ph == 2 and (typtr2_raw.tr2cn_l == "D" or typtr2_raw.tr2cn_l == "Y") and tr2.i_ealv == 1)):
+        #     trafo.conn_f = WindingType.GroundedStar
+        # elif typtr2_raw.tr2cn_l == "YN":
+        #     trafo.conn_f = WindingType.NeutralStar
+        # elif typtr2_raw.tr2cn_l == "Z":
+        #     trafo.conn_f = WindingType.FloatingZigZag
+        # elif typtr2_raw.tr2cn_l == "ZN" and tr2.cgnd_l == 0:
+        #     trafo.conn_f = WindingType.GroundedZigZag
+        # elif typtr2_raw.tr2cn_l == "ZN":
+        #     trafo.conn_f = WindingType.NeutralZigZag
+        # elif typtr2_raw.tr2cn_l == "D":
+        #     trafo.conn_f = WindingType.Delta
+        # else:
+        #     trafo.conn_f = WindingType.GroundedStar
 
     cubicles = cubics_by_objid.get(_ref_id(tr2.ID), [])
     cubicles = sorted(cubicles, key=_stacubic_obj_bus_sort_key)

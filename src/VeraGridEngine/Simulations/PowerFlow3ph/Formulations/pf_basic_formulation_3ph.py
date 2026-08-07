@@ -24,7 +24,7 @@ from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.common_functions impo
 from VeraGridEngine.Topology.simulation_indices import compile_types
 from VeraGridEngine.basic_structures import Vec, IntVec, CxVec, CxMat, BoolVec, Logger
 from VeraGridEngine.Utils.Sparse.csc2 import (CSC, scipy_to_mat)
-from VeraGridEngine.enumerations import WindingType
+from VeraGridEngine.enumerations import BusMode, WindingType
 
 
 @nb.njit(cache=True)
@@ -205,7 +205,9 @@ def compute_ybus(nc: NumericalCircuit) -> Tuple[csc_matrix, csc_matrix, csc_matr
         else:
             pass
 
-    # aplica la prioridad: si algún trafo aterra el neutro del bus, el neutro se elimina del solver
+    bus_has_neutral[0::4] &= nc.bus_data.bus_types != BusMode.Slack_tpe.value
+
+    # aplica la prioridad: si algún trafo o el slack aterra el neutro, el neutro se elimina del solver
     binary_bus_mask[0::4] = binary_bus_mask[0::4] & bus_has_neutral[0::4]
 
     Ysh_bus = np.zeros((n * 4, n * 4), dtype=complex)
@@ -221,7 +223,7 @@ def compute_ybus(nc: NumericalCircuit) -> Tuple[csc_matrix, csc_matrix, csc_matr
         f4 = 4 * f + idx4
         Ysh_bus[np.ix_(f4, f4)] += nc.load_data.Y3_star[np.ix_(k4, idx4)] / (nc.Sbase / 3)
 
-    Ybus = Cf.T @ Yf + Ct.T @ Yt + Ysh_bus
+    Ybus = Cfcopy.T @ Yf + Ctcopy.T @ Yt + Ysh_bus
 
     Ybus = Ybus[np.ix_(binary_bus_mask, binary_bus_mask)]
     Ysh_bus = Ysh_bus[np.ix_(binary_bus_mask, binary_bus_mask)]

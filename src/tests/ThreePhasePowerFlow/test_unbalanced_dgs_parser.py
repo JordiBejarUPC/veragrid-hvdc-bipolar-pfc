@@ -361,3 +361,18 @@ def test_single_phase_impedance_groundedstar():
     assert np.allclose(np.abs(res.voltage_A[0]), Ua_reference, atol=4e-4)
     assert np.allclose(np.abs(res.voltage_B[0]), Ub_reference, atol=4e-4)
     assert np.allclose(np.abs(res.voltage_C[0]), Uc_reference, atol=4e-4)
+
+def test_single_phase_transformer_dd_non_auto_phase_a():
+
+    grid = vge.open_file('data/grids/DGS/DDconnection_non_auto_phaseA.dgs')
+
+    res = vge.power_flow3ph(grid=grid, options=vge.PowerFlowOptions(solver_type=SolverType.NR,
+                                                                    retry_with_other_methods=False))
+
+    Ua_reference = np.array([0.9911, 0.9790])
+    Ub_reference = np.array([1.0032, 0.0])
+    Uc_reference = np.array([0.9990, 0.0])
+
+    assert np.allclose(np.abs(res.voltage_A[1:]), Ua_reference, atol=2e-4)
+    assert np.allclose(np.abs(res.voltage_B[1:]), Ub_reference, atol=2e-4)
+    assert np.allclose(np.abs(res.voltage_C[1:]), Uc_reference, atol=2e-4)
