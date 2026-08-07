@@ -239,7 +239,8 @@ class InvestmentsEvaluationDriver(DriverTemplate):
             eta=30,
         )
 
-        self.results.set_best_combination(combination=X[:, 0])
+        # fix: was X[:, 0]; X is (n_pareto, n_var) so the first member's vector is row 0
+        self.results.set_best_combination(combination=X[0, :])
 
     def optimized_evaluation_pint_toot_nsga3(self) -> None:
         """
@@ -290,7 +291,8 @@ class InvestmentsEvaluationDriver(DriverTemplate):
             initial_objectives=seed_objectives,
         )
 
-        self.results.set_best_combination(combination=X[:, 0])
+        # fix: was X[:, 0]; X is (n_pareto, n_var) so the first member's vector is row 0
+        self.results.set_best_combination(combination=X[0, :])
 
     def randomized_evaluation(self) -> None:
         """
@@ -315,7 +317,8 @@ class InvestmentsEvaluationDriver(DriverTemplate):
             max_evals=self.options.max_eval,
         )
 
-        self.results.set_best_combination(combination=X[:, 0])
+        # fix: was X[:, 0]; X is (n_evals, n_var) so a combination is a row
+        self.results.set_best_combination(combination=X[0, :])
 
     def optimized_evaluation_mixed_nsga2(self) -> None:
         """
@@ -343,15 +346,17 @@ class InvestmentsEvaluationDriver(DriverTemplate):
             # eta=30,
         )
 
-        res_x = []
-        for i, v in enumerate(X):
-            if isinstance(v, dict):
-                vall = list(v.values())[0]
-                res_x.append(vall)
+        # fix: was list(v.values())[0] per solution, i.e. variable 0 across all solutions
+        if isinstance(X, dict):
+            best_vars: list = list(X.values())
+        else:
+            first_solution = X[0]
+            if isinstance(first_solution, dict):
+                best_vars = list(first_solution.values())
             else:
-                res_x.append(v)
+                best_vars = list(X[0, :])
 
-        self.results.set_best_combination(combination=np.array(res_x))
+        self.results.set_best_combination(combination=np.array(best_vars))
 
     def run(self) -> None:
         """
