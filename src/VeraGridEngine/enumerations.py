@@ -2753,6 +2753,7 @@ class ResultTypes(Enum):
     ParticipationFactors = "Participation Factors"
     StateMatrix = "State Matrix"
     Modes = "Modes"
+    RightEigenvectors = "Right Eigenvectors"
     SDomainPlot = "S-Domain Plot"
     SDomainPlotHz = "S-Domain Plot in Hz"
 
