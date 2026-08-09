@@ -449,6 +449,8 @@ class MIPSolvers(Enum):
     XPRESS = 'XPRESS'
     CBC = 'CBC'
     PDLP = 'PDLP'
+    CUOPT = "CUOPT"
+    COPT = "COPT"
 
     def __str__(self):
         return self.value
