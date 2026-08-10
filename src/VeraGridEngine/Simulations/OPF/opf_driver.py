@@ -310,9 +310,11 @@ class OptimalPowerFlowDriver(TimeSeriesDriverTemplate):
                 self.engine = EngineType.VeraGrid
                 self.logger.add_warning('GSLV not available, falling back to VeraGrid')
             else:
-                if self.options.solver != SolverType.LINEAR_OPF:
+                if self.options.solver not in (SolverType.LINEAR_OPF, SolverType.NONLINEAR_OPF):
                     self.engine = EngineType.VeraGrid
-                    self.logger.add_warning('GSLV OPF snapshot only supports LINEAR_OPF, falling back to VeraGrid')
+                    self.logger.add_warning(
+                        'GSLV OPF snapshot only supports LINEAR_OPF and NONLINEAR_OPF, falling back to VeraGrid'
+                    )
                 else:
                     pass
 
@@ -383,7 +385,10 @@ class OptimalPowerFlowDriver(TimeSeriesDriverTemplate):
 
         elif self.engine == EngineType.GSLV:
 
-            self.report_text('Running Linear OPF with GSLV...')
+            if self.options.solver == SolverType.LINEAR_OPF:
+                self.report_text('Running Linear OPF with GSLV...')
+            else:
+                self.report_text('Running Non-Linear OPF with GSLV...')
 
             gslv_res = gslv.gslv_opf(circuit=self.grid,
                                      opf_options=self.options,
@@ -392,7 +397,7 @@ class OptimalPowerFlowDriver(TimeSeriesDriverTemplate):
                                      logger=self.logger)
 
             self.results.voltage = gslv_res.voltage[0, :]
-            self.results.Sbus = gslv_res.Sbus[0, :].real
+            self.results.Sbus = gslv_res.Sbus[0, :]
             self.results.bus_shadow_prices = gslv_res.bus_shadow_prices[0, :]
 
             self.results.load_power = gslv_res.load_power[0, :]
@@ -401,11 +406,11 @@ class OptimalPowerFlowDriver(TimeSeriesDriverTemplate):
             self.results.battery_power = gslv_res.battery_power[0, :]
             self.results.generator_power = gslv_res.generator_power[0, :]
             self.results.generator_reactive_power = gslv_res.generator_reactive_power[0, :]
-            self.results.Sf = gslv_res.Sf[0, :].real
-            self.results.St = gslv_res.St[0, :].real
-            self.results.overloads = gslv_res.overloads[0, :].real
+            self.results.Sf = gslv_res.Sf[0, :]
+            self.results.St = gslv_res.St[0, :]
+            self.results.overloads = gslv_res.overloads[0, :]
             self.results.overloads_cost = gslv_res.overloads_cost[0, :]
-            self.results.loading = gslv_res.loading[0, :].real
+            self.results.loading = gslv_res.loading[0, :]
             self.results.losses = gslv_res.losses[0, :]
             self.results.tap_angle = gslv_res.tap_angle[0, :]
             self.results.tap_module = gslv_res.tap_module[0, :]
@@ -423,6 +428,12 @@ class OptimalPowerFlowDriver(TimeSeriesDriverTemplate):
             self.results.fluid_node_spillage = gslv_res.fluid_node_spillage[0, :]
             self.results.fluid_path_flow = gslv_res.fluid_path_flow[0, :]
             self.results.fluid_injection_flow = gslv_res.fluid_injection_flow[0, :]
+            self.results.converged = bool(gslv_res.converged[0])
+            if hasattr(gslv_res, "error_values"):
+                self.results.error = float(gslv_res.error_values[0])
+            else:
+                self.results.error = 0.0 if self.results.converged else np.nan
+            self.results.non_linear = self.options.solver == SolverType.NONLINEAR_OPF
 
         else:
             self.opf()
