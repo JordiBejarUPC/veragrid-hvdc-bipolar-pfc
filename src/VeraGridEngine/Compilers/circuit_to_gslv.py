@@ -1911,40 +1911,30 @@ def convert_transformer(elm: dev.Transformer2W,
                            short_circuit_voltage=elm.Vsc,
                            active=elm.active,
                            rate=elm.rate if elm.rate > 0 else 9999,
-
                            r=elm.R,
                            x=elm.X,
                            g=elm.G,
                            b=elm.B,
-
                            tap_module=elm.tap_module,
                            tap_module_max=elm.tap_module_max,
                            tap_module_min=elm.tap_module_min,
-
                            tap_phase=elm.tap_phase,
                            tap_phase_max=elm.tap_phase_max,
                            tap_phase_min=elm.tap_phase_min,
-
                            tolerance=elm.tolerance,
-
                            cost=elm.Cost,
                            mttf=elm.mttf,
                            mttr=elm.mttr,
-
                            vset=elm.vset,
                            Pset=elm.Pset,
                            Qset=elm.Qset,
-
                            temp_base=elm.temp_base,
                            temp_oper=elm.temp_oper,
                            alpha=elm.alpha,
-
                            tap_module_control_mode=tap_module_control_mode_dict[elm.tap_module_control_mode],
                            tap_phase_control_mode=tap_phase_control_mode_dict[elm.tap_phase_control_mode],
-
                            contingency_factor=elm.contingency_factor,
                            protection_rating_factor=elm.protection_rating_factor,
-
                            monitor_loading=elm.monitor_loading,
                            r0=transformer_r0,
                            x0=transformer_x0,
@@ -1954,8 +1944,7 @@ def convert_transformer(elm: dev.Transformer2W,
                            x2=transformer_x2,
                            g2=transformer_g2,
                            b2=transformer_b2,
-                           conn=transformer_conn,
-                           )
+                           conn=transformer_conn)
 
     if add_three_phase_data:
         tr2.conn_f = winding_type_dict[elm.conn_f]
@@ -2019,6 +2008,13 @@ def convert_transformer(elm: dev.Transformer2W,
                  time_indices=time_indices,
                  n_time=n_time,
                  default_val=elm.vset)
+
+    fill_profile(gslv_profile=tr2.temp_oper,
+                 gc_profile=elm.temp_oper_prof,
+                 use_time_series=use_time_series,
+                 time_indices=time_indices,
+                 n_time=n_time,
+                 default_val=elm.temp_oper)
 
     fill_profile(gslv_profile=tr2.tap_phase,
                  gc_profile=elm.tap_phase_prof,
@@ -2683,7 +2679,7 @@ class FakeAdmittances:
         self.Yt = None
 
 
-def get_snapshots_from_gslv(circuit: MultiCircuit, override_branch_controls=False) -> List[NumericalCircuit]:
+def get_snapshots_from_gslv(circuit: MultiCircuit, override_branch_controls: bool = False) -> List[NumericalCircuit]:
     """
 
     :param circuit:
@@ -2691,12 +2687,12 @@ def get_snapshots_from_gslv(circuit: MultiCircuit, override_branch_controls=Fals
     :return:
     """
 
-    gslv_grid, (bus_dict, area_dict, zone_dict) = to_gslv(circuit,
-                                                          use_time_series=False,
-                                                          override_branch_controls=override_branch_controls)
+    gslv_grid, _ = to_gslv(circuit,
+                           use_time_series=False,
+                           override_branch_controls=override_branch_controls)
 
     logger = pg.Logger()
-    npa_data_lst = pg.compile(gslv_grid, logger, t=0).splitIntoIslands()
+    npa_data_lst = pg.compile(gslv_grid, logger=logger, t_idx=0).split_into_islands(logger=logger)
 
     data_lst = list()
 
@@ -2717,39 +2713,40 @@ def get_snapshots_from_gslv(circuit: MultiCircuit, override_branch_controls=Fals
                                 sbase=0,
                                 t_idx=0)
 
-        conn = npa_data.getConnectivity()
-        inj = npa_data.getInjections()
-        tpes = npa_data.getSimulationIndices(inj.S0)
-        adm = npa_data.getAdmittances(conn)
-        lin = npa_data.getLinearMatrices(conn)
-        series_adm = npa_data.getSeriesAdmittances(conn)
-        fd_adm = npa_data.getFastDecoupledAdmittances(conn, tpes)
-        qlim = npa_data.getQLimits()
+        conn = npa_data.get_connectivity_matrices()
+        power_injections = npa_data.get_power_injections()
+        current_injections = npa_data.get_current_injections()
+        tpes = npa_data.get_simulation_indices(power_injections.real)
+        adm = npa_data.get_admittance_matrices()
+        series_adm = npa_data.get_series_admittances(conn)
+        qmax_bus, qmin_bus = npa_data.get_reactive_power_limits()
 
-        data.Vbus_ = npa_data.Vbus.reshape(-1, 1)
-        data.Sbus_ = inj.S0.reshape(-1, 1)
-        data.Ibus_ = inj.I0.reshape(-1, 1)
+        data.Vbus_ = npa_data.bus_data.Vbus.reshape(-1, 1)
+        data.Sbus_ = power_injections.reshape(-1, 1)
+        data.Ibus_ = current_injections.reshape(-1, 1)
         data.passive_branch_data.names = np.array(npa_data.passive_branch_data.names)
-        data.passive_branch_data.virtual_tap_f = npa_data.passive_branch_data.vtap_f
-        data.passive_branch_data.virtual_tap_t = npa_data.passive_branch_data.vtap_t
-        data.passive_branch_data.original_idx = npa_data.passive_branch_data.original_indices
+        data.passive_branch_data.virtual_tap_f = npa_data.passive_branch_data.virtual_tap_f
+        data.passive_branch_data.virtual_tap_t = npa_data.passive_branch_data.virtual_tap_t
+        data.passive_branch_data.original_idx = npa_data.passive_branch_data.original_idx
 
         data.bus_data.names = np.array(npa_data.bus_data.names)
-        data.bus_data.original_idx = npa_data.bus_data.original_indices
+        data.bus_data.original_idx = npa_data.bus_data.original_idx
 
         data.admittances_ = FakeAdmittances()
         data.admittances_.Ybus = adm.Ybus
         data.admittances_.Yf = adm.Yf
         data.admittances_.Yt = adm.Yt
 
-        data.Bbus_ = lin.Bbus
-        data.Bf_ = lin.Bf
+        # The current wrapper does not expose NumericalCircuit::getLinearAdmittanceMatrices.
+        # The compatibility layer keeps VeraGrid's expected fields populated from the available admittance matrices.
+        data.Bbus_ = -adm.Ybus.imag
+        data.Bf_ = -adm.Yf.imag
 
         data.Yseries_ = series_adm.Yseries
         data.Yshunt_ = series_adm.Yshunt
 
-        data.B1_ = fd_adm.B1
-        data.B2_ = fd_adm.B2
+        data.B1_ = data.Bbus_
+        data.B2_ = data.Bbus_
 
         data.Cf_ = conn.Cf
         data.Ct_ = conn.Ct
@@ -2760,10 +2757,8 @@ def get_snapshots_from_gslv(circuit: MultiCircuit, override_branch_controls=Fals
         data.vd_ = tpes.vd
         data.pqpv_ = tpes.no_slack
 
-        data.Qmax_bus_ = qlim.qmax_bus
-        data.Qmin_bus_ = qlim.qmin_bus
-
-        control_indices = npa_data.getSimulationIndices(Sbus=data.Sbus_[:, 0])
+        data.Qmax_bus_ = qmax_bus
+        data.Qmin_bus_ = qmin_bus
 
         data_lst.append(data)
 
@@ -3059,7 +3054,7 @@ def translate_gslv_pf_results(
     results.loading_hvdc = res.loading_hvdc[0, :]
     results.losses_hvdc = res.losses_hvdc[0, :]
 
-    results.Pfp_vsc = res.Pf_vsc[0, :]
+    results.Pfp_vsc = res.Pfp_vsc[0, :]
     results.Pfn_vsc = res.Pfn_vsc[0, :]
     results.St_vsc = res.St_vsc[0, :]
     results.If_vsc = res.If_vsc[0, :]
@@ -3149,7 +3144,7 @@ def translate_gslv_pf_time_series_results(
     results.hvdc_Pt = res.Pt_hvdc[selected_time_indices, :]
     results.hvdc_loading = res.loading_hvdc[selected_time_indices, :]
     results.hvdc_losses = res.losses_hvdc[selected_time_indices, :]
-    results.Pf_vsc = res.Pf_vsc[selected_time_indices, :]
+    results.Pf_vsc = res.Pfp_vsc[selected_time_indices, :]
     results.Pfn_vsc = res.Pfn_vsc[selected_time_indices, :]
     results.St_vsc = res.St_vsc[selected_time_indices, :]
     results.If_vsc = res.If_vsc[selected_time_indices, :]
