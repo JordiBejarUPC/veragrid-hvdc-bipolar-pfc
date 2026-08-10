@@ -3,11 +3,11 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
-from VeraGridEngine.Devices.Aggregation.zone import Zone
 from VeraGridEngine.Devices.Substation.substation import Substation
 from VeraGridEngine.Compilers.Gslv.activation import pg
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from typing import Dict
+
 
 def convert_substation(se: Substation, n_time: int) -> "pg.Substation":
     """
@@ -42,4 +42,3 @@ def add_substations(circuit: MultiCircuit,
         d[se] = elm
 
     return d
-

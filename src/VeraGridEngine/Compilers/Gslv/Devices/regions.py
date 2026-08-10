@@ -9,6 +9,7 @@ from VeraGridEngine.Compilers.Gslv.activation import pg
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from typing import Dict
 
+
 def convert_region(country: Region) -> "pg.Region":
     """
 
@@ -34,4 +35,3 @@ def add_regions(circuit: MultiCircuit,
         d[region] = elm
 
     return d
-

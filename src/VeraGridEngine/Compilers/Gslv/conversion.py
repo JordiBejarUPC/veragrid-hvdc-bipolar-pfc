@@ -34,15 +34,16 @@ from VeraGridEngine.Compilers.Gslv.Devices.regions import add_regions
 from VeraGridEngine.Compilers.Gslv.Devices.branch_groups import add_branch_groups
 from VeraGridEngine.Compilers.Gslv.Devices.substations import add_substations
 from VeraGridEngine.Compilers.Gslv.Devices.voltage_levels import add_voltage_levels
-from VeraGridEngine.Compilers.Gslv.Devices.contingency_metadata import add_contingency_groups, add_contingencies
-from VeraGridEngine.Compilers.Gslv.Devices.investment_metadata import add_investment_groups, add_investments
+from VeraGridEngine.Compilers.Gslv.Devices.contingencies import add_contingency_groups, add_contingencies
+from VeraGridEngine.Compilers.Gslv.Devices.investments import add_investment_groups, add_investments
 from VeraGridEngine.Compilers.Gslv.Devices.facilities import add_facilities
 from VeraGridEngine.Compilers.Gslv.Devices.modelling_authorities import add_modelling_authorities
 from VeraGridEngine.Compilers.Gslv.Devices.buses import add_buses
 from VeraGridEngine.Compilers.Gslv.Devices.injections import add_loads, add_static_generators, add_shunts, add_controllable_shunts, add_generators, add_battery_data
 from VeraGridEngine.Compilers.Gslv.Devices.lines import add_lines
 from VeraGridEngine.Compilers.Gslv.Devices.dc_lines import add_dc_lines
-from VeraGridEngine.Compilers.Gslv.Devices.transformers import add_transformers, add_transformers3w
+from VeraGridEngine.Compilers.Gslv.Devices.transformers import add_transformers
+from VeraGridEngine.Compilers.Gslv.Devices.transformers3w import add_transformers3w
 from VeraGridEngine.Compilers.Gslv.Devices.converters import add_vscs, add_hvdcs
 
 if TYPE_CHECKING:

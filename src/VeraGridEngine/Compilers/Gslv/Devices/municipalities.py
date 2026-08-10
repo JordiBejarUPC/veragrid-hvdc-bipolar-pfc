@@ -9,6 +9,7 @@ from VeraGridEngine.Compilers.Gslv.activation import pg
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from typing import Dict
 
+
 def convert_municipality(country: Municipality) -> "pg.Municipality":
     """
 
@@ -34,4 +35,3 @@ def add_municipalities(circuit: MultiCircuit,
         d[municipality] = elm
 
     return d
-

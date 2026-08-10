@@ -8,6 +8,7 @@ from VeraGridEngine.Compilers.Gslv.activation import pg
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from typing import Dict
 
+
 def convert_modelling_authority(elm: ModellingAuthority) -> "pg.ModellingAuthority":
     """
 
@@ -35,4 +36,3 @@ def add_modelling_authorities(circuit: MultiCircuit,
         d[elm] = ma
 
     return d
-
