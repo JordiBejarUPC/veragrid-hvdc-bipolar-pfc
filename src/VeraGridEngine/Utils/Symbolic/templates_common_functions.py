@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 #
-from typing import Any, List
+from typing import Any, List, Dict
 #
 from VeraGridEngine.enumerations import VarPowerFlowReferenceType
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
@@ -836,6 +836,8 @@ def connect_line_rms_from(mdl1: Block, mdl2: Block, var_factory:VarFactory):
     for outp, inpt in pairs:
         var_factory.add_connections([inpt], [outp])
 
+    normalize_branch_rms_root_contract_from(mdl1=mdl1, mdl2=mdl2)
+
 def connect_models_power_flow(mdl1: Block, mdl2: Block, var_factory: VarFactory):
     """
     This function substitutes input variables for output variables to connect two rms models
@@ -855,6 +857,8 @@ def connect_models_power_flow(mdl1: Block, mdl2: Block, var_factory: VarFactory)
     for pair in pairs:
         # Todo: change connection method to use var_factory
         var_factory.add_connections([pair[1]], [pair[0]])
+
+    normalize_single_bus_rms_root_contract(mdl1=mdl1, mdl2=mdl2)
 
 
 def connect_line_rms_to(mdl1: Block, mdl2: Block, var_factory:VarFactory):
@@ -885,6 +889,146 @@ def connect_line_rms_to(mdl1: Block, mdl2: Block, var_factory:VarFactory):
     for outp, inpt in pairs:
         var_factory.add_connections([inpt], [outp])
 
+    normalize_branch_rms_root_contract_to(mdl1=mdl1, mdl2=mdl2)
+
+
+def normalize_rms_root_contract(mdl2: Block,
+                                var_mapping: Dict[Var, Var]) -> None:
+    """
+    Normalize one RMS root contract to the authoritative connected bus variables.
+
+    The RMS templates use one root wrapper block exposing ``in_vars`` and
+    ``external_mapping`` while the actual equations can live in child blocks.
+    After one connection is established, the authoritative symbolic identity for
+    one bus-facing contract must be the live bus variable, not the template-side
+    wrapper variable. Rewriting the whole block hierarchy keeps equations,
+    initialization equations and root mappings aligned on the same variable UIDs.
+
+    :param mdl2: Device RMS model whose root contract must be normalized.
+    :param var_mapping: Old-to-new variable mapping for RMS contract vars.
+    :return: None.
+    """
+    if len(var_mapping) == 0:
+        pass
+    else:
+        mdl2.update_model_bulk(var_mapping=var_mapping)
+
+
+def normalize_branch_rms_root_contract_from(mdl1: Block, mdl2: Block) -> None:
+    """
+    Normalize the RMS root contract for the branch ``from`` side.
+
+    :param mdl1: Connected bus RMS model.
+    :param mdl2: Branch RMS model.
+    :return: None.
+    """
+    vm_bus: Var | None = mdl1.external_mapping.get(VarPowerFlowReferenceType.Vm, None)
+    va_bus: Var | None = mdl1.external_mapping.get(VarPowerFlowReferenceType.Va, None)
+    vm_dev: Var | None = mdl2.external_mapping.get(VarPowerFlowReferenceType.Vmf, None)
+    va_dev: Var | None = mdl2.external_mapping.get(VarPowerFlowReferenceType.Vaf, None)
+    var_mapping: Dict[Var, Var] = dict()
+
+    if vm_bus is None:
+        pass
+    else:
+        if vm_dev is None:
+            pass
+        else:
+            if vm_dev.uid == vm_bus.uid:
+                pass
+            else:
+                var_mapping[vm_dev] = vm_bus
+
+    if va_bus is None:
+        pass
+    else:
+        if va_dev is None:
+            pass
+        else:
+            if va_dev.uid == va_bus.uid:
+                pass
+            else:
+                var_mapping[va_dev] = va_bus
+
+    normalize_rms_root_contract(mdl2=mdl2, var_mapping=var_mapping)
+
+
+def normalize_branch_rms_root_contract_to(mdl1: Block, mdl2: Block) -> None:
+    """
+    Normalize the RMS root contract for the branch ``to`` side.
+
+    :param mdl1: Connected bus RMS model.
+    :param mdl2: Branch RMS model.
+    :return: None.
+    """
+    vm_bus: Var | None = mdl1.external_mapping.get(VarPowerFlowReferenceType.Vm, None)
+    va_bus: Var | None = mdl1.external_mapping.get(VarPowerFlowReferenceType.Va, None)
+    vm_dev: Var | None = mdl2.external_mapping.get(VarPowerFlowReferenceType.Vmt, None)
+    va_dev: Var | None = mdl2.external_mapping.get(VarPowerFlowReferenceType.Vat, None)
+    var_mapping: Dict[Var, Var] = dict()
+
+    if vm_bus is None:
+        pass
+    else:
+        if vm_dev is None:
+            pass
+        else:
+            if vm_dev.uid == vm_bus.uid:
+                pass
+            else:
+                var_mapping[vm_dev] = vm_bus
+
+    if va_bus is None:
+        pass
+    else:
+        if va_dev is None:
+            pass
+        else:
+            if va_dev.uid == va_bus.uid:
+                pass
+            else:
+                var_mapping[va_dev] = va_bus
+
+    normalize_rms_root_contract(mdl2=mdl2, var_mapping=var_mapping)
+
+
+def normalize_single_bus_rms_root_contract(mdl1: Block, mdl2: Block) -> None:
+    """
+    Normalize the RMS root contract for one single-bus injection model.
+
+    :param mdl1: Connected bus RMS model.
+    :param mdl2: Single-bus RMS model.
+    :return: None.
+    """
+    vm_bus: Var | None = mdl1.external_mapping.get(VarPowerFlowReferenceType.Vm, None)
+    va_bus: Var | None = mdl1.external_mapping.get(VarPowerFlowReferenceType.Va, None)
+    vm_dev: Var | None = mdl2.external_mapping.get(VarPowerFlowReferenceType.Vm, None)
+    va_dev: Var | None = mdl2.external_mapping.get(VarPowerFlowReferenceType.Va, None)
+    var_mapping: Dict[Var, Var] = dict()
+
+    if vm_bus is None:
+        pass
+    else:
+        if vm_dev is None:
+            pass
+        else:
+            if vm_dev.uid == vm_bus.uid:
+                pass
+            else:
+                var_mapping[vm_dev] = vm_bus
+
+    if va_bus is None:
+        pass
+    else:
+        if va_dev is None:
+            pass
+        else:
+            if va_dev.uid == va_bus.uid:
+                pass
+            else:
+                var_mapping[va_dev] = va_bus
+
+    normalize_rms_root_contract(mdl2=mdl2, var_mapping=var_mapping)
 
 def connect_line_phasor_rms_from(mdl1: Block, mdl2: Block, var_factory:VarFactory):
     """

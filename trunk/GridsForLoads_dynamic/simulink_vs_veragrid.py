@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 
 THETA_WRAP_PERIOD_RAD: float = 2.0 * np.pi
+SIMULINK_DELTA_VSM_OFFSET_RAD: float = 1.0035643198967392
 # power reference change in the GFM controller
 # TEST_NAME: str = "p_ref_step_v3_2pref"
 # SIMULINK_CSV_NAME: str = "simulink_results_G4L_p_ref_2events.csv"
@@ -44,8 +45,10 @@ THETA_WRAP_PERIOD_RAD: float = 2.0 * np.pi
 
 TEST_NAME: str = "p_ref_step_simplified"
 SIMULINK_CSV_NAME: str = "simulink_results_G4L_p_ref_simplified.csv"
-VERAGRID_CSV_NAME: str = "veragrid_G4L_p_gfm_simplified.csv"
-VERAGRID_CSV_NAME: str = "veragrid_G4L_p_gfm_v3_2pref.csv"
+VERAGRID_CSV_NAME: str = "veragrid_G4L_p_gfm_v3_simplified.csv"
+COMPARISON_WINDOW_S: Optional[tuple[float, float]] = None
+# COMPARISON_WINDOW_S = (0.0, 0.02)
+# VERAGRID_CSV_NAME: str = "veragrid_G4L_p_gfm_v3_2pref.csv"
 EVENT_TIMES_S: list[float] = [0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5]
 EVENT_WINDOW_HALF_WIDTH_S: float = 0.025
 STEADY_STATE_WINDOWS: list[tuple[str, float, float, str]] = [
@@ -258,6 +261,47 @@ def _theta_pll_veragrid_signal(dataframe: pd.DataFrame) -> pd.Series:
     """
     theta_values: pd.Series = pd.to_numeric(dataframe["theta_pll"], errors="coerce")
     return pd.Series(wrap_to_2pi(theta_values.to_numpy(dtype=float)), index=theta_values.index)
+
+
+def _phase_vsm_simulink_signal(dataframe: pd.DataFrame) -> pd.Series:
+    """Return the Simulink VSM phase wrapped to ``[0, 2*pi)``.
+
+    :param dataframe: Source dataframe.
+    :return: Wrapped phase VSM series.
+    """
+    phase_values: pd.Series = pd.to_numeric(dataframe["phase_pll"], errors="coerce") + _delta_from_vdq_signal(dataframe, "Vd", "Vq")
+    return pd.Series(wrap_to_2pi(phase_values.to_numpy(dtype=float)), index=phase_values.index)
+
+
+def _phase_vsm_veragrid_signal(dataframe: pd.DataFrame) -> pd.Series:
+    """Return the VeraGrid VSM phase wrapped to ``[0, 2*pi)``.
+
+    :param dataframe: Source dataframe.
+    :return: Wrapped phase VSM series.
+    """
+    phase_values: pd.Series = pd.to_numeric(dataframe["phase_vsm"], errors="coerce")
+    return pd.Series(wrap_to_2pi(phase_values.to_numpy(dtype=float)), index=phase_values.index)
+
+
+def _delta_vsm_simulink_signal(dataframe: pd.DataFrame) -> pd.Series:
+    """Return the Simulink inferred VSM minus PLL angle offset.
+
+    :param dataframe: Source dataframe.
+    :return: Wrapped inferred delta VSM series.
+    """
+    return wrap_to_pi(_delta_from_vdq_signal(dataframe, "Vd", "Vq") + SIMULINK_DELTA_VSM_OFFSET_RAD)
+
+
+def _delta_vsm_veragrid_signal(dataframe: pd.DataFrame) -> pd.Series:
+    """Return the VeraGrid VSM minus PLL angle offset.
+
+    :param dataframe: Source dataframe.
+    :return: Wrapped delta VSM series.
+    """
+    if "delta_vsm" in dataframe.columns:
+        delta_values: pd.Series = pd.to_numeric(dataframe["delta_vsm"], errors="coerce")
+        return pd.Series(wrap_to_pi(delta_values.to_numpy(dtype=float)), index=delta_values.index)
+    return _delta_vsm_signal(dataframe, "phase_vsm", "theta_pll")
 
 
 def _signal_magnitude(dataframe: pd.DataFrame, q_column: str, d_column: str) -> pd.Series:
@@ -486,14 +530,34 @@ def create_plot_groups() -> list[PlotGroup]:
                         veragrid_transform=_theta_pll_veragrid_signal,
                     ),
                     SignalSpec(
-                        "phase vsm",
+                        "phase vsm (reconstructed)",
                         "phase_pll",
                         "phase_vsm",
                         "rad",
                         simulink_columns=["phase_pll", "Vd", "Vq"],
                         veragrid_columns=["phase_vsm"],
-                        simulink_transform=lambda dataframe: pd.to_numeric(dataframe["phase_pll"], errors="coerce") + _delta_from_vdq_signal(dataframe, "Vd", "Vq"),
-                        veragrid_transform=lambda dataframe: pd.to_numeric(dataframe["phase_vsm"], errors="coerce"),
+                        simulink_transform=_phase_vsm_simulink_signal,
+                        veragrid_transform=_phase_vsm_veragrid_signal,
+                    ),
+                ]
+            ),
+        )
+    )
+    groups.append(
+        PlotGroup(
+            "PLL and VSM offset",
+            "pll_vsm_offset",
+            list(
+                [
+                    SignalSpec(
+                        "delta vsm",
+                        "Vd",
+                        "delta_vsm",
+                        "rad",
+                        simulink_columns=["Vd", "Vq"],
+                        veragrid_columns=["delta_vsm", "phase_vsm", "theta_pll"],
+                        simulink_transform=_delta_vsm_simulink_signal,
+                        veragrid_transform=_delta_vsm_veragrid_signal,
                     ),
                 ]
             ),
@@ -689,6 +753,7 @@ def build_common_time_vector(
     veragrid_time: np.ndarray,
     time_base: TimeBase,
     custom_time: Optional[np.ndarray],
+    comparison_window_s: Optional[tuple[float, float]],
 ) -> Optional[np.ndarray]:
     """Build the common interpolation time vector.
 
@@ -700,6 +765,11 @@ def build_common_time_vector(
     """
     overlap_start: float = max(float(simulink_time[0]), float(veragrid_time[0]))
     overlap_end: float = min(float(simulink_time[-1]), float(veragrid_time[-1]))
+
+    if comparison_window_s is not None:
+        window_start_s, window_end_s = comparison_window_s
+        overlap_start = max(overlap_start, float(window_start_s))
+        overlap_end = min(overlap_end, float(window_end_s))
 
     if overlap_end <= overlap_start:
         print("The simulation time ranges do not overlap.")
@@ -882,6 +952,8 @@ def save_group_plot(
     output_path: Path = output_folder / f"{sanitize_file_name(group.file_stem)}_{sanitized_test_name}.png"
     figure.tight_layout()
     figure.savefig(output_path, dpi=150)
+    if group.file_stem == "pll_phase_angles":
+        plt.show()
     plt.close(figure)
     print(f"Saved plot: {output_path}")
 
@@ -1074,6 +1146,9 @@ def run_comparison() -> None:
     """
     script_folder: Path = Path(__file__).resolve().parent
     test_name: str = TEST_NAME
+    if COMPARISON_WINDOW_S is not None:
+        window_start_s, window_end_s = COMPARISON_WINDOW_S
+        test_name = f"{TEST_NAME}_window_{window_start_s:g}_{window_end_s:g}s"
     simulink_csv_path: Path = script_folder / SIMULINK_CSV_NAME
     veragrid_csv_path: Path = script_folder / VERAGRID_CSV_NAME
     output_folder: Path = script_folder / get_output_folder_name(test_name)
@@ -1124,7 +1199,13 @@ def run_comparison() -> None:
     veragrid_step: Optional[float] = estimate_time_step(veragrid_time, "VeraGrid")
     selected_time_base: TimeBase = choose_time_base(simulink_step, veragrid_step, preferred_time_base)
 
-    common_time: Optional[np.ndarray] = build_common_time_vector(simulink_time, veragrid_time, selected_time_base, None)
+    common_time: Optional[np.ndarray] = build_common_time_vector(
+        simulink_time,
+        veragrid_time,
+        selected_time_base,
+        None,
+        COMPARISON_WINDOW_S,
+    )
     if common_time is None:
         print("Could not build a common time vector. Stopping safely.")
         return

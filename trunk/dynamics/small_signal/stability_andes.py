@@ -9,6 +9,7 @@ To run this script andes must be installed (pip install andes)
 import andes
 import pandas as pd
 import numpy as np
+from pathlib import Path
 
 CASES = {
     "KUNDUR_no_shunt": 'kundur_ieee_no_shunt.json',
@@ -17,8 +18,8 @@ CASES = {
     "IEEE39": andes.get_case("ieee39/ieee39_full.xlsx"),
 }
 
-# CASE = CASES["KUNDUR_no_shunt"]
-CASE = CASES["SMIB"]
+CASE = CASES["KUNDUR_no_shunt"]
+# CASE = CASES["SMIB"]
 # CASE = CASES["IEEE14"]
 # CASE = CASES["IEEE39"]
 
@@ -61,14 +62,17 @@ def main():
 
     key = next(k for k, v in CASES.items() if v == CASE)
 
+    results_dir = Path(__file__).resolve().parent / "kundur_small_signal_rms_results_Andes"
+    results_dir.mkdir(parents=True, exist_ok=True)
+
     pd.DataFrame(eig.mu).to_csv(
-        f"Eigenvalues_results_Andes_{key}.csv",
+        results_dir / f"Eigenvalues_results_Andes_{key}.csv",
         index=False,
         header=False,
     )
 
     pd.DataFrame(eig.pfactors.T).to_csv(
-        f"pfactors_results_Andes_{key}.csv",
+        results_dir / f"pfactors_results_Andes_{key}.csv",
         index=False,
         header=False,
         float_format="%.10f",
