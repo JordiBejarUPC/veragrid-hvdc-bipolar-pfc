@@ -7,6 +7,7 @@ from __future__ import annotations
 import copy
 from typing import Dict, Any, List
 
+from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory, Connection
 from VeraGridEngine.Utils.Symbolic import SharedVarReferenceType
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Expr, Const, BinOp, UnOp, Func, Func2

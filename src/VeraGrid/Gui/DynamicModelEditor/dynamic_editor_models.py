@@ -257,7 +257,16 @@ def update_param_value(blk: Block, row: "BlockParameterRow", value: Any, old_exp
             blk.mode_dict[row.key_var] = value
     elif row.kind == BlockParameterKind.FIXED_PARAMETER:
         if row.key_var is not None:
-            blk.parameters[row.key_var] = value
+            numeric_value: float
+            if isinstance(value, Const):
+                blk.parameters[row.key_var] = value
+            elif isinstance(value, Expr):
+                blk.parameters[row.key_var] = value
+            elif isinstance(value, (int, float)):
+                numeric_value = float(value)
+                blk.parameters[row.key_var] = Const(value=numeric_value, name=row.name)
+            else:
+                blk.parameters[row.key_var] = value
     elif row.kind == BlockParameterKind.STATE_EQUATION:
         if row.item_index is not None:
             blk.state_eqs[row.item_index] = value
@@ -266,7 +275,16 @@ def update_param_value(blk: Block, row: "BlockParameterRow", value: Any, old_exp
             blk.algebraic_eqs[row.item_index] = value
     elif row.kind == BlockParameterKind.STATE_VAR:
         if row.key_var is not None:
-            blk.init_values[row.key_var] = value
+            numeric_value = 0.0
+            if isinstance(value, Const):
+                blk.init_values[row.key_var] = value
+            elif isinstance(value, Expr):
+                blk.init_values[row.key_var] = value
+            elif isinstance(value, (int, float)):
+                numeric_value = float(value)
+                blk.init_values[row.key_var] = Const(value=numeric_value, name=row.name)
+            else:
+                blk.init_values[row.key_var] = value
     else:
         pass
 
@@ -483,7 +501,7 @@ class BlockValueDelegate(QtWidgets.QStyledItemDelegate):
         elif row.kind in (BlockParameterKind.EVENT_PARAMETER, BlockParameterKind.MODE_PARAMETER):
             return self._make_float_editor(parent) if row.value_type == float else QLineEdit(parent)
         elif row.kind == BlockParameterKind.FIXED_PARAMETER:
-            return self._make_float_editor(parent) if row.value_type == float else QLineEdit(parent)
+            return self._make_float_editor(parent) if row.value_type in (int, float) else QLineEdit(parent)
         elif row.kind in (BlockParameterKind.STATE_EQUATION, BlockParameterKind.ALGEBRAIC_EQUATION):
             return QLineEdit(parent)
         else:
@@ -877,7 +895,19 @@ class WrappableBlockTableModel(WrappableTableModel):
                 return True
             elif self.mode == DynamicTableModelMode.PARAMETERS:
                 try:
-                    parsed_value = _parse_symbolic_editor_value(self.block, value)
+                    if row.kind == BlockParameterKind.FIXED_PARAMETER:
+                        numeric_value: float
+                        if isinstance(value, Const):
+                            numeric_value = float(value.value)
+                        elif isinstance(value, (int, float)):
+                            numeric_value = float(value)
+                        elif isinstance(value, str):
+                            numeric_value = float(value)
+                        else:
+                            raise ValueError(f"Static parameter '{row.name}' requires a numeric value")
+                        parsed_value = self.var_factory.add_const(value=numeric_value, name=row.name)
+                    else:
+                        parsed_value = _parse_symbolic_editor_value(self.block, value)
                 except (SyntaxError, TypeError, ValueError):
                     return False
                 row.value = parsed_value
