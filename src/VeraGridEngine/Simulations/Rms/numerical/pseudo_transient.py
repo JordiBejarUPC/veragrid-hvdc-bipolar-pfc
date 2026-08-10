@@ -1186,6 +1186,15 @@ class  PseudoTransient:
                         "PseudoTransient linear step size mismatch: "
                         f"delta={delta.size}, x={x_new.size}, J={Jf.shape}, rhs={rhs.size}"
                     )
+                equilibrium_param_indices = getattr(self.problem, "_equilibrium_param_indices", dict())
+                if isinstance(equilibrium_param_indices, dict):
+                    for param_idx in equilibrium_param_indices.values():
+                        if isinstance(param_idx, int) and 0 <= param_idx < delta.size:
+                            delta[param_idx] = 0.0
+                        else:
+                            pass
+                else:
+                    pass
                 solved = np.all(np.isfinite(delta))
 
                 if not solved:  # or not np.all(np.isfinite(delta)):
