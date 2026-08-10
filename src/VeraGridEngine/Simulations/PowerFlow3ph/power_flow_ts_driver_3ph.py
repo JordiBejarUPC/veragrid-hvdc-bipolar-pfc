@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Dict, Union
 
 import numpy as np
 
-from VeraGridEngine.Compilers.circuit_to_gslv import (
+from VeraGridEngine.Compilers.Gslv import (
     GSLV_AVAILABLE,
     gslv_pf_3ph,
     translate_gslv_pf_3ph_results,

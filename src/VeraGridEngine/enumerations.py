@@ -396,8 +396,6 @@ class EngineType(Enum):
     Available engines enumeration
     """
     VeraGrid = 'VeraGrid'
-    Bentayga = 'Bentayga'
-    NewtonPA = 'Newton Power Analytics'
     PGM = 'Power Grid Model'
     GSLV = "gslv"
 

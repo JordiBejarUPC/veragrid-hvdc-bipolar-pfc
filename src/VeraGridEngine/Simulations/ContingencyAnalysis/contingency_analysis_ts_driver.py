@@ -25,9 +25,7 @@ from VeraGridEngine.enumerations import SimulationTypes
 from VeraGridEngine.Simulations.driver_template import TimeSeriesDriverTemplate
 from VeraGridEngine.Simulations.Clustering.clustering_results import ClusteringResults
 from VeraGridEngine.Simulations.ContingencyAnalysis.contingency_analysis_results import ContingencyAnalysisResults
-from VeraGridEngine.Compilers.circuit_to_newton_pa import newton_pa_contingencies, translate_contingency_report, \
-    NEWTON_PA_AVAILABLE
-from VeraGridEngine.Compilers.circuit_to_gslv import (gslv_contingencies_ts, GSLV_AVAILABLE)
+from VeraGridEngine.Compilers.Gslv import (gslv_contingencies_ts, GSLV_AVAILABLE)
 from VeraGridEngine.Utils.NumericalMethods.weldorf_online_stddev import WeldorfOnlineStdDevMat
 
 
@@ -564,10 +562,6 @@ class ContingencyAnalysisTimeSeriesDriver(TimeSeriesDriverTemplate):
 
             else:
                 pass
-
-        elif self.engine == EngineType.NewtonPA and NEWTON_PA_AVAILABLE:
-            self.report_text('Running contingencies in newton... ')
-            self.results = self.run_newton_pa()
 
         elif self.engine == EngineType.GSLV and GSLV_AVAILABLE:
             self.report_text('Running contingencies in gslv... ')

@@ -9,7 +9,7 @@ import VeraGridEngine.api as vg
 from VeraGridEngine.enumerations import LogSeverity, SolverType
 from VeraGridEngine.Simulations.OPF.opf_driver import OptimalPowerFlowDriver
 from VeraGridEngine.Simulations.OPF.opf_ts_driver import OptimalPowerFlowTimeSeriesDriver
-import VeraGridEngine.Compilers.circuit_to_gslv as gslv
+import VeraGridEngine.Compilers.Gslv as gslv
 
 
 def get_warning_messages(driver) -> list[str]:

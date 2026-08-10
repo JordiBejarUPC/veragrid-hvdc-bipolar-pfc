@@ -16,11 +16,14 @@ from VeraGridEngine.enumerations import (
     ShuntConnectionType,
     WindingType,
     WindingsConnection,
+    HvdcControlType,
+    ContingencyMethod,
+    ContingencyOperationTypes,
+    BuildStatus,
+    BranchGroupTypes,
+    ConverterControlType
 )
-from VeraGridEngine.enumerations import (HvdcControlType, SolverType, TimeGrouping,
-                                         ZonalGrouping, MIPSolvers, ContingencyMethod, ContingencyOperationTypes,
-                                         BuildStatus, BranchGroupTypes, ConverterControlType)
-GSLV_RECOMMENDED_VERSION: str = "0.7.0"
+GSLV_RECOMMENDED_VERSION: str = "0.7.10"
 GSLV_VERSION: str = ''
 GSLV_AVAILABLE: bool = False
 try:
