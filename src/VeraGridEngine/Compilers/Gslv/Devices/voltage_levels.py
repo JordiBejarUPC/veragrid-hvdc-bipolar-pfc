@@ -10,6 +10,7 @@ from VeraGridEngine.Compilers.Gslv.activation import pg
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from typing import Dict
 
+
 def convert_voltage_level(elm: VoltageLevel,
                           substations_dict: Dict[Substation, "pg.Substation"]) -> "pg.VoltageLevel":
     """
@@ -47,4 +48,3 @@ def add_voltage_levels(
         d[vl] = elm
 
     return d
-

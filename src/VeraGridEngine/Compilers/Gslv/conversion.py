@@ -4,13 +4,14 @@
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
 from VeraGridEngine.Devices.Aggregation.area import Area
+from VeraGridEngine.Devices.Aggregation.branch_group import BranchGroup
 from VeraGridEngine.Devices.Aggregation.country import Country
 from VeraGridEngine.Devices.Aggregation.facility import Facility
-from VeraGridEngine.Devices.Aggregation.investment import Investment
 from VeraGridEngine.Devices.Aggregation.investments_group import InvestmentsGroup
+from VeraGridEngine.Devices.Aggregation.modelling_authority import ModellingAuthority
+from VeraGridEngine.Devices.Aggregation.municipality import Municipality
+from VeraGridEngine.Devices.Aggregation.region import Region
 from VeraGridEngine.Devices.Aggregation.zone import Zone
-from VeraGridEngine.Devices.Branches.line import Line
-from VeraGridEngine.Devices.Events.contingency import Contingency
 from VeraGridEngine.Devices.Events.contingency_group import ContingencyGroup
 from VeraGridEngine.Devices.Substation.substation import Substation
 from VeraGridEngine.Devices.Substation.voltage_level import VoltageLevel
@@ -39,20 +40,48 @@ from VeraGridEngine.Compilers.Gslv.Devices.investments import add_investment_gro
 from VeraGridEngine.Compilers.Gslv.Devices.facilities import add_facilities
 from VeraGridEngine.Compilers.Gslv.Devices.modelling_authorities import add_modelling_authorities
 from VeraGridEngine.Compilers.Gslv.Devices.buses import add_buses
-from VeraGridEngine.Compilers.Gslv.Devices.injections import add_loads, add_static_generators, add_shunts, add_controllable_shunts, add_generators, add_battery_data
+from VeraGridEngine.Compilers.Gslv.Devices.loads import add_loads
+from VeraGridEngine.Compilers.Gslv.Devices.static_generators import add_static_generators
+from VeraGridEngine.Compilers.Gslv.Devices.shunts import add_shunts
+from VeraGridEngine.Compilers.Gslv.Devices.controllable_shunts import add_controllable_shunts
+from VeraGridEngine.Compilers.Gslv.Devices.generators import add_generators
+from VeraGridEngine.Compilers.Gslv.Devices.batteries import add_battery_data
 from VeraGridEngine.Compilers.Gslv.Devices.lines import add_lines
 from VeraGridEngine.Compilers.Gslv.Devices.dc_lines import add_dc_lines
 from VeraGridEngine.Compilers.Gslv.Devices.transformers import add_transformers
 from VeraGridEngine.Compilers.Gslv.Devices.transformers3w import add_transformers3w
-from VeraGridEngine.Compilers.Gslv.Devices.converters import add_vscs, add_hvdcs
+from VeraGridEngine.Compilers.Gslv.Devices.vsc import add_vscs
+from VeraGridEngine.Compilers.Gslv.Devices.hvdc_line import add_hvdcs
 
 if TYPE_CHECKING:
     from VeraGridEngine.Simulations.OPF.opf_results import OptimalPowerFlowResults
 
 
 class GslvDicts:
+    """
+    Hold the VeraGrid-to-GSLV object lookup dictionaries produced during conversion.
+    """
+    __slots__ = (
+        "area_dict",
+        "zone_dict",
+        "substation_dict",
+        "voltage_level_dict",
+        "country_dict",
+        "facility_dict",
+        "modelling_authorities_dict",
+        "branch_groups_dict",
+        "municipalities_dict",
+        "regions_dict",
+        "con_groups_dict",
+        "inv_groups_dict",
+    )
 
-    def __init__(self):
+    def __init__(self) -> None:
+        """
+        Initialize every conversion lookup dictionary before the conversion stages fill them.
+
+        :return: None.
+        """
         self.area_dict: Dict[Area, "pg.Area"] = dict()
 
         self.zone_dict: Dict[Zone, "pg.Zone"] = dict()
@@ -65,11 +94,18 @@ class GslvDicts:
 
         self.facility_dict: Dict[Facility, "pg.Facility"] = dict()
 
-        self.regions_dict: Dict[Country, "pg.Country"] = dict()
+        self.modelling_authorities_dict: Dict[ModellingAuthority, "pg.ModellingAuthority"] = dict()
+
+        self.branch_groups_dict: Dict[BranchGroup, "pg.BranchGroup"] = dict()
+
+        self.municipalities_dict: Dict[Municipality, "pg.Municipality"] = dict()
+
+        self.regions_dict: Dict[Region, "pg.Region"] = dict()
 
         self.con_groups_dict: Dict[ContingencyGroup, "pg.ContingencyGroup"] = dict()
 
         self.inv_groups_dict: Dict[InvestmentsGroup, "pg.InvestmentGroup"] = dict()
+
 
 def to_gslv(circuit: MultiCircuit,
             use_time_series: bool,
@@ -268,6 +304,7 @@ def to_gslv(circuit: MultiCircuit,
 
     return pg_grid, dicts
 
+
 class FakeAdmittances:
     """
     Fake admittances class needed to make the translation
@@ -282,6 +319,7 @@ class FakeAdmittances:
         self.Ybus = None
         self.Yf = None
         self.Yt = None
+
 
 def get_snapshots_from_gslv(circuit: MultiCircuit, override_branch_controls: bool = False) -> List[NumericalCircuit]:
     """
