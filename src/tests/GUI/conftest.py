@@ -1,24 +1,8 @@
-import os
 import sys
 
 import pytest
 from PySide6 import QtCore
 from PySide6 import QtWidgets
-
-
-def pytest_configure(config: pytest.Config) -> None:
-    """
-    Configure Qt before GUI test modules import PySide.
-
-    :param config: Pytest configuration object.
-    :return: Nothing.
-    """
-    del config
-
-    if "QT_QPA_PLATFORM" in os.environ:
-        pass
-    else:
-        os.environ["QT_QPA_PLATFORM"] = "offscreen"
 
 
 @pytest.fixture(scope="session")
