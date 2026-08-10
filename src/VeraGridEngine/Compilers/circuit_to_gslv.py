@@ -26,6 +26,7 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_ts_results import PowerFlow
 from VeraGridEngine.Simulations.PowerFlow3ph.power_flow_results_3ph import PowerFlowResults3Ph
 from VeraGridEngine.DataStructures.numerical_circuit import NumericalCircuit
 from VeraGridEngine.enumerations import (ShuntControlMode, TapModuleControl, TapPhaseControl, SolverType,
+                                         AcOpfMode,
                                          OpfDispatchMode, MIPSolvers, ZonalGrouping, TimeGrouping,
                                          InvestmentEvaluationMethod, InvestmentsEvaluationObjectives)
 
@@ -876,18 +877,19 @@ def convert_bus(elm: dev.Bus, n_time: int,
                  time_indices=time_indices,
                  n_time=n_time,
                  default_val=elm.active)
-    fill_profile(gslv_profile=bus.Vm0,
-                 gc_profile=elm.Vm0_prof,
-                 use_time_series=use_time_series,
-                 time_indices=time_indices,
-                 n_time=n_time,
-                 default_val=elm.Vm0)
-    fill_profile(gslv_profile=bus.Va0,
-                 gc_profile=elm.Va0_prof,
-                 use_time_series=use_time_series,
-                 time_indices=time_indices,
-                 n_time=n_time,
-                 default_val=elm.Va0)
+    if use_time_series:
+        fill_profile(gslv_profile=bus.Vm0,
+                     gc_profile=elm.Vm0_prof,
+                     use_time_series=use_time_series,
+                     time_indices=time_indices,
+                     n_time=n_time,
+                     default_val=elm.Vm0)
+        fill_profile(gslv_profile=bus.Va0,
+                     gc_profile=elm.Va0_prof,
+                     use_time_series=use_time_series,
+                     time_indices=time_indices,
+                     n_time=n_time,
+                     default_val=elm.Va0)
 
     return bus
 
@@ -3206,10 +3208,31 @@ def get_gslv_opf_options(opt: OptimalPowerFlowOptions,
         TimeGrouping.Daily: pg.TimeGrouping.Daily,
         TimeGrouping.Hourly: pg.TimeGrouping.Hourly,
     }
+    acopf_mode_dict = {
+        AcOpfMode.ACOPFstd: pg.AcOpfMode.ACOPFstd,
+        AcOpfMode.ACOPFslacks: pg.AcOpfMode.ACOPFslacks,
+        AcOpfMode.ACOPFMaxInjections: pg.AcOpfMode.ACOPFMaxInjections,
+    }
+    ips_method_dict = {
+        SolverType.NR: pg.SolverType.NR,
+        SolverType.HELM: pg.SolverType.HELM,
+        SolverType.IWAMOTO: pg.SolverType.IWAMOTO,
+        SolverType.LM: pg.SolverType.LM,
+        SolverType.FASTDECOUPLED: pg.SolverType.FASTDECOUPLED,
+        SolverType.LACPF: pg.SolverType.LACPF,
+        SolverType.Linear: pg.SolverType.DC,
+    }
 
     cg_dict = {elm.get_idtag(): elm for elm in gslv_circuit.contingency_groups}
 
     contingency_groups_used = [cg_dict[cg.idtag] for cg in opt.contingency_groups_used]
+    if opt.acopf_pf_converged:
+        acopf_v0 = None if opt.acopf_v0 is None else np.asarray(opt.acopf_v0, dtype=np.complex128)
+        acopf_s0 = None if opt.acopf_S0 is None else np.asarray(opt.acopf_S0, dtype=np.complex128)
+    else:
+        # Do not inject a failed PF state into GSLV's nonlinear OPF bootstrap.
+        acopf_v0 = None
+        acopf_s0 = None
 
     return pg.OptimalPowerFlowOptions(
         dispatch_mode=dispatch_mode_dict[opt.dispatch_mode],
@@ -3230,6 +3253,16 @@ def get_gslv_opf_options(opt: OptimalPowerFlowOptions,
         add_losses_approximation=opt.add_losses_approximation,
         verbose=opt.verbose,
         robust=opt.robust,
+        acopf_mode=acopf_mode_dict[opt.acopf_mode],
+        ips_method=ips_method_dict.get(opt.ips_method, pg.SolverType.NR),
+        ips_tolerance=opt.ips_tolerance,
+        ips_iterations=opt.ips_iterations,
+        ips_trust_radius=opt.ips_trust_radius,
+        ips_init_with_pf=opt.ips_init_with_pf,
+        ips_control_q_limits=opt.ips_control_q_limits,
+        acopf_v0=acopf_v0,
+        acopf_s0=acopf_s0,
+        acopf_pf_converged=opt.acopf_pf_converged,
     )
 
 
@@ -3371,6 +3404,7 @@ def gslv_opf(circuit: MultiCircuit,
                            override_branch_controls=False,
                            opf_results=None)
 
+    run_nonlinear: bool = opf_options.solver == SolverType.NONLINEAR_OPF and not time_series
     opf_options = get_gslv_opf_options(opf_options, circuit, gslv_grid)
 
     if time_series:
@@ -3387,12 +3421,19 @@ def gslv_opf(circuit: MultiCircuit,
 
     t0 = time.time()
 
-    opf_res = pg.optimal_power_flow(
-        grid=gslv_grid,
-        options=opf_options,
-        n_threads=n_threads,
-        time_indices=time_indices,
-    )
+    if run_nonlinear:
+        opf_res = pg.nonlinear_optimal_power_flow(
+            grid=gslv_grid,
+            options=opf_options,
+            t_idx=0,
+        )
+    else:
+        opf_res = pg.optimal_power_flow(
+            grid=gslv_grid,
+            options=opf_options,
+            n_threads=n_threads,
+            time_indices=time_indices,
+        )
 
     logger.add_info("gslv time", value=f"{(time.time() - t0)} s")
 
