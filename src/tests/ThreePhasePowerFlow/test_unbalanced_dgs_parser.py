@@ -445,3 +445,48 @@ def test_single_phase_transformer_dd_non_auto_phases_ca():
 
     assert np.allclose(U_result, U_reference, atol=3e-4)
     assert np.allclose(np.abs(res.voltage_B[2]), np.array([0.0]), atol=3e-4)
+
+def test_three_phase_shunt_delta():
+
+    grid = vge.open_file('data/grids/DGS/ThreePhaseShuntDelta.dgs')
+
+    res = vge.power_flow3ph(grid=grid, options=vge.PowerFlowOptions(solver_type=SolverType.NR,
+                                                                    retry_with_other_methods=False))
+
+    Ua_reference = np.array([1.0657])
+    Ub_reference = np.array([1.0696])
+    Uc_reference = np.array([1.0740])
+
+    assert np.allclose(np.abs(res.voltage_A[0]), Ua_reference, atol=7e-4)
+    assert np.allclose(np.abs(res.voltage_B[0]), Ub_reference, atol=7e-4)
+    assert np.allclose(np.abs(res.voltage_C[0]), Uc_reference, atol=7e-4)
+
+def test_three_phase_shunt_floatingstar():
+
+    grid = vge.open_file('data/grids/DGS/ThreePhaseShuntFloatingStar.dgs')
+
+    res = vge.power_flow3ph(grid=grid, options=vge.PowerFlowOptions(solver_type=SolverType.NR,
+                                                                    retry_with_other_methods=False))
+
+    Ua_reference = np.array([1.0657])
+    Ub_reference = np.array([1.0696])
+    Uc_reference = np.array([1.0740])
+
+    assert np.allclose(np.abs(res.voltage_A[0]), Ua_reference, atol=7e-4)
+    assert np.allclose(np.abs(res.voltage_B[0]), Ub_reference, atol=7e-4)
+    assert np.allclose(np.abs(res.voltage_C[0]), Uc_reference, atol=7e-4)
+
+def test_three_phase_shunt_groundedstar():
+
+    grid = vge.open_file('data/grids/DGS/ThreePhaseShuntGroundedStar.dgs')
+
+    res = vge.power_flow3ph(grid=grid, options=vge.PowerFlowOptions(solver_type=SolverType.NR,
+                                                                    retry_with_other_methods=False))
+
+    Ua_reference = np.array([1.0657])
+    Ub_reference = np.array([1.0696])
+    Uc_reference = np.array([1.0740])
+
+    assert np.allclose(np.abs(res.voltage_A[0]), Ua_reference, atol=7e-4)
+    assert np.allclose(np.abs(res.voltage_B[0]), Ub_reference, atol=7e-4)
+    assert np.allclose(np.abs(res.voltage_C[0]), Uc_reference, atol=7e-4)

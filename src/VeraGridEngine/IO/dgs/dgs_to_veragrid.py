@@ -4132,6 +4132,14 @@ def convert_dgs_to_shunt(elmshnt: ElmShnt,
         b2 = b_mvar / 3
         b3 = b_mvar / 3
         connection = ShuntConnectionType.Delta
+    elif elmshnt.ctech == 1: # 3PH-'Y'
+        g1 = g_mw / 3
+        g2 = g_mw / 3
+        g3 = g_mw / 3
+        b1 = b_mvar / 3
+        b2 = b_mvar / 3
+        b3 = b_mvar / 3
+        connection = ShuntConnectionType.FloatingStar
     else:
         g1 = g_mw / 3
         g2 = g_mw / 3
