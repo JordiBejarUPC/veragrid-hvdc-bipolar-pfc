@@ -13,7 +13,8 @@ from VeraGridEngine.Simulations.OPF.ac_opf_worker import run_nonlinear_opf
 from VeraGridEngine.Simulations.PowerFlow.power_flow_options import PowerFlowOptions
 from VeraGridEngine.Simulations.driver_template import TimeSeriesDriverTemplate
 from VeraGridEngine.Simulations.OPF.simple_dispatch_ts import GreedyDispatchInputsSnapshot, greedy_dispatch2
-import VeraGridEngine.Compilers.Gslv as gslv
+from VeraGridEngine.Compilers.Gslv.activation import GSLV_AVAILABLE, pg
+from VeraGridEngine.Compilers.Gslv.Simulations.opf import gslv_opf
 
 
 class OptimalPowerFlowDriver(TimeSeriesDriverTemplate):
@@ -305,7 +306,7 @@ class OptimalPowerFlowDriver(TimeSeriesDriverTemplate):
         self.tic()
 
         if self.engine == EngineType.GSLV:
-            if not gslv.GSLV_AVAILABLE:
+            if not GSLV_AVAILABLE:
                 self.engine = EngineType.VeraGrid
                 self.logger.add_warning('GSLV not available, falling back to VeraGrid')
             else:
@@ -327,11 +328,11 @@ class OptimalPowerFlowDriver(TimeSeriesDriverTemplate):
             else:
                 self.report_text('Running Non-Linear OPF with GSLV...')
 
-            gslv_res = gslv.gslv_opf(circuit=self.grid,
-                                     opf_options=self.options,
-                                     time_series=False,
-                                     time_indices=None,
-                                     logger=self.logger)
+            gslv_res = gslv_opf(circuit=self.grid,
+                                opf_options=self.options,
+                                time_series=False,
+                                time_indices=None,
+                                logger=self.logger)
 
             self.results.voltage = gslv_res.voltage[0, :]
             self.results.Sbus = gslv_res.Sbus[0, :]
@@ -366,10 +367,10 @@ class OptimalPowerFlowDriver(TimeSeriesDriverTemplate):
             self.results.fluid_path_flow = gslv_res.fluid_path_flow[0, :]
             self.results.fluid_injection_flow = gslv_res.fluid_injection_flow[0, :]
             self.results.converged = bool(gslv_res.converged[0])
-            if hasattr(gslv_res, "error_values"):
-                self.results.error = float(gslv_res.error_values[0])
-            else:
+            if isinstance(gslv_res, pg.OptimalPowerFlowResults):
                 self.results.error = 0.0 if self.results.converged else np.nan
+            else:
+                self.results.error = float(gslv_res.error_values[0])
             self.results.non_linear = self.options.solver == SolverType.NONLINEAR_OPF
 
         else:

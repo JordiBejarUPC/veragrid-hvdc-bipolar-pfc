@@ -18,7 +18,8 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_options import PowerFlowOpt
 from VeraGridEngine.Simulations.driver_template import TimeSeriesDriverTemplate
 from VeraGridEngine.Simulations.Clustering.clustering_results import ClusteringResults
 from VeraGridEngine.basic_structures import IntVec, Vec, get_time_groups
-import VeraGridEngine.Compilers.Gslv as gslv
+from VeraGridEngine.Compilers.Gslv.activation import GSLV_AVAILABLE
+from VeraGridEngine.Compilers.Gslv.Simulations.opf import gslv_opf
 
 
 class OptimalPowerFlowTimeSeriesDriver(TimeSeriesDriverTemplate):
@@ -669,7 +670,7 @@ class OptimalPowerFlowTimeSeriesDriver(TimeSeriesDriverTemplate):
         self.tic()
 
         if self.engine == EngineType.GSLV:
-            if not gslv.GSLV_AVAILABLE:
+            if not GSLV_AVAILABLE:
                 self.engine = EngineType.VeraGrid
                 self.logger.add_warning('GSLV not available, falling back to VeraGrid')
             else:
@@ -708,11 +709,11 @@ class OptimalPowerFlowTimeSeriesDriver(TimeSeriesDriverTemplate):
             if self.options.solver == SolverType.LINEAR_OPF:
                 self.report_text('Running Linear OPF with GSLV...')
 
-                gslv_res = gslv.gslv_opf(circuit=self.grid,
-                                         opf_options=self.options,
-                                         time_series=use_time_series,
-                                         time_indices=self.time_indices,
-                                         logger=self.logger)
+                gslv_res = gslv_opf(circuit=self.grid,
+                                    opf_options=self.options,
+                                    time_series=use_time_series,
+                                    time_indices=self.time_indices,
+                                    logger=self.logger)
 
                 self.results.voltage[result_time_indices, :] = gslv_res.voltage[source_time_indices, :]
                 self.results.Sbus[result_time_indices, :] = gslv_res.Sbus[source_time_indices, :].real

@@ -11,7 +11,8 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_worker import multi_island_
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results import PowerFlowResults
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Simulations.driver_template import DriverTemplate
-from VeraGridEngine.Compilers.Gslv import (GSLV_AVAILABLE, gslv_pf, translate_gslv_pf_results)
+from VeraGridEngine.Compilers.Gslv.activation import GSLV_AVAILABLE
+from VeraGridEngine.Compilers.Gslv.Simulations.power_flow import gslv_pf, translate_gslv_pf_results
 from VeraGridEngine.Compilers.circuit_to_pgm import PGM_AVAILABLE, pgm_pf
 from VeraGridEngine.enumerations import EngineType, SimulationTypes
 

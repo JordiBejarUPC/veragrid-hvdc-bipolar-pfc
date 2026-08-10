@@ -25,7 +25,8 @@ from VeraGridEngine.enumerations import SimulationTypes
 from VeraGridEngine.Simulations.driver_template import TimeSeriesDriverTemplate
 from VeraGridEngine.Simulations.Clustering.clustering_results import ClusteringResults
 from VeraGridEngine.Simulations.ContingencyAnalysis.contingency_analysis_results import ContingencyAnalysisResults
-from VeraGridEngine.Compilers.Gslv import (gslv_contingencies_ts, GSLV_AVAILABLE)
+from VeraGridEngine.Compilers.Gslv.activation import GSLV_AVAILABLE
+from VeraGridEngine.Compilers.Gslv.Simulations.contingencies import gslv_contingencies_ts
 from VeraGridEngine.Utils.NumericalMethods.weldorf_online_stddev import WeldorfOnlineStdDevMat
 
 

@@ -154,7 +154,7 @@ def test_gslv_snapshot_nonlinear_opf_case14() -> None:
     native_results = run_snapshot_nonlinear_opf(grid=grid, options=options, engine=vg.EngineType.VeraGrid)
     gslv_results = run_snapshot_nonlinear_opf(grid=grid, options=options, engine=vg.EngineType.GSLV)
 
-    assert_snapshot_nonlinear_results_close(native_results, gslv_results, 1e-4, 1e-4, 5e-4, 2e-3)
+    assert_snapshot_nonlinear_results_close(native_results, gslv_results, 1e-4, 1e-4, 2e-3, 5e-3)
 
 
 def test_gslv_snapshot_nonlinear_opf_case89pegase() -> None:

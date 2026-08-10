@@ -30,7 +30,6 @@ import VeraGridEngine.Simulations.PowerFlow.grid_analysis as grid_analysis
 from VeraGridEngine.Devices.types import AREA_TYPES
 from VeraGridEngine.Devices.Events.emt_events_group import EmtEventsGroup
 from VeraGridEngine.Devices.Events.rms_events_group import RmsEventsGroup
-from VeraGridEngine.Compilers.circuit_to_newton_pa import get_newton_mip_solvers_list
 from VeraGridEngine.Utils.MIP.selected_interface import get_available_mip_solvers, get_available_mip_frameworks
 from VeraGridEngine.IO.veragrid.remote import RemoteInstruction
 from VeraGridEngine.Compilers.circuit_to_data import compile_numerical_circuit_at

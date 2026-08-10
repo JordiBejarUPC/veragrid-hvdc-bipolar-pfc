@@ -113,8 +113,6 @@ def convert_transformer(elm: Transformer2W,
     tr2.temp_base = elm.temp_base
     tr2.alpha = elm.alpha
     tr2.conn = transformer_conn
-    tr2.protection_rating_factor = elm.protection_rating_factor
-    tr2.monitor_loading = elm.monitor_loading
 
     if add_three_phase_data:
         tr2.conn_f = winding_type_dict[elm.conn_f]

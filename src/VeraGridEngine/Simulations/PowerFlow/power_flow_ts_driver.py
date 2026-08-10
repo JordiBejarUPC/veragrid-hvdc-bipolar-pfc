@@ -12,7 +12,8 @@ from VeraGridEngine.Simulations.driver_template import TimeSeriesDriverTemplate
 from VeraGridEngine.Simulations.Clustering.clustering_results import ClusteringResults
 import VeraGridEngine.Simulations.PowerFlow.power_flow_worker as pf_worker
 from VeraGridEngine.Compilers.circuit_to_pgm import pgm_pf
-from VeraGridEngine.Compilers.Gslv import GSLV_AVAILABLE, gslv_pf, translate_gslv_pf_time_series_results
+from VeraGridEngine.Compilers.Gslv.activation import GSLV_AVAILABLE
+from VeraGridEngine.Compilers.Gslv.Simulations.power_flow import gslv_pf, translate_gslv_pf_time_series_results
 from VeraGridEngine.basic_structures import IntVec
 from VeraGridEngine.enumerations import EngineType, SimulationTypes
 

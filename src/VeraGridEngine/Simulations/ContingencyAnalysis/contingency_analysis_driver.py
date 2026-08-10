@@ -8,7 +8,7 @@ from __future__ import annotations
 import numpy as np
 from typing import Union, List, TYPE_CHECKING
 
-from VeraGridEngine.Compilers.Gslv import gslv_contingencies_snapshot
+from VeraGridEngine.Compilers.Gslv.Simulations.contingencies import gslv_contingencies_snapshot
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.enumerations import EngineType, ContingencyMethod, SimulationTypes
 from VeraGridEngine.Simulations.ContingencyAnalysis.contingency_analysis_results import ContingencyAnalysisResults

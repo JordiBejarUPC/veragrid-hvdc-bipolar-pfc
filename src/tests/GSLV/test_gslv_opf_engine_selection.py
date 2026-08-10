@@ -7,9 +7,9 @@ import numpy as np
 
 import VeraGridEngine.api as vg
 from VeraGridEngine.enumerations import LogSeverity, SolverType
+import VeraGridEngine.Simulations.OPF.opf_driver as opf_driver_module
 from VeraGridEngine.Simulations.OPF.opf_driver import OptimalPowerFlowDriver
 from VeraGridEngine.Simulations.OPF.opf_ts_driver import OptimalPowerFlowTimeSeriesDriver
-import VeraGridEngine.Compilers.Gslv as gslv
 
 
 def get_warning_messages(driver) -> list[str]:
@@ -112,7 +112,7 @@ def test_gslv_snapshot_linear_opf_uses_gslv(monkeypatch) -> None:
         result.error_values = np.zeros(1, dtype=float)
         return result
 
-    monkeypatch.setattr(gslv, "gslv_opf", fake_gslv_opf)
+    monkeypatch.setattr(opf_driver_module, "gslv_opf", fake_gslv_opf)
 
     driver.run()
 
@@ -215,7 +215,7 @@ def test_gslv_snapshot_nonlinear_opf_uses_gslv(monkeypatch) -> None:
         result.error_values = np.zeros(1, dtype=float)
         return result
 
-    monkeypatch.setattr(gslv, "gslv_opf", fake_gslv_opf)
+    monkeypatch.setattr(opf_driver_module, "gslv_opf", fake_gslv_opf)
 
     driver.run()
 

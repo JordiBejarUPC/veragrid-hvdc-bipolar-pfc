@@ -4,8 +4,6 @@
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
 
-import sys
-
 from VeraGridEngine.Compilers.Gslv.activation import pg
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.basic_structures import (
@@ -22,13 +20,11 @@ from typing import TYPE_CHECKING
 from VeraGridEngine.Compilers.Gslv.conversion import to_gslv
 from VeraGridEngine.Compilers.Gslv.Simulations.power_flow import get_gslv_pf_options
 from VeraGridEngine.Compilers.Gslv.Simulations.opf import get_gslv_opf_options
+from VeraGridEngine.Simulations.InvestmentsEvaluation.investments_evaluation_results import InvestmentsEvaluationResults
 
 if TYPE_CHECKING:
     from VeraGridEngine.Simulations.InvestmentsEvaluation.investments_evaluation_options import (
         InvestmentsEvaluationOptions,
-    )
-    from VeraGridEngine.Simulations.InvestmentsEvaluation.investments_evaluation_results import (
-        InvestmentsEvaluationResults,
     )
 
 
@@ -81,13 +77,7 @@ def translate_gslv_investments_evaluation_results(
     :param res: GSLV investments-evaluation results.
     :return: VeraGrid investments-evaluation results.
     """
-    module = sys.modules.get("VeraGridEngine.Simulations.InvestmentsEvaluation.investments_evaluation_results", None)
-    if module is None:
-        raise RuntimeError("InvestmentsEvaluationResults module is not loaded")
-    else:
-        results_tpe = module.InvestmentsEvaluationResults
-
-    results = results_tpe(
+    results = InvestmentsEvaluationResults(
         f_names=np.array(res.f_names, dtype=str),
         x_names=np.array(res.x_names, dtype=str),
         max_eval=int(res.max_eval),

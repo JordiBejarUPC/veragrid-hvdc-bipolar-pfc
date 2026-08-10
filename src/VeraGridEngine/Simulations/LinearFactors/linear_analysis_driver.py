@@ -13,7 +13,8 @@ from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Compilers.circuit_to_data import compile_numerical_circuit_at
 from VeraGridEngine.Simulations.LinearFactors.linear_analysis import LinearAnalysis
 from VeraGridEngine.Simulations.driver_template import DriverTemplate
-from VeraGridEngine.Compilers.Gslv import GSLV_AVAILABLE, gslv_linear_matrices
+from VeraGridEngine.Compilers.Gslv.activation import GSLV_AVAILABLE
+from VeraGridEngine.Compilers.Gslv.Simulations.linear import gslv_linear_matrices
 from VeraGridEngine.enumerations import EngineType, SimulationTypes
 from VeraGridEngine.Simulations.LinearFactors.linear_analysis_results import LinearAnalysisResults
 from VeraGridEngine.Simulations.LinearFactors.linear_analysis_options import LinearAnalysisOptions
