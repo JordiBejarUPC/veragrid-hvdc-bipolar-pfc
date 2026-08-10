@@ -1085,6 +1085,7 @@ class ElmShnt(DGSElement):
         DgsProperty('i_cont', 'i', 'Tap Changer (Discrete=0, Continuous=1)', py_name='i_cont'),
         DgsProperty('usetp_mx', 'r', 'Upper Voltage Limit in p.u.', py_name='usetp_mx'),
         DgsProperty('usetp_mn', 'r', 'Lower Voltage Limit in p.u.', py_name='usetp_mn'),
+        DgsProperty('cgnd', 'i', 'Star Point (Grounded=0, Neutral=1)', py_name='cgnd'),
     ]
 
     def __init__(self) -> None:
@@ -1111,6 +1112,7 @@ class ElmShnt(DGSElement):
         self.i_cont: int = 0
         self.usetp_mx: float = 1.0
         self.usetp_mn: float = 1.0
+        self.cgnd: int = 0
 
 
 class ElmSvs(DGSElement):

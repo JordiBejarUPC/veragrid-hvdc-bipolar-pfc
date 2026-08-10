@@ -4123,10 +4123,35 @@ def convert_dgs_to_shunt(elmshnt: ElmShnt,
 
     g_mw, b_mvar = _extract_shunt_gb(elmshnt=elmshnt, f=frequency, logger=logger)
 
+    # Unbalanced
+    if elmshnt.ctech == 0: # 3PH-'D'
+        g1 = g_mw / 3
+        g2 = g_mw / 3
+        g3 = g_mw / 3
+        b1 = b_mvar / 3
+        b2 = b_mvar / 3
+        b3 = b_mvar / 3
+        connection = ShuntConnectionType.Delta
+    else:
+        g1 = g_mw / 3
+        g2 = g_mw / 3
+        g3 = g_mw / 3
+        b1 = b_mvar / 3
+        b2 = b_mvar / 3
+        b3 = b_mvar / 3
+        connection = ShuntConnectionType.GroundedStar
+
     shunt = dev.Shunt(name=name,
                       G=g_mw,
+                      G1=g1,
+                      G2=g2,
+                      G3=g3,
                       B=b_mvar,
+                      B1=b1,
+                      B2=b2,
+                      B3=b3,
                       active=(elmshnt.outserv == 0))
+    shunt.conn = connection
 
     return bus, shunt
 
