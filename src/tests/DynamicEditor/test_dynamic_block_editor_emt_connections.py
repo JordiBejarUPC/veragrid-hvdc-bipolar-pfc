@@ -4,12 +4,13 @@ import sys
 
 import pytest
 from PySide6 import QtWidgets
+import VeraGridEngine.api as gce
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
+from VeraGridEngine.Devices.Branches.line import Line
+from VeraGridEngine.Devices.Injections.load import Load
 
 from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI
-from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_graphics import BlockItem
-from VeraGridEngine.Utils.Symbolic.templates_common_functions import register_saved_emt_model_vars_for_device
-from VeraGridEngine.Utils.Symbolic.templates_common_functions import connect_bus_variables_emt
+import VeraGrid.Gui.DynamicModelEditor.dynamic_editor_models as dialog_models
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
@@ -35,120 +36,118 @@ class _BusStub:
                                            emt_model: Block,
                                            side: object,
                                            device_tpe: DeviceType) -> None:
+        """
+        Store one connected EMT model record for the stub bus.
+
+        :param device: Device being registered.
+        :param emt_model: EMT model block connected to the bus.
+        :param side: Side identifier used by branch-like devices.
+        :param device_tpe: Device type of the connected object.
+        :return: None.
+        """
         self.remove_emt_model_connected_for_device(device=device, side=side)
-
-        class _Record:
-            __slots__ = ("_device", "_model", "_side", "_device_tpe")
-
-            def __init__(self, device: object, model: Block, side: object, device_tpe: DeviceType) -> None:
-                self._device = device
-                self._model = model
-                self._side = side
-                self._device_tpe = device_tpe
-
-            def get_device(self) -> object:
-                return self._device
-
-            def get_model(self) -> Block:
-                return self._model
-
-            def get_side(self) -> object:
-                return self._side
-
-            def get_device_tpe(self) -> DeviceType:
-                return self._device_tpe
-
-        self._connected_emt_models.append(_Record(device, emt_model, side, device_tpe))
+        record: _ConnectedModelRecord = _ConnectedModelRecord(device=device,
+                                                              model=emt_model,
+                                                              side=side,
+                                                              device_tpe=device_tpe)
+        self._connected_emt_models.append(record)
 
     def remove_emt_model_connected_for_device(self, device: object, side: object | None = None) -> None:
+        """
+        Remove matching connected EMT model records from the stub bus.
+
+        :param device: Device to remove.
+        :param side: Optional side filter.
+        :return: None.
+        """
         self._connected_emt_models = [
             record for record in self._connected_emt_models
             if not (record.get_device() is device and (side is None or record.get_side() == side))
         ]
 
     def get_emt_models_connected(self) -> list[object]:
+        """
+        Return a shallow copy of the connected EMT model records.
+
+        :return: Connected model record list.
+        """
         return list(self._connected_emt_models)
 
     def get_pending_emt_devices(self) -> list[object]:
+        """
+        Return the pending EMT device list.
+
+        :return: Pending device list copy.
+        """
         return list(self._pending_emt_devices)
 
     def remove_pending_emt_device(self, device: object) -> None:
+        """
+        Remove one pending EMT device from the stub bus.
+
+        :param device: Pending device to remove.
+        :return: None.
+        """
         self._pending_emt_devices = [pending for pending in self._pending_emt_devices if pending is not device]
 
 
-class _InjectionStub:
-    __slots__ = ("name", "bus", "rms_template", "_emt_template", "emt_model", "device_type")
+class _ConnectedModelRecord:
+    __slots__ = ("_device", "_model", "_side", "_device_tpe")
 
-    def __init__(self, name: str, bus: _BusStub, emt_template: EmtModelTemplate, device_type: DeviceType) -> None:
-        self.name = name
-        self.bus = bus
-        self.rms_template = None
-        self._emt_template = emt_template
-        self.emt_model = emt_template.block
-        self.device_type = device_type
+    def __init__(self, device: object, model: Block, side: object, device_tpe: DeviceType) -> None:
+        """
+        Build one connected EMT model record.
 
-    @property
-    def emt_template(self) -> EmtModelTemplate | None:
-        return self._emt_template
+        :param device: Registered device.
+        :param model: Registered EMT block.
+        :param side: Side identifier for branch-like devices.
+        :param device_tpe: Device type of the registered object.
+        :return: None.
+        """
+        self._device = device
+        self._model = model
+        self._side = side
+        self._device_tpe = device_tpe
 
-    @emt_template.setter
-    def emt_template(self, val: EmtModelTemplate | None) -> None:
-        self._emt_template = val
+    def get_device(self) -> object:
+        """
+        Return the registered device.
 
+        :return: Registered device.
+        """
+        return self._device
 
-class _BranchStub:
-    __slots__ = ("name", "bus_from", "bus_to", "rms_template", "_emt_template", "emt_model", "device_type")
+    def get_model(self) -> Block:
+        """
+        Return the registered EMT model block.
 
-    def __init__(self,
-                 name: str,
-                 bus_from: _BusStub,
-                 bus_to: _BusStub,
-                 emt_template: EmtModelTemplate,
-                 device_type: DeviceType) -> None:
-        self.name = name
-        self.bus_from = bus_from
-        self.bus_to = bus_to
-        self.rms_template = None
-        self._emt_template = emt_template
-        self.emt_model = emt_template.block
-        self.device_type = device_type
+        :return: Registered EMT block.
+        """
+        return self._model
 
-    @property
-    def emt_template(self) -> EmtModelTemplate | None:
-        return self._emt_template
+    def get_side(self) -> object:
+        """
+        Return the registered side marker.
 
-    @emt_template.setter
-    def emt_template(self, val: EmtModelTemplate | None) -> None:
-        self._emt_template = val
+        :return: Side marker.
+        """
+        return self._side
 
+    def get_device_tpe(self) -> DeviceType:
+        """
+        Return the registered device type.
 
-class _VscBranchStub:
-    __slots__ = ("name", "bus_from", "bus_to", "rms_template", "_emt_template", "emt_model", "device_type", "bus_dc_n")
-
-    def __init__(self,
-                 name: str,
-                 bus_from: _BusStub,
-                 bus_to: _BusStub,
-                 emt_template: EmtModelTemplate) -> None:
-        self.name = name
-        self.bus_from = bus_from
-        self.bus_to = bus_to
-        self.rms_template = None
-        self._emt_template = emt_template
-        self.emt_model = emt_template.block
-        self.device_type = DeviceType.VscDevice
-        self.bus_dc_n = None
-
-    @property
-    def emt_template(self) -> EmtModelTemplate | None:
-        return self._emt_template
-
-    @emt_template.setter
-    def emt_template(self, val: EmtModelTemplate | None) -> None:
-        self._emt_template = val
+        :return: Device type.
+        """
+        return self._device_tpe
 
 
 def _get_app() -> QtWidgets.QApplication:
+    """
+    Return the shared Qt application used by GUI tests.
+
+    :return: Existing or newly created Qt application.
+    """
     app = QtWidgets.QApplication.instance()
     if app is None:
         return QtWidgets.QApplication(sys.argv)
@@ -157,23 +156,67 @@ def _get_app() -> QtWidgets.QApplication:
 
 
 def _make_var(name: str, reference: VarPowerFlowReferenceType) -> Var:
+    """
+    Build one symbolic variable with the requested power-flow reference.
+
+    :param name: Variable name.
+    :param reference: Power-flow reference tag.
+    :return: Symbolic variable.
+    """
     return Var(name=name, reference=reference)
 
 
-def _make_ac_bus(name: str) -> _BusStub:
+def _make_ac_bus(name: str,
+                 *,
+                 include_neutral: bool = False,
+                 include_a: bool = True,
+                 include_b: bool = True,
+                 include_c: bool = True) -> _BusStub:
+    """
+    Build one AC bus stub with only the requested phase voltages.
+
+    :param name: Bus name.
+    :param include_neutral: Whether to expose the neutral voltage.
+    :param include_a: Whether to expose phase A voltage.
+    :param include_b: Whether to expose phase B voltage.
+    :param include_c: Whether to expose phase C voltage.
+    :return: AC bus stub.
+    """
+    mapping: dict[VarPowerFlowReferenceType, Var] = dict()
+
+    # Build exactly the phase-voltage mapping required by the test case so the
+    # editor must derive its connection ports from the bus mask and nothing else.
+    if include_neutral:
+        mapping[VarPowerFlowReferenceType.v_N] = _make_var(f"v_N_{name}", VarPowerFlowReferenceType.v_N)
+    else:
+        pass
+    if include_a:
+        mapping[VarPowerFlowReferenceType.v_A] = _make_var(f"v_A_{name}", VarPowerFlowReferenceType.v_A)
+    else:
+        pass
+    if include_b:
+        mapping[VarPowerFlowReferenceType.v_B] = _make_var(f"v_B_{name}", VarPowerFlowReferenceType.v_B)
+    else:
+        pass
+    if include_c:
+        mapping[VarPowerFlowReferenceType.v_C] = _make_var(f"v_C_{name}", VarPowerFlowReferenceType.v_C)
+    else:
+        pass
+
     return _BusStub(
         name=name,
         is_dc=False,
-        emt_model=Block(external_mapping={
-            VarPowerFlowReferenceType.v_N: _make_var(f"v_N_{name}", VarPowerFlowReferenceType.v_N),
-            VarPowerFlowReferenceType.v_A: _make_var(f"v_A_{name}", VarPowerFlowReferenceType.v_A),
-            VarPowerFlowReferenceType.v_B: _make_var(f"v_B_{name}", VarPowerFlowReferenceType.v_B),
-            VarPowerFlowReferenceType.v_C: _make_var(f"v_C_{name}", VarPowerFlowReferenceType.v_C),
-        }),
+        emt_model=Block(external_mapping=mapping),
     )
 
 
 def _make_dc_bus(name: str) -> _BusStub:
+    """
+    Build one DC bus stub exposing only the DC voltage.
+
+    :param name: Bus name.
+    :return: DC bus stub.
+    """
     return _BusStub(
         name=name,
         is_dc=True,
@@ -184,6 +227,12 @@ def _make_dc_bus(name: str) -> _BusStub:
 
 
 def _make_template(mapping_refs: list[VarPowerFlowReferenceType]) -> EmtModelTemplate:
+    """
+    Build one minimal EMT template exposing the requested references.
+
+    :param mapping_refs: References to include in the template mapping.
+    :return: EMT template.
+    """
     template = EmtModelTemplate(name="stub_template")
     template.block = Block(external_mapping={
         reference: _make_var(f"templ_{reference.value}", reference)
@@ -193,6 +242,12 @@ def _make_template(mapping_refs: list[VarPowerFlowReferenceType]) -> EmtModelTem
 
 
 def _build_editor(api_object: ALL_DEV_TYPES) -> DynamicBlockEditorGUI:
+    """
+    Build one detached EMT editor around the provided API object.
+
+    :param api_object: Device or template object under test.
+    :return: Dynamic block editor instance.
+    """
     _get_app()
     editor = DynamicBlockEditorGUI(
         var_factory=VarFactory(),
@@ -208,274 +263,211 @@ def _build_editor(api_object: ALL_DEV_TYPES) -> DynamicBlockEditorGUI:
     return editor
 
 
-def _find_connection_block_item(editor: DynamicBlockEditorGUI, block_name: str) -> BlockItem:
-    """Return the scene block item wrapping one top-level connection variable."""
-    item: object
-    wrapped_var_name: str | None
+def _build_real_injection_editor(bus_model: Block) -> tuple[DynamicBlockEditorGUI, Load]:
+    """
+    Build one real EMT load editor backed by a controlled bus EMT model.
 
-    for item in editor.scene.items():
-        if isinstance(item, BlockItem):
-            if item.subsys is not None:
-                wrapped_var_name = None
+    :param bus_model: EMT bus block to expose to the editor.
+    :return: Tuple with the editor and the owned load object.
+    """
+    circuit = gce.MultiCircuit(Sbase=100, fbase=50.0)
+    bus = gce.Bus(name="Bus 1", Vnom=10.0)
+    circuit.add_bus(bus)
+    load = gce.Load(name="Load 1")
+    circuit.add_load(bus=bus, api_obj=load)
 
-                if len(item.subsys.out_vars) > 0:
-                    wrapped_var_name = item.subsys.out_vars[0].name
-                elif len(item.subsys.in_vars) > 0:
-                    wrapped_var_name = item.subsys.in_vars[0].name
-                else:
-                    pass
+    # Inject the desired EMT bus shell directly so the editor under test reads
+    # only the selected phase set from the bus helper model.
+    load.bus.emt_model = bus_model
+    load.emt_model = Block()
+    load.emt_template = _make_template(list())
 
-                if wrapped_var_name == block_name:
-                    return item
-                else:
-                    pass
-            else:
-                pass
-        else:
-            pass
+    editor = DynamicBlockEditorGUI(
+        var_factory=VarFactory(),
+        current_block=Block(),
+        api_object=load,
+        current_theme="Light",
+        circuit=circuit,
+        mode=DynamicSimulationMode.EMT,
+        templates_list=list(),
+        is_root_editor=True,
+        modal=False,
+    )
+    return editor, load
 
-    raise AssertionError(f"Connection block '{block_name}' not found")
+
+def _build_real_injection_device(bus_model: Block) -> tuple[Load, MultiCircuit, VarFactory]:
+    """
+    Build one real EMT load device with a controlled bus EMT model.
+
+    :param bus_model: EMT bus block to expose to the device.
+    :return: Tuple with the device, circuit and variable factory.
+    """
+    circuit: MultiCircuit = gce.MultiCircuit(Sbase=100, fbase=50.0)
+    bus = gce.Bus(name="Bus 1", Vnom=10.0)
+    circuit.add_bus(bus)
+    load = gce.Load(name="Load 1")
+    circuit.add_load(bus=bus, api_obj=load)
+    load.bus.emt_model = bus_model
+    load.emt_model = Block()
+    load.emt_template = _make_template(list())
+    var_factory: VarFactory = VarFactory()
+    return load, circuit, var_factory
 
 
-def test_emt_branch_connection_specs_expose_bus_domain_interface_for_ac_branch() -> None:
-    bus_from = _make_ac_bus("Bus From")
-    bus_to = _make_ac_bus("Bus To")
-    template = _make_template([
-        VarPowerFlowReferenceType.vf_N,
-        VarPowerFlowReferenceType.vf_A,
-        VarPowerFlowReferenceType.vf_B,
-        VarPowerFlowReferenceType.vf_C,
-        VarPowerFlowReferenceType.vt_N,
-        VarPowerFlowReferenceType.vt_A,
-        VarPowerFlowReferenceType.vt_B,
-        VarPowerFlowReferenceType.vt_C,
-        VarPowerFlowReferenceType.if_N,
-        VarPowerFlowReferenceType.if_A,
-        VarPowerFlowReferenceType.if_B,
-        VarPowerFlowReferenceType.if_C,
-        VarPowerFlowReferenceType.it_N,
-        VarPowerFlowReferenceType.it_A,
-        VarPowerFlowReferenceType.it_B,
-        VarPowerFlowReferenceType.it_C,
-    ])
-    branch = _BranchStub("Line 1", bus_from, bus_to, template, DeviceType.LineDevice)
-    editor = _build_editor(branch)
+def _dispose_editor(editor: DynamicBlockEditorGUI) -> None:
+    """
+    Dispose one editor window using the same teardown path as production tabs.
 
-    specs = editor._build_emt_branch_connection_specs()
-
-    assert [spec.reference for spec in specs] == [
-        VarPowerFlowReferenceType.vf_N,
-        VarPowerFlowReferenceType.vf_A,
-        VarPowerFlowReferenceType.vf_B,
-        VarPowerFlowReferenceType.vf_C,
-        VarPowerFlowReferenceType.if_N,
-        VarPowerFlowReferenceType.if_A,
-        VarPowerFlowReferenceType.if_B,
-        VarPowerFlowReferenceType.if_C,
-        VarPowerFlowReferenceType.vt_N,
-        VarPowerFlowReferenceType.vt_A,
-        VarPowerFlowReferenceType.vt_B,
-        VarPowerFlowReferenceType.vt_C,
-        VarPowerFlowReferenceType.it_N,
-        VarPowerFlowReferenceType.it_A,
-        VarPowerFlowReferenceType.it_B,
-        VarPowerFlowReferenceType.it_C,
-    ]
-    assert [spec.visible_name for spec in specs] == [
-        "vf_N_Bus_From",
-        "vf_A_Bus_From",
-        "vf_B_Bus_From",
-        "vf_C_Bus_From",
-        "net_conn_if_N_Bus_From_Line 1",
-        "net_conn_if_A_Bus_From_Line 1",
-        "net_conn_if_B_Bus_From_Line 1",
-        "net_conn_if_C_Bus_From_Line 1",
-        "vt_N_Bus_To",
-        "vt_A_Bus_To",
-        "vt_B_Bus_To",
-        "vt_C_Bus_To",
-        "net_conn_it_N_Bus_To_Line 1",
-        "net_conn_it_A_Bus_To_Line 1",
-        "net_conn_it_B_Bus_To_Line 1",
-        "net_conn_it_C_Bus_To_Line 1",
-    ]
-
+    :param editor: Editor instance to release.
+    :return: None.
+    """
+    editor.prepare_to_delete()
     editor.close()
 
 
-def test_emt_branch_connection_specs_expose_bus_domain_interface_for_ac_dc_branch() -> None:
-    bus_from = _make_ac_bus("AC Bus")
-    bus_to = _make_dc_bus("DC Bus")
-    template = _make_template([
-        VarPowerFlowReferenceType.v_A,
-        VarPowerFlowReferenceType.v_B,
-        VarPowerFlowReferenceType.v_C,
-        VarPowerFlowReferenceType.Vdc,
-        VarPowerFlowReferenceType.i_A,
-        VarPowerFlowReferenceType.i_B,
-        VarPowerFlowReferenceType.i_C,
-        VarPowerFlowReferenceType.Idc,
-    ])
-    branch = _BranchStub("VSC 1", bus_from, bus_to, template, DeviceType.VscDevice)
-    editor = _build_editor(branch)
+def _build_real_branch_editor(bus_from_model: Block, bus_to_model: Block) -> tuple[DynamicBlockEditorGUI, Line]:
+    """
+    Build one real EMT line editor backed by controlled bus EMT models.
 
-    specs = editor._build_emt_branch_connection_specs()
+    :param bus_from_model: EMT bus block for the from side.
+    :param bus_to_model: EMT bus block for the to side.
+    :return: Tuple with the editor and the owned line object.
+    """
+    circuit = gce.MultiCircuit(Sbase=100, fbase=50.0)
+    bus_from = gce.Bus(name="Bus From", Vnom=10.0)
+    bus_to = gce.Bus(name="Bus To", Vnom=10.0)
+    circuit.add_bus(bus_from)
+    circuit.add_bus(bus_to)
+    line = gce.Line(name="Line 1", bus_from=bus_from, bus_to=bus_to)
+    circuit.add_line(line)
 
-    assert [spec.reference for spec in specs] == [
-        VarPowerFlowReferenceType.vf_N,
-        VarPowerFlowReferenceType.vf_A,
-        VarPowerFlowReferenceType.vf_B,
-        VarPowerFlowReferenceType.vf_C,
-        VarPowerFlowReferenceType.if_N,
-        VarPowerFlowReferenceType.if_A,
-        VarPowerFlowReferenceType.if_B,
-        VarPowerFlowReferenceType.if_C,
-        VarPowerFlowReferenceType.Vt_dc,
-        VarPowerFlowReferenceType.It_dc,
-    ]
-    assert [spec.visible_name for spec in specs] == [
-        "vf_N_AC_Bus",
-        "vf_A_AC_Bus",
-        "vf_B_AC_Bus",
-        "vf_C_AC_Bus",
-        "net_conn_if_N_AC_Bus_VSC 1",
-        "net_conn_if_A_AC_Bus_VSC 1",
-        "net_conn_if_B_AC_Bus_VSC 1",
-        "net_conn_if_C_AC_Bus_VSC 1",
-        "Vt_dc_DC_Bus",
-        "net_conn_It_dc_DC_Bus_VSC 1",
-    ]
+    # Fix the side-specific bus shells before opening the editor so the branch
+    # interface must follow the actual phase availability of each terminal.
+    line.bus_from.emt_model = bus_from_model
+    line.bus_to.emt_model = bus_to_model
+    line.emt_model = Block()
+    line.emt_template = _make_template(list())
 
-    editor.close()
+    editor = DynamicBlockEditorGUI(
+        var_factory=VarFactory(),
+        current_block=Block(),
+        api_object=line,
+        current_theme="Light",
+        circuit=circuit,
+        mode=DynamicSimulationMode.EMT,
+        templates_list=list(),
+        is_root_editor=True,
+        modal=False,
+    )
+    return editor, line
 
 
-def test_emt_injection_connection_specs_expose_bus_domain_interface_for_ac_injection() -> None:
-    bus = _make_ac_bus("Gen Bus")
-    template = _make_template([
-        VarPowerFlowReferenceType.v_A,
-        VarPowerFlowReferenceType.v_B,
-        VarPowerFlowReferenceType.v_C,
-        VarPowerFlowReferenceType.i_A,
-        VarPowerFlowReferenceType.i_B,
-        VarPowerFlowReferenceType.i_C,
-    ])
-    injection = _InjectionStub("Gen 1", bus, template, DeviceType.GeneratorDevice)
-    editor = _build_editor(injection)
+def _build_real_branch_device(bus_from_model: Block, bus_to_model: Block) -> tuple[Line, MultiCircuit, VarFactory]:
+    """
+    Build one real EMT line device with controlled terminal bus EMT models.
 
-    specs = editor._build_emt_injection_connection_specs()
-
-    assert [spec.reference for spec in specs] == [
-        VarPowerFlowReferenceType.v_N,
-        VarPowerFlowReferenceType.v_A,
-        VarPowerFlowReferenceType.v_B,
-        VarPowerFlowReferenceType.v_C,
-        VarPowerFlowReferenceType.i_N,
-        VarPowerFlowReferenceType.i_A,
-        VarPowerFlowReferenceType.i_B,
-        VarPowerFlowReferenceType.i_C,
-    ]
-    assert [spec.visible_name for spec in specs] == [
-        "v_N_Gen_Bus",
-        "v_A_Gen_Bus",
-        "v_B_Gen_Bus",
-        "v_C_Gen_Bus",
-        "net_conn_i_N_Gen 1",
-        "net_conn_i_A_Gen 1",
-        "net_conn_i_B_Gen 1",
-        "net_conn_i_C_Gen 1",
-    ]
-
-    editor.close()
+    :param bus_from_model: EMT bus block for the from side.
+    :param bus_to_model: EMT bus block for the to side.
+    :return: Tuple with the device, circuit and variable factory.
+    """
+    circuit: MultiCircuit = gce.MultiCircuit(Sbase=100, fbase=50.0)
+    bus_from = gce.Bus(name="Bus From", Vnom=10.0)
+    bus_to = gce.Bus(name="Bus To", Vnom=10.0)
+    circuit.add_bus(bus_from)
+    circuit.add_bus(bus_to)
+    line = gce.Line(name="Line 1", bus_from=bus_from, bus_to=bus_to)
+    circuit.add_line(line)
+    line.bus_from.emt_model = bus_from_model
+    line.bus_to.emt_model = bus_to_model
+    line.emt_model = Block()
+    line.emt_template = _make_template(list())
+    var_factory = VarFactory()
+    return line, circuit, var_factory
 
 
-def test_emt_injection_connection_specs_expose_bus_domain_interface_for_dc_injection() -> None:
-    bus = _make_dc_bus("DC Load Bus")
-    template = _make_template([
-        VarPowerFlowReferenceType.Vdc,
-        VarPowerFlowReferenceType.Idc,
-    ])
-    injection = _InjectionStub("DC Load 1", bus, template, DeviceType.LoadDevice)
-    editor = _build_editor(injection)
+def test_add_connection_vars_emt_injection_uses_only_present_bus_phases() -> None:
+    """
+    Verify that an EMT injection exposes only the AC phases present in its bus.
 
-    specs = editor._build_emt_injection_connection_specs()
+    :return: None.
+    """
+    load, circuit, var_factory = _build_real_injection_device(
+        _make_ac_bus("Gen Bus", include_neutral=False, include_a=True, include_b=False, include_c=True).emt_model
+    )
 
-    assert [spec.reference for spec in specs] == [
-        VarPowerFlowReferenceType.Vdc,
-        VarPowerFlowReferenceType.Idc,
-    ]
-    assert [spec.visible_name for spec in specs] == [
-        "Vdc_DC_Load_Bus",
-        "net_conn_Idc_DC Load 1",
-    ]
+    dialog_models.initialize_connected_bus_models_for_editor_assignment(api_object=load,
+                                                                        circuit=circuit,
+                                                                        var_factory=var_factory,
+                                                                        mode=DynamicSimulationMode.EMT)
 
-    editor.close()
+    bus_mapping: dict[VarPowerFlowReferenceType, Var | None] = load.bus.emt_model.external_mapping
 
-
-def test_removing_connection_block_removes_saved_root_interface_variable() -> None:
-    bus = _make_ac_bus("Removal Bus")
-    template = _make_template(list())
-    injection = _InjectionStub("Load 1", bus, template, DeviceType.LoadDevice)
-    editor = _build_editor(injection)
-
-    editor._materialize_connection_specs(editor._build_emt_injection_connection_specs())
-    editor.add_connection_items()
-
-    assert VarPowerFlowReferenceType.v_N in editor.main_block.external_mapping
-    assert any(var.name == "v_N_Removal_Bus" for var in editor.main_block.in_vars)
-
-    neutral_item = _find_connection_block_item(editor, "v_N_Removal_Bus")
-    editor.remove_item(neutral_item)
-
-    assert VarPowerFlowReferenceType.v_N not in editor.main_block.external_mapping
-    assert all(var.name != "v_N_Removal_Bus" for var in editor.main_block.in_vars)
-    assert editor.get_block_from_main_block(neutral_item.subsys.uid) is None
-
-    editor.has_unapplied_changes = False
-    editor.close()
+    assert bus_mapping.get(VarPowerFlowReferenceType.v_N, None) is None
+    assert bus_mapping.get(VarPowerFlowReferenceType.v_A, None) is not None
+    assert bus_mapping.get(VarPowerFlowReferenceType.v_B, None) is None
+    assert bus_mapping.get(VarPowerFlowReferenceType.v_C, None) is not None
 
 
-def test_apply_changes_rebinds_saved_emt_injection_bus_voltage_uids() -> None:
-    bus = _make_ac_bus("Gen Bus")
-    template = _make_template(list())
-    injection = _InjectionStub("Gen 1", bus, template, DeviceType.GeneratorDevice)
-    editor = _build_editor(injection)
-    original_model = injection.emt_model
+def test_add_connection_vars_emt_injection_keeps_neutral_only_when_bus_has_it() -> None:
+    """
+    Verify that the neutral connection ports appear only when the bus exposes neutral.
 
-    editor._materialize_connection_specs(editor._build_emt_injection_connection_specs())
-    register_saved_emt_model_vars_for_device(device=injection, var_factory=editor.var_factory)
-    editor.apply_changes()
+    :return: None.
+    """
+    load, circuit, var_factory = _build_real_injection_device(
+        _make_ac_bus("Load Bus", include_neutral=True, include_a=True, include_b=False, include_c=False).emt_model
+    )
 
-    assert injection.emt_template is None
-    assert injection.emt_model is original_model
-    assert editor.has_unapplied_changes is False
-    assert editor.changes_applied is True
+    dialog_models.initialize_connected_bus_models_for_editor_assignment(api_object=load,
+                                                                        circuit=circuit,
+                                                                        var_factory=var_factory,
+                                                                        mode=DynamicSimulationMode.EMT)
 
-    editor.has_unapplied_changes = False
-    editor.close()
+    bus_mapping: dict[VarPowerFlowReferenceType, Var | None] = load.bus.emt_model.external_mapping
+
+    assert bus_mapping.get(VarPowerFlowReferenceType.v_N, None) is not None
+    assert bus_mapping.get(VarPowerFlowReferenceType.v_A, None) is not None
+    assert bus_mapping.get(VarPowerFlowReferenceType.v_B, None) is None
+    assert bus_mapping.get(VarPowerFlowReferenceType.v_C, None) is None
 
 
-def test_apply_changes_rebinds_saved_emt_branch_bus_voltage_uids() -> None:
-    bus_from = _make_ac_bus("Bus From")
-    bus_to = _make_ac_bus("Bus To")
-    template = _make_template(list())
-    branch = _BranchStub("Line 1", bus_from, bus_to, template, DeviceType.LineDevice)
-    editor = _build_editor(branch)
-    original_model = branch.emt_model
+def test_add_connection_vars_emt_branch_uses_only_present_phases_per_side() -> None:
+    """
+    Verify that each EMT branch side exposes only the phases present in its own bus.
 
-    editor._materialize_connection_specs(editor._build_emt_branch_connection_specs())
-    register_saved_emt_model_vars_for_device(device=branch, var_factory=editor.var_factory)
-    editor.apply_changes()
+    :return: None.
+    """
+    line, circuit, var_factory = _build_real_branch_device(
+        _make_ac_bus("Bus From", include_neutral=False, include_a=True, include_b=True, include_c=False).emt_model,
+        _make_ac_bus("Bus To", include_neutral=True, include_a=False, include_b=True, include_c=True).emt_model,
+    )
 
-    assert branch.emt_template is None
-    assert branch.emt_model is original_model
-    assert editor.has_unapplied_changes is False
-    assert editor.changes_applied is True
+    dialog_models.initialize_connected_bus_models_for_editor_assignment(api_object=line,
+                                                                        circuit=circuit,
+                                                                        var_factory=var_factory,
+                                                                        mode=DynamicSimulationMode.EMT)
 
-    editor.has_unapplied_changes = False
-    editor.close()
+    from_mapping: dict[VarPowerFlowReferenceType, Var | None] = line.bus_from.emt_model.external_mapping
+    to_mapping: dict[VarPowerFlowReferenceType, Var | None] = line.bus_to.emt_model.external_mapping
+
+    assert from_mapping.get(VarPowerFlowReferenceType.v_N, None) is None
+    assert from_mapping.get(VarPowerFlowReferenceType.v_A, None) is not None
+    assert from_mapping.get(VarPowerFlowReferenceType.v_B, None) is not None
+    assert from_mapping.get(VarPowerFlowReferenceType.v_C, None) is None
+
+    assert to_mapping.get(VarPowerFlowReferenceType.v_N, None) is not None
+    assert to_mapping.get(VarPowerFlowReferenceType.v_A, None) is None
+    assert to_mapping.get(VarPowerFlowReferenceType.v_B, None) is not None
+    assert to_mapping.get(VarPowerFlowReferenceType.v_C, None) is not None
 
 
 def test_find_connections_matches_vsc_dc_input_with_generic_dc_port() -> None:
+    """
+    Verify that generic DC voltage references still match power-flow connections.
+
+    :return: None.
+    """
     bus_connection_block = Block(out_vars=list([
         _make_var("Vdc_DC_Bus", VarPowerFlowReferenceType.Vdc),
     ]))
@@ -489,3 +481,54 @@ def test_find_connections_matches_vsc_dc_input_with_generic_dc_port() -> None:
     assert len(power_flow_pairs) == 1
     assert power_flow_pairs[0][0].ref == VarPowerFlowReferenceType.Vdc
     assert power_flow_pairs[0][1].ref == VarPowerFlowReferenceType.Vdc
+
+
+def test_attach_editor_assigned_emt_branch_model_preserves_side_specific_root_mapping() -> None:
+    """
+    Verify that EMT branch attach keeps side-specific root refs on the saved model.
+
+    :return: None.
+    """
+    line, circuit, var_factory = _build_real_branch_device(
+        _make_ac_bus("Bus From", include_neutral=False, include_a=True, include_b=True, include_c=True).emt_model,
+        _make_ac_bus("Bus To", include_neutral=False, include_a=True, include_b=True, include_c=True).emt_model,
+    )
+
+    vf_a: Var = _make_var("vf_A_root", VarPowerFlowReferenceType.vf_A)
+    vf_b: Var = _make_var("vf_B_root", VarPowerFlowReferenceType.vf_B)
+    vt_a: Var = _make_var("vt_A_root", VarPowerFlowReferenceType.vt_A)
+    vt_b: Var = _make_var("vt_B_root", VarPowerFlowReferenceType.vt_B)
+    if_a: Var = _make_var("if_A_root", VarPowerFlowReferenceType.if_A)
+    if_b: Var = _make_var("if_B_root", VarPowerFlowReferenceType.if_B)
+    it_a: Var = _make_var("it_A_root", VarPowerFlowReferenceType.it_A)
+    it_b: Var = _make_var("it_B_root", VarPowerFlowReferenceType.it_B)
+
+    line.emt_model.in_vars = list([vf_a, vf_b, vt_a, vt_b])
+    line.emt_model.out_vars = list([if_a, if_b, it_a, it_b])
+    line.emt_model.external_mapping = dict({
+        VarPowerFlowReferenceType.vf_A: vf_a,
+        VarPowerFlowReferenceType.vf_B: vf_b,
+        VarPowerFlowReferenceType.vt_A: vt_a,
+        VarPowerFlowReferenceType.vt_B: vt_b,
+        VarPowerFlowReferenceType.if_A: if_a,
+        VarPowerFlowReferenceType.if_B: if_b,
+        VarPowerFlowReferenceType.it_A: it_a,
+        VarPowerFlowReferenceType.it_B: it_b,
+    })
+
+    dialog_models.initialize_connected_bus_models_for_editor_assignment(api_object=line,
+                                                                        circuit=circuit,
+                                                                        var_factory=var_factory,
+                                                                        mode=DynamicSimulationMode.EMT)
+    dialog_models.attach_editor_assigned_emt_branch_model(api_object=line,
+                                                           var_factory=var_factory)
+
+    mapping: dict[VarPowerFlowReferenceType, Var | None] = line.emt_model.external_mapping
+
+    assert mapping.get(VarPowerFlowReferenceType.vf_A, None) is not None
+    assert mapping.get(VarPowerFlowReferenceType.vf_B, None) is not None
+    assert mapping.get(VarPowerFlowReferenceType.vt_A, None) is not None
+    assert mapping.get(VarPowerFlowReferenceType.vt_B, None) is not None
+    assert mapping.get(VarPowerFlowReferenceType.v_A, None) is None
+    assert mapping.get(VarPowerFlowReferenceType.v_B, None) is None
+

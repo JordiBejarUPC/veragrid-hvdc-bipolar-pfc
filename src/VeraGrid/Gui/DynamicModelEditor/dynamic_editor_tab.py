@@ -197,8 +197,24 @@ class DynamicEditorTab(QtWidgets.QWidget):
         return True
 
     def prepare_to_delete(self) -> None:
+        """
+        Release the currently hosted editor before this tab is destroyed.
+
+        The tab owns a breadcrumb and one nested dynamic editor. The nested
+        editor allocates scene/view/model objects dynamically, so the tab must
+        explicitly detach that subtree before the Python wrapper becomes the
+        only remaining owner.
+
+        :return: None.
+        """
         if self._editor is not None:
             self._editor.prepare_to_delete()
+            self._layout.removeWidget(self._editor)
+            self._editor.setParent(None)
+            self._editor.deleteLater()
+            self._editor = None
+        else:
+            pass
 
     def set_dark_mode(self) -> None:
         if self._editor is not None:
@@ -242,6 +258,14 @@ class DynamicEditorTab(QtWidgets.QWidget):
         """Navigate back to the root block."""
         self._navigation.go_to_root()
         self._replace_editor()
+
+    def refresh_breadcrumb(self) -> None:
+        """
+        Refresh the breadcrumb labels from the current navigation path.
+
+        :return: None.
+        """
+        self._refresh_breadcrumb()
 
     # ------------------------------------------------------------------
     # Editor delegation — forward commonly accessed attributes
@@ -293,8 +317,11 @@ class DynamicEditorTab(QtWidgets.QWidget):
         if self._editor is not None:
             self._editor.prepare_to_delete()
             self._layout.removeWidget(self._editor)
+            self._editor.setParent(None)
             self._editor.deleteLater()
             self._editor = None
+        else:
+            pass
 
         self._create_editor(self._navigation.current_block)
 

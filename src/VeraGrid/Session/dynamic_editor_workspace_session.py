@@ -323,10 +323,19 @@ class DynamicEditorWorkspaceSession(QtCore.QObject):
         mode = get_page_mode(page)
         if entry is not None and mode is not None:
             self._session_pages.pop(entry.session_key(mode), None)
+        else:
+            pass
+
+        if page in self._retained_pages:
+            self._retained_pages.remove(page)
+        else:
+            pass
 
         if self._pending_drag_page is page:
             self._pending_drag_page = None
             self._pending_drag_workspace = None
+        else:
+            pass
 
     def handle_tab_drag_started(self, workspace: "DynamicEditorWorkspaceWindow", index: int) -> None:
         """

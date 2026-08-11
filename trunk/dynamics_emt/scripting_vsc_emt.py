@@ -184,7 +184,8 @@ gen_mdl = get_generator_thevenin_rl_emt_template_with_ref(vf = circuit.var_facto
 
 # Transformer model (series RL with ideal transformer)
 # trafo_mdl = get_transformer_emt_template(vf=circuit.var_factory, name=transformer.name).block
-trafo_mdl = get_transformer_emt_template(vf=circuit.var_factory, name=transformer.name).block
+trafo_templ = get_transformer_emt_template(vf=circuit.var_factory, name=transformer.name)
+trafo_mdl = trafo_templ.block.children[0]
 
 # VSC model (standard converter: DC -> AC with power balance)
 vsc_mdl = get_emt_ideal_converter(

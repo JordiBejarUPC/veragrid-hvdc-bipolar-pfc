@@ -704,6 +704,7 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
         page.prepare_to_delete()
         self.session.unregister_page(page)
         self.remove_page(page)
+        page.setParent(None)
         page.deleteLater()
 
         if self.editor_tabs.count() == 0:
@@ -729,9 +730,12 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
         pages = [self.page_at(index) for index in range(self.editor_tabs.count())]
         for page in pages:
             if page is None:
-                continue
-            page.prepare_to_delete()
-            self.session.unregister_page(page)
+                pass
+            else:
+                self.remove_page(page)
+                page.setParent(None)
+                page.prepare_to_delete()
+                self.session.unregister_page(page)
 
         self.session.unregister_workspace(self)
         event.accept()
