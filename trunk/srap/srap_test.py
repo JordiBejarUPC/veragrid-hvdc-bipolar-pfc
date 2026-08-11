@@ -24,7 +24,7 @@ con_options.srap_max_loading = 1.4
 con_options.srap_max_power = 8
 con_drv = ContingencyAnalysisDriver(grid=grid,
                                     options=con_options,
-                                    engine=EngineType.NewtonPA)
+                                    engine=EngineType.VeraGrid)
 
 con_drv.run()
 
@@ -40,7 +40,7 @@ con_options.srap_max_loading = 1.4
 con_options.srap_max_power = 1
 con_drv = ContingencyAnalysisDriver(grid=grid,
                                     options=con_options,
-                                    engine=EngineType.NewtonPA)
+                                    engine=EngineType.VeraGrid)
 
 con_drv.run()
 
@@ -57,7 +57,7 @@ con_options.srap_max_loading = 1.1
 con_options.srap_max_power = 8
 con_drv = ContingencyAnalysisDriver(grid=grid,
                                     options=con_options,
-                                    engine=EngineType.NewtonPA)
+                                    engine=EngineType.VeraGrid)
 
 con_drv.run()
 
@@ -80,7 +80,7 @@ con_options.srap_max_loading = 1.4
 con_options.srap_max_power = 8
 con_drv = ContingencyAnalysisDriver(grid=grid,
                                     options=con_options,
-                                    engine=EngineType.NewtonPA)
+                                    engine=EngineType.VeraGrid)
 
 con_drv.run()
 
@@ -96,7 +96,7 @@ con_options.srap_max_loading = 1.4
 con_options.srap_max_power = 1
 con_drv = ContingencyAnalysisDriver(grid=grid,
                                     options=con_options,
-                                    engine=EngineType.NewtonPA)
+                                    engine=EngineType.VeraGrid)
 
 con_drv.run()
 
@@ -113,7 +113,7 @@ con_options.srap_max_loading = 1.1
 con_options.srap_max_power = 8
 con_drv = ContingencyAnalysisDriver(grid=grid,
                                     options=con_options,
-                                    engine=EngineType.NewtonPA)
+                                    engine=EngineType.VeraGrid)
 
 con_drv.run()
 

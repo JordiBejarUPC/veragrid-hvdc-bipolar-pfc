@@ -33,6 +33,13 @@ def find_name_in_block(name: str, block: Block):
     return None
 
 
+def get_esd1_internal_block(block: Block) -> Block:
+    for child in block.children:
+        if child.name.startswith("ESD1_") or child.name == "ESD1 RMS template":
+            return child
+    return block
+
+
 def create_grid() -> vge.MultiCircuit:
     grid = vge.MultiCircuit(name="ESD1 RMS validation", Sbase=100.0)
 
@@ -170,12 +177,13 @@ def plot_results(grid: vge.MultiCircuit, results, file_name: str = "esd1_rms_val
 
     batt = grid.batteries[0]
     if batt.rms_model is not None:
-        plot_var(ax_pq, batt.rms_model, "P_esd1", "P_esd1")
-        plot_var(ax_pq, batt.rms_model, "Q_esd1", "Q_esd1")
-        plot_var(ax_pq, batt.rms_model, "P_sum", "P_sum")
-        plot_var(ax_soc, batt.rms_model, "Soc", "Soc")
-        plot_var(ax_soc, batt.rms_model, "P_dis_av", "P_dis_av")
-        plot_var(ax_soc, batt.rms_model, "P_ch_av", "P_ch_av")
+        esd1_block = get_esd1_internal_block(batt.rms_model)
+        plot_var(ax_pq, esd1_block, "P_esd1", "P_esd1")
+        plot_var(ax_pq, esd1_block, "Q_esd1", "Q_esd1")
+        plot_var(ax_pq, esd1_block, "P_sum", "P_sum")
+        plot_var(ax_soc, esd1_block, "Soc", "Soc")
+        plot_var(ax_soc, esd1_block, "P_dis_av", "P_dis_av")
+        plot_var(ax_soc, esd1_block, "P_ch_av", "P_ch_av")
 
     for bus in grid.buses:
         if bus.rms_model is not None:

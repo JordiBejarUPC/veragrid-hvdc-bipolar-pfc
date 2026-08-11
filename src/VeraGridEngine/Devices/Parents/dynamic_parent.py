@@ -374,7 +374,6 @@ class DynamicDevice(PhysicalDevice):
                                           emt_mdl,
                                           self._var_factory,
                                           allow_deferred_connection=True)
-
                 self.emt_model = emt_mdl
         elif val is None:
             # Clearing the template makes any previously registered bus endpoint

@@ -9,7 +9,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 from VeraGridEngine.enumerations import VarPowerFlowReferenceType, DynamicIntegrationMethod, RmsInitializationMethod
-from VeraGridEngine.Devices.Dynamic.dynamic_model_host import DynamicModelHost
+
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.Devices.Injections.generator import Generator
 from VeraGridEngine.Devices.Branches.line import Line

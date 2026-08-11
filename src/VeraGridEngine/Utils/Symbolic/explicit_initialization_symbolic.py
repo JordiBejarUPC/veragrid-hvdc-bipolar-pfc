@@ -36,6 +36,8 @@ def build_uid_bindings(
         uid2idx_vars: Dict[int, int],
         uid2idx_params: Dict[int, int],
         uid2idx_diff: Dict[int, int],
+        init_guess: Optional[Dict[int, float]] = None,
+        diff_init_guess: Optional[Dict[int, float]] = None,
 ) -> Dict[int, float]:
     """
     Build the UID-to-value bindings needed to evaluate one symbolic expression.
@@ -75,7 +77,12 @@ def build_uid_bindings(
             if state_idx is None:
                 if param_idx is None:
                     if diff_idx is None:
-                        resolved_value = None
+                        if init_guess is not None and vr.uid in init_guess:
+                            resolved_value = float(init_guess[vr.uid])
+                        elif diff_init_guess is not None and vr.uid in diff_init_guess:
+                            resolved_value = float(diff_init_guess[vr.uid])
+                        else:
+                            resolved_value = None
                     else:
                         resolved_value = float(dx[diff_idx])
                 else:
@@ -110,6 +117,8 @@ def evaluate_explicit_init_equation(
         uid2idx_vars: Dict[int, int],
         uid2idx_params: Dict[int, int],
         uid2idx_diff: Dict[int, int],
+        init_guess: Optional[Dict[int, float]] = None,
+        diff_init_guess: Optional[Dict[int, float]] = None,
 ) -> float | int | complex | None:
     """
     Evaluate one explicit initialization equation using the shared bindings.
@@ -149,8 +158,17 @@ def evaluate_explicit_init_equation(
             uid2idx_vars=uid2idx_vars,
             uid2idx_params=uid2idx_params,
             uid2idx_diff=uid2idx_diff,
+            init_guess=init_guess,
+            diff_init_guess=diff_init_guess,
         )
-        return eq.eval_uid(uid_bindings)
+        try:
+            return eq.eval_uid(uid_bindings)
+        except ValueError as exc:
+            unresolved: List[Var] = [vr for vr in find_vars_order(eq) if vr.uid not in uid_bindings]
+            unresolved_desc = ", ".join(f"{vr.name} (uid={vr.uid})" for vr in unresolved)
+            raise ValueError(
+                f"Failed to evaluate explicit init equation '{eq}' with unresolved vars: {unresolved_desc}"
+            ) from exc
 
 
 def evaluate_single_equation_fn(
@@ -689,6 +707,8 @@ def init_explicit_common(
                 uid2idx_vars=uid2idx_vars,
                 uid2idx_params=uid2idx_params,
                 uid2idx_diff=uid2idx_diff,
+                init_guess=init_guess,
+                diff_init_guess=diff_init_guess,
             )
             event_params_array[uid2idx_event_params[var.uid]] = result
             store_resolved_event_parameter(
@@ -714,6 +734,8 @@ def init_explicit_common(
                     uid2idx_vars=uid2idx_vars,
                     uid2idx_params=uid2idx_params,
                     uid2idx_diff=uid2idx_diff,
+                    init_guess=init_guess,
+                    diff_init_guess=diff_init_guess,
                 )
 
                 if var.uid in uid2idx_vars:

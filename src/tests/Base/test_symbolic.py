@@ -9,8 +9,11 @@ import VeraGridEngine.Utils.Symbolic.symbolic as sym
 from VeraGridEngine.Utils.Symbolic.compiled_functions import SymbolicJacobian
 from VeraGridEngine.Utils.Symbolic.jit_compiler import SubexpressionAnalyzer
 from VeraGridEngine.Utils.Symbolic.block import Block
-from VeraGridEngine.Utils.Symbolic.symbolic_io import duplicate_block, expr_to_dict, parse_expr
+from VeraGridEngine.Utils.Symbolic.symbolic_io import (duplicate_block, expr_to_dict, parse_expr,
+                                                       BlockSaver, BlockParser)
+from VeraGridEngine.Devices.Diagrams.block_diagram import BlockDiagram
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
+from VeraGridEngine.Utils.procedural_logic import aflipflop
 
 # -----------------------------------------------------------------------------
 # Atomic & basic operations
@@ -447,6 +450,81 @@ def test_duplicate_block_preserves_parent_child_variable_links_with_new_uids() -
     assert copied_child.state_eqs[0].right is copied_x
     assert target_vf.get_var(copied_x.non_mutable_uid) is copied_x
     assert target_vf.get_diff_var(copied_dx.non_mutable_uid) is copied_dx
+
+
+def test_block_diagram_parse_accepts_empty_legacy_payload() -> None:
+    """
+    Check that empty legacy diagram payloads load as empty diagrams.
+
+    :return: Nothing.
+    """
+    diagram: BlockDiagram = BlockDiagram()
+
+    diagram.parse(dict())
+
+    assert diagram.status is None
+    assert diagram.node_data == dict()
+    assert diagram.con_data == dict()
+
+
+def test_var_factory_parse_var_dict_accepts_legacy_missing_identity_half() -> None:
+    """
+    Check that a legacy symbolic variable missing one id still loads.
+
+    :return: Nothing.
+    """
+    vf: VarFactory = VarFactory()
+
+    vf.parse_var_dict([
+        {
+            "type": "Var",
+            "name": "omega_legacy",
+            "uid": 55,
+            "shared_ref": None,
+        }
+    ])
+
+    parsed_var: sym.Var | None = vf.get_vars_dict().get(55, None)
+    assert parsed_var is not None
+    assert parsed_var.uid == 55
+    assert parsed_var.non_mutable_uid == 55
+
+
+def test_block_saver_parser_roundtrip_preserves_dynamic_runtime_fields() -> None:
+    """
+    Check that block saver/parser preserve dynamic runtime-only fields.
+
+    :return: Nothing.
+    """
+    vf: VarFactory = VarFactory()
+    x: sym.Var = vf.add_var("x")
+    mode: sym.Var = vf.add_var("mode")
+    out: sym.Var = vf.add_var("out")
+
+    block: Block = Block(
+        algebraic_vars=[x, mode, out],
+        algebraic_eqs=[x + sym.Const(1.0), mode + sym.Const(0.0), out + sym.Const(0.0)],
+        discrete_eqs={mode: x + sym.Const(2.0)},
+        mode_dict={mode: sym.Const(1.0)},
+        procedural_logic=[aflipflop(x=x,
+                                    boolset=x > sym.Const(1.0),
+                                    boolreset=x < sym.Const(-1.0),
+                                    output=out)],
+        name="legacy_runtime_block",
+    )
+
+    saver: BlockSaver = BlockSaver(vf)
+    saver.save_block(block, main=True)
+
+    parser: BlockParser = BlockParser(VarFactory())
+    parser.parse_consts(saver.get_const_to_save())
+    parser.parse_vars(saver.get_vars_to_save())
+    parser.parse_diff_vars(saver.get_diff_vars_to_save())
+    restored: Block = parser.parse_block(saver.get_blocks(), block.uid)
+
+    assert len(restored.discrete_eqs) == 1
+    assert len(restored.mode_dict) == 1
+    assert len(restored.procedural_logic) == 1
 
 
 # -----------------------------------------------------------------------------
