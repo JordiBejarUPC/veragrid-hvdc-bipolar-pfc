@@ -55,7 +55,7 @@ class  PseudoTransient:
         self.linear_solve_state_weight = float(os.getenv("VERAGRID_PSEUDO_LINEAR_STATE_WEIGHT", "1.0"))
         self.linear_solve_algebraic_weight = float(os.getenv("VERAGRID_PSEUDO_LINEAR_ALGEBRAIC_WEIGHT", "10.0"))
         self.use_state_tau_scaling = os.getenv("VERAGRID_PSEUDO_STATE_TAU_SCALING", "1").lower() in {"1", "true", "yes", "on"}
-        self.use_state_tau_dtau_scale = os.getenv("VERAGRID_PSEUDO_STATE_TAU_DTAU_SCALE", "0").lower() in {"1", "true", "yes", "on"}
+        self.use_state_tau_dtau_scale = os.getenv("VERAGRID_PSEUDO_STATE_TAU_DTAU_SCALE", "1").lower() in {"1", "true", "yes", "on"}
         self.state_tau_min = float(os.getenv("VERAGRID_PSEUDO_STATE_TAU_MIN", str(dtau_min)))
         state_tau_max_default = "inf" if self.use_state_tau_dtau_scale else str(dtau_max)
         self.state_tau_max = float(os.getenv("VERAGRID_PSEUDO_STATE_TAU_MAX", state_tau_max_default))
@@ -64,6 +64,14 @@ class  PseudoTransient:
         self.use_svd_diagnostics = os.getenv("VERAGRID_PSEUDO_SVD_DIAGNOSTICS", "0").lower() in {"1", "true", "yes", "on"}
         self.svd_diagnostics_limit = int(os.getenv("VERAGRID_PSEUDO_SVD_DIAGNOSTICS_LIMIT", "5"))
         self.linear_solve_damp = float(os.getenv("VERAGRID_PSEUDO_LINEAR_DAMP", "1e-6"))
+        self.artificial_algebraic_mass = float(os.getenv("VERAGRID_PSEUDO_ALGEBRAIC_MASS", "0.0"))
+        artificial_mass_names_text: str = os.getenv(
+            "VERAGRID_PSEUDO_ALGEBRAIC_MASS_NAMES",
+            "UsRefPu,u_exciter3,y_exciter3",
+        )
+        self.artificial_algebraic_mass_names = set(
+            name.strip() for name in artificial_mass_names_text.split(",") if name.strip() != ""
+        )
         self.dtau_ser_min_factor = float(os.getenv("VERAGRID_PSEUDO_DTAU_SER_MIN_FACTOR", "0.5"))
         self.dtau_ser_max_factor = float(os.getenv("VERAGRID_PSEUDO_DTAU_SER_MAX_FACTOR", "5.0"))
         self.dtau_stall_ratio = float(os.getenv("VERAGRID_PSEUDO_DTAU_STALL_RATIO", "1.02"))
@@ -329,6 +337,36 @@ class  PseudoTransient:
             return list(getter())
 
         return list()
+
+    def _artificial_algebraic_mass_diag(self, n_algebraic: int, h: float) -> sp.csc_matrix:
+        """
+        Build the optional pseudo-time mass shift for selected algebraic variables.
+
+        :param n_algebraic: Number of algebraic variables in the local pseudo-transient problem.
+        :param h: Current pseudo-time continuation step.
+        :return: Sparse diagonal matrix with ``mass / h`` on selected algebraic entries.
+        """
+        if n_algebraic <= 0:
+            return sp.csc_matrix((0, 0))
+
+        if self.artificial_algebraic_mass <= 0.0 or h == 0.0:
+            return sp.csc_matrix((n_algebraic, n_algebraic))
+
+        if len(self.artificial_algebraic_mass_names) == 0:
+            return sp.csc_matrix((n_algebraic, n_algebraic))
+
+        values: Vec = np.zeros(n_algebraic, dtype=float)
+        algebraic_vars: list[Var] = self._problem_algebraic_vars()
+        selected_all: bool = "*" in self.artificial_algebraic_mass_names
+        shift_value: float = float(self.artificial_algebraic_mass) / max(abs(float(h)), 1e-30)
+
+        for local_idx, var in enumerate(algebraic_vars[:n_algebraic]):
+            if selected_all or var.name in self.artificial_algebraic_mass_names:
+                values[local_idx] = shift_value
+            else:
+                pass
+
+        return sp.diags(values, format="csc")
 
     def _find_reference_pin_indices(self) -> list[int]:
         n_vars = int(self.problem.get_all_vars_number())
@@ -724,7 +762,8 @@ class  PseudoTransient:
         """
         n_states = self.problem.get_states_number()
         if n_states == 0:
-            return self.problem.get_j22(x, dx, h)
+            j22_only: sp.csc_matrix = self.problem.get_j22(x, dx, h).tocsc()
+            return (j22_only + self._artificial_algebraic_mass_diag(j22_only.shape[0], h)).tocsc()
 
         # For initialization problems with numerical Jacobian, compute once and split.
         # This avoids recomputing 4 separate finite-difference Jacobians and mixing them.
@@ -737,7 +776,10 @@ class  PseudoTransient:
             j11 = (tau_diag - j_full[:n_states, :n_states]).tocsc()
             j12 = (-j_full[:n_states, n_states:n_states + n_alg]).tocsc()
             j21 = j_full[n_states:n_states + n_alg, :n_states].tocsc()
-            j22 = j_full[n_states:n_states + n_alg, n_states:n_states + n_alg].tocsc()
+            j22 = (
+                j_full[n_states:n_states + n_alg, n_states:n_states + n_alg].tocsc()
+                + self._artificial_algebraic_mass_diag(n_alg, h)
+            ).tocsc()
             return pack_4_by_4_scipy(j11, j12, j21, j22)
 
         j11_val: csc_matrix = self.problem.get_j11(x, dx, h)
@@ -749,7 +791,7 @@ class  PseudoTransient:
         j11 = (tau_diag - j11_val).tocsc()
         j12 = (-j12_val).tocsc()
         j21 = j21_val.tocsc()
-        j22 = j22_val.tocsc()
+        j22 = (j22_val.tocsc() + self._artificial_algebraic_mass_diag(j22_val.shape[0], h)).tocsc()
 
         return pack_4_by_4_scipy(j11, j12, j21, j22)
 
