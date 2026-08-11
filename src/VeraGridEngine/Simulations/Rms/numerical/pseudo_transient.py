@@ -8,16 +8,162 @@ import scipy.sparse as sp
 import time
 import warnings
 import sys
-import os
+from typing import Tuple
 from scipy.sparse import csc_matrix
 from scipy.sparse import linalg as spla
 import matplotlib.pyplot as plt
 
+from VeraGridEngine.Devices.Parents.editable_device import GCProp
+from VeraGridEngine.Simulations.options_template import OptionsTemplate
 from VeraGridEngine.Simulations.Rms.problems.rms_problem_dae import RmsProblemDae
 from VeraGridEngine.Utils.Sparse.csc import pack_4_by_4_scipy
 from VeraGridEngine.Utils.Symbolic.symbolic import get_expression_vars, Var, Const, BinOp
 from VeraGridEngine.basic_structures import Vec, Mat
 from VeraGridEngine.Simulations.Rms.problems.rms_problem_template import RmsProblemTemplate
+
+
+class PseudoTransientOptions(OptionsTemplate):
+    """
+    Options for pseudo-transient initialization.
+
+    :param use_weighted_residual: Whether to weight the convergence residual.
+    :param weight_algebraic: Algebraic residual weight.
+    :param use_weighted_linear_solve: Whether to weight the linear solve system.
+    :param linear_solve_state_weight: State row weight for weighted linear solves.
+    :param linear_solve_algebraic_weight: Algebraic row weight for weighted linear solves.
+    :param use_state_tau_scaling: Whether to adapt state pseudo-time constants.
+    :param use_state_tau_dtau_scale: Whether state tau scaling depends on pseudo-time step.
+    :param state_tau_min: Minimum state pseudo-time constant.
+    :param state_tau_max: Maximum state pseudo-time constant.
+    :param state_tau_eps: Numerical floor for state tau scaling.
+    :param allow_lsqr_fallback: Whether singular/rectangular solves may use LSQR.
+    :param use_svd_diagnostics: Whether to print SVD diagnostics.
+    :param svd_diagnostics_limit: Maximum automatic SVD diagnostic reports.
+    :param linear_solve_damp: LSQR damping value. Positive values force regularized LSQR.
+    :param artificial_algebraic_mass: Optional algebraic diagonal mass value.
+    :param artificial_algebraic_mass_names: Algebraic variable names receiving artificial mass.
+    :param positive_clamp_names: Variable names receiving hard positive clamp.
+    :param positive_clamp_min: Hard positive clamp floor.
+    :param soft_positive_names: Variable names receiving soft positive floor.
+    :param soft_positive_min: Soft positive floor.
+    :param soft_positive_eps: Soft positive smoothness parameter.
+    :param dtau_ser_min_factor: Minimum SER pseudo-time scaling factor.
+    :param dtau_ser_max_factor: Maximum SER pseudo-time scaling factor.
+    :param dtau_stall_ratio: Residual ratio considered stalled.
+    :param dtau_stall_steps: Number of stalled steps before pseudo-time boost.
+    :param dtau_stall_boost: Pseudo-time boost factor after a stall.
+    """
+
+    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
+        GCProp(key="equilibrium_inputs_as_params", tpe=bool),
+        GCProp(key="equilibrium_references_as_params", tpe=bool),
+        GCProp(key="equilibrium_references_as_equations", tpe=bool),
+        GCProp(key="pref_seed", tpe=float),
+        GCProp(key="vref_seed", tpe=float),
+        GCProp(key="delta_seed", tpe=float),
+        GCProp(key="allow_best_effort_init", tpe=bool),
+        GCProp(key="use_weighted_residual", tpe=bool),
+        GCProp(key="weight_algebraic", tpe=float),
+        GCProp(key="use_weighted_linear_solve", tpe=bool),
+        GCProp(key="linear_solve_state_weight", tpe=float),
+        GCProp(key="linear_solve_algebraic_weight", tpe=float),
+        GCProp(key="use_state_tau_scaling", tpe=bool),
+        GCProp(key="use_state_tau_dtau_scale", tpe=bool),
+        GCProp(key="state_tau_min", tpe=float),
+        GCProp(key="state_tau_max", tpe=float),
+        GCProp(key="state_tau_eps", tpe=float),
+        GCProp(key="allow_lsqr_fallback", tpe=bool),
+        GCProp(key="use_svd_diagnostics", tpe=bool),
+        GCProp(key="svd_diagnostics_limit", tpe=int),
+        GCProp(key="linear_solve_damp", tpe=float),
+        GCProp(key="artificial_algebraic_mass", tpe=float),
+        GCProp(key="artificial_algebraic_mass_names", tpe=set),
+        GCProp(key="positive_clamp_names", tpe=set),
+        GCProp(key="positive_clamp_min", tpe=float),
+        GCProp(key="soft_positive_names", tpe=set),
+        GCProp(key="soft_positive_min", tpe=float),
+        GCProp(key="soft_positive_eps", tpe=float),
+        GCProp(key="dtau_ser_min_factor", tpe=float),
+        GCProp(key="dtau_ser_max_factor", tpe=float),
+        GCProp(key="dtau_stall_ratio", tpe=float),
+        GCProp(key="dtau_stall_steps", tpe=int),
+        GCProp(key="dtau_stall_boost", tpe=float),
+    )
+
+    def __init__(self,
+                 equilibrium_inputs_as_params: bool = False,
+                 equilibrium_references_as_params: bool = False,
+                 equilibrium_references_as_equations: bool = False,
+                 pref_seed: float = 1.0316406365799007,
+                 vref_seed: float = 1.0,
+                 delta_seed: float | None = 0.0,
+                 allow_best_effort_init: bool = False,
+                 use_weighted_residual: bool = False,
+                 weight_algebraic: float = 10.0,
+                 use_weighted_linear_solve: bool = False,
+                 linear_solve_state_weight: float = 1.0,
+                 linear_solve_algebraic_weight: float = 10.0,
+                 use_state_tau_scaling: bool = True,
+                 use_state_tau_dtau_scale: bool = True,
+                 state_tau_min: float | None = None,
+                 state_tau_max: float | None = None,
+                 state_tau_eps: float = 1e-12,
+                 allow_lsqr_fallback: bool = True,
+                 use_svd_diagnostics: bool = False,
+                 svd_diagnostics_limit: int = 5,
+                 linear_solve_damp: float = 1e-6,
+                 artificial_algebraic_mass: float = 0.0,
+                 artificial_algebraic_mass_names: set[str] | None = None,
+                 positive_clamp_names: set[str] | None = None,
+                 positive_clamp_min: float = 1e-8,
+                 soft_positive_names: set[str] | None = None,
+                 soft_positive_min: float = 1e-8,
+                 soft_positive_eps: float = 1e-6,
+                 dtau_ser_min_factor: float = 0.5,
+                 dtau_ser_max_factor: float = 5.0,
+                 dtau_stall_ratio: float = 1.02,
+                 dtau_stall_steps: int = 5,
+                 dtau_stall_boost: float = 2.0) -> None:
+        """
+        Initialize pseudo-transient options.
+
+        :return: None.
+        """
+        OptionsTemplate.__init__(self, name="PseudoTransientOptions")
+
+        self.equilibrium_inputs_as_params: bool = bool(equilibrium_inputs_as_params)
+        self.equilibrium_references_as_params: bool = bool(equilibrium_references_as_params)
+        self.equilibrium_references_as_equations: bool = bool(equilibrium_references_as_equations)
+        self.pref_seed: float = float(pref_seed)
+        self.vref_seed: float = float(vref_seed)
+        self.delta_seed: float | None = None if delta_seed is None else float(delta_seed)
+        self.allow_best_effort_init: bool = bool(allow_best_effort_init)
+        self.use_weighted_residual: bool = bool(use_weighted_residual)
+        self.weight_algebraic: float = float(weight_algebraic)
+        self.use_weighted_linear_solve: bool = bool(use_weighted_linear_solve)
+        self.linear_solve_state_weight: float = float(linear_solve_state_weight)
+        self.linear_solve_algebraic_weight: float = float(linear_solve_algebraic_weight)
+        self.use_state_tau_scaling: bool = bool(use_state_tau_scaling)
+        self.use_state_tau_dtau_scale: bool = bool(use_state_tau_dtau_scale)
+        self.state_tau_min: float | None = state_tau_min
+        self.state_tau_max: float | None = state_tau_max
+        self.state_tau_eps: float = float(state_tau_eps)
+        self.allow_lsqr_fallback: bool = bool(allow_lsqr_fallback)
+        self.use_svd_diagnostics: bool = bool(use_svd_diagnostics)
+        self.svd_diagnostics_limit: int = int(svd_diagnostics_limit)
+        self.linear_solve_damp: float = float(linear_solve_damp)
+        self.artificial_algebraic_mass: float = float(artificial_algebraic_mass)
+        self.artificial_algebraic_mass_names: set[str] = set(artificial_algebraic_mass_names or set())
+        self.positive_clamp_names: set[str] = set(positive_clamp_names or set())
+        self.positive_clamp_min: float = float(positive_clamp_min)
+        self.soft_positive_names: set[str] = set(soft_positive_names or set())
+        self.soft_positive_min: float = float(soft_positive_min)
+        self.soft_positive_eps: float = float(soft_positive_eps)
+        self.dtau_ser_min_factor: float = float(dtau_ser_min_factor)
+        self.dtau_ser_max_factor: float = float(dtau_ser_max_factor)
+        self.dtau_stall_ratio: float = float(dtau_stall_ratio)
+        self.dtau_stall_steps: int = int(dtau_stall_steps)
+        self.dtau_stall_boost: float = float(dtau_stall_boost)
 
 
 class  PseudoTransient:
@@ -34,7 +180,8 @@ class  PseudoTransient:
                  verbose: bool = True,
                  fixed_var_uids: list[int] | None = None,
                  debug_check_x_new: bool = False,
-                 debug_x_new_abs_max: float = 1e6):
+                 debug_x_new_abs_max: float = 1e6,
+                 options: PseudoTransientOptions | None = None):
         """
 
         :param problem:
@@ -49,34 +196,33 @@ class  PseudoTransient:
         self.tol = tol
         self.reference_error_tol = float(reference_error_tol)
         self.verbose = verbose
-        self.use_weighted_residual = os.getenv("VERAGRID_PSEUDO_WEIGHTED_RESIDUAL", "0").lower() in {"1", "true", "yes", "on"}
-        self.weight_algebraic = float(os.getenv("VERAGRID_PSEUDO_WEIGHT_ALGEBRAIC", "10.0"))
-        self.use_weighted_linear_solve = os.getenv("VERAGRID_PSEUDO_WEIGHTED_LINEAR_SOLVE", "0").lower() in {"1", "true", "yes", "on"}
-        self.linear_solve_state_weight = float(os.getenv("VERAGRID_PSEUDO_LINEAR_STATE_WEIGHT", "1.0"))
-        self.linear_solve_algebraic_weight = float(os.getenv("VERAGRID_PSEUDO_LINEAR_ALGEBRAIC_WEIGHT", "10.0"))
-        self.use_state_tau_scaling = os.getenv("VERAGRID_PSEUDO_STATE_TAU_SCALING", "1").lower() in {"1", "true", "yes", "on"}
-        self.use_state_tau_dtau_scale = os.getenv("VERAGRID_PSEUDO_STATE_TAU_DTAU_SCALE", "1").lower() in {"1", "true", "yes", "on"}
-        self.state_tau_min = float(os.getenv("VERAGRID_PSEUDO_STATE_TAU_MIN", str(dtau_min)))
-        state_tau_max_default = "inf" if self.use_state_tau_dtau_scale else str(dtau_max)
-        self.state_tau_max = float(os.getenv("VERAGRID_PSEUDO_STATE_TAU_MAX", state_tau_max_default))
-        self.state_tau_eps = float(os.getenv("VERAGRID_PSEUDO_STATE_TAU_EPS", "1e-12"))
-        self.allow_lsqr_fallback = os.getenv("PSEUDO_ALLOW_LSQR", "1").lower() in {"1", "true", "yes", "on"}
-        self.use_svd_diagnostics = os.getenv("VERAGRID_PSEUDO_SVD_DIAGNOSTICS", "0").lower() in {"1", "true", "yes", "on"}
-        self.svd_diagnostics_limit = int(os.getenv("VERAGRID_PSEUDO_SVD_DIAGNOSTICS_LIMIT", "5"))
-        self.linear_solve_damp = float(os.getenv("VERAGRID_PSEUDO_LINEAR_DAMP", "1e-6"))
-        self.artificial_algebraic_mass = float(os.getenv("VERAGRID_PSEUDO_ALGEBRAIC_MASS", "0.0"))
-        artificial_mass_names_text: str = os.getenv(
-            "VERAGRID_PSEUDO_ALGEBRAIC_MASS_NAMES",
-            "UsRefPu,u_exciter3,y_exciter3",
-        )
-        self.artificial_algebraic_mass_names = set(
-            name.strip() for name in artificial_mass_names_text.split(",") if name.strip() != ""
-        )
-        self.dtau_ser_min_factor = float(os.getenv("VERAGRID_PSEUDO_DTAU_SER_MIN_FACTOR", "0.5"))
-        self.dtau_ser_max_factor = float(os.getenv("VERAGRID_PSEUDO_DTAU_SER_MAX_FACTOR", "5.0"))
-        self.dtau_stall_ratio = float(os.getenv("VERAGRID_PSEUDO_DTAU_STALL_RATIO", "1.02"))
-        self.dtau_stall_steps = int(os.getenv("VERAGRID_PSEUDO_DTAU_STALL_STEPS", "5"))
-        self.dtau_stall_boost = float(os.getenv("VERAGRID_PSEUDO_DTAU_STALL_BOOST", "2.0"))
+        self.options: PseudoTransientOptions = options if options is not None else PseudoTransientOptions()
+        self.use_weighted_residual = self.options.use_weighted_residual
+        self.weight_algebraic = self.options.weight_algebraic
+        self.use_weighted_linear_solve = self.options.use_weighted_linear_solve
+        self.linear_solve_state_weight = self.options.linear_solve_state_weight
+        self.linear_solve_algebraic_weight = self.options.linear_solve_algebraic_weight
+        self.use_state_tau_scaling = self.options.use_state_tau_scaling
+        self.use_state_tau_dtau_scale = self.options.use_state_tau_dtau_scale
+        self.state_tau_min = float(dtau_min if self.options.state_tau_min is None else self.options.state_tau_min)
+        self.state_tau_max = float((np.inf if self.use_state_tau_dtau_scale else dtau_max) if self.options.state_tau_max is None else self.options.state_tau_max)
+        self.state_tau_eps = self.options.state_tau_eps
+        self.allow_lsqr_fallback = self.options.allow_lsqr_fallback
+        self.use_svd_diagnostics = self.options.use_svd_diagnostics
+        self.svd_diagnostics_limit = self.options.svd_diagnostics_limit
+        self.linear_solve_damp = self.options.linear_solve_damp
+        self.artificial_algebraic_mass = self.options.artificial_algebraic_mass
+        self.artificial_algebraic_mass_names = set(self.options.artificial_algebraic_mass_names)
+        self.positive_clamp_names = set(self.options.positive_clamp_names)
+        self.positive_clamp_min = self.options.positive_clamp_min
+        self.soft_positive_names = set(self.options.soft_positive_names)
+        self.soft_positive_min = self.options.soft_positive_min
+        self.soft_positive_eps = self.options.soft_positive_eps
+        self.dtau_ser_min_factor = self.options.dtau_ser_min_factor
+        self.dtau_ser_max_factor = self.options.dtau_ser_max_factor
+        self.dtau_stall_ratio = self.options.dtau_stall_ratio
+        self.dtau_stall_steps = self.options.dtau_stall_steps
+        self.dtau_stall_boost = self.options.dtau_stall_boost
         self.fixed_var_uids = set(fixed_var_uids or [])
         uid2idx = self.problem.uid2idx_vars
         self._fixed_var_indices = sorted([uid2idx[uid] for uid in self.fixed_var_uids if uid in uid2idx])
@@ -108,6 +254,61 @@ class  PseudoTransient:
         if bad:
             preview = [f"{self._var_index_name(i)}: x={vx:+.6e}, ref={vr:+.6e}, drift={d:.3e}" for i, d, vx, vr in bad[:6]]
             raise ValueError(f"Fixed variable drift detected at {where}: {preview}")
+
+    def _apply_positive_clamp(self, x: Vec) -> Vec:
+        """
+        Apply the optional positivity clamp to selected local variables.
+
+        :param x: Local pseudo-transient vector to clamp in place.
+        :return: Clamped local pseudo-transient vector.
+        """
+        if len(self.positive_clamp_names) == 0:
+            return x
+
+        vars_all: list[Var] = self._problem_state_vars() + self._problem_algebraic_vars()
+        clamp_all: bool = "*" in self.positive_clamp_names
+        min_value: float = float(self.positive_clamp_min)
+
+        for idx, var in enumerate(vars_all):
+            if idx < x.size:
+                if clamp_all or var.name in self.positive_clamp_names:
+                    if x[idx] < min_value:
+                        x[idx] = min_value
+                    else:
+                        pass
+                else:
+                    pass
+            else:
+                pass
+
+        return x
+
+    def _apply_soft_positive(self, x: Vec) -> Vec:
+        """
+        Apply the optional smooth positivity floor to selected local variables.
+
+        :param x: Local pseudo-transient vector to transform in place.
+        :return: Soft-positive local pseudo-transient vector.
+        """
+        if len(self.soft_positive_names) == 0:
+            return x
+
+        vars_all: list[Var] = self._problem_state_vars() + self._problem_algebraic_vars()
+        transform_all: bool = "*" in self.soft_positive_names
+        min_value: float = float(self.soft_positive_min)
+        eps_value: float = max(float(self.soft_positive_eps), 1e-30)
+
+        for idx, var in enumerate(vars_all):
+            if idx < x.size:
+                if transform_all or var.name in self.soft_positive_names:
+                    shifted_value: float = float(x[idx] - min_value)
+                    x[idx] = min_value + 0.5 * (shifted_value + np.sqrt((shifted_value * shifted_value) + (eps_value * eps_value)))
+                else:
+                    pass
+            else:
+                pass
+
+        return x
 
     def _dbg(self, msg: str) -> None:
         if self.verbose:
@@ -147,25 +348,25 @@ class  PseudoTransient:
         return float(np.linalg.norm(w * v))
 
     def _get_problem_state_eqs(self):
-        if hasattr(self.problem, "_state_eqs"):
-            return list(self.problem._state_eqs)
-        if hasattr(self.problem, "block") and hasattr(self.problem.block, "state_eqs"):
-            return list(self.problem.block.state_eqs)
-        return list()
+        if isinstance(self.problem, RmsProblemDae):
+            return list(self.problem.state_eqs)
+        else:
+            if isinstance(self.problem, RmsProblemTemplate):
+                return list()
+            else:
+                return list(self.problem._state_eqs)
 
     def _get_problem_algebraic_eqs(self):
-        if hasattr(self.problem, "_algebraic_eqs"):
-            return list(self.problem._algebraic_eqs)
-        if hasattr(self.problem, "block") and hasattr(self.problem.block, "algebraic_eqs"):
-            return list(self.problem.block.algebraic_eqs)
-        return list()
+        if isinstance(self.problem, RmsProblemDae):
+            return list(self.problem.algebraic_eqs)
+        else:
+            if isinstance(self.problem, RmsProblemTemplate):
+                return list()
+            else:
+                return list(self.problem._algebraic_eqs)
 
     def _get_problem_state_vars(self):
-        if hasattr(self.problem, "_state_vars"):
-            return list(self.problem._state_vars)
-        if hasattr(self.problem, "block") and hasattr(self.problem.block, "state_vars"):
-            return list(self.problem.block.state_vars)
-        return list()
+        return self._problem_state_vars()
 
     def _rhs_index_equation_repr(self, rhs_idx: int) -> str:
         n_states = int(self.problem.get_states_number())
@@ -185,13 +386,6 @@ class  PseudoTransient:
         return f"rhs[{rhs_idx}]: <unknown equation>"
 
     def _expr_begin_repr(self, expr) -> str:
-        begin_fn = getattr(expr, "begin", None)
-        if callable(begin_fn):
-            try:
-                return str(begin_fn())
-            except Exception:
-                pass
-
         if isinstance(expr, BinOp) and expr.op == "-":
             return str(expr.left)
 
@@ -228,21 +422,26 @@ class  PseudoTransient:
             if 0 <= i < len(x):
                 return f"{var.name}={x[i]}(x_local[{i}])"
 
-        uid2idx_vars = getattr(self.problem, "uid2idx_vars", None)
+        if isinstance(self.problem, RmsProblemTemplate) and not isinstance(self.problem, RmsProblemDae):
+            return f"{var.name}=<unresolved>"
+        else:
+            pass
+
+        uid2idx_vars = self.problem._uid2idx_vars
         if isinstance(uid2idx_vars, dict) and var.uid in uid2idx_vars:
             i = uid2idx_vars[var.uid]
             if 0 <= i < len(x):
                 return f"{var.name}={x[i]}(x_global[{i}])"
 
-        uid2idx_evt = getattr(self.problem, "_uid2idx_event_params", None)
-        vparams = getattr(self.problem, "_variable_parameters_values", None)
+        uid2idx_evt = self.problem._uid2idx_event_params
+        vparams = self.problem._variable_parameters_values
         if isinstance(uid2idx_evt, dict) and var.uid in uid2idx_evt and vparams is not None:
             i = uid2idx_evt[var.uid]
             if 0 <= i < len(vparams):
                 return f"{var.name}={vparams[i]}(vprms[{i}])"
 
-        uid2idx_params = getattr(self.problem, "_uid2idx_params", None)
-        cparams = getattr(self.problem, "_constant_params", None)
+        uid2idx_params = self.problem._uid2idx_params
+        cparams = self.problem._constant_params
         if isinstance(uid2idx_params, dict) and var.uid in uid2idx_params and cparams is not None:
             i = uid2idx_params[var.uid]
             if 0 <= i < len(cparams):
@@ -306,67 +505,63 @@ class  PseudoTransient:
             )
 
     def _problem_algebraic_vars(self):
-        algeb = getattr(self.problem, "algebraic_vars", None)
-        if callable(algeb):
-            return list(algeb())
-        if algeb is not None:
-            return list(algeb)
-
-        getter = getattr(self.problem, "get_algebraic_vars", None)
-        if callable(getter):
-            return list(getter())
-
-        return list()
+        if isinstance(self.problem, RmsProblemDae):
+            return list(self.problem.algebraic_vars)
+        else:
+            if isinstance(self.problem, RmsProblemTemplate):
+                return list(self.problem.get_algebraic_vars())
+            else:
+                return list(self.problem._algebraic_vars)
 
     def _problem_state_vars(self):
-        states = getattr(self.problem, "state_vars", None)
-        if callable(states):
-            return list(states())
-        if states is not None:
-            return list(states)
-
-        return list()
+        if isinstance(self.problem, RmsProblemDae):
+            return list(self.problem.state_vars)
+        else:
+            if isinstance(self.problem, RmsProblemTemplate):
+                return list(self.problem.state_vars())
+            else:
+                return list(self.problem._state_vars)
 
     def _problem_diff_vars(self):
-        diff_vars = getattr(self.problem, "_diff_vars", None)
-        if diff_vars is not None:
-            return list(diff_vars)
+        if isinstance(self.problem, RmsProblemDae):
+            return list(self.problem.get_diff_vars())
+        else:
+            if isinstance(self.problem, RmsProblemTemplate):
+                return list()
+            else:
+                return list(self.problem._diff_vars)
 
-        getter = getattr(self.problem, "get_diff_vars", None)
-        if callable(getter):
-            return list(getter())
-
-        return list()
-
-    def _artificial_algebraic_mass_diag(self, n_algebraic: int, h: float) -> sp.csc_matrix:
+    def _artificial_algebraic_mass_diag(self, n_rows: int, n_cols: int, h: float) -> sp.csc_matrix:
         """
         Build the optional pseudo-time mass shift for selected algebraic variables.
 
-        :param n_algebraic: Number of algebraic variables in the local pseudo-transient problem.
+        :param n_rows: Number of algebraic residual rows.
+        :param n_cols: Number of algebraic variable columns.
         :param h: Current pseudo-time continuation step.
         :return: Sparse diagonal matrix with ``mass / h`` on selected algebraic entries.
         """
-        if n_algebraic <= 0:
-            return sp.csc_matrix((0, 0))
+        if n_rows <= 0 or n_cols <= 0:
+            return sp.csc_matrix((max(n_rows, 0), max(n_cols, 0)))
 
         if self.artificial_algebraic_mass <= 0.0 or h == 0.0:
-            return sp.csc_matrix((n_algebraic, n_algebraic))
+            return sp.csc_matrix((n_rows, n_cols))
 
         if len(self.artificial_algebraic_mass_names) == 0:
-            return sp.csc_matrix((n_algebraic, n_algebraic))
+            return sp.csc_matrix((n_rows, n_cols))
 
-        values: Vec = np.zeros(n_algebraic, dtype=float)
+        diagonal_size: int = min(n_rows, n_cols)
+        values: Vec = np.zeros(diagonal_size, dtype=float)
         algebraic_vars: list[Var] = self._problem_algebraic_vars()
         selected_all: bool = "*" in self.artificial_algebraic_mass_names
         shift_value: float = float(self.artificial_algebraic_mass) / max(abs(float(h)), 1e-30)
 
-        for local_idx, var in enumerate(algebraic_vars[:n_algebraic]):
+        for local_idx, var in enumerate(algebraic_vars[:diagonal_size]):
             if selected_all or var.name in self.artificial_algebraic_mass_names:
                 values[local_idx] = shift_value
             else:
                 pass
 
-        return sp.diags(values, format="csc")
+        return sp.diags(values, offsets=0, shape=(n_rows, n_cols), format="csc")
 
     def _find_reference_pin_indices(self) -> list[int]:
         n_vars = int(self.problem.get_all_vars_number())
@@ -410,7 +605,7 @@ class  PseudoTransient:
 
             # Prefer exact/canonical prefix match (e.g. Id*), avoid accidental matches like Psid*.
             for i, var in enumerate(vars_all):
-                name = (getattr(var, "name", "") or "").strip()
+                name = var.name.strip()
                 if i in used_idx:
                     continue
                 if name.lower().startswith(token_l):
@@ -420,7 +615,7 @@ class  PseudoTransient:
             # Fallback: contains token when prefix is unavailable.
             if hit_idx is None:
                 for i, var in enumerate(vars_all):
-                    name = (getattr(var, "name", "") or "").strip()
+                    name = var.name.strip()
                     if i in used_idx:
                         continue
                     if token_l in name.lower():
@@ -429,7 +624,7 @@ class  PseudoTransient:
 
             if hit_idx is not None:
                 used_idx.add(hit_idx)
-                name = getattr(vars_all[hit_idx], "name", "") or f"x[{hit_idx}]"
+                name = vars_all[hit_idx].name
                 val = float(x[hit_idx]) if 0 <= hit_idx < x.size else float("nan")
                 matches.append(f"{name}={val:+.6e}")
             else:
@@ -763,13 +958,12 @@ class  PseudoTransient:
         n_states = self.problem.get_states_number()
         if n_states == 0:
             j22_only: sp.csc_matrix = self.problem.get_j22(x, dx, h).tocsc()
-            return (j22_only + self._artificial_algebraic_mass_diag(j22_only.shape[0], h)).tocsc()
+            return (j22_only + self._artificial_algebraic_mass_diag(j22_only.shape[0], j22_only.shape[1], h)).tocsc()
 
         # For initialization problems with numerical Jacobian, compute once and split.
         # This avoids recomputing 4 separate finite-difference Jacobians and mixing them.
-        jac_full_fn = getattr(self.problem, "_compute_numerical_jacobian", None)
-        if callable(jac_full_fn):
-            j_full = jac_full_fn(x, dx, h).tocsc()
+        if not isinstance(self.problem, RmsProblemDae):
+            j_full = self.problem._compute_numerical_jacobian(x, dx, h).tocsc()
             n_total = j_full.shape[0]
             n_alg = n_total - n_states
             tau_diag = self._state_tau_inv_diag(n_states, h)
@@ -778,9 +972,11 @@ class  PseudoTransient:
             j21 = j_full[n_states:n_states + n_alg, :n_states].tocsc()
             j22 = (
                 j_full[n_states:n_states + n_alg, n_states:n_states + n_alg].tocsc()
-                + self._artificial_algebraic_mass_diag(n_alg, h)
+                + self._artificial_algebraic_mass_diag(n_alg, j_full.shape[1] - n_states, h)
             ).tocsc()
             return pack_4_by_4_scipy(j11, j12, j21, j22)
+        else:
+            pass
 
         j11_val: csc_matrix = self.problem.get_j11(x, dx, h)
         j12_val: csc_matrix = self.problem.get_j12(x, dx, h)
@@ -791,7 +987,10 @@ class  PseudoTransient:
         j11 = (tau_diag - j11_val).tocsc()
         j12 = (-j12_val).tocsc()
         j21 = j21_val.tocsc()
-        j22 = (j22_val.tocsc() + self._artificial_algebraic_mass_diag(j22_val.shape[0], h)).tocsc()
+        j22 = (
+            j22_val.tocsc()
+            + self._artificial_algebraic_mass_diag(j22_val.shape[0], j22_val.shape[1], h)
+        ).tocsc()
 
         return pack_4_by_4_scipy(j11, j12, j21, j22)
 
@@ -836,9 +1035,10 @@ class  PseudoTransient:
         return f_algeb
 
     def _jacobian_steady(self, x: Vec, dx: Vec) -> sp.csc_matrix:
-        jac_full_fn = getattr(self.problem, "_compute_numerical_jacobian", None)
-        if callable(jac_full_fn):
-            return jac_full_fn(x, dx, self.h).tocsc()
+        if not isinstance(self.problem, RmsProblemDae):
+            return self.problem._compute_numerical_jacobian(x, dx, self.h).tocsc()
+        else:
+            pass
 
         if self.problem.get_states_number() == 0:
             return self.problem.get_j22(x, dx, self.h)
@@ -1105,11 +1305,7 @@ class  PseudoTransient:
         original_fixed_indices = list(self._fixed_var_indices)
         n_vars = self.problem.get_all_vars_number()
         if x0 is None:
-            get_x0 = getattr(self.problem, "get_x0", None)
-            if callable(get_x0):
-                x0 = np.array(get_x0(), dtype=float, copy=True)
-            else:
-                x0 = np.random.rand(n_vars, dtype=float)
+            x0 = np.array(self.problem.get_x0(), dtype=float, copy=True)
         else:
             x0 = np.array(x0, dtype=float, copy=True)
 
@@ -1228,15 +1424,15 @@ class  PseudoTransient:
                         "PseudoTransient linear step size mismatch: "
                         f"delta={delta.size}, x={x_new.size}, J={Jf.shape}, rhs={rhs.size}"
                     )
-                equilibrium_param_indices = getattr(self.problem, "_equilibrium_param_indices", dict())
-                if isinstance(equilibrium_param_indices, dict):
+                if isinstance(self.problem, RmsProblemDae) or isinstance(self.problem, RmsProblemTemplate):
+                    pass
+                else:
+                    equilibrium_param_indices = self.problem._equilibrium_param_indices
                     for param_idx in equilibrium_param_indices.values():
                         if isinstance(param_idx, int) and 0 <= param_idx < delta.size:
                             delta[param_idx] = 0.0
                         else:
                             pass
-                else:
-                    pass
                 solved = np.all(np.isfinite(delta))
 
                 if not solved:  # or not np.all(np.isfinite(delta)):
@@ -1250,7 +1446,7 @@ class  PseudoTransient:
                         f"Newton step failed at try {tries} and step {step_idx}: delta has NaN/Inf values with dtau {dtau}")
                 dx0 = dx
                 base_residual = residual
-                trial_scales = (1.0, 0.5, 0.25, 0.125, 0.0625)
+                trial_scales = (1.0, 0.5, 0.25, 0.125)
                 best_scale = 0.0
                 best_x = None
                 best_residual = np.inf
@@ -1275,6 +1471,8 @@ class  PseudoTransient:
                         f"Line-search failed at try {tries} and step {step_idx}: no finite trial residual"
                     )
 
+                best_x = self._apply_soft_positive(best_x)
+                best_x = self._apply_positive_clamp(best_x)
                 x_new = self._apply_fixed_mask(best_x, x_fixed_ref)
                 self._check_fixed_drift(x_new, x_fixed_ref, where=f"step={step_idx + 1} try={tries} accepted")
                 rhs = best_rhs
@@ -1314,6 +1512,7 @@ class  PseudoTransient:
                         y[-1] = alpha * x_new + (1 - alpha) * y[-1]
                     else:
                         y[-1] = x_new
+                    y[-1] = self._apply_positive_clamp(y[-1])
                     x_new = self._apply_fixed_mask(y[-1], x_fixed_ref)
                     self._check_fixed_drift(x_new, x_fixed_ref, where=f"step={step_idx} rollout")
                     xn = x_new.copy()

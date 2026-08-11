@@ -4,7 +4,6 @@
 # SPDX-License-Identifier: MPL-2.0
 
 
-import os
 import warnings
 from copy import deepcopy
 from typing import Dict, List
@@ -340,6 +339,7 @@ class PseudoTransientInitProblem:
                  uid2idx_vars: Dict[int, int],
                  variable_parameters: List[Var],
                  constant_parameters: List[Var],
+                 pseudo_transient_options: object | None = None,
                  VARS_NAME: str = "vars",
                  DIFF_NAME: str = "diff",
                  VARIABLE_PARAMS_NAME: str = "vprms",
@@ -361,14 +361,27 @@ class PseudoTransientInitProblem:
         mode_uid_map = {v.uid: eq for v, eq in block.mode_dict.items()}
         param_uid_map = {v.uid: c for v, c in block.parameters.items()}
         
-        self.equilibrium_inputs_as_params = os.getenv(
-            "VERAGRID_PSEUDO_EQUILIBRIUM_INPUTS_AS_PARAMS", "0"
-        ).lower() in {"1", "true", "yes", "on"}
+        self.pseudo_transient_options: object | None = pseudo_transient_options
+        self.equilibrium_inputs_as_params: bool = bool(getattr(pseudo_transient_options, "equilibrium_inputs_as_params", False))
+        self.equilibrium_references_as_params: bool = bool(getattr(pseudo_transient_options, "equilibrium_references_as_params", False))
+        self.equilibrium_references_as_equations: bool = bool(getattr(pseudo_transient_options, "equilibrium_references_as_equations", False))
 
-        # Get block's variables (state + algebraic). Equilibrium references stay
-        # in this local unknown vector so the pseudo-transient system remains square.
+        equilibrium_input_uids: set[int] = set()
+        if self.equilibrium_inputs_as_params:
+            equilibrium_input_uids = {
+                v.uid for v in block.in_vars
+                if isinstance(v, Var) and self._is_equilibrium_input_var(v)
+            }
+        else:
+            pass
+
+        # Get block's variables. Equilibrium inputs can be compiled as mutable
+        # parameters so the generator/exciter equilibrium stays on the physical branch.
         self._state_vars = list(block.state_vars)
-        self._algebraic_vars = list(block.algebraic_vars)
+        self._algebraic_vars = [
+            v for v in block.algebraic_vars
+            if not (isinstance(v, Var) and v.uid in equilibrium_input_uids)
+        ]
 
         # Ensure local init system is square whenever equations reference extra
         # free variables (commonly open controller inputs like Tm/Vf in bare
@@ -381,6 +394,8 @@ class PseudoTransientInitProblem:
                     continue
                 if used_var.uid in known_uids:
                     continue
+                if used_var.uid in equilibrium_input_uids:
+                    continue
                 if used_var.uid in self.compiler_names_dict:
                     continue
                 self._algebraic_vars.append(used_var)
@@ -390,6 +405,9 @@ class PseudoTransientInitProblem:
         self._n_vars = len(self._all_vars)
         self._n_states = len(self._state_vars)
         self._diff_vars = list(block.diff_vars)
+        self._state_eqs = list(block.state_eqs)
+        self._algebraic_eqs = list(block.algebraic_eqs)
+        self._has_full_numerical_jacobian: bool = True
 
         # Build local indexing for this block initialization problem.
         self._uid2idx_vars = {v.uid: i for i, v in enumerate(self._all_vars)}
@@ -406,8 +424,23 @@ class PseudoTransientInitProblem:
             self._compiler_names_dict_local[uid] = f"{DIFF_NAME}[{i}]"
             self._alias_names_dict_local[uid] = f"{DIFF_NAME}_{i}"
 
+        self._equilibrium_input_param_indices: dict[str, int] = dict()
+        for in_var in self.block.in_vars:
+            if not isinstance(in_var, Var) or in_var.uid not in equilibrium_input_uids:
+                continue
+            else:
+                pass
+            pidx = self._ensure_variable_parameter(in_var)
+            self._compiler_names_dict_local[in_var.uid] = f"{VARIABLE_PARAMS_NAME}[{pidx}]"
+            self._alias_names_dict_local[in_var.uid] = f"{VARIABLE_PARAMS_NAME}_{pidx}"
+            kind = self._equilibrium_input_kind(in_var)
+            if kind is not None:
+                self._equilibrium_input_param_indices[kind] = pidx
+            else:
+                pass
+
         self._equilibrium_param_indices: dict[str, int] = dict()
-        if self.equilibrium_inputs_as_params:
+        if self.equilibrium_references_as_params and not self.equilibrium_references_as_equations:
             for ref_var in self._all_vars:
                 if not isinstance(ref_var, Var) or not self._is_equilibrium_reference_var(ref_var):
                     continue
@@ -457,6 +490,7 @@ class PseudoTransientInitProblem:
             for p in constant_parameters
         ], dtype=float)
         self._equilibrium_reference_values: dict[str, float] = dict()
+        self._equilibrium_reference_eqs: list[Expr] = self._build_equilibrium_reference_equations()
         
         # Compile functions
         self._compile_functions(VARS_NAME, DIFF_NAME, VARIABLE_PARAMS_NAME, CONSTANT_PARAMS_NAME)
@@ -467,6 +501,19 @@ class PseudoTransientInitProblem:
     @staticmethod
     def _var_name_l(var: Var) -> str:
         return var.name.lower()
+
+    @classmethod
+    def _equilibrium_input_kind(cls, var: Var) -> str | None:
+        name = cls._var_name_l(var)
+        if name.startswith("tm"):
+            return "tm"
+        if name.startswith("vf") or name.startswith("efd"):
+            return "vf"
+        return None
+
+    @classmethod
+    def _is_equilibrium_input_var(cls, var: Var) -> bool:
+        return cls._equilibrium_input_kind(var) is not None
 
     @classmethod
     def _equilibrium_reference_kind(cls, var: Var) -> str | None:
@@ -508,9 +555,121 @@ class PseudoTransientInitProblem:
                 return float(self._variable_parameters_values[i])
         return default
 
+    def _find_local_var(self, names: tuple[str, ...], *, contains: bool = False) -> Var | None:
+        """
+        Find a local initialization variable by name.
+
+        :param names: Candidate variable names or lowercase tokens.
+        :param contains: Use substring matching instead of exact lowercase-name matching.
+        :return: Matching variable or ``None``.
+        """
+        names_l: set[str] = {name.lower() for name in names}
+        var: Var
+
+        for var in self._all_vars:
+            var_name_l: str = self._var_name_l(var)
+            if contains:
+                if any(token in var_name_l for token in names_l):
+                    return var
+                else:
+                    pass
+            else:
+                if var_name_l in names_l:
+                    return var
+                else:
+                    pass
+
+        return None
+
+    def _build_equilibrium_reference_equations(self) -> list[Expr]:
+        """
+        Build explicit residual equations for equilibrium reference variables.
+
+        :return: Algebraic residual equations to append to the local pseudo-transient problem.
+        """
+        equations: list[Expr] = list()
+
+        if not self.equilibrium_inputs_as_params or not self.equilibrium_references_as_equations:
+            return equations
+        else:
+            pass
+
+        pm_ref_var: Var | None = self._find_local_var(("pm_ref", "pref", "p_ref"))
+        if pm_ref_var is not None:
+            k_value: float | None = self._get_parameter_value_by_name(("k",), default=0.0)
+            y1_var: Var | None = self._find_local_var(("y_gov0", "y1_gov"), contains=True)
+            y2_3_var: Var | None = self._find_local_var(("y2_3_gov",), contains=True)
+            if k_value is not None and y1_var is not None and y2_3_var is not None:
+                equations.append(pm_ref_var - ((Const(float(k_value)) * y1_var) + y2_3_var))
+            else:
+                pass
+        else:
+            pass
+
+        us_ref_var: Var | None = self._find_local_var(("usrefpu", "vref", "v_ref", "u_ref"))
+        if us_ref_var is not None:
+            u3_var: Var | None = self._find_local_var(("u_exciter3",), contains=True)
+            y1_exciter_var: Var | None = self._find_local_var(("y_exciter1",), contains=True)
+            y2_exciter_var: Var | None = self._find_local_var(("y_exciter2",), contains=True)
+            vpss_var: Var | None = self._find_local_var(("v_pss", "vpss"), contains=True)
+            if u3_var is not None and y1_exciter_var is not None and y2_exciter_var is not None:
+                if vpss_var is not None:
+                    equations.append(us_ref_var - ((u3_var + y1_exciter_var + y2_exciter_var) - vpss_var))
+                else:
+                    equations.append(us_ref_var - (u3_var + y1_exciter_var + y2_exciter_var))
+            else:
+                pass
+        else:
+            pass
+
+        return equations
+
     def update_equilibrium_parameters(self, x: Vec) -> None:
-        if len(self._equilibrium_param_indices) == 0 or x.size == 0:
+        if self.equilibrium_references_as_equations:
             return
+
+        if len(self._equilibrium_input_param_indices) == 0 and len(self._equilibrium_param_indices) == 0:
+            return
+        else:
+            pass
+
+        if x.size == 0:
+            return
+
+        tm_pidx = self._equilibrium_input_param_indices.get("tm")
+        if tm_pidx is not None and tm_pidx < len(self._variable_parameters_values):
+            te_idx = self._find_local_var_index(("te",), startswith=True)
+            omega_idx = self._find_local_var_index(("omega",))
+            d_value = self._get_parameter_value_by_name(("d",), default=0.0)
+            if te_idx is not None and omega_idx is not None and te_idx < x.size and omega_idx < x.size and d_value is not None:
+                self._variable_parameters_values[tm_pidx] = float(x[te_idx] + d_value * (x[omega_idx] - 1.0))
+            else:
+                pass
+        else:
+            pass
+
+        vf_pidx = self._equilibrium_input_param_indices.get("vf")
+        if vf_pidx is not None and vf_pidx < len(self._variable_parameters_values):
+            eq1_idx = self._find_local_var_index(("eq1",))
+            irpu_idx = self._find_local_var_index(("irpu",), startswith=True)
+            sat_idx = self._find_local_var_index(("sat",), startswith=True)
+            if irpu_idx is not None and irpu_idx < x.size:
+                self._variable_parameters_values[vf_pidx] = float(x[irpu_idx])
+            elif eq1_idx is not None and eq1_idx < x.size:
+                sat_value = 1.0
+                if sat_idx is not None and sat_idx < x.size:
+                    sat_value = float(x[sat_idx])
+                else:
+                    sat_param = self._get_parameter_value_by_name(("sat",), default=1.0)
+                    if sat_param is not None:
+                        sat_value = float(sat_param)
+                    else:
+                        pass
+                self._variable_parameters_values[vf_pidx] = float(sat_value * x[eq1_idx])
+            else:
+                pass
+        else:
+            pass
 
         pm_ref_idx = self._equilibrium_param_indices.get("pm_ref")
         if pm_ref_idx is not None and pm_ref_idx < x.size:
@@ -546,7 +705,7 @@ class PseudoTransientInitProblem:
                            VARIABLE_PARAMS_NAME: str, CONSTANT_PARAMS_NAME: str):
         """Compile RHS and derivative functions for the block."""
         # Collect all equations
-        all_eqs = list(self.block.state_eqs) + list(self.block.algebraic_eqs)
+        all_eqs = list(self.block.state_eqs) + list(self.block.algebraic_eqs) + list(self._equilibrium_reference_eqs)
         
         # Compile RHS function
         if all_eqs:
@@ -750,7 +909,8 @@ def init_pseudo_transient(mdl: Block,
                           dtau0: float = 1e-3,
                           max_iter: int = 100,
                           tol: float = 1e-6,
-                          verbose: bool = False):
+                          verbose: bool = False,
+                          pseudo_transient_options: object | None = None):
     """
     Initialize model using pseudo-transient method.
     
@@ -758,7 +918,14 @@ def init_pseudo_transient(mdl: Block,
     instead of explicit equation evaluation.
     """
     # Import here to avoid circular imports
-    from VeraGridEngine.Simulations.Rms.numerical.pseudo_transient import PseudoTransient
+    from VeraGridEngine.Simulations.Rms.numerical.pseudo_transient import PseudoTransient, PseudoTransientOptions
+
+    if pseudo_transient_options is None:
+        pseudo_transient_options = PseudoTransientOptions(
+            equilibrium_references_as_params=True,
+        )
+    else:
+        pass
 
     # Work on a copy so initialization rewrites do not alter the original model.
     mdl_work = deepcopy(mdl)
@@ -800,8 +967,8 @@ def init_pseudo_transient(mdl: Block,
                 x_global[gidx] = float(val)
 
     # Force deterministic reference values across runs.
-    pref_fixed = float(os.getenv("VERAGRID_INIT_PREF", "1.0316406365799007"))
-    vref_fixed = float(os.getenv("VERAGRID_INIT_VREF", "1.0"))
+    pref_fixed = float(getattr(pseudo_transient_options, "pref_seed", 1.0316406365799007))
+    vref_fixed = float(getattr(pseudo_transient_options, "vref_seed", 1.0))
 
     # Freeze PF anchors in this local model: P, Q, Vm, Va, Vdc.
     pf_var_references = [
@@ -853,6 +1020,7 @@ def init_pseudo_transient(mdl: Block,
         uid2idx_vars=uid2idx_vars,
         variable_parameters=variable_parameters,
         constant_parameters=constant_parameters,
+        pseudo_transient_options=pseudo_transient_options,
         VARS_NAME=VARS_NAME,
         DIFF_NAME=DIFF_NAME,
         VARIABLE_PARAMS_NAME=VARIABLE_PARAMS_NAME,
@@ -880,6 +1048,7 @@ def init_pseudo_transient(mdl: Block,
         verbose=verbose,
         reference_error_tol=-1,
         fixed_var_uids=[],
+        options=pseudo_transient_options,
     )
     
     # Build initial guess without using existing init equations/guesses.
@@ -887,8 +1056,7 @@ def init_pseudo_transient(mdl: Block,
 
     # Start rotor angles close to the network reference for pseudo-transient.
     # This is only a seed; delta remains a solved state afterwards.
-    delta_seed_text = os.getenv("VERAGRID_INIT_DELTA_SEED", "0.0").strip()
-    delta_seed = float(delta_seed_text) if delta_seed_text != "" else None
+    delta_seed = getattr(pseudo_transient_options, "delta_seed", 0.0)
 
     def _enforce_delta_seed(x_vec: np.ndarray) -> np.ndarray:
         if delta_seed is None:
@@ -1060,7 +1228,7 @@ def init_pseudo_transient(mdl: Block,
     residual_inf = float(np.linalg.norm(residual_vec, np.inf)) if residual_vec.size > 0 else 0.0
     residual_tol = max(float(tol), 1e-6)
     if residual_inf > residual_tol:
-        allow_best_effort = os.getenv("VERAGRID_ALLOW_BEST_EFFORT_INIT", "0").lower() in {"1", "true", "yes", "on"}
+        allow_best_effort = bool(getattr(pseudo_transient_options, "allow_best_effort_init", False))
         if allow_best_effort:
             print(
                 "[PseudoTransientInit] WARNING: returning best-effort init despite residual guard: "
@@ -1090,6 +1258,26 @@ def init_pseudo_transient(mdl: Block,
                 event_parameters_eqs[ep_idx] = Const(value)
 
     problem.update_equilibrium_parameters(x_solution)
+    for pidx in getattr(problem, "_equilibrium_input_param_indices", {}).values():
+        if pidx < 0 or pidx >= len(problem._variable_parameters):
+            continue
+        else:
+            pass
+        if pidx >= len(problem._variable_parameters_values):
+            continue
+        else:
+            pass
+        var = problem._variable_parameters[pidx]
+        value = float(problem._variable_parameters_values[pidx])
+        if var.uid in uid2idx_event_params:
+            ep_idx = uid2idx_event_params[var.uid]
+            if 0 <= ep_idx < len(event_parameters_eqs):
+                event_parameters_eqs[ep_idx] = Const(value)
+            else:
+                pass
+        else:
+            pass
+
     for kind, vidx in getattr(problem, "_equilibrium_param_indices", {}).items():
         if vidx < 0 or vidx >= len(problem._all_vars):
             continue
