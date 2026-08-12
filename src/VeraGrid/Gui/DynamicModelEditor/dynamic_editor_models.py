@@ -21,13 +21,14 @@ from VeraGridEngine.Devices.Parents.injection_parent import InjectionParent
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.bus_emt_template import BusEmtTemplate
-from VeraGridEngine.Utils.Symbolic.bus_emt_template import get_bus_emt_algebraic_vars, get_bus_mask
+from VeraGridEngine.Utils.Symbolic.bus_emt_template import get_bus_emt_algebraic_vars
 from VeraGridEngine.Utils.Symbolic.bus_rms_template import initialize_bus_rms
 from VeraGridEngine.Utils.Symbolic.templates_common_functions import register_connected_emt_model, connect_injection_emt, connect_line_emt_from, connect_line_emt_to, \
     unify_saved_emt_model_root_contract, synchronize_saved_emt_root_contract_identity, \
     synchronize_saved_emt_root_contract_from_bus, synchronize_saved_emt_root_parameters_from_children, \
     register_saved_emt_model_vars_for_device, unregister_saved_emt_model_var_connections_for_device, \
-    attach_emt_model_to_buses, EmtBusConnectionSide
+    reconcile_saved_emt_model_against_current_topology, emt_bus_shell_matches_grid_topology, \
+    attach_emt_model_to_buses, EmtBusConnectionSide, synchronize_emt_bus_shell_with_grid
 from VeraGridEngine.Utils.Symbolic.symbolic import Const, Expr, Var, string_to_symbolic, symbolic_to_string
 from VeraGrid.Gui.gui_functions import ComboDelegate, TextDelegate
 from VeraGrid.Gui.wrappable_table_model import WrappableTableModel
@@ -1329,6 +1330,7 @@ def copy_block_state(source_block: Block, target_block: Block) -> None:
     target_block.name = source_clone.name
     target_block.uid = source_clone.uid
     target_block.is_decomposable = source_clone.is_decomposable
+    target_block.is_root_interface_wrapper = source_clone.is_root_interface_wrapper
     target_block.vars_glob_name2uid = source_clone.vars_glob_name2uid
     target_block.state_vars = source_clone.state_vars
     target_block.state_eqs = source_clone.state_eqs
@@ -1350,6 +1352,9 @@ def copy_block_state(source_block: Block, target_block: Block) -> None:
     target_block.var_mapping = source_clone.var_mapping
     target_block.event_dict = source_clone.event_dict
     target_block.mode_dict = source_clone.mode_dict
+    target_block.boolean_guards = source_clone.boolean_guards
+    target_block.procedural_logic = source_clone.procedural_logic
+    target_block.connection_intents = source_clone.connection_intents
     target_block.diagram = source_clone.diagram
 
 
@@ -1380,40 +1385,63 @@ def _initialize_editor_assigned_emt_bus_model(bus: Bus,
                                               api_object: Any,
                                               circuit: MultiCircuit | None,
                                               var_factory: VarFactory) -> None:
-    bus_model_invalid: bool = False
-
-    if bus.emt_model.empty():
-        bus_model_invalid = True
-    else:
-        try:
-            get_bus_emt_algebraic_vars(bus.emt_model)
-        except (AttributeError, TypeError, ValueError):
-            bus_model_invalid = True
-
-    if bus_model_invalid:
-        if circuit is not None:
-            bus.emt_model = BusEmtTemplate(
-                vf=var_factory,
-                mask=get_bus_mask(grid=circuit, bus=bus),
-                is_dc=bus.is_dc,
-                name=f"{bus.name}_emt",
-            ).block
-        elif bus.is_dc:
-            bus.emt_model = BusEmtTemplate(
-                vf=var_factory,
-                mask=list([False, False, False, False]),
-                is_dc=True,
-                name=f"{bus.name}_emt_template",
-            ).block
+    if circuit is not None:
+        if (isinstance(api_object, BranchParent)
+                and not bus.emt_model.empty()
+                and not bus.is_emt_model_grid_synchronized()):
+            try:
+                get_bus_emt_algebraic_vars(bus.emt_model)
+            except (AttributeError, TypeError, ValueError):
+                synchronize_emt_bus_shell_with_grid(bus=bus,
+                                                    grid=circuit,
+                                                    var_factory=var_factory,
+                                                    device_to_skip=api_object)
+            else:
+                if emt_bus_shell_matches_grid_topology(bus=bus, grid=circuit):
+                    bus.mark_emt_model_grid_synchronized()
+                else:
+                    pass
         else:
-            bus.emt_model = BusEmtTemplate(
-                vf=var_factory,
-                mask=list([False, True, True, True]),
-                is_dc=False,
-                name=f"{bus.name}_emt_template",
-            ).block
+            synchronize_emt_bus_shell_with_grid(bus=bus,
+                                                grid=circuit,
+                                                var_factory=var_factory,
+                                                device_to_skip=api_object)
     else:
-        pass
+        if bus.emt_model.empty():
+            if bus.is_dc:
+                bus.emt_model = BusEmtTemplate(
+                    vf=var_factory,
+                    mask=list([False, False, False, False]),
+                    is_dc=True,
+                    name=f"{bus.name}_emt_template",
+                ).block
+            else:
+                bus.emt_model = BusEmtTemplate(
+                    vf=var_factory,
+                    mask=list([False, True, True, True]),
+                    is_dc=False,
+                    name=f"{bus.name}_emt_template",
+                ).block
+        else:
+            try:
+                get_bus_emt_algebraic_vars(bus.emt_model)
+            except (AttributeError, TypeError, ValueError):
+                if bus.is_dc:
+                    bus.emt_model = BusEmtTemplate(
+                        vf=var_factory,
+                        mask=list([False, False, False, False]),
+                        is_dc=True,
+                        name=f"{bus.name}_emt_template",
+                    ).block
+                else:
+                    bus.emt_model = BusEmtTemplate(
+                        vf=var_factory,
+                        mask=list([False, True, True, True]),
+                        is_dc=False,
+                        name=f"{bus.name}_emt_template",
+                    ).block
+            else:
+                pass
 
 
 def attach_editor_assigned_emt_injection_model(api_object: Any,
@@ -1509,6 +1537,12 @@ def initialize_connected_bus_models_for_editor_assignment(api_object: Any,
                                                       api_object=api_object,
                                                       circuit=circuit,
                                                       var_factory=var_factory)
+            if not api_object.emt_model.empty() and circuit is not None:
+                reconcile_saved_emt_model_against_current_topology(device=api_object,
+                                                                   grid=circuit,
+                                                                   var_factory=var_factory)
+            else:
+                pass
         else:
             raise ValueError(f"Unsupported dynamic editor mode {mode}")
     else:

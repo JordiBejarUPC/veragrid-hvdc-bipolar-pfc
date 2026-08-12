@@ -2760,10 +2760,83 @@ class GraphicsView(QGraphicsView):
 class DiagramScene(QGraphicsScene):
     def __init__(self, editor: "DynamicBlockEditorGUI"):
         super().__init__()
-        self.editor: DynamicBlockEditorGUI = editor
+        self.editor: DynamicBlockEditorGUI | None = editor
         self.temp_line: QGraphicsPathItem | None = None
         self.source_port: PortItem | BranchingItem | None = None
         self.context_item: BlockItem | GenericBlockItem | ConnectionItem | RoundBaseArithmeticOpItem | RectBaseArithmeticOpItem | PairedItem | None = None
+
+    def prepare_to_delete(self) -> None:
+        """
+        Break Python references between scene items before Qt destroys them.
+
+        ``QGraphicsScene.clear()`` deletes its C++ items immediately.  The
+        corresponding Python wrappers can nevertheless remain alive when the
+        editor graph contains cycles such as ``port -> connection -> port`` or
+        ``item -> editor -> scene``.  If cyclic garbage collection later
+        finalizes one of those stale wrappers, PySide can attempt to touch an
+        already-deleted C++ object.  Detaching the graph first gives Qt and
+        Python the same destruction order.
+
+        :return: None.
+        """
+        scene_items: list[QGraphicsItem] = list(self.items())
+
+        item: QGraphicsItem
+        for item in scene_items:
+            if isinstance(item, (PortItem, BranchingItem)):
+                item.connections = None
+            else:
+                pass
+
+        for item in scene_items:
+            if isinstance(item, ConnectionItem):
+                item.editor = None
+                item.diagram = None
+                item.source_port = None
+                item.target_port = None
+                item._drag_start_scene_pos = None
+            elif isinstance(item, ElbowItem):
+                item.connection_item = None
+            elif isinstance(item, BranchingItem):
+                item.editor = None
+                item.subsystem = None
+                item.owner_connection = None
+                item.base_var = None
+            elif isinstance(item, PortItem):
+                item.editor = None
+                item.subsystem = None
+                item.base_var = None
+            elif isinstance(item, ResizeHandle):
+                item.editor = None
+                item.block = None
+            elif isinstance(item, (BlockItem,
+                                   GenericBlockItem,
+                                   PairedItem,
+                                   RoundBaseArithmeticOpItem,
+                                   RectBaseArithmeticOpItem)):
+                item.editor = None
+                item.inputs.clear()
+                item.outputs.clear()
+                if hasattr(item, "position_changed_callback"):
+                    item.position_changed_callback = None
+                else:
+                    pass
+                if isinstance(item, (BlockItem, GenericBlockItem)):
+                    item.resize_handle = None
+                    item.input_labels.clear()
+                    item.output_labels.clear()
+                elif isinstance(item, PairedItem):
+                    item.paired_items = None
+                else:
+                    item.input_labels.clear()
+            else:
+                pass
+
+        self.temp_line = None
+        self.source_port = None
+        self.context_item = None
+        self.editor = None
+        self.clear()
 
     def get_modal_template_metadata(self, block: Block | None) -> tuple[str | None, Dict[str, Any] | None]:
         return self.editor.get_modal_template_metadata(block)
@@ -3018,4 +3091,3 @@ class DiagramScene(QGraphicsScene):
             self.editor.attach_new_connection_item(item=connection)
         else:
             pass
-
