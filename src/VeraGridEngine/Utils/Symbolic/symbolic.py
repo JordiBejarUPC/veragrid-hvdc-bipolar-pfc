@@ -449,11 +449,17 @@ class Var(Expr):
         :param shared_reference:
         :param reference
         :param network_conn:
+        :param non_mutable_uid: Stable physical variable identity.
         :param uid:
         :param diff_var:
         """
         super().__init__(uid=uid)
-        self.non_mutable_uid: int = _new_uid() if uid is None else uid
+        # Preserve the physical variable identity independently from the
+        # mutable UID used to represent the currently connected signal.
+        if non_mutable_uid is None:
+            self.non_mutable_uid: int = _new_uid() if uid is None else uid
+        else:
+            self.non_mutable_uid = non_mutable_uid
         self.name: str = name
         self._ref: VarPowerFlowReferenceType | None = reference
         self._network_conn: bool = network_conn

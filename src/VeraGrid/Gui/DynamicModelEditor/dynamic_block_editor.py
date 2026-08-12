@@ -38,6 +38,7 @@ from VeraGridEngine.Utils.Symbolic.block import (Block,
                                                  find_connections,
                                                  find_matching_dynamic_connection_intent,
                                                  normalize_dynamic_connection_intents,
+                                                 refresh_block_tree_var_name_mappings,
                                                  rehash_block_tree_var_keyed_dicts)
 from VeraGrid.Gui.DynamicModelEditor.block_editor import Ui_BlockEditorWindow
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_dialogs import AddBlockVariableDialog, AddEquationDialog, \
@@ -56,6 +57,7 @@ from VeraGridEngine.Utils.Symbolic.symbolic import (
     string_to_symbolic, symbolic_to_string,
 )
 from VeraGridEngine.Utils.Symbolic.symbolic_io import duplicate_block
+from VeraGridEngine.Utils.procedural_logic import clone_procedural_logic_entries
 from VeraGridEngine.Utils.Symbolic.bus_rms_template import get_bus_rms_algebraic_vars
 from VeraGridEngine.Utils.SugiyamaLayered import (
     SugiyamaEdge,
@@ -72,6 +74,15 @@ from VeraGridEngine.Devices.Diagrams.block_diagram import (
 )
 from dataclasses import dataclass
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_graphics import GenericBlockItem
+
+
+DynamicBlockGraphicsItem = (
+    graph.BlockItem
+    | graph.GenericBlockItem
+    | graph.RoundBaseArithmeticOpItem
+    | graph.RectBaseArithmeticOpItem
+    | graph.PairedItem
+)
 
 
 @dataclass
@@ -1276,6 +1287,12 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 for child_block in initial_non_interface_children
             )
         )
+        restore_missing_decomposed_connections: bool = (
+            len(self._block2blocktype) > 0
+            and len(initial_non_interface_children) > 0
+            and len(self.diagram.node_data) > 0
+            and len(self.diagram.con_data) == 0
+        )
         auto_layout_root_interface: bool = self._root_interface_layout_uses_bootstrap_positions()
         root_topology_refs_added: bool = False
 
@@ -1410,6 +1427,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         self.parameters_model.block_updated.connect(self.on_block_updated)
         self.variables_model.block_updated.connect(self.on_block_updated)
+        self.variables_model.variable_rename_requested.connect(self.rename_variable_from_table)
         self.equations_model.block_updated.connect(self.on_block_updated)
 
         self.view: graph.GraphicsView = graph.GraphicsView(self.scene)
@@ -1480,10 +1498,11 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             pass
 
-        if self.is_root_editor and self.mode == DynamicSimulationMode.EMT:
-            # Promote explicitly persisted interface nodes before topology
-            # reconciliation can remove their diagram records. This preserves
-            # enough semantic identity to prune a stale wrapper safely.
+        if self.is_root_editor:
+            # Promote explicitly persisted interface nodes before interface
+            # reconciliation can remove their diagram records. Serialized
+            # blocks do not retain the runtime-only wrapper marker, so both RMS
+            # and EMT roots must recover it from the authoritative node type.
             self._convert_legacy_root_interface_children_to_wrappers()
         else:
             pass
@@ -1563,8 +1582,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
                 # Oce everything is calculated we build the items from the blocks and the calculated positions, add them to an items list and create the DiagramNodes:
 
-                blockitems_list: List[graph.BlockItem | graph.GenericBlockItem | graph.RectBaseArithmeticOpItem | graph.RoundBaseArithmeticOpItem | graph.UnOpItem] = list()
-                items_by_uid: Dict[int, graph.BlockItem | graph.GenericBlockItem] = dict()
+                blockitems_list: List[DynamicBlockGraphicsItem] = list()
+                items_by_uid: Dict[int, DynamicBlockGraphicsItem] = dict()
                 for child in self.main_block.children:
                     position = block_positions_dict[child.uid]
                     item = self.generate_block_item_for_block(child, position[0], position[1])
@@ -1611,6 +1630,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             pass
         self.rebuild_scene_from_diagram()
+        if restore_missing_decomposed_connections:
+            self._restore_missing_decomposed_layout_connections()
+        else:
+            pass
         if self.main_block.children:
             self._rebuild_missing_non_interface_connections(
                 rebuild_interface_connections=bootstrap_missing_non_interface_graphics,
@@ -2543,9 +2566,21 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
     def _connect_items_from_layout(
         self,
-        items_by_uid: Dict[int, graph.BlockItem | graph.GenericBlockItem],
+        items_by_uid: Dict[int, DynamicBlockGraphicsItem],
         layout_graph: SugiyamaGraph,
     ) -> None:
+        """
+        Persist and render every connection produced by the layout graph.
+
+        The scene is rebuilt from :attr:`diagram` immediately after the
+        initial ELK layout. Therefore layout connections must use the same
+        controller path as user-created connections instead of existing only
+        as temporary scene items.
+
+        :param items_by_uid: Visible block items keyed by symbolic block UID.
+        :param layout_graph: Computed layout graph containing routed edges.
+        :return: None.
+        """
         for edge in layout_graph.edges:
             src_uid = int(edge.properties["source_uid"])
             dst_uid = int(edge.properties["target_uid"])
@@ -2570,8 +2605,45 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 con_uid=int(edge.identifier),
                 editor=self,
             )
-            connection.recolour()
-            self.scene.addItem(connection)
+            self.attach_new_connection_item(item=connection)
+
+    def _restore_missing_decomposed_layout_connections(self) -> None:
+        """
+        Restore arrows omitted by legacy decomposed equation diagrams.
+
+        A previous editor path persisted every ELK-generated node but created
+        its edges only as temporary scene items. The subsequent scene rebuild
+        erased those arrows, leaving a recognizable diagram with generated
+        block types and no persisted branches. Recompute only the edges while
+        retaining every saved node position.
+
+        :return: None.
+        """
+        items_by_uid: Dict[int, DynamicBlockGraphicsItem] = dict()
+        child_block: Block
+        scene_item: QGraphicsItem | None
+
+        for child_block in self.main_block.children:
+            scene_item = self.get_scene_item_by_block_uid(child_block.uid)
+            if isinstance(scene_item, (
+                    graph.BlockItem,
+                    graph.GenericBlockItem,
+                    graph.RoundBaseArithmeticOpItem,
+                    graph.RectBaseArithmeticOpItem,
+                    graph.PairedItem,
+            )):
+                items_by_uid[child_block.uid] = scene_item
+            else:
+                pass
+
+        layout_graph: SugiyamaGraph = self._build_elk_layout_graph(
+            child_blocks=self.main_block.children,
+            input_output_blocks=list(),
+        )
+        self._connect_items_from_layout(
+            items_by_uid=items_by_uid,
+            layout_graph=layout_graph,
+        )
 
     def generate_block_item_for_block_old(self, block_model: Block) -> GenericBlockItem | None:
         """
@@ -3345,6 +3417,26 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param incoming_name: Name propagated through the alias component.
         :return: None.
         """
+        # A rename can be initiated from a downstream block editor. Resolve the
+        # upstream owner while retaining the established directional graph.
+        source_non_mutable_uid = self.var_factory.get_connection_source_non_mutable_uid(
+            variable_non_mutable_uid=source_non_mutable_uid,
+        )
+
+        # Snapshot names before the factory propagation because some models
+        # share Var objects directly between the factory and working tree.
+        vars_by_uid: Dict[int, List[Var]] = build_working_var_index(self.root_block)
+        previous_names_by_uid: Dict[int, set[str]] = dict()
+        indexed_non_mutable_uid: int
+        indexed_vars: List[Var]
+        indexed_var: Var
+        indexed_names: set[str]
+        for indexed_non_mutable_uid, indexed_vars in vars_by_uid.items():
+            indexed_names = set()
+            for indexed_var in indexed_vars:
+                indexed_names.add(indexed_var.name)
+            previous_names_by_uid[indexed_non_mutable_uid] = indexed_names
+
         # Synchronize the canonical variables kept by the shared factory first.
         self.var_factory.connect_variables_by_uid(
             source_non_mutable_uid,
@@ -3354,7 +3446,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         # Mirror the same graph traversal into the document working copy. The
         # working tree can contain different Var objects with the same stable UID.
-        vars_by_uid: Dict[int, List[Var]] = build_working_var_index(self.main_block)
         connection_graph: Dict[int, List[Connection]] = self.var_factory.get_connections_dict()
         pending: List[int] = list([source_non_mutable_uid])
         visited: set[int] = set()
@@ -3363,6 +3454,12 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         working_var: Var
         connection_records: List[Connection] | None
         connection_record: Connection
+        previous_names: set[str] = set()
+        procedural_var_mapping: Dict[Expr | str, Expr] = dict()
+        replacement_var: Var | None = None
+        block_model: Block
+        previous_name: str
+        stable_previous_names: set[str] | None
 
         while len(pending) > 0:
             current_non_mutable_uid = pending.pop()
@@ -3371,9 +3468,18 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
                 working_vars = vars_by_uid.get(current_non_mutable_uid, None)
                 if working_vars is not None:
+                    stable_previous_names = previous_names_by_uid.get(current_non_mutable_uid, None)
+                    if stable_previous_names is not None:
+                        previous_names.update(stable_previous_names)
+                    else:
+                        pass
                     for working_var in working_vars:
                         working_var.uid = incoming_uid
                         working_var.set_name(incoming_name)
+                        if replacement_var is None:
+                            replacement_var = working_var
+                        else:
+                            pass
                 else:
                     pass
 
@@ -3387,7 +3493,32 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 pass
 
         # UID mutation changes Var hashes, so restore valid hash buckets afterward.
-        rehash_block_tree_var_keyed_dicts(root_block=self.main_block)
+        rehash_block_tree_var_keyed_dicts(root_block=self.root_block)
+        refresh_block_tree_var_name_mappings(root_block=self.root_block)
+
+        # Procedural entries store output and target variables by textual name.
+        # Reuse their established remap API so connect, rename and disconnect
+        # keep those fields aligned with the same propagated network label.
+        if replacement_var is not None:
+            for previous_name in previous_names:
+                if previous_name != incoming_name:
+                    procedural_var_mapping[previous_name] = replacement_var
+                else:
+                    pass
+
+            if len(procedural_var_mapping) > 0:
+                for block_model in self.root_block.get_all_blocks():
+                    if len(block_model.procedural_logic) > 0:
+                        block_model.procedural_logic = clone_procedural_logic_entries(
+                            entries=block_model.procedural_logic,
+                            var_mapping=procedural_var_mapping,
+                        )
+                    else:
+                        pass
+            else:
+                pass
+        else:
+            pass
 
 
     def _find_var_factory_connection(
@@ -4089,7 +4220,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         available_refs: set[VarPowerFlowReferenceType]
         internal_var: Var | None = None
 
-        expected_inputs_by_ref, expected_outputs_by_ref = build_expected_root_emt_interface_for_device(self.api_object)
+        expected_inputs_by_ref, expected_outputs_by_ref = self._build_expected_root_interface_for_current_mode()
         available_refs = set(expected_inputs_by_ref.keys()) | set(expected_outputs_by_ref.keys())
 
         if persisted_reference in available_refs:
@@ -4508,6 +4639,51 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         conn: graph.ConnectionItem
         connections_to_remove: List[graph.ConnectionItem] = list()
         child_block: Block
+        paired_item: graph.PairedItem
+        paired_dependents: List[graph.PairedItem] = list()
+        candidate_item: graph.PairedItem
+        surviving_paired_items: List[graph.PairedItem]
+
+        if isinstance(item, graph.PairedItem):
+            # A From tag owns the canonical variable used by every associated
+            # To tag. Removing only that owner leaves output tags that cannot be
+            # rebound after save/reopen, so remove its dependants as one group.
+            if item.is_signal_in and item.paired_items is not None:
+                for paired_item in list(item.paired_items):
+                    if not paired_item.is_signal_in and paired_item.scene() is self.scene:
+                        paired_dependents.append(paired_item)
+                    else:
+                        pass
+            else:
+                pass
+
+            for paired_item in paired_dependents:
+                self.remove_block_item(paired_item)
+
+            # Removing one To tag remains a local operation. In both cases,
+            # prune the bidirectional runtime relationship before Qt destroys
+            # the scene item so no surviving tag retains a stale Python object.
+            if item.paired_items is not None:
+                for paired_item in list(item.paired_items):
+                    if paired_item.paired_items is not None:
+                        surviving_paired_items = list()
+                        for candidate_item in paired_item.paired_items:
+                            if candidate_item is not item:
+                                surviving_paired_items.append(candidate_item)
+                            else:
+                                pass
+                        paired_item.paired_items = surviving_paired_items
+                        if len(paired_item.paired_items) == 0:
+                            paired_item.paired_items = None
+                        else:
+                            pass
+                    else:
+                        pass
+                item.paired_items = None
+            else:
+                pass
+        else:
+            pass
 
         # find connections to remove
         for port in item.inputs + item.outputs:
@@ -5201,7 +5377,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         item: graph.ProtectedConnectionBlockItem
         reference: VarPowerFlowReferenceType | None
 
-        expected_inputs_by_ref, expected_outputs_by_ref = build_expected_root_emt_interface_for_device(self.api_object)
+        expected_inputs_by_ref, expected_outputs_by_ref = self._build_expected_root_interface_for_current_mode()
         ordered_refs = build_expected_root_interface_ref_order(
             block_type=block_type,
             input_refs=expected_inputs_by_ref,
@@ -5230,6 +5406,77 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         unresolved_items.sort(key=get_protected_connection_item_position_sort_key)
         ordered_items.extend(unresolved_items)
         return ordered_items
+
+    def _build_expected_root_interface_for_current_mode(
+            self,
+    ) -> tuple[dict[VarPowerFlowReferenceType, Var], dict[VarPowerFlowReferenceType, Var]]:
+        """
+        Return the authoritative root interface for the active editor mode.
+
+        EMT derives its contract from the live bus topology. RMS models already
+        carry their authoritative bus contract in the root input/output vars,
+        so rebuilding RMS wrappers must use those vars instead of applying EMT
+        phase references to an RMS diagram.
+
+        :return: ``(input_vars_by_ref, output_vars_by_ref)``.
+        """
+        if self.mode == DynamicSimulationMode.EMT:
+            return build_expected_root_emt_interface_for_device(self.api_object)
+
+        input_vars_by_ref: dict[VarPowerFlowReferenceType, Var] = dict()
+        output_vars_by_ref: dict[VarPowerFlowReferenceType, Var] = dict()
+        input_vars_by_identity: dict[int, Var] = dict()
+        output_vars_by_identity: dict[int, Var] = dict()
+        mapped_input_identities: set[int] = set()
+        mapped_output_identities: set[int] = set()
+        root_var: Var
+        mapping_ref: VarPowerFlowReferenceType
+        mapped_var: Var | None
+        mapped_root_var: Var | None
+
+        for root_var in self.root_block.in_vars:
+            input_vars_by_identity[root_var.non_mutable_uid] = root_var
+
+        for root_var in self.root_block.out_vars:
+            output_vars_by_identity[root_var.non_mutable_uid] = root_var
+
+        # RMS branch roots reuse the endpoint bus variables, whose own refs are
+        # the generic ``Vm``/``Va`` pair on both buses. The root external mapping
+        # provides the authoritative side-specific refs (``Vmf``/``Vaf`` and
+        # ``Vmt``/``Vat``), so resolve it before falling back to each Var.ref.
+        for mapping_ref, mapped_var in self.root_block.external_mapping.items():
+            if not isinstance(mapping_ref, VarPowerFlowReferenceType) or mapped_var is None:
+                pass
+            else:
+                mapped_root_var = input_vars_by_identity.get(mapped_var.non_mutable_uid, None)
+                if mapped_root_var is not None and mapping_ref not in input_vars_by_ref:
+                    input_vars_by_ref[mapping_ref] = mapped_root_var
+                    mapped_input_identities.add(mapped_root_var.non_mutable_uid)
+                else:
+                    mapped_root_var = output_vars_by_identity.get(mapped_var.non_mutable_uid, None)
+                    if mapped_root_var is not None and mapping_ref not in output_vars_by_ref:
+                        output_vars_by_ref[mapping_ref] = mapped_root_var
+                        mapped_output_identities.add(mapped_root_var.non_mutable_uid)
+                    else:
+                        pass
+
+        for root_var in self.root_block.in_vars:
+            if (isinstance(root_var.ref, VarPowerFlowReferenceType)
+                    and root_var.ref not in input_vars_by_ref
+                    and root_var.non_mutable_uid not in mapped_input_identities):
+                input_vars_by_ref[root_var.ref] = root_var
+            else:
+                pass
+
+        for root_var in self.root_block.out_vars:
+            if (isinstance(root_var.ref, VarPowerFlowReferenceType)
+                    and root_var.ref not in output_vars_by_ref
+                    and root_var.non_mutable_uid not in mapped_output_identities):
+                output_vars_by_ref[root_var.ref] = root_var
+            else:
+                pass
+
+        return input_vars_by_ref, output_vars_by_ref
 
     def _fit_initial_scene_view(self) -> None:
         """
@@ -5634,7 +5881,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             return None
 
-        expected_inputs_by_ref, expected_outputs_by_ref = build_expected_root_emt_interface_for_device(self.api_object)
+        expected_inputs_by_ref, expected_outputs_by_ref = self._build_expected_root_interface_for_current_mode()
         if block_type == BlockType.INPUT_CONN:
             expected_by_ref = expected_inputs_by_ref
             for mapped_var in self.main_block.in_vars:
@@ -5737,7 +5984,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             pass
 
-        expected_inputs_by_ref, expected_outputs_by_ref = build_expected_root_emt_interface_for_device(self.api_object)
+        expected_inputs_by_ref, expected_outputs_by_ref = self._build_expected_root_interface_for_current_mode()
 
         for child_block in self.main_block.children:
             if child_block.is_root_interface_wrapper:
@@ -5793,7 +6040,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             pass
 
-        expected_inputs_by_ref, expected_outputs_by_ref = build_expected_root_emt_interface_for_device(self.api_object)
+        expected_inputs_by_ref, expected_outputs_by_ref = self._build_expected_root_interface_for_current_mode()
 
         for child_block in self.main_block.children:
             interface_var = get_single_interface_var(child_block)
@@ -5863,9 +6110,12 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         changed: bool = False
         input_wrappers_by_ref: dict[VarPowerFlowReferenceType, Block]
         output_wrappers_by_ref: dict[VarPowerFlowReferenceType, Block]
+        expected_inputs_by_ref: dict[VarPowerFlowReferenceType, Var]
+        expected_outputs_by_ref: dict[VarPowerFlowReferenceType, Var]
         root_var: Var
         wrapper_block: Block
 
+        expected_inputs_by_ref, expected_outputs_by_ref = self._build_expected_root_interface_for_current_mode()
         input_wrappers_by_ref, output_wrappers_by_ref = self._find_protected_wrapper_blocks_by_ref()
         preserved_non_wrapper_children: list[Block] = list()
         unresolved_wrapper_children: list[Block] = list()
@@ -5873,9 +6123,17 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         child_block: Block
         seen_wrapper_ids: set[int] = set()
         reference: VarPowerFlowReferenceType
+        root_var_candidate: Var
 
-        for root_var in self.main_block.in_vars:
-            if root_var.ref is None or root_var.ref in input_wrappers_by_ref:
+        for reference, root_var in expected_inputs_by_ref.items():
+            for root_var_candidate in self.main_block.in_vars:
+                if root_var_candidate.ref == reference:
+                    root_var = root_var_candidate
+                    break
+                else:
+                    pass
+
+            if reference in input_wrappers_by_ref:
                 continue
             if not create_missing:
                 continue
@@ -5884,11 +6142,18 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             wrapper_block.out_vars = list([root_var])
             wrapper_block.is_root_interface_wrapper = True
             self.main_block.add(wrapper_block)
-            input_wrappers_by_ref[root_var.ref] = wrapper_block
+            input_wrappers_by_ref[reference] = wrapper_block
             changed = True
 
-        for root_var in self.main_block.out_vars:
-            if root_var.ref is None or root_var.ref in output_wrappers_by_ref:
+        for reference, root_var in expected_outputs_by_ref.items():
+            for root_var_candidate in self.main_block.out_vars:
+                if root_var_candidate.ref == reference:
+                    root_var = root_var_candidate
+                    break
+                else:
+                    pass
+
+            if reference in output_wrappers_by_ref:
                 continue
             if not create_missing:
                 continue
@@ -5897,7 +6162,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             wrapper_block.in_vars = list([root_var])
             wrapper_block.is_root_interface_wrapper = True
             self.main_block.add(wrapper_block)
-            output_wrappers_by_ref[root_var.ref] = wrapper_block
+            output_wrappers_by_ref[reference] = wrapper_block
             changed = True
 
         for child_block in self.main_block.children:
@@ -6011,7 +6276,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             pass
 
-        expected_inputs_by_ref, expected_outputs_by_ref = build_expected_root_emt_interface_for_device(self.api_object)
+        expected_inputs_by_ref, expected_outputs_by_ref = self._build_expected_root_interface_for_current_mode()
         ordered_input_refs = build_expected_root_interface_ref_order(block_type=BlockType.INPUT_CONN,
                                                                      input_refs=expected_inputs_by_ref,
                                                                      output_refs=expected_outputs_by_ref)
@@ -6742,7 +7007,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         layout_offset_x: float = 0.0
         layout_offset_y: float = 0.0
 
-        expected_inputs_by_ref, expected_outputs_by_ref = build_expected_root_emt_interface_for_device(self.api_object)
+        expected_inputs_by_ref, expected_outputs_by_ref = self._build_expected_root_interface_for_current_mode()
 
         for child_block in self.main_block.children:
             interface_var = get_single_interface_var(child_block)
@@ -6831,7 +7096,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             also be connected to matching model ports.
         :return: None.
         """
-        items_list: list[graph.GenericBlockItem] = self._collect_non_interface_scene_items()
+        items_list: list[DynamicBlockGraphicsItem] = self._collect_non_interface_scene_items()
 
         if len(items_list) > 0:
             self._rebuild_visible_symbolic_connections(items_list)
@@ -6842,21 +7107,30 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             pass
 
-    def _collect_non_interface_scene_items(self) -> list[graph.GenericBlockItem]:
+    def _collect_non_interface_scene_items(self) -> list[DynamicBlockGraphicsItem]:
         """
-        Return the visible non-interface generic block items in the scene.
+        Return the visible non-interface block items in the scene.
 
         The reconnect pass operates only on real model blocks. The protected
         editor interface wrappers are intentionally excluded from this list.
 
-        :return: Generic block items excluding editor interface wrappers.
+        Arithmetic and unary decomposition items must be included because ELK
+        equation diagrams consist primarily of those specialized item types.
+
+        :return: Block items excluding editor interface wrappers.
         """
-        items_list: list[graph.GenericBlockItem] = list()
+        items_list: list[DynamicBlockGraphicsItem] = list()
         scene_item: QGraphicsItem
         node_data: Any | None
 
         for scene_item in self.scene.items():
-            if isinstance(scene_item, graph.GenericBlockItem):
+            if isinstance(scene_item, (
+                    graph.BlockItem,
+                    graph.GenericBlockItem,
+                    graph.RoundBaseArithmeticOpItem,
+                    graph.RectBaseArithmeticOpItem,
+                    graph.PairedItem,
+            )):
                 if scene_item.subsys is not None:
                     node_data: Any | None = self.diagram.node_data.get(scene_item.subsys.uid, None)
                 else:
@@ -6873,7 +7147,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         return items_list
 
-    def _rebuild_visible_symbolic_connections(self, items_list: List[graph.GenericBlockItem]) -> None:
+    def _rebuild_visible_symbolic_connections(self, items_list: List[DynamicBlockGraphicsItem]) -> None:
         """
         Recreate missing symbolic wires between all visible non-interface blocks.
 
@@ -6885,8 +7159,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param items_list: Visible non-interface block items.
         :return: None.
         """
-        item_source: graph.GenericBlockItem
-        item_target: graph.GenericBlockItem
+        item_source: DynamicBlockGraphicsItem
+        item_target: DynamicBlockGraphicsItem
         pairs: list[tuple[Var, Var]]
         power_flow_pairs: list[tuple[Var, Var]]
 
@@ -6909,7 +7183,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                             self._create_missing_connection_items(item_target, item_source, pairs)
                             self._create_missing_connection_items(item_target, item_source, power_flow_pairs)
 
-    def _rebuild_editor_interface_graphical_connections(self, items_list: List[graph.GenericBlockItem]) -> None:
+    def _rebuild_editor_interface_graphical_connections(self, items_list: List[DynamicBlockGraphicsItem]) -> None:
         """
         Recreate visible wires between editor interface blocks and visible model blocks.
 
@@ -6926,7 +7200,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         scene_item: QGraphicsItem
         node_data: Any | None
         reference_var: Var | None
-        block_item: graph.GenericBlockItem
+        block_item: DynamicBlockGraphicsItem
         input_index: int
         output_index: int
         input_var: Var
@@ -7246,8 +7520,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             return interface_outputs_by_ref.get(model_ref, None)
 
     def _create_missing_connection_items(self,
-                                         item_source: graph.GenericBlockItem,
-                                         item_dest: graph.GenericBlockItem,
+                                         item_source: DynamicBlockGraphicsItem,
+                                         item_dest: DynamicBlockGraphicsItem,
                                          pairs: List[tuple[Var, Var]]) -> None:
         """
         Create only the currently missing connection items for one block pair.
@@ -7282,7 +7556,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 pass
 
 
-    def _find_output_port_for_var(self, item_source: graph.GenericBlockItem, source_var: Var) -> graph.PortItem | None:
+    def _find_output_port_for_var(self,
+                                  item_source: DynamicBlockGraphicsItem,
+                                  source_var: Var) -> graph.PortItem | None:
         """
         Find the visible output port corresponding to one symbolic variable.
 
@@ -7298,7 +7574,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 pass
         return None
 
-    def _find_input_port_for_var(self, item_dest: graph.GenericBlockItem, target_var: Var) -> graph.PortItem | None:
+    def _find_input_port_for_var(self,
+                                 item_dest: DynamicBlockGraphicsItem,
+                                 target_var: Var) -> graph.PortItem | None:
         """
         Find the visible input port corresponding to one symbolic variable.
 
@@ -8247,20 +8525,20 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         """
         root_var: Var
 
-        for root_var in self.main_block.in_vars:
+        for root_var in self.root_block.in_vars:
             if root_var.non_mutable_uid == var.non_mutable_uid:
                 root_var.set_name(new_name)
             else:
                 pass
 
-        for root_var in self.main_block.out_vars:
+        for root_var in self.root_block.out_vars:
             if root_var.non_mutable_uid == var.non_mutable_uid:
                 root_var.set_name(new_name)
             else:
                 pass
 
         mapped_var: Var | None
-        for mapped_var in self.main_block.external_mapping.values():
+        for mapped_var in self.root_block.external_mapping.values():
             if mapped_var is not None and mapped_var.non_mutable_uid == var.non_mutable_uid:
                 mapped_var.set_name(new_name)
             else:
@@ -8283,17 +8561,28 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param candidate_name: Candidate new symbolic name.
         :return: ``True`` when a different symbol already uses the name.
         """
-        namespace: Dict[str, Expr] = dialog_models.build_block_symbol_namespace(self.main_block)
-        current_symbol: Expr | None = namespace.get(candidate_name, None)
+        source_non_mutable_uid: int = self.var_factory.get_connection_source_non_mutable_uid(
+            variable_non_mutable_uid=var.non_mutable_uid,
+        )
+        component_non_mutable_uids: set[int] = self._get_alias_component_stable_uids(
+            starting_non_mutable_uids=set([source_non_mutable_uid]),
+        )
+        vars_by_uid: Dict[int, List[Var]] = build_working_var_index(self.root_block)
+        current_non_mutable_uid: int
+        current_vars: List[Var]
+        current_var: Var
 
-        if current_symbol is None:
-            return False
-        elif current_symbol is var:
-            return False
-        elif isinstance(current_symbol, Var) and vars_match_for_visible_connection(current_symbol, var):
-            return False
-        else:
-            return True
+        # Inspect every declaration instead of a name-keyed dictionary, since
+        # such a dictionary hides all but the last pre-existing duplicate.
+        for current_non_mutable_uid, current_vars in vars_by_uid.items():
+            for current_var in current_vars:
+                if (current_var.name == candidate_name
+                        and current_non_mutable_uid not in component_non_mutable_uids):
+                    return True
+                else:
+                    pass
+
+        return False
 
     def _namespace_has_conflicting_block_name(
             self,
@@ -8382,6 +8671,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         wrapper_block: Block | None = fallback_block_model
         semantic_reference: VarPowerFlowReferenceType | None = None
         authoritative_ref: VarPowerFlowReferenceType | None = None
+        expected_inputs_by_ref: dict[VarPowerFlowReferenceType, Var]
+        expected_outputs_by_ref: dict[VarPowerFlowReferenceType, Var]
+        expected_by_ref: dict[VarPowerFlowReferenceType, Var]
         root_var_candidate: Var
         available_root_refs: set[VarPowerFlowReferenceType] = set()
 
@@ -8412,6 +8704,12 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             return None
 
+        expected_inputs_by_ref, expected_outputs_by_ref = self._build_expected_root_interface_for_current_mode()
+        if block_type == BlockType.INPUT_CONN:
+            expected_by_ref = expected_inputs_by_ref
+        else:
+            expected_by_ref = expected_outputs_by_ref
+
         reference_var = None
         if semantic_reference is not None:
             for root_var_candidate in root_vars:
@@ -8420,14 +8718,15 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                     break
                 else:
                     pass
+
+            if reference_var is None:
+                reference_var = expected_by_ref.get(semantic_reference, None)
+            else:
+                pass
         else:
             pass
 
-        for root_var_candidate in root_vars:
-            if root_var_candidate.ref is None:
-                pass
-            else:
-                available_root_refs.add(root_var_candidate.ref)
+        available_root_refs.update(expected_by_ref.keys())
 
         if reference_var is not None:
             authoritative_ref = semantic_reference
@@ -8511,7 +8810,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         current_node_uid: int
         current_node: BlockDiagramNode
 
-        expected_inputs_by_ref, expected_outputs_by_ref = build_expected_root_emt_interface_for_device(self.api_object)
+        expected_inputs_by_ref, expected_outputs_by_ref = self._build_expected_root_interface_for_current_mode()
         ordered_refs = build_expected_root_interface_ref_order(block_type=block_type,
                                                                input_refs=expected_inputs_by_ref,
                                                                output_refs=expected_outputs_by_ref)
@@ -8821,8 +9120,147 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             pass
 
         block.set_name(new_name)
+
+        # Persist the same label in the diagram node. Scene rebuilding uses the
+        # block object, while validation and serialization also read node.name.
+        node: BlockDiagramNode | None = self.diagram.node_data.get(block.uid, None)
+        candidate_node: BlockDiagramNode
+        if node is None:
+            for candidate_node in self.diagram.node_data.values():
+                if candidate_node.device_uid == block.uid:
+                    node = candidate_node
+                    break
+                else:
+                    pass
+        else:
+            pass
+
+        if node is not None:
+            node.name = new_name
+        else:
+            pass
+
         self.refresh_editor_block_name_displays(block)
         self.mark_unapplied_changes()
+
+
+    def rename_variable_from_table(self,
+                                   var: Var,
+                                   new_name: str) -> None:
+        """
+        Route one side-panel variable rename through the editor controller.
+
+        :param var: Variable represented by the edited table row.
+        :param new_name: Candidate symbolic name entered by the user.
+        :return: None.
+        """
+        self._apply_variable_rename(var=var,
+                                    new_name=new_name,
+                                    renamed_item=None)
+
+
+    def _apply_variable_rename(
+            self,
+            var: Var,
+            new_name: str,
+            renamed_item: graph.ProtectedConnectionBlockItem | None,
+    ) -> bool:
+        """
+        Validate and apply one variable rename to its complete alias component.
+
+        :param var: Variable selected from the scene or variables table.
+        :param new_name: Candidate symbolic name.
+        :param renamed_item: Optional root-interface wrapper edited on the scene.
+        :return: ``True`` when the rename was applied.
+        """
+        candidate_name: str = new_name.strip()
+        source_non_mutable_uid: int
+        canonical_var: Var | None
+        source_working_vars: List[Var] | None
+        vars_by_uid: Dict[int, List[Var]]
+        block: Block | None
+        node: BlockDiagramNode | None
+        candidate_node: BlockDiagramNode
+
+        if len(candidate_name) == 0:
+            self.toast_manager.show_warning_toast(self.tr("Variable name cannot be empty"))
+            return False
+        elif not dialog_models.is_valid_symbol_name(candidate_name):
+            self.toast_manager.show_warning_toast(self.tr("Variable name is invalid"))
+            return False
+        elif self._namespace_has_conflicting_variable_name(var, candidate_name):
+            self.toast_manager.show_warning_toast(self.tr("Variable name already exists"))
+            return False
+        else:
+            pass
+
+        # Resolve the upstream connection owner even when the edit originated
+        # from a downstream variable displayed inside a nested block editor.
+        source_non_mutable_uid = self.var_factory.get_connection_source_non_mutable_uid(
+            variable_non_mutable_uid=var.non_mutable_uid,
+        )
+        canonical_var = self.var_factory.get_vars_dict().get(source_non_mutable_uid, None)
+        if canonical_var is None:
+            canonical_var = self.var_factory.get_diff_var_dict().get(source_non_mutable_uid, None)
+        else:
+            pass
+
+        if canonical_var is None:
+            vars_by_uid = build_working_var_index(self.root_block)
+            source_working_vars = vars_by_uid.get(source_non_mutable_uid, None)
+            if source_working_vars is not None and len(source_working_vars) > 0:
+                canonical_var = source_working_vars[0]
+            else:
+                canonical_var = var
+        else:
+            pass
+
+        if canonical_var.name == candidate_name:
+            return False
+        else:
+            pass
+
+        # Reuse the established alias replay so rename, connect, disconnect and
+        # signal-pair propagation continue sharing one graph implementation.
+        self._propagate_alias_to_working_tree(
+            source_non_mutable_uid=source_non_mutable_uid,
+            incoming_uid=canonical_var.uid,
+            incoming_name=candidate_name,
+        )
+        canonical_var.set_name(candidate_name)
+        self._synchronize_root_connection_var_name(var=canonical_var,
+                                                   new_name=candidate_name)
+
+        block = renamed_item.subsys if renamed_item is not None else None
+        if block is not None:
+            block.set_name(candidate_name)
+            node = self.diagram.node_data.get(block.uid, None)
+            if node is None:
+                for candidate_node in self.diagram.node_data.values():
+                    if candidate_node.device_uid == block.uid:
+                        node = candidate_node
+                        break
+                    else:
+                        pass
+            else:
+                pass
+
+            if node is not None:
+                node.name = candidate_name
+            else:
+                pass
+        else:
+            pass
+
+        component_non_mutable_uids: set[int] = self._get_alias_component_stable_uids(
+            starting_non_mutable_uids=set([source_non_mutable_uid]),
+        )
+        self._refresh_alias_component_displays(
+            component_non_mutable_uids=component_non_mutable_uids,
+        )
+        self.refresh_editor_variable_displays(canonical_var, renamed_item=renamed_item)
+        self.mark_unapplied_changes()
+        return True
 
 
     def rename_variable_item(
@@ -8851,52 +9289,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             pass
 
-        if len(new_name) == 0:
-            self.toast_manager.show_warning_toast(self.tr("Variable name cannot be empty"))
-            return
-        elif not dialog_models.is_valid_symbol_name(new_name):
-            self.toast_manager.show_warning_toast(self.tr("Variable name is invalid"))
-            return
-        elif self._namespace_has_conflicting_variable_name(var, new_name):
-            self.toast_manager.show_warning_toast(self.tr("Variable name already exists"))
-            return
-        elif new_name == var.name:
-            return
-        else:
-            pass
-
-        # Rename the authoritative root symbol and replay its alias component
-        # through both the VarFactory registry and the detached working tree.
-        var.set_name(new_name)
-        self._synchronize_root_connection_var_name(var=var, new_name=new_name)
-        self._propagate_alias_to_working_tree(
-            source_non_mutable_uid=var.non_mutable_uid,
-            incoming_uid=var.uid,
-            incoming_name=new_name,
-        )
-        block.set_name(new_name)
-
-        # Keep persistence metadata aligned, although rebuild takes the live
-        # symbolic variable as the authoritative display name.
-        node: BlockDiagramNode | None = self.diagram.node_data.get(block.uid, None)
-        candidate_node: BlockDiagramNode
-        if node is None:
-            for candidate_node in self.diagram.node_data.values():
-                if candidate_node.device_uid == block.uid:
-                    node = candidate_node
-                    break
-                else:
-                    pass
-        else:
-            pass
-
-        if node is not None:
-            node.name = new_name
-        else:
-            pass
-
-        self.refresh_editor_variable_displays(var, renamed_item=item)
-        self.mark_unapplied_changes()
+        self._apply_variable_rename(var=var,
+                                    new_name=new_name,
+                                    renamed_item=item)
 
     def get_scene_item_by_block_uid(self,
                                     block_uid: int) -> graph.BlockItem | graph.GenericBlockItem | graph.RoundBaseArithmeticOpItem | graph.RectBaseArithmeticOpItem | None:

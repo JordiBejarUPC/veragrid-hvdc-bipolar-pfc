@@ -8,7 +8,9 @@ import copy
 from typing import Dict, Any, List
 
 from VeraGridEngine.basic_structures import Logger
-from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory, Connection
+from VeraGridEngine.Devices.Dynamic.var_factory import (Connection,
+                                                        VarFactory,
+                                                        find_var_by_persisted_identity)
 from VeraGridEngine.Utils.Symbolic import SharedVarReferenceType
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Expr, Const, BinOp, UnOp, Func, Func2
 from VeraGridEngine.Utils.Symbolic.block import Block
@@ -50,7 +52,7 @@ def symbolic_objects_to_dict(obj_dict: Dict[int | str, Var | Const | Var | Share
                         "name": expr.name,
                         "uid": expr.uid,
                         "non_mutable_uid": expr.non_mutable_uid,
-                        "base_var": expr.base_var.uid,
+                        "base_var": expr.base_var.non_mutable_uid,
                         "shared_ref": {"name": shared.name if shared is not None else None,
                                 "uid": shared.uid if shared is not None else None},
                         "ref": expr.ref.value if expr.ref is not None else None,
@@ -61,7 +63,7 @@ def symbolic_objects_to_dict(obj_dict: Dict[int | str, Var | Const | Var | Share
                         "name": expr.name,
                         "uid": expr.uid,
                         "non_mutable_uid": expr.non_mutable_uid,
-                        "base_var": expr.base_var.uid,
+                        "base_var": expr.base_var.non_mutable_uid,
                         "shared_ref": {"name": shared.name if shared is not None else None,
                                 "uid": shared.uid if shared is not None else None},
                         "ref": expr.ref.value if expr.ref is not None else None,
@@ -121,6 +123,7 @@ def connections_to_dict(obj_dict: Dict[int, List[Connection]]) -> Dict[int, List
         conn_dict[uuid] = conn_list
     return conn_dict
 
+
 def expr_to_dict(expr: Expr,
                  const_dict: Dict[int, Const],
                  var_dict: Dict[int, Var],
@@ -158,29 +161,29 @@ def expr_to_dict(expr: Expr,
 
         if expr.base_var is not None:
 
-            c = diff_var_dict.get(expr.uid, None)
+            c = diff_var_dict.get(expr.non_mutable_uid, None)
 
             if c is None:
                 # add it to the references dict
-                diff_var_dict[expr.uid] = expr
+                diff_var_dict[expr.non_mutable_uid] = expr
 
             # the diffvar already exists
             return {
                 "type": "DiffVar",
-                "uid": expr.uid
+                "uid": expr.non_mutable_uid
             }
 
         else:
-            c = var_dict.get(expr.uid, None)
+            c = var_dict.get(expr.non_mutable_uid, None)
 
             if c is None:
                 # add it to the references dict
-                var_dict[expr.uid] = expr
+                var_dict[expr.non_mutable_uid] = expr
 
             # the var already exists
             return {
                 "type": "Var",
-                "uid": expr.uid
+                "uid": expr.non_mutable_uid
             }
 
     elif isinstance(expr, BinOp):
@@ -273,11 +276,24 @@ def parse_expr(data: Dict[str, Any],
         return const_dict[data["uid"]]
 
     elif t == "Var":
-        return var_dict[data["uid"]]
+        parsed_var: Var | None = find_var_by_persisted_identity(
+            var_dict=var_dict,
+            persisted_uid=data["uid"],
+        )
+        if parsed_var is not None:
+            return parsed_var
+        else:
+            raise KeyError(f"Var with persisted uid {data['uid']} was not found")
 
     elif t == "DiffVar":
-
-        return diff_var_dict[data["uid"]]
+        parsed_diff_var: Var | None = find_var_by_persisted_identity(
+            var_dict=diff_var_dict,
+            persisted_uid=data["uid"],
+        )
+        if parsed_diff_var is not None:
+            return parsed_diff_var
+        else:
+            raise KeyError(f"DiffVar with persisted uid {data['uid']} was not found")
 
     elif t == "BinOp":
         left = parse_expr(data=data["left"],
@@ -414,12 +430,12 @@ class BlockSaver:
         :return: None.
         """
         try:
-            found_var = self.var_factory.get_var(var.uid)
+            found_var = self.var_factory.get_var(var.non_mutable_uid)
         except Exception:
             found_var = None
 
         if found_var is None:
-            self.var_factory._var_dict[var.uid] = var
+            self.var_factory._var_dict[var.non_mutable_uid] = var
         else:
             pass
 
@@ -431,12 +447,12 @@ class BlockSaver:
         :return: None.
         """
         try:
-            found_var = self.var_factory.get_diff_var(diff_var.uid)
+            found_var = self.var_factory.get_diff_var(diff_var.non_mutable_uid)
         except Exception:
             found_var = None
 
         if found_var is None:
-            self.var_factory._diff_var_dict[diff_var.uid] = diff_var
+            self.var_factory._diff_var_dict[diff_var.non_mutable_uid] = diff_var
         else:
             pass
 
@@ -476,7 +492,7 @@ class BlockSaver:
 
             init_eq_list.append(
                 {
-                    "var": var.uid,
+                    "var": var.non_mutable_uid,
                     "expr": expr_to_dict(
                         expr=expr,
                         const_dict=self.var_factory.get_const_dict(),
@@ -491,7 +507,7 @@ class BlockSaver:
 
             diff_init_eq_list.append(
                 {
-                    "var": diff_var.uid,
+                    "var": diff_var.non_mutable_uid,
                     "expr": expr_to_dict(
                         expr=expr,
                         const_dict=self.var_factory.get_const_dict(),
@@ -507,7 +523,7 @@ class BlockSaver:
 
             events_list.append(
                 {
-                    "var": var.uid,
+                    "var": var.non_mutable_uid,
                     "expr": expr_to_dict(
                         expr=expr,
                         const_dict=self.var_factory.get_const_dict(),
@@ -521,25 +537,25 @@ class BlockSaver:
         for var in blk.in_vars:
             self._ensure_var_registered(var)
 
-            in_vars.append(var.uid)
+            in_vars.append(var.non_mutable_uid)
 
         out_vars: List[int] = list()
         for var in blk.out_vars:
             self._ensure_var_registered(var)
 
-            out_vars.append(var.uid)
+            out_vars.append(var.non_mutable_uid)
 
         init_values: List[Dict[str, float | int]] = list()
         for var, value in blk.init_values.items():
             self._ensure_var_registered(var)
 
-            init_values.append({"var": var.uid, "value": value.value})
+            init_values.append({"var": var.non_mutable_uid, "value": value.value})
 
         parameters: List[Dict[str, float | int]] = list()
         for var, value in blk.parameters.items():
             self._ensure_var_registered(var)
 
-            parameters.append({"var": var.uid, "value": value.value})
+            parameters.append({"var": var.non_mutable_uid, "value": value.value})
 
         # diff_vars: List[DiffVar] = list()
         for diff_var in blk.diff_vars:
@@ -563,7 +579,7 @@ class BlockSaver:
 
             "vars_glob_name2uid": blk.vars_glob_name2uid,
 
-            "state_vars": [v.uid for v in blk.state_vars],
+            "state_vars": [v.non_mutable_uid for v in blk.state_vars],
 
             "state_eqs": state_expressions,
 
@@ -574,15 +590,15 @@ class BlockSaver:
                 diff_var_dict=self.var_factory.get_diff_var_dict()
             ),
 
-            "algebraic_vars": [v.uid for v in blk.algebraic_vars],
+            "algebraic_vars": [v.non_mutable_uid for v in blk.algebraic_vars],
 
             "algebraic_eqs": algebraic_expressions,
 
-            "diff_vars": [v.uid for v in blk.diff_vars],
+            "diff_vars": [v.non_mutable_uid for v in blk.diff_vars],
 
             "differential_eqs": differential_eqs_expressions,
 
-            "reformulated_vars": [v.uid for v in blk.reformulated_vars],
+            "reformulated_vars": [v.non_mutable_uid for v in blk.reformulated_vars],
 
             "init_eqs": init_eq_list,
 
@@ -590,7 +606,7 @@ class BlockSaver:
 
             "discrete_eqs": [
                 {
-                    "var": var.uid,
+                    "var": var.non_mutable_uid,
                     "expr": expr_to_dict(
                         expr=expr,
                         const_dict=self.var_factory.get_const_dict(),
@@ -603,7 +619,7 @@ class BlockSaver:
 
             "mode_dict": [
                 {
-                    "var": var.uid,
+                    "var": var.non_mutable_uid,
                     "expr": expr_to_dict(
                         expr=expr,
                         const_dict=self.var_factory.get_const_dict(),
@@ -616,7 +632,7 @@ class BlockSaver:
 
             "boolean_guards": [
                 {
-                    "var": var.uid,
+                    "var": var.non_mutable_uid,
                     "expr": expr_to_dict(
                         expr=expr,
                         const_dict=self.var_factory.get_const_dict(),
@@ -633,10 +649,10 @@ class BlockSaver:
 
             "parameters": parameters,
 
-            "external_mapping": {dyn_var_type.value: var.uid if var is not None else None
+            "external_mapping": {dyn_var_type.value: var.non_mutable_uid if var is not None else None
                                  for dyn_var_type, var in blk.external_mapping.items()},
 
-            "api_obj_mapping": {dyn_param_type.value: param.uid if param is not None else None
+            "api_obj_mapping": {dyn_param_type.value: param.non_mutable_uid if param is not None else None
                                 for dyn_param_type, param in blk.api_obj_mapping.items()},
 
             "event_dict": events_list,
@@ -711,7 +727,10 @@ class BlockParser:
         if var_uid is None:
             resolved_var = None
         else:
-            resolved_var = self.var_factory.get_vars_dict().get(var_uid, None)
+            resolved_var = find_var_by_persisted_identity(
+                var_dict=self.var_factory.get_vars_dict(),
+                persisted_uid=var_uid,
+            )
 
         if resolved_var is None:
             self._add_warning(msg="Missing symbolic variable while parsing dynamic block",
@@ -743,7 +762,10 @@ class BlockParser:
         if var_uid is None:
             resolved_var = None
         else:
-            resolved_var = self.var_factory.get_diff_var_dict().get(var_uid, None)
+            resolved_var = find_var_by_persisted_identity(
+                var_dict=self.var_factory.get_diff_var_dict(),
+                persisted_uid=var_uid,
+            )
 
         if resolved_var is None:
             self._add_warning(msg="Missing differential symbolic variable while parsing dynamic block",
@@ -773,7 +795,10 @@ class BlockParser:
         :return: Matching algebraic variable.
         :raises KeyError: If the variable is not present in the factory.
         """
-        var_obj: Var | None = self.var_factory.get_vars_dict().get(non_mutable_uid, None)
+        var_obj: Var | None = find_var_by_persisted_identity(
+            var_dict=self.var_factory.get_vars_dict(),
+            persisted_uid=non_mutable_uid,
+        )
         if var_obj is not None:
             return var_obj
         else:
@@ -793,11 +818,17 @@ class BlockParser:
         :param non_mutable_uid: Stable symbolic identity stored in the file.
         :return: Matching variable or ``None`` when the mapping is unresolved.
         """
-        var_obj: Var | None = self.var_factory.get_vars_dict().get(non_mutable_uid, None)
+        var_obj: Var | None = find_var_by_persisted_identity(
+            var_dict=self.var_factory.get_vars_dict(),
+            persisted_uid=non_mutable_uid,
+        )
         if var_obj is not None:
             return var_obj
         else:
-            diff_var_obj: Var | None = self.var_factory.get_diff_var_dict().get(non_mutable_uid, None)
+            diff_var_obj: Var | None = find_var_by_persisted_identity(
+                var_dict=self.var_factory.get_diff_var_dict(),
+                persisted_uid=non_mutable_uid,
+            )
             if diff_var_obj is not None:
                 return diff_var_obj
             else:
@@ -925,7 +956,10 @@ class BlockParser:
         # mutable ``uid`` to another connected variable.
         in_vars: List[Var] = list()
         for v_uid in data.get("in_vars", list()):
-            in_var: Var | None = self.var_factory.get_vars_dict().get(v_uid, None)
+            in_var: Var | None = find_var_by_persisted_identity(
+                var_dict=self.var_factory.get_vars_dict(),
+                persisted_uid=v_uid,
+            )
             if in_var is not None:
                 in_vars.append(in_var)
             else:
@@ -940,7 +974,10 @@ class BlockParser:
         # variables after deserialization.
         out_vars: List[Var] = list()
         for v_uid in data.get("out_vars", list()):
-            out_var: Var | None = self.var_factory.get_vars_dict().get(v_uid, None)
+            out_var: Var | None = find_var_by_persisted_identity(
+                var_dict=self.var_factory.get_vars_dict(),
+                persisted_uid=v_uid,
+            )
             if out_var is not None:
                 out_vars.append(out_var)
             else:

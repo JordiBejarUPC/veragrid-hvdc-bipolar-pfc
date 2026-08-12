@@ -694,6 +694,7 @@ class EditParameterDialog(QDialog):
 class WrappableBlockTableModel(WrappableTableModel):
     block_updated = Signal(object)
     latex_invalidation_requested = Signal(str)
+    variable_rename_requested = Signal(object, str)
 
     def __init__(self,
                  var_factory: VarFactory,
@@ -879,12 +880,36 @@ class WrappableBlockTableModel(WrappableTableModel):
                 except (SyntaxError, TypeError, ValueError):
                     return False
 
-            if row.key_var is not None:
-                row.key_var.name = value
-            row.name = value
-            refresh_row_search_cache(row)
-            self.dataChanged.emit(index, index, [role])
-            return True
+            if self.mode == DynamicTableModelMode.VARIABLES:
+                if row.key_var is None:
+                    return False
+                else:
+                    candidate_name: str = str(value).strip()
+
+                # The editor owns variable renames because it must update the
+                # complete alias graph, root contract and visible wrappers.
+                # Qt direct connections execute the controller synchronously,
+                # allowing the model to report whether validation succeeded.
+                self.variable_rename_requested.emit(row.key_var, candidate_name)
+                if row.key_var.name == candidate_name:
+                    row.name = row.key_var.name
+                    refresh_row_search_cache(row)
+                    self.dataChanged.emit(index, index, [role])
+                    return True
+                else:
+                    return False
+            elif self.mode == DynamicTableModelMode.PARAMETERS:
+                if row.key_var is not None:
+                    row.key_var.set_name(str(value).strip())
+                else:
+                    pass
+                row.name = str(value).strip()
+                refresh_row_search_cache(row)
+                self.dataChanged.emit(index, index, [role])
+                self.block_updated.emit(self.block.uid)
+                return True
+            else:
+                return False
         elif col == 2 and self.mode != DynamicTableModelMode.EQUATIONS:
             if not row.editable_value:
                 return False

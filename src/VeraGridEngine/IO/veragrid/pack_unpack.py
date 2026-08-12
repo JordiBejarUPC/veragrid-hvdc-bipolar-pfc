@@ -719,7 +719,9 @@ def veragrid_object_to_json(elm: ALL_DEV_TYPES,
 
         elif prop.tpe == SubObjectType.VarType:
             if obj is not None:
-                data[name] = obj.uid
+                # Persist the physical variable identity. The mutable UID can
+                # be shared by every variable connected to the same signal.
+                data[name] = obj.non_mutable_uid
             else:
                 # Persistent dynamic plot entries may keep unresolved legacy Var
                 # hints as ``None`` while semantic fields remain the canonical

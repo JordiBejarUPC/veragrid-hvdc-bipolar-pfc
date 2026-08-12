@@ -3042,6 +3042,132 @@ def test_template_backed_generator_preflight_reconciles_without_reopening_editor
         pass
 
 
+def test_saved_load_preflight_preserves_live_bus_bindings_after_ab_abc_cycle() -> None:
+    """
+    Keep one editor-saved load bound to the live bus after an AB-to-ABC cycle.
+
+    :return: None.
+    """
+    _get_app()
+    circuit: MultiCircuit
+    load: Load
+    remote_bus: object
+    circuit, load, remote_bus, _final_phases = _make_phase_transition_circuit(
+        initial_phases=list([1, 2, 3]),
+        final_phases=list([1, 2]),
+    )
+    line: Line = circuit.lines[0]
+    line_template: EmtModelTemplate = get_pi_line_emt_template(
+        vf=circuit.var_factory,
+        phN=False,
+        phA=True,
+        phB=True,
+        phC=True,
+        name="PiTemplate",
+    )
+    line.emt_template = line_template
+    line.emt_model = duplicate_block(line_template.block, var_factory=circuit.var_factory)
+    load.emt_model = Block()
+
+    editor = DynamicBlockEditorGUI(var_factory=circuit.var_factory,
+                                   current_block=load.emt_model,
+                                   root_block=load.emt_model,
+                                   api_object=load,
+                                   current_theme="Light",
+                                   circuit=circuit,
+                                   mode=DynamicSimulationMode.EMT,
+                                   templates_list=list(),
+                                   is_root_editor=True,
+                                   modal=False)
+    gain_blocks_by_ref: dict[VarPowerFlowReferenceType, Block] = dict()
+    voltage_ref: VarPowerFlowReferenceType
+    current_ref: VarPowerFlowReferenceType
+    gain_item: graph.GenericBlockItem
+    gain_block: Block
+    y_position: float = 80.0
+    try:
+        for voltage_ref, current_ref in [
+            (VarPowerFlowReferenceType.v_A, VarPowerFlowReferenceType.i_A),
+            (VarPowerFlowReferenceType.v_B, VarPowerFlowReferenceType.i_B),
+            (VarPowerFlowReferenceType.v_C, VarPowerFlowReferenceType.i_C),
+        ]:
+            gain_item, _input_uid, _output_uid, _input_connection_uid, _output_connection_uid = (
+                _build_connected_gain_phase(editor=editor,
+                                            voltage_reference=voltage_ref,
+                                            current_reference=current_ref,
+                                            x_pos=260.0,
+                                            y_pos=y_position)
+            )
+            assert gain_item.subsys is not None
+            gain_blocks_by_ref[voltage_ref] = gain_item.subsys
+            y_position += 140.0
+
+        editor.apply_changes()
+    finally:
+        _dispose_editor(editor)
+
+    _apply_bus_phase_transition(circuit=circuit,
+                                bus=load.bus,
+                                remote_bus=remote_bus,
+                                final_phases=list([1, 2]))
+    intermediate_editor = DynamicBlockEditorGUI(var_factory=circuit.var_factory,
+                                                 current_block=load.emt_model,
+                                                 root_block=load.emt_model,
+                                                 api_object=load,
+                                                 current_theme="Light",
+                                                 circuit=circuit,
+                                                 mode=DynamicSimulationMode.EMT,
+                                                 templates_list=list(),
+                                                 is_root_editor=True,
+                                                 modal=False)
+    _dispose_editor(intermediate_editor)
+
+    _apply_bus_phase_transition(circuit=circuit,
+                                bus=load.bus,
+                                remote_bus=remote_bus,
+                                final_phases=list([1, 2, 3]))
+    restored_editor = DynamicBlockEditorGUI(var_factory=circuit.var_factory,
+                                             current_block=load.emt_model,
+                                             root_block=load.emt_model,
+                                             api_object=load,
+                                             current_theme="Light",
+                                             circuit=circuit,
+                                             mode=DynamicSimulationMode.EMT,
+                                             templates_list=list(),
+                                             is_root_editor=True,
+                                             modal=False)
+    _dispose_editor(restored_editor)
+
+    logger: Logger = circuit.check_emt_models()
+    assert logger.has_errors() is False, str(logger)
+    first_connection_count: int = sum(
+        len(connection_list)
+        for connection_list in circuit.var_factory.get_connections_dict().values()
+    )
+    repeated_logger: Logger = circuit.check_emt_models()
+    repeated_connection_count: int = sum(
+        len(connection_list)
+        for connection_list in circuit.var_factory.get_connections_dict().values()
+    )
+    assert repeated_logger.has_errors() is False, str(repeated_logger)
+    assert repeated_connection_count == first_connection_count
+
+    device_var: Var | None
+    bus_var: Var | None
+    for voltage_ref in [
+        VarPowerFlowReferenceType.v_A,
+        VarPowerFlowReferenceType.v_B,
+        VarPowerFlowReferenceType.v_C,
+    ]:
+        device_var = load.emt_model.external_mapping.get(voltage_ref, None)
+        bus_var = load.bus.emt_model.external_mapping.get(voltage_ref, None)
+        assert device_var is not None
+        assert bus_var is not None
+        assert device_var.uid == bus_var.uid
+        gain_block = gain_blocks_by_ref[voltage_ref]
+        assert gain_block.in_vars[0].uid == bus_var.uid
+
+
 def test_template_backed_generator_preflight_does_not_materialize_absent_neutral() -> None:
     """
     Verify an ABC bus keeps template neutral intents dormant during EMT preflight.
