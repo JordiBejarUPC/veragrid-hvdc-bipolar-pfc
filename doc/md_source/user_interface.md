@@ -1,53 +1,73 @@
 # 📊 User interface
 
-
 The user interface of VeraGrid is written using the Qt graphical interface
 framework. This allows VeraGrid to be multi-platform and to have sufficient
-performance to handle thousands of graphical items in the editor, to be
-responsive and plenty of other attributes of consumer software.
+performance to handle thousands of graphical items in the editor and to be
+responsive when working with large data sets.
 
-![](figures/veragrid_gui.png)    
-    VeraGrid user interface representing  a zoom of a ~600 node distribution grid.
+![](figures/VeraGrid_GUI_Light_500bus.png)    
+    VeraGrid user interface representing  a zoom of a ~500 node grid.
 
-The graphical user interface (GUI) makes extensive use of tooltip texts. These area yellow tags that appear
+The graphical user interface (GUI) makes extensive use of tooltip texts. These are tags that appear
 when you hover the mouse cursor over a button from the interface. The tooltip texts are meant to be explanatory
-so that reading a manual is not really needed unless you need the technical details.
+so that reading a manual is not required unless you need the technical details.
+
 Nevertheless, this guide hopes to guide you through the GUI well enough so that the program is usable.
 
 ## Model view
 
 
-The model view is where all the editing is done.
+The model view is where all the editing is done. It is divided into three different panels. 
 
+### Library and parameters
 
-## Schematic editor
+In the left panel, you can find the library of elements to drag and drop into your schematics. By then clicking on an element in the schematic and switching to the properties tab, you will be able to observe and edit a specific element's parameters. These properties can be filtered to include only the parameters relevant to the simulation you're conducting.
 
+<p align="center">
+  <img src="figures/Libary_LeftPanel.png" alt="Library left panel" width="20%" style="margin-right: 20px;">
+  <img src="figures/Properties_LeftPanel.png" alt="Properties left panel" width="19.8%">
+</p>
 
-The schematic view is where you construct the grid in VeraGrid. The usage is quite simple:
+### Schematic and map editors
 
-- Drag & Drop the buses from the left upper side into the main panel.
+In the main panel, you can find the schematics and map diagrams that represent the system currently under study. You can create as many maps and schematics, either of the whole system or of specific portions, as you want. Creating these smaller schematics will allow you to focus on results for specific areas, while still simulating the full system. 
+
+![](figures/VeraGrid_Map_Light_500bus.png)    
+    Sample map diagram of ~500 node grid.
+
+### Diagram Settings, Scenarios and Variations
+
+In the right plane, there are three more tabs you can use. 
+
+In the diagrams tab, you can create new maps or diagrams and also edit settings for the map and schematic diagrams, using either preset templates or customized sizes, set the algorithm for automatic schematic layouts, and set the plotting style for the results visible in the diagram and results tab. 
+
+In the scenarios tab, you can create different variations of you grid using scenarios, and easily merge changes from different working branches. 
+
+In the variations tab, you will find results from studies with many different possible outcomes, such as the investment optimization, from this you will be able to select specific outputs of the simulation to investigate deeper. 
+
+### Working in the model view 
+
+The usage of the model view is quite simple:
+
+- Drag & Drop the buses from the left panel into the main panel.
 - Click on a bus bar (black line) and drag the link into another bus bar, a branch will be created.
 
   - Branch types can be selected (branch, transformer, line, switch, reactance).
-  - If you double-click a branch and the type is Line or Transformer, a simplified editor will pop up.
+  - If you double-click a branch that is a line of transformer, a simplified editor will pop up.
 
 - To add loads, generators, shunts, etc... just right click on  bus and select from the context menu.
+  
+  - If you double-click on a generator or load, a simplified editor will pop up.
 
-- The context menu from the buses allow plenty of operations such as view the bus profiles (extended
-  is time series results are present) or setting a bus as a short circuit point.
+- The context menu from the buses allow plenty of operations such as view the bus profiles (if timeseries are present) or setting a bus as a short circuit point. This can be accessed by right clicking on the bus.
 
-The schematic objects are coloured based on the results of the latest simulation.
+The schematic objects are coloured based on the results of the latest simulation. For buses and branches, the most relevant simulation results are also shown. 
 
-![](figures/model-schematic.png)
+![](figures/GUI_Results.png)
 
-When more than one simulation is available (i.e. power flow and power flow time series)
-the schematic editor is augmented with a bar that allows you to select the appropriate simulation colouring
-of the grid. When the simulation has a time component, like time series or voltage collapse, the bar will
-allow you to visualize each individual step of the simulation and navigate through them.
+When multiple simulation results are available, use the controls at the bottom of the right panel in the Diagram tab to select which simulation is displayed on the schematic. For simulations with a time component, such as time series, use the slider below the results selector to navigate to a specific time step. You can also right-click on buses or branches to observe the full simulation profiles.
 
-![](figures/model-schematic-2.png)
-
-## Tabular editor
+## Tabular database editor
 
 Sometimes is far more practical to edit the objects in bulk. For that, VeraGrid features the tabular view
 of the objects. All the static properties of the objects can be edited here. For the properties with time series
