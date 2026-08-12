@@ -11,11 +11,15 @@ import csv
 from enum import Enum
 import hashlib
 from pathlib import Path
+import time
 from typing import Any
 
 import andes
 import numpy as np
 import pandas as pd
+
+from trunk.dynamics.small_signal.small_signal_benchmark_timing import elapsed_seconds
+from trunk.dynamics.small_signal.small_signal_benchmark_timing import save_benchmark_timings
 
 
 class AndesBenchmarkCase(Enum):
@@ -24,6 +28,8 @@ class AndesBenchmarkCase(Enum):
     KUNDUR = 1
     IEEE14 = 2
     IEEE39 = 3
+    NPCC140 = 4
+    WECC179 = 5
 
 
 def _parse_case_name(case_name: str) -> AndesBenchmarkCase:
@@ -40,9 +46,13 @@ def _parse_case_name(case_name: str) -> AndesBenchmarkCase:
         return AndesBenchmarkCase.IEEE14
     elif normalized_name == "ieee39":
         return AndesBenchmarkCase.IEEE39
+    elif normalized_name in ("npcc140", "npcc_140", "npcc-140"):
+        return AndesBenchmarkCase.NPCC140
+    elif normalized_name in ("wecc179", "wecc_179", "wecc-179"):
+        return AndesBenchmarkCase.WECC179
     else:
         raise argparse.ArgumentTypeError(
-            "Supported presets are: kundur, ieee14 and ieee39. "
+            "Supported presets are: kundur, ieee14, ieee39, npcc140 and wecc179. "
             "Use --case-file and --label for another ANDES case."
         )
 
@@ -57,8 +67,12 @@ def _case_label(case_tpe: AndesBenchmarkCase) -> str:
         return "KUNDUR_no_shunt"
     elif case_tpe is AndesBenchmarkCase.IEEE14:
         return "IEEE14"
-    else:
+    elif case_tpe is AndesBenchmarkCase.IEEE39:
         return "IEEE39"
+    elif case_tpe is AndesBenchmarkCase.NPCC140:
+        return "NPCC140"
+    else:
+        return "WECC179"
 
 
 def _resolve_case_path(case_tpe: AndesBenchmarkCase, script_dir: Path) -> Path:
@@ -72,9 +86,29 @@ def _resolve_case_path(case_tpe: AndesBenchmarkCase, script_dir: Path) -> Path:
         case_path: Path = script_dir / "kundur_ieee_no_shunt.json"
     elif case_tpe is AndesBenchmarkCase.IEEE14:
         case_path = Path(andes.get_case("ieee14/ieee14_full.xlsx"))
-    else:
+    elif case_tpe is AndesBenchmarkCase.IEEE39:
         case_path = Path(andes.get_case("ieee39/ieee39_full.xlsx"))
+    elif case_tpe is AndesBenchmarkCase.NPCC140:
+        case_path = Path(andes.get_case("npcc/npcc.xlsx"))
+    else:
+        case_path = Path(andes.get_case("wecc/wecc_full.xlsx"))
     return case_path.resolve()
+
+
+def _power_flow_tolerance(case_tpe: AndesBenchmarkCase) -> float:
+    """Return the strictest convergent ANDES tolerance for one preset.
+
+    The WECC 179 starting point converges in ANDES 2.0 down to ``1e-10`` but
+    not to ``1e-13``.  The other repository benchmarks retain the tighter
+    common tolerance.
+
+    :param case_tpe: Selected benchmark case.
+    :return: ANDES power-flow tolerance.
+    """
+    if case_tpe is AndesBenchmarkCase.WECC179:
+        return 1.0e-10
+    else:
+        return 1.0e-13
 
 
 def _format_complex(value: complex, decimals: int = 15) -> str:
@@ -198,18 +232,80 @@ def _fold_zero_ieeest_input_filter_states(system: Any) -> list[str]:
     return folded_state_names
 
 
+def _fold_unused_bus_frequency_states(system: Any) -> list[str]:
+    """Fold BusFreq devices that no enabled controller consumes.
+
+    Some published workbooks instantiate one BusFreq device per generator even
+    though every stabilizer is configured for rotor speed or electrical power.
+    Their decoupled filter poles are measurement-implementation modes, not
+    physical network modes. Folding them before EIG makes the exported spectrum
+    exactly the common physical model while retaining every consumed BusFreq.
+
+    :param system: Initialized ANDES system.
+    :return: Folded BusFreq state names.
+    """
+    busfreq_model: Any | None = system.models.get("BusFreq", None)
+    folded_state_names: list[str] = list()
+    if busfreq_model is None or int(busfreq_model.n) == 0:
+        return folded_state_names
+    else:
+        pass
+    referenced_indexes: set[str] = set()
+    controller_name: str
+    for controller_name in ("IEEEST", "ST2CUT"):
+        controller: Any | None = system.models.get(controller_name, None)
+        if controller is None or int(controller.n) == 0:
+            pass
+        else:
+            device_index: int
+            for device_index in range(int(controller.n)):
+                if int(controller.MODE.v[device_index]) == 2:
+                    referenced_indexes.add(str(controller.busf.v[device_index]))
+                else:
+                    pass
+                if controller_name == "ST2CUT" and int(controller.MODE2.v[device_index]) == 2:
+                    referenced_indexes.add(str(controller.busf2.v[device_index]))
+                else:
+                    pass
+    busfreq_index: int
+    for busfreq_index in range(int(busfreq_model.n)):
+        model_index: str = str(busfreq_model.idx.v[busfreq_index])
+        if model_index in referenced_indexes:
+            pass
+        else:
+            device_ordinal: int = busfreq_index + 1
+            folded_state_names.append(f"L_y BusFreq {device_ordinal}")
+            folded_state_names.append(f"WO_x BusFreq {device_ordinal}")
+    dae_state_names: np.ndarray = np.asarray(system.dae.x_name, dtype=str)
+    state_name: str
+    for state_name in folded_state_names:
+        state_indexes: np.ndarray = np.flatnonzero(dae_state_names == state_name)
+        if state_indexes.size == 1:
+            system.dae.Tf[int(state_indexes[0])] = 0.0
+        else:
+            raise ValueError(
+                f"Expected one ANDES state named {state_name!r}; found {state_indexes.size}."
+            )
+    return folded_state_names
+
+
 def run_andes_stability(
     case_path: Path,
     case_label: str,
     output_dir: Path | None = None,
+    power_flow_tolerance: float = 1.0e-13,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Solve and export one ANDES small-signal case.
 
     :param case_path: ANDES-readable case file.
     :param case_label: Filename-safe label used for exported artifacts.
     :param output_dir: Optional explicit destination directory.
+    :param power_flow_tolerance: Newton power-flow convergence tolerance.
     :return: State matrix, eigenvalues, right vectors, left vectors and factors.
     """
+    total_start: float = time.perf_counter()
+    timings: dict[str, float] = dict()
+
     # Stage 1: identify the exact source and prepare a deterministic destination.
     resolved_case_path: Path = case_path.resolve()
     source_hash: str = hashlib.sha256(resolved_case_path.read_bytes()).hexdigest()
@@ -227,7 +323,12 @@ def run_andes_stability(
     print(f"Case SHA-256: {source_hash}")
 
     # Stage 2: solve a constant-power operating point using a strict tolerance.
-    system: Any = andes.load(str(resolved_case_path), default_config=True)
+    model_start: float = time.perf_counter()
+    system: Any = andes.load(
+        str(resolved_case_path),
+        default_config=True,
+        setup=False,
+    )
     system.files.no_output = True
     system.PQ.config.p2p = 1.0
     system.PQ.config.p2i = 0
@@ -235,16 +336,52 @@ def run_andes_stability(
     system.PQ.config.q2q = 1.0
     system.PQ.config.q2i = 0
     system.PQ.config.q2z = 0
-    system.PFlow.config.tol = 1.0e-13
-    system.PFlow.run()
+    system.PFlow.config.tol = power_flow_tolerance
+    timings["case_and_model_build"] = elapsed_seconds(model_start)
+    setup_start: float = time.perf_counter()
+    setup_success: bool = bool(system.setup())
+    timings["symbolic_to_numeric"] = elapsed_seconds(setup_start)
+    if setup_success:
+        pass
+    else:
+        raise RuntimeError(
+            f"ANDES symbolic-to-numeric setup failed for {resolved_case_path}."
+        )
+    power_flow_start: float = time.perf_counter()
+    power_flow_success: bool = bool(system.PFlow.run())
+    timings["power_flow"] = elapsed_seconds(power_flow_start)
+    if power_flow_success:
+        pass
+    else:
+        raise RuntimeError(
+            f"ANDES power flow did not converge for {resolved_case_path} "
+            f"with tolerance {power_flow_tolerance:.3e}."
+        )
 
     # Stage 3: initialize the DAE, canonicalize exact zero-parameter IEEEST
     # pass-throughs, then let ANDES fold all zero-mass states and calculate EIG.
     eig: Any = system.EIG
+    initialization_start: float = time.perf_counter()
     system.TDS.init()
     system.TDS.itm_step()
+    timings["dynamic_initialization"] = elapsed_seconds(initialization_start)
+    preprocessing_start: float = time.perf_counter()
     folded_ieeest_states: list[str] = _fold_zero_ieeest_input_filter_states(system)
+    folded_bus_frequency_states: list[str] = _fold_unused_bus_frequency_states(system)
+    timings["benchmark_preprocessing"] = elapsed_seconds(preprocessing_start)
+    small_signal_start: float = time.perf_counter()
     eig.run()
+    timings["small_signal_total"] = elapsed_seconds(small_signal_start)
+
+    # Repeat the numerical kernels once after initialization. These isolated
+    # warm measurements match the VeraGrid diagnostic repeats and are excluded
+    # from both ``small_signal_total`` and ``end_to_end``.
+    state_matrix_repeat_start: float = time.perf_counter()
+    eig.calc_As()
+    timings["state_matrix_isolated_repeat"] = elapsed_seconds(state_matrix_repeat_start)
+    eigenanalysis_repeat_start: float = time.perf_counter()
+    eig.mu, eig.pfactors, eig.N, eig.W = eig.calc_pfactor()
+    timings["eigenanalysis_isolated_repeat"] = elapsed_seconds(eigenanalysis_repeat_start)
     state_names: list[str] = list(eig.x_name)
     state_matrix: np.ndarray = np.asarray(eig.As, dtype=complex)
     eigenvalues: np.ndarray = np.asarray(eig.mu, dtype=complex)
@@ -261,8 +398,16 @@ def run_andes_stability(
             print(f"  - {folded_ieeest_state}")
     else:
         pass
+    if len(folded_bus_frequency_states) > 0:
+        print("Unused BusFreq states folded as constraints:")
+        folded_bus_frequency_state: str
+        for folded_bus_frequency_state in folded_bus_frequency_states:
+            print(f"  - {folded_bus_frequency_state}")
+    else:
+        pass
 
     # Stage 4: export the common inputs consumed by the visual comparator.
+    export_start: float = time.perf_counter()
     pd.DataFrame(eigenvalues).to_csv(
         results_dir / f"Eigenvalues_results_Andes_{case_label}.csv",
         index=False,
@@ -284,6 +429,19 @@ def run_andes_stability(
         columns=list(("index", "state")),
     ).to_csv(results_dir / f"state_names_Andes_{case_label}.csv", index=False)
     _write_static_tables(system=system, results_dir=results_dir, case_label=case_label)
+    timings["result_export"] = elapsed_seconds(export_start)
+    timings["end_to_end"] = elapsed_seconds(total_start) - (
+        timings["state_matrix_isolated_repeat"]
+        + timings["eigenanalysis_isolated_repeat"]
+    )
+    save_benchmark_timings(
+        output_directory=results_dir,
+        engine_label="Andes",
+        case_label=case_label,
+        timings=timings,
+        state_count=len(state_names),
+        mode_count=int(eigenvalues.size),
+    )
 
     print("\nEigenvalues:")
     print(eigenvalues)
@@ -296,12 +454,15 @@ def _build_argument_parser() -> argparse.ArgumentParser:
 
     :return: Configured argument parser.
     """
-    # PyCharm Run selector: change only this enum member to KUNDUR, IEEE14 or
-    # IEEE39.  A command-line --case argument, when supplied, still overrides it.
-    pycharm_default_case: AndesBenchmarkCase = AndesBenchmarkCase.IEEE39
+    # PyCharm Run selector: change only this enum member. A command-line
+    # --case argument, when supplied, still overrides it.
+    pycharm_default_case: AndesBenchmarkCase = AndesBenchmarkCase.NPCC140
 
     parser: argparse.ArgumentParser = argparse.ArgumentParser(
-        description="Run ANDES EIG for Kundur, IEEE14, IEEE39 or an explicit case file."
+        description=(
+            "Run ANDES EIG for Kundur, IEEE14, IEEE39, NPCC140, WECC179 or "
+            "an explicit case file."
+        )
     )
     parser.add_argument("--case", type=_parse_case_name, default=pycharm_default_case)
     parser.add_argument("--case-file", type=Path, default=None)
@@ -323,9 +484,11 @@ def main() -> None:
         selected_case: AndesBenchmarkCase = arguments.case
         case_path: Path = _resolve_case_path(case_tpe=selected_case, script_dir=script_dir)
         default_label: str = _case_label(case_tpe=selected_case)
+        power_flow_tolerance: float = _power_flow_tolerance(case_tpe=selected_case)
     else:
         case_path = arguments.case_file
         default_label = case_path.stem
+        power_flow_tolerance = 1.0e-13
 
     if arguments.label is None:
         case_label: str = default_label
@@ -336,6 +499,7 @@ def main() -> None:
         case_path=case_path,
         case_label=case_label,
         output_dir=arguments.output_dir,
+        power_flow_tolerance=power_flow_tolerance,
     )
 
 

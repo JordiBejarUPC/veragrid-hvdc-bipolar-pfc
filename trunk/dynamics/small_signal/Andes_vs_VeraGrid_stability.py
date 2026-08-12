@@ -30,6 +30,8 @@ class ComparisonPreset(Enum):
     KUNDUR = 1
     IEEE14 = 2
     IEEE39 = 3
+    NPCC140 = 4
+    WECC179 = 5
 
 
 class ComparisonReportStream:
@@ -99,9 +101,13 @@ def _parse_comparison_preset(case_name: str) -> ComparisonPreset:
         return ComparisonPreset.IEEE14
     elif normalized_name == "ieee39":
         return ComparisonPreset.IEEE39
+    elif normalized_name in ("npcc140", "npcc_140", "npcc-140"):
+        return ComparisonPreset.NPCC140
+    elif normalized_name in ("wecc179", "wecc_179", "wecc-179"):
+        return ComparisonPreset.WECC179
     else:
         raise argparse.ArgumentTypeError(
-            "Supported presets are: kundur, ieee14 and ieee39. "
+            "Supported presets are: kundur, ieee14, ieee39, npcc140 and wecc179. "
             "Use --veragrid-results, --andes-results and --label for other networks."
         )
 
@@ -124,10 +130,18 @@ def _preset_paths(
         veragrid_dir = script_dir / "ieee14_small_signal_rms_results_VeraGrid"
         andes_dir = script_dir / "IEEE14_small_signal_rms_results_Andes"
         case_label = "IEEE14"
-    else:
+    elif preset is ComparisonPreset.IEEE39:
         veragrid_dir = script_dir / "ieee39_small_signal_rms_results_VeraGrid"
         andes_dir = script_dir / "IEEE39_small_signal_rms_results_Andes"
         case_label = "IEEE39"
+    elif preset is ComparisonPreset.NPCC140:
+        veragrid_dir = script_dir / "npcc140_small_signal_rms_results_VeraGrid"
+        andes_dir = script_dir / "NPCC140_small_signal_rms_results_Andes"
+        case_label = "NPCC140"
+    else:
+        veragrid_dir = script_dir / "wecc179_small_signal_rms_results_VeraGrid"
+        andes_dir = script_dir / "WECC179_small_signal_rms_results_Andes"
+        case_label = "WECC179"
     return veragrid_dir, andes_dir, case_label
 
 
@@ -601,10 +615,12 @@ def load_andes_eigenvalues(csv_path: Path) -> np.ndarray:
 
 
 def compare_power_flow_buses(veragrid_csv: Path, andes_csv: Path) -> tuple[float, float]:
-    """Compare solved IEEE14 bus magnitudes and angles.
+    """Compare solved bus magnitudes and angles.
 
     VeraGrid exports angles in degrees while ANDES stores radians.  Rows are
-    matched by normalized bus name before calculating the errors.
+    matched by normalized bus name when names are unique. Large reference cases
+    contain repeated display names, for which the common source-row order is the
+    only unambiguous alignment.
 
     :param veragrid_csv: VeraGrid solved bus table.
     :param andes_csv: ANDES solved bus table.
@@ -620,6 +636,7 @@ def compare_power_flow_buses(veragrid_csv: Path, andes_csv: Path) -> tuple[float
             bus_voltage: tuple[float, float] = (float(row["Vm"]), float(row["Va_rad"]))
             andes_values[bus_name] = bus_voltage
             andes_ordered_values.append(bus_voltage)
+    use_ordered_alignment: bool = len(andes_values) != len(andes_ordered_values)
 
     magnitude_errors: list[float] = list()
     veragrid_angles: list[float] = list()
@@ -629,8 +646,11 @@ def compare_power_flow_buses(veragrid_csv: Path, andes_csv: Path) -> tuple[float
         row_index: int = 0
         for row in reader:
             veragrid_name: str = str(row[""]).strip().upper()
-            named_voltage: tuple[float, float] | None = andes_values.get(veragrid_name, None)
-            if named_voltage is None:
+            named_voltage: tuple[float, float] | None = andes_values.get(
+                veragrid_name,
+                None,
+            )
+            if use_ordered_alignment or named_voltage is None:
                 andes_voltage: tuple[float, float] = andes_ordered_values[row_index]
             else:
                 andes_voltage = named_voltage
@@ -1103,11 +1123,7 @@ def reorder_andes_state_matrix_to_veragrid(
 
         target_row_index += 1
 
-    if len(missing_labels) > 0 and andes_state_matrix.shape == reordered.shape:
-        # Unknown naming conventions must not prevent inspecting a new network.
-        # Preserve positional order and return the missing labels as a warning.
-        return np.asarray(andes_state_matrix, dtype=complex), missing_labels
-    elif len(missing_labels) > 0:
+    if len(missing_labels) > 0:
         return None, missing_labels
     else:
         return reordered, missing_labels
@@ -1240,6 +1256,30 @@ def compute_andes_participation_factors(
     return eigenvalues, np.round(normalized_participation, decimals=5)
 
 
+def identify_basis_degenerate_modes(eigenvalues: np.ndarray) -> np.ndarray:
+    """Identify modes whose individual eigenvector basis is not unique.
+
+    :param eigenvalues: Eigenvalues in the current modal order.
+    :return: Boolean mask for repeated or numerically indistinguishable modes.
+    """
+    values: np.ndarray = np.asarray(eigenvalues, dtype=complex)
+    degenerate_mask: np.ndarray = np.zeros(values.size, dtype=bool)
+    first_index: int
+    second_index: int
+    for first_index in range(values.size):
+        for second_index in range(first_index + 1, values.size):
+            tolerance: float = max(
+                1.0e-6,
+                1.0e-8 * max(abs(values[first_index]), abs(values[second_index])),
+            )
+            if abs(values[first_index] - values[second_index]) <= tolerance:
+                degenerate_mask[first_index] = True
+                degenerate_mask[second_index] = True
+            else:
+                pass
+    return degenerate_mask
+
+
 def save_participation_difference(
     output_path: Path,
     state_labels: list[str],
@@ -1265,6 +1305,135 @@ def save_participation_difference(
             row: list[object] = list((state_labels[row_index],))
             row.extend(difference[row_index, :].tolist())
             writer.writerow(row)
+
+
+def _load_timing_samples(timing_csv: Path) -> dict[str, float]:
+    """Load one engine timing CSV keyed by benchmark phase.
+
+    :param timing_csv: Timing artifact produced beside numerical results.
+    :return: Phase-to-seconds mapping.
+    """
+    samples: dict[str, float] = dict()
+    with timing_csv.open("r", encoding="utf-8", newline="") as csv_file:
+        reader: csv.DictReader = csv.DictReader(csv_file)
+        row: dict[str, str]
+        for row in reader:
+            samples[str(row["phase"])] = float(row["seconds"])
+    return samples
+
+
+def _create_timing_comparison(
+    veragrid_results_directory: Path,
+    andes_results_directory: Path,
+    comparison_directory: Path,
+    case_label: str,
+) -> Any | None:
+    """Create CSV and visual tables for comparable small-signal timings.
+
+    :param veragrid_results_directory: VeraGrid result directory.
+    :param andes_results_directory: ANDES result directory.
+    :param comparison_directory: Destination for comparison artifacts.
+    :param case_label: Benchmark case label.
+    :return: Generated Matplotlib figure, or ``None`` when timing data is absent.
+    """
+    veragrid_candidates: list[Path] = sorted(
+        veragrid_results_directory.glob("timings_results_VeraGrid_*.csv")
+    )
+    andes_candidates: list[Path] = sorted(
+        andes_results_directory.glob("timings_results_Andes_*.csv")
+    )
+    if len(veragrid_candidates) == 1 and len(andes_candidates) == 1:
+        pass
+    else:
+        print(
+            "\nTiming comparison unavailable: expected exactly one timing CSV "
+            f"per engine, found VeraGrid={len(veragrid_candidates)} and "
+            f"ANDES={len(andes_candidates)}."
+        )
+        return None
+
+    veragrid_samples: dict[str, float] = _load_timing_samples(veragrid_candidates[0])
+    andes_samples: dict[str, float] = _load_timing_samples(andes_candidates[0])
+    preferred_phases: tuple[str, ...] = (
+        "case_and_model_build",
+        "power_flow",
+        "symbolic_to_numeric",
+        "dynamic_initialization",
+        "benchmark_preprocessing",
+        "small_signal_total",
+        "state_matrix_isolated_repeat",
+        "eigenanalysis_isolated_repeat",
+        "result_export",
+        "end_to_end",
+    )
+    phases: list[str] = list()
+    phase_name: str
+    for phase_name in preferred_phases:
+        if phase_name in veragrid_samples or phase_name in andes_samples:
+            phases.append(phase_name)
+        else:
+            pass
+    for phase_name in sorted(set(veragrid_samples).union(andes_samples)):
+        if phase_name in phases:
+            pass
+        else:
+            phases.append(phase_name)
+
+    comparison_csv: Path = comparison_directory / "timing_comparison.csv"
+    table_rows: list[list[object]] = list()
+    with comparison_csv.open("w", encoding="utf-8", newline="") as csv_file:
+        writer: csv.writer = csv.writer(csv_file)
+        writer.writerow(list(("phase", "andes_seconds", "veragrid_seconds", "andes_over_veragrid")))
+        for phase_name in phases:
+            andes_seconds: float = andes_samples.get(phase_name, float("nan"))
+            veragrid_seconds: float = veragrid_samples.get(phase_name, float("nan"))
+            if np.isfinite(andes_seconds) and np.isfinite(veragrid_seconds) and veragrid_seconds > 0.0:
+                ratio: float = andes_seconds / veragrid_seconds
+            else:
+                ratio = float("nan")
+            writer.writerow(list((phase_name, andes_seconds, veragrid_seconds, ratio)))
+            table_rows.append(list((phase_name, andes_seconds, veragrid_seconds, ratio)))
+
+    print("\nSmall-signal timing comparison:")
+    print("  Phase                              ANDES [s]   VeraGrid [s]   ANDES/VeraGrid")
+    print("  " + "-" * 80)
+    table_row: list[object]
+    for table_row in table_rows:
+        andes_text: str = "--" if not np.isfinite(float(table_row[1])) else f"{float(table_row[1]):.6f}"
+        veragrid_text: str = "--" if not np.isfinite(float(table_row[2])) else f"{float(table_row[2]):.6f}"
+        ratio_text: str = "--" if not np.isfinite(float(table_row[3])) else f"{float(table_row[3]):.3f}x"
+        print(f"  {str(table_row[0]):34s} {andes_text:>11s} {veragrid_text:>14s} {ratio_text:>17s}")
+
+    figure, axis = plt.subplots(figsize=(13.0, 0.55 * len(table_rows) + 2.0))
+    axis.axis("off")
+    visual_rows: list[list[str]] = list()
+    for table_row in table_rows:
+        visual_rows.append(list((
+            str(table_row[0]),
+            "--" if not np.isfinite(float(table_row[1])) else f"{float(table_row[1]):.6f}",
+            "--" if not np.isfinite(float(table_row[2])) else f"{float(table_row[2]):.6f}",
+            "--" if not np.isfinite(float(table_row[3])) else f"{float(table_row[3]):.3f}x",
+        )))
+    timing_table = axis.table(
+        cellText=visual_rows,
+        colLabels=list(("Phase", "ANDES [s]", "VeraGrid [s]", "ANDES/VeraGrid")),
+        cellLoc="right",
+        colLoc="center",
+        loc="center",
+        colWidths=list((0.47, 0.17, 0.17, 0.19)),
+    )
+    timing_table.auto_set_font_size(False)
+    timing_table.set_fontsize(9)
+    timing_table.scale(1.0, 1.35)
+    axis.set_title(
+        f"{case_label}: small-signal wall-clock timing comparison\n"
+        "Isolated repeats are warm diagnostics and are not added to end_to_end.",
+        pad=16.0,
+    )
+    figure.tight_layout()
+    figure.savefig(comparison_directory / "timing_comparison_table.png", dpi=200, bbox_inches="tight")
+    print(f"Timing comparison CSV written to: {comparison_csv}")
+    return figure
 
 
 def _run_andes_vs_veragrid_stability(
@@ -1317,6 +1486,16 @@ def _run_andes_vs_veragrid_stability(
     veragrid_bus_csv: Path = veragrid_csv.parent / "power_flow_buses.csv"
     andes_bus_csv: Path = andes_csv.parent / f"solved_bus_Andes_{inferred_label}.csv"
     generated_figures: list[Any] = list()
+    timing_figure: Any | None = _create_timing_comparison(
+        veragrid_results_directory=veragrid_csv.parent,
+        andes_results_directory=andes_csv.parent,
+        comparison_directory=comparison_dir,
+        case_label=inferred_label,
+    )
+    if timing_figure is None:
+        pass
+    else:
+        generated_figures.append(timing_figure)
 
     # Load and canonicalize state spaces before modal matching. ANDES may retain
     # unused measurement devices or zero-parameter block-realization states
@@ -1560,22 +1739,41 @@ def _run_andes_vs_veragrid_stability(
                     veragrid_participation[:, veragrid_pf_indexes]
                     - andes_participation[:, andes_pf_indexes]
                 )
-                pf_fro_norm = float(np.linalg.norm(participation_difference, ord="fro"))
+                matched_andes_pf_eigenvalues: np.ndarray = andes_pf_eigenvalues[andes_pf_indexes]
+                degenerate_mode_mask: np.ndarray = identify_basis_degenerate_modes(
+                    matched_andes_pf_eigenvalues
+                )
+                comparable_participation_difference: np.ndarray = participation_difference[
+                    :, ~degenerate_mode_mask
+                ]
+                pf_fro_norm = float(np.linalg.norm(comparable_participation_difference, ord="fro"))
                 pf_reference_norm = float(
-                    np.linalg.norm(andes_participation[:, andes_pf_indexes], ord="fro")
+                    np.linalg.norm(
+                        andes_participation[:, andes_pf_indexes][:, ~degenerate_mode_mask],
+                        ord="fro",
+                    )
                 )
                 pf_relative_fro_norm = pf_fro_norm / pf_reference_norm
-                pf_max_abs_difference = float(np.max(np.abs(participation_difference)))
+                pf_max_abs_difference = float(
+                    np.max(np.abs(comparable_participation_difference))
+                )
+                visual_participation_difference: np.ndarray = participation_difference.copy()
+                visual_participation_difference[:, degenerate_mode_mask] = np.nan
                 print("\nParticipation-factor comparison summary:")
                 print("  Both matrices use biorthogonal state-by-mode factors normalized per mode.")
                 print("  Factors are rounded to five decimals after normalization.")
+                print(
+                    "  Individually basis-dependent repeated modes excluded from dPF norms: "
+                    f"{int(np.count_nonzero(degenerate_mode_mask))}."
+                )
+                print("  Every eigenvalue remains included in the eigenvalue comparison.")
                 print(f"  Frobenius norm of dPF: {pf_fro_norm:.6e}")
                 print(f"  Relative Frobenius norm of dPF: {pf_relative_fro_norm:.6e}")
                 print(f"  Maximum absolute factor error: {pf_max_abs_difference:.6e}")
                 save_participation_difference(
                     output_path=participation_difference_csv,
                     state_labels=normalized_veragrid_row_labels,
-                    difference=participation_difference,
+                    difference=visual_participation_difference,
                 )
                 report_top_matrix_mismatches(
                     andes_matrix=reordered_andes_state_matrix,
@@ -1597,10 +1795,14 @@ def _run_andes_vs_veragrid_stability(
 
                 aligned_andes_participation: np.ndarray = andes_participation[:, andes_pf_indexes]
                 aligned_veragrid_participation: np.ndarray = veragrid_participation[:, veragrid_pf_indexes]
+                plotted_participation_difference: np.ndarray = np.nan_to_num(
+                    visual_participation_difference,
+                    nan=0.0,
+                )
                 fig_participation: Any = _create_participation_figure(
                     andes_participation=aligned_andes_participation,
                     veragrid_participation=aligned_veragrid_participation,
-                    difference=participation_difference,
+                    difference=plotted_participation_difference,
                     state_labels=normalized_veragrid_row_labels,
                     case_label=inferred_label,
                 )
@@ -1845,9 +2047,9 @@ def _build_argument_parser() -> argparse.ArgumentParser:
 
     :return: Configured argument parser.
     """
-    # PyCharm Run selector: change only this enum member to KUNDUR, IEEE14 or
-    # IEEE39.  A command-line --network argument, when supplied, overrides it.
-    pycharm_default_network: ComparisonPreset = ComparisonPreset.IEEE39
+    # PyCharm Run selector: change only this enum member. A command-line
+    # --network argument, when supplied, overrides it.
+    pycharm_default_network: ComparisonPreset = ComparisonPreset.NPCC140
 
     parser: argparse.ArgumentParser = argparse.ArgumentParser(
         description=(

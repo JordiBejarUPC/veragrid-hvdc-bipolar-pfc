@@ -1,0 +1,213 @@
+SMALL-SIGNAL STABILITY BENCHMARK: ANDES VS VERAGRID
+==================================================
+
+Summary date: 2026-08-12
+Analyzed cases: Kundur, IEEE14, IEEE39, NPCC140, and WECC179.
+
+1. EXECUTIVE SUMMARY
+--------------------
+
+All five cases show very good numerical agreement between ANDES and VeraGrid.
+All available states and eigenvalues have been included in the comparison. The
+observed differences are small enough to conclude that VeraGrid correctly
+reproduces the ANDES small-signal results for these benchmarks.
+
+The best overall agreement is obtained for IEEE14 and NPCC140. WECC179 has the
+largest absolute differences, but it is also the largest system and contains
+state-matrix entries of up to approximately 540,000. Its relative state-matrix
+error is still only 6.02e-7.
+
+Regarding computation time, ANDES is between 2.94 and 5.70 times faster in the
+end-to-end execution time measured in these runs. VeraGrid's main bottleneck is
+the symbolic-to-numeric conversion, particularly for NPCC140 and WECC179. In
+contrast, VeraGrid is faster in the isolated eigenvalue and participation-factor
+calculation for every case.
+
+2. NUMERICAL RESULT COMPARISON
+------------------------------
+
+Case      States  Mean eig. error  Max. eig. error  Rel. A error  Rel. PF error
+--------  ------  ---------------  ---------------  ------------  -------------
+Kundur         8       0.000036 %       0.000070 %     1.692e-10      2.503e-5
+IEEE14        56       0.000001 %       0.000009 %     1.835e-9       0.000e+0
+IEEE39       130       0.000012 %       0.000074 %     6.902e-8       7.683e-6
+NPCC140      334      <0.000001 %       0.000008 %     5.658e-8       2.249e-6
+WECC179      507       0.000040 %       0.000559 %     6.024e-7       3.075e-5
+
+Operating-point comparison:
+
+Case      Maximum |V| error [pu]  Maximum angle error [rad]
+--------  ----------------------  -------------------------
+Kundur                 2.990e-7                  3.074e-7
+IEEE14                 5.428e-9                  1.408e-8
+IEEE39                 1.720e-7                  1.740e-7
+NPCC140      approximately 1e-15                  5.770e-15
+WECC179                1.785e-6                  7.764e-6
+
+Case-by-case details:
+
+Kundur
+~~~~~~
+
+- 8 states and 8 eigenvalues were compared.
+- Mean absolute eigenvalue error: 1.446018e-6 rad/s.
+- Relative state-matrix error: 1.692291e-10.
+- Maximum absolute error in a state-matrix entry: 9.331916e-8.
+- Relative participation-factor error: 2.502877e-5.
+- Result: virtually exact agreement of the state matrix.
+
+IEEE14
+~~~~~~
+
+- 56 states and 56 eigenvalues were compared.
+- Mean absolute eigenvalue error: 1.089456e-7 rad/s.
+- Relative state-matrix error: 1.835490e-9.
+- Maximum absolute error in a state-matrix entry: 2.380198e-6.
+- The participation factors agree exactly after normalization and rounding to
+  five decimal places.
+- Result: the best overall agreement among the analyzed cases.
+
+IEEE39
+~~~~~~
+
+- 130 states and 130 eigenvalues were compared.
+- Mean absolute eigenvalue error: 3.800e-6 rad/s.
+- Relative state-matrix error: 6.902e-8.
+- Maximum absolute error in a state-matrix entry: 5.932e-4.
+- Relative participation-factor error: 7.683e-6.
+- Result: very good agreement in both the modal results and the state matrix.
+
+NPCC140
+~~~~~~~
+
+- 334 states and 334 eigenvalues were compared.
+- Mean absolute eigenvalue error: 2.568e-8 rad/s.
+- Relative state-matrix error: 5.658e-8.
+- Maximum absolute error in a state-matrix entry: 5.912e-4.
+- Relative participation-factor error: 2.249e-6.
+- The operating point agrees practically to machine precision.
+- Result: very satisfactory validation of a large system containing parallel
+  generators and GENCLS models.
+
+WECC179
+~~~~~~~
+
+- 507 states and 507 eigenvalues were compared.
+- Mean absolute eigenvalue error: 4.376489e-6 rad/s.
+- Relative state-matrix error: 6.023567e-7.
+- Maximum absolute error in a state-matrix entry: 3.258003e-1.
+- Relative participation-factor error: 3.075126e-5.
+- The maximum absolute state-matrix error corresponds to an entry of
+  approximately 540,000; therefore, the relative difference remains very small.
+- There are 21 repeated modes. All eigenvalues are included in the comparison
+  and the s-domain plot. These modes are excluded only from the
+  participation-factor difference norms because their eigenvector basis is not
+  unique.
+- Result: good agreement for the largest and most demanding benchmark.
+
+3. TIMING COMPARISON
+--------------------
+
+The following values are wall-clock times from one execution and are expressed
+in seconds. The total ratio indicates how many times the VeraGrid execution time
+exceeds the ANDES execution time.
+
+Case      ANDES total  VeraGrid total  VeraGrid/ANDES
+--------  -----------  --------------  ---------------
+Kundur       0.722167        3.343588            4.63x
+IEEE14       1.749090        6.496278            3.71x
+IEEE39       1.990593        5.850456            2.94x
+NPCC140      3.178955       18.107172            5.70x
+WECC179      4.768631       22.035055            4.62x
+
+Symbolic-to-numeric conversion:
+
+Case      ANDES [s]  VeraGrid [s]  VeraGrid/ANDES
+--------  ---------  ------------  ---------------
+Kundur     0.023160      0.346401           14.96x
+IEEE14     0.054215      0.428930            7.91x
+IEEE39     0.065729      1.431165           21.77x
+NPCC140    0.078647      5.977049           75.99x
+WECC179    0.114474      8.037913           70.22x
+
+Isolated state-matrix construction:
+
+Case      ANDES [s]  VeraGrid [s]  VeraGrid/ANDES
+--------  ---------  ------------  ---------------
+Kundur     0.000497      0.001637            3.29x
+IEEE14     0.001497      0.002098            1.40x
+IEEE39     0.003979      0.010616            2.67x
+NPCC140    0.016970      0.136977            8.07x
+WECC179    0.027343      0.506919           18.54x
+
+Isolated eigenvalue and participation-factor calculation:
+
+Case      ANDES [s]  VeraGrid [s]  ANDES/VeraGrid
+--------  ---------  ------------  ---------------
+Kundur     0.000786      0.000204            3.86x
+IEEE14     0.002915      0.000747            3.90x
+IEEE39     0.133307      0.015192            8.77x
+NPCC140    0.800500      0.106241            7.53x
+WECC179    0.458178      0.311716            1.47x
+
+Complete small-signal calculation:
+
+Case      ANDES [s]  VeraGrid [s]  ANDES/VeraGrid
+--------  ---------  ------------  ---------------
+Kundur     0.014225      0.064466            0.22x
+IEEE14     0.007370      0.047509            0.16x
+IEEE39     0.142083      0.092412            1.54x
+NPCC140    0.445316      0.322018            1.38x
+WECC179    1.352404      2.010866            0.67x
+
+Timing interpretation:
+
+- ANDES is faster in symbolic-to-numeric conversion and isolated state-matrix
+  construction.
+- The symbolic-conversion difference grows significantly for NPCC140 and
+  WECC179 and is the main bottleneck identified in VeraGrid.
+- VeraGrid is faster in the isolated eigenvalue and participation-factor
+  calculation for all five cases.
+- For the complete small-signal phase, VeraGrid is faster for IEEE39 and
+  NPCC140, while ANDES is faster for Kundur, IEEE14, and WECC179.
+- The end-to-end time includes case construction, power flow, numerical
+  preparation, small-signal analysis, and result export. The isolated diagnostic
+  repeats are not added to the total time again.
+- ANDES has its own dynamic-initialization and benchmark-preprocessing phases
+  without an identified one-to-one phase in VeraGrid. These entries are shown as
+  unavailable in the timing comparison table.
+
+Measured timing phases:
+
+1. case_and_model_build: case loading and model construction.
+2. power_flow: power-flow solution.
+3. symbolic_to_numeric: conversion of symbolic equations to numerical
+   functions and matrices.
+4. dynamic_initialization: ANDES dynamic initialization.
+5. benchmark_preprocessing: benchmark-specific preparation.
+6. small_signal_total: complete small-signal calculation.
+7. state_matrix_isolated_repeat: isolated state-matrix construction.
+8. eigenanalysis_isolated_repeat: eigenvalues, eigenvectors, and participation
+   factors.
+9. result_export: CSV, JSON, report, and figure generation.
+10. end_to_end: complete execution time, excluding the isolated diagnostic
+    repeats from being counted a second time.
+
+4. CONCLUSION
+-------------
+
+The numerical validation is satisfactory for all five systems. VeraGrid and
+ANDES produce equivalent operating points, state matrices, eigenvalues, and
+participation factors within very small numerical errors. No significant
+physical discrepancy has been identified in the final results.
+
+The main remaining difference is performance. VeraGrid is already particularly
+competitive in modal analysis, but symbolic-to-numeric conversion and
+state-matrix construction penalize the total execution time, especially as the
+system size increases.
+
+A definitive statistical performance study should repeat each case several
+times, discard the first execution, and compare the median, mean, and dispersion.
+The current measurements are suitable for a quick comparison and for identifying
+the main bottlenecks.
+

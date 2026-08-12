@@ -1033,6 +1033,7 @@ def get_exst1_rms_template(
     lr_state_var: Var = vfactory.add_var("LR_y")
     wf_state_var: Var = vfactory.add_var("WF_x")
     wf_y_var: Var = vfactory.add_var("WF_y")
+    vpss_var: Var = vfactory.add_var("vpss")
     vref_var: Var = vfactory.add_var("vref")
     vi_var: Var = vfactory.add_var("vi")
     vl_var: Var = vfactory.add_var("vl")
@@ -1089,7 +1090,7 @@ def get_exst1_rms_template(
 
     block.algebraic_eqs = list((
         vref0_var - vref_var,
-        vref_var - lg_state_var - wf_y_var - vi_var,
+        vref_var - lg_state_var - wf_y_var + vpss_var - vi_var,
         sym.hard_sat(vi_var, vimin_var, vimax_var) - vl_var,
         tc_var / tb_var * (vl_var - ll_state_var)
         + ll_state_var
@@ -1119,11 +1120,11 @@ def get_exst1_rms_template(
     block.init_eqs[vfmin_var] = vrmin_var - kc_var * xadifd_var
     block.init_eqs[vf_var] = xadifd_var
     block.init_eqs[vf_diag_ref_var] = xadifd_var
-    block.in_vars = list((xadifd_var, vm_var))
+    block.in_vars = list((xadifd_var, vm_var, vpss_var))
     block.out_vars = list((vf_var,))
 
     template.block.children.append(block)
-    template.block.in_vars = list((xadifd_var, vm_var))
+    template.block.in_vars = list((xadifd_var, vm_var, vpss_var))
     template.block.out_vars = list((vf_var,))
     template.block.name = name
     return template
@@ -1177,6 +1178,7 @@ def get_esst3a_rms_template(
     vb_var: Var = vfactory.add_var("VB_y")
     vg_var: Var = vfactory.add_var("VG_y")
     vrs_var: Var = vfactory.add_var("vrs")
+    vpss_var: Var = vfactory.add_var("vpss")
 
     block: Block = Block(name=name)
     # VE is an initialized service parameter rather than a DAE algebraic
@@ -1256,7 +1258,7 @@ def get_esst3a_rms_template(
     ))
     block.algebraic_eqs = list((
         vref0_var - vref_var,
-        -lg_state_var + vref_var - vi_var,
+        -lg_state_var + vref_var + vpss_var - vi_var,
         sym.hard_sat(vi_var, vimin_var, vimax_var) - vil_var,
         vil_var - hg_var,
         tc_var / tb_var * (hg_var - ll_state_var)
@@ -1321,7 +1323,9 @@ def get_esst3a_rms_template(
     _ = vmmax_var
     _ = vmmin_var
 
-    block.in_vars = list((xadifd_var, vm_var, vd_var, vq_var, id_var, iq_var))
+    block.in_vars = list((
+        xadifd_var, vm_var, vd_var, vq_var, id_var, iq_var, vpss_var,
+    ))
     block.out_vars = list((vf_var,))
 
     template.block.children.append(block)
@@ -1390,8 +1394,15 @@ def get_complete_genrou_rms_template(
         vfactory.add_connection(exciter_block.in_vars[3], machine_block.out_vars[6])
         vfactory.add_connection(exciter_block.in_vars[4], machine_block.out_vars[7])
         vfactory.add_connection(exciter_block.in_vars[5], machine_block.out_vars[8])
+        pss_input_var: Var = exciter_block.in_vars[6]
     else:
-        pass
+        pss_input_var = exciter_block.in_vars[2]
+
+    # Complete assemblies without a stabilizer retain the standard zero PSS
+    # input. Controller-containing assemblies connect this port explicitly.
+    exciter_block.init_eqs[pss_input_var] = sym.Const(0.0)
+    exciter_block.algebraic_vars.append(pss_input_var)
+    exciter_block.algebraic_eqs.append(-pss_input_var)
 
     template.block.children.append(machine_block)
     template.block.children.append(governor_block)

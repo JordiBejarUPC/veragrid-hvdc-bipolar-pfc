@@ -9,6 +9,7 @@ import csv
 from contextlib import redirect_stdout
 from io import StringIO
 from pathlib import Path
+import time
 from typing import List
 from typing import Any
 
@@ -45,6 +46,9 @@ import VeraGridEngine.api as gce
 from trunk.dynamics.small_signal.ieee14_rms_model_config import get_ieee14_genrou_rms_template
 from trunk.dynamics.small_signal.rms_kundur_small_signal import save_small_signal_results_to_csv
 from trunk.dynamics.small_signal.rms_kundur_small_signal import plot_s_domain_eigenvalues
+from trunk.dynamics.small_signal.veragrid_small_signal_benchmark_timing import benchmark_veragrid_isolated_numerical_phases
+from trunk.dynamics.small_signal.small_signal_benchmark_timing import elapsed_seconds
+from trunk.dynamics.small_signal.small_signal_benchmark_timing import save_benchmark_timings
 
 
 def _format_complex(value: complex, decimals: int = 12) -> str:
@@ -750,10 +754,16 @@ def run_ieee14_small_signal() -> None:
 
     :return: None.
     """
+    total_start: float = time.perf_counter()
+    timings: dict[str, float] = dict()
+    model_start: float = time.perf_counter()
     grid: gce.MultiCircuit = build_ieee14_rms_benchmark_grid()
+    timings["case_and_model_build"] = elapsed_seconds(model_start)
     pf_options: PowerFlowOptions = _build_power_flow_options()
     power_flow: PowerFlowDriver = PowerFlowDriver(grid, pf_options)
+    power_flow_start: float = time.perf_counter()
     power_flow.run()
+    timings["power_flow"] = elapsed_seconds(power_flow_start)
     pf_results: PowerFlowResults = power_flow.results
 
     rms_options: RmsOptions = _build_rms_options()
@@ -763,13 +773,19 @@ def run_ieee14_small_signal() -> None:
     # changing that engine file or its behavior.
     initialization_output: StringIO = StringIO()
     with redirect_stdout(initialization_output):
+        compilation_start: float = time.perf_counter()
         driver: SmallSignalStabilityRmsDriver = SmallSignalStabilityRmsDriver(
             grid=grid,
             rms_options=rms_options,
             sss_options=ss_options,
             pf_results=pf_results,
         )
+        timings["symbolic_to_numeric"] = elapsed_seconds(compilation_start)
+        small_signal_start: float = time.perf_counter()
         driver.run()
+        timings["small_signal_total"] = elapsed_seconds(small_signal_start)
+
+    timings.update(benchmark_veragrid_isolated_numerical_phases(driver))
 
     results_dir: Path = _get_results_dir()
     results_dir.mkdir(parents=True, exist_ok=True)
@@ -781,11 +797,25 @@ def run_ieee14_small_signal() -> None:
     plt.savefig(figure_path, dpi=160)
     plt.close()
 
+    export_start: float = time.perf_counter()
     save_small_signal_results_to_csv(driver.results, pf_results, results_dir)
     _save_veragrid_compiled_manifest(problem=driver.problem, results=driver.results, output_dir=results_dir)
     _save_benchmark_state_matrix_and_participation(grid=grid, results=driver.results, output_dir=results_dir)
+    timings["result_export"] = elapsed_seconds(export_start)
+    timings["end_to_end"] = elapsed_seconds(total_start) - (
+        timings["state_matrix_isolated_repeat"]
+        + timings["eigenanalysis_isolated_repeat"]
+    )
 
     eigenvalue_count: int = int(np.asarray(driver.results.eigenvalues).size)
+    save_benchmark_timings(
+        output_directory=results_dir,
+        engine_label="VeraGrid",
+        case_label="IEEE14",
+        timings=timings,
+        state_count=int(driver.results.state_matrix.shape[0]),
+        mode_count=eigenvalue_count,
+    )
     print(f"IEEE14 VeraGrid completed: {eigenvalue_count} modes written to {results_dir}")
 
 
