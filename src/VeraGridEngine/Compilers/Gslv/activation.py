@@ -8,7 +8,7 @@ import os.path
 import shutil
 import packaging.version as pkg
 import warnings
-from VeraGridEngine.IO.file_system import get_create_veragrid_folder
+from pathlib import Path
 from VeraGridEngine.enumerations import (
     TapModuleControl,
     TapPhaseControl,
@@ -16,11 +16,14 @@ from VeraGridEngine.enumerations import (
     ShuntConnectionType,
     WindingType,
     WindingsConnection,
+    HvdcControlType,
+    ContingencyMethod,
+    ContingencyOperationTypes,
+    BuildStatus,
+    BranchGroupTypes,
+    ConverterControlType
 )
-from VeraGridEngine.enumerations import (HvdcControlType, SolverType, TimeGrouping,
-                                         ZonalGrouping, MIPSolvers, ContingencyMethod, ContingencyOperationTypes,
-                                         BuildStatus, BranchGroupTypes, ConverterControlType)
-GSLV_RECOMMENDED_VERSION: str = "0.7.0"
+GSLV_RECOMMENDED_VERSION: str = "0.7.10"
 GSLV_VERSION: str = ''
 GSLV_AVAILABLE: bool = False
 try:
@@ -154,7 +157,12 @@ def install_gslv_license(fname: str) -> Tuple[bool, str]:
     if os.path.exists(fname):
         # The license must live inside VeraGrid's managed folder so the wrapper
         # can discover it consistently on later runs.
-        folder = get_create_veragrid_folder()
+        folder: str = os.path.join(str(Path.home()), '.VeraGrid')
+        if os.path.exists(folder):
+            pass
+        else:
+            os.makedirs(folder)
+
         name = os.path.basename(fname)
         dst = os.path.join(folder, name)
         shutil.copyfile(fname, dst)

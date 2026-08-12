@@ -396,8 +396,6 @@ class EngineType(Enum):
     Available engines enumeration
     """
     VeraGrid = 'VeraGrid'
-    Bentayga = 'Bentayga'
-    NewtonPA = 'Newton Power Analytics'
     PGM = 'Power Grid Model'
     GSLV = "gslv"
 
@@ -449,6 +447,8 @@ class MIPSolvers(Enum):
     XPRESS = 'XPRESS'
     CBC = 'CBC'
     PDLP = 'PDLP'
+    CUOPT = "CUOPT"
+    COPT = "COPT"
 
     def __str__(self):
         return self.value

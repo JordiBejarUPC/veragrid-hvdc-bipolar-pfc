@@ -205,27 +205,31 @@ class DiagramsMain(CompiledArraysMain):
         self.ui.palette_comboBox.setModel(gf.ComboModel(enum_values=palettes_list))
 
         # map tile sources
-        self.tile_sources = [
+        self.tile_sources: List[CartoDbTiles] = [
             CartoDbTiles(
                 name='Carto voyager',
                 tiles_dir=os.path.join(tiles_path(), 'carto_db_voyager'),
-                tile_servers=["https://basemaps.cartocdn.com/rastertiles/voyager/"]
+                tile_servers=["https://basemaps.cartocdn.com/rastertiles/voyager/"],
+                start_workers=False
             ),
             CartoDbTiles(
                 name='Carto positron',
                 tiles_dir=os.path.join(tiles_path(), 'carto_db_positron'),
-                tile_servers=['https://basemaps.cartocdn.com/light_all/']
+                tile_servers=['https://basemaps.cartocdn.com/light_all/'],
+                start_workers=False
             ),
             CartoDbTiles(
                 name='Carto dark matter',
                 tiles_dir=os.path.join(tiles_path(), 'carto_db_dark_matter'),
-                tile_servers=["https://basemaps.cartocdn.com/dark_all/"]
+                tile_servers=["https://basemaps.cartocdn.com/dark_all/"],
+                start_workers=False
             ),
             CartoDbTiles(
                 name='Open Street Map',
                 tiles_dir=os.path.join(tiles_path(), 'osm'),
                 tile_servers=["https://tile.openstreetmap.org"],
-                max_zoom=21
+                max_zoom=21,
+                start_workers=False
             ),
         ]
         self.tile_index_dict = {tile.tile_set_name: i for i, tile in enumerate(self.tile_sources)}
@@ -373,6 +377,25 @@ class DiagramsMain(CompiledArraysMain):
         # Set context menu policy to CustomContextMenu
         self.ui.diagramsListView.setContextMenuPolicy(QtGui.Qt.ContextMenuPolicy.CustomContextMenu)
         self.ui.diagramsListView.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection)
+
+    def shutdown_tile_sources(self) -> None:
+        """
+        Stop the map tile provider workers owned by the diagrams layer.
+
+        :return: Nothing.
+        """
+        tile_source: CartoDbTiles
+        for tile_source in self.tile_sources:
+            tile_source.shutdown()
+
+    def stop_all_threads(self) -> None:
+        """
+        Stop GUI worker threads, including the tile workers owned by diagrams.
+
+        :return: Nothing.
+        """
+        self.shutdown_tile_sources()
+        CompiledArraysMain.stop_all_threads(self)
 
     def get_current_objects_model_view(self) -> ObjectModelFilterProxy | None:
         """

@@ -30,7 +30,6 @@ import VeraGridEngine.Simulations.PowerFlow.grid_analysis as grid_analysis
 from VeraGridEngine.Devices.types import AREA_TYPES
 from VeraGridEngine.Devices.Events.emt_events_group import EmtEventsGroup
 from VeraGridEngine.Devices.Events.rms_events_group import RmsEventsGroup
-from VeraGridEngine.Compilers.circuit_to_newton_pa import get_newton_mip_solvers_list
 from VeraGridEngine.Utils.MIP.selected_interface import get_available_mip_solvers, get_available_mip_frameworks
 from VeraGridEngine.IO.veragrid.remote import RemoteInstruction
 from VeraGridEngine.Compilers.circuit_to_data import compile_numerical_circuit_at
@@ -464,35 +463,6 @@ class SimulationsMain(TimeEventsMain):
 
             self.update_available_mip_solvers()
 
-        elif eng == EngineType.NewtonPA:
-
-            # add the AC_OPF option
-            self.ui.lpf_solver_comboBox.setModel(
-                gf.ComboModel(enum_values=[SolverType.LINEAR_OPF,
-                                           SolverType.NONLINEAR_OPF,
-                                           SolverType.GREEDY_DISPATCH_OPF],
-                              translate=self.tr)
-            )
-
-            # Power Flow Methods
-            self.ui.solver_comboBox.setModel(
-                gf.ComboModel(enum_values=[SolverType.NR,
-                                           SolverType.IWAMOTO,
-                                           SolverType.LM,
-                                           SolverType.FASTDECOUPLED,
-                                           SolverType.HELM,
-                                           SolverType.GAUSS,
-                                           SolverType.LACPF,
-                                           SolverType.Linear],
-                              translate=self.tr)
-            )
-            self.ui.solver_comboBox.setCurrentIndex(0)
-
-            self.ui.mip_solver_comboBox.setModel(
-                gf.ComboModel(enum_values=[MIPSolvers(name) for name in get_newton_mip_solvers_list()],
-                              translate=self.tr)
-            )
-
         elif eng == EngineType.VeraGrid:
 
             # no AC opf option
@@ -520,29 +490,6 @@ class SimulationsMain(TimeEventsMain):
 
             # MIP solvers
             self.update_available_mip_solvers()
-
-        elif eng == EngineType.Bentayga:
-
-            # no AC opf option
-            self.ui.lpf_solver_comboBox.setModel(
-                gf.ComboModel(enum_values=[SolverType.LINEAR_OPF,
-                                           SolverType.GREEDY_DISPATCH_OPF],
-                              translate=self.tr)
-            )
-
-            # Power Flow Methods
-            self.ui.solver_comboBox.setModel(
-                gf.ComboModel(enum_values=[SolverType.NR,
-                                           SolverType.IWAMOTO,
-                                           SolverType.LM,
-                                           SolverType.FASTDECOUPLED,
-                                           SolverType.HELM,
-                                           SolverType.GAUSS,
-                                           SolverType.LACPF,
-                                           SolverType.Linear],
-                              translate=self.tr)
-            )
-            self.ui.solver_comboBox.setCurrentIndex(0)
 
         elif eng == EngineType.PGM:
 
