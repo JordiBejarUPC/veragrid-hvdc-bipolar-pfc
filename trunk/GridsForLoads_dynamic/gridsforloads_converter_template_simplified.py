@@ -341,7 +341,7 @@ def get_grid_side_converter_control_GFL(vf: VarFactory, name: str = "G4L_grid_si
                            clark_park_transforms_mdl.in_vars[3], # i_A
                            clark_park_transforms_mdl.in_vars[4], # i_B
                            clark_park_transforms_mdl.in_vars[5], # i_C
-                           VSM_mdl.in_vars[2], # Pac
+                           VSM_mdl.in_vars[2], # Pac_bus
                            ]
     # OUT VARS:  v_con_A, v_con_B, v_con_C,
     templ.block.out_vars = [inverse_park_mdl.out_vars[0], # v_con_A_mode
@@ -519,12 +519,11 @@ def get_PLL_GFL(vf: VarFactory, name: str = "G4L_PLL") -> EmtModelTemplate:
     theta_pll = vf.add_var(name=f"theta_pll_{name}")
     d_theta_pll = vf.add_diff_var(name=f"d_theta_pll_{name}", base_var = theta_pll)
     w_pll = vf.add_var(name=f"w_pll_{name}")
-    theta_pll_mode = vf.add_var(name=f"theta_pll_mode_{name}")
 
     x_e_pll = vf.add_var(name=f"x_e_pll_{name}")
     dx_e_pll = vf.add_diff_var(name=f"dx_e_pll_{name}", base_var=x_e_pll)
 
-    theta_pll_init = vf.add_const(-np.pi / 2.0)
+    theta_v = sym.atan2(-beta, alpha)
 
     templ.block = Block(
         state_eqs=[
@@ -536,8 +535,8 @@ def get_PLL_GFL(vf: VarFactory, name: str = "G4L_PLL") -> EmtModelTemplate:
         algebraic_eqs=[
             alpha - ((1/3) * (2*v_A - v_B - v_C)),
             beta - ((1/3) * (-np.sqrt(3)*v_B + np.sqrt(3)*v_C)),
-            v_q -(alpha * cos(theta_pll_mode) - beta * sin(theta_pll_mode)),
-            v_d -(alpha * sin(theta_pll_mode) + beta * cos(theta_pll_mode)),
+            v_q -(alpha * cos(theta_pll) - beta * sin(theta_pll)),
+            v_d -(alpha * sin(theta_pll) + beta * cos(theta_pll)),
             w_pll - (- v_d * Kp_pll + x_e_pll),
         ],
         algebraic_vars=[alpha, beta, v_q, v_d, w_pll, ],
@@ -547,9 +546,9 @@ def get_PLL_GFL(vf: VarFactory, name: str = "G4L_PLL") -> EmtModelTemplate:
             x_e_pll: vf.add_const(2 * np.pi * 50),
             alpha: (1/3) * (2*v_A - v_B - v_C),
             beta: (1/3) * (-np.sqrt(3)*v_B + np.sqrt(3)*v_C),
-            theta_pll: theta_pll_init,
-            v_q: alpha * cos(theta_pll_init) - beta * sin(theta_pll_init),
-            v_d: alpha * sin(theta_pll_init) + beta * cos(theta_pll_init),
+            theta_pll: theta_v,
+            v_q: alpha * cos(theta_v) - beta * sin(theta_v),
+            v_d: alpha * sin(theta_v) + beta * cos(theta_v),
             w_pll: vf.add_const(2 * np.pi * 50),
         },
         diff_init_eqs={
@@ -557,16 +556,6 @@ def get_PLL_GFL(vf: VarFactory, name: str = "G4L_PLL") -> EmtModelTemplate:
             d_theta_pll: vf.add_const(2 * np.pi * 50),
         },
         event_dict=event_dict,
-        mode_dict={
-            theta_pll_mode: theta_pll,
-        },
-        procedural_logic=[
-            sampled_value(
-                output=theta_pll_mode,
-                source=theta_pll,
-                name=f"theta_pll_sample_{name}",
-            ),
-        ],
     )
 
     templ.block.external_mapping = {
