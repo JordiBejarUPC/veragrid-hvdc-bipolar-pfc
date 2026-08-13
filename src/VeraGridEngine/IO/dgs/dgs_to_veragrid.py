@@ -6022,6 +6022,8 @@ def _add_typtow_templates(dgs_grid: DgsCircuit,
                         device_class="TypTow",
                         value=sorted(phase_orders),
                     )
+                elif phase_counts == [3, 1]:
+                    phase_order = [1, 2, 3, 0]
 
                 ohl_type = convert_dgs_to_overhead_line_type_geometrical_parameters(
                     typtow=typtow,
