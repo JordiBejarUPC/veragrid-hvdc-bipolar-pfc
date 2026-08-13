@@ -30,6 +30,7 @@ from trunk.dynamics.small_signal.wecc179_rms_model_config import get_wecc179_gen
 from trunk.dynamics.small_signal.wecc179_rms_model_config import Wecc179DynamicTables
 from trunk.dynamics.small_signal.veragrid_small_signal_benchmark_timing import benchmark_veragrid_isolated_numerical_phases
 from trunk.dynamics.small_signal.small_signal_benchmark_timing import elapsed_seconds
+from trunk.dynamics.small_signal.small_signal_benchmark_timing import finalize_normal_workflow_timings
 from trunk.dynamics.small_signal.small_signal_benchmark_timing import save_benchmark_timings
 
 
@@ -39,14 +40,6 @@ def _base_grid_path() -> Path:
     :return: Absolute RAW path.
     """
     return Path(andes.get_case("wecc/wecc.raw")).resolve()
-
-
-def _output_grid_path() -> Path:
-    """Return the generated RMS-ready VeraGrid path.
-
-    :return: Output grid path.
-    """
-    return Path(__file__).resolve().parent / "wecc179_rms_sss.veragrid"
 
 
 def _results_directory() -> Path:
@@ -77,7 +70,6 @@ def build_wecc179_rms_benchmark_grid() -> gce.MultiCircuit:
             ).block,
             var_factory=grid.var_factory,
         )
-    gce.save_file(grid=grid, filename=str(_output_grid_path()))
     return grid
 
 
@@ -106,15 +98,17 @@ def run_wecc179_small_signal(show_figures: bool = True) -> None:
         sss_options=small_signal_options,
         pf_results=power_flow.results,
     )
-    timings["symbolic_to_numeric"] = elapsed_seconds(compilation_start)
+    timings["rms_problem_build_initialization_symbolic_to_numeric"] = elapsed_seconds(compilation_start)
     small_signal_start: float = time.perf_counter()
     driver.run()
     timings["small_signal_total"] = elapsed_seconds(small_signal_start)
     timings.update(benchmark_veragrid_isolated_numerical_phases(driver))
     results_directory: Path = _results_directory()
     results_directory.mkdir(parents=True, exist_ok=True)
-    dynamic_tables: Wecc179DynamicTables = Wecc179DynamicTables()
     export_start: float = time.perf_counter()
+    # Build the state-label tables inside the export phase because they are
+    # required only to serialize results in the common ANDES-compatible order.
+    dynamic_tables: Wecc179DynamicTables = Wecc179DynamicTables()
     save_small_signal_results_to_csv(
         driver.results,
         power_flow.results,
@@ -122,9 +116,22 @@ def run_wecc179_small_signal(show_figures: bool = True) -> None:
         benchmark_state_labels=get_wecc179_andes_style_state_labels(dynamic_tables),
     )
     timings["result_export"] = elapsed_seconds(export_start)
-    timings["end_to_end"] = elapsed_seconds(total_start) - (
-        timings["state_matrix_isolated_repeat"]
-        + timings["eigenanalysis_isolated_repeat"]
+    normal_component_names: tuple[str, ...] = (
+        "case_and_model_build",
+        "power_flow",
+        "rms_problem_build_initialization_symbolic_to_numeric",
+        "small_signal_total",
+        "result_export",
+    )
+    diagnostic_names: tuple[str, ...] = (
+        "diagnostic_state_matrix_warm_repeat",
+        "diagnostic_eigenanalysis_pf_warm_repeat",
+    )
+    finalize_normal_workflow_timings(
+        timings=timings,
+        total_start=total_start,
+        normal_component_names=normal_component_names,
+        diagnostic_names=diagnostic_names,
     )
     save_benchmark_timings(
         output_directory=results_directory,

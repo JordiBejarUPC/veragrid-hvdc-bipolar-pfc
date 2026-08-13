@@ -1,38 +1,44 @@
 SMALL-SIGNAL STABILITY BENCHMARK: ANDES VS VERAGRID
 ==================================================
 
-Summary date: 2026-08-12
+Summary date: 2026-08-13
 Analyzed cases: Kundur, IEEE14, IEEE39, NPCC140, and WECC179.
 
 1. EXECUTIVE SUMMARY
 --------------------
 
-All five cases show very good numerical agreement between ANDES and VeraGrid.
-All available states and eigenvalues have been included in the comparison. The
-observed differences are small enough to conclude that VeraGrid correctly
-reproduces the ANDES small-signal results for these benchmarks.
+All five cases show very close numerical agreement between ANDES and VeraGrid.
+Every exported state and eigenvalue is included in the comparison. WECC179 has
+21 repeated modes; these modes remain in the eigenvalue comparison and s-domain
+plot, but they are excluded from participation-factor error norms because the
+eigenvector basis of a repeated eigenspace is not unique.
 
-The best overall agreement is obtained for IEEE14 and NPCC140. WECC179 has the
-largest absolute differences, but it is also the largest system and contains
-state-matrix entries of up to approximately 540,000. Its relative state-matrix
-error is still only 6.02e-7.
+ANDES completed the authoritative normal workflow between 2.05 and 5.02 times
+faster in these single measured runs. This does not mean that every ANDES
+numerical kernel is faster. The total difference is mostly caused by power-flow
+preparation and RMS-problem construction/compilation. Once the numerical RMS
+problem is ready, VeraGrid performs the production small-signal calculation
+faster for IEEE39, NPCC140, and WECC179.
 
-Regarding computation time, ANDES is between 2.94 and 5.70 times faster in the
-end-to-end execution time measured in these runs. VeraGrid's main bottleneck is
-the symbolic-to-numeric conversion, particularly for NPCC140 and WECC179. In
-contrast, VeraGrid is faster in the isolated eigenvalue and participation-factor
-calculation for every case.
+VeraGrid DOES perform dynamic initialization. It happens inside construction of
+RmsProblemDae and is included in the combined phase named
+rms_problem_build_initialization_symbolic_to_numeric. It must not be interpreted
+as missing or as having zero cost.
+
+The isolated state-matrix and eigenanalysis measurements are warm diagnostic
+repetitions made after the production small-signal run. They are useful for
+profiling only and are explicitly EXCLUDED from normal_workflow_total.
 
 2. NUMERICAL RESULT COMPARISON
 ------------------------------
 
-Case      States  Mean eig. error  Max. eig. error  Rel. A error  Rel. PF error
---------  ------  ---------------  ---------------  ------------  -------------
-Kundur         8       0.000036 %       0.000070 %     1.692e-10      2.503e-5
-IEEE14        56       0.000001 %       0.000009 %     1.835e-9       0.000e+0
-IEEE39       130       0.000012 %       0.000074 %     6.902e-8       7.683e-6
-NPCC140      334      <0.000001 %       0.000008 %     5.658e-8       2.249e-6
-WECC179      507       0.000040 %       0.000559 %     6.024e-7       3.075e-5
+Case      States/modes  Mean eig. error  Max. eig. error  Rel. A error  Rel. PF error
+--------  ------------  ---------------  ---------------  ------------  -------------
+Kundur             8/8       0.000036 %       0.000070 %     1.692e-10      2.503e-5
+IEEE14            56/56       0.000001 %       0.000009 %     1.835e-9       0.000e+0
+IEEE39          130/130       0.000012 %       0.000074 %     6.902e-8       7.683e-6
+NPCC140         334/334      <0.000001 %       0.000008 %     5.658e-8       2.249e-6
+WECC179         507/507       0.000040 %       0.000559 %     6.024e-7       3.075e-5
 
 Operating-point comparison:
 
@@ -40,174 +46,525 @@ Case      Maximum |V| error [pu]  Maximum angle error [rad]
 --------  ----------------------  -------------------------
 Kundur                 2.990e-7                  3.074e-7
 IEEE14                 5.428e-9                  1.408e-8
-IEEE39                 1.720e-7                  1.740e-7
-NPCC140      approximately 1e-15                  5.770e-15
+IEEE39                 1.724e-7                  1.744e-7
+NPCC140                9.992e-16                 5.773e-15
 WECC179                1.785e-6                  7.764e-6
 
-Case-by-case details:
+Detailed numerical errors:
+
+Case      Mean absolute eig. error [rad/s]  Maximum absolute dA entry
+--------  --------------------------------  -------------------------
+Kundur                         1.446018e-6                9.331916e-8
+IEEE14                         1.089456e-7                2.380198e-6
+IEEE39                         3.799826e-6                5.932475e-4
+NPCC140                        2.568464e-8                5.912326e-4
+WECC179                        4.376489e-6                3.258003e-1
+
+The largest absolute dA entry occurs in WECC179, whose state matrix also
+contains entries of approximately 540,000. Its relative Frobenius error remains
+only 6.024e-7. No material physical mismatch was found in the five final
+benchmarks.
+
+3. TIMING DEFINITIONS AND ACCOUNTING
+------------------------------------
+
+All values are wall-clock seconds from one execution and were measured with
+time.perf_counter.
+
+The relation labels have the following exact meaning:
+
+- IN TOTAL: a mutually exclusive component of the normal workflow.
+- TOTAL: the authoritative normal workflow total. It is the elapsed time from
+  network creation/loading through export of the numerical result artifacts,
+  less the two diagnostic warm repetitions.
+- EXCLUDED: a warm repetition executed only to expose a numerical kernel. It is
+  not added to the normal workflow total.
+
+small_signal_total is an IN TOTAL production phase. It already performs the
+state-matrix construction, eigensolution, participation-factor calculation, and
+result assembly once. The two EXCLUDED diagnostic rows repeat matrix
+construction and eigenanalysis after that production calculation.
+
+The total excludes writing the timing CSV/JSON themselves, plotting, and the
+later ANDES-vs-VeraGrid comparator. result_export includes the engine numerical
+result files written for later inspection and comparison.
+
+The column VG/ANDES used below is defined as:
+
+    VG/ANDES = VeraGrid seconds / ANDES seconds
+
+A value above 1 means ANDES was faster. A value below 1 means VeraGrid was
+faster. Because these are single-run measurements, factors based on phases below
+a few milliseconds must be treated as approximate.
+
+4. AUTHORITATIVE NORMAL-WORKFLOW TOTALS
+---------------------------------------
+
+Case      States  ANDES TOTAL [s]  VeraGrid TOTAL [s]  VG/ANDES
+--------  ------  ---------------  ------------------  --------
+Kundur         8         0.647732            1.829239     2.824x
+IEEE14        56         0.614612            3.086192     5.021x
+IEEE39       130         0.779038            3.437096     4.412x
+NPCC140      334         2.544027            5.203009     2.045x
+WECC179      507         1.927876            6.184687     3.208x
+
+These are the only figures that should be called the end-to-end normal workflow
+totals. The ratio is not monotonic with state count. IEEE14 has the largest
+ratio, while the much larger NPCC140 has the smallest ratio. This shows that
+fixed setup costs, file formats, export scope, and where each engine pays for
+numerical preparation matter as much as system size.
+
+5. QUICK PHASE SCOPE REFERENCE
+------------------------------
+
+case_and_model_build
+    Load or construct buses, branches, injections, parameters, and dynamic
+    model instances. File parsing and model-object creation are included.
+
+andes_system_setup
+    ANDES-only setup of arrays, per-unit coefficients, DAE addresses, sparse
+    patterns, references, connectivity, and model bookkeeping.
+
+power_flow
+    Obtain the steady-state operating point. In VeraGrid this includes numerical
+    circuit compilation inside PowerFlowDriver.run(), not only Newton iterations.
+
+dynamic_initialization
+    ANDES TDS initialization and first iterative step. VeraGrid performs the
+    corresponding dynamic initialization inside its combined RMS-problem phase.
+
+benchmark_preprocessing
+    ANDES-only folding of exact zero-time-constant and unused auxiliary states
+    required to retain the same physical state inventory as VeraGrid.
+
+rms_problem_build_initialization_symbolic_to_numeric
+    VeraGrid-only combined phase: assemble the global RMS DAE, seed and solve
+    explicit device initialization, and compile RHS plus the fx, fy, gx, and gy
+    Jacobian functions.
+
+small_signal_total
+    Production calculation of the state/generalized matrix, all eigenvalues,
+    left and right eigenvectors, participation factors, damping/frequency data,
+    and result-object assembly.
+
+result_export
+    Serialize operating-point, state-matrix, modal, participation-factor, and
+    label data. This is an I/O phase, not a numerical solver kernel.
+
+normal_workflow_unattributed_overhead
+    Short Python-side gaps between explicit timers. It is retained so all IN
+    TOTAL rows reconcile exactly with TOTAL.
+
+diagnostic_state_matrix_warm_repeat
+    EXCLUDED warm repeat used to inspect state-matrix construction separately.
+
+diagnostic_eigenanalysis_pf_warm_repeat
+    EXCLUDED warm repeat used to inspect eigensolution and participation factors
+    separately.
+
+6. PHASE-BY-PHASE TIME COMPARISON
+--------------------------------
+
+6.1 Case and model construction
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Case      ANDES [s]  VeraGrid [s]  VG/ANDES  Faster engine
+--------  ---------  ------------  --------  -------------
+Kundur     0.549292      0.013182    0.024x  VeraGrid 41.7x
+IEEE14     0.532739      0.197621    0.371x  VeraGrid 2.70x
+IEEE39     0.530226      0.084613    0.160x  VeraGrid 6.27x
+NPCC140    1.438050      0.425719    0.296x  VeraGrid 3.38x
+WECC179    0.683362      0.576285    0.843x  VeraGrid 1.19x
+
+What happens in this phase:
+
+- ANDES parses JSON/XLSX case data and creates its model, parameter, and service
+  objects. Loading available generated numerical calls is normally paid while
+  the case is loaded.
+- VeraGrid either constructs the benchmark directly or imports a base network
+  and assigns RMS templates to every physical device.
+
+Interpretation and scalability:
+
+- VeraGrid is faster in every case, but this is not a pure mathematical scaling
+  comparison because the source formats and construction paths differ.
+- Kundur is dominated by a fixed ANDES load cost: this phase is 84.8% of its
+  complete ANDES workflow despite having only eight states.
+- File parsing, disk cache, antivirus, the number of physical devices, and the
+  model mix matter more than the number of differential states alone.
+- The engines become much closer for WECC179, where model construction is only
+  1.19x faster in VeraGrid.
+
+6.2 Power flow
+~~~~~~~~~~~~~~
+
+Case      ANDES [s]  VeraGrid [s]  VG/ANDES
+--------  ---------  ------------  --------
+Kundur     0.007088      1.690279   238.46x
+IEEE14     0.004411      2.014003   456.64x
+IEEE39     0.006625      2.235054   337.35x
+NPCC140    0.027565      2.114821    76.72x
+WECC179    0.006915      2.005538   290.04x
+
+What happens in this phase:
+
+- Both engines solve the steady-state operating point.
+- VeraGrid's timed PowerFlowDriver.run() also compiles the MultiCircuit into a
+  numerical circuit, builds indices/admittance structures, separates islands,
+  solves Newton, and assembles results.
+- In ANDES, much of the equivalent structural preparation has already been paid
+  in case_and_model_build and andes_system_setup before PFlow.run() is timed.
+
+Interpretation and scalability:
+
+- The 77x--457x factors must NOT be read as saying that VeraGrid's Newton solver
+  itself is hundreds of times slower. The two phase boundaries are different.
+- VeraGrid stays close to two seconds for all five systems. This indicates a
+  dominant fixed or cold preparation cost in the measured path; it is not a
+  clear size-dependent power-flow trend.
+- Power flow accounts for 92.4%, 65.3%, 65.0%, 40.6%, and 32.4% of the VeraGrid
+  total for Kundur through WECC179 respectively. Its percentage falls because
+  RMS compilation and export grow, not because the phase becomes faster.
+- Solver tolerances also differ by benchmark according to the strictest
+  convergent settings, so a pure Newton comparison would require separate
+  timers for numerical-circuit compilation, matrix construction, iterations,
+  and result processing.
+
+6.3 Dynamic-system preparation
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+ANDES separates setup, dynamic initialization, and benchmark preprocessing:
+
+Case      Setup [s]  Dynamic init. [s]  Preprocess [s]  Combined [s]
+--------  ---------  -----------------  --------------  ------------
+Kundur     0.038121           0.010035        0.000025      0.048181
+IEEE14     0.017302           0.029044        0.000061      0.046406
+IEEE39     0.022432           0.026086        0.000344      0.048862
+NPCC140    0.051770           0.051411        0.000104      0.103285
+WECC179    0.030901           0.069054        0.001027      0.100983
+
+VeraGrid reports its combined RMS construction, initialization, and compilation:
+
+Case      ANDES combined [s]  VeraGrid combined [s]  Indicative VG/ANDES
+--------  ------------------  ---------------------  -------------------
+Kundur              0.048181               0.077351                1.61x
+IEEE14              0.046406               0.385016                8.30x
+IEEE39              0.048862               1.016076               20.79x
+NPCC140             0.103285               2.235265               21.64x
+WECC179             0.100983               2.598982               25.74x
+
+What happens in these phases:
+
+- ANDES setup prepares DAE arrays and sparse structures. TDS.init() and
+  TDS.itm_step() initialize the dynamic operating point. Benchmark preprocessing
+  folds zero-mass auxiliary states.
+- VeraGrid constructs RmsProblemDae, collects all state/algebraic/differential
+  variables, connects every device to its buses, forms nodal equations,
+  performs explicit device initialization, and compiles numerical RHS and four
+  Jacobian functions.
+
+Interpretation and scalability:
+
+- The displayed ratio is indicative, not strictly like-for-like. ANDES can load
+  pregenerated numerical calls during case construction, while VeraGrid pays
+  system-specific symbolic compilation in its combined phase.
+- VeraGrid grows from 0.077 s for 8 states to 2.599 s for 507 states. The
+  observed cost per state falls from approximately 9.7 ms to 5.1 ms, indicating
+  roughly linear behavior over this limited range rather than cubic growth.
+- The true drivers are expression count, physical device count, model/block
+  complexity, parameter count, and Jacobian nonzero structure, not state count
+  alone.
+- The increasing ratio shows the main VeraGrid scaling bottleneck: ANDES setup
+  remains near 0.05--0.10 s, while VeraGrid compiles the complete symbolic DAE
+  for the current network.
+
+A broader preparation comparison includes case loading, because that is where
+ANDES pays part of its numerical preparation:
+
+Case      ANDES case+preparation [s]  VeraGrid case+RMS preparation [s]  VG/ANDES
+--------  --------------------------  ---------------------------------  --------
+Kundur                       0.597473                           0.090533     0.152x
+IEEE14                       0.579145                           0.582637     1.006x
+IEEE39                       0.579088                           1.100689     1.901x
+NPCC140                      1.541334                           2.660984     1.727x
+WECC179                      0.784344                           3.175267     4.048x
+
+This wider boundary shows that Kundur and IEEE14 have no major global
+preparation disadvantage in VeraGrid. The difference becomes material from
+IEEE39 onward and is largest for WECC179.
+
+6.4 Production small-signal calculation
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Case      ANDES [s]  VeraGrid [s]  VG/ANDES  Faster engine
+--------  ---------  ------------  --------  -------------
+Kundur     0.013852      0.030901    2.231x  ANDES 2.23x
+IEEE14     0.002962      0.042896   14.480x  ANDES 14.48x
+IEEE39     0.125438      0.055578    0.443x  VeraGrid 2.26x
+NPCC140    0.342250      0.162901    0.476x  VeraGrid 2.10x
+WECC179    0.376404      0.281134    0.747x  VeraGrid 1.34x
+
+What happens in this phase:
+
+- Build the state matrix or generalized matrix from the initialized DAE.
+- Calculate every eigenvalue and the left/right eigenvectors.
+- Calculate participation factors, damping ratios, and frequencies.
+- Assemble the engine result object.
+
+Interpretation and scalability:
+
+- Small systems are dominated by fixed Python, SciPy, BLAS, allocation, and
+  result-assembly overhead. The Kundur/IEEE14 factors are therefore poor
+  predictors of large-system scaling.
+- A crossover appears at IEEE39: VeraGrid becomes faster for all three larger
+  cases. The numerical small-signal kernel is not VeraGrid's main bottleneck.
+- Both engines calculate all modes with dense linear algebra. State/eigenvector
+  storage is approximately O(n^2), while a full dense eigendecomposition is
+  asymptotically O(n^3).
+- The five systems are not scaled copies of one network. Algebraic dimension,
+  sparsity, conditioning, model mix, BLAS kernels, and thread scheduling prevent
+  a clean cubic trend from appearing in only five single samples.
+
+6.5 Result export
+~~~~~~~~~~~~~~~~~
+
+Case      ANDES [s]  VeraGrid [s]  VG/ANDES  Faster engine
+--------  ---------  ------------  --------  -------------
+Kundur     0.028271      0.016610    0.588x  VeraGrid 1.70x
+IEEE14     0.024685      0.446009   18.068x  ANDES 18.07x
+IEEE39     0.064341      0.044592    0.693x  VeraGrid 1.44x
+NPCC140    0.629213      0.262430    0.417x  VeraGrid 2.40x
+WECC179    0.758673      0.720673    0.950x  VeraGrid 1.05x
+
+What happens in this phase:
+
+- Write operating-point tables, the state matrix, eigenvalues, participation
+  factors, and state labels to text/CSV artifacts.
+
+Interpretation and scalability:
+
+- Export is primarily an I/O and text-formatting benchmark, not a solver
+  benchmark. It depends on disk/cache state, antivirus, numeric precision, and
+  the exact set of files written.
+- The dominant matrices are n by n, so output volume grows approximately as
+  O(n^2). WECC179 has 507^2 = 257,049 entries in each full matrix and takes
+  approximately 0.72--0.76 s in both engines.
+- IEEE14 VeraGrid is an intentional scope outlier: it additionally writes a
+  compiled DAE manifest and audit artifacts. Its 18.07x export ratio is not a
+  general scaling result for a 56-state matrix.
+- Large-case ANDES export is a significant part of its total: 24.7% for
+  NPCC140 and 39.4% for WECC179. Including export therefore makes the full
+  workflow ratio more favorable to VeraGrid than a computation-only view.
+
+6.6 Unattributed normal-workflow overhead
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Case      ANDES [s]  VeraGrid [s]
+--------  ---------  ------------
+Kundur     0.001047      0.000916
+IEEE14     0.003409      0.000646
+IEEE39     0.003546      0.001182
+NPCC140    0.003665      0.001872
+WECC179    0.001541      0.002075
+
+These gaps are only 0.6--3.7 ms. They include small operations between explicit
+timers and demonstrate that the phase accounting captures nearly all normal
+workflow wall time. They are kept in the total so no elapsed time disappears.
+
+7. EXCLUDED WARM DIAGNOSTIC REPETITIONS
+---------------------------------------
+
+These values are NOT INCLUDED in the totals above.
+
+7.1 Diagnostic state-matrix warm repeat
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Case      ANDES [s]  VeraGrid [s]  VG/ANDES
+--------  ---------  ------------  --------
+Kundur     0.000266      0.001133     4.26x
+IEEE14     0.000562      0.001993     3.54x
+IEEE39     0.001921      0.006814     3.55x
+NPCC140    0.020663      0.067065     3.25x
+WECC179    0.018100      0.087975     4.86x
+
+VeraGrid is 3.25--4.86 times slower in this diagnostic, but the scopes differ:
+
+- ANDES reuses already assembled dae.fx, fy, gx, and gy matrices and calls
+  EIG.calc_As().
+- VeraGrid reevaluates compiled Jacobian functions and constructs the
+  static/generalized matrix, including required sparse-to-dense conversions.
+
+The ratio identifies matrix construction/evaluation as an optimization target,
+but it is not a strict comparison of identical operations.
+
+7.2 Diagnostic eigensolution and participation-factor warm repeat
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Case      ANDES [s]  VeraGrid [s]  Faster engine
+--------  ---------  ------------  -------------
+Kundur     0.000551      0.000129  VeraGrid 4.28x
+IEEE14     0.000991      0.000678  VeraGrid 1.46x
+IEEE39     0.026964      0.011382  VeraGrid 2.37x
+NPCC140    0.824946      0.062468  VeraGrid 13.20x
+WECC179    0.440672      0.144676  VeraGrid 3.05x
+
+VeraGrid is faster in all five warm modal-kernel repetitions:
+
+- VeraGrid obtains left and right eigenvectors together from scipy.linalg.eig
+  and calculates participation factors with vectorized/Numba-assisted code.
+- ANDES calculates right eigenvectors and then obtains left eigenvectors by
+  solving W^T N = I before normalizing participation factors.
+- The NPCC140 factor shows a particularly expensive ANDES eigenvector solve.
+- ANDES emitted an ill-conditioning warning for WECC179 while solving for left
+  eigenvectors. It still completed and exported all 507 modes.
+
+These values profile initialized kernels only. They omit cold setup and normal
+result assembly and must never be added to normal_workflow_total.
+
+8. COMPUTATION-THROUGH-SMALL-SIGNAL VIEW
+----------------------------------------
+
+The following secondary view stops after small_signal_total and excludes
+result_export and the tiny unattributed gaps. It is useful for separating
+computation from output I/O but is not the authoritative end-to-end total.
+
+Case      ANDES [s]  VeraGrid [s]  VG/ANDES
+--------  ---------  ------------  --------
+Kundur     0.618414      1.811714     2.93x
+IEEE14     0.586518      2.639537     4.50x
+IEEE39     0.711152      3.391321     4.77x
+NPCC140    1.911149      4.938706     2.58x
+WECC179    1.167662      5.461939     4.68x
+
+For NPCC140 and WECC179, expensive ANDES CSV export reduces the end-to-end ratio
+relative to this computation-only view. This is why both totals and phase-level
+timings are necessary for a complete interpretation.
+
+9. CASE-BY-CASE INTERPRETATION
+------------------------------
 
 Kundur
 ~~~~~~
 
-- 8 states and 8 eigenvalues were compared.
-- Mean absolute eigenvalue error: 1.446018e-6 rad/s.
-- Relative state-matrix error: 1.692291e-10.
-- Maximum absolute error in a state-matrix entry: 9.331916e-8.
-- Relative participation-factor error: 2.502877e-5.
-- Result: virtually exact agreement of the state matrix.
+- ANDES spends 84.8% of its total loading/building the case.
+- VeraGrid spends 92.4% of its total in the broad power-flow phase.
+- VeraGrid RMS preparation is only 0.077 s and the modal matrices are too small
+  for meaningful asymptotic conclusions.
+- Kundur primarily compares fixed startup and preparation costs.
 
 IEEE14
 ~~~~~~
 
-- 56 states and 56 eigenvalues were compared.
-- Mean absolute eigenvalue error: 1.089456e-7 rad/s.
-- Relative state-matrix error: 1.835490e-9.
-- Maximum absolute error in a state-matrix entry: 2.380198e-6.
-- The participation factors agree exactly after normalization and rounding to
-  five decimal places.
-- Result: the best overall agreement among the analyzed cases.
+- This is the largest total ratio: VeraGrid is 5.02x slower.
+- VeraGrid power flow is 65.3% of its total, the combined RMS phase is 12.5%,
+  and the additional audit-heavy export is 14.5%.
+- The 56-state modal kernel is still dominated by fixed overhead.
+- The export outlier must not be extrapolated to other cases.
 
 IEEE39
 ~~~~~~
 
-- 130 states and 130 eigenvalues were compared.
-- Mean absolute eigenvalue error: 3.800e-6 rad/s.
-- Relative state-matrix error: 6.902e-8.
-- Maximum absolute error in a state-matrix entry: 5.932e-4.
-- Relative participation-factor error: 7.683e-6.
-- Result: very good agreement in both the modal results and the state matrix.
+- VeraGrid power flow is 65.0% and combined RMS preparation is 29.6% of its
+  total.
+- VeraGrid production small signal is already 2.26x faster than ANDES.
+- This case clearly demonstrates that VeraGrid's performance gap occurs before
+  modal analysis rather than in the eigensolution itself.
 
 NPCC140
 ~~~~~~~
 
-- 334 states and 334 eigenvalues were compared.
-- Mean absolute eigenvalue error: 2.568e-8 rad/s.
-- Relative state-matrix error: 5.658e-8.
-- Maximum absolute error in a state-matrix entry: 5.912e-4.
-- Relative participation-factor error: 2.249e-6.
-- The operating point agrees practically to machine precision.
-- Result: very satisfactory validation of a large system containing parallel
-  generators and GENCLS models.
+- VeraGrid power flow and combined RMS preparation are 40.6% and 43.0% of its
+  total respectively; together they account for 83.6%.
+- VeraGrid production small signal is 2.10x faster and export is 2.40x faster.
+- These gains reduce the complete workflow disadvantage to 2.05x, the smallest
+  total ratio among the five cases.
 
 WECC179
 ~~~~~~~
 
-- 507 states and 507 eigenvalues were compared.
-- Mean absolute eigenvalue error: 4.376489e-6 rad/s.
-- Relative state-matrix error: 6.023567e-7.
-- Maximum absolute error in a state-matrix entry: 3.258003e-1.
-- Relative participation-factor error: 3.075126e-5.
-- The maximum absolute state-matrix error corresponds to an entry of
-  approximately 540,000; therefore, the relative difference remains very small.
-- There are 21 repeated modes. All eigenvalues are included in the comparison
-  and the s-domain plot. These modes are excluded only from the
-  participation-factor difference norms because their eigenvector basis is not
-  unique.
-- Result: good agreement for the largest and most demanding benchmark.
+- VeraGrid power flow is 32.4%, combined RMS preparation is 42.0%, production
+  small signal is 4.5%, and export is 11.7% of its total.
+- VeraGrid production small signal is 1.34x faster.
+- Export is nearly equal because both engines serialize very large matrices.
+- The total 3.21x difference is primarily a preparation/compilation difference,
+  not a modal-analysis difference.
 
-3. TIMING COMPARISON
---------------------
+10. TECHNICAL CONCLUSIONS
+-------------------------
 
-The following values are wall-clock times from one execution and are expressed
-in seconds. The total ratio indicates how many times the VeraGrid execution time
-exceeds the ANDES execution time.
+1. Numerical validation is successful.
+   Operating points, state matrices, every eigenvalue, and participation factors
+   agree within very small numerical errors in all five systems. No material
+   physical-model mismatch remains in the final benchmark results.
 
-Case      ANDES total  VeraGrid total  VeraGrid/ANDES
---------  -----------  --------------  ---------------
-Kundur       0.722167        3.343588            4.63x
-IEEE14       1.749090        6.496278            3.71x
-IEEE39       1.990593        5.850456            2.94x
-NPCC140      3.178955       18.107172            5.70x
-WECC179      4.768631       22.035055            4.62x
+2. ANDES is faster in the current complete workflow.
+   The measured end-to-end advantage ranges from 2.05x to 5.02x. This is the
+   correct conclusion when network creation, power flow, dynamic preparation,
+   small signal, and result export are all included.
 
-Symbolic-to-numeric conversion:
+3. The complete-workflow advantage is not an eigensolver advantage.
+   VeraGrid is faster in production small signal for IEEE39, NPCC140, and
+   WECC179 and faster in every isolated eigensolution/PF warm repeat. The main
+   total-time difference occurs before modal analysis.
 
-Case      ANDES [s]  VeraGrid [s]  VeraGrid/ANDES
---------  ---------  ------------  ---------------
-Kundur     0.023160      0.346401           14.96x
-IEEE14     0.054215      0.428930            7.91x
-IEEE39     0.065729      1.431165           21.77x
-NPCC140    0.078647      5.977049           75.99x
-WECC179    0.114474      8.037913           70.22x
+4. VeraGrid's first visible bottleneck is the broad power-flow phase.
+   PowerFlowDriver.run() includes numerical-circuit compilation and result
+   processing in addition to Newton. Its nearly constant two-second timing
+   suggests a large fixed/cold cost. A future pure solver benchmark must split
+   circuit compilation, Ybus/index construction, Newton iterations, and result
+   assembly.
 
-Isolated state-matrix construction:
+5. VeraGrid's main size-dependent bottleneck is RMS DAE preparation.
+   Building, explicitly initializing, and compiling the system-specific symbolic
+   DAE rises from 0.077 s to 2.599 s. The observed growth is reasonable over the
+   tested range, but ANDES avoids much of this runtime work through pregenerated
+   numerical model calls and cheaper system setup.
 
-Case      ANDES [s]  VeraGrid [s]  VeraGrid/ANDES
---------  ---------  ------------  ---------------
-Kundur     0.000497      0.001637            3.29x
-IEEE14     0.001497      0.002098            1.40x
-IEEE39     0.003979      0.010616            2.67x
-NPCC140    0.016970      0.136977            8.07x
-WECC179    0.027343      0.506919           18.54x
+6. State-matrix construction has optimization potential.
+   VeraGrid's warm matrix diagnostic is approximately 3.25--4.86x slower, partly
+   because it reevaluates Jacobians and performs additional matrix conversion.
+   This ratio is a profiling clue rather than a like-for-like kernel comparison.
 
-Isolated eigenvalue and participation-factor calculation:
+7. VeraGrid's modal linear algebra is already competitive.
+   The large-case production and diagnostic results show that eigenvalues,
+   left/right eigenvectors, and participation factors are not the limiting part
+   of the current VeraGrid workflow.
 
-Case      ANDES [s]  VeraGrid [s]  ANDES/VeraGrid
---------  ---------  ------------  ---------------
-Kundur     0.000786      0.000204            3.86x
-IEEE14     0.002915      0.000747            3.90x
-IEEE39     0.133307      0.015192            8.77x
-NPCC140    0.800500      0.106241            7.53x
-WECC179    0.458178      0.311716            1.47x
+8. Export must be kept separate from numerical performance.
+   Dense matrix CSV output scales approximately as O(n^2) and materially affects
+   large-case totals. IEEE14 also writes additional VeraGrid audit artifacts,
+   making its export phase intentionally broader than the common minimum.
 
-Complete small-signal calculation:
+9. The measurements indicate scaling behavior but do not prove asymptotic laws.
+   The cases differ in topology, algebraic dimension, device mix, source format,
+   conditioning, and model complexity. They are not scaled copies of one base
+   network. State count alone cannot explain every timing difference.
 
-Case      ANDES [s]  VeraGrid [s]  ANDES/VeraGrid
---------  ---------  ------------  ---------------
-Kundur     0.014225      0.064466            0.22x
-IEEE14     0.007370      0.047509            0.16x
-IEEE39     0.142083      0.092412            1.54x
-NPCC140    0.445316      0.322018            1.38x
-WECC179    1.352404      2.010866            0.67x
+10. A definitive performance study requires repeated controlled runs.
+    Each case should be executed multiple times in fresh processes, separating
+    cold and warm runs and reporting median, dispersion, BLAS/thread settings,
+    power-flow iteration counts, and filesystem-cache conditions. The current
+    measurements are valid for numerical validation and bottleneck discovery,
+    but not for claiming statistically precise speed factors.
 
-Timing interpretation:
+Overall conclusion:
 
-- ANDES is faster in symbolic-to-numeric conversion and isolated state-matrix
-  construction.
-- The symbolic-conversion difference grows significantly for NPCC140 and
-  WECC179 and is the main bottleneck identified in VeraGrid.
-- VeraGrid is faster in the isolated eigenvalue and participation-factor
-  calculation for all five cases.
-- For the complete small-signal phase, VeraGrid is faster for IEEE39 and
-  NPCC140, while ANDES is faster for Kundur, IEEE14, and WECC179.
-- The end-to-end time includes case construction, power flow, numerical
-  preparation, small-signal analysis, and result export. The isolated diagnostic
-  repeats are not added to the total time again.
-- ANDES has its own dynamic-initialization and benchmark-preprocessing phases
-  without an identified one-to-one phase in VeraGrid. These entries are shown as
-  unavailable in the timing comparison table.
+    ANDES finishes the current normal workflow faster because it reaches modal
+    analysis with less runtime preparation. Once the numerical RMS problem is
+    ready, VeraGrid is competitive and is faster in the medium and large
+    production small-signal calculations. Performance work should therefore
+    focus first on power-flow preparation and reusable/cached RMS DAE
+    compilation, not on replacing the modal eigensolver.
 
-Measured timing phases:
+11. REPRODUCIBLE ARTIFACTS
+--------------------------
 
-1. case_and_model_build: case loading and model construction.
-2. power_flow: power-flow solution.
-3. symbolic_to_numeric: conversion of symbolic equations to numerical
-   functions and matrices.
-4. dynamic_initialization: ANDES dynamic initialization.
-5. benchmark_preprocessing: benchmark-specific preparation.
-6. small_signal_total: complete small-signal calculation.
-7. state_matrix_isolated_repeat: isolated state-matrix construction.
-8. eigenanalysis_isolated_repeat: eigenvalues, eigenvectors, and participation
-   factors.
-9. result_export: CSV, JSON, report, and figure generation.
-10. end_to_end: complete execution time, excluding the isolated diagnostic
-    repeats from being counted a second time.
+Each engine result folder contains a timing CSV and JSON with the fields phase,
+seconds, relation_to_normal_workflow_total, scope, state_count, and mode_count.
+Each comparison folder contains timing_comparison.csv, the visual timing table,
+the numerical comparison CSVs/plots, and comparison_report.txt.
 
-4. CONCLUSION
--------------
-
-The numerical validation is satisfactory for all five systems. VeraGrid and
-ANDES produce equivalent operating points, state matrices, eigenvalues, and
-participation factors within very small numerical errors. No significant
-physical discrepancy has been identified in the final results.
-
-The main remaining difference is performance. VeraGrid is already particularly
-competitive in modal analysis, but symbolic-to-numeric conversion and
-state-matrix construction penalize the total execution time, especially as the
-system size increases.
-
-A definitive statistical performance study should repeat each case several
-times, discard the first execution, and compare the median, mean, and dispersion.
-The current measurements are suitable for a quick comparison and for identifying
-the main bottlenecks.
-
+The relation and scope columns are the machine-readable authority for deciding
+whether a value is included in the normal total. The benchmark scripts can be
+run directly from PyCharm; the ANDES and comparison preset enums select Kundur,
+IEEE14, IEEE39, NPCC140, or WECC179 without requiring a terminal command.

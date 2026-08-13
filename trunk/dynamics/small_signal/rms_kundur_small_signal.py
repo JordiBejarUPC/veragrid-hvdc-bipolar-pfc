@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import cProfile as profile
 import time
 
 import numpy as np
@@ -43,12 +42,9 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_results import PowerFlowRes
 import VeraGridEngine.api as gce
 from trunk.dynamics.small_signal.veragrid_small_signal_benchmark_timing import benchmark_veragrid_isolated_numerical_phases
 from trunk.dynamics.small_signal.small_signal_benchmark_timing import elapsed_seconds
+from trunk.dynamics.small_signal.small_signal_benchmark_timing import finalize_normal_workflow_timings
 from trunk.dynamics.small_signal.small_signal_benchmark_timing import save_benchmark_timings
 from VeraGridEngine.Utils.Symbolic.symbolic_io import block_deep_copy
-
-pr = profile.Profile()
-pr.disable()
-
 
 def find_name_in_block(name: str, block: Block) -> Var | None:
     """Find one named symbolic variable recursively in a block hierarchy.
@@ -776,8 +772,6 @@ def rms_kundur_small_signal() -> None:
     timings["power_flow"] = elapsed_seconds(power_flow_start)
     res = power_flow.results
 
-    pr.enable()
-
     rms_options = RmsOptions(time_step=0.001,
                              simulation_time=10,
                              tolerance=1e-6,
@@ -797,7 +791,7 @@ def rms_kundur_small_signal() -> None:
                                                         rms_options=rms_options,
                                                         sss_options=sss_options,
                                                         pf_results=res)
-    timings["symbolic_to_numeric"] = elapsed_seconds(compilation_start)
+    timings["rms_problem_build_initialization_symbolic_to_numeric"] = elapsed_seconds(compilation_start)
     small_signal_start: float = time.perf_counter()
     small_signal_driver.run()
     timings["small_signal_total"] = elapsed_seconds(small_signal_start)
@@ -819,9 +813,22 @@ def rms_kundur_small_signal() -> None:
         output_dir=results_directory,
     )
     timings["result_export"] = elapsed_seconds(export_start)
-    timings["end_to_end"] = elapsed_seconds(total_start) - (
-        timings["state_matrix_isolated_repeat"]
-        + timings["eigenanalysis_isolated_repeat"]
+    normal_component_names: tuple[str, ...] = (
+        "case_and_model_build",
+        "power_flow",
+        "rms_problem_build_initialization_symbolic_to_numeric",
+        "small_signal_total",
+        "result_export",
+    )
+    diagnostic_names: tuple[str, ...] = (
+        "diagnostic_state_matrix_warm_repeat",
+        "diagnostic_eigenanalysis_pf_warm_repeat",
+    )
+    finalize_normal_workflow_timings(
+        timings=timings,
+        total_start=total_start,
+        normal_component_names=normal_component_names,
+        diagnostic_names=diagnostic_names,
     )
     save_benchmark_timings(
         output_directory=results_directory,

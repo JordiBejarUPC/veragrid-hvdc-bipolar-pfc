@@ -18,10 +18,16 @@ from typing import Any
 from typing import TextIO
 
 import matplotlib.pyplot as plt
+from matplotlib.axes import Axes
+from matplotlib.figure import Figure
+from matplotlib.table import Table
 import numpy as np
 from scipy.linalg import LinAlgWarning
 from scipy.linalg import solve
 from scipy.optimize import linear_sum_assignment
+
+from trunk.dynamics.small_signal.small_signal_benchmark_timing import benchmark_timing_metadata
+from trunk.dynamics.small_signal.small_signal_benchmark_timing import BenchmarkTimingRelation
 
 
 class ComparisonPreset(Enum):
@@ -1322,12 +1328,46 @@ def _load_timing_samples(timing_csv: Path) -> dict[str, float]:
     return samples
 
 
+def _timing_factor_summary(
+    andes_seconds: float,
+    veragrid_seconds: float,
+) -> tuple[float, str, float]:
+    """Calculate an explicit timing ratio and winning-engine description.
+
+    :param andes_seconds: Measured ANDES phase duration.
+    :param veragrid_seconds: Measured VeraGrid phase duration.
+    :return: VeraGrid/ANDES ratio, faster-engine label, and speedup factor.
+    """
+    valid_samples: bool = bool(
+        np.isfinite(andes_seconds)
+        and np.isfinite(veragrid_seconds)
+        and andes_seconds > 0.0
+        and veragrid_seconds > 0.0
+    )
+    if valid_samples:
+        veragrid_over_andes: float = veragrid_seconds / andes_seconds
+        if abs(veragrid_over_andes - 1.0) <= 5.0e-4:
+            faster_engine: str = "Tie"
+            speedup_factor: float = 1.0
+        elif veragrid_over_andes > 1.0:
+            faster_engine = "ANDES"
+            speedup_factor = veragrid_over_andes
+        else:
+            faster_engine = "VeraGrid"
+            speedup_factor = 1.0 / veragrid_over_andes
+    else:
+        veragrid_over_andes = float("nan")
+        faster_engine = "--"
+        speedup_factor = float("nan")
+    return veragrid_over_andes, faster_engine, speedup_factor
+
+
 def _create_timing_comparison(
     veragrid_results_directory: Path,
     andes_results_directory: Path,
     comparison_directory: Path,
     case_label: str,
-) -> Any | None:
+) -> Figure | None:
     """Create CSV and visual tables for comparable small-signal timings.
 
     :param veragrid_results_directory: VeraGrid result directory.
@@ -1356,15 +1396,17 @@ def _create_timing_comparison(
     andes_samples: dict[str, float] = _load_timing_samples(andes_candidates[0])
     preferred_phases: tuple[str, ...] = (
         "case_and_model_build",
+        "andes_system_setup",
         "power_flow",
-        "symbolic_to_numeric",
         "dynamic_initialization",
         "benchmark_preprocessing",
+        "rms_problem_build_initialization_symbolic_to_numeric",
         "small_signal_total",
-        "state_matrix_isolated_repeat",
-        "eigenanalysis_isolated_repeat",
         "result_export",
-        "end_to_end",
+        "normal_workflow_unattributed_overhead",
+        "normal_workflow_total",
+        "diagnostic_state_matrix_warm_repeat",
+        "diagnostic_eigenanalysis_pf_warm_repeat",
     )
     phases: list[str] = list()
     phase_name: str
@@ -1380,54 +1422,204 @@ def _create_timing_comparison(
             phases.append(phase_name)
 
     comparison_csv: Path = comparison_directory / "timing_comparison.csv"
-    table_rows: list[list[object]] = list()
+    table_rows: list[
+        tuple[BenchmarkTimingRelation, str, float, float, float, str, float, str]
+    ] = list()
     with comparison_csv.open("w", encoding="utf-8", newline="") as csv_file:
         writer: csv.writer = csv.writer(csv_file)
-        writer.writerow(list(("phase", "andes_seconds", "veragrid_seconds", "andes_over_veragrid")))
+        writer.writerow(
+            list((
+                "relation_to_normal_workflow_total",
+                "phase",
+                "andes_seconds",
+                "veragrid_seconds",
+                "veragrid_over_andes",
+                "faster_engine",
+                "speedup_factor",
+                "andes_over_veragrid",
+                "scope",
+            ))
+        )
         for phase_name in phases:
+            relation: BenchmarkTimingRelation
+            scope: str
+            relation, scope = benchmark_timing_metadata(
+                phase_name=phase_name,
+                engine_label="ANDES--VeraGrid",
+            )
             andes_seconds: float = andes_samples.get(phase_name, float("nan"))
             veragrid_seconds: float = veragrid_samples.get(phase_name, float("nan"))
-            if np.isfinite(andes_seconds) and np.isfinite(veragrid_seconds) and veragrid_seconds > 0.0:
-                ratio: float = andes_seconds / veragrid_seconds
+            veragrid_over_andes: float
+            faster_engine: str
+            speedup_factor: float
+            veragrid_over_andes, faster_engine, speedup_factor = _timing_factor_summary(
+                andes_seconds=andes_seconds,
+                veragrid_seconds=veragrid_seconds,
+            )
+            if np.isfinite(veragrid_over_andes) and veragrid_over_andes > 0.0:
+                andes_over_veragrid: float = 1.0 / veragrid_over_andes
             else:
-                ratio = float("nan")
-            writer.writerow(list((phase_name, andes_seconds, veragrid_seconds, ratio)))
-            table_rows.append(list((phase_name, andes_seconds, veragrid_seconds, ratio)))
+                andes_over_veragrid = float("nan")
+            writer.writerow(
+                list((
+                    relation.value,
+                    phase_name,
+                    andes_seconds,
+                    veragrid_seconds,
+                    veragrid_over_andes,
+                    faster_engine,
+                    speedup_factor,
+                    andes_over_veragrid,
+                    scope,
+                ))
+            )
+            table_rows.append(
+                (
+                    relation,
+                    phase_name,
+                    andes_seconds,
+                    veragrid_seconds,
+                    veragrid_over_andes,
+                    faster_engine,
+                    speedup_factor,
+                    scope,
+                )
+            )
 
     print("\nSmall-signal timing comparison:")
-    print("  Phase                              ANDES [s]   VeraGrid [s]   ANDES/VeraGrid")
-    print("  " + "-" * 80)
-    table_row: list[object]
-    for table_row in table_rows:
-        andes_text: str = "--" if not np.isfinite(float(table_row[1])) else f"{float(table_row[1]):.6f}"
-        veragrid_text: str = "--" if not np.isfinite(float(table_row[2])) else f"{float(table_row[2]):.6f}"
-        ratio_text: str = "--" if not np.isfinite(float(table_row[3])) else f"{float(table_row[3]):.3f}x"
-        print(f"  {str(table_row[0]):34s} {andes_text:>11s} {veragrid_text:>14s} {ratio_text:>17s}")
+    print(
+        "  Relation      Phase                                                    "
+        "ANDES [s]   VeraGrid [s]   VG/ANDES       Faster by"
+    )
+    print("  " + "-" * 139)
+    table_relation: BenchmarkTimingRelation
+    table_phase_name: str
+    table_andes_seconds: float
+    table_veragrid_seconds: float
+    table_veragrid_over_andes: float
+    table_faster_engine: str
+    table_speedup_factor: float
+    table_scope: str
+    for (
+        table_relation,
+        table_phase_name,
+        table_andes_seconds,
+        table_veragrid_seconds,
+        table_veragrid_over_andes,
+        table_faster_engine,
+        table_speedup_factor,
+        table_scope,
+    ) in table_rows:
+        if table_relation is BenchmarkTimingRelation.COMPONENT:
+            relation_text: str = "IN TOTAL"
+        elif table_relation is BenchmarkTimingRelation.TOTAL:
+            relation_text = "TOTAL"
+        else:
+            relation_text = "EXCLUDED"
+        andes_text: str = "--" if not np.isfinite(table_andes_seconds) else f"{table_andes_seconds:.6f}"
+        veragrid_text: str = (
+            "--" if not np.isfinite(table_veragrid_seconds) else f"{table_veragrid_seconds:.6f}"
+        )
+        ratio_text: str = (
+            "--"
+            if not np.isfinite(table_veragrid_over_andes)
+            else f"{table_veragrid_over_andes:.3f}x"
+        )
+        faster_text: str = (
+            "--"
+            if not np.isfinite(table_speedup_factor)
+            else f"{table_faster_engine} {table_speedup_factor:.2f}x"
+        )
+        print(
+            f"  {relation_text:12s} {table_phase_name:56s} "
+            f"{andes_text:>11s} {veragrid_text:>14s} {ratio_text:>11s} {faster_text:>16s}"
+        )
+    print("\n  TOTAL is the authoritative normal network-to-results workflow time.")
+    print("  IN TOTAL rows are mutually exclusive measured components of that workflow.")
+    print("  EXCLUDED rows are warm diagnostic repeats performed only to profile kernels separately.")
+    print(
+        "  VeraGrid dynamic initialization is included in "
+        "rms_problem_build_initialization_symbolic_to_numeric."
+    )
+    print("  VG/ANDES above 1 means ANDES is faster; below 1 means VeraGrid is faster.")
+    print("\n  Timing phase scopes:")
+    for (
+        table_relation,
+        table_phase_name,
+        table_andes_seconds,
+        table_veragrid_seconds,
+        table_veragrid_over_andes,
+        table_faster_engine,
+        table_speedup_factor,
+        table_scope,
+    ) in table_rows:
+        print(f"  - {table_phase_name}: {table_scope}")
 
-    figure, axis = plt.subplots(figsize=(13.0, 0.55 * len(table_rows) + 2.0))
+    figure: Figure
+    axis: Axes
+    figure, axis = plt.subplots(figsize=(20.0, 0.55 * len(table_rows) + 3.2))
     axis.axis("off")
     visual_rows: list[list[str]] = list()
-    for table_row in table_rows:
+    for (
+        table_relation,
+        table_phase_name,
+        table_andes_seconds,
+        table_veragrid_seconds,
+        table_veragrid_over_andes,
+        table_faster_engine,
+        table_speedup_factor,
+        table_scope,
+    ) in table_rows:
+        if table_relation is BenchmarkTimingRelation.COMPONENT:
+            relation_text = "IN TOTAL"
+        elif table_relation is BenchmarkTimingRelation.TOTAL:
+            relation_text = "TOTAL"
+        else:
+            relation_text = "EXCLUDED"
         visual_rows.append(list((
-            str(table_row[0]),
-            "--" if not np.isfinite(float(table_row[1])) else f"{float(table_row[1]):.6f}",
-            "--" if not np.isfinite(float(table_row[2])) else f"{float(table_row[2]):.6f}",
-            "--" if not np.isfinite(float(table_row[3])) else f"{float(table_row[3]):.3f}x",
+            relation_text,
+            table_phase_name,
+            "--" if not np.isfinite(table_andes_seconds) else f"{table_andes_seconds:.6f}",
+            "--" if not np.isfinite(table_veragrid_seconds) else f"{table_veragrid_seconds:.6f}",
+            (
+                "--"
+                if not np.isfinite(table_veragrid_over_andes)
+                else f"{table_veragrid_over_andes:.3f}x"
+            ),
+            (
+                "--"
+                if not np.isfinite(table_speedup_factor)
+                else f"{table_faster_engine} {table_speedup_factor:.2f}x"
+            ),
         )))
-    timing_table = axis.table(
+    timing_table: Table = axis.table(
         cellText=visual_rows,
-        colLabels=list(("Phase", "ANDES [s]", "VeraGrid [s]", "ANDES/VeraGrid")),
+        colLabels=list(("Relation", "Phase", "ANDES [s]", "VeraGrid [s]", "VG/ANDES", "Faster by")),
         cellLoc="right",
         colLoc="center",
         loc="center",
-        colWidths=list((0.47, 0.17, 0.17, 0.19)),
+        colWidths=list((0.10, 0.40, 0.12, 0.13, 0.11, 0.14)),
     )
     timing_table.auto_set_font_size(False)
-    timing_table.set_fontsize(9)
+    timing_table.set_fontsize(8.5)
     timing_table.scale(1.0, 1.35)
+    row_index: int
+    for row_index in range(len(table_rows)):
+        table_relation = table_rows[row_index][0]
+        column_index: int
+        if table_relation is BenchmarkTimingRelation.TOTAL:
+            row_color: str = "#c6efce"
+        elif table_relation is BenchmarkTimingRelation.EXCLUDED_DIAGNOSTIC:
+            row_color = "#e7e6e6"
+        else:
+            row_color = "#ffffff"
+        for column_index in range(6):
+            timing_table[(row_index + 1, column_index)].set_facecolor(row_color)
     axis.set_title(
         f"{case_label}: small-signal wall-clock timing comparison\n"
-        "Isolated repeats are warm diagnostics and are not added to end_to_end.",
+        "Green = authoritative normal workflow total; white = included components; "
+        "gray = excluded warm diagnostics.\n"
+        "VeraGrid dynamic initialization is included in its combined RMS-problem stage.",
         pad=16.0,
     )
     figure.tight_layout()
@@ -2049,7 +2241,11 @@ def _build_argument_parser() -> argparse.ArgumentParser:
     """
     # PyCharm Run selector: change only this enum member. A command-line
     # --network argument, when supplied, overrides it.
-    pycharm_default_network: ComparisonPreset = ComparisonPreset.NPCC140
+    # pycharm_default_network: ComparisonPreset = ComparisonPreset.KUNDUR
+    # pycharm_default_network: ComparisonPreset = ComparisonPreset.IEEE14
+    # pycharm_default_network: ComparisonPreset = ComparisonPreset.IEEE39
+    # pycharm_default_network: ComparisonPreset = ComparisonPreset.NPCC140
+    pycharm_default_network: ComparisonPreset = ComparisonPreset.WECC179
 
     parser: argparse.ArgumentParser = argparse.ArgumentParser(
         description=(

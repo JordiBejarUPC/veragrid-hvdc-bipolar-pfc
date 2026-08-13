@@ -32,6 +32,7 @@ from trunk.dynamics.small_signal.ieee39_network_config import configure_ieee39_s
 from trunk.dynamics.small_signal.ieee39_rms_model_config import get_ieee39_genrou_rms_template
 from trunk.dynamics.small_signal.veragrid_small_signal_benchmark_timing import benchmark_veragrid_isolated_numerical_phases
 from trunk.dynamics.small_signal.small_signal_benchmark_timing import elapsed_seconds
+from trunk.dynamics.small_signal.small_signal_benchmark_timing import finalize_normal_workflow_timings
 from trunk.dynamics.small_signal.small_signal_benchmark_timing import save_benchmark_timings
 
 
@@ -42,14 +43,6 @@ def _get_base_grid_path() -> Path:
     """
     grid_path: Path = Path(andes.get_case("ieee39/ieee39.raw"))
     return grid_path.resolve()
-
-
-def _get_output_grid_path() -> Path:
-    """Return the RMS-ready IEEE39 output path.
-
-    :return: Output path.
-    """
-    return Path(__file__).resolve().parent / "ieee39_rms_sss.veragrid"
 
 
 def _get_results_dir() -> Path:
@@ -199,8 +192,6 @@ def build_ieee39_rms_benchmark_grid() -> gce.MultiCircuit:
     grid: gce.MultiCircuit = gce.open_file(str(grid_path))
     configure_ieee39_static_network(grid)
     _assign_ieee39_rms_models(grid)
-    output_path: Path = _get_output_grid_path()
-    gce.save_file(grid=grid, filename=str(output_path))
     return grid
 
 
@@ -231,7 +222,7 @@ def run_ieee39_small_signal(show_figures: bool = True) -> None:
         sss_options=ss_options,
         pf_results=pf_results,
     )
-    timings["symbolic_to_numeric"] = elapsed_seconds(compilation_start)
+    timings["rms_problem_build_initialization_symbolic_to_numeric"] = elapsed_seconds(compilation_start)
     small_signal_start: float = time.perf_counter()
     driver.run()
     timings["small_signal_total"] = elapsed_seconds(small_signal_start)
@@ -244,9 +235,22 @@ def run_ieee39_small_signal(show_figures: bool = True) -> None:
     export_start: float = time.perf_counter()
     save_small_signal_results_to_csv(driver.results, pf_results, results_dir)
     timings["result_export"] = elapsed_seconds(export_start)
-    timings["end_to_end"] = elapsed_seconds(total_start) - (
-        timings["state_matrix_isolated_repeat"]
-        + timings["eigenanalysis_isolated_repeat"]
+    normal_component_names: tuple[str, ...] = (
+        "case_and_model_build",
+        "power_flow",
+        "rms_problem_build_initialization_symbolic_to_numeric",
+        "small_signal_total",
+        "result_export",
+    )
+    diagnostic_names: tuple[str, ...] = (
+        "diagnostic_state_matrix_warm_repeat",
+        "diagnostic_eigenanalysis_pf_warm_repeat",
+    )
+    finalize_normal_workflow_timings(
+        timings=timings,
+        total_start=total_start,
+        normal_component_names=normal_component_names,
+        diagnostic_names=diagnostic_names,
     )
     save_benchmark_timings(
         output_directory=results_dir,

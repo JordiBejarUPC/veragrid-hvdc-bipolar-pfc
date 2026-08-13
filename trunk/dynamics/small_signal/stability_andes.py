@@ -19,6 +19,7 @@ import numpy as np
 import pandas as pd
 
 from trunk.dynamics.small_signal.small_signal_benchmark_timing import elapsed_seconds
+from trunk.dynamics.small_signal.small_signal_benchmark_timing import finalize_normal_workflow_timings
 from trunk.dynamics.small_signal.small_signal_benchmark_timing import save_benchmark_timings
 
 
@@ -340,7 +341,7 @@ def run_andes_stability(
     timings["case_and_model_build"] = elapsed_seconds(model_start)
     setup_start: float = time.perf_counter()
     setup_success: bool = bool(system.setup())
-    timings["symbolic_to_numeric"] = elapsed_seconds(setup_start)
+    timings["andes_system_setup"] = elapsed_seconds(setup_start)
     if setup_success:
         pass
     else:
@@ -375,13 +376,13 @@ def run_andes_stability(
 
     # Repeat the numerical kernels once after initialization. These isolated
     # warm measurements match the VeraGrid diagnostic repeats and are excluded
-    # from both ``small_signal_total`` and ``end_to_end``.
+    # from both ``small_signal_total`` and ``normal_workflow_total``.
     state_matrix_repeat_start: float = time.perf_counter()
     eig.calc_As()
-    timings["state_matrix_isolated_repeat"] = elapsed_seconds(state_matrix_repeat_start)
+    timings["diagnostic_state_matrix_warm_repeat"] = elapsed_seconds(state_matrix_repeat_start)
     eigenanalysis_repeat_start: float = time.perf_counter()
     eig.mu, eig.pfactors, eig.N, eig.W = eig.calc_pfactor()
-    timings["eigenanalysis_isolated_repeat"] = elapsed_seconds(eigenanalysis_repeat_start)
+    timings["diagnostic_eigenanalysis_pf_warm_repeat"] = elapsed_seconds(eigenanalysis_repeat_start)
     state_names: list[str] = list(eig.x_name)
     state_matrix: np.ndarray = np.asarray(eig.As, dtype=complex)
     eigenvalues: np.ndarray = np.asarray(eig.mu, dtype=complex)
@@ -430,9 +431,24 @@ def run_andes_stability(
     ).to_csv(results_dir / f"state_names_Andes_{case_label}.csv", index=False)
     _write_static_tables(system=system, results_dir=results_dir, case_label=case_label)
     timings["result_export"] = elapsed_seconds(export_start)
-    timings["end_to_end"] = elapsed_seconds(total_start) - (
-        timings["state_matrix_isolated_repeat"]
-        + timings["eigenanalysis_isolated_repeat"]
+    normal_component_names: tuple[str, ...] = (
+        "case_and_model_build",
+        "andes_system_setup",
+        "power_flow",
+        "dynamic_initialization",
+        "benchmark_preprocessing",
+        "small_signal_total",
+        "result_export",
+    )
+    diagnostic_names: tuple[str, ...] = (
+        "diagnostic_state_matrix_warm_repeat",
+        "diagnostic_eigenanalysis_pf_warm_repeat",
+    )
+    finalize_normal_workflow_timings(
+        timings=timings,
+        total_start=total_start,
+        normal_component_names=normal_component_names,
+        diagnostic_names=diagnostic_names,
     )
     save_benchmark_timings(
         output_directory=results_dir,
@@ -456,11 +472,15 @@ def _build_argument_parser() -> argparse.ArgumentParser:
     """
     # PyCharm Run selector: change only this enum member. A command-line
     # --case argument, when supplied, still overrides it.
-    pycharm_default_case: AndesBenchmarkCase = AndesBenchmarkCase.NPCC140
+    # pycharm_default_case: AndesBenchmarkCase = AndesBenchmarkCase.KUNDUR
+    # pycharm_default_case: AndesBenchmarkCase = AndesBenchmarkCase.IEEE14
+    # pycharm_default_case: AndesBenchmarkCase = AndesBenchmarkCase.IEEE39
+    # pycharm_default_case: AndesBenchmarkCase = AndesBenchmarkCase.NPCC140
+    pycharm_default_case: AndesBenchmarkCase = AndesBenchmarkCase.WECC179
 
     parser: argparse.ArgumentParser = argparse.ArgumentParser(
         description=(
-            "Run ANDES EIG for Kundur, IEEE14, IEEE39, NPCC140, WECC179 or "
+            "Run ANDES EIG for KUNDUR, IEEE14, IEEE39, NPCC140, WECC179 or "
             "an explicit case file."
         )
     )

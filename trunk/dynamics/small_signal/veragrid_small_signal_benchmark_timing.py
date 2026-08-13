@@ -114,6 +114,6 @@ def benchmark_veragrid_isolated_numerical_phases(
             f"expected {expected_mode_count}, obtained {obtained_mode_count}."
         )
     timings: dict[str, float] = dict()
-    timings["state_matrix_isolated_repeat"] = matrix_seconds
-    timings["eigenanalysis_isolated_repeat"] = eigen_seconds
+    timings["diagnostic_state_matrix_warm_repeat"] = matrix_seconds
+    timings["diagnostic_eigenanalysis_pf_warm_repeat"] = eigen_seconds
     return timings
