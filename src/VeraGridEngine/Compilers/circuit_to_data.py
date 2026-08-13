@@ -846,6 +846,7 @@ def get_shunt_data(
             data.mttr[k] = elm.mttr
 
             data.active[k] = elm.get_active_at(t_idx)
+            data.grounds_neutral[k] = elm.phN and elm.conn == ShuntConnectionType.GroundedStar
             data.Y[k] = elm.get_Y_at(t_idx)
 
             if fill_three_phase:
@@ -855,17 +856,11 @@ def get_shunt_data(
                     Y_abc = any([elm.get_Ya_at(t_idx), elm.get_Yb_at(t_idx), elm.get_Yc_at(t_idx)])
 
                     if not Y_abc:
-                        data.Y3_star[4 * ii + 0, 1] = -1 * elm.get_Y_at(t_idx) / 3
-                        data.Y3_star[4 * ii + 0, 2] = -1 * elm.get_Y_at(t_idx) / 3
-                        data.Y3_star[4 * ii + 0, 3] = -1 * elm.get_Y_at(t_idx) / 3
                         data.Y3_star[4 * ii + 1, 1] = elm.get_Y_at(t_idx) / 3
                         data.Y3_star[4 * ii + 2, 2] = elm.get_Y_at(t_idx) / 3
                         data.Y3_star[4 * ii + 3, 3] = elm.get_Y_at(t_idx) / 3
 
                     else:
-                        data.Y3_star[4 * ii + 0, 1] = -1 * elm.get_Ya_at(t_idx)
-                        data.Y3_star[4 * ii + 0, 2] = -1 * elm.get_Yb_at(t_idx)
-                        data.Y3_star[4 * ii + 0, 3] = -1 * elm.get_Yc_at(t_idx)
                         data.Y3_star[4 * ii + 1, 1] = elm.get_Ya_at(t_idx)
                         data.Y3_star[4 * ii + 2, 2] = elm.get_Yb_at(t_idx)
                         data.Y3_star[4 * ii + 3, 3] = elm.get_Yc_at(t_idx)

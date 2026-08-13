@@ -1717,6 +1717,7 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         :param tpe: Bus type
         :param format_str: number formatting string
         """
+        format_vm = "{:10.4f}"
         if self.draw_labels:
             msg: str = str()
 
@@ -1727,10 +1728,10 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
 
             for Vm_i, Va_i, ph in zip([VmA, VmB, VmC], [VaA, VaB, VaC], ["a", "b", "c"]):
                 if not (Vm_i == 0.0 and Va_i == 0.0):
-                    vm = format_str.format(Vm_i)
+                    vm = format_vm.format(Vm_i)
                     vm_kv = format_str.format(Vm_i * self._api_object.Vnom)
                     va = format_str.format(Va_i)
-                    msg += f"V{ph}={vm_kv} kV / {vm}&lt;{va}º p.u.<br>"
+                    msg += f"V{ph}={vm}&lt;{va}º p.u.<br>"
 
         else:
             msg = ""

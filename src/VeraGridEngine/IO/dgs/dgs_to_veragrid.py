@@ -4140,6 +4140,22 @@ def convert_dgs_to_shunt(elmshnt: ElmShnt,
         b2 = b_mvar / 3
         b3 = b_mvar / 3
         connection = ShuntConnectionType.FloatingStar
+    elif elmshnt.ctech == 2 and elmshnt.cgnd == 0: # 3PH-'YN' and grounded
+        g1 = g_mw / 3
+        g2 = g_mw / 3
+        g3 = g_mw / 3
+        b1 = b_mvar / 3
+        b2 = b_mvar / 3
+        b3 = b_mvar / 3
+        connection = ShuntConnectionType.GroundedStar
+    elif elmshnt.ctech == 2 and elmshnt.cgnd == 1: # 3PH-'YN' and not grounded
+        g1 = g_mw / 3
+        g2 = g_mw / 3
+        g3 = g_mw / 3
+        b1 = b_mvar / 3
+        b2 = b_mvar / 3
+        b3 = b_mvar / 3
+        connection = ShuntConnectionType.NeutralStar
     else:
         g1 = g_mw / 3
         g2 = g_mw / 3
@@ -4160,6 +4176,8 @@ def convert_dgs_to_shunt(elmshnt: ElmShnt,
                       B3=b3,
                       active=(elmshnt.outserv == 0))
     shunt.conn = connection
+    shunt.phN = any("N" in _get_cubic_phase_names(cubic)
+                    for cubic in cubics_by_objid.get(_ref_id(elmshnt.ID), []))
 
     return bus, shunt
 

@@ -207,7 +207,12 @@ def compute_ybus(nc: NumericalCircuit) -> Tuple[csc_matrix, csc_matrix, csc_matr
 
     bus_has_neutral[0::4] &= nc.bus_data.bus_types != BusMode.Slack_tpe.value
 
-    # aplica la prioridad: si algún trafo o el slack aterra el neutro, el neutro se elimina del solver
+    grounded_shunt_buses = nc.shunt_data.bus_idx[
+        nc.shunt_data.active & nc.shunt_data.grounds_neutral
+    ]
+    bus_has_neutral[4 * grounded_shunt_buses] = False
+
+    # aplica la prioridad: si algún trafo, shunt o el slack aterra el neutro, el neutro se elimina del solver
     binary_bus_mask[0::4] = binary_bus_mask[0::4] & bus_has_neutral[0::4]
 
     Ysh_bus = np.zeros((n * 4, n * 4), dtype=complex)

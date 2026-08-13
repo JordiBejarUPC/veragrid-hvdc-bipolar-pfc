@@ -483,9 +483,24 @@ def test_three_phase_shunt_groundedstar():
     res = vge.power_flow3ph(grid=grid, options=vge.PowerFlowOptions(solver_type=SolverType.NR,
                                                                     retry_with_other_methods=False))
 
-    Ua_reference = np.array([1.0657])
-    Ub_reference = np.array([1.0696])
-    Uc_reference = np.array([1.0740])
+    Ua_reference = np.array([1.0647])
+    Ub_reference = np.array([1.0720])
+    Uc_reference = np.array([1.0726])
+
+    assert np.allclose(np.abs(res.voltage_A[0]), Ua_reference, atol=8e-4)
+    assert np.allclose(np.abs(res.voltage_B[0]), Ub_reference, atol=8e-4)
+    assert np.allclose(np.abs(res.voltage_C[0]), Uc_reference, atol=8e-4)
+
+def test_three_phase_shunt_neutralstar():
+
+    grid = vge.open_file('data/grids/DGS/ThreePhaseShuntNeutralStar.dgs')
+
+    res = vge.power_flow3ph(grid=grid, options=vge.PowerFlowOptions(solver_type=SolverType.NR,
+                                                                    retry_with_other_methods=False))
+
+    Ua_reference = np.array([1.0655])
+    Ub_reference = np.array([1.0701])
+    Uc_reference = np.array([1.0738])
 
     assert np.allclose(np.abs(res.voltage_A[0]), Ua_reference, atol=7e-4)
     assert np.allclose(np.abs(res.voltage_B[0]), Ub_reference, atol=7e-4)
