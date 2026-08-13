@@ -865,21 +865,24 @@ def get_shunt_data(
                         data.Y3_star[4 * ii + 2, 2] = elm.get_Yb_at(t_idx)
                         data.Y3_star[4 * ii + 3, 3] = elm.get_Yc_at(t_idx)
 
-                elif elm.conn == ShuntConnectionType.FloatingStar:
+                elif (elm.conn == ShuntConnectionType.FloatingStar
+                      or (elm.conn == ShuntConnectionType.NeutralStar and not elm.phN)):
 
                     # Admittances
                     Ya = elm.get_Ya_at(t_idx)
                     Yb = elm.get_Yb_at(t_idx)
                     Yc = elm.get_Yc_at(t_idx)
 
-                    if Ya != 0.0 + 0.0j and Yb != 0.0 + 0.0j and Yc != 0.0 + 0.0j:
-                        data.A_floating_star[ii] = Ya / (Ya + Yb + Yc)
-                        data.B_floating_star[ii] = Yb / (Ya + Yb + Yc)
-                        data.C_floating_star[ii] = Yc / (Ya + Yb + Yc)
+                    Ysum = Ya + Yb + Yc
 
-                        A = Ya / (Ya + Yb + Yc)
-                        B = Yb / (Ya + Yb + Yc)
-                        C = Yc / (Ya + Yb + Yc)
+                    if Ysum != 0.0 + 0.0j:
+                        data.A_floating_star[ii] = Ya / Ysum
+                        data.B_floating_star[ii] = Yb / Ysum
+                        data.C_floating_star[ii] = Yc / Ysum
+
+                        A = Ya / Ysum
+                        B = Yb / Ysum
+                        C = Yc / Ysum
 
                         # First row
                         data.Y3_star[4 * ii + 1, 1] = (1 - A) * Ya
