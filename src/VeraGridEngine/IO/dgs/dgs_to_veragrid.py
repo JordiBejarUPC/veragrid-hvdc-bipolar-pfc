@@ -4100,6 +4100,7 @@ def convert_dgs_to_shunt(elmshnt: ElmShnt,
                          logger: Logger,
                          cubics_by_objid: Dict[str, List[StaCubic]],
                          bus_by_term_id: Dict[str, dev.Bus],
+                         phase_map: PhaseMap,
                          frequency: float) -> Tuple[dev.Bus, dev.Shunt]:
     """
     Convert dgs to shunt.
@@ -4110,6 +4111,7 @@ def convert_dgs_to_shunt(elmshnt: ElmShnt,
     :param logger: logger parameter.
     :param cubics_by_objid: cubics_by_objid parameter.
     :param bus_by_term_id: bus_by_term_id parameter.
+    :param phase_map: Resolved terminal-conductor phase map.
     :param frequency: frequency parameter.
     :return: Function result.
     """
@@ -4122,58 +4124,49 @@ def convert_dgs_to_shunt(elmshnt: ElmShnt,
                             bus_by_term_id=bus_by_term_id)
 
     g_mw, b_mvar = _extract_shunt_gb(elmshnt=elmshnt, f=frequency, logger=logger)
+    phases = [phase for phase in _get_element_phases(elmshnt.ID, cubics_by_objid, phase_map) if phase != 0]
 
     # Unbalanced
     if elmshnt.ctech == 0: # 3PH-'D'
-        g1 = g_mw / 3
-        g2 = g_mw / 3
-        g3 = g_mw / 3
-        b1 = b_mvar / 3
-        b2 = b_mvar / 3
-        b3 = b_mvar / 3
+        g_abc = [g_mw / 3] * 3
+        b_abc = [b_mvar / 3] * 3
         connection = ShuntConnectionType.Delta
-    elif elmshnt.ctech == 1: # 3PH-'Y'
-        g1 = g_mw / 3
-        g2 = g_mw / 3
-        g3 = g_mw / 3
-        b1 = b_mvar / 3
-        b2 = b_mvar / 3
-        b3 = b_mvar / 3
-        connection = ShuntConnectionType.FloatingStar
-    elif elmshnt.ctech == 2 and elmshnt.cgnd == 0: # 3PH-'YN' and grounded
-        g1 = g_mw / 3
-        g2 = g_mw / 3
-        g3 = g_mw / 3
-        b1 = b_mvar / 3
-        b2 = b_mvar / 3
-        b3 = b_mvar / 3
-        connection = ShuntConnectionType.GroundedStar
-    elif elmshnt.ctech == 2 and elmshnt.cgnd == 1: # 3PH-'YN' and not grounded
-        g1 = g_mw / 3
-        g2 = g_mw / 3
-        g3 = g_mw / 3
-        b1 = b_mvar / 3
-        b2 = b_mvar / 3
-        b3 = b_mvar / 3
-        connection = ShuntConnectionType.NeutralStar
+    elif elmshnt.ctech in (3, 5): # 2PH-'Y' or 1PH PH-PH
+        phase_pair = tuple(sorted(phases[:2])) if len(phases) >= 2 else (1, 2)
+        branch_idx = {(1, 2): 0, (2, 3): 1, (1, 3): 2}[phase_pair]
+        g_abc = [0.0] * 3
+        b_abc = [0.0] * 3
+        g_abc[branch_idx] = g_mw
+        b_abc[branch_idx] = b_mvar
+        connection = ShuntConnectionType.Delta
     else:
-        g1 = g_mw / 3
-        g2 = g_mw / 3
-        g3 = g_mw / 3
-        b1 = b_mvar / 3
-        b2 = b_mvar / 3
-        b3 = b_mvar / 3
-        connection = ShuntConnectionType.GroundedStar
+        phase_count = {1: 3, 2: 3, 4: 2, 6: 1, 7: 1}.get(elmshnt.ctech, 3)
+        active_phases = phases[:phase_count] if len(phases) >= phase_count else list(range(1, phase_count + 1))
+        g_abc = [0.0] * 3
+        b_abc = [0.0] * 3
+        for phase in active_phases:
+            g_abc[phase - 1] = g_mw / phase_count
+            b_abc[phase - 1] = b_mvar / phase_count
+
+        if elmshnt.ctech == 1: # 3PH-'Y'
+            connection = ShuntConnectionType.FloatingStar
+        elif elmshnt.ctech in (2, 4): # 3PH-'YN' or 2PH-'YN'
+            connection = (ShuntConnectionType.GroundedStar if elmshnt.cgnd == 0
+                          else ShuntConnectionType.NeutralStar)
+        elif elmshnt.ctech == 6: # 1PH PH-N
+            connection = ShuntConnectionType.NeutralStar
+        else: # 1PH PH-E and backwards-compatible fallback
+            connection = ShuntConnectionType.GroundedStar
 
     shunt = dev.Shunt(name=name,
                       G=g_mw,
-                      G1=g1,
-                      G2=g2,
-                      G3=g3,
+                      G1=g_abc[0],
+                      G2=g_abc[1],
+                      G3=g_abc[2],
                       B=b_mvar,
-                      B1=b1,
-                      B2=b2,
-                      B3=b3,
+                      B1=b_abc[0],
+                      B2=b_abc[1],
+                      B3=b_abc[2],
                       active=(elmshnt.outserv == 0))
     shunt.conn = connection
     shunt.phN = any("N" in _get_cubic_phase_names(cubic)
@@ -5153,6 +5146,7 @@ def _add_elmshnt_devices(dgs_grid: DgsCircuit,
                          logger: Logger,
                          cubics_by_objid: Dict[str, List[StaCubic]],
                          bus_by_term_id: Dict[str, dev.Bus],
+                         phase_map: PhaseMap,
                          frequency: float) -> None:
     """
     Add elmshnt devices.
@@ -5163,6 +5157,7 @@ def _add_elmshnt_devices(dgs_grid: DgsCircuit,
     :param logger: logger parameter.
     :param cubics_by_objid: cubics_by_objid parameter.
     :param bus_by_term_id: bus_by_term_id parameter.
+    :param phase_map: Resolved terminal-conductor phase map.
     :param frequency: frequency parameter.
     :return: Function result.
     """
@@ -5186,6 +5181,7 @@ def _add_elmshnt_devices(dgs_grid: DgsCircuit,
                 logger=logger,
                 cubics_by_objid=cubics_by_objid,
                 bus_by_term_id=bus_by_term_id,
+                phase_map=phase_map,
                 frequency=frequency
             )
             grid.add_shunt(bus=bus, api_obj=shunt)
@@ -6539,6 +6535,7 @@ def dgs_to_circuit(path: str,
         logger=logger,
         cubics_by_objid=cubics_by_objid,
         bus_by_term_id=bus_by_term_id,
+        phase_map=phase_map,
         frequency=frequency,
     )
     _add_elmsvs_devices(

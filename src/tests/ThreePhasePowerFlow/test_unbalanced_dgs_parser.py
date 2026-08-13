@@ -1,5 +1,6 @@
 import VeraGridEngine.api as vge
 from VeraGridEngine import SolverType
+from VeraGridEngine.enumerations import ShuntConnectionType
 import numpy as np
 
 def test_three_phase_power_delta():
@@ -505,3 +506,20 @@ def test_three_phase_shunt_neutralstar():
     assert np.allclose(np.abs(res.voltage_A[0]), Ua_reference, atol=7e-4)
     assert np.allclose(np.abs(res.voltage_B[0]), Ub_reference, atol=7e-4)
     assert np.allclose(np.abs(res.voltage_C[0]), Uc_reference, atol=7e-4)
+
+
+def test_two_phase_shunt_floatingstar():
+
+    grid = vge.open_file('data/grids/DGS/TwoPhaseShuntFloatingStar.dgs')
+
+    shunt = grid.shunts[0]
+    assert shunt.conn == ShuntConnectionType.Delta
+    assert np.allclose([shunt.Ga, shunt.Gb, shunt.Gc], [shunt.G, 0.0, 0.0])
+    assert np.allclose([shunt.Ba, shunt.Bb, shunt.Bc], [shunt.B, 0.0, 0.0])
+
+    res = vge.power_flow3ph(grid=grid, options=vge.PowerFlowOptions(solver_type=SolverType.NR,
+                                                                    retry_with_other_methods=False))
+
+    assert np.allclose(np.abs(res.voltage_A[0]), 1.11959425, atol=1.1e-3)
+    assert np.allclose(np.abs(res.voltage_B[0]), 1.07862183, atol=1.1e-3)
+    assert np.allclose(np.abs(res.voltage_C[0]), 0.99953762, atol=1.1e-3)
