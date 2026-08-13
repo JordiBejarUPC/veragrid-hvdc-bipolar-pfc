@@ -542,6 +542,42 @@ def test_two_phase_shunt_neutralstar():
     assert np.allclose(np.abs(res.voltage_C[0]), 0.99975613, atol=8e-4)
 
 
+def test_single_phase_shunt_neutralstar():
+
+    grid = vge.open_file('data/grids/DGS/SinglePhaseShuntNeutralStar.dgs')
+
+    shunt = grid.shunts[0]
+    assert shunt.conn == ShuntConnectionType.NeutralStar
+    assert shunt.phN
+    assert np.allclose([shunt.Ga, shunt.Gb, shunt.Gc], [shunt.G, 0.0, 0.0])
+    assert np.allclose([shunt.Ba, shunt.Bb, shunt.Bc], [shunt.B, 0.0, 0.0])
+
+    res = vge.power_flow3ph(grid=grid, options=vge.PowerFlowOptions(solver_type=SolverType.NR,
+                                                                    retry_with_other_methods=False))
+
+    assert np.allclose(np.abs(res.voltage_A[0]), 1.26972831, atol=6.8e-3)
+    assert np.allclose(np.abs(res.voltage_B[0]), 0.99643802, atol=6.8e-3)
+    assert np.allclose(np.abs(res.voltage_C[0]), 0.99437431, atol=6.8e-3)
+
+
+def test_single_phase_shunt_groundedstar():
+
+    grid = vge.open_file('data/grids/DGS/SinglePhaseShuntGroundedStar.dgs')
+
+    shunt = grid.shunts[0]
+    assert shunt.conn == ShuntConnectionType.GroundedStar
+    assert not shunt.phN
+    assert np.allclose([shunt.Ga, shunt.Gb, shunt.Gc], [shunt.G, 0.0, 0.0])
+    assert np.allclose([shunt.Ba, shunt.Bb, shunt.Bc], [shunt.B, 0.0, 0.0])
+
+    res = vge.power_flow3ph(grid=grid, options=vge.PowerFlowOptions(solver_type=SolverType.NR,
+                                                                    retry_with_other_methods=False))
+
+    assert np.allclose(np.abs(res.voltage_A[0]), 1.80876365, atol=5.2e-3)
+    assert np.allclose(np.abs(res.voltage_B[0]), 1.00474040, atol=5.2e-3)
+    assert np.allclose(np.abs(res.voltage_C[0]), 0.73614587, atol=5.2e-3)
+
+
 def test_two_phase_shunt_floatingstar():
 
     grid = vge.open_file('data/grids/DGS/TwoPhaseShuntFloatingStar.dgs')
