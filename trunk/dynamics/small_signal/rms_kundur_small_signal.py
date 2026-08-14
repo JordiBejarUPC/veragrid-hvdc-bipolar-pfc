@@ -329,14 +329,11 @@ def save_small_signal_results_to_csv(
     ):
         print(f"  - {filename}")
 
-def rms_kundur_small_signal() -> None:
-    """Build and run the VeraGrid Kundur RMS small-signal benchmark.
+def build_kundur_rms_benchmark_grid() -> gce.MultiCircuit:
+    """Build the Kundur RMS-ready benchmark grid.
 
-    :return: None.
+    :return: RMS-ready Kundur grid.
     """
-    total_start: float = time.perf_counter()
-    model_start: float = time.perf_counter()
-    timings: dict[str, float] = dict()
     ###########################################################################################################################
     # Build VeraGrid object
     ###########################################################################################################################
@@ -741,6 +738,18 @@ def rms_kundur_small_signal() -> None:
     grid.add_generator(bus=bus3, api_obj=gen3)
     grid.add_generator(bus=bus4, api_obj=gen4)
 
+    return grid
+
+
+def rms_kundur_small_signal() -> None:
+    """Build and run the VeraGrid Kundur RMS small-signal benchmark.
+
+    :return: None.
+    """
+    total_start: float = time.perf_counter()
+    model_start: float = time.perf_counter()
+    timings: dict[str, float] = dict()
+    grid: gce.MultiCircuit = build_kundur_rms_benchmark_grid()
 
 
     timings["case_and_model_build"] = elapsed_seconds(model_start)

@@ -48,6 +48,7 @@ from trunk.dynamics.small_signal.rms_kundur_small_signal import save_small_signa
 from trunk.dynamics.small_signal.rms_kundur_small_signal import plot_s_domain_eigenvalues
 from trunk.dynamics.small_signal.veragrid_small_signal_benchmark_timing import benchmark_veragrid_isolated_numerical_phases
 from trunk.dynamics.small_signal.small_signal_benchmark_timing import elapsed_seconds
+from trunk.dynamics.small_signal.small_signal_benchmark_timing import finalize_normal_workflow_timings
 from trunk.dynamics.small_signal.small_signal_benchmark_timing import save_benchmark_timings
 
 
@@ -583,14 +584,6 @@ def _build_ieee14_network_from_andes_case() -> gce.MultiCircuit:
     return grid
 
 
-def _get_output_grid_path() -> Path:
-    """Return the RMS-ready IEEE14 output path.
-
-    :return: Output path.
-    """
-    return Path(__file__).resolve().parent / "ieee14_rms_sss.veragrid"
-
-
 def _get_results_dir() -> Path:
     """Return the IEEE14 VeraGrid results directory.
 
@@ -744,8 +737,6 @@ def build_ieee14_rms_benchmark_grid() -> gce.MultiCircuit:
     """
     grid: gce.MultiCircuit = _build_ieee14_network_from_andes_case()
     _assign_ieee14_rms_models(grid)
-    output_path: Path = _get_output_grid_path()
-    gce.save_file(grid=grid, filename=str(output_path))
     return grid
 
 
@@ -780,7 +771,7 @@ def run_ieee14_small_signal() -> None:
             sss_options=ss_options,
             pf_results=pf_results,
         )
-        timings["symbolic_to_numeric"] = elapsed_seconds(compilation_start)
+        timings["rms_problem_build_initialization_symbolic_to_numeric"] = elapsed_seconds(compilation_start)
         small_signal_start: float = time.perf_counter()
         driver.run()
         timings["small_signal_total"] = elapsed_seconds(small_signal_start)
@@ -790,21 +781,27 @@ def run_ieee14_small_signal() -> None:
     results_dir: Path = _get_results_dir()
     results_dir.mkdir(parents=True, exist_ok=True)
 
-    # Save a non-blocking diagnostic plot so the script is suitable for direct
-    # execution from an IDE or terminal without requiring GUI interaction.
-    plot_s_domain_eigenvalues(driver.results.eigenvalues)
-    figure_path: Path = results_dir / "IEEE14_eigenvalues_VeraGrid.png"
-    plt.savefig(figure_path, dpi=160)
-    plt.close()
-
     export_start: float = time.perf_counter()
     save_small_signal_results_to_csv(driver.results, pf_results, results_dir)
     _save_veragrid_compiled_manifest(problem=driver.problem, results=driver.results, output_dir=results_dir)
     _save_benchmark_state_matrix_and_participation(grid=grid, results=driver.results, output_dir=results_dir)
     timings["result_export"] = elapsed_seconds(export_start)
-    timings["end_to_end"] = elapsed_seconds(total_start) - (
-        timings["state_matrix_isolated_repeat"]
-        + timings["eigenanalysis_isolated_repeat"]
+    normal_component_names: tuple[str, ...] = (
+        "case_and_model_build",
+        "power_flow",
+        "rms_problem_build_initialization_symbolic_to_numeric",
+        "small_signal_total",
+        "result_export",
+    )
+    diagnostic_names: tuple[str, ...] = (
+        "diagnostic_state_matrix_warm_repeat",
+        "diagnostic_eigenanalysis_pf_warm_repeat",
+    )
+    finalize_normal_workflow_timings(
+        timings=timings,
+        total_start=total_start,
+        normal_component_names=normal_component_names,
+        diagnostic_names=diagnostic_names,
     )
 
     eigenvalue_count: int = int(np.asarray(driver.results.eigenvalues).size)
@@ -816,6 +813,13 @@ def run_ieee14_small_signal() -> None:
         state_count=int(driver.results.state_matrix.shape[0]),
         mode_count=eigenvalue_count,
     )
+
+    # Generate the optional diagnostic figure after the authoritative workflow
+    # total so plotting cannot affect the network-to-results benchmark time.
+    plot_s_domain_eigenvalues(driver.results.eigenvalues)
+    figure_path: Path = results_dir / "IEEE14_eigenvalues_VeraGrid.png"
+    plt.savefig(figure_path, dpi=160)
+    plt.close()
     print(f"IEEE14 VeraGrid completed: {eigenvalue_count} modes written to {results_dir}")
 
 
