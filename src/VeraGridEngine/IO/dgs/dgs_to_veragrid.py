@@ -1858,13 +1858,40 @@ def convert_dgs_to_transformer(tr2: ElmTr2,
             if tr2.i_eahv == 1:
                 trafo.conn_f = WindingType.GroundedStar
             else:
-                trafo.conn_f = WindingType.NeutralStar
+                trafo.conn_f = WindingType.Delta
+
+            if tr2.i_ealv == 1:
+                trafo.conn_t = WindingType.GroundedStar
+            else:
+                trafo.conn_t = WindingType.Delta
+
+    # To-side is the HV-side
+    else:
+
+        # D-D (or Y-Y) Connection (non-auto transformer)
+        if typtr2_raw.tr2cn_h == 'D' and typtr2_raw.tr2cn_l == 'D' and tr2.i_auto == 0:
 
             if tr2.i_eahv == 1:
                 trafo.conn_t = WindingType.GroundedStar
             else:
-                trafo.conn_t = WindingType.NeutralStar
+                trafo.conn_t = WindingType.Delta
 
+            if tr2.i_ealv == 1:
+                trafo.conn_f = WindingType.GroundedStar
+            else:
+                trafo.conn_f = WindingType.Delta
+
+        elif typtr2_raw.tr2cn_h == 'Y' and typtr2_raw.tr2cn_l == 'Y' and tr2.i_auto == 0:
+
+            if tr2.i_eahv == 1:
+                trafo.conn_t = WindingType.GroundedStar
+            else:
+                trafo.conn_t = WindingType.Delta
+
+            if tr2.i_ealv == 1:
+                trafo.conn_f = WindingType.GroundedStar
+            else:
+                trafo.conn_f = WindingType.Delta
 
         # if typtr2_raw.tr2cn_h == "Y":
         #     trafo.conn_f = WindingType.FloatingStar
@@ -2880,7 +2907,13 @@ def convert_dgs_to_line(
     seq_template: dev.SequenceLineType | None = None
     ohl_template: dev.OverheadLineType | None = None
 
-    if typ_id is not None and typ_id != "":
+    ohl_template = overhead_line_type_dict.get(lne.ID, None)
+    if ohl_template is None:
+        line_id = _ref_id(lne.ID)
+        if line_id is not None:
+            ohl_template = overhead_line_type_dict.get(line_id, None)
+
+    if ohl_template is None and typ_id is not None and typ_id != "":
         seq_template = sequence_templates_dict.get(typ_id, None)
         if seq_template is None:
             tid = _ref_id(typ_id)
@@ -2893,7 +2926,7 @@ def convert_dgs_to_line(
                 tid = _ref_id(typ_id)
                 if tid is not None and tid != "":
                     ohl_template = overhead_line_type_dict.get(tid, None)
-    else:
+    elif ohl_template is None:
         # typ_id is missing: rely on tower coupling template
         ohl_template = tower_template
 
@@ -6000,7 +6033,7 @@ def _add_typtow_templates(dgs_grid: DgsCircuit,
                     for index in range(len(typtow.pcond_c))
                 ]
                 expected_conductors = sum(phase_counts)
-                phase_orders: Set[Tuple[int, ...]] = set()
+                phase_order_by_line_id: Dict[str, Tuple[int, ...]] = dict()
 
                 # TypTow describes the physical circuits, while the line
                 # cubicles identify their electrical N/A/B/C conductors.
@@ -6008,21 +6041,54 @@ def _add_typtow_templates(dgs_grid: DgsCircuit,
                     if _ref_id(line.typ_id) != tow_id:
                         continue
 
+                    line_phase_orders: Set[Tuple[int, ...]] = set()
                     for cubic in cubics_by_objid.get(_ref_id(line.ID), []):
                         phases = tuple(_get_cubic_phases(cubic=cubic, phase_map=phase_map))
                         if len(phases) == expected_conductors:
-                            phase_orders.add(phases)
+                            line_phase_orders.add(phases)
+
+                    if len(line_phase_orders) == 1:
+                        line_phase_order = next(iter(line_phase_orders))
+                        phase_order_by_line_id[line.ID] = line_phase_order
+                        line_id = _ref_id(line.ID)
+                        if line_id is not None:
+                            phase_order_by_line_id[line_id] = line_phase_order
+                    elif len(line_phase_orders) > 1:
+                        logger.add_warning(
+                            "Line cubicles have different phase layouts; keeping the shared tower template.",
+                            device=line.loc_name,
+                            device_class="ElmLne",
+                            value=sorted(line_phase_orders),
+                        )
+
+                phase_orders = set(phase_order_by_line_id.values())
 
                 phase_order: List[int] | None = None
                 if len(phase_orders) == 1:
                     phase_order = list(next(iter(phase_orders)))
                 elif len(phase_orders) > 1:
-                    logger.add_warning(
-                        "Tower type is used with different phase layouts; keeping circuit-local phases.",
-                        device=typtow.loc_name,
-                        device_class="TypTow",
-                        value=sorted(phase_orders),
-                    )
+                    ohl_types_by_phase_order: Dict[Tuple[int, ...], dev.OverheadLineType] = dict()
+                    phase_labels = ("N", "A", "B", "C")
+                    for resolved_phase_order in sorted(phase_orders):
+                        ohl_type = convert_dgs_to_overhead_line_type_geometrical_parameters(
+                            typtow=typtow,
+                            typcon_by_id=typcon_raw_dict,
+                            wire_by_id=wire_type_dict,
+                            default_frequency_hz=frequency,
+                            phase_order=list(resolved_phase_order),
+                        )
+                        phase_suffix = "".join(phase_labels[phase] for phase in resolved_phase_order)
+                        ohl_type.name = f"{ohl_type.name}_{phase_suffix}"
+                        ohl_type.idtag = f"{tow_id}_{phase_suffix}"
+                        ohl_types_by_phase_order[resolved_phase_order] = ohl_type
+                        grid.overhead_line_types.append(ohl_type)
+
+                    default_phase_order = sorted(phase_orders)[0]
+                    overhead_line_type_dict[tow_id] = ohl_types_by_phase_order[default_phase_order]
+                    overhead_line_type_dict[typtow.ID] = ohl_types_by_phase_order[default_phase_order]
+                    for line_id, resolved_phase_order in phase_order_by_line_id.items():
+                        overhead_line_type_dict[line_id] = ohl_types_by_phase_order[resolved_phase_order]
+                    continue
                 elif phase_counts == [3, 1]:
                     phase_order = [1, 2, 3, 0]
 

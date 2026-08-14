@@ -337,7 +337,7 @@ def compute_current_loads(bus_idx: IntVec,
         floating = (Ifloating[ab] != zero_load or Ifloating[bc] != zero_load or Ifloating[ca] != zero_load)
         delta = (Idelta[ab] != zero_load or Idelta[bc] != zero_load or Idelta[ca] != zero_load)
 
-        n_connected = (Istar[nn] != zero_load)
+        n_connected = (Istar[nn] != zero_load and n2 >= 0)
         a_connected = (Istar[ab] != zero_load)
         b_connected = (Istar[bc] != zero_load)
         c_connected = (Istar[ca] != zero_load)
@@ -624,7 +624,7 @@ def compute_power_loads(bus_idx: IntVec,
         floating = (Sfloating[ab] != zero_load or Sfloating[bc] != zero_load or Sfloating[ca] != zero_load)
         delta = (Sdelta[ab] != zero_load or Sdelta[bc] != zero_load or Sdelta[ca] != zero_load)
 
-        n_connected = (Sstar[nn] != zero_load)
+        n_connected = (Sstar[nn] != zero_load and n2 >= 0)
         a_connected = (Sstar[ab] != zero_load)
         b_connected = (Sstar[bc] != zero_load)
         c_connected = (Sstar[ca] != zero_load)
