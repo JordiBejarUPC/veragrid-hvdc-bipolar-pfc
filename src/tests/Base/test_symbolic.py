@@ -4,15 +4,17 @@ import json
 import pytest
 import math
 import numpy as np
-from typing import Callable, Dict
+from typing import Any, Callable, Dict
 import VeraGridEngine.Utils.Symbolic.symbolic as sym
 from VeraGridEngine.Utils.Symbolic.compiled_functions import SymbolicJacobian
 from VeraGridEngine.Utils.Symbolic.jit_compiler import SubexpressionAnalyzer
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic_io import (duplicate_block, expr_to_dict, parse_expr,
                                                        BlockSaver, BlockParser)
+from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.Devices.Diagrams.block_diagram import BlockDiagram
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
+from VeraGridEngine.enumerations import ParamPowerFlowReferenceType, VarPowerFlowReferenceType
 from VeraGridEngine.Utils.procedural_logic import aflipflop
 
 # -----------------------------------------------------------------------------
@@ -525,6 +527,61 @@ def test_block_saver_parser_roundtrip_preserves_dynamic_runtime_fields() -> None
     assert len(restored.discrete_eqs) == 1
     assert len(restored.mode_dict) == 1
     assert len(restored.procedural_logic) == 1
+
+
+def test_block_parser_only_warns_for_broken_optional_mapping_references() -> None:
+    """
+    Check that optional null mappings are silent while broken UIDs warn.
+
+    :return: Nothing.
+    """
+    source_factory: VarFactory = VarFactory()
+    variable: sym.Var = source_factory.add_var("x")
+    source_block: Block = Block(
+        algebraic_vars=[variable],
+        algebraic_eqs=[variable],
+        external_mapping=dict({VarPowerFlowReferenceType.Vm: None}),
+        api_obj_mapping=dict({ParamPowerFlowReferenceType.r: None}),
+        name="optional_mapping_block",
+    )
+    saver: BlockSaver = BlockSaver(source_factory)
+    saver.save_block(source_block, main=True)
+
+    # Parse the explicit legacy nulls first. They represent optional empty
+    # mapping slots and therefore must not interrupt file opening with warnings.
+    null_logger: Logger = Logger()
+    null_parser: BlockParser = BlockParser(VarFactory(), logger=null_logger)
+    null_parser.parse_consts(saver.get_const_to_save())
+    null_parser.parse_vars(saver.get_vars_to_save())
+    null_parser.parse_diff_vars(saver.get_diff_vars_to_save())
+    restored_block: Block = null_parser.parse_block(saver.get_blocks(), source_block.uid)
+
+    assert null_logger.warning_count() == 0
+    assert restored_block.api_obj_mapping == dict()
+    assert restored_block.external_mapping[VarPowerFlowReferenceType.Vm] is None
+
+    # Replace both optional nulls with non-null UIDs absent from the factory.
+    # Those references claim that data exists, so silently dropping them could
+    # change model initialization and must remain visible to the user.
+    broken_blocks: Dict[int, Dict[str, Any]] = copy.deepcopy(saver.get_blocks())
+    broken_block_data: Dict[str, Any] = broken_blocks[source_block.uid]
+    broken_api_mapping: Dict[str, int | None] = broken_block_data["api_obj_mapping"]
+    broken_external_mapping: Dict[str, int | None] = broken_block_data["external_mapping"]
+    broken_api_mapping[ParamPowerFlowReferenceType.r.value] = variable.uid + 1
+    broken_external_mapping[VarPowerFlowReferenceType.Vm.value] = variable.uid + 2
+
+    broken_logger: Logger = Logger()
+    broken_parser: BlockParser = BlockParser(VarFactory(), logger=broken_logger)
+    broken_parser.parse_consts(saver.get_const_to_save())
+    broken_parser.parse_vars(saver.get_vars_to_save())
+    broken_parser.parse_diff_vars(saver.get_diff_vars_to_save())
+    broken_parser.parse_block(broken_blocks, source_block.uid)
+
+    assert broken_logger.warning_count() == 2
+    assert {entry.device_property for entry in broken_logger.entries} == {
+        "api_obj_mapping",
+        "external_mapping",
+    }
 
 
 # -----------------------------------------------------------------------------

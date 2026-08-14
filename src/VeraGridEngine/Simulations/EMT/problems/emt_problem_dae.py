@@ -676,10 +676,14 @@ def _sanitize_external_mapping_for_explicit_dc_terminals(mapping: Dict[Any, Var]
     :return: Sanitized mapping that preserves only the explicit two-sided DC contract.
     """
     sanitized_mapping: Dict[Any, Var] = dict()
-    has_vf: bool = VarPowerFlowReferenceType.Vf_dc in mapping
-    has_vt: bool = VarPowerFlowReferenceType.Vt_dc in mapping
-    has_if: bool = VarPowerFlowReferenceType.If_dc in mapping
-    has_it: bool = VarPowerFlowReferenceType.It_dc in mapping
+    # Root-contract normalization keeps unsupported optional references as
+    # explicit ``None`` entries. Those placeholders do not expose a usable
+    # two-terminal DC contract and therefore must not suppress a valid shared
+    # ``Vdc``/``Idc`` mapping used by single-bus DC injections.
+    has_vf: bool = mapping.get(VarPowerFlowReferenceType.Vf_dc, None) is not None
+    has_vt: bool = mapping.get(VarPowerFlowReferenceType.Vt_dc, None) is not None
+    has_if: bool = mapping.get(VarPowerFlowReferenceType.If_dc, None) is not None
+    has_it: bool = mapping.get(VarPowerFlowReferenceType.It_dc, None) is not None
     key: Any
     value: Var
 
@@ -1405,7 +1409,28 @@ def _find_internal_var_for_init(block: Block, var_name: str) -> Optional[Var]:
         else:
             pass
 
-    return None
+    shared_reference_fallbacks: Dict[str, str] = dict([
+        ("Vf", "v_f_reference"),
+        ("V_pss", "V_pss_reference"),
+        ("Tm", "Tm_reference"),
+        ("Te", "Te_reference"),
+        ("IRPu", "IRPu_reference"),
+        ("omega", "omega_reference"),
+    ])
+    shared_reference_suffix: str | None = None
+    fallback_var: Optional[Var] = None
+
+    if var_name in shared_reference_fallbacks:
+        shared_reference_suffix = shared_reference_fallbacks[var_name]
+    else:
+        shared_reference_suffix = None
+
+    if shared_reference_suffix is None:
+        pass
+    else:
+        fallback_var = _find_internal_var_by_shared_reference(block, shared_reference_suffix)
+
+    return fallback_var
 
 
 def _find_internal_var_by_prefix(block: Block, name_prefix: str) -> Optional[Var]:
@@ -1492,7 +1517,62 @@ def _find_internal_vars_by_name(block: Block, var_name: str) -> List[Var]:
     for child_block in block.children:
         matches.extend(_find_internal_vars_by_name(child_block, var_name))
 
+    if len(matches) > 0:
+        pass
+    else:
+        shared_reference_fallbacks: Dict[str, str] = dict([
+            ("Vf", "v_f_reference"),
+            ("V_pss", "V_pss_reference"),
+            ("Tm", "Tm_reference"),
+            ("Te", "Te_reference"),
+            ("IRPu", "IRPu_reference"),
+            ("omega", "omega_reference"),
+        ])
+        shared_reference_suffix: str | None = shared_reference_fallbacks.get(var_name, None)
+        if shared_reference_suffix is None:
+            pass
+        else:
+            fallback_var: Optional[Var] = _find_internal_var_by_shared_reference(block, shared_reference_suffix)
+            if fallback_var is None:
+                pass
+            else:
+                matches.append(fallback_var)
+
     return matches
+
+
+def _find_internal_runtime_var_owner_with_fallback(block: Block, var_name: str) -> Tuple[Optional[Var], Optional[Block]]:
+    """
+    Return one internal runtime variable owner using shared-reference fallback.
+
+    :param block: Root block to inspect.
+    :param var_name: Runtime parameter variable name.
+    :return: Tuple ``(variable, owner_block)`` or ``(None, None)``.
+    """
+    internal_var: Optional[Var]
+    owner_block: Optional[Block]
+    internal_var, owner_block = _find_internal_runtime_var_owner(block, var_name)
+    if internal_var is None or owner_block is None:
+        shared_reference_fallbacks: Dict[str, str] = dict([
+            ("Vf", "v_f_reference"),
+            ("V_pss", "V_pss_reference"),
+            ("Tm", "Tm_reference"),
+            ("Te", "Te_reference"),
+            ("IRPu", "IRPu_reference"),
+            ("omega", "omega_reference"),
+        ])
+        shared_reference_name: str | None = shared_reference_fallbacks.get(var_name, None)
+        if shared_reference_name is None:
+            pass
+        else:
+            internal_var = _find_internal_var_by_shared_reference(block, shared_reference_name)
+            if internal_var is None:
+                pass
+            else:
+                owner_block = block.get_root_block_of_variable(internal_var)
+    else:
+        pass
+    return internal_var, owner_block
 
 def _find_mode_var_owner(block: Block, var_name: str) -> Tuple[Optional[Var], Optional[Block]]:
     """
@@ -3342,13 +3422,19 @@ class EmtProblemDae(EmtProblemTemplate):
 
     def _get_present_external_refs(self, mdl: Block) -> Set[VarPowerFlowReferenceType]:
         """
-        Return the set of non-null electrical external references exposed by one model.
+        Return the electrical external references exposed by the active root contract.
+
+        A non-null mapping can preserve a dormant connection intent while its
+        corresponding phase is absent from the root IO contract. Such mappings
+        are not electrically exposed and therefore must not participate in
+        interface validation.
 
         :param mdl: Device block to inspect.
         :return: Set of exposed external reference keys.
         """
         refs: Set[VarPowerFlowReferenceType] = set()
         external_mapping: Optional[Dict[Any, Var]] = _get_external_mapping(mdl)
+        active_root_uids: Set[int] = set(root_var.uid for root_var in mdl.in_vars + mdl.out_vars)
         reference: Any
         mapped_var: Var | None
 
@@ -3359,7 +3445,10 @@ class EmtProblemDae(EmtProblemTemplate):
 
         for reference, mapped_var in external_mapping.items():
             if isinstance(reference, VarPowerFlowReferenceType) and mapped_var is not None:
-                refs.add(reference)
+                if mapped_var.uid in active_root_uids:
+                    refs.add(reference)
+                else:
+                    pass
             else:
                 pass
 
@@ -6179,6 +6268,15 @@ class EmtProblemDae(EmtProblemTemplate):
             else:
                 pass
 
+            if injection.device_type == DeviceType.GeneratorDevice:
+                self._preseed_complete_generator_child_blocks(
+                    mdl=mdl,
+                    phase_power=phase_power,
+                    voltage_vector=voltage_vector,
+                )
+            else:
+                pass
+
             omega_base: float = 2.0 * np.pi * self.grid.fBase
             voltage_derivative_keys: List[VarPowerFlowReferenceType] = list([
                 VarPowerFlowReferenceType.d_v_N,
@@ -6396,6 +6494,59 @@ class EmtProblemDae(EmtProblemTemplate):
             self._temp_post_diff_init_guess[theta_var.diff_var.uid] = omega_base
         else:
             pass
+
+    def _preseed_complete_generator_child_blocks(
+            self,
+            mdl: Block,
+            phase_power: np.ndarray,
+            voltage_vector: np.ndarray,
+    ) -> None:
+        """
+        Preseed sibling outputs in complete generator wrappers before explicit init.
+
+        :param mdl: Unified complete generator block.
+        :param phase_power: Complex power seed in NABC order.
+        :param voltage_vector: Complex voltage seed in NABC order.
+        :return: None.
+        """
+        phase_a: complex = complex(voltage_vector[1])
+        phase_b: complex = complex(voltage_vector[2])
+        phase_c: complex = complex(voltage_vector[3])
+        power_a: complex = complex(phase_power[1])
+        power_b: complex = complex(phase_power[2])
+        power_c: complex = complex(phase_power[3])
+        current_a: complex
+        current_b: complex
+        current_c: complex
+
+        if abs(phase_a) > 1.0e-12:
+            current_a = np.conj(power_a / phase_a)
+        else:
+            current_a = 0.0 + 0.0j
+        if abs(phase_b) > 1.0e-12:
+            current_b = np.conj(power_b / phase_b)
+        else:
+            current_b = 0.0 + 0.0j
+        if abs(phase_c) > 1.0e-12:
+            current_c = np.conj(power_c / phase_c)
+        else:
+            current_c = 0.0 + 0.0j
+
+        a_operator: complex = np.exp(1j * 2.0 * np.pi / 3.0)
+        voltage_positive_sequence: complex = (phase_a + a_operator * phase_b + (a_operator * a_operator) * phase_c) / 3.0
+        current_positive_sequence: complex = (current_a + a_operator * current_b + (a_operator * a_operator) * current_c) / 3.0
+        vm_value: float = float(np.abs(voltage_positive_sequence))
+        irpu_value: float = float(np.sqrt(2.0) * np.abs(current_positive_sequence))
+        p_total: float = float(np.real(np.sum(phase_power)))
+
+        self.set_internal_init_if_exists(mdl, "V_pss", 0.0)
+        self.set_internal_runtime_if_exists(mdl, "V_pss", 0.0)
+        self.set_internal_init_if_exists(mdl, "Vf", irpu_value)
+        self.set_internal_runtime_if_exists(mdl, "Vf", irpu_value)
+        self.set_internal_init_if_exists(mdl, "Vm", vm_value)
+        self.set_internal_runtime_if_exists(mdl, "UsRefPu", vm_value)
+        self.set_internal_init_if_exists(mdl, "Tm", p_total)
+        self.set_internal_runtime_if_exists(mdl, "Pref", p_total)
 
 
 
@@ -8813,7 +8964,7 @@ class EmtProblemDae(EmtProblemTemplate):
         owner_block: Optional[Block]
         runtime_idx: int | None
 
-        internal_var, owner_block = _find_internal_runtime_var_owner(mdl, var_name)
+        internal_var, owner_block = _find_internal_runtime_var_owner_with_fallback(mdl, var_name)
 
         if internal_var is None or owner_block is None:
             pass

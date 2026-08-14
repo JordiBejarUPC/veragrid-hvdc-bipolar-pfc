@@ -483,6 +483,10 @@ class RmsProblemDae(RmsProblemTemplate):
         self._j12_fn: Callable[[Vec, Vec, Vec, Vec, float], sp.csc_matrix] | None = None
         self._j21_fn: Callable[[Vec, Vec, Vec, Vec, float], sp.csc_matrix] | None = None
         self._j22_fn: Callable[[Vec, Vec, Vec, Vec, float], sp.csc_matrix] | None = None
+        self._fx_ct_fn: Callable[[Vec, Vec, Vec, Vec, float], sp.csc_matrix] | None = None
+        self._fy_ct_fn: Callable[[Vec, Vec, Vec, Vec, float], sp.csc_matrix] | None = None
+        self._gx_ct_fn: Callable[[Vec, Vec, Vec, Vec, float], sp.csc_matrix] | None = None
+        self._gy_ct_fn: Callable[[Vec, Vec, Vec, Vec, float], sp.csc_matrix] | None = None
 
         self._variable_parameters_values: Optional[Vec] = None
         self._last_variable_parameters_values: Optional[Vec] = None
@@ -1282,23 +1286,28 @@ class RmsProblemDae(RmsProblemTemplate):
             t0 = _tic()
             self._j11_fn = rms_compiler.compile_sparse_jacobian(self._state_eqs, self._state_vars, "j11")
             timings["J11 (dF/dx)"] = _toc(t0)
+            self._fx_ct_fn = self._j11_fn
 
             t0 = _tic()
             self._j12_fn = rms_compiler.compile_sparse_jacobian(self._state_eqs, self._algebraic_vars, "j12")
             timings["J12 (dF/dy)"] = _toc(t0)
+            self._fy_ct_fn = self._j12_fn
 
             t0 = _tic()
             self._j21_fn = rms_compiler.compile_sparse_jacobian(self._algebraic_eqs, self._state_vars, "j21")
             timings["J21 (dG/dx)"] = _toc(t0)
+            self._gx_ct_fn = self._j21_fn
 
             t0 = _tic()
             self._j22_fn = rms_compiler.compile_sparse_jacobian(self._algebraic_eqs, self._algebraic_vars, "j22")
             timings["J22 (dG/dy)"] = _toc(t0)
+            self._gy_ct_fn = self._j22_fn
 
         else:
             t0 = _tic()
             self._j22_fn = rms_compiler.compile_sparse_jacobian(self._algebraic_eqs, self._algebraic_vars, "j22")
             timings["J22 only (no states)"] = _toc(t0)
+            self._gy_ct_fn = self._j22_fn
 
         if self.options.verbose > 0:
             print(f"Model compiled with {self._n_vars} variables")
@@ -2388,6 +2397,54 @@ class RmsProblemDae(RmsProblemTemplate):
                             self._variable_parameters_values,
                             self._constant_params,
                             h)
+
+    def get_fx_ct(self, x: Vec, dx: Vec) -> sp.csc_matrix:
+        """
+        Evaluate the continuous-time differential-state Jacobian.
+
+        :param x: Current state vector.
+        :param dx: Current state-derivative vector.
+        :return: Sparse continuous-time ``df/dx`` matrix.
+        """
+        if self._fx_ct_fn is None:
+            raise ValueError("_fx_ct_fn is None")
+        return self._fx_ct_fn(x, dx, self._variable_parameters_values, self._constant_params, 0.0)
+
+    def get_fy_ct(self, x: Vec, dx: Vec) -> sp.csc_matrix:
+        """
+        Evaluate the continuous-time differential-algebraic Jacobian.
+
+        :param x: Current state vector.
+        :param dx: Current state-derivative vector.
+        :return: Sparse continuous-time ``df/dy`` matrix.
+        """
+        if self._fy_ct_fn is None:
+            raise ValueError("_fy_ct_fn is None")
+        return self._fy_ct_fn(x, dx, self._variable_parameters_values, self._constant_params, 0.0)
+
+    def get_gx_ct(self, x: Vec, dx: Vec) -> sp.csc_matrix:
+        """
+        Evaluate the continuous-time algebraic-state Jacobian.
+
+        :param x: Current state vector.
+        :param dx: Current state-derivative vector.
+        :return: Sparse continuous-time ``dg/dx`` matrix.
+        """
+        if self._gx_ct_fn is None:
+            raise ValueError("_gx_ct_fn is None")
+        return self._gx_ct_fn(x, dx, self._variable_parameters_values, self._constant_params, 0.0)
+
+    def get_gy_ct(self, x: Vec, dx: Vec) -> sp.csc_matrix:
+        """
+        Evaluate the continuous-time algebraic Jacobian.
+
+        :param x: Current state vector.
+        :param dx: Current state-derivative vector.
+        :return: Sparse continuous-time ``dg/dy`` matrix.
+        """
+        if self._gy_ct_fn is None:
+            raise ValueError("_gy_ct_fn is None")
+        return self._gy_ct_fn(x, dx, self._variable_parameters_values, self._constant_params, 0.0)
 
     def get_dt(self):
         return self._dt

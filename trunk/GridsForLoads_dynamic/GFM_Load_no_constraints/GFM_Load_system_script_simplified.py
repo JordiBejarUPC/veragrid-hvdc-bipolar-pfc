@@ -572,7 +572,6 @@ if theta_pll_init is not None and phase_vsm_init is not None:
     print(f"  delta_vsm_init = {delta_vsm_init}")
 
 init_runtime_param_names = [
-    "theta_pll_mode_G4L_PLL",
     "v_con_A_mode_G4L_inverse_park_from_vsm",
     "v_con_B_mode_G4L_inverse_park_from_vsm",
     "v_con_C_mode_G4L_inverse_park_from_vsm",
@@ -583,13 +582,6 @@ for name in init_runtime_param_names:
     value = try_get_init_runtime_param_value(problem, name)
     print(f"  {name} = {value}")
 
-theta_pll_init_runtime = try_get_init_runtime_param_value(problem, "theta_pll_mode_G4L_PLL")
-theta_pll_init_state = try_get_init_value(problem, "theta_pll_G4L_PLL")
-if theta_pll_init_runtime is None or theta_pll_init_state is None:
-    print("  theta_pll_mode_minus_theta_pll = unavailable")
-else:
-    theta_diff = float(wrap_to_pi(float(theta_pll_init_runtime) - float(theta_pll_init_state)))
-    print(f"  theta_pll_mode_minus_theta_pll = {theta_diff}")
 
 print("  dc_current_balance = unavailable")
 
@@ -939,7 +931,7 @@ for ax in axes_si_pll:
 
 csv_suffix = TEST_CSV_SUFFIX.get(selected_test, selected_test)
 # csv_path = os.path.join(REPO_ROOT, "trunk", "GridsForLoads_dynamic", f"veragrid_G4L_{csv_suffix}_v3.csv")
-csv_path = os.path.join(REPO_ROOT, "trunk", "GridsForLoads_dynamic", f"veragrid_G4L_{csv_suffix}_v3_2pref.csv")
+csv_path = os.path.join(REPO_ROOT, "trunk", "GridsForLoads_dynamic", f"veragrid_G4L_{csv_suffix}_v3_simplified.csv")
 plot_output_folder = get_plot_output_folder(csv_suffix)
 csv_columns = {"time_s": t_arr}
 
@@ -965,9 +957,9 @@ add_csv_series("iC_Bus0_A", "i_C_emt_thevenin_eq_generator_template", Ibase_vg)
 add_csv_series("vA_Bus1_kV", "v_A", V_phase_rms_base / 1000.0)
 add_csv_series("vB_Bus1_kV", "v_B", V_phase_rms_base / 1000.0)
 add_csv_series("vC_Bus1_kV", "v_C", V_phase_rms_base / 1000.0)
-add_csv_series("vA_conv_kV", "v_A", V_phase_rms_base / 1000.0)
-add_csv_series("vB_conv_kV", "v_B", V_phase_rms_base / 1000.0)
-add_csv_series("vC_conv_kV", "v_C", V_phase_rms_base / 1000.0)
+add_csv_series("vA_conv_kV", "v_con_A_G4L_inverse_park_from_vsm", V_phase_rms_base / 1000.0)
+add_csv_series("vB_conv_kV", "v_con_B_G4L_inverse_park_from_vsm", V_phase_rms_base / 1000.0)
+add_csv_series("vC_conv_kV", "v_con_C_G4L_inverse_park_from_vsm", V_phase_rms_base / 1000.0)
 add_csv_series("iA_grid_A_sim_sign", "i_f_A_G4L_grid_side_converter", Ibase_vg, negate=True)
 add_csv_series("iB_grid_A_sim_sign", "i_f_B_G4L_grid_side_converter", Ibase_vg, negate=True)
 add_csv_series("iC_grid_A_sim_sign", "i_f_C_G4L_grid_side_converter", Ibase_vg, negate=True)
@@ -981,6 +973,8 @@ add_csv_series("omega_vsm", "omega_vsm_G4L_VSM", 1.0)
 add_csv_series("w_pll", "w_pll_G4L_PLL", 1.0)
 add_csv_series("theta_pll", "theta_pll_G4L_PLL", 1.0)
 add_csv_series("phase_vsm", "phase_vsm_G4L_VSM", 1.0)
+if "phase_vsm" in csv_columns:
+    add_csv_array("phase_vsm_wrapped", wrap_to_pi(csv_columns["phase_vsm"]))
 add_csv_series("vconA_V", "v_con_A_G4L_inverse_park_from_vsm", V_phase_rms_base)
 add_csv_series("vconB_V", "v_con_B_G4L_inverse_park_from_vsm", V_phase_rms_base)
 add_csv_series("vconC_V", "v_con_C_G4L_inverse_park_from_vsm", V_phase_rms_base)

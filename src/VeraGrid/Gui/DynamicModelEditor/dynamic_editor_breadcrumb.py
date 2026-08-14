@@ -102,6 +102,14 @@ class DynamicEditorBreadcrumb(QtWidgets.QWidget):
             button = self._make_block_button(block, is_last=(i == len(blocks) - 1))
             self._container_layout.addWidget(button)
 
+    def prepare_to_delete(self) -> None:
+        """
+        Delete the runtime-created breadcrumb buttons and their handlers.
+
+        :return: None.
+        """
+        self._clear()
+
     # ------------------------------------------------------------------
     # Private helpers
     # ------------------------------------------------------------------
