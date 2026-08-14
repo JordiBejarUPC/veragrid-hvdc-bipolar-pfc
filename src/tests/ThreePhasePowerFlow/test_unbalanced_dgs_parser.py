@@ -1,7 +1,34 @@
+from types import SimpleNamespace
+
 import VeraGridEngine.api as vge
 from VeraGridEngine import SolverType
+from VeraGridEngine.IO.dgs.dgs_to_veragrid import _map_load_pq_to_global_phases
+from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.enumerations import ShuntConnectionType
 import numpy as np
+
+
+def test_single_phase_phase_to_phase_load_mapping():
+    load = SimpleNamespace(ID="load", loc_name="load", phtech="1PH PH-PH")
+    cubic = SimpleNamespace(fold_id="bus", cPhInfo="DP1DP2", it2p1=0, it2p2=1, it2p3=2)
+
+    for phase_pair, branch_idx in {
+        (1, 2): 0, (2, 1): 0,
+        (2, 3): 1, (3, 2): 1,
+        (3, 1): 2, (1, 3): 2,
+    }.items():
+        mapped = _map_load_pq_to_global_phases(
+            elmlod=load,
+            cubics_by_objid={"load": [cubic]},
+            phase_map={("bus", 0): phase_pair[0], ("bus", 1): phase_pair[1]},
+            local_p=(1.0, 0.0, 0.0),
+            local_q=(2.0, 0.0, 0.0),
+            logger=Logger(),
+        )
+        expected = [0.0] * 6
+        expected[branch_idx] = 1.0
+        expected[branch_idx + 3] = 2.0
+        assert np.allclose(mapped, expected)
 
 def test_three_phase_power_delta():
 

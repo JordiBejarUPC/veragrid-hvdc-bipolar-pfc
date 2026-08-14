@@ -1841,7 +1841,7 @@ def convert_dgs_to_transformer(tr2: ElmTr2,
     if bus_vg_from.Vnom > bus_vg_to.Vnom:
 
         # D-D (or Y-Y) Connection (non-auto transformer)
-        if typtr2_raw.tr2cn_h == 'D' and typtr2_raw.tr2cn_l == 'D' and tr2.i_auto == 0:
+        if typtr2_raw.tr2cn_h == 'D' and typtr2_raw.tr2cn_l == 'D' and tr2.i_auto == 0 and typtr2_raw.nt2ph == 2:
 
             if tr2.i_eahv == 1:
                 trafo.conn_f = WindingType.GroundedStar
@@ -1853,7 +1853,7 @@ def convert_dgs_to_transformer(tr2: ElmTr2,
             else:
                 trafo.conn_t = WindingType.Delta
 
-        elif typtr2_raw.tr2cn_h == 'Y' and typtr2_raw.tr2cn_l == 'Y' and tr2.i_auto == 0:
+        elif typtr2_raw.tr2cn_h == 'Y' and typtr2_raw.tr2cn_l == 'Y' and tr2.i_auto == 0 and typtr2_raw.nt2ph == 2:
 
             if tr2.i_eahv == 1:
                 trafo.conn_f = WindingType.GroundedStar
@@ -1869,7 +1869,7 @@ def convert_dgs_to_transformer(tr2: ElmTr2,
     else:
 
         # D-D (or Y-Y) Connection (non-auto transformer)
-        if typtr2_raw.tr2cn_h == 'D' and typtr2_raw.tr2cn_l == 'D' and tr2.i_auto == 0:
+        if typtr2_raw.tr2cn_h == 'D' and typtr2_raw.tr2cn_l == 'D' and tr2.i_auto == 0 and typtr2_raw.nt2ph == 2:
 
             if tr2.i_eahv == 1:
                 trafo.conn_t = WindingType.GroundedStar
@@ -1881,7 +1881,7 @@ def convert_dgs_to_transformer(tr2: ElmTr2,
             else:
                 trafo.conn_f = WindingType.Delta
 
-        elif typtr2_raw.tr2cn_h == 'Y' and typtr2_raw.tr2cn_l == 'Y' and tr2.i_auto == 0:
+        elif typtr2_raw.tr2cn_h == 'Y' and typtr2_raw.tr2cn_l == 'Y' and tr2.i_auto == 0 and typtr2_raw.nt2ph == 2:
 
             if tr2.i_eahv == 1:
                 trafo.conn_t = WindingType.GroundedStar
@@ -1892,81 +1892,6 @@ def convert_dgs_to_transformer(tr2: ElmTr2,
                 trafo.conn_f = WindingType.GroundedStar
             else:
                 trafo.conn_f = WindingType.Delta
-
-        # if typtr2_raw.tr2cn_h == "Y":
-        #     trafo.conn_f = WindingType.FloatingStar
-        # elif ((typtr2_raw.tr2cn_h == "YN" and tr2.cgnd_h == 0) or
-        #       (typtr2_raw.nt2ph == 2 and (typtr2_raw.tr2cn_h == "D" or typtr2_raw.tr2cn_h == "Y") and tr2.i_eahv == 1)):
-        #     trafo.conn_f = WindingType.GroundedStar
-        # elif typtr2_raw.tr2cn_h == "YN":
-        #     trafo.conn_f = WindingType.NeutralStar
-        # elif typtr2_raw.tr2cn_h == "Z":
-        #     trafo.conn_f = WindingType.FloatingZigZag
-        # elif typtr2_raw.tr2cn_h == "ZN" and tr2.cgnd_h == 0:
-        #     trafo.conn_f = WindingType.GroundedZigZag
-        # elif typtr2_raw.tr2cn_h == "ZN":
-        #     trafo.conn_f = WindingType.NeutralZigZag
-        # elif typtr2_raw.tr2cn_h == "D":
-        #     trafo.conn_f = WindingType.Delta
-        # else:
-        #     trafo.conn_f = WindingType.GroundedStar
-        #
-        # if typtr2_raw.tr2cn_l == "Y":
-        #     trafo.conn_t = WindingType.FloatingStar
-        # elif ((typtr2_raw.tr2cn_l == "YN" and tr2.cgnd_l == 0) or
-        #     (typtr2_raw.nt2ph == 2 and (typtr2_raw.tr2cn_l == "D" or typtr2_raw.tr2cn_l == "Y") and tr2.i_ealv == 1)):
-        #     trafo.conn_t = WindingType.GroundedStar
-        # elif typtr2_raw.tr2cn_l == "YN":
-        #     trafo.conn_t = WindingType.NeutralStar
-        # elif typtr2_raw.tr2cn_l == "Z":
-        #     trafo.conn_t = WindingType.FloatingZigZag
-        # elif typtr2_raw.tr2cn_l == "ZN" and tr2.cgnd_l == 0:
-        #     trafo.conn_t = WindingType.GroundedZigZag
-        # elif typtr2_raw.tr2cn_l == "ZN":
-        #     trafo.conn_t = WindingType.NeutralZigZag
-        # elif typtr2_raw.tr2cn_l == "D":
-        #     trafo.conn_t = WindingType.Delta
-        # else:
-        #     trafo.conn_t = WindingType.GroundedStar
-
-    # To-side is the HV-side
-    #else:
-
-        # if typtr2_raw.tr2cn_h == "Y":
-        #     trafo.conn_t = WindingType.FloatingStar
-        # elif ((typtr2_raw.tr2cn_h == "YN" and tr2.cgnd_h == 0) or
-        #     (typtr2_raw.nt2ph == 2 and (typtr2_raw.tr2cn_h == "D" or typtr2_raw.tr2cn_h == "Y") and tr2.i_eahv == 1)):
-        #     trafo.conn_t = WindingType.GroundedStar
-        # elif typtr2_raw.tr2cn_h == "YN":
-        #     trafo.conn_t = WindingType.NeutralStar
-        # elif typtr2_raw.tr2cn_h == "Z":
-        #     trafo.conn_t = WindingType.FloatingZigZag
-        # elif typtr2_raw.tr2cn_h == "ZN" and tr2.cgnd_h == 0:
-        #     trafo.conn_t = WindingType.GroundedZigZag
-        # elif typtr2_raw.tr2cn_h == "ZN":
-        #     trafo.conn_t = WindingType.NeutralZigZag
-        # elif typtr2_raw.tr2cn_h == "D":
-        #     trafo.conn_t = WindingType.Delta
-        # else:
-        #     trafo.conn_t = WindingType.GroundedStar
-        #
-        # if typtr2_raw.tr2cn_l == "Y":
-        #     trafo.conn_f = WindingType.FloatingStar
-        # elif ((typtr2_raw.tr2cn_l == "YN" and tr2.cgnd_l == 0) or
-        #     (typtr2_raw.nt2ph == 2 and (typtr2_raw.tr2cn_l == "D" or typtr2_raw.tr2cn_l == "Y") and tr2.i_ealv == 1)):
-        #     trafo.conn_f = WindingType.GroundedStar
-        # elif typtr2_raw.tr2cn_l == "YN":
-        #     trafo.conn_f = WindingType.NeutralStar
-        # elif typtr2_raw.tr2cn_l == "Z":
-        #     trafo.conn_f = WindingType.FloatingZigZag
-        # elif typtr2_raw.tr2cn_l == "ZN" and tr2.cgnd_l == 0:
-        #     trafo.conn_f = WindingType.GroundedZigZag
-        # elif typtr2_raw.tr2cn_l == "ZN":
-        #     trafo.conn_f = WindingType.NeutralZigZag
-        # elif typtr2_raw.tr2cn_l == "D":
-        #     trafo.conn_f = WindingType.Delta
-        # else:
-        #     trafo.conn_f = WindingType.GroundedStar
 
     cubicles = cubics_by_objid.get(_ref_id(tr2.ID), [])
     cubicles = sorted(cubicles, key=_stacubic_obj_bus_sort_key)
@@ -3444,6 +3369,13 @@ def _map_load_pq_to_global_phases(
 
     global_p = [0.0, 0.0, 0.0]
     global_q = [0.0, 0.0, 0.0]
+
+    if phase_technology == "1PH PH-PH" and len(phases) >= 2:
+        phase_pair = tuple(sorted(phases[:2]))
+        branch_idx = {(1, 2): 0, (2, 3): 1, (1, 3): 2}[phase_pair]
+        global_p[branch_idx] = local_p[0]
+        global_q[branch_idx] = local_q[0]
+        return (*global_p, *global_q)
 
     for local_index, phase in enumerate(phases[:expected_phases]):
         global_index = phase - 1
