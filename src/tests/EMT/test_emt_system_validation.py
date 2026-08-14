@@ -812,6 +812,44 @@ def test_interface_validation_accepts_compatible_ac_abc_injection() -> None:
     problem._validate_dynamic_emt_interfaces()
 
 
+def test_interface_validation_ignores_dormant_neutral_mapping_outside_root_contract() -> None:
+    """
+    Dormant neutral mappings must not make one active ABC model expose neutral.
+
+    :return: None.
+    """
+    grid = gce.MultiCircuit(Sbase=100.0, fbase=50.0)
+    bus = gce.Bus(name="BusABC", Vnom=20.0)
+    load = gce.Load(name="LoadWithDormantNeutral", P=10.0, Q=1.0)
+    grid.add_bus(bus)
+    grid.add_load(bus, load)
+
+    bus.emt_model = _make_external_mapping_block([
+        VarPowerFlowReferenceType.v_A,
+        VarPowerFlowReferenceType.v_B,
+        VarPowerFlowReferenceType.v_C,
+    ], "bus_abc_dormant")
+    load.emt_model = _make_external_mapping_block([
+        VarPowerFlowReferenceType.v_A,
+        VarPowerFlowReferenceType.v_B,
+        VarPowerFlowReferenceType.v_C,
+        VarPowerFlowReferenceType.i_A,
+        VarPowerFlowReferenceType.i_B,
+        VarPowerFlowReferenceType.i_C,
+    ], "load_abc_dormant")
+    load.emt_model.external_mapping[VarPowerFlowReferenceType.v_N] = _make_ref_var(
+        VarPowerFlowReferenceType.v_N,
+        "load_dormant_neutral",
+    )
+    load.emt_model.external_mapping[VarPowerFlowReferenceType.i_N] = _make_ref_var(
+        VarPowerFlowReferenceType.i_N,
+        "load_dormant_neutral",
+    )
+
+    problem = _build_interface_validation_problem(grid)
+    problem._validate_dynamic_emt_interfaces()
+
+
 def test_interface_validation_accepts_compatible_ac_abcn_injection() -> None:
     grid = gce.MultiCircuit(Sbase=100.0, fbase=50.0)
     bus = gce.Bus(name="BusABCN", Vnom=20.0)

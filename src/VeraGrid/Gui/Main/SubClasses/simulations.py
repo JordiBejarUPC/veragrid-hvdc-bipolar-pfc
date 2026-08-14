@@ -324,12 +324,11 @@ class SimulationsMain(TimeEventsMain):
         )
 
         # emt small-signal
-        # TODO: connect new settings
-        # self.ui.emt_sss_build_type_ComboBox.setModel(
-        #     gf.ComboModel(enum_values=[SmallSignalEmtBuildTypes.Arnoldi,
-        #                                SmallSignalEmtBuildTypes.HybridArnoldi],
-        #                   translate=self.tr)
-        # )
+        self.ui.emt_sss_build_type_comboBox.setModel(
+            gf.ComboModel(enum_values=[SmallSignalEmtBuildTypes.Arnoldi,
+                                       SmallSignalEmtBuildTypes.HybridArnoldi],
+                          translate=self.tr)
+        )
 
         # dictionaries for available results
         self.available_results_dict: Union[Dict[str, Dict[str, ResultTypes]], None] = dict()
@@ -1071,7 +1070,7 @@ class SimulationsMain(TimeEventsMain):
             k=self.ui.emt_small_signal_modes_number_spinBox.value(),
             target_period=self.ui.emt_sss_target_period_spinBox.value(),
             ss_assessment_time=self.ui.emt_ss_assessment_time_spinBox.value(),
-            build_type=self.ui.emt_sss_build_type_ComboBox.currentData(),
+            build_type=self.ui.emt_sss_build_type_comboBox.currentData(),
         )
 
         return ops

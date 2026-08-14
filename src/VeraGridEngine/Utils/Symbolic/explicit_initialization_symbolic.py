@@ -390,9 +390,20 @@ def add_items(blk, init_vars, init_event):
     :rtype:
     """
 
-    init_vars.update(blk.init_eqs)
-    init_vars.update(blk.diff_init_eqs)
-    init_event.update(blk.event_dict)
+    init_var_key: Var
+    init_var_value: Union[Expr, Const]
+    for init_var_key, init_var_value in blk.init_eqs.items():
+        init_vars[init_var_key] = init_var_value
+
+    diff_init_key: Var
+    diff_init_value: Union[Expr, Const]
+    for diff_init_key, diff_init_value in blk.diff_init_eqs.items():
+        init_vars[diff_init_key] = diff_init_value
+
+    event_key: Var
+    event_value: Union[Expr, Const]
+    for event_key, event_value in blk.event_dict.items():
+        init_event[event_key] = event_value
 
 def build_init_dict(mdl, init_vars, init_event):
     """
@@ -489,7 +500,31 @@ def build_explicit_init_graph(
                 queue = queue
 
     if len(topo_order) != len(init_vars):
-        raise RuntimeError("Cycle detected between different variables")
+        cyclic_vars: List[str] = list()
+        var_key: Var
+        degree_value: int
+        for var_key, degree_value in in_degree.items():
+            if degree_value > 0:
+                cyclic_vars.append(str(var_key.name))
+            else:
+                cyclic_vars = cyclic_vars
+
+        cyclic_dependencies: List[str] = list()
+        cyclic_var: Var
+        for cyclic_var, deps in dependencies.items():
+            if in_degree.get(cyclic_var, 0) > 0:
+                dep_names: List[str] = list()
+                dep_var: Var
+                for dep_var in deps:
+                    dep_names.append(str(dep_var.name))
+                cyclic_dependencies.append(f"{cyclic_var.name} <- {dep_names}")
+            else:
+                cyclic_dependencies = cyclic_dependencies
+
+        raise RuntimeError(
+            "Cycle detected between different variables: "
+            f"vars={cyclic_vars}; deps={cyclic_dependencies}"
+        )
     else:
         return init_vars, dependencies, topo_order, init_event
 

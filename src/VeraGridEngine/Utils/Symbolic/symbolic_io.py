@@ -7,6 +7,7 @@ from __future__ import annotations
 import copy
 from typing import Dict, Any, List
 
+from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory, Connection
 from VeraGridEngine.Utils.Symbolic import SharedVarReferenceType
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Expr, Const, BinOp, UnOp, Func, Func2
@@ -1041,24 +1042,47 @@ class BlockParser:
         key_str: str
         var_uid: int | None
         for key_str, var_uid in data.get("external_mapping", dict()).items():
-            key = VarPowerFlowReferenceType(key_str)
-            # Rebuild PF-exposed mappings using the stable symbolic identity.
-            # This preserves the original variable object selected by the
-            # template even when runtime connections have aliased mutable UIDs.
-            var_in_varfactory = self._find_var_or_diff_var_by_non_mutable_uid(var_uid)
-            if var_in_varfactory is not None:
-                external_mapping[key] = var_in_varfactory
-            else:
+            key: VarPowerFlowReferenceType = VarPowerFlowReferenceType(key_str)
+            if var_uid is None:
+                # Legacy files use explicit nulls for optional power-flow
+                # references, so retaining the empty slot is not data loss.
                 external_mapping[key] = None
+            else:
+                # Rebuild PF-exposed mappings using the stable symbolic
+                # identity. A non-null UID that is absent from both factory
+                # dictionaries is a broken persisted reference and matters to
+                # the user even though parsing can continue without it.
+                var_in_varfactory: Var | None = self._find_var_or_diff_var_by_non_mutable_uid(var_uid)
+                if var_in_varfactory is not None:
+                    external_mapping[key] = var_in_varfactory
+                else:
+                    external_mapping[key] = None
+                    self._add_warning(msg="Missing symbolic variable while parsing dynamic block",
+                                      block_name=block_name,
+                                      block_uid=block_uid_value,
+                                      field_name="external_mapping",
+                                      missing_uid=var_uid)
 
         api_obj_mapping: Dict[ParamPowerFlowReferenceType, Var] = dict()
         for key_str, var_uid in data.get("api_obj_mapping", dict()).items():
-            key = ParamPowerFlowReferenceType(key_str)
-            api_var: Var | None = self._resolve_var_or_warn(var_uid, block_name, block_uid_value, "api_obj_mapping")
-            if api_var is not None:
-                api_obj_mapping[key] = api_var
-            else:
+            key: ParamPowerFlowReferenceType = ParamPowerFlowReferenceType(key_str)
+            if var_uid is None:
+                # Older dynamic models persist optional API mappings as null.
+                # The missing target is intentional and must not be presented
+                # as a damaged symbolic reference in the open-file logger.
                 pass
+            else:
+                # Non-null mapping UIDs are expected to identify a real
+                # variable because dropping them can prevent static parameters
+                # from reaching the dynamic model.
+                api_var: Var | None = self._resolve_var_or_warn(var_uid,
+                                                                block_name,
+                                                                block_uid_value,
+                                                                "api_obj_mapping")
+                if api_var is not None:
+                    api_obj_mapping[key] = api_var
+                else:
+                    pass
 
         reformulated_vars: List[Var] = list()
         for v_uid in data.get("reformulated_vars", list()):
