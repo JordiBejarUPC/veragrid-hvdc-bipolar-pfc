@@ -2,6 +2,19 @@
 
 EMT shunt inductive load.
 
+## Behavior
+
+The block creates one inductive shunt branch for every enabled phase. The
+inductor current is a dynamic state, so the model contributes both a state
+equation and initialization constraints to the EMT system. The default phase
+selection is three-wire ABC.
+
+For each active phase,
+
+$$
+\frac{di}{dt} = \frac{v}{L}
+$$
+
 ## Interface table
 
 | Category | Name | Meaning | Units |
@@ -13,3 +26,9 @@ EMT shunt inductive load.
 | Output | `i_B` | Phase-B current injection | pu |
 | Output | `i_C` | Phase-C current injection | pu |
 | Parameter | `L` | Per-phase inductance | H |
+
+## How to use it
+
+- Keep `L` strictly positive and use units consistent with the EMT base.
+- Match the enabled phases and star connection to the connected network.
+- Inspect initialization if the desired initial inductor current is non-zero.

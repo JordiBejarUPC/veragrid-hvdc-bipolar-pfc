@@ -255,6 +255,46 @@ def _add_parameter(
     return parameter
 
 
+def _anti_windup_state_derivative(
+    state_var: Var,
+    raw_derivative: Expr,
+    lower_limit: Expr,
+    upper_limit: Expr,
+) -> Expr:
+    """Project one state derivative onto its admissible limiter interval.
+
+    This reproduces the directional behavior of the ANDES ``AntiWindup``
+    discrete element. At either bound, an outward derivative is blocked while
+    an inward derivative remains active. A zero derivative remains on the
+    interior linearization branch so the equilibrium Jacobian is not changed
+    merely because an initialized state is exactly equal to one limit.
+
+    :param state_var: Limited differential state.
+    :param raw_derivative: Unconstrained state derivative.
+    :param lower_limit: Minimum admissible state value.
+    :param upper_limit: Maximum admissible state value.
+    :return: Directionally limited state derivative.
+    """
+    # VeraGrid's Heaviside function is one only for a strictly positive input.
+    # Its complement therefore detects a state that is equal to or outside a
+    # bound, while preserving an ordinary interior derivative elsewhere.
+    at_or_below_lower: Expr = sym.Const(1.0) - sym.heaviside(state_var - lower_limit)
+    at_or_above_upper: Expr = sym.Const(1.0) - sym.heaviside(upper_limit - state_var)
+
+    # Direction flags are deliberately strict. At an exact equilibrium where
+    # the raw derivative is zero, both flags remain zero and small-signal
+    # linearization follows the same interior branch as ANDES.
+    moving_below_lower: Expr = sym.heaviside(-raw_derivative)
+    moving_above_upper: Expr = sym.heaviside(raw_derivative)
+    freeze_at_lower: Expr = at_or_below_lower * moving_below_lower
+    freeze_at_upper: Expr = at_or_above_upper * moving_above_upper
+    integration_gate: Expr = (
+        (sym.Const(1.0) - freeze_at_lower)
+        * (sym.Const(1.0) - freeze_at_upper)
+    )
+    return raw_derivative * integration_gate
+
+
 def set_rms_model_parameter(
     block: Block,
     parameter_name: str,
@@ -908,6 +948,8 @@ def get_tgov1_rms_template(
     ``TGOV1`` applies the droop gain after summing speed, reference and
     auxiliary inputs. ``TGOV1N`` applies droop only to speed and sums power
     references afterwards, as required by the IEEE39 reference data.
+    The valve lag uses directional anti-windup at ``VMIN`` and ``VMAX`` so an
+    outward derivative freezes the state while an inward derivative releases it.
 
     The second input is the machine electrical torque and is used only to
     initialize the frozen ``pref0``/mechanical-power reference.
@@ -954,9 +996,19 @@ def get_tgov1_rms_template(
     ll_y_diag_ref_var: Var = _add_parameter(block, vfactory, "LL_y_diag_ref", None)
     diag_eps_expr: Expr = sym.Const(1.0e-8)
 
+    # TGOV1 uses the standard directional anti-windup lag. This matters when
+    # the operating point lies exactly on VMIN/VMAX: an outward disturbance
+    # must freeze LAG_y, whereas a returning disturbance must release it.
+    lag_raw_derivative: Expr = (pd_var - lag_state_var) / t1_var
+    lag_limited_derivative: Expr = _anti_windup_state_derivative(
+        state_var=lag_state_var,
+        raw_derivative=lag_raw_derivative,
+        lower_limit=vmin_var,
+        upper_limit=vmax_var,
+    )
     block.state_vars = list((lag_state_var, ll_state_var))
     block.state_eqs = list((
-        (pd_var - lag_state_var) / t1_var,
+        lag_limited_derivative,
         (lag_state_var - ll_state_var) / t3_var,
     ))
     # TGOV1N moves the power references after the droop gain. This structural

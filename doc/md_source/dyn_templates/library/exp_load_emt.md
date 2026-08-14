@@ -2,6 +2,27 @@
 
 Voltage-dependent EMT exponential load.
 
+## Behavior
+
+The block converts each enabled phase voltage into a current injection whose
+active and reactive power vary with voltage magnitude. It is useful when a
+constant-power approximation is too rigid but a detailed motor or converter
+model is unnecessary. The default editor configuration is three-wire ABC; the
+phase selection and star connection can be changed in General options.
+
+For a phase voltage magnitude `V`, the active and reactive demand follow the
+generic exponential laws
+
+$$
+P = P_0\left(\frac{V}{V_0}\right)^{\alpha_p}
+$$
+
+$$
+Q = Q_0\left(\frac{V}{V_0}\right)^{\alpha_q}
+$$
+
+and the EMT equations derive the corresponding instantaneous phase current.
+
 ## Interface table
 
 | Category | Name | Meaning | Units |
@@ -14,3 +35,10 @@ Voltage-dependent EMT exponential load.
 | Output | `i_C` | Phase-C current injection | pu |
 | Parameter | `alpha_p` | Active-power voltage exponent | pu |
 | Parameter | `alpha_q` | Reactive-power voltage exponent | pu |
+
+## How to use it
+
+- Match the enabled phases to the connected static network.
+- Use the star connection option only when the intended neutral/reference
+  topology is available.
+- Confirm the power-flow reference values before starting EMT initialization.
