@@ -14,6 +14,32 @@ from VeraGridEngine.basic_structures import Vec, Mat, StrVec
 from VeraGridEngine.enumerations import StudyResultsType, ResultTypes, DeviceType
 from VeraGridEngine.Utils.Symbolic.symbolic import Var
 
+
+def _normalize_result_matrix(values: Mat | Vec) -> Mat:
+    """
+    Normalize a result payload to the two-dimensional matrix contract.
+
+    Empty result shells historically used ``np.empty(0)`` for matrix fields.
+    A one-dimensional non-empty payload is treated as one matrix column so
+    legacy or partially stored results remain inspectable.
+
+    :param values: Matrix-like result payload.
+    :return: Two-dimensional NumPy result matrix.
+    """
+    matrix: np.ndarray = np.asarray(values)
+    if matrix.ndim == 1:
+        if matrix.size == 0:
+            matrix = matrix.reshape((0, 0))
+        else:
+            matrix = matrix.reshape((-1, 1))
+    elif matrix.ndim == 2:
+        pass
+    else:
+        raise ValueError(f"Result matrix must have one or two dimensions, got {matrix.ndim}")
+
+    return matrix
+
+
 class SPlotInteractionHandler:
     """
     Handles interactive annotations and hover events for S-Domain stability plots.
@@ -85,7 +111,7 @@ class SmallSignalStabilityRmsResults(ResultsTemplate):
     ]
     def __init__(self,
                  eigenvalues: Vec,
-                 right_eigenvectors:Vec,
+                 right_eigenvectors: Mat,
                  participation_factors: Mat,
                  damping_ratios: Vec,
                  conjugate_frequencies: Vec,
@@ -133,12 +159,27 @@ class SmallSignalStabilityRmsResults(ResultsTemplate):
 
         self.stat_vars_array: Vec = np.array(stat_names_list, dtype=np.str_)
         self.algebraic_vars_array: Vec = np.array(algebraic_names_list, dtype=np.str_)
-        self.eigenvalues: Vec = eigenvalues
-        self.right_eigenvectors: Vec = right_eigenvectors
-        self.participation_factors: Mat = participation_factors
-        self.damping_ratios: Vec = damping_ratios
-        self.conjugate_frequencies: Vec = conjugate_frequencies
-        self.state_matrix: Mat = state_matrix
+        # Result vectors and matrices retain a stable dimensional contract even
+        # before a driver has produced modes or after an empty legacy load.
+        self.eigenvalues: Vec = np.asarray(eigenvalues).reshape(-1)
+        self.right_eigenvectors: Mat = _normalize_result_matrix(right_eigenvectors)
+        self.participation_factors: Mat = _normalize_result_matrix(participation_factors)
+        self.damping_ratios: Vec = np.asarray(damping_ratios).reshape(-1)
+        self.conjugate_frequencies: Vec = np.asarray(conjugate_frequencies).reshape(-1)
+        self.state_matrix: Mat = _normalize_result_matrix(state_matrix)
+
+    def consolidate_after_loading(self) -> None:
+        """
+        Restore vector and matrix dimensional contracts after disk loading.
+
+        :return: None.
+        """
+        self.eigenvalues = np.asarray(self.eigenvalues).reshape(-1)
+        self.right_eigenvectors = _normalize_result_matrix(self.right_eigenvectors)
+        self.participation_factors = _normalize_result_matrix(self.participation_factors)
+        self.damping_ratios = np.asarray(self.damping_ratios).reshape(-1)
+        self.conjugate_frequencies = np.asarray(self.conjugate_frequencies).reshape(-1)
+        self.state_matrix = _normalize_result_matrix(self.state_matrix)
 
 
     def mdl(self, result_type: ResultTypes) -> ResultsTable:
@@ -146,6 +187,18 @@ class SmallSignalStabilityRmsResults(ResultsTemplate):
         Export the results as a ResultsTable for plotting.
         """
         if result_type == ResultTypes.StateMatrix:
+            if self.state_matrix.size == 0:
+                return ResultsTable(
+                    data=np.empty((0, 0)),
+                    index=np.empty(0, dtype=np.str_),
+                    columns=np.empty(0, dtype=np.str_),
+                    title="State Matrix",
+                    idx_device_type=DeviceType.NoDevice,
+                    cols_device_type=DeviceType.NoDevice
+                )
+            else:
+                pass
+
             if len(self.stat_vars_array) == self.state_matrix.shape[0]:
 
                 return ResultsTable(
@@ -278,19 +331,43 @@ class SmallSignalStabilityRmsResults(ResultsTemplate):
             im: Vec = self.eigenvalues.imag
             data: Mat = np.c_[re, im]
 
+            # Empty studies have no domain to scale or plot, but they still
+            # return a valid empty table for the results model.
+            if len(self.eigenvalues) == 0:
+                return ResultsTable(data=data,
+                                    index=np.empty(0, dtype=np.str_),
+                                    idx_device_type=DeviceType.NoDevice,
+                                    columns=np.array(['Real', 'Imag']),
+                                    cols_device_type=DeviceType.NoDevice,
+                                    title="S-Domain Stability plot")
+            else:
+                pass
+
             d: Vec = np.abs(np.nan_to_num(re))
-            colors: Vec = (-d / d.max())
+            maximum_distance: float = float(d.max())
+            if maximum_distance > 0.0:
+                colors: Vec = -d / maximum_distance
+            else:
+                colors = np.zeros_like(d)
 
             slope: float = 1 / 0.05
             x_z: Vec = np.linspace(-200, 0, 400)
             y_z: Vec = slope * x_z
 
-            margin_x: float = (re.max() - re.min()) * 0.1
-            margin_y: float = (im.max() - im.min()) * 0.1
-            x_min: float = re.min() - margin_x
-            x_max: float = re.max() + margin_x
-            y_min: float = im.min() - margin_y
-            y_max: float = im.max() + margin_y
+            margin_x: float = float((re.max() - re.min()) * 0.1)
+            margin_y: float = float((im.max() - im.min()) * 0.1)
+            if margin_x > 0.0:
+                pass
+            else:
+                margin_x = max(float(np.abs(re[0])) * 0.1, 1.0)
+            if margin_y > 0.0:
+                pass
+            else:
+                margin_y = max(float(np.abs(im[0])) * 0.1, 1.0)
+            x_min: float = float(re.min() - margin_x)
+            x_max: float = float(re.max() + margin_x)
+            y_min: float = float(im.min() - margin_y)
+            y_max: float = float(im.max() + margin_y)
 
             if self.plotting_allowed():
                 plt.ion()
@@ -332,19 +409,42 @@ class SmallSignalStabilityRmsResults(ResultsTemplate):
             im: Vec = self.eigenvalues.imag / (2 * math.pi)
             data: Mat = np.c_[re, im]
 
+            # Match the rad/s view contract when no modes were produced.
+            if len(self.eigenvalues) == 0:
+                return ResultsTable(data=data,
+                                    index=np.empty(0, dtype=np.str_),
+                                    idx_device_type=DeviceType.NoDevice,
+                                    columns=np.array(['Real', 'Imag [Hz]']),
+                                    cols_device_type=DeviceType.NoDevice,
+                                    title="S-Domain Stability plot")
+            else:
+                pass
+
             d: Vec = np.abs(np.nan_to_num(re))
-            colors: Vec = (-d / d.max())
+            maximum_distance: float = float(d.max())
+            if maximum_distance > 0.0:
+                colors: Vec = -d / maximum_distance
+            else:
+                colors = np.zeros_like(d)
 
             slope: float = 1 / 0.05
             x_z: Vec = np.linspace(-200, 0, 400)
             y_z: Vec = slope * x_z / (2 * math.pi)
 
-            margin_x: float = (re.max() - re.min()) * 0.1
-            margin_y: float = (im.max() - im.min()) * 0.1
-            x_min: float = re.min() - margin_x
-            x_max: float = re.max() + margin_x
-            y_min: float = im.min() - margin_y
-            y_max: float = im.max() + margin_y
+            margin_x: float = float((re.max() - re.min()) * 0.1)
+            margin_y: float = float((im.max() - im.min()) * 0.1)
+            if margin_x > 0.0:
+                pass
+            else:
+                margin_x = max(float(np.abs(re[0])) * 0.1, 1.0)
+            if margin_y > 0.0:
+                pass
+            else:
+                margin_y = max(float(np.abs(im[0])) * 0.1, 1.0)
+            x_min: float = float(re.min() - margin_x)
+            x_max: float = float(re.max() + margin_x)
+            y_min: float = float(im.min() - margin_y)
+            y_max: float = float(im.max() + margin_y)
 
 
             if self.plotting_allowed():
