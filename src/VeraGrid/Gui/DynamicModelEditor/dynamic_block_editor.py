@@ -7,19 +7,16 @@ from __future__ import annotations
 import copy
 from typing import List, Dict, Optional, Any, Tuple
 from PySide6 import QtWidgets, QtGui, QtCore
-from PySide6.QtWidgets import (QGraphicsItem, QMenu, QDialog, QVBoxLayout, QDialogButtonBox, QLineEdit)
-from PySide6.QtGui import (QAction, QDropEvent, QDragEnterEvent, QDragMoveEvent)
+from PySide6.QtWidgets import (QGraphicsItem, QDialog, QVBoxLayout, QDialogButtonBox, QLineEdit)
+from PySide6.QtGui import (QDropEvent, QDragEnterEvent, QDragMoveEvent)
 from PySide6.QtCore import Qt, QPointF, Signal
 
-from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_graphics import PairedItem
 from VeraGridEngine.Devices.Parents.branch_parent import BranchParent
 
 from VeraGridEngine.Devices.Parents.injection_parent import InjectionParent
 from VeraGridEngine.enumerations import DeviceType, VarPowerFlowReferenceType, ParamPowerFlowReferenceType, \
-    DynamicSimulationMode, DynamicTableModelMode, DynEditorGraphicsModes
-from VeraGridEngine.Utils.Symbolic.bus_rms_template import initialize_bus_rms
+    DynamicSimulationMode, DynEditorGraphicsModes
 from VeraGridEngine.Utils.Symbolic.bus_emt_template import get_bus_emt_algebraic_vars
-from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Devices.Dynamic.var_factory import Connection, VarFactory
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
@@ -41,24 +38,42 @@ from VeraGridEngine.Utils.Symbolic.block import (Block,
                                                  refresh_block_tree_var_name_mappings,
                                                  rehash_block_tree_var_keyed_dicts)
 from VeraGrid.Gui.DynamicModelEditor.block_editor import Ui_BlockEditorWindow
-from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_dialogs import AddBlockVariableDialog, AddEquationDialog, \
-    AddParameterDialog, ExpressionTextEditorDialog, GenericBlockDialog
 import VeraGrid.Gui.DynamicModelEditor.dynamic_editor_graphics as graph
 from VeraGrid.Session.dynamic_editor_entries import DynamicEditorEntry
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_library import DynamicEditorLibrary, LibraryTreeFilterProxyModel
 import VeraGrid.Gui.DynamicModelEditor.dynamic_editor_models as dialog_models
+from VeraGrid.Gui.DynamicModelEditor.dynamic_block_properties import (
+    BlockStructuralEditRequest,
+    DynamicBlockPropertiesDialog,
+    DynamicBlockPropertiesDockWidget,
+)
 import VeraGrid.Gui.DynamicModelEditor.dynamic_editor_validation as valid
-from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_utilities import create_block_of_type, create_generic_block, get_blocktype2template_builder_dict
+from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_utilities import (
+    create_block_of_type,
+    create_default_template_builder,
+    create_structural_template_builder,
+    create_generic_block,
+    copy_template_builder_values,
+    GenericBlockTemplateDefinition,
+    RlcComboBlockTemplateDefinition,
+    get_blocktype2template_builder_dict,
+    initialize_template_builder_from_block,
+)
 
 from VeraGrid.Gui.messages import yes_no_question
 from VeraGrid.Gui.toast_widget import ToastManager
 from VeraGridEngine.Utils.Symbolic.symbolic import (
     BinOp, Comparison, Const, Expr, Func, Func2, UnOp, Var,
-    string_to_symbolic, symbolic_to_string,
 )
 from VeraGridEngine.Utils.Symbolic.symbolic_io import duplicate_block
 from VeraGridEngine.Utils.procedural_logic import clone_procedural_logic_entries
 from VeraGridEngine.Utils.Symbolic.bus_rms_template import get_bus_rms_algebraic_vars
+from VeraGridEngine.Utils.Symbolic.templates_common_functions import (
+    attach_emt_model_to_buses,
+    register_saved_emt_model_vars_for_device,
+    synchronize_saved_emt_root_parameters_from_children,
+    unregister_saved_emt_model_var_connections_for_device,
+)
 from VeraGridEngine.Utils.SugiyamaLayered import (
     SugiyamaEdge,
     SugiyamaGraph,
@@ -66,14 +81,12 @@ from VeraGridEngine.Utils.SugiyamaLayered import (
     SugiyamaNode,
     SugiyamaPort,
 )
-from VeraGrid.Gui.DynamicModelEditor.dyn_template_editor_dialogue import DynTemplatesEditorDialog
 from VeraGrid.Gui.DynamicModelEditor.RoutingQt import QtRoutingSession
 from VeraGridEngine.enumerations import BlockType, RoutingAxis
 from VeraGridEngine.Devices.Diagrams.block_diagram import (
     BlockDiagram, BlockDiagramConnection, BlockDiagramNode,
 )
 from dataclasses import dataclass
-from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_graphics import GenericBlockItem
 
 
 DynamicBlockGraphicsItem = (
@@ -81,8 +94,229 @@ DynamicBlockGraphicsItem = (
     | graph.GenericBlockItem
     | graph.RoundBaseArithmeticOpItem
     | graph.RectBaseArithmeticOpItem
+    | graph.UnOpItem
     | graph.PairedItem
 )
+
+
+def block_has_internal_equation_content(block: Block) -> bool:
+    """Return whether a leaf block owns an operation worth drawing internally.
+
+    Input and output ports describe only the boundary of a subsystem. They do
+    not imply that the subsystem contains an operation node. This distinction
+    is important for a user-authored ``Generic`` block: before the user adds
+    equations, its nested view must contain only its boundary ports.
+
+    :param block: Leaf block whose symbolic contents are inspected.
+    :return: Whether the nested editor needs a central operation item.
+    """
+    result: bool = bool(
+        block.state_eqs
+        or block.algebraic_eqs
+        or block.differential_eqs
+        or block.inequalities
+        or block.discrete_eqs
+        or block.boolean_guards
+        or block.procedural_logic
+    )
+    return result
+
+
+def get_structural_port_key(variable: Var) -> tuple[str, str]:
+    """Return a stable semantic key for one generated block port.
+
+    :param variable: Port variable being matched across reconstruction.
+    :return: Key ordered by network reference, shared reference, then name.
+    """
+    if variable.ref is not None:
+        return "reference", str(variable.ref.value)
+    elif variable.shared_ref is not None:
+        return "shared", str(variable.shared_ref.value)
+    else:
+        return "name", variable.name
+
+
+def build_port_index_by_key(variables: List[Var]) -> Dict[tuple[str, str], int]:
+    """Index one ordered port list by semantic key.
+
+    :param variables: Ordered input or output variables.
+    :return: Semantic-key to port-index lookup.
+    """
+    result: Dict[tuple[str, str], int] = dict()
+    port_index: int
+    variable: Var
+    for port_index, variable in enumerate(variables):
+        result[get_structural_port_key(variable)] = port_index
+    return result
+
+
+def count_variables_with_prefix(variables: List[Var], prefix: str) -> int:
+    """Count variables whose generated name starts with one prefix.
+
+    :param variables: Candidate variable list.
+    :param prefix: Generated-name prefix.
+    :return: Number of matching variables.
+    """
+    result: int = 0
+    variable: Var
+    for variable in variables:
+        if variable.name.startswith(prefix):
+            result += 1
+        else:
+            pass
+    return result
+
+
+def replace_var_sequence(variables: List[Var], replacements: Dict[Var, Var]) -> List[Var]:
+    """Replace variables in one sequence while retaining order.
+
+    :param variables: Source variable list.
+    :param replacements: Candidate-to-survivor identity mapping.
+    :return: Rebound variable list.
+    """
+    result: List[Var] = list()
+    variable: Var
+    for variable in variables:
+        replacement: Var | None = replacements.get(variable, None)
+        if replacement is not None:
+            result.append(replacement)
+        else:
+            result.append(variable)
+    return result
+
+
+def replace_generated_block_auxiliary_variables(block: Block,
+                                                replacements: Dict[Var, Var]) -> None:
+    """Rebind generated fields omitted by ``Block.update_model_bulk``.
+
+    :param block: Candidate block tree already rebound in primary equations.
+    :param replacements: Candidate-to-survivor identity mapping.
+    :return: None.
+    """
+    block.in_vars = replace_var_sequence(block.in_vars, replacements)
+    block.out_vars = replace_var_sequence(block.out_vars, replacements)
+    block.reformulated_vars = replace_var_sequence(block.reformulated_vars, replacements)
+
+    parameters: Dict[Var, Const] = dict()
+    parameter_var: Var
+    parameter_value: Const
+    for parameter_var, parameter_value in block.parameters.items():
+        parameter_replacement: Var | None = replacements.get(parameter_var, None)
+        if parameter_replacement is not None:
+            parameters[parameter_replacement] = parameter_value
+        else:
+            parameters[parameter_var] = parameter_value
+    block.parameters = parameters
+
+    init_values: Dict[Var, Const] = dict()
+    init_var: Var
+    init_value: Const
+    for init_var, init_value in block.init_values.items():
+        init_replacement: Var | None = replacements.get(init_var, None)
+        if init_replacement is not None:
+            init_values[init_replacement] = init_value
+        else:
+            init_values[init_var] = init_value
+    block.init_values = init_values
+
+    discrete_equations: Dict[Var, Expr] = dict()
+    discrete_var: Var
+    discrete_expression: Expr
+    for discrete_var, discrete_expression in block.discrete_eqs.items():
+        discrete_replacement: Var | None = replacements.get(discrete_var, None)
+        discrete_key: Var = discrete_var if discrete_replacement is None else discrete_replacement
+        discrete_equations[discrete_key] = discrete_expression.subs(replacements)
+    block.discrete_eqs = discrete_equations
+
+    api_mapping: Dict[ParamPowerFlowReferenceType, Var] = dict()
+    api_reference: ParamPowerFlowReferenceType
+    api_var: Var
+    for api_reference, api_var in block.api_obj_mapping.items():
+        api_replacement: Var | None = replacements.get(api_var, None)
+        api_mapping[api_reference] = api_var if api_replacement is None else api_replacement
+    block.api_obj_mapping = api_mapping
+    block.var_mapping = dict((variable.name, variable) for variable in block.algebraic_vars)
+
+    child: Block
+    for child in block.children:
+        replace_generated_block_auxiliary_variables(child, replacements)
+
+
+def apply_generated_block_state(source: Block, target: Block) -> None:
+    """Replace one block's generated state while preserving its outer identity.
+
+    :param source: Fully validated and rebound generated candidate.
+    :param target: Existing working-tree block referenced by the diagram.
+    :return: None.
+    """
+    target.name = source.name
+    target.is_decomposable = source.is_decomposable
+    target.is_root_interface_wrapper = source.is_root_interface_wrapper
+    target.tpe_uid = source.tpe_uid
+    target.vars_glob_name2uid = source.vars_glob_name2uid
+    target.state_vars = source.state_vars
+    target.state_eqs = source.state_eqs
+    target.algebraic_vars = source.algebraic_vars
+    target.algebraic_eqs = source.algebraic_eqs
+    target.inequalities = source.inequalities
+    target.diff_vars = source.diff_vars
+    target.reformulated_vars = source.reformulated_vars
+    target.differential_eqs = source.differential_eqs
+    target.parameters = source.parameters
+    target.init_values = source.init_values
+    target.init_eqs = source.init_eqs
+    target.diff_init_eqs = source.diff_init_eqs
+    target.discrete_eqs = source.discrete_eqs
+    target.children = source.children
+    target.in_vars = source.in_vars
+    target.out_vars = source.out_vars
+    target.event_dict = source.event_dict
+    target.mode_dict = source.mode_dict
+    target.boolean_guards = source.boolean_guards
+    target.procedural_logic = source.procedural_logic
+    target.connection_intents = source.connection_intents
+    target.external_mapping = source.external_mapping
+    target.api_obj_mapping = source.api_obj_mapping
+    target.var_mapping = source.var_mapping
+    target.diagram = source.diagram
+    modal_kind: object = source.__dict__.get("_modal_template_kind", None)
+    modal_config: object = source.__dict__.get("_modal_template_config", None)
+    if isinstance(modal_kind, str) and isinstance(modal_config, dict):
+        # Generated builders own serializable, editor-specific configuration.
+        # Copy it explicitly because the symbolic field migration above must
+        # preserve the outer Block identity referenced by the scene.
+        target.__dict__["_modal_template_kind"] = modal_kind
+        target.__dict__["_modal_template_config"] = copy.deepcopy(modal_config)
+    else:
+        pass
+
+
+def apply_generated_parameter_values(block: Block,
+                                     named_values: List[tuple[str, float | complex]]) -> None:
+    """Transfer modal numeric values into an already rebuilt block tree.
+
+    :param block: Rebuilt block tree.
+    :param named_values: Parameter names and validated values.
+    :return: None.
+    """
+    values_by_name: Dict[str, float | complex] = dict(named_values)
+    child: Block
+    for child in block.get_all_blocks():
+        parameter_groups: tuple[Dict[Var, Const | Expr], ...] = (
+            child.parameters,
+            child.event_dict,
+            child.mode_dict,
+        )
+        parameter_group: Dict[Var, Const | Expr]
+        parameter_var: Var
+        parameter_expression: Const | Expr
+        for parameter_group in parameter_groups:
+            for parameter_var, parameter_expression in parameter_group.items():
+                requested_value: float | complex | None = values_by_name.get(parameter_var.name, None)
+                if requested_value is not None and isinstance(parameter_expression, Const):
+                    parameter_expression.value = requested_value
+                else:
+                    pass
 
 
 @dataclass
@@ -93,46 +327,6 @@ class ConnectionVarSpec:
     direction: str
     reference: VarPowerFlowReferenceType
     visible_name: str
-
-
-def _disconnect_qt_signal(signal_obj: Any, slot: Any) -> None:
-    """
-    Disconnect one Qt signal/slot pair while tolerating already-cleared state.
-
-    Dynamic editor teardown runs along several paths: navigation replacement,
-    tab close, workspace close, and window close. Some of those paths can call
-    cleanup after Qt has already removed part of the object tree, so signal
-    disconnects must be best-effort instead of fatal.
-
-    :param signal_obj: Qt signal object.
-    :param slot: Connected slot callable.
-    :return: None.
-    """
-    try:
-        signal_obj.disconnect(slot)
-    except (RuntimeError, TypeError):
-        pass
-
-
-def _dispose_layout_widget(layout: QtWidgets.QLayout | None, widget: QtWidgets.QWidget | None) -> None:
-    """
-    Detach and queue one child widget for Qt-side destruction.
-
-    The editor creates several helper widgets dynamically and inserts them into
-    existing layouts. Removing them from the layout and parent tree before
-    ``deleteLater()`` reduces the chance of stale C++ widgets surviving until
-    Python wrapper finalization.
-
-    :param layout: Layout that currently hosts the widget.
-    :param widget: Widget to remove.
-    :return: None.
-    """
-    if layout is not None and widget is not None:
-        layout.removeWidget(widget)
-        widget.setParent(None)
-        widget.deleteLater()
-    else:
-        pass
 
 
 def _clear_table_view_model(view: QtWidgets.QAbstractItemView | None) -> None:
@@ -1219,6 +1413,16 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.ui = Ui_BlockEditorWindow()
         self.ui.setupUi(self)
 
+        self._library_dock: QtWidgets.QDockWidget | None = None
+        self._block_properties_dock: DynamicBlockPropertiesDockWidget | None = None
+        self._block_properties_dialogue: DynamicBlockPropertiesDialog | None = None
+        self._properties_dock_normalize_timer: QtCore.QTimer | None = QtCore.QTimer(self)
+        self._properties_dock_normalize_timer.setSingleShot(True)
+        self._properties_dock_normalize_timer.timeout.connect(
+            self.normalize_block_properties_right_dock
+        )
+        self.configure_dynamic_editor_docks()
+
         # The editor owns its own toast manager so save notifications are
         # stacked above this page instead of behind it on the main window.
         self.toast_manager: ToastManager = ToastManager(parent=self, position_top=False)
@@ -1251,7 +1455,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             RmsModelTemplate | EmtModelTemplate | FmuTemplate] = templates_list if templates_list is not None else list()
 
         self._emt_bus_fallback_warning_shown: bool = False
-        self._selected_side_block: Block | None = None
         self._validation_issue_overlay_active: bool = False
         self._initial_scene_fit_pending: bool = False
         self.setWindowTitle(self.tr("Dynamic Model Editor [{mode}]").format(mode=self.mode.name))
@@ -1270,10 +1473,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.main_block: Block = current_block if current_block is not None else Block()
 
         self.blocktype2templatebuilder = get_blocktype2template_builder_dict()
-
-        self.devices_static_params_mapping: Dict[DeviceType, List[ParamPowerFlowReferenceType]] = (
-            self.circuit.get_devices_static_params_mapping()
-        )
 
         self.diagram: BlockDiagram = self.main_block.diagram
         initial_non_interface_children: List[Block] = [
@@ -1321,115 +1520,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.library_find_shortcut.activated.connect(self.focus_library_search)
         self.reset_library_tree_expansion()
 
-        # Build variables table
-        self.variables_model = dialog_models.WrappableBlockTableModel(
-            var_factory=self.var_factory,
-            parameter_value_type_role=graph.EditorGraphicsCommonFeatures.PARAMETER_VALUE_TYPE_ROLE,
-            parameter_editable_role=graph.EditorGraphicsCommonFeatures.PARAMETER_EDITABLE_ROLE,
-            block_search_role=graph.EditorGraphicsCommonFeatures.BLOCK_SEARCH_ROLE,
-            parent=self.ui.variablesTableView
-        )
-        self.variables_model.set_mode(DynamicTableModelMode.VARIABLES)
-        self.variables_model.set_delegates()
-        self.variables_search = QLineEdit()
-        self.variables_search.setPlaceholderText(self.tr("Search variables..."))
-        self.variables_search.setClearButtonEnabled(True)
-        self.ui.verticalLayout_7.insertWidget(0, self.variables_search)
-        self.variables_proxy = dialog_models.BlockTableFilterProxyModel(search_role=graph.EditorGraphicsCommonFeatures.BLOCK_SEARCH_ROLE,
-                                                          parent=self.ui.variablesTableView)
-        self.variables_proxy.setSourceModel(self.variables_model)
-        self.ui.variablesTableView.setModel(self.variables_proxy)
-        self.variables_search.textChanged.connect(
-            lambda text: self.variables_proxy.setFilterFixedString(text.strip())
-        )
-        variables_header: QtWidgets.QHeaderView = self.ui.variablesTableView.horizontalHeader()
-        variables_header.setSectionResizeMode(QtWidgets.QHeaderView.ResizeMode.Interactive)
-        variables_header.setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
-        variables_header.setSectionResizeMode(2, QtWidgets.QHeaderView.ResizeMode.Stretch)
-        self.ui.variablesTableView.verticalHeader().setVisible(False)
-        self.ui.variablesTableView.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows)
-        self.ui.variablesTableView.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection)
-        self.ui.variablesTableView.doubleClicked.connect(self.on_variables_table_double_clicked)
-        self.ui.variablesTableView.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
-        self.ui.variablesTableView.customContextMenuRequested.connect(self.show_variables_table_context_menu)
-
-        # Build parameters table
-        self.parameters_model = dialog_models.WrappableBlockTableModel(
-            api_object=self.api_object,
-            var_factory=self.var_factory,
-            parameter_value_type_role=graph.EditorGraphicsCommonFeatures.PARAMETER_VALUE_TYPE_ROLE,
-            parameter_editable_role=graph.EditorGraphicsCommonFeatures.PARAMETER_EDITABLE_ROLE,
-            block_search_role=graph.EditorGraphicsCommonFeatures.BLOCK_SEARCH_ROLE,
-            parent=self.ui.parametersTableView
-        )
-        self.parameters_model.set_mode(DynamicTableModelMode.PARAMETERS)
-        self.parameters_model.set_delegates()
-        self.parameters_search = QLineEdit()
-        self.parameters_search.setPlaceholderText(self.tr("Search parameters..."))
-        self.parameters_search.setClearButtonEnabled(True)
-        self.ui.verticalLayout_8.insertWidget(0, self.parameters_search)
-        self.parameters_proxy = dialog_models.BlockTableFilterProxyModel(search_role=graph.EditorGraphicsCommonFeatures.BLOCK_SEARCH_ROLE,
-                                                           parent=self.ui.parametersTableView)
-        self.parameters_proxy.setSourceModel(self.parameters_model)
-        self.ui.parametersTableView.setModel(self.parameters_proxy)
-        self.parameters_search.textChanged.connect(
-            lambda text: self.parameters_proxy.setFilterFixedString(text.strip())
-        )
-        parameters_header: QtWidgets.QHeaderView = self.ui.parametersTableView.horizontalHeader()
-        parameters_header.setSectionResizeMode(QtWidgets.QHeaderView.ResizeMode.Interactive)
-        parameters_header.setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
-        parameters_header.setSectionResizeMode(2, QtWidgets.QHeaderView.ResizeMode.Stretch)
-        self.ui.parametersTableView.verticalHeader().setVisible(False)
-        self.ui.parametersTableView.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows)
-        self.ui.parametersTableView.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection)
-        self.ui.parametersTableView.doubleClicked.connect(self.on_parameters_table_double_clicked)
-        self.ui.parametersTableView.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
-        self.ui.parametersTableView.customContextMenuRequested.connect(self.show_parameters_table_context_menu)
-
-        # Build equations table
-        self.equations_model = dialog_models.WrappableBlockTableModel(
-            var_factory=self.var_factory,
-            parameter_value_type_role=graph.EditorGraphicsCommonFeatures.PARAMETER_VALUE_TYPE_ROLE,
-            parameter_editable_role=graph.EditorGraphicsCommonFeatures.PARAMETER_EDITABLE_ROLE,
-            block_search_role=graph.EditorGraphicsCommonFeatures.BLOCK_SEARCH_ROLE,
-            parent=self.ui.equationsTableView
-        )
-        self.equations_model.set_mode(DynamicTableModelMode.EQUATIONS)
-        self.equations_model.set_delegates()
-        self._equations_latex_delegate = self.ui.equationsTableView.itemDelegateForColumn(1)
-        self.equations_model.latex_invalidation_requested.connect(
-            self._invalidate_equations_latex
-        )
-        self.equations_search = QLineEdit()
-        self.equations_search.setPlaceholderText(self.tr("Search equations..."))
-        self.equations_search.setClearButtonEnabled(True)
-        self.ui.verticalLayout_9.insertWidget(0, self.equations_search)
-        self.equations_proxy = dialog_models.BlockTableFilterProxyModel(search_role=graph.EditorGraphicsCommonFeatures.BLOCK_SEARCH_ROLE,
-                                                          parent=self.ui.equationsTableView)
-        self.equations_proxy.setSourceModel(self.equations_model)
-        self.ui.equationsTableView.setModel(self.equations_proxy)
-        self.equations_search.textChanged.connect(
-            lambda text: self.equations_proxy.setFilterFixedString(text.strip())
-        )
-        equations_header: QtWidgets.QHeaderView = self.ui.equationsTableView.horizontalHeader()
-        equations_header.setSectionResizeMode(QtWidgets.QHeaderView.ResizeMode.Interactive)
-        equations_header.setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
-        equations_header.setSectionResizeMode(1, QtWidgets.QHeaderView.ResizeMode.Stretch)
-        equations_vheader = self.ui.equationsTableView.verticalHeader()
-        equations_vheader.setSectionResizeMode(
-            QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
-        equations_vheader.setVisible(False)
-        self.ui.equationsTableView.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows)
-        self.ui.equationsTableView.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection)
-        self.ui.equationsTableView.doubleClicked.connect(self.on_parameters_table_double_clicked)
-        self.ui.equationsTableView.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
-        self.ui.equationsTableView.customContextMenuRequested.connect(self.show_equations_table_context_menu)
-
-        self.parameters_model.block_updated.connect(self.on_block_updated)
-        self.variables_model.block_updated.connect(self.on_block_updated)
-        self.variables_model.variable_rename_requested.connect(self.rename_variable_from_table)
-        self.equations_model.block_updated.connect(self.on_block_updated)
-
         self.view: graph.GraphicsView = graph.GraphicsView(self.scene)
         self.ui.verticalLayout_3.removeWidget(self.ui.graphicsView)
         self.ui.graphicsView.deleteLater()
@@ -1446,8 +1536,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         # Button do it to save built scene
         self.ui.doItButton.clicked.connect(self.apply_changes)
 
-        self.ui.toolBox.currentChanged.connect(self.handle_side_panel_page_changed)
-        self.scene.selectionChanged.connect(self.on_scene_selection_changed)
         # if self.mode == DynamicSimulationMode.EMT and self.is_root_editor:
         #     self._ensure_full_emt_editor_interface()
         # else:
@@ -1611,9 +1699,12 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 if self.is_root_editor:
                     self.add_connection_items()
                 else:
-                    if self.main_block.in_vars or self.main_block.out_vars:
+                    if block_has_internal_equation_content(self.main_block):
                         self.generate_block_item_for_block(self.main_block, 480.0, 260.0)
                     else:
+                        # An empty user-authored Generic has no internal
+                        # operation to draw. Its nested view is intentionally a
+                        # blank canvas bounded only by the input/output wrappers.
                         pass
 
                     self.add_connection_items()
@@ -1700,6 +1791,187 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         if self._navigation_delegate is not None:
             self._navigation_delegate.navigate_to_block(block)
 
+    def request_open_block_properties(self, block: Block) -> None:
+        """
+        Open the modal properties editor for one ordinary symbolic block.
+
+        Root interface wrappers and connection/tool nodes are editor infrastructure,
+        not user-authored equation blocks, so they do not expose this dialogue.
+
+        :param block: Symbolic block represented by the double-clicked graphics item.
+        :return: None.
+        """
+        diagram_node: BlockDiagramNode | None = self.diagram.node_data.get(block.uid)
+        block_type_name: str = "CUSTOM"
+        structural_block_type: BlockType | None = None
+        structural_builder: Any | None = None
+        can_open: bool = not block.is_root_interface_wrapper
+
+        if diagram_node is not None:
+            block_type_name = diagram_node.tpe
+            if diagram_node.tpe in {
+                BlockType.INPUT_CONN.name,
+                BlockType.OUTPUT_CONN.name,
+                BlockType.FROM_GOTO.name,
+            }:
+                can_open = False
+            else:
+                pass
+        else:
+            pass
+
+        if block_type_name in BlockType.__members__:
+            candidate_block_type: BlockType = BlockType[block_type_name]
+            if candidate_block_type in self.blocktype2templatebuilder:
+                structural_block_type = candidate_block_type
+                structural_builder = create_default_template_builder(
+                    var_factory=self.var_factory,
+                    block_type=candidate_block_type,
+                    item_name=block.name,
+                    api_object=self.api_object,
+                )
+                if structural_builder is not None:
+                    initialize_template_builder_from_block(
+                        builder=structural_builder,
+                        block=block,
+                        block_type=candidate_block_type,
+                    )
+                else:
+                    pass
+            elif candidate_block_type == BlockType.SUM:
+                structural_block_type = candidate_block_type
+                structural_builder = BasicBlockTemplates.AdderTemplate(vf=self.var_factory)
+                minuend_property: Any | None = structural_builder.params_dict.get("minuend_inputs", None)
+                subtrahend_property: Any | None = structural_builder.params_dict.get("subtrahend_inputs", None)
+                if minuend_property is not None:
+                    minuend_property.value = count_variables_with_prefix(block.in_vars, "add_")
+                else:
+                    pass
+                if subtrahend_property is not None:
+                    subtrahend_property.value = count_variables_with_prefix(block.in_vars, "subtract_")
+                else:
+                    pass
+            elif candidate_block_type == BlockType.PRODUCT:
+                structural_block_type = candidate_block_type
+                structural_builder = BasicBlockTemplates.ProductTemplate(vf=self.var_factory)
+                dividend_property: Any | None = structural_builder.params_dict.get("divident_inputs", None)
+                divisor_property: Any | None = structural_builder.params_dict.get("divisor_inputs", None)
+                if dividend_property is not None:
+                    dividend_property.value = count_variables_with_prefix(block.in_vars, "mul_")
+                else:
+                    pass
+                if divisor_property is not None:
+                    divisor_property.value = count_variables_with_prefix(block.in_vars, "div_")
+                else:
+                    pass
+            elif candidate_block_type == BlockType.GENERIC:
+                structural_block_type = candidate_block_type
+                structural_builder = GenericBlockTemplateDefinition(self.var_factory)
+                generic_inputs: Any | None = structural_builder.params_dict.get("inputs", None)
+                generic_outputs: Any | None = structural_builder.params_dict.get("outputs", None)
+                generic_name: Any | None = structural_builder.params_dict.get("name", None)
+                if generic_inputs is not None:
+                    generic_inputs.value = len(block.in_vars)
+                else:
+                    pass
+                if generic_outputs is not None:
+                    generic_outputs.value = len(block.out_vars)
+                else:
+                    pass
+                if generic_name is not None:
+                    generic_name.value = block.name
+                else:
+                    pass
+            elif candidate_block_type == BlockType.RLC_COMBO_EMT:
+                structural_block_type = candidate_block_type
+                structural_builder = RlcComboBlockTemplateDefinition(self.var_factory)
+                initialize_template_builder_from_block(
+                    builder=structural_builder,
+                    block=block,
+                    block_type=candidate_block_type,
+                )
+                component_prefixes: tuple[tuple[str, str], ...] = (
+                    ("include_r", "R_"),
+                    ("include_l", "L_"),
+                    ("include_c", "C_"),
+                )
+                setting_name: str
+                component_prefix: str
+                for setting_name, component_prefix in component_prefixes:
+                    component_property: Any | None = structural_builder.params_dict.get(setting_name, None)
+                    component_present: bool = False
+                    child_block: Block
+                    event_var: Var
+                    for child_block in block.get_all_blocks():
+                        for event_var in child_block.event_dict.keys():
+                            if event_var.name.startswith(component_prefix):
+                                component_present = True
+                            else:
+                                pass
+                    if component_property is not None:
+                        component_property.value = component_present
+                    else:
+                        pass
+            else:
+                pass
+        else:
+            pass
+
+        if can_open:
+            self.close_block_properties_dock()
+            dialogue: DynamicBlockPropertiesDialog = DynamicBlockPropertiesDialog(
+                block=block,
+                block_type_name=block_type_name,
+                var_factory=self.var_factory,
+                parent=self,
+                structural_block_type=structural_block_type,
+                structural_builder=structural_builder,
+            )
+            dialogue.setAttribute(QtCore.Qt.WidgetAttribute.WA_DeleteOnClose, True)
+            dialogue.blockApplied.connect(self.on_block_properties_applied)
+            dialogue.structuralRebuildRequested.connect(self.on_structural_rebuild_requested)
+            dialogue.outputExportChangesRequested.connect(self.on_output_export_changes_requested)
+            properties_dock: DynamicBlockPropertiesDockWidget = DynamicBlockPropertiesDockWidget(
+                properties_widget=dialogue,
+                parent=self,
+            )
+            allowed_areas: Qt.DockWidgetArea = (
+                Qt.DockWidgetArea.LeftDockWidgetArea
+                | Qt.DockWidgetArea.RightDockWidgetArea
+                | Qt.DockWidgetArea.BottomDockWidgetArea
+            )
+            properties_dock.setAllowedAreas(allowed_areas)
+            properties_dock.closed.connect(self.on_block_properties_dock_closed)
+            properties_dock.dockLocationChanged.connect(
+                self.on_block_properties_dock_location_changed
+            )
+            properties_dock.topLevelChanged.connect(
+                self.on_block_properties_dock_top_level_changed
+            )
+            self._block_properties_dialogue = dialogue
+            self._block_properties_dock = properties_dock
+
+            # Register a legal right-side slot before floating the dock. Qt can
+            # then show its native draggable title bar immediately and restore
+            # it below the fixed Library when the user drags it back to the
+            # editor's right edge.
+            self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, properties_dock)
+            if self._library_dock is not None:
+                self.splitDockWidget(
+                    self._library_dock,
+                    properties_dock,
+                    Qt.Orientation.Vertical,
+                )
+            else:
+                pass
+            properties_dock.setFloating(True)
+            properties_dock.resize(1200, 700)
+            self.center_floating_block_properties_dock(properties_dock)
+            properties_dock.show()
+            properties_dock.raise_()
+        else:
+            pass
+
 
     def changeEvent(self, event: QtCore.QEvent) -> None:
         """
@@ -1723,9 +1995,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :return: None.
         """
         self.setWindowTitle(self.tr("Dynamic Model Editor [{mode}]").format(mode=self.mode.name))
-        self.variables_search.setPlaceholderText(self.tr("Search variables..."))
-        self.parameters_search.setPlaceholderText(self.tr("Search parameters..."))
-        self.equations_search.setPlaceholderText(self.tr("Search equations..."))
         item: Any
         for item in self.scene.items():
             refresh_port_metadata = getattr(item, "refresh_port_metadata", None)
@@ -1736,41 +2005,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.scene.update()
 
     # Todo: remove this function when all the dialogs are unified
-    def set_modal_template_metadata(self, block: Block,
-                                    kind: str,
-                                    config: Dict[str, Any]) -> None:
-        """
-        Persist the modal-builder metadata on one block.
-
-        :param block: Target block.
-        :param kind: Stable modal kind key.
-        :param config: Serializable modal configuration.
-        :return: None.
-        """
-        block.__dict__[graph.EditorGraphicsCommonFeatures.MODAL_TEMPLATE_KIND_ATTR] = kind
-        block.__dict__[graph.EditorGraphicsCommonFeatures.MODAL_TEMPLATE_CONFIG_ATTR] = copy.deepcopy(config)
-
-    # Todo: remove this function when all the dialogs are unified
-    def get_modal_template_metadata(self, block: Block | None) -> tuple[str | None, Dict[str, Any] | None]:
-        """
-        Return the modal-builder metadata stored on one block.
-
-        :param block: Candidate block.
-        :return: `(kind, config)` or `(None, None)` when absent.
-        """
-        if block is None:
-            return None, None
-        else:
-            pass
-
-        kind: Any = block.__dict__.get(graph.EditorGraphicsCommonFeatures.MODAL_TEMPLATE_KIND_ATTR, None)
-        config: Any = block.__dict__.get(graph.EditorGraphicsCommonFeatures.MODAL_TEMPLATE_CONFIG_ATTR, None)
-
-        if isinstance(kind, str) and isinstance(config, dict):
-            return kind, copy.deepcopy(config)
-        else:
-            return None, None
-
     def focus_library_search(self) -> None:
         """
         Reveal and focus the library search box.
@@ -1781,6 +2015,232 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.raise_()
         self.ui.librarySearchLineEdit.setFocus(QtCore.Qt.FocusReason.ShortcutFocusReason)
         self.ui.librarySearchLineEdit.selectAll()
+
+    def configure_dynamic_editor_docks(self) -> None:
+        """Move the Library into a fixed dock and enable restricted nesting.
+
+        The Library remains permanently attached to the right. Block
+        properties can consequently share that edge in a vertical stack while
+        retaining the native Qt docking indicators and splitter handles.
+
+        :return: None.
+        """
+        self.setDockOptions(
+            QtWidgets.QMainWindow.DockOption.AnimatedDocks
+            | QtWidgets.QMainWindow.DockOption.AllowNestedDocks
+        )
+        self.setDockNestingEnabled(True)
+
+        library_dock: QtWidgets.QDockWidget = QtWidgets.QDockWidget(
+            self.tr("Library"),
+            self,
+        )
+        library_dock.setObjectName("dynamicEditorLibraryDock")
+        library_dock.setAllowedAreas(Qt.DockWidgetArea.RightDockWidgetArea)
+        library_dock.setFeatures(
+            QtWidgets.QDockWidget.DockWidgetFeature.NoDockWidgetFeatures
+        )
+
+        # The existing toolbox already renders the Library heading. Suppress a
+        # duplicate native title bar while retaining a real dock target.
+        hidden_title_bar: QtWidgets.QWidget = QtWidgets.QWidget(library_dock)
+        hidden_title_bar.setFixedHeight(0)
+        library_dock.setTitleBarWidget(hidden_title_bar)
+
+        self.ui.frame.setParent(None)
+        library_dock.setWidget(self.ui.frame)
+        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, library_dock)
+        self._library_dock = library_dock
+        self.ui.splitter.setStretchFactor(0, 1)
+        self.resizeDocks(
+            list([library_dock]),
+            list([360]),
+            Qt.Orientation.Horizontal,
+        )
+
+    def get_library_dock_widget(self) -> QtWidgets.QDockWidget | None:
+        """Return the fixed Library dock owned by this editor.
+
+        :return: Library dock, or ``None`` after editor teardown.
+        """
+        return self._library_dock
+
+    def get_block_properties_dock_widget(self) -> DynamicBlockPropertiesDockWidget | None:
+        """Return the currently open block-properties dock.
+
+        :return: Active properties dock, or ``None`` when closed.
+        """
+        return self._block_properties_dock
+
+    def center_floating_block_properties_dock(
+            self,
+            properties_dock: DynamicBlockPropertiesDockWidget,
+    ) -> None:
+        """Center a new floating properties dock over the Dynamic Editor.
+
+        :param properties_dock: Floating dock to position.
+        :return: None.
+        """
+        editor_top_left: QtCore.QPoint = self.mapToGlobal(QtCore.QPoint(0, 0))
+        target_x: int = editor_top_left.x() + max(0, (self.width() - properties_dock.width()) // 2)
+        target_y: int = editor_top_left.y() + max(0, (self.height() - properties_dock.height()) // 2)
+        screen: QtGui.QScreen | None = self.screen()
+        if screen is not None:
+            available_geometry: QtCore.QRect = screen.availableGeometry()
+            maximum_x: int = available_geometry.right() - properties_dock.width() + 1
+            maximum_y: int = available_geometry.bottom() - properties_dock.height() + 1
+            target_x = max(available_geometry.left(), min(target_x, maximum_x))
+            target_y = max(available_geometry.top(), min(target_y, maximum_y))
+        else:
+            pass
+        properties_dock.move(target_x, target_y)
+
+    @QtCore.Slot(Qt.DockWidgetArea)
+    def on_block_properties_dock_location_changed(
+            self,
+            area: Qt.DockWidgetArea,
+    ) -> None:
+        """Normalize right-side drops into a vertical Library stack.
+
+        :param area: New main-window dock area reported by Qt.
+        :return: None.
+        """
+        properties_dock: DynamicBlockPropertiesDockWidget | None = self._block_properties_dock
+        normalize_timer: QtCore.QTimer | None = self._properties_dock_normalize_timer
+        if properties_dock is not None and not properties_dock.isFloating():
+            self.resize_block_properties_dock_for_area(area)
+            if (normalize_timer is not None
+                    and area == Qt.DockWidgetArea.RightDockWidgetArea):
+                normalize_timer.start(0)
+            else:
+                pass
+        else:
+            pass
+
+    @QtCore.Slot(bool)
+    def on_block_properties_dock_top_level_changed(self, floating: bool) -> None:
+        """Schedule right-side normalization after a floating dock is attached.
+
+        :param floating: Whether the properties dock is currently floating.
+        :return: None.
+        """
+        properties_dock: DynamicBlockPropertiesDockWidget | None = self._block_properties_dock
+        if properties_dock is not None and not floating:
+            area: Qt.DockWidgetArea = self.dockWidgetArea(properties_dock)
+            self.on_block_properties_dock_location_changed(area)
+        else:
+            pass
+
+    def resize_block_properties_dock_for_area(
+            self,
+            area: Qt.DockWidgetArea,
+    ) -> None:
+        """Give each legal dock area a useful initial share of the editor.
+
+        Users retain the native splitter and can resize the dock afterwards.
+
+        :param area: Main-window area containing Block properties.
+        :return: None.
+        """
+        properties_dock: DynamicBlockPropertiesDockWidget | None = self._block_properties_dock
+        library_dock: QtWidgets.QDockWidget | None = self._library_dock
+        if properties_dock is not None:
+            if area == Qt.DockWidgetArea.BottomDockWidgetArea:
+                bottom_height: int = max(280, min(500, int(self.height() * 0.45)))
+                self.resizeDocks(
+                    list([properties_dock]),
+                    list([bottom_height]),
+                    Qt.Orientation.Vertical,
+                )
+            elif area == Qt.DockWidgetArea.LeftDockWidgetArea:
+                left_width: int = max(420, min(720, int(self.width() * 0.40)))
+                self.resizeDocks(
+                    list([properties_dock]),
+                    list([left_width]),
+                    Qt.Orientation.Horizontal,
+                )
+            elif area == Qt.DockWidgetArea.RightDockWidgetArea:
+                right_width: int = max(420, min(720, int(self.width() * 0.40)))
+                if library_dock is not None:
+                    self.resizeDocks(
+                        list([library_dock, properties_dock]),
+                        list([right_width, right_width]),
+                        Qt.Orientation.Horizontal,
+                    )
+                else:
+                    self.resizeDocks(
+                        list([properties_dock]),
+                        list([right_width]),
+                        Qt.Orientation.Horizontal,
+                    )
+            else:
+                pass
+        else:
+            pass
+
+    @QtCore.Slot()
+    def normalize_block_properties_right_dock(self) -> None:
+        """Force a right-side properties dock above or below the Library.
+
+        Qt nesting can otherwise place two docks side by side within the right
+        area. The user's vertical drop position selects whether Block
+        properties stays above or below the fixed Library.
+
+        :return: None.
+        """
+        properties_dock: DynamicBlockPropertiesDockWidget | None = self._block_properties_dock
+        library_dock: QtWidgets.QDockWidget | None = self._library_dock
+        if (properties_dock is not None
+                and library_dock is not None
+                and not properties_dock.isFloating()
+                and self.dockWidgetArea(properties_dock) == Qt.DockWidgetArea.RightDockWidgetArea):
+            properties_geometry: QtCore.QRect = properties_dock.geometry()
+            library_geometry: QtCore.QRect = library_dock.geometry()
+            same_horizontal_span: bool = (
+                abs(properties_geometry.left() - library_geometry.left()) <= 2
+                and abs(properties_geometry.right() - library_geometry.right()) <= 2
+            )
+            if same_horizontal_span:
+                pass
+            elif properties_geometry.center().y() < library_geometry.center().y():
+                self.splitDockWidget(
+                    properties_dock,
+                    library_dock,
+                    Qt.Orientation.Vertical,
+                )
+            else:
+                self.splitDockWidget(
+                    library_dock,
+                    properties_dock,
+                    Qt.Orientation.Vertical,
+                )
+        else:
+            pass
+
+    def close_block_properties_dock(self) -> None:
+        """Close the active property dock before opening another one.
+
+        :return: None.
+        """
+        properties_dock: DynamicBlockPropertiesDockWidget | None = self._block_properties_dock
+        if properties_dock is not None:
+            properties_dock.close()
+        else:
+            pass
+
+    @QtCore.Slot()
+    def on_block_properties_dock_closed(self) -> None:
+        """Forget a property dock after either Close control is used.
+
+        :return: None.
+        """
+        normalize_timer: QtCore.QTimer | None = self._properties_dock_normalize_timer
+        if normalize_timer is not None:
+            normalize_timer.stop()
+        else:
+            pass
+        self._block_properties_dock = None
+        self._block_properties_dialogue = None
 
     def reset_library_tree_expansion(self) -> None:
         """
@@ -1840,127 +2300,134 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                                            x_pos: float,
                                            y_pos: float) -> graph.GenericBlockItem | graph.RoundBaseArithmeticOpItem | graph.RectBaseArithmeticOpItem | None:
         """
-        Materialize one library payload on the diagram scene.
+        Materialize one builder-backed payload with its verified defaults.
+
+        The historical method name is retained temporarily to avoid changing
+        unrelated callers, but this path deliberately opens no creation modal.
+
+        :param blocktype: Builder-backed native block type.
+        :param x_pos: Scene x coordinate.
+        :param y_pos: Scene y coordinate.
+        :return: Created graphics item or ``None`` when no builder exists.
         """
 
         count: int = self.block_counters.get(blocktype, 0) + 1
         item_name: str = f"{blocktype.name}_{count}"
 
-        template_builder_class = self.blocktype2templatebuilder.get(blocktype, None)
-        template_builder = template_builder_class(self.var_factory)
-        name = "EMT fault"
-
-        if template_builder is not None:
-            dialog = DynTemplatesEditorDialog(name, template_builder.params)
-        else:
-            return
-
-        if dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted:
-
-            template = template_builder.eval()
-            block_model = template.block
-
-            block_item: graph.GenericBlockItem = graph.GenericBlockItem(
-                editor=self,
-                var_factory=self.var_factory,
-                subsys=block_model,
-                api_object=self.api_object,
-                mode=self.mode,
-                name=item_name,
-                position_changed_callback=self.build_position_changed_callback(block_model.uid)
-            )
-
-            self.block_counters[blocktype] = count
-            block_item.set_subsystem(block_model)
-            block_item.position_changed_callback = self.build_position_changed_callback(block_model.uid)
-            block_item.build_item()
-            self.main_block.add(block_model)
-            self.scene.addItem(block_item)
-            block_item.setPos(QtCore.QPointF(x_pos, y_pos))
-            self.diagram.add_node(
-                name=item_name,
-                x=x_pos,
-                y=y_pos,
-                tpe=blocktype.name,
-                device_uid=block_model.uid,
-            )
-            self.mark_unapplied_changes()
-            return block_item
-
-        else:
-            return
-
-    def create_generic_block_item(self, block_type: BlockType, x_pos, y_pos) -> graph.GenericBlockItem | None:
-        """
-        Create and place a generic block item.
-
-        :param block_type:
-        :param x_pos:
-        :param y_pos:
-        :return:
-        """
-
-        dialog = GenericBlockDialog(self)
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            name, inputs, outputs = dialog.get_values()
-
-            model = create_generic_block(self.var_factory, inputs, outputs, name)
-            self.main_block.add(model)
-            item = graph.GenericBlockItem(
-                editor=self,
-                var_factory=self.var_factory,
-                subsys=model,
-                api_object=self.api_object,
-                mode=self.mode,
-                name=model.name,
-                position_changed_callback=self.build_position_changed_callback(model.uid)
-            )
-
-            item.setPos(QtCore.QPointF(x_pos, y_pos))
-            self.scene.addItem(item)
-            # save nodes in diagram
-            self.diagram.add_node(
-                name=name,
-                x=x_pos,
-                y=y_pos,
-                device_uid=model.uid,
-                tpe=block_type.name,
-                state_ins=inputs,
-                state_outs=[],
-                algeb_ins=0,
-                algeb_outs=[],
-                subdiagram=model.diagram
-            )
-
-            self.mark_unapplied_changes()
-
-            return item
-        else:
+        template_builder: Any | None = create_default_template_builder(
+            var_factory=self.var_factory,
+            block_type=blocktype,
+            item_name=item_name,
+            api_object=self.api_object,
+        )
+        if template_builder is None:
             return None
+        else:
+            template: Any = template_builder.eval()
+            block_model: Block = template.block
+
+        block_item: graph.GenericBlockItem = graph.GenericBlockItem(
+            editor=self,
+            var_factory=self.var_factory,
+            subsys=block_model,
+            api_object=self.api_object,
+            mode=self.mode,
+            name=item_name,
+            position_changed_callback=self.build_position_changed_callback(block_model.uid)
+        )
+
+        self.block_counters[blocktype] = count
+        block_item.set_subsystem(block_model)
+        block_item.position_changed_callback = self.build_position_changed_callback(block_model.uid)
+        block_item.build_item()
+        self.main_block.add(block_model)
+        self.scene.addItem(block_item)
+        block_item.setPos(QtCore.QPointF(x_pos, y_pos))
+        self.diagram.add_node(
+            name=item_name,
+            x=x_pos,
+            y=y_pos,
+            tpe=blocktype.name,
+            device_uid=block_model.uid,
+        )
+        self.mark_unapplied_changes()
+        return block_item
+
+    def create_generic_block_item(self,
+                                  block_type: BlockType,
+                                  x_pos: float,
+                                  y_pos: float) -> graph.GenericBlockItem | None:
+        """
+        Create and place a one-input/one-output generic block without a wizard.
+
+        :param block_type: Generic native block type stored in the diagram node.
+        :param x_pos: Scene x coordinate.
+        :param y_pos: Scene y coordinate.
+        :return: Created generic graphics item.
+        """
+
+        count: int = self.block_counters.get(block_type, 0) + 1
+        name: str = f"{block_type.name}_{count}"
+        inputs: int = 1
+        outputs: int = 1
+        model: Block = create_generic_block(self.var_factory, inputs, outputs, name)
+        self.block_counters[block_type] = count
+        self.main_block.add(model)
+        item: graph.GenericBlockItem = graph.GenericBlockItem(
+            editor=self,
+            var_factory=self.var_factory,
+            subsys=model,
+            api_object=self.api_object,
+            mode=self.mode,
+            name=model.name,
+            position_changed_callback=self.build_position_changed_callback(model.uid)
+        )
+
+        item.setPos(QtCore.QPointF(x_pos, y_pos))
+        self.scene.addItem(item)
+        self.diagram.add_node(
+            name=name,
+            x=x_pos,
+            y=y_pos,
+            device_uid=model.uid,
+            tpe=block_type.name,
+            state_ins=inputs,
+            state_outs=list(),
+            algeb_ins=0,
+            algeb_outs=list(),
+            subdiagram=model.diagram
+        )
+        self.mark_unapplied_changes()
+        return item
 
     def create_basic_arithmetic_op_item(self, block_type: BlockType, x_pos: float,
                                         y_pos: float) -> graph.RoundBaseArithmeticOpItem | graph.RectBaseArithmeticOpItem | None:
         """
-        Create a Sum item that represents addition and subtraction
+        Create a default sum or product block without a creation wizard.
+
+        :param block_type: Sum or product native block type.
+        :param x_pos: Scene x coordinate.
+        :param y_pos: Scene y coordinate.
+        :return: Created round/rectangular arithmetic graphics item or ``None``.
         """
 
         count: int = self.block_counters.get(block_type, 0) + 1
         item_name: str = f"{block_type.name}_{count}"
 
-        template_builder = None
-        block_model = None
-        name = ""
-
+        template_builder: Any | None = None
+        block_model: Block | None = None
         if block_type == BlockType.SUM:
             template_builder = BasicBlockTemplates.AdderTemplate(vf=self.var_factory)
         elif block_type == BlockType.PRODUCT:
             template_builder = BasicBlockTemplates.ProductTemplate(vf=self.var_factory)
+        else:
+            pass
 
         if template_builder is not None:
-            dialog = DynTemplatesEditorDialog(name, template_builder.params)
-            dialog.exec()
-            template = template_builder.eval()
+            template: Block = template_builder.eval()
             block_model = template
+        else:
+            pass
 
         if block_model is not None and len(block_model.in_vars) <= 3:
             round_base_op_item: graph.RoundBaseArithmeticOpItem = graph.RoundBaseArithmeticOpItem(var_factory=self.var_factory,
@@ -2009,8 +2476,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             self.mark_unapplied_changes()
 
             return rect_base_op_item
-
-        return None
+        else:
+            return None
 
     def create_block_item_from_blocktype(self, block_type: BlockType, x_pos: float, y_pos: float) -> graph.GenericBlockItem | None:
         """
@@ -2645,75 +3112,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             layout_graph=layout_graph,
         )
 
-    def generate_block_item_for_block_old(self, block_model: Block) -> GenericBlockItem | None:
-        """
-        Create and place a block item in the canvas scene.
-
-        :param block_model:
-
-        :return:
-        """
-        item_name: str = f"{block_model.name}"
-
-        if block_model is not None:
-            item = GenericBlockItem(
-                editor=self,
-                var_factory=self.var_factory,
-                subsys=block_model,
-                api_object=self.api_object,
-                mode=self.mode,
-                name=item_name,
-                position_changed_callback=self.build_position_changed_callback(block_model.uid)
-            )
-
-            # The symbolic block has to be attached first so the graphics item can build its ports from it.
-
-            x, y = self._calculate_next_block_position(item)
-            item.setPos(QtCore.QPointF(x, y))
-            self.scene.addItem(item)
-
-            self.diagram.add_node(
-                name=item_name,
-                x=x,
-                y=y,
-                tpe="",
-                device_uid=block_model.uid
-            )
-
-            self.mark_unapplied_changes()
-
-            return item
-        else:
-            return None
-
-    def _calculate_next_block_position(self, item: graph.GenericBlockItem) -> tuple[float, float]:
-        """
-        Calculate the next available position for a block item using a grid layout.
-
-        :param item: The block item to calculate position for (used to get its dimensions).
-        :return: Tuple of (x, y) coordinates.
-        """
-        SCENE_WIDTH: float = 1200.0
-        SCENE_HEIGHT: float = 800.0
-        MARGIN_Y: float = 80.0
-        COL_SPACING: float = 200.0
-        ROW_SPACING: float = 150.0
-
-        existing_count = sum(1 for i in self.scene.items() if isinstance(i, graph.GenericBlockItem))
-
-        GRID_COLS: int = 3
-
-        row: int = existing_count // GRID_COLS
-        col: int = existing_count % GRID_COLS
-
-        total_width: float = GRID_COLS * COL_SPACING
-        start_x: float = (SCENE_WIDTH - total_width) / 2
-
-        x: float = start_x + col * COL_SPACING
-        y: float = MARGIN_Y + row * ROW_SPACING
-
-        return x, y
-
     def create_connection_block_item(self, var: Var, block_type: BlockType, x_pos: float,
                                      y_pos: float, blocks_list: List[graph.BlockItem] | None) -> graph.BlockItem | None:
         """
@@ -2860,110 +3258,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         return item
 
     # TODO: create PV power plant block item
-
-    def _append_emt_branch_side_connection_specs(
-            self,
-            specs: List[ConnectionVarSpec],
-            bus: Bus,
-            side: str,
-    ) -> None:
-        """
-        Append EMT connection specs for one branch side.
-
-        The available side-specific refs must mirror the current authoritative
-        endpoint bus shell derived from static topology.
-
-        :param specs: Connection specification list to extend.
-        :param bus: Bus connected to the selected branch side.
-        :param side: Branch side identifier. Expected values are ``from`` and ``to``.
-        :return: None.
-        """
-        safe_bus_name: str = self._get_safe_bus_name(bus)
-        voltage_refs: List[VarPowerFlowReferenceType] = list()
-        current_refs: List[VarPowerFlowReferenceType] = list()
-
-        # DC terminals must use side-specific references so that branch
-        # interfaces do not mix the from and to bus quantities.
-        if bus.is_dc:
-            if side == "from":
-                voltage_refs.append(VarPowerFlowReferenceType.Vf_dc)
-                current_refs.append(VarPowerFlowReferenceType.If_dc)
-            elif side == "to":
-                voltage_refs.append(VarPowerFlowReferenceType.Vt_dc)
-                current_refs.append(VarPowerFlowReferenceType.It_dc)
-            else:
-                QtWidgets.QMessageBox.warning(
-                    self,
-                    "EMT branch interface",
-                    f"Unsupported EMT branch side '{side}'. No ports were created for this side.",
-                )
-        else:
-            v_n: Var | None
-            v_a: Var | None
-            v_b: Var | None
-            v_c: Var | None
-            v_n, v_a, v_b, v_c = get_bus_emt_algebraic_vars(bus.emt_model)
-
-            if side == "from":
-                if v_n is not None:
-                    voltage_refs.append(VarPowerFlowReferenceType.vf_N)
-                    current_refs.append(VarPowerFlowReferenceType.if_N)
-                else:
-                    pass
-                if v_a is not None:
-                    voltage_refs.append(VarPowerFlowReferenceType.vf_A)
-                    current_refs.append(VarPowerFlowReferenceType.if_A)
-                else:
-                    pass
-                if v_b is not None:
-                    voltage_refs.append(VarPowerFlowReferenceType.vf_B)
-                    current_refs.append(VarPowerFlowReferenceType.if_B)
-                else:
-                    pass
-                if v_c is not None:
-                    voltage_refs.append(VarPowerFlowReferenceType.vf_C)
-                    current_refs.append(VarPowerFlowReferenceType.if_C)
-                else:
-                    pass
-            elif side == "to":
-                if v_n is not None:
-                    voltage_refs.append(VarPowerFlowReferenceType.vt_N)
-                    current_refs.append(VarPowerFlowReferenceType.it_N)
-                else:
-                    pass
-                if v_a is not None:
-                    voltage_refs.append(VarPowerFlowReferenceType.vt_A)
-                    current_refs.append(VarPowerFlowReferenceType.it_A)
-                else:
-                    pass
-                if v_b is not None:
-                    voltage_refs.append(VarPowerFlowReferenceType.vt_B)
-                    current_refs.append(VarPowerFlowReferenceType.it_B)
-                else:
-                    pass
-                if v_c is not None:
-                    voltage_refs.append(VarPowerFlowReferenceType.vt_C)
-                    current_refs.append(VarPowerFlowReferenceType.it_C)
-                else:
-                    pass
-            else:
-                QtWidgets.QMessageBox.warning(
-                    self,
-                    "EMT branch interface",
-                    f"Unsupported EMT branch side '{side}'. No ports were created for this side.",
-                )
-
-        reference: VarPowerFlowReferenceType
-
-        for reference in voltage_refs:
-            specs.append(ConnectionVarSpec("input", reference, f"{reference.value}_{safe_bus_name}"))
-
-        for reference in current_refs:
-            specs.append(ConnectionVarSpec(
-                "output",
-                reference,
-                f"net_conn_{reference.value}_{safe_bus_name}_{self.api_object.name}",
-            ))
 
     def create_library_payload_item(self,
                                     payload: BlockType | BasicBlockTemplateDescriptor | RmsModelTemplate | EmtModelTemplate | FmuTemplate,
@@ -5607,50 +5901,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             self.view.fitInView(self.scene.sceneRect(), QtCore.Qt.AspectRatioMode.KeepAspectRatio)
 
 
-    def _get_safe_bus_name(self, bus: Any) -> str:
-        """
-        Build a safe bus-name suffix for editor-visible connection variables.
-
-        :param bus: Bus API object.
-        :return: Bus name with spaces replaced by underscores.
-        """
-        return bus.name.replace(" ", "_")
-
-    def _get_current_root_interface_refs(self) -> set[VarPowerFlowReferenceType]:
-        """
-        Return the references currently present in the working root interface.
-
-        :return: Set of power-flow reference types still exposed by the block.
-        """
-        refs: set[VarPowerFlowReferenceType] = set()
-        var: Var
-        mapping_ref: VarPowerFlowReferenceType
-        mapped_var: Var | None
-
-        # Collect references from explicit root inputs.
-        for var in self.main_block.in_vars:
-            if var.ref is not None:
-                refs.add(var.ref)
-            else:
-                pass
-
-        # Collect references from explicit root outputs.
-        for var in self.main_block.out_vars:
-            if var.ref is not None:
-                refs.add(var.ref)
-            else:
-                pass
-
-        # Collect references from the external mapping because some variables
-        # may be kept through mapping updates after connection edits.
-        for mapping_ref, mapped_var in self.main_block.external_mapping.items():
-            if mapped_var is not None:
-                refs.add(mapping_ref)
-            else:
-                pass
-
-        return refs
-
     def _is_root_container_block(self, block_model: Block | None) -> bool:
         """
         Return whether one block object is the editor root container itself.
@@ -5667,9 +5917,15 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
     def _remove_legacy_root_self_nodes(self) -> bool:
         """
-        Remove persisted non-interface diagram nodes that represent ``main_block`` itself.
+        Remove persisted diagram nodes that incorrectly represent the container.
 
-        :return: ``True`` when any synthetic root-self node or connection was removed.
+        Root editor containers are never operations. An empty non-root leaf is
+        also only an editable boundary: older editor versions persisted a copy
+        of that leaf between its own ports, which made an empty ``Generic``
+        appear to contain itself. Removing that stale node also migrates files
+        saved while that regression was present.
+
+        :return: ``True`` when any invalid self node or connection was removed.
         """
         node_uids_to_remove: list[int] = list()
         node_uid: int
@@ -5677,7 +5933,11 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         changed: bool = False
         block_type: BlockType | None
 
-        if not self.is_root_editor:
+        remove_self_nodes: bool = self.is_root_editor or (
+            not self.main_block.children
+            and not block_has_internal_equation_content(self.main_block)
+        )
+        if not remove_self_nodes:
             return False
         else:
             pass
@@ -7723,608 +7983,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             self.diagram.node_data[device_uid].y = y
             print("")
 
-    def get_selected_scene_block(self) -> Block | None:
-        """
-        Return the single selected block, if the current selection is unambiguous.
-
-        :return:
-        """
-        selected_items: List[QGraphicsItem] = self.scene.selectedItems()
-        selected_item: QGraphicsItem
-
-        if len(selected_items) == 1:
-            selected_item = selected_items[0]
-
-            if isinstance(selected_item,
-                          (graph.BlockItem, graph.GenericBlockItem, graph.RoundBaseArithmeticOpItem, graph.RectBaseArithmeticOpItem)):
-                return selected_item.subsys
-
-            else:
-                return None
-        else:
-            return None
-
-    def on_parameters_table_double_clicked(self, index: QtCore.QModelIndex) -> None:
-        """
-        Open the expression text editor when the user double-clicks an expression row
-        in either the equations table or the parameters table.
-
-        :param index:
-        :return:
-        """
-        source_model = self._table_source_model(index)
-        source_index = self._table_source_index(index)
-        source_row = source_index.row()
-        if source_model is self.parameters_model and source_index.column() == 0:
-            self.open_edit_parameter_type_dialog(source_row)
-        elif source_model is self.parameters_model and source_index.column() == 2:
-            row_data: dialog_models.BlockParameterRow | None = self.parameters_model.get_row(source_row)
-            if row_data is not None and row_data.kind != dialog_models.BlockParameterKind.FIXED_PARAMETER:
-                self.open_expression_editor_for_parameters(source_row)
-        elif source_model is self.equations_model:
-            row_data: dialog_models.BlockParameterRow | None = self.equations_model.get_row(source_row)
-            if row_data is not None:
-                if row_data.opens_expression_editor and source_index.column() == 1:
-                    self.open_expression_row_editor(source_row)
-
-    def open_edit_parameter_type_dialog(self, row_index: int) -> None:
-        """
-        Open the dialog to edit a parameter's type (event, mode, or regular).
-
-        :param row_index:
-        :return:
-        """
-        row_data: dialog_models.BlockParameterRow | None = self.parameters_model.get_row(row_index)
-        if row_data is None or self.parameters_model.block is None:
-            return
-
-        block = self.parameters_model.block
-
-        api_object = self.parameters_model.api_object
-        dialog: dialog_models.EditParameterDialog = dialog_models.EditParameterDialog(
-            api_object=api_object,
-            devices_static_params_mapping=self.devices_static_params_mapping,
-            current_kind=row_data.kind,
-            parent=self
-        )
-
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            try:
-                new_kind: dialog_models.BlockParameterKind = dialog.get_category_kind()
-                old_kind: dialog_models.BlockParameterKind = row_data.kind
-
-                if new_kind == old_kind:
-                    return
-
-                var_name = row_data.name
-
-                if new_kind == dialog_models.BlockParameterKind.FIXED_PARAMETER:
-                    static_var_ref = dialog.get_static_variable()
-                    new_var = self.var_factory.add_var(name=var_name, reference=static_var_ref)
-                    const_value = 0.0
-                else:
-                    new_var = self.var_factory.add_var(name=var_name)
-                    const_value = dialog.get_parameter_value()
-
-                old_var = row_data.key_var
-
-                if old_kind == dialog_models.BlockParameterKind.EVENT_PARAMETER:
-                    block.event_dict.pop(old_var, None)
-                elif old_kind == dialog_models.BlockParameterKind.MODE_PARAMETER:
-                    block.mode_dict.pop(old_var, None)
-                elif old_kind == dialog_models.BlockParameterKind.FIXED_PARAMETER:
-                    block.parameters.pop(old_var, None)
-
-                if new_kind == dialog_models.BlockParameterKind.EVENT_PARAMETER:
-                    block.event_dict[new_var] = Const(const_value, name=var_name)
-                elif new_kind == dialog_models.BlockParameterKind.MODE_PARAMETER:
-                    block.mode_dict[new_var] = Const(const_value, name=var_name)
-                elif new_kind == dialog_models.BlockParameterKind.FIXED_PARAMETER:
-                    block.parameters[new_var] = Const(const_value, name=var_name)
-
-                self.parameters_model.set_block(block)
-                self.parameters_model.block_updated.emit(block.uid)
-            except Exception as exc:
-                QtWidgets.QMessageBox.warning(self, "Edit Parameter Type Error", str(exc))
-
-    def open_expression_editor_for_parameters(self, row_index: int) -> None:
-        """
-        Open the expression text editor for a parameters-table row.
-
-        :param row_index:
-        :return:
-        """
-        row_data: dialog_models.BlockParameterRow | None = self.parameters_model.get_row(row_index)
-        expression_text: str
-        dialog: ExpressionTextEditorDialog
-        symbol_namespace: Dict[str, Expr]
-        parsed_expression: Expr | Comparison
-        expression_value: Expr
-
-        if row_data is not None and self.parameters_model.block is not None:
-            if row_data.value is not None and isinstance(row_data.value, Expr):
-                expression_text = symbolic_to_string(row_data.value)
-            else:
-                expression_text = str(row_data.value) if row_data.value is not None else ""
-            symbol_namespace = dialog_models.build_block_symbol_namespace(self.parameters_model.block)
-            dialog = ExpressionTextEditorDialog(
-                expression_text=expression_text,
-                symbol_namespace=symbol_namespace,
-                parent=self
-            )
-
-            if dialog.exec() == QDialog.DialogCode.Accepted:
-                try:
-                    parsed_expression = string_to_symbolic(dialog.get_expression_text(), symbol_namespace)
-
-                    if isinstance(parsed_expression, Comparison):
-                        expression_value = parsed_expression.to_expression()
-                    else:
-                        expression_value = parsed_expression
-
-                    self.parameters_model.set_value_from_expression(row_index, expression_value)
-                    print("")
-                except Exception as exc:
-                    QtWidgets.QMessageBox.warning(
-                        self,
-                        "Expression Error",
-                        str(exc)
-                    )
-
-    @staticmethod
-    def _table_source_index(index: QtCore.QModelIndex) -> QtCore.QModelIndex:
-        model = index.model()
-        if isinstance(model, QtCore.QSortFilterProxyModel):
-            return model.mapToSource(index)
-        return index
-
-    @staticmethod
-    def _table_source_model(index: QtCore.QModelIndex) -> QtCore.QAbstractItemModel | None:
-        model = index.model()
-        if isinstance(model, QtCore.QSortFilterProxyModel):
-            return model.sourceModel()
-        return model
-
-    def on_variables_table_double_clicked(self, index: QtCore.QModelIndex) -> None:
-        """
-        Open the expression text editor when the user double-clicks an init_eq cell.
-
-        :param index:
-        :return:
-        """
-        if index.column() == 2:
-            source_index = self._table_source_index(index)
-            self.open_expression_row_editor_for_variables(source_index.row())
-
-    def open_expression_row_editor_for_variables(self, row_index: int) -> None:
-        """
-        Open the expression text editor for a variables-table row.
-
-        :param row_index:
-        :return:
-        """
-        row_data: dialog_models.BlockParameterRow | None = self.variables_model.get_row(row_index)
-        expression_text: str
-        dialog: ExpressionTextEditorDialog
-        symbol_namespace: Dict[str, Expr]
-        parsed_expression: Expr | Comparison
-        expression_value: Expr
-
-        if row_data is not None and self.variables_model.block is not None:
-            if row_data.init_eq is not None and isinstance(row_data.init_eq, Expr):
-                expression_text = symbolic_to_string(row_data.init_eq)
-            else:
-                expression_text = ""
-            symbol_namespace = dialog_models.build_block_symbol_namespace(self.variables_model.block)
-            dialog = ExpressionTextEditorDialog(
-                expression_text=expression_text,
-                symbol_namespace=symbol_namespace,
-                parent=self
-            )
-
-            if dialog.exec() == QDialog.DialogCode.Accepted:
-                try:
-                    parsed_expression = string_to_symbolic(dialog.get_expression_text(), symbol_namespace)
-
-                    if isinstance(parsed_expression, Comparison):
-                        expression_value = parsed_expression.to_expression()
-                    else:
-                        expression_value = parsed_expression
-
-                    self.variables_model.set_init_eq(row_index, expression_value)
-                except Exception as exc:
-                    QtWidgets.QMessageBox.warning(
-                        self,
-                        "Expression Error",
-                        str(exc)
-                    )
-
-    def select_table_context_row(self,
-                                 table_view: QtWidgets.QTableView,
-                                 position: QtCore.QPoint) -> None:
-        """
-        Select the row under a table context menu request when it is not already selected.
-
-        :param table_view:
-        :param position:
-        :return:
-        """
-        index: QtCore.QModelIndex = table_view.indexAt(position)
-
-        if index.isValid() and not table_view.selectionModel().isRowSelected(index.row(), QtCore.QModelIndex()):
-            table_view.selectRow(index.row())
-        else:
-            pass
-
-    def show_variables_table_context_menu(self, position: QtCore.QPoint) -> None:
-        """
-        Show the variables table context menu.
-
-        :param position:
-        :return:
-        """
-        table_view: QtWidgets.QTableView = self.ui.variablesTableView
-        self.select_table_context_row(table_view=table_view, position=position)
-
-        selected_block: Block | None = self.get_selected_scene_block()
-        has_selected_rows: bool = bool(table_view.selectionModel().selectedRows())
-
-        menu: QMenu = QMenu(table_view)
-        add_variable_action: QAction = menu.addAction("Add Variable")
-        remove_selected_action: QAction = menu.addAction("Remove Selected")
-
-        add_variable_action.setEnabled(selected_block is not None)
-        remove_selected_action.setEnabled(selected_block is not None and has_selected_rows)
-
-        selected_action: QAction | None = menu.exec(table_view.viewport().mapToGlobal(position))
-
-        if selected_action == add_variable_action:
-            self.open_add_variable_dialog()
-        elif selected_action == remove_selected_action:
-            self.remove_selected_variables()
-        else:
-            pass
-
-    def show_parameters_table_context_menu(self, position: QtCore.QPoint) -> None:
-        """
-        Show the parameters table context menu.
-
-        :param position:
-        :return:
-        """
-        table_view: QtWidgets.QTableView = self.ui.parametersTableView
-        self.select_table_context_row(table_view=table_view, position=position)
-
-        selected_block: Block | None = self.get_selected_scene_block()
-        has_selected_rows: bool = bool(table_view.selectionModel().selectedRows())
-
-        menu: QMenu = QMenu(table_view)
-        add_parameter_action: QAction = menu.addAction("Add Parameter")
-        remove_selected_action: QAction = menu.addAction("Remove Selected")
-
-        add_parameter_action.setEnabled(selected_block is not None)
-        remove_selected_action.setEnabled(selected_block is not None and has_selected_rows)
-
-        selected_action: QAction | None = menu.exec(table_view.viewport().mapToGlobal(position))
-
-        if selected_action == add_parameter_action:
-            self.open_add_parameter_dialog()
-        elif selected_action == remove_selected_action:
-            self.remove_selected_parameters()
-        else:
-            pass
-
-    def show_equations_table_context_menu(self, position: QtCore.QPoint) -> None:
-        """
-        Show the equations table context menu.
-
-        :param position:
-        :return:
-        """
-        table_view: QtWidgets.QTableView = self.ui.equationsTableView
-        self.select_table_context_row(table_view=table_view, position=position)
-
-        selected_block: Block | None = self.get_selected_scene_block()
-        has_selected_rows: bool = bool(table_view.selectionModel().selectedRows())
-
-        menu: QMenu = QMenu(table_view)
-        add_equation_action: QAction = menu.addAction("Add Equation")
-        remove_selected_action: QAction = menu.addAction("Remove Selected")
-
-        add_equation_action.setEnabled(selected_block is not None)
-        remove_selected_action.setEnabled(selected_block is not None and has_selected_rows)
-
-        selected_action: QAction | None = menu.exec(table_view.viewport().mapToGlobal(position))
-
-        if selected_action == add_equation_action:
-            self.open_add_equation_dialog()
-        elif selected_action == remove_selected_action:
-            self.remove_selected_equations()
-        else:
-            pass
-
-    def open_add_variable_dialog(self) -> None:
-        """
-        Open the dialog used to add a new block symbol.
-
-        :return:
-        """
-        dialog: AddBlockVariableDialog = AddBlockVariableDialog(self)
-
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            try:
-                block = self.get_selected_scene_block()
-                if block is None:
-                    raise ValueError("No block is selected in the editor.")
-
-                name = dialog.get_name()
-                category = dialog.get_category()
-                parameter_value = dialog.get_parameter_value()
-
-                if not dialog_models.is_valid_symbol_name(name):
-                    raise ValueError("The symbol name must be a valid identifier.")
-                elif dialog_models.block_namespace_contains_name(block, name):
-                    raise ValueError(f"The symbol '{name}' already exists in this block.")
-
-                new_var = self.var_factory.add_var(name=name)
-                dialog_models.add_variable_to_block(
-                    block=block,
-                    var=new_var,
-                    var_type=category,
-                    parameter_value=parameter_value
-                )
-
-                self.variables_model.set_block(block)
-                self.parameters_model.set_block(block)
-                self.equations_model.set_block(block)
-                self.variables_model.block_updated.emit(block.uid)
-            except Exception as exc:
-                QtWidgets.QMessageBox.warning(self, "Add Variable Error", str(exc))
-        else:
-            pass
-
-    def open_add_parameter_dialog(self) -> None:
-        """
-        Open the dialog used to add a new parameter (event, mode, or regular) to the selected block.
-
-        :return:
-        """
-        api_object = self.parameters_model.api_object
-        dialog: AddParameterDialog = AddParameterDialog(
-            api_object=api_object,
-            devices_static_params_mapping=self.devices_static_params_mapping,
-            parent=self
-        )
-
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            try:
-                block = self.get_selected_scene_block()
-                if block is None:
-                    raise ValueError("No block is selected in the editor.")
-
-                name = dialog.get_name()
-                category = dialog.get_category()
-
-                if not dialog_models.is_valid_symbol_name(name):
-                    raise ValueError("The symbol name must be a valid identifier.")
-                elif dialog_models.block_namespace_contains_name(block, name):
-                    raise ValueError(f"The symbol '{name}' already exists in this block.")
-
-                if category == "parameter":
-                    static_var_ref = dialog.get_static_variable()
-                    new_var = self.var_factory.add_var(name=name, reference=static_var_ref)
-                    parameter_value = None
-                else:
-                    new_var = self.var_factory.add_var(name=name)
-                    parameter_value = dialog.get_parameter_value()
-                dialog_models.add_variable_to_block(
-                    block=block,
-                    var=new_var,
-                    var_type=category,
-                    parameter_value=parameter_value
-                )
-
-                self.parameters_model.set_block(block)
-                self.equations_model.set_block(block)
-                self.parameters_model.block_updated.emit(block.uid)
-            except Exception as exc:
-                QtWidgets.QMessageBox.warning(self, "Add Parameter Error", str(exc))
-        else:
-            pass
-
-    def open_add_equation_dialog(self) -> None:
-        """
-        Open the dialog used to add a new equation.
-
-        :return:
-        """
-        block = self.get_selected_scene_block()
-        if block is None:
-            QtWidgets.QMessageBox.warning(self, "Add Equation Error", "No block is selected in the editor.")
-            return
-
-        symbol_namespace = dialog_models.build_block_symbol_namespace(block)
-        dialog = AddEquationDialog(symbol_namespace=symbol_namespace, parent=self)
-
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            try:
-                equation_text = dialog.get_equation_text()
-                category = dialog.get_category()
-
-                parsed_expr = string_to_symbolic(equation_text, symbol_namespace)
-
-                if category == "state":
-                    block.state_eqs.append(parsed_expr)
-                elif category == "algebraic":
-                    block.algebraic_eqs.append(parsed_expr)
-                else:
-                    raise ValueError(f"Unknown equation type: {category}")
-
-                self.equations_model.set_block(block)
-                self.equations_model.block_updated.emit(block.uid)
-            except Exception as exc:
-                QtWidgets.QMessageBox.warning(self, "Add Equation Error", str(exc))
-        else:
-            pass
-
-    def remove_selected_variables(self) -> None:
-        """
-        Remove selected variables from the selected block.
-
-        :return:
-        """
-        block = self.get_selected_scene_block()
-        if block is None:
-            return
-
-        vars_model = self.variables_model
-        vars_selected = [self._table_source_index(idx).row() for idx in
-                         self.ui.variablesTableView.selectionModel().selectedRows()]
-        if not vars_selected:
-            return
-
-        vars_to_remove_from_state = []
-        vars_to_remove_from_algebraic = []
-        init_keys_to_remove = []
-        for row_idx in vars_selected:
-            row_data = vars_model.rows[row_idx]
-            var = row_data.key_var
-            if row_data.kind == dialog_models.BlockParameterKind.STATE_VAR:
-                if var in block.state_vars:
-                    vars_to_remove_from_state.append(var)
-                    if var in block.init_values:
-                        init_keys_to_remove.append(var)
-            elif row_data.kind == dialog_models.BlockParameterKind.ALGEBRAIC_VAR:
-                if var in block.algebraic_vars:
-                    vars_to_remove_from_algebraic.append(var)
-
-        block.state_vars = [v for v in block.state_vars if v not in set(vars_to_remove_from_state)]
-        block.algebraic_vars = [v for v in block.algebraic_vars if v not in set(vars_to_remove_from_algebraic)]
-        for key in init_keys_to_remove:
-            if key in block.init_values:
-                del block.init_values[key]
-
-        vars_model.set_block(block)
-        vars_model.block_updated.emit(block.uid)
-
-    def remove_selected_parameters(self) -> None:
-        """
-        Remove selected parameters from the selected block.
-
-        :return:
-        """
-        block = self.get_selected_scene_block()
-        if block is None:
-            return
-
-        params_model = self.parameters_model
-        params_selected = [self._table_source_index(idx).row() for idx in
-                           self.ui.parametersTableView.selectionModel().selectedRows()]
-        if not params_selected:
-            return
-
-        for row_idx in params_selected:
-            row_data = params_model.rows[row_idx]
-            var = row_data.key_var
-            if row_data.kind == dialog_models.BlockParameterKind.EVENT_PARAMETER:
-                if var in block.event_dict:
-                    del block.event_dict[var]
-            elif row_data.kind == dialog_models.BlockParameterKind.MODE_PARAMETER:
-                if var in block.mode_dict:
-                    del block.mode_dict[var]
-            elif row_data.kind == dialog_models.BlockParameterKind.FIXED_PARAMETER:
-                if var in block.parameters:
-                    del block.parameters[var]
-
-        params_model.set_block(block)
-        params_model.block_updated.emit(block.uid)
-
-    def remove_selected_equations(self) -> None:
-        """
-        Remove selected equations from the selected block.
-
-        :return:
-        """
-        block = self.get_selected_scene_block()
-        if block is None:
-            return
-
-        equations_model = self.equations_model
-        equations_selected = [self._table_source_index(idx).row() for idx in
-                              self.ui.equationsTableView.selectionModel().selectedRows()]
-        if not equations_selected:
-            return
-
-        state_indices_to_remove = set()
-        alg_indices_to_remove = set()
-        for row_idx in equations_selected:
-            row_data = equations_model.rows[row_idx]
-            if row_data.item_index is not None:
-                if row_data.kind == dialog_models.BlockParameterKind.STATE_EQUATION:
-                    state_indices_to_remove.add(row_data.item_index)
-                elif row_data.kind == dialog_models.BlockParameterKind.ALGEBRAIC_EQUATION:
-                    alg_indices_to_remove.add(row_data.item_index)
-
-        new_state_eqs = [eq for idx, eq in enumerate(block.state_eqs) if idx not in state_indices_to_remove]
-        new_algebraic_eqs = [eq for idx, eq in enumerate(block.algebraic_eqs) if idx not in alg_indices_to_remove]
-        block.state_eqs = new_state_eqs
-        block.algebraic_eqs = new_algebraic_eqs
-
-        equations_model.set_block(block)
-        equations_model.block_updated.emit(block.uid)
-
-    def open_expression_row_editor(self, row_index: int) -> None:
-        """
-        Open the expression text editor for a parameter-table row.
-
-        :param row_index:
-        :return:
-        """
-        row_data: dialog_models.BlockParameterRow | None = self.equations_model.get_row(row_index)
-        expression_text: str
-        dialog: ExpressionTextEditorDialog
-        symbol_namespace: Dict[str, Expr]
-        parsed_expression: Expr | Comparison
-        expression_value: Expr
-
-        if row_data is not None and self.equations_model.block is not None:
-            if isinstance(row_data.value, Expr):
-                old_expr = row_data.value
-                expression_text = symbolic_to_string(row_data.value)
-                self.equations_model.symbol_namespace = dialog_models.build_block_symbol_namespace(
-                    self.equations_model.block)
-                dialog = ExpressionTextEditorDialog(
-                    expression_text=expression_text,
-                    symbol_namespace=self.equations_model.symbol_namespace,
-                    parent=self
-                )
-
-                if dialog.exec() == QDialog.DialogCode.Accepted:
-                    try:
-                        parsed_expression = string_to_symbolic(dialog.get_expression_text(),
-                                                               self.equations_model.symbol_namespace)
-
-                        if isinstance(parsed_expression, Comparison):
-                            expression_value = parsed_expression.to_expression()
-                        else:
-                            expression_value = parsed_expression
-
-                        index = self.equations_model.index(row_index, 1)
-                        self.equations_model.setData(index, symbolic_to_string(expression_value),
-                                                     QtCore.Qt.ItemDataRole.EditRole)
-                    except Exception as exc:
-                        QtWidgets.QMessageBox.warning(
-                            self,
-                            "Expression Error",
-                            str(exc)
-                        )
-                else:
-                    pass
-            else:
-                pass
-        else:
-            pass
-
     def center_view_on_items(self) -> None:
         """
         Center the graphics view on the current selection or, if none exists, on all items.
@@ -8382,58 +8040,15 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             deletable_item: graph.BlockItem | graph.GenericBlockItem | graph.RoundBaseArithmeticOpItem | graph.RectBaseArithmeticOpItem | graph.PairedItem
 
             if len(deletable_items) == 0:
-                self._selected_side_block = None
-                self.refresh_active_side_panel()
+                pass
             else:
                 for deletable_item in deletable_items:
                     self.remove_block_item(deletable_item)
 
                 self.scene.clearSelection()
-                self._selected_side_block = None
-                self.refresh_active_side_panel()
                 self.mark_unapplied_changes()
         else:
             pass
-
-    def on_scene_selection_changed(self) -> None:
-        """
-        Refresh the right-side parameters table from the selected block.
-
-        :return:
-        """
-        selected_block: Block | None = self.get_selected_scene_block()
-        self._selected_side_block = selected_block
-        self.refresh_active_side_panel()
-
-    @QtCore.Slot(int)
-    def handle_side_panel_page_changed(self, index: int) -> None:
-        """
-        Refresh only the side panel that just became visible.
-
-        :param index: Newly selected toolbox page index.
-        :return: None.
-        """
-        _unused_index: int = index
-        self.refresh_active_side_panel()
-
-    def refresh_active_side_panel(self) -> None:
-        """
-        Refresh only the currently visible side panel.
-
-        :return: None.
-        """
-        current_widget: QtWidgets.QWidget = self.ui.toolBox.currentWidget()
-
-        if current_widget == self.ui.page:
-            self.variables_model.set_block(self._selected_side_block)
-        else:
-            if current_widget == self.ui.page_2:
-                self.parameters_model.set_block(self._selected_side_block)
-            else:
-                if current_widget == self.ui.page_3:
-                    self.equations_model.set_block(self._selected_side_block)
-                else:
-                    pass
 
     def edit_scene_item(self, item: graph.BlockItem | graph.GenericBlockItem | graph.ConnectionItem) -> None:
         """
@@ -8981,13 +8596,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             pass
 
-        # Rebuild the side-panel models when the renamed block is the one that is
-        # currently inspected, because some table cells expose block names as context.
-        if self._selected_side_block is not None and self._selected_side_block.uid == block.uid:
-            self.refresh_active_side_panel()
-        else:
-            pass
-
         # Breadcrumb buttons render ``block.name`` directly, so rebuilding the
         # navigation path is enough to propagate the new label everywhere.
         if self._navigation_delegate is not None:
@@ -9144,21 +8752,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.mark_unapplied_changes()
 
 
-    def rename_variable_from_table(self,
-                                   var: Var,
-                                   new_name: str) -> None:
-        """
-        Route one side-panel variable rename through the editor controller.
-
-        :param var: Variable represented by the edited table row.
-        :param new_name: Candidate symbolic name entered by the user.
-        :return: None.
-        """
-        self._apply_variable_rename(var=var,
-                                    new_name=new_name,
-                                    renamed_item=None)
-
-
     def _apply_variable_rename(
             self,
             var: Var,
@@ -9294,18 +8887,19 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                                     renamed_item=item)
 
     def get_scene_item_by_block_uid(self,
-                                    block_uid: int) -> graph.BlockItem | graph.GenericBlockItem | graph.RoundBaseArithmeticOpItem | graph.RectBaseArithmeticOpItem | None:
+                                    block_uid: int) -> DynamicBlockGraphicsItem | None:
         """
         Find the visible scene item representing a block uid.
 
-        :param block_uid:
-        :return:
+        :param block_uid: Symbolic block UID represented in the current scene.
+        :return: Matching graphics item or ``None``.
         """
         item: QGraphicsItem
 
         for item in self.scene.items():
             if isinstance(item, (graph.BlockItem, graph.GenericBlockItem, graph.RoundBaseArithmeticOpItem,
-                                 graph.RectBaseArithmeticOpItem)) and item.subsys is not None:
+                                 graph.RectBaseArithmeticOpItem, graph.UnOpItem,
+                                 graph.PairedItem)) and item.subsys is not None:
                 if item.subsys.uid == block_uid:
                     return item
                 else:
@@ -9331,28 +8925,216 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             pass
 
-    def _invalidate_equations_latex(self, old_latex: str) -> None:
-        """Drop one cached LaTeX pixmap after the source equation changed."""
-        delegate = self._equations_latex_delegate
-        if hasattr(delegate, "invalidate"):
-            delegate.invalidate(old_latex)
-        self.ui.equationsTableView.resizeRowsToContents()
+    @QtCore.Slot(object)
+    def on_structural_rebuild_requested(self, request: BlockStructuralEditRequest) -> None:
+        """Rebuild one generated block and migrate surviving connected ports.
 
-    def on_block_updated(self, block_uid: int) -> None:
+        :param request: Synchronous request emitted by the properties dialogue.
+        :return: None.
         """
-        Refresh the scene after a block edit coming from the parameters tab.
+        if not isinstance(request, BlockStructuralEditRequest):
+            return
+        else:
+            target_block: Block = request.get_block()
+            builder: Any = request.get_builder()
 
-        :param block_uid:
-        :return:
+        # Evaluate the complete candidate against an isolated factory first.
+        # This prevents invalid structural settings from leaking orphaned Vars
+        # into the live editor factory, which has no transactional rollback.
+        preflight_builder: Any | None = create_structural_template_builder(
+            var_factory=VarFactory(),
+            block_type=request.get_block_type(),
+            item_name=target_block.name,
+            api_object=self.api_object,
+        )
+        if preflight_builder is None:
+            request.set_result(False, "This block type has no structural rebuild adapter.")
+            return
+        else:
+            copy_template_builder_values(builder, preflight_builder)
+        try:
+            preflight_template: Any = preflight_builder.eval()
+            if isinstance(preflight_template, Block):
+                _preflight_block: Block = preflight_template
+            elif isinstance(preflight_template, EmtModelTemplate):
+                _preflight_block = preflight_template.block
+            elif isinstance(preflight_template, RmsModelTemplate):
+                _preflight_block = preflight_template.block
+            else:
+                request.set_result(False, "The selected builder did not return a symbolic block.")
+                return
+        except (ArithmeticError, IndexError, KeyError, TypeError, ValueError) as error:
+            request.set_result(False, str(error))
+            return
+
+        try:
+            template: Any = builder.eval()
+            if isinstance(template, Block):
+                candidate_block: Block = template
+            elif isinstance(template, EmtModelTemplate):
+                candidate_block = template.block
+            elif isinstance(template, RmsModelTemplate):
+                candidate_block = template.block
+            else:
+                request.set_result(False, "The selected builder did not return a symbolic block.")
+                return
+        except (ArithmeticError, IndexError, KeyError, TypeError, ValueError) as error:
+            request.set_result(False, str(error))
+            return
+
+        candidate_block.name = target_block.name
+        old_inputs: List[Var] = list(target_block.in_vars)
+        old_outputs: List[Var] = list(target_block.out_vars)
+        new_input_indexes: Dict[tuple[str, str], int] = build_port_index_by_key(candidate_block.in_vars)
+        new_output_indexes: Dict[tuple[str, str], int] = build_port_index_by_key(candidate_block.out_vars)
+        old_input_by_key: Dict[tuple[str, str], Var] = dict(
+            (get_structural_port_key(variable), variable) for variable in old_inputs
+        )
+        old_output_by_key: Dict[tuple[str, str], Var] = dict(
+            (get_structural_port_key(variable), variable) for variable in old_outputs
+        )
+
+        # Preserve the exact Var objects for every semantic port that survives.
+        replacements: Dict[Var, Var] = dict()
+        candidate_var: Var
+        for candidate_var in candidate_block.in_vars:
+            surviving_input: Var | None = old_input_by_key.get(get_structural_port_key(candidate_var), None)
+            if surviving_input is not None:
+                replacements[candidate_var] = surviving_input
+            else:
+                pass
+        for candidate_var in candidate_block.out_vars:
+            surviving_output: Var | None = old_output_by_key.get(get_structural_port_key(candidate_var), None)
+            if surviving_output is not None:
+                replacements[candidate_var] = surviving_output
+            else:
+                pass
+
+        # Migrate diagram port indexes by semantics and explicitly disconnect
+        # wires whose phase or generated port no longer exists.
+        connection_uids_to_remove: List[int] = list()
+        connection_uid: int
+        connection: BlockDiagramConnection
+        for connection_uid, connection in list(self.diagram.con_data.items()):
+            keep_connection: bool = True
+            if connection.to_uid == target_block.uid:
+                if 0 <= connection.port_number_to < len(old_inputs):
+                    input_key: tuple[str, str] = get_structural_port_key(old_inputs[connection.port_number_to])
+                    new_input_index: int | None = new_input_indexes.get(input_key, None)
+                    if new_input_index is not None:
+                        connection.port_number_to = new_input_index
+                    else:
+                        keep_connection = False
+                else:
+                    keep_connection = False
+            else:
+                pass
+            if connection.from_uid == target_block.uid and keep_connection:
+                if 0 <= connection.port_number_from < len(old_outputs):
+                    output_key: tuple[str, str] = get_structural_port_key(old_outputs[connection.port_number_from])
+                    new_output_index: int | None = new_output_indexes.get(output_key, None)
+                    if new_output_index is not None:
+                        connection.port_number_from = new_output_index
+                    else:
+                        keep_connection = False
+                else:
+                    keep_connection = False
+            else:
+                pass
+            if not keep_connection:
+                connection_uids_to_remove.append(connection_uid)
+            else:
+                pass
+
+        scene_item: QtWidgets.QGraphicsItem
+        connection_item_by_uid: Dict[int, graph.ConnectionItem] = dict()
+        for scene_item in self.scene.items():
+            if isinstance(scene_item, graph.ConnectionItem):
+                connection_item_by_uid[scene_item.con_uid] = scene_item
+            else:
+                pass
+        for connection_uid in connection_uids_to_remove:
+            connection_item: graph.ConnectionItem | None = connection_item_by_uid.get(connection_uid, None)
+            if connection_item is not None:
+                self.remove_connection_item(connection_item)
+            elif connection_uid in self.diagram.con_data:
+                del self.diagram.con_data[connection_uid]
+            else:
+                pass
+
+        if len(replacements) > 0:
+            candidate_block.update_model_bulk(replacements)
+            replace_generated_block_auxiliary_variables(candidate_block, replacements)
+        else:
+            pass
+        apply_generated_parameter_values(candidate_block, request.get_parameter_values())
+        apply_generated_block_state(candidate_block, target_block)
+        request.set_result(True, "")
+
+    @QtCore.Slot(object)
+    def on_output_export_changes_requested(self, changes: object) -> None:
+        """Disconnect wires before existing output ports are removed.
+
+        The properties dialogue emits this request synchronously, immediately
+        before it edits ``Block.out_vars``. Removing the graphical connection at
+        this point also unregisters the corresponding VarFactory edge and avoids
+        an invisible persisted connection after the scene rebuild.
+
+        :param changes: Staged ``(owner, variable, exported)`` change tuples.
+        :return: None.
+        """
+        if isinstance(changes, list):
+            change: object
+            for change in changes:
+                if isinstance(change, tuple) and len(change) == 3:
+                    owner: object = change[0]
+                    variable: object = change[1]
+                    exported: object = change[2]
+                    if isinstance(owner, Block) and isinstance(variable, Var) and isinstance(exported, bool):
+                        if exported:
+                            pass
+                        else:
+                            scene_item: DynamicBlockGraphicsItem | None = self.get_scene_item_by_block_uid(owner.uid)
+                            if scene_item is not None:
+                                output_port: graph.PortItem
+                                for output_port in scene_item.outputs:
+                                    port_variable: Var | None = output_port.base_var
+                                    if port_variable is not None and \
+                                            port_variable.non_mutable_uid == variable.non_mutable_uid:
+                                        connection_items: List[graph.ConnectionItem] = list()
+                                        if output_port.connections is not None:
+                                            connection_item: graph.ConnectionItem
+                                            for connection_item in output_port.connections:
+                                                connection_items.append(connection_item)
+                                        else:
+                                            pass
+                                        for connection_item in connection_items:
+                                            self.remove_connection_item(connection_item)
+                                    else:
+                                        pass
+                            else:
+                                pass
+                    else:
+                        pass
+                else:
+                    pass
+        else:
+            pass
+
+    @QtCore.Slot(object)
+    def on_block_properties_applied(self, block_uid: int) -> None:
+        """
+        Mark a validated modal edit as dirty without rebuilding unchanged graphics.
+
+        :param block_uid: Identity of the block changed by the modal dialogue.
+        :return: None.
         """
         self.mark_unapplied_changes()
-        sender_obj: QtCore.QObject | None = self.sender()
-
-        if sender_obj is self.parameters_model:
-            self.refresh_active_side_panel()
-        else:
-            self.rebuild_scene_from_diagram()
-            self.select_block_by_uid(block_uid)
+        # Applying can add ports even when the equations alone changed. Rebuild
+        # from the same diagram/model identities so the visible item reflects
+        # its current input/output contract immediately.
+        self.rebuild_scene_from_diagram()
+        self.select_block_by_uid(block_uid)
 
     def apply_changes(self) -> None:
         """
@@ -9413,29 +9195,29 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             # static parameters only in child blocks. Mirror them into the saved
             # root immediately after commit so EMT initialization sees the same
             # constant-parameter contract as the scripting/template path.
-            dialog_models.synchronize_saved_emt_root_parameters_from_children(device=self.api_object)
+            synchronize_saved_emt_root_parameters_from_children(device=self.api_object)
 
             # The previous saved EMT model may already have bus-propagation edges
             # registered in the shared var-factory graph. Remove those stale
             # edges before registering the freshly committed model vars so the
             # next attach step does not accumulate old and new symbolic links.
-            dialog_models.unregister_saved_emt_model_var_connections_for_device(device=self.api_object,
-                                                                                var_factory=self.var_factory)
+            unregister_saved_emt_model_var_connections_for_device(device=self.api_object,
+                                                                   var_factory=self.var_factory)
 
             # The committed editor block is a fresh symbolic clone. Register its
             # vars in the shared factory before reconnecting so bus-side uid
             # propagation and EmtProblemDae external-mapping recovery see the
             # same authoritative objects as the scripting/template path.
-            dialog_models.register_saved_emt_model_vars_for_device(device=self.api_object,
-                                                                   var_factory=self.var_factory)
+            register_saved_emt_model_vars_for_device(device=self.api_object,
+                                                      var_factory=self.var_factory)
 
             dialog_models.initialize_connected_bus_models_for_editor_assignment(api_object=self.api_object,
                                                                                 circuit=self.circuit,
                                                                                 var_factory=self.var_factory,
                                                                                 mode=self.mode)
-            dialog_models.attach_emt_model_to_buses(device=self.api_object,
-                                                    model=self.api_object.emt_model,
-                                                    var_factory=self.var_factory)
+            attach_emt_model_to_buses(device=self.api_object,
+                                      model=self.api_object.emt_model,
+                                      var_factory=self.var_factory)
             # Mark the editor state as clean because all in-memory edits were
             # transferred back to the owned device model successfully.
             self.has_unapplied_changes = False
@@ -10669,31 +10451,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         )
         return reply == QtWidgets.QMessageBox.StandardButton.Yes
 
-    def disconnect_editor_signals(self) -> None:
-        """
-        Disconnect long-lived UI signals before the editor gets destroyed.
-
-        :return: None.
-        """
-        _disconnect_qt_signal(self.ui.toolBox.currentChanged, self.handle_side_panel_page_changed)
-        _disconnect_qt_signal(self.scene.selectionChanged, self.on_scene_selection_changed)
-
-    def _dispose_dynamic_search_widgets(self) -> None:
-        """
-        Remove dynamically inserted search boxes from the side panel layouts.
-
-        These line edits are created programmatically instead of by the .ui file,
-        so the editor should explicitly undo those insertions during teardown.
-
-        :return: None.
-        """
-        _dispose_layout_widget(self.ui.verticalLayout_7, self.variables_search)
-        self.variables_search = None
-        _dispose_layout_widget(self.ui.verticalLayout_8, self.parameters_search)
-        self.parameters_search = None
-        _dispose_layout_widget(self.ui.verticalLayout_9, self.equations_search)
-        self.equations_search = None
-
     def _dispose_table_models(self) -> None:
         """
         Detach the table/tree models owned by the editor.
@@ -10705,30 +10462,15 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :return: None.
         """
         _clear_table_view_model(self.ui.libraryTreeView)
-        _clear_table_view_model(self.ui.variablesTableView)
-        _clear_table_view_model(self.ui.parametersTableView)
-        _clear_table_view_model(self.ui.equationsTableView)
 
         _dispose_qobject(self.library_proxy_model)
         self.library_proxy_model = None
-        _dispose_qobject(self.variables_proxy)
-        self.variables_proxy = None
-        _dispose_qobject(self.parameters_proxy)
-        self.parameters_proxy = None
-        _dispose_qobject(self.equations_proxy)
-        self.equations_proxy = None
 
         _dispose_qobject(self.library_find_shortcut)
         self.library_find_shortcut = None
 
         _dispose_dynamic_editor_library(self.library)
         self.library = None
-        _dispose_qobject(self.variables_model)
-        self.variables_model = None
-        _dispose_qobject(self.parameters_model)
-        self.parameters_model = None
-        _dispose_qobject(self.equations_model)
-        self.equations_model = None
 
     def _dispose_graphics_objects(self) -> None:
         """
@@ -10758,7 +10500,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         if view is not None:
             self.ui.verticalLayout_3.removeWidget(view)
             view.setParent(None)
-            view.deleteLater()
+            _dispose_qobject(view)
             self.ui.graphicsView = None
             self.view = None
         else:
@@ -10766,6 +10508,57 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         _dispose_qobject(scene)
         self.scene = None
+
+    def _dispose_block_properties_dock(self) -> None:
+        """Destroy the active block-properties dock before editor teardown.
+
+        :return: None.
+        """
+        normalize_timer: QtCore.QTimer | None = self._properties_dock_normalize_timer
+        if normalize_timer is not None:
+            normalize_timer.stop()
+            try:
+                normalize_timer.timeout.disconnect(
+                    self.normalize_block_properties_right_dock
+                )
+            except (RuntimeError, TypeError):
+                pass
+            normalize_timer.deleteLater()
+            self._properties_dock_normalize_timer = None
+        else:
+            pass
+
+        properties_dock: DynamicBlockPropertiesDockWidget | None = self._block_properties_dock
+        if properties_dock is not None:
+            properties_dock.prepare_to_delete()
+            self.removeDockWidget(properties_dock)
+            properties_dock.setParent(None)
+            properties_dock.deleteLater()
+            self._block_properties_dock = None
+            self._block_properties_dialogue = None
+        else:
+            pass
+
+    def _dispose_library_dock(self) -> None:
+        """Detach and delete the fixed Library dock after its models are gone.
+
+        :return: None.
+        """
+        library_dock: QtWidgets.QDockWidget | None = self._library_dock
+        if library_dock is not None:
+            library_content: QtWidgets.QWidget | None = library_dock.widget()
+            library_dock.setWidget(None)
+            if library_content is not None:
+                library_content.setParent(None)
+                _dispose_qobject(library_content)
+            else:
+                pass
+            self.removeDockWidget(library_dock)
+            library_dock.setParent(None)
+            _dispose_qobject(library_dock)
+            self._library_dock = None
+        else:
+            pass
 
     def prepare_to_delete(self) -> None:
         """
@@ -10777,19 +10570,20 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             return
 
         self._prepared_to_delete = True
-        self.disconnect_editor_signals()
+        # Close modeless property tooling before any of the model or scene
+        # objects referenced by its signals are dismantled.
+        self._dispose_block_properties_dock()
 
-        # Tear down the side-panel models first so no item view keeps proxy/model
-        # objects alive after the parent editor starts disappearing.
+        # Tear down the library model before its dock starts disappearing.
         self._dispose_table_models()
-
-        # Remove the dynamic line edits explicitly because they were inserted into
-        # the UI layouts at runtime and otherwise rely on deferred QObject cleanup.
-        self._dispose_dynamic_search_widgets()
 
         # Finally dismantle the graphics subtree. This is the highest-risk part
         # because it owns many binary Qt graphics objects behind Python wrappers.
         self._dispose_graphics_objects()
+
+        # The Library dock owns the old right-side frame and can be deleted only
+        # after its proxy/source model chain is gone.
+        self._dispose_library_dock()
 
         self._navigation_delegate = None
         self.dynamic_editor_entry = None

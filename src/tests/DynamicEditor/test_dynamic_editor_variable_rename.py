@@ -1,18 +1,13 @@
 from __future__ import annotations
 
 import copy
-from typing import List
-
-from PySide6 import QtCore
 
 from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI
-from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_models import WrappableBlockTableModel
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Utils.procedural_logic import FixedSampleLogic
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic import BinOp, Const, Var
 from VeraGridEngine.Utils.Symbolic.symbolic_io import BlockParser, BlockSaver
-from VeraGridEngine.enumerations import DynamicTableModelMode
 
 
 class _AliasPropagationEditorStub:
@@ -37,35 +32,6 @@ class _AliasPropagationEditorStub:
         self.root_block: Block = root_block
         self.main_block: Block = main_block
         self.var_factory: VarFactory = var_factory
-
-
-class _VariableRenameControllerStub:
-    """
-    Record and apply table rename requests like the editor controller.
-    """
-
-    __slots__ = ("requested_vars", "requested_names")
-
-    def __init__(self) -> None:
-        """
-        Initialize empty request history.
-
-        :return: None.
-        """
-        self.requested_vars: List[Var] = list()
-        self.requested_names: List[str] = list()
-
-    def rename_variable(self, var: Var, new_name: str) -> None:
-        """
-        Apply one rename after recording the controller request.
-
-        :param var: Variable requested by the table model.
-        :param new_name: Requested symbolic name.
-        :return: None.
-        """
-        self.requested_vars.append(var)
-        self.requested_names.append(new_name)
-        var.set_name(new_name)
 
 
 def test_connected_variable_roundtrip_restores_original_identity_on_disconnect() -> None:
@@ -294,36 +260,3 @@ def test_alias_chain_rename_and_disconnect_restore_each_connection_boundary() ->
                                   outgoing_var=signal_pair_var)
     assert consumer_var.uid == consumer_original_uid
     assert consumer_var.name == "consumer_input"
-
-
-def test_variables_table_delegates_name_changes_to_controller() -> None:
-    """
-    Prevent the variables table from mutating symbolic names on its own.
-
-    :return: None.
-    """
-    var_factory: VarFactory = VarFactory()
-    variable: Var = var_factory.add_var(name="old_name")
-    block: Block = Block(algebraic_vars=list([variable]), name="table_block")
-    table_model: WrappableBlockTableModel = WrappableBlockTableModel(
-        var_factory=var_factory,
-        parameter_value_type_role=QtCore.Qt.ItemDataRole.UserRole + 1,
-        parameter_editable_role=QtCore.Qt.ItemDataRole.UserRole + 2,
-        block_search_role=QtCore.Qt.ItemDataRole.UserRole + 3,
-    )
-    table_model.set_mode(DynamicTableModelMode.VARIABLES)
-    table_model.set_block(block)
-    name_index: QtCore.QModelIndex = table_model.index(0, 1)
-
-    # With no editor/controller connected, the model must reject the edit and
-    # leave the symbolic variable untouched.
-    assert table_model.setData(name_index, "uncontrolled_name") is False
-    assert variable.name == "old_name"
-
-    controller: _VariableRenameControllerStub = _VariableRenameControllerStub()
-    table_model.variable_rename_requested.connect(controller.rename_variable)
-
-    assert table_model.setData(name_index, "controlled_name") is True
-    assert controller.requested_vars == list([variable])
-    assert controller.requested_names == list(["controlled_name"])
-    assert variable.name == "controlled_name"

@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Iterator
+from typing import Any
 
 from PySide6 import QtCore, QtGui, QtWidgets
 

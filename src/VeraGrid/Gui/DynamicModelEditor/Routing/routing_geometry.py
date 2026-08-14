@@ -40,14 +40,6 @@ class RoutingGeometry:
         self._visual_alignment_threshold: float = 3.0
         self._port_stub_length: float = 20.0
 
-    def get_numerical_epsilon(self) -> float:
-        """
-        Return the numerical epsilon used for internal floating-point checks.
-
-        :returns: Numerical epsilon.
-        """
-        return self._numerical_epsilon
-
     def get_visual_alignment_threshold(self) -> float:
         """
         Return the shared visual alignment threshold.
@@ -55,14 +47,6 @@ class RoutingGeometry:
         :returns: Visual alignment threshold in pixels.
         """
         return self._visual_alignment_threshold
-
-    def get_port_stub_length(self) -> float:
-        """
-        Return the shared fixed length used for port stubs.
-
-        :returns: Port stub length in pixels.
-        """
-        return self._port_stub_length
 
     def build_port_stub_point(
             self,

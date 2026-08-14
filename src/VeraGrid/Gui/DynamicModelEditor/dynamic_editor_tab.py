@@ -27,6 +27,59 @@ from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEdi
 from VeraGrid.Session.dynamic_editor_entries import DynamicEditorEntry
 
 
+def block_has_direct_computational_content(block: Block) -> bool:
+    """Return whether a block owns behavior rather than only one child shell.
+
+    Interface variables, parameters, and mappings may legitimately be mirrored
+    on a template container. Equations and runtime logic are what make the
+    container itself a meaningful navigation level.
+
+    :param block: Candidate navigation block.
+    :return: Whether the block owns equations or runtime behavior directly.
+    """
+    result: bool = bool(
+        block.state_eqs
+        or block.algebraic_eqs
+        or block.differential_eqs
+        or block.init_eqs
+        or block.diff_init_eqs
+        or block.inequalities
+        or block.discrete_eqs
+        or block.boolean_guards
+        or block.procedural_logic
+    )
+    return result
+
+
+def resolve_navigation_content_block(block: Block) -> Block:
+    """Skip redundant single-child containers during Ctrl-click navigation.
+
+    The root editor still displays the assigned template as one block with its
+    connection variables. Only after Ctrl-click are empty one-child wrappers
+    collapsed, preventing repeated views containing the same block again.
+
+    :param block: Block selected in the parent diagram.
+    :return: First meaningful block or branching container in its child chain.
+    """
+    result: Block = block
+    visited_uids: set[int] = set()
+    searching: bool = True
+    while searching:
+        if result.uid in visited_uids:
+            searching = False
+        else:
+            visited_uids.add(result.uid)
+            is_transparent_container: bool = (
+                len(result.children) == 1
+                and not block_has_direct_computational_content(result)
+            )
+            if is_transparent_container:
+                result = result.children[0]
+            else:
+                searching = False
+    return result
+
+
 class DynamicEditorDocument:
     """
     Represents a single editing document opened in a tab.
@@ -251,8 +304,9 @@ class DynamicEditorTab(QtWidgets.QWidget):
         :param block: Child block to navigate into.
         :return: None.
         """
-        block, self._block2blocktype = prepare_block_for_editing(block, self._var_factory)
-        self._navigation.open_child(block)
+        content_block: Block = resolve_navigation_content_block(block)
+        content_block, self._block2blocktype = prepare_block_for_editing(content_block, self._var_factory)
+        self._navigation.open_child(content_block)
         self._replace_editor()
 
     def navigate_to_breadcrumb_block(self, block: Block) -> None:
@@ -263,11 +317,6 @@ class DynamicEditorTab(QtWidgets.QWidget):
         :return: None.
         """
         self._navigation.go_to(block)
-        self._replace_editor()
-
-    def navigate_to_root(self) -> None:
-        """Navigate back to the root block."""
-        self._navigation.go_to_root()
         self._replace_editor()
 
     def refresh_breadcrumb(self) -> None:

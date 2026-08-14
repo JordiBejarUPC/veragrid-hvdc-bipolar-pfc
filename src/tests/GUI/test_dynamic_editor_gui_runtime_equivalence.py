@@ -7,6 +7,7 @@ from PySide6 import QtWidgets
 
 from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI
 from VeraGrid.Gui.DynamicModelEditor.dynamic_block_preparation import prepare_block_for_editing
+from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_utilities import create_generic_block
 import VeraGrid.Gui.DynamicModelEditor.dynamic_editor_graphics as graph
 from VeraGridEngine.Devices.Branches.line import Line
 from VeraGridEngine.Devices.Branches.overhead_line_type import OverheadLineType
@@ -609,6 +610,10 @@ def test_rms_editor_open_materializes_connection_vars(qt_app: QtWidgets.QApplica
         ])),
     ])
 
+    for editor, _unused_expected_references in expected_refs_by_editor:
+        assert editor.ui.toolBox.count() == 1
+        assert editor.ui.toolBox.currentWidget() is editor.ui.page_7
+
     try:
         for editor, expected_refs in expected_refs_by_editor:
             visible_refs: set[VarPowerFlowReferenceType] = set()
@@ -834,3 +839,67 @@ def test_decomposed_rms_block_persists_and_restores_elk_connections(
         second_editor.prepare_to_delete()
         second_editor.close()
         second_editor.deleteLater()
+
+
+def test_empty_generic_nested_editor_contains_only_boundary_ports(
+        qt_app: QtWidgets.QApplication,
+) -> None:
+    """Keep an empty Generic nested view free from a duplicate central block.
+
+    Also exercise migration of a diagram saved by the former behaviour, where
+    the Generic persisted a node representing itself between its own boundary
+    ports.
+
+    :param qt_app: Shared Qt application fixture.
+    :return: None.
+    """
+    circuit: MultiCircuit = MultiCircuit()
+    generator: Generator = Generator(name="Generic owner")
+    generic_block: Block = create_generic_block(
+        var_factory=circuit.var_factory,
+        inputs=3,
+        outputs=1,
+        name="GENERIC_1",
+    )
+    root_block: Block = Block(name="generic_root")
+    root_block.add(generic_block)
+
+    # Reproduce a file saved by the regression. The constructor must discard
+    # this self node before it creates the legitimate boundary wrappers.
+    generic_block.diagram.add_node(
+        name=generic_block.name,
+        x=480.0,
+        y=260.0,
+        tpe=BlockType.GENERIC.name,
+        device_uid=generic_block.uid,
+    )
+
+    editor: DynamicBlockEditorGUI = DynamicBlockEditorGUI(
+        var_factory=circuit.var_factory,
+        root_block=root_block,
+        current_block=generic_block,
+        api_object=generator,
+        circuit=circuit,
+        mode=DynamicSimulationMode.RMS,
+        current_theme=DynEditorGraphicsModes.LIGHT,
+        templates_list=list(),
+        is_root_editor=False,
+        modal=False,
+        workspace_embedded=False,
+        block2blocktype=dict(),
+    )
+    editor.show()
+    qt_app.processEvents()
+
+    try:
+        node_types: List[str] = [node.tpe for node in editor.diagram.node_data.values()]
+        assert len(node_types) == 4
+        assert node_types.count(BlockType.INPUT_CONN.name) == 3
+        assert node_types.count(BlockType.OUTPUT_CONN.name) == 1
+        assert BlockType.GENERIC.name not in node_types
+        assert all(node.device_uid != generic_block.uid for node in editor.diagram.node_data.values())
+    finally:
+        editor.prepare_to_delete()
+        editor.close()
+        editor.deleteLater()
+        qt_app.processEvents()

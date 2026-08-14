@@ -53,6 +53,30 @@ def find_var_by_persisted_identity(var_dict: Dict[int, Var],
 
     return None
 
+
+def build_persisted_identity_lookup(var_dict: Dict[int, Var]) -> Dict[int, Var]:
+    """
+    Build one constant-time lookup for stable and legacy mutable identities.
+
+    Stable dictionary keys remain authoritative when a mutable UID collides
+    with another variable's stable identity. This preserves the current
+    connection semantics while avoiding a full dictionary scan for every
+    symbolic leaf in legacy expression archives.
+
+    :param var_dict: Variables keyed by their stable non-mutable identity.
+    :return: Lookup containing stable identities and non-conflicting mutable UID aliases.
+    """
+    identity_lookup: Dict[int, Var] = dict(var_dict)
+    candidate_var: Var
+
+    for candidate_var in var_dict.values():
+        if candidate_var.uid not in identity_lookup:
+            identity_lookup[candidate_var.uid] = candidate_var
+        else:
+            pass
+
+    return identity_lookup
+
 class Connection:
     """
     Lightweight saved description of one propagated variable connection.
