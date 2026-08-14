@@ -1260,6 +1260,33 @@ def _evaluate_binary_function(name: str, arg1: NUMBER, arg2: NUMBER) -> NUMBER:
         raise ValueError(f"Unknown binary function '{name}'")
 
 
+def _binary_function_to_python(name: str, arg1: str, arg2: str) -> str:
+    """
+    Emit the NumPy source for one binary symbolic function.
+
+    Legacy files may contain ``Func2`` nodes named ``min`` or ``max``.  Those
+    names represent two-operand element-wise operations, whereas ``np.min``
+    and ``np.max`` interpret their second positional argument as an axis.
+    Keeping the mapping here shared by every code-generation path prevents the
+    same persisted expression from acquiring different runtime semantics.
+
+    :param name: Symbolic binary function name.
+    :param arg1: Generated source for the first argument.
+    :param arg2: Generated source for the second argument.
+    :return: NumPy-compatible Python expression source.
+    """
+    if name == "atan2":
+        source: str = f"np.arctan2({arg2}, {arg1})"
+    elif name == "min":
+        source = f"np.minimum({arg1}, {arg2})"
+    elif name == "max":
+        source = f"np.maximum({arg1}, {arg2})"
+    else:
+        source = f"np.{name}({arg1}, {arg2})"
+
+    return source
+
+
 class Func(Expr):
     __slots__ = ("op", "arg")
 
@@ -2067,10 +2094,7 @@ def expression2numba(expr: Expr,
     elif isinstance(expr, Func2):
         arg1 = expression2numba(expr.arg1, compiler_names_dict, 0)
         arg2 = expression2numba(expr.arg2, compiler_names_dict, 0)
-        if expr.name == "atan2":
-            s = f"np.arctan2({arg2}, {arg1})"
-        else:
-            s = f"np.{expr.name}({arg1}, {arg2})"
+        s = _binary_function_to_python(name=expr.name, arg1=arg1, arg2=arg2)
 
     else:
         raise TypeError(type(expr))
@@ -2121,10 +2145,7 @@ def _emit_event_params_eq(expr: Expr, uid_map_t: Dict[int, str] | None = None) -
     if isinstance(expr, Func2):
         arg1 = _emit_event_params_eq(expr.arg1, uid_map_t)
         arg2 = _emit_event_params_eq(expr.arg2, uid_map_t)
-        if expr.name == "atan2":
-            return f"np.arctan2({arg2}, {arg1})"
-        else:
-            return f"np.{expr.name}({arg1}, {arg2})"
+        return _binary_function_to_python(name=expr.name, arg1=arg1, arg2=arg2)
     else:
         raise ValueError(f"Unsupported expression '{type(expr).__name__}' in _emit_params_eq")
 
@@ -2169,10 +2190,7 @@ def _emit_one(expr: Expr, uid_map_vars: Dict[int, str], uid_map_event_params: Di
     if isinstance(expr, Func2):
         arg1 = _emit_one(expr.arg1, uid_map_vars, uid_map_event_params, uid_map_params)
         arg2 = _emit_one(expr.arg2, uid_map_vars, uid_map_event_params, uid_map_params)
-        if expr.name == "atan2":
-            return f"np.arctan2({arg2}, {arg1})"
-        else:
-            return f"np.{expr.name}({arg1}, {arg2})"
+        return _binary_function_to_python(name=expr.name, arg1=arg1, arg2=arg2)
 
     raise TypeError(expr)
 
@@ -2314,6 +2332,12 @@ def _call_symbolic_parser_function(function_name: str, arg_expr: Expr) -> Expr:
         return heaviside(arg_expr)
     elif function_name == "rand":
         return rand(arg_expr)
+    elif function_name == "floor":
+        return floor(arg_expr)
+    elif function_name == "ceil":
+        return ceil(arg_expr)
+    elif function_name == "round":
+        return round(arg_expr)
     else:
         raise ValueError(f"Unknown function '{function_name}'")
 
@@ -2343,6 +2367,9 @@ def _get_symbolic_parser_function_names_internal() -> List[str]:
         "angle",
         "heaviside",
         "rand",
+        "floor",
+        "ceil",
+        "round",
     ]
 
 
