@@ -5,8 +5,6 @@
 from __future__ import annotations
 
 import csv
-from enum import IntEnum
-import math
 from typing import Any, Dict, List
 
 
@@ -44,60 +42,16 @@ def _parse_elm_dsl_param_value(raw: str | None) -> float | str | None:
         return text
 
 
-def _parse_dgs_parameter_token_vector(raw: str | None) -> List[str | None]:
-    """Parse one positional DGS parameter-token vector without shifting gaps.
-
-    :param raw: Comma-separated parameter aliases or literals.
-    :return: Ordered token list retaining empty positions as ``None``.
-    """
-    parsed_tokens: List[str | None] = list()
-    if raw is None:
-        pass
-    else:
-        raw_text: str = raw.strip()
-        if raw_text == "" or raw_text == "*":
-            pass
-        else:
-            raw_token: str
-            for raw_token in raw_text.split(","):
-                clean_token: str = raw_token.strip()
-                if clean_token == "" or clean_token == "*":
-                    parsed_tokens.append(None)
-                else:
-                    parsed_tokens.append(clean_token)
-            else:
-                pass
-    return parsed_tokens
-
-
 class DgsProperty:
     """
     Dgs Property
     """
 
-    def __init__(self,
-                 name: str,
-                 dgs_type: str,
-                 description: str,
-                 py_name: str,
-                 optional: bool = False) -> None:
-        """
-        Describe one typed DGS column.
-
-        :param name: Exact DGS header name.
-        :param dgs_type: Native DGS scalar type declaration.
-        :param description: Human-readable column description.
-        :param py_name: Target Python attribute name.
-        :param optional: Preserve missing placeholders as ``None``.
-        :return: None.
-        """
-        self.name: str = name
-        self.dgs_type: str = dgs_type
-        self.description: str = description
-        self.py_name: str = py_name
-        self.optional: bool = bool(optional)
-        self.py_type: type = str
-        self.default_value: str | int | bool | float | None = None
+    def __init__(self, name: str, dgs_type: str, description: str, py_name: str):
+        self.name = name
+        self.dgs_type = dgs_type
+        self.description = description
+        self.py_name = py_name
 
         if dgs_type.startswith("b"):  # boolean
             self.py_type = bool
@@ -131,19 +85,13 @@ class DgsProperty:
         :return:
         """
         if raw is None:
-            if self.optional:
-                return None
-            else:
-                return self.default_value
+            return self.default_value
 
         raw = raw.strip()
 
         # PowerFactory placeholders / missing values
         if raw == "" or raw == "*":
-            if self.optional:
-                return None
-            else:
-                return self.default_value
+            return self.default_value
 
         # Boolean parsing
         if self.py_type is bool:
@@ -166,10 +114,7 @@ class DgsProperty:
                 else:
                     return float(raw_norm)
             except ValueError:
-                if self.optional:
-                    return None
-                else:
-                    return self.default_value
+                return self.default_value
 
         # String/reference
         return raw
@@ -320,21 +265,24 @@ class ElmComp(DGSElement):
     @classmethod
     def parse_line(cls, line: str, header_map: dict[str, int]):
         parts = _split_dgs_line(line)
-        obj = super().parse_line(line, header_map)
+        obj = super().parse_line(";".join(parts), header_map)
 
-        n_pblk: int = _parse_dgs_vector_size(parts, header_map, 'pblk')
+        raw_pblk = _dgs_get(parts, header_map, 'pblk:SIZEROW')
+        n_pblk = int(float(raw_pblk.replace(',', '.'))) if raw_pblk is not None and raw_pblk.strip() != '' else 0
         for i in range(n_pblk):
             raw_ptr = _dgs_get(parts, header_map, f'pblk:{i}')
             raw_ptr = raw_ptr.strip() if raw_ptr is not None else ''
             obj.pblk.append(raw_ptr if raw_ptr != '' and raw_ptr != '*' else None)
 
-        n_pelm: int = _parse_dgs_vector_size(parts, header_map, 'pelm')
+        raw_pelm = _dgs_get(parts, header_map, 'pelm:SIZEROW')
+        n_pelm = int(float(raw_pelm.replace(',', '.'))) if raw_pelm is not None and raw_pelm.strip() != '' else 0
         for i in range(n_pelm):
             raw_ptr = _dgs_get(parts, header_map, f'pelm:{i}')
             raw_ptr = raw_ptr.strip() if raw_ptr is not None else ''
             obj.pelm.append(raw_ptr if raw_ptr != '' and raw_ptr != '*' else None)
 
-        n_contents: int = _parse_dgs_vector_size(parts, header_map, 'contents')
+        raw_contents = _dgs_get(parts, header_map, 'contents:SIZEROW')
+        n_contents = int(float(raw_contents.replace(',', '.'))) if raw_contents is not None and raw_contents.strip() != '' else 0
         for i in range(n_contents):
             raw_text = _dgs_get(parts, header_map, f'contents:{i}')
             raw_text = raw_text.strip() if raw_text is not None else ''
@@ -352,12 +300,6 @@ class ElmDsl(DGSElement):
         DgsProperty('fold_id', 'p', 'DGS field fold_id (p)', py_name='fold_id'),
         DgsProperty('outserv', 'i', 'DGS field outserv (i)', py_name='outserv'),
         DgsProperty('typ_id', 'p', 'DGS field typ_id (p)', py_name='typ_id'),
-        DgsProperty(
-            'iAstabint',
-            'i',
-            'PowerFactory RMS A-stable integration selector',
-            py_name='iAstabint',
-        ),
     ]
 
     def __init__(self) -> None:
@@ -366,7 +308,6 @@ class ElmDsl(DGSElement):
         self.fold_id: str = ""
         self.typ_id: str = ""
         self.outserv: int = 0
-        self.iAstabint: int = 0
         self.params: List[float | str | None] = list()
         self.pelm: List[str | None] = list()
         self.signal: List[str] = list()
@@ -386,20 +327,23 @@ class ElmDsl(DGSElement):
     @classmethod
     def parse_line(cls, line: str, header_map: dict[str, int]):
         parts = _split_dgs_line(line)
-        obj = super().parse_line(line, header_map)
+        obj = super().parse_line(";".join(parts), header_map)
 
-        n_params: int = _parse_dgs_vector_size(parts, header_map, 'params')
+        raw_params_size = _dgs_get(parts, header_map, 'params:SIZEROW')
+        n_params = int(float(raw_params_size.replace(',', '.'))) if raw_params_size is not None and raw_params_size.strip() != '' else 0
         for i in range(n_params):
             # The ElmDsl row stores the concrete instance values that must later feed the generated event_dict.
             obj.params.append(_parse_elm_dsl_param_value(_dgs_get(parts, header_map, f'params:{i}')))
 
-        n_pelm: int = _parse_dgs_vector_size(parts, header_map, 'pelm')
+        raw_pelm = _dgs_get(parts, header_map, 'pelm:SIZEROW')
+        n_pelm = int(float(raw_pelm.replace(',', '.'))) if raw_pelm is not None and raw_pelm.strip() != '' else 0
         for i in range(n_pelm):
             raw_ptr = _dgs_get(parts, header_map, f'pelm:{i}')
             raw_ptr = raw_ptr.strip() if raw_ptr is not None else ''
             obj.pelm.append(raw_ptr if raw_ptr != '' and raw_ptr != '*' else None)
 
-        n_signal: int = _parse_dgs_vector_size(parts, header_map, 'signal')
+        raw_signal = _dgs_get(parts, header_map, 'signal:SIZEROW')
+        n_signal = int(float(raw_signal.replace(',', '.'))) if raw_signal is not None and raw_signal.strip() != '' else 0
         for i in range(n_signal):
             raw_sig = _dgs_get(parts, header_map, f'signal:{i}')
             raw_sig = raw_sig.strip() if raw_sig is not None else ''
@@ -434,7 +378,7 @@ class BlkFrom(DGSElement):
     @classmethod
     def parse_line(cls, line: str, header_map: dict[str, int]):
         parts = _split_dgs_line(line)
-        obj = super().parse_line(line, header_map)
+        obj = super().parse_line(";".join(parts), header_map)
         if obj.sSig_0.strip() not in {'', '*'}:
             obj.signals = [item.strip() for item in obj.sSig_0.split(',') if item.strip()]
         return obj
@@ -447,7 +391,6 @@ class BlkGoto(DGSElement):
         DgsProperty('OP', 'a:1', 'DGS field OP (a:1)', py_name='OP'),
         DgsProperty('loc_name', 'a:80', 'DGS field loc_name (a:80)', py_name='loc_name'),
         DgsProperty('sSig:SIZEROW', 'i', 'DGS field sSig:SIZEROW (i)', py_name='sSig_SIZEROW'),
-        DgsProperty('sSig:0', 'a', 'DGS field sSig:0 (a)', py_name='sSig_0'),
     ]
 
     def __init__(self) -> None:
@@ -455,84 +398,6 @@ class BlkGoto(DGSElement):
         self.OP: str = ''
         self.loc_name: str = ''
         self.sSig_SIZEROW: int = 0
-        self.sSig_0: str = ''
-        self.signals: List[str] = list()
-
-    @classmethod
-    def parse_line(cls, line: str, header_map: dict[str, int]) -> BlkGoto:
-        """Parse the signal labels owned by one graphical goto node.
-
-        :param line: Raw DGS record.
-        :param header_map: Column-name to position mapping.
-        :return: Parsed graphical goto object.
-        """
-        obj: BlkGoto = super().parse_line(line, header_map)
-        if obj.sSig_0.strip() in {'', '*'}:
-            pass
-        else:
-            signal_name: str
-            for signal_name in obj.sSig_0.split(','):
-                normalized_signal_name: str = signal_name.strip()
-                if normalized_signal_name == '':
-                    pass
-                else:
-                    obj.signals.append(normalized_signal_name)
-            else:
-                pass
-        return obj
-
-
-class BlkDiv(DGSElement):
-    """Represent one native graphical division node."""
-
-    element_type = 'BlkDiv'
-    properties_list = [
-        DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
-        DgsProperty('OP', 'a:1', 'DGS field OP (a:1)', py_name='OP'),
-        DgsProperty('loc_name', 'a:80', 'DGS field loc_name (a:80)', py_name='loc_name'),
-    ]
-
-    def __init__(self) -> None:
-        """Create an empty graphical division node."""
-        self.ID: str = ''
-        self.OP: str = ''
-        self.loc_name: str = ''
-
-
-class BlkMul(DGSElement):
-    """Represent one native graphical multiplication node."""
-
-    element_type = 'BlkMul'
-    properties_list = [
-        DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
-        DgsProperty('OP', 'a:1', 'DGS field OP (a:1)', py_name='OP'),
-        DgsProperty('loc_name', 'a:80', 'DGS field loc_name (a:80)', py_name='loc_name'),
-    ]
-
-    def __init__(self) -> None:
-        """Create an empty graphical multiplication node."""
-        self.ID: str = ''
-        self.OP: str = ''
-        self.loc_name: str = ''
-
-
-class BlkSwt(DGSElement):
-    """Represent one native graphical switch node."""
-
-    element_type = 'BlkSwt'
-    properties_list = [
-        DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
-        DgsProperty('OP', 'a:1', 'DGS field OP (a:1)', py_name='OP'),
-        DgsProperty('loc_name', 'a:80', 'DGS field loc_name (a:80)', py_name='loc_name'),
-        DgsProperty('iNeg', 'i', 'Inverted zero position', py_name='iNeg'),
-    ]
-
-    def __init__(self) -> None:
-        """Create an empty graphical switch node."""
-        self.ID: str = ''
-        self.OP: str = ''
-        self.loc_name: str = ''
-        self.iNeg: int = 0
 
 
 class BlkRef(DGSElement):
@@ -549,36 +414,18 @@ class BlkRef(DGSElement):
         self.OP: str = ''
         self.typ_id: str = ''
         self.cdisName: str = ''
-        self.params: List[str | None] = list()
-        self.upper_limit_parameter_values: List[str | None] = list()
-        self.lower_limit_parameter_values: List[str | None] = list()
+        self.params: List[str] = list()
         self.states: List[str] = list()
         self.internals: List[str] = list()
 
     @classmethod
     def parse_line(cls, line: str, header_map: dict[str, int]):
         parts = _split_dgs_line(line)
-        obj = super().parse_line(line, header_map)
+        obj = super().parse_line(";".join(parts), header_map)
 
-        raw_params: str | None = _dgs_get(parts, header_map, 'sParams:0')
-        obj.params = _parse_dgs_parameter_token_vector(raw=raw_params)
-
-        raw_upper_limit_params: str | None = _dgs_get(
-            parts,
-            header_map,
-            'sUpLimPar:0',
-        )
-        obj.upper_limit_parameter_values = _parse_dgs_parameter_token_vector(
-            raw=raw_upper_limit_params,
-        )
-        raw_lower_limit_params: str | None = _dgs_get(
-            parts,
-            header_map,
-            'sLowLimPar:0',
-        )
-        obj.lower_limit_parameter_values = _parse_dgs_parameter_token_vector(
-            raw=raw_lower_limit_params,
-        )
+        raw_params = _dgs_get(parts, header_map, 'sParams:0')
+        if raw_params is not None and raw_params.strip() not in {'', '*'}:
+            obj.params = [item.strip() for item in raw_params.split(',') if item.strip()]
 
         raw_states = _dgs_get(parts, header_map, 'sStates:0')
         if raw_states is not None and raw_states.strip() not in {'', '*'}:
@@ -639,7 +486,7 @@ class BlkSlot(DGSElement):
     @classmethod
     def parse_line(cls, line: str, header_map: dict[str, int]):
         parts = _split_dgs_line(line)
-        obj = super().parse_line(line, header_map)
+        obj = super().parse_line(";".join(parts), header_map)
         raw_outputs = _dgs_get(parts, header_map, 'sOutput:0')
         if raw_outputs is not None and raw_outputs.strip() not in {'', '*'}:
             obj.outputs = [item.strip() for item in raw_outputs.split(',') if item.strip()]
@@ -799,16 +646,6 @@ class ElmFeeder(DGSElement):
         self.outserv: int = 0
 
 
-class DgsElmGenstatRmsModel(IntEnum):
-    """Identify the native PowerFactory ``ElmGenstat.iSimModel`` selection."""
-
-    AccordingToConnectedInputSignals = 0
-    CurrentSource = 1
-    VoltageSource = 2
-    ConstantImpedance = 3
-    ConstantPower = 4
-
-
 class ElmGenstat(DGSElement):
     element_type = 'ElmGenstat'
     properties_list = [
@@ -822,105 +659,17 @@ class ElmGenstat(DGSElement):
         DgsProperty('ngnum', 'i', 'Number of Parallel Units', py_name='ngnum'),
         DgsProperty('pgini', 'r', 'Active Power Setpoint in MW', py_name='pgini'),
         DgsProperty('qgini', 'r', 'Reactive Power Setpoint in MVAr', py_name='qgini'),
-        DgsProperty('sgini', 'r', 'Initial Apparent Power in MVA', py_name='sgini', optional=True),
-        DgsProperty('cosgini', 'r', 'Initial Power Factor', py_name='cosgini', optional=True),
         DgsProperty('av_mode', 'a', 'Active Power Control Mode', py_name='av_mode'),
         DgsProperty('mode_inp', 'a:6', 'Dispatch: Input mode', py_name='mode_inp'),
         DgsProperty('ip_ctrl', 'i', 'Reference Machine Flag', py_name='ip_ctrl'),
         DgsProperty('cCategory', 'a:40', 'plant types', py_name='cCategory'),
         DgsProperty('c_pmod', 'a:40', 'plant model', py_name='c_pmod'),
-        DgsProperty(
-            'iSimModel',
-            'i',
-            'RMS model selector',
-            py_name='iSimModel',
-            optional=True,
-        ),
-        DgsProperty(
-            'iAstabint',
-            'i',
-            'A-stable RMS integration selector',
-            py_name='iAstabint',
-            optional=True,
-        ),
-        DgsProperty(
-            'iDelay',
-            'i',
-            'Enable the internal RMS dq reference-angle delay',
-            py_name='iDelay',
-            optional=True,
-        ),
-        DgsProperty(
-            'Tdelay',
-            'r',
-            'Internal RMS dq reference-angle delay time constant [s]',
-            py_name='Tdelay',
-            optional=True,
-        ),
         DgsProperty('ddroop', 'r', 'Voltage droop value [%]', py_name='ddroop'),
         DgsProperty('usp_max', 'r', 'Maximum voltage setpoint [pu]', py_name='usp_max'),
         DgsProperty('usp_min', 'r', 'Minimum voltage setpoint [pu]', py_name='usp_min'),
         DgsProperty('usetp', 'r', 'Specified voltage setpoint [pu]', py_name='usetp'),
-        DgsProperty(
-            'pQlimType',
-            'p',
-            'Reactive power capability curve',
-            py_name='pQlimType',
-            optional=True,
-        ),
-        DgsProperty(
-            'q_min',
-            'r',
-            'Minimum reactive power in per unit on rated apparent power',
-            py_name='q_min',
-            optional=True,
-        ),
-        DgsProperty(
-            'q_max',
-            'r',
-            'Maximum reactive power in per unit on rated apparent power',
-            py_name='q_max',
-            optional=True,
-        ),
-        DgsProperty('cQ_min', 'r', 'Minimum reactive power to inject/absorb [MVAr]', py_name='cQ_min', optional=True),
-        DgsProperty('cQ_max', 'r', 'Maximum reactive power to inject/absorb [MVAr]', py_name='cQ_max', optional=True),
-        DgsProperty(
-            'scaleQmin',
-            'r',
-            'Reactive power minimum scaling factor [%]',
-            py_name='scaleQmin',
-            optional=True,
-        ),
-        DgsProperty(
-            'scaleQmax',
-            'r',
-            'Reactive power maximum scaling factor [%]',
-            py_name='scaleQmax',
-            optional=True,
-        ),
-        DgsProperty(
-            'c:Qmin',
-            'r',
-            'Calculated effective minimum reactive power [MVAr]',
-            py_name='calculated_qmin_mvar',
-            optional=True,
-        ),
-        DgsProperty(
-            'c:Qmax',
-            'r',
-            'Calculated effective maximum reactive power [MVAr]',
-            py_name='calculated_qmax_mvar',
-            optional=True,
-        ),
-        DgsProperty(
-            'c:i_qlim',
-            'i',
-            'Calculated reactive limit state (-1 minimum, 0 free, +1 maximum)',
-            py_name='calculated_q_limit_state',
-            optional=True,
-        ),
-        DgsProperty('m:P:bus1', 'r', 'Solved active power at bus1 [MW]', py_name='m_p_bus1', optional=True),
-        DgsProperty('m:Q:bus1', 'r', 'Solved reactive power at bus1 [MVAr]', py_name='m_q_bus1', optional=True),
+        DgsProperty('cQ_min', 'r', 'Minimum reactive power to inject/absorb [MVAr]', py_name='cQ_min'),
+        DgsProperty('cQ_max', 'r', 'Maximum reactive power to inject/absorb [MVAr]', py_name='cQ_max'),
     ]
 
     def __init__(self) -> None:
@@ -934,456 +683,17 @@ class ElmGenstat(DGSElement):
         self.ngnum: int = 0
         self.pgini: float = 0.0
         self.qgini: float = 0.0
-        self.sgini: float | None = None
-        self.cosgini: float | None = None
         self.av_mode: str = ""
         self.mode_inp: str = ""
         self.ip_ctrl: int = 0
         self.cCategory: str = ""
         self.c_pmod: str = ""
-        self.iSimModel: int | None = None
-        self.iAstabint: int | None = None
-        self.iDelay: int | None = None
-        self.Tdelay: float | None = None
         self.ddroop: float = 0.0
         self.usp_max: float = 0.0
         self.usp_min: float = 0.0
         self.usetp: float = 0.0
-        self.pQlimType: str | None = None
-        self.q_min: float | None = None
-        self.q_max: float | None = None
-        # Missing columns must remain distinguishable from an explicitly
-        # exported zero capability range.  The converter can then apply a safe
-        # rated-power fallback only for genuinely absent legacy fields.
-        self.cQ_min: float | None = None
-        self.cQ_max: float | None = None
-        self.scaleQmin: float | None = None
-        self.scaleQmax: float | None = None
-        self.calculated_qmin_mvar: float | None = None
-        self.calculated_qmax_mvar: float | None = None
-        self.calculated_q_limit_state: int | None = None
-        self.m_p_bus1: float | None = None
-        self.m_q_bus1: float | None = None
-
-
-class IntQlim(DGSElement):
-    """Represent one PowerFactory active/reactive capability curve."""
-
-    element_type = 'IntQlim'
-    properties_list = [
-        DgsProperty('ID', 'a:40', 'Unique identifier for DGS file', py_name='ID'),
-        DgsProperty('loc_name', 'a:80', 'Name', py_name='loc_name'),
-        DgsProperty('fold_id', 'p', 'In folder', py_name='fold_id'),
-        DgsProperty('inputmod', 'i', 'Curve input mode: absolute or per unit', py_name='inputmod'),
-    ]
-
-    def __init__(self) -> None:
-        """Initialize an empty capability curve."""
-        self.ID: str = ""
-        self.loc_name: str = ""
-        self.fold_id: str = ""
-        self.inputmod: int = 0
-        self.active_power_points: List[float] = list()
-        self.minimum_reactive_points: List[float] = list()
-        self.maximum_reactive_points: List[float] = list()
-
-    @classmethod
-    def parse_line(
-        cls,
-        line: str,
-        header_map: dict[str, int],
-    ) -> IntQlim:
-        """
-        Parse aligned absolute or per-unit capability vectors.
-
-        :param line: Raw DGS row.
-        :param header_map: Column indices keyed by native selector.
-        :return: Parsed capability curve.
-        """
-        parts: List[str] = _split_dgs_line(line)
-        obj: IntQlim = super().parse_line(line, header_map)
-        if int(obj.inputmod) == 1:
-            active_selector: str = 'cap_Ppu'
-            minimum_selector: str = 'cap_Qmnpu'
-            maximum_selector: str = 'cap_Qmxpu'
-        else:
-            active_selector = 'cap_P'
-            minimum_selector = 'cap_Qmn'
-            maximum_selector = 'cap_Qmx'
-
-        active_count: int = _parse_dgs_vector_size(
-            parts,
-            header_map,
-            active_selector,
-        )
-        minimum_count: int = _parse_dgs_vector_size(
-            parts,
-            header_map,
-            minimum_selector,
-        )
-        maximum_count: int = _parse_dgs_vector_size(
-            parts,
-            header_map,
-            maximum_selector,
-        )
-        point_count: int = min(active_count, minimum_count, maximum_count)
-        point_index: int
-        for point_index in range(point_count):
-            raw_active: str | None = _dgs_get(
-                parts,
-                header_map,
-                f'{active_selector}:{point_index}',
-            )
-            raw_minimum: str | None = _dgs_get(
-                parts,
-                header_map,
-                f'{minimum_selector}:{point_index}',
-            )
-            raw_maximum: str | None = _dgs_get(
-                parts,
-                header_map,
-                f'{maximum_selector}:{point_index}',
-            )
-            if (
-                raw_active is not None
-                and raw_minimum is not None
-                and raw_maximum is not None
-                and raw_active.strip() not in {'', '*'}
-                and raw_minimum.strip() not in {'', '*'}
-                and raw_maximum.strip() not in {'', '*'}
-            ):
-                obj.active_power_points.append(float(raw_active))
-                obj.minimum_reactive_points.append(float(raw_minimum))
-                obj.maximum_reactive_points.append(float(raw_maximum))
-            else:
-                pass
-        else:
-            pass
-        return obj
-
-
-class ElmVsc(DGSElement):
-    """
-    Represent one three-terminal PowerFactory voltage-source converter.
-
-    Electrical connectivity is intentionally not duplicated in this row.  The
-    DGS ``StaCubic`` records identify terminal ``0`` as AC, ``1`` as DC positive
-    and ``2`` as DC negative, which is the same topology used by VeraGrid's
-    :class:`VSC` device.
-    """
-
-    element_type = 'ElmVsc'
-    properties_list = [
-        DgsProperty('ID', 'a:40', 'Unique identifier for DGS file', py_name='ID'),
-        DgsProperty('loc_name', 'a:80', 'Name', py_name='loc_name'),
-        DgsProperty('for_name', 'a:100', 'Foreign key', py_name='for_name'),
-        DgsProperty('fold_id', 'p', 'In folder', py_name='fold_id'),
-        DgsProperty('Unom', 'r', 'Nominal DC voltage in kV', py_name='Unom'),
-        DgsProperty('usetp', 'r', 'AC voltage setpoint in p.u.', py_name='usetp'),
-        DgsProperty('psetp', 'r', 'Active power setpoint in MW', py_name='psetp'),
-        DgsProperty('qsetp', 'r', 'Reactive power setpoint in MVAr', py_name='qsetp'),
-        DgsProperty('Pnold', 'r', 'No-load loss parameter', py_name='Pnold'),
-        DgsProperty('P_max', 'r', 'Maximum active power in MW', py_name='P_max'),
-        DgsProperty('Snom', 'r', 'Rated converter power in MVA', py_name='Snom', optional=True),
-        DgsProperty('Pcu', 'r', 'Series-reactor copper losses in kW', py_name='Pcu', optional=True),
-        DgsProperty('uk', 'r', 'Series-reactor short-circuit voltage in percent', py_name='uk', optional=True),
-        DgsProperty('vsctype', 'i', 'Native converter topology selector', py_name='vsctype', optional=True),
-        DgsProperty('Rarm', 'r', 'MMC arm-reactor resistance in ohm', py_name='Rarm', optional=True),
-        DgsProperty('Larm', 'r', 'MMC arm-reactor inductance in mH', py_name='Larm', optional=True),
-        DgsProperty(
-            'mmcCmod',
-            'r',
-            'MMC submodule capacitance in uF',
-            py_name='mmcCmod',
-            optional=True,
-        ),
-        DgsProperty(
-            'NmmcSM',
-            'i',
-            'Number of MMC submodules per arm',
-            py_name='NmmcSM',
-            optional=True,
-        ),
-        DgsProperty(
-            'MmmcSM',
-            'i',
-            'Legacy documented alias for MMC submodules per arm',
-            py_name='MmmcSM',
-            optional=True,
-        ),
-        DgsProperty(
-            'iZarmDCside',
-            'i',
-            'Consider MMC arm reactor on the DC side',
-            py_name='iZarmDCside',
-            optional=True,
-        ),
-        DgsProperty(
-            'swtLossFactor',
-            'r',
-            'Switching loss factor in kW/A',
-            py_name='swtLossFactor',
-            optional=True,
-        ),
-        DgsProperty(
-            'resLossFactor',
-            'r',
-            'Resistive loss factor in ohm',
-            py_name='resLossFactor',
-            optional=True,
-        ),
-        DgsProperty('usetpdc', 'r', 'DC voltage setpoint in p.u.', py_name='usetpdc', optional=True),
-        DgsProperty('Unomdc', 'r', 'Nominal DC voltage in kV', py_name='Unomdc', optional=True),
-        DgsProperty(
-            'i_acdc',
-            'i',
-            'Native AC/DC control-mode selector',
-            py_name='i_acdc',
-            optional=True,
-        ),
-        DgsProperty(
-            'c_pmod',
-            'p',
-            'Associated PowerFactory composite dynamic model',
-            py_name='c_pmod',
-            optional=True,
-        ),
-        DgsProperty(
-            'm:P:busac',
-            'r',
-            'Solved active power at the AC terminal in MW',
-            py_name='m_p_busac',
-            optional=True,
-        ),
-        DgsProperty(
-            'm:Q:busac',
-            'r',
-            'Solved reactive power at the AC terminal in MVAr',
-            py_name='m_q_busac',
-            optional=True,
-        ),
-        DgsProperty('outserv', 'i', 'Out of service', py_name='outserv'),
-    ]
-
-    def __init__(self) -> None:
-        """
-        Initialize one empty converter record.
-
-        :return: None.
-        """
-        self.ID: str = ""
-        self.loc_name: str = ""
-        self.for_name: str = ""
-        self.fold_id: str = ""
-        self.Unom: float = 0.0
-        self.usetp: float = 1.0
-        self.psetp: float = 0.0
-        self.qsetp: float = 0.0
-        self.Pnold: float = 0.0
-        self.P_max: float = 0.0
-        self.Snom: float | None = None
-        self.Pcu: float | None = None
-        self.uk: float | None = None
-        self.vsctype: int | None = None
-        self.Rarm: float | None = None
-        self.Larm: float | None = None
-        self.mmcCmod: float | None = None
-        self.NmmcSM: int | None = None
-        self.MmmcSM: int | None = None
-        self.iZarmDCside: int | None = None
-        self.swtLossFactor: float | None = None
-        self.resLossFactor: float | None = None
-        self.usetpdc: float | None = None
-        self.Unomdc: float | None = None
-        self.i_acdc: int = 5
-        self.c_pmod: str | None = None
-        self.m_p_busac: float | None = None
-        self.m_q_busac: float | None = None
-        self.outserv: int = 0
-
-
-class ElmVscmono(DGSElement):
-    """Represent one two-terminal PowerFactory monopolar VSC."""
-
-    __slots__ = (
-        "ID",
-        "OP",
-        "loc_name",
-        "for_name",
-        "fold_id",
-        "outserv",
-        "Unom",
-        "usetp",
-        "psetp",
-        "qsetp",
-        "Pnold",
-        "P_max",
-        "Snom",
-        "Pcu",
-        "uk",
-        "vsctype",
-        "Rarm",
-        "Larm",
-        "mmcCmod",
-        "NmmcSM",
-        "MmmcSM",
-        "iZarmDCside",
-        "swtLossFactor",
-        "resLossFactor",
-        "usetpdc",
-        "Unomdc",
-        "i_acdc",
-        "c_pmod",
-        "m_p_busac",
-        "m_q_busac",
-        "m_p_busdc",
-        "m_q_busdc",
-    )
-
-    element_type = "ElmVscmono"
-    properties_list = [
-        DgsProperty("FID", "a:40", "Unique identifier for DGS file", py_name="ID"),
-        DgsProperty("OP", "a:1", "DGS operation marker", py_name="OP"),
-        DgsProperty("loc_name", "a:80", "Name", py_name="loc_name"),
-        DgsProperty("for_name", "a:100", "Foreign key", py_name="for_name"),
-        DgsProperty("fold_id", "p", "In folder", py_name="fold_id"),
-        DgsProperty("outserv", "i", "Out of service", py_name="outserv"),
-        DgsProperty("Unom", "r", "Nominal converter voltage in kV", py_name="Unom"),
-        DgsProperty("usetp", "r", "Voltage setpoint in p.u.", py_name="usetp"),
-        DgsProperty("psetp", "r", "Active-power setpoint in MW", py_name="psetp"),
-        DgsProperty("qsetp", "r", "Reactive-power setpoint in MVAr", py_name="qsetp"),
-        DgsProperty("Pnold", "r", "No-load loss in kW", py_name="Pnold"),
-        DgsProperty("P_max", "r", "Maximum active power in MW", py_name="P_max"),
-        DgsProperty("Snom", "r", "Rated converter power in MVA", py_name="Snom", optional=True),
-        DgsProperty("Pcu", "r", "Series-reactor copper losses in kW", py_name="Pcu", optional=True),
-        DgsProperty("uk", "r", "Series-reactor short-circuit voltage in percent", py_name="uk", optional=True),
-        DgsProperty("vsctype", "i", "Native converter topology selector", py_name="vsctype", optional=True),
-        DgsProperty("Rarm", "r", "MMC arm-reactor resistance in ohm", py_name="Rarm", optional=True),
-        DgsProperty("Larm", "r", "MMC arm-reactor inductance in mH", py_name="Larm", optional=True),
-        DgsProperty(
-            "mmcCmod",
-            "r",
-            "MMC submodule capacitance in uF",
-            py_name="mmcCmod",
-            optional=True,
-        ),
-        DgsProperty(
-            "NmmcSM",
-            "i",
-            "Number of MMC submodules per arm",
-            py_name="NmmcSM",
-            optional=True,
-        ),
-        DgsProperty(
-            "MmmcSM",
-            "i",
-            "Legacy documented alias for MMC submodules per arm",
-            py_name="MmmcSM",
-            optional=True,
-        ),
-        DgsProperty(
-            "iZarmDCside",
-            "i",
-            "Consider MMC arm reactor on the DC side",
-            py_name="iZarmDCside",
-            optional=True,
-        ),
-        DgsProperty(
-            "swtLossFactor",
-            "r",
-            "Switching loss factor in kW/A",
-            py_name="swtLossFactor",
-            optional=True,
-        ),
-        DgsProperty(
-            "resLossFactor",
-            "r",
-            "Resistive loss factor in ohm",
-            py_name="resLossFactor",
-            optional=True,
-        ),
-        DgsProperty("usetpdc", "r", "DC voltage setpoint in p.u.", py_name="usetpdc", optional=True),
-        DgsProperty("Unomdc", "r", "Nominal DC voltage in kV", py_name="Unomdc", optional=True),
-        DgsProperty(
-            "i_acdc",
-            "i",
-            "Native AC/DC control-mode selector",
-            py_name="i_acdc",
-        ),
-        DgsProperty(
-            "c_pmod",
-            "p",
-            "Associated PowerFactory composite dynamic model",
-            py_name="c_pmod",
-            optional=True,
-        ),
-        DgsProperty(
-            "m:P:busac",
-            "r",
-            "Solved active power at the AC terminal in MW",
-            py_name="m_p_busac",
-            optional=True,
-        ),
-        DgsProperty(
-            "m:Q:busac",
-            "r",
-            "Solved reactive power at the AC terminal in MVAr",
-            py_name="m_q_busac",
-            optional=True,
-        ),
-        DgsProperty(
-            "m:P:busdc",
-            "r",
-            "Solved active power at the DC terminal in MW",
-            py_name="m_p_busdc",
-            optional=True,
-        ),
-        DgsProperty(
-            "m:Q:busdc",
-            "r",
-            "Solved reactive power at the DC terminal in MVAr",
-            py_name="m_q_busdc",
-            optional=True,
-        ),
-    ]
-
-    def __init__(self) -> None:
-        """Initialize one empty monopolar converter row.
-
-        :return: None.
-        """
-        self.ID: str = ""
-        self.OP: str = ""
-        self.loc_name: str = ""
-        self.for_name: str = ""
-        self.fold_id: str = ""
-        self.outserv: int = 0
-        self.Unom: float = 0.0
-        self.usetp: float = 1.0
-        self.psetp: float = 0.0
-        self.qsetp: float = 0.0
-        self.Pnold: float = 0.0
-        self.P_max: float = 0.0
-        self.Snom: float | None = None
-        self.Pcu: float | None = None
-        self.uk: float | None = None
-        self.vsctype: int | None = None
-        self.Rarm: float | None = None
-        self.Larm: float | None = None
-        self.mmcCmod: float | None = None
-        self.NmmcSM: int | None = None
-        self.MmmcSM: int | None = None
-        self.iZarmDCside: int | None = None
-        self.swtLossFactor: float | None = None
-        self.resLossFactor: float | None = None
-        self.usetpdc: float | None = None
-        self.Unomdc: float | None = None
-        self.i_acdc: int = 5
-        self.c_pmod: str | None = None
-        self.m_p_busac: float | None = None
-        self.m_q_busac: float | None = None
-        self.m_p_busdc: float | None = None
-        self.m_q_busdc: float | None = None
+        self.cQ_min: float = 0.0
+        self.cQ_max: float = 0.0
 
 
 class ElmLne(DGSElement):
@@ -1397,39 +707,12 @@ class ElmLne(DGSElement):
         DgsProperty('chr_name', 'a:20', 'Characteristic Name', py_name='chr_name'),
         DgsProperty('fline', 'r', 'Derating factor', py_name='fline'),
         DgsProperty('outserv', 'i', 'Out of Service', py_name='outserv'),
-        DgsProperty('i_dist', 'i', 'Distributed-parameter line model selector', py_name='i_dist'),
         DgsProperty('pStoch', 'p', 'Reference to Stochastic Model', py_name='pStoch'),
         DgsProperty('for_name', 'a:50', 'Foreign Key', py_name='for_name'),
         DgsProperty('GPScoords:SIZEROW', 'i', 'Number of Stored GPS Coordinate Rows', py_name='GPScoords_SIZEROW'),
         DgsProperty('GPScoords:SIZECOL', 'i', 'Number of Stored GPS Coordinate Columns', py_name='GPScoords_SIZECOL'),
         DgsProperty('nlnum', 'i', 'Number of Parallel Line Systems', py_name='nlnum'),
         DgsProperty('inAir', 'i', 'Installation Flag: In Air: Underground/Other', py_name='inAir'),
-        # Optional solved terminal powers are retained exclusively as offline
-        # validation evidence. The normal converter continues to derive every
-        # electrical parameter from the structural DGS fields below.
-        DgsProperty('m:P:bus1', 'r', 'Solved active power at bus1 [MW]', py_name='m_p_bus1', optional=True),
-        DgsProperty('m:Q:bus1', 'r', 'Solved reactive power at bus1 [MVAr]', py_name='m_q_bus1', optional=True),
-        DgsProperty('m:P:bus2', 'r', 'Solved active power at bus2 [MW]', py_name='m_p_bus2', optional=True),
-        DgsProperty('m:Q:bus2', 'r', 'Solved reactive power at bus2 [MVAr]', py_name='m_q_bus2', optional=True),
-        # Effective total sequence constants are required when PowerFactory
-        # points ``typ_id`` to TypGeo or leaves it empty. They are structural
-        # calculated parameters, not solved terminal-flow snapshot values.
-        DgsProperty('c:R1', 'r', 'Effective positive-sequence resistance in Ohm',
-                    py_name='calculated_R1', optional=True),
-        DgsProperty('c:X1', 'r', 'Effective positive-sequence reactance in Ohm',
-                    py_name='calculated_X1', optional=True),
-        DgsProperty('c:B1', 'r', 'Effective positive-sequence susceptance in uS',
-                    py_name='calculated_B1', optional=True),
-        DgsProperty('c:G1', 'r', 'Effective positive-sequence conductance in uS',
-                    py_name='calculated_G1', optional=True),
-        DgsProperty('c:R0', 'r', 'Effective zero-sequence resistance in Ohm',
-                    py_name='calculated_R0', optional=True),
-        DgsProperty('c:X0', 'r', 'Effective zero-sequence reactance in Ohm',
-                    py_name='calculated_X0', optional=True),
-        DgsProperty('c:B0', 'r', 'Effective zero-sequence susceptance in uS',
-                    py_name='calculated_B0', optional=True),
-        DgsProperty('c:G0', 'r', 'Effective zero-sequence conductance in uS',
-                    py_name='calculated_G0', optional=True),
     ]
 
     def __init__(self) -> None:
@@ -1441,25 +724,12 @@ class ElmLne(DGSElement):
         self.chr_name: str = ""
         self.fline: float = 1.0
         self.outserv: int = 0
-        self.i_dist: int = 0
         self.pStoch: str = ""
         self.for_name: str = ""
         self.GPScoords_SIZEROW: int = 0
         self.GPScoords_SIZECOL: int = 0
         self.nlnum: int = 1
         self.inAir: int = 0
-        self.m_p_bus1: float | None = None
-        self.m_q_bus1: float | None = None
-        self.m_p_bus2: float | None = None
-        self.m_q_bus2: float | None = None
-        self.calculated_R1: float | None = None
-        self.calculated_X1: float | None = None
-        self.calculated_B1: float | None = None
-        self.calculated_G1: float | None = None
-        self.calculated_R0: float | None = None
-        self.calculated_X0: float | None = None
-        self.calculated_B0: float | None = None
-        self.calculated_G0: float | None = None
 
 
 class ElmZpu(DGSElement):
@@ -1544,10 +814,6 @@ class ElmSind(DGSElement):
         DgsProperty('uk', 'r', 'Short-Circuit Voltage uk in %', py_name='uk'),
         DgsProperty('Pcu', 'r', 'Copper Losses in kW', py_name='Pcu'),
 
-        # Optional initialized resistance exported by the enriched dynamic
-        # monitor. Static-only DGS files legitimately omit this RMS signal.
-        DgsProperty('s:Rin', 'r', 'Initialized controlled resistance in Ohm', py_name='Rin', optional=True),
-
         DgsProperty('outserv', 'i', 'Out of Service', py_name='outserv'),
     ]
 
@@ -1563,7 +829,6 @@ class ElmSind(DGSElement):
         self.Sn: float = 0.0
         self.uk: float = 0.0
         self.Pcu: float = 0.0
-        self.Rin: float | None = None
 
         self.outserv: int = 0
 
@@ -1600,18 +865,6 @@ class ElmLnesec(DGSElement):
         DgsProperty('dline', 'r', 'Section Length in km', py_name='dline'),
         DgsProperty('fline', 'r', 'Section Derating Factor', py_name='fline'),
         DgsProperty('index', 'r', 'Section Order Index', py_name='index'),
-        # Calculated section constants preserve explicit sections which have no
-        # type pointer.  They describe equipment geometry, not a solved state.
-        DgsProperty('c:R1', 'r', 'Effective positive-sequence resistance in Ohm',
-                    py_name='calculated_R1', optional=True),
-        DgsProperty('c:X1', 'r', 'Effective positive-sequence reactance in Ohm',
-                    py_name='calculated_X1', optional=True),
-        DgsProperty('c:B1', 'r', 'Effective positive-sequence susceptance in uS',
-                    py_name='calculated_B1', optional=True),
-        DgsProperty('c:R0', 'r', 'Effective zero-sequence resistance in Ohm',
-                    py_name='calculated_R0', optional=True),
-        DgsProperty('c:X0', 'r', 'Effective zero-sequence reactance in Ohm',
-                    py_name='calculated_X0', optional=True),
     ]
 
     def __init__(self) -> None:
@@ -1623,11 +876,6 @@ class ElmLnesec(DGSElement):
         self.dline: float = 0.0
         self.fline: float = 0.0
         self.index: float = 0.0
-        self.calculated_R1: float | None = None
-        self.calculated_X1: float | None = None
-        self.calculated_B1: float | None = None
-        self.calculated_R0: float | None = None
-        self.calculated_X0: float | None = None
 
 
 class ElmVac(DGSElement):
@@ -1696,8 +944,6 @@ class ElmLod(DGSElement):
         DgsProperty('pf_recap', 'i', 'DGS field pf_recap (i)', py_name='pf_recap'),
         DgsProperty('i_scale', 'i', 'DGS field i_scale (i)', py_name='i_scale'),
         DgsProperty('classif', 'a:20', 'DGS field classif (a:20)', py_name='classif'),
-        DgsProperty('m:P:bus1', 'r', 'Solved active power at bus1 [MW]', py_name='m_p_bus1', optional=True),
-        DgsProperty('m:Q:bus1', 'r', 'Solved reactive power at bus1 [MVAr]', py_name='m_q_bus1', optional=True),
     ]
 
     def __init__(self) -> None:
@@ -1724,8 +970,6 @@ class ElmLod(DGSElement):
         self.pf_recap: int = 0
         self.i_scale: int = 0
         self.classif: str = ""
-        self.m_p_bus1: float | None = None
-        self.m_q_bus1: float | None = None
 
 
 class ElmLodlv(DGSElement):
@@ -1812,33 +1056,8 @@ class ElmShnt(DGSElement):
         DgsProperty('qrean', 'r', 'Rated Inductive Reactive Power per Step in MVAr', py_name='qrean'),
         DgsProperty('ctech', 'i', 'Connection Technology Code', py_name='ctech'),
         DgsProperty('fres', 'r', 'Resonance Frequency in Hz', py_name='fres'),
-        DgsProperty('greaf0', 'r', 'Quality Factor at Resonance Frequency', py_name='greaf0'),
-        DgsProperty('grea', 'r', 'Quality Factor at System Frequency', py_name='grea'),
-        DgsProperty('bcap', 'r', 'Capacitive Susceptance in uS', py_name='bcap'),
-        DgsProperty(
-            'c1',
-            'r',
-            'Double-tuned filter capacitor C1 in uF',
-            py_name='c1',
-            optional=True,
-        ),
-        DgsProperty(
-            'c2',
-            'r',
-            'Double-tuned filter capacitor C2 in uF',
-            py_name='c2',
-            optional=True,
-        ),
-        DgsProperty(
-            'rlrea',
-            'r',
-            'Filter reactor inductance in mH',
-            py_name='rlrea',
-            optional=True,
-        ),
-        DgsProperty('xrea', 'r', 'Reactor Reactance in Ohm', py_name='xrea'),
-        DgsProperty('rrea', 'r', 'Reactor Resistance in Ohm', py_name='rrea'),
-        DgsProperty('gparac', 'r', 'Parallel Capacitor Conductance in uS', py_name='gparac'),
+        DgsProperty('greaf0', 'r', 'Zero-Sequence Conductance in S', py_name='greaf0'),
+        DgsProperty('grea', 'r', 'Positive-Sequence Conductance in S', py_name='grea'),
         DgsProperty('iswitch', 'i', 'Automatic Step Switching Enabled', py_name='iswitch'),
         DgsProperty('qtotn', 'r', 'Total Rated Reactive Power in MVAr', py_name='qtotn'),
         DgsProperty('tandc', 'r', 'Loss Factor tan(delta)', py_name='tandc'),
@@ -1847,12 +1066,6 @@ class ElmShnt(DGSElement):
         DgsProperty('usetp', 'r', 'Voltage Setpoint in p.u.', py_name='usetp'),
         DgsProperty('rpara', 'r', 'Parallel Damping Resistance in Ohm', py_name='rpara'),
         DgsProperty('i_cont', 'i', 'Tap Changer (Discrete=0, Continuous=1)', py_name='i_cont'),
-        DgsProperty(
-            'iTaps',
-            'i',
-            'Use cumulative reactive-power measurement report',
-            py_name='iTaps',
-        ),
         DgsProperty('usetp_mx', 'r', 'Upper Voltage Limit in p.u.', py_name='usetp_mx'),
         DgsProperty('usetp_mn', 'r', 'Lower Voltage Limit in p.u.', py_name='usetp_mn'),
     ]
@@ -1873,44 +1086,14 @@ class ElmShnt(DGSElement):
         self.fres: float = 0.0
         self.greaf0: float = 0.0
         self.grea: float = 0.0
-        self.bcap: float = 0.0
-        self.c1: float | None = None
-        self.c2: float | None = None
-        self.rlrea: float | None = None
-        self.xrea: float = 0.0
-        self.rrea: float = 0.0
-        self.gparac: float = 0.0
         self.iswitch: int = 0
         self.qtotn: float = 0.0
         self.tandc: float = 0.0
         self.usetp: float = 1.0
         self.rpara: float = 0.0
         self.i_cont: int = 0
-        self.iTaps: int = 0
         self.usetp_mx: float = 1.0
         self.usetp_mn: float = 1.0
-        self.measurement_report: List[List[float]] = list()
-
-    @classmethod
-    def parse_line(cls, line: str, header_map: dict[str, int]) -> ElmShnt:
-        """Parse scalar shunt data and its variable-size measurement report.
-
-        PowerFactory emits ``mTaps`` as a native matrix whose number of rows
-        follows the maximum number of shunt steps.  Keeping the matrix as a
-        typed list avoids imposing a case-specific maximum on the importer.
-
-        :param line: Raw DGS data row.
-        :param header_map: DGS column names mapped to row positions.
-        :return: Parsed shunt record.
-        """
-        parsed_shunt: ElmShnt = super().parse_line(line, header_map)
-        row_parts: List[str] = _split_dgs_line(line)
-        parsed_shunt.measurement_report = _parse_dgs_float_matrix(
-            parts=row_parts,
-            header_map=header_map,
-            matrix_name="mTaps",
-        )
-        return parsed_shunt
 
 
 class ElmSvs(DGSElement):
@@ -1945,47 +1128,6 @@ class ElmSvs(DGSElement):
         DgsProperty('nncap', 'i', 'Actual number of capacitors', py_name='nncap'),
         DgsProperty('tcrqact', 'r', 'Actual value of TCR [Mvar]', py_name='tcrqact'),
         DgsProperty('qsetp', 'r', 'Reactive Power Setpoint [Mvar]', py_name='qsetp'),
-        DgsProperty('uset_mode', 'i', 'Voltage setpoint reference mode', py_name='uset_mode', optional=True),
-        DgsProperty('udeadblow', 'r', 'Lower staged-control voltage deadband [%]', py_name='udeadblow', optional=True),
-        DgsProperty('udeadbup', 'r', 'Upper staged-control voltage deadband [%]', py_name='udeadbup', optional=True),
-        DgsProperty('q0', 'r', 'Reactive-power droop reference [Mvar]', py_name='q0', optional=True),
-        DgsProperty('QtargetBase', 'i', 'Reactive target base selector', py_name='QtargetBase', optional=True),
-        DgsProperty('QtargetRPR', 'r', 'Reactive target position [%]', py_name='QtargetRPR', optional=True),
-        DgsProperty(
-            'iAstabint',
-            'i',
-            'A-stable RMS integration selector',
-            py_name='iAstabint',
-            optional=True,
-        ),
-        DgsProperty(
-            'p_cub',
-            'p',
-            'Configured reactive-power measurement cubicle',
-            py_name='p_cub',
-            optional=True,
-        ),
-        DgsProperty(
-            'cpCtrlNode',
-            'p',
-            'Resolved controlled terminal',
-            py_name='cpCtrlNode',
-            optional=True,
-        ),
-        DgsProperty(
-            'c_pmod',
-            'p',
-            'External composite controller model',
-            py_name='c_pmod',
-            optional=True,
-        ),
-        DgsProperty('m:P:bus1', 'r', 'Solved active power at bus1 [MW]', py_name='m_p_bus1', optional=True),
-        DgsProperty('m:Q:bus1', 'r', 'Solved reactive power at bus1 [MVAr]', py_name='m_q_bus1', optional=True),
-        DgsProperty('c:Uctrl', 'r', 'Calculated target voltage [kV]', py_name='c_Uctrl', optional=True),
-        DgsProperty('c:Qdroop', 'r', 'Calculated Q/V droop slope [Mvar/p.u.]', py_name='c_Qdroop', optional=True),
-        DgsProperty('m:qtcr', 'r', 'Solved TCR reactive state [Mvar]', py_name='m_qtcr', optional=True),
-        DgsProperty('m:qtsc', 'r', 'Solved TSC reactive state [Mvar]', py_name='m_qtsc', optional=True),
-        DgsProperty('m:qfix', 'r', 'Solved fixed-capacitor reactive state', py_name='m_qfix', optional=True),
     ]
 
     def __init__(self) -> None:
@@ -2020,205 +1162,6 @@ class ElmSvs(DGSElement):
         self.nncap: int = 0  # Actual number of capacitors
         self.tcrqact: float = 0.0  # Actual value of TCR [Mvar]
         self.qsetp: float = 0.0  # Reactive Power Setpoint [Mvar]
-        self.uset_mode: int | None = None
-        self.udeadblow: float | None = None
-        self.udeadbup: float | None = None
-        self.q0: float | None = None
-        self.QtargetBase: int | None = None
-        self.QtargetRPR: float | None = None
-        self.iAstabint: int | None = None
-        # PowerFactory can inject the SVC locally while regulating a remote
-        # terminal. Both pointers are optional because legacy DGS exports do
-        # not include either column.
-        self.p_cub: str | None = None
-        self.cpCtrlNode: str | None = None
-        self.c_pmod: str | None = None
-        # Column-presence flags preserve the semantic difference between an
-        # old export that cannot describe controller ownership and a new
-        # export that explicitly writes an empty control pointer.
-        self.p_cub_column_present: bool = False
-        self.cp_ctrl_node_column_present: bool = False
-        self.c_pmod_column_present: bool = False
-        self.m_p_bus1: float | None = None
-        self.m_q_bus1: float | None = None
-        self.c_Uctrl: float | None = None
-        self.c_Qdroop: float | None = None
-        self.m_qtcr: float | None = None
-        self.m_qtsc: float | None = None
-        self.m_qfix: float | None = None
-
-    @classmethod
-    def parse_line(
-            cls,
-            line: str,
-            header_map: dict[str, int],
-    ) -> "ElmSvs":
-        """
-        Parse one static-var-system row and retain optional-column provenance.
-
-        Empty pointer values and absent pointer columns both parse as ``None``.
-        The provenance flags keep those two DGS states distinct so the static
-        importer can recognize an explicitly external dynamic controller
-        without changing the behaviour of legacy files.
-
-        :param line: Raw DGS data row.
-        :param header_map: Mapping from DGS column name to row position.
-        :return: Parsed static-var-system object.
-        """
-        obj: ElmSvs = super().parse_line(line=line, header_map=header_map)
-        # Header membership is authoritative even when a particular row writes
-        # an empty placeholder for the optional pointer.
-        obj.p_cub_column_present = "p_cub" in header_map
-        obj.cp_ctrl_node_column_present = "cpCtrlNode" in header_map
-        obj.c_pmod_column_present = "c_pmod" in header_map
-        return obj
-
-
-class ElmStactrl(DGSElement):
-    """Represent one PowerFactory station controller and its associations."""
-
-    element_type = 'ElmStactrl'
-    properties_list = [
-        DgsProperty('ID', 'a:40', 'Unique identifier for DGS file', py_name='ID'),
-        DgsProperty('loc_name', 'a:80', 'Name', py_name='loc_name'),
-        DgsProperty('fold_id', 'p', 'Containing folder', py_name='fold_id'),
-        DgsProperty('outserv', 'i', 'Out of service', py_name='outserv'),
-        DgsProperty('i_ctrl', 'i', 'Control mode', py_name='i_ctrl'),
-        DgsProperty('i_phase', 'i', 'Controlled phase', py_name='i_phase'),
-        DgsProperty('iQorient', 'i', 'Reactive limit release direction', py_name='iQorient'),
-        DgsProperty('iTrfCtrl', 'i', 'Step-up transformer control side', py_name='iTrfCtrl'),
-        DgsProperty('i_droop', 'i', 'Droop enabled', py_name='i_droop'),
-        DgsProperty('imode', 'i', 'Reactive power distribution mode', py_name='imode'),
-        DgsProperty('i_uest', 'i', 'Estimate voltage setpoint', py_name='i_uest'),
-        DgsProperty('i_uopt', 'i', 'Optimize voltage setpoint', py_name='i_uopt'),
-        DgsProperty('uset_mode', 'i', 'Controlled-node setpoint mode', py_name='uset_mode'),
-        DgsProperty('selBus', 'i', 'Controlled-node selector', py_name='selBus'),
-        DgsProperty('selAutoUn', 'r', 'Automatic bus search voltage threshold in kV', py_name='selAutoUn'),
-        DgsProperty('usetp', 'r', 'Voltage setpoint in p.u.', py_name='usetp'),
-        DgsProperty('qsetp', 'r', 'Reactive power setpoint in MVAr', py_name='qsetp'),
-        DgsProperty('pfsetp', 'r', 'Power-factor setpoint', py_name='pfsetp'),
-        DgsProperty('tansetp', 'r', 'Tangent-phi setpoint', py_name='tansetp'),
-        DgsProperty('consQdisp', 'i', 'Consider reactive dispatch', py_name='consQdisp'),
-        DgsProperty('ddroop', 'r', 'Droop in percent', py_name='ddroop'),
-        DgsProperty('iopt_tdr', 'i', 'Use separate excitation droop values', py_name='iopt_tdr'),
-        DgsProperty('ddroopoe', 'r', 'Overexcited droop in percent', py_name='ddroopoe'),
-        DgsProperty('ddroopue', 'r', 'Underexcited droop in percent', py_name='ddroopue'),
-        DgsProperty('Srated', 'r', 'Rated reactive power in MVAr', py_name='Srated'),
-        DgsProperty('Kqshnt', 'r', 'Shunt reactive participation in percent', py_name='Kqshnt'),
-        DgsProperty('cosphi_char', 'i', 'Power-factor characteristic selector', py_name='cosphi_char'),
-        DgsProperty('Qmin', 'r', 'Q(V) minimum in MVAr', py_name='Qmin'),
-        DgsProperty('Qmax', 'r', 'Q(V) maximum in MVAr', py_name='Qmax'),
-        DgsProperty('p_cub', 'p', 'Reactive measurement cubicle', py_name='p_cub'),
-        DgsProperty('rembar', 'p', 'Stored controlled node', py_name='rembar'),
-        DgsProperty('refbar', 'p', 'Q(V) reference node', py_name='refbar'),
-        DgsProperty('cpCtrlNode', 'p', 'Calculated controlled node', py_name='cpCtrlNode'),
-        DgsProperty('qu_char', 'p', 'Q(U) characteristic', py_name='qu_char'),
-        DgsProperty('pQVcurve', 'p', 'Q(V) curve', py_name='pQVcurve'),
-        DgsProperty('pQPcurve', 'p', 'Q(P) curve', py_name='pQPcurve'),
-        DgsProperty('pQmeas', 'p', 'Reactive measurement object', py_name='pQmeas'),
-        DgsProperty('u0qvref', 'r', 'Q(V) reference voltage', py_name='u0qvref'),
-        DgsProperty('deltaV', 'r', 'Q(V) voltage delta', py_name='deltaV'),
-        DgsProperty('deltaVoe', 'r', 'Overexcited voltage delta', py_name='deltaVoe'),
-        DgsProperty('deltaVue', 'r', 'Underexcited voltage delta', py_name='deltaVue'),
-        DgsProperty('Qdroop', 'r', 'Q(V) droop', py_name='Qdroop'),
-        DgsProperty('Qdroopoe', 'r', 'Overexcited Q(V) droop', py_name='Qdroopoe'),
-        DgsProperty('Qdroopue', 'r', 'Underexcited Q(V) droop', py_name='Qdroopue'),
-        DgsProperty('qsummin', 'r', 'Aggregate minimum Q', py_name='qsummin'),
-        DgsProperty('qsummax', 'r', 'Aggregate maximum Q', py_name='qsummax'),
-        DgsProperty('udeadblow', 'r', 'Lower voltage deadband', py_name='udeadblow'),
-        DgsProperty('udeadbup', 'r', 'Upper voltage deadband', py_name='udeadbup'),
-        DgsProperty('Tctrl', 'r', 'Controller time constant in seconds', py_name='Tctrl'),
-        DgsProperty('TctrlShnt', 'r', 'Shunt controller time constant in seconds', py_name='TctrlShnt'),
-    ]
-
-    def __init__(self) -> None:
-        """
-        Initialize one empty station controller.
-
-        :return: None.
-        """
-        self.ID: str = ""
-        self.loc_name: str = ""
-        self.fold_id: str | None = None
-        self.outserv: int = 0
-        self.i_ctrl: int = 0
-        self.i_phase: int = 0
-        self.iQorient: int = 0
-        self.iTrfCtrl: int = 0
-        self.i_droop: int = 0
-        self.imode: int = 0
-        self.i_uest: int = 0
-        self.i_uopt: int = 0
-        self.uset_mode: int = 0
-        self.selBus: int = 0
-        self.selAutoUn: float = 0.0
-        self.usetp: float = 1.0
-        self.qsetp: float = 0.0
-        self.pfsetp: float = 1.0
-        self.tansetp: float = 0.0
-        self.consQdisp: int = 0
-        self.ddroop: float = 0.0
-        self.iopt_tdr: int = 0
-        self.ddroopoe: float = 0.0
-        self.ddroopue: float = 0.0
-        self.Srated: float = 0.0
-        self.Kqshnt: float = 0.0
-        self.cosphi_char: int = 0
-        self.Qmin: float = -9999.0
-        self.Qmax: float = 9999.0
-        self.p_cub: str | None = None
-        self.rembar: str | None = None
-        self.refbar: str | None = None
-        self.cpCtrlNode: str | None = None
-        self.qu_char: str | None = None
-        self.pQVcurve: str | None = None
-        self.pQPcurve: str | None = None
-        self.pQmeas: str | None = None
-        self.u0qvref: float = 1.0
-        self.deltaV: float = 0.0
-        self.deltaVoe: float = 0.0
-        self.deltaVue: float = 0.0
-        self.Qdroop: float = 0.0
-        self.Qdroopoe: float = 0.0
-        self.Qdroopue: float = 0.0
-        self.qsummin: float = 0.0
-        self.qsummax: float = 0.0
-        self.udeadblow: float = 0.0
-        self.udeadbup: float = 0.0
-        self.Tctrl: float = 0.0
-        self.TctrlShnt: float = 0.0
-        self.psym: List[str | None] = list()
-        self.pshunts: List[str | None] = list()
-        self.cconn: List[int | None] = list()
-        self.cvqq: List[float | None] = list()
-        self.cvgen: List[float | None] = list()
-        self.cvgenmin: List[float | None] = list()
-        self.cvgenmax: List[float | None] = list()
-
-    @classmethod
-    def parse_line(cls, line: str, header_map: dict[str, int]) -> "ElmStactrl":
-        """
-        Parse scalar fields and the variable-size equipment vectors.
-
-        :param line: Raw DGS row.
-        :param header_map: DGS field-to-column mapping.
-        :return: Parsed station controller.
-        """
-        parts: List[str] = _split_dgs_line(line)
-        obj: ElmStactrl = super().parse_line(line, header_map)
-
-        # Every vector is materialized at its declared DGS size.  In particular,
-        # holes in ``psym`` must remain aligned with the per-generator control
-        # vectors; compacting either side would attach settings to the wrong unit.
-        obj.psym = _parse_dgs_reference_vector(parts, header_map, 'psym')
-        obj.pshunts = _parse_dgs_reference_vector(parts, header_map, 'pshunts')
-        obj.cconn = _parse_dgs_int_vector(parts, header_map, 'cconn')
-        obj.cvqq = _parse_dgs_float_vector(parts, header_map, 'cvqq')
-        obj.cvgen = _parse_dgs_float_vector(parts, header_map, 'cvgen')
-        obj.cvgenmin = _parse_dgs_float_vector(parts, header_map, 'cvgenmin')
-        obj.cvgenmax = _parse_dgs_float_vector(parts, header_map, 'cvgenmax')
-
-        return obj
 
 
 class ElmSite(DGSElement):
@@ -2259,7 +1202,6 @@ class ElmSubstat(DGSElement):
         DgsProperty('GPSlon', 'r', 'Longitude / Easting in deg', py_name='GPSlon'),
         DgsProperty('cpArea', 'p', 'Default Area in ElmArea', py_name='cpArea'),
         DgsProperty('cpZone', 'p', 'Default Zone in ElmZone', py_name='cpZone'),
-        DgsProperty('pDiagram', 'p', 'DGS field pDiagram (p)', py_name='pDiagram'),
     ]
 
     def __init__(self) -> None:
@@ -2274,17 +1216,6 @@ class ElmSubstat(DGSElement):
         self.sType: str = ""
         self.GPSlat: float = 0.0
         self.GPSlon: float = 0.0
-        self.cpZone: str = ""
-        self.pDiagram: str = ""
-
-    @property
-    def p_diagram(self) -> str:
-        """Backward-compatible snake-case access to the DGS diagram pointer."""
-        return self.pDiagram
-
-    @p_diagram.setter
-    def p_diagram(self, value: str) -> None:
-        self.pDiagram = value
 
 
 class ElmSym(DGSElement):
@@ -2302,66 +1233,10 @@ class ElmSym(DGSElement):
         DgsProperty('qgini', 'r', 'Reactive Power Setpoint in MVAr', py_name='qgini'),
         DgsProperty('usetp', 'r', 'Voltage Setpoint in p.u.', py_name='usetp'),
         DgsProperty('iv_mode', 'i', 'Voltage Control Mode Code', py_name='iv_mode'),
-        DgsProperty('q_min', 'r', 'Minimum Reactive Power Limit on TypSym.sgn in p.u.', py_name='q_min'),
-        DgsProperty('q_max', 'r', 'Maximum Reactive Power Limit on TypSym.sgn in p.u.', py_name='q_max'),
-        DgsProperty(
-            'pQlimType',
-            'p',
-            'Reactive power capability curve',
-            py_name='pQlimType',
-            optional=True,
-        ),
-        DgsProperty(
-            'scaleQmin',
-            'r',
-            'Reactive power minimum scaling factor [%]',
-            py_name='scaleQmin',
-            optional=True,
-        ),
-        DgsProperty(
-            'scaleQmax',
-            'r',
-            'Reactive power maximum scaling factor [%]',
-            py_name='scaleQmax',
-            optional=True,
-        ),
-        DgsProperty(
-            'cQ_min',
-            'r',
-            'Configured minimum reactive power capability in MVAr',
-            py_name='configured_qmin_mvar',
-            optional=True,
-        ),
-        DgsProperty(
-            'cQ_max',
-            'r',
-            'Configured maximum reactive power capability in MVAr',
-            py_name='configured_qmax_mvar',
-            optional=True,
-        ),
-        DgsProperty(
-            'c:Qmin',
-            'r',
-            'Calculated effective minimum reactive power [MVAr]',
-            py_name='calculated_qmin_mvar',
-            optional=True,
-        ),
-        DgsProperty(
-            'c:Qmax',
-            'r',
-            'Calculated effective maximum reactive power [MVAr]',
-            py_name='calculated_qmax_mvar',
-            optional=True,
-        ),
-        DgsProperty(
-            'c:i_qlim',
-            'i',
-            'Calculated reactive limit state (-1 minimum, 0 free, +1 maximum)',
-            py_name='calculated_q_limit_state',
-            optional=True,
-        ),
-        DgsProperty('Pmin_uc', 'r', 'Minimum Active Power Limit in MW', py_name='Pmin_uc', optional=True),
-        DgsProperty('Pmax_uc', 'r', 'Maximum Active Power Limit in MW', py_name='Pmax_uc', optional=True),
+        DgsProperty('q_min', 'r', 'Minimum Reactive Power Limit in MVAr', py_name='q_min'),
+        DgsProperty('q_max', 'r', 'Maximum Reactive Power Limit in MVAr', py_name='q_max'),
+        DgsProperty('Pmin_uc', 'r', 'Minimum Active Power Limit in MW', py_name='Pmin_uc'),
+        DgsProperty('Pmax_uc', 'r', 'Maximum Active Power Limit in MW', py_name='Pmax_uc'),
         DgsProperty('iqtype', 'i', 'Reactive Power Capability Mode Code', py_name='iqtype'),
         DgsProperty('for_name', 'a:50', 'Foreign Key', py_name='for_name'),
         DgsProperty('cCategory', 'a', 'Generator Category', py_name='cCategory'),
@@ -2371,64 +1246,6 @@ class ElmSym(DGSElement):
         DgsProperty('phtech', 'i', 'Phase Technology Code', py_name='phtech'),
         DgsProperty('ip_ctrl', 'i', 'Reference machine', py_name='ip_ctrl'),
         DgsProperty('c_pmod', 'a:40', 'plant model', py_name='c_pmod'),
-        DgsProperty(
-            'iAstabint',
-            'i',
-            'A-stable RMS integration selector',
-            py_name='iAstabint',
-            optional=True,
-        ),
-        DgsProperty(
-            'ifdBaseType',
-            'i',
-            'Excitation-system base mode',
-            py_name='excitation_base_mode',
-            optional=True,
-        ),
-        DgsProperty(
-            'ifdBaseValue',
-            'r',
-            'Excitation-current base in reciprocal current coordinates',
-            py_name='excitation_current_base',
-            optional=True,
-        ),
-        DgsProperty(
-            'efdBaseRatio',
-            'r',
-            'Excitation-voltage base ratio',
-            py_name='excitation_voltage_base_ratio',
-            optional=True,
-        ),
-        DgsProperty(
-            've_const',
-            'r',
-            'Constant field voltage when no exciter drives the machine',
-            py_name='constant_field_voltage',
-            optional=True,
-        ),
-        DgsProperty(
-            'c:Gm',
-            'r',
-            'Calculated machine-to-exciter gain',
-            py_name='calculated_excitation_gain',
-            optional=True,
-        ),
-        DgsProperty(
-            've_rated',
-            'r',
-            'Calculated rated excitation voltage',
-            py_name='calculated_rated_field_voltage',
-            optional=True,
-        ),
-        DgsProperty(
-            'c:ie',
-            'r',
-            'Calculated initial excitation voltage',
-            py_name='calculated_initial_field_voltage',
-            optional=True,
-        ),
-        DgsProperty('m:P:bus1', 'r', 'Solved active power at bus1 [MW]', py_name='m_p_bus1', optional=True),
-        DgsProperty('m:Q:bus1', 'r', 'Solved reactive power at bus1 [MVAr]', py_name='m_q_bus1', optional=True),
     ]
 
     def __init__(self) -> None:
@@ -2446,18 +1263,8 @@ class ElmSym(DGSElement):
         self.iv_mode: int = 0
         self.q_min: float = 0.0
         self.q_max: float = 0.0
-        self.pQlimType: str | None = None
-        self.scaleQmin: float | None = None
-        self.scaleQmax: float | None = None
-        self.configured_qmin_mvar: float | None = None
-        self.configured_qmax_mvar: float | None = None
-        self.calculated_qmin_mvar: float | None = None
-        self.calculated_qmax_mvar: float | None = None
-        self.calculated_q_limit_state: int | None = None
-        # ``None`` is distinct from an explicitly exported zero.  This avoids
-        # turning an absent optional DGS column into a hard zero dispatch limit.
-        self.Pmin_uc: float | None = None
-        self.Pmax_uc: float | None = None
+        self.Pmin_uc: float = 0.0
+        self.Pmax_uc: float = 0.0
         self.iqtype: int = 0
         self.for_name: str = ""
         self.cCategory: str = ""
@@ -2467,16 +1274,6 @@ class ElmSym(DGSElement):
         self.phtech: int = 0
         self.ip_ctrl: int = 0
         self.c_pmod: str = ""
-        self.iAstabint: int | None = None
-        self.excitation_base_mode: int | None = None
-        self.excitation_current_base: float | None = None
-        self.excitation_voltage_base_ratio: float | None = None
-        self.constant_field_voltage: float | None = None
-        self.calculated_excitation_gain: float | None = None
-        self.calculated_rated_field_voltage: float | None = None
-        self.calculated_initial_field_voltage: float | None = None
-        self.m_p_bus1: float | None = None
-        self.m_q_bus1: float | None = None
 
 
 class ElmTerm(DGSElement):
@@ -2496,9 +1293,6 @@ class ElmTerm(DGSElement):
     *  GPSlat: Geographical Position: Latitude / Northing in deg
     *  GPSlon: Geographical Position: Longitude / Easting in deg
     *  vtarget: Voltage Control: Target Voltage in p.u.
-    *  ivpriority: Voltage-control priority
-    *  dvmin: Lower voltage-control deviation in percent
-    *  dvmax: Upper voltage-control deviation in percent
 
     """
     element_type = 'ElmTerm'
@@ -2513,7 +1307,6 @@ class ElmTerm(DGSElement):
         DgsProperty('outserv', 'i', 'Out of Service', py_name='outserv'),
         DgsProperty('cpArea', 'p', 'Area in ElmArea', py_name='cpArea'),
         DgsProperty('cpZone', 'p', 'Zone in ElmZone', py_name='cpZone'),
-        DgsProperty('cpSubstat', 'p', 'Substation in ElmSubstat', py_name='cpSubstat'),
         DgsProperty('phtech', 'i', 'Phase Technology Code', py_name='phtech'),
         DgsProperty('for_name', 'a:50', 'Foreign Key', py_name='for_name'),
         DgsProperty('systype', 'i', 'System Type: AC:DC:AC/BI', py_name='systype'),
@@ -2522,29 +1315,8 @@ class ElmTerm(DGSElement):
         DgsProperty('GPSlat', 'r', 'Latitude / Northing in deg', py_name='GPSlat'),
         DgsProperty('GPSlon', 'r', 'Longitude / Easting in deg', py_name='GPSlon'),
         DgsProperty('vtarget', 'r', 'Voltage Control Target in p.u.', py_name='vtarget'),
-        DgsProperty(
-            'ivpriority',
-            'i',
-            'Voltage Control Priority',
-            py_name='ivpriority',
-            optional=True,
-        ),
-        DgsProperty(
-            'dvmin',
-            'r',
-            'Lower Voltage Control Deviation in percent',
-            py_name='dvmin',
-            optional=True,
-        ),
-        DgsProperty(
-            'dvmax',
-            'r',
-            'Upper Voltage Control Deviation in percent',
-            py_name='dvmax',
-            optional=True,
-        ),
-        DgsProperty('m:u', 'r', 'Measured Voltage Magnitude in p.u.', py_name='m_u', optional=True),
-        DgsProperty('m:phiu', 'r', 'Measured Voltage Angle in deg', py_name='m_phiu', optional=True),
+        DgsProperty('m:u', 'r', 'Measured Voltage Magnitude in p.u.', py_name='m_u'),
+        DgsProperty('m:phiu', 'r', 'Measured Voltage Angle in deg', py_name='m_phiu'),
     ]
 
     def __init__(self) -> None:
@@ -2564,29 +1336,10 @@ class ElmTerm(DGSElement):
         self.GPSlat: float = 0.0
         self.GPSlon: float = 0.0
         self.vtarget: float = 0.0
-        # Missing optional metadata stays distinct from the native defaults
-        # (-1 priority and +/-5 %).  The station algorithm can then report an
-        # incomplete legacy export before applying those documented defaults.
-        self.ivpriority: int | None = None
-        self.dvmin: float | None = None
-        self.dvmax: float | None = None
-        # Missing solved-state columns must remain distinct from a legitimate
-        # zero voltage angle.  Importers can then use the values only as an
-        # explicit warm start when the DGS actually contains them.
-        self.m_u: float | None = None
-        self.m_phiu: float | None = None
+        self.m_u: float = 0.0
+        self.m_phiu: float = 0.0
         self.cpArea: str = ""
         self.cpZone: str = ""
-        self.cpSubstat: str = ""
-
-    @property
-    def cp_substat(self) -> str:
-        """Backward-compatible snake-case access to the owning substation."""
-        return self.cpSubstat
-
-    @cp_substat.setter
-    def cp_substat(self, value: str) -> None:
-        self.cpSubstat = value
 
 
 class ElmTr2(DGSElement):
@@ -2598,55 +1351,6 @@ class ElmTr2(DGSElement):
         DgsProperty('typ_id', 'p', 'Type in TypTr2', py_name='typ_id'),
         DgsProperty('outserv', 'i', 'Out of Service', py_name='outserv'),
         DgsProperty('nntap', 'i', 'Tap Changer 1: Tap Position', py_name='nntap'),
-        DgsProperty(
-            'c:nntap',
-            'i',
-            'Solved tap changer position',
-            py_name='c_nntap',
-            optional=True,
-        ),
-        DgsProperty(
-            'c:thv',
-            'r',
-            'Calculated complex winding-ratio magnitude at the HV side',
-            py_name='c_thv',
-            optional=True,
-        ),
-        DgsProperty(
-            'c:tlv',
-            'r',
-            'Calculated complex winding-ratio magnitude at the LV side',
-            py_name='c_tlv',
-            optional=True,
-        ),
-        DgsProperty(
-            'c:w_0',
-            'r',
-            'Calculated no-load nominal winding ratio',
-            py_name='c_w_0',
-            optional=True,
-        ),
-        DgsProperty(
-            'c:zshv',
-            'r',
-            'Calculated HV leakage-arm impedance magnitude on transformer base',
-            py_name='c_zshv',
-            optional=True,
-        ),
-        DgsProperty(
-            'c:zslv',
-            'r',
-            'Calculated LV leakage-arm impedance magnitude on transformer base',
-            py_name='c_zslv',
-            optional=True,
-        ),
-        DgsProperty(
-            'c:ym',
-            'r',
-            'Calculated magnetising-admittance magnitude on transformer base',
-            py_name='c_ym',
-            optional=True,
-        ),
         DgsProperty('sernum', 'a:20', 'Serial Number (a:20)', py_name='sernum'),
         DgsProperty('constr', 'i', 'Year of Construction', py_name='constr'),
         DgsProperty('chr_name', 'a:20', 'Characteristic Name', py_name='chr_name'),
@@ -2660,30 +1364,9 @@ class ElmTr2(DGSElement):
         DgsProperty('for_name', 'a:50', 'Foreign Key', py_name='for_name'),
         DgsProperty('ntnum', 'i', 'Number of Parallel Transformers', py_name='ntnum'),
         DgsProperty('usetp', 'r', 'Voltage Setpoint in p.u.', py_name='usetp'),
-        DgsProperty('usp_low', 'r', 'Lower Voltage Bound in p.u.', py_name='usp_low'),
-        DgsProperty('usp_up', 'r', 'Upper Voltage Bound in p.u.', py_name='usp_up'),
-        DgsProperty('t2ldc', 'i', 'Controlled Node: 0=HV, 1=LV, 2=External', py_name='t2ldc'),
-        # PowerFactory terminal results provide an independent equation-level
-        # oracle. They are never used to construct transformer parameters.
-        DgsProperty('m:P:bushv', 'r', 'Solved active power at the HV bus [MW]', py_name='m_p_bushv', optional=True),
-        DgsProperty('m:Q:bushv', 'r', 'Solved reactive power at the HV bus [MVAr]', py_name='m_q_bushv', optional=True),
-        DgsProperty('m:P:buslv', 'r', 'Solved active power at the LV bus [MW]', py_name='m_p_buslv', optional=True),
-        DgsProperty('m:Q:buslv', 'r', 'Solved reactive power at the LV bus [MVAr]', py_name='m_q_buslv', optional=True),
-        DgsProperty('p_rem', 'p', 'Configured external controlled node', py_name='p_rem', optional=True),
-        DgsProperty(
-            'cpCtrlNode',
-            'p',
-            'Calculated external controlled terminal',
-            py_name='cpCtrlNode',
-            optional=True,
-        ),
-        DgsProperty(
-            'uset_mode',
-            'i',
-            'Voltage target source selector',
-            py_name='uset_mode',
-            optional=True,
-        ),
+        DgsProperty('usp_low', 'r', 'Lower Voltage Band in p.u.', py_name='usp_low'),
+        DgsProperty('usp_up', 'r', 'Upper Voltage Band in p.u.', py_name='usp_up'),
+        DgsProperty('t2ldc', 'i', 'Line Drop Compensation Enabled', py_name='t2ldc'),
         DgsProperty('mTaps_SIZEROW', 'i', 'Number of Stored Tap Table Rows', py_name='mTaps_SIZEROW'),
         DgsProperty('mTaps_SIZECOL', 'i', 'Number of Stored Tap Table Columns', py_name='mTaps_SIZECOL'),
     ]
@@ -2695,13 +1378,6 @@ class ElmTr2(DGSElement):
         self.typ_id: str = ""
         self.outserv: int = 0
         self.nntap: int = 0
-        self.c_nntap: int | None = None
-        self.c_thv: float | None = None
-        self.c_tlv: float | None = None
-        self.c_w_0: float | None = None
-        self.c_zshv: float | None = None
-        self.c_zslv: float | None = None
-        self.c_ym: float | None = None
         self.sernum: str = ""
         self.constr: int = 0
         self.chr_name: str = ""
@@ -2716,13 +1392,6 @@ class ElmTr2(DGSElement):
         self.usp_low: float = 0.0
         self.usp_up: float = 0.0
         self.t2ldc: int = 0
-        self.m_p_bushv: float | None = None
-        self.m_q_bushv: float | None = None
-        self.m_p_buslv: float | None = None
-        self.m_q_buslv: float | None = None
-        self.p_rem: str | None = None
-        self.cpCtrlNode: str | None = None
-        self.uset_mode: int | None = None
         self.mTaps_SIZEROW: int = 0
         self.mTaps_SIZECOL: int = 0
 
@@ -2739,30 +1408,15 @@ class ElmTr3(DGSElement):
         DgsProperty('n3tap_h', 'i', 'Tap Position at HV Side', py_name='n3tap_h'),
         DgsProperty('n3tap_m', 'i', 'Tap Position at MV Side', py_name='n3tap_m'),
         DgsProperty('n3tap_l', 'i', 'Tap Position at LV Side', py_name='n3tap_l'),
-        DgsProperty('c:n3tap_h', 'r', 'Solved tap position at HV side', py_name='c_n3tap_h', optional=True),
-        DgsProperty('c:n3tap_m', 'r', 'Solved tap position at MV side', py_name='c_n3tap_m', optional=True),
-        DgsProperty('c:n3tap_l', 'r', 'Solved tap position at LV side', py_name='c_n3tap_l', optional=True),
-        DgsProperty('c:t_h', 'r', 'Effective complex winding-ratio module at HV side', py_name='c_t_h', optional=True),
-        DgsProperty('c:t_m', 'r', 'Effective complex winding-ratio module at MV side', py_name='c_t_m', optional=True),
-        DgsProperty('c:t_l', 'r', 'Effective complex winding-ratio module at LV side', py_name='c_t_l', optional=True),
-        DgsProperty('c:ym', 'r', 'Effective magnetising admittance on the transformer base', py_name='c_ym', optional=True),
         DgsProperty('chr_name', 'a:20', 'Characteristic Name', py_name='chr_name'),
         DgsProperty('for_name', 'a:50', 'Foreign Key', py_name='for_name'),
         DgsProperty('i_auto_hl', 'i', 'Autotransformer Flag for HV-LV Coupling', py_name='i_auto_hl'),
-        DgsProperty('ictrlside', 'i', 'Controller tap winding: 0=HV, 1=MV, 2=LV', py_name='ictrlside'),
+        DgsProperty('ictrlside', 'i', 'Controlled Side for Automatic Tap Changing', py_name='ictrlside'),
         DgsProperty('ntrcn', 'i', 'Automatic Tap Changing Enabled', py_name='ntrcn'),
-        DgsProperty('t3ldc', 'i', 'Controlled node: 0=HV, 1=MV, 2=LV, 3=external', py_name='t3ldc'),
+        DgsProperty('t3ldc', 'i', 'Line Drop Compensation Enabled', py_name='t3ldc'),
         DgsProperty('usetp', 'r', 'Voltage Setpoint in p.u.', py_name='usetp'),
         DgsProperty('usp_low', 'r', 'Lower Voltage Band in p.u.', py_name='usp_low'),
         DgsProperty('usp_up', 'r', 'Upper Voltage Band in p.u.', py_name='usp_up'),
-        # Optional load-flow results are validation evidence only. They must
-        # never replace the structural three-winding equations during import.
-        DgsProperty('m:P:bushv', 'r', 'Solved active power at the HV bus [MW]', py_name='m_p_bushv', optional=True),
-        DgsProperty('m:Q:bushv', 'r', 'Solved reactive power at the HV bus [MVAr]', py_name='m_q_bushv', optional=True),
-        DgsProperty('m:P:busmv', 'r', 'Solved active power at the MV bus [MW]', py_name='m_p_busmv', optional=True),
-        DgsProperty('m:Q:busmv', 'r', 'Solved reactive power at the MV bus [MVAr]', py_name='m_q_busmv', optional=True),
-        DgsProperty('m:P:buslv', 'r', 'Solved active power at the LV bus [MW]', py_name='m_p_buslv', optional=True),
-        DgsProperty('m:Q:buslv', 'r', 'Solved reactive power at the LV bus [MVAr]', py_name='m_q_buslv', optional=True),
         DgsProperty('mTaps:SIZEROW', 'i', 'Number of Stored Tap Table Rows', py_name='mTaps_SIZEROW'),
         DgsProperty('mTaps:SIZECOL', 'i', 'Number of Stored Tap Table Columns', py_name='mTaps_SIZECOL'),
         DgsProperty('mTaps:0:0', 'r', 'Tap Table Entry Row 0 Column 0', py_name='mTaps_0_0'),
@@ -2802,13 +1456,6 @@ class ElmTr3(DGSElement):
         self.n3tap_h: int = 0
         self.n3tap_m: int = 0
         self.n3tap_l: int = 0
-        self.c_n3tap_h: float | None = None
-        self.c_n3tap_m: float | None = None
-        self.c_n3tap_l: float | None = None
-        self.c_t_h: float | None = None
-        self.c_t_m: float | None = None
-        self.c_t_l: float | None = None
-        self.c_ym: float | None = None
         self.chr_name: str = ""
         self.for_name: str = ""
         self.i_auto_hl: int = 0
@@ -2818,12 +1465,6 @@ class ElmTr3(DGSElement):
         self.usetp: float = 0.0
         self.usp_low: float = 0.0
         self.usp_up: float = 0.0
-        self.m_p_bushv: float | None = None
-        self.m_q_bushv: float | None = None
-        self.m_p_busmv: float | None = None
-        self.m_q_busmv: float | None = None
-        self.m_p_buslv: float | None = None
-        self.m_q_buslv: float | None = None
         self.mTaps_SIZEROW: int = 0
         self.mTaps_SIZECOL: int = 0
         self.mTaps_0_0: float = 0.0
@@ -2865,7 +1506,6 @@ class ElmTr4(DGSElement):
 
         DgsProperty('ictrlside', 'i', 'Controlled Side', py_name='ictrlside'),
         DgsProperty('ntrcn', 'i', 'Control Node Number', py_name='ntrcn'),
-        DgsProperty('t4ldc', 'i', 'Controlled voltage side', py_name='t4ldc'),
         DgsProperty('usetp', 'r', 'Voltage Setpoint in p.u.', py_name='usetp'),
         DgsProperty('usp_low', 'r', 'Lower Voltage Setpoint Limit in p.u.', py_name='usp_low'),
         DgsProperty('usp_up', 'r', 'Upper Voltage Setpoint Limit in p.u.', py_name='usp_up'),
@@ -2932,10 +1572,6 @@ class ElmTr4(DGSElement):
         DgsProperty('ntap_l1', 'i', 'Tap position LV1', py_name='ntap_l1'),
         DgsProperty('ntap_l2', 'i', 'Tap position LV2', py_name='ntap_l2'),
         DgsProperty('ntap_l3', 'i', 'Tap position LV3', py_name='ntap_l3'),
-        DgsProperty('c:ntap_h0', 'r', 'Solved tap position HV', py_name='c_ntap_h0', optional=True),
-        DgsProperty('c:ntap_l1', 'r', 'Solved tap position LV1', py_name='c_ntap_l1', optional=True),
-        DgsProperty('c:ntap_l2', 'r', 'Solved tap position LV2', py_name='c_ntap_l2', optional=True),
-        DgsProperty('c:ntap_l3', 'r', 'Solved tap position LV3', py_name='c_ntap_l3', optional=True),
 
         DgsProperty('i_tapini_lv3', 'i', 'Initial Tap Position LV3', py_name='i_tapini_lv3'),
         DgsProperty('i_tapini_lv2', 'i', 'Initial Tap Position LV2', py_name='i_tapini_lv2'),
@@ -2946,7 +1582,6 @@ class ElmTr4(DGSElement):
         DgsProperty('busl2', 'p', 'LV2 Terminal in ElmTerm', py_name='busl2'),
         DgsProperty('busl1', 'p', 'LV1 Terminal in ElmTerm', py_name='busl1'),
         DgsProperty('bush0', 'p', 'HV Terminal in ElmTerm', py_name='bush0'),
-        DgsProperty('cpCtrlNode', 'p', 'Calculated controlled terminal', py_name='cpCtrlNode', optional=True),
 
         DgsProperty('cpSubstat', 'p', 'Substation in ElmSubstat', py_name='cpSubstat'),
         DgsProperty('cpArea', 'p', 'Area in ElmArea', py_name='cpArea'),
@@ -2983,7 +1618,6 @@ class ElmTr4(DGSElement):
 
         self.ictrlside: int = 0
         self.ntrcn: int = 0
-        self.t4ldc: int = 0
         self.usetp: float = 0.0
         self.usp_low: float = 0.0
         self.usp_up: float = 0.0
@@ -3055,16 +1689,11 @@ class ElmTr4(DGSElement):
         self.ntap_l1: int = 0
         self.ntap_l2: int = 0
         self.ntap_l3: int = 0
-        self.c_ntap_h0: float | None = None
-        self.c_ntap_l1: float | None = None
-        self.c_ntap_l2: float | None = None
-        self.c_ntap_l3: float | None = None
 
         self.busl3: str = ""
         self.busl2: str = ""
         self.busl1: str = ""
         self.bush0: str = ""
-        self.cpCtrlNode: str | None = None
 
         self.cpSubstat: str = ""
         self.cpArea: str = ""
@@ -3223,8 +1852,6 @@ class BlkDef(DGSElement):
         self.params: List[str] = list()
         self.upper_limit_params: List[str] = list()
         self.lower_limit_params: List[str] = list()
-        self.upper_limit_inputs: List[str] = list()
-        self.lower_limit_inputs: List[str] = list()
         self.internals: List[str] = list()
         self.equations_raw: List[str] = list()
 
@@ -3274,7 +1901,7 @@ class BlkDef(DGSElement):
     @classmethod
     def parse_line(cls, line: str, header_map: dict[str, int]):
         parts = _split_dgs_line(line)
-        obj = super().parse_line(line, header_map)
+        obj = super().parse_line(";".join(parts), header_map)
 
         is_macro = _dgs_get(parts, header_map, 'isMacro')
         level = _dgs_get(parts, header_map, 'level')
@@ -3290,17 +1917,6 @@ class BlkDef(DGSElement):
         # PowerFactory exports limiter parameters separately from cParams through upper/lower limit fields.
         cls._append_unique_symbols(obj.upper_limit_params, _dgs_get(parts, header_map, 'sUpLimPar:0'))
         cls._append_unique_symbols(obj.lower_limit_params, _dgs_get(parts, header_map, 'sLowLimPar:0'))
-        # Limiter controls are graphical signal pins, not numeric parameters.
-        # PowerFactory stores them outside ``cInput`` and identifies their
-        # cables through the BlkSig connector category (upper/lower limit).
-        cls._append_unique_symbols(
-            obj.upper_limit_inputs,
-            _dgs_get(parts, header_map, 'sUpLimInp:0'),
-        )
-        cls._append_unique_symbols(
-            obj.lower_limit_inputs,
-            _dgs_get(parts, header_map, 'sLowLimInp:0'),
-        )
         for param_name in obj.upper_limit_params:
             if param_name not in obj.params:
                 obj.params.append(param_name)
@@ -3402,7 +2018,6 @@ class IntGrf(DGSElement):
         DgsProperty('rCenterY', 'r', 'DGS field rCenterY (r)', py_name='rCenterY'),
         DgsProperty('sSymNam', 'a:40', 'DGS field sSymNam (a:40)', py_name='sSymNam'),
         DgsProperty('pDataObj', 'p', 'DGS field pDataObj (p)', py_name='pDataObj'),
-        DgsProperty('iCollapsed', 'i', 'DGS field iCollapsed (i)', py_name='iCollapsed'),
         DgsProperty('iRot', 'i', 'DGS field iRot (i)', py_name='iRot'),
         DgsProperty('rSizeX', 'r', 'DGS field rSizeX (r)', py_name='rSizeX'),
         DgsProperty('rSizeY', 'r', 'DGS field rSizeY (r)', py_name='rSizeY'),
@@ -3423,7 +2038,6 @@ class IntGrf(DGSElement):
         self.rCenterY: float = 0.0
         self.sSymNam: str = ""
         self.pDataObj: str = ""
-        self.iCollapsed: int = 0
         self.iRot: int = 0
         self.rSizeX: float = 0.0
         self.rSizeY: float = 0.0
@@ -3431,15 +2045,6 @@ class IntGrf(DGSElement):
         self.sAttr_0: str = ""
         self.sAttr_1: str = ""
         self.sAttr_2: str = ""
-
-    @property
-    def i_collapsed(self) -> int:
-        """Backward-compatible snake-case access to the collapsed-state flag."""
-        return self.iCollapsed
-
-    @i_collapsed.setter
-    def i_collapsed(self, value: int) -> None:
-        self.iCollapsed = value
 
 
 class IntGrfcon(DGSElement):
@@ -3470,7 +2075,6 @@ class IntGrfcon(DGSElement):
         DgsProperty('rY:7', 'r', 'DGS field rY:7 (r)', py_name='rY_7'),
         DgsProperty('rY:8', 'r', 'DGS field rY:8 (r)', py_name='rY_8'),
         DgsProperty('rY:9', 'r', 'DGS field rY:9 (r)', py_name='rY_9'),
-        DgsProperty('iDatConNr', 'i', 'DGS field iDatConNr (i)', py_name='iDatConNr'),
     ]
 
     def __init__(self) -> None:
@@ -3499,16 +2103,6 @@ class IntGrfcon(DGSElement):
         self.rY_7: float = 0.0
         self.rY_8: float = 0.0
         self.rY_9: float = 0.0
-        self.iDatConNr: int = 0
-
-    @property
-    def i_dat_con_nr(self) -> int:
-        """Backward-compatible snake-case access to the connector side index."""
-        return self.iDatConNr
-
-    @i_dat_con_nr.setter
-    def i_dat_con_nr(self, value: int) -> None:
-        self.iDatConNr = value
 
 
 class IntGrfnet(DGSElement):
@@ -3661,308 +2255,6 @@ class StaVt(DGSElement):
         self.stapset: float = 0.0
         self.typ_id: str = ""
         self.outserv: int = 0
-
-
-class StaVmea(DGSElement):
-    """Represent one PowerFactory voltage-measurement object.
-
-    The production DGS dynamic-model contract needs the measurement identity
-    and ownership fields to resolve ``pElm`` references without assigning
-    physical network semantics to the measurement itself.
-    """
-
-    __slots__ = (
-        "ID",
-        "OP",
-        "loc_name",
-        "fold_id",
-        "chr_name",
-        "pbusbar",
-        "pbusbar2",
-        "outserv",
-        "i_mode",
-        "iOutput",
-        "iUdcOutput",
-        "iFreq",
-        "freqOutput",
-        "nominalFreq",
-        "meatech",
-        "nphase",
-        "it2p",
-        "it2p2",
-        "samplingFreq",
-        "samplesPerPeriod",
-        "samplesPerWindow",
-        "windowLength",
-        "rateLim",
-        "clockPeriod",
-    )
-
-    element_type = "StaVmea"
-    properties_list = [
-        DgsProperty("ID", "a:40", "Unique identifier of the voltage measurement", py_name="ID"),
-        DgsProperty("OP", "a:1", "DGS operation marker for the voltage measurement", py_name="OP"),
-        DgsProperty("loc_name", "a:80", "Name of the voltage measurement", py_name="loc_name"),
-        DgsProperty("fold_id", "p", "Parent object containing the voltage measurement", py_name="fold_id"),
-        DgsProperty("chr_name", "a:40", "Short display name of the voltage measurement", py_name="chr_name"),
-        DgsProperty("pbusbar", "p", "Primary measured terminal or busbar", py_name="pbusbar"),
-        DgsProperty("pbusbar2", "p", "Optional secondary measured terminal or busbar", py_name="pbusbar2"),
-        DgsProperty("outserv", "i", "Out-of-service flag of the voltage measurement", py_name="outserv"),
-        DgsProperty("i_mode", "i", "Voltage measurement mode", py_name="i_mode"),
-        DgsProperty("iOutput", "i", "Voltage output selector", py_name="iOutput"),
-        DgsProperty("iUdcOutput", "i", "DC-voltage output selector", py_name="iUdcOutput"),
-        DgsProperty("iFreq", "i", "Frequency-measurement enable flag", py_name="iFreq"),
-        DgsProperty("freqOutput", "i", "Frequency output selector", py_name="freqOutput"),
-        DgsProperty("nominalFreq", "r", "Nominal measurement frequency", py_name="nominalFreq"),
-        DgsProperty("meatech", "i", "Voltage measurement technology", py_name="meatech"),
-        DgsProperty("nphase", "i", "Number of measured phases", py_name="nphase"),
-        DgsProperty("it2p", "i", "First phase-to-phase measurement selector", py_name="it2p"),
-        DgsProperty("it2p2", "i", "Second phase-to-phase measurement selector", py_name="it2p2"),
-        DgsProperty("samplingFreq", "r", "Measurement sampling frequency", py_name="samplingFreq"),
-        DgsProperty("samplesPerPeriod", "i", "Samples per nominal period", py_name="samplesPerPeriod"),
-        DgsProperty("samplesPerWindow", "i", "Samples per measurement window", py_name="samplesPerWindow"),
-        DgsProperty("windowLength", "r", "Measurement window length", py_name="windowLength"),
-        DgsProperty("rateLim", "r", "Measurement output rate limit", py_name="rateLim"),
-        DgsProperty("clockPeriod", "r", "Measurement clock period", py_name="clockPeriod"),
-    ]
-
-    def __init__(self) -> None:
-        """Initialize an empty typed voltage-measurement row.
-
-        :return: None.
-        """
-        # Identity fields allow composite slots to retain their original
-        # measurement owner even when no electrical device is materialized.
-        self.ID: str = ""
-        self.OP: str = ""
-        self.loc_name: str = ""
-        self.fold_id: str = ""
-        self.chr_name: str = ""
-        self.pbusbar: str | None = ""
-        self.pbusbar2: str = ""
-        self.outserv: int = 0
-        self.i_mode: int = 0
-        self.iOutput: int = 0
-        self.iUdcOutput: int = 0
-        self.iFreq: int = 0
-        self.freqOutput: int = 0
-        self.nominalFreq: float = 0.0
-        self.meatech: int = 0
-        self.nphase: int = 0
-        self.it2p: int = 0
-        self.it2p2: int = 0
-        self.samplingFreq: float = 0.0
-        self.samplesPerPeriod: int = 0
-        self.samplesPerWindow: int = 0
-        self.windowLength: float = 0.0
-        self.rateLim: float = 0.0
-        self.clockPeriod: float = 0.0
-
-
-class StaImea(DGSElement):
-    """Represent one PowerFactory current-measurement object.
-
-    The object remains a non-physical DGS association target; downstream
-    dynamic code decides how its signals map to VeraGrid runtime variables.
-    """
-
-    __slots__ = (
-        "ID",
-        "OP",
-        "loc_name",
-        "fold_id",
-        "chr_name",
-        "pcubic",
-        "outserv",
-        "i_mode",
-        "iOutput",
-        "Inom",
-        "nominalFreq",
-        "nphase",
-        "it2p",
-        "samplingFreq",
-        "samplesPerPeriod",
-        "samplesPerWindow",
-        "windowLength",
-        "rateLim",
-        "clockPeriod",
-    )
-
-    element_type = "StaImea"
-    properties_list = [
-        DgsProperty("ID", "a:40", "Unique identifier of the current measurement", py_name="ID"),
-        DgsProperty("OP", "a:1", "DGS operation marker for the current measurement", py_name="OP"),
-        DgsProperty("loc_name", "a:80", "Name of the current measurement", py_name="loc_name"),
-        DgsProperty("fold_id", "p", "Parent object containing the current measurement", py_name="fold_id"),
-        DgsProperty("chr_name", "a:40", "Short display name of the current measurement", py_name="chr_name"),
-        DgsProperty("pcubic", "p", "Measured cubicle", py_name="pcubic"),
-        DgsProperty("outserv", "i", "Out-of-service flag of the current measurement", py_name="outserv"),
-        DgsProperty("i_mode", "i", "Current measurement mode", py_name="i_mode"),
-        DgsProperty("iOutput", "i", "Current output selector", py_name="iOutput"),
-        DgsProperty("Inom", "r", "Nominal measured current", py_name="Inom"),
-        DgsProperty("nominalFreq", "r", "Nominal measurement frequency", py_name="nominalFreq"),
-        DgsProperty("nphase", "i", "Number of measured phases", py_name="nphase"),
-        DgsProperty("it2p", "i", "Phase-to-phase measurement selector", py_name="it2p"),
-        DgsProperty("samplingFreq", "r", "Measurement sampling frequency", py_name="samplingFreq"),
-        DgsProperty("samplesPerPeriod", "i", "Samples per nominal period", py_name="samplesPerPeriod"),
-        DgsProperty("samplesPerWindow", "i", "Samples per measurement window", py_name="samplesPerWindow"),
-        DgsProperty("windowLength", "r", "Measurement window length", py_name="windowLength"),
-        DgsProperty("rateLim", "r", "Measurement output rate limit", py_name="rateLim"),
-        DgsProperty("clockPeriod", "r", "Measurement clock period", py_name="clockPeriod"),
-    ]
-
-    def __init__(self) -> None:
-        """Initialize an empty typed current-measurement row.
-
-        :return: None.
-        """
-        # Preserve source identity only. The measurement is a signal contract,
-        # not an additional injection or branch in the imported circuit.
-        self.ID: str = ""
-        self.OP: str = ""
-        self.loc_name: str = ""
-        self.fold_id: str = ""
-        self.chr_name: str = ""
-        self.pcubic: str = ""
-        self.outserv: int = 0
-        self.i_mode: int = 0
-        self.iOutput: int = 0
-        self.Inom: float = 0.0
-        self.nominalFreq: float = 0.0
-        self.nphase: int = 0
-        self.it2p: int = 0
-        self.samplingFreq: float = 0.0
-        self.samplesPerPeriod: int = 0
-        self.samplesPerWindow: int = 0
-        self.windowLength: float = 0.0
-        self.rateLim: float = 0.0
-        self.clockPeriod: float = 0.0
-
-
-class StaPqmea(DGSElement):
-    """Represent one PowerFactory active/reactive-power measurement object.
-
-    Keeping this row typed lets the DGS catalogue resolve composite ``pElm``
-    references while leaving the eventual P/Q signal binding explicit.
-    """
-
-    __slots__ = (
-        "ID",
-        "OP",
-        "loc_name",
-        "fold_id",
-        "chr_name",
-        "pcubic",
-        "outserv",
-        "i_mode",
-        "i_orient",
-        "Snom",
-        "nominalFreq",
-        "nphase",
-        "it2p",
-        "samplingFreq",
-        "samplesPerPeriod",
-        "samplesPerWindow",
-        "windowLength",
-        "rateLim",
-        "clockPeriod",
-    )
-
-    element_type = "StaPqmea"
-    properties_list = [
-        DgsProperty("ID", "a:40", "Unique identifier of the P/Q measurement", py_name="ID"),
-        DgsProperty("OP", "a:1", "DGS operation marker for the P/Q measurement", py_name="OP"),
-        DgsProperty("loc_name", "a:80", "Name of the P/Q measurement", py_name="loc_name"),
-        DgsProperty("fold_id", "p", "Parent object containing the P/Q measurement", py_name="fold_id"),
-        DgsProperty("chr_name", "a:40", "Short display name of the P/Q measurement", py_name="chr_name"),
-        DgsProperty("pcubic", "p", "Measured cubicle", py_name="pcubic"),
-        DgsProperty("outserv", "i", "Out-of-service flag of the P/Q measurement", py_name="outserv"),
-        DgsProperty("i_mode", "i", "Active/reactive-power measurement mode", py_name="i_mode"),
-        DgsProperty("i_orient", "i", "Measured-power orientation selector", py_name="i_orient"),
-        DgsProperty("Snom", "r", "Nominal apparent power", py_name="Snom"),
-        DgsProperty("nominalFreq", "r", "Nominal measurement frequency", py_name="nominalFreq"),
-        DgsProperty("nphase", "i", "Number of measured phases", py_name="nphase"),
-        DgsProperty("it2p", "i", "Phase-to-phase measurement selector", py_name="it2p"),
-        DgsProperty("samplingFreq", "r", "Measurement sampling frequency", py_name="samplingFreq"),
-        DgsProperty("samplesPerPeriod", "i", "Samples per nominal period", py_name="samplesPerPeriod"),
-        DgsProperty("samplesPerWindow", "i", "Samples per measurement window", py_name="samplesPerWindow"),
-        DgsProperty("windowLength", "r", "Measurement window length", py_name="windowLength"),
-        DgsProperty("rateLim", "r", "Measurement output rate limit", py_name="rateLim"),
-        DgsProperty("clockPeriod", "r", "Measurement clock period", py_name="clockPeriod"),
-    ]
-
-    def __init__(self) -> None:
-        """Initialize an empty typed active/reactive-power measurement row.
-
-        :return: None.
-        """
-        # Retain the provenance needed by the dynamic association catalogue
-        # without fabricating static power-flow equipment.
-        self.ID: str = ""
-        self.OP: str = ""
-        self.loc_name: str = ""
-        self.fold_id: str = ""
-        self.chr_name: str = ""
-        self.pcubic: str = ""
-        self.outserv: int = 0
-        self.i_mode: int = 0
-        self.i_orient: int = 0
-        self.Snom: float = 0.0
-        self.nominalFreq: float = 0.0
-        self.nphase: int = 0
-        self.it2p: int = 0
-        self.samplingFreq: float = 0.0
-        self.samplesPerPeriod: int = 0
-        self.samplesPerWindow: int = 0
-        self.windowLength: float = 0.0
-        self.rateLim: float = 0.0
-        self.clockPeriod: float = 0.0
-
-
-class ElmPhi(DGSElement):
-    """Represent one native PowerFactory phase-locked-loop measurement.
-
-    ``ElmPhi__pll`` is stateful even when its composite ``BlkSlot`` has no
-    explicit input cable. Retaining the measurement point and PI gains lets the
-    offline DGS importer reproduce that dynamic equipment contract.
-    """
-
-    __slots__ = (
-        "ID",
-        "OP",
-        "loc_name",
-        "fold_id",
-        "pbusbar",
-        "outserv",
-        "Kp",
-        "Ki",
-    )
-
-    element_type = "ElmPhi"
-    properties_list = [
-        DgsProperty("ID", "a:40", "Unique PLL identifier", py_name="ID"),
-        DgsProperty("OP", "a:1", "DGS operation marker", py_name="OP"),
-        DgsProperty("loc_name", "a:80", "PLL name", py_name="loc_name"),
-        DgsProperty("fold_id", "p", "Parent composite model", py_name="fold_id"),
-        DgsProperty("pbusbar", "p", "Measured terminal or cubicle", py_name="pbusbar"),
-        DgsProperty("outserv", "i", "Out-of-service flag", py_name="outserv"),
-        DgsProperty("Kp", "r", "PLL proportional gain", py_name="Kp"),
-        DgsProperty("Ki", "r", "PLL integration gain", py_name="Ki"),
-    ]
-
-    def __init__(self) -> None:
-        """Initialize one empty typed PLL row.
-
-        :return: None.
-        """
-        self.ID: str = ""
-        self.OP: str = ""
-        self.loc_name: str = ""
-        self.fold_id: str = ""
-        self.pbusbar: str = ""
-        self.outserv: int = 0
-        self.Kp: float = 0.0
-        self.Ki: float = 0.0
 
 
 class TypSwitch(DGSElement):
@@ -4134,20 +2426,6 @@ class TypLne(DGSElement):
         DgsProperty('mlei', 'a:2', 'Line Model Type Code', py_name='mlei'),
         DgsProperty('bline', 'r', 'Positive-Sequence Susceptance in uS/km', py_name='bline'),
         DgsProperty('bline0', 'r', 'Zero-Sequence Susceptance in uS/km', py_name='bline0'),
-        DgsProperty(
-            'gline',
-            'r',
-            'Positive-Sequence Conductance in uS/km',
-            py_name='gline',
-            optional=True,
-        ),
-        DgsProperty(
-            'gline0',
-            'r',
-            'Zero-Sequence Conductance in uS/km',
-            py_name='gline0',
-            optional=True,
-        ),
     ]
 
     def __init__(self) -> None:
@@ -4177,8 +2455,6 @@ class TypLne(DGSElement):
         self.mlei: str = ""
         self.bline: float = 0.0
         self.bline0: float = 0.0
-        self.gline: float = 0.0
-        self.gline0: float = 0.0
 
 
 class TypLod(DGSElement):
@@ -4235,31 +2511,10 @@ class TypSym(DGSElement):
         DgsProperty('xd', 'r', 'Synchronous d-Axis Reactance in p.u.', py_name='xd'),
         DgsProperty('xq', 'r', 'Synchronous q-Axis Reactance in p.u.', py_name='xq'),
         DgsProperty('xdsss', 'r', 'Subtransient d-Axis Reactance in p.u.', py_name='xdsss'),
-        DgsProperty('xstr', 'r', 'PowerFactory short-circuit reactance in p.u.', py_name='xstr', optional=True),
         DgsProperty('rstr', 'r', 'Stator Resistance in p.u.', py_name='rstr'),
+        DgsProperty('xstr', 'r', 'Stator Reactance in p.u.', py_name='xstr'),
         DgsProperty('xdsat', 'r', 'Saturated d-Axis Reactance in p.u.', py_name='xdsat'),
         DgsProperty('satur', 'i', 'Magnetic Saturation Enabled', py_name='satur'),
-        DgsProperty('sg10', 'r', 'd-axis saturation at 1.0 p.u. flux', py_name='sg10', optional=True),
-        DgsProperty('sg12', 'r', 'd-axis saturation at 1.2 p.u. flux', py_name='sg12', optional=True),
-        DgsProperty('sg10q', 'r', 'q-axis saturation at 1.0 p.u. flux', py_name='sg10q', optional=True),
-        DgsProperty('sg12q', 'r', 'q-axis saturation at 1.2 p.u. flux', py_name='sg12q', optional=True),
-        DgsProperty('isat', 'i', 'Main-flux saturation axis mode', py_name='isat', optional=True),
-        DgsProperty('isatSalient', 'i', 'Salient-pole saturation axis mode', py_name='isat_salient', optional=True),
-        DgsProperty('iusesat', 'i', 'Use saturated reactance value selector', py_name='iusesat', optional=True),
-        DgsProperty(
-            'i_speedVar',
-            'i',
-            'Rotor-speed treatment in stator-voltage equations',
-            py_name='speed_variation_mode',
-            optional=True,
-        ),
-        DgsProperty(
-            'smoothFac',
-            'r',
-            'Main-flux saturation table smoothing factor',
-            py_name='saturation_smoothing_factor',
-            optional=True,
-        ),
         DgsProperty('Q_min', 'r', 'Minimum Reactive Power Capability in MVAr', py_name='Q_min'),
         DgsProperty('Q_max', 'r', 'Maximum Reactive Power Capability in MVAr', py_name='Q_max'),
         DgsProperty('q_min', 'r', 'Minimum Reactive Power Limit in MVAr', py_name='q_min'),
@@ -4277,53 +2532,11 @@ class TypSym(DGSElement):
         DgsProperty('xl', 'r', 'Leakage Reactance in p.u.', py_name='xl'),
         DgsProperty('xdss', 'r', 'Subtransient d-Axis Reactance in p.u.', py_name='xdss'),
         DgsProperty('xqss', 'r', 'Subtransient q-Axis Reactance in p.u.', py_name='xqss'),
-        DgsProperty(
-            'xrl',
-            'r',
-            'Coupling reactance between field and d-axis damper windings in p.u.',
-            py_name='xrl',
-            optional=True,
-        ),
         DgsProperty('xrlq', 'r', 'q-Axis Damper Leakage Reactance in p.u.', py_name='xrlq'),
-        DgsProperty('tds', 'r', 'Short-circuit transient time constant d-axis in s', py_name='tds'),
-        DgsProperty('tqs', 'r', 'Short-circuit transient time constant q-axis in s', py_name='tqs'),
-        DgsProperty('tdss', 'r', 'Short-circuit subtransient time constant d-axis in s', py_name='tdss'),
-        DgsProperty('tqss', 'r', 'Short-circuit subtransient time constant q-axis in s', py_name='tqss'),
-        DgsProperty(
-            'tag',
-            'r',
-            'Acceleration time constant rated to active power in s',
-            py_name='tag',
-            optional=True,
-        ),
-        DgsProperty(
-            'c:tag',
-            'r',
-            'Calculated acceleration time constant rated to active power in s',
-            py_name='calculated_tag',
-            optional=True,
-        ),
-        DgsProperty(
-            'dpu',
-            'r',
-            'Turbine shaft friction torque coefficient in p.u.',
-            py_name='dpu',
-            optional=True,
-        ),
-        DgsProperty(
-            'dkd',
-            'r',
-            'Damping torque coefficient in p.u.',
-            py_name='dkd',
-            optional=True,
-        ),
-        DgsProperty(
-            'dpe',
-            'r',
-            'Power-based damping coefficient in p.u.',
-            py_name='dpe',
-            optional=True,
-        ),
+        DgsProperty('tds', 'r', 'Transient Open-Circuit Time Constant Tdo\' in s', py_name='tds'),
+        DgsProperty('tqs', 'r', 'Transient Open-Circuit Time Constant Tqo\' in s', py_name='tqs'),
+        DgsProperty('tdss', 'r', 'Subtransient Open-Circuit Time Constant Tdo\'\' in s', py_name='tdss'),
+        DgsProperty('tqss', 'r', 'Subtransient Open-Circuit Time Constant Tqo\'\' in s', py_name='tqss'),
     ]
 
     def __init__(self) -> None:
@@ -4336,26 +2549,10 @@ class TypSym(DGSElement):
         self.xd: float = 0.0
         self.xq: float = 0.0
         self.xdsss: float = 0.0
-        # Preserve column presence separately from an explicit zero.  The
-        # conservative short-circuit mapping still prefers the documented
-        # saturated subtransient reactance ``xdsss``.
-        self.xstr: float | None = None
         self.rstr: float = 0.0
+        self.xstr: float = 0.0
         self.xdsat: float = 0.0
         self.satur: int = 0
-        self.sg10: float | None = None
-        self.sg12: float | None = None
-        self.sg10q: float | None = None
-        self.sg12q: float | None = None
-        self.isat: int | None = None
-        self.isat_salient: int | None = None
-        self.iusesat: int | None = None
-        self.speed_variation_mode: int | None = None
-        self.saturation_smoothing_factor: float | None = None
-        self.saturation_voltage_points: List[float | None] = list()
-        self.saturation_excitation_points: List[float | None] = list()
-        self.saturation_q_voltage_points: List[float | None] = list()
-        self.saturation_q_excitation_points: List[float | None] = list()
         self.Q_min: float = 0.0
         self.Q_max: float = 0.0
         self.q_min: float = 0.0
@@ -4373,35 +2570,11 @@ class TypSym(DGSElement):
         self.xl: float = 0.0
         self.xdss: float = 0.0
         self.xqss: float = 0.0
-        self.xrl: float | None = None
         self.xrlq: float = 0.0
         self.tds: float = 0.0
         self.tqs: float = 0.0
         self.tdss: float = 0.0
         self.tqss: float = 0.0
-        self.tag: float | None = None
-        self.calculated_tag: float | None = None
-        self.dpu: float | None = None
-        self.dkd: float | None = None
-        self.dpe: float | None = None
-
-    @classmethod
-    def parse_line(cls, line: str, header_map: dict[str, int]) -> "TypSym":
-        """Parse scalar machine data and variable-size saturation curves.
-
-        :param line: Raw DGS row.
-        :param header_map: DGS field-to-column mapping.
-        :return: Parsed synchronous-machine type.
-        """
-        parts: List[str] = _split_dgs_line(line)
-        obj: TypSym = super().parse_line(line, header_map)
-        # Retain aligned flux/excitation point pairs.  Empty vector positions
-        # are significant because compacting one side corrupts the curve.
-        obj.saturation_voltage_points = _parse_dgs_float_vector(parts, header_map, 'satv')
-        obj.saturation_excitation_points = _parse_dgs_float_vector(parts, header_map, 'satse')
-        obj.saturation_q_voltage_points = _parse_dgs_float_vector(parts, header_map, 'satvq')
-        obj.saturation_q_excitation_points = _parse_dgs_float_vector(parts, header_map, 'satseq')
-        return obj
 
 
 class TypTr2(DGSElement):
@@ -4416,62 +2589,6 @@ class TypTr2(DGSElement):
         DgsProperty('utrn_l', 'r', 'Rated Voltage: LV-Side in kV', py_name='utrn_l'),
         DgsProperty('uktr', 'r', 'Positive Sequence Impedance: Short-Circuit Voltage uk in %', py_name='uktr'),
         DgsProperty('pcutr', 'r', 'Positive Sequence Impedance: Copper Losses in kW', py_name='pcutr'),
-        DgsProperty(
-            'itapzdep',
-            'i',
-            'Tap Changer 1: Tap-dependent positive-sequence impedance',
-            py_name='itapzdep',
-            optional=True,
-        ),
-        DgsProperty(
-            'iIntPola',
-            'i',
-            'Tap-dependent impedance interpolation mode',
-            py_name='iIntPola',
-            optional=True,
-        ),
-        DgsProperty(
-            'uktmn',
-            'r',
-            'Positive-sequence short-circuit voltage at minimum tap in %',
-            py_name='uktmn',
-            optional=True,
-        ),
-        DgsProperty(
-            'uktmx',
-            'r',
-            'Positive-sequence short-circuit voltage at maximum tap in %',
-            py_name='uktmx',
-            optional=True,
-        ),
-        DgsProperty(
-            'pcutmn',
-            'r',
-            'Positive-sequence copper losses at minimum tap in kW',
-            py_name='pcutmn',
-            optional=True,
-        ),
-        DgsProperty(
-            'pcutmx',
-            'r',
-            'Positive-sequence copper losses at maximum tap in kW',
-            py_name='pcutmx',
-            optional=True,
-        ),
-        DgsProperty(
-            'ukrtmn',
-            'r',
-            'Real short-circuit voltage component at minimum tap in %',
-            py_name='ukrtmn',
-            optional=True,
-        ),
-        DgsProperty(
-            'ukrtmx',
-            'r',
-            'Real short-circuit voltage component at maximum tap in %',
-            py_name='ukrtmx',
-            optional=True,
-        ),
         DgsProperty('uk0tr', 'r', 'Zero Sequence Impedance: Short-Circuit Voltage uk0 in %', py_name='uk0tr'),
         DgsProperty('ur0tr', 'r', 'Zero Sequence Impedance: SHC-Voltage (Re(uk0)) uk0r in %', py_name='ur0tr'),
         DgsProperty('tr2cn_h', 'a:2', 'Vector Group: HV-Side:Y :YN:Z :ZN:D', py_name='tr2cn_h'),
@@ -4479,34 +2596,6 @@ class TypTr2(DGSElement):
         DgsProperty('nt2ag', 'r', 'Vector Group: Phase Shift in *30deg', py_name='nt2ag'),
         DgsProperty('curmg', 'r', 'Magnetizing Impedance: No Load Current in %', py_name='curmg'),
         DgsProperty('pfe', 'r', 'Magnetizing Impedance: No Load Losses in kW', py_name='pfe'),
-        DgsProperty(
-            'itrdl',
-            'r',
-            'Positive-sequence leakage reactance share at the HV winding',
-            py_name='itrdl',
-            optional=True,
-        ),
-        DgsProperty(
-            'itrdl_lv',
-            'r',
-            'Positive-sequence leakage reactance share at the LV winding',
-            py_name='itrdl_lv',
-            optional=True,
-        ),
-        DgsProperty(
-            'itrdr',
-            'r',
-            'Positive-sequence leakage resistance share at the HV winding',
-            py_name='itrdr',
-            optional=True,
-        ),
-        DgsProperty(
-            'itrdr_lv',
-            'r',
-            'Positive-sequence leakage resistance share at the LV winding',
-            py_name='itrdr_lv',
-            optional=True,
-        ),
         DgsProperty('zx0hl_n', 'r', 'Zero Sequence Magnetizing Impedance: Mag. Impedance/uk0', py_name='zx0hl_n'),
         DgsProperty('tap_side', 'i', 'Tap Changer 1: at Side:HV:LV', py_name='tap_side'),
         DgsProperty('dutap', 'r', 'Additional Voltage per Tap in %', py_name='dutap'),
@@ -4531,16 +2620,6 @@ class TypTr2(DGSElement):
         self.utrn_l: float = 0.0
         self.uktr: float = 0.0
         self.pcutr: float = 0.0
-        # Keep optional characteristic points distinct from explicit zeros so
-        # legacy DGS files retain their constant-impedance behaviour.
-        self.itapzdep: int | None = None
-        self.iIntPola: int | None = None
-        self.uktmn: float | None = None
-        self.uktmx: float | None = None
-        self.pcutmn: float | None = None
-        self.pcutmx: float | None = None
-        self.ukrtmn: float | None = None
-        self.ukrtmx: float | None = None
         self.uk0tr: float = 0.0
         self.ur0tr: float = 0.0
         self.tr2cn_h: str = "D"  # Y,YN,Z,ZN,D.
@@ -4548,10 +2627,6 @@ class TypTr2(DGSElement):
         self.nt2ag: float = 0.0
         self.curmg: float = 0.0
         self.pfe: float = 0.0
-        self.itrdl: float | None = None
-        self.itrdl_lv: float | None = None
-        self.itrdr: float | None = None
-        self.itrdr_lv: float | None = None
         self.zx0hl_n: float = 0.0
         self.tap_side: int = 0
         self.dutap: float = 0.0
@@ -4616,39 +2691,6 @@ class TypTr3(DGSElement):
         DgsProperty('for_name', 'a:50', 'Foreign Key', py_name='for_name'),
         DgsProperty('itapos', 'i', 'Tapped Winding Position Code', py_name='itapos'),
         DgsProperty('i3loc', 'i', 'Transformer Model Layout Code', py_name='i3loc'),
-        DgsProperty(
-            'itapzdep',
-            'i',
-            'Tap-dependent positive-sequence impedance enabled',
-            py_name='itapzdep',
-            optional=True,
-        ),
-        DgsProperty(
-            'itapzside',
-            'i',
-            'Side whose tap position selects the impedance characteristic',
-            py_name='itapzside',
-            optional=True,
-        ),
-        DgsProperty(
-            'iIntPola',
-            'i',
-            'Tap-dependent impedance interpolation mode',
-            py_name='iIntPola',
-            optional=True,
-        ),
-        DgsProperty('r1putmn_h', 'r', 'HV-MV resistance at minimum tap', py_name='r1putmn_h', optional=True),
-        DgsProperty('r1putmn_m', 'r', 'MV-LV resistance at minimum tap', py_name='r1putmn_m', optional=True),
-        DgsProperty('r1putmn_l', 'r', 'LV-HV resistance at minimum tap', py_name='r1putmn_l', optional=True),
-        DgsProperty('r1putmx_h', 'r', 'HV-MV resistance at maximum tap', py_name='r1putmx_h', optional=True),
-        DgsProperty('r1putmx_m', 'r', 'MV-LV resistance at maximum tap', py_name='r1putmx_m', optional=True),
-        DgsProperty('r1putmx_l', 'r', 'LV-HV resistance at maximum tap', py_name='r1putmx_l', optional=True),
-        DgsProperty('x1putmn_h', 'r', 'HV-MV reactance at minimum tap', py_name='x1putmn_h', optional=True),
-        DgsProperty('x1putmn_m', 'r', 'MV-LV reactance at minimum tap', py_name='x1putmn_m', optional=True),
-        DgsProperty('x1putmn_l', 'r', 'LV-HV reactance at minimum tap', py_name='x1putmn_l', optional=True),
-        DgsProperty('x1putmx_h', 'r', 'HV-MV reactance at maximum tap', py_name='x1putmx_h', optional=True),
-        DgsProperty('x1putmx_m', 'r', 'MV-LV reactance at maximum tap', py_name='x1putmx_m', optional=True),
-        DgsProperty('x1putmx_l', 'r', 'LV-HV reactance at maximum tap', py_name='x1putmx_l', optional=True),
     ]
 
     def __init__(self) -> None:
@@ -4713,21 +2755,6 @@ class TypTr3(DGSElement):
         # ints (i)
         self.itapos: int = 0
         self.i3loc: int = 0
-        self.itapzdep: int | None = None
-        self.itapzside: int | None = None
-        self.iIntPola: int | None = None
-        self.r1putmn_h: float | None = None
-        self.r1putmn_m: float | None = None
-        self.r1putmn_l: float | None = None
-        self.r1putmx_h: float | None = None
-        self.r1putmx_m: float | None = None
-        self.r1putmx_l: float | None = None
-        self.x1putmn_h: float | None = None
-        self.x1putmn_m: float | None = None
-        self.x1putmn_l: float | None = None
-        self.x1putmx_h: float | None = None
-        self.x1putmx_m: float | None = None
-        self.x1putmx_l: float | None = None
 
 class TypTr4(DGSElement):
     element_type = 'TypTr4'
@@ -4737,10 +2764,6 @@ class TypTr4(DGSElement):
         DgsProperty('loc_name', 'a:80', 'Name', py_name='loc_name'),
         DgsProperty('fold_id', 'p', 'In Folder', py_name='fold_id'),
         DgsProperty('inputData', 'i', 'Input data mode for Tr4W, 0 for complete, 1 for simplified', py_name='inputData'),
-        DgsProperty('imagloc', 'i', 'Magnetizing branch side: 0=HV, 1=LV1, 2=LV2, 3=LV3', py_name='imagloc'),
-        DgsProperty('ksat', 'i', 'Saturation representation mode', py_name='ksat'),
-        DgsProperty('iInterPol', 'i', 'Saturation curve interpolation mode', py_name='iInterPol'),
-        DgsProperty('iFinalSlope', 'i', 'Saturation curve extrapolation mode', py_name='iFinalSlope'),
 
         DgsProperty('pfe', 'r', 'Iron Losses in kW', py_name='pfe'),
         DgsProperty('chr_name', 'a:40', 'Characteristic Name', py_name='chr_name'),
@@ -4820,11 +2843,6 @@ class TypTr4(DGSElement):
         DgsProperty('phitr_l2', 'r', 'Phase Shift LV2 in deg', py_name='phitr_l2'),
         DgsProperty('phitr_l3', 'r', 'Phase Shift LV3 in deg', py_name='phitr_l3'),
 
-        DgsProperty('trangle_h0', 'r', 'Vector Group Angle HV in 30-degree units', py_name='trangle_h0'),
-        DgsProperty('trangle_l1', 'r', 'Vector Group Angle LV1 in 30-degree units', py_name='trangle_l1'),
-        DgsProperty('trangle_l2', 'r', 'Vector Group Angle LV2 in 30-degree units', py_name='trangle_l2'),
-        DgsProperty('trangle_l3', 'r', 'Vector Group Angle LV3 in 30-degree units', py_name='trangle_l3'),
-
         DgsProperty('oltc_h0', 'i', 'OLTC Available HV', py_name='oltc_h0'),
         DgsProperty('oltc_l1', 'i', 'OLTC Available LV1', py_name='oltc_l1'),
         DgsProperty('oltc_l2', 'i', 'OLTC Available LV2', py_name='oltc_l2'),
@@ -4895,12 +2913,6 @@ class TypTr4(DGSElement):
         self.loc_name: str = ""
         self.fold_id: str = ""
         self.inputData: int = 0
-        self.imagloc: int = 0
-        self.ksat: int = 0
-        self.iInterPol: int = 0
-        self.iFinalSlope: int = 0
-        self.satvol: List[float | None] = list()
-        self.satcue: List[float | None] = list()
 
         self.pfe: float = 0.0
         self.chr_name: str = ""
@@ -4980,11 +2992,6 @@ class TypTr4(DGSElement):
         self.phitr_l2: float = 0.0
         self.phitr_l3: float = 0.0
 
-        self.trangle_h0: float = 0.0
-        self.trangle_l1: float = 0.0
-        self.trangle_l2: float = 0.0
-        self.trangle_l3: float = 0.0
-
         self.oltc_h0: int = 0
         self.oltc_l1: int = 0
         self.oltc_l2: int = 0
@@ -5048,24 +3055,6 @@ class TypTr4(DGSElement):
         self.desc_0: str = ""
         self.doc_id: str = ""
 
-    @classmethod
-    def parse_line(cls, line: str, header_map: dict[str, int]) -> "TypTr4":
-        """Parse scalar type data and variable-size saturation vectors.
-
-        PowerFactory writes the saturation voltage and current curves as native
-        DGS vectors.  They cannot be represented by a fixed property count and
-        therefore need the same positional parser used by station controls.
-
-        :param line: Raw DGS data row.
-        :param header_map: DGS field-to-column mapping.
-        :return: Parsed four-winding transformer type.
-        """
-        parts: List[str] = _split_dgs_line(line)
-        obj: TypTr4 = super().parse_line(line, header_map)
-        obj.satvol = _parse_dgs_float_vector(parts, header_map, 'satvol')
-        obj.satcue = _parse_dgs_float_vector(parts, header_map, 'satcue')
-        return obj
-
 
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -5074,304 +3063,13 @@ class TypTr4(DGSElement):
 
 
 def _dgs_get(parts: List[str], header_map: Dict[str, int], key: str) -> str | None:
-    """Get the raw column value for a given DGS key.
-
-    :param parts: Parsed DGS row fields.
-    :param header_map: DGS field-to-column mapping.
-    :param key: Exact DGS field name.
-    :return: Raw cell value or ``None`` when the column or cell is absent.
-    """
-    idx: int | None = header_map.get(key, None)
+    """Get the raw column value for a given DGS key."""
+    idx = header_map.get(key)
     if idx is None:
         return None
-    else:
-        pass
     if 0 <= idx < len(parts):
         return parts[idx]
-    else:
-        return None
-
-
-def _parse_dgs_float_matrix(
-        parts: List[str],
-        header_map: Dict[str, int],
-        matrix_name: str,
-) -> List[List[float]]:
-    """Parse a variable-size real DGS matrix without a fixed row limit.
-
-    Native DGS matrix columns use ``name:row:column`` plus explicit row and
-    column sizes.  Some producers omit the size cells while retaining matrix
-    entries, so header dimensions provide a conservative structural fallback.
-
-    :param parts: Parsed DGS row fields.
-    :param header_map: DGS field-to-column mapping.
-    :param matrix_name: Native matrix attribute name.
-    :return: Rectangular matrix of parsed real values.
-    """
-    raw_row_count: str | None = _dgs_get(
-        parts,
-        header_map,
-        f"{matrix_name}:SIZEROW",
-    )
-    if raw_row_count is None:
-        raw_row_count = _dgs_get(
-            parts,
-            header_map,
-            f"{matrix_name}_SIZEROW",
-        )
-    else:
-        pass
-    raw_column_count: str | None = _dgs_get(
-        parts,
-        header_map,
-        f"{matrix_name}:SIZECOL",
-    )
-    if raw_column_count is None:
-        raw_column_count = _dgs_get(
-            parts,
-            header_map,
-            f"{matrix_name}_SIZECOL",
-        )
-    else:
-        pass
-
-    row_count: int = 0
-    column_count: int = 0
-    if raw_row_count is not None and raw_row_count.strip() not in {"", "*"}:
-        try:
-            row_count = max(0, int(float(raw_row_count.replace(",", "."))))
-        except ValueError:
-            row_count = 0
-    else:
-        pass
-    if raw_column_count is not None and raw_column_count.strip() not in {"", "*"}:
-        try:
-            column_count = max(0, int(float(raw_column_count.replace(",", "."))))
-        except ValueError:
-            column_count = 0
-    else:
-        pass
-
-    # Derive only dimensions that the producer did not encode explicitly.
-    maximum_header_row: int = -1
-    maximum_header_column: int = -1
-    matrix_prefix: str = f"{matrix_name}:"
-    header_key: str
-    for header_key in header_map:
-        if header_key.startswith(matrix_prefix):
-            matrix_suffix: str = header_key[len(matrix_prefix):]
-            suffix_parts: List[str] = matrix_suffix.split(":")
-            if (
-                    len(suffix_parts) == 2
-                    and suffix_parts[0].isdigit()
-                    and suffix_parts[1].isdigit()
-            ):
-                header_row: int = int(suffix_parts[0])
-                header_column: int = int(suffix_parts[1])
-                maximum_header_row = max(maximum_header_row, header_row)
-                maximum_header_column = max(maximum_header_column, header_column)
-            else:
-                pass
-        else:
-            pass
-    else:
-        pass
-    if row_count == 0 and maximum_header_row >= 0:
-        row_count = maximum_header_row + 1
-    else:
-        pass
-    if column_count == 0 and maximum_header_column >= 0:
-        column_count = maximum_header_column + 1
-    else:
-        pass
-
-    matrix: List[List[float]] = list()
-    row_index: int
-    for row_index in range(row_count):
-        row_values: List[float] = list()
-        column_index: int
-        for column_index in range(column_count):
-            raw_value: str | None = _dgs_get(
-                parts,
-                header_map,
-                f"{matrix_name}:{row_index}:{column_index}",
-            )
-            if raw_value is not None and raw_value.strip() not in {"", "*"}:
-                try:
-                    parsed_value: float = float(raw_value.replace(",", "."))
-                except ValueError:
-                    parsed_value = 0.0
-            else:
-                parsed_value = 0.0
-            row_values.append(parsed_value)
-        else:
-            pass
-        matrix.append(row_values)
-    else:
-        pass
-    return matrix
-
-
-def _infer_dgs_vector_size(header_map: Dict[str, int], vector_name: str) -> int:
-    """Infer a vector size from numbered DGS header columns.
-
-    This fallback is used only when a partial producer omits or corrupts the
-    corresponding ``SIZEROW`` value.  It does not override an explicit zero.
-
-    :param header_map: DGS field-to-column mapping.
-    :param vector_name: Base vector field name.
-    :return: Number of slots represented by the header.
-    """
-    maximum_index: int = -1
-    vector_prefix: str = f"{vector_name}:"
-    header_key: str
-
-    # Numbered vector columns can be sparse, so the largest index defines the
-    # required positional storage rather than the number of discovered fields.
-    for header_key in header_map:
-        if header_key.startswith(vector_prefix) and header_key != f"{vector_name}:SIZEROW":
-            raw_index: str = header_key[len(vector_prefix):]
-            if raw_index.isdigit():
-                candidate_index: int = int(raw_index)
-                if candidate_index > maximum_index:
-                    maximum_index = candidate_index
-                else:
-                    pass
-            else:
-                pass
-        else:
-            pass
-    else:
-        pass
-
-    return maximum_index + 1
-
-
-def _parse_dgs_vector_size(parts: List[str],
-                           header_map: Dict[str, int],
-                           vector_name: str) -> int:
-    """Parse a non-negative DGS vector size with a header fallback.
-
-    :param parts: Parsed DGS row fields.
-    :param header_map: DGS field-to-column mapping.
-    :param vector_name: Base vector field name.
-    :return: Non-negative number of vector slots to preserve.
-    """
-    raw_size: str | None = _dgs_get(parts, header_map, f"{vector_name}:SIZEROW")
-    if raw_size is None or raw_size.strip() in {"", "*"}:
-        vector_size: int = _infer_dgs_vector_size(header_map, vector_name)
-    else:
-        try:
-            parsed_size: int = int(float(raw_size.replace(",", ".")))
-            if parsed_size >= 0:
-                vector_size = parsed_size
-            else:
-                vector_size = 0
-        except (OverflowError, ValueError):
-            # A malformed row remains usable: numbered columns still provide a
-            # deterministic upper bound and invalid values become empty slots.
-            vector_size = _infer_dgs_vector_size(header_map, vector_name)
-
-    return vector_size
-
-
-def _parse_dgs_reference_vector(parts: List[str],
-                                header_map: Dict[str, int],
-                                vector_name: str) -> List[str | None]:
-    """Parse a positional DGS object-reference vector.
-
-    :param parts: Parsed DGS row fields.
-    :param header_map: DGS field-to-column mapping.
-    :param vector_name: Base vector field name.
-    :return: References with missing slots preserved as ``None``.
-    """
-    vector_size: int = _parse_dgs_vector_size(parts, header_map, vector_name)
-    references: List[str | None] = [None] * vector_size
-    vector_index: int
-
-    # Populate preallocated storage so the returned vector retains exactly the
-    # same positional contract as the PowerFactory row.
-    for vector_index in range(vector_size):
-        raw_reference: str | None = _dgs_get(parts, header_map, f"{vector_name}:{vector_index}")
-        if raw_reference is not None and raw_reference.strip() not in {"", "*"}:
-            references[vector_index] = raw_reference.strip()
-        else:
-            pass
-    else:
-        pass
-
-    return references
-
-
-def _parse_dgs_float_vector(parts: List[str],
-                            header_map: Dict[str, int],
-                            vector_name: str) -> List[float | None]:
-    """Parse a positional DGS numeric vector without rejecting partial rows.
-
-    :param parts: Parsed DGS row fields.
-    :param header_map: DGS field-to-column mapping.
-    :param vector_name: Base vector field name.
-    :return: Numeric values with absent or invalid slots represented by ``None``.
-    """
-    vector_size: int = _parse_dgs_vector_size(parts, header_map, vector_name)
-    values: List[float | None] = [None] * vector_size
-    vector_index: int
-
-    # Numeric parsing is isolated per slot so one malformed setting never drops
-    # the controller or changes the indices of its remaining device settings.
-    for vector_index in range(vector_size):
-        raw_value: str | None = _dgs_get(parts, header_map, f"{vector_name}:{vector_index}")
-        if raw_value is None or raw_value.strip() in {"", "*"}:
-            pass
-        else:
-            try:
-                parsed_value: float = float(raw_value.replace(",", "."))
-                if math.isfinite(parsed_value):
-                    values[vector_index] = parsed_value
-                else:
-                    pass
-            except ValueError:
-                pass
-    else:
-        pass
-
-    return values
-
-
-def _parse_dgs_int_vector(parts: List[str],
-                          header_map: Dict[str, int],
-                          vector_name: str) -> List[int | None]:
-    """Parse a positional DGS integer vector without compacting holes.
-
-    :param parts: Parsed DGS row fields.
-    :param header_map: DGS field-to-column mapping.
-    :param vector_name: Base vector field name.
-    :return: Integer values with absent or invalid slots represented by ``None``.
-    """
-    vector_size: int = _parse_dgs_vector_size(parts, header_map, vector_name)
-    values: List[int | None] = [None] * vector_size
-    vector_index: int
-
-    # PowerFactory can serialize integer vectors with decimal-looking values.
-    # Parsing each slot independently preserves every neighbouring association
-    # if one value is unavailable in an otherwise usable controller row.
-    for vector_index in range(vector_size):
-        raw_value: str | None = _dgs_get(parts, header_map, f"{vector_name}:{vector_index}")
-        if raw_value is None or raw_value.strip() in {"", "*"}:
-            pass
-        else:
-            try:
-                parsed_value: float = float(raw_value.replace(",", "."))
-                if math.isfinite(parsed_value):
-                    values[vector_index] = int(parsed_value)
-                else:
-                    pass
-            except (OverflowError, ValueError):
-                pass
-    else:
-        pass
-
-    return values
+    return None
 
 
 class TypCon(DGSElement):
@@ -5641,8 +3339,6 @@ class TypTow(DGSElement):
         DgsProperty(name='nlcir', dgs_type='i', description='Number of Line Circuits', py_name='nlcir'),
         DgsProperty(name='gearth', dgs_type='r', description='Earth conductivity in uS/cm', py_name='gearth'),
         DgsProperty(name='i_mode', dgs_type='i', description='Tower model mode code', py_name='i_mode'),
-        DgsProperty(name='vg:Vnom', dgs_type='r', description='Explicit matrix voltage base in kV',
-                    py_name='matrix_voltage_kv', optional=True),
         DgsProperty(name='pcond_e:SIZEROW', dgs_type='i', description='Earth conductor vector size', py_name='pcond_e_SIZEROW'),
         DgsProperty(name='pcond_e:0', dgs_type='p', description='Earth conductor pointer 0', py_name='pcond_e_0'),
         DgsProperty(name='pcond_e:1', dgs_type='p', description='Earth conductor pointer 1', py_name='pcond_e_1'),
@@ -5736,10 +3432,6 @@ class TypTow(DGSElement):
         self.nlcir: int = 1
         self.gearth: float = 0.0
         self.i_mode: int = 0
-        # Native TypTow rows infer this value from their conductor catalogue.
-        # Synthetic ElmCabsys matrices have no conductor pointer and therefore
-        # carry the same physical voltage base explicitly inside the DGS.
-        self.matrix_voltage_kv: float = 0.0
 
         # Dynamic fields (variable-size vectors/matrices)
         self.pcond_e_SIZEROW: int = 0
@@ -6025,7 +3717,6 @@ class ElmTow(DGSElement):
         self.pGeo: List[str | None] = list()     # Pointers to TypTow/TypGeo
         self.plines: List[str | None] = list()   # Pointers to ElmLne / ElmLneRoute
         self.dpolar: List[float] = list()        # Polarity flags
-        self.ctransp: List[float] = list()       # Per-circuit transposition flags
 
     @classmethod
     def parse_line(cls, line: str, header_map: dict[str, int]):
@@ -6070,38 +3761,5 @@ class ElmTow(DGSElement):
             raw_v = _dgs_get(parts, header_map, f'dpolar:{i}')
             raw_v = raw_v.strip() if raw_v is not None else ''
             obj.dpolar.append(float(raw_v.replace(',', '.')) if raw_v != '' and raw_v != '*' else 0.0)
-
-        # Element-level transposition overrides the geometrical TypTow matrix.
-        raw_transposition_count: str | None = _dgs_get(
-            parts,
-            header_map,
-            'ctransp:SIZEROW',
-        )
-        if (
-                raw_transposition_count is not None
-                and raw_transposition_count.strip() != ''
-        ):
-            transposition_count: int = int(float(
-                raw_transposition_count.replace(',', '.')
-            ))
-        else:
-            transposition_count = 0
-        obj.ctransp = list()
-        transposition_index: int
-        for transposition_index in range(transposition_count):
-            raw_transposition: str | None = _dgs_get(
-                parts,
-                header_map,
-                f'ctransp:{transposition_index}',
-            )
-            if raw_transposition is not None and raw_transposition.strip() != '':
-                transposition_value: float = float(
-                    raw_transposition.replace(',', '.')
-                )
-            else:
-                transposition_value = 0.0
-            obj.ctransp.append(transposition_value)
-        else:
-            pass
 
         return obj

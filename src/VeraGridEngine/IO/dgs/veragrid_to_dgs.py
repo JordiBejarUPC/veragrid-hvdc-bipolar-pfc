@@ -762,12 +762,7 @@ def _set_tr2_tap_fields_from_vgrid(tr: dev.Transformer2W, tpe: TypTr2, e: ElmTr2
     else:
         pass
 
-    if t is None:
-        # A snapshot export must use the scalar branch state. Profile defaults
-        # can legitimately predate a parser assigning the final fixed tap.
-        tap: float = float(tr.tap_module)
-    else:
-        tap = float(tr.get_tap_module_at(t))
+    tap = float(tr.get_tap_module_at(t))
     tol = 1e-12
     tap_dev = abs(tap - 1.0)
 
