@@ -372,12 +372,12 @@ class DynamicEditorLibrary:
                 raise TypeError(f"Unsupported library branch data type {type(branch_data)!r}")
 
 
-def build_basic_library_branch() -> Dict[str, Any]:
+def build_basic_library_branch() -> Dict[str, LibraryLeafSpec]:
     """
     Build the nested Basic branch used by both RMS and EMT editors.
     """
     # build native branch
-    native_branch: Dict[str, Any] = {
+    native_branch: Dict[str, List[LibraryLeafSpec]] = {
         "Arithmetic": [
             LibraryLeafSpec("Const", BlockType.CONST),
             LibraryLeafSpec("Gain", BlockType.GAIN),
@@ -400,8 +400,7 @@ def build_basic_library_branch() -> Dict[str, Any]:
     descriptor: BasicBlockTemplateDescriptor
     for descriptor in get_editor_ready_basic_block_catalog_descriptors():
         category_path: tuple[str, ...] = descriptor.category_path[1:] if descriptor.category_path and \
-                                                                         descriptor.category_path[
-                                                                             0] == "Native" else descriptor.category_path
+                                                                         descriptor.category_path[0] == "Native" else descriptor.category_path
         if len(category_path) == 0:
             category_path = ("Miscellaneous", "Other")
         else:
