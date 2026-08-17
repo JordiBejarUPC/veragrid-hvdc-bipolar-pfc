@@ -15,7 +15,7 @@ from pathlib import Path
 # VeraGrid Engine Imports
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const, BinOp, UnOp, Func, Expr
 from VeraGridEngine.Utils.Symbolic.block import Block
-from trunk.test_modelica_parser.modelica_parser import ModelicaXMLParser, LogicExpr, ExternalFunc
+from VeraGridEngine.IO.modelica.modelica_parser import ModelicaXMLParser, LogicExpr, ExternalFunc
 
 
 def _clean_name(name: str) -> str:

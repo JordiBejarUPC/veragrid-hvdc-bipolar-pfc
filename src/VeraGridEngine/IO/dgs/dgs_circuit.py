@@ -55,12 +55,15 @@ class DgsCircuit:
     _ELEMENT_CLASSES: List[Type[DGSElement]] = [
         General,
         BlkDef,
+        BlkDiv,
         BlkFrom,
         BlkGoto,
+        BlkMul,
         BlkRef,
         BlkSig,
         BlkSlot,
         BlkSum,
+        BlkSwt,
         ChaRef,
         ChaVec,
         ElmComp,
@@ -70,6 +73,8 @@ class DgsCircuit:
         ElmCoup,
         ElmFeeder,
         ElmGenstat,
+        ElmVsc,
+        ElmVscmono,
         ElmLne,
         ElmTow,
         ElmZpu,
@@ -81,8 +86,10 @@ class DgsCircuit:
         ElmLodlv,
         ElmLodlvp,
         ElmNet,
+        ElmPhi,
         ElmShnt,
         ElmSvs,
+        ElmStactrl,
         ElmSite,
         ElmSubstat,
         ElmSym,
@@ -95,6 +102,7 @@ class DgsCircuit:
         ElmArea,
         General,
         IntFolder,
+        IntQlim,
         IntRef,
         IntTemplate,
         IntGrf,
@@ -104,7 +112,10 @@ class DgsCircuit:
         RelFuse,
         StaCubic,
         StaCt,
+        StaImea,
+        StaPqmea,
         StaSwitch,
+        StaVmea,
         StaVt,
         TypSwitch,
         TypAsmo,
@@ -133,12 +144,15 @@ class DgsCircuit:
 
         self.generals: List[General] = list()
         self.blkdefs: List[BlkDef] = list()
+        self.blkdivs: List[BlkDiv] = list()
         self.blkfroms: List[BlkFrom] = list()
         self.blkgotos: List[BlkGoto] = list()
+        self.blkmuls: List[BlkMul] = list()
         self.blkrefs: List[BlkRef] = list()
         self.blksigs: List[BlkSig] = list()
         self.blkslots: List[BlkSlot] = list()
         self.blksums: List[BlkSum] = list()
+        self.blkswts: List[BlkSwt] = list()
         self.elmcomps: List[ElmComp] = list()
         self.elmdsls: List[ElmDsl] = list()
         self.elmbranches: List[ElmBranch] = list()
@@ -148,6 +162,8 @@ class DgsCircuit:
         self.elmcoups: List[ElmCoup] = list()
         self.elmfeeders: List[ElmFeeder] = list()
         self.elmgenstats: List[ElmGenstat] = list()
+        self.elmvscs: List[ElmVsc] = list()
+        self.elmvscmonos: List[ElmVscmono] = list()
         self.elmlnes: List[ElmLne] = list()
         self.elmtows: List[ElmTow] = list()
         self.elmsinds: List[ElmSind] = list()
@@ -157,8 +173,10 @@ class DgsCircuit:
         self.elmlodlvs: List[ElmLodlv] = list()
         self.elmlodlvps: List[ElmLodlvp] = list()
         self.elmnets: List[ElmNet] = list()
+        self.elmphis: List[ElmPhi] = list()
         self.elmshnts: List[ElmShnt] = list()
         self.elmsvss: List[ElmSvs] = list()
+        self.elmstactrls: List[ElmStactrl] = list()
         self.elmzpus: List[ElmZpu] = list()
         self.elmscaps: List[ElmScap] = list()
         self.elmsites: List[ElmSite] = list()
@@ -172,6 +190,7 @@ class DgsCircuit:
         self.elmzones: List[ElmZone] = list()
         self.elmareas: List[ElmArea] = list()
         self.intfolders: List[IntFolder] = list()
+        self.intqlims: List[IntQlim] = list()
         self.intrefs: List[IntRef] = list()
         self.inttemplates: List[IntTemplate] = list()
         self.intgrfs: List[IntGrf] = list()
@@ -181,7 +200,10 @@ class DgsCircuit:
         self.relfuses: List[RelFuse] = list()
         self.stacubics: List[StaCubic] = list()
         self.stacts: List[StaCt] = list()
+        self.staimeas: List[StaImea] = list()
+        self.stapqmeas: List[StaPqmea] = list()
         self.staswitchs: List[StaSwitch] = list()
+        self.stavmeas: List[StaVmea] = list()
         self.stavts: List[StaVt] = list()
         self.typswitches: List[TypSwitch] = list()
         self.typasmos: List[TypAsmo] = list()
@@ -202,12 +224,15 @@ class DgsCircuit:
         self._CLASS_TO_LIST: Dict[Type[DGSElement], List[DGSElement]] = {
             General: self.generals,
             BlkDef: self.blkdefs,
+            BlkDiv: self.blkdivs,
             BlkFrom: self.blkfroms,
             BlkGoto: self.blkgotos,
+            BlkMul: self.blkmuls,
             BlkRef: self.blkrefs,
             BlkSig: self.blksigs,
             BlkSlot: self.blkslots,
             BlkSum: self.blksums,
+            BlkSwt: self.blkswts,
             ChaRef: self.charefs,
             ChaVec: self.chavecs,
             ElmComp: self.elmcomps,
@@ -217,6 +242,8 @@ class DgsCircuit:
             ElmCoup: self.elmcoups,
             ElmFeeder: self.elmfeeders,
             ElmGenstat: self.elmgenstats,
+            ElmVsc: self.elmvscs,
+            ElmVscmono: self.elmvscmonos,
             ElmLne: self.elmlnes,
             ElmTow: self.elmtows,
             ElmZpu: self.elmzpus,
@@ -228,8 +255,10 @@ class DgsCircuit:
             ElmLodlv: self.elmlodlvs,
             ElmLodlvp: self.elmlodlvps,
             ElmNet: self.elmnets,
+            ElmPhi: self.elmphis,
             ElmShnt: self.elmshnts,
             ElmSvs: self.elmsvss,
+            ElmStactrl: self.elmstactrls,
             ElmSite: self.elmsites,
             ElmSubstat: self.elmsubstats,
             ElmSym: self.elmsyms,
@@ -241,6 +270,7 @@ class DgsCircuit:
             ElmZone: self.elmzones,
             ElmArea: self.elmareas,
             IntFolder: self.intfolders,
+            IntQlim: self.intqlims,
             IntRef: self.intrefs,
             IntTemplate: self.inttemplates,
             IntGrf: self.intgrfs,
@@ -250,7 +280,10 @@ class DgsCircuit:
             RelFuse: self.relfuses,
             StaCubic: self.stacubics,
             StaCt: self.stacts,
+            StaImea: self.staimeas,
+            StaPqmea: self.stapqmeas,
             StaSwitch: self.staswitchs,
+            StaVmea: self.stavmeas,
             StaVt: self.stavts,
             TypSwitch: self.typswitches,
             TypAsmo: self.typasmos,
@@ -327,7 +360,15 @@ class DgsCircuit:
                 elif line.startswith("$$"):
                     # Header line
                     element_type, header_map = parse_header(line)
-                    current_cls = self._REGISTRY.get(element_type)
+                    normalized_element_type: str
+                    if element_type in ("ElmPhi__pll", "ElmPhi__Pll"):
+                        # PowerFactory exposes the native PLL with its internal
+                        # implementation suffix in some DGS export definitions.
+                        # Normalize that wire name to the stable typed contract.
+                        normalized_element_type = "ElmPhi"
+                    else:
+                        normalized_element_type = element_type
+                    current_cls = self._REGISTRY.get(normalized_element_type)
 
                 else:
                     # Data line

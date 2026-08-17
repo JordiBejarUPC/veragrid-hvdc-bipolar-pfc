@@ -1,6 +1,6 @@
 import os
-from trunk.test_modelica_parser.modelica_parser import ModelicaXMLParser
-from trunk.test_modelica_parser.template_generator import ModelicaToPythonTranspiler
+from VeraGridEngine.IO.modelica.modelica_parser import ModelicaXMLParser
+from VeraGridEngine.IO.modelica.template_generator import ModelicaToPythonTranspiler
 
 XML_FOLDER = "./modelica_xml_source"
 OUTPUT_FOLDER = "./library/generated_templates"

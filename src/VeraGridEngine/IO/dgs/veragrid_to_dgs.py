@@ -596,7 +596,7 @@ def convert_generator(gen: dev.Generator, tpe_new_id: str, new_id: str, bus_v_co
     tpe.ID = tpe_new_id
     tpe.loc_name = gen.name
     tpe.ugn = gen.bus.Vnom
-    tpe.cosn = gen.get_Pf_at(t)
+    tpe.cosn = gen.rated_power_factor
     tpe.nphase = 3
     tpe.sgn = 0.01 if gen.Snom == 0 else gen.Snom
 
@@ -660,6 +660,7 @@ def convert_sequence_line(seq: dev.SequenceLineType, new_id: str) -> TypLne:
     typlne.rline = seq.R
     typlne.xline = seq.X
     typlne.bline = seq.B
+    typlne.gline = seq.G
 
     if seq.use_conductance:
         typlne.cline = seq.Cnf
@@ -667,6 +668,7 @@ def convert_sequence_line(seq: dev.SequenceLineType, new_id: str) -> TypLne:
         typlne.cline = 0.0
 
     typlne.bline0 = seq.B0 if seq.B0 > 0 else 2 * seq.B
+    typlne.gline0 = seq.G0 if seq.G0 > 0 else 2 * seq.G
 
     if seq.use_conductance:
         typlne.cline0 = seq.Cnf0 if seq.Cnf0 > 0 else 2 * seq.Cnf
@@ -736,8 +738,8 @@ def _set_tr2_tap_fields_from_vgrid(tr: dev.Transformer2W, tpe: TypTr2, e: ElmTr2
     tap_changer = tr.tap_changer
     total_positions: int = int(tap_changer.total_positions)
     has_discrete_tap: bool = (
-            tap_changer.tc_type != TapChangerTypes.NoRegulation
-            or int(tap_changer.tap_position) != int(tap_changer.neutral_position)
+        tap_changer.tc_type != TapChangerTypes.NoRegulation
+        and total_positions > 1
     )
 
     if has_discrete_tap:
@@ -760,7 +762,12 @@ def _set_tr2_tap_fields_from_vgrid(tr: dev.Transformer2W, tpe: TypTr2, e: ElmTr2
     else:
         pass
 
-    tap = float(tr.get_tap_module_at(t))
+    if t is None:
+        # A snapshot export must use the scalar branch state. Profile defaults
+        # can legitimately predate a parser assigning the final fixed tap.
+        tap: float = float(tr.tap_module)
+    else:
+        tap = float(tr.get_tap_module_at(t))
     tol = 1e-12
     tap_dev = abs(tap - 1.0)
 
@@ -902,6 +909,16 @@ def _build_typtr3_and_elmtr3(
     if controlled_side is not None:
         elmtr3.ntrcn = 1
         elmtr3.ictrlside = int(controlled_side)
+        control_winding: dev.Winding = tr3.get_winding(controlled_side)
+        regulation_bus: dev.Bus | None = control_winding.regulation_bus
+        if regulation_bus is tr3.bus1:
+            elmtr3.t3ldc = 0
+        elif regulation_bus is tr3.bus2:
+            elmtr3.t3ldc = 1
+        elif regulation_bus is tr3.bus3:
+            elmtr3.t3ldc = 2
+        else:
+            elmtr3.t3ldc = 3
         if controlled_side == 0:
             elmtr3.usetp = float(winding_hv.get_vset_at(t))
         elif controlled_side == 1:

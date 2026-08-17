@@ -1,0 +1,965 @@
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.
+# SPDX-License-Identifier: MPL-2.0
+
+"""
+Maintainable international-standard module for 'Ac6a'.
+
+This is the runtime implementation shipped by VeraGrid.
+It exposes the imported public interface, explicit symbolic equations, and
+recovered BasicBlockCatalog structures for incremental maintenance.
+"""
+
+from __future__ import annotations
+
+from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
+from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
+from VeraGridEngine.Utils.Symbolic.block import Block
+import VeraGridEngine.Utils.Symbolic.symbolic as sym
+from VeraGridEngine.enumerations import DeviceType
+from VeraGridEngine.Utils.Symbolic.symbolic import Var
+from VeraGridEngine.Utils.Symbolic.symbolic import Expr
+from VeraGridEngine.Utils.Symbolic.symbolic import Const
+from VeraGridEngine.Utils.Symbolic.symbolic import BinOp
+from VeraGridEngine.Templates.BasicBlockCatalog.Functions.typ_138__1_1_st import build_typ_138__1_1_st_template
+from VeraGridEngine.Templates.BasicBlockCatalog.Functions.typ_214__1_s import build_typ_214__1_s_template
+from VeraGridEngine.Templates.international_standards.runtime_helpers import build_gain_then_first_order_runtime_template
+from VeraGridEngine.Templates.international_standards.runtime_helpers import build_gain_then_integrator_runtime_template
+from VeraGridEngine.Templates.international_standards.runtime_helpers import build_limited_lead_lag_runtime_template
+from VeraGridEngine.Templates.international_standards.runtime_helpers import build_scalar_gain_runtime_template
+from VeraGridEngine.Templates.international_standards.runtime_helpers import build_gain_then_lead_lag_runtime_template
+from VeraGridEngine.Templates.BasicBlockCatalog.Functions.typ_298__1_stb_1_sta import build_typ_298__1_stb_1_sta_template
+from VeraGridEngine.Templates.BasicBlockCatalog.Functions.typ_76__lim_const import build_typ_76__lim_const_template
+from VeraGridEngine.Templates.international_standards.runtime_helpers import build_gain_then_limiter_runtime_template
+
+TEMPLATE_KEY: str = 'ac6a'
+DISPLAY_NAME: str = 'Ac6a'
+SOURCE_XML_NAME: str = 'Ac6a.xml'
+WARNING_MESSAGES: tuple[str, ...] = ()
+INPUT_NAMES: tuple[str, ...] = ()
+OUTPUT_NAMES: tuple[str, ...] = ()
+
+RECOVERED_RUNTIME_FAMILY_NAMES: tuple[str, ...] = ('first_order', 'limited_lead_lag', 'gain_lead_lag', 'lead_lag', 'gain', 'limiter')
+
+def get_template(vf: VarFactory, name: str | None = None) -> EmtModelTemplate:
+    """
+    Return the canonical template rewritten in explicit Block(...) form.
+
+    This helper exists for human auditability and follows the same broad
+    construction style used by the handwritten EMT/RMS templates: variables
+    are declared through the VarFactory first, then the explicit Block(...)
+    is assembled from state, algebraic, initialization, and event sections.
+
+    :param vf: Variable factory used to allocate the symbolic variables.
+    :type vf: VarFactory
+    :param name: Optional runtime template name.
+    :type name: str | None
+    :return: Materialized result produced by this builder.
+    :rtype: EmtModelTemplate
+"""
+    template_name: str
+    if name is None:
+        template_name: str = DISPLAY_NAME
+    else:
+        template_name: str = name
+
+    templ: EmtModelTemplate = EmtModelTemplate()
+    templ.tpe = DeviceType.NoDevice
+    templ.name = template_name
+
+    # Inputs
+    inputs: list[Var] = list()
+
+    # ______________________________________________________________________________________
+    #                                    variables
+    # ______________________________________________________________________________________
+
+    # State variables
+    avr_acRotatingExciter_firstOrder_y_Ac6a: Var = vf.add_var(name='avr.acRotatingExciter.firstOrder.y_Ac6a')
+    avr_transferFunction1_x_scaled_1_Ac6a: Var = vf.add_var(name='avr.transferFunction1.x_scaled[1]_Ac6a')
+    avr_acRotatingExciter_integratorVariableLimits_derivativeLimitMin_x_Ac6a: Var = vf.add_var(name='avr.acRotatingExciter.integratorVariableLimits.derivativeLimitMin.x_Ac6a')
+    avr_acRotatingExciter_integratorVariableLimits_derivativeLimitMax_x_Ac6a: Var = vf.add_var(name='avr.acRotatingExciter.integratorVariableLimits.derivativeLimitMax.x_Ac6a')
+    avr_transferFunction_x_scaled_1_Ac6a: Var = vf.add_var(name='avr.transferFunction.x_scaled[1]_Ac6a')
+    avr_acRotatingExciter_integratorVariableLimits_w_Ac6a: Var = vf.add_var(name='avr.acRotatingExciter.integratorVariableLimits.w_Ac6a')
+    avr_limitedLeadLag_firstOrder_y_Ac6a: Var = vf.add_var(name='avr.limitedLeadLag.firstOrder.y_Ac6a')
+    avr_firstOrder_y_Ac6a: Var = vf.add_var(name='avr.firstOrder.y_Ac6a')
+
+    # Algebraic variables
+    avr_transferFunction1_x_1_Ac6a: Var = vf.add_var(name='avr.transferFunction1.x[1]_Ac6a')
+    avr_acRotatingExciter_integratorVariableLimits_y_Ac6a: Var = vf.add_var(name='avr.acRotatingExciter.integratorVariableLimits.y_Ac6a')
+    avr_acRotatingExciter_division_y_Ac6a: Var = vf.add_var(name='avr.acRotatingExciter.division.y_Ac6a')
+    avr_acRotatingExciter_rectifierRegulationCharacteristic_y_Ac6a: Var = vf.add_var(name='avr.acRotatingExciter.rectifierRegulationCharacteristic.y_Ac6a')
+    avr_EfdPu_Ac6a: Var = vf.add_var(name='avr.EfdPu_Ac6a')
+    avr_acRotatingExciter_product1_y_Ac6a: Var = vf.add_var(name='avr.acRotatingExciter.product1.y_Ac6a')
+    avr_acRotatingExciter_division1_y_Ac6a: Var = vf.add_var(name='avr.acRotatingExciter.division1.y_Ac6a')
+    avr_acRotatingExciter_VfePu_Ac6a: Var = vf.add_var(name='avr.acRotatingExciter.VfePu_Ac6a')
+    avr_add_y_Ac6a: Var = vf.add_var(name='avr.add.y_Ac6a')
+    avr_gain1_y_Ac6a: Var = vf.add_var(name='avr.gain1.y_Ac6a')
+    avr_limiter_y_Ac6a: Var = vf.add_var(name='avr.limiter.y_Ac6a')
+    avr_transferFunction1_y_Ac6a: Var = vf.add_var(name='avr.transferFunction1.y_Ac6a')
+    avr_acRotatingExciter_integratorVariableLimits_derivativeLimitMin_y_Ac6a: Var = vf.add_var(name='avr.acRotatingExciter.integratorVariableLimits.derivativeLimitMin.y_Ac6a')
+    avr_acRotatingExciter_integratorVariableLimits_derivativeLimitMax_y_Ac6a: Var = vf.add_var(name='avr.acRotatingExciter.integratorVariableLimits.derivativeLimitMax.y_Ac6a')
+    avr_transferFunction_x_1_Ac6a: Var = vf.add_var(name='avr.transferFunction.x[1]_Ac6a')
+    avr_sum1_u_1_Ac6a: Var = vf.add_var(name='avr.sum1.u[1]_Ac6a')
+    avr_sum1_y_Ac6a: Var = vf.add_var(name='avr.sum1.y_Ac6a')
+    avr_gain_y_Ac6a: Var = vf.add_var(name='avr.gain.y_Ac6a')
+    avr_transferFunction_y_Ac6a: Var = vf.add_var(name='avr.transferFunction.y_Ac6a')
+    avr_limitedLeadLag_feedback_y_Ac6a: Var = vf.add_var(name='avr.limitedLeadLag.feedback.y_Ac6a')
+    avr_limitedLeadLag_gain_y_Ac6a: Var = vf.add_var(name='avr.limitedLeadLag.gain.y_Ac6a')
+    avr_limitedLeadLag_y_Ac6a: Var = vf.add_var(name='avr.limitedLeadLag.y_Ac6a')
+    avr_feedback_y_Ac6a: Var = vf.add_var(name='avr.feedback.y_Ac6a')
+    avr_variableLimiter_y_Ac6a: Var = vf.add_var(name='avr.variableLimiter.y_Ac6a')
+    avr_acRotatingExciter_feedback_y_Ac6a: Var = vf.add_var(name='avr.acRotatingExciter.feedback.y_Ac6a')
+    avr_acRotatingExciter_integratorVariableLimits_startFreezingMax_Ac6a: Var = vf.add_var(name='avr.acRotatingExciter.integratorVariableLimits.startFreezingMax_Ac6a')
+    avr_acRotatingExciter_integratorVariableLimits_keepFreezingMax_Ac6a: Var = vf.add_var(name='avr.acRotatingExciter.integratorVariableLimits.keepFreezingMax_Ac6a')
+    avr_acRotatingExciter_integratorVariableLimits_isFrozenMax_Ac6a: Var = vf.add_var(name='avr.acRotatingExciter.integratorVariableLimits.isFrozenMax_Ac6a')
+    avr_acRotatingExciter_integratorVariableLimits_startFreezingMin_Ac6a: Var = vf.add_var(name='avr.acRotatingExciter.integratorVariableLimits.startFreezingMin_Ac6a')
+    avr_acRotatingExciter_integratorVariableLimits_keepFreezingMin_Ac6a: Var = vf.add_var(name='avr.acRotatingExciter.integratorVariableLimits.keepFreezingMin_Ac6a')
+    avr_acRotatingExciter_integratorVariableLimits_isFrozenMin_Ac6a: Var = vf.add_var(name='avr.acRotatingExciter.integratorVariableLimits.isFrozenMin_Ac6a')
+    avr_acRotatingExciter_add_y_Ac6a: Var = vf.add_var(name='avr.acRotatingExciter.add.y_Ac6a')
+    avr_acRotatingExciter_add1_y_Ac6a: Var = vf.add_var(name='avr.acRotatingExciter.add1.y_Ac6a')
+    avr_IrPu_Ac6a: Var = vf.add_var(name='avr.IrPu_Ac6a')
+    avr_UPssPu_Ac6a: Var = vf.add_var(name='avr.UPssPu_Ac6a')
+    avr_UUelPu_Ac6a: Var = vf.add_var(name='avr.UUelPu_Ac6a')
+    avr_UsPu_Ac6a: Var = vf.add_var(name='avr.UsPu_Ac6a')
+    avr_UsRefPu_Ac6a: Var = vf.add_var(name='avr.UsRefPu_Ac6a')
+    avr_limitedLeadLag_limiter_simplifiedExpr_Ac6a: Var = vf.add_var(name='avr.limitedLeadLag.limiter.simplifiedExpr_Ac6a')
+    avr_variableLimiter_simplifiedExpr_Ac6a: Var = vf.add_var(name='avr.variableLimiter.simplifiedExpr_Ac6a')
+    avr_limiter_simplifiedExpr_Ac6a: Var = vf.add_var(name='avr.limiter.simplifiedExpr_Ac6a')
+    START_avr_firstOrder_y_Ac6a: Var = vf.add_var(name='$START.avr.firstOrder.y_Ac6a')
+    START_avr_transferFunction_x_scaled_1_Ac6a: Var = vf.add_var(name='$START.avr.transferFunction.x_scaled[1]_Ac6a')
+    START_avr_limitedLeadLag_firstOrder_y_Ac6a: Var = vf.add_var(name='$START.avr.limitedLeadLag.firstOrder.y_Ac6a')
+    START_avr_acRotatingExciter_integratorVariableLimits_derivativeLimitMax_x_Ac6a: Var = vf.add_var(name='$START.avr.acRotatingExciter.integratorVariableLimits.derivativeLimitMax.x_Ac6a')
+    START_avr_acRotatingExciter_integratorVariableLimits_derivativeLimitMin_x_Ac6a: Var = vf.add_var(name='$START.avr.acRotatingExciter.integratorVariableLimits.derivativeLimitMin.x_Ac6a')
+    PRE_avr_acRotatingExciter_integratorVariableLimits_isFrozenMax_Ac6a: Var = vf.add_var(name='$PRE.avr.acRotatingExciter.integratorVariableLimits.isFrozenMax_Ac6a')
+    START_avr_acRotatingExciter_integratorVariableLimits_isFrozenMax_Ac6a: Var = vf.add_var(name='$START.avr.acRotatingExciter.integratorVariableLimits.isFrozenMax_Ac6a')
+    PRE_avr_acRotatingExciter_integratorVariableLimits_isFrozenMin_Ac6a: Var = vf.add_var(name='$PRE.avr.acRotatingExciter.integratorVariableLimits.isFrozenMin_Ac6a')
+    START_avr_acRotatingExciter_integratorVariableLimits_isFrozenMin_Ac6a: Var = vf.add_var(name='$START.avr.acRotatingExciter.integratorVariableLimits.isFrozenMin_Ac6a')
+    START_avr_acRotatingExciter_integratorVariableLimits_w_Ac6a: Var = vf.add_var(name='$START.avr.acRotatingExciter.integratorVariableLimits.w_Ac6a')
+    START_avr_acRotatingExciter_firstOrder_y_Ac6a: Var = vf.add_var(name='$START.avr.acRotatingExciter.firstOrder.y_Ac6a')
+    START_avr_transferFunction1_x_scaled_1_Ac6a: Var = vf.add_var(name='$START.avr.transferFunction1.x_scaled[1]_Ac6a')
+    avr_acRotatingExciter_power_y_Ac6a: Var = vf.add_var(name='avr.acRotatingExciter.power.y_Ac6a')
+
+    # Differential variables
+    d_avr_acRotatingExciter_firstOrder_y_Ac6a: Var = vf.add_diff_var(name='d_avr.acRotatingExciter.firstOrder.y_Ac6a', base_var=avr_acRotatingExciter_firstOrder_y_Ac6a)
+    d_avr_transferFunction1_x_scaled_1_Ac6a: Var = vf.add_diff_var(name='d_avr.transferFunction1.x_scaled[1]_Ac6a', base_var=avr_transferFunction1_x_scaled_1_Ac6a)
+    d_avr_acRotatingExciter_integratorVariableLimits_derivativeLimitMin_x_Ac6a: Var = vf.add_diff_var(name='d_avr.acRotatingExciter.integratorVariableLimits.derivativeLimitMin.x_Ac6a', base_var=avr_acRotatingExciter_integratorVariableLimits_derivativeLimitMin_x_Ac6a)
+    d_avr_acRotatingExciter_integratorVariableLimits_derivativeLimitMax_x_Ac6a: Var = vf.add_diff_var(name='d_avr.acRotatingExciter.integratorVariableLimits.derivativeLimitMax.x_Ac6a', base_var=avr_acRotatingExciter_integratorVariableLimits_derivativeLimitMax_x_Ac6a)
+    d_avr_transferFunction_x_scaled_1_Ac6a: Var = vf.add_diff_var(name='d_avr.transferFunction.x_scaled[1]_Ac6a', base_var=avr_transferFunction_x_scaled_1_Ac6a)
+    d_avr_acRotatingExciter_integratorVariableLimits_w_Ac6a: Var = vf.add_diff_var(name='d_avr.acRotatingExciter.integratorVariableLimits.w_Ac6a', base_var=avr_acRotatingExciter_integratorVariableLimits_w_Ac6a)
+    d_avr_limitedLeadLag_firstOrder_y_Ac6a: Var = vf.add_diff_var(name='d_avr.limitedLeadLag.firstOrder.y_Ac6a', base_var=avr_limitedLeadLag_firstOrder_y_Ac6a)
+    d_avr_firstOrder_y_Ac6a: Var = vf.add_diff_var(name='d_avr.firstOrder.y_Ac6a', base_var=avr_firstOrder_y_Ac6a)
+
+    # ______________________________________________________________________________________
+    #                                    parameters
+    # ______________________________________________________________________________________
+
+    # Runtime parameters and event variables
+    avr_acRotatingExciter_firstOrder_T_Ac6a: Var = vf.add_var(name='avr.acRotatingExciter.firstOrder.T_Ac6a')
+    avr_acRotatingExciter_firstOrder_k_Ac6a: Var = vf.add_var(name='avr.acRotatingExciter.firstOrder.k_Ac6a')
+    avr_transferFunction1_a_2_Ac6a: Var = vf.add_var(name='avr.transferFunction1.a[2]_Ac6a')
+    avr_transferFunction1_a_1_Ac6a: Var = vf.add_var(name='avr.transferFunction1.a[1]_Ac6a')
+    avr_transferFunction1_a_end_Ac6a: Var = vf.add_var(name='avr.transferFunction1.a_end_Ac6a')
+    avr_acRotatingExciter_integratorVariableLimits_derivativeLimitMin_zeroGain_Ac6a: Var = vf.add_var(name='avr.acRotatingExciter.integratorVariableLimits.derivativeLimitMin.zeroGain_Ac6a')
+    avr_acRotatingExciter_const1_k_Ac6a: Var = vf.add_var(name='avr.acRotatingExciter.const1.k_Ac6a')
+    avr_acRotatingExciter_integratorVariableLimits_derivativeLimitMin_T_Ac6a: Var = vf.add_var(name='avr.acRotatingExciter.integratorVariableLimits.derivativeLimitMin.T_Ac6a')
+    avr_acRotatingExciter_integratorVariableLimits_derivativeLimitMax_zeroGain_Ac6a: Var = vf.add_var(name='avr.acRotatingExciter.integratorVariableLimits.derivativeLimitMax.zeroGain_Ac6a')
+    avr_acRotatingExciter_integratorVariableLimits_derivativeLimitMax_T_Ac6a: Var = vf.add_var(name='avr.acRotatingExciter.integratorVariableLimits.derivativeLimitMax.T_Ac6a')
+    avr_transferFunction_a_end_Ac6a: Var = vf.add_var(name='avr.transferFunction.a_end_Ac6a')
+    avr_transferFunction_a_1_Ac6a: Var = vf.add_var(name='avr.transferFunction.a[1]_Ac6a')
+    avr_transferFunction_a_2_Ac6a: Var = vf.add_var(name='avr.transferFunction.a[2]_Ac6a')
+    avr_limitedLeadLag_firstOrder_T_Ac6a: Var = vf.add_var(name='avr.limitedLeadLag.firstOrder.T_Ac6a')
+    avr_limitedLeadLag_firstOrder_k_Ac6a: Var = vf.add_var(name='avr.limitedLeadLag.firstOrder.k_Ac6a')
+    avr_firstOrder_T_Ac6a: Var = vf.add_var(name='avr.firstOrder.T_Ac6a')
+    avr_firstOrder_k_Ac6a: Var = vf.add_var(name='avr.firstOrder.k_Ac6a')
+    avr_acRotatingExciter_integratorVariableLimits_DefaultLimitMax_Ac6a: Var = vf.add_var(name='avr.acRotatingExciter.integratorVariableLimits.DefaultLimitMax_Ac6a')
+    avr_acRotatingExciter_gain_k_Ac6a: Var = vf.add_var(name='avr.acRotatingExciter.gain.k_Ac6a')
+    avr_acRotatingExciter_rectifierRegulationCharacteristic_A1_Ac6a: Var = vf.add_var(name='avr.acRotatingExciter.rectifierRegulationCharacteristic.A1_Ac6a')
+    avr_acRotatingExciter_rectifierRegulationCharacteristic_UHigh_Ac6a: Var = vf.add_var(name='avr.acRotatingExciter.rectifierRegulationCharacteristic.UHigh_Ac6a')
+    avr_acRotatingExciter_rectifierRegulationCharacteristic_ULow_Ac6a: Var = vf.add_var(name='avr.acRotatingExciter.rectifierRegulationCharacteristic.ULow_Ac6a')
+    avr_acRotatingExciter_rectifierRegulationCharacteristic_A2_Ac6a: Var = vf.add_var(name='avr.acRotatingExciter.rectifierRegulationCharacteristic.A2_Ac6a')
+    avr_acRotatingExciter_add2_k1_Ac6a: Var = vf.add_var(name='avr.acRotatingExciter.add2.k1_Ac6a')
+    avr_acRotatingExciter_add2_k2_Ac6a: Var = vf.add_var(name='avr.acRotatingExciter.add2.k2_Ac6a')
+    avr_acRotatingExciter_gain1_k_Ac6a: Var = vf.add_var(name='avr.acRotatingExciter.gain1.k_Ac6a')
+    avr_add_k2_Ac6a: Var = vf.add_var(name='avr.add.k2_Ac6a')
+    avr_const_k_Ac6a: Var = vf.add_var(name='avr.const.k_Ac6a')
+    avr_add_k1_Ac6a: Var = vf.add_var(name='avr.add.k1_Ac6a')
+    avr_gain1_k_Ac6a: Var = vf.add_var(name='avr.gain1.k_Ac6a')
+    avr_limiter_uMax_Ac6a: Var = vf.add_var(name='avr.limiter.uMax_Ac6a')
+    avr_limiter_uMin_Ac6a: Var = vf.add_var(name='avr.limiter.uMin_Ac6a')
+    avr_transferFunction1_bb_2_Ac6a: Var = vf.add_var(name='avr.transferFunction1.bb[2]_Ac6a')
+    avr_transferFunction1_d_Ac6a: Var = vf.add_var(name='avr.transferFunction1.d_Ac6a')
+    avr_acRotatingExciter_integratorVariableLimits_derivativeLimitMin_k_Ac6a: Var = vf.add_var(name='avr.acRotatingExciter.integratorVariableLimits.derivativeLimitMin.k_Ac6a')
+    avr_acRotatingExciter_integratorVariableLimits_derivativeLimitMax_k_Ac6a: Var = vf.add_var(name='avr.acRotatingExciter.integratorVariableLimits.derivativeLimitMax.k_Ac6a')
+    avr_sum1_k_1_Ac6a: Var = vf.add_var(name='avr.sum1.k[1]_Ac6a')
+    avr_gain_k_Ac6a: Var = vf.add_var(name='avr.gain.k_Ac6a')
+    avr_transferFunction_bb_2_Ac6a: Var = vf.add_var(name='avr.transferFunction.bb[2]_Ac6a')
+    avr_transferFunction_d_Ac6a: Var = vf.add_var(name='avr.transferFunction.d_Ac6a')
+    avr_limitedLeadLag_gain_k_Ac6a: Var = vf.add_var(name='avr.limitedLeadLag.gain.k_Ac6a')
+    avr_limitedLeadLag_limiter_uMin_Ac6a: Var = vf.add_var(name='avr.limitedLeadLag.limiter.uMin_Ac6a')
+    avr_limitedLeadLag_limiter_uMax_Ac6a: Var = vf.add_var(name='avr.limitedLeadLag.limiter.uMax_Ac6a')
+    avr_gain3_k_Ac6a: Var = vf.add_var(name='avr.gain3.k_Ac6a')
+    avr_gain2_k_Ac6a: Var = vf.add_var(name='avr.gain2.k_Ac6a')
+    avr_acRotatingExciter_integratorVariableLimits_K_Ac6a: Var = vf.add_var(name='avr.acRotatingExciter.integratorVariableLimits.K_Ac6a')
+    avr_acRotatingExciter_integratorVariableLimits_LimitMax0_Ac6a: Var = vf.add_var(name='avr.acRotatingExciter.integratorVariableLimits.LimitMax0_Ac6a')
+    avr_acRotatingExciter_integratorVariableLimits_LimitMin0_Ac6a: Var = vf.add_var(name='avr.acRotatingExciter.integratorVariableLimits.LimitMin0_Ac6a')
+    avr_acRotatingExciter_integratorVariableLimits_Tol_Ac6a: Var = vf.add_var(name='avr.acRotatingExciter.integratorVariableLimits.Tol_Ac6a')
+    avr_acRotatingExciter_Efd0Pu_Ac6a: Var = vf.add_var(name='avr.acRotatingExciter.Efd0Pu_Ac6a')
+    avr_acRotatingExciter_Efe0Pu_Ac6a: Var = vf.add_var(name='avr.acRotatingExciter.Efe0Pu_Ac6a')
+    avr_acRotatingExciter_integratorVariableLimits_Y0_Ac6a: Var = vf.add_var(name='avr.acRotatingExciter.integratorVariableLimits.Y0_Ac6a')
+    avr_limitedLeadLag_Y0_Ac6a: Var = vf.add_var(name='avr.limitedLeadLag.Y0_Ac6a')
+    avr_transferFunction_x_start_1_Ac6a: Var = vf.add_var(name='avr.transferFunction.x_start[1]_Ac6a')
+    avr_transferFunction_y_start_Ac6a: Var = vf.add_var(name='avr.transferFunction.y_start_Ac6a')
+    avr_transferFunction1_x_start_1_Ac6a: Var = vf.add_var(name='avr.transferFunction1.x_start[1]_Ac6a')
+    avr_transferFunction1_y_start_Ac6a: Var = vf.add_var(name='avr.transferFunction1.y_start_Ac6a')
+    avr_acRotatingExciter_integratorVariableLimits_FrozenMax0_Ac6a: Var = vf.add_var(name='avr.acRotatingExciter.integratorVariableLimits.FrozenMax0_Ac6a')
+    avr_acRotatingExciter_integratorVariableLimits_FrozenMin0_Ac6a: Var = vf.add_var(name='avr.acRotatingExciter.integratorVariableLimits.FrozenMin0_Ac6a')
+    avr_acRotatingExciter_add1_k2_Ac6a: Var = vf.add_var(name='avr.acRotatingExciter.add1.k2_Ac6a')
+    avr_acRotatingExciter_const_k_Ac6a: Var = vf.add_var(name='avr.acRotatingExciter.const.k_Ac6a')
+    avr_acRotatingExciter_add1_k1_Ac6a: Var = vf.add_var(name='avr.acRotatingExciter.add1.k1_Ac6a')
+    avr_acRotatingExciter_add_k2_Ac6a: Var = vf.add_var(name='avr.acRotatingExciter.add.k2_Ac6a')
+    avr_acRotatingExciter_const2_k_Ac6a: Var = vf.add_var(name='avr.acRotatingExciter.const2.k_Ac6a')
+    avr_acRotatingExciter_add_k1_Ac6a: Var = vf.add_var(name='avr.acRotatingExciter.add.k1_Ac6a')
+    avr_AEx_Ac6a: Var = vf.add_var(name='avr.AEx_Ac6a')
+    avr_BEx_Ac6a: Var = vf.add_var(name='avr.BEx_Ac6a')
+    avr_Efd0Pu_Ac6a: Var = vf.add_var(name='avr.Efd0Pu_Ac6a')
+    avr_Efe0Pu_Ac6a: Var = vf.add_var(name='avr.Efe0Pu_Ac6a')
+    avr_EfeMaxPu_Ac6a: Var = vf.add_var(name='avr.EfeMaxPu_Ac6a')
+    avr_EfeMinPu_Ac6a: Var = vf.add_var(name='avr.EfeMinPu_Ac6a')
+    avr_Ir0Pu_Ac6a: Var = vf.add_var(name='avr.Ir0Pu_Ac6a')
+    avr_Ka_Ac6a: Var = vf.add_var(name='avr.Ka_Ac6a')
+    avr_Kc_Ac6a: Var = vf.add_var(name='avr.Kc_Ac6a')
+    avr_Kd_Ac6a: Var = vf.add_var(name='avr.Kd_Ac6a')
+    avr_Ke_Ac6a: Var = vf.add_var(name='avr.Ke_Ac6a')
+    avr_Kh_Ac6a: Var = vf.add_var(name='avr.Kh_Ac6a')
+    avr_TolLi_Ac6a: Var = vf.add_var(name='avr.TolLi_Ac6a')
+    avr_UUel0Pu_Ac6a: Var = vf.add_var(name='avr.UUel0Pu_Ac6a')
+    avr_Us0Pu_Ac6a: Var = vf.add_var(name='avr.Us0Pu_Ac6a')
+    avr_UsRef0Pu_Ac6a: Var = vf.add_var(name='avr.UsRef0Pu_Ac6a')
+    avr_Va0Pu_Ac6a: Var = vf.add_var(name='avr.Va0Pu_Ac6a')
+    avr_Vh0Pu_Ac6a: Var = vf.add_var(name='avr.Vh0Pu_Ac6a')
+    avr_VaMaxPu_Ac6a: Var = vf.add_var(name='avr.VaMaxPu_Ac6a')
+    avr_VaMinPu_Ac6a: Var = vf.add_var(name='avr.VaMinPu_Ac6a')
+    avr_Ve0Pu_Ac6a: Var = vf.add_var(name='avr.Ve0Pu_Ac6a')
+    avr_VeMax0Pu_Ac6a: Var = vf.add_var(name='avr.VeMax0Pu_Ac6a')
+    avr_VeMinPu_Ac6a: Var = vf.add_var(name='avr.VeMinPu_Ac6a')
+    avr_VfeLimPu_Ac6a: Var = vf.add_var(name='avr.VfeLimPu_Ac6a')
+    avr_VfeMaxPu_Ac6a: Var = vf.add_var(name='avr.VfeMaxPu_Ac6a')
+    avr_VhMaxPu_Ac6a: Var = vf.add_var(name='avr.VhMaxPu_Ac6a')
+    avr_acRotatingExciter_AEx_Ac6a: Var = vf.add_var(name='avr.acRotatingExciter.AEx_Ac6a')
+    avr_acRotatingExciter_BEx_Ac6a: Var = vf.add_var(name='avr.acRotatingExciter.BEx_Ac6a')
+    avr_acRotatingExciter_Ir0Pu_Ac6a: Var = vf.add_var(name='avr.acRotatingExciter.Ir0Pu_Ac6a')
+    avr_acRotatingExciter_Kc_Ac6a: Var = vf.add_var(name='avr.acRotatingExciter.Kc_Ac6a')
+    avr_acRotatingExciter_Kd_Ac6a: Var = vf.add_var(name='avr.acRotatingExciter.Kd_Ac6a')
+    avr_acRotatingExciter_Ke_Ac6a: Var = vf.add_var(name='avr.acRotatingExciter.Ke_Ac6a')
+    avr_acRotatingExciter_TolLi_Ac6a: Var = vf.add_var(name='avr.acRotatingExciter.TolLi_Ac6a')
+    avr_acRotatingExciter_Ve0Pu_Ac6a: Var = vf.add_var(name='avr.acRotatingExciter.Ve0Pu_Ac6a')
+    avr_acRotatingExciter_VeMax0Pu_Ac6a: Var = vf.add_var(name='avr.acRotatingExciter.VeMax0Pu_Ac6a')
+    avr_acRotatingExciter_VeMinPu_Ac6a: Var = vf.add_var(name='avr.acRotatingExciter.VeMinPu_Ac6a')
+    avr_acRotatingExciter_VfeMaxPu_Ac6a: Var = vf.add_var(name='avr.acRotatingExciter.VfeMaxPu_Ac6a')
+    avr_acRotatingExciter_firstOrder_y_start_Ac6a: Var = vf.add_var(name='avr.acRotatingExciter.firstOrder.y_start_Ac6a')
+    avr_acRotatingExciter_tE_Ac6a: Var = vf.add_var(name='avr.acRotatingExciter.tE_Ac6a')
+    avr_acRotatingExciter_integratorVariableLimits_tDer_Ac6a: Var = vf.add_var(name='avr.acRotatingExciter.integratorVariableLimits.tDer_Ac6a')
+    avr_acRotatingExciter_integratorVariableLimits_derivativeLimitMax_x_start_Ac6a: Var = vf.add_var(name='avr.acRotatingExciter.integratorVariableLimits.derivativeLimitMax.x_start_Ac6a')
+    avr_acRotatingExciter_integratorVariableLimits_derivativeLimitMax_y_start_Ac6a: Var = vf.add_var(name='avr.acRotatingExciter.integratorVariableLimits.derivativeLimitMax.y_start_Ac6a')
+    avr_acRotatingExciter_integratorVariableLimits_derivativeLimitMin_x_start_Ac6a: Var = vf.add_var(name='avr.acRotatingExciter.integratorVariableLimits.derivativeLimitMin.x_start_Ac6a')
+    avr_acRotatingExciter_integratorVariableLimits_derivativeLimitMin_y_start_Ac6a: Var = vf.add_var(name='avr.acRotatingExciter.integratorVariableLimits.derivativeLimitMin.y_start_Ac6a')
+    avr_acRotatingExciter_power_base_Ac6a: Var = vf.add_var(name='avr.acRotatingExciter.power.base_Ac6a')
+    avr_tE_Ac6a: Var = vf.add_var(name='avr.tE_Ac6a')
+    avr_add3_k1_Ac6a: Var = vf.add_var(name='avr.add3.k1_Ac6a')
+    avr_add3_k2_Ac6a: Var = vf.add_var(name='avr.add3.k2_Ac6a')
+    avr_add3_k3_Ac6a: Var = vf.add_var(name='avr.add3.k3_Ac6a')
+    avr_tR_Ac6a: Var = vf.add_var(name='avr.tR_Ac6a')
+    avr_firstOrder_y_start_Ac6a: Var = vf.add_var(name='avr.firstOrder.y_start_Ac6a')
+    avr_limitedLeadLag_K_Ac6a: Var = vf.add_var(name='avr.limitedLeadLag.K_Ac6a')
+    avr_limitedLeadLag_YMax_Ac6a: Var = vf.add_var(name='avr.limitedLeadLag.YMax_Ac6a')
+    avr_limitedLeadLag_YMin_Ac6a: Var = vf.add_var(name='avr.limitedLeadLag.YMin_Ac6a')
+    avr_limitedLeadLag_t1_Ac6a: Var = vf.add_var(name='avr.limitedLeadLag.t1_Ac6a')
+    avr_limitedLeadLag_t2_Ac6a: Var = vf.add_var(name='avr.limitedLeadLag.t2_Ac6a')
+    avr_limitedLeadLag_firstOrder_y_start_Ac6a: Var = vf.add_var(name='avr.limitedLeadLag.firstOrder.y_start_Ac6a')
+    avr_tC_Ac6a: Var = vf.add_var(name='avr.tC_Ac6a')
+    avr_tB_Ac6a: Var = vf.add_var(name='avr.tB_Ac6a')
+    avr_sum1_k_2_Ac6a: Var = vf.add_var(name='avr.sum1.k[2]_Ac6a')
+    avr_tA_Ac6a: Var = vf.add_var(name='avr.tA_Ac6a')
+    avr_tH_Ac6a: Var = vf.add_var(name='avr.tH_Ac6a')
+    avr_tJ_Ac6a: Var = vf.add_var(name='avr.tJ_Ac6a')
+    avr_tK_Ac6a: Var = vf.add_var(name='avr.tK_Ac6a')
+    avr_transferFunction_b_1_Ac6a: Var = vf.add_var(name='avr.transferFunction.b[1]_Ac6a')
+    avr_transferFunction_b_2_Ac6a: Var = vf.add_var(name='avr.transferFunction.b[2]_Ac6a')
+    avr_transferFunction_bb_1_Ac6a: Var = vf.add_var(name='avr.transferFunction.bb[1]_Ac6a')
+    avr_transferFunction1_b_1_Ac6a: Var = vf.add_var(name='avr.transferFunction1.b[1]_Ac6a')
+    avr_transferFunction1_b_2_Ac6a: Var = vf.add_var(name='avr.transferFunction1.b[2]_Ac6a')
+    avr_transferFunction1_bb_1_Ac6a: Var = vf.add_var(name='avr.transferFunction1.bb[1]_Ac6a')
+    avr_variableLimiter_ySimplified_Ac6a: Var = vf.add_var(name='avr.variableLimiter.ySimplified_Ac6a')
+    avr_acRotatingExciter_firstOrder_initType_Ac6a: Var = vf.add_var(name='avr.acRotatingExciter.firstOrder.initType_Ac6a')
+    avr_acRotatingExciter_integratorVariableLimits_derivativeLimitMax_initType_Ac6a: Var = vf.add_var(name='avr.acRotatingExciter.integratorVariableLimits.derivativeLimitMax.initType_Ac6a')
+    avr_acRotatingExciter_integratorVariableLimits_derivativeLimitMin_initType_Ac6a: Var = vf.add_var(name='avr.acRotatingExciter.integratorVariableLimits.derivativeLimitMin.initType_Ac6a')
+    avr_firstOrder_initType_Ac6a: Var = vf.add_var(name='avr.firstOrder.initType_Ac6a')
+    avr_limitedLeadLag_firstOrder_initType_Ac6a: Var = vf.add_var(name='avr.limitedLeadLag.firstOrder.initType_Ac6a')
+    avr_limitedLeadLag_limiter_homotopyType_Ac6a: Var = vf.add_var(name='avr.limitedLeadLag.limiter.homotopyType_Ac6a')
+    avr_limiter_homotopyType_Ac6a: Var = vf.add_var(name='avr.limiter.homotopyType_Ac6a')
+    avr_sum1_nin_Ac6a: Var = vf.add_var(name='avr.sum1.nin_Ac6a')
+    avr_transferFunction_na_Ac6a: Var = vf.add_var(name='avr.transferFunction.na_Ac6a')
+    avr_transferFunction_nb_Ac6a: Var = vf.add_var(name='avr.transferFunction.nb_Ac6a')
+    avr_transferFunction_nx_Ac6a: Var = vf.add_var(name='avr.transferFunction.nx_Ac6a')
+    avr_transferFunction1_na_Ac6a: Var = vf.add_var(name='avr.transferFunction1.na_Ac6a')
+    avr_transferFunction1_nb_Ac6a: Var = vf.add_var(name='avr.transferFunction1.nb_Ac6a')
+    avr_transferFunction1_nx_Ac6a: Var = vf.add_var(name='avr.transferFunction1.nx_Ac6a')
+    avr_variableLimiter_homotopyType_Ac6a: Var = vf.add_var(name='avr.variableLimiter.homotopyType_Ac6a')
+    avr_acRotatingExciter_power_useExp_Ac6a: Var = vf.add_var(name='avr.acRotatingExciter.power.useExp_Ac6a')
+    avr_limitedLeadLag_limiter_limitsAtInit_Ac6a: Var = vf.add_var(name='avr.limitedLeadLag.limiter.limitsAtInit_Ac6a')
+    avr_limitedLeadLag_limiter_strict_Ac6a: Var = vf.add_var(name='avr.limitedLeadLag.limiter.strict_Ac6a')
+    avr_limiter_limitsAtInit_Ac6a: Var = vf.add_var(name='avr.limiter.limitsAtInit_Ac6a')
+    avr_limiter_strict_Ac6a: Var = vf.add_var(name='avr.limiter.strict_Ac6a')
+    avr_variableLimiter_limitsAtInit_Ac6a: Var = vf.add_var(name='avr.variableLimiter.limitsAtInit_Ac6a')
+    avr_variableLimiter_strict_Ac6a: Var = vf.add_var(name='avr.variableLimiter.strict_Ac6a')
+
+    event_dict: dict[Var, Expr | Const] = dict({
+        avr_AEx_Ac6a: vf.add_const(value=0.0),
+        avr_BEx_Ac6a: vf.add_const(value=0.0),
+        avr_Efd0Pu_Ac6a: vf.add_const(value=1.0),
+        avr_Efe0Pu_Ac6a: vf.add_const(value=1.0),
+        avr_EfeMaxPu_Ac6a: vf.add_const(value=5.0),
+        avr_EfeMinPu_Ac6a: vf.add_const(value=-5.0),
+        avr_Ir0Pu_Ac6a: vf.add_const(value=1.0),
+        avr_Ka_Ac6a: vf.add_const(value=200.0),
+        avr_Kc_Ac6a: vf.add_const(value=0.0),
+        avr_Kd_Ac6a: vf.add_const(value=0.0),
+        avr_Ke_Ac6a: vf.add_const(value=1.0),
+        avr_Kh_Ac6a: vf.add_const(value=0.05),
+        avr_TolLi_Ac6a: vf.add_const(value=1e-06),
+        avr_UUel0Pu_Ac6a: vf.add_const(value=0.0),
+        avr_Us0Pu_Ac6a: vf.add_const(value=1.0),
+        avr_UsRef0Pu_Ac6a: ((avr_Va0Pu_Ac6a / avr_Ka_Ac6a) + avr_Us0Pu_Ac6a),
+        avr_Va0Pu_Ac6a: (avr_Efe0Pu_Ac6a + avr_Vh0Pu_Ac6a),
+        avr_VaMaxPu_Ac6a: vf.add_const(value=5.0),
+        avr_VaMinPu_Ac6a: vf.add_const(value=-5.0),
+        avr_Ve0Pu_Ac6a: vf.add_const(value=1.0),
+        avr_VeMax0Pu_Ac6a: vf.add_const(value=5.0),
+        avr_VeMinPu_Ac6a: vf.add_const(value=0.0),
+        avr_VfeLimPu_Ac6a: vf.add_const(value=1.0),
+        avr_VfeMaxPu_Ac6a: vf.add_const(value=999.0),
+        avr_Vh0Pu_Ac6a: ((vf.add_const(value=0.0) * sym.heaviside((vf.add_const(value=0.0) - ((avr_VhMaxPu_Ac6a * sym.heaviside(((avr_Kh_Ac6a * (avr_Efe0Pu_Ac6a - avr_VfeLimPu_Ac6a)) - avr_VhMaxPu_Ac6a))) + ((avr_Kh_Ac6a * (avr_Efe0Pu_Ac6a - avr_VfeLimPu_Ac6a)) * (vf.add_const(value=1) - sym.heaviside(((avr_Kh_Ac6a * (avr_Efe0Pu_Ac6a - avr_VfeLimPu_Ac6a)) - avr_VhMaxPu_Ac6a)))))))) + (((avr_VhMaxPu_Ac6a * sym.heaviside(((avr_Kh_Ac6a * (avr_Efe0Pu_Ac6a - avr_VfeLimPu_Ac6a)) - avr_VhMaxPu_Ac6a))) + ((avr_Kh_Ac6a * (avr_Efe0Pu_Ac6a - avr_VfeLimPu_Ac6a)) * (vf.add_const(value=1) - sym.heaviside(((avr_Kh_Ac6a * (avr_Efe0Pu_Ac6a - avr_VfeLimPu_Ac6a)) - avr_VhMaxPu_Ac6a))))) * (vf.add_const(value=1) - sym.heaviside((vf.add_const(value=0.0) - ((avr_VhMaxPu_Ac6a * sym.heaviside(((avr_Kh_Ac6a * (avr_Efe0Pu_Ac6a - avr_VfeLimPu_Ac6a)) - avr_VhMaxPu_Ac6a))) + ((avr_Kh_Ac6a * (avr_Efe0Pu_Ac6a - avr_VfeLimPu_Ac6a)) * (vf.add_const(value=1) - sym.heaviside(((avr_Kh_Ac6a * (avr_Efe0Pu_Ac6a - avr_VfeLimPu_Ac6a)) - avr_VhMaxPu_Ac6a)))))))))),
+        avr_VhMaxPu_Ac6a: vf.add_const(value=5.0),
+        avr_acRotatingExciter_AEx_Ac6a: avr_AEx_Ac6a,
+        avr_acRotatingExciter_BEx_Ac6a: vf.add_const(value=0.0),
+        avr_acRotatingExciter_Efd0Pu_Ac6a: avr_Efd0Pu_Ac6a,
+        avr_acRotatingExciter_Efe0Pu_Ac6a: avr_Efe0Pu_Ac6a,
+        avr_acRotatingExciter_Ir0Pu_Ac6a: avr_Ir0Pu_Ac6a,
+        avr_acRotatingExciter_Kc_Ac6a: avr_Kc_Ac6a,
+        avr_acRotatingExciter_Kd_Ac6a: avr_Kd_Ac6a,
+        avr_acRotatingExciter_Ke_Ac6a: avr_Ke_Ac6a,
+        avr_acRotatingExciter_TolLi_Ac6a: avr_TolLi_Ac6a,
+        avr_acRotatingExciter_Ve0Pu_Ac6a: avr_Ve0Pu_Ac6a,
+        avr_acRotatingExciter_VeMax0Pu_Ac6a: avr_VeMax0Pu_Ac6a,
+        avr_acRotatingExciter_VeMinPu_Ac6a: avr_VeMinPu_Ac6a,
+        avr_acRotatingExciter_VfeMaxPu_Ac6a: avr_VfeMaxPu_Ac6a,
+        avr_acRotatingExciter_add_k1_Ac6a: avr_acRotatingExciter_AEx_Ac6a,
+        avr_acRotatingExciter_add_k2_Ac6a: vf.add_const(value=1.0),
+        avr_acRotatingExciter_add1_k1_Ac6a: vf.add_const(value=1.0),
+        avr_acRotatingExciter_add1_k2_Ac6a: vf.add_const(value=-1.0),
+        avr_acRotatingExciter_add2_k1_Ac6a: vf.add_const(value=1.0),
+        avr_acRotatingExciter_add2_k2_Ac6a: vf.add_const(value=1.0),
+        avr_acRotatingExciter_const_k_Ac6a: avr_acRotatingExciter_VfeMaxPu_Ac6a,
+        avr_acRotatingExciter_const1_k_Ac6a: avr_acRotatingExciter_VeMinPu_Ac6a,
+        avr_acRotatingExciter_const2_k_Ac6a: avr_acRotatingExciter_Ke_Ac6a,
+        avr_acRotatingExciter_firstOrder_T_Ac6a: vf.add_const(value=1e-05),
+        avr_acRotatingExciter_firstOrder_k_Ac6a: vf.add_const(value=1.0),
+        avr_acRotatingExciter_firstOrder_y_start_Ac6a: avr_acRotatingExciter_VeMax0Pu_Ac6a,
+        avr_acRotatingExciter_gain_k_Ac6a: avr_acRotatingExciter_Kc_Ac6a,
+        avr_acRotatingExciter_gain1_k_Ac6a: avr_acRotatingExciter_Kd_Ac6a,
+        avr_acRotatingExciter_integratorVariableLimits_K_Ac6a: (vf.add_const(value=1.0) / avr_acRotatingExciter_tE_Ac6a),
+        avr_acRotatingExciter_integratorVariableLimits_LimitMax0_Ac6a: avr_acRotatingExciter_VeMax0Pu_Ac6a,
+        avr_acRotatingExciter_integratorVariableLimits_LimitMin0_Ac6a: avr_acRotatingExciter_VeMinPu_Ac6a,
+        avr_acRotatingExciter_integratorVariableLimits_Tol_Ac6a: avr_acRotatingExciter_TolLi_Ac6a,
+        avr_acRotatingExciter_integratorVariableLimits_Y0_Ac6a: avr_acRotatingExciter_Ve0Pu_Ac6a,
+        avr_acRotatingExciter_integratorVariableLimits_derivativeLimitMax_T_Ac6a: avr_acRotatingExciter_integratorVariableLimits_tDer_Ac6a,
+        avr_acRotatingExciter_integratorVariableLimits_derivativeLimitMax_k_Ac6a: vf.add_const(value=1.0),
+        avr_acRotatingExciter_integratorVariableLimits_derivativeLimitMax_x_start_Ac6a: avr_acRotatingExciter_integratorVariableLimits_LimitMax0_Ac6a,
+        avr_acRotatingExciter_integratorVariableLimits_derivativeLimitMax_y_start_Ac6a: vf.add_const(value=0.0),
+        avr_acRotatingExciter_integratorVariableLimits_derivativeLimitMin_T_Ac6a: avr_acRotatingExciter_integratorVariableLimits_tDer_Ac6a,
+        avr_acRotatingExciter_integratorVariableLimits_derivativeLimitMin_k_Ac6a: vf.add_const(value=1.0),
+        avr_acRotatingExciter_integratorVariableLimits_derivativeLimitMin_x_start_Ac6a: avr_acRotatingExciter_integratorVariableLimits_LimitMin0_Ac6a,
+        avr_acRotatingExciter_integratorVariableLimits_derivativeLimitMin_y_start_Ac6a: vf.add_const(value=0.0),
+        avr_acRotatingExciter_integratorVariableLimits_tDer_Ac6a: vf.add_const(value=0.01),
+        avr_acRotatingExciter_power_base_Ac6a: vf.add_const(value=1.0),
+        avr_acRotatingExciter_rectifierRegulationCharacteristic_A1_Ac6a: (((sym.heaviside(((avr_acRotatingExciter_rectifierRegulationCharacteristic_ULow_Ac6a - vf.add_const(value=0.0)) + vf.add_const(value=1e-06))) * sym.heaviside(((vf.add_const(value=0.0) - avr_acRotatingExciter_rectifierRegulationCharacteristic_ULow_Ac6a) + vf.add_const(value=1e-06)))) * vf.add_const(value=0.0)) + ((vf.add_const(value=1.0) - (sym.heaviside(((avr_acRotatingExciter_rectifierRegulationCharacteristic_ULow_Ac6a - vf.add_const(value=0.0)) + vf.add_const(value=1e-06))) * sym.heaviside(((vf.add_const(value=0.0) - avr_acRotatingExciter_rectifierRegulationCharacteristic_ULow_Ac6a) + vf.add_const(value=1e-06))))) * ((vf.add_const(value=1.0) - sym.sqrt((avr_acRotatingExciter_rectifierRegulationCharacteristic_UHigh_Ac6a - (avr_acRotatingExciter_rectifierRegulationCharacteristic_ULow_Ac6a ** vf.add_const(value=2.0))))) / avr_acRotatingExciter_rectifierRegulationCharacteristic_ULow_Ac6a))),
+        avr_acRotatingExciter_rectifierRegulationCharacteristic_A2_Ac6a: (((sym.heaviside(((avr_acRotatingExciter_rectifierRegulationCharacteristic_UHigh_Ac6a - vf.add_const(value=1.0)) + vf.add_const(value=1e-06))) * sym.heaviside(((vf.add_const(value=1.0) - avr_acRotatingExciter_rectifierRegulationCharacteristic_UHigh_Ac6a) + vf.add_const(value=1e-06)))) * vf.add_const(value=0.0)) + ((vf.add_const(value=1.0) - (sym.heaviside(((avr_acRotatingExciter_rectifierRegulationCharacteristic_UHigh_Ac6a - vf.add_const(value=1.0)) + vf.add_const(value=1e-06))) * sym.heaviside(((vf.add_const(value=1.0) - avr_acRotatingExciter_rectifierRegulationCharacteristic_UHigh_Ac6a) + vf.add_const(value=1e-06))))) * sym.sqrt((avr_acRotatingExciter_rectifierRegulationCharacteristic_UHigh_Ac6a / (vf.add_const(value=1.0) - avr_acRotatingExciter_rectifierRegulationCharacteristic_UHigh_Ac6a))))),
+        avr_acRotatingExciter_rectifierRegulationCharacteristic_UHigh_Ac6a: vf.add_const(value=0.75),
+        avr_acRotatingExciter_rectifierRegulationCharacteristic_ULow_Ac6a: vf.add_const(value=0.4330127018922193),
+        avr_acRotatingExciter_tE_Ac6a: avr_tE_Ac6a,
+        avr_add_k1_Ac6a: vf.add_const(value=1.0),
+        avr_add_k2_Ac6a: vf.add_const(value=-1.0),
+        avr_add3_k1_Ac6a: vf.add_const(value=1.0),
+        avr_add3_k2_Ac6a: vf.add_const(value=-1.0),
+        avr_add3_k3_Ac6a: vf.add_const(value=1.0),
+        avr_const_k_Ac6a: avr_VfeLimPu_Ac6a,
+        avr_firstOrder_T_Ac6a: avr_tR_Ac6a,
+        avr_firstOrder_k_Ac6a: vf.add_const(value=1.0),
+        avr_firstOrder_y_start_Ac6a: avr_Us0Pu_Ac6a,
+        avr_gain_k_Ac6a: avr_Ka_Ac6a,
+        avr_gain1_k_Ac6a: avr_Kh_Ac6a,
+        avr_gain2_k_Ac6a: avr_EfeMaxPu_Ac6a,
+        avr_gain3_k_Ac6a: avr_EfeMinPu_Ac6a,
+        avr_limitedLeadLag_K_Ac6a: vf.add_const(value=1.0),
+        avr_limitedLeadLag_Y0_Ac6a: avr_Va0Pu_Ac6a,
+        avr_limitedLeadLag_YMax_Ac6a: avr_VaMaxPu_Ac6a,
+        avr_limitedLeadLag_YMin_Ac6a: avr_VaMinPu_Ac6a,
+        avr_limitedLeadLag_firstOrder_T_Ac6a: avr_limitedLeadLag_t1_Ac6a,
+        avr_limitedLeadLag_firstOrder_k_Ac6a: ((avr_limitedLeadLag_t1_Ac6a - avr_limitedLeadLag_t2_Ac6a) / (avr_limitedLeadLag_t1_Ac6a * avr_limitedLeadLag_K_Ac6a)),
+        avr_limitedLeadLag_firstOrder_y_start_Ac6a: (avr_limitedLeadLag_Y0_Ac6a * ((avr_limitedLeadLag_t1_Ac6a - avr_limitedLeadLag_t2_Ac6a) / (avr_limitedLeadLag_t1_Ac6a * avr_limitedLeadLag_K_Ac6a))),
+        avr_limitedLeadLag_gain_k_Ac6a: (avr_limitedLeadLag_K_Ac6a * (avr_limitedLeadLag_t1_Ac6a / avr_limitedLeadLag_t2_Ac6a)),
+        avr_limitedLeadLag_limiter_uMax_Ac6a: avr_limitedLeadLag_YMax_Ac6a,
+        avr_limitedLeadLag_limiter_uMin_Ac6a: avr_limitedLeadLag_YMin_Ac6a,
+        avr_limitedLeadLag_t1_Ac6a: avr_tC_Ac6a,
+        avr_limitedLeadLag_t2_Ac6a: avr_tB_Ac6a,
+        avr_limiter_uMax_Ac6a: avr_VhMaxPu_Ac6a,
+        avr_limiter_uMin_Ac6a: vf.add_const(value=0.0),
+        avr_sum1_k_1_Ac6a: vf.add_const(value=1.0),
+        avr_sum1_k_2_Ac6a: vf.add_const(value=1.0),
+        avr_tA_Ac6a: vf.add_const(value=0.02),
+        avr_tB_Ac6a: vf.add_const(value=1.0),
+        avr_tC_Ac6a: vf.add_const(value=1.0),
+        avr_tE_Ac6a: vf.add_const(value=0.5),
+        avr_tH_Ac6a: vf.add_const(value=1.0),
+        avr_tJ_Ac6a: vf.add_const(value=1.0),
+        avr_tK_Ac6a: vf.add_const(value=1.0),
+        avr_tR_Ac6a: vf.add_const(value=0.02),
+        avr_transferFunction_a_1_Ac6a: avr_tA_Ac6a,
+        avr_transferFunction_a_2_Ac6a: vf.add_const(value=1.0),
+        avr_transferFunction_a_end_Ac6a: ((sym.heaviside(((avr_transferFunction_a_2_Ac6a - (vf.add_const(value=2.220446049250313e-14) * sym.sqrt(((avr_transferFunction_a_1_Ac6a ** vf.add_const(value=2.0)) + (avr_transferFunction_a_2_Ac6a ** vf.add_const(value=2.0)))))) - vf.add_const(value=1e-06))) * avr_transferFunction_a_2_Ac6a) + ((vf.add_const(value=1.0) - sym.heaviside(((avr_transferFunction_a_2_Ac6a - (vf.add_const(value=2.220446049250313e-14) * sym.sqrt(((avr_transferFunction_a_1_Ac6a ** vf.add_const(value=2.0)) + (avr_transferFunction_a_2_Ac6a ** vf.add_const(value=2.0)))))) - vf.add_const(value=1e-06)))) * vf.add_const(value=1.0))),
+        avr_transferFunction_b_1_Ac6a: avr_tK_Ac6a,
+        avr_transferFunction_b_2_Ac6a: vf.add_const(value=1.0),
+        avr_transferFunction_bb_1_Ac6a: avr_transferFunction_b_1_Ac6a,
+        avr_transferFunction_bb_2_Ac6a: avr_transferFunction_b_2_Ac6a,
+        avr_transferFunction_d_Ac6a: (avr_transferFunction_bb_1_Ac6a / avr_transferFunction_a_1_Ac6a),
+        avr_transferFunction_x_start_1_Ac6a: avr_Va0Pu_Ac6a,
+        avr_transferFunction_y_start_Ac6a: avr_Va0Pu_Ac6a,
+        avr_transferFunction1_a_1_Ac6a: avr_tH_Ac6a,
+        avr_transferFunction1_a_2_Ac6a: vf.add_const(value=1.0),
+        avr_transferFunction1_a_end_Ac6a: ((sym.heaviside(((avr_transferFunction1_a_2_Ac6a - (vf.add_const(value=2.220446049250313e-14) * sym.sqrt(((avr_transferFunction1_a_1_Ac6a ** vf.add_const(value=2.0)) + (avr_transferFunction1_a_2_Ac6a ** vf.add_const(value=2.0)))))) - vf.add_const(value=1e-06))) * avr_transferFunction1_a_2_Ac6a) + ((vf.add_const(value=1.0) - sym.heaviside(((avr_transferFunction1_a_2_Ac6a - (vf.add_const(value=2.220446049250313e-14) * sym.sqrt(((avr_transferFunction1_a_1_Ac6a ** vf.add_const(value=2.0)) + (avr_transferFunction1_a_2_Ac6a ** vf.add_const(value=2.0)))))) - vf.add_const(value=1e-06)))) * vf.add_const(value=1.0))),
+        avr_transferFunction1_b_1_Ac6a: avr_tJ_Ac6a,
+        avr_transferFunction1_b_2_Ac6a: vf.add_const(value=1.0),
+        avr_transferFunction1_bb_1_Ac6a: avr_transferFunction1_b_1_Ac6a,
+        avr_transferFunction1_bb_2_Ac6a: avr_transferFunction1_b_2_Ac6a,
+        avr_transferFunction1_d_Ac6a: (avr_transferFunction1_bb_1_Ac6a / avr_transferFunction1_a_1_Ac6a),
+        avr_transferFunction1_x_start_1_Ac6a: avr_Vh0Pu_Ac6a,
+        avr_transferFunction1_y_start_Ac6a: avr_Vh0Pu_Ac6a,
+        avr_variableLimiter_ySimplified_Ac6a: vf.add_const(value=0.0),
+        avr_acRotatingExciter_firstOrder_initType_Ac6a: vf.add_const(value=1.0),
+        avr_acRotatingExciter_integratorVariableLimits_derivativeLimitMax_initType_Ac6a: vf.add_const(value=1.0),
+        avr_acRotatingExciter_integratorVariableLimits_derivativeLimitMin_initType_Ac6a: vf.add_const(value=1.0),
+        avr_firstOrder_initType_Ac6a: vf.add_const(value=1.0),
+        avr_limitedLeadLag_firstOrder_initType_Ac6a: vf.add_const(value=1.0),
+        avr_limitedLeadLag_limiter_homotopyType_Ac6a: vf.add_const(value=1.0),
+        avr_limiter_homotopyType_Ac6a: vf.add_const(value=1.0),
+        avr_sum1_nin_Ac6a: vf.add_const(value=2.0),
+        avr_transferFunction_na_Ac6a: vf.add_const(value=2.0),
+        avr_transferFunction_nb_Ac6a: vf.add_const(value=2.0),
+        avr_transferFunction_nx_Ac6a: vf.add_const(value=1.0),
+        avr_transferFunction1_na_Ac6a: vf.add_const(value=2.0),
+        avr_transferFunction1_nb_Ac6a: vf.add_const(value=2.0),
+        avr_transferFunction1_nx_Ac6a: vf.add_const(value=1.0),
+        avr_variableLimiter_homotopyType_Ac6a: vf.add_const(value=1.0),
+        avr_acRotatingExciter_integratorVariableLimits_DefaultLimitMax_Ac6a: vf.add_const(value=1.0),
+        avr_acRotatingExciter_integratorVariableLimits_FrozenMax0_Ac6a: sym.heaviside(((avr_acRotatingExciter_integratorVariableLimits_Y0_Ac6a - (avr_acRotatingExciter_integratorVariableLimits_LimitMax0_Ac6a - (avr_acRotatingExciter_integratorVariableLimits_Tol_Ac6a * sym.abs((avr_acRotatingExciter_integratorVariableLimits_LimitMax0_Ac6a - avr_acRotatingExciter_integratorVariableLimits_LimitMin0_Ac6a))))) - vf.add_const(value=1e-06))),
+        avr_acRotatingExciter_integratorVariableLimits_FrozenMin0_Ac6a: sym.heaviside((((avr_acRotatingExciter_integratorVariableLimits_LimitMin0_Ac6a + (avr_acRotatingExciter_integratorVariableLimits_Tol_Ac6a * sym.abs((avr_acRotatingExciter_integratorVariableLimits_LimitMax0_Ac6a - avr_acRotatingExciter_integratorVariableLimits_LimitMin0_Ac6a)))) - avr_acRotatingExciter_integratorVariableLimits_Y0_Ac6a) - vf.add_const(value=1e-06))),
+        avr_acRotatingExciter_integratorVariableLimits_derivativeLimitMax_zeroGain_Ac6a: sym.heaviside(((vf.add_const(value=2.220446049250313e-16) - sym.abs(avr_acRotatingExciter_integratorVariableLimits_derivativeLimitMax_k_Ac6a)) - vf.add_const(value=1e-06))),
+        avr_acRotatingExciter_integratorVariableLimits_derivativeLimitMin_zeroGain_Ac6a: sym.heaviside(((vf.add_const(value=2.220446049250313e-16) - sym.abs(avr_acRotatingExciter_integratorVariableLimits_derivativeLimitMin_k_Ac6a)) - vf.add_const(value=1e-06))),
+        avr_acRotatingExciter_power_useExp_Ac6a: vf.add_const(value=1.0),
+        avr_limitedLeadLag_limiter_limitsAtInit_Ac6a: vf.add_const(value=1.0),
+        avr_limitedLeadLag_limiter_strict_Ac6a: vf.add_const(value=0.0),
+        avr_limiter_limitsAtInit_Ac6a: vf.add_const(value=1.0),
+        avr_limiter_strict_Ac6a: vf.add_const(value=0.0),
+        avr_variableLimiter_limitsAtInit_Ac6a: vf.add_const(value=1.0),
+        avr_variableLimiter_strict_Ac6a: vf.add_const(value=0.0),
+    })
+
+    external_mapping: dict[object, Var] = dict()
+
+    api_obj_mapping: dict[object, Var] = dict()
+
+    templ.block = Block(
+        state_eqs=[
+            (((avr_acRotatingExciter_firstOrder_k_Ac6a * avr_acRotatingExciter_division1_y_Ac6a) - avr_acRotatingExciter_firstOrder_y_Ac6a) / avr_acRotatingExciter_firstOrder_T_Ac6a),
+            (((avr_transferFunction1_a_end_Ac6a * avr_limiter_y_Ac6a) - (avr_transferFunction1_a_2_Ac6a * avr_transferFunction1_x_scaled_1_Ac6a)) / avr_transferFunction1_a_1_Ac6a),
+            ((avr_acRotatingExciter_integratorVariableLimits_derivativeLimitMin_zeroGain_Ac6a * vf.add_const(value=0.0)) + ((vf.add_const(value=1.0) - avr_acRotatingExciter_integratorVariableLimits_derivativeLimitMin_zeroGain_Ac6a) * ((avr_acRotatingExciter_const1_k_Ac6a - avr_acRotatingExciter_integratorVariableLimits_derivativeLimitMin_x_Ac6a) / avr_acRotatingExciter_integratorVariableLimits_derivativeLimitMin_T_Ac6a))),
+            ((avr_acRotatingExciter_integratorVariableLimits_derivativeLimitMax_zeroGain_Ac6a * vf.add_const(value=0.0)) + ((vf.add_const(value=1.0) - avr_acRotatingExciter_integratorVariableLimits_derivativeLimitMax_zeroGain_Ac6a) * ((avr_acRotatingExciter_firstOrder_y_Ac6a - avr_acRotatingExciter_integratorVariableLimits_derivativeLimitMax_x_Ac6a) / avr_acRotatingExciter_integratorVariableLimits_derivativeLimitMax_T_Ac6a))),
+            (((avr_transferFunction_a_end_Ac6a * avr_gain_y_Ac6a) - (avr_transferFunction_a_2_Ac6a * avr_transferFunction_x_scaled_1_Ac6a)) / avr_transferFunction_a_1_Ac6a),
+            ((avr_acRotatingExciter_integratorVariableLimits_isFrozenMax_Ac6a * avr_acRotatingExciter_integratorVariableLimits_derivativeLimitMax_y_Ac6a) + ((vf.add_const(value=1.0) - avr_acRotatingExciter_integratorVariableLimits_isFrozenMax_Ac6a) * ((avr_acRotatingExciter_integratorVariableLimits_isFrozenMin_Ac6a * avr_acRotatingExciter_integratorVariableLimits_derivativeLimitMin_y_Ac6a) + ((vf.add_const(value=1.0) - avr_acRotatingExciter_integratorVariableLimits_isFrozenMin_Ac6a) * (avr_acRotatingExciter_integratorVariableLimits_K_Ac6a * avr_acRotatingExciter_feedback_y_Ac6a))))),
+            (((avr_limitedLeadLag_firstOrder_k_Ac6a * avr_limitedLeadLag_y_Ac6a) - avr_limitedLeadLag_firstOrder_y_Ac6a) / avr_limitedLeadLag_firstOrder_T_Ac6a),
+            (((avr_firstOrder_k_Ac6a * avr_UsPu_Ac6a) - avr_firstOrder_y_Ac6a) / avr_firstOrder_T_Ac6a),
+        ],
+        state_vars=[
+            avr_acRotatingExciter_firstOrder_y_Ac6a,
+            avr_transferFunction1_x_scaled_1_Ac6a,
+            avr_acRotatingExciter_integratorVariableLimits_derivativeLimitMin_x_Ac6a,
+            avr_acRotatingExciter_integratorVariableLimits_derivativeLimitMax_x_Ac6a,
+            avr_transferFunction_x_scaled_1_Ac6a,
+            avr_acRotatingExciter_integratorVariableLimits_w_Ac6a,
+            avr_limitedLeadLag_firstOrder_y_Ac6a,
+            avr_firstOrder_y_Ac6a,
+        ],
+        algebraic_eqs=[
+            (avr_transferFunction1_x_1_Ac6a - (avr_transferFunction1_x_scaled_1_Ac6a / avr_transferFunction1_a_end_Ac6a)),
+            (avr_acRotatingExciter_integratorVariableLimits_y_Ac6a - (((sym.heaviside(((avr_acRotatingExciter_const1_k_Ac6a - avr_acRotatingExciter_firstOrder_y_Ac6a) - vf.add_const(value=1e-06))) * avr_acRotatingExciter_integratorVariableLimits_DefaultLimitMax_Ac6a) * avr_acRotatingExciter_firstOrder_y_Ac6a) + ((vf.add_const(value=1.0) - (sym.heaviside(((avr_acRotatingExciter_const1_k_Ac6a - avr_acRotatingExciter_firstOrder_y_Ac6a) - vf.add_const(value=1e-06))) * avr_acRotatingExciter_integratorVariableLimits_DefaultLimitMax_Ac6a)) * ((sym.heaviside(((avr_acRotatingExciter_const1_k_Ac6a - avr_acRotatingExciter_firstOrder_y_Ac6a) - vf.add_const(value=1e-06))) * avr_acRotatingExciter_const1_k_Ac6a) + ((vf.add_const(value=1.0) - sym.heaviside(((avr_acRotatingExciter_const1_k_Ac6a - avr_acRotatingExciter_firstOrder_y_Ac6a) - vf.add_const(value=1e-06)))) * ((sym.heaviside(((avr_acRotatingExciter_const1_k_Ac6a - avr_acRotatingExciter_integratorVariableLimits_w_Ac6a) - vf.add_const(value=1e-06))) * avr_acRotatingExciter_const1_k_Ac6a) + ((vf.add_const(value=1.0) - sym.heaviside(((avr_acRotatingExciter_const1_k_Ac6a - avr_acRotatingExciter_integratorVariableLimits_w_Ac6a) - vf.add_const(value=1e-06)))) * ((sym.heaviside(((avr_acRotatingExciter_integratorVariableLimits_w_Ac6a - avr_acRotatingExciter_firstOrder_y_Ac6a) - vf.add_const(value=1e-06))) * avr_acRotatingExciter_firstOrder_y_Ac6a) + ((vf.add_const(value=1.0) - sym.heaviside(((avr_acRotatingExciter_integratorVariableLimits_w_Ac6a - avr_acRotatingExciter_firstOrder_y_Ac6a) - vf.add_const(value=1e-06)))) * avr_acRotatingExciter_integratorVariableLimits_w_Ac6a))))))))),
+            (avr_acRotatingExciter_division_y_Ac6a - (avr_acRotatingExciter_gain_k_Ac6a / avr_acRotatingExciter_integratorVariableLimits_y_Ac6a)),
+            (avr_acRotatingExciter_rectifierRegulationCharacteristic_y_Ac6a - ((sym.heaviside(((vf.add_const(value=0.0) - avr_acRotatingExciter_division_y_Ac6a) + vf.add_const(value=1e-06))) * vf.add_const(value=1.0)) + ((vf.add_const(value=1.0) - sym.heaviside(((vf.add_const(value=0.0) - avr_acRotatingExciter_division_y_Ac6a) + vf.add_const(value=1e-06)))) * ((((sym.heaviside(((avr_acRotatingExciter_division_y_Ac6a - vf.add_const(value=0.0)) - vf.add_const(value=1e-06))) * sym.heaviside(((avr_acRotatingExciter_division_y_Ac6a - vf.add_const(value=0.0)) - vf.add_const(value=1e-06)))) * sym.heaviside(((avr_acRotatingExciter_rectifierRegulationCharacteristic_ULow_Ac6a - avr_acRotatingExciter_division_y_Ac6a) + vf.add_const(value=1e-06)))) * (vf.add_const(value=1.0) - (avr_acRotatingExciter_rectifierRegulationCharacteristic_A1_Ac6a * avr_acRotatingExciter_division_y_Ac6a))) + ((vf.add_const(value=1.0) - ((sym.heaviside(((avr_acRotatingExciter_division_y_Ac6a - vf.add_const(value=0.0)) - vf.add_const(value=1e-06))) * sym.heaviside(((avr_acRotatingExciter_division_y_Ac6a - vf.add_const(value=0.0)) - vf.add_const(value=1e-06)))) * sym.heaviside(((avr_acRotatingExciter_rectifierRegulationCharacteristic_ULow_Ac6a - avr_acRotatingExciter_division_y_Ac6a) + vf.add_const(value=1e-06))))) * ((((sym.heaviside(((avr_acRotatingExciter_division_y_Ac6a - avr_acRotatingExciter_rectifierRegulationCharacteristic_ULow_Ac6a) - vf.add_const(value=1e-06))) * sym.heaviside(((avr_acRotatingExciter_division_y_Ac6a - avr_acRotatingExciter_rectifierRegulationCharacteristic_ULow_Ac6a) - vf.add_const(value=1e-06)))) * sym.heaviside(((avr_acRotatingExciter_rectifierRegulationCharacteristic_UHigh_Ac6a - avr_acRotatingExciter_division_y_Ac6a) - vf.add_const(value=1e-06)))) * sym.sqrt((avr_acRotatingExciter_rectifierRegulationCharacteristic_UHigh_Ac6a - (avr_acRotatingExciter_division_y_Ac6a ** vf.add_const(value=2.0))))) + ((vf.add_const(value=1.0) - ((sym.heaviside(((avr_acRotatingExciter_division_y_Ac6a - avr_acRotatingExciter_rectifierRegulationCharacteristic_ULow_Ac6a) - vf.add_const(value=1e-06))) * sym.heaviside(((avr_acRotatingExciter_division_y_Ac6a - avr_acRotatingExciter_rectifierRegulationCharacteristic_ULow_Ac6a) - vf.add_const(value=1e-06)))) * sym.heaviside(((avr_acRotatingExciter_rectifierRegulationCharacteristic_UHigh_Ac6a - avr_acRotatingExciter_division_y_Ac6a) - vf.add_const(value=1e-06))))) * ((((sym.heaviside(((avr_acRotatingExciter_division_y_Ac6a - avr_acRotatingExciter_rectifierRegulationCharacteristic_UHigh_Ac6a) + vf.add_const(value=1e-06))) * sym.heaviside(((avr_acRotatingExciter_division_y_Ac6a - avr_acRotatingExciter_rectifierRegulationCharacteristic_UHigh_Ac6a) + vf.add_const(value=1e-06)))) * sym.heaviside(((vf.add_const(value=1.0) - avr_acRotatingExciter_division_y_Ac6a) + vf.add_const(value=1e-06)))) * (avr_acRotatingExciter_rectifierRegulationCharacteristic_A2_Ac6a * (vf.add_const(value=1.0) - avr_acRotatingExciter_division_y_Ac6a))) + ((vf.add_const(value=1.0) - ((sym.heaviside(((avr_acRotatingExciter_division_y_Ac6a - avr_acRotatingExciter_rectifierRegulationCharacteristic_UHigh_Ac6a) + vf.add_const(value=1e-06))) * sym.heaviside(((avr_acRotatingExciter_division_y_Ac6a - avr_acRotatingExciter_rectifierRegulationCharacteristic_UHigh_Ac6a) + vf.add_const(value=1e-06)))) * sym.heaviside(((vf.add_const(value=1.0) - avr_acRotatingExciter_division_y_Ac6a) + vf.add_const(value=1e-06))))) * vf.add_const(value=0.0)))))))))),
+            (avr_EfdPu_Ac6a - (avr_acRotatingExciter_rectifierRegulationCharacteristic_y_Ac6a * avr_acRotatingExciter_integratorVariableLimits_y_Ac6a)),
+            (avr_acRotatingExciter_product1_y_Ac6a - (avr_acRotatingExciter_add_y_Ac6a * avr_acRotatingExciter_integratorVariableLimits_y_Ac6a)),
+            (avr_acRotatingExciter_division1_y_Ac6a - (avr_acRotatingExciter_add1_y_Ac6a / avr_acRotatingExciter_product1_y_Ac6a)),
+            (avr_acRotatingExciter_VfePu_Ac6a - ((avr_acRotatingExciter_add2_k1_Ac6a * avr_acRotatingExciter_gain1_k_Ac6a) + (avr_acRotatingExciter_add2_k2_Ac6a * avr_acRotatingExciter_product1_y_Ac6a))),
+            (avr_add_y_Ac6a - ((avr_add_k1_Ac6a * avr_acRotatingExciter_VfePu_Ac6a) + (avr_add_k2_Ac6a * avr_const_k_Ac6a))),
+            (avr_gain1_y_Ac6a - (avr_gain1_k_Ac6a * avr_add_y_Ac6a)),
+            (avr_limiter_y_Ac6a - ((sym.heaviside(((avr_gain1_y_Ac6a - avr_limiter_uMax_Ac6a) - vf.add_const(value=1e-06))) * avr_limiter_uMax_Ac6a) + ((vf.add_const(value=1.0) - sym.heaviside(((avr_gain1_y_Ac6a - avr_limiter_uMax_Ac6a) - vf.add_const(value=1e-06)))) * ((sym.heaviside(((avr_limiter_uMin_Ac6a - avr_gain1_y_Ac6a) - vf.add_const(value=1e-06))) * avr_limiter_uMin_Ac6a) + ((vf.add_const(value=1.0) - sym.heaviside(((avr_limiter_uMin_Ac6a - avr_gain1_y_Ac6a) - vf.add_const(value=1e-06)))) * avr_gain1_y_Ac6a))))),
+            (avr_transferFunction1_y_Ac6a - (((avr_transferFunction1_bb_2_Ac6a - (avr_transferFunction1_d_Ac6a * avr_transferFunction1_a_2_Ac6a)) * avr_transferFunction1_x_1_Ac6a) + (avr_transferFunction1_d_Ac6a * avr_limiter_y_Ac6a))),
+            (avr_acRotatingExciter_integratorVariableLimits_derivativeLimitMin_y_Ac6a - ((avr_acRotatingExciter_integratorVariableLimits_derivativeLimitMin_zeroGain_Ac6a * vf.add_const(value=0.0)) + ((vf.add_const(value=1.0) - avr_acRotatingExciter_integratorVariableLimits_derivativeLimitMin_zeroGain_Ac6a) * ((avr_acRotatingExciter_integratorVariableLimits_derivativeLimitMin_k_Ac6a / avr_acRotatingExciter_integratorVariableLimits_derivativeLimitMin_T_Ac6a) * (avr_acRotatingExciter_const1_k_Ac6a - avr_acRotatingExciter_integratorVariableLimits_derivativeLimitMin_x_Ac6a))))),
+            (avr_acRotatingExciter_integratorVariableLimits_derivativeLimitMax_y_Ac6a - ((avr_acRotatingExciter_integratorVariableLimits_derivativeLimitMax_zeroGain_Ac6a * vf.add_const(value=0.0)) + ((vf.add_const(value=1.0) - avr_acRotatingExciter_integratorVariableLimits_derivativeLimitMax_zeroGain_Ac6a) * ((avr_acRotatingExciter_integratorVariableLimits_derivativeLimitMax_k_Ac6a / avr_acRotatingExciter_integratorVariableLimits_derivativeLimitMax_T_Ac6a) * (avr_acRotatingExciter_firstOrder_y_Ac6a - avr_acRotatingExciter_integratorVariableLimits_derivativeLimitMax_x_Ac6a))))),
+            (avr_transferFunction_x_1_Ac6a - (avr_transferFunction_x_scaled_1_Ac6a / avr_transferFunction_a_end_Ac6a)),
+            (avr_sum1_u_1_Ac6a - (((avr_UsRefPu_Ac6a - avr_firstOrder_y_Ac6a) + avr_UPssPu_Ac6a) + avr_UUelPu_Ac6a)),
+            (avr_sum1_y_Ac6a - (avr_sum1_k_1_Ac6a * avr_sum1_u_1_Ac6a)),
+            (avr_gain_y_Ac6a - (avr_gain_k_Ac6a * avr_sum1_y_Ac6a)),
+            (avr_transferFunction_y_Ac6a - (((avr_transferFunction_bb_2_Ac6a - (avr_transferFunction_d_Ac6a * avr_transferFunction_a_2_Ac6a)) * avr_transferFunction_x_1_Ac6a) + (avr_transferFunction_d_Ac6a * avr_gain_y_Ac6a))),
+            (avr_limitedLeadLag_feedback_y_Ac6a - (avr_transferFunction_y_Ac6a - avr_limitedLeadLag_firstOrder_y_Ac6a)),
+            (avr_limitedLeadLag_gain_y_Ac6a - (avr_limitedLeadLag_gain_k_Ac6a * avr_limitedLeadLag_feedback_y_Ac6a)),
+            (avr_limitedLeadLag_y_Ac6a - ((sym.heaviside(((avr_limitedLeadLag_gain_y_Ac6a - avr_limitedLeadLag_limiter_uMax_Ac6a) - vf.add_const(value=1e-06))) * avr_limitedLeadLag_limiter_uMax_Ac6a) + ((vf.add_const(value=1.0) - sym.heaviside(((avr_limitedLeadLag_gain_y_Ac6a - avr_limitedLeadLag_limiter_uMax_Ac6a) - vf.add_const(value=1e-06)))) * ((sym.heaviside(((avr_limitedLeadLag_limiter_uMin_Ac6a - avr_limitedLeadLag_gain_y_Ac6a) - vf.add_const(value=1e-06))) * avr_limitedLeadLag_limiter_uMin_Ac6a) + ((vf.add_const(value=1.0) - sym.heaviside(((avr_limitedLeadLag_limiter_uMin_Ac6a - avr_limitedLeadLag_gain_y_Ac6a) - vf.add_const(value=1e-06)))) * avr_limitedLeadLag_gain_y_Ac6a))))),
+            (avr_feedback_y_Ac6a - (avr_limitedLeadLag_y_Ac6a - avr_transferFunction1_y_Ac6a)),
+            (avr_variableLimiter_y_Ac6a - ((sym.heaviside(((avr_feedback_y_Ac6a - avr_gain2_k_Ac6a) - vf.add_const(value=1e-06))) * avr_gain2_k_Ac6a) + ((vf.add_const(value=1.0) - sym.heaviside(((avr_feedback_y_Ac6a - avr_gain2_k_Ac6a) - vf.add_const(value=1e-06)))) * ((sym.heaviside(((avr_gain3_k_Ac6a - avr_feedback_y_Ac6a) - vf.add_const(value=1e-06))) * avr_gain3_k_Ac6a) + ((vf.add_const(value=1.0) - sym.heaviside(((avr_gain3_k_Ac6a - avr_feedback_y_Ac6a) - vf.add_const(value=1e-06)))) * avr_feedback_y_Ac6a))))),
+            (avr_acRotatingExciter_feedback_y_Ac6a - (avr_variableLimiter_y_Ac6a - avr_acRotatingExciter_VfePu_Ac6a)),
+            ((avr_acRotatingExciter_integratorVariableLimits_startFreezingMax_Ac6a - sym.heaviside(((avr_acRotatingExciter_integratorVariableLimits_w_Ac6a - avr_acRotatingExciter_firstOrder_y_Ac6a) - vf.add_const(value=1e-06)))) - sym.heaviside((((avr_acRotatingExciter_integratorVariableLimits_K_Ac6a * avr_acRotatingExciter_feedback_y_Ac6a) - avr_acRotatingExciter_integratorVariableLimits_derivativeLimitMax_y_Ac6a) - vf.add_const(value=1e-06)))),
+            ((avr_acRotatingExciter_integratorVariableLimits_keepFreezingMax_Ac6a - sym.heaviside(((avr_acRotatingExciter_integratorVariableLimits_w_Ac6a - (avr_acRotatingExciter_firstOrder_y_Ac6a - (avr_acRotatingExciter_integratorVariableLimits_Tol_Ac6a * sym.abs((avr_acRotatingExciter_integratorVariableLimits_LimitMax0_Ac6a - avr_acRotatingExciter_integratorVariableLimits_LimitMin0_Ac6a))))) - vf.add_const(value=1e-06)))) - sym.heaviside((((avr_acRotatingExciter_integratorVariableLimits_K_Ac6a * avr_acRotatingExciter_feedback_y_Ac6a) - avr_acRotatingExciter_integratorVariableLimits_derivativeLimitMax_y_Ac6a) - vf.add_const(value=1e-06)))),
+            (avr_acRotatingExciter_integratorVariableLimits_isFrozenMax_Ac6a - (vf.add_const(value=1.0) - ((vf.add_const(value=1.0) - avr_acRotatingExciter_integratorVariableLimits_startFreezingMax_Ac6a) * (vf.add_const(value=1.0) - avr_acRotatingExciter_integratorVariableLimits_keepFreezingMax_Ac6a)))),
+            ((avr_acRotatingExciter_integratorVariableLimits_startFreezingMin_Ac6a - sym.heaviside(((avr_acRotatingExciter_const1_k_Ac6a - avr_acRotatingExciter_integratorVariableLimits_w_Ac6a) - vf.add_const(value=1e-06)))) - sym.heaviside(((avr_acRotatingExciter_integratorVariableLimits_derivativeLimitMin_y_Ac6a - (avr_acRotatingExciter_integratorVariableLimits_K_Ac6a * avr_acRotatingExciter_feedback_y_Ac6a)) - vf.add_const(value=1e-06)))),
+            ((avr_acRotatingExciter_integratorVariableLimits_keepFreezingMin_Ac6a - sym.heaviside((((avr_acRotatingExciter_const1_k_Ac6a + (avr_acRotatingExciter_integratorVariableLimits_Tol_Ac6a * sym.abs((avr_acRotatingExciter_integratorVariableLimits_LimitMax0_Ac6a - avr_acRotatingExciter_integratorVariableLimits_LimitMin0_Ac6a)))) - avr_acRotatingExciter_integratorVariableLimits_w_Ac6a) - vf.add_const(value=1e-06)))) - sym.heaviside(((avr_acRotatingExciter_integratorVariableLimits_derivativeLimitMin_y_Ac6a - (avr_acRotatingExciter_integratorVariableLimits_K_Ac6a * avr_acRotatingExciter_feedback_y_Ac6a)) - vf.add_const(value=1e-06)))),
+            (avr_acRotatingExciter_integratorVariableLimits_isFrozenMin_Ac6a - (vf.add_const(value=1.0) - ((vf.add_const(value=1.0) - avr_acRotatingExciter_integratorVariableLimits_startFreezingMin_Ac6a) * (vf.add_const(value=1.0) - avr_acRotatingExciter_integratorVariableLimits_keepFreezingMin_Ac6a)))),
+        ],
+        algebraic_vars=[
+            avr_transferFunction1_x_1_Ac6a,
+            avr_acRotatingExciter_integratorVariableLimits_y_Ac6a,
+            avr_acRotatingExciter_division_y_Ac6a,
+            avr_acRotatingExciter_rectifierRegulationCharacteristic_y_Ac6a,
+            avr_EfdPu_Ac6a,
+            avr_acRotatingExciter_product1_y_Ac6a,
+            avr_acRotatingExciter_division1_y_Ac6a,
+            avr_acRotatingExciter_VfePu_Ac6a,
+            avr_add_y_Ac6a,
+            avr_gain1_y_Ac6a,
+            avr_limiter_y_Ac6a,
+            avr_transferFunction1_y_Ac6a,
+            avr_acRotatingExciter_integratorVariableLimits_derivativeLimitMin_y_Ac6a,
+            avr_acRotatingExciter_integratorVariableLimits_derivativeLimitMax_y_Ac6a,
+            avr_transferFunction_x_1_Ac6a,
+            avr_sum1_u_1_Ac6a,
+            avr_sum1_y_Ac6a,
+            avr_gain_y_Ac6a,
+            avr_transferFunction_y_Ac6a,
+            avr_limitedLeadLag_feedback_y_Ac6a,
+            avr_limitedLeadLag_gain_y_Ac6a,
+            avr_limitedLeadLag_y_Ac6a,
+            avr_feedback_y_Ac6a,
+            avr_variableLimiter_y_Ac6a,
+            avr_acRotatingExciter_feedback_y_Ac6a,
+            avr_acRotatingExciter_integratorVariableLimits_startFreezingMax_Ac6a,
+            avr_acRotatingExciter_integratorVariableLimits_keepFreezingMax_Ac6a,
+            avr_acRotatingExciter_integratorVariableLimits_isFrozenMax_Ac6a,
+            avr_acRotatingExciter_integratorVariableLimits_startFreezingMin_Ac6a,
+            avr_acRotatingExciter_integratorVariableLimits_keepFreezingMin_Ac6a,
+            avr_acRotatingExciter_integratorVariableLimits_isFrozenMin_Ac6a,
+            avr_acRotatingExciter_add_y_Ac6a,
+            avr_acRotatingExciter_add1_y_Ac6a,
+            avr_IrPu_Ac6a,
+            avr_UPssPu_Ac6a,
+            avr_UUelPu_Ac6a,
+            avr_UsPu_Ac6a,
+            avr_UsRefPu_Ac6a,
+            avr_limitedLeadLag_limiter_simplifiedExpr_Ac6a,
+            avr_variableLimiter_simplifiedExpr_Ac6a,
+            avr_limiter_simplifiedExpr_Ac6a,
+            START_avr_firstOrder_y_Ac6a,
+            START_avr_transferFunction_x_scaled_1_Ac6a,
+            START_avr_limitedLeadLag_firstOrder_y_Ac6a,
+            START_avr_acRotatingExciter_integratorVariableLimits_derivativeLimitMax_x_Ac6a,
+            START_avr_acRotatingExciter_integratorVariableLimits_derivativeLimitMin_x_Ac6a,
+            PRE_avr_acRotatingExciter_integratorVariableLimits_isFrozenMax_Ac6a,
+            START_avr_acRotatingExciter_integratorVariableLimits_isFrozenMax_Ac6a,
+            PRE_avr_acRotatingExciter_integratorVariableLimits_isFrozenMin_Ac6a,
+            START_avr_acRotatingExciter_integratorVariableLimits_isFrozenMin_Ac6a,
+            START_avr_acRotatingExciter_integratorVariableLimits_w_Ac6a,
+            START_avr_acRotatingExciter_firstOrder_y_Ac6a,
+            START_avr_transferFunction1_x_scaled_1_Ac6a,
+            avr_acRotatingExciter_power_y_Ac6a,
+        ],
+        init_eqs={
+            avr_acRotatingExciter_firstOrder_y_Ac6a: START_avr_acRotatingExciter_firstOrder_y_Ac6a,
+            avr_acRotatingExciter_integratorVariableLimits_derivativeLimitMax_x_Ac6a: START_avr_acRotatingExciter_integratorVariableLimits_derivativeLimitMax_x_Ac6a,
+            avr_acRotatingExciter_integratorVariableLimits_derivativeLimitMin_x_Ac6a: START_avr_acRotatingExciter_integratorVariableLimits_derivativeLimitMin_x_Ac6a,
+            avr_acRotatingExciter_integratorVariableLimits_w_Ac6a: START_avr_acRotatingExciter_integratorVariableLimits_w_Ac6a,
+            avr_firstOrder_y_Ac6a: (avr_firstOrder_k_Ac6a * avr_UsPu_Ac6a),
+            avr_limitedLeadLag_firstOrder_y_Ac6a: START_avr_limitedLeadLag_firstOrder_y_Ac6a,
+            avr_transferFunction_x_scaled_1_Ac6a: START_avr_transferFunction_x_scaled_1_Ac6a,
+            avr_transferFunction1_x_scaled_1_Ac6a: START_avr_transferFunction1_x_scaled_1_Ac6a,
+            avr_EfdPu_Ac6a: avr_acRotatingExciter_Efd0Pu_Ac6a,
+            avr_IrPu_Ac6a: vf.add_const(value=1.0),
+            avr_UPssPu_Ac6a: vf.add_const(value=0.0),
+            avr_UUelPu_Ac6a: vf.add_const(value=0.0),
+            avr_UsPu_Ac6a: vf.add_const(value=1.0),
+            avr_UsRefPu_Ac6a: vf.add_const(value=1.0),
+            avr_acRotatingExciter_VfePu_Ac6a: avr_acRotatingExciter_Efe0Pu_Ac6a,
+            avr_acRotatingExciter_division_y_Ac6a: vf.add_const(value=0.0),
+            avr_acRotatingExciter_integratorVariableLimits_derivativeLimitMax_y_Ac6a: vf.add_const(value=0.0),
+            avr_acRotatingExciter_integratorVariableLimits_derivativeLimitMin_y_Ac6a: vf.add_const(value=0.0),
+            avr_acRotatingExciter_integratorVariableLimits_y_Ac6a: avr_acRotatingExciter_integratorVariableLimits_Y0_Ac6a,
+            avr_acRotatingExciter_rectifierRegulationCharacteristic_y_Ac6a: vf.add_const(value=1.0),
+            avr_limitedLeadLag_y_Ac6a: avr_limitedLeadLag_Y0_Ac6a,
+            avr_transferFunction_x_1_Ac6a: avr_transferFunction_x_start_1_Ac6a,
+            avr_transferFunction_y_Ac6a: avr_transferFunction_y_start_Ac6a,
+            avr_transferFunction1_x_1_Ac6a: avr_transferFunction1_x_start_1_Ac6a,
+            avr_transferFunction1_y_Ac6a: avr_transferFunction1_y_start_Ac6a,
+            avr_variableLimiter_y_Ac6a: avr_acRotatingExciter_Efe0Pu_Ac6a,
+            avr_acRotatingExciter_integratorVariableLimits_isFrozenMax_Ac6a: avr_acRotatingExciter_integratorVariableLimits_FrozenMax0_Ac6a,
+            avr_acRotatingExciter_integratorVariableLimits_isFrozenMin_Ac6a: avr_acRotatingExciter_integratorVariableLimits_FrozenMin0_Ac6a,
+            avr_acRotatingExciter_integratorVariableLimits_keepFreezingMax_Ac6a: (sym.heaviside(((avr_acRotatingExciter_integratorVariableLimits_w_Ac6a - (avr_acRotatingExciter_firstOrder_y_Ac6a - (avr_acRotatingExciter_integratorVariableLimits_Tol_Ac6a * sym.abs((avr_acRotatingExciter_integratorVariableLimits_LimitMax0_Ac6a - avr_acRotatingExciter_integratorVariableLimits_LimitMin0_Ac6a))))) - vf.add_const(value=1e-06))) + sym.heaviside((((avr_acRotatingExciter_integratorVariableLimits_K_Ac6a * avr_acRotatingExciter_feedback_y_Ac6a) - avr_acRotatingExciter_integratorVariableLimits_derivativeLimitMax_y_Ac6a) - vf.add_const(value=1e-06)))),
+            avr_acRotatingExciter_integratorVariableLimits_keepFreezingMin_Ac6a: (sym.heaviside((((avr_acRotatingExciter_const1_k_Ac6a + (avr_acRotatingExciter_integratorVariableLimits_Tol_Ac6a * sym.abs((avr_acRotatingExciter_integratorVariableLimits_LimitMax0_Ac6a - avr_acRotatingExciter_integratorVariableLimits_LimitMin0_Ac6a)))) - avr_acRotatingExciter_integratorVariableLimits_w_Ac6a) - vf.add_const(value=1e-06))) + sym.heaviside(((avr_acRotatingExciter_integratorVariableLimits_derivativeLimitMin_y_Ac6a - (avr_acRotatingExciter_integratorVariableLimits_K_Ac6a * avr_acRotatingExciter_feedback_y_Ac6a)) - vf.add_const(value=1e-06)))),
+            avr_acRotatingExciter_integratorVariableLimits_startFreezingMax_Ac6a: avr_acRotatingExciter_integratorVariableLimits_FrozenMax0_Ac6a,
+            avr_acRotatingExciter_integratorVariableLimits_startFreezingMin_Ac6a: avr_acRotatingExciter_integratorVariableLimits_FrozenMin0_Ac6a,
+            avr_limitedLeadLag_limiter_simplifiedExpr_Ac6a: vf.add_const(value=0.0),
+            avr_variableLimiter_simplifiedExpr_Ac6a: vf.add_const(value=0.0),
+            avr_limiter_simplifiedExpr_Ac6a: vf.add_const(value=0.0),
+            PRE_avr_acRotatingExciter_integratorVariableLimits_isFrozenMax_Ac6a: START_avr_acRotatingExciter_integratorVariableLimits_isFrozenMax_Ac6a,
+            PRE_avr_acRotatingExciter_integratorVariableLimits_isFrozenMin_Ac6a: START_avr_acRotatingExciter_integratorVariableLimits_isFrozenMin_Ac6a,
+            avr_acRotatingExciter_add1_y_Ac6a: ((avr_acRotatingExciter_add1_k1_Ac6a * avr_acRotatingExciter_const_k_Ac6a) + (avr_acRotatingExciter_add1_k2_Ac6a * avr_acRotatingExciter_gain1_k_Ac6a)),
+            avr_acRotatingExciter_add_y_Ac6a: (avr_acRotatingExciter_add_k1_Ac6a + (avr_acRotatingExciter_add_k2_Ac6a * avr_acRotatingExciter_const2_k_Ac6a)),
+            avr_acRotatingExciter_power_y_Ac6a: vf.add_const(value=1.0),
+            avr_sum1_u_1_Ac6a: (((avr_UsRefPu_Ac6a - avr_firstOrder_y_Ac6a) + avr_UPssPu_Ac6a) + avr_UUelPu_Ac6a),
+            avr_sum1_y_Ac6a: (avr_sum1_k_1_Ac6a * avr_sum1_u_1_Ac6a),
+        },
+        diff_init_eqs={
+            d_avr_acRotatingExciter_integratorVariableLimits_w_Ac6a: (((avr_acRotatingExciter_integratorVariableLimits_isFrozenMax_Ac6a * (avr_acRotatingExciter_integratorVariableLimits_w_Ac6a - avr_acRotatingExciter_firstOrder_y_Ac6a)) + ((vf.add_const(value=1.0) - avr_acRotatingExciter_integratorVariableLimits_isFrozenMax_Ac6a) * ((avr_acRotatingExciter_integratorVariableLimits_isFrozenMin_Ac6a * (avr_acRotatingExciter_integratorVariableLimits_w_Ac6a - avr_acRotatingExciter_const1_k_Ac6a)) + ((vf.add_const(value=1.0) - avr_acRotatingExciter_integratorVariableLimits_isFrozenMin_Ac6a) * (-(avr_acRotatingExciter_integratorVariableLimits_K_Ac6a) * avr_acRotatingExciter_feedback_y_Ac6a))))) + ((avr_acRotatingExciter_integratorVariableLimits_isFrozenMax_Ac6a * vf.add_const(value=0.0)) + ((vf.add_const(value=1.0) - avr_acRotatingExciter_integratorVariableLimits_isFrozenMax_Ac6a) * ((avr_acRotatingExciter_integratorVariableLimits_isFrozenMin_Ac6a * vf.add_const(value=0.0)) + ((vf.add_const(value=1.0) - avr_acRotatingExciter_integratorVariableLimits_isFrozenMin_Ac6a) * vf.add_const(value=1.0)))))),
+        },
+        event_dict=event_dict,
+        in_vars=inputs,
+        out_vars=[
+        ],
+        external_mapping=external_mapping,
+        api_obj_mapping=api_obj_mapping,
+        diff_vars=[
+            d_avr_acRotatingExciter_firstOrder_y_Ac6a,
+            d_avr_transferFunction1_x_scaled_1_Ac6a,
+            d_avr_acRotatingExciter_integratorVariableLimits_derivativeLimitMin_x_Ac6a,
+            d_avr_acRotatingExciter_integratorVariableLimits_derivativeLimitMax_x_Ac6a,
+            d_avr_transferFunction_x_scaled_1_Ac6a,
+            d_avr_acRotatingExciter_integratorVariableLimits_w_Ac6a,
+            d_avr_limitedLeadLag_firstOrder_y_Ac6a,
+            d_avr_firstOrder_y_Ac6a,
+        ],
+        name=template_name,
+    )
+    return templ
+
+def build_recovered_runtime_templates(vf: VarFactory, name_prefix: str | None = None) -> tuple[EmtModelTemplate, ...]:
+    """
+    Materialize the recovered native-block companions in one ordered list.
+
+    This is the human entry point that most closely resembles an explicit
+    EMT/RMS controller composition: each non-empty recovered family is
+    instantiated in module order and appended into one tuple.
+
+    :param vf: Variable factory used to allocate the symbolic variables.
+    :type vf: VarFactory
+    :param name_prefix: Optional prefix for the recovered companion templates.
+    :type name_prefix: str | None
+    :return: Materialized result produced by this builder.
+    :rtype: tuple[EmtModelTemplate, ...]
+"""
+    templates: list[EmtModelTemplate] = list()
+    templates.extend(build_first_order_runtime_templates(vf=vf, name_prefix=name_prefix))
+    templates.extend(build_limited_lead_lag_runtime_templates(vf=vf, name_prefix=name_prefix))
+    templates.extend(build_gain_lead_lag_runtime_templates(vf=vf, name_prefix=name_prefix))
+    templates.extend(build_lead_lag_runtime_templates(vf=vf, name_prefix=name_prefix))
+    templates.extend(build_gain_runtime_templates(vf=vf, name_prefix=name_prefix))
+    templates.extend(build_limiter_runtime_templates(vf=vf, name_prefix=name_prefix))
+    return tuple(templates)
+
+def build_gain_runtime_templates(vf: VarFactory, name_prefix: str | None = None) -> tuple[EmtModelTemplate, ...]:
+    """
+    Materialize directly mappable scalar gain primitives.
+
+    :param vf: Variable factory used to allocate the symbolic variables.
+    :type vf: VarFactory
+    :param name_prefix: Optional prefix for the recovered companion templates.
+    :type name_prefix: str | None
+    :return: Materialized result produced by this builder.
+    :rtype: tuple[EmtModelTemplate, ...]
+"""
+    template_prefix: str
+    templates: list[EmtModelTemplate] = list()
+    spec_index: int = 0
+    symbol_name: str
+    input_name: str
+    gain_name: str | None
+    gain_value: float | None
+
+    if name_prefix is None:
+        template_prefix = TEMPLATE_KEY
+    else:
+        template_prefix = name_prefix
+
+    for symbol_name, input_name, gain_name, gain_value in GAIN_SPECS:
+        if gain_value is None:
+            pass
+        else:
+            template_name: str = f'{template_prefix}_gain_{spec_index + 1}'
+            template_obj: EmtModelTemplate = build_scalar_gain_runtime_template(vf=vf, gain_value=float(gain_value), name=template_name)
+            templates.append(template_obj)
+        spec_index += 1
+
+    return tuple(templates)
+
+def build_first_order_runtime_templates(vf: VarFactory, name_prefix: str | None = None) -> tuple[EmtModelTemplate, ...]:
+    """
+    Materialize directly mappable first-order and integrator primitives.
+
+    :param vf: Variable factory used to allocate the symbolic variables.
+    :type vf: VarFactory
+    :param name_prefix: Optional prefix for the recovered companion templates.
+    :type name_prefix: str | None
+    :return: Materialized result produced by this builder.
+    :rtype: tuple[EmtModelTemplate, ...]
+"""
+    template_prefix: str
+    templates: list[EmtModelTemplate] = list()
+    spec_index: int = 0
+    state_name: str
+    kind: str
+    input_name: str
+    t_name: str | None
+    t_value: float | None
+    gain_name: str | None
+    gain_value: float | None
+
+    if name_prefix is None:
+        template_prefix = TEMPLATE_KEY
+    else:
+        template_prefix = name_prefix
+
+    for state_name, kind, input_name, t_name, t_value, gain_name, gain_value in FIRST_ORDER_SPECS:
+        if kind == 'first_order_unity' and t_value is not None:
+            template_name: str = f'{template_prefix}_first_order_{spec_index + 1}'
+            template_obj: EmtModelTemplate = build_typ_138__1_1_st_template(vf=vf, name=template_name)
+            template_obj.block.set_parameter_in_model('1/(1+sT)__T_' + template_name, float(t_value))
+            templates.append(template_obj)
+        else:
+            if kind == 'first_order_gain' and t_value is not None and gain_value is not None:
+                template_name: str = f'{template_prefix}_first_order_{spec_index + 1}'
+                template_obj: EmtModelTemplate = build_gain_then_first_order_runtime_template(vf=vf, gain_value=float(gain_value), time_constant=float(t_value), name=template_name)
+                templates.append(template_obj)
+            else:
+                if kind == 'integrator_unity':
+                    template_name: str = f'{template_prefix}_integrator_{spec_index + 1}'
+                    template_obj: EmtModelTemplate = build_typ_214__1_s_template(vf=vf, name=template_name)
+                    templates.append(template_obj)
+                else:
+                    if kind == 'integrator_gain' and gain_value is not None:
+                        template_name: str = f'{template_prefix}_integrator_{spec_index + 1}'
+                        template_obj: EmtModelTemplate = build_gain_then_integrator_runtime_template(vf=vf, gain_value=float(gain_value), name=template_name)
+                        templates.append(template_obj)
+                    else:
+                        pass
+        spec_index += 1
+
+    return tuple(templates)
+
+def build_limited_lead_lag_runtime_templates(vf: VarFactory, name_prefix: str | None = None) -> tuple[EmtModelTemplate, ...]:
+    """
+    Materialize directly mappable limited-lead-lag composites.
+
+    :param vf: Variable factory used to allocate the symbolic variables.
+    :type vf: VarFactory
+    :param name_prefix: Optional prefix for the recovered companion templates.
+    :type name_prefix: str | None
+    :return: Materialized result produced by this builder.
+    :rtype: tuple[EmtModelTemplate, ...]
+"""
+    template_prefix: str
+    templates: list[EmtModelTemplate] = list()
+    spec_index: int = 0
+    component_name: str
+    input_name: str
+    output_name: str
+    k_name: str | None
+    k_value: float | None
+    t1_name: str | None
+    t1_value: float | None
+    t2_name: str | None
+    t2_value: float | None
+    y_max_name: str | None
+    y_max_value: float | None
+    y_min_name: str | None
+    y_min_value: float | None
+
+    if name_prefix is None:
+        template_prefix = TEMPLATE_KEY
+    else:
+        template_prefix = name_prefix
+
+    for component_name, input_name, output_name, k_name, k_value, t1_name, t1_value, t2_name, t2_value, y_max_name, y_max_value, y_min_name, y_min_value in LIMITED_LEAD_LAG_SPECS:
+        if k_value is None or t1_value is None or t2_value is None or y_max_value is None or y_min_value is None:
+            pass
+        else:
+            template_name: str = f'{template_prefix}_limited_lead_lag_{spec_index + 1}'
+            template_obj: EmtModelTemplate = build_limited_lead_lag_runtime_template(vf=vf, gain_value=float(k_value), lead_time_constant=float(t1_value), lag_time_constant=float(t2_value), y_max_value=float(y_max_value), y_min_value=float(y_min_value), name=template_name)
+            templates.append(template_obj)
+        spec_index += 1
+
+    return tuple(templates)
+
+def build_gain_lead_lag_runtime_templates(vf: VarFactory, name_prefix: str | None = None) -> tuple[EmtModelTemplate, ...]:
+    """
+    Materialize directly mappable gain-then-lead-lag composites.
+
+    :param vf: Variable factory used to allocate the symbolic variables.
+    :type vf: VarFactory
+    :param name_prefix: Optional prefix for the recovered companion templates.
+    :type name_prefix: str | None
+    :return: Materialized result produced by this builder.
+    :rtype: tuple[EmtModelTemplate, ...]
+"""
+    template_prefix: str
+    templates: list[EmtModelTemplate] = list()
+    spec_index: int = 0
+    gain_symbol_name: str
+    output_symbol_name: str
+    input_name: str
+    gain_name: str | None
+    gain_value: float | None
+    tb_name: str | None
+    tb_value: float | None
+    ta_name: str | None
+    ta_value: float | None
+
+    if name_prefix is None:
+        template_prefix = TEMPLATE_KEY
+    else:
+        template_prefix = name_prefix
+
+    for gain_symbol_name, output_symbol_name, input_name, gain_name, gain_value, tb_name, tb_value, ta_name, ta_value in GAIN_LEAD_LAG_SPECS:
+        if gain_value is None or tb_value is None or ta_value is None:
+            pass
+        else:
+            template_name: str = f'{template_prefix}_gain_lead_lag_{spec_index + 1}'
+            template_obj: EmtModelTemplate = build_gain_then_lead_lag_runtime_template(vf=vf, gain_value=float(gain_value), tb_value=float(tb_value), ta_value=float(ta_value), name=template_name)
+            templates.append(template_obj)
+        spec_index += 1
+
+    return tuple(templates)
+
+def build_lead_lag_runtime_templates(vf: VarFactory, name_prefix: str | None = None) -> tuple[EmtModelTemplate, ...]:
+    """
+    Materialize directly mappable unit-gain lead-lag primitives.
+
+    :param vf: Variable factory used to allocate the symbolic variables.
+    :type vf: VarFactory
+    :param name_prefix: Optional prefix for the recovered companion templates.
+    :type name_prefix: str | None
+    :return: Materialized result produced by this builder.
+    :rtype: tuple[EmtModelTemplate, ...]
+"""
+    template_prefix: str
+    templates: list[EmtModelTemplate] = list()
+    spec_index: int = 0
+    symbol_name: str
+    input_name: str
+    tb_name: str | None
+    tb_value: float | None
+    ta_name: str | None
+    ta_value: float | None
+
+    if name_prefix is None:
+        template_prefix = TEMPLATE_KEY
+    else:
+        template_prefix = name_prefix
+
+    for symbol_name, input_name, tb_name, tb_value, ta_name, ta_value in LEAD_LAG_SPECS:
+        if tb_value is not None and ta_value is not None:
+            template_name: str = f'{template_prefix}_lead_lag_{spec_index + 1}'
+            template_obj: EmtModelTemplate = build_typ_298__1_stb_1_sta_template(vf=vf, name=template_name)
+            template_obj.block.set_parameter_in_model('(1+sTb)/(1+sTa)__Tb_' + template_name, float(tb_value))
+            template_obj.block.set_parameter_in_model('(1+sTb)/(1+sTa)__Ta_' + template_name, float(ta_value))
+            templates.append(template_obj)
+        else:
+            pass
+        spec_index += 1
+
+    return tuple(templates)
+
+def build_limiter_runtime_templates(vf: VarFactory, name_prefix: str | None = None) -> tuple[EmtModelTemplate, ...]:
+    """
+    Materialize directly mappable constant limiter primitives.
+
+    :param vf: Variable factory used to allocate the symbolic variables.
+    :type vf: VarFactory
+    :param name_prefix: Optional prefix for the recovered companion templates.
+    :type name_prefix: str | None
+    :return: Materialized result produced by this builder.
+    :rtype: tuple[EmtModelTemplate, ...]
+"""
+    template_prefix: str
+    templates: list[EmtModelTemplate] = list()
+    spec_index: int = 0
+    symbol_name: str
+    source_expr: str
+    input_name: str | None
+    gain_name: str | None
+    gain_value: float | None
+    y_max_name: str | None
+    y_max_value: float | None
+    y_min_name: str | None
+    y_min_value: float | None
+
+    if name_prefix is None:
+        template_prefix = TEMPLATE_KEY
+    else:
+        template_prefix = name_prefix
+
+    for symbol_name, source_expr, input_name, gain_name, gain_value, y_max_name, y_max_value, y_min_name, y_min_value in LIMITER_SPECS:
+        if y_max_value is not None and y_min_value is not None:
+            template_name: str = f'{template_prefix}_limiter_{spec_index + 1}'
+            if gain_value is not None:
+                template_obj: EmtModelTemplate = build_gain_then_limiter_runtime_template(vf=vf, gain_value=float(gain_value), y_max_value=float(y_max_value), y_min_value=float(y_min_value), name=template_name)
+            else:
+                template_obj: EmtModelTemplate = build_typ_76__lim_const_template(vf=vf, name=template_name)
+                template_obj.block.set_parameter_in_model('lim_const__y_max_' + template_name, float(y_max_value))
+                template_obj.block.set_parameter_in_model('lim_const__y_min_' + template_name, float(y_min_value))
+            templates.append(template_obj)
+        else:
+            pass
+        spec_index += 1
+
+    return tuple(templates)
+
+# Recovered spec payloads kept for regeneration and inspection
+
+FIRST_ORDER_SPECS: tuple[tuple[str, str, str, str | None, float | None, str | None, float | None], ...] = (
+    ('avr.acRotatingExciter.firstOrder.y', 'first_order_gain', 'avr.acRotatingExciter.division1.y', 'avr.acRotatingExciter.firstOrder.T', 1e-05, 'avr.acRotatingExciter.firstOrder.k', 1.0),
+)
+
+LIMITED_LEAD_LAG_SPECS: tuple[tuple[str, str, str, str | None, float | None, str | None, float | None, str | None, float | None, str | None, float | None, str | None, float | None], ...] = (
+    ('avr.limitedLeadLag', 'avr.transferFunction.y', 'avr.limitedLeadLag.y', 'avr.limitedLeadLag.K', 1.0, 'avr.limitedLeadLag.t1', 1.0, 'avr.limitedLeadLag.t2', 1.0, 'avr.limitedLeadLag.limiter.uMax', 5.0, 'avr.limitedLeadLag.limiter.uMin', -5.0),
+)
+
+GAIN_LEAD_LAG_SPECS: tuple[tuple[str, str, str, str | None, float | None, str | None, float | None, str | None, float | None], ...] = (
+    ('avr.gain.y', 'avr.transferFunction.y', 'avr.sum1.y', 'avr.gain.k', 200.0, 'avr.transferFunction.b[1]', 1.0, 'avr.transferFunction.a[1]', 0.02),
+)
+
+LEAD_LAG_SPECS: tuple[tuple[str, str, str | None, float | None, str | None, float | None], ...] = (
+    ('avr.transferFunction1.y', 'avr.limiter.y', 'avr.transferFunction1.b[1]', 1.0, 'avr.transferFunction1.a[1]', 1.0),
+)
+
+GAIN_SPECS: tuple[tuple[str, str, str | None, float | None], ...] = (
+    ('avr.gain1.y', 'avr.add.y', 'avr.gain1.k', 0.05),
+)
+
+LIMITER_SPECS: tuple[tuple[str, str, str | None, str | None, float | None, str | None, float | None, str | None, float | None], ...] = (
+    ('avr.limiter.y', '((heaviside(((avr.gain1.y - avr.limiter.uMax) - 1e-06)) * avr.limiter.uMax) + ((1.0 - heaviside(((avr.gain1.y - avr.limiter.uMax) - 1e-06))) * ((heaviside(((avr.limiter.uMin - avr.gain1.y) - 1e-06)) * avr.limiter.uMin) + ((1.0 - heaviside(((avr.limiter.uMin - avr.gain1.y) - 1e-06))) * avr.gain1.y))))', 'avr.gain1.y', None, None, 'avr.limiter.uMax', 5.0, 'avr.limiter.uMin', 0.0),
+)

@@ -10,7 +10,8 @@ import uuid
 from enum import Enum
 from typing import List, Dict, Any, Tuple
 
-from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const, Expr, _expr_to_dict, _dict_to_expr, BinOp, UnOp, Func, Func2, Comparison
+from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const, Expr, _expr_to_dict, _dict_to_expr, BinOp, UnOp, Func, \
+    Func2, Comparison
 from VeraGridEngine.Devices.Diagrams.block_diagram import BlockDiagram
 from VeraGridEngine.enumerations import VarPowerFlowReferenceType, ParamPowerFlowReferenceType
 from VeraGridEngine.Utils.Symbolic.compare_expressions_structure import equivalent_systems
@@ -206,15 +207,14 @@ def _new_uid() -> int:
     """
     return uuid.uuid4().int
 
-def set_parameter(blk: Block, var_name: str, new_value: float):
 
+def set_parameter(blk: Block, var_name: str, new_value: float):
     for var, expr in blk.event_dict.items():
         if var.name == var_name:
             if isinstance(expr, Const):
                 expr.value = new_value
             else:
                 blk.event_dict[var] = Const(new_value)
-
 
     for var, expr in blk.mode_dict.items():
         if var.name == var_name:
@@ -223,7 +223,6 @@ def set_parameter(blk: Block, var_name: str, new_value: float):
             else:
                 blk.mode_dict[var] = Const(new_value)
 
-
     # check parameters dict
     for var, const in blk.parameters.items():
         if var.name == var_name:
@@ -231,8 +230,6 @@ def set_parameter(blk: Block, var_name: str, new_value: float):
                 const.value = new_value
             else:
                 blk.parameters[var] = Const(new_value)
-
-
 
 
 class Block:
@@ -293,7 +290,7 @@ class Block:
 
         self.is_decomposable = is_decomposable
         self.is_root_interface_wrapper: bool = is_root_interface_wrapper
-        self.tpe_uid: int | None =  None
+        self.tpe_uid: int | None = None
         self.vars_glob_name2uid: Dict[str, int] = dict()
 
         self.state_vars: List[Var] = list() if state_vars is None else state_vars
@@ -321,12 +318,12 @@ class Block:
 
         self.discrete_eqs: Dict[Var, Expr] = dict() if discrete_eqs is None else discrete_eqs
         self.external_mapping: Dict[VarPowerFlowReferenceType, Var | None] = (dict()
-                                                                               if external_mapping is None
-                                                                               else external_mapping)
+                                                                              if external_mapping is None
+                                                                              else external_mapping)
 
         self.api_obj_mapping: Dict[ParamPowerFlowReferenceType, Var] = (dict()
-                                                                         if api_obj_mapping is None
-                                                                         else api_obj_mapping)
+                                                                        if api_obj_mapping is None
+                                                                        else api_obj_mapping)
         # initialization
         self.init_values: Dict[Var, Const] = dict() if init_values is None else init_values
 
@@ -560,7 +557,6 @@ class Block:
         """
         return copy.deepcopy(self)
 
-
     def _procedural_logic_to_dict(self) -> List[Dict[str, Any]]:
         """
         Serialize block-attached procedural logic.
@@ -657,7 +653,6 @@ class Block:
         equations_list.extend(self.differential_eqs)
         return equations_list
 
-
     def __eq__(self, other: Block) -> bool:
         x = self.compare(other)
         return x
@@ -665,8 +660,6 @@ class Block:
     # def set_const(self, ref: ParamPowerFlowReferenceType, val: Const):
     #
     #     self.parameters[self.api_obj_mapping[ref]] = val
-
-
 
     def set_parameter_in_model(self, var_name: str, new_value: float):
         """
@@ -681,7 +674,6 @@ class Block:
         if self.children:
             for child in self.children:
                 child.set_parameter_in_model(var_name, new_value)
-
 
     def check_empty(self) -> bool:
         """
@@ -776,7 +768,6 @@ class Block:
                 #     self.init_values[var] = Const(0)
         return explicit
 
-
     def get_all_blocks(self) -> List[Block]:
         """
         Depth-first collection of all *primitive* Blocks.
@@ -815,7 +806,6 @@ class Block:
 
         for diffvar, diff_init_eq in block.diff_init_eqs.items():
             self.diff_init_eqs[diffvar] = diff_init_eq
-
 
     def unify_blocks(self):
         """
@@ -919,10 +909,7 @@ class Block:
         for lst in [self.state_vars, self.algebraic_vars, self.diff_vars]:
             for i, var in enumerate(lst):
                 if var.uid == old.uid:
-                    lst[i]=new
-
-
-
+                    lst[i] = new
 
     def update_equations(self, old: Var | Expr, new: Var | Expr) -> None:
         """
@@ -1181,7 +1168,7 @@ class Block:
             # var_to_subs.uid = incoming_var.uid
             # var_to_subs.name = incoming_var.name
 
-    def find_var_in_equations(self,var: Var) -> bool:
+    def find_var_in_equations(self, var: Var) -> bool:
         """
         find a var in the equations of a block
         :param var:
@@ -1218,7 +1205,7 @@ class Block:
 
         for var_pf_ref, mdl_var in self.external_mapping.items():
             if mdl_var is var:
-               return True
+                return True
 
         return False
 
@@ -1249,6 +1236,7 @@ class Block:
             return False
         return True
 
+
 def find_connections(mdl1: Block, mdl2: Block) -> tuple[List[tuple[Var, Var]], List[tuple[Var, Var]]]:
     """
     find connections between the two blocks by vars searching
@@ -1266,7 +1254,7 @@ def find_connections(mdl1: Block, mdl2: Block) -> tuple[List[tuple[Var, Var]], L
         outp.shared_ref == inpt.shared_ref and outp.shared_ref is not None and inpt.shared_ref is not None
     ]
 
-    power_flow_pairs =  [
+    power_flow_pairs = [
         (outp, inpt)
         for outp in mdl1.out_vars
         for inpt in mdl2.in_vars
@@ -1275,8 +1263,8 @@ def find_connections(mdl1: Block, mdl2: Block) -> tuple[List[tuple[Var, Var]], L
         outp.ref == inpt.ref and outp.ref is not None and inpt.ref is not None
     ]
 
-
     return pairs, power_flow_pairs
+
 
 def find_connections_pf(mdl1: Block, mdl2: Block) -> List[tuple[Var, Var]]:
     """
@@ -1285,7 +1273,7 @@ def find_connections_pf(mdl1: Block, mdl2: Block) -> List[tuple[Var, Var]]:
     :rtype:
     """
 
-    power_flow_pairs =  [
+    power_flow_pairs = [
         (outp, inpt)
         for outp in mdl1.out_vars
         for inpt in mdl2.in_vars
@@ -1293,8 +1281,8 @@ def find_connections_pf(mdl1: Block, mdl2: Block) -> List[tuple[Var, Var]]:
         outp.ref == inpt.ref and outp.ref is not None and inpt.ref is not None and outp.uid == inpt.uid
     ]
 
-
     return power_flow_pairs
+
 
 def find_name_in_block(name: str, block: Block) -> Var | None:
     """
@@ -1375,6 +1363,7 @@ def build_name_to_var_lookup(block: Block) -> Dict[str, Var]:
 
     return lookup
 
+
 def _get_var_attribute_mapping(block: Block) -> Dict[int, str]:
     """Build a mapping from variable uid to attribute name for a block."""
     mapping = {}
@@ -1393,6 +1382,7 @@ def _get_var_attribute_mapping(block: Block) -> Dict[int, str]:
     for var in block.in_vars:
         mapping[var.uid] = "in_vars"
     return mapping
+
 
 def variables_in_corresponding_attributes(blocks: List[Block], variables_mappings: List[Dict[int, int]]) -> bool:
     """
@@ -1432,6 +1422,7 @@ def variables_in_corresponding_attributes(blocks: List[Block], variables_mapping
 
     return True
 
+
 def _get_pair_index(i: int, j: int, n: int) -> int:
     """Get the index in variables_mappings list for the pair (i, j)."""
     idx = 0
@@ -1441,6 +1432,7 @@ def _get_pair_index(i: int, j: int, n: int) -> int:
                 return idx
             idx += 1
     return -1
+
 
 def compare_n_blocks_structurally(blocks: List[Block]) -> Tuple[Dict[int, List[int]], Dict[int, List[int]]]:
     """
@@ -1491,7 +1483,6 @@ def compare_n_blocks_structurally(blocks: List[Block]) -> Tuple[Dict[int, List[i
 
                             variables_mappings = [variables_alignment]
                             if variables_in_corresponding_attributes([block_i_copy, block_j_copy], variables_mappings):
-
                                 current_group.append(blocks[j].uid)
                                 processed[j] = True
                                 current_alignments[j] = variables_alignment
@@ -1515,6 +1506,8 @@ def compare_n_blocks_structurally(blocks: List[Block]) -> Tuple[Dict[int, List[i
             var_result[ref_var_uid] = equivalent_uids
 
     return model_result, var_result
+
+
 #
 # def compare_n_blocks_structurally(blocks: List[Block]) -> Dict[int, List[int]]:
 #     """
@@ -1595,4 +1588,82 @@ def compare_blocks_structurally(block1: Block, block2: Block) -> bool:
             return True
     return False
 
-    return True
+
+def build_name_to_vars_lookup(block: Block) -> Dict[str, List[Var]]:
+    """
+    Build a UID-distinct variable lookup by symbolic name.
+
+    A composite can expose the same PowerFactory port label on several direct
+    instances. Callers that materialize one external signal, such as a native
+    meter, must bind every matching boundary variable instead of silently
+    selecting the first occurrence.
+
+    :param block: Root block hierarchy to inspect.
+    :return: Ordered variables grouped by their symbolic name.
+    """
+    lookup: Dict[str, List[Var]] = dict()
+    seen_uids_by_name: Dict[str, set[int]] = dict()
+    runtime_block: Block
+    variable_groups: List[List[Var]]
+    variable_group: List[Var]
+    variable: Var
+    expression_groups: List[List[Expr]]
+    expression_group: List[Expr]
+    expression: Expr
+
+    for runtime_block in block.get_all_blocks():
+        variable_groups = list([
+            runtime_block.in_vars,
+            runtime_block.out_vars,
+            runtime_block.algebraic_vars,
+            runtime_block.state_vars,
+            runtime_block.diff_vars,
+            list(runtime_block.event_dict.keys()),
+            list(runtime_block.mode_dict.keys()),
+            list(runtime_block.boolean_guards.keys()),
+        ])
+        for variable_group in variable_groups:
+            for variable in variable_group:
+                seen_uids: set[int] | None = seen_uids_by_name.get(
+                    variable.name,
+                    None,
+                )
+                if seen_uids is None:
+                    lookup[variable.name] = list([variable])
+                    seen_uids_by_name[variable.name] = set([variable.uid])
+                else:
+                    if variable.uid in seen_uids:
+                        pass
+                    else:
+                        lookup[variable.name].append(variable)
+                        seen_uids.add(variable.uid)
+
+        # Imported DSL initialization statements can reference a native slot
+        # signal before that signal is promoted to a root interface. Include
+        # those expression-only variables so the authoritative Sta*mea or
+        # equipment adapter can bind them by the exported signal name.
+        expression_groups = list([
+            runtime_block.algebraic_eqs,
+            runtime_block.state_eqs,
+            runtime_block.differential_eqs,
+            list(runtime_block.init_eqs.values()),
+            list(runtime_block.diff_init_eqs.values()),
+            list(runtime_block.event_dict.values()),
+            list(runtime_block.mode_dict.values()),
+            list(runtime_block.boolean_guards.values()),
+        ])
+        for expression_group in expression_groups:
+            for expression in expression_group:
+                for variable in expression.get_vars():
+                    seen_uids = seen_uids_by_name.get(variable.name, None)
+                    if seen_uids is None:
+                        lookup[variable.name] = list([variable])
+                        seen_uids_by_name[variable.name] = set([variable.uid])
+                    else:
+                        if variable.uid in seen_uids:
+                            pass
+                        else:
+                            lookup[variable.name].append(variable)
+                            seen_uids.add(variable.uid)
+
+    return lookup
