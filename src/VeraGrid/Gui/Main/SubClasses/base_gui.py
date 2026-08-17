@@ -29,9 +29,7 @@ from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.Compilers.circuit_to_data import compile_numerical_circuit_at
 from VeraGridEngine.DataStructures.numerical_circuit import NumericalCircuit
 
-from VeraGridEngine.Compilers.circuit_to_bentayga import BENTAYGA_AVAILABLE
-from VeraGridEngine.Compilers.circuit_to_newton_pa import NEWTON_PA_AVAILABLE
-from VeraGridEngine.Compilers.circuit_to_gslv import GSLV_AVAILABLE
+from VeraGridEngine.Compilers.Gslv.activation import GSLV_AVAILABLE
 from VeraGridEngine.Compilers.circuit_to_pgm import PGM_AVAILABLE
 from VeraGridEngine.Simulations.Clustering.clustering_results import ClusteringResults
 
@@ -218,6 +216,7 @@ class BaseMainGui(QMainWindow):
         self.stuff_running_now: List[SimulationTypes] = list()
 
         self.session: SimulationSession = SimulationSession(name='GUI session')
+
         self.dynamic_editor_workspace_session: DynamicEditorWorkspaceSession = DynamicEditorWorkspaceSession()
 
         self._file_name = ''
@@ -338,10 +337,7 @@ class BaseMainGui(QMainWindow):
         engine_lst = [EngineType.VeraGrid]
         if GSLV_AVAILABLE:
             engine_lst.append(EngineType.GSLV)
-        if NEWTON_PA_AVAILABLE:
-            engine_lst.append(EngineType.NewtonPA)
-        if BENTAYGA_AVAILABLE:
-            engine_lst.append(EngineType.Bentayga)
+
         if PGM_AVAILABLE:
             engine_lst.append(EngineType.PGM)
 
@@ -533,12 +529,12 @@ class BaseMainGui(QMainWindow):
         return workspace
 
     def open_dynamic_editor(
-        self,
-        api_object,
-        circuit,
-        preferred_mode: DynamicSimulationMode | None = None,
-        target_workspace: DynamicEditorWorkspaceWindow | None = None,
-        show_tree: bool = False,
+            self,
+            api_object,
+            circuit,
+            preferred_mode: DynamicSimulationMode | None = None,
+            target_workspace: DynamicEditorWorkspaceWindow | None = None,
+            show_tree: bool = False,
     ) -> DynamicBlockEditorGUI | None:
         """
         Open one dynamic editor in this main GUI workspace session.
@@ -1132,8 +1128,8 @@ class BaseMainGui(QMainWindow):
                 self.refresh_ai_context_if_available()
                 self.ai_backend_state = self.ai_chat_dialogue.get_backend_state()
                 if (
-                    self.ai_backend_state.provider_tpe == ProviderType.LOCAL_LLAMA_CPP
-                    and len(self.ai_backend_state.base_url.strip()) == 0
+                        self.ai_backend_state.provider_tpe == ProviderType.LOCAL_LLAMA_CPP
+                        and len(self.ai_backend_state.base_url.strip()) == 0
                 ):
                     default_state: AiBackendState = self.build_default_ai_backend_state()
                     self.ai_backend_state = default_state

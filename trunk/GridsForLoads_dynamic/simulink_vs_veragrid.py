@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 
 THETA_WRAP_PERIOD_RAD: float = 2.0 * np.pi
+SIMULINK_DELTA_VSM_OFFSET_RAD: float = 1.0035643198967392
 # power reference change in the GFM controller
 # TEST_NAME: str = "p_ref_step_v3_2pref"
 # SIMULINK_CSV_NAME: str = "simulink_results_G4L_p_ref_2events.csv"
@@ -42,15 +43,19 @@ THETA_WRAP_PERIOD_RAD: float = 2.0 * np.pi
 #     ("post_event_2", 1.75, 1.80, "After second event"),
 # ]
 
-TEST_NAME: str = "p_ref_step_v5_noDC"
-SIMULINK_CSV_NAME: str = "simulink_results_G4L_p_ref_noDC.csv"
-VERAGRID_CSV_NAME: str = "veragrid_G4L_p_gfm_v5_no_dc.csv"
-EVENT_TIMES_S: list[float] = [1.0, 1.5]
+TEST_NAME: str = "p_ref_step_simplified"
+SIMULINK_CSV_NAME: str = "simulink_results_G4L_p_ref_simplified.csv"
+VERAGRID_CSV_NAME: str = "veragrid_G4L_p_gfm_v3_simplified.csv"
+COMPARISON_WINDOW_S: Optional[tuple[float, float]] = None
+# COMPARISON_WINDOW_S = (0.0, 0.02)
+# VERAGRID_CSV_NAME: str = "veragrid_G4L_p_gfm_v3_2pref.csv"
+EVENT_TIMES_S: list[float] = [0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5]
 EVENT_WINDOW_HALF_WIDTH_S: float = 0.025
 STEADY_STATE_WINDOWS: list[tuple[str, float, float, str]] = [
     ("pre_event", 0.25, 0.30, "Before first event"),
-    ("post_event_1", 1.25, 1.30, "After first event"),
-    ("post_event_2", 1.75, 1.80, "After second event"),
+    ("post_event_1", 0.75, 0.80, "After first event"),
+    ("post_event_2", 1.25, 1.30, "After second event"),
+    ("post_event_3", 1.75, 1.80, "After third event"),
 ]
 
 
@@ -258,6 +263,47 @@ def _theta_pll_veragrid_signal(dataframe: pd.DataFrame) -> pd.Series:
     return pd.Series(wrap_to_2pi(theta_values.to_numpy(dtype=float)), index=theta_values.index)
 
 
+def _phase_vsm_simulink_signal(dataframe: pd.DataFrame) -> pd.Series:
+    """Return the Simulink VSM phase wrapped to ``[0, 2*pi)``.
+
+    :param dataframe: Source dataframe.
+    :return: Wrapped phase VSM series.
+    """
+    phase_values: pd.Series = pd.to_numeric(dataframe["phase_pll"], errors="coerce") + _delta_from_vdq_signal(dataframe, "Vd", "Vq")
+    return pd.Series(wrap_to_2pi(phase_values.to_numpy(dtype=float)), index=phase_values.index)
+
+
+def _phase_vsm_veragrid_signal(dataframe: pd.DataFrame) -> pd.Series:
+    """Return the VeraGrid VSM phase wrapped to ``[0, 2*pi)``.
+
+    :param dataframe: Source dataframe.
+    :return: Wrapped phase VSM series.
+    """
+    phase_values: pd.Series = pd.to_numeric(dataframe["phase_vsm"], errors="coerce")
+    return pd.Series(wrap_to_2pi(phase_values.to_numpy(dtype=float)), index=phase_values.index)
+
+
+def _delta_vsm_simulink_signal(dataframe: pd.DataFrame) -> pd.Series:
+    """Return the Simulink inferred VSM minus PLL angle offset.
+
+    :param dataframe: Source dataframe.
+    :return: Wrapped inferred delta VSM series.
+    """
+    return wrap_to_pi(_delta_from_vdq_signal(dataframe, "Vd", "Vq") + SIMULINK_DELTA_VSM_OFFSET_RAD)
+
+
+def _delta_vsm_veragrid_signal(dataframe: pd.DataFrame) -> pd.Series:
+    """Return the VeraGrid VSM minus PLL angle offset.
+
+    :param dataframe: Source dataframe.
+    :return: Wrapped delta VSM series.
+    """
+    if "delta_vsm" in dataframe.columns:
+        delta_values: pd.Series = pd.to_numeric(dataframe["delta_vsm"], errors="coerce")
+        return pd.Series(wrap_to_pi(delta_values.to_numpy(dtype=float)), index=delta_values.index)
+    return _delta_vsm_signal(dataframe, "phase_vsm", "theta_pll")
+
+
 def _signal_magnitude(dataframe: pd.DataFrame, q_column: str, d_column: str) -> pd.Series:
     """Return the Euclidean magnitude of one qd signal pair.
 
@@ -401,7 +447,6 @@ def create_plot_groups() -> list[PlotGroup]:
             "q_axis_current_chain",
             list(
                 [
-                    SignalSpec("Iq", "Iq", "iq_va_A_sim_sign", "A"),
                     SignalSpec("Iq measured", "Iq", "iq_meas_A_sim_sign", "A"),
                 ]
             ),
@@ -416,12 +461,12 @@ def create_plot_groups() -> list[PlotGroup]:
                     SignalSpec(
                         "|Idq|",
                         "Iq",
-                        "iq_va_A_sim_sign",
+                        "iq_meas_A_sim_sign",
                         "A",
                         simulink_columns=["Iq", "Id"],
-                        veragrid_columns=["iq_va_A_sim_sign", "id_va_A_sim_sign"],
+                        veragrid_columns=["iq_meas_A_sim_sign", "id_meas_A_sim_sign"],
                         simulink_transform=lambda dataframe: _signal_magnitude(dataframe, "Iq", "Id"),
-                        veragrid_transform=lambda dataframe: _signal_magnitude(dataframe, "iq_va_A_sim_sign", "id_va_A_sim_sign"),
+                        veragrid_transform=lambda dataframe: _signal_magnitude(dataframe, "iq_meas_A_sim_sign", "id_meas_A_sim_sign"),
                     )
                 ]
             ),
@@ -433,7 +478,6 @@ def create_plot_groups() -> list[PlotGroup]:
             "d_axis_current_chain",
             list(
                 [
-                    SignalSpec("Id", "Id", "id_va_A_sim_sign", "A"),
                     SignalSpec("Id measured", "Id", "id_meas_A_sim_sign", "A"),
                 ]
             ),
@@ -451,62 +495,11 @@ def create_plot_groups() -> list[PlotGroup]:
                         "Pac_bus_MW_sim_sign",
                         "MW",
                         simulink_columns=["Pac"],
-                        veragrid_columns=["Pac_bus_MW_sim_sign"],
-                        simulink_transform=lambda dataframe: _constant_series_from_column(dataframe, "Pac", 0.8),
-                        veragrid_transform=lambda dataframe: _constant_series_from_column(dataframe, "Pac_bus_MW_sim_sign", 0.8),
+                        veragrid_columns=["P_ref_MW"],
+                        simulink_transform=lambda dataframe: _constant_series_from_column(dataframe, "Pac", 0.0),
+                        veragrid_transform=lambda dataframe: pd.to_numeric(dataframe["P_ref_MW"], errors="coerce"),
                     ),
-                    # SignalSpec("Pac bus", "Pac", "Pac_bus_MW_sim_sign", "MW", simulink_scale=1.0 / 1000000.0),
                     SignalSpec("Pac", "Pac", "Pac_MW_sim_sign", "MW", simulink_scale=1.0 / 1000000.0),
-                    SignalSpec("Pdc", "Pdc", "pdc_MW_sim_sign", "MW", simulink_scale=-1.0 / 1000000.0),
-                ]
-            ),
-        )
-    )
-    groups.append(
-        PlotGroup(
-            "DC link",
-            "dc_link",
-            list(
-                [
-                    SignalSpec("Vdc", "Vdc", "vdc_V", "V"),
-                    SignalSpec("Idc", "Idc_L", "idc_A", "A", simulink_scale=-1.0),
-                    # SignalSpec("Idc load", "Idc_L", "idcL_A", "A"),
-                    # SignalSpec("Icapdc", "Idc_L", "icapdc_A", "A"),
-                ]
-            ),
-        )
-    )
-    groups.append(
-        PlotGroup(
-            "virtual admittance errors",
-            "virtual_admittance_errors",
-            list([SignalSpec("err q", "err_q_VA", "err_q_V", "V"), SignalSpec("err d", "err_d_VA", "err_d_V", "V")]),
-        )
-    )
-    groups.append(
-        PlotGroup(
-            "virtual admittance internal outputs",
-            "virtual_admittance_internal_outputs",
-            list(
-                [
-                    SignalSpec("y1", "VA_y1", "y1_raw_A", "A"),
-                    SignalSpec("y2", "VA_y2", "y2_raw_A", "A"),
-                    SignalSpec("y3", "VA_y3", "y3_raw_A", "A"),
-                    SignalSpec("y4", "VA_y4", "y4_raw_A", "A"),
-                ]
-            ),
-        )
-    )
-    groups.append(
-        PlotGroup(
-            "virtual admittance reconstructed currents",
-            "virtual_admittance_reconstructed_currents",
-            list(
-                [
-                    SignalSpec("Iq reconstructed", "Iq", "iq_va_reconstructed_A_sim_sign", "A"),
-                    SignalSpec("Id reconstructed", "Id", "id_va_reconstructed_A_sim_sign", "A"),
-                    SignalSpec("Iq actual", "Iq", "iq_va_actual_A_sim_sign", "A"),
-                    SignalSpec("Id actual", "Id", "id_va_actual_A_sim_sign", "A"),
                 ]
             ),
         )
@@ -537,14 +530,34 @@ def create_plot_groups() -> list[PlotGroup]:
                         veragrid_transform=_theta_pll_veragrid_signal,
                     ),
                     SignalSpec(
-                        "delta from vdq",
+                        "phase vsm (reconstructed)",
+                        "phase_pll",
+                        "phase_vsm",
+                        "rad",
+                        simulink_columns=["phase_pll", "Vd", "Vq"],
+                        veragrid_columns=["phase_vsm"],
+                        simulink_transform=_phase_vsm_simulink_signal,
+                        veragrid_transform=_phase_vsm_veragrid_signal,
+                    ),
+                ]
+            ),
+        )
+    )
+    groups.append(
+        PlotGroup(
+            "PLL and VSM offset",
+            "pll_vsm_offset",
+            list(
+                [
+                    SignalSpec(
+                        "delta vsm",
                         "Vd",
-                        "vd_V",
+                        "delta_vsm",
                         "rad",
                         simulink_columns=["Vd", "Vq"],
-                        veragrid_columns=["vd_V", "vq_V"],
-                        simulink_transform=lambda dataframe: _delta_from_vdq_signal(dataframe, "Vd", "Vq"),
-                        veragrid_transform=lambda dataframe: _delta_from_vdq_signal(dataframe, "vd_V", "vq_V"),
+                        veragrid_columns=["delta_vsm", "phase_vsm", "theta_pll"],
+                        simulink_transform=_delta_vsm_simulink_signal,
+                        veragrid_transform=_delta_vsm_veragrid_signal,
                     ),
                 ]
             ),
@@ -575,19 +588,6 @@ def create_plot_groups() -> list[PlotGroup]:
             ),
         )
     )
-    groups.append(
-        PlotGroup(
-            "VA references",
-            "va_references",
-            list(
-                [
-                    SignalSpec("Vq ref", "Vq_ref", "Vq_ref", "V"),
-                    SignalSpec("Vd ref", "Vd_ref", "Vd_ref", "V"),
-                ]
-            ),
-        )
-    )
-
     return groups
 
 
@@ -753,6 +753,7 @@ def build_common_time_vector(
     veragrid_time: np.ndarray,
     time_base: TimeBase,
     custom_time: Optional[np.ndarray],
+    comparison_window_s: Optional[tuple[float, float]],
 ) -> Optional[np.ndarray]:
     """Build the common interpolation time vector.
 
@@ -764,6 +765,11 @@ def build_common_time_vector(
     """
     overlap_start: float = max(float(simulink_time[0]), float(veragrid_time[0]))
     overlap_end: float = min(float(simulink_time[-1]), float(veragrid_time[-1]))
+
+    if comparison_window_s is not None:
+        window_start_s, window_end_s = comparison_window_s
+        overlap_start = max(overlap_start, float(window_start_s))
+        overlap_end = min(overlap_end, float(window_end_s))
 
     if overlap_end <= overlap_start:
         print("The simulation time ranges do not overlap.")
@@ -946,6 +952,8 @@ def save_group_plot(
     output_path: Path = output_folder / f"{sanitize_file_name(group.file_stem)}_{sanitized_test_name}.png"
     figure.tight_layout()
     figure.savefig(output_path, dpi=150)
+    if group.file_stem == "pll_phase_angles":
+        plt.show()
     plt.close(figure)
     print(f"Saved plot: {output_path}")
 
@@ -1138,6 +1146,9 @@ def run_comparison() -> None:
     """
     script_folder: Path = Path(__file__).resolve().parent
     test_name: str = TEST_NAME
+    if COMPARISON_WINDOW_S is not None:
+        window_start_s, window_end_s = COMPARISON_WINDOW_S
+        test_name = f"{TEST_NAME}_window_{window_start_s:g}_{window_end_s:g}s"
     simulink_csv_path: Path = script_folder / SIMULINK_CSV_NAME
     veragrid_csv_path: Path = script_folder / VERAGRID_CSV_NAME
     output_folder: Path = script_folder / get_output_folder_name(test_name)
@@ -1188,7 +1199,13 @@ def run_comparison() -> None:
     veragrid_step: Optional[float] = estimate_time_step(veragrid_time, "VeraGrid")
     selected_time_base: TimeBase = choose_time_base(simulink_step, veragrid_step, preferred_time_base)
 
-    common_time: Optional[np.ndarray] = build_common_time_vector(simulink_time, veragrid_time, selected_time_base, None)
+    common_time: Optional[np.ndarray] = build_common_time_vector(
+        simulink_time,
+        veragrid_time,
+        selected_time_base,
+        None,
+        COMPARISON_WINDOW_S,
+    )
     if common_time is None:
         print("Could not build a common time vector. Stopping safely.")
         return

@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import numpy as np
-from PySide6 import QtCore
 
 from VeraGrid.Gui.DeviceEditors.AdmittanceMatrixEditor.admittance_matrix_editor import (
+    AdmittanceMatrixEditorWidget,
     AdmittanceMatrixTableModel,
     project_admittance_matrix_to_phase_state,
 )
@@ -38,15 +38,11 @@ def _build_demo_admittance_matrix() -> AdmittanceMatrix:
     return admittance_matrix
 
 
-def test_admittance_matrix_model_preserves_surviving_entries() -> None:
+def test_admittance_matrix_model_preserves_surviving_entries(qt_app: object) -> None:
     """
     Verify that toggling phases resizes the matrix without scrambling matching rows and columns.
     """
-    app: QtCore.QCoreApplication | None = QtCore.QCoreApplication.instance()
-    if app is None:
-        app = QtCore.QCoreApplication([])
-    else:
-        pass
+    _qt_app: object = qt_app
 
     model: AdmittanceMatrixTableModel = AdmittanceMatrixTableModel(
         admittance_matrix=_build_demo_admittance_matrix(),
@@ -114,15 +110,35 @@ def test_project_admittance_matrix_to_phase_state_keeps_selected_abc_subset() ->
     assert projected_matrix.values[1, 1] == 9.0 + 9.0j
 
 
-def test_line_locations_model_roundtrip_and_remove_rows() -> None:
+def test_admittance_matrix_editor_widget_exposes_ys_and_ysh_tables(qt_app: object) -> None:
+    """
+    Verify that the admittance editor widget exposes dedicated UI tables for ``ys`` and ``ysh``.
+    """
+    _qt_app: object = qt_app
+    ys_matrix: AdmittanceMatrix = _build_demo_admittance_matrix()
+    ysh_matrix: AdmittanceMatrix = _build_demo_admittance_matrix()
+
+    widget: AdmittanceMatrixEditorWidget = AdmittanceMatrixEditorWidget(
+        ys_admittance_matrix=ys_matrix,
+        ysh_admittance_matrix=ysh_matrix,
+        title="Admittance matrices",
+        description="Dual-table test",
+    )
+
+    assert widget.ui.matrixTableView.model() is not None
+    assert widget.ui.yshTableView.model() is not None
+    assert widget.ui.yshTableView.isHidden() is False
+    assert "ys" in widget.get_admittance_matrices()
+    assert "ysh" in widget.get_admittance_matrices()
+
+    widget.close()
+
+
+def test_line_locations_model_roundtrip_and_remove_rows(qt_app: object) -> None:
     """
     Verify that the line-locations model preserves values and renumbers rows after deletion.
     """
-    app: QtCore.QCoreApplication | None = QtCore.QCoreApplication.instance()
-    if app is None:
-        app = QtCore.QCoreApplication([])
-    else:
-        pass
+    _qt_app: object = qt_app
 
     line_locations: LineLocations = LineLocations()
     line_locations.add(sequence=0, latitude=10.0, longitude=20.0, altitude=5.0, idtag="a")

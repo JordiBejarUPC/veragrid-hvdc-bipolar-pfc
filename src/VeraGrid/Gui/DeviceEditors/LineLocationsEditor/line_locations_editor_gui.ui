@@ -15,50 +15,92 @@
     <layout class="QHBoxLayout" name="buttonLayout">
      <item>
       <widget class="QPushButton" name="addButton">
-       <property name="text">
+       <property name="toolTip">
         <string>Add point</string>
+       </property>
+       <property name="text">
+        <string/>
+       </property>
+       <property name="icon">
+        <iconset resource="../../Icons/icons.qrc">
+         <normaloff>:/Icons/icons/plus.png</normaloff>:/Icons/icons/plus.png</iconset>
        </property>
       </widget>
      </item>
      <item>
       <widget class="QPushButton" name="removeButton">
-       <property name="text">
+       <property name="toolTip">
         <string>Remove selected</string>
+       </property>
+       <property name="text">
+        <string/>
+       </property>
+       <property name="icon">
+        <iconset resource="../../Icons/icons.qrc">
+         <normaloff>:/Icons/icons/delete3.png</normaloff>:/Icons/icons/delete3.png</iconset>
        </property>
       </widget>
      </item>
      <item>
       <widget class="QPushButton" name="importButton">
-       <property name="text">
+       <property name="toolTip">
         <string>Import CSV</string>
+       </property>
+       <property name="text">
+        <string/>
+       </property>
+       <property name="icon">
+        <iconset resource="../../Icons/icons.qrc">
+         <normaloff>:/Icons/icons/load.png</normaloff>:/Icons/icons/load.png</iconset>
        </property>
       </widget>
      </item>
      <item>
       <widget class="QPushButton" name="exportButton">
-       <property name="text">
+       <property name="toolTip">
         <string>Export CSV</string>
+       </property>
+       <property name="text">
+        <string/>
+       </property>
+       <property name="icon">
+        <iconset resource="../../Icons/icons.qrc">
+         <normaloff>:/Icons/icons/save.png</normaloff>:/Icons/icons/save.png</iconset>
        </property>
       </widget>
      </item>
      <item>
       <widget class="QPushButton" name="copyButton">
-       <property name="text">
+       <property name="toolTip">
         <string>Copy</string>
+       </property>
+       <property name="text">
+        <string/>
+       </property>
+       <property name="icon">
+        <iconset resource="../../Icons/icons.qrc">
+         <normaloff>:/Icons/icons/copy.png</normaloff>:/Icons/icons/copy.png</iconset>
        </property>
       </widget>
      </item>
      <item>
       <widget class="QPushButton" name="pasteButton">
-       <property name="text">
+       <property name="toolTip">
         <string>Paste</string>
+       </property>
+       <property name="text">
+        <string/>
+       </property>
+       <property name="icon">
+        <iconset resource="../../Icons/icons.qrc">
+         <normaloff>:/Icons/icons/paste.png</normaloff>:/Icons/icons/paste.png</iconset>
        </property>
       </widget>
      </item>
      <item>
       <spacer name="buttonSpacer">
        <property name="orientation">
-        <enum>Qt::Horizontal</enum>
+        <enum>Qt::Orientation::Horizontal</enum>
        </property>
        <property name="sizeHint" stdset="0">
         <size>
@@ -75,6 +117,8 @@
    </item>
   </layout>
  </widget>
- <resources/>
+ <resources>
+  <include location="../../Icons/icons.qrc"/>
+ </resources>
  <connections/>
 </ui>

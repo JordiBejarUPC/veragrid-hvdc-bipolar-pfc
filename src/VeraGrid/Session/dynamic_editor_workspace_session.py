@@ -15,7 +15,7 @@ from VeraGrid.Session.dynamic_editor_entries import DynamicEditorEntry
 from VeraGrid.Session.dynamic_editor_entries import build_dynamic_editor_entry
 from VeraGrid.Session.dynamic_editor_entries import get_block_for_entry
 from VeraGrid.Session.dynamic_editor_entries import get_templates_for_entry
-from VeraGridEngine.enumerations import DynamicSimulationMode
+from VeraGridEngine.enumerations import DynamicSimulationMode, DynEditorGraphicsModes
 
 if TYPE_CHECKING:
     from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_workspace_window import DynamicEditorWorkspaceWindow
@@ -54,6 +54,7 @@ class DynamicEditorWorkspaceSession(QtCore.QObject):
         """
         Initialize the shared session state for one workspace family.
 
+        :param current_theme:
         :return: None.
         """
         super().__init__()
@@ -65,7 +66,7 @@ class DynamicEditorWorkspaceSession(QtCore.QObject):
         self._pending_drag_workspace: DynamicEditorWorkspaceWindow | None = None
         self._retained_workspaces: List[DynamicEditorWorkspaceWindow] = list()
         self._retained_pages: List[DynamicEditorTab | DynamicBlockEditorGUI] = list()
-        self.current_theme: str = ""
+        self.current_theme: DynEditorGraphicsModes = DynEditorGraphicsModes.DARK
 
     def register_workspace(self, workspace: "DynamicEditorWorkspaceWindow") -> None:
         """
@@ -89,6 +90,8 @@ class DynamicEditorWorkspaceSession(QtCore.QObject):
         """
         if workspace in self._open_workspaces:
             self._open_workspaces.remove(workspace)
+        if workspace in self._retained_workspaces:
+            self._retained_workspaces.remove(workspace)
         if self._last_active_workspace is workspace:
             self._last_active_workspace = self._open_workspaces[-1] if self._open_workspaces else None
 
@@ -98,7 +101,11 @@ class DynamicEditorWorkspaceSession(QtCore.QObject):
 
         :return: Open workspaces for this session.
         """
-        return list(self._open_workspaces)
+        return list(
+            workspace
+            for workspace in self._open_workspaces
+            if workspace.is_available_for_pages()
+        )
 
     def get_last_active_workspace(self) -> "DynamicEditorWorkspaceWindow | None":
         """
@@ -106,10 +113,14 @@ class DynamicEditorWorkspaceSession(QtCore.QObject):
 
         :return: Preferred workspace or ``None`` when no window is open.
         """
-        if self._last_active_workspace is not None:
+        if self._last_active_workspace is not None and self._last_active_workspace.is_available_for_pages():
             return self._last_active_workspace
-        if len(self._open_workspaces) > 0:
-            return self._open_workspaces[-1]
+
+        self._last_active_workspace = None
+        available_workspaces: list[DynamicEditorWorkspaceWindow] = self.get_open_workspaces()
+        if len(available_workspaces) > 0:
+            self._last_active_workspace = available_workspaces[-1]
+            return self._last_active_workspace
         return None
 
     def reset_for_tests(self) -> None:
@@ -118,14 +129,17 @@ class DynamicEditorWorkspaceSession(QtCore.QObject):
 
         :return: None.
         """
-        for workspace in list(self._open_workspaces):
-            workspace.close()
-            workspace.deleteLater()
+        # Close from a stable snapshot because each close event unregisters its
+        # workspace and pages from this same session.
+        workspaces_to_close: List[DynamicEditorWorkspaceWindow] = list(self._open_workspaces)
+        workspace_to_close: DynamicEditorWorkspaceWindow | None
+        for workspace_to_close in workspaces_to_close:
+            workspace_to_close.close()
+            workspace_to_close.deleteLater()
 
-        app: QtWidgets.QApplication | None = QtWidgets.QApplication.instance()
-        if app is not None:
-            app.processEvents()
-
+        # Drop every Python-side owner before Qt processes DeferredDelete events.
+        # Keeping retained pages/workspaces alive while their C++ children are
+        # destroyed is unsafe after a long mixed GUI test process.
         self._open_workspaces.clear()
         self._session_pages.clear()
         self._last_mode_by_key_base.clear()
@@ -134,6 +148,14 @@ class DynamicEditorWorkspaceSession(QtCore.QObject):
         self._pending_drag_workspace = None
         self._retained_workspaces.clear()
         self._retained_pages.clear()
+        workspaces_to_close.clear()
+        workspace_to_close = None
+
+        # Do not flush the process-wide Qt event queue here. Other GUI tests may
+        # own unrelated DeferredDelete events, and processing them from this
+        # session-specific reset can destroy C++ objects while their Python test
+        # fixtures are still alive. Tests that require immediate destruction
+        # explicitly flush DeferredDelete after releasing their own references.
 
     def workspace_for_page(self, page: DynamicBlockEditorGUI | DynamicEditorTab) -> "DynamicEditorWorkspaceWindow | None":
         """
@@ -143,7 +165,7 @@ class DynamicEditorWorkspaceSession(QtCore.QObject):
         :return: Owning workspace or ``None``.
         """
         workspace: DynamicEditorWorkspaceWindow
-        for workspace in self._open_workspaces:
+        for workspace in self.get_open_workspaces():
             if workspace.index_of_page(page) >= 0:
                 return workspace
             else:
@@ -318,14 +340,28 @@ class DynamicEditorWorkspaceSession(QtCore.QObject):
         :param page: Page being removed.
         :return: None.
         """
+        try:
+            page.dirtyStateChanged.disconnect(self._on_page_dirty_state_changed)
+        except (RuntimeError, TypeError):
+            pass
+
         entry = _get_page_entry(page)
         mode = get_page_mode(page)
         if entry is not None and mode is not None:
             self._session_pages.pop(entry.session_key(mode), None)
+        else:
+            pass
+
+        if page in self._retained_pages:
+            self._retained_pages.remove(page)
+        else:
+            pass
 
         if self._pending_drag_page is page:
             self._pending_drag_page = None
             self._pending_drag_workspace = None
+        else:
+            pass
 
     def handle_tab_drag_started(self, workspace: "DynamicEditorWorkspaceWindow", index: int) -> None:
         """
@@ -362,7 +398,7 @@ class DynamicEditorWorkspaceSession(QtCore.QObject):
         Set the dark mode
         :return:
         """
-        self.current_theme = "Dark"
+        self.current_theme = DynEditorGraphicsModes.DARK
         for ws in self._open_workspaces:
             ws.set_dark_mode()
 
@@ -371,6 +407,6 @@ class DynamicEditorWorkspaceSession(QtCore.QObject):
                 Set the dark mode
                 :return:
                 """
-        self.current_theme = "Light"
+        self.current_theme = DynEditorGraphicsModes.LIGHT
         for ws in self._open_workspaces:
             ws.set_light_mode()

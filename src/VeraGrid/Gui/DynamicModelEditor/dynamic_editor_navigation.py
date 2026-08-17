@@ -82,25 +82,6 @@ class DynamicEditorNavigation:
             f"Block '{block.name}' (uid={block.uid}) is not in the current path."
         )
 
-    def go_to_root(self) -> None:
-        """Navigate back to the root block."""
-        self._path = [self._document.working_root_block]
-
-    def go_to_parent(self) -> None:
-        """
-        Navigate one level up.
-
-        :raises ValueError: If already at the root.
-        :return: None.
-        """
-        if len(self._path) <= 1:
-            raise ValueError("Already at the root block.")
-        self._path.pop()
-
-    # ------------------------------------------------------------------
-    # Breadcrumb helpers
-    # ------------------------------------------------------------------
-
     def breadcrumb_path(self) -> List[Block]:
         """
         Return the full path from root to the current block.

@@ -42,7 +42,14 @@ def start_server(key_file_name: str = "key.pem", cert_file_name: str = "cert.pem
                  username: str = "", password: str = "", is_master: bool = True,
                  secure: bool = True,
                  db_host: str = "", db_port: int = 0,
-                 db_name: str = "", db_user: str = "", db_password: str = ""):
+                 db_name: str = "", db_user: str = "", db_password: str = "",
+                 db_schema: str = "veragrid",
+                 seed_default_admin: bool = True,
+                 default_admin_org_idtag: str = "admin",
+                 default_admin_org_name: str = "admin",
+                 default_admin_user_idtag: str = "admin",
+                 default_admin_user_name: str = "admin",
+                 default_admin_user_password: str = "veragrid is great"):
     """
     Start server function
     :param key_file_name: name of the key file that the server generates
@@ -60,6 +67,17 @@ def start_server(key_file_name: str = "key.pem", cert_file_name: str = "cert.pem
     :param db_name: PostgreSQL database name.
     :param db_user: PostgreSQL user name.
     :param db_password: PostgreSQL password.
+    :param db_schema: PostgreSQL schema name.
+    :param seed_default_admin: Whether to (re-)seed a default admin organization/user
+        on every startup. Set to false once a deployment manages its own
+        organizations/users.
+    :param default_admin_org_idtag: Identifier for the seeded organization row.
+    :param default_admin_org_name: Display name for the seeded organization row.
+    :param default_admin_user_idtag: Identifier for the seeded user row.
+    :param default_admin_user_name: Display name for the seeded user row.
+    :param default_admin_user_password: Bookkeeping password for the seeded user row
+        (not used for authentication; the admin console and API only check the
+        single instance-level password/API key).
     """
 
     # find out my IP
@@ -95,6 +113,13 @@ def start_server(key_file_name: str = "key.pem", cert_file_name: str = "cert.pem
     settings.db_name = db_name
     settings.db_user = db_user
     settings.db_password = db_password
+    settings.db_schema = db_schema
+    settings.seed_default_admin = seed_default_admin
+    settings.default_admin_org_idtag = default_admin_org_idtag
+    settings.default_admin_org_name = default_admin_org_name
+    settings.default_admin_user_idtag = default_admin_user_idtag
+    settings.default_admin_user_name = default_admin_user_name
+    settings.default_admin_user_password = default_admin_user_password
 
     if secure:
         uvicorn.run(app,
@@ -140,6 +165,20 @@ if __name__ == "__main__":
     parser.add_argument("--db_name", type=str, default="", help="PostgreSQL database name")
     parser.add_argument("--db_user", type=str, default="", help="PostgreSQL user")
     parser.add_argument("--db_password", type=str, default="", help="PostgreSQL password")
+    parser.add_argument("--db_schema", type=str, default="veragrid", help="PostgreSQL schema name")
+    parser.add_argument("--seed_default_admin", type=str2bool,
+                        choices=[True, False], default=True,
+                        help="Seed a default admin organization/user on every startup")
+    parser.add_argument("--default_admin_org_idtag", type=str, default="admin",
+                        help="Identifier for the seeded organization row")
+    parser.add_argument("--default_admin_org_name", type=str, default="admin",
+                        help="Display name for the seeded organization row")
+    parser.add_argument("--default_admin_user_idtag", type=str, default="admin",
+                        help="Identifier for the seeded user row")
+    parser.add_argument("--default_admin_user_name", type=str, default="admin",
+                        help="Display name for the seeded user row")
+    parser.add_argument("--default_admin_user_password", type=str, default="veragrid is great",
+                        help="Bookkeeping password for the seeded user row (not used for authentication)")
 
     # Parse arguments
     args = parser.parse_args()
@@ -162,4 +201,11 @@ if __name__ == "__main__":
                  db_port=args.db_port,
                  db_name=args.db_name,
                  db_user=args.db_user,
-                 db_password=args.db_password)
+                 db_password=args.db_password,
+                 db_schema=args.db_schema,
+                 seed_default_admin=args.seed_default_admin,
+                 default_admin_org_idtag=args.default_admin_org_idtag,
+                 default_admin_org_name=args.default_admin_org_name,
+                 default_admin_user_idtag=args.default_admin_user_idtag,
+                 default_admin_user_name=args.default_admin_user_name,
+                 default_admin_user_password=args.default_admin_user_password)

@@ -23,6 +23,7 @@ def main() -> int:
         database="veragrid",
         user_name="admin",
         password="pgpwd",
+        schema_name="veragrid",
     )
 
     model_idtag: str = "pegase2869_santi"
@@ -36,7 +37,10 @@ def main() -> int:
 
     vg.save_file(grid=grid, filename=output_file)
 
-    print(f"Retrieved model '{model_idtag}' from database '{settings.database}'.")
+    print(
+        f"Retrieved model '{model_idtag}' from database '{settings.database}' "
+        f"schema '{settings.schema_name}'."
+    )
     print(f"Saved rebuilt grid to '{output_file}'.")
     return 0
 

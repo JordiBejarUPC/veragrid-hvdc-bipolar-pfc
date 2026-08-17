@@ -19,12 +19,65 @@ from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_breadcrumb import DynamicEdi
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_navigation import DynamicEditorNavigation
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
-from VeraGridEngine.enumerations import DynamicSimulationMode, BlockType
+from VeraGridEngine.enumerations import DynamicSimulationMode, BlockType, DynEditorGraphicsModes
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_models import clone_block_for_editing, copy_block_state
 
 from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI
 from VeraGrid.Session.dynamic_editor_entries import DynamicEditorEntry
+
+
+def block_has_direct_computational_content(block: Block) -> bool:
+    """Return whether a block owns behavior rather than only one child shell.
+
+    Interface variables, parameters, and mappings may legitimately be mirrored
+    on a template container. Equations and runtime logic are what make the
+    container itself a meaningful navigation level.
+
+    :param block: Candidate navigation block.
+    :return: Whether the block owns equations or runtime behavior directly.
+    """
+    result: bool = bool(
+        block.state_eqs
+        or block.algebraic_eqs
+        or block.differential_eqs
+        or block.init_eqs
+        or block.diff_init_eqs
+        or block.inequalities
+        or block.discrete_eqs
+        or block.boolean_guards
+        or block.procedural_logic
+    )
+    return result
+
+
+def resolve_navigation_content_block(block: Block) -> Block:
+    """Skip redundant single-child containers during Ctrl-click navigation.
+
+    The root editor still displays the assigned template as one block with its
+    connection variables. Only after Ctrl-click are empty one-child wrappers
+    collapsed, preventing repeated views containing the same block again.
+
+    :param block: Block selected in the parent diagram.
+    :return: First meaningful block or branching container in its child chain.
+    """
+    result: Block = block
+    visited_uids: set[int] = set()
+    searching: bool = True
+    while searching:
+        if result.uid in visited_uids:
+            searching = False
+        else:
+            visited_uids.add(result.uid)
+            is_transparent_container: bool = (
+                len(result.children) == 1
+                and not block_has_direct_computational_content(result)
+            )
+            if is_transparent_container:
+                result = result.children[0]
+            else:
+                searching = False
+    return result
 
 
 class DynamicEditorDocument:
@@ -136,7 +189,7 @@ class DynamicEditorTab(QtWidgets.QWidget):
             block: Block,
             api_object: ALL_DEV_TYPES,
             circuit: MultiCircuit,
-            current_theme: str,
+            current_theme: DynEditorGraphicsModes,
             mode: DynamicSimulationMode,
             templates_list: Optional[List[RmsModelTemplate | EmtModelTemplate | FmuTemplate]] = None,
             parent: QtWidgets.QWidget | None = None,
@@ -151,6 +204,7 @@ class DynamicEditorTab(QtWidgets.QWidget):
         self._templates_list = templates_list if templates_list is not None else list()
         self._dynamic_editor_entry: DynamicEditorEntry | None = None
         self._block2blocktype: Dict[int, BlockType] = dict()
+        self._prepared_to_delete: bool = False
 
         # ---- Document + Navigation ----
         document = DynamicEditorDocument(block)
@@ -197,16 +251,44 @@ class DynamicEditorTab(QtWidgets.QWidget):
         return True
 
     def prepare_to_delete(self) -> None:
-        if self._editor is not None:
-            self._editor.prepare_to_delete()
+        """
+        Release the currently hosted editor before this tab is destroyed.
+
+        The tab owns a breadcrumb and one nested dynamic editor. The nested
+        editor allocates scene/view/model objects dynamically, so the tab must
+        explicitly detach that subtree before the Python wrapper becomes the
+        only remaining owner.
+
+        :return: None.
+        """
+        if self._prepared_to_delete:
+            return
+
+        self._prepared_to_delete = True
+        self._dispose_editor()
+
+        if self._breadcrumb is not None:
+            try:
+                self._breadcrumb.blockClicked.disconnect(self._on_breadcrumb_clicked)
+            except (RuntimeError, TypeError):
+                pass
+            self._breadcrumb.prepare_to_delete()
+            self._layout.removeWidget(self._breadcrumb)
+            self._breadcrumb.setParent(None)
+            self._breadcrumb.deleteLater()
+            self._breadcrumb = None
+        else:
+            pass
 
     def set_dark_mode(self) -> None:
         if self._editor is not None:
             self._editor.set_dark_mode()
+            self.current_theme = DynEditorGraphicsModes.DARK
 
     def set_light_mode(self) -> None:
         if self._editor is not None:
             self._editor.set_light_mode()
+            self.current_theme = DynEditorGraphicsModes.LIGHT
 
     # ------------------------------------------------------------------
     # Navigation — always over the working tree
@@ -222,8 +304,9 @@ class DynamicEditorTab(QtWidgets.QWidget):
         :param block: Child block to navigate into.
         :return: None.
         """
-        block, self._block2blocktype = prepare_block_for_editing(block, self._var_factory)
-        self._navigation.open_child(block)
+        content_block: Block = resolve_navigation_content_block(block)
+        content_block, self._block2blocktype = prepare_block_for_editing(content_block, self._var_factory)
+        self._navigation.open_child(content_block)
         self._replace_editor()
 
     def navigate_to_breadcrumb_block(self, block: Block) -> None:
@@ -236,10 +319,13 @@ class DynamicEditorTab(QtWidgets.QWidget):
         self._navigation.go_to(block)
         self._replace_editor()
 
-    def navigate_to_root(self) -> None:
-        """Navigate back to the root block."""
-        self._navigation.go_to_root()
-        self._replace_editor()
+    def refresh_breadcrumb(self) -> None:
+        """
+        Refresh the breadcrumb labels from the current navigation path.
+
+        :return: None.
+        """
+        self._refresh_breadcrumb()
 
     # ------------------------------------------------------------------
     # Editor delegation — forward commonly accessed attributes
@@ -288,13 +374,28 @@ class DynamicEditorTab(QtWidgets.QWidget):
             self._refresh_breadcrumb()
 
     def _replace_editor(self) -> None:
-        if self._editor is not None:
-            self._editor.prepare_to_delete()
-            self._layout.removeWidget(self._editor)
-            self._editor.deleteLater()
-            self._editor = None
-
+        self._dispose_editor()
         self._create_editor(self._navigation.current_block)
+
+    def _dispose_editor(self) -> None:
+        """
+        Disconnect, detach, and queue the currently hosted editor for deletion.
+
+        :return: None.
+        """
+        editor: DynamicBlockEditorGUI | None = self._editor
+        if editor is None:
+            return
+
+        try:
+            editor.dirtyStateChanged.disconnect(self.dirtyStateChanged)
+        except (RuntimeError, TypeError):
+            pass
+        editor.prepare_to_delete()
+        self._layout.removeWidget(editor)
+        editor.setParent(None)
+        editor.deleteLater()
+        self._editor = None
 
     def _refresh_breadcrumb(self) -> None:
         path: List[Block] = self._navigation.breadcrumb_path()
