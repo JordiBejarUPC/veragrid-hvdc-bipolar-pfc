@@ -52,14 +52,15 @@ class PseudoTransientOptions(OptionsTemplate):
     :param dtau_stall_ratio: Residual ratio considered stalled.
     :param dtau_stall_steps: Number of stalled steps before pseudo-time boost.
     :param dtau_stall_boost: Pseudo-time boost factor after a stall.
+    :param stop_on_residual_stall: Whether to end the current simulation when residuals stop improving.
+    :param residual_reset_steps: Number of accepted residuals in the reset window.
+    :param residual_reset_improvement_tol: Relative residual improvement required to avoid reset.
     """
 
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
         GCProp(key="equilibrium_inputs_as_params", tpe=bool),
         GCProp(key="equilibrium_references_as_params", tpe=bool),
         GCProp(key="equilibrium_references_as_equations", tpe=bool),
-        GCProp(key="pref_seed", tpe=float),
-        GCProp(key="vref_seed", tpe=float),
         GCProp(key="delta_seed", tpe=float),
         GCProp(key="allow_best_effort_init", tpe=bool),
         GCProp(key="use_weighted_residual", tpe=bool),
@@ -88,14 +89,15 @@ class PseudoTransientOptions(OptionsTemplate):
         GCProp(key="dtau_stall_ratio", tpe=float),
         GCProp(key="dtau_stall_steps", tpe=int),
         GCProp(key="dtau_stall_boost", tpe=float),
+        GCProp(key="stop_on_residual_stall", tpe=bool),
+        GCProp(key="residual_reset_steps", tpe=int),
+        GCProp(key="residual_reset_improvement_tol", tpe=float),
     )
 
     def __init__(self,
                  equilibrium_inputs_as_params: bool = False,
                  equilibrium_references_as_params: bool = False,
                  equilibrium_references_as_equations: bool = False,
-                 pref_seed: float = 1.0316406365799007,
-                 vref_seed: float = 1.0,
                  delta_seed: float | None = 0.0,
                  allow_best_effort_init: bool = False,
                  use_weighted_residual: bool = False,
@@ -120,10 +122,13 @@ class PseudoTransientOptions(OptionsTemplate):
                  soft_positive_min: float = 1e-8,
                  soft_positive_eps: float = 1e-6,
                  dtau_ser_min_factor: float = 0.5,
-                 dtau_ser_max_factor: float = 5.0,
-                 dtau_stall_ratio: float = 1.02,
-                 dtau_stall_steps: int = 5,
-                 dtau_stall_boost: float = 2.0) -> None:
+                  dtau_ser_max_factor: float = 5.0,
+                  dtau_stall_ratio: float = 1.02,
+                  dtau_stall_steps: int = 5,
+                  dtau_stall_boost: float = 2.0,
+                  stop_on_residual_stall: bool = True,
+                  residual_reset_steps: int = 5,
+                  residual_reset_improvement_tol: float = 1e-2) -> None:
         """
         Initialize pseudo-transient options.
 
@@ -134,8 +139,6 @@ class PseudoTransientOptions(OptionsTemplate):
         self.equilibrium_inputs_as_params: bool = bool(equilibrium_inputs_as_params)
         self.equilibrium_references_as_params: bool = bool(equilibrium_references_as_params)
         self.equilibrium_references_as_equations: bool = bool(equilibrium_references_as_equations)
-        self.pref_seed: float = float(pref_seed)
-        self.vref_seed: float = float(vref_seed)
         self.delta_seed: float | None = None if delta_seed is None else float(delta_seed)
         self.allow_best_effort_init: bool = bool(allow_best_effort_init)
         self.use_weighted_residual: bool = bool(use_weighted_residual)
@@ -164,6 +167,9 @@ class PseudoTransientOptions(OptionsTemplate):
         self.dtau_stall_ratio: float = float(dtau_stall_ratio)
         self.dtau_stall_steps: int = int(dtau_stall_steps)
         self.dtau_stall_boost: float = float(dtau_stall_boost)
+        self.stop_on_residual_stall: bool = bool(stop_on_residual_stall)
+        self.residual_reset_steps: int = int(residual_reset_steps)
+        self.residual_reset_improvement_tol: float = float(residual_reset_improvement_tol)
 
 
 class  PseudoTransient:
@@ -177,7 +183,7 @@ class  PseudoTransient:
                  tol: float = 1e-6,
                  reference_error_tol: float = 3.0,
                  max_iter: int = 1000,
-                 verbose: bool = True,
+                 verbose: bool = False,
                  fixed_var_uids: list[int] | None = None,
                  debug_check_x_new: bool = False,
                  debug_x_new_abs_max: float = 1e6,
@@ -223,6 +229,9 @@ class  PseudoTransient:
         self.dtau_stall_ratio = self.options.dtau_stall_ratio
         self.dtau_stall_steps = self.options.dtau_stall_steps
         self.dtau_stall_boost = self.options.dtau_stall_boost
+        self.stop_on_residual_stall = self.options.stop_on_residual_stall
+        self.residual_reset_steps = self.options.residual_reset_steps
+        self.residual_reset_improvement_tol = self.options.residual_reset_improvement_tol
         self.fixed_var_uids = set(fixed_var_uids or [])
         uid2idx = self.problem.uid2idx_vars
         self._fixed_var_indices = sorted([uid2idx[uid] for uid in self.fixed_var_uids if uid in uid2idx])
@@ -564,27 +573,7 @@ class  PseudoTransient:
         return sp.diags(values, offsets=0, shape=(n_rows, n_cols), format="csc")
 
     def _find_reference_pin_indices(self) -> list[int]:
-        n_vars = int(self.problem.get_all_vars_number())
-        groups = (
-            ("Pm_ref", "Pref", "P_ref"),
-            ("UsRefPu", "Vref", "V_ref", "U_ref"),
-            ("u_exciter3", "y_exciter3"),
-        )
-        found: list[int] = list()
-        used = set(self._fixed_var_indices)
-        for group in groups:
-            idx = None
-            for i in range(n_vars):
-                if i in used:
-                    continue
-                nm = self._var_index_name(i)
-                if any(tok in nm for tok in group):
-                    idx = i
-                    break
-            if idx is not None:
-                found.append(idx)
-                used.add(idx)
-        return found
+        return list()
 
     def _var_index_name(self, idx: int) -> str:
         vars_all = self._problem_state_vars() + self._problem_algebraic_vars()
@@ -603,7 +592,7 @@ class  PseudoTransient:
             token_l = token.lower()
             hit_idx = None
 
-            # Prefer exact/canonical prefix match (e.g. Id*), avoid accidental matches like Psid*.
+            # Prefer exact/canonical prefix match before falling back to substring matches.
             for i, var in enumerate(vars_all):
                 name = var.name.strip()
                 if i in used_idx:
@@ -660,6 +649,9 @@ class  PseudoTransient:
         )
 
     def _report_singularity_diagnostics(self, J: sp.csc_matrix, rhs: Vec, x: Vec, context: str) -> None:
+        if not self.verbose:
+            return
+
         # Print diagnostics at every failing step/try during debugging.
         self._singular_report_count += 1
 
@@ -697,32 +689,6 @@ class  PseudoTransient:
                 top_rhs = [f"{self._rhs_index_equation_repr(int(i))}: {rhs[int(i)]:+.3e}" for i in idx]
                 print(f"[PseudoTransient][Singular] largest rhs entries: {top_rhs}", file=sys.stderr)
                 self._report_piecewise_activity(rhs)
-
-            self._report_selected_var_values(x, labels=("Vd", "Vq", "Id", "Iq"))
-
-            # Show equations most directly coupled to Vf-like variables.
-            vf_cols = [i for i in range(J.shape[1]) if "vf" in self._var_index_name(i).lower()]
-            if len(vf_cols) > 0:
-                for c in vf_cols[:3]:
-                    col = J.getcol(c)
-                    if col.nnz == 0:
-                        print(
-                            f"[PseudoTransient][Singular] Vf-coupled column {self._var_index_name(c)} has no nonzeros",
-                            file=sys.stderr,
-                        )
-                        continue
-                    rows = col.indices
-                    vals = col.data
-                    order = np.argsort(np.abs(vals))[::-1]
-                    top = order[:8]
-                    eqs = [
-                        f"{self._rhs_index_equation_repr(int(rows[k]))}: d/d{self._var_index_name(c)}={vals[k]:+.3e}"
-                        for k in top
-                    ]
-                    print(
-                        f"[PseudoTransient][Singular] equations coupled to {self._var_index_name(c)}: {eqs}",
-                        file=sys.stderr,
-                    )
 
             # SVD-based diagnostics for moderate size systems.
             n = J.shape[0]
@@ -1257,6 +1223,9 @@ class  PseudoTransient:
         plt.show()
 
     def _report_failure_svd_diagnostics(self, x: Vec, xn: Vec, dx: Vec, dtau: float, context: str) -> None:
+        if not self.verbose:
+            return
+
         try:
             rhs = self._rhs_pseudo_transient(x, xn, dx, dtau)
             if not np.all(np.isfinite(rhs)):
@@ -1276,6 +1245,9 @@ class  PseudoTransient:
                               dx: Vec,
                               dtau: float,
                               top_n: int = 20) -> None:
+        if not self.verbose:
+            return
+
         rhs = self._rhs_pseudo_transient(x, xn, 0*dx, dtau)
         if rhs.size == 0:
             print("[PseudoTransient] Final RHS offenders: none (empty RHS)")
@@ -1339,6 +1311,7 @@ class  PseudoTransient:
         xn = x_new.copy()
         x_fixed_ref = x_new.copy()
         released_fixed_refs = False
+        residual_reset_steps = max(0, int(self.residual_reset_steps))
         tries = 0
         
         # Update variable parameters at t=0
@@ -1427,8 +1400,7 @@ class  PseudoTransient:
                 if isinstance(self.problem, RmsProblemDae) or isinstance(self.problem, RmsProblemTemplate):
                     pass
                 else:
-                    equilibrium_param_indices = self.problem._equilibrium_param_indices
-                    for param_idx in equilibrium_param_indices.values():
+                    for param_idx in self.problem._equilibrium_reference_update_indices:
                         if isinstance(param_idx, int) and 0 <= param_idx < delta.size:
                             delta[param_idx] = 0.0
                         else:
@@ -1540,6 +1512,7 @@ class  PseudoTransient:
                     self._dbg(
                         f"accepted step={step_idx}: residual2={residual:.3e}, dx_error={dx_error:.3e}, dtau={dtau:.3e}"
                     )
+
                     eps = 1e-14
                     residual_before = float(base_residual) if np.isfinite(base_residual) else float(old_residual)
                     if not np.isfinite(residual_before) or residual_before <= 0.0:
@@ -1584,6 +1557,27 @@ class  PseudoTransient:
                     self._dbg(f"adaptive dtau: new={dtau:.3e}")
 
                     old_residual = residual
+
+                    residual_window_stalled = False
+                    if residual_reset_steps > 0 and len(residual_hist) >= residual_reset_steps:
+                        residual_window = residual_hist[-residual_reset_steps:]
+                        window_start = float(residual_window[0])
+                        window_end = float(residual_window[-1])
+                        required_improvement = max(float(self.residual_reset_improvement_tol), 0.0)
+                        residual_window_stalled = window_end >= window_start * (1.0 - required_improvement)
+                    else:
+                        pass
+
+                    if (
+                        self.stop_on_residual_stall
+                        and residual_window_stalled
+                        and residual > self.tol
+                    ):
+                        self._dbg(
+                            f"pseudo-transient residual stalled over the last {residual_reset_steps} accepted steps; "
+                            "ending this simulation attempt"
+                        )
+                        break
 
                 elif tries > self.max_iter_0:
                     if self.verbose:

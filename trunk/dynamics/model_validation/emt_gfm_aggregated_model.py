@@ -221,8 +221,8 @@ def build_emt_gfm_aggregated_model(
     id_hat = Kp * (vd_ref - vd_f) + Ki * z_vd
     iq_hat = Kp * (vq_ref - vq_f) + Ki * z_vq
 
-    id_raw = id_hat + id_g - Cf * omega * vq_f
-    iq_raw = iq_hat + iq_g + Cf * omega * vd_f
+    id_raw = id_hat + id_g + Cf * omega * vq_f
+    iq_raw = iq_hat + iq_g - Cf * omega * vd_f
     eqs += [
         id_ref_sat - id_raw,
         iq_ref_sat - iq_raw,
@@ -236,8 +236,8 @@ def build_emt_gfm_aggregated_model(
     eqs += [
         vd_ctrl_out - (Kp * (id_ref - id_c) + Ki * z_id),
         vq_ctrl_out - (Kp * (iq_ref - iq_c) + Ki * z_iq),
-        vd_c_ref - (vd_hat + vd_f - Lf * omega * iq_c),
-        vq_c_ref - (vq_hat + vq_f + Lf * omega * id_c),
+        vd_c_ref - (vd_hat + vd_f + Lf * omega * iq_c),
+        vq_c_ref - (vq_hat + vq_f - Lf * omega * id_c),
         vd_c - vd_c_ref,
         vq_c - vq_c_ref,
         pt + p,
@@ -258,7 +258,7 @@ def build_emt_gfm_aggregated_model(
 
     model = Block(
         state_eqs=[
-            -omega_base * omega,
+            omega_base * omega,
             (p - p_lp) / tau_p,
             (q - q_lp) / tau_q,
             vd_ref - vd_f,

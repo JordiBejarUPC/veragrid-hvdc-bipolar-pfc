@@ -76,10 +76,10 @@ def get_load_rms_template(
         ParamPowerFlowReferenceType.Ql0: Ql0,
     }
 
-    #templ.block.init_eqs = {
-    #    Pl0: Pl,
-    #    Ql0: Ql,
-    #}
+    templ.block.init_eqs = {
+        Pl0: Pl,
+        Ql0: Ql,
+    }
     templ.block.in_vars = inputs
     templ.block.out_vars = [Pl, Ql]
 
