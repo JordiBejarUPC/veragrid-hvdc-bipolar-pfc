@@ -1,4 +1,4 @@
-# Small-Signal Stability Analysis
+# 🔍Small-Signal Stability Analysis
 
 RMS small-signal stability analysis linearizes the RMS dynamic model around one operating point and computes the corresponding eigenvalues and modal information.
 

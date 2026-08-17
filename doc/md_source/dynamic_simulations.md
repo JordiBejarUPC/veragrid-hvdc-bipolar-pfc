@@ -1257,6 +1257,15 @@ The editor-based workflow is especially useful when:
 - the user wants to create or modify one template,
 - the structure of the block itself must be validated.
 
+### Dynamic model documentation
+
+The [Dynamic model library](dyn_templates/index.md) provides a browsable index of all documented dynamic models and blocks:
+
+- [RMS device templates](dyn_templates/RMS/index.md)
+- [EMT device templates](dyn_templates/EMT/index.md)
+- [Dynamic library blocks](dyn_templates/library/index.md)
+- [Runtime procedural logic](dyn_templates/procedural_logic/index.md)
+
 The practical RMS and EMT session documents are good companions for the GUI workflow:
 
 - `RMS_practical_session.md`
