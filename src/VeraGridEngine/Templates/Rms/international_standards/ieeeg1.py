@@ -37,7 +37,7 @@ def build_ieeeg1_template(vf: VarFactory, name: str | None = None) -> RmsModelTe
 
     # Allocate the template container before building the symbolic surface.
     template: RmsModelTemplate = RmsModelTemplate()
-    template.tpe = DeviceType.NoDevice
+    template.tpe = DeviceType.GeneratorDevice
     template.name = template_name
 
     # Declare every variable explicitly before the equations reference it.
@@ -342,4 +342,5 @@ def build_ieeeg1_template(vf: VarFactory, name: str | None = None) -> RmsModelTe
 
     template.block.state_eqs[5] = ((sym.Const(1.0) - (sym.heaviside((gov_limitedIntegrator_y - gov_limitedIntegrator_outMax) + sym.Const(1e-06)) * sym.heaviside(((gov_limitedIntegrator_k * gov_limiter_y) - sym.Const(0.0)) - sym.Const(1e-06)))) * (sym.Const(1.0) - (sym.heaviside((gov_limitedIntegrator_outMin - gov_limitedIntegrator_y) + sym.Const(1e-06)) * sym.heaviside((sym.Const(0.0) - (gov_limitedIntegrator_k * gov_limiter_y)) - sym.Const(1e-06)))) * (gov_limitedIntegrator_k * gov_limiter_y))
 
+    template.comment = 'Generator governor IEEEG1'
     return template

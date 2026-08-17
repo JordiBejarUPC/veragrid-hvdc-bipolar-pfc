@@ -45,7 +45,7 @@ def build_ac6c_template(vf: VarFactory, name: str | None = None) -> RmsModelTemp
         template_name: str = name
 
     templ: RmsModelTemplate = RmsModelTemplate()
-    templ.tpe = DeviceType.NoDevice
+    templ.tpe = DeviceType.GeneratorDevice
     templ.name = template_name
 
     # Inputs
@@ -673,4 +673,5 @@ def build_ac6c_template(vf: VarFactory, name: str | None = None) -> RmsModelTemp
         ],
         name=template_name,
     )
+    templ.comment = 'Generator AVR/exciter IEEE AC6C'
     return templ

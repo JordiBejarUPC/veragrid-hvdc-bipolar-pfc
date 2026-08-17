@@ -37,7 +37,7 @@ def build_ieeeg2_template(vf: VarFactory, name: str | None = None) -> RmsModelTe
 
     # Allocate the template container before building the symbolic surface.
     template: RmsModelTemplate = RmsModelTemplate()
-    template.tpe = DeviceType.NoDevice
+    template.tpe = DeviceType.GeneratorDevice
     template.name = template_name
 
     # Declare every variable explicitly before the equations reference it.
@@ -233,4 +233,5 @@ def build_ieeeg2_template(vf: VarFactory, name: str | None = None) -> RmsModelTe
         name=template_name,
     )
 
+    template.comment = 'Generator governor IEEEG2'
     return template

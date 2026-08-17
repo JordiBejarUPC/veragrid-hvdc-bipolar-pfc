@@ -38,7 +38,7 @@ def build_psskundur_template(vf: VarFactory, name: str | None = None) -> RmsMode
 
     # Allocate the template container before building the symbolic surface.
     template: RmsModelTemplate = RmsModelTemplate()
-    template.tpe = DeviceType.NoDevice
+    template.tpe = DeviceType.GeneratorDevice
     template.name = template_name
 
     # Declare every variable explicitly before the equations reference it.
@@ -196,4 +196,5 @@ def build_psskundur_template(vf: VarFactory, name: str | None = None) -> RmsMode
     template.block.init_eqs[pss_phaseCompensation_x_scaled_1] = (pss_phaseCompensation_a_end * pss_phaseCompensation_x_start_1)
     template.block.init_eqs[pss_washout_derivative_x] = pss_washout_derivative_x_start
 
+    template.comment = 'Generator power system stabilizer Kundur'
     return template

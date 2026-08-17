@@ -38,7 +38,7 @@ def build_govsteam1_template(vf: VarFactory, name: str | None = None) -> RmsMode
 
     # Allocate the template container before building the symbolic surface.
     template: RmsModelTemplate = RmsModelTemplate()
-    template.tpe = DeviceType.NoDevice
+    template.tpe = DeviceType.GeneratorDevice
     template.name = template_name
 
     # Declare every variable explicitly before the equations reference it.
@@ -523,4 +523,5 @@ def build_govsteam1_template(vf: VarFactory, name: str | None = None) -> RmsMode
     template.block.init_eqs[PRE_gov_backlashHysteresis_aux] = gov_backlashHysteresis_Aux0
     template.block.init_eqs[PRE_gov_backlashHysteresis_h] = gov_backlashHysteresis_H0
 
+    template.comment = 'Generator steam governor GOVSTEAM1'
     return template

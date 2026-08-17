@@ -17,7 +17,7 @@ import VeraGridEngine.Utils.Symbolic.symbolic as sym
 
 def VoltageSourceBuild(
     vfactory: VarFactory,
-    name: str = "",
+    name: str = "Voltage source RMS template",
 ) -> RmsModelTemplate:
     """
     Build an ideal RMS voltage-source template.
@@ -32,8 +32,9 @@ def VoltageSourceBuild(
     :param name: Optional human-readable template name.
     :return: Ideal external-grid RMS template.
     """
-    templ: RmsModelTemplate = RmsModelTemplate()
+    templ: RmsModelTemplate = RmsModelTemplate(name=name)
     templ.tpe = DeviceType.ExternalGridDevice
+    templ.name = name
 
     Vm: Var = vfactory.add_var("Vm", VarPowerFlowReferenceType.Vm)
     Va: Var = vfactory.add_var("Va", VarPowerFlowReferenceType.Va)
@@ -77,6 +78,7 @@ def VoltageSourceBuild(
     }
     templ.block.in_vars = inputs
 
+    templ.comment = 'External grid ideal voltage source RMS model'
     return templ
 
 

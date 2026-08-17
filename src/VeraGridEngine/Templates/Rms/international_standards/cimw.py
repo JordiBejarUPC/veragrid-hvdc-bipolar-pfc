@@ -6,6 +6,7 @@ from __future__ import annotations
 
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
+from VeraGridEngine.enumerations import DeviceType
 from VeraGridEngine.Templates.Rms.international_standards.auxiliary_functions import (
     InductionMachineRole,
     build_induction_machine,
@@ -36,4 +37,6 @@ def build_cimw_template(vf: VarFactory, name: str | None = None) -> RmsModelTemp
         name=template_name,
         role=InductionMachineRole.MOTOR,
     )
+    template.tpe = DeviceType.LoadDevice
+    template.comment = 'Load CIMW induction motor'
     return template

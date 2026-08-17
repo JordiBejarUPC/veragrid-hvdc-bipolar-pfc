@@ -196,6 +196,7 @@ def get_pll_transform_rms(vfactory: VarFactory, name: str = "Pll_transform_rms")
     templ.block = block
 
 
+    templ.comment = 'VSC phase-locked-loop RMS control block'
     return templ
 
 def pll_transform_rms(vfactory: VarFactory, Vm, Va, name:str = ''):
@@ -624,7 +625,7 @@ def trafo_gfl_converter_model(vfactory: VarFactory,
     gfl_block.unify_blocks()
     return gfl_block, i_d, i_q, P, Q, internals
 
-def VscGflBuild(vfactory: VarFactory, name: str = "",
+def VscGflBuild(vfactory: VarFactory, name: str = "Grid-following VSC RMS template",
                 control1: ConverterControlType = ConverterControlType.Pac,
                 control2: ConverterControlType = ConverterControlType.Qac) -> RmsModelTemplate:
     """
@@ -645,6 +646,7 @@ def VscGflBuild(vfactory: VarFactory, name: str = "",
         - Vm_dc + Vm_ac: DC voltage and AC voltage control
     """
     templ = RmsModelTemplate()
+    templ.name = name
     templ.tpe = DeviceType.VscDevice
     # Inputs: Vm, Va, Vdc (Pt_vsc and Qt_vsc come from power flow initialization)
     inputs = [vfactory.add_var("Vm_"), vfactory.add_var("Va_"), vfactory.add_var("Vdc_")]
@@ -724,10 +726,11 @@ def VscGflBuild(vfactory: VarFactory, name: str = "",
     vsc_block.name = 'gfl_block'
 
     templ._block = vsc_block
+    templ.comment = 'VSC grid-following RMS model'
     return templ
 
 
-def TrafoGflBuild(vfactory: VarFactory, name: str = "",
+def TrafoGflBuild(vfactory: VarFactory, name: str = "Grid-following transformer RMS template",
                   control1: ConverterControlType = ConverterControlType.Pac,
                   control2: ConverterControlType = ConverterControlType.Qac) -> RmsModelTemplate:
     """
@@ -735,6 +738,7 @@ def TrafoGflBuild(vfactory: VarFactory, name: str = "",
     and AC-to side is grid bus.
     """
     templ = RmsModelTemplate()
+    templ.name = name
     templ.tpe = DeviceType.VscDevice
 
     Vm_f = vfactory.add_var("Vmf_")
@@ -815,4 +819,5 @@ def TrafoGflBuild(vfactory: VarFactory, name: str = "",
     vsc_block.name = 'trafo_gfl_block'
 
     templ._block = vsc_block
+    templ.comment = 'Grid-following converter transformer RMS block'
     return templ

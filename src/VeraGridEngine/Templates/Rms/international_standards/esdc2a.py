@@ -35,7 +35,7 @@ def build_esdc2a_template(vf: VarFactory, name: str | None = None) -> RmsModelTe
 
     # Allocate the template and public control inputs before assembling the control chain.
     templ: RmsModelTemplate = RmsModelTemplate(name=template_name)
-    templ.tpe = DeviceType.NoDevice
+    templ.tpe = DeviceType.GeneratorDevice
 
     upss: Var = vf.add_var(name=f"UPssPu_{template_name}")
     uuel: Var = vf.add_var(name=f"UUelPu_{template_name}")
@@ -188,4 +188,5 @@ def build_esdc2a_template(vf: VarFactory, name: str | None = None) -> RmsModelTe
         out_vars=[efd],
         name=template_name,
     )
+    templ.comment = 'Generator AVR/exciter ESDC2A'
     return templ

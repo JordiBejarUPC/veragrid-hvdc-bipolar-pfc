@@ -9,7 +9,7 @@ from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Utils.Symbolic import symbolic as sym
 
 
-def DCVoltageSource(vfactory: VarFactory, Vdc, name: str = "") -> RmsModelTemplate:
+def DCVoltageSource(vfactory: VarFactory, Vdc, name: str = "DC voltage source RMS template") -> RmsModelTemplate:
     """
     Builds an RMS model template for a DC voltage source with capacitive filtering.
     
@@ -34,7 +34,8 @@ def DCVoltageSource(vfactory: VarFactory, Vdc, name: str = "") -> RmsModelTempla
     Returns:
         RmsModelTemplate: Configured RMS model template for DC voltage source simulation
     """
-    templ = RmsModelTemplate()
+    templ = RmsModelTemplate(name=name)
+    templ.name = name
 
     # Vars:
     Idc = vfactory.add_var('Idc')
@@ -74,10 +75,11 @@ def DCVoltageSource(vfactory: VarFactory, Vdc, name: str = "") -> RmsModelTempla
         },
     )
     templ.block = dc_block
+    templ.comment = 'DC voltage source RMS model with DC-link capacitance'
 
     return templ
 
-def DCCurrentSource(vfactory: VarFactory, Vdc, name: str = "") -> RmsModelTemplate:
+def DCCurrentSource(vfactory: VarFactory, Vdc, name: str = "DC current source RMS template") -> RmsModelTemplate:
     """
     Builds an RMS model template for a DC current source with capacitive filtering.
 
@@ -102,7 +104,8 @@ def DCCurrentSource(vfactory: VarFactory, Vdc, name: str = "") -> RmsModelTempla
     Returns:
         RmsModelTemplate: Configured RMS model template for DC voltage source simulation
     """
-    templ = RmsModelTemplate()
+    templ = RmsModelTemplate(name=name)
+    templ.name = name
 
     # Vars:
     Idc = vfactory.add_var('Idc')
@@ -145,11 +148,12 @@ def DCCurrentSource(vfactory: VarFactory, Vdc, name: str = "") -> RmsModelTempla
         },
     )
     templ.block = dc_block
+    templ.comment = 'DC current source RMS model with DC-link capacitance'
 
     return templ
 
 
-def DCPowerLimitedSource(vfactory: VarFactory, Vdc, name: str = "") -> RmsModelTemplate:
+def DCPowerLimitedSource(vfactory: VarFactory, Vdc, name: str = "DC power-limited source RMS template") -> RmsModelTemplate:
     """
     RMS DC source driven by a power reference with saturation.
 
@@ -165,7 +169,8 @@ def DCPowerLimitedSource(vfactory: VarFactory, Vdc, name: str = "") -> RmsModelT
 
     where Pdc = Idc * Vdc is the converter-side DC power variable.
     """
-    templ = RmsModelTemplate()
+    templ = RmsModelTemplate(name=name)
+    templ.name = name
 
     Idc = vfactory.add_var('Idc')
     Idc_src = vfactory.add_var('Idc_src')
@@ -209,10 +214,11 @@ def DCPowerLimitedSource(vfactory: VarFactory, Vdc, name: str = "") -> RmsModelT
     )
 
     templ.block = dc_block
+    templ.comment = 'DC power-limited source RMS model'
     return templ
 
 
-def DCPVSourceAveraged(vfactory: VarFactory, Vdc, name: str = "") -> RmsModelTemplate:
+def DCPVSourceAveraged(vfactory: VarFactory, Vdc, name: str = "Averaged PV DC source RMS template") -> RmsModelTemplate:
     """
     Averaged PV source with MPPT-like voltage reference and DC-link capacitor.
 
@@ -222,7 +228,8 @@ def DCPVSourceAveraged(vfactory: VarFactory, Vdc, name: str = "") -> RmsModelTem
     - Averaged boost relation to inject DC current into the link
     - DC-link capacitor dynamics: Cdc * dVdc/dt + Idc - Idc_src = 0
     """
-    templ = RmsModelTemplate()
+    templ = RmsModelTemplate(name=name)
+    templ.name = name
 
     # Variables
     Idc = vfactory.add_var('Idc')
@@ -296,10 +303,11 @@ def DCPVSourceAveraged(vfactory: VarFactory, Vdc, name: str = "") -> RmsModelTem
         },
     )
     templ.block = dc_block
+    templ.comment = 'Averaged photovoltaic DC source RMS model'
 
     return templ
 
-def DCSimpleSourceAveraged(vfactory: VarFactory, Vdc, name: str = "") -> RmsModelTemplate:
+def DCSimpleSourceAveraged(vfactory: VarFactory, Vdc, name: str = "Simple averaged DC source RMS template") -> RmsModelTemplate:
     """
     Simplified averaged DC source with a DC-link capacitor.
 
@@ -322,7 +330,8 @@ def DCSimpleSourceAveraged(vfactory: VarFactory, Vdc, name: str = "") -> RmsMode
     - Idc_conv > 0 means the converter extracts power from the DC link.
     - Pdc > 0 means active power is delivered from DC side to AC side.
     """
-    templ = RmsModelTemplate()
+    templ = RmsModelTemplate(name=name)
+    templ.name = name
 
     # -------------------------------------------------------------------------
     # Variables
@@ -399,5 +408,6 @@ def DCSimpleSourceAveraged(vfactory: VarFactory, Vdc, name: str = "") -> RmsMode
     )
 
     templ.block = dc_block
+    templ.comment = 'Simple averaged DC source RMS model'
 
     return templ

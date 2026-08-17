@@ -45,7 +45,7 @@ def build_scl2c_template(vf: VarFactory, name: str | None = None) -> RmsModelTem
         template_name: str = name
 
     templ: RmsModelTemplate = RmsModelTemplate()
-    templ.tpe = DeviceType.NoDevice
+    templ.tpe = DeviceType.GeneratorDevice
     templ.name = template_name
 
     # Inputs
@@ -1437,4 +1437,5 @@ def build_scl2c_template(vf: VarFactory, name: str | None = None) -> RmsModelTem
         ],
         name=template_name,
     )
+    templ.comment = 'Generator stator current limiter SCL2C'
     return templ

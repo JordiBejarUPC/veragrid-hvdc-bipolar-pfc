@@ -6,6 +6,7 @@ from __future__ import annotations
 
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
+from VeraGridEngine.enumerations import DeviceType
 from VeraGridEngine.Templates.Rms.international_standards.auxiliary_functions import build_ieel
 
 def build_ieel_template(vf: VarFactory, name: str | None = None) -> RmsModelTemplate:
@@ -24,4 +25,6 @@ def build_ieel_template(vf: VarFactory, name: str | None = None) -> RmsModelTemp
     else:
         template_name: str = name
     template: RmsModelTemplate = build_ieel(vf=vf, name=template_name)
+    template.tpe = DeviceType.GeneratorDevice
+    template.comment = 'Generator excitation limiter IEEL'
     return template

@@ -97,4 +97,5 @@ def get_rms_bus_fault_template(
     block.__dict__["rms_bus_fault_susceptance_var_uid"] = fault_susceptance.uid
     block.__dict__["rms_bus_fault_bolted_active_var_uid"] = bolted_fault_active.uid
     template.block = block
+    template.comment = 'Bus fault RMS shunt model'
     return template

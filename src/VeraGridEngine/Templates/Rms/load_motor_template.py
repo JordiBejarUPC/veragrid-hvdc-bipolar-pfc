@@ -32,8 +32,9 @@ import VeraGridEngine.Utils.Symbolic.symbolic as sym
 """
 
 
-def MotorLoadBuild(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
-    templ = RmsModelTemplate()
+def MotorLoadBuild(vfactory: VarFactory, name: str = "Motor load RMS template") -> RmsModelTemplate:
+    templ = RmsModelTemplate(name=name)
+    templ.name = name
     templ.tpe = DeviceType.LoadDevice
     pi = math.pi
     # Inputs:
@@ -180,4 +181,5 @@ def MotorLoadBuild(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
     }
 
     templ.block = res_block
+    templ.comment = 'Load RMS induction-motor model'
     return templ

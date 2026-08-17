@@ -38,7 +38,7 @@ def build_maxex2_template(vf: VarFactory, name: str | None = None) -> RmsModelTe
 
     # Allocate the template container before building the symbolic surface.
     template: RmsModelTemplate = RmsModelTemplate()
-    template.tpe = DeviceType.NoDevice
+    template.tpe = DeviceType.GeneratorDevice
     template.name = template_name
 
     # Declare every variable explicitly before the equations reference it.
@@ -250,4 +250,5 @@ def build_maxex2_template(vf: VarFactory, name: str | None = None) -> RmsModelTe
     )
 
     template.block.state_eqs[0] = ((sym.Const(1.0) - (sym.heaviside((oel_limIntegrator_y - oel_limIntegrator_outMax) + sym.Const(1e-06)) * sym.heaviside(((oel_limIntegrator_k * oel_feedback_y) - sym.Const(0.0)) - sym.Const(1e-06)))) * (sym.Const(1.0) - (sym.heaviside((oel_limIntegrator_outMin - oel_limIntegrator_y) + sym.Const(1e-06)) * sym.heaviside((sym.Const(0.0) - (oel_limIntegrator_k * oel_feedback_y)) - sym.Const(1e-06)))) * (oel_limIntegrator_k * oel_feedback_y))
+    template.comment = 'Generator excitation limiter MAXEX2'
     return template

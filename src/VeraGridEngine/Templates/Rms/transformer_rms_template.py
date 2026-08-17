@@ -61,6 +61,7 @@ class TrafoRmsTemplate(RmsModelTemplate):
 
         vf = vf
         self.tpe: DeviceType = DeviceType.Transformer2WDevice
+        self.comment = 'Transformer two-winding RMS polar admittance model'
         Qf = vf.add_var("Qf", reference=VarPowerFlowReferenceType.Qf)
         Qt = vf.add_var("Qt", reference=VarPowerFlowReferenceType.Qt)
         Pf = vf.add_var("Pf", reference=VarPowerFlowReferenceType.Pf)
@@ -289,6 +290,7 @@ class IdealTrafoRmsTemplate(RmsModelTemplate):
         """
         super().__init__(name=name)
         self.tpe: DeviceType = DeviceType.Transformer2WDevice
+        self.comment = 'Transformer two-winding ideal RMS model'
 
         # Four power-flow variables retain the regular transformer interface so
         # buses and result reporting do not need a case-specific code path.
@@ -531,6 +533,7 @@ def get_transformer2w_rms(
         template: RmsModelTemplate = TrafoPhasorRmsTemplate(vf=vf)
     else:
         template = TrafoRmsTemplate(vf=vf)
+    template.comment = 'Transformer two-winding RMS model'
     return template
 
 

@@ -31,14 +31,6 @@ class RmsModelTemplate(PointerDeviceParent):
             editable=False,
             display=False,
         ),
-        GCProp(
-            prop_name='tpe',
-            units="",
-            tpe=DeviceType,
-            definition='Device type',
-            editable=True,
-            display=True,
-        ),
     )
 
     def __init__(self, idtag="", name: str = ""):

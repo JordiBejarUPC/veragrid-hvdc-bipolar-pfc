@@ -38,7 +38,7 @@ def build_pvvoltagesourceanoplantcontrol_template(vf: VarFactory, name: str | No
 
     # Allocate the template container before building the symbolic surface.
     template: RmsModelTemplate = RmsModelTemplate()
-    template.tpe = DeviceType.NoDevice
+    template.tpe = DeviceType.GeneratorDevice
     template.name = template_name
 
     # Declare every variable explicitly before the equations reference it.
@@ -1910,4 +1910,5 @@ def build_pvvoltagesourceanoplantcontrol_template(vf: VarFactory, name: str | No
         name=template_name,
     )
 
+    template.comment = 'Generator PV voltage-source A model without plant control'
     return template

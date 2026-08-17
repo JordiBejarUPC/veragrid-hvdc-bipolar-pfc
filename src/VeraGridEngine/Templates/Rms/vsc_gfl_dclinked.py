@@ -113,6 +113,7 @@ def build_vsc_rms(vfactory: VarFactory, name:str = 'vsc_rms_template'):
     templ.block.in_vars = inputs
     templ.block.out_vars = block.out_vars
 
+    templ.comment = 'VSC grid-following RMS model'
     return templ
 
 def build_vsc_transformer_control(vf: VarFactory, Vm: Var, vdc: Var, name: str = ''):

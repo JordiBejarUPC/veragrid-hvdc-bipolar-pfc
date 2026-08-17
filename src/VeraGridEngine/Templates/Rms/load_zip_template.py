@@ -51,6 +51,7 @@ def ZIPLoadBuild(vfactory: VarFactory, name: str = "ZIP model", Pl0=1.0, Ql0=0.1
         ValueError: If ZIP coefficients do not sum to 1.0 within tolerance
     """
     templ = RmsModelTemplate()
+    templ.name = name
     templ.tpe = DeviceType.LoadDevice
     inputs = [vfactory.add_var("Vm")]
 
@@ -129,4 +130,5 @@ def ZIPLoadBuild(vfactory: VarFactory, name: str = "ZIP model", Pl0=1.0, Ql0=0.1
 
     templ.block.in_vars = inputs
 
+    templ.comment = 'Load RMS ZIP voltage-dependent model'
     return templ

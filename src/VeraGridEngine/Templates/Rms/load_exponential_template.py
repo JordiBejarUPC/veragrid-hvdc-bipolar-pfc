@@ -24,7 +24,7 @@ class ExponentialLoadRmsTemplate(TemplateDefinition):
         return ExponentialLoadBuild(self.vf, self.get_value("name"), self.get_value("Pl0"), self.get_value("Ql0"))
 
 
-def ExponentialLoadBuild(vfactory: VarFactory, name: str = "", Pl0=1.0, Ql0=0.1) -> RmsModelTemplate:
+def ExponentialLoadBuild(vfactory: VarFactory, name: str = "Exponential load RMS template", Pl0=1.0, Ql0=0.1) -> RmsModelTemplate:
     """
     Builds an RMS model template for an exponential load.
     
@@ -51,7 +51,8 @@ def ExponentialLoadBuild(vfactory: VarFactory, name: str = "", Pl0=1.0, Ql0=0.1)
     Returns:
         RmsModelTemplate: Configured RMS model template for exponential load simulation
     """
-    templ = RmsModelTemplate()
+    templ = RmsModelTemplate(name=name)
+    templ.name = name
     templ.tpe = DeviceType.LoadDevice
 
     inputs = [vfactory.add_var("Vm")]
@@ -99,4 +100,5 @@ def ExponentialLoadBuild(vfactory: VarFactory, name: str = "", Pl0=1.0, Ql0=0.1)
 
     templ.block.in_vars = inputs
 
+    templ.comment = 'Load RMS exponential voltage-dependent model'
     return templ

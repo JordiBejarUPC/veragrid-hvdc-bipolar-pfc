@@ -38,7 +38,7 @@ def build_vrkundur_template(vf: VarFactory, name: str | None = None) -> RmsModel
 
     # Allocate the template container before building the symbolic surface.
     template: RmsModelTemplate = RmsModelTemplate()
-    template.tpe = DeviceType.NoDevice
+    template.tpe = DeviceType.GeneratorDevice
     template.name = template_name
 
     # Declare every variable explicitly before the equations reference it.
@@ -153,4 +153,5 @@ def build_vrkundur_template(vf: VarFactory, name: str | None = None) -> RmsModel
         name=template_name,
     )
 
+    template.comment = 'Generator voltage regulator Kundur'
     return template

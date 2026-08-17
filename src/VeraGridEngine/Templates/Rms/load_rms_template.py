@@ -115,6 +115,7 @@ def get_load_rms_template(
     templ.block.in_vars = inputs
     templ.block.out_vars = [Pl, Ql]
 
+    templ.comment = 'Load RMS constant-power polar model'
     return templ
 
 

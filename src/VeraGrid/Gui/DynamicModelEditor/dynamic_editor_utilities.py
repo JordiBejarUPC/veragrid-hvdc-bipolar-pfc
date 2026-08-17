@@ -722,7 +722,369 @@ def create_block_of_type(var_factory: VarFactory,
         blk = tem.get_gfl_converter_rms(var_factory).block
         blk.name = item_name
         return blk
+    
+    
+    # ----- RMS international standards blocks -----------------------
+    
+    elif block_type == BlockType.AC1A:
+        blk = tem.build_ac1a_template(vf=var_factory, name=item_name).block
+        blk.name = item_name
+        return blk
+    elif block_type == BlockType.AC1C:
+        blk = tem.build_ac1c_template(vf=var_factory, name=item_name).block
+        blk.name = item_name
+        return blk
+    elif block_type == BlockType.AC6A:
+        blk = tem.build_ac6a_template(vf=var_factory, name=item_name).block
+        blk.name = item_name
+        return blk
+    elif block_type == BlockType.AC6C:
+        blk = tem.build_ac6c_template(vf=var_factory, name=item_name).block
+        blk.name = item_name
+        return blk
+    elif block_type == BlockType.AC7B:
+        blk = tem.build_ac7b_template(vf=var_factory, name=item_name).block
+        blk.name = item_name
+        return blk
+    elif block_type == BlockType.AC7C:
+        blk = tem.build_ac7c_template(vf=var_factory, name=item_name).block
+        blk.name = item_name
+        return blk
+    elif block_type == BlockType.AC8B:
+        blk = tem.build_ac8b_template(vf=var_factory, name=item_name).block
+        blk.name = item_name
+        return blk
+    elif block_type == BlockType.AC8C:
+        blk = tem.build_ac8c_template(vf=var_factory, name=item_name).block
+        blk.name = item_name
+        return blk
+    elif block_type == BlockType.BBSEX1:
+        blk = tem.build_bbsex1_template(vf=var_factory, name=item_name).block
+        blk.name = item_name
+        return blk
+    elif block_type == BlockType.BESSCBCURRENTSOURCENOPLANTCONTROL:
+        blk = tem.build_besscbcurrentsourcenoplantcontrol_template(vf=var_factory, name=item_name).block
+        blk.name = item_name
+        return blk
+    elif block_type == BlockType.DC1A:
+        blk = tem.build_dc1a_template(vf=var_factory, name=item_name).block
+        blk.name = item_name
+        return blk
+    elif block_type == BlockType.DC1C:
+        blk = tem.build_dc1c_template(vf=var_factory, name=item_name).block
+        blk.name = item_name
+        return blk
+    elif block_type == BlockType.EXAC1:
+        blk = tem.build_exac1_template(vf=var_factory, name=item_name).block
+        blk.name = item_name
+        return blk
+    elif block_type == BlockType.GOVHYDRO4:
+        blk = tem.build_govhydro4_template(vf=var_factory, name=item_name).block
+        blk.name = item_name
+        return blk
+    elif block_type == BlockType.GOVSTEAM1:
+        blk = tem.build_govsteam1_template(vf=var_factory, name=item_name).block
+        blk.name = item_name
+        return blk
+    elif block_type == BlockType.GOVSTEAMEU:
+        blk = tem.build_govsteameu_template(vf=var_factory, name=item_name).block
+        blk.name = item_name
+        return blk
+    elif block_type == BlockType.IEEEG1:
+        blk = tem.build_ieeeg1_template(vf=var_factory, name=item_name).block
+        blk.name = item_name
+        return blk
+    elif block_type == BlockType.IEEEG2:
+        blk = tem.build_ieeeg2_template(vf=var_factory, name=item_name).block
+        blk.name = item_name
+        return blk
+    elif block_type == BlockType.IEEET1:
+        blk = tem.build_ieeet1_template(vf=var_factory, name=item_name).block
+        blk.name = item_name
+        return blk
+    elif block_type == BlockType.IEEEX2:
+        blk = tem.build_ieeex2_template(vf=var_factory, name=item_name).block
+        blk.name = item_name
+        return blk
+    elif block_type == BlockType.IEEX2A:
+        blk = tem.build_ieex2a_template(vf=var_factory, name=item_name).block
+        blk.name = item_name
+        return blk
+    elif block_type == BlockType.MAXEX2:
+        blk = tem.build_maxex2_template(vf=var_factory, name=item_name).block
+        blk.name = item_name
+        return blk
+    elif block_type == BlockType.OEL2C:
+        blk = tem.build_oel2c_template(vf=var_factory, name=item_name).block
+        blk.name = item_name
+        return blk
+    elif block_type == BlockType.OEL3C:
+        blk = tem.build_oel3c_template(vf=var_factory, name=item_name).block
+        blk.name = item_name
+        return blk
+    elif block_type == BlockType.OEL4C:
+        blk = tem.build_oel4c_template(vf=var_factory, name=item_name).block
+        blk.name = item_name
+        return blk
+    elif block_type == BlockType.OEL5C:
+        blk = tem.build_oel5c_template(vf=var_factory, name=item_name).block
+        blk.name = item_name
+        return blk
+    elif block_type == BlockType.PSS1AOMEGA:
+        blk = tem.build_pss1aomega_template(vf=var_factory, name=item_name).block
+        blk.name = item_name
+        return blk
+    elif block_type == BlockType.PSS1APGEN:
+        blk = tem.build_pss1apgen_template(vf=var_factory, name=item_name).block
+        blk.name = item_name
+        return blk
+    elif block_type == BlockType.PSS2A:
+        blk = tem.build_pss2a_template(vf=var_factory, name=item_name).block
+        blk.name = item_name
+        return blk
+    elif block_type == BlockType.PSS2B:
+        blk = tem.build_pss2b_template(vf=var_factory, name=item_name).block
+        blk.name = item_name
+        return blk
+    elif block_type == BlockType.PSS2C:
+        blk = tem.build_pss2c_template(vf=var_factory, name=item_name).block
+        blk.name = item_name
+        return blk
+    elif block_type == BlockType.PSS3B:
+        blk = tem.build_pss3b_template(vf=var_factory, name=item_name).block
+        blk.name = item_name
+        return blk
+    elif block_type == BlockType.PSS3C:
+        blk = tem.build_pss3c_template(vf=var_factory, name=item_name).block
+        blk.name = item_name
+        return blk
+    elif block_type == BlockType.PSS6C:
+        blk = tem.build_pss6c_template(vf=var_factory, name=item_name).block
+        blk.name = item_name
+        return blk
+    elif block_type == BlockType.PSSKUNDUR:
+        blk = tem.build_psskundur_template(vf=var_factory, name=item_name).block
+        blk.name = item_name
+        return blk
+    elif block_type == BlockType.PVCURRENTSOURCEBNOPLANTCONTROL:
+        blk = tem.build_pvcurrentsourcebnoplantcontrol_template(vf=var_factory, name=item_name).block
+        blk.name = item_name
+        return blk
+    elif block_type == BlockType.PVVOLTAGESOURCEANOPLANTCONTROL:
+        blk = tem.build_pvvoltagesourceanoplantcontrol_template(vf=var_factory, name=item_name).block
+        blk.name = item_name
+        return blk
+    elif block_type == BlockType.PVVOLTAGESOURCEBNOPLANTCONTROL:
+        blk = tem.build_pvvoltagesourcebnoplantcontrol_template(vf=var_factory, name=item_name).block
+        blk.name = item_name
+        return blk
+    elif block_type == BlockType.REECB:
+        blk = tem.build_reecb_template(vf=var_factory, name=item_name).block
+        blk.name = item_name
+        return blk
+    elif block_type == BlockType.REECC:
+        blk = tem.build_reecc_template(vf=var_factory, name=item_name).block
+        blk.name = item_name
+        return blk
+    elif block_type == BlockType.REGCBCS:
+        blk = tem.build_regcbcs_template(vf=var_factory, name=item_name).block
+        blk.name = item_name
+        return blk
+    elif block_type == BlockType.REPCA:
+        blk = tem.build_repca_template(vf=var_factory, name=item_name).block
+        blk.name = item_name
+        return blk
 
+    elif block_type == BlockType.SCL1C:
+        blk = tem.build_scl1c_template(vf=var_factory, name=item_name).block
+        blk.name = item_name
+        return blk
+
+    elif block_type == BlockType.SCL2C:
+        blk = tem.build_scl2c_template(vf=var_factory, name=item_name).block
+        blk.name = item_name
+        return blk
+    elif block_type == BlockType.SCRX:
+        blk = tem.build_scrx_template(vf=var_factory, name=item_name).block
+        blk.name = item_name
+        return blk
+    elif block_type == BlockType.SEXS:
+        blk = tem.build_sexs_template(vf=var_factory, name=item_name).block
+        blk.name = item_name
+        return blk
+    elif block_type == BlockType.ST1A:
+        blk = tem.build_st1a_template(vf=var_factory, name=item_name).block
+        blk.name = item_name
+        return blk
+    elif block_type == BlockType.ST1C:
+        blk = tem.build_st1c_template(vf=var_factory, name=item_name).block
+        blk.name = item_name
+        return blk
+
+    elif block_type == BlockType.ST4B:
+        blk = tem.build_st4b_template(vf=var_factory, name=item_name).block
+        blk.name = item_name
+        return blk
+
+    elif block_type == BlockType.ST4C:
+        blk = tem.build_st4c_template(vf=var_factory, name=item_name).block
+        blk.name = item_name
+        return blk
+
+    elif block_type == BlockType.ST5B:
+        blk = tem.build_st5b_template(vf=var_factory, name=item_name).block
+        blk.name = item_name
+        return blk
+
+    elif block_type == BlockType.ST5C:
+        blk = tem.build_st5c_template(vf=var_factory, name=item_name).block
+        blk.name = item_name
+        return blk
+
+    elif block_type == BlockType.ST6B:
+        blk = tem.build_st6b_template(vf=var_factory, name=item_name).block
+        blk.name = item_name
+        return blk
+
+    elif block_type == BlockType.ST6C:
+        blk = tem.build_st6c_template(vf=var_factory, name=item_name).block
+        blk.name = item_name
+        return blk
+
+    elif block_type == BlockType.ST7B:
+        blk = tem.build_st7b_template(vf=var_factory, name=item_name).block
+        blk.name = item_name
+        return blk
+
+    elif block_type == BlockType.ST7C:
+        blk = tem.build_st7c_template(vf=var_factory, name=item_name).block
+        blk.name = item_name
+        return blk
+
+    elif block_type == BlockType.ST9C:
+        blk = tem.build_st9c_template(vf=var_factory, name=item_name).block
+        blk.name = item_name
+        return blk
+
+    elif block_type == BlockType.TGOV3:
+        blk = tem.build_tgov3_template(vf=var_factory, name=item_name).block
+        blk.name = item_name
+        return blk
+
+    elif block_type == BlockType.UEL1:
+        blk = tem.build_uel1_template(vf=var_factory, name=item_name).block
+        blk.name = item_name
+        return blk
+
+    elif block_type == BlockType.UEL2C:
+        blk = tem.build_uel2c_template(vf=var_factory, name=item_name).block
+        blk.name = item_name
+        return blk
+
+    elif block_type == BlockType.VRKUNDUR:
+        blk = tem.build_vrkundur_template(vf=var_factory, name=item_name).block
+        blk.name = item_name
+        return blk
+
+    elif block_type == BlockType.WPP4BCURRENTSOURCE2020:
+        blk = tem.build_wpp4bcurrentsource2020_template(vf=var_factory, name=item_name).block
+        blk.name = item_name
+        return blk
+
+    elif block_type == BlockType.WT4ACURRENTSOURCE:
+        blk = tem.build_wt4acurrentsource_template(vf=var_factory, name=item_name).block
+        blk.name = item_name
+        return blk
+
+    elif block_type == BlockType.WT4ACURRENTSOURCE2020:
+        blk = tem.build_wt4acurrentsource2020_template(vf=var_factory, name=item_name).block
+        blk.name = item_name
+        return blk
+
+    elif block_type == BlockType.WT4BCURRENTSOURCE2020:
+        blk = tem.build_wt4bcurrentsource2020_template(vf=var_factory, name=item_name).block
+        blk.name = item_name
+        return blk
+
+    elif block_type == BlockType.WT4BCURRENTSOURCE:
+        blk = tem.build_wt4bcurrentsource_template(vf=var_factory, name=item_name).block
+        blk.name = item_name
+        return blk
+
+    elif block_type == BlockType.WT4INJECTOR:
+        blk = tem.build_wt4injector_template(vf=var_factory, name=item_name).block
+        blk.name = item_name
+        return blk
+
+    elif block_type == BlockType.WTG4ACURRENTSOURCE:
+        blk = tem.build_wtg4acurrentsource_template(vf=var_factory, name=item_name).block
+        blk.name = item_name
+        return blk
+
+    elif block_type == BlockType.WTG4BCURRENTSOURCE:
+        blk = tem.build_wtg4bcurrentsource_template(vf=var_factory, name=item_name).block
+        blk.name = item_name
+        return blk
+
+    elif block_type == BlockType.IEEEVC_1981:
+        blk = tem.build_ieeevc_1981_template(vf=var_factory, name=item_name).block
+        blk.name = item_name
+        return blk
+
+    elif block_type == BlockType.ESDC2A:
+        blk = tem.build_esdc2a_template(vf=var_factory, name=item_name).block
+        blk.name = item_name
+        return blk
+
+    elif block_type == BlockType.FRQTPA:
+        blk = tem.build_frqtpa_template(vf=var_factory, name=item_name).block
+        blk.name = item_name
+        return blk
+
+    elif block_type == BlockType.VTGTPA:
+        blk = tem.build_vtgtpa_template(vf=var_factory, name=item_name).block
+        blk.name = item_name
+        return blk
+
+    elif block_type == BlockType.CIMTR1:
+        blk = tem.build_cimtr1_template(vf=var_factory, name=item_name).block
+        blk.name = item_name
+        return blk
+
+    elif block_type == BlockType.CIMW:
+        blk = tem.build_cimw_template(vf=var_factory, name=item_name).block
+        blk.name = item_name
+        return blk
+
+    elif block_type == BlockType.GENSAL:
+        blk = tem.build_gensal_template(vf=var_factory, name=item_name).block
+        blk.name = item_name
+        return blk
+
+    elif block_type == BlockType.GENROU:
+        blk = tem.build_genrou_template(vf=var_factory, name=item_name).block
+        blk.name = item_name
+        return blk
+
+    elif block_type == BlockType.GGOV1:
+        blk = tem.build_ggov1_template(vf=var_factory, name=item_name).block
+        blk.name = item_name
+        return blk
+
+    elif block_type == BlockType.HYGOV:
+        blk = tem.build_hygov_template(vf=var_factory, name=item_name).block
+        blk.name = item_name
+        return blk
+
+    elif block_type == BlockType.IEEL:
+        blk = tem.build_ieel_template(vf=var_factory, name=item_name).block
+        blk.name = item_name
+        return blk
+
+    elif block_type == BlockType.TGOV1:
+        blk = tem.build_tgov1_template(vf=var_factory, name=item_name).block
+        blk.name = item_name
+        return blk
 
 
     # DC PV source averaged
@@ -791,7 +1153,7 @@ def create_block_of_type(var_factory: VarFactory,
 
     # #
     # elif block_type == BlockType.INDUCTION_MOTOR_EMT:
-    #     blk = tem.get_induction_motor_emt_template(vf=var_factory, name=item_name).block
+    #     blk = tem.get_induction_motor_emt_template(vf=var_factory, name=item_name).block.block
     #     blk.name = item_name
     #     return blk
 

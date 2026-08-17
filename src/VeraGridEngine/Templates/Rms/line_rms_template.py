@@ -91,6 +91,7 @@ def get_line_rms_template(vfactory: VarFactory, name="Line_rms_template") -> Rms
 
 
 
+    templ.comment = 'AC line RMS pi-equivalent model'
     return templ
 
 
@@ -214,6 +215,7 @@ def get_dc_line_rms_template(
     templ.block.__dict__["rms_conduction_status_var_uid"] = u.uid
     block.__dict__["rms_conduction_status_var_uid"] = u.uid
 
+    templ.comment = 'DC line RMS series R-L model'
     return templ
 
 
@@ -360,4 +362,5 @@ def get_ideal_ac_connector_rms_template(
     block.__dict__["skip_device_local_explicit_init"] = True
     block.__dict__["startup_initial_reduced_polish_var_names"] = list(polish_variable_names)
 
+    template.comment = 'Ideal AC connector RMS model'
     return template

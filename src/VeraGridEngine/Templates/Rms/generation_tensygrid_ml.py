@@ -101,12 +101,13 @@ def _build_f_exc_block(vfactory: VarFactory, x, mode: str = "ml"):
     return blk, y
 
 
-def GenqecBuild(vfactory: VarFactory, name: str = "", hard_sat_type: str = "ml") -> RmsModelTemplate:
+def GenqecBuild(vfactory: VarFactory, name: str = "GENQEC RMS template", hard_sat_type: str = "ml") -> RmsModelTemplate:
     """
      generator with quadratic saturation
     """
     pi = math.pi
-    templ = RmsModelTemplate()
+    templ = RmsModelTemplate(name=name)
+    templ.name = name
     templ.tpe = DeviceType.GeneratorDevice
 
     # Inputs
@@ -383,11 +384,13 @@ def GenqecBuild(vfactory: VarFactory, name: str = "", hard_sat_type: str = "ml")
         name="genqec"
     )
 
+    templ.comment = 'Generator GENQEC RMS model'
     return templ
 
 
-def GovernorBuild(vfactory: VarFactory, name: str = "", hard_sat_type: str = "ml") -> RmsModelTemplate:
-    templ = RmsModelTemplate()
+def GovernorBuild(vfactory: VarFactory, name: str = "Governor RMS template", hard_sat_type: str = "ml") -> RmsModelTemplate:
+    templ = RmsModelTemplate(name=name)
+    templ.name = name
 
     parameters = {
         # Time constants
@@ -566,11 +569,13 @@ def GovernorBuild(vfactory: VarFactory, name: str = "", hard_sat_type: str = "ml
         },
     )
     templ.block.children.extend([ml_block1, ml_block2])
+    templ.comment = 'Generator governor RMS control block'
     return templ
 
 
-def StabilizerBuild(vfactory: VarFactory, name: str = "", hard_sat_type: str = "ml") -> RmsModelTemplate:
-    templ = RmsModelTemplate()
+def StabilizerBuild(vfactory: VarFactory, name: str = "Stabilizer RMS template", hard_sat_type: str = "ml") -> RmsModelTemplate:
+    templ = RmsModelTemplate(name=name)
+    templ.name = name
 
     parameters = {
         # Stabilizer parameters
@@ -674,16 +679,18 @@ def StabilizerBuild(vfactory: VarFactory, name: str = "", hard_sat_type: str = "
     templ.block.add(vars_block)
     templ.block.add(ml_block)
 
+    templ.comment = 'Generator stabilizer RMS control block'
     return templ
 
 
-def ExciterBuild(vfactory: VarFactory, name: str = "", hard_sat_type: str = "ml") -> RmsModelTemplate:
+def ExciterBuild(vfactory: VarFactory, name: str = "Exciter RMS template", hard_sat_type: str = "ml") -> RmsModelTemplate:
     """
 
     :param name: 
     :return: 
     """
-    templ = RmsModelTemplate()
+    templ = RmsModelTemplate(name=name)
+    templ.name = name
 
     Ka = vfactory.add_var("Ka")
     tA = vfactory.add_var("tA")
@@ -909,16 +916,18 @@ def ExciterBuild(vfactory: VarFactory, name: str = "", hard_sat_type: str = "ml"
         },
     )
 
+    templ.comment = 'Generator exciter RMS control block'
     return templ
 
 
-def OELBuild(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
+def OELBuild(vfactory: VarFactory, name: str = "OEL RMS template") -> RmsModelTemplate:
     """
     
     :param name: 
     :return: 
     """
-    templ = RmsModelTemplate()
+    templ = RmsModelTemplate(name=name)
+    templ.name = name
 
     oel_block = Block(name='exciter_limiter_block')
     algebraic_eqs = []
@@ -1144,6 +1153,7 @@ def OELBuild(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
     oel_block.in_vars = inputs
     oel_block.out_vars = [V_oel_sat]
     templ.block = oel_block
+    templ.comment = 'Generator over-excitation limiter RMS block'
     return templ
 
 
@@ -1198,4 +1208,5 @@ def get_complete_generator_template(vfactory: VarFactory,
     templ.block.in_vars = [genqec_mdl.in_vars[0], genqec_mdl.in_vars[1]]
     templ.block.out_vars = [genqec_mdl.out_vars[0], genqec_mdl.out_vars[1]]
 
+    templ.comment = 'Complete generator RMS model'
     return templ

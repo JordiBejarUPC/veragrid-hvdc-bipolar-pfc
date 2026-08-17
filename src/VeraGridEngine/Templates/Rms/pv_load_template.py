@@ -24,7 +24,7 @@ class PvLoadRmsTemplate(TemplateDefinition):
         return PVLoadBuild(self.vf, self.get_value("name"), self.get_value("Pg0_val"), self.get_value("Vg0_val"))
 
 
-def PVLoadBuild(vfactory: VarFactory, name: str = "", Pg0_val=1.0, Vg0_val=1.0) -> RmsModelTemplate:
+def PVLoadBuild(vfactory: VarFactory, name: str = "PV load RMS template", Pg0_val=1.0, Vg0_val=1.0) -> RmsModelTemplate:
     """
     Builds an RMS model template for a PV load with reactive power limits.
     
@@ -51,6 +51,7 @@ def PVLoadBuild(vfactory: VarFactory, name: str = "", Pg0_val=1.0, Vg0_val=1.0) 
     """
     templ = RmsModelTemplate()
     templ.tpe = DeviceType.LoadDevice
+    templ.name = name
     
     # Input: Vm (voltage magnitude)
     Vm = vfactory.add_var("Vm")
@@ -109,5 +110,6 @@ def PVLoadBuild(vfactory: VarFactory, name: str = "", Pg0_val=1.0, Vg0_val=1.0) 
     
     templ.block.in_vars = inputs
     
+    templ.comment = 'Load RMS PV voltage-dependent model'
     return templ
 

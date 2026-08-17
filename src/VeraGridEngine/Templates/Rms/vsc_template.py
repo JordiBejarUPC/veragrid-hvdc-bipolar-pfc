@@ -13,12 +13,13 @@ from VeraGridEngine.Utils.Symbolic.block_helpers import tf_to_diffblock_with_ant
 import VeraGridEngine.Utils.Symbolic.symbolic as sym
 
 
-def VSCShuntBuild(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
+def VSCShuntBuild(vfactory: VarFactory, name: str = "VSC shunt RMS template") -> RmsModelTemplate:
     """
      VSC shunt model
      with from side the DC bus and to side the AC bus
     """
     templ = RmsModelTemplate()
+    templ.name = name
     templ.tpe = DeviceType.VscDevice
     inputs = [vfactory.add_var("Vm"), vfactory.add_var("Va"), vfactory.add_var("Vdc"), vfactory.add_var("Idc")]
     Vm = inputs[0]
@@ -74,15 +75,17 @@ def VSCShuntBuild(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
 
     vsc_block.name = name
     templ.block = vsc_block
+    templ.comment = 'VSC shunt RMS model'
     return templ
 
 
-def VSCShuntBuild2(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
+def VSCShuntBuild2(vfactory: VarFactory, name: str = "VSC shunt RMS template 2") -> RmsModelTemplate:
     """
      VSC shunt model
      with from side the DC bus and to side the AC bus
     """
     templ = RmsModelTemplate()
+    templ.name = name
     templ.tpe = DeviceType.VscDevice
     inputs = [vfactory.add_var("Vm_"), vfactory.add_var("Va_"), vfactory.add_var("Vdc_")]
     Vm = inputs[0]
@@ -137,6 +140,7 @@ def VSCShuntBuild2(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
 
     vsc_block.name = name
     templ.block = vsc_block
+    templ.comment = 'VSC shunt RMS model variant 2'
     return templ
 
 
@@ -221,8 +225,9 @@ def PVControlBuild2(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
     return templ
 
 
-def PVControlBuild(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
+def PVControlBuild(vfactory: VarFactory, name: str = "PV control RMS template") -> RmsModelTemplate:
     templ = RmsModelTemplate()
+    templ.name = name
     inputs = [vfactory.add_var("Vdc_"), vfactory.add_var("ahs_")]
     Vdc = inputs[0]
     alpha = inputs[1]
@@ -271,11 +276,13 @@ def PVControlBuild(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
     templ.block = solar_block
     templ.block.event_dict = event_dict
 
+    templ.comment = 'PV converter RMS control block'
     return templ
 
 
-def PVCellBuild(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
+def PVCellBuild(vfactory: VarFactory, name: str = "PV cell RMS template") -> RmsModelTemplate:
     templ = RmsModelTemplate()
+    templ.name = name
     inputs = [vfactory.add_var("Vdc_")]
     Vdc = inputs[0]
 
@@ -367,6 +374,7 @@ def PVCellBuild(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
     solar_block.event_dict = event_dict
     templ.block = solar_block
 
+    templ.comment = 'PV cell RMS source block'
     return templ
 
 

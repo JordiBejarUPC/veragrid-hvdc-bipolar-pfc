@@ -38,7 +38,7 @@ def build_ac7c_template(vf: VarFactory, name: str | None = None) -> RmsModelTemp
 
     # Allocate the template container before building the symbolic surface.
     template: RmsModelTemplate = RmsModelTemplate()
-    template.tpe = DeviceType.NoDevice
+    template.tpe = DeviceType.GeneratorDevice
     template.name = template_name
 
     # Declare every variable explicitly before the equations reference it.
@@ -932,4 +932,5 @@ def build_ac7c_template(vf: VarFactory, name: str | None = None) -> RmsModelTemp
         name=template_name,
     )
 
+    template.comment = 'Generator AVR/exciter IEEE AC7C'
     return template

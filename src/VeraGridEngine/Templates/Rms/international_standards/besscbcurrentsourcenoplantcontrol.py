@@ -38,7 +38,7 @@ def build_besscbcurrentsourcenoplantcontrol_template(vf: VarFactory, name: str |
 
     # Allocate the template container before building the symbolic surface.
     template: RmsModelTemplate = RmsModelTemplate()
-    template.tpe = DeviceType.NoDevice
+    template.tpe = DeviceType.BatteryDevice
     template.name = template_name
 
     # Declare every variable explicitly before the equations reference it.
@@ -1567,4 +1567,5 @@ def build_besscbcurrentsourcenoplantcontrol_template(vf: VarFactory, name: str |
         name=template_name,
     )
 
+    template.comment = 'Battery WECC BESS current-source model'
     return template

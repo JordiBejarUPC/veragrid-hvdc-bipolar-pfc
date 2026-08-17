@@ -35,7 +35,7 @@ def build_ieeevc_1981_template(vf: VarFactory, name: str | None = None) -> RmsMo
 
     # Allocate the externally supplied phasor components before deriving compensation.
     templ: RmsModelTemplate = RmsModelTemplate(name=template_name)
-    templ.tpe = DeviceType.NoDevice
+    templ.tpe = DeviceType.GeneratorDevice
 
     ut_re: Var = vf.add_var(name=f"UtRePu_{template_name}")
     ut_im: Var = vf.add_var(name=f"UtImPu_{template_name}")
@@ -80,4 +80,5 @@ def build_ieeevc_1981_template(vf: VarFactory, name: str | None = None) -> RmsMo
         out_vars=[vcomp],
         name=template_name,
     )
+    templ.comment = 'Generator voltage compensator IEEEVC 1981'
     return templ

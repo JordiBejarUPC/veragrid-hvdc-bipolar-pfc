@@ -38,7 +38,7 @@ def build_reecc_template(vf: VarFactory, name: str | None = None) -> RmsModelTem
 
     # Allocate the template container before building the symbolic surface.
     template: RmsModelTemplate = RmsModelTemplate()
-    template.tpe = DeviceType.NoDevice
+    template.tpe = DeviceType.GeneratorDevice
     template.name = template_name
 
     # Declare every variable explicitly before the equations reference it.
@@ -917,4 +917,5 @@ def build_reecc_template(vf: VarFactory, name: str | None = None) -> RmsModelTem
     template.block.init_eqs[ctrl_rateLimFirstOrderFreeze1_y] = ctrl_rateLimFirstOrderFreeze1_Y0
     template.block.init_eqs[ctrl_varLimPIDFreeze_I_y] = ctrl_varLimPIDFreeze_I_Y0
 
+    template.comment = 'Generator WECC renewable electrical control REECC'
     return template

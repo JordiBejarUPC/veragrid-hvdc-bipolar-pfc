@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
+from VeraGridEngine.enumerations import DeviceType
 from VeraGridEngine.Templates.Rms.international_standards.auxiliary_functions import build_generator_band_trip_relay
 
 def build_frqtpa_template(vf: VarFactory, name: str | None = None) -> RmsModelTemplate:
@@ -38,4 +39,6 @@ def build_frqtpa_template(vf: VarFactory, name: str | None = None) -> RmsModelTe
         lower_default=57.5,
         upper_default=61.8,
     )
+    template.tpe = DeviceType.GeneratorDevice
+    template.comment = 'Generator frequency trip relay FRQTPA'
     return template
