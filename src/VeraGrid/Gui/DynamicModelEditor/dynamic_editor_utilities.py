@@ -217,7 +217,9 @@ class JMartiBlockTemplateDefinition(TemplateDefinition):
 
 
 def get_blocktype2template_builder_dict() -> Dict[BlockType, type[TemplateDefinition]]:
-    """Return the native block types constructed through template definitions.
+    """
+    Return the native block types constructed through template definitions. Only the ones that need more input info
+    apart from VarFactory and name
 
     :return: Builder class lookup used by drop and properties workflows.
     """

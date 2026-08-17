@@ -19,6 +19,9 @@ from PySide6 import QtCore, QtGui, QtSvg, QtWidgets
 from PySide6.QtCore import Qt, Signal
 
 from VeraGrid.Gui.Icons import icons_rc
+from VeraGrid.Gui.DynamicModelEditor.dynamic_block_properties_gui import (
+    Ui_DynamicBlockPropertiesDialog,
+)
 from VeraGrid.Gui.DynamicModelEditor.dynamic_equation_pdf import (
     EquationExportEntry,
     EquationExportSection,
@@ -571,9 +574,9 @@ class BlockSymbolDraftRow:
         "_original_kind",
         "_exported",
         "_value_text",
-        "_create_derivative",
         "_external_reference",
         "_static_reference",
+        "_derivative_base_row",
     )
 
     def __init__(self,
@@ -583,9 +586,9 @@ class BlockSymbolDraftRow:
                  kind: BlockSymbolKind,
                  exported: bool,
                  value_text: str,
-                 create_derivative: bool = False,
                  external_reference: VarPowerFlowReferenceType | None = None,
-                 static_reference: ParamPowerFlowReferenceType | None = None) -> None:
+                 static_reference: ParamPowerFlowReferenceType | None = None,
+                 derivative_base_row: "BlockSymbolDraftRow | None" = None) -> None:
         """Capture a symbol row without modifying its owner block."""
         self._owner: Block = owner
         self._variable: Var | None = variable
@@ -594,7 +597,7 @@ class BlockSymbolDraftRow:
         self._original_kind: BlockSymbolKind = kind
         self._exported: bool = exported and kind != BlockSymbolKind.INPUT
         self._value_text: str = value_text
-        self._create_derivative: bool = create_derivative
+        self._derivative_base_row: BlockSymbolDraftRow | None = derivative_base_row
         if self.supports_external_reference():
             self._external_reference: VarPowerFlowReferenceType | None = external_reference
             self._static_reference: ParamPowerFlowReferenceType | None = None
@@ -612,6 +615,14 @@ class BlockSymbolDraftRow:
     def get_variable(self) -> Var | None:
         """Return the existing variable or ``None`` for a staged addition."""
         return self._variable
+
+    def set_variable(self, variable: Var) -> None:
+        """Bind the authoritative variable created when the draft is applied.
+
+        :param variable: Variable identity registered by ``VarFactory``.
+        :return: None.
+        """
+        self._variable = variable
 
     def get_name(self) -> str:
         """Return the symbol name."""
@@ -652,13 +663,16 @@ class BlockSymbolDraftRow:
         """Return whether the row represents a symbol not yet in VarFactory."""
         return self._variable is None
 
-    def should_create_derivative(self) -> bool:
-        """Return whether a new state also requests its derivative variable."""
-        return self._create_derivative
-
     def get_derivative_name(self) -> str:
         """Return the conventional derivative name for a staged state."""
         return f"d_{self._name}"
+
+    def get_derivative_base_row(self) -> "BlockSymbolDraftRow | None":
+        """Return the staged state row associated with this derivative.
+
+        :return: State draft used as the derivative's ``base_var``.
+        """
+        return self._derivative_base_row
 
     def get_static_reference(self) -> ParamPowerFlowReferenceType | None:
         """Return the selected device static-parameter mapping, if any."""
@@ -890,7 +904,6 @@ class BlockSymbolDraftModel(QtCore.QAbstractTableModel):
                         kind,
                         variable in owner.out_vars,
                         value_text,
-                        False,
                         external_reference,
                         static_reference,
                     )
@@ -1110,30 +1123,55 @@ class BlockSymbolDraftModel(QtCore.QAbstractTableModel):
                    create_derivative: bool = False,
                    external_reference: VarPowerFlowReferenceType | None = None,
                    static_reference: ParamPowerFlowReferenceType | None = None) -> None:
-        """Append a detached new symbol owned by the selected recursive block.
+        """Append a detached new symbol and its requested derivative row.
 
         :param owner: Concrete block that will own the new symbol after Apply.
         :param name: Valid symbolic name.
         :param kind: Primary DAE role.
         :param exported: Independent output-port role.
         :param value: Initial value for parameter-like roles.
+        :param create_derivative: Whether a state also stages ``d_<name>``.
+        :param external_reference: Optional variable power-flow mapping.
+        :param static_reference: Optional static-device parameter mapping.
         :return: None.
         """
         insertion_row: int = len(self._rows)
-        self.beginInsertRows(QtCore.QModelIndex(), insertion_row, insertion_row)
-        self._rows.append(
-            BlockSymbolDraftRow(
-                owner,
-                None,
-                name,
-                kind,
-                exported,
-                str(value),
-                create_derivative,
-                external_reference,
-                static_reference,
-            )
+        stages_derivative: bool = kind == BlockSymbolKind.STATE and create_derivative
+        if stages_derivative:
+            final_insertion_row: int = insertion_row + 1
+        else:
+            final_insertion_row = insertion_row
+        self.beginInsertRows(QtCore.QModelIndex(), insertion_row, final_insertion_row)
+        state_row: BlockSymbolDraftRow = BlockSymbolDraftRow(
+            owner,
+            None,
+            name,
+            kind,
+            exported,
+            str(value),
+            external_reference,
+            static_reference,
         )
+        self._rows.append(state_row)
+        if stages_derivative:
+            # A derivative is a first-class block variable. Staging it as its
+            # own row makes the pending model structure visible before Apply,
+            # while retaining the state identity required by ``base_var``.
+            self._rows.append(
+                BlockSymbolDraftRow(
+                    owner,
+                    None,
+                    state_row.get_derivative_name(),
+                    BlockSymbolKind.DIFFERENTIAL,
+                    False,
+                    "0.0",
+                    None,
+                    None,
+                    state_row,
+                )
+            )
+        else:
+            pass
         self.endInsertRows()
 
     def remove_new_symbol(self, row_index: int) -> bool:
@@ -1186,15 +1224,6 @@ class BlockSymbolDraftModel(QtCore.QAbstractTableModel):
             if row.is_new():
                 namespace[name] = Var(name)
                 names_seen.add(name)
-                if row.should_create_derivative():
-                    derivative_name: str = row.get_derivative_name()
-                    if derivative_name in names_seen:
-                        raise ValueError(f"Symbol '{derivative_name}' already exists")
-                    else:
-                        namespace[derivative_name] = Var(derivative_name)
-                        names_seen.add(derivative_name)
-                else:
-                    pass
             else:
                 pass
             if row.is_new() and row.kind_supports_value():
@@ -1256,20 +1285,23 @@ class BlockSymbolDraftModel(QtCore.QAbstractTableModel):
             variable: Var | None = row.get_variable()
             if variable is None:
                 if row.get_kind() == BlockSymbolKind.DIFFERENTIAL:
-                    variable = var_factory.add_diff_var(name=row.get_name())
+                    derivative_base_row: BlockSymbolDraftRow | None = row.get_derivative_base_row()
+                    if derivative_base_row is not None:
+                        derivative_base_variable: Var | None = derivative_base_row.get_variable()
+                    else:
+                        derivative_base_variable = None
+                    variable = var_factory.add_diff_var(
+                        name=row.get_name(),
+                        base_var=derivative_base_variable,
+                    )
                 else:
                     variable = var_factory.add_var(name=row.get_name())
+                # Later staged rows may depend on this exact identity. Bind it
+                # before continuing so a derivative can preserve ``base_var``.
+                row.set_variable(variable)
                 reclassify_block_symbol(
                     row.get_owner(), variable, row.get_kind(), row.parse_value(), var_factory
                 )
-                if row.should_create_derivative() and row.get_kind() == BlockSymbolKind.STATE:
-                    derivative_variable: Var = var_factory.add_diff_var(
-                        name=row.get_derivative_name(),
-                        base_var=variable,
-                    )
-                    row.get_owner().diff_vars.append(derivative_variable)
-                else:
-                    pass
             else:
                 if row.get_kind() != row.get_original_kind():
                     reclassify_block_symbol(
@@ -3556,6 +3588,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
     closeRequested = Signal()
 
     __slots__ = (
+        "ui",
         "_block",
         "_block_type_name",
         "_structural_block_type",
@@ -3601,6 +3634,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         "_dae_highlighter",
         "_validate_code_button",
         "_dae_splitter",
+        "_symbol_panel_splitter",
         "_latex_model",
         "_latex_selection_tree",
         "_latex_select_all_button",
@@ -3625,6 +3659,11 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
                  structural_builder: TemplateDefinition | None = None) -> None:
         """Create the modal around a detached parameter and equation draft."""
         super().__init__(parent)
+        # Keep the stable dialogue frame in the Qt Designer form, matching the
+        # static TemplateDeviceEditor architecture. Block-dependent pages are
+        # inserted afterwards because their number and contents are dynamic.
+        self.ui: Ui_DynamicBlockPropertiesDialog = Ui_DynamicBlockPropertiesDialog()
+        self.ui.setupUi(self)
         # Direct test and tooling call sites do not necessarily pass through the
         # editor wrapper that used to set this attribute. Make ownership
         # deterministic at the dialogue boundary so Qt destroys the complete
@@ -3711,7 +3750,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
             self,
         )
         self._namespace = self._runtime_logic_editor.build_validation_namespace(self._namespace)
-        self._tabs: QtWidgets.QTabWidget = QtWidgets.QTabWidget(self)
+        self._tabs: QtWidgets.QTabWidget = self.ui.tab_widget
         self._equation_buffers: List[BlockCodeBuffer] = list()
         child_block: Block
         for child_block in block.get_all_blocks():
@@ -3738,6 +3777,10 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
             self.tr("Validate all code"), self
         )
         self._dae_splitter: QtWidgets.QSplitter = QtWidgets.QSplitter(Qt.Orientation.Horizontal, self)
+        self._symbol_panel_splitter: QtWidgets.QSplitter = QtWidgets.QSplitter(
+            Qt.Orientation.Vertical,
+            self,
+        )
         initial_equation_block: Block = self._equation_buffers[self._active_equation_buffer_index].get_block()
         initial_draft: BlockEquationDraft = BlockEquationDraft(
             initial_equation_block.state_eqs,
@@ -3760,9 +3803,9 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         self._documentation_source: str = ""
         self._dock_hosted: bool = False
         self._prepared_to_delete: bool = False
-        self._status_label: QtWidgets.QLabel = QtWidgets.QLabel(self)
-        self._apply_button: QtWidgets.QPushButton = QtWidgets.QPushButton(self.tr("Apply changes"), self)
-        self._close_button: QtWidgets.QPushButton = QtWidgets.QPushButton(self.tr("Close"), self)
+        self._status_label: QtWidgets.QLabel = self.ui.status_label
+        self._apply_button: QtWidgets.QPushButton = self.ui.apply_button
+        self._close_button: QtWidgets.QPushButton = self.ui.close_button
         self._build_ui()
         self._connect_signals()
         self._clear_dae_validation_feedback()
@@ -3843,14 +3886,9 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         return result
 
     def _build_ui(self) -> None:
-        """Build the property tabs and bottom action row."""
+        """Populate the Designer-owned frame with block-dependent pages."""
         self.setWindowTitle(self.tr("Block properties - {name}").format(name=self._block.name))
         self.setModal(True)
-        # Keep the initial modal comfortably below a full desktop window. The
-        # DAE splitter remains movable when either table or code needs more room.
-        self.resize(1200, 700)
-        root_layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(self)
-        root_layout.addWidget(self._tabs, 1)
 
         general_page: QtWidgets.QWidget = self._build_general_page()
         dae_page: QtWidgets.QWidget = self._build_dae_page()
@@ -3870,16 +3908,6 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
             self._tabs.setTabIcon(special_index, QtGui.QIcon(":/Icons/icons/gear.png"))
         else:
             pass
-
-        self._status_label.setWordWrap(True)
-        self._status_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
-        root_layout.addWidget(self._status_label)
-        button_layout: QtWidgets.QHBoxLayout = QtWidgets.QHBoxLayout()
-        button_layout.addStretch(1)
-        self._apply_button.setIcon(QtGui.QIcon(":/Icons/icons/accept.png"))
-        button_layout.addWidget(self._apply_button)
-        button_layout.addWidget(self._close_button)
-        root_layout.addLayout(button_layout)
 
     def _build_general_page(self) -> QtWidgets.QWidget:
         """Build block identity, configuration, and numeric parameter controls."""
@@ -4107,10 +4135,11 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         )
         parameter_layout.addWidget(self._parameter_symbol_table, 1)
         symbol_tabs.addTab(parameter_page, self.tr("Parameters"))
-        panel_layout.addWidget(symbol_tabs, 1)
-
         add_group: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self.tr("Add symbol to selected block"), panel)
         add_layout: QtWidgets.QGridLayout = QtWidgets.QGridLayout(add_group)
+        add_layout.setContentsMargins(6, 4, 6, 4)
+        add_layout.setHorizontalSpacing(6)
+        add_layout.setVerticalSpacing(3)
         block_index: int
         child_block: Block
         for block_index, child_block in enumerate(self._block.get_all_blocks()):
@@ -4157,7 +4186,17 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         add_layout.addWidget(self._new_external_reference_label, 5, 0)
         add_layout.addWidget(self._new_external_reference, 5, 1)
         add_layout.addWidget(self._add_symbol_button, 6, 0, 1, 2)
-        panel_layout.addWidget(add_group)
+        # The user can trade form height for table height. This is deliberately
+        # a vertical splitter inside the horizontally resizable DAE page, so
+        # both dimensions remain independently adjustable.
+        self._symbol_panel_splitter.addWidget(symbol_tabs)
+        self._symbol_panel_splitter.addWidget(add_group)
+        self._symbol_panel_splitter.setStretchFactor(0, 1)
+        self._symbol_panel_splitter.setStretchFactor(1, 0)
+        self._symbol_panel_splitter.setCollapsible(0, False)
+        self._symbol_panel_splitter.setCollapsible(1, False)
+        self._symbol_panel_splitter.setSizes(list([560, 190]))
+        panel_layout.addWidget(self._symbol_panel_splitter, 1)
         self.update_new_symbol_category()
         self.update_new_symbol_controls()
         return panel
@@ -4706,6 +4745,10 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
                 self._namespace = self._build_joint_validation_namespace()
             except ValueError as error:
                 self._symbol_model.remove_new_symbol(self._symbol_model.rowCount() - 1)
+                if selected_data == BlockSymbolKind.STATE and self._new_state_derivative.isChecked():
+                    self._symbol_model.remove_new_symbol(self._symbol_model.rowCount() - 1)
+                else:
+                    pass
                 self._show_validation_error(str(error))
             else:
                 self._new_symbol_name.clear()
@@ -4824,7 +4867,6 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         else:
             pass
 
-    @QtCore.Slot()
     @QtCore.Slot()
     def on_dae_code_changed(self) -> None:
         """Persist edits and clear stale diagnostics until Validate is pressed."""
@@ -5260,6 +5302,36 @@ class DynamicBlockPropertiesDockWidget(QtWidgets.QDockWidget):
         self._properties_widget.setAttribute(QtCore.Qt.WidgetAttribute.WA_DeleteOnClose, False)
         self.setWidget(self._properties_widget)
         self._properties_widget.closeRequested.connect(self.close)
+        self.topLevelChanged.connect(self.configure_floating_close_only_frame)
+
+    @QtCore.Slot(bool)
+    def configure_floating_close_only_frame(self, floating: bool) -> None:
+        """Match the DeviceEditor frame while the properties dock is floating.
+
+        ``TemplateDeviceEditor`` is a regular ``QDialog`` and therefore uses
+        the operating system's native close control. A floating ``QDockWidget``
+        normally keeps Qt's themed dock close subcontrol instead. Selecting a
+        native window frame with only ``WindowCloseButtonHint`` removes that
+        visual mismatch without exposing non-functional minimize controls.
+
+        :param floating: Whether the dock has become a top-level window.
+        :return: None.
+        """
+        if floating:
+            floating_flags: Qt.WindowType = (
+                Qt.WindowType.Window
+                | Qt.WindowType.CustomizeWindowHint
+                | Qt.WindowType.WindowTitleHint
+                | Qt.WindowType.WindowSystemMenuHint
+                | Qt.WindowType.WindowCloseButtonHint
+            )
+            self.setWindowFlags(floating_flags)
+            # Updating native decorations temporarily hides the widget. Show
+            # it again before the opening code positions the floating dock.
+            self.show()
+        else:
+            # Qt restores its embedded dock title bar after reattachment.
+            pass
 
     def get_properties_widget(self) -> DynamicBlockPropertiesDialog:
         """Return the property-editor content owned by this dock.
@@ -5279,6 +5351,10 @@ class DynamicBlockPropertiesDockWidget(QtWidgets.QDockWidget):
             self._prepared_to_delete = True
             try:
                 self._properties_widget.closeRequested.disconnect(self.close)
+            except (RuntimeError, TypeError):
+                pass
+            try:
+                self.topLevelChanged.disconnect(self.configure_floating_close_only_frame)
             except (RuntimeError, TypeError):
                 pass
             self._properties_widget.prepare_to_delete()

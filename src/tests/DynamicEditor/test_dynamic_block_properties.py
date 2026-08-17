@@ -328,6 +328,55 @@ def test_staged_symbol_is_created_only_when_apply_is_pressed() -> None:
     dialogue.close()
 
 
+def test_new_state_derivative_is_visible_and_preserves_its_base_variable() -> None:
+    """Creating a state derivative must stage and apply a visible differential row."""
+    application: QtWidgets.QApplication = get_qt_application()
+    _unused_application: QtWidgets.QApplication = application
+    var_factory: VarFactory = VarFactory()
+    block: Block = Block(name="editable_state")
+    dialogue: DynamicBlockPropertiesDialog = DynamicBlockPropertiesDialog(
+        block,
+        "GENERIC",
+        var_factory,
+    )
+    dialogue._new_symbol_name.setText("d111")
+    dialogue._new_symbol_kind.setCurrentText(BlockSymbolKind.STATE.value)
+    dialogue._new_state_derivative.setChecked(True)
+
+    dialogue.add_staged_symbol()
+
+    staged_variable_names: list[str] = list()
+    proxy_row: int
+    for proxy_row in range(dialogue._variable_symbol_proxy.rowCount()):
+        name_index: QtCore.QModelIndex = dialogue._variable_symbol_proxy.index(proxy_row, 1)
+        staged_variable_names.append(str(name_index.data()))
+    assert staged_variable_names == ["d111", "d_d111"]
+    assert dialogue._variable_symbol_proxy.index(1, 2).data() == BlockSymbolKind.DIFFERENTIAL.value
+    assert block.state_vars == list()
+    assert block.diff_vars == list()
+
+    # The state equation stores the RHS. The separately staged derivative is
+    # the corresponding LHS identity and therefore needs no extra equation.
+    dialogue._dae_editor.setPlainText(
+        "state_eqs = [0]\n"
+        "algebraic_eqs = []\n"
+        "differential_eqs = []\n"
+        "init_eqs = {}\n"
+        "diff_init_eqs = {}"
+    )
+    dialogue.apply_changes()
+
+    assert [variable.name for variable in block.state_vars] == ["d111"]
+    assert [variable.name for variable in block.diff_vars] == ["d_d111"]
+    assert block.diff_vars[0].base_var is block.state_vars[0]
+    assert block.state_vars[0].diff_var is block.diff_vars[0]
+    assert [
+        str(dialogue._variable_symbol_proxy.index(proxy_row, 1).data())
+        for proxy_row in range(dialogue._variable_symbol_proxy.rowCount())
+    ] == ["d111", "d_d111"]
+    dialogue.close()
+
+
 def test_new_input_is_applied_without_offering_external_mapping() -> None:
     """A user-created input must become a port and never request a PF mapping."""
     application: QtWidgets.QApplication = get_qt_application()
@@ -690,6 +739,18 @@ def test_every_block_properties_table_column_is_manually_resizable() -> None:
     application.processEvents()
     expanded_sizes: list[int] = dialogue._dae_splitter.sizes()
     assert expanded_sizes[0] > initial_split_sizes[0]
+
+    # The vertical handle must likewise let the table consume space from the
+    # add-symbol form, which remains usable at its minimum size.
+    initial_vertical_sizes: list[int] = dialogue._symbol_panel_splitter.sizes()
+    initial_vertical_total: int = sum(initial_vertical_sizes)
+    dialogue._symbol_panel_splitter.setSizes(
+        list([initial_vertical_total - 130, 130])
+    )
+    application.processEvents()
+    enlarged_table_sizes: list[int] = dialogue._symbol_panel_splitter.sizes()
+    assert enlarged_table_sizes[0] > initial_vertical_sizes[0]
+    assert enlarged_table_sizes[1] < initial_vertical_sizes[1]
     dialogue.close()
 
 

@@ -379,6 +379,13 @@ def test_block_properties_right_dock_stacks_vertically_with_library() -> None:
         assert isinstance(properties_dock, DynamicBlockPropertiesDockWidget)
         assert isinstance(library_dock, QtWidgets.QDockWidget)
         assert properties_dock.isFloating()
+        floating_flags: QtCore.Qt.WindowType = properties_dock.windowFlags()
+        assert (
+            floating_flags & QtCore.Qt.WindowType.WindowType_Mask
+        ) == QtCore.Qt.WindowType.Window
+        assert floating_flags & QtCore.Qt.WindowType.WindowCloseButtonHint
+        assert not floating_flags & QtCore.Qt.WindowType.WindowMinimizeButtonHint
+        assert not floating_flags & QtCore.Qt.WindowType.WindowMaximizeButtonHint
         allowed_areas: QtCore.Qt.DockWidgetArea = properties_dock.allowedAreas()
         assert allowed_areas & QtCore.Qt.DockWidgetArea.LeftDockWidgetArea
         assert allowed_areas & QtCore.Qt.DockWidgetArea.RightDockWidgetArea
