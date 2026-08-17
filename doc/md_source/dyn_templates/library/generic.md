@@ -1,5 +1,14 @@
 # Generic
 
+<!-- veragrid-block-introduction:start -->
+**Generic** is a reusable symbolic building block for dynamic models. Its inputs, outputs, parameters, equations, and runtime logic define a mathematical signal relation that can be composed with network, machine, converter, and control subsystems.
+
+## Typical use
+
+- Use it when assembling or extending a dynamic model with the documented symbolic relation.
+- Inspect equations and interface units before connecting it to blocks from another physical domain.
+<!-- veragrid-block-introduction:end -->
+
 Placeholder dynamic block for custom signal/state wiring.
 
 ## Purpose and behavior

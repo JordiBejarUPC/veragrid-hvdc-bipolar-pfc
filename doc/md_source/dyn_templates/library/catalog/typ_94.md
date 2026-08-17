@@ -2,6 +2,15 @@
 
 This is Basic Block Catalog type `94` (`Deadband stepped [p`). It applies the declared limiting or nonlinear relation to its input signals.
 
+<!-- veragrid-block-introduction:start -->
+**Deadband stepped (parameter)** represents passive network physics through resistance, inductance, capacitance, coupling, or switching topology. Its equations enforce voltage-current constitutive relations and therefore affect energy storage, damping, propagation, fault current, or grounding behavior.
+
+## Typical use
+
+- Use it to reproduce the electrical path between sources, converters, machines, and loads.
+- Keep phases, terminal orientation, connection type, and SI/per-unit parameter bases consistent.
+<!-- veragrid-block-introduction:end -->
+
 ## Behaviour
 
 - Library location: `Native / Limits and Nonlinearities / Deadbands and Rate Limiters`.
@@ -14,7 +23,7 @@ This is Basic Block Catalog type `94` (`Deadband stepped [p`). It applies the de
 ## Characteristic equations
 
 $$
-0 = (yo - y_{min} + (proc_{selfix\_1} \cdot (proc_{select\_0} \cdot yi + (1 - proc_{select\_0}) \cdot 0) + (1 - proc_{selfix\_1}) \cdot yi - y_{min}) \cdot \Theta\left(proc_{selfix\_1} \cdot (proc_{select\_0} \cdot yi + (1 - proc_{select\_0}) \cdot 0) + (1 - proc_{selfix\_1}) \cdot yi - y_{min}\right) - (proc_{selfix\_1} \cdot (proc_{select\_0} \cdot yi + (1 - proc_{select\_0}) \cdot 0) + (1 - proc_{selfix\_1}) \cdot yi - y_{max}) \cdot \Theta\left(proc_{selfix\_1} \cdot (proc_{select\_0} \cdot yi + (1 - proc_{select\_0}) \cdot 0) + (1 - proc_{selfix\_1}) \cdot yi - y_{max}\right))
+0 = (yo - (y_{min} + (proc_{selfix\_1} \cdot (proc_{select\_0} \cdot yi + (1 - proc_{select\_0}) \cdot 0) + (1 - proc_{selfix\_1}) \cdot yi - y_{min}) \cdot \Theta\left(proc_{selfix\_1} \cdot (proc_{select\_0} \cdot yi + (1 - proc_{select\_0}) \cdot 0) + (1 - proc_{selfix\_1}) \cdot yi - y_{min}\right) - (proc_{selfix\_1} \cdot (proc_{select\_0} \cdot yi + (1 - proc_{select\_0}) \cdot 0) + (1 - proc_{selfix\_1}) \cdot yi - y_{max}) \cdot \Theta\left(proc_{selfix\_1} \cdot (proc_{select\_0} \cdot yi + (1 - proc_{select\_0}) \cdot 0) + (1 - proc_{selfix\_1}) \cdot yi - y_{max}\right)))
 $$
 
 ## Interface table

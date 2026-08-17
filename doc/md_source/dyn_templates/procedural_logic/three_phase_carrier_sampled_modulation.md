@@ -1,5 +1,14 @@
 # Three-phase carrier sampled modulation
 
+<!-- veragrid-block-introduction:start -->
+**Three-phase carrier sampled modulation** represents a power-electronic conversion or modulation function. Converter models translate control references into AC/DC electrical quantities, while averaged and switched variants retain different levels of switching detail and therefore require different simulation time steps.
+
+## Typical use
+
+- Use averaged models for control and system studies, and switched models when waveform detail matters.
+- Coordinate reference frames, modulation limits, DC-side energy, and current-control bandwidth.
+<!-- veragrid-block-introduction:end -->
+
 ## Purpose
 
 Samples three modulation references at carrier half-period boundaries and retains the sampled values for use by switching logic.

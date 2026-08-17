@@ -2,6 +2,15 @@
 
 This is Basic Block Catalog type `16` (`Lookup array object (spline)`). It evaluates tabulated or array-based data using the selected lookup formulation.
 
+<!-- veragrid-block-introduction:start -->
+**Lookup array object (spline)** represents passive network physics through resistance, inductance, capacitance, coupling, or switching topology. Its equations enforce voltage-current constitutive relations and therefore affect energy storage, damping, propagation, fault current, or grounding behavior.
+
+## Typical use
+
+- Use it to reproduce the electrical path between sources, converters, machines, and loads.
+- Keep phases, terminal orientation, connection type, and SI/per-unit parameter bases consistent.
+<!-- veragrid-block-introduction:end -->
+
 ## Behaviour
 
 - Library location: `Native / Arrays and Matrices`.
@@ -14,7 +23,7 @@ This is Basic Block Catalog type `16` (`Lookup array object (spline)`). It evalu
 ## Characteristic equations
 
 $$
-0 = (yo - arr_{y1} \cdot \Theta\left(arr_{x1} - yi - 1e-06\right) + (0 + arr_{y1} \cdot 1 + arr_{y2} \cdot 0 + arr_{y3} \cdot 0 + (0 + arr_{y1} \cdot -1.25 + arr_{y2} \cdot 1.5 + arr_{y3} \cdot -0.25) \cdot (yi - arr_{x1}) + (0 + arr_{y1} \cdot 0 + arr_{y2} \cdot 0 + arr_{y3} \cdot 0) \cdot (yi - arr_{x1}) \cdot (yi - arr_{x1}) + (0 + arr_{y1} \cdot 0.25 + arr_{y2} \cdot -0.5 + arr_{y3} \cdot 0.25) \cdot (yi - arr_{x1}) \cdot (yi - arr_{x1}) \cdot (yi - arr_{x1})) \cdot \Theta\left(yi - arr_{x1} + 1e-06\right) \cdot \Theta\left(arr_{x2} - yi - 1e-06\right) + (0 + arr_{y1} \cdot 0 + arr_{y2} \cdot 1 + arr_{y3} \cdot 0 + (0 + arr_{y1} \cdot -0.5 + arr_{y2} \cdot 0 + arr_{y3} \cdot 0.5) \cdot (yi - arr_{x2}) + (0 + arr_{y1} \cdot 0.75 + arr_{y2} \cdot -1.5 + arr_{y3} \cdot 0.75) \cdot (yi - arr_{x2}) \cdot (yi - arr_{x2}) + (0 + arr_{y1} \cdot -0.25 + arr_{y2} \cdot 0.5 + arr_{y3} \cdot -0.25) \cdot (yi - arr_{x2}) \cdot (yi - arr_{x2}) \cdot (yi - arr_{x2})) \cdot \Theta\left(yi - arr_{x2} + 1e-06\right))
+0 = (yo - (arr_{y1} \cdot \Theta\left(arr_{x1} - yi - 1 \times 10^{-6}\right) + (0 + arr_{y1} \cdot 1 + arr_{y2} \cdot 0 + arr_{y3} \cdot 0 + (0 + arr_{y1} \cdot -1.25 + arr_{y2} \cdot 1.5 + arr_{y3} \cdot -0.25) \cdot (yi - arr_{x1}) + (0 + arr_{y1} \cdot 0 + arr_{y2} \cdot 0 + arr_{y3} \cdot 0) \cdot (yi - arr_{x1}) \cdot (yi - arr_{x1}) + (0 + arr_{y1} \cdot 0.25 + arr_{y2} \cdot -0.5 + arr_{y3} \cdot 0.25) \cdot (yi - arr_{x1}) \cdot (yi - arr_{x1}) \cdot (yi - arr_{x1})) \cdot \Theta\left(yi - arr_{x1} + 1 \times 10^{-6}\right) \cdot \Theta\left(arr_{x2} - yi - 1 \times 10^{-6}\right) + (0 + arr_{y1} \cdot 0 + arr_{y2} \cdot 1 + arr_{y3} \cdot 0 + (0 + arr_{y1} \cdot -0.5 + arr_{y2} \cdot 0 + arr_{y3} \cdot 0.5) \cdot (yi - arr_{x2}) + (0 + arr_{y1} \cdot 0.75 + arr_{y2} \cdot -1.5 + arr_{y3} \cdot 0.75) \cdot (yi - arr_{x2}) \cdot (yi - arr_{x2}) + (0 + arr_{y1} \cdot -0.25 + arr_{y2} \cdot 0.5 + arr_{y3} \cdot -0.25) \cdot (yi - arr_{x2}) \cdot (yi - arr_{x2}) \cdot (yi - arr_{x2})) \cdot \Theta\left(yi - arr_{x2} + 1 \times 10^{-6}\right)))
 $$
 
 ## Interface table

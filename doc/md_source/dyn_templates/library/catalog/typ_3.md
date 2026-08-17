@@ -2,6 +2,15 @@
 
 This is Basic Block Catalog type `3` (`ax^2 + bx + c`). It evaluates the mathematical function identified by the block name.
 
+<!-- veragrid-block-introduction:start -->
+**ax^2 + bx + c** is a mathematical signal-processing primitive. It forms an algebraic relation between inputs, parameters, and outputs and is commonly combined with dynamic and nonlinear blocks to construct larger control equations without introducing an independent physical state.
+
+## Typical use
+
+- Use it to express the exact algebraic operation required by a controller or measurement chain.
+- Check signal dimensions, signs, and zero-division or domain restrictions where applicable.
+<!-- veragrid-block-introduction:end -->
+
 ## Behaviour
 
 - Library location: `Native / Math and Functions / Scaling and Products`.
@@ -14,7 +23,7 @@ This is Basic Block Catalog type `3` (`ax^2 + bx + c`). It evaluates the mathema
 ## Characteristic equations
 
 $$
-0 = (yo - a \cdot yi \cdot yi + b \cdot yi + c)
+0 = (yo - (a \cdot yi \cdot yi + b \cdot yi + c))
 $$
 
 ## Interface table

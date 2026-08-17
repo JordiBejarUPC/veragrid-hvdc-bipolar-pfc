@@ -2,6 +2,15 @@
 
 This is Basic Block Catalog type `47` (`yi1 greater than yi2 _eps`). It implements logical or event-driven signal behaviour.
 
+<!-- veragrid-block-introduction:start -->
+**yi1 greater than yi2 eps** belongs to the hybrid/event layer of a dynamic model. It selects, stores, delays, or switches signals according to conditions, so its result depends on discrete mode or accepted simulation history in addition to the instantaneous continuous variables.
+
+## Typical use
+
+- Use it for protection, enable/disable sequences, sampled control, reset logic, and mode transfer.
+- Define initial mode and boundary behavior explicitly to avoid unintended event chattering.
+<!-- veragrid-block-introduction:end -->
+
 ## Behaviour
 
 - Library location: `Native / Logic and Events / Comparators`.
@@ -14,15 +23,15 @@ This is Basic Block Catalog type `47` (`yi1 greater than yi2 _eps`). It implemen
 ## Characteristic equations
 
 $$
-0 = (yi1 greater than yi2 _{eps\_set} - proc_{selfix\_1} \cdot 0 + (1 - proc_{selfix\_1}) \cdot (proc_{select\_const\_0} \cdot 1 + (1 - proc_{select\_const\_0}) \cdot 0))
+0 = (yi1 greater than yi2 _{eps\_set} - (proc_{selfix\_1} \cdot 0 + (1 - proc_{selfix\_1}) \cdot (proc_{select\_const\_0} \cdot 1 + (1 - proc_{select\_const\_0}) \cdot 0)))
 $$
 
 $$
-0 = (yi1 greater than yi2 _{eps\_rst} - proc_{selfix\_3} \cdot 0 + (1 - proc_{selfix\_3}) \cdot (proc_{select\_const\_2} \cdot 1 + (1 - proc_{select\_const\_2}) \cdot 0))
+0 = (yi1 greater than yi2 _{eps\_rst} - (proc_{selfix\_3} \cdot 0 + (1 - proc_{selfix\_3}) \cdot (proc_{select\_const\_2} \cdot 1 + (1 - proc_{select\_const\_2}) \cdot 0)))
 $$
 
 $$
-0 = (yo - proc_{selfix\_6} \cdot (proc_{select\_const\_4} \cdot 1 + (1 - proc_{select\_const\_4}) \cdot 0) + (1 - proc_{selfix\_6}) \cdot proc_{flipflop\_5})
+0 = (yo - (proc_{selfix\_6} \cdot (proc_{select\_const\_4} \cdot 1 + (1 - proc_{select\_const\_4}) \cdot 0) + (1 - proc_{selfix\_6}) \cdot proc_{flipflop\_5}))
 $$
 
 $$

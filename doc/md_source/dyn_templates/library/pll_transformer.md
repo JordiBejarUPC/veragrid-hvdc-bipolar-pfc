@@ -1,5 +1,14 @@
 # PLL transformer
 
+<!-- veragrid-block-introduction:start -->
+**PLL transformer** belongs to the synchronization layer of a power-system controller. A phase-locked loop compares a measured voltage reference with an internally generated angle, filters the phase error, and integrates the resulting frequency correction. It lets grid-following controls express currents and voltages in a rotating frame aligned with the network.
+
+## Typical use
+
+- Use it when a controller must track grid angle and frequency rather than establish them.
+- Check loop bandwidth and damping against grid strength; an aggressive PLL can amplify disturbances or interact with converter current control.
+<!-- veragrid-block-introduction:end -->
+
 The PLL transformer is a composite RMS control block that estimates a rotating
 reference frame from the terminal-voltage magnitude and angle. It exposes the
 direct and quadrature voltage components together with the estimated angle and

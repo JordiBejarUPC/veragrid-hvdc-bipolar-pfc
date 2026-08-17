@@ -10,12 +10,11 @@ from __future__ import annotations
 import ast
 from enum import Enum
 from io import StringIO
-from pathlib import Path
 import re
 import tokenize
 from typing import Dict, List, Mapping, Sequence
 
-from PySide6 import QtCore, QtGui, QtSvg, QtWidgets
+from PySide6 import QtCore, QtGui, QtWidgets
 from PySide6.QtCore import Qt, Signal
 
 from VeraGrid.Gui.Icons import icons_rc
@@ -33,10 +32,6 @@ from VeraGrid.Gui.DynamicModelEditor.dynamic_equation_pdf import (
     build_state_equation_entries,
     order_state_differential_variables,
     write_equation_pdf,
-)
-from VeraGrid.Gui.DynamicModelEditor.dynamic_latex_renderer import (
-    LatexRenderer,
-    RenderedSvgEquation,
 )
 from VeraGrid.Gui.DynamicModelEditor.dynamic_procedural_logic import (
     RuntimeLogicEditorWidget,
@@ -2994,26 +2989,30 @@ def build_advanced_logic_summary(block: Block) -> str:
     )
 
 
-def resolve_block_documentation(block_type_name: str, block: Block) -> tuple[str, str]:
-    """Resolve explicit documentation or build a truthful generated fallback.
+def resolve_block_documentation_url(block_type_name: str, block_name: str) -> str | None:
+    """Resolve the online catalogue documentation URL for one library block.
+
+    The returned page describes the original predefined block. A working copy
+    edited in the Dynamic Model Editor can intentionally differ from it.
 
     :param block_type_name: Persisted diagram node type.
-    :param block: Symbolic block whose template name can refine the lookup.
-    :return: Markdown content and its filesystem or generated source label.
+    :param block_name: Symbolic template or block name used to refine the lookup.
+    :return: ReadTheDocs URL or ``None`` for a genuinely custom block.
     """
-    # Template catalogue nodes share one generic diagram type, so the symbolic
-    # block name is also required to resolve documentation for packaged models.
-    relative_path: str | None = _get_documentation_relative_path(block_type_name, block.name)
-    if relative_path is not None:
-        repository_root: Path = Path(__file__).resolve().parents[4]
-        documentation_path: Path = repository_root / "doc" / "md_source" / "dyn_templates" / relative_path
-        if documentation_path.is_file():
-            return documentation_path.read_text(encoding="utf-8"), str(documentation_path)
-        else:
-            pass
+    # Reuse the single catalogue mapping and only translate its Sphinx source
+    # path into the HTML path published by ReadTheDocs. Runtime code therefore
+    # never needs the repository's local ``doc`` directory.
+    relative_path: str | None = _get_documentation_relative_path(block_type_name, block_name)
+    if relative_path is None:
+        result: str | None = None
     else:
-        pass
-    return _build_generated_documentation(block_type_name, block), "Generated from the current block"
+        normalized_path: str = relative_path.replace("\\", "/")
+        if normalized_path.endswith(".md"):
+            html_path: str = normalized_path[:-3] + ".html"
+        else:
+            html_path = normalized_path + ".html"
+        result = f"https://veragrid.readthedocs.io/en/latest/md_source/dyn_templates/{html_path}"
+    return result
 
 
 def _get_documentation_relative_path(block_type_name: str, block_name: str) -> str | None:
@@ -3196,205 +3195,6 @@ def _get_documentation_relative_path(block_type_name: str, block_name: str) -> s
         return "library/pll_transformer.md"
     else:
         return None
-
-
-def _build_generated_documentation(block_type_name: str, block: Block) -> str:
-    """Build fallback Markdown when no explicit catalogue document is available."""
-    input_names: str = ", ".join(variable.name for variable in block.in_vars)
-    output_names: str = ", ".join(variable.name for variable in block.out_vars)
-    if len(input_names) == 0:
-        input_names = "None"
-    else:
-        pass
-    if len(output_names) == 0:
-        output_names = "None"
-    else:
-        pass
-    return (
-        f"# {block.name}\n\n"
-        f"No catalogue Markdown file is explicitly mapped for `{block_type_name}`. "
-        "This summary was generated from the current symbolic block.\n\n"
-        f"- Inputs: {input_names}\n"
-        f"- Outputs: {output_names}\n"
-        f"- State variables: {len(block.state_vars)}\n"
-        f"- Algebraic variables: {len(block.algebraic_vars)}\n"
-        f"- Child blocks: {len(block.children)}\n"
-    )
-
-
-class SvgEquationTextObject(QtGui.QPyTextObject):
-    """Vector equation object exposed to Qt through its Python text-object bridge."""
-
-    __slots__ = (
-        "_object_type",
-        "_svg_data_property",
-        "_svg_width_property",
-        "_svg_height_property",
-    )
-
-    def __init__(self, parent: QtCore.QObject) -> None:
-        """Create one reusable SVG handler owned by its documentation browser.
-
-        :param parent: Browser that owns the Python and Qt handler lifetime.
-        :return: None.
-        """
-        super().__init__(parent)
-        self._object_type: int = int(QtGui.QTextFormat.ObjectTypes.UserObject) + 1
-        self._svg_data_property: int = int(QtGui.QTextFormat.Property.UserProperty) + 1
-        self._svg_width_property: int = int(QtGui.QTextFormat.Property.UserProperty) + 2
-        self._svg_height_property: int = int(QtGui.QTextFormat.Property.UserProperty) + 3
-        self.setObjectName("veragrid_svg_equation_text_object")
-
-    def get_object_type(self) -> int:
-        """Return the custom QTextFormat object type handled by this object."""
-        return self._object_type
-
-    def create_text_format(self, rendered: RenderedSvgEquation) -> QtGui.QTextCharFormat:
-        """Build one inline object format carrying vector data and dimensions.
-
-        :param rendered: Compiled vector equation.
-        :return: Character format consumed by this text-object handler.
-        """
-        text_format: QtGui.QTextCharFormat = QtGui.QTextCharFormat()
-        text_format.setObjectType(self._object_type)
-        text_format.setProperty(self._svg_data_property, rendered.get_data())
-        text_format.setProperty(
-            self._svg_width_property,
-            float(rendered.get_size().width()),
-        )
-        text_format.setProperty(
-            self._svg_height_property,
-            float(rendered.get_size().height()),
-        )
-        return text_format
-
-    def get_svg_data(self, text_format: QtGui.QTextFormat) -> QtCore.QByteArray:
-        """Return the SVG payload carried by one equation object format.
-
-        :param text_format: Format attached to an object replacement character.
-        :return: SVG bytes or an empty byte array for an invalid format.
-        """
-        property_value: object = text_format.property(self._svg_data_property)
-        if isinstance(property_value, QtCore.QByteArray):
-            result: QtCore.QByteArray = property_value
-        else:
-            result = QtCore.QByteArray()
-        return result
-
-    def intrinsicSize(self,
-                      document: QtGui.QTextDocument,
-                      position: int,
-                      text_format: QtGui.QTextFormat) -> QtCore.QSizeF:
-        """Return the logical equation box requested by QTextDocument.
-
-        :param document: Document performing layout.
-        :param position: Object position inside the document.
-        :param text_format: Equation object format.
-        :return: Logical vector equation size.
-        """
-        _unused_document: QtGui.QTextDocument = document
-        _unused_position: int = position
-        width_value: object = text_format.property(self._svg_width_property)
-        height_value: object = text_format.property(self._svg_height_property)
-        if isinstance(width_value, (float, int)) and isinstance(height_value, (float, int)):
-            result: QtCore.QSizeF = QtCore.QSizeF(float(width_value), float(height_value))
-        else:
-            result = QtCore.QSizeF(1.0, 1.0)
-        return result
-
-    def drawObject(self,
-                   painter: QtGui.QPainter,
-                   rectangle: QtCore.QRectF,
-                   document: QtGui.QTextDocument,
-                   position: int,
-                   text_format: QtGui.QTextFormat) -> None:
-        """Paint SVG paths directly into the document painter.
-
-        :param painter: Active document painter.
-        :param rectangle: Allocated logical object rectangle.
-        :param document: Document requesting the paint.
-        :param position: Object position inside the document.
-        :param text_format: Equation object format carrying SVG data.
-        :return: None.
-        """
-        _unused_document: QtGui.QTextDocument = document
-        _unused_position: int = position
-        svg_renderer: QtSvg.QSvgRenderer = QtSvg.QSvgRenderer(self.get_svg_data(text_format))
-        if svg_renderer.isValid():
-            svg_renderer.render(painter, rectangle)
-        else:
-            painter.drawText(rectangle, "Equation unavailable")
-
-
-def get_svg_equation_text_object(browser: QtWidgets.QTextBrowser) -> SvgEquationTextObject:
-    """Return the browser-owned vector equation handler, creating it once.
-
-    :param browser: Documentation browser receiving custom equation objects.
-    :return: Stable SVG text-object handler.
-    """
-    existing_handler: SvgEquationTextObject | None = browser.findChild(
-        SvgEquationTextObject,
-        "veragrid_svg_equation_text_object",
-    )
-    if existing_handler is None:
-        result: SvgEquationTextObject = SvgEquationTextObject(browser)
-    else:
-        result = existing_handler
-    return result
-
-
-def set_markdown_with_latex(browser: QtWidgets.QTextBrowser, markdown: str) -> None:
-    """Render display math as custom vector objects inside a QTextDocument.
-
-    :param browser: Documentation browser that owns the generated resources.
-    :param markdown: Catalogue Markdown containing optional ``$$`` blocks.
-    :return: None.
-    """
-    display_math_pattern: re.Pattern[str] = re.compile(r"\$\$(.+?)\$\$", re.DOTALL)
-    matches: List[re.Match[str]] = list(display_math_pattern.finditer(markdown))
-    if len(matches) == 0:
-        browser.setMarkdown(markdown)
-        return
-    else:
-        pass
-
-    # SVG paths are kept out of QTextDocument's image cache. The custom object
-    # handler paints them directly, avoiding Qt's implicit SVG rasterization.
-    renderer: LatexRenderer = LatexRenderer(font_size=14, dpi=110)
-    markdown_parts: List[str] = list()
-    equation_renderings: List[RenderedSvgEquation] = list()
-    source_offset: int = 0
-    match_index: int
-    match: re.Match[str]
-    for match_index, match in enumerate(matches):
-        markdown_parts.append(markdown[source_offset:match.start()])
-        latex_source: str = " ".join(match.group(1).strip().splitlines())
-        rendered: RenderedSvgEquation = renderer.render_svg(latex_source)
-        equation_renderings.append(rendered)
-        # A plain token survives Markdown compilation and gives the cursor an
-        # exact range to replace with one custom vector object.
-        markdown_parts.append(f"\n\nVERAGRID_DAE_EQUATION_{match_index}\n\n")
-        source_offset = match.end()
-    markdown_parts.append(markdown[source_offset:])
-
-    # Compile ordinary Markdown first, then replace each stable token with an
-    # object replacement character carrying the corresponding SVG payload.
-    browser.setMarkdown("".join(markdown_parts))
-    handler: SvgEquationTextObject = get_svg_equation_text_object(browser)
-    document_layout: QtGui.QAbstractTextDocumentLayout = browser.document().documentLayout()
-    document_layout.registerHandler(handler.get_object_type(), handler)
-    for match_index, rendered in enumerate(equation_renderings):
-        token: str = f"VERAGRID_DAE_EQUATION_{match_index}"
-        token_cursor: QtGui.QTextCursor = browser.document().find(token)
-        if token_cursor.isNull():
-            pass
-        else:
-            token_cursor.insertText(
-                "\ufffc",
-                handler.create_text_format(rendered),
-            )
-    browser.document().markContentsDirty(0, browser.document().characterCount())
-    browser.viewport().update()
 
 
 class TableTextFilterProxyModel(QtCore.QSortFilterProxyModel):
@@ -3624,8 +3424,8 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         "_latex_clear_button",
         "_export_latex_source_button",
         "_export_rendered_button",
-        "_documentation_browser",
-        "_documentation_source",
+        "_block_documentation_url",
+        "_block_info_button",
         "_dock_hosted",
         "_prepared_to_delete",
         "_status_label",
@@ -3781,8 +3581,14 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         self._export_rendered_button: QtWidgets.QPushButton = QtWidgets.QPushButton(
             self.tr("Download rendered PDF"), self
         )
-        self._documentation_browser: QtWidgets.QTextBrowser = QtWidgets.QTextBrowser(self)
-        self._documentation_source: str = ""
+        self._block_documentation_url: str | None = resolve_block_documentation_url(
+            block_type_name,
+            block.name,
+        )
+        self._block_info_button: QtWidgets.QPushButton = QtWidgets.QPushButton(
+            self.tr("Block info"),
+            self,
+        )
         self._dock_hosted: bool = False
         self._prepared_to_delete: bool = False
         self._status_label: QtWidgets.QLabel = self.ui.status_label
@@ -3813,7 +3619,6 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
             self._parameter_symbol_proxy.setSourceModel(None)
             self._dae_highlighter.setDocument(None)
             self._latex_selection_tree.clear()
-            self._documentation_browser.clear()
             self._equation_owner_combo.clear()
 
     def closeEvent(self, event: QtGui.QCloseEvent) -> None:
@@ -3874,15 +3679,12 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         general_page: QtWidgets.QWidget = self._build_general_page()
         dae_page: QtWidgets.QWidget = self._build_dae_page()
         runtime_page: QtWidgets.QWidget = self._runtime_logic_editor
-        info_page: QtWidgets.QWidget = self._build_info_page()
         general_index: int = self._tabs.addTab(general_page, self.tr("General options"))
         dae_index: int = self._tabs.addTab(dae_page, self.tr("DAE model"))
         runtime_index: int = self._tabs.addTab(runtime_page, self.tr("Runtime logic"))
-        info_index: int = self._tabs.addTab(info_page, self.tr("Block info"))
         self._tabs.setTabIcon(general_index, QtGui.QIcon(":/Icons/icons/gear.png"))
         self._tabs.setTabIcon(dae_index, QtGui.QIcon(":/Icons/icons/edit.png"))
         self._tabs.setTabIcon(runtime_index, QtGui.QIcon())
-        self._tabs.setTabIcon(info_index, QtGui.QIcon(":/Icons/icons/message.png"))
         if self._special_structural_model.rowCount() > 0:
             special_page: QtWidgets.QWidget = self._build_special_settings_page()
             special_index: int = self._tabs.addTab(special_page, self.tr("Special settings"))
@@ -3904,6 +3706,37 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
             self.tr("Advanced runtime logic"),
             QtWidgets.QLabel(build_advanced_logic_summary(self._block), identity_group),
         )
+        # Online documentation describes the immutable library definition. It
+        # remains useful for edited instances, but the tooltip must make clear
+        # that local equations and symbols can intentionally differ from it.
+        self._block_info_button.setIcon(QtGui.QIcon(":/Icons/icons/message.png"))
+        if self._block_documentation_url is None:
+            self._block_info_button.setEnabled(False)
+            documentation_tooltip: str = self.tr(
+                "No online catalogue documentation is available for this custom block."
+            )
+        else:
+            self._block_info_button.setEnabled(True)
+            documentation_tooltip = self.tr(
+                "Opens the documentation for the original predefined library block. "
+                "If this block has been modified in the editor, its current equations, symbols, "
+                "parameters, or runtime logic may differ from the online documentation."
+            )
+        self._block_info_button.setToolTip(documentation_tooltip)
+        self._block_info_button.setWhatsThis(documentation_tooltip)
+        # QFormLayout otherwise expands the field widget across the complete
+        # row and centres the button contents. Keep this action compact and
+        # anchored directly beside its descriptive label.
+        self._block_info_button.setSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Fixed,
+            QtWidgets.QSizePolicy.Policy.Fixed,
+        )
+        self._block_info_button.setFixedWidth(self._block_info_button.sizeHint().width())
+        documentation_button_layout: QtWidgets.QHBoxLayout = QtWidgets.QHBoxLayout()
+        documentation_button_layout.setContentsMargins(0, 0, 0, 0)
+        documentation_button_layout.addWidget(self._block_info_button)
+        documentation_button_layout.addStretch(1)
+        identity_layout.addRow(self.tr("Online documentation"), documentation_button_layout)
         layout.addWidget(identity_group)
 
         if self._general_structural_model.rowCount() > 0:
@@ -4182,35 +4015,10 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         self.update_new_symbol_controls()
         return panel
 
-    def _build_info_page(self) -> QtWidgets.QWidget:
-        """Build the Markdown documentation viewer."""
-        page: QtWidgets.QWidget = QtWidgets.QWidget(self)
-        layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(page)
-        documentation: str
-        documentation, self._documentation_source = resolve_block_documentation(
-            self._block_type_name,
-            self._block,
-        )
-        source_label: QtWidgets.QLabel = QtWidgets.QLabel(
-            self.tr("Documentation source: {source}").format(source=self._documentation_source),
-            page,
-        )
-        source_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
-        layout.addWidget(source_label)
-        self._documentation_browser.setOpenExternalLinks(True)
-        source_path: Path = Path(self._documentation_source)
-        if source_path.is_file():
-            documentation_base: QtCore.QUrl = QtCore.QUrl.fromLocalFile(str(source_path.parent) + "/")
-            self._documentation_browser.document().setBaseUrl(documentation_base)
-        else:
-            pass
-        set_markdown_with_latex(self._documentation_browser, documentation)
-        layout.addWidget(self._documentation_browser, 1)
-        return page
-
     def _connect_signals(self) -> None:
         """Connect actions with explicit named slots."""
         self._apply_button.clicked.connect(self.apply_changes)
+        self._block_info_button.clicked.connect(self.open_block_documentation)
         self._validate_code_button.clicked.connect(self.validate_complete_dae_code)
         self._dae_editor.textChanged.connect(self.on_dae_code_changed)
         self._equation_owner_combo.currentIndexChanged.connect(self.on_equation_owner_changed)
@@ -4232,6 +4040,31 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         self._latex_clear_button.clicked.connect(self.clear_latex_sections)
         self._export_latex_source_button.clicked.connect(self.export_latex_source_pdf)
         self._export_rendered_button.clicked.connect(self.export_rendered_equations_pdf)
+
+    @QtCore.Slot()
+    def open_block_documentation(self) -> None:
+        """Open the original library block documentation in the system browser.
+
+        :return: None.
+        """
+        if self._block_documentation_url is None:
+            # This branch also protects programmatic calls made while the
+            # corresponding UI button is disabled for a custom block.
+            self._status_label.setStyleSheet("color: #b42318;")
+            self._status_label.setText(
+                self.tr("No online catalogue documentation is available for this custom block.")
+            )
+        else:
+            documentation_url: QtCore.QUrl = QtCore.QUrl(self._block_documentation_url)
+            opened: bool = QtGui.QDesktopServices.openUrl(documentation_url)
+            if opened:
+                self._status_label.clear()
+                self._status_label.setStyleSheet("")
+            else:
+                self._status_label.setStyleSheet("color: #b42318;")
+                self._status_label.setText(
+                    self.tr("The online block documentation could not be opened in the system browser.")
+                )
 
     @QtCore.Slot(str)
     def filter_general_parameters(self, search_text: str) -> None:

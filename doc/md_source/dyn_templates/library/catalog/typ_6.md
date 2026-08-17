@@ -2,6 +2,15 @@
 
 This is Basic Block Catalog type `6` (`Inverse Lookup array object (linear)`). It evaluates tabulated or array-based data using the selected lookup formulation.
 
+<!-- veragrid-block-introduction:start -->
+**Inverse Lookup array object (linear)** represents passive network physics through resistance, inductance, capacitance, coupling, or switching topology. Its equations enforce voltage-current constitutive relations and therefore affect energy storage, damping, propagation, fault current, or grounding behavior.
+
+## Typical use
+
+- Use it to reproduce the electrical path between sources, converters, machines, and loads.
+- Keep phases, terminal orientation, connection type, and SI/per-unit parameter bases consistent.
+<!-- veragrid-block-introduction:end -->
+
 ## Behaviour
 
 - Library location: `Native / Arrays and Matrices`.
@@ -14,7 +23,7 @@ This is Basic Block Catalog type `6` (`Inverse Lookup array object (linear)`). I
 ## Characteristic equations
 
 $$
-0 = (yo - arr_{x1} \cdot \Theta\left(arr_{y1} - yi - 1e-06\right) + (\frac{arr_{x2} - arr_{x1}}{arr_{y2} - arr_{y1}} \cdot yi + arr_{x1} - \frac{arr_{x2} - arr_{x1}}{arr_{y2} - arr_{y1}} \cdot arr_{y1}) \cdot \Theta\left(yi - arr_{y1} + 1e-06\right) \cdot \Theta\left(arr_{y2} - yi - 1e-06\right) + (\frac{arr_{x3} - arr_{x2}}{arr_{y3} - arr_{y2}} \cdot yi + arr_{x2} - \frac{arr_{x3} - arr_{x2}}{arr_{y3} - arr_{y2}} \cdot arr_{y2}) \cdot \Theta\left(yi - arr_{y2} + 1e-06\right) \cdot \Theta\left(arr_{y3} - yi - 1e-06\right) + arr_{x3} \cdot \Theta\left(yi - arr_{y3} + 1e-06\right))
+0 = (yo - (arr_{x1} \cdot \Theta\left(arr_{y1} - yi - 1 \times 10^{-6}\right) + (\frac{arr_{x2} - arr_{x1}}{arr_{y2} - arr_{y1}} \cdot yi + arr_{x1} - \frac{arr_{x2} - arr_{x1}}{arr_{y2} - arr_{y1}} \cdot arr_{y1}) \cdot \Theta\left(yi - arr_{y1} + 1 \times 10^{-6}\right) \cdot \Theta\left(arr_{y2} - yi - 1 \times 10^{-6}\right) + (\frac{arr_{x3} - arr_{x2}}{arr_{y3} - arr_{y2}} \cdot yi + arr_{x2} - \frac{arr_{x3} - arr_{x2}}{arr_{y3} - arr_{y2}} \cdot arr_{y2}) \cdot \Theta\left(yi - arr_{y2} + 1 \times 10^{-6}\right) \cdot \Theta\left(arr_{y3} - yi - 1 \times 10^{-6}\right) + arr_{x3} \cdot \Theta\left(yi - arr_{y3} + 1 \times 10^{-6}\right)))
 $$
 
 ## Interface table

@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Iterator
 
-from PySide6 import QtCore, QtGui, QtSvg, QtWidgets
+from PySide6 import QtCore, QtWidgets
 import pytest
 
 from VeraGrid.Gui.DynamicModelEditor.dynamic_block_properties import (
@@ -13,14 +13,12 @@ from VeraGrid.Gui.DynamicModelEditor.dynamic_block_properties import (
     BlockEquationDraft,
     DaeCodeDiagnostic,
     DynamicBlockPropertiesDialog,
-    SvgEquationTextObject,
     build_block_symbol_namespace,
     build_equation_code,
     _get_documentation_relative_path,
     parse_equation_code,
+    resolve_block_documentation_url,
     serialize_dae_expression,
-    set_markdown_with_latex,
-    resolve_block_documentation,
 )
 from VeraGrid.Gui.DynamicModelEditor.dynamic_equation_pdf import (
     EquationExportEntry,
@@ -224,12 +222,19 @@ def test_invalid_dialog_draft_does_not_mutate_block() -> None:
     block, state_variable, parameter_variable, parameter_constant = build_test_block()
     original_state_equation: object = block.state_eqs[0]
     dialogue: DynamicBlockPropertiesDialog = DynamicBlockPropertiesDialog(block, "GENERIC", VarFactory())
-    assert dialogue._tabs.count() == 4
+    assert dialogue._tabs.count() == 3
     assert dialogue._tabs.tabText(0) == "General options"
     assert dialogue._tabs.tabText(1) == "DAE model"
     assert dialogue._tabs.tabText(2) == "Runtime logic"
-    assert dialogue._tabs.tabText(3) == "Block info"
     assert dialogue._tabs.tabIcon(2).isNull()
+    assert dialogue._block_info_button.isEnabled()
+    assert "original predefined library block" in dialogue._block_info_button.toolTip()
+    assert "may differ" in dialogue._block_info_button.toolTip()
+    assert dialogue._block_info_button.sizePolicy().horizontalPolicy() == (
+        QtWidgets.QSizePolicy.Policy.Fixed
+    )
+    assert dialogue._block_info_button.width() == dialogue._block_info_button.sizeHint().width()
+    assert dialogue._block_info_button.width() < 180
     assert dialogue._dae_editor.get_line_number_area_width() > 0
     dialogue._dae_editor.setPlainText("state_eqs = [")
     assert dialogue._dae_editor.get_diagnostics() == list()
@@ -805,39 +810,6 @@ def test_every_block_properties_table_column_is_manually_resizable() -> None:
     dialogue.close()
 
 
-def test_markdown_display_math_is_replaced_by_rendered_document_resource() -> None:
-    """Documentation should not expose raw double-dollar math delimiters."""
-    application: QtWidgets.QApplication = get_qt_application()
-    _unused_application: QtWidgets.QApplication = application
-    browser: QtWidgets.QTextBrowser = QtWidgets.QTextBrowser()
-    browser.document().setBaseUrl(
-        QtCore.QUrl.fromLocalFile("C:/documentation/dyn_templates/RMS/")
-    )
-
-    set_markdown_with_latex(browser, "Characteristic equation:\n\n$$x + 1$$")
-
-    assert "$$" not in browser.toPlainText()
-    assert "\ufffc" in browser.toPlainText()
-    handler: SvgEquationTextObject | None = browser.findChild(
-        SvgEquationTextObject,
-        "veragrid_svg_equation_text_object",
-    )
-    assert isinstance(handler, SvgEquationTextObject)
-    object_position: int = browser.toPlainText().index("\ufffc")
-    object_cursor: QtGui.QTextCursor = QtGui.QTextCursor(browser.document())
-    object_cursor.setPosition(object_position)
-    object_cursor.movePosition(
-        QtGui.QTextCursor.MoveOperation.Right,
-        QtGui.QTextCursor.MoveMode.KeepAnchor,
-        1,
-    )
-    svg_data: QtCore.QByteArray = handler.get_svg_data(object_cursor.charFormat())
-    svg_renderer: QtSvg.QSvgRenderer = QtSvg.QSvgRenderer(svg_data)
-    assert svg_renderer.isValid()
-    assert svg_renderer.defaultSize().width() > 0
-    browser.close()
-
-
 def test_emt_generator_binary_functions_validate_in_dialogue() -> None:
     """The EMT generator's ``atan2`` expressions must use the safe GUI parser."""
     application: QtWidgets.QApplication = get_qt_application()
@@ -1006,18 +978,18 @@ def test_every_phase_selective_builder_defaults_to_abc_without_neutral() -> None
         ("Pll_transform_rms", "library\\pll_transformer.md"),
     ]),
 )
-def test_template_documentation_uses_composite_and_pll_markdown(template_name: str,
-                                                                 expected_suffix: str) -> None:
-    """Generic template nodes must resolve their real packaged-model documentation."""
-    documentation: str
-    source: str
-    documentation, source = resolve_block_documentation(
-        "TEMPLATE",
-        Block(name=template_name),
-    )
+def test_template_documentation_uses_composite_and_pll_online_page(template_name: str,
+                                                                    expected_suffix: str) -> None:
+    """Generic template nodes must resolve their exact online documentation page."""
+    expected_html_suffix: str = expected_suffix.replace("\\", "/")[:-3] + ".html"
+    documentation_url: str | None = resolve_block_documentation_url("TEMPLATE", template_name)
 
-    assert source.endswith(expected_suffix)
-    assert "Interface table" in documentation
+    assert documentation_url is not None
+    assert documentation_url.startswith(
+        "https://veragrid.readthedocs.io/en/latest/md_source/dyn_templates/"
+    )
+    assert documentation_url.endswith(expected_html_suffix)
+    assert "\\" not in documentation_url
 
 
 def test_all_explicit_native_documentation_paths_exist() -> None:
@@ -1036,35 +1008,71 @@ def test_all_explicit_native_documentation_paths_exist() -> None:
     assert mapped_count >= 60
 
 
-def test_cigre_surge_source_uses_its_catalogue_markdown() -> None:
-    """Resolve the CIGRE source documentation instead of a generated fallback."""
-    documentation: str
-    source: str
-    documentation, source = resolve_block_documentation(
-        BlockType.CIGRE_SURGE_CURRENT_SOURCE_EMT.name,
-        Block(name="CIGRE_SURGE_CURRENT_SOURCE_EMT_1"),
+def test_every_dynamic_block_page_explains_the_block_and_its_use() -> None:
+    """Every published block page must explain what it represents and why it is used."""
+    documentation_root: Path = Path(__file__).resolve().parents[3] / "doc" / "md_source" / "dyn_templates"
+    documentation_paths: list[Path] = list(
+        documentation_path
+        for documentation_path in documentation_root.rglob("*.md")
+        if documentation_path.name != "index.md"
     )
 
-    assert source.endswith("library\\cigre_surge_current_source_emt.md")
-    assert "CIGRE-standard surge current source" in documentation
+    assert len(documentation_paths) >= 780
+    documentation_path: Path
+    for documentation_path in documentation_paths:
+        documentation: str = documentation_path.read_text(encoding="utf-8")
+        assert documentation.count("<!-- veragrid-block-introduction:start -->") == 1, documentation_path
+        assert documentation.count("<!-- veragrid-block-introduction:end -->") == 1, documentation_path
+        assert "## Engineering context" not in documentation, documentation_path
+        assert "## Typical use" in documentation, documentation_path
+        assert len(documentation.split()) >= 75, documentation_path
+
+
+def test_cigre_surge_source_uses_its_catalogue_markdown() -> None:
+    """Resolve the CIGRE source to its exact online catalogue page."""
+    documentation_url: str | None = resolve_block_documentation_url(
+        BlockType.CIGRE_SURGE_CURRENT_SOURCE_EMT.name,
+        "CIGRE_SURGE_CURRENT_SOURCE_EMT_1",
+    )
+
+    assert documentation_url is not None
+    assert documentation_url.endswith("library/cigre_surge_current_source_emt.html")
 
 
 def test_every_basic_catalogue_template_resolves_its_own_markdown() -> None:
-    """Require one type-id-specific Markdown page for every draggable template."""
+    """Require one type-id-specific online page for every draggable template."""
     descriptor: BasicBlockTemplateDescriptor
     for descriptor in get_editor_ready_basic_block_catalog_descriptors():
         template: EmtModelTemplate = load_basic_block_catalog_template(
             descriptor=descriptor,
             var_factory=VarFactory(),
         )
-        documentation: str
-        source: str
-        documentation, source = resolve_block_documentation("TEMPLATE", template.block)
+        documentation_url: str | None = resolve_block_documentation_url(
+            "TEMPLATE",
+            template.block.name,
+        )
 
-        assert source.endswith(f"library\\catalog\\typ_{descriptor.typ_id}.md"), descriptor.display_label
-        assert "## Characteristic equations" in documentation
-        assert "## Interface table" in documentation
-        assert "Generated from the current block" not in source
+        assert documentation_url is not None, descriptor.display_label
+        assert documentation_url.endswith(
+            f"library/catalog/typ_{descriptor.typ_id}.html"
+        ), descriptor.display_label
+
+
+def test_custom_block_disables_online_catalogue_documentation() -> None:
+    """A genuinely custom node must not pretend to have catalogue documentation."""
+    application: QtWidgets.QApplication = get_qt_application()
+    _unused_application: QtWidgets.QApplication = application
+    custom_block: Block = Block(name="User-authored control model")
+    dialogue: DynamicBlockPropertiesDialog = DynamicBlockPropertiesDialog(
+        custom_block,
+        "CUSTOM",
+        VarFactory(),
+    )
+
+    assert resolve_block_documentation_url("CUSTOM", custom_block.name) is None
+    assert not dialogue._block_info_button.isEnabled()
+    assert "custom block" in dialogue._block_info_button.toolTip()
+    dialogue.close()
 
 
 def test_symbol_tables_are_separated_and_never_repeat_parameter_values() -> None:
