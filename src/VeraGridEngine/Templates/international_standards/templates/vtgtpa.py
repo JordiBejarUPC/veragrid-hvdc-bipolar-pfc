@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
-from VeraGridEngine.Templates.international_standards.templates._generator_band_trip_relay import build_generator_band_trip_relay
+from VeraGridEngine.Templates.international_standards.templates.auxiliary_functions import build_generator_band_trip_relay
 
 
 TEMPLATE_KEY: str = "vtgtpa"

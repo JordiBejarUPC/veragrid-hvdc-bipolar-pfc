@@ -4855,3 +4855,10 @@ class VoltageDependentPowerModel(Enum):
 
     ConstantCurrent = "ConstantCurrent"
     ConstantImpedance = "ConstantImpedance"
+
+
+class InductionMachineRole(Enum):
+    """Identify whether the shared induction equations inject or consume power."""
+
+    GENERATOR = "generator"
+    MOTOR = "motor"

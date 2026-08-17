@@ -195,7 +195,7 @@ def test_circuit_to_dgs_uses_profile_values_when_t_idx_is_provided() -> None:
     assert profile_export.elmcoups[0].on_off == 0
 
 
-@pytest.skip(reason="Faulty implementation")
+@pytest.mark.skip(reason="Faulty implementation")
 def test_dgs_tower_coupling_logs_non_empty_message_for_blank_value_error() -> None:
     class FakeLine:
         def __init__(self) -> None:
