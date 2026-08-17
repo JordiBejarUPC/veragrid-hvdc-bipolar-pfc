@@ -2,25 +2,35 @@ from types import SimpleNamespace
 
 import VeraGridEngine.api as vge
 from VeraGridEngine import SolverType
-from VeraGridEngine.IO.dgs.dgs_to_veragrid import _map_load_pq_to_global_phases
+from VeraGridEngine.IO.dgs.dgs_to_veragrid import (
+    _map_load_pq_to_global_phases,
+    convert_dgs_to_shunt,
+)
 from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.enumerations import ShuntConnectionType
 import numpy as np
 
 
-def test_single_phase_phase_to_phase_load_mapping():
+def test_single_phase_phase_to_phase_load_and_shunt_mapping():
     load = SimpleNamespace(ID="load", loc_name="load", phtech="1PH PH-PH")
+    shunt_source = SimpleNamespace(
+        ID="shunt", loc_name="shunt", ctech=5, shtype=2,
+        qtotn=1.0, ushnm=1.0, fres=250.0, grea=0.0,
+        tandc=0.1, ncapa=1, ncapx=1, outserv=0,
+    )
     cubic = SimpleNamespace(fold_id="bus", cPhInfo="DP1DP2", it2p1=0, it2p2=1, it2p3=2)
+    bus = vge.Bus(name="bus")
 
     for phase_pair, branch_idx in {
         (1, 2): 0, (2, 1): 0,
         (2, 3): 1, (3, 2): 1,
         (3, 1): 2, (1, 3): 2,
     }.items():
+        phase_map = {("bus", 0): phase_pair[0], ("bus", 1): phase_pair[1]}
         mapped = _map_load_pq_to_global_phases(
             elmlod=load,
             cubics_by_objid={"load": [cubic]},
-            phase_map={("bus", 0): phase_pair[0], ("bus", 1): phase_pair[1]},
+            phase_map=phase_map,
             local_p=(1.0, 0.0, 0.0),
             local_q=(2.0, 0.0, 0.0),
             logger=Logger(),
@@ -29,6 +39,23 @@ def test_single_phase_phase_to_phase_load_mapping():
         expected[branch_idx] = 1.0
         expected[branch_idx + 3] = 2.0
         assert np.allclose(mapped, expected)
+
+        _, shunt = convert_dgs_to_shunt(
+            elmshnt=shunt_source,
+            stacubic_dict={},
+            buses=[bus],
+            logger=Logger(),
+            cubics_by_objid={"shunt": [cubic]},
+            bus_by_term_id={"bus": bus},
+            phase_map=phase_map,
+            frequency=50.0,
+        )
+        expected_g = [0.0] * 3
+        expected_b = [0.0] * 3
+        expected_g[branch_idx] = shunt.G
+        expected_b[branch_idx] = shunt.B
+        assert np.allclose([shunt.Ga, shunt.Gb, shunt.Gc], expected_g)
+        assert np.allclose([shunt.Ba, shunt.Bb, shunt.Bc], expected_b)
 
 def test_three_phase_power_delta():
 
