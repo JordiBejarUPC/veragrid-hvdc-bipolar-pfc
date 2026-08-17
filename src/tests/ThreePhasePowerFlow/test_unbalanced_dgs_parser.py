@@ -57,7 +57,6 @@ def test_single_phase_phase_to_phase_load_and_shunt_mapping():
         assert np.allclose([shunt.Ga, shunt.Gb, shunt.Gc], expected_g)
         assert np.allclose([shunt.Ba, shunt.Bb, shunt.Bc], expected_b)
 
-
 def test_three_phase_power_delta():
 
     grid = vge.open_file('data/grids/DGS/ThreePhasePowerDelta.dgs')
