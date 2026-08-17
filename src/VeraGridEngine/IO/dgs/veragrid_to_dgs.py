@@ -596,7 +596,7 @@ def convert_generator(gen: dev.Generator, tpe_new_id: str, new_id: str, bus_v_co
     tpe.ID = tpe_new_id
     tpe.loc_name = gen.name
     tpe.ugn = gen.bus.Vnom
-    tpe.cosn = gen.rated_power_factor
+    tpe.cosn = gen.get_Pf_at(t)
     tpe.nphase = 3
     tpe.sgn = 0.01 if gen.Snom == 0 else gen.Snom
 
@@ -738,8 +738,8 @@ def _set_tr2_tap_fields_from_vgrid(tr: dev.Transformer2W, tpe: TypTr2, e: ElmTr2
     tap_changer = tr.tap_changer
     total_positions: int = int(tap_changer.total_positions)
     has_discrete_tap: bool = (
-        tap_changer.tc_type != TapChangerTypes.NoRegulation
-        and total_positions > 1
+            tap_changer.tc_type != TapChangerTypes.NoRegulation
+            or int(tap_changer.tap_position) != int(tap_changer.neutral_position)
     )
 
     if has_discrete_tap:

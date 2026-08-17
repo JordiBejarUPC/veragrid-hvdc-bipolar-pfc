@@ -2000,10 +2000,10 @@ def convert_dgs_to_bus(elmterm: ElmTerm,
         # Preserve that physical voltage reference so RMS assembly can anchor
         # the common mode of bipolar DC grids without project-specific logic.
         is_grounded=(int(elmterm.systype) == 1 and int(elmterm.iminus) == 2),
-        voltage_control_target=structural_voltage_target,
-        voltage_control_priority=voltage_control_priority,
-        voltage_control_min_deviation_percent=minimum_control_deviation_percent,
-        voltage_control_max_deviation_percent=maximum_control_deviation_percent,
+        # voltage_control_target=structural_voltage_target,
+        # voltage_control_priority=voltage_control_priority,
+        # voltage_control_min_deviation_percent=minimum_control_deviation_percent,
+        # voltage_control_max_deviation_percent=maximum_control_deviation_percent,
         graphic_type=get_bus_graphic_type_from_dgs_terminal(elmterm=elmterm),
     )
 
@@ -2064,34 +2064,18 @@ def convert_dgs_to_sequence_line(typlne: TypLne) -> dev.SequenceLineType:
     :param typlne: typlne parameter.
     :return: Function result.
     """
-    # PowerFactory exports the continuous current rating in ``InomAir``.
-    # ``sline`` is an apparent-power field in current DGS schemas and can be
-    # two orders of magnitude larger, so using it as kA corrupts contingency
-    # and thermal-limit studies.  Older DGS files without ``InomAir`` retain
-    # the historical fallback instead of losing their rating altogether.
-    maximum_current: float
-    if float(typlne.InomAir) > 0.0:
-        maximum_current = float(typlne.InomAir)
-    else:
-        maximum_current = float(typlne.sline)
-
     elm = dev.SequenceLineType(
         name=typlne.loc_name,
-        # Preserve the DGS type identity so two imports of the same source do
-        # not materialize unrelated user-template UUIDs.
-        idtag=_ref_id(typlne.ID),
         R=typlne.rline,
         X=typlne.xline,
         B=typlne.bline,
-        G=typlne.gline,
         CnF=typlne.cline * 1000,
         R0=typlne.rline0,
         X0=typlne.xline0,
         B0=typlne.bline0,
-        G0=typlne.gline0,
         CnF0=typlne.cline0 * 1000,
         Vnom=typlne.uline,
-        Imax=maximum_current,
+        Imax=typlne.sline,
         use_conductance=typlne.cline != 0.0
     )
 
@@ -2446,10 +2430,7 @@ def convert_dgs_to_transformer_type(typtr2: TypTr2) -> dev.TransformerType:
                               dV=float(typtr2.dutap) / 100.0,
                               asymmetry_angle=float(typtr2.phitr),
                               tc_type=_get_transformer_tap_changer_type(typtr2=typtr2),
-                              name=typtr2.loc_name,
-                              # The source FID is the stable identity of this
-                              # reusable static transformer type.
-                              idtag=_ref_id(typtr2.ID))
+                              name=typtr2.loc_name)
 
     conn_hv = _convert_pf_tr2_connection(typtr2.tr2cn_h)
     conn_lv = _convert_pf_tr2_connection(typtr2.tr2cn_l)
@@ -4310,7 +4291,7 @@ def convert_dgs_to_transformer(tr2: ElmTr2,
     )
     # Keep the physical winding selector because station step-up controls use
     # opposite tap signs for HV-side and LV-side tap changers.
-    trafo.tap_changer_on_high_voltage_side = int(typtr2_raw.tap_side) == 0
+    # trafo.tap_changer_on_high_voltage_side = int(typtr2_raw.tap_side) == 0
     trafo.vector_group_number = int(round(float(typtr2_raw.nt2ag))) % 12
     trafo.rate = float(trafo.rate) * float(tr2.ratfac)
 
@@ -4535,13 +4516,13 @@ def convert_dgs_to_transformer(tr2: ElmTr2,
             lower_voltage_bound: float = float(tr2.usp_low)
             upper_voltage_bound: float = float(tr2.usp_up)
             bounds_are_valid: bool = (
-                lower_voltage_bound > 0.0
-                and upper_voltage_bound > 0.0
-                and lower_voltage_bound <= upper_voltage_bound
+                    upper_voltage_bound >= lower_voltage_bound > 0.0
             )
             if bounds_are_valid:
-                trafo.vset_min = lower_voltage_bound
-                trafo.vset_max = upper_voltage_bound
+                # trafo.vset_min = lower_voltage_bound
+                # trafo.vset_max = upper_voltage_bound
+                # TODO: VeraGrid has no tolerance here, so a goo idea would be to implement a deadband
+                trafo.vset = (lower_voltage_bound + upper_voltage_bound) / 2
             else:
                 pass
         else:
@@ -5318,7 +5299,12 @@ def convert_dgs_to_transformer4w(tr4: ElmTr4,
 
     _apply_tr4_winding_tap_data(
         windings=trafo4w.windings,
-        current_positions=tuple(current_positions),
+        current_positions=(
+            tr4.ntap_h0,
+            tr4.ntap_l1,
+            tr4.ntap_l2,
+            tr4.ntap_l3,
+        ),
         neutral_positions=(
             template.ntapneu_h0,
             template.ntapneu_l1,
@@ -6717,12 +6703,12 @@ def convert_dgs_to_line(
         # This conversion is entirely DGS-derived and remains valid for every
         # cable type and system frequency exported by PowerFactory.
         angular_frequency: float = 2.0 * np.pi * float(freq)
-        if angular_frequency > 0.0:
-            line.dc_series_inductance_pu_seconds = float(line.X) / angular_frequency
-            line.dc_shunt_capacitance_pu_seconds = float(line.B) / angular_frequency
-        else:
-            line.dc_series_inductance_pu_seconds = 0.0
-            line.dc_shunt_capacitance_pu_seconds = 0.0
+        # if angular_frequency > 0.0:
+        #     line.dc_series_inductance_pu_seconds = float(line.X) / angular_frequency
+        #     line.dc_shunt_capacitance_pu_seconds = float(line.B) / angular_frequency
+        # else:
+        #     line.dc_series_inductance_pu_seconds = 0.0
+        #     line.dc_shunt_capacitance_pu_seconds = 0.0
         line.X = 0.0
         line.B = 0.0
         line.X0 = 0.0
@@ -7079,7 +7065,7 @@ def _get_scale_factor(scale0: float, logger: Logger, name: str) -> float:
     return s
 
 
-def _extract_load_pq(elmlod: ElmLod, logger: Logger) -> Tuple[float, float]:
+def _extract_load_pq(elmlod: ElmLod, logger: Logger) -> Tuple[float, float, float, float, float, float, float, float]:
     """
     Extract load pq.
 
@@ -7089,33 +7075,54 @@ def _extract_load_pq(elmlod: ElmLod, logger: Logger) -> Tuple[float, float]:
     """
     name = elmlod.loc_name or _ref_id(elmlod.ID) or "Load"
 
-    # Primary: direct P/Q
-    p = elmlod.plini
-    q = elmlod.qlini
+    if elmlod.i_sym == 1:
 
-    # Fallback: S + cos(phi)
-    if p == 0.0 and q == 0.0:
-        s = elmlod.slini
-        cosphi = elmlod.coslini
+        # Apply scaling
+        scale = _get_scale_factor(scale0=elmlod.scale0, logger=logger, name=name)
 
-        if s != 0.0 and cosphi != 0.0:
-            cosphi = max(min(cosphi, 1.0), -1.0)
-            p = s * cosphi
-            sinphi = math.sqrt(max(0.0, 1.0 - cosphi * cosphi))
-            q = s * sinphi
-            logger.add_warning(
-                f"P/Q not provided, derived from slini/coslini.",
-                device=name,
-                device_class="ElmLod",
-                value=q,
-            )
+        # Active Power [MW]
+        pa = elmlod.plinir * scale
+        pb = elmlod.plinis * scale
+        pc = elmlod.plinit * scale
+        p = pa + pb + pc
 
-    # Apply scaling
-    scale = _get_scale_factor(scale0=elmlod.scale0, logger=logger, name=name)
-    p *= scale
-    q *= scale
+        # Reactive Power [MVAr]
+        qa = elmlod.qlinir * scale
+        qb = elmlod.qlinis * scale
+        qc = elmlod.qlinit * scale
+        q = qa + qb + qc
 
-    return p, q
+    else:
+        # Primary: direct P/Q
+        p = elmlod.plini
+        q = elmlod.qlini
+
+        # Fallback: S + cos(phi)
+        if p == 0.0 and q == 0.0:
+            s = elmlod.slini
+            cosphi = elmlod.coslini
+
+            if s != 0.0 and cosphi != 0.0:
+                cosphi = max(min(cosphi, 1.0), -1.0)
+                p = s * cosphi
+                sinphi = math.sqrt(max(0.0, 1.0 - cosphi * cosphi))
+                q = s * sinphi
+                logger.add_warning(
+                    f"P/Q not provided, derived from slini/coslini.",
+                    device=name,
+                    device_class="ElmLod",
+                    value=q,
+                )
+
+        # Apply scaling
+        scale = _get_scale_factor(scale0=elmlod.scale0, logger=logger, name=name)
+        p *= scale
+        q *= scale
+
+        pa, pb, pc = 0.0, 0.0, 0.0 # Balanced active power
+        qa, qb, qc = 0.0, 0.0, 0.0  # Balanced reactive power
+
+    return p, pa, pb, pc, q, qa, qb, qc
 
 
 def convert_dgs_ward_equivalent_to_load(elmvac: ElmVac,
@@ -7194,24 +7201,18 @@ def convert_dgs_to_load(elmlod: ElmLod,
                             cubics_by_objid=cubics_by_objid,
                             bus_by_term_id=bus_by_term_id)
 
-    has_solved_power: bool = (
-        use_power_flow_snapshot
-        and elmlod.m_p_bus1 is not None
-        and elmlod.m_q_bus1 is not None
-    )
-    if has_solved_power:
-        # ElmLod terminal results use the passive equipment convention, which
-        # matches VeraGrid Load positive consumption without a sign reversal.
-        p_mw: float = float(elmlod.m_p_bus1)
-        q_mvar: float = float(elmlod.m_q_bus1)
-    else:
-        p_mw, q_mvar = _extract_load_pq(elmlod=elmlod, logger=logger)
+    p_mw, pa_mw, pb_mw, pc_mw, q_mvar, qa_mvar, qb_mvar, qc_mvar = _extract_load_pq(elmlod=elmlod, logger=logger)
 
     load = dev.Load(
         name=elmlod.loc_name or f"Load_{_ref_id(elmlod.ID)}",
-        idtag=_ref_id(elmlod.ID),
         P=p_mw,
+        P1=pa_mw,
+        P2=pb_mw,
+        P3=pc_mw,
         Q=q_mvar,
+        Q1=qa_mvar,
+        Q2=qb_mvar,
+        Q3=qc_mvar,
         # PowerFactory considers an in-service injection disconnected when its
         # cubicle switch is open.  Both states are therefore required.
         active=(
@@ -7903,24 +7904,24 @@ def convert_dgs_staticgen_to_gen(elmgenstat: ElmGenstat,
         Qmin=minimum_reactive_power_mvar,
         Qmax=maximum_reactive_power_mvar,
         Snom=rated_power_mva,
-        rms_dq_reference_angle_delay_enabled=dq_angle_delay_enabled,
-        rms_dq_reference_angle_delay_time_constant=(
-            dq_angle_delay_time_constant
-        ),
+        # rms_dq_reference_angle_delay_enabled=dq_angle_delay_enabled,
+        # rms_dq_reference_angle_delay_time_constant=(
+        #     dq_angle_delay_time_constant
+        # ),
         q_points=capability_points,
         use_reactive_power_curve=capability_points is not None,
         active=not bool(elmgenstat.outserv)
     )
-    gen.initial_reactive_limit_state = _get_initial_reactive_limit_state(
-        source_state=elmgenstat.calculated_q_limit_state,
-        solved_reactive_power_mvar=(
-            None
-            if elmgenstat.m_q_bus1 is None
-            else float(elmgenstat.m_q_bus1) / float(parallel_count)
-        ),
-        minimum_reactive_power_mvar=minimum_reactive_power_mvar,
-        maximum_reactive_power_mvar=maximum_reactive_power_mvar,
-    )
+    # gen.initial_reactive_limit_state = _get_initial_reactive_limit_state(
+    #     source_state=elmgenstat.calculated_q_limit_state,
+    #     solved_reactive_power_mvar=(
+    #         None
+    #         if elmgenstat.m_q_bus1 is None
+    #         else float(elmgenstat.m_q_bus1) / float(parallel_count)
+    #     ),
+    #     minimum_reactive_power_mvar=minimum_reactive_power_mvar,
+    #     maximum_reactive_power_mvar=maximum_reactive_power_mvar,
+    # )
 
     return bus, gen
 
@@ -8388,20 +8389,20 @@ def convert_dgs_to_vsc(
         alpha1=alpha1,
         alpha2=alpha2,
         alpha3=alpha3,
-        r_series=resistance_pu,
-        x_series=reactance_pu,
-        dc_voltage_base=(
-            0.0 if elmvsc.Unomdc is None else float(elmvsc.Unomdc)
-        ),
-        mmc_submodule_capacitance_uf=(
-            0.0 if elmvsc.mmcCmod is None else float(elmvsc.mmcCmod)
-        ),
-        mmc_submodules_per_arm=mmc_submodules_per_arm,
-        mmc_consider_arm_reactor_dc=(
-            False
-            if elmvsc.iZarmDCside is None
-            else bool(elmvsc.iZarmDCside)
-        ),
+        # r_series=resistance_pu,
+        # x_series=reactance_pu,
+        # dc_voltage_base=(
+        #     0.0 if elmvsc.Unomdc is None else float(elmvsc.Unomdc)
+        # ),
+        # mmc_submodule_capacitance_uf=(
+        #     0.0 if elmvsc.mmcCmod is None else float(elmvsc.mmcCmod)
+        # ),
+        # mmc_submodules_per_arm=mmc_submodules_per_arm,
+        # mmc_consider_arm_reactor_dc=(
+        #     False
+        #     if elmvsc.iZarmDCside is None
+        #     else bool(elmvsc.iZarmDCside)
+        # ),
         control1=control1,
         control2=control2,
         control1_val=control1_value,
@@ -8630,20 +8631,20 @@ def convert_dgs_to_monopolar_vsc(
             alpha1=alpha1,
             alpha2=alpha2,
             alpha3=alpha3,
-            r_series=resistance_pu,
-            x_series=reactance_pu,
-            dc_voltage_base=(
-                0.0 if source.Unomdc is None else float(source.Unomdc)
-            ),
-            mmc_submodule_capacitance_uf=(
-                0.0 if source.mmcCmod is None else float(source.mmcCmod)
-            ),
-            mmc_submodules_per_arm=mmc_submodules_per_arm,
-            mmc_consider_arm_reactor_dc=(
-                False
-                if source.iZarmDCside is None
-                else bool(source.iZarmDCside)
-            ),
+            # r_series=resistance_pu,
+            # x_series=reactance_pu,
+            # dc_voltage_base=(
+            #     0.0 if source.Unomdc is None else float(source.Unomdc)
+            # ),
+            # mmc_submodule_capacitance_uf=(
+            #     0.0 if source.mmcCmod is None else float(source.mmcCmod)
+            # ),
+            # mmc_submodules_per_arm=mmc_submodules_per_arm,
+            # mmc_consider_arm_reactor_dc=(
+            #     False
+            #     if source.iZarmDCside is None
+            #     else bool(source.iZarmDCside)
+            # ),
             control1=control1,
             control1_val=control1_value,
             control2=control2,
@@ -8904,294 +8905,294 @@ def _get_vsc_vdc_control_target(
     return target
 
 
-def _resolve_unique_svs_interface_branch(
-        circuit: dev.MultiCircuit,
-        source_device_id: str,
-        control_bus: dev.Bus,
-) -> Tuple[BranchParent | None, ConverterControlBranchSide | None]:
-    """Resolve a remote SVC's unique local AC interface.
+# def _resolve_unique_svs_interface_branch(
+#         circuit: dev.MultiCircuit,
+#         source_device_id: str,
+#         control_bus: dev.Bus,
+# ) -> Tuple[BranchParent | None, ConverterControlBranchSide | None]:
+#     """Resolve a remote SVC's unique local AC interface.
+#
+#     PowerFactory can apply ``ElmSvs`` droop to the grid-side flow of an
+#     interfacing transformer even when its equipment frame contains only a
+#     voltage meter.  In that contract the SVC injection bus has one energized
+#     AC exit, and the measured side is the terminal opposite the injection.
+#     Multiple exits are an aggregate boundary and deliberately fail closed.
+#
+#     :param circuit: Imported VeraGrid circuit containing the physical SVC.
+#     :param source_device_id: Authoritative source ``ElmSvs`` FID.
+#     :param control_bus: Resolved remote voltage-control bus.
+#     :return: Unique interface branch and its grid-side terminal, or two
+#              ``None`` values when the topology is ambiguous.
+#     """
+#     injection_bus: dev.Bus | None = None
+#     runtime_shunt: dev.ControllableShunt
+#     for runtime_shunt in circuit.get_controllable_shunts():
+#         if str(runtime_shunt.idtag) == source_device_id:
+#             injection_bus = runtime_shunt.bus
+#         else:
+#             pass
+#     else:
+#         pass
+#
+#     candidates: List[Tuple[BranchParent, ConverterControlBranchSide]] = list()
+#     if injection_bus is None or injection_bus is control_bus:
+#         pass
+#     else:
+#         runtime_branch: BranchParent
+#         for runtime_branch in circuit.get_branches_iter(
+#             add_vsc=False,
+#             add_hvdc=False,
+#             add_switch=True,
+#         ):
+#             branch_is_eligible: bool = bool(
+#                 runtime_branch.active
+#                 and runtime_branch.bus_from is not None
+#                 and runtime_branch.bus_to is not None
+#                 and not runtime_branch.bus_from.is_dc
+#                 and not runtime_branch.bus_to.is_dc
+#             )
+#             if branch_is_eligible and runtime_branch.bus_from is injection_bus:
+#                 candidates.append((
+#                     runtime_branch,
+#                     ConverterControlBranchSide.ToSide,
+#                 ))
+#             else:
+#                 if branch_is_eligible and runtime_branch.bus_to is injection_bus:
+#                     candidates.append((
+#                         runtime_branch,
+#                         ConverterControlBranchSide.FromSide,
+#                     ))
+#                 else:
+#                     pass
+#         else:
+#             pass
+#
+#     if len(candidates) == 1:
+#         result: Tuple[BranchParent | None, ConverterControlBranchSide | None] = (
+#             candidates[0]
+#         )
+#     else:
+#         result = (None, None)
+#     return result
 
-    PowerFactory can apply ``ElmSvs`` droop to the grid-side flow of an
-    interfacing transformer even when its equipment frame contains only a
-    voltage meter.  In that contract the SVC injection bus has one energized
-    AC exit, and the measured side is the terminal opposite the injection.
-    Multiple exits are an aggregate boundary and deliberately fail closed.
 
-    :param circuit: Imported VeraGrid circuit containing the physical SVC.
-    :param source_device_id: Authoritative source ``ElmSvs`` FID.
-    :param control_bus: Resolved remote voltage-control bus.
-    :return: Unique interface branch and its grid-side terminal, or two
-             ``None`` values when the topology is ambiguous.
-    """
-    injection_bus: dev.Bus | None = None
-    runtime_shunt: dev.ControllableShunt
-    for runtime_shunt in circuit.get_controllable_shunts():
-        if str(runtime_shunt.idtag) == source_device_id:
-            injection_bus = runtime_shunt.bus
-        else:
-            pass
-    else:
-        pass
-
-    candidates: List[Tuple[BranchParent, ConverterControlBranchSide]] = list()
-    if injection_bus is None or injection_bus is control_bus:
-        pass
-    else:
-        runtime_branch: BranchParent
-        for runtime_branch in circuit.get_branches_iter(
-            add_vsc=False,
-            add_hvdc=False,
-            add_switch=True,
-        ):
-            branch_is_eligible: bool = bool(
-                runtime_branch.active
-                and runtime_branch.bus_from is not None
-                and runtime_branch.bus_to is not None
-                and not runtime_branch.bus_from.is_dc
-                and not runtime_branch.bus_to.is_dc
-            )
-            if branch_is_eligible and runtime_branch.bus_from is injection_bus:
-                candidates.append((
-                    runtime_branch,
-                    ConverterControlBranchSide.ToSide,
-                ))
-            else:
-                if branch_is_eligible and runtime_branch.bus_to is injection_bus:
-                    candidates.append((
-                        runtime_branch,
-                        ConverterControlBranchSide.FromSide,
-                    ))
-                else:
-                    pass
-        else:
-            pass
-
-    if len(candidates) == 1:
-        result: Tuple[BranchParent | None, ConverterControlBranchSide | None] = (
-            candidates[0]
-        )
-    else:
-        result = (None, None)
-    return result
-
-
-def _resolve_composite_remote_ac_branch(
-        dgs_circuit: DgsCircuit,
-        circuit: dev.MultiCircuit,
-        composite: ElmComp,
-        source_device_id: str,
-        logger: Logger,
-        control_bus: dev.Bus | None = None,
-        inference_mode: DgsCompositeBranchInference = (
-            DgsCompositeBranchInference.UniqueTopology
-        ),
-) -> Tuple[BranchParent | None, ConverterControlBranchSide | None]:
-    """Resolve a composite's unique non-local AC current measurement branch.
-
-    PowerFactory equipment frames can expose PoC P/Q either through one direct
-    ``StaPqmea`` or through paired voltage/current phasors. In both forms the
-    measurement cubicle is authoritative: its object FID identifies the
-    physical branch and ``obj_bus`` identifies the measured terminal.  An SVC
-    frame may instead contain one direct interface transformer; its terminal
-    connected to ``cpCtrlNode`` is then the same physical boundary. Duplicate
-    candidates are deduplicated, while genuinely different candidates fail
-    closed because they represent an aggregate equation.
-
-    :param dgs_circuit: Parsed DGS source network and composite associations.
-    :param circuit: Imported VeraGrid circuit containing physical branches.
-    :param composite: Converter-owning PowerFactory composite instance.
-    :param source_device_id: Authoritative source equipment FID to exclude locally.
-    :param logger: Import diagnostic sink.
-    :param control_bus: Optional resolved voltage-control bus used to orient a
-                        direct interface transformer.
-    :param inference_mode: Strongest admissible non-meter branch evidence.
-    :return: Unique physical AC branch and measured terminal, or two ``None`` values.
-    """
-    current_meter_by_id: Dict[str, StaImea] = dict()
-    power_meter_by_id: Dict[str, StaPqmea] = dict()
-    source_meter: StaImea
-    source_power_meter: StaPqmea
-    for source_meter in dgs_circuit.staimeas:
-        current_meter_by_id[str(source_meter.ID)] = source_meter
-    else:
-        pass
-
-    for source_power_meter in dgs_circuit.stapqmeas:
-        power_meter_by_id[str(source_power_meter.ID)] = source_power_meter
-    else:
-        pass
-
-    cubicle_by_id: Dict[str, StaCubic] = dict()
-    source_cubicle: StaCubic
-    for source_cubicle in dgs_circuit.stacubics:
-        cubicle_by_id[str(source_cubicle.ID)] = source_cubicle
-    else:
-        pass
-
-    runtime_branch_by_id: Dict[str, BranchParent] = dict()
-    runtime_branch: BranchParent
-    for runtime_branch in circuit.get_branches_iter(
-        add_vsc=False,
-        add_hvdc=False,
-        add_switch=True,
-    ):
-        if (
-                runtime_branch.bus_from is not None
-                and runtime_branch.bus_to is not None
-                and not runtime_branch.bus_from.is_dc
-                and not runtime_branch.bus_to.is_dc
-        ):
-            runtime_branch_by_id[str(runtime_branch.idtag)] = runtime_branch
-        else:
-            pass
-    else:
-        pass
-
-    candidates: Dict[Tuple[str, int], Tuple[BranchParent, ConverterControlBranchSide]] = dict()
-    entry: ElmCompInstanceEntry
-    for entry in extract_elmcomp_direct_instances(
-        circuit=dgs_circuit,
-        root_element=composite,
-    ):
-        if entry.element_id is None:
-            pass
-        else:
-            candidate_meter: StaImea | None = current_meter_by_id.get(entry.element_id, None)
-            candidate_power_meter: StaPqmea | None = power_meter_by_id.get(
-                entry.element_id,
-                None,
-            )
-            if candidate_meter is not None and candidate_meter.outserv == 0:
-                candidate_cubicle_id: str | None = str(candidate_meter.pcubic)
-            else:
-                if candidate_power_meter is not None and candidate_power_meter.outserv == 0:
-                    candidate_cubicle_id = str(candidate_power_meter.pcubic)
-                else:
-                    candidate_cubicle_id = None
-            if candidate_cubicle_id is None or candidate_cubicle_id == "":
-                pass
-            else:
-                candidate_cubicle: StaCubic | None = cubicle_by_id.get(
-                    candidate_cubicle_id,
-                    None,
-                )
-                if candidate_cubicle is None or str(candidate_cubicle.obj_id) == source_device_id:
-                    pass
-                else:
-                    candidate_branch: BranchParent | None = runtime_branch_by_id.get(
-                        str(candidate_cubicle.obj_id),
-                        None,
-                    )
-                    source_terminal_index: int = int(candidate_cubicle.obj_bus)
-                    if candidate_branch is None or source_terminal_index not in (0, 1):
-                        pass
-                    else:
-                        if source_terminal_index == 0:
-                            measured_side: ConverterControlBranchSide = (
-                                ConverterControlBranchSide.FromSide
-                            )
-                        else:
-                            measured_side = ConverterControlBranchSide.ToSide
-                        candidates[(str(candidate_branch.idtag), source_terminal_index)] = (
-                            candidate_branch,
-                            measured_side,
-                        )
-    else:
-        pass
-
-    has_direct_composite_branch_reference: bool = False
-    if (
-            len(candidates) == 0
-            and control_bus is not None
-            and inference_mode in (
-                DgsCompositeBranchInference.DirectCompositeBranch,
-                DgsCompositeBranchInference.UniqueTopology,
-            )
-    ):
-        # Some equipment frames expose their unique interface transformer
-        # directly rather than through StaPqmea.  Match the exact DGS branch
-        # FID and orient it from the exported cpCtrlNode association.
-        for entry in extract_elmcomp_direct_instances(
-            circuit=dgs_circuit,
-            root_element=composite,
-        ):
-            if entry.element_id is None or entry.element_id == source_device_id:
-                pass
-            else:
-                direct_branch: BranchParent | None = runtime_branch_by_id.get(
-                    entry.element_id,
-                    None,
-                )
-                if direct_branch is None:
-                    pass
-                else:
-                    has_direct_composite_branch_reference = True
-                    if direct_branch.bus_from is control_bus:
-                        direct_side: ConverterControlBranchSide = (
-                            ConverterControlBranchSide.FromSide
-                        )
-                        candidates[(str(direct_branch.idtag), 0)] = (
-                            direct_branch,
-                            direct_side,
-                        )
-                    else:
-                        if direct_branch.bus_to is control_bus:
-                            direct_side = ConverterControlBranchSide.ToSide
-                            candidates[(str(direct_branch.idtag), 1)] = (
-                                direct_branch,
-                                direct_side,
-                            )
-                        else:
-                            pass
-        else:
-            pass
-    else:
-        pass
-
-    if (
-            len(candidates) == 0
-            and control_bus is not None
-            and inference_mode is DgsCompositeBranchInference.UniqueTopology
-            and not has_direct_composite_branch_reference
-    ):
-        inferred_branch: BranchParent | None
-        inferred_side: ConverterControlBranchSide | None
-        inferred_branch, inferred_side = _resolve_unique_svs_interface_branch(
-            circuit=circuit,
-            source_device_id=source_device_id,
-            control_bus=control_bus,
-        )
-        if inferred_branch is None or inferred_side is None:
-            pass
-        else:
-            inferred_terminal_index: int
-            if inferred_side is ConverterControlBranchSide.FromSide:
-                inferred_terminal_index = 0
-            else:
-                inferred_terminal_index = 1
-            candidates[(str(inferred_branch.idtag), inferred_terminal_index)] = (
-                inferred_branch,
-                inferred_side,
-            )
-    else:
-        pass
-
-    if len(candidates) == 1:
-        remote_branch: BranchParent
-        remote_side: ConverterControlBranchSide
-        remote_branch, remote_side = next(iter(candidates.values()))
-        return remote_branch, remote_side
-    else:
-        if len(candidates) > 1:
-            logger.add_warning(
-                msg="Dynamic equipment remote P/Q control has multiple measured AC branches",
-                device=composite.loc_name,
-                device_class="ElmComp",
-                value=len(candidates),
-            )
-        else:
-            pass
-        return None, None
+# def _resolve_composite_remote_ac_branch(
+#         dgs_circuit: DgsCircuit,
+#         circuit: dev.MultiCircuit,
+#         composite: ElmComp,
+#         source_device_id: str,
+#         logger: Logger,
+#         control_bus: dev.Bus | None = None,
+#         inference_mode: DgsCompositeBranchInference = (
+#             DgsCompositeBranchInference.UniqueTopology
+#         ),
+# ) -> Tuple[BranchParent | None, ConverterControlBranchSide | None]:
+#     """Resolve a composite's unique non-local AC current measurement branch.
+#
+#     PowerFactory equipment frames can expose PoC P/Q either through one direct
+#     ``StaPqmea`` or through paired voltage/current phasors. In both forms the
+#     measurement cubicle is authoritative: its object FID identifies the
+#     physical branch and ``obj_bus`` identifies the measured terminal.  An SVC
+#     frame may instead contain one direct interface transformer; its terminal
+#     connected to ``cpCtrlNode`` is then the same physical boundary. Duplicate
+#     candidates are deduplicated, while genuinely different candidates fail
+#     closed because they represent an aggregate equation.
+#
+#     :param dgs_circuit: Parsed DGS source network and composite associations.
+#     :param circuit: Imported VeraGrid circuit containing physical branches.
+#     :param composite: Converter-owning PowerFactory composite instance.
+#     :param source_device_id: Authoritative source equipment FID to exclude locally.
+#     :param logger: Import diagnostic sink.
+#     :param control_bus: Optional resolved voltage-control bus used to orient a
+#                         direct interface transformer.
+#     :param inference_mode: Strongest admissible non-meter branch evidence.
+#     :return: Unique physical AC branch and measured terminal, or two ``None`` values.
+#     """
+#     current_meter_by_id: Dict[str, StaImea] = dict()
+#     power_meter_by_id: Dict[str, StaPqmea] = dict()
+#     source_meter: StaImea
+#     source_power_meter: StaPqmea
+#     for source_meter in dgs_circuit.staimeas:
+#         current_meter_by_id[str(source_meter.ID)] = source_meter
+#     else:
+#         pass
+#
+#     for source_power_meter in dgs_circuit.stapqmeas:
+#         power_meter_by_id[str(source_power_meter.ID)] = source_power_meter
+#     else:
+#         pass
+#
+#     cubicle_by_id: Dict[str, StaCubic] = dict()
+#     source_cubicle: StaCubic
+#     for source_cubicle in dgs_circuit.stacubics:
+#         cubicle_by_id[str(source_cubicle.ID)] = source_cubicle
+#     else:
+#         pass
+#
+#     runtime_branch_by_id: Dict[str, BranchParent] = dict()
+#     runtime_branch: BranchParent
+#     for runtime_branch in circuit.get_branches_iter(
+#         add_vsc=False,
+#         add_hvdc=False,
+#         add_switch=True,
+#     ):
+#         if (
+#                 runtime_branch.bus_from is not None
+#                 and runtime_branch.bus_to is not None
+#                 and not runtime_branch.bus_from.is_dc
+#                 and not runtime_branch.bus_to.is_dc
+#         ):
+#             runtime_branch_by_id[str(runtime_branch.idtag)] = runtime_branch
+#         else:
+#             pass
+#     else:
+#         pass
+#
+#     candidates: Dict[Tuple[str, int], Tuple[BranchParent, ConverterControlBranchSide]] = dict()
+#     entry: ElmCompInstanceEntry
+#     for entry in extract_elmcomp_direct_instances(
+#         circuit=dgs_circuit,
+#         root_element=composite,
+#     ):
+#         if entry.element_id is None:
+#             pass
+#         else:
+#             candidate_meter: StaImea | None = current_meter_by_id.get(entry.element_id, None)
+#             candidate_power_meter: StaPqmea | None = power_meter_by_id.get(
+#                 entry.element_id,
+#                 None,
+#             )
+#             if candidate_meter is not None and candidate_meter.outserv == 0:
+#                 candidate_cubicle_id: str | None = str(candidate_meter.pcubic)
+#             else:
+#                 if candidate_power_meter is not None and candidate_power_meter.outserv == 0:
+#                     candidate_cubicle_id = str(candidate_power_meter.pcubic)
+#                 else:
+#                     candidate_cubicle_id = None
+#             if candidate_cubicle_id is None or candidate_cubicle_id == "":
+#                 pass
+#             else:
+#                 candidate_cubicle: StaCubic | None = cubicle_by_id.get(
+#                     candidate_cubicle_id,
+#                     None,
+#                 )
+#                 if candidate_cubicle is None or str(candidate_cubicle.obj_id) == source_device_id:
+#                     pass
+#                 else:
+#                     candidate_branch: BranchParent | None = runtime_branch_by_id.get(
+#                         str(candidate_cubicle.obj_id),
+#                         None,
+#                     )
+#                     source_terminal_index: int = int(candidate_cubicle.obj_bus)
+#                     if candidate_branch is None or source_terminal_index not in (0, 1):
+#                         pass
+#                     else:
+#                         if source_terminal_index == 0:
+#                             measured_side: ConverterControlBranchSide = (
+#                                 ConverterControlBranchSide.FromSide
+#                             )
+#                         else:
+#                             measured_side = ConverterControlBranchSide.ToSide
+#                         candidates[(str(candidate_branch.idtag), source_terminal_index)] = (
+#                             candidate_branch,
+#                             measured_side,
+#                         )
+#     else:
+#         pass
+#
+#     has_direct_composite_branch_reference: bool = False
+#     if (
+#             len(candidates) == 0
+#             and control_bus is not None
+#             and inference_mode in (
+#                 DgsCompositeBranchInference.DirectCompositeBranch,
+#                 DgsCompositeBranchInference.UniqueTopology,
+#             )
+#     ):
+#         # Some equipment frames expose their unique interface transformer
+#         # directly rather than through StaPqmea.  Match the exact DGS branch
+#         # FID and orient it from the exported cpCtrlNode association.
+#         for entry in extract_elmcomp_direct_instances(
+#             circuit=dgs_circuit,
+#             root_element=composite,
+#         ):
+#             if entry.element_id is None or entry.element_id == source_device_id:
+#                 pass
+#             else:
+#                 direct_branch: BranchParent | None = runtime_branch_by_id.get(
+#                     entry.element_id,
+#                     None,
+#                 )
+#                 if direct_branch is None:
+#                     pass
+#                 else:
+#                     has_direct_composite_branch_reference = True
+#                     if direct_branch.bus_from is control_bus:
+#                         direct_side: ConverterControlBranchSide = (
+#                             ConverterControlBranchSide.FromSide
+#                         )
+#                         candidates[(str(direct_branch.idtag), 0)] = (
+#                             direct_branch,
+#                             direct_side,
+#                         )
+#                     else:
+#                         if direct_branch.bus_to is control_bus:
+#                             direct_side = ConverterControlBranchSide.ToSide
+#                             candidates[(str(direct_branch.idtag), 1)] = (
+#                                 direct_branch,
+#                                 direct_side,
+#                             )
+#                         else:
+#                             pass
+#         else:
+#             pass
+#     else:
+#         pass
+#
+#     if (
+#             len(candidates) == 0
+#             and control_bus is not None
+#             and inference_mode is DgsCompositeBranchInference.UniqueTopology
+#             and not has_direct_composite_branch_reference
+#     ):
+#         inferred_branch: BranchParent | None
+#         inferred_side: ConverterControlBranchSide | None
+#         inferred_branch, inferred_side = _resolve_unique_svs_interface_branch(
+#             circuit=circuit,
+#             source_device_id=source_device_id,
+#             control_bus=control_bus,
+#         )
+#         if inferred_branch is None or inferred_side is None:
+#             pass
+#         else:
+#             inferred_terminal_index: int
+#             if inferred_side is ConverterControlBranchSide.FromSide:
+#                 inferred_terminal_index = 0
+#             else:
+#                 inferred_terminal_index = 1
+#             candidates[(str(inferred_branch.idtag), inferred_terminal_index)] = (
+#                 inferred_branch,
+#                 inferred_side,
+#             )
+#     else:
+#         pass
+#
+#     if len(candidates) == 1:
+#         remote_branch: BranchParent
+#         remote_side: ConverterControlBranchSide
+#         remote_branch, remote_side = next(iter(candidates.values()))
+#         return remote_branch, remote_side
+#     else:
+#         if len(candidates) > 1:
+#             logger.add_warning(
+#                 msg="Dynamic equipment remote P/Q control has multiple measured AC branches",
+#                 device=composite.loc_name,
+#                 device_class="ElmComp",
+#                 value=len(candidates),
+#             )
+#         else:
+#             pass
+#         return None, None
 
 
 def _apply_composite_pq_measurement_vsc_controls(
@@ -9292,476 +9293,476 @@ def _apply_composite_pq_measurement_vsc_controls(
     return updated_count
 
 
-def _resolve_explicit_ac_measurement_branch(
-        dgs_circuit: DgsCircuit,
-        circuit: dev.MultiCircuit,
-        measurement_cubic_id: str | None,
-        source_device_id: str,
-        source_device_name: str,
-        logger: Logger,
-) -> Tuple[BranchParent | None, ConverterControlBranchSide | None]:
-    """Resolve one explicitly exported reactive measurement cubicle.
-
-    :param dgs_circuit: Parsed DGS source containing the cubicle.
-    :param circuit: Imported VeraGrid circuit containing the measured branch.
-    :param measurement_cubic_id: Exported ``ElmSvs.p_cub`` identifier.
-    :param source_device_id: Source SVC FID, excluded as a branch candidate.
-    :param source_device_name: Human-readable SVC name for diagnostics.
-    :param logger: Import diagnostic sink.
-    :return: Measured AC branch and terminal side, or two ``None`` values.
-    """
-    source_cubic: StaCubic | None = None
-    candidate_cubic: StaCubic
-    if measurement_cubic_id is None or measurement_cubic_id == "":
-        pass
-    else:
-        # Resolve by stable DGS identity; names are never sufficient for a
-        # control equation because duplicate equipment names are legal.
-        for candidate_cubic in dgs_circuit.stacubics:
-            if str(candidate_cubic.ID) == measurement_cubic_id:
-                source_cubic = candidate_cubic
-            else:
-                pass
-        else:
-            pass
-
-    if source_cubic is None or str(source_cubic.obj_id) == source_device_id:
-        result_branch: BranchParent | None = None
-        result_side: ConverterControlBranchSide | None = None
-    else:
-        result_branch = None
-        runtime_branch: BranchParent
-        for runtime_branch in circuit.get_branches_iter(
-            add_vsc=False,
-            add_hvdc=False,
-            add_switch=True,
-        ):
-            if str(runtime_branch.idtag) == str(source_cubic.obj_id):
-                result_branch = runtime_branch
-            else:
-                pass
-        else:
-            pass
-
-        source_terminal_index: int = int(source_cubic.obj_bus)
-        if result_branch is not None and source_terminal_index == 0:
-            result_side = ConverterControlBranchSide.FromSide
-        else:
-            if result_branch is not None and source_terminal_index == 1:
-                result_side = ConverterControlBranchSide.ToSide
-            else:
-                result_branch = None
-                result_side = None
-
-    if measurement_cubic_id is not None and result_branch is None:
-        logger.add_warning(
-            msg="ElmSvs reactive measurement cubicle could not be resolved",
-            device=source_device_name,
-            device_class="ElmSvs",
-            value=measurement_cubic_id,
-        )
-    else:
-        pass
-    return result_branch, result_side
-
-
-def _apply_composite_q_measurement_svs_controls(
-        dgs_circuit: DgsCircuit,
-        circuit: dev.MultiCircuit,
-        use_power_flow_snapshot: bool,
-        logger: Logger,
-) -> int:
-    """Project native ElmSvs droop onto its measured boundary branch.
-
-    A populated ``p_cub`` is the authoritative reactive-power measurement
-    point.  Some equipment frames instead expose the same physical boundary
-    through one unambiguous ``StaPqmea`` or ``StaImea`` while ``p_cub`` remains
-    empty; this is required when the SVC compensates filters behind its
-    transformer.  A physical transformer slot alone is not a measurement and
-    must not replace the native SVC-output Q used by ordinary remote Q/V droop.
-
-    :param dgs_circuit: Parsed DGS network and composite instances.
-    :param circuit: Imported VeraGrid network containing SVCs and AC branches.
-    :param use_power_flow_snapshot: Whether solved local terminal powers are authoritative.
-    :param logger: Import diagnostic sink.
-    :return: Number of native SVCs assigned to a measured AC branch.
-    """
-    composite_by_id: Dict[str, ElmComp] = dict()
-    runtime_shunt_by_id: Dict[str, dev.ControllableShunt] = dict()
-    source_composite: ElmComp
-    runtime_shunt: dev.ControllableShunt
-    for source_composite in dgs_circuit.elmcomps:
-        source_composite_id: str | None = _ref_id(source_composite.ID)
-        if source_composite_id is None or source_composite_id == "":
-            pass
-        else:
-            composite_by_id[source_composite_id] = source_composite
-    else:
-        pass
-
-    for runtime_shunt in circuit.controllable_shunts:
-        runtime_shunt_id: str | None = _ref_id(runtime_shunt.idtag)
-        if runtime_shunt_id is None or runtime_shunt_id == "":
-            pass
-        else:
-            runtime_shunt_by_id[runtime_shunt_id] = runtime_shunt
-    else:
-        pass
-
-    updated_count: int = 0
-    source_svs: ElmSvs
-    for source_svs in dgs_circuit.elmsvss:
-        source_svs_id: str | None = _ref_id(source_svs.ID)
-        composite_id: str | None = _ref_id(source_svs.c_pmod)
-        explicit_measurement_id: str | None = _ref_id(source_svs.p_cub)
-        valid_native_droop: bool = (
-            int(source_svs.outserv) == 0
-            and int(source_svs.i_droop) != 0
-            and float(source_svs.ddroop) > 0.0
-            and float(source_svs.Srated) != 0.0
-        )
-        valid_native_reactive_control: bool = (
-            int(source_svs.outserv) == 0
-            and int(source_svs.i_ctrl) == 2
-        )
-        if (
-                use_power_flow_snapshot
-                or source_svs_id is None
-                or source_svs_id == ""
-                or not (valid_native_droop or valid_native_reactive_control)
-        ):
-            pass
-        else:
-            matched_runtime_shunt: dev.ControllableShunt | None = (
-                runtime_shunt_by_id.get(source_svs_id, None)
-            )
-            if (
-                    matched_runtime_shunt is None
-                    or matched_runtime_shunt.control_mode not in (
-                        ShuntControlMode.QVDroop,
-                        ShuntControlMode.ReactivePower,
-                    )
-            ):
-                pass
-            else:
-                remote_branch: BranchParent | None
-                remote_side: ConverterControlBranchSide | None
-                if explicit_measurement_id is not None and explicit_measurement_id != "":
-                    remote_branch, remote_side = _resolve_explicit_ac_measurement_branch(
-                        dgs_circuit=dgs_circuit,
-                        circuit=circuit,
-                        measurement_cubic_id=explicit_measurement_id,
-                        source_device_id=source_svs_id,
-                        source_device_name=source_svs.loc_name,
-                        logger=logger,
-                    )
-                else:
-                    matched_composite: ElmComp | None = composite_by_id.get(
-                        composite_id,
-                        None,
-                    )
-                    if matched_composite is None:
-                        remote_branch = None
-                        remote_side = None
-                    else:
-                        remote_branch, remote_side = _resolve_composite_remote_ac_branch(
-                            dgs_circuit=dgs_circuit,
-                            circuit=circuit,
-                            composite=matched_composite,
-                            source_device_id=source_svs_id,
-                            logger=logger,
-                            control_bus=matched_runtime_shunt.control_bus,
-                            inference_mode=(
-                                DgsCompositeBranchInference.UniqueTopology
-                            ),
-                        )
-                if remote_branch is None or remote_side is None:
-                    pass
-                else:
-                    matched_runtime_shunt.control_branch = remote_branch
-                    matched_runtime_shunt.control_branch_side = remote_side
-                    updated_count += 1
-    else:
-        pass
-    return updated_count
+# def _resolve_explicit_ac_measurement_branch(
+#         dgs_circuit: DgsCircuit,
+#         circuit: dev.MultiCircuit,
+#         measurement_cubic_id: str | None,
+#         source_device_id: str,
+#         source_device_name: str,
+#         logger: Logger,
+# ) -> Tuple[BranchParent | None, ConverterControlBranchSide | None]:
+#     """Resolve one explicitly exported reactive measurement cubicle.
+#
+#     :param dgs_circuit: Parsed DGS source containing the cubicle.
+#     :param circuit: Imported VeraGrid circuit containing the measured branch.
+#     :param measurement_cubic_id: Exported ``ElmSvs.p_cub`` identifier.
+#     :param source_device_id: Source SVC FID, excluded as a branch candidate.
+#     :param source_device_name: Human-readable SVC name for diagnostics.
+#     :param logger: Import diagnostic sink.
+#     :return: Measured AC branch and terminal side, or two ``None`` values.
+#     """
+#     source_cubic: StaCubic | None = None
+#     candidate_cubic: StaCubic
+#     if measurement_cubic_id is None or measurement_cubic_id == "":
+#         pass
+#     else:
+#         # Resolve by stable DGS identity; names are never sufficient for a
+#         # control equation because duplicate equipment names are legal.
+#         for candidate_cubic in dgs_circuit.stacubics:
+#             if str(candidate_cubic.ID) == measurement_cubic_id:
+#                 source_cubic = candidate_cubic
+#             else:
+#                 pass
+#         else:
+#             pass
+#
+#     if source_cubic is None or str(source_cubic.obj_id) == source_device_id:
+#         result_branch: BranchParent | None = None
+#         result_side: ConverterControlBranchSide | None = None
+#     else:
+#         result_branch = None
+#         runtime_branch: BranchParent
+#         for runtime_branch in circuit.get_branches_iter(
+#             add_vsc=False,
+#             add_hvdc=False,
+#             add_switch=True,
+#         ):
+#             if str(runtime_branch.idtag) == str(source_cubic.obj_id):
+#                 result_branch = runtime_branch
+#             else:
+#                 pass
+#         else:
+#             pass
+#
+#         source_terminal_index: int = int(source_cubic.obj_bus)
+#         if result_branch is not None and source_terminal_index == 0:
+#             result_side = ConverterControlBranchSide.FromSide
+#         else:
+#             if result_branch is not None and source_terminal_index == 1:
+#                 result_side = ConverterControlBranchSide.ToSide
+#             else:
+#                 result_branch = None
+#                 result_side = None
+#
+#     if measurement_cubic_id is not None and result_branch is None:
+#         logger.add_warning(
+#             msg="ElmSvs reactive measurement cubicle could not be resolved",
+#             device=source_device_name,
+#             device_class="ElmSvs",
+#             value=measurement_cubic_id,
+#         )
+#     else:
+#         pass
+#     return result_branch, result_side
 
 
-def _apply_dynamic_vsc_steady_state_controls(
-        dgs_circuit: DgsCircuit,
-        circuit: dev.MultiCircuit,
-        use_power_flow_snapshot: bool,
-        logger: Logger,
-) -> int:
-    """
-    Project exact DSL mode selectors onto physical VSC load-flow controls.
+# def _apply_composite_q_measurement_svs_controls(
+#         dgs_circuit: DgsCircuit,
+#         circuit: dev.MultiCircuit,
+#         use_power_flow_snapshot: bool,
+#         logger: Logger,
+# ) -> int:
+#     """Project native ElmSvs droop onto its measured boundary branch.
+#
+#     A populated ``p_cub`` is the authoritative reactive-power measurement
+#     point.  Some equipment frames instead expose the same physical boundary
+#     through one unambiguous ``StaPqmea`` or ``StaImea`` while ``p_cub`` remains
+#     empty; this is required when the SVC compensates filters behind its
+#     transformer.  A physical transformer slot alone is not a measurement and
+#     must not replace the native SVC-output Q used by ordinary remote Q/V droop.
+#
+#     :param dgs_circuit: Parsed DGS network and composite instances.
+#     :param circuit: Imported VeraGrid network containing SVCs and AC branches.
+#     :param use_power_flow_snapshot: Whether solved local terminal powers are authoritative.
+#     :param logger: Import diagnostic sink.
+#     :return: Number of native SVCs assigned to a measured AC branch.
+#     """
+#     composite_by_id: Dict[str, ElmComp] = dict()
+#     runtime_shunt_by_id: Dict[str, dev.ControllableShunt] = dict()
+#     source_composite: ElmComp
+#     runtime_shunt: dev.ControllableShunt
+#     for source_composite in dgs_circuit.elmcomps:
+#         source_composite_id: str | None = _ref_id(source_composite.ID)
+#         if source_composite_id is None or source_composite_id == "":
+#             pass
+#         else:
+#             composite_by_id[source_composite_id] = source_composite
+#     else:
+#         pass
+#
+#     for runtime_shunt in circuit.controllable_shunts:
+#         runtime_shunt_id: str | None = _ref_id(runtime_shunt.idtag)
+#         if runtime_shunt_id is None or runtime_shunt_id == "":
+#             pass
+#         else:
+#             runtime_shunt_by_id[runtime_shunt_id] = runtime_shunt
+#     else:
+#         pass
+#
+#     updated_count: int = 0
+#     source_svs: ElmSvs
+#     for source_svs in dgs_circuit.elmsvss:
+#         source_svs_id: str | None = _ref_id(source_svs.ID)
+#         composite_id: str | None = _ref_id(source_svs.c_pmod)
+#         explicit_measurement_id: str | None = _ref_id(source_svs.p_cub)
+#         valid_native_droop: bool = (
+#             int(source_svs.outserv) == 0
+#             and int(source_svs.i_droop) != 0
+#             and float(source_svs.ddroop) > 0.0
+#             and float(source_svs.Srated) != 0.0
+#         )
+#         valid_native_reactive_control: bool = (
+#             int(source_svs.outserv) == 0
+#             and int(source_svs.i_ctrl) == 2
+#         )
+#         if (
+#                 use_power_flow_snapshot
+#                 or source_svs_id is None
+#                 or source_svs_id == ""
+#                 or not (valid_native_droop or valid_native_reactive_control)
+#         ):
+#             pass
+#         else:
+#             matched_runtime_shunt: dev.ControllableShunt | None = (
+#                 runtime_shunt_by_id.get(source_svs_id, None)
+#             )
+#             if (
+#                     matched_runtime_shunt is None
+#                     or matched_runtime_shunt.control_mode not in (
+#                         ShuntControlMode.QVDroop,
+#                         ShuntControlMode.ReactivePower,
+#                     )
+#             ):
+#                 pass
+#             else:
+#                 remote_branch: BranchParent | None
+#                 remote_side: ConverterControlBranchSide | None
+#                 if explicit_measurement_id is not None and explicit_measurement_id != "":
+#                     remote_branch, remote_side = _resolve_explicit_ac_measurement_branch(
+#                         dgs_circuit=dgs_circuit,
+#                         circuit=circuit,
+#                         measurement_cubic_id=explicit_measurement_id,
+#                         source_device_id=source_svs_id,
+#                         source_device_name=source_svs.loc_name,
+#                         logger=logger,
+#                     )
+#                 else:
+#                     matched_composite: ElmComp | None = composite_by_id.get(
+#                         composite_id,
+#                         None,
+#                     )
+#                     if matched_composite is None:
+#                         remote_branch = None
+#                         remote_side = None
+#                     else:
+#                         remote_branch, remote_side = _resolve_composite_remote_ac_branch(
+#                             dgs_circuit=dgs_circuit,
+#                             circuit=circuit,
+#                             composite=matched_composite,
+#                             source_device_id=source_svs_id,
+#                             logger=logger,
+#                             control_bus=matched_runtime_shunt.control_bus,
+#                             inference_mode=(
+#                                 DgsCompositeBranchInference.UniqueTopology
+#                             ),
+#                         )
+#                 if remote_branch is None or remote_side is None:
+#                     pass
+#                 else:
+#                     matched_runtime_shunt.control_branch = remote_branch
+#                     matched_runtime_shunt.control_branch_side = remote_side
+#                     updated_count += 1
+#     else:
+#         pass
+#     return updated_count
 
-    Dynamic models remain separate catalogue objects. This projection only
-    supplies the steady-state equations that PowerFactory selects from those
-    models before temporal initialization, ensuring that the static solution
-    feeding RMS represents the same physical operating mode.
 
-    :param dgs_circuit: Parsed source DGS including composite and DSL instances.
-    :param circuit: Imported VeraGrid circuit to configure.
-    :param use_power_flow_snapshot: Whether solved DGS terminal values were requested.
-    :param logger: Import diagnostic sink.
-    :return: Number of converters whose control contract was updated.
-    """
-    composite_by_id: Dict[str, ElmComp] = dict()
-    dsl_by_id: Dict[str, ElmDsl] = dict()
-    source_vsc_by_id: Dict[str, ElmVsc | ElmVscmono] = dict()
-    runtime_vsc_by_id: Dict[str, dev.VSC] = dict()
-    source_composite: ElmComp
-    source_dsl: ElmDsl
-    source_vsc: ElmVsc | ElmVscmono
-    runtime_vsc: dev.VSC
-
-    # Build typed identity indexes once so every physical converter is matched
-    # by DGS FID, never by a localized or user-editable display name.
-    for source_composite in dgs_circuit.elmcomps:
-        composite_id: str | None = _ref_id(source_composite.ID)
-        if composite_id is None or composite_id == "":
-            pass
-        else:
-            composite_by_id[composite_id] = source_composite
-    else:
-        pass
-
-    for source_dsl in dgs_circuit.elmdsls:
-        dsl_id: str | None = _ref_id(source_dsl.ID)
-        if dsl_id is None or dsl_id == "":
-            pass
-        else:
-            dsl_by_id[dsl_id] = source_dsl
-    else:
-        pass
-
-    for source_vsc in dgs_circuit.elmvscs:
-        source_vsc_id: str | None = _ref_id(source_vsc.ID)
-        if source_vsc_id is None or source_vsc_id == "":
-            pass
-        else:
-            source_vsc_by_id[source_vsc_id] = source_vsc
-    else:
-        pass
-
-    for source_vsc in dgs_circuit.elmvscmonos:
-        source_vsc_id = _ref_id(source_vsc.ID)
-        if source_vsc_id is None or source_vsc_id == "":
-            pass
-        else:
-            source_vsc_by_id[source_vsc_id] = source_vsc
-    else:
-        pass
-
-    for runtime_vsc in circuit.get_vsc():
-        runtime_vsc_id: str | None = _ref_id(runtime_vsc.idtag)
-        if runtime_vsc_id is None or runtime_vsc_id == "":
-            pass
-        else:
-            runtime_vsc_by_id[runtime_vsc_id] = runtime_vsc
-    else:
-        pass
-
-    updated_count: int = 0
-    source_vsc_id: str
-    for source_vsc_id, source_vsc in source_vsc_by_id.items():
-        runtime_vsc = runtime_vsc_by_id.get(source_vsc_id, None)
-        composite_id: str | None = _ref_id(source_vsc.c_pmod)
-        if runtime_vsc is None or composite_id is None or composite_id == "":
-            pass
-        else:
-            source_composite = composite_by_id.get(composite_id, None)
-            if source_composite is None:
-                pass
-            else:
-                active_mode: float | None = _get_unique_composite_dsl_parameter(
-                    composite=source_composite,
-                    dsl_by_id=dsl_by_id,
-                    parameter_name="Mode_P",
-                    logger=logger,
-                )
-                reactive_mode: float | None = _get_unique_composite_dsl_parameter(
-                    composite=source_composite,
-                    dsl_by_id=dsl_by_id,
-                    parameter_name="Mode_Q",
-                    logger=logger,
-                )
-                changed: bool = False
-
-                # PowerFactory's generic P/Vdc contract defines precisely two
-                # modes: zero regulates bipolar Vdc and one regulates AC power.
-                if active_mode is None:
-                    pass
-                else:
-                    if active_mode < 0.5:
-                        runtime_vsc.control1 = ConverterControlType.Vm_dc
-                        runtime_vsc.control1_val = _get_vsc_vdc_control_target(
-                            converter=runtime_vsc,
-                            composite=source_composite,
-                            dsl_by_id=dsl_by_id,
-                            use_power_flow_snapshot=use_power_flow_snapshot,
-                            configured_voltage_target=(
-                                float(source_vsc.usetp)
-                                if source_vsc.usetpdc is None
-                                else float(source_vsc.usetpdc)
-                            ),
-                            logger=logger,
-                        )
-                        changed = True
-                    else:
-                        if active_mode < 1.5:
-                            runtime_vsc.control1 = ConverterControlType.Pac
-                            remote_active_mode: float | None = (
-                                _get_unique_composite_dsl_sibling_parameter(
-                                    composite=source_composite,
-                                    dsl_by_id=dsl_by_id,
-                                    anchor_parameter_name="Mode_P",
-                                    parameter_name="poc",
-                                    logger=logger,
-                                )
-                            )
-                            if remote_active_mode is not None and remote_active_mode >= 0.5:
-                                remote_active_branch: BranchParent | None
-                                remote_active_branch_side: ConverterControlBranchSide | None
-                                remote_active_branch, remote_active_branch_side = (
-                                    _resolve_composite_remote_ac_branch(
-                                        dgs_circuit=dgs_circuit,
-                                        circuit=circuit,
-                                        composite=source_composite,
-                                        source_device_id=source_vsc_id,
-                                        logger=logger,
-                                    )
-                                )
-                                if (
-                                        remote_active_branch is None
-                                        or remote_active_branch_side is None
-                                ):
-                                    logger.add_warning(
-                                        msg="Dynamic VSC remote P control could not resolve one AC branch",
-                                        device=runtime_vsc.name,
-                                        device_class="VSC",
-                                        value=remote_active_mode,
-                                    )
-                                else:
-                                    runtime_vsc.control1_dev = remote_active_branch
-                                    runtime_vsc.control1_branch_side = remote_active_branch_side
-                                # psetp is the control target at the selected
-                                # PoC and is independent of a solved snapshot.
-                                runtime_vsc.control1_val = float(source_vsc.psetp)
-                            else:
-                                runtime_vsc.control1_dev = None
-                                if (
-                                        use_power_flow_snapshot
-                                        and source_vsc.m_p_busac is not None
-                                ):
-                                    # PF reports injection into the AC bus,
-                                    # while VeraGrid uses bus-to-VSC power.
-                                    runtime_vsc.control1_val = -float(
-                                        source_vsc.m_p_busac
-                                    )
-                                else:
-                                    runtime_vsc.control1_val = float(source_vsc.psetp)
-                            changed = True
-                        else:
-                            logger.add_warning(
-                                msg="Unsupported dynamic VSC active-power mode retained",
-                                device=runtime_vsc.name,
-                                device_class="VSC",
-                                value=active_mode,
-                            )
-
-                # The generic Q/Vac contract uses zero for voltage, one for Q
-                # and two for power factor. Remote Q follows the composite's
-                # exact measurement cubicle instead of copying a solved result.
-                if reactive_mode is None:
-                    pass
-                else:
-                    if reactive_mode < 0.5:
-                        remote_voltage_mode: float | None = (
-                            _get_unique_composite_dsl_parameter(
-                                composite=source_composite,
-                                dsl_by_id=dsl_by_id,
-                                parameter_name="poc_Vac",
-                                logger=logger,
-                            )
-                        )
-                        if remote_voltage_mode is None or remote_voltage_mode < 0.5:
-                            runtime_vsc.control2 = ConverterControlType.Vm_ac
-                            runtime_vsc.control2_dev = runtime_vsc.bus_to
-                            runtime_vsc.control2_val = float(source_vsc.usetp)
-                            changed = True
-                        else:
-                            logger.add_warning(
-                                msg="Remote dynamic VSC voltage control needs an exact PoC target",
-                                device=runtime_vsc.name,
-                                device_class="VSC",
-                                value=remote_voltage_mode,
-                            )
-                    else:
-                        if reactive_mode < 1.5:
-                            runtime_vsc.control2 = ConverterControlType.Qac
-                            remote_reactive_mode: float | None = (
-                                _get_unique_composite_dsl_parameter(
-                                    composite=source_composite,
-                                    dsl_by_id=dsl_by_id,
-                                    parameter_name="poc_Q",
-                                    logger=logger,
-                                )
-                            )
-                            if remote_reactive_mode is not None and remote_reactive_mode >= 0.5:
-                                remote_branch: BranchParent | None
-                                remote_branch_side: ConverterControlBranchSide | None
-                                remote_branch, remote_branch_side = (
-                                    _resolve_composite_remote_ac_branch(
-                                        dgs_circuit=dgs_circuit,
-                                        circuit=circuit,
-                                        composite=source_composite,
-                                        source_device_id=source_vsc_id,
-                                        logger=logger,
-                                    )
-                                )
-                                if remote_branch is None or remote_branch_side is None:
-                                    logger.add_warning(
-                                        msg="Dynamic VSC remote Q control could not resolve one AC branch",
-                                        device=runtime_vsc.name,
-                                        device_class="VSC",
-                                        value=remote_reactive_mode,
-                                    )
-                                else:
-                                    runtime_vsc.control2_dev = remote_branch
-                                    runtime_vsc.control2_branch_side = remote_branch_side
-                                    # qsetp is the unsolved DGS load-flow target;
-                                    # measured terminal Q is only a validation result.
-                                    runtime_vsc.control2_val = float(source_vsc.qsetp)
-                            else:
-                                runtime_vsc.control2_dev = None
-                                if (
-                                        use_power_flow_snapshot
-                                        and source_vsc.m_q_busac is not None
-                                ):
-                                    # Keep the same terminal orientation as Pac.
-                                    runtime_vsc.control2_val = -float(
-                                        source_vsc.m_q_busac
-                                    )
-                                else:
-                                    runtime_vsc.control2_val = float(source_vsc.qsetp)
-                            changed = True
-                        else:
-                            logger.add_warning(
-                                msg="Dynamic VSC power-factor control retained as fixed Q",
-                                device=runtime_vsc.name,
-                                device_class="VSC",
-                                value=reactive_mode,
-                            )
-
-                if changed:
-                    updated_count += 1
-                else:
-                    pass
-    else:
-        pass
-
-    return updated_count
+# def _apply_dynamic_vsc_steady_state_controls(
+#         dgs_circuit: DgsCircuit,
+#         circuit: dev.MultiCircuit,
+#         use_power_flow_snapshot: bool,
+#         logger: Logger,
+# ) -> int:
+#     """
+#     Project exact DSL mode selectors onto physical VSC load-flow controls.
+#
+#     Dynamic models remain separate catalogue objects. This projection only
+#     supplies the steady-state equations that PowerFactory selects from those
+#     models before temporal initialization, ensuring that the static solution
+#     feeding RMS represents the same physical operating mode.
+#
+#     :param dgs_circuit: Parsed source DGS including composite and DSL instances.
+#     :param circuit: Imported VeraGrid circuit to configure.
+#     :param use_power_flow_snapshot: Whether solved DGS terminal values were requested.
+#     :param logger: Import diagnostic sink.
+#     :return: Number of converters whose control contract was updated.
+#     """
+#     composite_by_id: Dict[str, ElmComp] = dict()
+#     dsl_by_id: Dict[str, ElmDsl] = dict()
+#     source_vsc_by_id: Dict[str, ElmVsc | ElmVscmono] = dict()
+#     runtime_vsc_by_id: Dict[str, dev.VSC] = dict()
+#     source_composite: ElmComp
+#     source_dsl: ElmDsl
+#     source_vsc: ElmVsc | ElmVscmono
+#     runtime_vsc: dev.VSC
+#
+#     # Build typed identity indexes once so every physical converter is matched
+#     # by DGS FID, never by a localized or user-editable display name.
+#     for source_composite in dgs_circuit.elmcomps:
+#         composite_id: str | None = _ref_id(source_composite.ID)
+#         if composite_id is None or composite_id == "":
+#             pass
+#         else:
+#             composite_by_id[composite_id] = source_composite
+#     else:
+#         pass
+#
+#     for source_dsl in dgs_circuit.elmdsls:
+#         dsl_id: str | None = _ref_id(source_dsl.ID)
+#         if dsl_id is None or dsl_id == "":
+#             pass
+#         else:
+#             dsl_by_id[dsl_id] = source_dsl
+#     else:
+#         pass
+#
+#     for source_vsc in dgs_circuit.elmvscs:
+#         source_vsc_id: str | None = _ref_id(source_vsc.ID)
+#         if source_vsc_id is None or source_vsc_id == "":
+#             pass
+#         else:
+#             source_vsc_by_id[source_vsc_id] = source_vsc
+#     else:
+#         pass
+#
+#     for source_vsc in dgs_circuit.elmvscmonos:
+#         source_vsc_id = _ref_id(source_vsc.ID)
+#         if source_vsc_id is None or source_vsc_id == "":
+#             pass
+#         else:
+#             source_vsc_by_id[source_vsc_id] = source_vsc
+#     else:
+#         pass
+#
+#     for runtime_vsc in circuit.get_vsc():
+#         runtime_vsc_id: str | None = _ref_id(runtime_vsc.idtag)
+#         if runtime_vsc_id is None or runtime_vsc_id == "":
+#             pass
+#         else:
+#             runtime_vsc_by_id[runtime_vsc_id] = runtime_vsc
+#     else:
+#         pass
+#
+#     updated_count: int = 0
+#     source_vsc_id: str
+#     for source_vsc_id, source_vsc in source_vsc_by_id.items():
+#         runtime_vsc = runtime_vsc_by_id.get(source_vsc_id, None)
+#         composite_id: str | None = _ref_id(source_vsc.c_pmod)
+#         if runtime_vsc is None or composite_id is None or composite_id == "":
+#             pass
+#         else:
+#             source_composite = composite_by_id.get(composite_id, None)
+#             if source_composite is None:
+#                 pass
+#             else:
+#                 active_mode: float | None = _get_unique_composite_dsl_parameter(
+#                     composite=source_composite,
+#                     dsl_by_id=dsl_by_id,
+#                     parameter_name="Mode_P",
+#                     logger=logger,
+#                 )
+#                 reactive_mode: float | None = _get_unique_composite_dsl_parameter(
+#                     composite=source_composite,
+#                     dsl_by_id=dsl_by_id,
+#                     parameter_name="Mode_Q",
+#                     logger=logger,
+#                 )
+#                 changed: bool = False
+#
+#                 # PowerFactory's generic P/Vdc contract defines precisely two
+#                 # modes: zero regulates bipolar Vdc and one regulates AC power.
+#                 if active_mode is None:
+#                     pass
+#                 else:
+#                     if active_mode < 0.5:
+#                         runtime_vsc.control1 = ConverterControlType.Vm_dc
+#                         runtime_vsc.control1_val = _get_vsc_vdc_control_target(
+#                             converter=runtime_vsc,
+#                             composite=source_composite,
+#                             dsl_by_id=dsl_by_id,
+#                             use_power_flow_snapshot=use_power_flow_snapshot,
+#                             configured_voltage_target=(
+#                                 float(source_vsc.usetp)
+#                                 if source_vsc.usetpdc is None
+#                                 else float(source_vsc.usetpdc)
+#                             ),
+#                             logger=logger,
+#                         )
+#                         changed = True
+#                     else:
+#                         if active_mode < 1.5:
+#                             runtime_vsc.control1 = ConverterControlType.Pac
+#                             remote_active_mode: float | None = (
+#                                 _get_unique_composite_dsl_sibling_parameter(
+#                                     composite=source_composite,
+#                                     dsl_by_id=dsl_by_id,
+#                                     anchor_parameter_name="Mode_P",
+#                                     parameter_name="poc",
+#                                     logger=logger,
+#                                 )
+#                             )
+#                             if remote_active_mode is not None and remote_active_mode >= 0.5:
+#                                 remote_active_branch: BranchParent | None
+#                                 remote_active_branch_side: ConverterControlBranchSide | None
+#                                 remote_active_branch, remote_active_branch_side = (
+#                                     _resolve_composite_remote_ac_branch(
+#                                         dgs_circuit=dgs_circuit,
+#                                         circuit=circuit,
+#                                         composite=source_composite,
+#                                         source_device_id=source_vsc_id,
+#                                         logger=logger,
+#                                     )
+#                                 )
+#                                 if (
+#                                         remote_active_branch is None
+#                                         or remote_active_branch_side is None
+#                                 ):
+#                                     logger.add_warning(
+#                                         msg="Dynamic VSC remote P control could not resolve one AC branch",
+#                                         device=runtime_vsc.name,
+#                                         device_class="VSC",
+#                                         value=remote_active_mode,
+#                                     )
+#                                 else:
+#                                     runtime_vsc.control1_dev = remote_active_branch
+#                                     runtime_vsc.control1_branch_side = remote_active_branch_side
+#                                 # psetp is the control target at the selected
+#                                 # PoC and is independent of a solved snapshot.
+#                                 runtime_vsc.control1_val = float(source_vsc.psetp)
+#                             else:
+#                                 runtime_vsc.control1_dev = None
+#                                 if (
+#                                         use_power_flow_snapshot
+#                                         and source_vsc.m_p_busac is not None
+#                                 ):
+#                                     # PF reports injection into the AC bus,
+#                                     # while VeraGrid uses bus-to-VSC power.
+#                                     runtime_vsc.control1_val = -float(
+#                                         source_vsc.m_p_busac
+#                                     )
+#                                 else:
+#                                     runtime_vsc.control1_val = float(source_vsc.psetp)
+#                             changed = True
+#                         else:
+#                             logger.add_warning(
+#                                 msg="Unsupported dynamic VSC active-power mode retained",
+#                                 device=runtime_vsc.name,
+#                                 device_class="VSC",
+#                                 value=active_mode,
+#                             )
+#
+#                 # The generic Q/Vac contract uses zero for voltage, one for Q
+#                 # and two for power factor. Remote Q follows the composite's
+#                 # exact measurement cubicle instead of copying a solved result.
+#                 if reactive_mode is None:
+#                     pass
+#                 else:
+#                     if reactive_mode < 0.5:
+#                         remote_voltage_mode: float | None = (
+#                             _get_unique_composite_dsl_parameter(
+#                                 composite=source_composite,
+#                                 dsl_by_id=dsl_by_id,
+#                                 parameter_name="poc_Vac",
+#                                 logger=logger,
+#                             )
+#                         )
+#                         if remote_voltage_mode is None or remote_voltage_mode < 0.5:
+#                             runtime_vsc.control2 = ConverterControlType.Vm_ac
+#                             runtime_vsc.control2_dev = runtime_vsc.bus_to
+#                             runtime_vsc.control2_val = float(source_vsc.usetp)
+#                             changed = True
+#                         else:
+#                             logger.add_warning(
+#                                 msg="Remote dynamic VSC voltage control needs an exact PoC target",
+#                                 device=runtime_vsc.name,
+#                                 device_class="VSC",
+#                                 value=remote_voltage_mode,
+#                             )
+#                     else:
+#                         if reactive_mode < 1.5:
+#                             runtime_vsc.control2 = ConverterControlType.Qac
+#                             remote_reactive_mode: float | None = (
+#                                 _get_unique_composite_dsl_parameter(
+#                                     composite=source_composite,
+#                                     dsl_by_id=dsl_by_id,
+#                                     parameter_name="poc_Q",
+#                                     logger=logger,
+#                                 )
+#                             )
+#                             if remote_reactive_mode is not None and remote_reactive_mode >= 0.5:
+#                                 remote_branch: BranchParent | None
+#                                 remote_branch_side: ConverterControlBranchSide | None
+#                                 remote_branch, remote_branch_side = (
+#                                     _resolve_composite_remote_ac_branch(
+#                                         dgs_circuit=dgs_circuit,
+#                                         circuit=circuit,
+#                                         composite=source_composite,
+#                                         source_device_id=source_vsc_id,
+#                                         logger=logger,
+#                                     )
+#                                 )
+#                                 if remote_branch is None or remote_branch_side is None:
+#                                     logger.add_warning(
+#                                         msg="Dynamic VSC remote Q control could not resolve one AC branch",
+#                                         device=runtime_vsc.name,
+#                                         device_class="VSC",
+#                                         value=remote_reactive_mode,
+#                                     )
+#                                 else:
+#                                     runtime_vsc.control2_dev = remote_branch
+#                                     runtime_vsc.control2_branch_side = remote_branch_side
+#                                     # qsetp is the unsolved DGS load-flow target;
+#                                     # measured terminal Q is only a validation result.
+#                                     runtime_vsc.control2_val = float(source_vsc.qsetp)
+#                             else:
+#                                 runtime_vsc.control2_dev = None
+#                                 if (
+#                                         use_power_flow_snapshot
+#                                         and source_vsc.m_q_busac is not None
+#                                 ):
+#                                     # Keep the same terminal orientation as Pac.
+#                                     runtime_vsc.control2_val = -float(
+#                                         source_vsc.m_q_busac
+#                                     )
+#                                 else:
+#                                     runtime_vsc.control2_val = float(source_vsc.qsetp)
+#                             changed = True
+#                         else:
+#                             logger.add_warning(
+#                                 msg="Dynamic VSC power-factor control retained as fixed Q",
+#                                 device=runtime_vsc.name,
+#                                 device_class="VSC",
+#                                 value=reactive_mode,
+#                             )
+#
+#                 if changed:
+#                     updated_count += 1
+#                 else:
+#                     pass
+#     else:
+#         pass
+#
+#     return updated_count
 
 
 def convert_dgs_staticgen_to_vsc(elmgenstat: ElmGenstat,
@@ -11155,9 +11156,9 @@ def convert_dgs_to_controllable_shunt_from_svs(elmsvs: ElmSvs,
         Gmax=0.0,
         active=(elmsvs.outserv == 0),
         vset=vset,
-        qv_droop=float(elmsvs.ddroop),
-        qv_rated_power=float(elmsvs.Srated),
-        qset=float(elmsvs.qsetp),
+        # qv_droop=float(elmsvs.ddroop),
+        # qv_rated_power=float(elmsvs.Srated),
+        # qset=float(elmsvs.qsetp),
         control_mode=control_mode,
         control_bus=control_bus
     )
@@ -11680,223 +11681,223 @@ def convert_dgs_to_generator(elmsym: ElmSym,
                         P=p_mw,
                         Q=q_mvar,
                         power_factor=pf,
-                        rated_power_factor=rated_power_factor,
+                        # rated_power_factor=rated_power_factor,
                         vset=vset,
                         control_mode=control_mode,
                         Qmin=qmin,
                         Qmax=qmax,
-                        Qmin_reserve=reserve_qmin,
-                        Qmax_reserve=reserve_qmax,
-                        initial_reactive_limit_state=_get_initial_reactive_limit_state(
-                            source_state=elmsym.calculated_q_limit_state,
-                            solved_reactive_power_mvar=(
-                                None
-                                if elmsym.m_q_bus1 is None
-                                else float(elmsym.m_q_bus1) / float(parallel_count)
-                            ),
-                            minimum_reactive_power_mvar=qmin,
-                            maximum_reactive_power_mvar=qmax,
-                        ),
+                        # Qmin_reserve=reserve_qmin,
+                        # Qmax_reserve=reserve_qmax,
+                        # initial_reactive_limit_state=_get_initial_reactive_limit_state(
+                        #     source_state=elmsym.calculated_q_limit_state,
+                        #     solved_reactive_power_mvar=(
+                        #         None
+                        #         if elmsym.m_q_bus1 is None
+                        #         else float(elmsym.m_q_bus1) / float(parallel_count)
+                        #     ),
+                        #     minimum_reactive_power_mvar=qmin,
+                        #     maximum_reactive_power_mvar=qmax,
+                        # ),
                         Snom=snom,
                         Rs=(0.0 if typsym is None else float(typsym.rstr)),
-                        rms_acceleration_time_constant=(
-                            0.0
-                            if typsym is None
-                            else _resolve_typ_sym_acceleration_time_constant(typsym)
-                        ),
-                        rms_dpu=(
-                            0.0
-                            if typsym is None or typsym.dpu is None
-                            else float(typsym.dpu)
-                        ),
-                        rms_dkd=(
-                            0.0
-                            if typsym is None or typsym.dkd is None
-                            else float(typsym.dkd)
-                        ),
-                        rms_dpe=(
-                            0.0
-                            if typsym is None or typsym.dpe is None
-                            else float(typsym.dpe)
-                        ),
-                        rms_rotor_coupling_reactance_d=(
-                            0.0
-                            if typsym is None or typsym.xrl is None
-                            else float(typsym.xrl)
-                        ),
-                        rms_rotor_coupling_reactance_q=(
-                            0.0
-                            if typsym is None
-                            else float(typsym.xrlq)
-                        ),
-                        rms_td_prime_short_circuit=(
-                            0.0
-                            if typsym is None
-                            else float(typsym.tds)
-                        ),
-                        rms_tq_prime_short_circuit=(
-                            0.0
-                            if typsym is None
-                            else float(typsym.tqs)
-                        ),
-                        rms_td_2prime_short_circuit=(
-                            0.0
-                            if typsym is None
-                            else float(typsym.tdss)
-                        ),
-                        rms_tq_2prime_short_circuit=(
-                            0.0
-                            if typsym is None
-                            else float(typsym.tqss)
-                        ),
-                        rms_excitation_base_mode=(
-                            0
-                            if elmsym.excitation_base_mode is None
-                            else int(elmsym.excitation_base_mode)
-                        ),
-                        rms_excitation_current_base=(
-                            1.0
-                            if (
-                                elmsym.excitation_current_base is None
-                                or float(elmsym.excitation_current_base) <= 0.0
-                            )
-                            else float(elmsym.excitation_current_base)
-                        ),
-                        rms_excitation_voltage_base_ratio=(
-                            1.0
-                            if (
-                                elmsym.excitation_voltage_base_ratio is None
-                                or float(
-                                    elmsym.excitation_voltage_base_ratio
-                                ) <= 0.0
-                            )
-                            else float(elmsym.excitation_voltage_base_ratio)
-                        ),
-                        rms_constant_field_voltage=(
-                            0.0
-                            if elmsym.constant_field_voltage is None
-                            else float(elmsym.constant_field_voltage)
-                        ),
-                        rms_excitation_gain=(
-                            0.0
-                            if elmsym.calculated_excitation_gain is None
-                            else float(elmsym.calculated_excitation_gain)
-                        ),
-                        rms_rated_field_voltage=(
-                            0.0
-                            if elmsym.calculated_rated_field_voltage is None
-                            else float(elmsym.calculated_rated_field_voltage)
-                        ),
-                        # Preserve ``c:ie`` only as an oracle reference.  The
-                        # RMS initializer must solve its own consistent field
-                        # voltage from the imported network and model equations.
-                        rms_initial_field_voltage=(
-                            0.0
-                            if elmsym.calculated_initial_field_voltage is None
-                            else float(elmsym.calculated_initial_field_voltage)
-                        ),
-                        rms_saturation_curve_type=(
-                            0
-                            if typsym is None or typsym.isat is None
-                            else int(typsym.isat)
-                        ),
-                        rms_saturation_axis_mode=(
-                            0
-                            if typsym is None or typsym.isat_salient is None
-                            else int(typsym.isat_salient)
-                        ),
-                        rms_saturation_data_source=(
-                            0
-                            if typsym is None or typsym.iusesat is None
-                            else int(typsym.iusesat)
-                        ),
-                        rms_saturation_smoothing_factor=(
-                            0.0
-                            if (
-                                typsym is None
-                                or typsym.saturation_smoothing_factor is None
-                            )
-                            else float(typsym.saturation_smoothing_factor)
-                        ),
-                        rms_speed_variation_mode=(
-                            _resolve_typ_sym_speed_variation_mode(
-                                machine_type=typsym,
-                            )
-                        ),
-                        rms_saturation_sg10=(
-                            0.0
-                            if typsym is None or typsym.sg10 is None
-                            else float(typsym.sg10)
-                        ),
-                        rms_saturation_sg12=(
-                            0.0
-                            if typsym is None or typsym.sg12 is None
-                            else float(typsym.sg12)
-                        ),
-                        rms_saturation_sg10q=(
-                            0.0
-                            if typsym is None or typsym.sg10q is None
-                            else float(typsym.sg10q)
-                        ),
-                        rms_saturation_sg12q=(
-                            0.0
-                            if typsym is None or typsym.sg12q is None
-                            else float(typsym.sg12q)
-                        ),
-                        rms_saturation_voltage_points=saturation_voltage_points,
-                        rms_saturation_excitation_points=saturation_excitation_points,
-                        rms_saturation_q_voltage_points=saturation_q_voltage_points,
-                        rms_saturation_q_excitation_points=saturation_q_excitation_points,
-                        Xd=(1.8 if typsym is None else float(typsym.xd)),
-                        Xq=(1.7 if typsym is None else float(typsym.xq)),
-                        Xd_prime=(0.3 if typsym is None else float(typsym.xds)),
-                        Xq_prime=(0.55 if typsym is None else float(typsym.xqs)),
-                        Xd_2prime=(0.25 if typsym is None else float(typsym.xdss)),
-                        Xq_2prime=(0.35 if typsym is None else float(typsym.xqss)),
-                        Xl=(0.15 if typsym is None else float(typsym.xl)),
-                        Td0_prime=(
-                            8.0
-                            if typsym is None
-                            else _convert_short_circuit_time_constant_to_open_circuit(
-                                short_circuit_time_constant=float(typsym.tds),
-                                synchronous_or_transient_reactance=float(typsym.xd),
-                                transient_or_subtransient_reactance=float(typsym.xds),
-                            )
-                        ),
-                        Tq0_prime=(
-                            0.4
-                            if typsym is None
-                            else _convert_short_circuit_time_constant_to_open_circuit(
-                                short_circuit_time_constant=float(typsym.tqs),
-                                synchronous_or_transient_reactance=float(typsym.xq),
-                                transient_or_subtransient_reactance=float(typsym.xqs),
-                            )
-                        ),
-                        Td0_2prime=(
-                            0.03
-                            if typsym is None
-                            else _convert_short_circuit_time_constant_to_open_circuit(
-                                short_circuit_time_constant=float(typsym.tdss),
-                                synchronous_or_transient_reactance=float(typsym.xds),
-                                transient_or_subtransient_reactance=float(typsym.xdss),
-                            )
-                        ),
-                        Tq0_2prime=(
-                            0.05
-                            if typsym is None
-                            else _convert_short_circuit_time_constant_to_open_circuit(
-                                short_circuit_time_constant=float(typsym.tqss),
-                                # For the salient-pole variant PowerFactory's
-                                # documented conversion uses Xq because Xq' and
-                                # Tq' do not belong to the one-loop model.
-                                synchronous_or_transient_reactance=(
-                                    float(typsym.xq)
-                                    if float(typsym.tqs) <= 0.0
-                                    else float(typsym.xqs)
-                                ),
-                                transient_or_subtransient_reactance=float(typsym.xqss),
-                            )
-                        ),
+                        # rms_acceleration_time_constant=(
+                        #     0.0
+                        #     if typsym is None
+                        #     else _resolve_typ_sym_acceleration_time_constant(typsym)
+                        # ),
+                        # rms_dpu=(
+                        #     0.0
+                        #     if typsym is None or typsym.dpu is None
+                        #     else float(typsym.dpu)
+                        # ),
+                        # rms_dkd=(
+                        #     0.0
+                        #     if typsym is None or typsym.dkd is None
+                        #     else float(typsym.dkd)
+                        # ),
+                        # rms_dpe=(
+                        #     0.0
+                        #     if typsym is None or typsym.dpe is None
+                        #     else float(typsym.dpe)
+                        # ),
+                        # rms_rotor_coupling_reactance_d=(
+                        #     0.0
+                        #     if typsym is None or typsym.xrl is None
+                        #     else float(typsym.xrl)
+                        # ),
+                        # rms_rotor_coupling_reactance_q=(
+                        #     0.0
+                        #     if typsym is None
+                        #     else float(typsym.xrlq)
+                        # ),
+                        # rms_td_prime_short_circuit=(
+                        #     0.0
+                        #     if typsym is None
+                        #     else float(typsym.tds)
+                        # ),
+                        # rms_tq_prime_short_circuit=(
+                        #     0.0
+                        #     if typsym is None
+                        #     else float(typsym.tqs)
+                        # ),
+                        # rms_td_2prime_short_circuit=(
+                        #     0.0
+                        #     if typsym is None
+                        #     else float(typsym.tdss)
+                        # ),
+                        # rms_tq_2prime_short_circuit=(
+                        #     0.0
+                        #     if typsym is None
+                        #     else float(typsym.tqss)
+                        # ),
+                        # rms_excitation_base_mode=(
+                        #     0
+                        #     if elmsym.excitation_base_mode is None
+                        #     else int(elmsym.excitation_base_mode)
+                        # ),
+                        # rms_excitation_current_base=(
+                        #     1.0
+                        #     if (
+                        #         elmsym.excitation_current_base is None
+                        #         or float(elmsym.excitation_current_base) <= 0.0
+                        #     )
+                        #     else float(elmsym.excitation_current_base)
+                        # ),
+                        # rms_excitation_voltage_base_ratio=(
+                        #     1.0
+                        #     if (
+                        #         elmsym.excitation_voltage_base_ratio is None
+                        #         or float(
+                        #             elmsym.excitation_voltage_base_ratio
+                        #         ) <= 0.0
+                        #     )
+                        #     else float(elmsym.excitation_voltage_base_ratio)
+                        # ),
+                        # rms_constant_field_voltage=(
+                        #     0.0
+                        #     if elmsym.constant_field_voltage is None
+                        #     else float(elmsym.constant_field_voltage)
+                        # ),
+                        # rms_excitation_gain=(
+                        #     0.0
+                        #     if elmsym.calculated_excitation_gain is None
+                        #     else float(elmsym.calculated_excitation_gain)
+                        # ),
+                        # rms_rated_field_voltage=(
+                        #     0.0
+                        #     if elmsym.calculated_rated_field_voltage is None
+                        #     else float(elmsym.calculated_rated_field_voltage)
+                        # ),
+                        # # Preserve ``c:ie`` only as an oracle reference.  The
+                        # # RMS initializer must solve its own consistent field
+                        # # voltage from the imported network and model equations.
+                        # rms_initial_field_voltage=(
+                        #     0.0
+                        #     if elmsym.calculated_initial_field_voltage is None
+                        #     else float(elmsym.calculated_initial_field_voltage)
+                        # ),
+                        # rms_saturation_curve_type=(
+                        #     0
+                        #     if typsym is None or typsym.isat is None
+                        #     else int(typsym.isat)
+                        # ),
+                        # rms_saturation_axis_mode=(
+                        #     0
+                        #     if typsym is None or typsym.isat_salient is None
+                        #     else int(typsym.isat_salient)
+                        # ),
+                        # rms_saturation_data_source=(
+                        #     0
+                        #     if typsym is None or typsym.iusesat is None
+                        #     else int(typsym.iusesat)
+                        # ),
+                        # rms_saturation_smoothing_factor=(
+                        #     0.0
+                        #     if (
+                        #         typsym is None
+                        #         or typsym.saturation_smoothing_factor is None
+                        #     )
+                        #     else float(typsym.saturation_smoothing_factor)
+                        # ),
+                        # rms_speed_variation_mode=(
+                        #     _resolve_typ_sym_speed_variation_mode(
+                        #         machine_type=typsym,
+                        #     )
+                        # ),
+                        # rms_saturation_sg10=(
+                        #     0.0
+                        #     if typsym is None or typsym.sg10 is None
+                        #     else float(typsym.sg10)
+                        # ),
+                        # rms_saturation_sg12=(
+                        #     0.0
+                        #     if typsym is None or typsym.sg12 is None
+                        #     else float(typsym.sg12)
+                        # ),
+                        # rms_saturation_sg10q=(
+                        #     0.0
+                        #     if typsym is None or typsym.sg10q is None
+                        #     else float(typsym.sg10q)
+                        # ),
+                        # rms_saturation_sg12q=(
+                        #     0.0
+                        #     if typsym is None or typsym.sg12q is None
+                        #     else float(typsym.sg12q)
+                        # ),
+                        # rms_saturation_voltage_points=saturation_voltage_points,
+                        # rms_saturation_excitation_points=saturation_excitation_points,
+                        # rms_saturation_q_voltage_points=saturation_q_voltage_points,
+                        # rms_saturation_q_excitation_points=saturation_q_excitation_points,
+                        # Xd=(1.8 if typsym is None else float(typsym.xd)),
+                        # Xq=(1.7 if typsym is None else float(typsym.xq)),
+                        # Xd_prime=(0.3 if typsym is None else float(typsym.xds)),
+                        # Xq_prime=(0.55 if typsym is None else float(typsym.xqs)),
+                        # Xd_2prime=(0.25 if typsym is None else float(typsym.xdss)),
+                        # Xq_2prime=(0.35 if typsym is None else float(typsym.xqss)),
+                        # Xl=(0.15 if typsym is None else float(typsym.xl)),
+                        # Td0_prime=(
+                        #     8.0
+                        #     if typsym is None
+                        #     else _convert_short_circuit_time_constant_to_open_circuit(
+                        #         short_circuit_time_constant=float(typsym.tds),
+                        #         synchronous_or_transient_reactance=float(typsym.xd),
+                        #         transient_or_subtransient_reactance=float(typsym.xds),
+                        #     )
+                        # ),
+                        # Tq0_prime=(
+                        #     0.4
+                        #     if typsym is None
+                        #     else _convert_short_circuit_time_constant_to_open_circuit(
+                        #         short_circuit_time_constant=float(typsym.tqs),
+                        #         synchronous_or_transient_reactance=float(typsym.xq),
+                        #         transient_or_subtransient_reactance=float(typsym.xqs),
+                        #     )
+                        # ),
+                        # Td0_2prime=(
+                        #     0.03
+                        #     if typsym is None
+                        #     else _convert_short_circuit_time_constant_to_open_circuit(
+                        #         short_circuit_time_constant=float(typsym.tdss),
+                        #         synchronous_or_transient_reactance=float(typsym.xds),
+                        #         transient_or_subtransient_reactance=float(typsym.xdss),
+                        #     )
+                        # ),
+                        # Tq0_2prime=(
+                        #     0.05
+                        #     if typsym is None
+                        #     else _convert_short_circuit_time_constant_to_open_circuit(
+                        #         short_circuit_time_constant=float(typsym.tqss),
+                        #         # For the salient-pole variant PowerFactory's
+                        #         # documented conversion uses Xq because Xq' and
+                        #         # Tq' do not belong to the one-loop model.
+                        #         synchronous_or_transient_reactance=(
+                        #             float(typsym.xq)
+                        #             if float(typsym.tqs) <= 0.0
+                        #             else float(typsym.xqs)
+                        #         ),
+                        #         transient_or_subtransient_reactance=float(typsym.xqss),
+                        #     )
+                        # ),
                         q_points=capability_points,
                         use_reactive_power_curve=capability_points is not None,
                         active=(elmsym.outserv == 0),
@@ -16100,22 +16101,22 @@ def _apply_elmtow_matrix_equivalent(
                     else:
                         pass
 
-                    tower_identifier: str = str(_ref_id(elmtow.ID))
-                    if matrix_is_directional:
-                        negative_target: np.ndarray = positive_target.transpose()
-                    else:
-                        negative_target = positive_target.copy()
-                    nodal_stamp: dev.NodalAdmittanceStamp = dev.NodalAdmittanceStamp(
-                        name=f"{elmtow.loc_name} coupled-line matrix",
-                        idtag=f"ElmTow:{tower_identifier}:nodal",
-                        buses=oriented_buses,
-                        positive_matrix=positive_target,
-                        negative_matrix=negative_target,
-                        zero_matrix=zero_target,
-                        common_voltage_kv=voltage_base,
-                        active=True,
-                    )
-                    grid.add_nodal_admittance_stamp(obj=nodal_stamp)
+                    # tower_identifier: str = str(_ref_id(elmtow.ID))
+                    # if matrix_is_directional:
+                    #     negative_target: np.ndarray = positive_target.transpose()
+                    # else:
+                    #     negative_target = positive_target.copy()
+                    # nodal_stamp: dev.NodalAdmittanceStamp = dev.NodalAdmittanceStamp(
+                    #     name=f"{elmtow.loc_name} coupled-line matrix",
+                    #     idtag=f"ElmTow:{tower_identifier}:nodal",
+                    #     buses=oriented_buses,
+                    #     positive_matrix=positive_target,
+                    #     negative_matrix=negative_target,
+                    #     zero_matrix=zero_target,
+                    #     common_voltage_kv=voltage_base,
+                    #     active=True,
+                    # )
+                    # grid.add_nodal_admittance_stamp(obj=nodal_stamp)
                     return
             else:
                 logger.add_warning(
@@ -16838,21 +16839,21 @@ def dgs_to_circuit_with_report(
     else:
         pass
 
-    composite_measurement_svs_control_count: int = (
-        _apply_composite_q_measurement_svs_controls(
-            dgs_circuit=dgs_grid,
-            circuit=grid,
-            use_power_flow_snapshot=use_power_flow_snapshot,
-            logger=logger,
-        )
-    )
-    if composite_measurement_svs_control_count > 0:
-        logger.add_info(
-            msg="DGS SVC Q/V controls assigned to composite measurement branches",
-            value=composite_measurement_svs_control_count,
-        )
-    else:
-        pass
+    # composite_measurement_svs_control_count: int = (
+    #     _apply_composite_q_measurement_svs_controls(
+    #         dgs_circuit=dgs_grid,
+    #         circuit=grid,
+    #         use_power_flow_snapshot=use_power_flow_snapshot,
+    #         logger=logger,
+    #     )
+    # )
+    # if composite_measurement_svs_control_count > 0:
+    #     logger.add_info(
+    #         msg="DGS SVC Q/V controls assigned to composite measurement branches",
+    #         value=composite_measurement_svs_control_count,
+    #     )
+    # else:
+    #     pass
 
     if use_power_flow_snapshot:
         progress_reporter.emit(55, "Static DGS snapshot ready: calculated P/Q and taps replayed")

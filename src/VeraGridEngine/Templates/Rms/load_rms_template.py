@@ -79,8 +79,15 @@ def get_load_rms_template(
 
     block: Block = Block()
 
-    block.event_dict[Pl0] = Pl
-    block.event_dict[Ql0] = Ql
+    # Event parameters must be represented by constants so General options can
+    # stage a numeric override. ``None`` intentionally means "derive at t=0";
+    # the explicit initialization equations below provide that derivation.
+    block.event_dict[Pl0] = vfactory.add_const(pl0_init)
+    block.event_dict[Ql0] = vfactory.add_const(ql0_init)
+    block.init_eqs = dict({
+        Pl0: Pl,
+        Ql0: Ql,
+    })
 
     block.algebraic_vars = [Pl, Ql]
 
@@ -105,10 +112,6 @@ def get_load_rms_template(
         ParamPowerFlowReferenceType.Ql0: Ql0,
     }
 
-    # templ.block.init_eqs = {
-    #    Pl0: Pl,
-    #    Ql0: Ql,
-    # }
     templ.block.in_vars = inputs
     templ.block.out_vars = [Pl, Ql]
 

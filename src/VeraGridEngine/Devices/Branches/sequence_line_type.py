@@ -100,10 +100,12 @@ class SequenceLineType(DynamicDevice):
         '_R',
         '_X',
         '_B',
+        '_G',
         '_Cnf',
         '_R0',
         '_X0',
         '_B0',
+        '_G0',
         '_Cnf0',
         '_use_conductance',
         '_n_circuits',
@@ -149,6 +151,13 @@ class SequenceLineType(DynamicDevice):
             cat=[PrpCat.TP],
         ),
         GCProp(
+            prop_name='G',
+            units='uS/km',
+            tpe=float,
+            definition='Positive-sequence shunt conductance per km',
+            cat=[PrpCat.TP],
+        ),
+        GCProp(
             prop_name='R0',
             units='Ohm/km',
             tpe=float,
@@ -167,6 +176,13 @@ class SequenceLineType(DynamicDevice):
             units='uS/km',
             tpe=float,
             definition='Zero-sequence shunt susceptance per km',
+            cat=[PrpCat.TP],
+        ),
+        GCProp(
+            prop_name='G0',
+            units='uS/km',
+            tpe=float,
+            definition='Zero-sequence shunt conductance per km',
             cat=[PrpCat.TP],
         ),
         GCProp(
@@ -216,8 +232,8 @@ class SequenceLineType(DynamicDevice):
     def __init__(self, name='SequenceLine',
                  idtag: str | None = None,
                  Imax: float = 1, Vnom: float = 1,
-                 R=1e-20, X=1e-20, B=1e-20,
-                 R0=1e-20, X0=1e-20, B0=1e-20,
+                 R=1e-20, X=1e-20, B=1e-20, G: float = 0.0,
+                 R0=1e-20, X0=1e-20, B0=1e-20, G0: float = 0.0,
                  CnF=1e-20, CnF0=1e-20,
                  use_conductance: bool = False,
                  capex: float = 0.0, opex: float = 0.0,
@@ -229,9 +245,11 @@ class SequenceLineType(DynamicDevice):
         :param R: Resistance of positive sequence in Ohm/km
         :param X: Reactance of positive sequence in Ohm/km
         :param B: Susceptance of positive sequence in uS/km
+        :param G: Conductance of positive sequence in uS/km
         :param R0: Resistance of zero sequence in Ohm/km
         :param X0: Reactance of zero sequence in Ohm/km
         :param B0: Susceptance of zero sequence in uS/km
+        :param G0: Conductance of zero sequence in uS/km
         :param CnF: Conductivity of positive sequence in uS/km
         :param CnF0: Conductivity of zero sequence in uS/km
         :param capex: Capital expenditures
@@ -252,11 +270,13 @@ class SequenceLineType(DynamicDevice):
         self.R = R
         self.X = X
         self.B = B
+        self.G = G
         self.Cnf = CnF
 
         self.R0 = R0
         self.X0 = X0
         self.B0 = B0
+        self.G0 = G0
         self.Cnf0 = CnF0
 
         self.use_conductance = use_conductance
@@ -322,6 +342,36 @@ class SequenceLineType(DynamicDevice):
 
         return R, X, B, R0, X0, B0, rate
 
+    def get_conductance_values(
+            self,
+            Sbase: float,
+            length: float,
+            line_Vnom: float,
+            decimals_rounding: int = 6,
+    ) -> Tuple[float, float]:
+        """Convert sequence conductance per length to total per-unit values.
+
+        :param Sbase: System base power in MVA.
+        :param length: Physical line length in km.
+        :param line_Vnom: Line-to-line nominal voltage in kV.
+        :param decimals_rounding: Number of decimal digits retained.
+        :return: Positive- and zero-sequence total conductance in p.u.
+        """
+        if line_Vnom > 0.0 and Sbase > 0.0:
+            impedance_base_ohm: float = line_Vnom * line_Vnom / Sbase
+            positive_conductance: float = float(np.round(
+                self.G * 1.0e-6 * length * impedance_base_ohm,
+                decimals_rounding,
+            ))
+            zero_conductance: float = float(np.round(
+                self.G0 * 1.0e-6 * length * impedance_base_ohm,
+                decimals_rounding,
+            ))
+        else:
+            positive_conductance = 0.0
+            zero_conductance = 0.0
+        return positive_conductance, zero_conductance
+
     def get_ys_nabc(self) -> AdmittanceMatrix:
         """
         Get the series 3x3 admittance matrix
@@ -340,7 +390,7 @@ class SequenceLineType(DynamicDevice):
         try:
             adm.values[1:4, 1:4] = np.linalg.inv(z_abc)
         except np.linalg.LinAlgError:
-            adm.values[1:4, 1:4] = np.linalg.pinv(z_abc)
+            adm.values[1:4, 1:4] = np.linalg.pinv(z_abc, rcond=1e-12)
 
         adm.phN = False
         adm.phA = True
@@ -473,6 +523,23 @@ class SequenceLineType(DynamicDevice):
         self._B = float(val)
 
     @property
+    def G(self) -> float:
+        """Return positive-sequence shunt conductance in uS/km.
+
+        :return: Positive-sequence conductance.
+        """
+        return self._G
+
+    @G.setter
+    def G(self, val: float) -> None:
+        """Set positive-sequence shunt conductance in uS/km.
+
+        :param val: Conductance to assign.
+        :return: None.
+        """
+        self._G = float(val)
+
+    @property
     def R0(self) -> float:
         """
         Get ``R0``.
@@ -528,6 +595,23 @@ class SequenceLineType(DynamicDevice):
         :return: None
         """
         self._B0 = float(val)
+
+    @property
+    def G0(self) -> float:
+        """Return zero-sequence shunt conductance in uS/km.
+
+        :return: Zero-sequence conductance.
+        """
+        return self._G0
+
+    @G0.setter
+    def G0(self, val: float) -> None:
+        """Set zero-sequence shunt conductance in uS/km.
+
+        :param val: Conductance to assign.
+        :return: None.
+        """
+        self._G0 = float(val)
 
     @property
     def Cnf(self) -> float:
