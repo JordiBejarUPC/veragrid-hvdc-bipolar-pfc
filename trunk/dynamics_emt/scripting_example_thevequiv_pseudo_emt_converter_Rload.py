@@ -153,7 +153,8 @@ def attach_emt_models(
         get_bus_emt_template(grid, bus)
 
     gen_mdl: Block = get_generator_thevenin_rl_emt_template_with_ref(vf=grid.var_factory).block
-    transformer_mdl: Block = get_transformer_emt_template(vf=grid.var_factory, name="ac_thevenin_link_emt").block
+    transformer_templ = get_transformer_emt_template(vf=grid.var_factory, name="ac_thevenin_link_emt")
+    transformer_mdl: Block = transformer_templ.block.children[0]
 
     # The PF uses `Pdc/Qac` to create the non-zero operating point. The EMT case
     # then switches to `Vm_dc/Qac` around that seeded operating point.
