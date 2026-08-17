@@ -18,6 +18,7 @@ from VeraGrid.Gui.DynamicModelEditor.dynamic_block_properties import (
     build_equation_code,
     _get_documentation_relative_path,
     parse_equation_code,
+    serialize_dae_expression,
     set_markdown_with_latex,
     resolve_block_documentation,
 )
@@ -133,6 +134,56 @@ def test_equation_code_roundtrip_preserves_variable_identity() -> None:
     assert symbolic_to_string(draft.get_state_eqs()[0]) == "gain"
 
 
+def test_equation_code_removes_only_redundant_root_parentheses() -> None:
+    """DAE source must stay readable without changing expression precedence."""
+    state_variable: Var = Var("x")
+    input_variable: Var = Var("input_signal")
+    divisor_variable: Var = Var("divisor")
+    expression: Expr = (state_variable - input_variable) / divisor_variable
+    block: Block = Block(
+        name="precedence_test",
+        state_vars=[state_variable],
+        state_eqs=[expression],
+        in_vars=[input_variable],
+        parameters={divisor_variable: Const(2.0, name="divisor")},
+    )
+
+    code: str = build_equation_code(block)
+    assert "    (x - input_signal) / divisor," in code
+    assert "    ((x - input_signal) / divisor)," not in code
+    assert serialize_dae_expression(expression) == "(x - input_signal) / divisor"
+
+    draft: BlockEquationDraft = parse_equation_code(
+        code,
+        build_block_symbol_namespace(block),
+    )
+    assert symbolic_to_string(draft.get_state_eqs()[0]) == symbolic_to_string(expression)
+
+
+def test_dialogue_footer_only_contains_apply_changes() -> None:
+    """The native title-bar cross must be the only explicit close control."""
+    application: QtWidgets.QApplication = get_qt_application()
+    _unused_application: QtWidgets.QApplication = application
+    block: Block
+    state_variable: Var
+    parameter_variable: Var
+    parameter_constant: Const
+    block, state_variable, parameter_variable, parameter_constant = build_test_block()
+    _unused_state_variable: Var = state_variable
+    _unused_parameter_variable: Var = parameter_variable
+    _unused_parameter_constant: Const = parameter_constant
+    dialogue: DynamicBlockPropertiesDialog = DynamicBlockPropertiesDialog(
+        block,
+        "GENERIC",
+        VarFactory(),
+    )
+
+    assert dialogue.ui.apply_button.text() == "Apply changes"
+    assert dialogue.findChild(QtWidgets.QPushButton, "close_button") is None
+    assert dialogue.ui.button_layout.count() == 2
+    dialogue.close()
+
+
 @pytest.mark.parametrize(
     "invalid_code",
     [
@@ -181,10 +232,10 @@ def test_invalid_dialog_draft_does_not_mutate_block() -> None:
     assert dialogue._tabs.tabIcon(2).isNull()
     assert dialogue._dae_editor.get_line_number_area_width() > 0
     dialogue._dae_editor.setPlainText("state_eqs = [")
-    assert dialogue._dae_editor._diagnostics == list()
+    assert dialogue._dae_editor.get_diagnostics() == list()
     dialogue._validate_code_button.click()
-    assert len(dialogue._dae_editor._diagnostics) == 1
-    assert "closed" in dialogue._dae_editor._diagnostics[0].get_message().lower()
+    assert len(dialogue._dae_editor.get_diagnostics()) == 1
+    assert "closed" in dialogue._dae_editor.get_diagnostics()[0].get_message().lower()
 
     dialogue.apply_changes()
 
@@ -320,7 +371,7 @@ def test_staged_symbol_is_created_only_when_apply_is_pressed() -> None:
     )
     dialogue._validate_code_button.click()
     assert dialogue._status_label.text() == "DAE code is valid."
-    assert dialogue._dae_editor._diagnostics == list()
+    assert dialogue._dae_editor.get_diagnostics() == list()
 
     dialogue.apply_changes()
     assert [variable.name for variable in block.algebraic_vars] == ["new_output"]
@@ -574,7 +625,7 @@ def test_validate_button_rejects_unknown_symbols_and_python_syntax_errors() -> N
         "init_eqs = {}\n"
         "diff_init_eqs = {}"
     )
-    assert dialogue._dae_editor._diagnostics == list()
+    assert dialogue._dae_editor.get_diagnostics() == list()
     dialogue._validate_code_button.click()
     assert "Unknown symbol 'missing_symbol'" in dialogue._dae_editor.toolTip()
     assert "line 2" in dialogue._status_label.text().lower()
@@ -586,11 +637,11 @@ def test_validate_button_rejects_unknown_symbols_and_python_syntax_errors() -> N
         "init_eqs = {}\n"
         "diff_init_eqs = {}"
     )
-    assert dialogue._dae_editor._diagnostics == list()
+    assert dialogue._dae_editor.get_diagnostics() == list()
     dialogue._validate_code_button.click()
-    assert len(dialogue._dae_editor._diagnostics) == 1
-    assert dialogue._dae_editor._diagnostics[0].get_line() == 2
-    assert "validate again" in dialogue._dae_editor._diagnostics[0].get_message()
+    assert len(dialogue._dae_editor.get_diagnostics()) == 1
+    assert dialogue._dae_editor.get_diagnostics()[0].get_line() == 2
+    assert "validate again" in dialogue._dae_editor.get_diagnostics()[0].get_message()
     selections: list[QtWidgets.QTextEdit.ExtraSelection] = dialogue._dae_editor.extraSelections()
     assert len(selections) == 1
     assert selections[0].cursor.hasSelection()
@@ -626,15 +677,15 @@ def test_validate_button_marks_the_expression_after_a_missing_comma() -> None:
         "diff_init_eqs = {}"
     )
 
-    assert dialogue._dae_editor._diagnostics == list()
+    assert dialogue._dae_editor.get_diagnostics() == list()
     dialogue._validate_code_button.click()
 
-    assert len(dialogue._dae_editor._diagnostics) == 2
-    diagnostic: DaeCodeDiagnostic = dialogue._dae_editor._diagnostics[0]
+    assert len(dialogue._dae_editor.get_diagnostics()) == 2
+    diagnostic: DaeCodeDiagnostic = dialogue._dae_editor.get_diagnostics()[0]
     assert diagnostic.get_line() == 4
     assert "missing comma" in diagnostic.get_message().lower()
-    assert dialogue._dae_editor._diagnostics[1].get_line() == 5
-    assert "missing_name" in dialogue._dae_editor._diagnostics[1].get_message()
+    assert dialogue._dae_editor.get_diagnostics()[1].get_line() == 5
+    assert "missing_name" in dialogue._dae_editor.get_diagnostics()[1].get_message()
     assert "state_eqs" not in dialogue._status_label.text()
     dialogue.close()
 
@@ -660,8 +711,8 @@ def test_validate_button_marks_a_cross_line_unmatched_opening_parenthesis() -> N
 
     dialogue._validate_code_button.click()
 
-    assert len(dialogue._dae_editor._diagnostics) == 1
-    diagnostic: DaeCodeDiagnostic = dialogue._dae_editor._diagnostics[0]
+    assert len(dialogue._dae_editor.get_diagnostics()) == 1
+    diagnostic: DaeCodeDiagnostic = dialogue._dae_editor.get_diagnostics()[0]
     assert diagnostic.get_line() == 3
     assert "validate again" in diagnostic.get_message()
     selections: list[QtWidgets.QTextEdit.ExtraSelection] = dialogue._dae_editor.extraSelections()
@@ -806,7 +857,7 @@ def test_emt_generator_binary_functions_validate_in_dialogue() -> None:
     )
     dialogue.validate_complete_dae_code()
     assert dialogue._status_label.text() == "DAE code is valid."
-    assert dialogue._dae_editor._diagnostics == list()
+    assert dialogue._dae_editor.get_diagnostics() == list()
     dialogue.close()
 
 
