@@ -825,31 +825,34 @@ class ResultsMain(SimulationsMain):
             warning_msg(self.tr("There is no profile displayed, please display one"),
                         self.tr("Copy profile to clipboard"))
 
-    def search_in_results(self):
+    def search_in_results(self) -> None:
         """
         Search in the results model
+
+        :return: None.
         """
 
         if self.results_mdl is not None:
 
-            txt = self.ui.search_results_lineEdit.text().strip()
+            txt: str = self.ui.search_results_lineEdit.text().strip()
 
-            filter_ = flt.FilterResultsTable(self.results_mdl.table)
+            filter_: flt.FilterResultsTable = flt.FilterResultsTable(self.results_mdl.table)
 
             try:
                 filter_.parse(expression=txt)
-                filtered_table = filter_.apply()
+                filtered_model: ResultsModel = ResultsModel(filter_.apply())
             except ValueError as e:
                 error_msg(str(e), self.tr("Filter parse"))
-                return None
+                return
             except Exception as e:
                 error_msg(str(e), self.tr("Filter parse"))
-                return None
+                return
 
-            self.results_mdl = ResultsModel(filtered_table)
-            self.ui.resultsTableView.setModel(self.results_mdl)
+            # Keep the unfiltered model as the stable search source. This makes
+            # each query independent and lets an empty query restore the table.
+            self.ui.resultsTableView.setModel(filtered_model)
         else:
-            return None
+            return
 
     def delete_results_driver(self):
         """

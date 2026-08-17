@@ -19,6 +19,7 @@ from PySide6 import QtCore, QtGui, QtSvg, QtWidgets
 from PySide6.QtCore import Qt, Signal
 
 from VeraGrid.Gui.Icons import icons_rc
+from VeraGrid.Gui.base_python_code_editor import BasePythonCodeEditor
 from VeraGrid.Gui.DynamicModelEditor.dynamic_block_properties_gui import (
     Ui_DynamicBlockPropertiesDialog,
 )
@@ -2058,25 +2059,6 @@ class DaeCodeHighlighter(QtGui.QSyntaxHighlighter):
             self.setFormat(match.start(), match.end() - match.start(), text_format)
 
 
-class DaeLineNumberArea(QtWidgets.QWidget):
-    """Gutter widget that delegates line-number painting to its code editor."""
-
-    __slots__ = ("_editor",)
-
-    def __init__(self, editor: "DaeCodeEditor") -> None:
-        """Create a gutter owned by one code editor."""
-        super().__init__(editor)
-        self._editor: DaeCodeEditor = editor
-
-    def sizeHint(self) -> QtCore.QSize:
-        """Return the width required by the current line count."""
-        return QtCore.QSize(self._editor.get_line_number_area_width(), 0)
-
-    def paintEvent(self, event: QtGui.QPaintEvent) -> None:
-        """Ask the editor to paint visible line numbers."""
-        self._editor.paint_line_number_area(event)
-
-
 class DaeCodeDiagnostic:
     """One source-local validation error shown directly inside the DAE editor."""
 
@@ -2371,21 +2353,72 @@ def build_semantic_dae_diagnostic(code: str, message: str) -> DaeCodeDiagnostic:
     return find_text_diagnostic(code, token, message)
 
 
-class DaeCodeEditor(QtWidgets.QPlainTextEdit):
-    """Plain-text DAE editor with a persistent line-number gutter."""
+class DaeCodeEditor(BasePythonCodeEditor):
+    """Symbolic DAE specialization with diagnostics and source search."""
 
-    __slots__ = ("_line_number_area", "_diagnostics", "_search_ranges", "_active_search_index")
+    __slots__ = (
+        "_diagnostics",
+        "_search_ranges",
+        "_active_search_index",
+        "_symbol_namespace",
+    )
 
-    def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
-        """Create the editor and connect viewport/gutter synchronization."""
+    def __init__(
+            self,
+            parent: QtWidgets.QWidget | None = None,
+            symbol_namespace: Mapping[str, Expr] | None = None,
+    ) -> None:
+        """Create the DAE-specific parser state and visual overlays.
+
+        :param parent: Optional owning Qt widget.
+        :param symbol_namespace: Symbols accepted by the safe DAE parser.
+        :return: None.
+        """
         super().__init__(parent)
-        self._line_number_area: DaeLineNumberArea = DaeLineNumberArea(self)
         self._diagnostics: List[DaeCodeDiagnostic] = list()
         self._search_ranges: List[tuple[int, int]] = list()
         self._active_search_index: int = -1
-        self.blockCountChanged.connect(self.update_line_number_area_width)
-        self.updateRequest.connect(self.update_line_number_area)
-        self.update_line_number_area_width(0)
+        if symbol_namespace is None:
+            self._symbol_namespace: Dict[str, Expr] = dict()
+        else:
+            self._symbol_namespace = dict(symbol_namespace)
+
+    def set_symbol_namespace(self, symbol_namespace: Mapping[str, Expr]) -> None:
+        """Replace the symbolic identities accepted by DAE validation.
+
+        :param symbol_namespace: Current block symbols keyed by source name.
+        :return: None.
+        """
+        self._symbol_namespace = dict(symbol_namespace)
+
+    def get_symbol_namespace(self) -> Dict[str, Expr]:
+        """Return a detached snapshot of the active symbolic namespace.
+
+        :return: Symbols currently accepted by the DAE parser.
+        """
+        return dict(self._symbol_namespace)
+
+    def build_current_diagnostics(self) -> List[DaeCodeDiagnostic]:
+        """Analyze the visible source against the symbolic namespace.
+
+        :return: Syntax and unknown-symbol diagnostics in source order.
+        """
+        return build_dae_code_diagnostics(self.toPlainText(), self._symbol_namespace)
+
+    def parse_current_code(self) -> BlockEquationDraft:
+        """Parse the visible source using the safe assignment-only DAE parser.
+
+        :return: Parsed equation draft retaining the namespace identities.
+        :raises ValueError: If the DAE source is unsupported or invalid.
+        """
+        return parse_equation_code(self.toPlainText(), self._symbol_namespace)
+
+    def get_diagnostics(self) -> List[DaeCodeDiagnostic]:
+        """Return diagnostics currently rendered by the editor.
+
+        :return: Current diagnostic collection.
+        """
+        return list(self._diagnostics)
 
     def set_diagnostics(self, diagnostics: Sequence[DaeCodeDiagnostic]) -> None:
         """Underline every invalid source span and attach its local explanation.
@@ -2404,7 +2437,7 @@ class DaeCodeEditor(QtWidgets.QPlainTextEdit):
         """
         source_text: str = self.toPlainText()
         normalized_query: str = search_text.strip().lower()
-        self._search_ranges = list()
+        self._search_ranges.clear()
         self._active_search_index = -1
 
         if len(normalized_query) > 0:
@@ -2536,74 +2569,6 @@ class DaeCodeEditor(QtWidgets.QPlainTextEdit):
         else:
             self.setToolTip("")
 
-    def get_line_number_area_width(self) -> int:
-        """Return the gutter width for the largest visible line number."""
-        digit_count: int = 1
-        maximum_line: int = max(1, self.blockCount())
-        while maximum_line >= 10:
-            maximum_line //= 10
-            digit_count += 1
-        spacing: int = 10 + self.fontMetrics().horizontalAdvance("9") * digit_count
-        return spacing
-
-    @QtCore.Slot(int)
-    def update_line_number_area_width(self, unused_block_count: int) -> None:
-        """Reserve viewport space after the document line count changes."""
-        _unused_block_count: int = unused_block_count
-        self.setViewportMargins(self.get_line_number_area_width(), 0, 0, 0)
-
-    @QtCore.Slot(QtCore.QRect, int)
-    def update_line_number_area(self, rectangle: QtCore.QRect, vertical_delta: int) -> None:
-        """Scroll or repaint the gutter together with the text viewport."""
-        if vertical_delta != 0:
-            self._line_number_area.scroll(0, vertical_delta)
-        else:
-            self._line_number_area.update(0, rectangle.y(), self._line_number_area.width(), rectangle.height())
-        if rectangle.contains(self.viewport().rect()):
-            self.update_line_number_area_width(0)
-        else:
-            pass
-
-    def resizeEvent(self, event: QtGui.QResizeEvent) -> None:
-        """Keep the gutter aligned with the editor contents rectangle."""
-        super().resizeEvent(event)
-        contents_rectangle: QtCore.QRect = self.contentsRect()
-        self._line_number_area.setGeometry(
-            QtCore.QRect(
-                contents_rectangle.left(),
-                contents_rectangle.top(),
-                self.get_line_number_area_width(),
-                contents_rectangle.height(),
-            )
-        )
-
-    def paint_line_number_area(self, event: QtGui.QPaintEvent) -> None:
-        """Paint the line numbers corresponding to visible text blocks."""
-        painter: QtGui.QPainter = QtGui.QPainter(self._line_number_area)
-        painter.fillRect(event.rect(), QtGui.QColor("#f1f5f9"))
-        text_block: QtGui.QTextBlock = self.firstVisibleBlock()
-        block_number: int = text_block.blockNumber()
-        top: int = int(self.blockBoundingGeometry(text_block).translated(self.contentOffset()).top())
-        bottom: int = top + int(self.blockBoundingRect(text_block).height())
-        while text_block.isValid() and top <= event.rect().bottom():
-            if text_block.isVisible() and bottom >= event.rect().top():
-                line_number: str = str(block_number + 1)
-                painter.setPen(QtGui.QColor("#64748b"))
-                painter.drawText(
-                    0,
-                    top,
-                    self._line_number_area.width() - 5,
-                    self.fontMetrics().height(),
-                    Qt.AlignmentFlag.AlignRight,
-                    line_number,
-                )
-            else:
-                pass
-            text_block = text_block.next()
-            top = bottom
-            bottom = top + int(self.blockBoundingRect(text_block).height())
-            block_number += 1
-
 
 def build_block_symbol_namespace(block: Block) -> Dict[str, Expr]:
     """Build a complete safe parser namespace from one selected block tree."""
@@ -2687,12 +2652,30 @@ def build_equation_code(block: Block) -> str:
     return "\n".join(lines)
 
 
+def serialize_dae_expression(expression: Expr | Comparison) -> str:
+    """Serialize one DAE expression without a redundant root pair.
+
+    ``symbolic_to_string`` deliberately parenthesizes every binary expression
+    to preserve its complete tree. At the top level of a list or dictionary
+    value, that outermost pair has no effect. Inner pairs are retained because
+    they can still be required for Python operator precedence.
+
+    :param expression: Symbolic expression shown in the DAE source editor.
+    :return: Parsable expression text without redundant root parentheses.
+    """
+    expression_text: str = symbolic_to_string(expression)
+    if isinstance(expression, (BinOp, Comparison)):
+        return expression_text[1:-1]
+    else:
+        return expression_text
+
+
 def _serialize_expression_list(name: str, expressions: Sequence[Expr]) -> List[str]:
     """Serialize one expression sequence in a readable multiline form."""
     lines: List[str] = [f"{name} = ["]
     expression: Expr
     for expression in expressions:
-        lines.append(f"    {symbolic_to_string(expression)},")
+        lines.append(f"    {serialize_dae_expression(expression)},")
     lines.append("]")
     return lines
 
@@ -2703,7 +2686,7 @@ def _serialize_expression_dict(name: str, expressions: Mapping[Var, Expr]) -> Li
     variable: Var
     expression: Expr
     for variable, expression in expressions.items():
-        lines.append(f"    {variable.name}: {symbolic_to_string(expression)},")
+        lines.append(f"    {variable.name}: {serialize_dae_expression(expression)},")
     lines.append("}")
     return lines
 
@@ -3647,7 +3630,6 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         "_prepared_to_delete",
         "_status_label",
         "_apply_button",
-        "_close_button",
     )
 
     def __init__(self,
@@ -3758,7 +3740,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         self._equation_owner_combo: QtWidgets.QComboBox = QtWidgets.QComboBox(self)
         self._active_equation_buffer_index: int = self._find_initial_equation_buffer_index()
         self._loading_equation_buffer: bool = False
-        self._dae_editor: DaeCodeEditor = DaeCodeEditor(self)
+        self._dae_editor: DaeCodeEditor = DaeCodeEditor(self, self._namespace)
         self._dae_code_search: QtWidgets.QLineEdit = QtWidgets.QLineEdit(self)
         self._dae_code_search.setClearButtonEnabled(True)
         self._dae_code_search.setPlaceholderText(self.tr("Search Python code..."))
@@ -3805,7 +3787,6 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         self._prepared_to_delete: bool = False
         self._status_label: QtWidgets.QLabel = self.ui.status_label
         self._apply_button: QtWidgets.QPushButton = self.ui.apply_button
-        self._close_button: QtWidgets.QPushButton = self.ui.close_button
         self._build_ui()
         self._connect_signals()
         self._clear_dae_validation_feedback()
@@ -3845,7 +3826,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         QtWidgets.QDialog.closeEvent(self, event)
 
     def set_dock_hosted(self, dock_hosted: bool) -> None:
-        """Select whether the native Close button delegates to a dock host.
+        """Select whether close requests must be delegated to a dock host.
 
         :param dock_hosted: Whether a :class:`QDockWidget` owns this content.
         :return: None.
@@ -4230,7 +4211,6 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
     def _connect_signals(self) -> None:
         """Connect actions with explicit named slots."""
         self._apply_button.clicked.connect(self.apply_changes)
-        self._close_button.clicked.connect(self.request_close)
         self._validate_code_button.clicked.connect(self.validate_complete_dae_code)
         self._dae_editor.textChanged.connect(self.on_dae_code_changed)
         self._equation_owner_combo.currentIndexChanged.connect(self.on_equation_owner_changed)
@@ -4896,15 +4876,16 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
     def validate_dae_code(self) -> bool:
         """Validate the active DAE buffer and show explicit inline feedback."""
         active_buffer: BlockCodeBuffer = self._equation_buffers[self._active_equation_buffer_index]
-        code: str = active_buffer.get_code()
-        diagnostics: List[DaeCodeDiagnostic] = build_dae_code_diagnostics(code, self._namespace)
+        self._dae_editor.set_symbol_namespace(self._namespace)
+        code: str = self._dae_editor.toPlainText()
+        diagnostics: List[DaeCodeDiagnostic] = self._dae_editor.build_current_diagnostics()
         if len(diagnostics) > 0:
             self._show_dae_validation_diagnostics(diagnostics)
             return False
         else:
             pass
         try:
-            equation_draft: BlockEquationDraft = parse_equation_code(code, self._namespace)
+            equation_draft: BlockEquationDraft = self._dae_editor.parse_current_code()
             self._validate_equation_variable_counts(active_buffer.get_block(), equation_draft)
         except (ValueError, TypeError) as error:
             diagnostic: DaeCodeDiagnostic = build_semantic_dae_diagnostic(code, str(error))
