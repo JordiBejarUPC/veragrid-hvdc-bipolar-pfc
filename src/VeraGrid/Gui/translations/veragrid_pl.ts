@@ -330,19 +330,16 @@ li.checked::marker { content: &quot;\2612&quot;; }
         <translation type="unfinished">Szukaj podstawowych bloków</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/block_editor.ui" line="181"/>
         <source>Variables</source>
-        <translation type="unfinished">Zmienne</translation>
+        <translation type="obsolete">Zmienne</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/block_editor.ui" line="215"/>
         <source>Parameters</source>
-        <translation type="unfinished">Parametry</translation>
+        <translation type="obsolete">Parametry</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/block_editor.ui" line="249"/>
         <source>Equations</source>
-        <translation type="unfinished">Równania</translation>
+        <translation type="obsolete">Równania</translation>
     </message>
 </context>
 <context>
@@ -1038,6 +1035,24 @@ li.checked::marker { content: &quot;\2612&quot;; }
         <location filename="../SystemScaler/system_scaler_ui.ui" line="174"/>
         <source>Plot the proposed scaling</source>
         <translation type="unfinished">Wykresl proponowane skalowanie</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicBlockPropertiesDialog</name>
+    <message>
+        <location filename="../DynamicModelEditor/dynamic_block_properties.ui" line="14"/>
+        <source>Block properties</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/dynamic_block_properties.ui" line="67"/>
+        <source>Apply changes</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/dynamic_block_properties.ui" line="78"/>
+        <source>Close</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>

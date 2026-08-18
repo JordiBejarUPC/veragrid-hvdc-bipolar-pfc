@@ -440,19 +440,16 @@ li.checked::マーカー { content: &quot;\2612&quot;; }&lt;/style&gt;&lt;/head&
         <translation>基本ブロックを検索する</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/block_editor.ui" line="181"/>
         <source>Variables</source>
-        <translation>変数</translation>
+        <translation type="vanished">変数</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/block_editor.ui" line="215"/>
         <source>Parameters</source>
-        <translation>パラメータ</translation>
+        <translation type="vanished">パラメータ</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/block_editor.ui" line="249"/>
         <source>Equations</source>
-        <translation>方程式</translation>
+        <translation type="vanished">方程式</translation>
     </message>
 </context>
 <context>
@@ -1745,6 +1742,24 @@ li.checked::マーカー { content: &quot;\2612&quot;; }&lt;/style&gt;&lt;/head&
         <location filename="../SystemScaler/system_scaler_ui.ui" line="174"/>
         <source>Plot the proposed scaling</source>
         <translation>提案されたスケーリングをプロットする</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicBlockPropertiesDialog</name>
+    <message>
+        <location filename="../DynamicModelEditor/dynamic_block_properties.ui" line="14"/>
+        <source>Block properties</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/dynamic_block_properties.ui" line="67"/>
+        <source>Apply changes</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/dynamic_block_properties.ui" line="78"/>
+        <source>Close</source>
+        <translation type="unfinished">近い</translation>
     </message>
 </context>
 <context>

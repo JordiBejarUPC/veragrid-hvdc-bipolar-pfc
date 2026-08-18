@@ -442,19 +442,16 @@ li.checked::marker { content: &quot;\2612&quot;; }
         <translation>Durchsuchen Sie grundlegende Blöcke</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/block_editor.ui" line="181"/>
         <source>Variables</source>
-        <translation>Variablen</translation>
+        <translation type="vanished">Variablen</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/block_editor.ui" line="215"/>
         <source>Parameters</source>
-        <translation>Parameter</translation>
+        <translation type="vanished">Parameter</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/block_editor.ui" line="249"/>
         <source>Equations</source>
-        <translation>Gleichungen</translation>
+        <translation type="vanished">Gleichungen</translation>
     </message>
 </context>
 <context>
@@ -1747,6 +1744,24 @@ li.checked::marker { content: &quot;\2612&quot;; }
         <location filename="../SystemScaler/system_scaler_ui.ui" line="174"/>
         <source>Plot the proposed scaling</source>
         <translation>Zeichnen Sie die vorgeschlagene Skalierung grafisch auf</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicBlockPropertiesDialog</name>
+    <message>
+        <location filename="../DynamicModelEditor/dynamic_block_properties.ui" line="14"/>
+        <source>Block properties</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/dynamic_block_properties.ui" line="67"/>
+        <source>Apply changes</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/dynamic_block_properties.ui" line="78"/>
+        <source>Close</source>
+        <translation type="unfinished">Schließen</translation>
     </message>
 </context>
 <context>

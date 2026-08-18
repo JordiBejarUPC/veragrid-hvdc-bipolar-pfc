@@ -351,19 +351,16 @@ li.checked::標記 { content: &quot;\2612&quot;; }
         <translation>搜尋基本塊</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/block_editor.ui" line="181"/>
         <source>Variables</source>
-        <translation>變量</translation>
+        <translation type="vanished">變量</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/block_editor.ui" line="215"/>
         <source>Parameters</source>
-        <translation>參數</translation>
+        <translation type="vanished">參數</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/block_editor.ui" line="249"/>
         <source>Equations</source>
-        <translation>方程</translation>
+        <translation type="vanished">方程</translation>
     </message>
 </context>
 <context>
@@ -1085,6 +1082,24 @@ li.checked::標記 { content: &quot;\2612&quot;; }
         <location filename="../SystemScaler/system_scaler_ui.ui" line="174"/>
         <source>Plot the proposed scaling</source>
         <translation>繪製建議的縮放比例</translation>
+    </message>
+</context>
+<context>
+    <name>DynamicBlockPropertiesDialog</name>
+    <message>
+        <location filename="../DynamicModelEditor/dynamic_block_properties.ui" line="14"/>
+        <source>Block properties</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/dynamic_block_properties.ui" line="67"/>
+        <source>Apply changes</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/dynamic_block_properties.ui" line="78"/>
+        <source>Close</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>

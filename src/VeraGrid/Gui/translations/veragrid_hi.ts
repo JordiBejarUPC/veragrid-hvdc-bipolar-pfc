@@ -153,32 +153,32 @@ li.checked::marker { content: &quot;\2612&quot;; }
     <message>
         <location filename="../DeviceEditors/AdmittanceMatrixEditor/admittance_matrix_editor_gui.ui" line="19"/>
         <source>Phases:</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">चरण:</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/AdmittanceMatrixEditor/admittance_matrix_editor_gui.ui" line="26"/>
         <source>N</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">N</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/AdmittanceMatrixEditor/admittance_matrix_editor_gui.ui" line="33"/>
         <source>A</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">A</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/AdmittanceMatrixEditor/admittance_matrix_editor_gui.ui" line="40"/>
         <source>B</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">B</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/AdmittanceMatrixEditor/admittance_matrix_editor_gui.ui" line="47"/>
         <source>C</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">C</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/AdmittanceMatrixEditor/admittance_matrix_editor_gui.ui" line="103"/>
         <source>Compute from sequence values</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">अनुक्रम मानों से गणना करें</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/AdmittanceMatrixEditor/admittance_matrix_editor_gui.ui" line="130"/>
@@ -188,22 +188,22 @@ li.checked::marker { content: &quot;\2612&quot;; }
     <message>
         <location filename="../DeviceEditors/AdmittanceMatrixEditor/admittance_matrix_editor_gui.ui" line="148"/>
         <source>Admittance matrix</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">प्रवेश मैट्रिक्स</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/AdmittanceMatrixEditor/admittance_matrix_editor_gui.ui" line="158"/>
         <source>Dense complex admittance matrix.</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">घनत्व वाला जटिल प्रवेश मैट्रिक्स।</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/AdmittanceMatrixEditor/admittance_matrix_editor_gui.ui" line="173"/>
         <source>Shunt admittance</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">शंट प्रवेश</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/AdmittanceMatrixEditor/admittance_matrix_editor_gui.ui" line="185"/>
         <source>Series admittance</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">श्रृंखला प्रवेश</translation>
     </message>
 </context>
 <context>
@@ -383,19 +383,16 @@ li.checked::marker { content: &quot;\2612&quot;; }
         <translation>मूल ब्लॉक खोजें</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/block_editor.ui" line="181"/>
         <source>Variables</source>
-        <translation>चर</translation>
+        <translation type="vanished">चर</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/block_editor.ui" line="215"/>
         <source>Parameters</source>
-        <translation>पैरामीटर</translation>
+        <translation type="vanished">पैरामीटर</translation>
     </message>
     <message>
-        <location filename="../DynamicModelEditor/block_editor.ui" line="249"/>
         <source>Equations</source>
-        <translation>समीकरण</translation>
+        <translation type="vanished">समीकरण</translation>
     </message>
 </context>
 <context>
@@ -1120,6 +1117,24 @@ li.checked::marker { content: &quot;\2612&quot;; }
     </message>
 </context>
 <context>
+    <name>DynamicBlockPropertiesDialog</name>
+    <message>
+        <location filename="../DynamicModelEditor/dynamic_block_properties.ui" line="14"/>
+        <source>Block properties</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/dynamic_block_properties.ui" line="67"/>
+        <source>Apply changes</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../DynamicModelEditor/dynamic_block_properties.ui" line="78"/>
+        <source>Close</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>DynamicEditorWorkspaceWindow</name>
     <message>
         <location filename="../DynamicModelEditor/dynamic_editor_workspace.ui" line="14"/>
@@ -1187,32 +1202,32 @@ li.checked::marker { content: &quot;\2612&quot;; }
     <message>
         <location filename="../DynamicEventsDialog/dynamic_events_editor_dialog.ui" line="14"/>
         <source>Dynamic Event Editor</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">डायनामिक इवेंट एडिटर</translation>
     </message>
     <message>
         <location filename="../DynamicEventsDialog/dynamic_events_editor_dialog.ui" line="20"/>
         <source>&lt;b&gt;Target device:&lt;/b&gt;</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">&lt;b&gt;टार्गेट डिवाइस:&lt;/b&gt;</translation>
     </message>
     <message>
         <location filename="../DynamicEventsDialog/dynamic_events_editor_dialog.ui" line="58"/>
         <source>➕ New Event Group</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">➕ नई इवेंट समूह</translation>
     </message>
     <message>
         <location filename="../DynamicEventsDialog/dynamic_events_editor_dialog.ui" line="69"/>
         <source>➕ Add New Event</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">➕ नई इवेंट जोड़ें</translation>
     </message>
     <message>
         <location filename="../DynamicEventsDialog/dynamic_events_editor_dialog.ui" line="76"/>
         <source>❌ Remove Selected Rows</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">❌ चयनित पंक्तियाँ हटाएं</translation>
     </message>
     <message>
         <location filename="../DynamicEventsDialog/dynamic_events_editor_dialog.ui" line="85"/>
         <source>Switch Sequence Wizard</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">स्विच सीक्वेंस विज़ार्ड</translation>
     </message>
 </context>
 <context>
@@ -1325,32 +1340,32 @@ li.checked::marker { content: &quot;\2612&quot;; }
     <message>
         <location filename="../DeviceEditors/LineLocationsEditor/line_locations_editor_gui.ui" line="19"/>
         <source>Add point</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">बिंदु जोड़ें</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/LineLocationsEditor/line_locations_editor_gui.ui" line="33"/>
         <source>Remove selected</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">चयनित को हटाएं</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/LineLocationsEditor/line_locations_editor_gui.ui" line="47"/>
         <source>Import CSV</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">CSV आयात करें</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/LineLocationsEditor/line_locations_editor_gui.ui" line="61"/>
         <source>Export CSV</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">CSV निर्यात करें</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/LineLocationsEditor/line_locations_editor_gui.ui" line="75"/>
         <source>Copy</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">कॉपी करें</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/LineLocationsEditor/line_locations_editor_gui.ui" line="89"/>
         <source>Paste</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">पेस्ट करें</translation>
     </message>
 </context>
 <context>
@@ -2247,17 +2262,17 @@ li.checked::marker { content: &quot;\2612&quot;; }
     <message>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="14"/>
         <source>Server Files</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">सर्वर फ़ाइलें</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="91"/>
         <source>Selection</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">चयन</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="97"/>
         <source>Type</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">प्रकार</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="104"/>
@@ -2273,32 +2288,32 @@ li.checked::marker { content: &quot;\2612&quot;; }
     <message>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="114"/>
         <source>File name</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">फ़ाइल का नाम</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="131"/>
         <source>File idtag</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">फ़ाइल आईडीटैग</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="148"/>
         <source>Model name</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">मॉडल का नाम</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="165"/>
         <source>Model idtag</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">मॉडल आईडीटैग</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="182"/>
         <source>Owner user</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">मालिक उपयोगकर्ता</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="199"/>
         <source>Created at</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">बनाया गया</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="219"/>
@@ -2308,7 +2323,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
     <message>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="225"/>
         <source>Delete removes the selected file or the selected model branch from the server database after confirmation.</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">पुष्टि के बाद चयनित फ़ाइल या चयनित मॉडल शाखा को सर्वर डेटाबेस से हटा देता है।</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="246"/>
@@ -2318,57 +2333,57 @@ li.checked::marker { content: &quot;\2612&quot;; }
     <message>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="249"/>
         <source>Reload the server file tree</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">सर्वर फ़ाइल पेड़ को पुनः लोड करें</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="258"/>
         <source>Load File</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">फ़ाइल लोड करें</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="261"/>
         <source>Load the full selected multiverse</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">पूर्ण चयनित मल्टीवर्स लोड करें</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="270"/>
         <source>Load Base Model</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">बेस मॉडल लोड करें</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="273"/>
         <source>Load only the selected file base model</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">केवल चयनित फ़ाइल बेस मॉडल लोड करें</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="282"/>
         <source>Load Selected Model</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">चयनित मॉडल लोड करें</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="285"/>
         <source>Load the selected scenario branch as one flat circuit</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">चयनित स्थिति शाखा को एक समतल सर्किट के रूप में लोड करें</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="294"/>
         <source>Save Current Project</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">वर्तमान प्रोजेक्ट सहेजें</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="297"/>
         <source>Upload the current project into the selected server file or model</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">वर्तमान प्रोजेक्ट को चयनित सर्वर फ़ाइल या मॉडल में अपलोड करें</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="306"/>
         <source>Delete Selected</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">चयनित को हटाएं</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="309"/>
         <source>Delete the selected file or model from the server database</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">सर्वर डेटाबेस से चयनित फ़ाइल या मॉडल को हटाएं</translation>
     </message>
 </context>
 <context>
@@ -2440,23 +2455,23 @@ li.checked::marker { content: &quot;\2612&quot;; }
     <name>SimulationsMain</name>
     <message>
         <source>Model v. {model_version}</source>
-        <translation type="vanished">मॉडल सं. {model_version}</translation>
+        <translation>मॉडल सं. {model_version}</translation>
     </message>
     <message>
         <source>idtag. {idtag}</source>
-        <translation type="vanished">आईडीटैग. {idtag}</translation>
+        <translation>आईडीटैग. {idtag}</translation>
     </message>
     <message>
         <source>User: {user_name}</source>
-        <translation type="vanished">उपयोगकर्ता: {user_name}</translation>
+        <translation>उपयोगकर्ता: {user_name}</translation>
     </message>
     <message>
         <source>Compiling the grid...</source>
-        <translation type="vanished">ग्रिड को संकलित किया जा रहा है...</translation>
+        <translation>ग्रिड को संकलित किया जा रहा है...</translation>
     </message>
     <message>
         <source>Running power flow...</source>
-        <translation type="vanished">पावर फ्लो चल रहा है...</translation>
+        <translation>पावर फ्लो चल रहा है...</translation>
     </message>
 </context>
 <context>
@@ -4676,19 +4691,19 @@ li.checked::marker { content: &quot;\2612&quot;; }
         <location filename="../Main/MainWindow.ui" line="7930"/>
         <location filename="../Main/MainWindow.ui" line="8725"/>
         <source>standard</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">मानक</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="7935"/>
         <location filename="../Main/MainWindow.ui" line="8730"/>
         <source>vectorized</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">वेक्टराइज्ड</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="8140"/>
         <location filename="../Main/MainWindow.ui" line="8489"/>
         <source>Problem</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">समस्या</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="8327"/>
@@ -4698,28 +4713,28 @@ li.checked::marker { content: &quot;\2612&quot;; }
     <message>
         <location filename="../Main/MainWindow.ui" line="8380"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Subspace build type. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;सबस्पेस बिल्ड प्रकार। &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="8383"/>
         <location filename="../Main/MainWindow.ui" line="8387"/>
         <source>Arnoldi</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">अर्नोल्डी</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="8392"/>
         <source>Hybrid Arnoldi</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">हाइब्रिड अर्नोल्डी</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="8450"/>
         <source>Build type</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">बिल्ड प्रकार</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="8542"/>
         <source>Target period</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">लक्ष्य अवधि</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="8683"/>
@@ -4729,12 +4744,12 @@ li.checked::marker { content: &quot;\2612&quot;; }
     <message>
         <location filename="../Main/MainWindow.ui" line="8738"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Period of the periodic orbit. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;आवर्ती कक्ष की अवधि। &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="8741"/>
         <source>Hz</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Hz</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="8822"/>
