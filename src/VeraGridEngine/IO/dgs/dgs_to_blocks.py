@@ -8,11 +8,27 @@ import ast
 import math
 import pprint
 import re
+from enum import IntEnum
 from pathlib import Path
 from typing import Dict, Iterable, List, Sequence, Set, Tuple
 
+import VeraGridEngine.Utils.Symbolic.symbolic as symbolic
 from VeraGridEngine.IO.dgs.dgs_circuit import DgsCircuit
-from VeraGridEngine.IO.dgs.dgs_objects import BlkDef, BlkFrom, BlkGoto, BlkRef, BlkSlot, BlkSum, ElmComp, ElmDsl, DGSElement
+from VeraGridEngine.IO.dgs.dgs_objects import (
+    BlkDef,
+    BlkDiv,
+    BlkFrom,
+    BlkGoto,
+    BlkMul,
+    BlkRef,
+    BlkSig,
+    BlkSlot,
+    BlkSum,
+    BlkSwt,
+    DGSElement,
+    ElmComp,
+    ElmDsl,
+)
 from VeraGridEngine.Utils.procedural_logic import (
     AnalogFlipFlopLogic,
     FixedSampleLogic,
@@ -27,8 +43,141 @@ from VeraGridEngine.Utils.procedural_logic import (
     clone_procedural_logic_entries,
 )
 from VeraGridEngine.Utils.Symbolic.block import Block, find_name_in_block
-from VeraGridEngine.Utils.Symbolic.symbolic import CmpOp, Comparison, Const, Expr, Func2, Var, abs, cos, exp, hard_sat, log, max, min, sin, sqrt
+from VeraGridEngine.Utils.Symbolic.symbolic import (
+    CmpOp,
+    Comparison,
+    Const,
+    Expr,
+    Func2,
+    Var,
+    abs,
+    cos,
+    exp,
+    hard_sat,
+    heaviside,
+    log,
+    sin,
+    sqrt,
+)
 from VeraGridEngine.enumerations import BlockScopeMode
+
+
+class DgsGraphicalConnectorKind(IntEnum):
+    """Identify the connector categories encoded by graphical ``BlkSig`` rows."""
+
+    Input = 1
+    Output = 2
+    LowerLimitInput = 3
+    UpperLimitInput = 4
+
+
+def _parse_dgs_graphical_connector_kind(
+        connector_code: int,
+) -> DgsGraphicalConnectorKind | None:
+    """
+    Convert one raw connector code without rejecting vendor extensions.
+
+    :param connector_code: Integer stored in ``iconfrom`` or ``iconto``.
+    :return: Known connector category, or ``None`` for an implicit category.
+    """
+    connector_kind: DgsGraphicalConnectorKind | None
+    if connector_code == int(DgsGraphicalConnectorKind.Input):
+        connector_kind = DgsGraphicalConnectorKind.Input
+    elif connector_code == int(DgsGraphicalConnectorKind.Output):
+        connector_kind = DgsGraphicalConnectorKind.Output
+    elif connector_code == int(DgsGraphicalConnectorKind.LowerLimitInput):
+        connector_kind = DgsGraphicalConnectorKind.LowerLimitInput
+    elif connector_code == int(DgsGraphicalConnectorKind.UpperLimitInput):
+        connector_kind = DgsGraphicalConnectorKind.UpperLimitInput
+    else:
+        connector_kind = None
+    return connector_kind
+
+
+def _parse_effective_graphical_connector_kind(
+        connector_code: int,
+        endpoint_node: object,
+        is_source_endpoint: bool,
+) -> DgsGraphicalConnectorKind | None:
+    """
+    Resolve implicit connector direction for native graphical operators.
+
+    PowerFactory writes connector code zero for ordinary native-operator pins.
+    Direction is then carried by whether the operator is ``pnodfrom`` or
+    ``pnodto`` in the corresponding signal row.
+
+    :param connector_code: Raw connector category.
+    :param endpoint_node: Parsed object at the signal endpoint.
+    :param is_source_endpoint: Whether this is the ``pnodfrom`` endpoint.
+    :return: Effective connector category, or ``None`` when unsupported.
+    """
+    connector_kind: DgsGraphicalConnectorKind | None = (
+        _parse_dgs_graphical_connector_kind(connector_code=connector_code)
+    )
+    if connector_kind is not None:
+        result: DgsGraphicalConnectorKind | None = connector_kind
+    elif isinstance(endpoint_node, (BlkDiv, BlkMul, BlkSum, BlkSwt)):
+        if is_source_endpoint:
+            result = DgsGraphicalConnectorKind.Output
+        else:
+            result = DgsGraphicalConnectorKind.Input
+    else:
+        result = None
+    return result
+
+
+def _resolve_graphical_runtime_output_index(
+        endpoint_node: object | None,
+        graphical_output_index: int,
+        runtime_output_count: int,
+) -> int | None:
+    """
+    Map one exported graphical output pin to a compact runtime output.
+
+    Native operators number their output after their input pins, while the
+    runtime block stores outputs in an independent compact vector. Other node
+    types retain their exported zero-based output index.
+
+    :param endpoint_node: Parsed graphical source node.
+    :param graphical_output_index: Raw ``BlkSig.inodfrom`` value.
+    :param runtime_output_count: Number of runtime outputs on the source block.
+    :return: Compact runtime output index, or ``None`` when it is unresolved.
+    """
+    if 0 <= graphical_output_index < runtime_output_count:
+        runtime_output_index: int | None = graphical_output_index
+    elif (
+            isinstance(endpoint_node, (BlkDiv, BlkMul, BlkSum, BlkSwt))
+            and runtime_output_count > 0
+    ):
+        runtime_output_index = 0
+    else:
+        runtime_output_index = None
+    return runtime_output_index
+
+
+def _build_ordinary_graphical_input_index(
+        input_names: List[str],
+) -> Dict[Tuple[DgsGraphicalConnectorKind, int], int]:
+    """
+    Map ordinary graphical input pins to compact runtime indices.
+
+    :param input_names: Runtime input names in compact order.
+    :return: Runtime indices keyed by connector category and raw port index.
+    """
+    input_index_by_connector: Dict[
+        Tuple[DgsGraphicalConnectorKind, int],
+        int,
+    ] = dict()
+
+    # Ordinary block inputs preserve their zero-based order directly.
+    input_index: int
+    for input_index in range(len(input_names)):
+        input_index_by_connector[
+            (DgsGraphicalConnectorKind.Input, input_index)
+        ] = input_index
+    else:
+        pass
+    return input_index_by_connector
 
 
 def _safe_name(name: str) -> str:
@@ -146,7 +295,7 @@ def classify_dgs_statement(statement: str) -> tuple[str, str | None]:
     if stmt.startswith('vardef('):
         return 'ignored', None
 
-    init_match = re.match(r'^(?P<kind>inc0?|inc)\((?P<lhs>[^\)]+)\)\s*=\s*(?P<rhs>.+)$', stmt)
+    init_match = re.match(r'^(?P<kind>inc0?|inc)\((?P<lhs>[^)]+)\)\s*=\s*(?P<rhs>.+)$', stmt)
     if init_match is not None:
         return init_match.group('kind').strip(), init_match.group('lhs').strip()
 
@@ -195,7 +344,7 @@ def _extract_rhs_text_for_support_report(kind: str, statement: str) -> str | Non
     rhs_text: str | None = None
 
     if kind in {'inc', 'inc0'}:
-        match = re.match(r'^(?P<kind>inc0?|inc)\((?P<lhs>[^\)]+)\)\s*=\s*(?P<rhs>.+)$', statement)
+        match = re.match(r'^(?P<kind>inc0?|inc)\((?P<lhs>[^)]+)\)\s*=\s*(?P<rhs>.+)$', statement)
         if match is not None:
             rhs_text = match.group('rhs').strip()
         else:
@@ -232,8 +381,10 @@ def _ensure_support_report_lhs_symbol(lhs: str | None,
     :returns: None.
     """
     if lhs is not None and lhs not in symbol_table:
-        symbol_table[lhs] = Var(name=f"{blkdef.loc_name}__{lhs}")
-        parser._replacement_map[_safe_name(lhs)] = lhs
+        parser.register_symbol(
+            original_name=lhs,
+            variable=Var(name=f"{blkdef.loc_name}__{lhs}"),
+        )
     else:
         pass
 
@@ -293,14 +444,9 @@ def _build_nonprocedural_support_report_entry(index: int,
     _ensure_support_report_lhs_symbol(lhs, blkdef, symbol_table, parser)
 
     try:
-        rhs_expr = parser.parse(rhs_text)
+        parser.parse(rhs_text)
     except UnsupportedDgsExpression as exc:
         return _build_statement_report_entry(index, statement, kind, lhs, 'unsupported', str(exc))
-
-    if isinstance(rhs_expr, Comparison):
-        rhs_expr = rhs_expr.to_expression()
-    else:
-        pass
 
     if kind == 'inc0' and lhs is not None and lhs in init_seen:
         return _build_statement_report_entry(index, statement, kind, lhs, 'ignored', 'inc0 skipped because init already exists')
@@ -504,6 +650,17 @@ class DgsExpressionParser(ast.NodeVisitor):
     def procedural_logic_entries(self) -> List[ProceduralLogicBase]:
         return self._procedural_logic_entries
 
+    def register_symbol(self, original_name: str, variable: Var) -> None:
+        """
+        Register one DGS symbol and its parser-safe replacement.
+
+        :param original_name: Original DGS symbol name.
+        :param variable: Symbolic variable representing the DGS symbol.
+        :return: None.
+        """
+        self.symbol_table[original_name] = variable
+        self._replacement_map[_safe_name(original_name)] = original_name
+
     def _new_procedural_mode_var(self, prefix: str) -> Var:
         base_name = f"{self.block_name}__proc_{prefix}_{self._procedural_counter}" if self.block_name else f"proc_{prefix}_{self._procedural_counter}"
         self._procedural_counter += 1
@@ -679,9 +836,9 @@ class DgsExpressionParser(ast.NodeVisitor):
         if name == 'atan2' and len(args) == 2:
             return Func2('atan2', args[0], args[1])
         if name == 'max' and len(args) == 2:
-            return max(args[0], args[1])
+            return symbolic.max(args[0], args[1])
         if name == 'min' and len(args) == 2:
-            return min(args[0], args[1])
+            return symbolic.min(args[0], args[1])
         if name == 'sqr' and len(args) == 1:
             return args[0] * args[0]
         if name in {'lim', 'lim_const'} and len(args) == 3:
@@ -1726,7 +1883,7 @@ class DgsBlockModuleEmitter:
 
     def __init__(self,
                  result: DgsRootBlockResult,
-                 subgraph: DgsBlockSubgraphResult,
+                 subgraph: DgsBlockSubgraphResult | DgsGraphicTreeResult,
                  dgs_path: str,
                  block_name: str | None = None) -> None:
         """
@@ -1946,7 +2103,7 @@ class DgsBlockModuleEmitter:
 
 def _emit_block_module(
     result: DgsRootBlockResult,
-    subgraph: DgsBlockSubgraphResult,
+    subgraph: DgsBlockSubgraphResult | DgsGraphicTreeResult,
     dgs_path: str,
     block_name: str | None = None,
 ) -> str:
@@ -1957,6 +2114,64 @@ def _emit_block_module(
         block_name=block_name,
     )
     return emitter.render()
+
+
+def _append_serialized_tree_imports(lines: List[str]) -> None:
+    """
+    Append imports shared by serialized DGS tree modules.
+
+    :param lines: Output line buffer.
+    :return: None.
+    """
+    lines.append("from VeraGridEngine.Utils.Symbolic.block import Block")
+    lines.append("")
+    lines.append("")
+
+
+def _append_block_tree_accessors(lines: List[str]) -> None:
+    """
+    Append public accessors for a serialized dependency tree.
+
+    :param lines: Output line buffer.
+    :return: None.
+    """
+    lines.append("def get_block() -> Block:")
+    lines.append("    return Block.parse(BLOCK_DATA)")
+    lines.append("")
+    lines.append("")
+    lines.append("def get_dependency_graph() -> dict:")
+    lines.append("    return DEPENDENCY_GRAPH")
+    lines.append("")
+    lines.append("")
+    lines.append("def get_upstream_graph() -> dict:")
+    lines.append("    return UPSTREAM_GRAPH")
+    lines.append("")
+    lines.append("")
+    lines.append("def get_downstream_graph() -> dict:")
+    lines.append("    return DOWNSTREAM_GRAPH")
+    lines.append("")
+    lines.append("")
+    lines.append("def get_metadata() -> dict:")
+    lines.append("    return METADATA")
+
+
+def _append_graphical_tree_accessors(lines: List[str]) -> None:
+    """
+    Append public accessors for a serialized graphical tree.
+
+    :param lines: Output line buffer.
+    :return: None.
+    """
+    lines.append("def get_block() -> Block:")
+    lines.append("    return Block.parse(BLOCK_DATA)")
+    lines.append("")
+    lines.append("")
+    lines.append("def get_graphical_adjacency() -> dict:")
+    lines.append("    return GRAPHICAL_ADJACENCY")
+    lines.append("")
+    lines.append("")
+    lines.append("def get_metadata() -> dict:")
+    lines.append("    return METADATA")
 
 
 class DgsBlockTreeModuleEmitter:
@@ -1990,9 +2205,9 @@ class DgsBlockTreeModuleEmitter:
         """
         lines: List[str] = list()
         self._append_header(lines)
-        self._append_imports(lines)
+        _append_serialized_tree_imports(lines)
         self._append_serialized_constants(lines)
-        self._append_accessors(lines)
+        _append_block_tree_accessors(lines)
         return "\n".join(lines) + "\n"
 
     def _append_header(self, lines: List[str]) -> None:
@@ -2004,17 +2219,6 @@ class DgsBlockTreeModuleEmitter:
         """
         lines.append("# Auto-generated DGS block tree export.")
         lines.append(f"# Source: {self.dgs_path}")
-        lines.append("")
-
-    def _append_imports(self, lines: List[str]) -> None:
-        """
-        Append the import block.
-
-        :param lines: Output line buffer.
-        :returns: None.
-        """
-        lines.append("from VeraGridEngine.Utils.Symbolic.block import Block")
-        lines.append("")
         lines.append("")
 
     def _append_serialized_constants(self, lines: List[str]) -> None:
@@ -2058,33 +2262,6 @@ class DgsBlockTreeModuleEmitter:
         lines.append("")
         lines.append("")
 
-    def _append_accessors(self, lines: List[str]) -> None:
-        """
-        Append the public accessor functions.
-
-        :param lines: Output line buffer.
-        :returns: None.
-        """
-        lines.append("def get_block() -> Block:")
-        lines.append("    return Block.parse(BLOCK_DATA)")
-        lines.append("")
-        lines.append("")
-        lines.append("def get_dependency_graph() -> dict:")
-        lines.append("    return DEPENDENCY_GRAPH")
-        lines.append("")
-        lines.append("")
-        lines.append("def get_upstream_graph() -> dict:")
-        lines.append("    return UPSTREAM_GRAPH")
-        lines.append("")
-        lines.append("")
-        lines.append("def get_downstream_graph() -> dict:")
-        lines.append("    return DOWNSTREAM_GRAPH")
-        lines.append("")
-        lines.append("")
-        lines.append("def get_metadata() -> dict:")
-        lines.append("    return METADATA")
-
-
 class DgsGraphicalTreeModuleEmitter:
     """
     Structured emitter for one serialized graphical-tree module.
@@ -2116,9 +2293,9 @@ class DgsGraphicalTreeModuleEmitter:
         """
         lines: List[str] = list()
         self._append_header(lines)
-        self._append_imports(lines)
+        _append_serialized_tree_imports(lines)
         self._append_serialized_constants(lines)
-        self._append_accessors(lines)
+        _append_graphical_tree_accessors(lines)
         return "\n".join(lines) + "\n"
 
     def _append_header(self, lines: List[str]) -> None:
@@ -2130,17 +2307,6 @@ class DgsGraphicalTreeModuleEmitter:
         """
         lines.append("# Auto-generated DGS graphical block tree export.")
         lines.append(f"# Source: {self.dgs_path}")
-        lines.append("")
-
-    def _append_imports(self, lines: List[str]) -> None:
-        """
-        Append the import block.
-
-        :param lines: Output line buffer.
-        :returns: None.
-        """
-        lines.append("from VeraGridEngine.Utils.Symbolic.block import Block")
-        lines.append("")
         lines.append("")
 
     def _append_serialized_constants(self, lines: List[str]) -> None:
@@ -2171,25 +2337,6 @@ class DgsGraphicalTreeModuleEmitter:
         lines.append(f"METADATA = {metadata_repr}")
         lines.append("")
         lines.append("")
-
-    def _append_accessors(self, lines: List[str]) -> None:
-        """
-        Append the public accessor functions.
-
-        :param lines: Output line buffer.
-        :returns: None.
-        """
-        lines.append("def get_block() -> Block:")
-        lines.append("    return Block.parse(BLOCK_DATA)")
-        lines.append("")
-        lines.append("")
-        lines.append("def get_graphical_adjacency() -> dict:")
-        lines.append("    return GRAPHICAL_ADJACENCY")
-        lines.append("")
-        lines.append("")
-        lines.append("def get_metadata() -> dict:")
-        lines.append("    return METADATA")
-
 
 def _emit_tree_style_module(
     result: DgsRootBlockResult,
@@ -2978,6 +3125,12 @@ def _build_graphic_node_index(circuit: DgsCircuit) -> dict[str, object]:
         node_by_id[obj.ID] = obj
     for obj in circuit.blksums:
         node_by_id[obj.ID] = obj
+    for obj in circuit.blkdivs:
+        node_by_id[obj.ID] = obj
+    for obj in circuit.blkmuls:
+        node_by_id[obj.ID] = obj
+    for obj in circuit.blkswts:
+        node_by_id[obj.ID] = obj
 
     return node_by_id
 
@@ -3310,10 +3463,12 @@ def export_standalone_blkdef_to_python(dgs_path: str, output_path: str, block_id
         producer_map=dict(),
         consumer_map=dict(),
     )
+    standalone_node_ids: set[str] = set()
+    standalone_node_ids.add(parsed_block.blkdef.ID)
     subgraph = DgsBlockSubgraphResult(
         selected_block=parsed_block,
         view_block=runtime_block,
-        node_ids=set([parsed_block.blkdef.ID]),
+        node_ids=standalone_node_ids,
         dependency_graph=dict(),
         upstream=dict(),
         downstream=dict(),
@@ -3393,6 +3548,12 @@ def _graphic_node_label(node: object) -> str:
         return node.cdisName if node.cdisName != '' else node.typ_id
     if isinstance(node, BlkSum):
         return node.loc_name
+    if isinstance(node, BlkDiv):
+        return node.loc_name
+    if isinstance(node, BlkMul):
+        return node.loc_name
+    if isinstance(node, BlkSwt):
+        return node.loc_name
     if isinstance(node, BlkFrom):
         return node.loc_name
     if isinstance(node, BlkGoto):
@@ -3415,6 +3576,12 @@ def _graphic_node_kind(node: object) -> str:
         return 'BlkRef'
     if isinstance(node, BlkSum):
         return 'BlkSum'
+    if isinstance(node, BlkDiv):
+        return 'BlkDiv'
+    if isinstance(node, BlkMul):
+        return 'BlkMul'
+    if isinstance(node, BlkSwt):
+        return 'BlkSwt'
     if isinstance(node, BlkFrom):
         return 'BlkFrom'
     if isinstance(node, BlkGoto):
@@ -3424,30 +3591,6 @@ def _graphic_node_kind(node: object) -> str:
     if isinstance(node, BlkDef):
         return 'BlkDef'
     return type(node).__name__
-
-
-def _graphic_node_to_block(
-    node_id: str,
-    node: object,
-    parsed_blocks: Dict[str, ParsedDgsBlockDefinition],
-) -> Block:
-    """
-    Convert one graphical node into a lightweight Block for visualization.
-
-    :param node_id: Node identifier.
-    :param node: Graphical node object.
-    :param parsed_blocks: Parsed block definitions.
-    :return: Visualization block.
-    """
-    if isinstance(node, BlkRef):
-        parsed = parsed_blocks.get(node.typ_id)
-        if parsed is not None:
-            blk = _build_block_from_parsed(parsed, dict())
-            blk.name = _graphic_node_label(node)
-            return blk
-
-    blk = Block(name=_graphic_node_label(node))
-    return blk
 
 
 def _build_graphic_node_signal_map(circuit: DgsCircuit) -> dict[str, set[str]]:
@@ -3479,6 +3622,12 @@ def _build_graphic_node_signal_map(circuit: DgsCircuit) -> dict[str, set[str]]:
             clean = _normalize_graph_signal_name(sig_name)
             if clean != '':
                 _append_to_string_set_map(node_signals, blk_from.ID, clean)
+
+    for blk_goto in circuit.blkgotos:
+        for sig_name in blk_goto.signals:
+            clean = _normalize_graph_signal_name(sig_name)
+            if clean != '':
+                _append_to_string_set_map(node_signals, blk_goto.ID, clean)
 
     return node_signals
 
@@ -3593,91 +3742,316 @@ def _resolve_graphic_block_connections(
     child_node_ids: List[str],
     child_blocks: Dict[str, Block],
     child_input_specs: Dict[str, List[str]],
+    child_input_index_by_connector: Dict[
+        str,
+        Dict[Tuple[DgsGraphicalConnectorKind, int], int],
+    ],
     child_output_specs: Dict[str, List[str]],
+    graphical_signals: List[BlkSig],
     adjacency: Dict[str, Set[str]],
     node_by_id: Dict[str, object],
-    node_signals: Dict[str, Set[str]],
     alias_map: Dict[str, Set[str]],
     root_runtime_block: Block,
 ) -> Tuple[List[GraphicConnectionInstruction], List[Var]]:
+    """
+    Resolve graphical connections by exact cable identity and then aliases.
+
+    Direct ``BlkSig`` endpoints and connector-local indices are authoritative.
+    Signal aliases and graph distance are used only when routing nodes or
+    incomplete exports prevent a direct structural connection.
+
+    :param selected_block: Parsed graphical macro definition.
+    :param child_node_ids: Materialized graphical child identifiers.
+    :param child_blocks: Runtime blocks keyed by graphical identifier.
+    :param child_input_specs: Runtime input names by child identifier.
+    :param child_input_index_by_connector: Compact runtime input indices keyed
+        by exact connector category and raw port.
+    :param child_output_specs: Runtime output names by child identifier.
+    :param graphical_signals: Exact graphical cable records.
+    :param adjacency: Augmented graphical adjacency.
+    :param node_by_id: Parsed graphical objects keyed by identifier.
+    :param alias_map: Equivalent signal labels used by routing nodes.
+    :param root_runtime_block: Runtime representation of the macro boundary.
+    :return: Connection instructions and resolved macro output variables.
+    """
     producer_entries: List[Tuple[str, str, Var]] = list()
-    root_inputs = _build_name_to_var_map(list(root_runtime_block.in_vars))
-    root_signal_vars = _build_name_to_var_map(
+    root_signal_vars: Dict[str, Var] = _build_name_to_var_map(
         list(root_runtime_block.in_vars)
         + list(root_runtime_block.out_vars)
         + list(root_runtime_block.algebraic_vars)
         + list(root_runtime_block.state_vars)
     )
 
+    node_id: str
     for node_id in child_node_ids:
-        block = child_blocks[node_id]
-        for output_index, output_name in enumerate(child_output_specs.get(node_id, list())):
+        block: Block = child_blocks[node_id]
+        output_index: int
+        output_name: str
+        for output_index, output_name in enumerate(
+                child_output_specs.get(node_id, list()),
+        ):
             if output_index < len(block.out_vars):
                 producer_entries.append((node_id, output_name, block.out_vars[output_index]))
+            else:
+                pass
 
     connections: List[GraphicConnectionInstruction] = list()
+    connected_consumer_inputs: Set[Tuple[str, int]] = set()
+    root_node_id: str = str(selected_block.blkdef.ID)
+    root_input_names: List[str] = list(selected_block.blkdef.inputs)
+    root_input_index_by_connector: Dict[
+        Tuple[DgsGraphicalConnectorKind, int],
+        int,
+    ] = _build_ordinary_graphical_input_index(input_names=root_input_names)
+    graphical_signal: BlkSig
 
-    for consumer_node_id in child_node_ids:
-        for input_index, input_name in enumerate(child_input_specs.get(consumer_node_id, list())):
-            input_aliases = alias_map.get(input_name, {input_name})
-            candidates: List[Tuple[int, int, str, str]] = list()
+    # Reproduce direct cables before considering any label-based fallback.
+    for graphical_signal in graphical_signals:
+        source_node_id: str = graphical_signal.pnodfrom.strip()
+        consumer_node_id: str = graphical_signal.pnodto.strip()
+        source_kind: DgsGraphicalConnectorKind | None = (
+            _parse_effective_graphical_connector_kind(
+                connector_code=int(graphical_signal.iconfrom),
+                endpoint_node=node_by_id.get(source_node_id, None),
+                is_source_endpoint=True,
+            )
+        )
+        consumer_kind: DgsGraphicalConnectorKind | None = (
+            _parse_effective_graphical_connector_kind(
+                connector_code=int(graphical_signal.iconto),
+                endpoint_node=node_by_id.get(consumer_node_id, None),
+                is_source_endpoint=False,
+            )
+        )
+        if consumer_kind is None:
+            consumer_runtime_index: int | None = None
+        else:
+            consumer_runtime_index = child_input_index_by_connector.get(
+                consumer_node_id,
+                dict(),
+            ).get(
+                (consumer_kind, int(graphical_signal.inodto)),
+                None,
+            )
 
-            for producer_node_id, output_name, _out_var in producer_entries:
-                if producer_node_id == consumer_node_id:
-                    pass
-                elif len(input_aliases & alias_map.get(output_name, {output_name})) == 0:
-                    pass
-                else:
-                    distance = _graph_distance(adjacency, consumer_node_id, producer_node_id)
-                    exact_score = 0 if output_name == input_name else 1
-                    candidates.append((exact_score, distance, producer_node_id, output_name))
-
-            if len(candidates) > 0:
-                candidates.sort()
-                best = candidates[0]
-                connections.append(
-                    GraphicConnectionInstruction(
-                        consumer_node_id=consumer_node_id,
-                        consumer_input_name=input_name,
-                        source_kind="block_output",
-                        consumer_input_index=input_index,
-                        source_node_id=best[2],
-                        source_output_name=best[3],
-                        source_output_index=child_output_specs.get(best[2], list()).index(best[3]),
+        if (
+                consumer_node_id in child_blocks
+                and consumer_runtime_index is not None
+        ):
+            consumer_key: Tuple[str, int] = (
+                consumer_node_id,
+                consumer_runtime_index,
+            )
+            if consumer_key in connected_consumer_inputs:
+                pass
+            elif (
+                    source_node_id in child_blocks
+                    and source_kind == DgsGraphicalConnectorKind.Output
+            ):
+                source_output_names: List[str] = child_output_specs.get(
+                    source_node_id,
+                    list(),
+                )
+                source_output_index: int | None = (
+                    _resolve_graphical_runtime_output_index(
+                        endpoint_node=node_by_id.get(source_node_id, None),
+                        graphical_output_index=int(graphical_signal.inodfrom),
+                        runtime_output_count=len(source_output_names),
                     )
                 )
+                if source_output_index is None:
+                    pass
+                else:
+                    consumer_input_names: List[str] = child_input_specs.get(
+                        consumer_node_id,
+                        list(),
+                    )
+                    if consumer_runtime_index >= len(consumer_input_names):
+                        pass
+                    else:
+                        connections.append(
+                            GraphicConnectionInstruction(
+                                consumer_node_id=consumer_node_id,
+                                consumer_input_name=consumer_input_names[
+                                    consumer_runtime_index
+                                ],
+                                source_kind="block_output",
+                                consumer_input_index=consumer_runtime_index,
+                                source_output_name=source_output_names[
+                                    source_output_index
+                                ],
+                                source_output_index=source_output_index,
+                                source_node_id=source_node_id,
+                            )
+                        )
+                        connected_consumer_inputs.add(consumer_key)
+            elif (
+                    source_node_id == root_node_id
+                    and source_kind == DgsGraphicalConnectorKind.Input
+            ):
+                root_runtime_input_index: int | None = (
+                    root_input_index_by_connector.get(
+                        (source_kind, int(graphical_signal.inodfrom)),
+                        None,
+                    )
+                )
+                if (
+                        root_runtime_input_index is None
+                        or root_runtime_input_index >= len(root_input_names)
+                ):
+                    pass
+                else:
+                    source_root_name: str = root_input_names[
+                        root_runtime_input_index
+                    ]
+                    consumer_input_names = child_input_specs.get(
+                        consumer_node_id,
+                        list(),
+                    )
+                    if consumer_runtime_index >= len(consumer_input_names):
+                        pass
+                    else:
+                        connections.append(
+                            GraphicConnectionInstruction(
+                                consumer_node_id=consumer_node_id,
+                                consumer_input_name=consumer_input_names[
+                                    consumer_runtime_index
+                                ],
+                                source_kind="root_input",
+                                consumer_input_index=consumer_runtime_index,
+                                source_root_name=source_root_name,
+                            )
+                        )
+                        connected_consumer_inputs.add(consumer_key)
             else:
-                root_candidates = [name for name in root_signal_vars.keys() if len(alias_map.get(name, {name}) & input_aliases) > 0]
-                if len(root_candidates) > 0:
-                    _sort_candidate_names_with_preferred_first(root_candidates, input_name)
+                pass
+        else:
+            pass
+
+    # Resolve routes without concrete endpoints through deterministic aliases.
+    consumer_node_id: str
+    for consumer_node_id in child_node_ids:
+        input_index: int
+        input_name: str
+        for input_index, input_name in enumerate(
+                child_input_specs.get(consumer_node_id, list()),
+        ):
+            fallback_consumer_key: Tuple[str, int] = (
+                consumer_node_id,
+                input_index,
+            )
+            if fallback_consumer_key in connected_consumer_inputs:
+                pass
+            else:
+                input_aliases: Set[str] = alias_map.get(
+                    input_name,
+                    {input_name},
+                )
+                candidates: List[Tuple[int, int, str, str]] = list()
+
+                producer_node_id: str
+                output_name: str
+                _out_var: Var
+                for producer_node_id, output_name, _out_var in producer_entries:
+                    if producer_node_id == consumer_node_id:
+                        pass
+                    elif len(input_aliases & alias_map.get(output_name, {output_name})) == 0:
+                        pass
+                    else:
+                        distance: int = _graph_distance(
+                            adjacency,
+                            consumer_node_id,
+                            producer_node_id,
+                        )
+                        exact_score: int = 0 if output_name == input_name else 1
+                        candidates.append((exact_score, distance, producer_node_id, output_name))
+
+                if len(candidates) > 0:
+                    candidates.sort()
+                    best: Tuple[int, int, str, str] = candidates[0]
                     connections.append(
                         GraphicConnectionInstruction(
                             consumer_node_id=consumer_node_id,
                             consumer_input_name=input_name,
-                            source_kind="root_input",
+                            source_kind="block_output",
                             consumer_input_index=input_index,
-                            source_root_name=root_candidates[0],
+                            source_node_id=best[2],
+                            source_output_name=best[3],
+                            source_output_index=child_output_specs.get(best[2], list()).index(best[3]),
                         )
                     )
                 else:
-                    pass
+                    root_candidates: List[str] = list()
+                    root_name: str
+                    for root_name in root_signal_vars.keys():
+                        root_aliases: Set[str] = alias_map.get(
+                            root_name,
+                            {root_name},
+                        )
+                        if len(root_aliases & input_aliases) > 0:
+                            root_candidates.append(root_name)
+                        else:
+                            pass
+                    if len(root_candidates) > 0:
+                        _sort_candidate_names_with_preferred_first(root_candidates, input_name)
+                        connections.append(
+                            GraphicConnectionInstruction(
+                                consumer_node_id=consumer_node_id,
+                                consumer_input_name=input_name,
+                                source_kind="root_input",
+                                consumer_input_index=input_index,
+                                source_root_name=root_candidates[0],
+                            )
+                        )
+                    else:
+                        pass
 
     resolved_outputs: List[Var] = list()
+    output_var: Var
     for output_var in root_runtime_block.out_vars:
-        output_name = output_var.name
-        output_aliases = alias_map.get(output_name, {output_name})
-        candidates: List[Tuple[int, int, str, Var]] = list()
-        for producer_node_id, producer_output_name, out_var in producer_entries:
-            if len(output_aliases & alias_map.get(producer_output_name, {producer_output_name})) == 0:
+        root_output_name: str = output_var.name
+        output_aliases: Set[str] = alias_map.get(
+            root_output_name,
+            {root_output_name},
+        )
+        output_candidates: List[Tuple[int, int, str, Var]] = list()
+        output_producer_node_id: str
+        output_producer_name: str
+        output_producer_var: Var
+        for (
+                output_producer_node_id,
+                output_producer_name,
+                output_producer_var,
+        ) in producer_entries:
+            if len(
+                    output_aliases
+                    & alias_map.get(
+                        output_producer_name,
+                        {output_producer_name},
+                    )
+            ) == 0:
                 pass
             else:
-                distance = _graph_distance(adjacency, producer_node_id, selected_block.blkdef.ID)
-                exact_score = 0 if producer_output_name == output_name else 1
-                candidates.append((exact_score, distance, producer_node_id, out_var))
+                output_distance: int = _graph_distance(
+                    adjacency,
+                    output_producer_node_id,
+                    selected_block.blkdef.ID,
+                )
+                output_exact_score: int = (
+                    0 if output_producer_name == root_output_name else 1
+                )
+                output_candidates.append(
+                    (
+                        output_exact_score,
+                        output_distance,
+                        output_producer_node_id,
+                        output_producer_var,
+                    )
+                )
 
-        if len(candidates) > 0:
-            candidates.sort()
-            resolved_outputs.append(candidates[0][3])
+        if len(output_candidates) > 0:
+            output_candidates.sort()
+            resolved_outputs.append(output_candidates[0][3])
         else:
             resolved_outputs.append(output_var)
 
@@ -3821,6 +4195,371 @@ def _build_sum_block_from_graphic_node(blk_sum: BlkSum, circuit: DgsCircuit) -> 
     return block, input_names, outputs
 
 
+def _build_sum_runtime_input_index_by_connector(
+        blk_sum: BlkSum,
+        circuit: DgsCircuit,
+) -> Dict[Tuple[DgsGraphicalConnectorKind, int], int]:
+    """
+    Map sparse native summation ports to compact runtime inputs.
+
+    PowerFactory retains four raw slots and can disable any of them. The
+    runtime block omits disabled slots, so the connector map must compact the
+    remaining indices in the same order as the summation expression.
+
+    :param blk_sum: Native graphical summation node.
+    :param circuit: Parsed DGS circuit containing its cables.
+    :return: Runtime indices keyed by ordinary connector and raw slot.
+    """
+    incoming_slots: Set[int] = set()
+    signal: BlkSig
+
+    # Record only concrete incoming cables owned by this summation node.
+    for signal in circuit.blksigs:
+        if (
+                signal.pnodto.strip() == str(blk_sum.ID)
+                and _normalize_graph_signal_name(signal.loc_name) != ''
+        ):
+            incoming_slots.add(int(signal.inodto))
+        else:
+            pass
+
+    input_index_by_connector: Dict[
+        Tuple[DgsGraphicalConnectorKind, int],
+        int,
+    ] = dict()
+    runtime_input_index: int = 0
+    raw_slot_index: int
+
+    # Compact active raw slots in the same deterministic order as the block.
+    for raw_slot_index in range(4):
+        slot_is_executable: bool = (
+            raw_slot_index in incoming_slots
+            and _blk_sum_slot_mode(blk_sum, raw_slot_index) != 2
+        )
+        if slot_is_executable:
+            input_index_by_connector[
+                (DgsGraphicalConnectorKind.Input, raw_slot_index)
+            ] = runtime_input_index
+            runtime_input_index += 1
+        else:
+            pass
+    return input_index_by_connector
+
+
+def _collect_graphical_operator_signal_specs(
+        node: BlkMul | BlkDiv,
+        circuit: DgsCircuit,
+) -> Tuple[List[Tuple[int, str]], List[Tuple[int, str]]]:
+    """
+    Collect ordered inputs and outputs for one native arithmetic operator.
+
+    Native operator records do not declare their own interface. PowerFactory
+    stores the executable port indices and signal names in ``BlkSig`` rows.
+
+    :param node: Parsed multiplication or division record.
+    :param circuit: Parsed DGS circuit containing the signal rows.
+    :return: Ordered input and output ``(port, signal name)`` pairs.
+    """
+    incoming_by_index: Dict[int, str] = dict()
+    outgoing_by_index: Dict[int, str] = dict()
+    node_id: str = str(node.ID)
+    signal: BlkSig
+    for signal in circuit.blksigs:
+        signal_name: str = _normalize_graph_signal_name(signal.loc_name)
+        source_kind: DgsGraphicalConnectorKind | None = (
+            _parse_effective_graphical_connector_kind(
+                connector_code=int(signal.iconfrom),
+                endpoint_node=node,
+                is_source_endpoint=True,
+            )
+        )
+        target_kind: DgsGraphicalConnectorKind | None = (
+            _parse_effective_graphical_connector_kind(
+                connector_code=int(signal.iconto),
+                endpoint_node=node,
+                is_source_endpoint=False,
+            )
+        )
+        if (
+                str(signal.pnodto).strip() == node_id
+                and target_kind == DgsGraphicalConnectorKind.Input
+                and signal_name != ''
+        ):
+            incoming_by_index[int(signal.inodto)] = signal_name
+        else:
+            pass
+        if (
+                str(signal.pnodfrom).strip() == node_id
+                and source_kind == DgsGraphicalConnectorKind.Output
+                and signal_name != ''
+        ):
+            outgoing_by_index[int(signal.inodfrom)] = signal_name
+        else:
+            pass
+
+    incoming_signals: List[Tuple[int, str]] = sorted(incoming_by_index.items())
+    outgoing_signals: List[Tuple[int, str]] = sorted(outgoing_by_index.items())
+    return incoming_signals, outgoing_signals
+
+
+def build_graphical_arithmetic_block(
+        node: BlkMul | BlkDiv,
+        circuit: DgsCircuit,
+) -> Tuple[
+    Block,
+    List[str],
+    List[str],
+    Dict[Tuple[DgsGraphicalConnectorKind, int], int],
+]:
+    """
+    Materialize one native multiplication or left-associative division node.
+
+    Multiplication consumes every ordered input. Division treats port zero as
+    the numerator and divides successively by the remaining input ports,
+    matching PowerFactory graphical-block semantics.
+
+    :param node: Parsed native arithmetic record.
+    :param circuit: Parsed DGS circuit containing its signal rows.
+    :return: Symbolic block, ordered interface names and exact input-port map.
+    """
+    incoming_signals: List[Tuple[int, str]]
+    outgoing_signals: List[Tuple[int, str]]
+    incoming_signals, outgoing_signals = _collect_graphical_operator_signal_specs(
+        node=node,
+        circuit=circuit,
+    )
+    input_vars: List[Var] = list()
+    input_names: List[str] = list()
+    input_index_by_connector: Dict[
+        Tuple[DgsGraphicalConnectorKind, int],
+        int,
+    ] = dict()
+    input_port_index: int
+    input_name: str
+
+    # Compact runtime inputs while retaining each raw graphical port index.
+    for input_port_index, input_name in incoming_signals:
+        runtime_input_index: int = len(input_vars)
+        input_vars.append(Var(name=input_name))
+        input_names.append(input_name)
+        input_index_by_connector[
+            (DgsGraphicalConnectorKind.Input, input_port_index)
+        ] = runtime_input_index
+
+    # Build the deterministic arithmetic expression in exported port order.
+    if len(input_vars) == 0:
+        operator_rhs: Expr = Const(0.0)
+    else:
+        operator_rhs = input_vars[0]
+        following_input: Var
+        for following_input in input_vars[1:]:
+            if isinstance(node, BlkMul):
+                operator_rhs = operator_rhs * following_input
+            else:
+                operator_rhs = operator_rhs / following_input
+
+    output_names: List[str] = list()
+    output_vars: List[Var] = list()
+    _output_port_index: int
+    output_name: str
+
+    # Multiple graphical output dots expose the same arithmetic result.
+    for _output_port_index, output_name in outgoing_signals:
+        if output_name in output_names:
+            pass
+        else:
+            output_names.append(output_name)
+            output_vars.append(Var(name=output_name))
+    if len(output_vars) == 0:
+        fallback_output_name: str = _safe_name(
+            node.loc_name if node.loc_name != '' else node.ID
+        )
+        output_names.append(fallback_output_name)
+        output_vars.append(Var(name=fallback_output_name))
+    else:
+        pass
+
+    algebraic_equations: List[Expr] = list()
+    post_init_seed_eqs: Dict[Var, Expr] = dict()
+    output_var: Var
+
+    # Seed and steady-state equations must share the exact same expression.
+    for output_var in output_vars:
+        algebraic_equations.append(output_var - operator_rhs)
+        post_init_seed_eqs[output_var] = operator_rhs
+
+    if node.loc_name != '':
+        operator_name: str = node.loc_name
+    elif isinstance(node, BlkMul):
+        operator_name = 'Multiplication'
+    else:
+        operator_name = 'Division'
+    block: Block = Block(
+        algebraic_eqs=algebraic_equations,
+        algebraic_vars=output_vars,
+        in_vars=input_vars,
+        out_vars=output_vars,
+        post_init_seed_eqs=post_init_seed_eqs,
+        name=operator_name,
+    )
+    return block, input_names, output_names, input_index_by_connector
+
+
+def build_graphical_switch_block(
+        node: BlkSwt,
+        circuit: DgsCircuit,
+) -> Tuple[
+    Block,
+    List[str],
+    List[str],
+    Dict[Tuple[DgsGraphicalConnectorKind, int], int],
+]:
+    """
+    Materialize one native two-input graphical switch.
+
+    A control value up to ``0.5`` retains the default input; a larger value
+    selects the changed input. ``iNeg`` swaps those two positions.
+
+    :param node: Parsed native switch record.
+    :param circuit: Parsed DGS circuit containing its signal rows.
+    :return: Symbolic block, ordered interface names and exact input-port map.
+    """
+    data_inputs_by_port: Dict[int, str] = dict()
+    control_inputs_by_port: Dict[
+        Tuple[DgsGraphicalConnectorKind, int],
+        str,
+    ] = dict()
+    outputs_by_port: Dict[int, str] = dict()
+    signal: BlkSig
+
+    # Classify every cable by structural endpoint and connector category.
+    for signal in circuit.blksigs:
+        signal_name: str = _normalize_graph_signal_name(signal.loc_name)
+        source_kind: DgsGraphicalConnectorKind | None = (
+            _parse_effective_graphical_connector_kind(
+                connector_code=int(signal.iconfrom),
+                endpoint_node=node,
+                is_source_endpoint=True,
+            )
+        )
+        target_kind: DgsGraphicalConnectorKind | None = (
+            _parse_effective_graphical_connector_kind(
+                connector_code=int(signal.iconto),
+                endpoint_node=node,
+                is_source_endpoint=False,
+            )
+        )
+        if str(signal.pnodto).strip() == str(node.ID) and signal_name != '':
+            if target_kind == DgsGraphicalConnectorKind.Input:
+                data_inputs_by_port[int(signal.inodto)] = signal_name
+            elif target_kind in {
+                DgsGraphicalConnectorKind.LowerLimitInput,
+                DgsGraphicalConnectorKind.UpperLimitInput,
+            }:
+                control_inputs_by_port[
+                    (target_kind, int(signal.inodto))
+                ] = signal_name
+            else:
+                pass
+        else:
+            pass
+        if (
+                str(signal.pnodfrom).strip() == str(node.ID)
+                and source_kind == DgsGraphicalConnectorKind.Output
+                and signal_name != ''
+        ):
+            outputs_by_port[int(signal.inodfrom)] = signal_name
+        else:
+            pass
+
+    ordered_data_inputs: List[Tuple[int, str]] = sorted(data_inputs_by_port.items())
+    if len(control_inputs_by_port) > 0:
+        ordered_control_inputs: List[
+            Tuple[Tuple[DgsGraphicalConnectorKind, int], str]
+        ] = sorted(control_inputs_by_port.items())
+        control_connector: Tuple[DgsGraphicalConnectorKind, int] = (
+            ordered_control_inputs[0][0]
+        )
+        control_name: str = ordered_control_inputs[0][1]
+    elif len(ordered_data_inputs) > 2:
+        control_port: int
+        control_port, control_name = ordered_data_inputs.pop()
+        control_connector = (DgsGraphicalConnectorKind.Input, control_port)
+    else:
+        control_name = ''
+        control_connector = (DgsGraphicalConnectorKind.UpperLimitInput, 0)
+
+    input_vars: List[Var] = list()
+    data_input_vars: List[Var] = list()
+    input_names: List[str] = list()
+    input_index_by_connector: Dict[
+        Tuple[DgsGraphicalConnectorKind, int],
+        int,
+    ] = dict()
+    data_port: int
+    data_name: str
+
+    # Preserve the raw data-pin identity while compacting runtime inputs.
+    for data_port, data_name in ordered_data_inputs[:2]:
+        input_index_by_connector[
+            (DgsGraphicalConnectorKind.Input, data_port)
+        ] = len(input_vars)
+        data_input_var: Var = Var(name=data_name)
+        input_vars.append(data_input_var)
+        data_input_vars.append(data_input_var)
+        input_names.append(data_name)
+    if control_name == '':
+        control_expression: Expr = Const(0.0)
+    else:
+        input_index_by_connector[control_connector] = len(input_vars)
+        control_var: Var = Var(name=control_name)
+        input_vars.append(control_var)
+        input_names.append(control_name)
+        control_expression = control_var
+
+    # Missing data pins remain deterministic instead of creating a partial block.
+    if len(data_input_vars) == 0:
+        default_expression: Expr = Const(0.0)
+        changed_expression: Expr = Const(0.0)
+    else:
+        default_expression = data_input_vars[0]
+        if len(data_input_vars) >= 2:
+            changed_expression = data_input_vars[1]
+        else:
+            changed_expression = default_expression
+    # Inversion changes the default position without changing control polarity.
+    if int(node.iNeg) == 0:
+        pass
+    else:
+        swapped_expression: Expr = default_expression
+        default_expression = changed_expression
+        changed_expression = swapped_expression
+
+    switched_position: Expr = heaviside(control_expression - Const(0.5))
+    switch_rhs: Expr = (
+        (Const(1.0) - switched_position) * default_expression
+        + switched_position * changed_expression
+    )
+    ordered_outputs: List[Tuple[int, str]] = sorted(outputs_by_port.items())
+    if len(ordered_outputs) == 0:
+        output_name: str = _safe_name(
+            node.loc_name if node.loc_name != '' else node.ID
+        )
+    else:
+        output_name = ordered_outputs[0][1]
+    output_var: Var = Var(name=output_name)
+    block_name: str = node.loc_name if node.loc_name != '' else 'Switch'
+    block: Block = Block(
+        algebraic_eqs=list([output_var - switch_rhs]),
+        algebraic_vars=list([output_var]),
+        in_vars=input_vars,
+        out_vars=list([output_var]),
+        post_init_seed_eqs=dict([(output_var, switch_rhs)]),
+        name=block_name,
+    )
+    return block, input_names, list([output_name]), input_index_by_connector
+
+
 def _selected_block_signal_universe(parsed_block: ParsedDgsBlockDefinition) -> set[str]:
     """
     Return the relevant signal universe of a selected composite block.
@@ -3852,7 +4591,10 @@ def _rescue_graphic_internal_nodes(
     for node_id, node in node_by_id.items():
         if node_id in explicit_component:
             pass
-        elif not isinstance(node, (BlkRef, BlkFrom, BlkGoto, BlkSum)):
+        elif not isinstance(
+                node,
+                (BlkRef, BlkFrom, BlkGoto, BlkSum, BlkDiv, BlkMul, BlkSwt),
+        ):
             pass
         else:
             sigs = node_signals.get(node_id, set())
@@ -3891,15 +4633,15 @@ def extract_elmcomp_direct_instances(
         slot_id: str | None = root_element.pblk[idx]
         element_id: str | None = root_element.pelm[idx]
 
-        slot_name: str | None = None
-        element_name: str | None = None
-        element_kind: str | None = None
-        type_id: str | None = None
-        type_name: str | None = None
+        slot_name: str | None
+        element_name: str | None
+        element_kind: str | None
+        type_id: str | None
+        type_name: str | None
         parameter_values: Dict[
             str,
             float | int | bool | str | complex | None,
-        ] = dict()
+        ]
 
         if slot_id is not None:
             slot_obj: object | None = element_by_id.get(slot_id, None)
@@ -4319,7 +5061,11 @@ def extract_root_slot_block_graphical_tree(
     root_typ_id: str | None = None,
 ) -> DgsGraphicTreeResult | None:
     """
-    Extract the exact graphical internal tree of a root slot using BlkRef/BlkSig/BlkSum structures.
+    Extract the exact graphical internal tree of a root slot.
+
+    The materialized tree includes referenced blocks, native summations,
+    arithmetic division and multiplication nodes, and threshold switches
+    connected through ``BlkSig`` and ``BlkFrom``/``BlkGoto`` routes.
 
     :param dgs_path: Source DGS path.
     :param slot_name: Root slot name or type-name fallback.
@@ -4327,38 +5073,46 @@ def extract_root_slot_block_graphical_tree(
     :param root_typ_id: Optional root type identifier.
     :return: Graphical tree result or None.
     """
-    circuit = DgsCircuit()
+    circuit: DgsCircuit = DgsCircuit()
     circuit.parse_dgs(dgs_path)
 
-    result = dgs_to_root_block(dgs_path, root_name=root_name, root_typ_id=root_typ_id)
-    selection = select_block_instance_from_root(circuit=circuit, result=result, slot_name=slot_name)
+    result: DgsRootBlockResult = dgs_to_root_block(dgs_path, root_name=root_name, root_typ_id=root_typ_id)
+    selection: DgsBlockInstanceSelection | None = select_block_instance_from_root(
+        circuit=circuit,
+        result=result,
+        slot_name=slot_name,
+    )
 
     if selection is None or selection.instance_entry.type_id is None:
         return None
-
-    adjacency = _build_blksig_adjacency(circuit)
-    root_node_id = str(selection.instance_entry.type_id)
-    explicit_component = _graphic_connected_component(adjacency, root_node_id)
-
-    node_by_id = _build_graphic_node_index(circuit)
-    if len(explicit_component) <= 1:
-        node_ids = explicit_component
     else:
-        node_signals = _build_graphic_node_signal_map(circuit)
-        rescued_component = _rescue_graphic_internal_nodes(
+        pass
+
+    adjacency: dict[str, set[str]] = _build_blksig_adjacency(circuit)
+    root_node_id: str = str(selection.instance_entry.type_id)
+    explicit_component: set[str] = _graphic_connected_component(adjacency, root_node_id)
+
+    node_by_id: dict[str, object] = _build_graphic_node_index(circuit)
+    node_signals: dict[str, set[str]] = _build_graphic_node_signal_map(circuit)
+    if len(explicit_component) <= 1:
+        node_ids: set[str] = explicit_component
+    else:
+        rescued_component: set[str] = _rescue_graphic_internal_nodes(
             selection.parsed_block,
             node_by_id,
             node_signals,
             explicit_component,
         )
         node_ids = explicit_component | rescued_component
-    if len(explicit_component) <= 1:
-        node_signals = _build_graphic_node_signal_map(circuit)
     node_labels: dict[str, str] = dict()
     node_kinds: dict[str, str] = dict()
     child_blocks: list[Block] = list()
     child_blocks_by_node: dict[str, Block] = dict()
     child_input_specs: dict[str, List[str]] = dict()
+    child_input_index_by_connector: Dict[
+        str,
+        Dict[Tuple[DgsGraphicalConnectorKind, int], int],
+    ] = dict()
     child_output_specs: dict[str, List[str]] = dict()
     child_node_ids: list[str] = list()
 
@@ -4377,6 +5131,8 @@ def extract_root_slot_block_graphical_tree(
         nested_entries_by_label = _build_instance_entry_lookup_by_slot_name(nested_entries)
         nested_entries_by_type_name = _build_instance_entry_lookup_by_type_name(nested_entries)
         nested_parameter_values_by_type_id = _parameter_values_by_type_id(nested_entries)
+    else:
+        pass
 
     ordered_node_ids: list[tuple[str, str]] = list()
     for node_id in node_ids:
@@ -4416,6 +5172,11 @@ def extract_root_slot_block_graphical_tree(
                     child_blocks.append(blk)
                     child_blocks_by_node[node_id] = blk
                     child_input_specs[node_id] = list(parsed.blkdef.inputs)
+                    child_input_index_by_connector[node_id] = (
+                        _build_ordinary_graphical_input_index(
+                            input_names=child_input_specs[node_id],
+                        )
+                    )
                     child_output_specs[node_id] = list(parsed.blkdef.outputs)
                     child_node_ids.append(node_id)
             elif isinstance(node_obj, BlkSum):
@@ -4423,6 +5184,56 @@ def extract_root_slot_block_graphical_tree(
                 child_blocks.append(blk)
                 child_blocks_by_node[node_id] = blk
                 child_input_specs[node_id] = input_specs
+                child_input_index_by_connector[node_id] = (
+                    _build_sum_runtime_input_index_by_connector(
+                        blk_sum=node_obj,
+                        circuit=circuit,
+                    )
+                )
+                child_output_specs[node_id] = output_specs
+                child_node_ids.append(node_id)
+            elif isinstance(node_obj, (BlkDiv, BlkMul)):
+                arithmetic_input_index_by_connector: Dict[
+                    Tuple[DgsGraphicalConnectorKind, int],
+                    int,
+                ]
+                (
+                    blk,
+                    input_specs,
+                    output_specs,
+                    arithmetic_input_index_by_connector,
+                ) = build_graphical_arithmetic_block(
+                    node=node_obj,
+                    circuit=circuit,
+                )
+                child_blocks.append(blk)
+                child_blocks_by_node[node_id] = blk
+                child_input_specs[node_id] = input_specs
+                child_input_index_by_connector[node_id] = (
+                    arithmetic_input_index_by_connector
+                )
+                child_output_specs[node_id] = output_specs
+                child_node_ids.append(node_id)
+            elif isinstance(node_obj, BlkSwt):
+                switch_input_index_by_connector: Dict[
+                    Tuple[DgsGraphicalConnectorKind, int],
+                    int,
+                ]
+                (
+                    blk,
+                    input_specs,
+                    output_specs,
+                    switch_input_index_by_connector,
+                ) = build_graphical_switch_block(
+                    node=node_obj,
+                    circuit=circuit,
+                )
+                child_blocks.append(blk)
+                child_blocks_by_node[node_id] = blk
+                child_input_specs[node_id] = input_specs
+                child_input_index_by_connector[node_id] = (
+                    switch_input_index_by_connector
+                )
                 child_output_specs[node_id] = output_specs
                 child_node_ids.append(node_id)
             else:
@@ -4438,16 +5249,17 @@ def extract_root_slot_block_graphical_tree(
         child_node_ids=child_node_ids,
         child_blocks=child_blocks_by_node,
         child_input_specs=child_input_specs,
+        child_input_index_by_connector=child_input_index_by_connector,
         child_output_specs=child_output_specs,
+        graphical_signals=circuit.blksigs,
         adjacency=local_adj,
         node_by_id=node_by_id,
-        node_signals=node_signals,
         alias_map=alias_map,
         root_runtime_block=selected_runtime_block,
     )
 
     child_lookup: dict[str, Block] = dict()
-    node_id = ""
+    node_id: str
     for node_id in child_node_ids:
         child_lookup[node_id] = child_blocks_by_node[node_id]
     root_in_lookup = _build_name_to_var_map(list(selected_runtime_block.in_vars))
@@ -4511,6 +5323,7 @@ def export_named_block_subgraph_to_python(
     :param block_id: Optional exact DGS block identifier.
     :param root_name: Root ElmComp display name.
     :param root_typ_id: Optional exact root typ_id.
+    :param mode: Dependency scope included in the exported block.
     :return: Path to the generated Python module.
     """
     result = dgs_to_root_block(dgs_path, root_name=root_name, root_typ_id=root_typ_id)

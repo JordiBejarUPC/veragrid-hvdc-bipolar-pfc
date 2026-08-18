@@ -7,7 +7,79 @@ import sys
 import os
 from pathlib import Path
 from typing import Dict, List, Type, Optional, Tuple
-from VeraGridEngine.IO.dgs.dgs_objects import *
+from VeraGridEngine.IO.dgs.dgs_objects import (
+    BlkDef,
+    BlkDiv,
+    BlkFrom,
+    BlkGoto,
+    BlkMul,
+    BlkRef,
+    BlkSig,
+    BlkSlot,
+    BlkSum,
+    BlkSwt,
+    ChaRef,
+    ChaVec,
+    DGSElement,
+    ElmArea,
+    ElmAsm,
+    ElmBranch,
+    ElmComp,
+    ElmCoup,
+    ElmDsl,
+    ElmFeeder,
+    ElmGenstat,
+    ElmLne,
+    ElmLnesec,
+    ElmLod,
+    ElmLodlv,
+    ElmLodlvp,
+    ElmNet,
+    ElmScap,
+    ElmShnt,
+    ElmSind,
+    ElmSite,
+    ElmSubstat,
+    ElmSvs,
+    ElmSym,
+    ElmTerm,
+    ElmTow,
+    ElmTr2,
+    ElmTr3,
+    ElmTr4,
+    ElmVac,
+    ElmXnet,
+    ElmZone,
+    ElmZpu,
+    General,
+    IntFolder,
+    IntGrf,
+    IntGrfcon,
+    IntGrfnet,
+    IntRef,
+    IntTemplate,
+    Matrix,
+    RelFuse,
+    StaCt,
+    StaCubic,
+    StaSwitch,
+    StaVt,
+    TypAsmo,
+    TypCon,
+    TypCt,
+    TypFuse,
+    TypGeo,
+    TypLne,
+    TypLod,
+    TypSind,
+    TypSwitch,
+    TypSym,
+    TypTow,
+    TypTr2,
+    TypTr3,
+    TypTr4,
+    TypVt,
+)
 from VeraGridEngine.basic_structures import Logger
 
 
@@ -55,12 +127,15 @@ class DgsCircuit:
     _ELEMENT_CLASSES: List[Type[DGSElement]] = [
         General,
         BlkDef,
+        BlkDiv,
         BlkFrom,
         BlkGoto,
+        BlkMul,
         BlkRef,
         BlkSig,
         BlkSlot,
         BlkSum,
+        BlkSwt,
         ChaRef,
         ChaVec,
         ElmComp,
@@ -133,12 +208,15 @@ class DgsCircuit:
 
         self.generals: List[General] = list()
         self.blkdefs: List[BlkDef] = list()
+        self.blkdivs: List[BlkDiv] = list()
         self.blkfroms: List[BlkFrom] = list()
         self.blkgotos: List[BlkGoto] = list()
+        self.blkmuls: List[BlkMul] = list()
         self.blkrefs: List[BlkRef] = list()
         self.blksigs: List[BlkSig] = list()
         self.blkslots: List[BlkSlot] = list()
         self.blksums: List[BlkSum] = list()
+        self.blkswts: List[BlkSwt] = list()
         self.elmcomps: List[ElmComp] = list()
         self.elmdsls: List[ElmDsl] = list()
         self.elmbranches: List[ElmBranch] = list()
@@ -202,12 +280,15 @@ class DgsCircuit:
         self._CLASS_TO_LIST: Dict[Type[DGSElement], List[DGSElement]] = {
             General: self.generals,
             BlkDef: self.blkdefs,
+            BlkDiv: self.blkdivs,
             BlkFrom: self.blkfroms,
             BlkGoto: self.blkgotos,
+            BlkMul: self.blkmuls,
             BlkRef: self.blkrefs,
             BlkSig: self.blksigs,
             BlkSlot: self.blkslots,
             BlkSum: self.blksums,
+            BlkSwt: self.blkswts,
             ChaRef: self.charefs,
             ChaVec: self.chavecs,
             ElmComp: self.elmcomps,
@@ -485,3 +566,5 @@ class DgsCircuit:
                 for pf_obj in pf_objects:
                     elem = _populate_from_pf_object(pf_obj, dgs_cls)
                     target_list.append(elem)
+
+        return None

@@ -5,7 +5,6 @@
 
 import runpy
 from pathlib import Path
-from types import FunctionType
 
 import pytest
 
@@ -15,7 +14,10 @@ from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.IO.dgs.dgs_circuit import DgsCircuit
 from VeraGridEngine.IO.dgs.dgs_to_blocks import (
+    DgsGraphicalConnectorKind,
     UnsupportedDgsExpression,
+    build_graphical_arithmetic_block,
+    build_graphical_switch_block,
     build_standalone_blkdef_block_from_parsed_block,
     export_standalone_blkdef_to_python,
     parse_dgs_block_definitions_from_context,
@@ -31,6 +33,7 @@ from VeraGridEngine.IO.dynamic_model_import_types import (
     DynamicModelImportSource,
 )
 from VeraGridEngine.Utils.Symbolic.block import Block
+from VeraGridEngine.Utils.Symbolic.symbolic import Expr
 from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.enumerations import DeviceType, DynamicSimulationMode, FileType
 
@@ -47,6 +50,33 @@ def _get_dynamic_gain_block_dgs_path() -> Path:
     )
 
 
+def _get_native_graphical_operator_dgs_path() -> Path:
+    """
+    Return the versioned DGS fixture containing native graphical operators.
+
+    :return: Path to the portable ASCII DGS fixture.
+    """
+    return (
+        Path(__file__).resolve().parents[2]
+        / "data"
+        / "grids"
+        / "DGS"
+        / "native_graphical_operators.dgs"
+    )
+
+
+def _parse_native_graphical_operator_fixture() -> DgsCircuit:
+    """
+    Parse the portable graph containing native arithmetic and switching nodes.
+
+    :return: Parsed circuit containing the native graphical records and cables.
+    """
+    dgs_path: Path = _get_native_graphical_operator_dgs_path()
+    circuit: DgsCircuit = DgsCircuit()
+    circuit.parse_dgs(path=str(dgs_path))
+    return circuit
+
+
 def _build_exported_block(
         module_members: dict[str, object],
         variable_factory: VarFactory,
@@ -61,7 +91,7 @@ def _build_exported_block(
     :return: Validated rebuilt symbolic block.
     """
     block_builder: object = module_members["get_block"]
-    if isinstance(block_builder, FunctionType):
+    if callable(block_builder):
         rebuilt_block: object = block_builder(
             vf=variable_factory,
             name=block_name,
@@ -137,6 +167,155 @@ def test_dgs_parser_preserves_static_var_system_runtime_constants() -> None:
         ("88", "SVS_Qcontrol", 30.0, -15.0, 2, 1, -5.0),
         ("89", "SVS_Ucontrol", 0.0, 0.0, 0, 0, 0.0),
     ]
+
+
+def test_dgs_parser_preserves_native_graphical_operator_records() -> None:
+    """
+    Preserve native arithmetic and switch records for later graph materialization.
+
+    :return: None.
+    """
+    circuit: DgsCircuit = _parse_native_graphical_operator_fixture()
+
+    division_rows: list[tuple[str, str, str]] = [
+        (operator.ID, operator.OP, operator.loc_name)
+        for operator in circuit.blkdivs
+    ]
+    multiplication_rows: list[tuple[str, str, str]] = [
+        (operator.ID, operator.OP, operator.loc_name)
+        for operator in circuit.blkmuls
+    ]
+    switch_rows: list[tuple[str, str, str, int]] = [
+        (operator.ID, operator.OP, operator.loc_name, operator.iNeg)
+        for operator in circuit.blkswts
+    ]
+    assert division_rows == [("DIV", "C", "Divide power by voltage")]
+    assert multiplication_rows == [("MUL", "C", "Multiply signals")]
+    assert switch_rows == [("SWT", "C", "Select signal", 0)]
+    assert circuit.blkgotos[0].signals == ["route_a", "route_b"]
+
+
+def test_native_graphical_arithmetic_records_build_executable_blocks(
+) -> None:
+    """
+    Execute the ordered division and multiplication encoded by native DGS nodes.
+
+    :return: None.
+    """
+    circuit: DgsCircuit = _parse_native_graphical_operator_fixture()
+    division_block: Block
+    division_inputs: list[str]
+    division_outputs: list[str]
+    division_input_index_by_connector: dict[
+        tuple[DgsGraphicalConnectorKind, int],
+        int,
+    ]
+    (
+        division_block,
+        division_inputs,
+        division_outputs,
+        division_input_index_by_connector,
+    ) = build_graphical_arithmetic_block(
+        node=circuit.blkdivs[0],
+        circuit=circuit,
+    )
+    multiplication_block: Block
+    multiplication_inputs: list[str]
+    multiplication_outputs: list[str]
+    multiplication_input_index_by_connector: dict[
+        tuple[DgsGraphicalConnectorKind, int],
+        int,
+    ]
+    (
+        multiplication_block,
+        multiplication_inputs,
+        multiplication_outputs,
+        multiplication_input_index_by_connector,
+    ) = build_graphical_arithmetic_block(
+        node=circuit.blkmuls[0],
+        circuit=circuit,
+    )
+
+    assert division_inputs == ["Pord", "Vt"]
+    assert division_outputs == ["Ip_unlim"]
+    assert division_input_index_by_connector == {
+        (DgsGraphicalConnectorKind.Input, 0): 0,
+        (DgsGraphicalConnectorKind.Input, 1): 1,
+    }
+    assert division_block.post_init_seed_eqs[
+        division_block.out_vars[0]
+    ].eval(Pord=0.8, Vt=0.5) == pytest.approx(1.6)
+    assert multiplication_inputs == ["a", "b", "c"]
+    assert multiplication_outputs == ["product"]
+    assert multiplication_input_index_by_connector == {
+        (DgsGraphicalConnectorKind.Input, 0): 0,
+        (DgsGraphicalConnectorKind.Input, 1): 1,
+        (DgsGraphicalConnectorKind.Input, 2): 2,
+    }
+    assert multiplication_block.post_init_seed_eqs[
+        multiplication_block.out_vars[0]
+    ].eval(a=2.0, b=3.0, c=4.0) == pytest.approx(24.0)
+
+
+def test_native_graphical_switch_record_builds_threshold_logic() -> None:
+    """
+    Execute both native switch positions and the exported inverted position.
+
+    :return: None.
+    """
+    circuit: DgsCircuit = _parse_native_graphical_operator_fixture()
+    switch_block: Block
+    switch_inputs: list[str]
+    switch_outputs: list[str]
+    switch_input_index_by_connector: dict[
+        tuple[DgsGraphicalConnectorKind, int],
+        int,
+    ]
+    (
+        switch_block,
+        switch_inputs,
+        switch_outputs,
+        switch_input_index_by_connector,
+    ) = build_graphical_switch_block(
+        node=circuit.blkswts[0],
+        circuit=circuit,
+    )
+    switch_expression: Expr = switch_block.post_init_seed_eqs[switch_block.out_vars[0]]
+
+    assert switch_inputs == ["default_input", "changed_input", "control"]
+    assert switch_outputs == ["selected"]
+    assert switch_input_index_by_connector == {
+        (DgsGraphicalConnectorKind.Input, 0): 0,
+        (DgsGraphicalConnectorKind.Input, 1): 1,
+        (DgsGraphicalConnectorKind.UpperLimitInput, 0): 2,
+    }
+    assert switch_expression.eval(
+        default_input=10.0,
+        changed_input=20.0,
+        control=0.4,
+    ) == pytest.approx(10.0)
+    assert switch_expression.eval(
+        default_input=10.0,
+        changed_input=20.0,
+        control=0.6,
+    ) == pytest.approx(20.0)
+
+    circuit.blkswts[0].iNeg = 1
+    inverted_block: Block = build_graphical_switch_block(
+        node=circuit.blkswts[0],
+        circuit=circuit,
+    )[0]
+    inverted_expression: Expr = inverted_block.post_init_seed_eqs[inverted_block.out_vars[0]]
+    assert inverted_expression.eval(
+        default_input=10.0,
+        changed_input=20.0,
+        control=0.4,
+    ) == pytest.approx(20.0)
+    assert inverted_expression.eval(
+        default_input=10.0,
+        changed_input=20.0,
+        control=0.6,
+    ) == pytest.approx(10.0)
 
 
 def test_dgs_block_definition_builds_one_self_contained_symbolic_block() -> None:

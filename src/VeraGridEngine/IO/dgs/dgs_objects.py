@@ -391,6 +391,7 @@ class BlkGoto(DGSElement):
         DgsProperty('OP', 'a:1', 'DGS field OP (a:1)', py_name='OP'),
         DgsProperty('loc_name', 'a:80', 'DGS field loc_name (a:80)', py_name='loc_name'),
         DgsProperty('sSig:SIZEROW', 'i', 'DGS field sSig:SIZEROW (i)', py_name='sSig_SIZEROW'),
+        DgsProperty('sSig:0', 'a', 'DGS field sSig:0 (a)', py_name='sSig_0'),
     ]
 
     def __init__(self) -> None:
@@ -398,6 +399,124 @@ class BlkGoto(DGSElement):
         self.OP: str = ''
         self.loc_name: str = ''
         self.sSig_SIZEROW: int = 0
+        self.sSig_0: str = ''
+        self.signals: List[str] = list()
+
+    @classmethod
+    def parse_line(cls, line: str, header_map: dict[str, int]) -> BlkGoto:
+        """
+        Parse the routing signal vector owned by one graphical goto node.
+
+        :param line: Raw DGS record.
+        :param header_map: Column-name to position mapping.
+        :return: Parsed graphical goto object.
+        """
+        parts: List[str] = _split_dgs_line(line)
+        obj: BlkGoto = cls()
+
+        # Load the identifier with the PowerFactory FID compatibility rule.
+        identifier_value: str | None = _dgs_get(parts, header_map, 'ID')
+        if identifier_value is None:
+            identifier_value = _dgs_get(parts, header_map, 'FID')
+        else:
+            pass
+        if identifier_value is None or identifier_value.strip() in {'', '*'}:
+            obj.ID = ''
+        else:
+            obj.ID = identifier_value.strip()
+
+        # Load the remaining scalar fields without losing the concrete type.
+        operation_value: str | None = _dgs_get(parts, header_map, 'OP')
+        if operation_value is None or operation_value.strip() in {'', '*'}:
+            obj.OP = ''
+        else:
+            obj.OP = operation_value.strip()
+        location_value: str | None = _dgs_get(parts, header_map, 'loc_name')
+        if location_value is None or location_value.strip() in {'', '*'}:
+            obj.loc_name = ''
+        else:
+            obj.loc_name = location_value.strip()
+        signal_count_value: str | None = _dgs_get(parts, header_map, 'sSig:SIZEROW')
+        parsed_signal_count: str | int | bool | float | None = (
+            obj.properties['sSig:SIZEROW'].parse(
+                '' if signal_count_value is None else signal_count_value
+            )
+        )
+        if isinstance(parsed_signal_count, int):
+            obj.sSig_SIZEROW = parsed_signal_count
+        else:
+            obj.sSig_SIZEROW = 0
+        signal_vector_value: str | None = _dgs_get(parts, header_map, 'sSig:0')
+        if signal_vector_value is None or signal_vector_value.strip() in {'', '*'}:
+            obj.sSig_0 = ''
+        else:
+            obj.sSig_0 = signal_vector_value.strip()
+
+        # Preserve the ordered routed names for structural graph resolution.
+        if obj.sSig_0.strip() in {'', '*'}:
+            pass
+        else:
+            signal_name: str
+            for signal_name in obj.sSig_0.split(','):
+                normalized_signal_name: str = signal_name.strip()
+                if normalized_signal_name == '':
+                    pass
+                else:
+                    obj.signals.append(normalized_signal_name)
+        return obj
+
+
+class BlkDiv(DGSElement):
+    """Represent one native graphical division node from an ASCII DGS file."""
+
+    element_type: str = 'BlkDiv'
+    properties_list: List[DgsProperty] = [
+        DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
+        DgsProperty('OP', 'a:1', 'DGS field OP (a:1)', py_name='OP'),
+        DgsProperty('loc_name', 'a:80', 'DGS field loc_name (a:80)', py_name='loc_name'),
+    ]
+
+    def __init__(self) -> None:
+        """Initialize an empty native graphical division record."""
+        self.ID: str = ''
+        self.OP: str = ''
+        self.loc_name: str = ''
+
+
+class BlkMul(DGSElement):
+    """Represent one native graphical multiplication node from an ASCII DGS file."""
+
+    element_type: str = 'BlkMul'
+    properties_list: List[DgsProperty] = [
+        DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
+        DgsProperty('OP', 'a:1', 'DGS field OP (a:1)', py_name='OP'),
+        DgsProperty('loc_name', 'a:80', 'DGS field loc_name (a:80)', py_name='loc_name'),
+    ]
+
+    def __init__(self) -> None:
+        """Initialize an empty native graphical multiplication record."""
+        self.ID: str = ''
+        self.OP: str = ''
+        self.loc_name: str = ''
+
+
+class BlkSwt(DGSElement):
+    """Represent one native graphical switch node from an ASCII DGS file."""
+
+    element_type: str = 'BlkSwt'
+    properties_list: List[DgsProperty] = [
+        DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
+        DgsProperty('OP', 'a:1', 'DGS field OP (a:1)', py_name='OP'),
+        DgsProperty('loc_name', 'a:80', 'DGS field loc_name (a:80)', py_name='loc_name'),
+        DgsProperty('iNeg', 'i', 'Inverted zero position', py_name='iNeg'),
+    ]
+
+    def __init__(self) -> None:
+        """Initialize an empty native graphical switch record."""
+        self.ID: str = ''
+        self.OP: str = ''
+        self.loc_name: str = ''
+        self.iNeg: int = 0
 
 
 class BlkRef(DGSElement):
