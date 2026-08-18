@@ -5,7 +5,7 @@
 
 import re
 from enum import Enum
-from typing import Any, Dict, List
+from typing import Dict, List
 
 from VeraGridEngine.Devices.Branches.transformer import Transformer2W
 from VeraGridEngine.Devices.Branches.winding import Winding
@@ -23,6 +23,7 @@ import VeraGridEngine.Templates.BasicBlockCatalog as basic_block_templates
 import VeraGridEngine.Templates as tem
 import VeraGridEngine.Templates.Emt as emt_templates
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
+from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Templates.template_definition import TemplateDefinition, TemplateProp
 from VeraGridEngine.Simulations.EMT.JMARTI_Sim.jmarti_fit_options import JMartiFitOptions
 
@@ -40,15 +41,15 @@ class GenericBlockTemplateDefinition(TemplateDefinition):
         """
         super().__init__(
             var_factory,
-            list([
-                TemplateProp("inputs", "", "Number of input ports.", int, 1),
-                TemplateProp("outputs", "", "Number of output ports.", int, 1),
-                TemplateProp("name", "", "Generated block name.", str, "generic"),
-            ]),
+            list((TemplateProp("inputs", "", "Number of input ports.", int, 1), TemplateProp("outputs", "", "Number of output ports.", int, 1), TemplateProp("name", "", "Generated block name.", str, "generic"),)),
         )
 
     def eval(self) -> Block:
-        """Build a generic block from the current structural values."""
+        """
+        Build a generic block from the current structural values.
+
+        :return: Generic block built from the current structural values.
+        """
         inputs: int = int(self.get_value("inputs"))
         outputs: int = int(self.get_value("outputs"))
         name: str = str(self.get_value("name"))
@@ -71,29 +72,20 @@ class RlcComboBlockTemplateDefinition(TemplateDefinition):
         """
         super().__init__(
             var_factory,
-            list([
-                TemplateProp("include_r", "", "Include the resistive branch.", bool, True),
-                TemplateProp("include_l", "", "Include the inductive branch.", bool, True),
-                TemplateProp("include_c", "", "Include the capacitive branch.", bool, True),
-                TemplateProp("phA", "", "Include phase A.", bool, True),
-                TemplateProp("phB", "", "Include phase B.", bool, True),
-                TemplateProp("phC", "", "Include phase C.", bool, True),
-                TemplateProp(
+            list((TemplateProp("include_r", "", "Include the resistive branch.", bool, True), TemplateProp("include_l", "", "Include the inductive branch.", bool, True), TemplateProp("include_c", "", "Include the capacitive branch.", bool, True), TemplateProp("phA", "", "Include phase A.", bool, True), TemplateProp("phB", "", "Include phase B.", bool, True), TemplateProp("phC", "", "Include phase C.", bool, True), TemplateProp(
                     "connection_type",
                     "",
                     "Electrical shunt connection.",
                     ShuntConnectionType,
                     ShuntConnectionType.GroundedStar,
-                ),
-                TemplateProp("direct_r_value", "ohm", "Default resistance.", float, 1.0),
-                TemplateProp("direct_l_value", "H", "Default inductance.", float, 1.0e-3),
-                TemplateProp("direct_c_value", "F", "Default capacitance.", float, 1.0e-6),
-                TemplateProp("name", "", "Generated block name.", str, "RLC_combo_emt"),
-            ]),
+                ), TemplateProp("direct_r_value", "ohm", "Default resistance.", float, 1.0), TemplateProp("direct_l_value", "H", "Default inductance.", float, 1.0e-3), TemplateProp("direct_c_value", "F", "Default capacitance.", float, 1.0e-6), TemplateProp("name", "", "Generated block name.", str, "RLC_combo_emt"),)),
         )
 
-    def eval(self) -> Any:
-        """Build the combined RLC template from current options."""
+    def eval(self) -> EmtModelTemplate:
+        """Build the combined RLC template from current options.
+
+        :return: Configured EMT RLC model template.
+        """
         return emt_templates.get_shunt_rlc_combo_emt_template(
             vf=self.vf,
             include_r=bool(self.get_value("include_r")),
@@ -129,71 +121,37 @@ class JMartiBlockTemplateDefinition(TemplateDefinition):
         :return: None.
         """
         options: JMartiFitOptions = JMartiFitOptions()
-        properties: List[TemplateProp] = list([
-            TemplateProp("phN", "", "Include neutral conductor N.", bool, False),
-            TemplateProp("phA", "", "Include phase A.", bool, True),
-            TemplateProp("phB", "", "Include phase B.", bool, True),
-            TemplateProp("phC", "", "Include phase C.", bool, True),
-            TemplateProp("data_source_mode", "", "Frequency-data source.", JMartiDataSourceMode,
-                         JMartiDataSourceMode.AUTOMATIC_TEMPLATE),
-            TemplateProp("nominal_frequency_hz", "Hz", "Nominal source frequency.", float, 50.0),
-            TemplateProp("import_file_path", "", "NPZ frequency-sample file.", str, ""),
-            TemplateProp("import_line_length_m", "m", "Fallback imported line length.", float, 0.0),
-            TemplateProp("sweep_low_hz", "Hz", "Automatic sweep lower frequency.", float, 10.0),
-            TemplateProp("sweep_high_hz", "Hz", "Automatic sweep upper frequency.", float, 10000.0),
-            TemplateProp("sweep_sample_count", "", "Automatic sweep sample count.", int, 48),
-            TemplateProp("reference_frequency_hz", "Hz", "Modal-basis reference frequency.", float,
-                         float(options.reference_frequency_hz)),
-            TemplateProp("use_frequency_exploration_window", "", "Restrict the fitting band.", bool,
-                         bool(options.use_frequency_exploration_window)),
-            TemplateProp("exploration_low_hz", "Hz", "Fitting-band lower frequency.", float,
-                         float(options.exploration_low_hz)),
-            TemplateProp("exploration_high_hz", "Hz", "Fitting-band upper frequency.", float,
-                         float(options.exploration_high_hz)),
-            TemplateProp("use_delay_fit_window", "", "Restrict the delay-fit band.", bool,
-                         bool(options.use_delay_fit_window)),
-            TemplateProp("delay_fit_low_hz", "Hz", "Delay-fit lower frequency.", float,
-                         float(options.delay_fit_low_hz)),
-            TemplateProp("delay_fit_high_hz", "Hz", "Delay-fit upper frequency.", float,
-                         float(options.delay_fit_high_hz)),
-            TemplateProp("decoupling_warning_tolerance", "", "Modal decoupling warning tolerance.", float,
-                         float(options.decoupling_warning_tolerance)),
-            TemplateProp("loewner_relative_tolerance", "", "Loewner order tolerance.", float,
-                         float(options.loewner_relative_tolerance)),
-            TemplateProp("maximum_model_order", "", "Maximum rational model order.", int,
-                         int(options.maximum_model_order)),
-            TemplateProp("forced_model_order", "", "Forced order; zero selects automatic order.", int,
-                         int(options.forced_model_order)),
-            TemplateProp("minimum_frequency_samples", "", "Minimum fitting samples.", int,
-                         int(options.minimum_frequency_samples)),
-            TemplateProp("vf_max_iterations", "", "Vector-fitting iteration limit.", int,
-                         int(options.vf_max_iterations)),
-            TemplateProp("vf_pole_shift_tolerance", "", "Vector-fitting pole-shift tolerance.", float,
-                         float(options.vf_pole_shift_tolerance)),
-            TemplateProp("vf_enforce_stable_poles", "", "Reflect unstable fitted poles.", bool,
-                         bool(options.vf_enforce_stable_poles)),
-            TemplateProp("vf_stability_real_part_floor", "", "Stable-pole real-part floor.", float,
-                         float(options.vf_stability_real_part_floor)),
-            TemplateProp("vf_include_constant_term", "", "Include the rational constant term.", bool,
-                         bool(options.vf_include_constant_term)),
-            TemplateProp("vf_include_proportional_term", "", "Include the proportional s term.", bool,
-                         bool(options.vf_include_proportional_term)),
-            TemplateProp("passivity_frequency_sample_count", "", "Passivity-check sample count.", int,
-                         int(options.passivity_frequency_sample_count)),
-            TemplateProp("passivity_minimum_real_yc_tolerance", "", "Allowed Re(Yc) negativity.", float,
-                         float(options.passivity_minimum_real_yc_tolerance)),
-            TemplateProp("passivity_maximum_hres_gain_tolerance", "", "Allowed |Hres| gain slack.", float,
-                         float(options.passivity_maximum_hres_gain_tolerance)),
-            TemplateProp("name", "", "Generated block name.", str, "J_Marti"),
-        ])
+        properties: List[TemplateProp] = list((TemplateProp("phN", "", "Include neutral conductor N.", bool, False), TemplateProp("phA", "", "Include phase A.", bool, True), TemplateProp("phB", "", "Include phase B.", bool, True), TemplateProp("phC", "", "Include phase C.", bool, True), TemplateProp("data_source_mode", "", "Frequency-data source.", JMartiDataSourceMode,
+                         JMartiDataSourceMode.AUTOMATIC_TEMPLATE), TemplateProp("nominal_frequency_hz", "Hz", "Nominal source frequency.", float, 50.0), TemplateProp("import_file_path", "", "NPZ frequency-sample file.", str, ""), TemplateProp("import_line_length_m", "m", "Fallback imported line length.", float, 0.0), TemplateProp("sweep_low_hz", "Hz", "Automatic sweep lower frequency.", float, 10.0), TemplateProp("sweep_high_hz", "Hz", "Automatic sweep upper frequency.", float, 10000.0), TemplateProp("sweep_sample_count", "", "Automatic sweep sample count.", int, 48), TemplateProp("reference_frequency_hz", "Hz", "Modal-basis reference frequency.", float,
+                         float(options.reference_frequency_hz)), TemplateProp("use_frequency_exploration_window", "", "Restrict the fitting band.", bool,
+                         bool(options.use_frequency_exploration_window)), TemplateProp("exploration_low_hz", "Hz", "Fitting-band lower frequency.", float,
+                         float(options.exploration_low_hz)), TemplateProp("exploration_high_hz", "Hz", "Fitting-band upper frequency.", float,
+                         float(options.exploration_high_hz)), TemplateProp("use_delay_fit_window", "", "Restrict the delay-fit band.", bool,
+                         bool(options.use_delay_fit_window)), TemplateProp("delay_fit_low_hz", "Hz", "Delay-fit lower frequency.", float,
+                         float(options.delay_fit_low_hz)), TemplateProp("delay_fit_high_hz", "Hz", "Delay-fit upper frequency.", float,
+                         float(options.delay_fit_high_hz)), TemplateProp("decoupling_warning_tolerance", "", "Modal decoupling warning tolerance.", float,
+                         float(options.decoupling_warning_tolerance)), TemplateProp("loewner_relative_tolerance", "", "Loewner order tolerance.", float,
+                         float(options.loewner_relative_tolerance)), TemplateProp("maximum_model_order", "", "Maximum rational model order.", int,
+                         int(options.maximum_model_order)), TemplateProp("forced_model_order", "", "Forced order; zero selects automatic order.", int,
+                         int(options.forced_model_order)), TemplateProp("minimum_frequency_samples", "", "Minimum fitting samples.", int,
+                         int(options.minimum_frequency_samples)), TemplateProp("vf_max_iterations", "", "Vector-fitting iteration limit.", int,
+                         int(options.vf_max_iterations)), TemplateProp("vf_pole_shift_tolerance", "", "Vector-fitting pole-shift tolerance.", float,
+                         float(options.vf_pole_shift_tolerance)), TemplateProp("vf_enforce_stable_poles", "", "Reflect unstable fitted poles.", bool,
+                         bool(options.vf_enforce_stable_poles)), TemplateProp("vf_stability_real_part_floor", "", "Stable-pole real-part floor.", float,
+                         float(options.vf_stability_real_part_floor)), TemplateProp("vf_include_constant_term", "", "Include the rational constant term.", bool,
+                         bool(options.vf_include_constant_term)), TemplateProp("vf_include_proportional_term", "", "Include the proportional s term.", bool,
+                         bool(options.vf_include_proportional_term)), TemplateProp("passivity_frequency_sample_count", "", "Passivity-check sample count.", int,
+                         int(options.passivity_frequency_sample_count)), TemplateProp("passivity_minimum_real_yc_tolerance", "", "Allowed Re(Yc) negativity.", float,
+                         float(options.passivity_minimum_real_yc_tolerance)), TemplateProp("passivity_maximum_hres_gain_tolerance", "", "Allowed |Hres| gain slack.", float,
+                         float(options.passivity_maximum_hres_gain_tolerance)), TemplateProp("name", "", "Generated block name.", str, "J_Marti"),))
         TemplateDefinition.__init__(self, var_factory, properties)
 
-    def eval(self) -> Any:
+    def eval(self) -> EmtModelTemplate:
         """Build the symbolic shell and retain the complete GUI configuration.
 
         :return: JMarti EMT template with serializable editor metadata.
         """
-        template: Any = emt_templates.get_jmarti_line_emt_template(
+        template: EmtModelTemplate = emt_templates.get_jmarti_line_emt_template(
             vf=self.vf,
             phN=bool(self.get_value("phN")),
             phA=bool(self.get_value("phA")),
@@ -223,51 +181,7 @@ def get_blocktype2template_builder_dict() -> Dict[BlockType, type[TemplateDefini
 
     :return: Builder class lookup used by drop and properties workflows.
     """
-    return {
-
-        BlockType.FAULT_EMT: emt_templates.FaultEmtTemplate,
-        BlockType.SWITCH_EMT: emt_templates.SwitchEmtTemplate,
-        BlockType.GROUNDING_LINK_EMT: emt_templates.GroundingLinkEmtTemplate,
-        BlockType.INDUCTION_MOTOR_EMT: emt_templates.InductionMotorEmtTemplate,
-
-        BlockType.R_LOAD_EMT: emt_templates.ShuntRComboEmtTemplate,
-        BlockType.L_LOAD_EMT: emt_templates.ShuntLComboEmtTemplate,
-        BlockType.C_LOAD_EMT: emt_templates.ShuntCComboEmtTemplate,
-
-        BlockType.VOLTAGE_SOURCE_EMT: emt_templates.VoltageSourceEmtTemplate,
-        BlockType.CURRENT_SOURCE_EMT: emt_templates.CurrentSourceEmtTemplate,
-        BlockType.CONTROLLED_VOLTAGE_SOURCE_EMT: emt_templates.ControlledVoltageSourceEmtTemplate,
-        BlockType.CONTROLLED_CURRENT_SOURCE_EMT: emt_templates.ControlledCurrentSourceEmtTemplate,
-
-        BlockType.ARBITRARY_WAVEFORM_VOLTAGE_SOURCE_EMT: emt_templates.ArbitraryWaveformVoltageSourceEmtTemplate,
-        BlockType.ARBITRARY_WAVEFORM_CURRENT_SOURCE_EMT: emt_templates.ArbitraryWaveformCurrentSourceEmtTemplate,
-
-        BlockType.NONLINEAR_RESISTOR_EMT: emt_templates.NonLinearResistorEmtTemplate,
-
-        BlockType.STEP_VOLTAGE_SOURCE_EMT: emt_templates.StepVoltageSourceEmtTemplate,
-        BlockType.STEP_CURRENT_SOURCE_EMT: emt_templates.StepCurrentSourceEmtTemplate,
-        BlockType.RAMP_VOLTAGE_SOURCE_EMT: emt_templates.RampVoltageSourceEmtTemplate,
-        BlockType.RAMP_CURRENT_SOURCE_EMT: emt_templates.RampCurrentSourceEmtTemplate,
-        BlockType.DOUBLE_EXPONENTIAL_CURRENT_SOURCE_EMT: emt_templates.DoubleExponentialCurrentSourceEmtTemplate,
-        BlockType.HEIDLER_CURRENT_SOURCE_EMT: emt_templates.HeidlerCurrentSourceEmtTemplate,
-        BlockType.CIGRE_SURGE_CURRENT_SOURCE_EMT: emt_templates.CigreSurgeCurrentSourceEmtTemplate,
-
-        BlockType.EXP_LOAD_EMT: emt_templates.ExponentialLoadEmtTemplate,
-        BlockType.ZIP_LOAD_EMT: emt_templates.LoadZIPEmtTemplate,
-
-        BlockType.TRAFO_EMT: emt_templates.TransformerEmtTemplate,
-        BlockType.XFMR_TRANSFORMER: emt_templates.XfmrEmtTemplate,
-
-        BlockType.EMT_PI_LINE: emt_templates.PiLineEmtTemplate,
-        BlockType.EMT_BERGERON_LINE: emt_templates.BergeronLineEmtTemplate,
-        BlockType.EMT_JMARTI_LINE: JMartiBlockTemplateDefinition,
-
-        BlockType.INVERSE_LOOKUP_ARRAY: emt_templates.InverseLookupArrayLinearRuntimeTemplate,
-        BlockType.LOOKUP_ARRAY_LINEAR: emt_templates.LookupArrayLinearRuntimeTemplate,
-        BlockType.LOOKUP_ARRAY_SPLINE: emt_templates.LookupArraySplineRuntimeTemplate,
-        BlockType.LOOKUP_MATRIX_LINEAR: emt_templates.LookupMatrixLinearRuntimeTemplate,
-        BlockType.LOOKUP_MATRIX_SPLINE: emt_templates.LookupMatrixSplineRuntimeTemplate
-    }
+    return dict(((BlockType.FAULT_EMT, emt_templates.FaultEmtTemplate), (BlockType.SWITCH_EMT, emt_templates.SwitchEmtTemplate), (BlockType.GROUNDING_LINK_EMT, emt_templates.GroundingLinkEmtTemplate), (BlockType.INDUCTION_MOTOR_EMT, emt_templates.InductionMotorEmtTemplate), (BlockType.R_LOAD_EMT, emt_templates.ShuntRComboEmtTemplate), (BlockType.L_LOAD_EMT, emt_templates.ShuntLComboEmtTemplate), (BlockType.C_LOAD_EMT, emt_templates.ShuntCComboEmtTemplate), (BlockType.VOLTAGE_SOURCE_EMT, emt_templates.VoltageSourceEmtTemplate), (BlockType.CURRENT_SOURCE_EMT, emt_templates.CurrentSourceEmtTemplate), (BlockType.CONTROLLED_VOLTAGE_SOURCE_EMT, emt_templates.ControlledVoltageSourceEmtTemplate), (BlockType.CONTROLLED_CURRENT_SOURCE_EMT, emt_templates.ControlledCurrentSourceEmtTemplate), (BlockType.ARBITRARY_WAVEFORM_VOLTAGE_SOURCE_EMT, emt_templates.ArbitraryWaveformVoltageSourceEmtTemplate), (BlockType.ARBITRARY_WAVEFORM_CURRENT_SOURCE_EMT, emt_templates.ArbitraryWaveformCurrentSourceEmtTemplate), (BlockType.NONLINEAR_RESISTOR_EMT, emt_templates.NonLinearResistorEmtTemplate), (BlockType.STEP_VOLTAGE_SOURCE_EMT, emt_templates.StepVoltageSourceEmtTemplate), (BlockType.STEP_CURRENT_SOURCE_EMT, emt_templates.StepCurrentSourceEmtTemplate), (BlockType.RAMP_VOLTAGE_SOURCE_EMT, emt_templates.RampVoltageSourceEmtTemplate), (BlockType.RAMP_CURRENT_SOURCE_EMT, emt_templates.RampCurrentSourceEmtTemplate), (BlockType.DOUBLE_EXPONENTIAL_CURRENT_SOURCE_EMT, emt_templates.DoubleExponentialCurrentSourceEmtTemplate), (BlockType.HEIDLER_CURRENT_SOURCE_EMT, emt_templates.HeidlerCurrentSourceEmtTemplate), (BlockType.CIGRE_SURGE_CURRENT_SOURCE_EMT, emt_templates.CigreSurgeCurrentSourceEmtTemplate), (BlockType.EXP_LOAD_EMT, emt_templates.ExponentialLoadEmtTemplate), (BlockType.ZIP_LOAD_EMT, emt_templates.LoadZIPEmtTemplate), (BlockType.TRAFO_EMT, emt_templates.TransformerEmtTemplate), (BlockType.XFMR_TRANSFORMER, emt_templates.XfmrEmtTemplate), (BlockType.EMT_PI_LINE, emt_templates.PiLineEmtTemplate), (BlockType.EMT_BERGERON_LINE, emt_templates.BergeronLineEmtTemplate), (BlockType.EMT_JMARTI_LINE, JMartiBlockTemplateDefinition), (BlockType.INVERSE_LOOKUP_ARRAY, emt_templates.InverseLookupArrayLinearRuntimeTemplate), (BlockType.LOOKUP_ARRAY_LINEAR, emt_templates.LookupArrayLinearRuntimeTemplate), (BlockType.LOOKUP_ARRAY_SPLINE, emt_templates.LookupArraySplineRuntimeTemplate), (BlockType.LOOKUP_MATRIX_LINEAR, emt_templates.LookupMatrixLinearRuntimeTemplate), (BlockType.LOOKUP_MATRIX_SPLINE, emt_templates.LookupMatrixSplineRuntimeTemplate),))
 
 
 def create_default_template_builder(var_factory: VarFactory,
@@ -621,6 +535,12 @@ def create_block_of_type(var_factory: VarFactory,
                          api_object: ALL_DEV_TYPES | None = None) -> Block | None:
     """
     Create a Block appropriate for block_type.
+
+    :param var_factory: Factory that owns symbolic variables.
+    :param block_type: Dynamic block catalogue type.
+    :param item_name: Requested visible item name.
+    :param api_object: Static network device associated with the model.
+    :return: Block instance appropriate for ``block_type``, or ``None`` when creation is cancelled.
     """
     # CONST (single output)
     if block_type == BlockType.CONST:

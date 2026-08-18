@@ -23,7 +23,6 @@ class RoutingConstraintEngine:
     them. The constraint engine never edits the graph and never owns rendering
     data.
 
-    :returns: None.
     """
 
     __slots__ = (
@@ -42,7 +41,8 @@ class RoutingConstraintEngine:
         same criteria.
 
         :param graph: Graph to inspect.
-        :returns: None.
+
+        :return: None.
         """
         self._graph: RoutingGraph = graph
         self._geometry: RoutingGeometry = graph.get_geometry()
@@ -65,7 +65,8 @@ class RoutingConstraintEngine:
 
         :param port_node: Port node to inspect.
         :param neighbour_node: Immediate neighbour of the port node.
-        :returns: ``True`` when the connection satisfies the available check.
+
+        :return: ``True`` when the connection satisfies the available check.
         """
         if port_node.get_kind() != RoutingNodeKind.PORT:
             return False
@@ -104,8 +105,9 @@ class RoutingConstraintEngine:
         Return whether the first segment connected to one port is long enough.
 
         :param port_node: Port node at the connection endpoint.
-        :param neighbour_node: First neighbour of the port node.
-        :returns: ``True`` when the first segment is long enough.
+        :param neighbour_node: First neighbour of the port node
+
+        :return: ``True`` when the first segment is long enough.
         """
         if port_node.get_kind() != RoutingNodeKind.PORT:
             return False
@@ -126,7 +128,8 @@ class RoutingConstraintEngine:
         Return whether one segment has a sufficient visible length.
 
         :param segment: Segment to inspect.
-        :returns: ``True`` when the segment is long enough.
+
+        :return: ``True`` when the segment is long enough.
         """
         start_node: RoutingNode | None = self._graph.get_node(segment.get_start_node_id())
         end_node: RoutingNode | None = self._graph.get_node(segment.get_end_node_id())
@@ -149,7 +152,8 @@ class RoutingConstraintEngine:
         Return whether one segment is orthogonal.
 
         :param segment: Segment to inspect.
-        :returns: ``True`` when the segment is horizontal or vertical.
+
+        :return: ``True`` when the segment is horizontal or vertical.
         """
         start_node: RoutingNode | None = self._graph.get_node(segment.get_start_node_id())
         end_node: RoutingNode | None = self._graph.get_node(segment.get_end_node_id())
@@ -179,7 +183,7 @@ class RoutingConstraintEngine:
 
         :param first_node: First node to inspect.
         :param second_node: Second node to inspect.
-        :returns: ``True`` when both nodes are orthogonally aligned.
+        :return: ``True`` when both nodes are orthogonally aligned.
         """
         return self._geometry.are_orthogonally_aligned(
             first_point=first_node.get_position(),
@@ -200,7 +204,7 @@ class RoutingConstraintEngine:
 
         :param segment: Segment to inspect.
         :param block_bounds: Placeholder block geometry payload.
-        :returns: ``False`` until block geometry integration exists.
+        :return: ``False`` until block geometry integration exists.
         """
         del segment
         del block_bounds
@@ -220,7 +224,7 @@ class RoutingConstraintEngine:
 
         :param segment: Segment to inspect.
         :param block_bounds: Placeholder block geometry payload.
-        :returns: ``False`` until block geometry integration exists.
+        :return: ``False`` until block geometry integration exists.
         """
         del segment
         del block_bounds
@@ -235,7 +239,7 @@ class RoutingConstraintEngine:
         calling code.
 
         :param segment: Segment to inspect.
-        :returns: ``True`` when the segment satisfies every active constraint.
+        :return: ``True`` when the segment satisfies every active constraint.
         """
         if not self.is_segment_orthogonal(segment=segment):
             return False
@@ -264,7 +268,7 @@ class RoutingConstraintEngine:
         :param neighbour_node: First neighbour of the port node.
         :param segment: Connecting segment between both nodes.
         :param block_bounds: Placeholder block geometry payload.
-        :returns: ``True`` when every active constraint is satisfied.
+        :return: ``True`` when every active constraint is satisfied.
         """
         if not self.is_port_connection_perpendicular(
                 port_node=port_node,
@@ -293,7 +297,7 @@ class RoutingConstraintEngine:
         Return the expected perpendicular axis for one port connection.
 
         :param port_node: Port node to inspect.
-        :returns: Expected perpendicular axis or ``None``.
+        :return: Expected perpendicular axis or ``None``.
         """
         port_side: RoutingPortSide | None = port_node.get_port_side()
         if port_side == RoutingPortSide.LEFT:
@@ -317,7 +321,7 @@ class RoutingConstraintEngine:
 
         :param first_node: First node.
         :param second_node: Second node.
-        :returns: Derived axis or ``None``.
+        :return: Derived axis or ``None``.
         """
         return self._geometry.derive_axis(
             start_x=first_node.get_position().get_x(),
@@ -339,7 +343,7 @@ class RoutingConstraintEngine:
 
         :param first_node: First node.
         :param second_node: Second node.
-        :returns: Segment length in pixels.
+        :return: Segment length in pixels.
         """
         delta_x: float = abs(first_node.get_position().get_x() - second_node.get_position().get_x())
         delta_y: float = abs(first_node.get_position().get_y() - second_node.get_position().get_y())
@@ -358,7 +362,7 @@ class RoutingConstraintEngine:
 
         :param port_node: Port node that owns the connection.
         :param neighbour_node: First node connected to the port.
-        :returns: ``True`` when the first segment leaves the port in the allowed direction.
+        :return: ``True`` when the first segment leaves the port in the allowed direction.
         """
         port_side: RoutingPortSide | None = port_node.get_port_side()
         if port_side == RoutingPortSide.LEFT:
@@ -393,7 +397,7 @@ class RoutingConstraintEngine:
 
         :param first_value: Candidate neighbour coordinate.
         :param second_value: Port coordinate.
-        :returns: ``True`` when the first value is strictly smaller.
+        :return: ``True`` when the first value is strictly smaller.
         """
         threshold: float = self._geometry.get_visual_alignment_threshold()
         if float(first_value) < float(second_value) - threshold:
@@ -410,7 +414,7 @@ class RoutingConstraintEngine:
 
         :param first_value: Candidate neighbour coordinate.
         :param second_value: Port coordinate.
-        :returns: ``True`` when the first value is strictly greater.
+        :return: ``True`` when the first value is strictly greater.
         """
         threshold: float = self._geometry.get_visual_alignment_threshold()
         if float(first_value) > float(second_value) + threshold:

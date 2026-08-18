@@ -64,7 +64,11 @@ class SharedVarReferenceType:
     __slots__ = ("name", "uid")
     # this class is related to var factory, and a dictionary contains all the "shared vars" that have a certain reference.
     def __init__(self, name: str, uid: int| None = None):
+        """Create an identity shared by variables that represent one signal.
 
+        :param name: Human-readable name of the shared signal reference.
+        :param uid: Existing reference identifier, or ``None`` to allocate one.
+        """
         self.uid: int = _new_uid() if uid is None else uid
         self.name = name
 
@@ -341,6 +345,12 @@ class Const(Expr):
     # class to represent constants symbolically
 
     def __init__(self, value: NUMBER | None = None, uid: int | None = None, name: str = ""):
+        """Create a symbolic constant node.
+
+        :param value: Numeric constant value, or ``None`` for an undefined constant.
+        :param uid: Existing expression identifier, or ``None`` to allocate one.
+        :param name: Optional descriptive name used by editors and serializers.
+        """
         super().__init__(uid=uid)
         self.value: NUMBER | None = value
         self.name: str = name
@@ -444,14 +454,16 @@ class Var(Expr):
                  base_var: Var | None = None):
 
         """
+        Create a symbolic variable and its optional identity relationships.
 
-        :param name:
-        :param shared_reference:
-        :param reference
-        :param network_conn:
+        :param name: Symbol name used in equations and user interfaces.
+        :param reference: Optional power-flow reference represented by the variable.
+        :param network_conn: Whether the variable belongs to a network connection interface.
+        :param shared_reference: Optional identity shared with equivalent signal variables.
         :param non_mutable_uid: Stable physical variable identity.
-        :param uid:
-        :param diff_var:
+        :param uid: Current symbolic identifier, or ``None`` to allocate one.
+        :param diff_var: Optional derivative variable associated with this base variable.
+        :param base_var: Optional state variable associated with this derivative variable.
         """
         super().__init__(uid=uid)
         # Preserve the physical variable identity independently from the
@@ -777,11 +789,12 @@ class BinOp(Expr):
 
     def __init__(self, left: Expr, op: str, right: Expr, uid: int | None = None):
         """
+        Create a symbolic binary-operation node.
 
-        :param left:
-        :param op:
-        :param right:
-        :param uid:
+        :param left: Symbolic expression on the left-hand side.
+        :param op: Supported binary operator token.
+        :param right: Symbolic expression on the right-hand side.
+        :param uid: Existing expression identifier, or ``None`` to allocate one.
         """
         super().__init__(uid=uid)
         self.op: str = op
@@ -1004,10 +1017,11 @@ class UnOp(Expr):
 
     def __init__(self, op: str, operand: Expr, uid: int | None = None):
         """
+        Create a symbolic unary-operation node.
 
-        :param op:
-        :param operand:
-        :param uid:
+        :param op: Supported unary operator token.
+        :param operand: Symbolic expression to which the operator is applied.
+        :param uid: Existing expression identifier, or ``None`` to allocate one.
         """
         super().__init__(uid=uid)
         self.op: str = op
@@ -1292,9 +1306,11 @@ class Func(Expr):
 
     def __init__(self, arg: Expr, op: str = "", uid: int | None = None):
         """
+        Create a symbolic single-argument function node.
 
-        :param op:
-        :param uid:
+        :param arg: Symbolic argument passed to the function.
+        :param op: Supported function name.
+        :param uid: Existing expression identifier, or ``None`` to allocate one.
         """
         super().__init__(uid=uid)
         self.op: str = op
@@ -1670,6 +1686,13 @@ class Func2(Expr):
     __slots__ = ("name", "arg1", "arg2")
 
     def __init__(self, name: str, arg1: Expr, arg2: Expr, uid: int | None = None):
+        """Create a symbolic two-argument function node.
+
+        :param name: Supported binary function name.
+        :param arg1: First symbolic function argument.
+        :param arg2: Second symbolic function argument.
+        :param uid: Existing expression identifier, or ``None`` to allocate one.
+        """
         super().__init__(uid=uid)
         self.name: str = name
         self.arg1: Expr = arg1
@@ -1822,6 +1845,7 @@ def _expr_to_dict(expr: Expr | Comparison) -> Dict[str, Any]:
                 "type": "Var",
                 "name": expr.name,
                 "uid": expr.uid,
+                "non_mutable_uid": expr.non_mutable_uid,
                 "base_var": "None"
             }
         else:
@@ -1829,6 +1853,7 @@ def _expr_to_dict(expr: Expr | Comparison) -> Dict[str, Any]:
                 "type": "Var",
                 "name": expr.name,
                 "uid": expr.uid,
+                "non_mutable_uid": expr.non_mutable_uid,
                 "base_var": _expr_to_dict(expr.base_var),
             }
 
@@ -1899,8 +1924,16 @@ def _dict_to_expr(data: Dict[str, Any]) -> Expr | Var | Const | Comparison:
         else:
             obj = Const(data["value"])
     elif t == "Var":
+        non_mutable_uid_value: object = data.get("non_mutable_uid", data["uid"])
+        if isinstance(non_mutable_uid_value, int) and not isinstance(non_mutable_uid_value, bool):
+            non_mutable_uid: int = non_mutable_uid_value
+        else:
+            # Legacy dictionaries only persisted the mutable UID. At creation
+            # time that value was also the physical variable identity.
+            non_mutable_uid = data["uid"]
+
         if data["base_var"] == "None":
-            obj = Var(data["name"])
+            obj = Var(name=data["name"], non_mutable_uid=non_mutable_uid)
         else:
             # reconstruct base_var
             base_data = data["base_var"]
@@ -1908,7 +1941,9 @@ def _dict_to_expr(data: Dict[str, Any]) -> Expr | Var | Const | Comparison:
             if not isinstance(base_var, Var):
                 raise TypeError("base_var must be a Var")
 
-            obj = Var(name=data["name"], base_var=base_var)
+            obj = Var(name=data["name"],
+                      non_mutable_uid=non_mutable_uid,
+                      base_var=base_var)
 
 
     elif t == "BinOp":

@@ -115,7 +115,6 @@ def test_dae_editor_owns_diagnostics_and_search_state() -> None:
     editor.setPlainText(
         "state_eqs = []\n"
         "algebraic_eqs = [alpha]\n"
-        "differential_eqs = []\n"
         "init_eqs = {}\n"
         "diff_init_eqs = {}"
     )

@@ -67,15 +67,21 @@ class EquationExportEntry:
         self._latex: str = latex
 
     def get_block_name(self) -> str:
-        """Return the equation-owner block name."""
+        """
+        :return: The equation-owner block name.
+        """
         return self._block_name
 
     def get_section(self) -> EquationExportSection:
-        """Return the semantic equation section."""
+        """
+        :return: The semantic equation section.
+        """
         return self._section
 
     def get_latex(self) -> str:
-        """Return the equation LaTeX source."""
+        """
+        :return: The equation LaTeX source.
+        """
         return self._latex
 
 
@@ -356,7 +362,7 @@ def render_wrapped_equation(renderer: LatexRenderer,
             complete_render.get_uses_mathtext()
             and complete_render.get_size().width() <= maximum_width
     ):
-        return list([complete_render])
+        return list((complete_render,))
     elif (
             not complete_render.get_uses_mathtext()
             and len(latex) <= renderer.get_maximum_mathtext_length()
@@ -560,7 +566,11 @@ class SelectableLatexSourcePdfDocument:
         self._cursor_y -= self._line_height
 
     def _start_new_page(self) -> None:
-        """Create a page with compact ten-point metadata and no separator rule."""
+        """
+        Create a page with compact ten-point metadata and no separator rule.
+
+        :return: None.
+        """
         if len(self._current_page) > 0:
             self._pages.append(self._current_page)
         else:
@@ -618,7 +628,11 @@ class SelectableLatexSourcePdfDocument:
         self._cursor_y -= 5.0
 
     def finish(self) -> None:
-        """Serialize all laid-out pages into one standards-compliant PDF."""
+        """
+        Serialize all laid-out pages into one standards-compliant PDF.
+
+        :return: None.
+        """
         if len(self._current_page) > 0:
             self._pages.append(self._current_page)
             self._current_page = list()
@@ -647,9 +661,9 @@ def build_selectable_source_pdf_payload(
     """
     page_count: int = len(pages)
     object_count: int = 5 + page_count * 2
-    objects: List[bytes] = list([b""] * (object_count + 1))
+    objects: List[bytes] = list((b"",)) * (object_count + 1)
     objects[1] = b"<< /Type /Catalog /Pages 2 0 R >>"
-    page_reference_values: List[str] = list([""] * page_count)
+    page_reference_values: List[str] = list(("",)) * page_count
     page_index: int
     for page_index in range(page_count):
         page_reference_values[page_index] = f"{6 + page_index * 2} 0 R"
@@ -697,7 +711,7 @@ def build_selectable_source_pdf_payload(
         )
 
     output: bytearray = bytearray(b"%PDF-1.4\n%\xe2\xe3\xcf\xd3\n")
-    offsets: List[int] = list([0] * (object_count + 1))
+    offsets: List[int] = list((0,)) * (object_count + 1)
     object_number: int
     for object_number in range(1, object_count + 1):
         offsets[object_number] = len(output)
@@ -809,7 +823,11 @@ class EquationPdfDocumentPainter:
         return displayed_size.height()
 
     def _draw_page_header(self) -> None:
-        """Draw document metadata and initialize the page body cursor."""
+        """
+        Draw document metadata and initialize the page body cursor.
+
+        :return: None.
+        """
         left: int = self._content_rect.left()
 
         # The compact ten-point header identifies detached pages without
@@ -839,7 +857,11 @@ class EquationPdfDocumentPainter:
         self._cursor_y = cursor_y + 14
 
     def _draw_page_footer(self) -> None:
-        """Draw the current page number below the usable body area."""
+        """
+        Draw the current page number below the usable body area.
+
+        :return: None.
+        """
         footer_text: str = str(self._page_number)
         footer_render: RenderedSvgEquation = self._plain_renderer.render_plain_text_svg(
             footer_text
@@ -853,7 +875,11 @@ class EquationPdfDocumentPainter:
         )
 
     def _start_new_page(self) -> None:
-        """Close the current page and initialize the next one."""
+        """
+        Close the current page and initialize the next one.
+
+        :return: None.
+        """
         self._draw_page_footer()
         self._writer.newPage()
         self._page_number += 1
@@ -944,7 +970,11 @@ class EquationPdfDocumentPainter:
         self._cursor_y += required_height
 
     def finish(self) -> None:
-        """Finalize the last footer and close the active PDF painter."""
+        """
+        Finalize the last footer and close the active PDF painter.
+
+        :return: None.
+        """
         self._draw_page_footer()
         self._painter.end()
 

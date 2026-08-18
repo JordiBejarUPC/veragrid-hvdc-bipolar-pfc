@@ -17,8 +17,10 @@ from VeraGrid.Gui.DynamicModelEditor.dynamic_block_properties import (
     build_equation_code,
     _get_documentation_relative_path,
     parse_equation_code,
+    replace_dae_identifier,
     resolve_block_documentation_url,
     serialize_dae_expression,
+    synchronize_dae_variable_declarations,
 )
 from VeraGrid.Gui.DynamicModelEditor.dynamic_equation_pdf import (
     EquationExportEntry,
@@ -127,9 +129,49 @@ def test_equation_code_roundtrip_preserves_variable_identity() -> None:
     draft: BlockEquationDraft = parse_equation_code(code, build_block_symbol_namespace(block))
     initialization_keys: list[Var] = list(draft.get_init_eqs().keys())
 
+    assert "state_vars = [x]" in code
+    assert "algebraic_vars = []" in code
+    assert "diff_vars = []" in code
+    assert "State equations follow the order of state_vars" in code
+    assert "Write each equation as a residual equal to zero" in code
     assert len(initialization_keys) == 1
     assert initialization_keys[0] is state_variable
     assert symbolic_to_string(draft.get_state_eqs()[0]) == "gain"
+    state_declaration: list[Var] | None = draft.get_variable_declaration("state_vars")
+    assert state_declaration == list([state_variable])
+
+
+def test_dae_identifier_rename_updates_only_complete_symbol_tokens() -> None:
+    """Variable renames must preserve comments and longer symbol names."""
+    source_code: str = "state_vars = [x, x_ref]\nstate_eqs = [x + x_ref]\n# x remains explanatory"
+
+    renamed_code: str = replace_dae_identifier(source_code, "x", "speed")
+
+    assert "state_vars = [speed, x_ref]" in renamed_code
+    assert "state_eqs = [speed + x_ref]" in renamed_code
+    assert "# x remains explanatory" in renamed_code
+
+
+def test_variable_declaration_synchronization_preserves_other_dae_source() -> None:
+    """Managed declarations may change without rewriting equations or comments."""
+    source_code: str = (
+        "state_vars = [\n    old_x,\n]\n"
+        "algebraic_vars = []\n"
+        "diff_vars = []\n\n"
+        "state_eqs = [\n    # User equation comment\n    old_x,\n]\n"
+    )
+
+    updated_code: str = synchronize_dae_variable_declarations(
+        code=source_code,
+        state_names=list(("old_x", "new_x",)),
+        algebraic_names=list(("new_y",)),
+        differential_names=list(("d_new_x",)),
+    )
+
+    assert "state_vars = [old_x, new_x]" in updated_code
+    assert "algebraic_vars = [new_y]" in updated_code
+    assert "diff_vars = [d_new_x]" in updated_code
+    assert "# User equation comment\n    old_x," in updated_code
 
 
 def test_equation_code_removes_only_redundant_root_parentheses() -> None:
@@ -186,11 +228,17 @@ def test_dialogue_footer_only_contains_apply_changes() -> None:
     "invalid_code",
     [
         "import os",
-        "state_eqs = []\nalgebraic_eqs = []\ndifferential_eqs = []\ninit_eqs = {}",
+        "state_eqs = []\nalgebraic_eqs = []\ninit_eqs = {}",
+        (
+            "state_eqs = []\n"
+            "algebraic_eqs = []\n"
+            "differential_eqs = []\n"
+            "init_eqs = {}\n"
+            "diff_init_eqs = {}"
+        ),
         (
             "state_eqs = [unknown]\n"
             "algebraic_eqs = []\n"
-            "differential_eqs = []\n"
             "init_eqs = {}\n"
             "diff_init_eqs = {}"
         ),
@@ -265,7 +313,6 @@ def test_valid_dialog_draft_applies_equations_and_parameters_together() -> None:
     dialogue._dae_editor.setPlainText(
         "state_eqs = [gain + 1]\n"
         "algebraic_eqs = []\n"
-        "differential_eqs = []\n"
         "init_eqs = {x: 0}\n"
         "diff_init_eqs = {}"
     )
@@ -340,6 +387,11 @@ def test_recursive_dialog_selects_child_with_equations_and_labels_output_role() 
 
     equation_code: str = dialogue._dae_editor.toPlainText()
     equation_code = equation_code.replace(
+        "algebraic_vars = [y2_3_gov, Tm]",
+        "algebraic_vars = [y2_3_gov, Tm, child_probe]",
+        1,
+    )
+    equation_code = equation_code.replace(
         "algebraic_eqs = [",
         "algebraic_eqs = [\n    child_probe,",
         1,
@@ -370,7 +422,6 @@ def test_staged_symbol_is_created_only_when_apply_is_pressed() -> None:
     dialogue._dae_editor.setPlainText(
         "state_eqs = []\n"
         "algebraic_eqs = [new_output - 1]\n"
-        "differential_eqs = []\n"
         "init_eqs = {}\n"
         "diff_init_eqs = {}"
     )
@@ -416,7 +467,6 @@ def test_new_state_derivative_is_visible_and_preserves_its_base_variable() -> No
     dialogue._dae_editor.setPlainText(
         "state_eqs = [0]\n"
         "algebraic_eqs = []\n"
-        "differential_eqs = []\n"
         "init_eqs = {}\n"
         "diff_init_eqs = {}"
     )
@@ -430,6 +480,117 @@ def test_new_state_derivative_is_visible_and_preserves_its_base_variable() -> No
         str(dialogue._variable_symbol_proxy.index(proxy_row, 1).data())
         for proxy_row in range(dialogue._variable_symbol_proxy.rowCount())
     ] == ["d111", "d_d111"]
+    dialogue.close()
+
+
+def test_new_variables_immediately_update_dae_variable_declarations() -> None:
+    """Adding table rows must immediately synchronize the visible DAE declarations."""
+    application: QtWidgets.QApplication = get_qt_application()
+    _unused_application: QtWidgets.QApplication = application
+    var_factory: VarFactory = VarFactory()
+    block: Block = Block(name="automatic_declarations")
+    dialogue: DynamicBlockPropertiesDialog = DynamicBlockPropertiesDialog(
+        block,
+        "GENERIC",
+        var_factory,
+    )
+
+    dialogue._new_symbol_name.setText("speed")
+    dialogue._new_symbol_kind.setCurrentText(BlockSymbolKind.STATE.value)
+    dialogue._new_state_derivative.setChecked(True)
+    dialogue.add_staged_symbol()
+
+    state_code: str = dialogue._dae_editor.toPlainText()
+    assert "state_vars = [speed]" in state_code
+    assert "algebraic_vars = []" in state_code
+    assert "diff_vars = [d_speed]" in state_code
+    assert "# State equations follow the order of state_vars" in state_code
+
+    dialogue._new_symbol_name.setText("torque")
+    dialogue._new_symbol_kind.setCurrentText(BlockSymbolKind.ALGEBRAIC.value)
+    dialogue.add_staged_symbol()
+
+    algebraic_code: str = dialogue._dae_editor.toPlainText()
+    assert "state_vars = [speed]" in algebraic_code
+    assert "algebraic_vars = [torque]" in algebraic_code
+    assert "diff_vars = [d_speed]" in algebraic_code
+
+    speed_proxy_row: int | None = None
+    proxy_row: int
+    for proxy_row in range(dialogue._variable_symbol_proxy.rowCount()):
+        if dialogue._variable_symbol_proxy.index(proxy_row, 1).data() == "speed":
+            speed_proxy_row = proxy_row
+        else:
+            pass
+    assert speed_proxy_row is not None
+    dialogue._symbol_table.selectRow(speed_proxy_row)
+    dialogue._delete_selected_symbol(dialogue._symbol_table)
+    staged_removal_code: str = dialogue._dae_editor.toPlainText()
+    assert "state_vars = []" in staged_removal_code
+    assert "algebraic_vars = [torque]" in staged_removal_code
+    assert "diff_vars = []" in staged_removal_code
+    dialogue.close()
+
+
+def test_deleted_variables_immediately_update_dae_variable_declarations() -> None:
+    """State deletion cascades to its derivative, but not in the reverse direction."""
+    application: QtWidgets.QApplication = get_qt_application()
+    _unused_application: QtWidgets.QApplication = application
+    var_factory: VarFactory = VarFactory()
+    speed_variable: Var = Var("speed")
+    speed_differential: Var = Var("d_speed", base_var=speed_variable)
+    angle_variable: Var = Var("angle")
+    angle_differential: Var = Var("d_angle", base_var=angle_variable)
+    algebraic_variable: Var = Var("torque")
+    block: Block = Block(
+        name="deleted_declarations",
+        state_vars=list((speed_variable, angle_variable,)),
+        state_eqs=list((speed_variable, angle_variable,)),
+        algebraic_vars=list((algebraic_variable,)),
+        algebraic_eqs=list((algebraic_variable,)),
+        diff_vars=list((speed_differential, angle_differential,)),
+    )
+    dialogue: DynamicBlockPropertiesDialog = DynamicBlockPropertiesDialog(
+        block,
+        "GENERIC",
+        var_factory,
+    )
+
+    names_to_remove: tuple[str, ...] = ("d_speed", "angle", "torque", "speed")
+    expected_declarations: tuple[str, ...] = (
+        "diff_vars = [d_angle]",
+        "state_vars = [speed]",
+        "algebraic_vars = []",
+        "state_vars = []",
+    )
+    removal_index: int
+    for removal_index in range(len(names_to_remove)):
+        target_name: str = names_to_remove[removal_index]
+        target_proxy_row: int | None = None
+        proxy_row: int
+        for proxy_row in range(dialogue._variable_symbol_proxy.rowCount()):
+            if dialogue._variable_symbol_proxy.index(proxy_row, 1).data() == target_name:
+                target_proxy_row = proxy_row
+            else:
+                pass
+        assert target_proxy_row is not None
+        dialogue._symbol_table.selectRow(target_proxy_row)
+        dialogue._delete_selected_symbol(dialogue._symbol_table)
+        updated_code: str = dialogue._dae_editor.toPlainText()
+        assert expected_declarations[removal_index] in updated_code
+        if target_name == "d_speed":
+            assert "state_vars = [speed, angle]" in updated_code
+        elif target_name == "angle":
+            assert "diff_vars = []" in updated_code
+        else:
+            pass
+
+    final_code: str = dialogue._dae_editor.toPlainText()
+    assert "state_vars = []" in final_code
+    assert "algebraic_vars = []" in final_code
+    assert "diff_vars = []" in final_code
+    assert "state_eqs = [" in final_code
+    assert "algebraic_eqs = [" in final_code
     dialogue.close()
 
 
@@ -462,6 +623,83 @@ def test_new_input_is_applied_without_offering_external_mapping() -> None:
     assert len(block.in_vars) == initial_input_count + 1
     assert block.in_vars[-1].name == "additional_input"
     assert all(mapped_variable is not block.in_vars[-1] for mapped_variable in block.external_mapping.values())
+    dialogue.close()
+
+
+def test_add_symbol_fields_keep_one_width_across_symbol_categories() -> None:
+    """Optional variable and parameter fields must share the form field column."""
+    application: QtWidgets.QApplication = get_qt_application()
+    var_factory: VarFactory = VarFactory()
+    block: Block = Block(name="field_widths")
+    dialogue: DynamicBlockPropertiesDialog = DynamicBlockPropertiesDialog(
+        block,
+        "GENERIC",
+        var_factory,
+    )
+    dialogue.resize(900, 700)
+    dialogue.show()
+    dialogue._tabs.setCurrentIndex(1)
+    application.processEvents()
+
+    stable_fields: tuple[QtWidgets.QWidget, ...] = (
+        dialogue._new_symbol_owner,
+        dialogue._new_symbol_name,
+        dialogue._new_symbol_category,
+        dialogue._new_symbol_kind,
+    )
+    dialogue._new_symbol_category.setCurrentText("Variables")
+    dialogue._new_symbol_kind.setCurrentText(BlockSymbolKind.INPUT.value)
+    application.processEvents()
+    variable_vertical_geometries: List[tuple[int, int]] = list()
+    stable_field: QtWidgets.QWidget
+    for stable_field in stable_fields:
+        variable_position: QtCore.QPoint = stable_field.mapTo(
+            dialogue,
+            QtCore.QPoint(0, 0),
+        )
+        variable_vertical_geometries.append((variable_position.y(), stable_field.height()))
+
+    dialogue._new_symbol_kind.setCurrentText(BlockSymbolKind.STATE.value)
+    application.processEvents()
+    shared_field_geometry: tuple[int, int] = (
+        dialogue._new_symbol_owner.x(),
+        dialogue._new_symbol_owner.width(),
+    )
+    variable_fields: tuple[QtWidgets.QWidget, ...] = (
+        dialogue._new_symbol_name,
+        dialogue._new_symbol_category,
+        dialogue._new_symbol_kind,
+        dialogue._new_external_reference,
+    )
+    variable_field: QtWidgets.QWidget
+    for variable_field in variable_fields:
+        assert (variable_field.x(), variable_field.width()) == shared_field_geometry
+
+    dialogue._new_symbol_category.setCurrentText("Parameters")
+    dialogue._new_symbol_kind.setCurrentText(BlockSymbolKind.EVENT_PARAMETER.value)
+    application.processEvents()
+    parameter_vertical_geometries: List[tuple[int, int]] = list()
+    for stable_field in stable_fields:
+        parameter_position: QtCore.QPoint = stable_field.mapTo(
+            dialogue,
+            QtCore.QPoint(0, 0),
+        )
+        parameter_vertical_geometries.append((parameter_position.y(), stable_field.height()))
+    assert parameter_vertical_geometries == variable_vertical_geometries
+    assert dialogue._new_parameter_value.isVisible()
+    assert (
+        dialogue._new_parameter_value.x(),
+        dialogue._new_parameter_value.width(),
+    ) == shared_field_geometry
+
+    dialogue._new_symbol_kind.setCurrentText(BlockSymbolKind.PARAMETER.value)
+    application.processEvents()
+    assert dialogue._new_static_reference.isVisible()
+    assert (
+        dialogue._new_static_reference.x(),
+        dialogue._new_static_reference.width(),
+    ) == shared_field_geometry
+    assert dialogue._new_external_reference_label.text() == "Power-flow variable"
     dialogue.close()
 
 
@@ -626,7 +864,6 @@ def test_validate_button_rejects_unknown_symbols_and_python_syntax_errors() -> N
     dialogue._dae_editor.setPlainText(
         "state_eqs = []\n"
         "algebraic_eqs = [missing_symbol]\n"
-        "differential_eqs = []\n"
         "init_eqs = {}\n"
         "diff_init_eqs = {}"
     )
@@ -638,7 +875,6 @@ def test_validate_button_rejects_unknown_symbols_and_python_syntax_errors() -> N
     dialogue._dae_editor.setPlainText(
         "state_eqs = []\n"
         "algebraic_eqs = [(1 + 2]\n"
-        "differential_eqs = []\n"
         "init_eqs = {}\n"
         "diff_init_eqs = {}"
     )
@@ -677,7 +913,6 @@ def test_validate_button_marks_the_expression_after_a_missing_comma() -> None:
         "    (second - 2),\n"
         "    (missing_name - 3),\n"
         "]\n"
-        "differential_eqs = []\n"
         "init_eqs = {}\n"
         "diff_init_eqs = {}"
     )
@@ -709,7 +944,6 @@ def test_validate_button_marks_a_cross_line_unmatched_opening_parenthesis() -> N
         "algebraic_eqs = [\n"
         "    (1 + 2,\n"
         "]\n"
-        "differential_eqs = []\n"
         "init_eqs = {}\n"
         "diff_init_eqs = {}"
     )
@@ -1394,12 +1628,13 @@ def test_state_and_algebraic_export_entries_use_dae_equation_sides() -> None:
 
 
 def test_latex_selection_has_no_differential_section() -> None:
-    """Derivative residuals belong to Algebraic equations, not a fifth section."""
+    """Legacy differential residuals are absent from the editable DAE and export groups."""
     application: QtWidgets.QApplication = get_qt_application()
     _unused_application: QtWidgets.QApplication = application
     state_variable: Var = Var("x")
     differential_variable: Var = Var("d_x", base_var=state_variable)
     algebraic_variable: Var = Var("y")
+    legacy_differential_expression: Expr = differential_variable - algebraic_variable
     block: Block = Block(
         name="section_test",
         state_vars=list([state_variable]),
@@ -1407,7 +1642,7 @@ def test_latex_selection_has_no_differential_section() -> None:
         algebraic_vars=list([algebraic_variable]),
         algebraic_eqs=list([algebraic_variable]),
         diff_vars=list([differential_variable]),
-        differential_eqs=list([differential_variable - algebraic_variable]),
+        differential_eqs=list([legacy_differential_expression]),
     )
     dialogue: DynamicBlockPropertiesDialog = DynamicBlockPropertiesDialog(
         block,
@@ -1425,8 +1660,16 @@ def test_latex_selection_has_no_differential_section() -> None:
         section_counts[label] = child_item.text(1)
 
     assert "Differential equations" not in section_labels
+    assert "differential_eqs" not in dialogue._dae_editor.toPlainText()
     assert section_counts["State equations"] == "1"
-    assert section_counts["Algebraic equations"] == "2"
+    assert section_counts["Algebraic equations"] == "1"
+
+    # Applying the four editable sections must not erase or reinterpret a
+    # legacy Engine field that the dialogue deliberately does not expose.
+    dialogue.apply_changes()
+    assert "Nothing was applied" not in dialogue._status_label.text()
+    assert len(block.differential_eqs) == 1
+    assert block.differential_eqs[0] is legacy_differential_expression
     dialogue.close()
 
 
@@ -1580,7 +1823,6 @@ def test_genraw_rendered_pdf_accepts_absolute_value_initialization(tmp_path: Pat
             owner.diff_vars,
         ))
         residual_expressions: list[Expr] = list(owner.algebraic_eqs)
-        residual_expressions.extend(owner.differential_eqs)
         entries.extend(build_list_equation_entries(
             owner.name,
             EquationExportSection.ALGEBRAIC,

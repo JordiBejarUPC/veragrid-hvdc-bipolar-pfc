@@ -160,35 +160,57 @@ class ProceduralFieldDraft:
         self._error: str = ""
 
     def get_key(self) -> str:
-        """Return the stable field key."""
+        """
+        :return: The stable field key.
+        """
         return self._key
 
     def get_label(self) -> str:
-        """Return the user-facing field label."""
+        """
+        :return: The user-facing field label.
+        """
         return self._label
 
     def get_tpe(self) -> ProceduralFieldType:
-        """Return the semantic editor kind."""
+        """
+        :return: The semantic editor kind.
+        """
         return self._tpe
 
     def get_value(self) -> str:
-        """Return the detached textual value."""
+        """
+        :return: The detached textual value.
+        """
         return self._value
 
     def set_value(self, value: str) -> None:
-        """Replace the detached textual value."""
+        """
+        Replace the detached textual value.
+
+        :param value: Value supplied for ``value``.
+        :return: None.
+        """
         self._value = value.strip()
 
     def get_description(self) -> str:
-        """Return the field help text."""
+        """
+        :return: The field help text.
+        """
         return self._description
 
     def set_error(self, error: str) -> None:
-        """Set the current validation error or clear it with an empty string."""
+        """
+        Set the current validation error or clear it with an empty string.
+
+        :param error: Value supplied for ``error``.
+        :return: None.
+        """
         self._error = error
 
     def get_error(self) -> str:
-        """Return the current validation error."""
+        """
+        :return: The current validation error.
+        """
         return self._error
 
 
@@ -218,47 +240,93 @@ class RuntimeModeDraft:
         self._error: str = ""
 
     def get_owner(self) -> Block:
-        """Return the direct owner block."""
+        """
+        :return: The direct owner block.
+        """
         return self._owner
 
     def get_variable(self) -> Var | None:
-        """Return the existing mode variable or ``None`` for a new mode."""
+        """
+        Return the existing mode variable or ``None`` for a new mode.
+
+        :return: The existing mode variable or ``None`` for a new mode.
+        """
         return self._variable
 
     def get_name(self) -> str:
-        """Return the mode symbol name."""
+        """
+        Return the mode symbol name.
+
+        :return: The mode symbol name.
+        """
         return self._name
 
     def set_name(self, name: str) -> None:
-        """Set the name of a new retained mode."""
+        """
+        Set the name of a new retained mode.
+
+        :param name: Value supplied for ``name``.
+        :return: None.
+        """
         self._name = name.strip()
 
     def get_initial_expression(self) -> str:
-        """Return the staged initial expression source."""
+        """
+        Return the staged initial expression source.
+
+        :return: The staged initial expression source.
+        """
         return self._initial_expression
 
     def set_initial_expression(self, expression: str) -> None:
-        """Set the staged initial expression source."""
+        """
+        Set the staged initial expression source.
+
+        :param expression: Value supplied for ``expression``.
+        :return: None.
+        """
         self._initial_expression = expression.strip()
 
     def is_new(self) -> bool:
-        """Return whether Apply must create a real variable."""
+        """
+        Return whether Apply must create a real variable.
+
+        :return: Whether Apply must create a real variable.
+        """
         return self._variable is None
 
     def is_removed(self) -> bool:
-        """Return whether deletion is staged."""
+        """
+        Return whether deletion is staged.
+
+        :return: Whether deletion is staged.
+        """
         return self._removed
 
     def set_removed(self, removed: bool) -> None:
-        """Stage or undo deletion."""
+        """
+        Stage or undo deletion.
+
+        :param removed: Value supplied for ``removed``.
+        :return: None.
+        """
         self._removed = removed
 
     def set_error(self, error: str) -> None:
-        """Set the current validation error."""
+        """
+        Set the current validation error.
+
+        :param error: Value supplied for ``error``.
+        :return: None.
+        """
         self._error = error
 
     def get_error(self) -> str:
-        """Return the current validation error."""
+        """
+        Return the current validation error.
+
+        :return: The current validation error.
+        """
         return self._error
 
 
@@ -290,23 +358,36 @@ class ProceduralLogicDraft:
         self._error: str = ""
 
     def get_owner(self) -> Block:
-        """Return the direct owner block."""
+        """
+        :return: The direct owner block.
+        """
         return self._owner
 
     def get_logic_tpe(self) -> ProceduralLogicType:
-        """Return the canonical logic type."""
+        """
+        :return: The canonical logic type.
+        """
         return self._logic_tpe
 
     def get_name(self) -> str:
-        """Return the staged entry name."""
+        """
+        :return: The staged entry name.
+        """
         return self._name
 
     def set_name(self, name: str) -> None:
-        """Set the staged entry name."""
+        """
+        Set the staged entry name.
+
+        :param name: Value supplied for ``name``.
+        :return: None.
+        """
         self._name = name.strip()
 
     def get_fields(self) -> List[ProceduralFieldDraft]:
-        """Return the ordered editable fields."""
+        """
+        :return: The ordered editable fields.
+        """
         return list(self._fields)
 
     def get_field(self, key: str) -> ProceduralFieldDraft | None:
@@ -325,19 +406,36 @@ class ProceduralLogicDraft:
         return result
 
     def get_original(self) -> ProceduralLogicBase | None:
-        """Return the original runtime entry."""
+        """
+        Return the original runtime entry.
+
+        :return: The original runtime entry.
+        """
         return self._original
 
     def set_error(self, error: str) -> None:
-        """Set the entry-level validation error."""
+        """
+        Set the entry-level validation error.
+
+        :param error: Value supplied for ``error``.
+        :return: None.
+        """
         self._error = error
 
     def get_error(self) -> str:
-        """Return the entry-level validation error."""
+        """
+        Return the entry-level validation error.
+
+        :return: The entry-level validation error.
+        """
         return self._error
 
     def get_output_summary(self) -> str:
-        """Return the first output, mode, or target reference for the entry list."""
+        """
+        Return the first output, mode, or target reference for the entry list.
+
+        :return: The first output, mode, or target reference for the entry list.
+        """
         result: str = ""
         field: ProceduralFieldDraft
         for field in self._fields:
@@ -357,28 +455,54 @@ class RuntimeLogicValidationResult:
     __slots__ = ("_errors", "_warnings")
 
     def __init__(self) -> None:
-        """Create an empty validation result."""
+        """
+        Create an empty validation result.
+
+        :return: None.
+        """
         self._errors: List[str] = list()
         self._warnings: List[str] = list()
 
     def add_error(self, message: str) -> None:
-        """Append one blocking error."""
+        """
+        Append one blocking error.
+
+        :param message: Value supplied for ``message``.
+        :return: None.
+        """
         self._errors.append(message)
 
     def add_warning(self, message: str) -> None:
-        """Append one non-blocking warning."""
+        """
+        Append one non-blocking warning.
+
+        :param message: Value supplied for ``message``.
+        :return: None.
+        """
         self._warnings.append(message)
 
     def get_errors(self) -> List[str]:
-        """Return blocking errors."""
+        """
+        Return blocking errors.
+
+        :return: Blocking errors.
+        """
         return list(self._errors)
 
     def get_warnings(self) -> List[str]:
-        """Return non-blocking warnings."""
+        """
+        Return non-blocking warnings.
+
+        :return: Non-blocking warnings.
+        """
         return list(self._warnings)
 
     def is_valid(self) -> bool:
-        """Return whether no blocking error was collected."""
+        """
+        Return whether no blocking error was collected.
+
+        :return: Whether no blocking error was collected.
+        """
         return len(self._errors) == 0
 
 
@@ -503,108 +627,62 @@ def get_procedural_fields(entry: ProceduralLogicBase) -> List[ProceduralFieldDra
                                             procedural_expression_to_text(entry.source_expr),
                                             "Expression sampled at every accepted step."))
     elif isinstance(entry, HardSaturationLogic):
-        fields.extend(list([
-            make_procedural_field("output_var_name", "Output mode", mode_tpe, entry.output_var_name,
-                                  "Retained saturated output."),
-            make_procedural_field("u_expr", "Input expression", expression_tpe,
-                                  procedural_expression_to_text(entry.u_expr), "Value to clamp."),
-            make_procedural_field("u_min_expr", "Minimum", expression_tpe,
-                                  procedural_expression_to_text(entry.u_min_expr), "Lower saturation bound."),
-            make_procedural_field("u_max_expr", "Maximum", expression_tpe,
-                                  procedural_expression_to_text(entry.u_max_expr), "Upper saturation bound."),
-        ]))
+        fields.extend(list((make_procedural_field("output_var_name", "Output mode", mode_tpe, entry.output_var_name,
+                                  "Retained saturated output."), make_procedural_field("u_expr", "Input expression", expression_tpe,
+                                  procedural_expression_to_text(entry.u_expr), "Value to clamp."), make_procedural_field("u_min_expr", "Minimum", expression_tpe,
+                                  procedural_expression_to_text(entry.u_min_expr), "Lower saturation bound."), make_procedural_field("u_max_expr", "Maximum", expression_tpe,
+                                  procedural_expression_to_text(entry.u_max_expr), "Upper saturation bound."),)))
     elif isinstance(entry, TimeDelayLogic):
-        fields.extend(list([
-            make_procedural_field("output_var_name", "Output mode", mode_tpe, entry.output_var_name,
-                                  "Retained delayed value."),
-            make_procedural_field("source_expr", "Source expression", expression_tpe,
-                                  procedural_expression_to_text(entry.source_expr), "Value stored in history."),
-            make_procedural_field("delay_expr", "Delay", expression_tpe,
-                                  procedural_expression_to_text(entry.delay_expr), "Non-negative delay in seconds."),
-        ]))
+        fields.extend(list((make_procedural_field("output_var_name", "Output mode", mode_tpe, entry.output_var_name,
+                                  "Retained delayed value."), make_procedural_field("source_expr", "Source expression", expression_tpe,
+                                  procedural_expression_to_text(entry.source_expr), "Value stored in history."), make_procedural_field("delay_expr", "Delay", expression_tpe,
+                                  procedural_expression_to_text(entry.delay_expr), "Non-negative delay in seconds."),)))
     elif isinstance(entry, MovingAverageLogic):
-        fields.extend(list([
-            make_procedural_field("output_var_name", "Output mode", mode_tpe, entry.output_var_name,
-                                  "Retained averaged output."),
-            make_procedural_field("source_expr", "Source expression", expression_tpe,
-                                  procedural_expression_to_text(entry.source_expr), "Value stored in history."),
-            make_procedural_field("delay_expr", "Delay", expression_tpe,
-                                  procedural_expression_to_text(entry.delay_expr), "Delay before the averaging window."),
-            make_procedural_field("window_expr", "Window", expression_tpe,
-                                  procedural_expression_to_text(entry.window_expr), "Averaging-window duration."),
-        ]))
+        fields.extend(list((make_procedural_field("output_var_name", "Output mode", mode_tpe, entry.output_var_name,
+                                  "Retained averaged output."), make_procedural_field("source_expr", "Source expression", expression_tpe,
+                                  procedural_expression_to_text(entry.source_expr), "Value stored in history."), make_procedural_field("delay_expr", "Delay", expression_tpe,
+                                  procedural_expression_to_text(entry.delay_expr), "Delay before the averaging window."), make_procedural_field("window_expr", "Window", expression_tpe,
+                                  procedural_expression_to_text(entry.window_expr), "Averaging-window duration."),)))
     elif isinstance(entry, GradientLimiterLogic):
-        fields.extend(list([
-            make_procedural_field("output_var_name", "Output mode", mode_tpe, entry.output_var_name,
-                                  "Retained rate-limited output."),
-            make_procedural_field("source_expr", "Source expression", expression_tpe,
-                                  procedural_expression_to_text(entry.source_expr), "Requested value."),
-            make_procedural_field("lower_rate_expr", "Lower rate", expression_tpe,
-                                  procedural_expression_to_text(entry.lower_rate_expr), "Minimum slope."),
-            make_procedural_field("upper_rate_expr", "Upper rate", expression_tpe,
-                                  procedural_expression_to_text(entry.upper_rate_expr), "Maximum slope."),
-        ]))
+        fields.extend(list((make_procedural_field("output_var_name", "Output mode", mode_tpe, entry.output_var_name,
+                                  "Retained rate-limited output."), make_procedural_field("source_expr", "Source expression", expression_tpe,
+                                  procedural_expression_to_text(entry.source_expr), "Requested value."), make_procedural_field("lower_rate_expr", "Lower rate", expression_tpe,
+                                  procedural_expression_to_text(entry.lower_rate_expr), "Minimum slope."), make_procedural_field("upper_rate_expr", "Upper rate", expression_tpe,
+                                  procedural_expression_to_text(entry.upper_rate_expr), "Maximum slope."),)))
     elif isinstance(entry, FlipFlopLogic):
-        fields.extend(list([
-            make_procedural_field("output_var_name", "Output mode", mode_tpe, entry.output_var_name,
-                                  "Retained binary latch state."),
-            make_procedural_field("set_expr", "Set condition", expression_tpe,
-                                  procedural_expression_to_text(entry.set_expr), "Condition driving the latch high."),
-            make_procedural_field("reset_expr", "Reset condition", expression_tpe,
-                                  procedural_expression_to_text(entry.reset_expr), "Condition driving the latch low."),
-        ]))
+        fields.extend(list((make_procedural_field("output_var_name", "Output mode", mode_tpe, entry.output_var_name,
+                                  "Retained binary latch state."), make_procedural_field("set_expr", "Set condition", expression_tpe,
+                                  procedural_expression_to_text(entry.set_expr), "Condition driving the latch high."), make_procedural_field("reset_expr", "Reset condition", expression_tpe,
+                                  procedural_expression_to_text(entry.reset_expr), "Condition driving the latch low."),)))
     elif isinstance(entry, AnalogFlipFlopLogic):
-        fields.extend(list([
-            make_procedural_field("output_var_name", "Output mode", mode_tpe, entry.output_var_name,
-                                  "Retained analog latch output."),
-            make_procedural_field("input_expr", "Input expression", expression_tpe,
-                                  procedural_expression_to_text(entry.input_expr), "Analog value captured on Set."),
-            make_procedural_field("set_expr", "Set condition", expression_tpe,
-                                  procedural_expression_to_text(entry.set_expr), "Capture condition."),
-            make_procedural_field("reset_expr", "Reset condition", expression_tpe,
-                                  procedural_expression_to_text(entry.reset_expr), "Release condition."),
-        ]))
+        fields.extend(list((make_procedural_field("output_var_name", "Output mode", mode_tpe, entry.output_var_name,
+                                  "Retained analog latch output."), make_procedural_field("input_expr", "Input expression", expression_tpe,
+                                  procedural_expression_to_text(entry.input_expr), "Analog value captured on Set."), make_procedural_field("set_expr", "Set condition", expression_tpe,
+                                  procedural_expression_to_text(entry.set_expr), "Capture condition."), make_procedural_field("reset_expr", "Reset condition", expression_tpe,
+                                  procedural_expression_to_text(entry.reset_expr), "Release condition."),)))
     elif isinstance(entry, PickupDropoffLogic):
-        fields.extend(list([
-            make_procedural_field("output_var_name", "Output mode", mode_tpe, entry.output_var_name,
-                                  "Retained relay state."),
-            make_procedural_field("bool_expr", "Condition", expression_tpe,
-                                  procedural_expression_to_text(entry.bool_expr), "Relay input condition."),
-            make_procedural_field("pickup_delay_expr", "Pickup delay", expression_tpe,
-                                  procedural_expression_to_text(entry.pickup_delay_expr), "Delay before activation."),
-            make_procedural_field("drop_delay_expr", "Dropoff delay", expression_tpe,
-                                  procedural_expression_to_text(entry.drop_delay_expr), "Delay before deactivation."),
-        ]))
+        fields.extend(list((make_procedural_field("output_var_name", "Output mode", mode_tpe, entry.output_var_name,
+                                  "Retained relay state."), make_procedural_field("bool_expr", "Condition", expression_tpe,
+                                  procedural_expression_to_text(entry.bool_expr), "Relay input condition."), make_procedural_field("pickup_delay_expr", "Pickup delay", expression_tpe,
+                                  procedural_expression_to_text(entry.pickup_delay_expr), "Delay before activation."), make_procedural_field("drop_delay_expr", "Dropoff delay", expression_tpe,
+                                  procedural_expression_to_text(entry.drop_delay_expr), "Delay before deactivation."),)))
     elif isinstance(entry, ResetOnRisingEdgeLogic):
-        fields.extend(list([
-            make_procedural_field("target_var_name", "Target", target_tpe, entry.target_var_name,
-                                  "DAE variable or runtime parameter modified on the edge."),
-            make_procedural_field("reset_expr", "Rising-edge condition", expression_tpe,
-                                  procedural_expression_to_text(entry.reset_expr), "Edge detector input."),
-            make_procedural_field("value_expr", "Reset value", expression_tpe,
-                                  procedural_expression_to_text(entry.value_expr), "Value assigned on the rising edge."),
-        ]))
+        fields.extend(list((make_procedural_field("target_var_name", "Target", target_tpe, entry.target_var_name,
+                                  "DAE variable or runtime parameter modified on the edge."), make_procedural_field("reset_expr", "Rising-edge condition", expression_tpe,
+                                  procedural_expression_to_text(entry.reset_expr), "Edge detector input."), make_procedural_field("value_expr", "Reset value", expression_tpe,
+                                  procedural_expression_to_text(entry.value_expr), "Value assigned on the rising edge."),)))
     elif isinstance(entry, DelayedThresholdLatchLogic):
-        fields.extend(list([
-            make_procedural_field("monitored_var_name", "Monitored variable", variable_tpe,
-                                  entry.monitored_var_name, "DAE signal compared with the threshold."),
-            make_procedural_field("mode_var_name", "Output mode", mode_tpe, entry.mode_var_name,
-                                  "Retained trip mode."),
-            make_procedural_field("threshold", "Threshold", ProceduralFieldType.FLOAT,
-                                  str(entry.threshold), "Trip threshold."),
-            make_procedural_field("delay", "Delay", ProceduralFieldType.FLOAT,
-                                  str(entry.delay), "Non-negative trip delay."),
-            make_procedural_field("reset_delay", "Reset delay", ProceduralFieldType.OPTIONAL_FLOAT,
+        fields.extend(list((make_procedural_field("monitored_var_name", "Monitored variable", variable_tpe,
+                                  entry.monitored_var_name, "DAE signal compared with the threshold."), make_procedural_field("mode_var_name", "Output mode", mode_tpe, entry.mode_var_name,
+                                  "Retained trip mode."), make_procedural_field("threshold", "Threshold", ProceduralFieldType.FLOAT,
+                                  str(entry.threshold), "Trip threshold."), make_procedural_field("delay", "Delay", ProceduralFieldType.FLOAT,
+                                  str(entry.delay), "Non-negative trip delay."), make_procedural_field("reset_delay", "Reset delay", ProceduralFieldType.OPTIONAL_FLOAT,
                                   "" if entry.reset_delay is None else str(entry.reset_delay),
-                                  "Optional non-negative automatic reset delay."),
-        ]))
+                                  "Optional non-negative automatic reset delay."),)))
     elif isinstance(entry, StartupHandoverLogic):
-        fields.extend(list([
-            make_procedural_field("mode_var_name", "Output mode", mode_tpe, entry.mode_var_name,
-                                  "Retained startup/handover mode."),
-            make_procedural_field("enable_time_var_name", "Enable-time parameter", runtime_tpe,
-                                  entry.enable_time_var_name, "Runtime parameter containing the handover time."),
-        ]))
+        fields.extend(list((make_procedural_field("mode_var_name", "Output mode", mode_tpe, entry.mode_var_name,
+                                  "Retained startup/handover mode."), make_procedural_field("enable_time_var_name", "Enable-time parameter", runtime_tpe,
+                                  entry.enable_time_var_name, "Runtime parameter containing the handover time."),)))
     elif isinstance(entry, ValveStateLogic):
         valve_fields: tuple[tuple[str, str, ProceduralFieldType, str, str], ...] = (
             ("mode_var_name", "Output mode", mode_tpe, entry.mode_var_name, "Retained conduction path."),
@@ -673,82 +751,30 @@ def get_default_procedural_fields(logic_tpe: ProceduralLogicType) -> List[Proced
     target: ProceduralFieldType = ProceduralFieldType.TARGET_REFERENCE
     fields: List[ProceduralFieldDraft] = list()
     if logic_tpe == ProceduralLogicType.FixedSample:
-        fields = list([
-            make_procedural_field("output_var_name", "Output mode", mode, "", "Retained boolean output."),
-            make_procedural_field("condition_expr", "Condition", expr, "0.0", "Condition sampled once."),
-        ])
+        fields = list((make_procedural_field("output_var_name", "Output mode", mode, "", "Retained boolean output."), make_procedural_field("condition_expr", "Condition", expr, "0.0", "Condition sampled once."),))
     elif logic_tpe == ProceduralLogicType.SampledValue:
-        fields = list([
-            make_procedural_field("output_var_name", "Output mode", mode, "", "Retained sampled output."),
-            make_procedural_field("source_expr", "Source expression", expr, "0.0", "Expression sampled each step."),
-        ])
+        fields = list((make_procedural_field("output_var_name", "Output mode", mode, "", "Retained sampled output."), make_procedural_field("source_expr", "Source expression", expr, "0.0", "Expression sampled each step."),))
     elif logic_tpe == ProceduralLogicType.HardSaturation:
-        fields = list([
-            make_procedural_field("output_var_name", "Output mode", mode, "", "Retained saturated output."),
-            make_procedural_field("u_expr", "Input expression", expr, "0.0", "Value to clamp."),
-            make_procedural_field("u_min_expr", "Minimum", expr, "-1.0", "Lower bound."),
-            make_procedural_field("u_max_expr", "Maximum", expr, "1.0", "Upper bound."),
-        ])
+        fields = list((make_procedural_field("output_var_name", "Output mode", mode, "", "Retained saturated output."), make_procedural_field("u_expr", "Input expression", expr, "0.0", "Value to clamp."), make_procedural_field("u_min_expr", "Minimum", expr, "-1.0", "Lower bound."), make_procedural_field("u_max_expr", "Maximum", expr, "1.0", "Upper bound."),))
     elif logic_tpe == ProceduralLogicType.TimeDelay:
-        fields = list([
-            make_procedural_field("output_var_name", "Output mode", mode, "", "Retained delayed output."),
-            make_procedural_field("source_expr", "Source expression", expr, "0.0", "History input."),
-            make_procedural_field("delay_expr", "Delay", expr, "0.0", "Non-negative delay."),
-        ])
+        fields = list((make_procedural_field("output_var_name", "Output mode", mode, "", "Retained delayed output."), make_procedural_field("source_expr", "Source expression", expr, "0.0", "History input."), make_procedural_field("delay_expr", "Delay", expr, "0.0", "Non-negative delay."),))
     elif logic_tpe == ProceduralLogicType.MovingAverage:
-        fields = list([
-            make_procedural_field("output_var_name", "Output mode", mode, "", "Retained average."),
-            make_procedural_field("source_expr", "Source expression", expr, "0.0", "History input."),
-            make_procedural_field("delay_expr", "Delay", expr, "0.0", "Delay before window."),
-            make_procedural_field("window_expr", "Window", expr, "0.01", "Average window."),
-        ])
+        fields = list((make_procedural_field("output_var_name", "Output mode", mode, "", "Retained average."), make_procedural_field("source_expr", "Source expression", expr, "0.0", "History input."), make_procedural_field("delay_expr", "Delay", expr, "0.0", "Delay before window."), make_procedural_field("window_expr", "Window", expr, "0.01", "Average window."),))
     elif logic_tpe == ProceduralLogicType.GradientLimiter:
-        fields = list([
-            make_procedural_field("output_var_name", "Output mode", mode, "", "Retained limited output."),
-            make_procedural_field("source_expr", "Source expression", expr, "0.0", "Requested value."),
-            make_procedural_field("lower_rate_expr", "Lower rate", expr, "-1.0", "Minimum slope."),
-            make_procedural_field("upper_rate_expr", "Upper rate", expr, "1.0", "Maximum slope."),
-        ])
+        fields = list((make_procedural_field("output_var_name", "Output mode", mode, "", "Retained limited output."), make_procedural_field("source_expr", "Source expression", expr, "0.0", "Requested value."), make_procedural_field("lower_rate_expr", "Lower rate", expr, "-1.0", "Minimum slope."), make_procedural_field("upper_rate_expr", "Upper rate", expr, "1.0", "Maximum slope."),))
     elif logic_tpe == ProceduralLogicType.FlipFlop:
-        fields = list([
-            make_procedural_field("output_var_name", "Output mode", mode, "", "Binary latch output."),
-            make_procedural_field("set_expr", "Set condition", expr, "0.0", "Set condition."),
-            make_procedural_field("reset_expr", "Reset condition", expr, "0.0", "Reset condition."),
-        ])
+        fields = list((make_procedural_field("output_var_name", "Output mode", mode, "", "Binary latch output."), make_procedural_field("set_expr", "Set condition", expr, "0.0", "Set condition."), make_procedural_field("reset_expr", "Reset condition", expr, "0.0", "Reset condition."),))
     elif logic_tpe == ProceduralLogicType.AnalogFlipFlop:
-        fields = list([
-            make_procedural_field("output_var_name", "Output mode", mode, "", "Analog latch output."),
-            make_procedural_field("input_expr", "Input expression", expr, "0.0", "Captured value."),
-            make_procedural_field("set_expr", "Set condition", expr, "0.0", "Capture condition."),
-            make_procedural_field("reset_expr", "Reset condition", expr, "0.0", "Release condition."),
-        ])
+        fields = list((make_procedural_field("output_var_name", "Output mode", mode, "", "Analog latch output."), make_procedural_field("input_expr", "Input expression", expr, "0.0", "Captured value."), make_procedural_field("set_expr", "Set condition", expr, "0.0", "Capture condition."), make_procedural_field("reset_expr", "Reset condition", expr, "0.0", "Release condition."),))
     elif logic_tpe == ProceduralLogicType.PickupDropoff:
-        fields = list([
-            make_procedural_field("output_var_name", "Output mode", mode, "", "Relay output."),
-            make_procedural_field("bool_expr", "Condition", expr, "0.0", "Relay condition."),
-            make_procedural_field("pickup_delay_expr", "Pickup delay", expr, "0.0", "Activation delay."),
-            make_procedural_field("drop_delay_expr", "Dropoff delay", expr, "0.0", "Deactivation delay."),
-        ])
+        fields = list((make_procedural_field("output_var_name", "Output mode", mode, "", "Relay output."), make_procedural_field("bool_expr", "Condition", expr, "0.0", "Relay condition."), make_procedural_field("pickup_delay_expr", "Pickup delay", expr, "0.0", "Activation delay."), make_procedural_field("drop_delay_expr", "Dropoff delay", expr, "0.0", "Deactivation delay."),))
     elif logic_tpe == ProceduralLogicType.ResetOnRisingEdge:
-        fields = list([
-            make_procedural_field("target_var_name", "Target", target, "", "Mutable reset target."),
-            make_procedural_field("reset_expr", "Rising-edge condition", expr, "0.0", "Edge input."),
-            make_procedural_field("value_expr", "Reset value", expr, "0.0", "Assigned value."),
-        ])
+        fields = list((make_procedural_field("target_var_name", "Target", target, "", "Mutable reset target."), make_procedural_field("reset_expr", "Rising-edge condition", expr, "0.0", "Edge input."), make_procedural_field("value_expr", "Reset value", expr, "0.0", "Assigned value."),))
     elif logic_tpe == ProceduralLogicType.DelayedThresholdLatch:
-        fields = list([
-            make_procedural_field("monitored_var_name", "Monitored variable", variable, "", "Compared DAE signal."),
-            make_procedural_field("mode_var_name", "Output mode", mode, "", "Retained trip mode."),
-            make_procedural_field("threshold", "Threshold", ProceduralFieldType.FLOAT, "0.0", "Trip threshold."),
-            make_procedural_field("delay", "Delay", ProceduralFieldType.FLOAT, "0.0", "Trip delay."),
-            make_procedural_field("reset_delay", "Reset delay", ProceduralFieldType.OPTIONAL_FLOAT, "",
-                                  "Optional automatic reset delay."),
-        ])
+        fields = list((make_procedural_field("monitored_var_name", "Monitored variable", variable, "", "Compared DAE signal."), make_procedural_field("mode_var_name", "Output mode", mode, "", "Retained trip mode."), make_procedural_field("threshold", "Threshold", ProceduralFieldType.FLOAT, "0.0", "Trip threshold."), make_procedural_field("delay", "Delay", ProceduralFieldType.FLOAT, "0.0", "Trip delay."), make_procedural_field("reset_delay", "Reset delay", ProceduralFieldType.OPTIONAL_FLOAT, "",
+                                  "Optional automatic reset delay."),))
     elif logic_tpe == ProceduralLogicType.StartupHandover:
-        fields = list([
-            make_procedural_field("mode_var_name", "Output mode", mode, "", "Handover mode."),
-            make_procedural_field("enable_time_var_name", "Enable-time parameter", runtime, "", "Handover time."),
-        ])
+        fields = list((make_procedural_field("mode_var_name", "Output mode", mode, "", "Handover mode."), make_procedural_field("enable_time_var_name", "Enable-time parameter", runtime, "", "Handover time."),))
     elif logic_tpe == ProceduralLogicType.ValveState:
         valve_defaults: tuple[tuple[str, str, ProceduralFieldType], ...] = (
             ("mode_var_name", "Output mode", mode),
@@ -816,21 +842,21 @@ def get_procedural_expression_variables(entry: ProceduralLogicBase) -> List[Var]
     elif isinstance(entry, SampledValueLogic):
         expressions.append(entry.source_expr)
     elif isinstance(entry, HardSaturationLogic):
-        expressions.extend(list([entry.u_expr, entry.u_min_expr, entry.u_max_expr]))
+        expressions.extend(list((entry.u_expr, entry.u_min_expr, entry.u_max_expr,)))
     elif isinstance(entry, TimeDelayLogic):
-        expressions.extend(list([entry.source_expr, entry.delay_expr]))
+        expressions.extend(list((entry.source_expr, entry.delay_expr,)))
     elif isinstance(entry, MovingAverageLogic):
-        expressions.extend(list([entry.source_expr, entry.delay_expr, entry.window_expr]))
+        expressions.extend(list((entry.source_expr, entry.delay_expr, entry.window_expr,)))
     elif isinstance(entry, GradientLimiterLogic):
-        expressions.extend(list([entry.source_expr, entry.lower_rate_expr, entry.upper_rate_expr]))
+        expressions.extend(list((entry.source_expr, entry.lower_rate_expr, entry.upper_rate_expr,)))
     elif isinstance(entry, FlipFlopLogic):
-        expressions.extend(list([entry.set_expr, entry.reset_expr]))
+        expressions.extend(list((entry.set_expr, entry.reset_expr,)))
     elif isinstance(entry, AnalogFlipFlopLogic):
-        expressions.extend(list([entry.input_expr, entry.set_expr, entry.reset_expr]))
+        expressions.extend(list((entry.input_expr, entry.set_expr, entry.reset_expr,)))
     elif isinstance(entry, PickupDropoffLogic):
-        expressions.extend(list([entry.bool_expr, entry.pickup_delay_expr, entry.drop_delay_expr]))
+        expressions.extend(list((entry.bool_expr, entry.pickup_delay_expr, entry.drop_delay_expr,)))
     elif isinstance(entry, ResetOnRisingEdgeLogic):
-        expressions.extend(list([entry.reset_expr, entry.value_expr]))
+        expressions.extend(list((entry.reset_expr, entry.value_expr,)))
     else:
         # The remaining logic types store typed symbol names and numeric
         # settings instead of free symbolic expression objects.
@@ -1074,15 +1100,21 @@ class RuntimeLogicDraftCollection:
                 ))
 
     def get_root(self) -> Block:
-        """Return the dialogue root block."""
+        """
+        :return: The dialogue root block.
+        """
         return self._root
 
     def get_modes(self) -> List[RuntimeModeDraft]:
-        """Return active and removed mode drafts."""
+        """
+        :return: Active and removed mode drafts.
+        """
         return list(self._modes)
 
     def get_active_modes(self) -> List[RuntimeModeDraft]:
-        """Return retained modes not staged for deletion."""
+        """
+        :return: Retained modes not staged for deletion.
+        """
         result: List[RuntimeModeDraft] = list()
         mode: RuntimeModeDraft
         for mode in self._modes:
@@ -1093,15 +1125,21 @@ class RuntimeLogicDraftCollection:
         return result
 
     def get_entries(self) -> List[ProceduralLogicDraft]:
-        """Return ordered procedural entry drafts."""
+        """
+        :return: Ordered procedural entry drafts.
+        """
         return list(self._entries)
 
     def has_changes(self) -> bool:
-        """Return whether the user staged a runtime-logic edit."""
+        """
+        :return: Whether the user staged a runtime-logic edit.
+        """
         return self._changed
 
     def has_new_modes(self) -> bool:
-        """Return whether Apply must create at least one retained mode."""
+        """
+        :return: Whether Apply must create at least one retained mode.
+        """
         result: bool = False
         mode: RuntimeModeDraft
         for mode in self._modes:
@@ -1112,7 +1150,11 @@ class RuntimeLogicDraftCollection:
         return result
 
     def mark_changed(self) -> None:
-        """Mark the draft collection as edited."""
+        """
+        Mark the draft collection as edited.
+
+        :return: None.
+        """
         self._changed = True
 
     def add_mode(self, owner: Block, name: str, initial_expression: str) -> RuntimeModeDraft:
@@ -1547,20 +1589,42 @@ class ProceduralEntryTableModel(QtCore.QAbstractTableModel):
     def __init__(self,
                  drafts: RuntimeLogicDraftCollection,
                  parent: QtCore.QObject | None = None) -> None:
-        """Create a table over one shared draft collection."""
+        """
+        Create a table over one shared draft collection.
+
+        :param drafts: Value supplied for ``drafts``.
+        :param parent: Owning Qt widget.
+        :return: None.
+        """
         super().__init__(parent)
         self._drafts: RuntimeLogicDraftCollection = drafts
 
     def rowCount(self, parent: QtCore.QModelIndex = QtCore.QModelIndex()) -> int:
-        """Return procedural entry count."""
+        """
+        Return procedural entry count.
+
+        :param parent: Owning Qt widget.
+        :return: Procedural entry count.
+        """
         return 0 if parent.isValid() else len(self._drafts.get_entries())
 
     def columnCount(self, parent: QtCore.QModelIndex = QtCore.QModelIndex()) -> int:
-        """Return overview column count."""
+        """
+        Return overview column count.
+
+        :param parent: Owning Qt widget.
+        :return: Overview column count.
+        """
         return 0 if parent.isValid() else 6
 
     def data(self, index: QtCore.QModelIndex, role: int = Qt.ItemDataRole.DisplayRole) -> object:
-        """Return one overview cell."""
+        """
+        Return one overview cell.
+
+        :param index: Value supplied for ``index``.
+        :param role: Value supplied for ``role``.
+        :return: One overview cell.
+        """
         if not index.isValid() or index.row() >= self.rowCount():
             return None
         else:
@@ -1589,18 +1653,30 @@ class ProceduralEntryTableModel(QtCore.QAbstractTableModel):
                 index: QtCore.QModelIndex,
                 value: object,
                 role: int = Qt.ItemDataRole.EditRole) -> bool:
-        """Edit only an entry name from the overview."""
+        """
+        Edit only an entry name from the overview.
+
+        :param index: Value supplied for ``index``.
+        :param value: Value supplied for ``value``.
+        :param role: Value supplied for ``role``.
+        :return: True when the edited value was accepted; otherwise False.
+        """
         if index.isValid() and index.column() == 2 and role == Qt.ItemDataRole.EditRole:
             entry: ProceduralLogicDraft = self._drafts.get_entries()[index.row()]
             entry.set_name(str(value))
             self._drafts.mark_changed()
-            self.dataChanged.emit(index, index, [role])
+            self.dataChanged.emit(index, index, list((role,)))
             return True
         else:
             return False
 
     def flags(self, index: QtCore.QModelIndex) -> Qt.ItemFlag:
-        """Expose entry-name editing and row selection."""
+        """
+        Expose entry-name editing and row selection.
+
+        :param index: Value supplied for ``index``.
+        :return: Item flags enabling entry-name editing and row selection.
+        """
         if not index.isValid():
             return Qt.ItemFlag.NoItemFlags
         else:
@@ -1615,7 +1691,14 @@ class ProceduralEntryTableModel(QtCore.QAbstractTableModel):
                    section: int,
                    orientation: Qt.Orientation,
                    role: int = Qt.ItemDataRole.DisplayRole) -> object:
-        """Return overview headers."""
+        """
+        Return overview headers.
+
+        :param section: Value supplied for ``section``.
+        :param orientation: Value supplied for ``orientation``.
+        :param role: Value supplied for ``role``.
+        :return: Overview headers.
+        """
         headers: tuple[str, ...] = ("Order", "Owner", "Name", "Type", "Output / target", "Status")
         if orientation == Qt.Orientation.Horizontal and role == Qt.ItemDataRole.DisplayRole:
             return headers[section] if 0 <= section < len(headers) else None
@@ -1623,7 +1706,11 @@ class ProceduralEntryTableModel(QtCore.QAbstractTableModel):
             return None
 
     def reload(self) -> None:
-        """Reset the overview after structural draft changes."""
+        """
+        Reset the overview after structural draft changes.
+
+        :return: None.
+        """
         self.beginResetModel()
         self.endResetModel()
 
@@ -1636,20 +1723,42 @@ class RuntimeModeTableModel(QtCore.QAbstractTableModel):
     def __init__(self,
                  drafts: RuntimeLogicDraftCollection,
                  parent: QtCore.QObject | None = None) -> None:
-        """Create a mode table over the shared collection."""
+        """
+        Create a mode table over the shared collection.
+
+        :param drafts: Value supplied for ``drafts``.
+        :param parent: Owning Qt widget.
+        :return: None.
+        """
         super().__init__(parent)
         self._drafts: RuntimeLogicDraftCollection = drafts
 
     def rowCount(self, parent: QtCore.QModelIndex = QtCore.QModelIndex()) -> int:
-        """Return retained mode count including staged deletions."""
+        """
+        Return retained mode count including staged deletions.
+
+        :param parent: Owning Qt widget.
+        :return: Retained mode count including staged deletions.
+        """
         return 0 if parent.isValid() else len(self._drafts.get_modes())
 
     def columnCount(self, parent: QtCore.QModelIndex = QtCore.QModelIndex()) -> int:
-        """Return mode overview column count."""
+        """
+        Return mode overview column count.
+
+        :param parent: Owning Qt widget.
+        :return: Mode overview column count.
+        """
         return 0 if parent.isValid() else 6
 
     def data(self, index: QtCore.QModelIndex, role: int = Qt.ItemDataRole.DisplayRole) -> object:
-        """Return mode identity, initialization, dependencies, and status."""
+        """
+        Return mode identity, initialization, dependencies, and status.
+
+        :param index: Value supplied for ``index``.
+        :param role: Value supplied for ``role``.
+        :return: Mode identity, initialization, dependencies, and status.
+        """
         if not index.isValid() or index.row() >= self.rowCount():
             return None
         else:
@@ -1684,7 +1793,14 @@ class RuntimeModeTableModel(QtCore.QAbstractTableModel):
                 index: QtCore.QModelIndex,
                 value: object,
                 role: int = Qt.ItemDataRole.EditRole) -> bool:
-        """Edit new mode names and all initial expressions."""
+        """
+        Edit new mode names and all initial expressions.
+
+        :param index: Value supplied for ``index``.
+        :param value: Value supplied for ``value``.
+        :param role: Value supplied for ``role``.
+        :return: True when the edited value was accepted; otherwise False.
+        """
         if not index.isValid() or role != Qt.ItemDataRole.EditRole:
             return False
         else:
@@ -1699,13 +1815,18 @@ class RuntimeModeTableModel(QtCore.QAbstractTableModel):
             changed = False
         if changed:
             self._drafts.mark_changed()
-            self.dataChanged.emit(index, index, [role])
+            self.dataChanged.emit(index, index, list((role,)))
         else:
             pass
         return changed
 
     def flags(self, index: QtCore.QModelIndex) -> Qt.ItemFlag:
-        """Expose only safe retained-mode edits."""
+        """
+        Expose only safe retained-mode edits.
+
+        :param index: Value supplied for ``index``.
+        :return: Item flags enabling only safe retained-mode edits.
+        """
         if not index.isValid():
             return Qt.ItemFlag.NoItemFlags
         else:
@@ -1721,7 +1842,14 @@ class RuntimeModeTableModel(QtCore.QAbstractTableModel):
                    section: int,
                    orientation: Qt.Orientation,
                    role: int = Qt.ItemDataRole.DisplayRole) -> object:
-        """Return retained-mode headers."""
+        """
+        Return retained-mode headers.
+
+        :param section: Value supplied for ``section``.
+        :param orientation: Value supplied for ``orientation``.
+        :param role: Value supplied for ``role``.
+        :return: Retained-mode headers.
+        """
         headers: tuple[str, ...] = ("Owner", "Name", "Initial expression", "Writer", "Read by", "Status")
         if orientation == Qt.Orientation.Horizontal and role == Qt.ItemDataRole.DisplayRole:
             return headers[section] if 0 <= section < len(headers) else None
@@ -1729,7 +1857,11 @@ class RuntimeModeTableModel(QtCore.QAbstractTableModel):
             return None
 
     def reload(self) -> None:
-        """Reset the mode overview after structural draft changes."""
+        """
+        Reset the mode overview after structural draft changes.
+
+        :return: None.
+        """
         self.beginResetModel()
         self.endResetModel()
 
@@ -1742,19 +1874,35 @@ class ProceduralFieldTableModel(QtCore.QAbstractTableModel):
     def __init__(self,
                  drafts: RuntimeLogicDraftCollection,
                  parent: QtCore.QObject | None = None) -> None:
-        """Create an initially empty field model."""
+        """
+        Create an initially empty field model.
+
+        :param drafts: Value supplied for ``drafts``.
+        :param parent: Owning Qt widget.
+        :return: None.
+        """
         super().__init__(parent)
         self._drafts: RuntimeLogicDraftCollection = drafts
         self._entry: ProceduralLogicDraft | None = None
 
     def set_entry(self, entry: ProceduralLogicDraft | None) -> None:
-        """Replace the selected procedural entry."""
+        """
+        Replace the selected procedural entry.
+
+        :param entry: Value supplied for ``entry``.
+        :return: None.
+        """
         self.beginResetModel()
         self._entry = entry
         self.endResetModel()
 
     def get_field(self, row: int) -> ProceduralFieldDraft | None:
-        """Return one selected-entry field by row."""
+        """
+        Return one selected-entry field by row.
+
+        :param row: Value supplied for ``row``.
+        :return: One selected-entry field by row.
+        """
         if self._entry is not None:
             fields: List[ProceduralFieldDraft] = self._entry.get_fields()
             result: ProceduralFieldDraft | None = fields[row] if 0 <= row < len(fields) else None
@@ -1763,18 +1911,34 @@ class ProceduralFieldTableModel(QtCore.QAbstractTableModel):
         return result
 
     def rowCount(self, parent: QtCore.QModelIndex = QtCore.QModelIndex()) -> int:
-        """Return selected entry field count."""
+        """
+        Return selected entry field count.
+
+        :param parent: Owning Qt widget.
+        :return: Selected entry field count.
+        """
         if parent.isValid() or self._entry is None:
             return 0
         else:
             return len(self._entry.get_fields())
 
     def columnCount(self, parent: QtCore.QModelIndex = QtCore.QModelIndex()) -> int:
-        """Return label, type, and value columns."""
+        """
+        Return label, type, and value columns.
+
+        :param parent: Owning Qt widget.
+        :return: Label, type, and value columns.
+        """
         return 0 if parent.isValid() else 3
 
     def data(self, index: QtCore.QModelIndex, role: int = Qt.ItemDataRole.DisplayRole) -> object:
-        """Return one typed field cell and validation presentation."""
+        """
+        Return one typed field cell and validation presentation.
+
+        :param index: Value supplied for ``index``.
+        :param role: Value supplied for ``role``.
+        :return: One typed field cell and validation presentation.
+        """
         field: ProceduralFieldDraft | None = self.get_field(index.row())
         if not index.isValid() or field is None:
             return None
@@ -1802,18 +1966,30 @@ class ProceduralFieldTableModel(QtCore.QAbstractTableModel):
                 index: QtCore.QModelIndex,
                 value: object,
                 role: int = Qt.ItemDataRole.EditRole) -> bool:
-        """Stage one selected-entry field edit."""
+        """
+        Stage one selected-entry field edit.
+
+        :param index: Value supplied for ``index``.
+        :param value: Value supplied for ``value``.
+        :param role: Value supplied for ``role``.
+        :return: True when the edited value was accepted; otherwise False.
+        """
         field: ProceduralFieldDraft | None = self.get_field(index.row())
         if field is not None and index.column() == 2 and role == Qt.ItemDataRole.EditRole:
             field.set_value(str(value))
             self._drafts.mark_changed()
-            self.dataChanged.emit(index, index, [role])
+            self.dataChanged.emit(index, index, list((role,)))
             return True
         else:
             return False
 
     def flags(self, index: QtCore.QModelIndex) -> Qt.ItemFlag:
-        """Expose only value cells as editable."""
+        """
+        Expose only value cells as editable.
+
+        :param index: Value supplied for ``index``.
+        :return: Item flags exposing only value cells as editable.
+        """
         if not index.isValid():
             return Qt.ItemFlag.NoItemFlags
         else:
@@ -1828,7 +2004,14 @@ class ProceduralFieldTableModel(QtCore.QAbstractTableModel):
                    section: int,
                    orientation: Qt.Orientation,
                    role: int = Qt.ItemDataRole.DisplayRole) -> object:
-        """Return typed field headers."""
+        """
+        Return typed field headers.
+
+        :param section: Value supplied for ``section``.
+        :param orientation: Value supplied for ``orientation``.
+        :param role: Value supplied for ``role``.
+        :return: Typed field headers.
+        """
         headers: tuple[str, ...] = ("Field", "Kind", "Value")
         if orientation == Qt.Orientation.Horizontal and role == Qt.ItemDataRole.DisplayRole:
             return headers[section] if 0 <= section < len(headers) else None
@@ -1836,7 +2019,11 @@ class ProceduralFieldTableModel(QtCore.QAbstractTableModel):
             return None
 
     def reload(self) -> None:
-        """Refresh validation colors and values."""
+        """
+        Refresh validation colors and values.
+
+        :return: None.
+        """
         self.beginResetModel()
         self.endResetModel()
 
@@ -1849,7 +2036,13 @@ class ProceduralFieldDelegate(QtWidgets.QStyledItemDelegate):
     def __init__(self,
                  drafts: RuntimeLogicDraftCollection,
                  parent: QtWidgets.QWidget | None = None) -> None:
-        """Create a delegate sharing one draft collection."""
+        """
+        Create a delegate sharing one draft collection.
+
+        :param drafts: Value supplied for ``drafts``.
+        :param parent: Owning Qt widget.
+        :return: None.
+        """
         super().__init__(parent)
         self._drafts: RuntimeLogicDraftCollection = drafts
 
@@ -1857,7 +2050,14 @@ class ProceduralFieldDelegate(QtWidgets.QStyledItemDelegate):
                      parent: QtWidgets.QWidget,
                      option: QtWidgets.QStyleOptionViewItem,
                      index: QtCore.QModelIndex) -> QtWidgets.QWidget:
-        """Create a line editor or constrained reference combo."""
+        """
+        Create a line editor or constrained reference combo.
+
+        :param parent: Owning Qt widget.
+        :param option: Value supplied for ``option``.
+        :param index: Value supplied for ``index``.
+        :return: Line editor or constrained reference combo for the selected field.
+        """
         _unused_option: QtWidgets.QStyleOptionViewItem = option
         model: QtCore.QAbstractItemModel | None = index.model()
         field: ProceduralFieldDraft | None = None
@@ -1881,7 +2081,12 @@ class ProceduralFieldDelegate(QtWidgets.QStyledItemDelegate):
             return editor
 
     def _get_reference_options(self, field_tpe: ProceduralFieldType) -> List[tuple[str, str]]:
-        """Return qualified labels and canonical names for one reference role."""
+        """
+        Return qualified labels and canonical names for one reference role.
+
+        :param field_tpe: Value supplied for ``field_tpe``.
+        :return: Qualified labels and canonical names for one reference role.
+        """
         options: List[tuple[str, str]] = list()
         if field_tpe == ProceduralFieldType.MODE_REFERENCE:
             mode: RuntimeModeDraft
@@ -1917,7 +2122,13 @@ class ProceduralFieldDelegate(QtWidgets.QStyledItemDelegate):
         return options
 
     def setEditorData(self, editor: QtWidgets.QWidget, index: QtCore.QModelIndex) -> None:
-        """Load the staged field value into its typed editor."""
+        """
+        Load the staged field value into its typed editor.
+
+        :param editor: Value supplied for ``editor``.
+        :param index: Value supplied for ``index``.
+        :return: None.
+        """
         current_value: str = str(index.data(Qt.ItemDataRole.EditRole))
         if isinstance(editor, QtWidgets.QComboBox):
             item_index: int = editor.findData(current_value)
@@ -1931,7 +2142,14 @@ class ProceduralFieldDelegate(QtWidgets.QStyledItemDelegate):
                      editor: QtWidgets.QWidget,
                      model: QtCore.QAbstractItemModel,
                      index: QtCore.QModelIndex) -> None:
-        """Commit the typed editor value to the field model."""
+        """
+        Commit the typed editor value to the field model.
+
+        :param editor: Value supplied for ``editor``.
+        :param model: Value supplied for ``model``.
+        :param index: Value supplied for ``index``.
+        :return: None.
+        """
         if isinstance(editor, QtWidgets.QComboBox):
             selected_data: object = editor.currentData()
             model.setData(index, "" if selected_data is None else str(selected_data))
@@ -1942,7 +2160,12 @@ class ProceduralFieldDelegate(QtWidgets.QStyledItemDelegate):
 
 
 def get_reference_option_sort_key(option: tuple[str, str]) -> str:
-    """Return a stable case-insensitive reference-option sort key."""
+    """
+    Return a stable case-insensitive reference-option sort key.
+
+    :param option: Value supplied for ``option``.
+    :return: A stable case-insensitive reference-option sort key.
+    """
     return option[0].lower()
 
 
@@ -2032,7 +2255,12 @@ class RuntimeLogicEditorWidget(QtWidgets.QWidget):
             self.update_documentation_from_type()
 
     def _build_ui(self, root: Block) -> None:
-        """Build entry, mode, field, and documentation views."""
+        """
+        Build entry, mode, field, and documentation views.
+
+        :param root: Value supplied for ``root``.
+        :return: None.
+        """
         layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(self)
         splitter: QtWidgets.QSplitter = QtWidgets.QSplitter(Qt.Orientation.Horizontal, self)
         left_tabs: QtWidgets.QTabWidget = QtWidgets.QTabWidget(splitter)
@@ -2044,7 +2272,7 @@ class RuntimeLogicEditorWidget(QtWidgets.QWidget):
         right_tabs.addTab(self._build_configuration_page(), self.tr("Configuration"))
         right_tabs.addTab(self._build_documentation_page(), self.tr("Documentation"))
         splitter.addWidget(right_tabs)
-        splitter.setSizes(list([680, 520]))
+        splitter.setSizes(list((680, 520,)))
         splitter.setCollapsible(0, False)
         splitter.setCollapsible(1, False)
         layout.addWidget(splitter, 1)
@@ -2052,7 +2280,12 @@ class RuntimeLogicEditorWidget(QtWidgets.QWidget):
         layout.addWidget(self._status)
 
     def _build_entries_page(self, root: Block) -> QtWidgets.QWidget:
-        """Build ordered entry list and add/move/delete controls."""
+        """
+        Build ordered entry list and add/move/delete controls.
+
+        :param root: Value supplied for ``root``.
+        :return: Page containing the ordered entry list and its editing controls.
+        """
         page: QtWidgets.QWidget = QtWidgets.QWidget(self)
         layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(page)
         add_layout: QtWidgets.QGridLayout = QtWidgets.QGridLayout()
@@ -2082,7 +2315,7 @@ class RuntimeLogicEditorWidget(QtWidgets.QWidget):
         header: QtWidgets.QHeaderView = self._entry_table.horizontalHeader()
         configure_runtime_table_header(
             header,
-            list([170, 190, 170, 100, 100, 100]),
+            list((170, 190, 170, 100, 100, 100,)),
         )
         layout.addWidget(self._entry_table, 1)
 
@@ -2104,7 +2337,12 @@ class RuntimeLogicEditorWidget(QtWidgets.QWidget):
         return page
 
     def _build_modes_page(self, root: Block) -> QtWidgets.QWidget:
-        """Build retained-mode table and safe creation/deletion controls."""
+        """
+        Build retained-mode table and safe creation/deletion controls.
+
+        :param root: Value supplied for ``root``.
+        :return: Page containing the retained-mode table and its editing controls.
+        """
         page: QtWidgets.QWidget = QtWidgets.QWidget(self)
         layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(page)
         add_layout: QtWidgets.QGridLayout = QtWidgets.QGridLayout()
@@ -2128,7 +2366,7 @@ class RuntimeLogicEditorWidget(QtWidgets.QWidget):
         mode_header: QtWidgets.QHeaderView = self._mode_table.horizontalHeader()
         configure_runtime_table_header(
             mode_header,
-            list([170, 190, 170, 170, 210, 120]),
+            list((170, 190, 170, 170, 210, 120,)),
         )
         layout.addWidget(self._mode_table, 1)
         delete_mode_button: QtWidgets.QPushButton = QtWidgets.QPushButton(self.tr("Delete retained mode"), page)
@@ -2137,7 +2375,11 @@ class RuntimeLogicEditorWidget(QtWidgets.QWidget):
         return page
 
     def _build_configuration_page(self) -> QtWidgets.QWidget:
-        """Build selected-entry name and typed field table."""
+        """
+        Build selected-entry name and typed field table.
+
+        :return: Page containing the selected-entry name and typed field table.
+        """
         page: QtWidgets.QWidget = QtWidgets.QWidget(self)
         layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(page)
         form: QtWidgets.QFormLayout = QtWidgets.QFormLayout()
@@ -2146,12 +2388,16 @@ class RuntimeLogicEditorWidget(QtWidgets.QWidget):
         self._field_table.setModel(self._field_model)
         self._field_table.setItemDelegateForColumn(2, ProceduralFieldDelegate(self._drafts, self._field_table))
         field_header: QtWidgets.QHeaderView = self._field_table.horizontalHeader()
-        configure_runtime_table_header(field_header, list([190, 150, 420]))
+        configure_runtime_table_header(field_header, list((190, 150, 420,)))
         layout.addWidget(self._field_table, 1)
         return page
 
     def _build_documentation_page(self) -> QtWidgets.QWidget:
-        """Build contextual Markdown documentation viewer."""
+        """
+        Build contextual Markdown documentation viewer.
+
+        :return: Page containing the contextual Markdown documentation viewer.
+        """
         page: QtWidgets.QWidget = QtWidgets.QWidget(self)
         layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(page)
         self._documentation.setOpenExternalLinks(True)
@@ -2159,7 +2405,11 @@ class RuntimeLogicEditorWidget(QtWidgets.QWidget):
         return page
 
     def _connect_signals(self) -> None:
-        """Connect every runtime-logic action to an explicit slot."""
+        """
+        Connect every runtime-logic action to an explicit slot.
+
+        :return: None.
+        """
         add_entry: QtWidgets.QPushButton | None = self.findChild(QtWidgets.QPushButton, "add_runtime_logic_entry")
         move_up: QtWidgets.QPushButton | None = self.findChild(QtWidgets.QPushButton, "move_runtime_logic_up")
         move_down: QtWidgets.QPushButton | None = self.findChild(QtWidgets.QPushButton, "move_runtime_logic_down")
@@ -2204,7 +2454,11 @@ class RuntimeLogicEditorWidget(QtWidgets.QWidget):
 
     @QtCore.Slot()
     def add_entry(self) -> None:
-        """Stage one entry using the selected owner and type."""
+        """
+        Stage one entry using the selected owner and type.
+
+        :return: None.
+        """
         owner_data: object = self._owner_combo.currentData()
         type_data: object = self._type_combo.currentData()
         name: str = self._new_entry_name.text().strip()
@@ -2222,7 +2476,11 @@ class RuntimeLogicEditorWidget(QtWidgets.QWidget):
 
     @QtCore.Slot()
     def add_mode(self) -> None:
-        """Stage one retained mode and its initial expression."""
+        """
+        Stage one retained mode and its initial expression.
+
+        :return: None.
+        """
         owner_data: object = self._new_mode_owner.currentData()
         name: str = self._new_mode_name.text().strip()
         initial_expression: str = self._new_mode_initial.text().strip()
@@ -2241,7 +2499,11 @@ class RuntimeLogicEditorWidget(QtWidgets.QWidget):
             self.changed.emit()
 
     def _get_selected_entry_row(self) -> int:
-        """Return the selected entry row or ``-1``."""
+        """
+        Return the selected entry row or ``-1``.
+
+        :return: The selected entry row or ``-1``.
+        """
         selected: List[QtCore.QModelIndex] = self._entry_table.selectionModel().selectedRows()
         if len(selected) == 1:
             result: int = selected[0].row()
@@ -2251,7 +2513,11 @@ class RuntimeLogicEditorWidget(QtWidgets.QWidget):
 
     @QtCore.Slot()
     def delete_entry(self) -> None:
-        """Remove the selected procedural entry draft."""
+        """
+        Remove the selected procedural entry draft.
+
+        :return: None.
+        """
         row: int = self._get_selected_entry_row()
         if self._drafts.remove_entry(row):
             self._entry_model.reload()
@@ -2264,12 +2530,20 @@ class RuntimeLogicEditorWidget(QtWidgets.QWidget):
 
     @QtCore.Slot()
     def move_entry_up(self) -> None:
-        """Move the selected entry one owner-local position earlier."""
+        """
+        Move the selected entry one owner-local position earlier.
+
+        :return: None.
+        """
         self._move_selected_entry(-1)
 
     @QtCore.Slot()
     def move_entry_down(self) -> None:
-        """Move the selected entry one owner-local position later."""
+        """
+        Move the selected entry one owner-local position later.
+
+        :return: None.
+        """
         self._move_selected_entry(1)
 
     def _move_selected_entry(self, delta: int) -> None:
@@ -2292,7 +2566,11 @@ class RuntimeLogicEditorWidget(QtWidgets.QWidget):
 
     @QtCore.Slot()
     def delete_mode(self) -> None:
-        """Stage deletion of an unreferenced retained mode."""
+        """
+        Stage deletion of an unreferenced retained mode.
+
+        :return: None.
+        """
         selected: List[QtCore.QModelIndex] = self._mode_table.selectionModel().selectedRows()
         row: int = selected[0].row() if len(selected) == 1 else -1
         removed: bool
@@ -2307,7 +2585,11 @@ class RuntimeLogicEditorWidget(QtWidgets.QWidget):
 
     @QtCore.Slot()
     def on_entry_selection_changed(self) -> None:
-        """Load fields and documentation for the selected entry."""
+        """
+        Load fields and documentation for the selected entry.
+
+        :return: None.
+        """
         row: int = self._get_selected_entry_row()
         entries: List[ProceduralLogicDraft] = self._drafts.get_entries()
         if 0 <= row < len(entries):
@@ -2325,7 +2607,11 @@ class RuntimeLogicEditorWidget(QtWidgets.QWidget):
 
     @QtCore.Slot()
     def on_entry_name_edited(self) -> None:
-        """Stage the selected entry name edit."""
+        """
+        Stage the selected entry name edit.
+
+        :return: None.
+        """
         entries: List[ProceduralLogicDraft] = self._drafts.get_entries()
         if 0 <= self._selected_entry_row < len(entries):
             entries[self._selected_entry_row].set_name(self._entry_name.text())
@@ -2338,14 +2624,22 @@ class RuntimeLogicEditorWidget(QtWidgets.QWidget):
 
     @QtCore.Slot()
     def on_draft_changed(self) -> None:
-        """Refresh dependency summaries after one field edit."""
+        """
+        Refresh dependency summaries after one field edit.
+
+        :return: None.
+        """
         self._entry_model.reload()
         self._mode_model.reload()
         self.changed.emit()
 
     @QtCore.Slot()
     def update_documentation_from_type(self) -> None:
-        """Show documentation for the type selected in the Add controls."""
+        """
+        Show documentation for the type selected in the Add controls.
+
+        :return: None.
+        """
         selected_tpe: object = self._type_combo.currentData()
         if isinstance(selected_tpe, ProceduralLogicType):
             self._load_documentation(selected_tpe)
@@ -2376,7 +2670,11 @@ class RuntimeLogicEditorWidget(QtWidgets.QWidget):
 
     @QtCore.Slot()
     def validate_runtime_logic(self) -> None:
-        """Validate all retained modes and procedural entries and show every issue."""
+        """
+        Validate all retained modes and procedural entries and show every issue.
+
+        :return: None.
+        """
         result: RuntimeLogicValidationResult = self.validate(self._namespace)
         if result.is_valid():
             warnings: List[str] = result.get_warnings()
@@ -2403,21 +2701,34 @@ class RuntimeLogicEditorWidget(QtWidgets.QWidget):
         return result
 
     def build_validation_namespace(self, namespace: Mapping[str, Expr]) -> Dict[str, Expr]:
-        """Return a namespace including staged retained modes."""
+        """
+        :param namespace: Value supplied for ``namespace``.
+        :return: A namespace including staged retained modes.
+        """
         return self._drafts.build_validation_namespace(namespace)
 
     def has_changes(self) -> bool:
-        """Return whether runtime-logic edits are staged."""
+        """
+        :return: Whether runtime-logic edits are staged.
+        """
         return self._drafts.has_changes()
 
     def has_new_modes(self) -> bool:
-        """Return whether new authoritative mode Vars are required."""
+        """
+        :return: Whether new authoritative mode Vars are required.
+        """
         return self._drafts.has_new_modes()
 
     def apply_to_blocks(self,
                         var_factory: VarFactory,
                         namespace: Mapping[str, Expr]) -> Dict[str, Expr]:
-        """Apply validated modes and logic entries and return final namespace."""
+        """
+        Apply validated modes and logic entries and return final namespace.
+
+        :param var_factory: Factory that owns symbolic variables.
+        :param namespace: Value supplied for ``namespace``.
+        :return: Final namespace.
+        """
         return self._drafts.apply_to_blocks(var_factory, namespace)
 
     def prepare_to_delete(self) -> None:
@@ -2432,6 +2743,11 @@ class RuntimeLogicEditorWidget(QtWidgets.QWidget):
         self._entry_name.clear()
 
     def _show_error(self, message: str) -> None:
-        """Show one local runtime-logic error."""
+        """
+        Show one local runtime-logic error.
+
+        :param message: Value supplied for ``message``.
+        :return: None.
+        """
         self._status.setStyleSheet("color: #b42318;")
         self._status.setText(message)
