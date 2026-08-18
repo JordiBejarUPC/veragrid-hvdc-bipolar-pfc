@@ -5,7 +5,7 @@ import math
 from typing import Dict, Iterable, List, Mapping, Sequence, Set, Tuple
 
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
-from VeraGridEngine.IO.dgs.dynamic_models.dgs_elmsym_runtime_adapter import (
+from VeraGridEngine.IO.dynamic_models.dgs_elmsym_runtime_adapter import (
     install_unconnected_dgs_control_input_defaults,
 )
 from VeraGridEngine.Utils.Symbolic.block import Block

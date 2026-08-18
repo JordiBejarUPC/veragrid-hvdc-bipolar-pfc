@@ -70,7 +70,7 @@ from VeraGridEngine.IO.dgs.dynamic_models.dgs_elmvsc_runtime_adapter import (
     is_dgs_elmvscmono_slot_contract,
     is_dgs_elmvsc_slot_contract,
 )
-from VeraGridEngine.IO.dgs.dynamic_models.dgs_elmsym_runtime_adapter import (
+from VeraGridEngine.IO.dynamic_models.dgs_elmsym_runtime_adapter import (
     build_dgs_elmsym_rms_runtime_template,
     configure_dgs_elmsym_runtime_template_for_device,
     is_dgs_elmsym_slot_contract,
