@@ -1152,6 +1152,44 @@ class GraphicConnectionInstruction:
         self.source_root_name = source_root_name
 
 
+class DgsGraphicalParentBindingResult:
+    """Describe how graphical children satisfy parent internal signals.
+
+    :param resolved_internal_names: Parent internals replaced by exact child
+        variables.
+    :param disconnected_input_names: Parent internals bound to intentional
+        zero-valued graphical inputs.
+    :param unresolved_input_names: Live routed signals whose producer topology
+        is absent from the DGS export.
+    """
+
+    __slots__ = (
+        "resolved_internal_names",
+        "disconnected_input_names",
+        "unresolved_input_names",
+    )
+
+    def __init__(
+        self,
+        resolved_internal_names: List[str],
+        disconnected_input_names: List[str],
+        unresolved_input_names: List[str],
+    ) -> None:
+        """Store one fail-closed parent-to-child binding result.
+
+        :param resolved_internal_names: Internals replaced by exact child
+            variables.
+        :param disconnected_input_names: Internals assigned the explicit DGS
+            disconnected-input value.
+        :param unresolved_input_names: Live internals left unresolved because
+            their producer was not exported.
+        :return: None.
+        """
+        self.resolved_internal_names: List[str] = resolved_internal_names
+        self.disconnected_input_names: List[str] = disconnected_input_names
+        self.unresolved_input_names: List[str] = unresolved_input_names
+
+
 class DgsGraphicTreeResult:
     """
     Graphical internal tree reconstruction result.
@@ -1162,6 +1200,7 @@ class DgsGraphicTreeResult:
     :param adjacency: Undirected adjacency between graphical nodes.
     :param node_labels: Display label per graphical node.
     :param node_kinds: DGS object kind per graphical node.
+    :param parent_bindings: Parent internal-signal binding outcome.
     """
 
     __slots__ = (
@@ -1173,6 +1212,7 @@ class DgsGraphicTreeResult:
         "node_kinds",
         "child_node_ids",
         "connections",
+        "parent_bindings",
     )
 
     def __init__(
@@ -1185,7 +1225,21 @@ class DgsGraphicTreeResult:
         node_kinds: Dict[str, str],
         child_node_ids: List[str],
         connections: List[GraphicConnectionInstruction],
+        parent_bindings: DgsGraphicalParentBindingResult | None = None,
     ) -> None:
+        """Store one reconstructed graphical tree.
+
+        :param selected_block: Selected parent block definition.
+        :param view_block: Runtime graphical tree.
+        :param node_ids: Selected graphical node identifiers.
+        :param adjacency: Selected graphical adjacency.
+        :param node_labels: Display labels keyed by node identifier.
+        :param node_kinds: DGS element kinds keyed by node identifier.
+        :param child_node_ids: Materialized child identifiers.
+        :param connections: Resolved directed child connections.
+        :param parent_bindings: Parent internal-signal binding outcome.
+        :return: None.
+        """
         self.selected_block = selected_block
         self.view_block = view_block
         self.node_ids = node_ids
@@ -1194,6 +1248,16 @@ class DgsGraphicTreeResult:
         self.node_kinds = node_kinds
         self.child_node_ids = child_node_ids
         self.connections = connections
+        if parent_bindings is None:
+            self.parent_bindings: DgsGraphicalParentBindingResult = (
+                DgsGraphicalParentBindingResult(
+                    resolved_internal_names=list(),
+                    disconnected_input_names=list(),
+                    unresolved_input_names=list(),
+                )
+            )
+        else:
+            self.parent_bindings = parent_bindings
 
 
 class DgsStatementReportEntry:
@@ -1542,6 +1606,25 @@ def _normalize_graph_signal_name(name: str) -> str:
     text = name.strip().strip('"')
     text = re.sub(r'\(\d+\)$', '', text).strip()
     return text
+
+
+def _normalize_dgs_pointer_id(pointer_value: object | None) -> str:
+    """Normalize one optional DGS pointer without inventing an identifier.
+
+    :param pointer_value: Parsed pointer value or a DGS empty placeholder.
+    :return: Trimmed identifier, or an empty string when no object is linked.
+    """
+    if pointer_value is None:
+        pointer_id: str = ""
+    elif isinstance(pointer_value, str):
+        stripped_pointer_id: str = pointer_value.strip()
+        if stripped_pointer_id in {"", "*"}:
+            pointer_id = ""
+        else:
+            pointer_id = stripped_pointer_id
+    else:
+        pointer_id = str(pointer_value).strip()
+    return pointer_id
 
 
 def _iter_blocks_recursive(block: Block) -> Iterable[Block]:
@@ -3632,6 +3715,305 @@ def _build_graphic_node_signal_map(circuit: DgsCircuit) -> dict[str, set[str]]:
     return node_signals
 
 
+def _collect_routed_graphical_source_signal_names(
+    node_ids: Set[str],
+    node_by_id: Dict[str, object],
+    node_signals: Dict[str, Set[str]],
+) -> Set[str]:
+    """Collect exact signal names read by selected ``BlkFrom`` nodes.
+
+    A blank source normally represents an intentional disconnected input. A
+    selected ``BlkFrom`` reading the same signal proves instead that the
+    signal is live and that its producer topology is absent from the export.
+
+    :param node_ids: Graphical component identifiers.
+    :param node_by_id: Parsed graphical objects keyed by identifier.
+    :param node_signals: Normalized signal names keyed by node identifier.
+    :return: Live routed signal names in the selected component.
+    """
+    routed_signal_names: Set[str] = set()
+    node_id: str
+
+    # Only routing nodes inside this exact component can affect its fail-closed
+    # disconnected-input decision.
+    for node_id in node_ids:
+        if isinstance(node_by_id.get(node_id, None), BlkFrom):
+            routed_signal_names.update(node_signals.get(node_id, set()))
+        else:
+            pass
+    return routed_signal_names
+
+
+def _record_unique_named_var(
+    candidate_var: Var,
+    var_by_name: Dict[str, Var],
+    ambiguous_names: Set[str],
+) -> None:
+    """Record a variable only while its symbolic name identifies one UID.
+
+    :param candidate_var: Variable discovered in the parent initialization
+        surface.
+    :param var_by_name: Unique variables accumulated by symbolic name.
+    :param ambiguous_names: Names discarded after multiple UIDs were found.
+    :return: None.
+    """
+    candidate_name: str = candidate_var.name
+    existing_var: Var | None = var_by_name.get(candidate_name, None)
+
+    if candidate_name in ambiguous_names:
+        pass
+    elif existing_var is None:
+        var_by_name[candidate_name] = candidate_var
+    elif existing_var.uid == candidate_var.uid:
+        pass
+    else:
+        # Ambiguous names must remain unresolved; choosing the first matching
+        # variable would reconnect models by text instead of identity.
+        var_by_name.pop(candidate_name, None)
+        ambiguous_names.add(candidate_name)
+
+
+def _build_parent_internal_var_lookup(
+    selected_block: ParsedDgsBlockDefinition,
+    parent_block: Block,
+) -> Dict[str, Var]:
+    """Resolve parent internals from their exact initialization variables.
+
+    The parsed definition retains the raw DGS name while the materialized
+    block owns the runtime UID. Initialization keys and dependencies are the
+    authoritative bridge between those representations. Duplicate runtime
+    names are rejected rather than guessed.
+
+    :param selected_block: Parsed parent block definition.
+    :param parent_block: Materialized parent runtime block.
+    :return: Unambiguous parent internal variables keyed by raw DGS name.
+    """
+    runtime_var_by_name: Dict[str, Var] = dict()
+    ambiguous_runtime_names: Set[str] = set()
+    init_var: Var
+    init_expr: Expr
+    dependency_var: Var
+
+    # Initialization left-hand sides can themselves be graphical internals.
+    for init_var in parent_block.init_eqs.keys():
+        _record_unique_named_var(
+            candidate_var=init_var,
+            var_by_name=runtime_var_by_name,
+            ambiguous_names=ambiguous_runtime_names,
+        )
+
+    # Initialization expressions expose every parent internal consumed by an
+    # ``inc()`` equation without attaching dynamic metadata to Block.
+    for init_expr in parent_block.init_eqs.values():
+        for dependency_var in init_expr.get_vars():
+            _record_unique_named_var(
+                candidate_var=dependency_var,
+                var_by_name=runtime_var_by_name,
+                ambiguous_names=ambiguous_runtime_names,
+            )
+
+    parent_internal_vars: Dict[str, Var] = dict()
+    internal_name: str
+    for internal_name in selected_block.blkdef.internals:
+        parsed_internal_var: Var | None = selected_block.symbol_table.get(
+            internal_name,
+            None,
+        )
+        if parsed_internal_var is None:
+            pass
+        else:
+            runtime_internal_var: Var | None = runtime_var_by_name.get(
+                parsed_internal_var.name,
+                None,
+            )
+            if runtime_internal_var is None:
+                pass
+            else:
+                parent_internal_vars[internal_name] = runtime_internal_var
+    return parent_internal_vars
+
+
+def _connect_graphical_parent_internal_signals(
+    selected_block: ParsedDgsBlockDefinition,
+    parent_block: Block,
+    child_blocks: Dict[str, Block],
+    child_input_index_by_connector: Dict[
+        str,
+        Dict[Tuple[DgsGraphicalConnectorKind, int], int],
+    ],
+    graphical_signals: List[BlkSig],
+    connections: List[GraphicConnectionInstruction],
+    routed_source_signal_names: Set[str],
+    node_by_id: Dict[str, object],
+) -> DgsGraphicalParentBindingResult:
+    """Bind parent ``inc()`` dependencies to exact graphical child values.
+
+    Concrete child outputs replace matching parent internals. A blank producer
+    creates a deterministic zero only when its exact child input is otherwise
+    unresolved. Signals read by ``BlkFrom`` remain unresolved when their
+    producer topology is absent, preventing a fabricated zero.
+
+    :param selected_block: Parsed parent graphical block definition.
+    :param parent_block: Materialized parent block updated in place.
+    :param child_blocks: Materialized graphical children keyed by identifier.
+    :param child_input_index_by_connector: Runtime child input indices keyed by
+        graphical connector kind and raw port.
+    :param graphical_signals: Exact graphical cables from the parsed DGS.
+    :param connections: Successfully resolved non-empty cable connections.
+    :param routed_source_signal_names: Signals read by selected ``BlkFrom``
+        nodes.
+    :param node_by_id: Parsed graphical objects keyed by identifier.
+    :return: Typed binding result for review and contract tests.
+    """
+    parent_internal_vars: Dict[str, Var] = _build_parent_internal_var_lookup(
+        selected_block=selected_block,
+        parent_block=parent_block,
+    )
+    parent_internal_names: Set[str] = set(selected_block.blkdef.internals)
+    resolved_internal_names: Set[str] = set()
+    disconnected_input_names: Set[str] = set()
+    unresolved_input_names: Set[str] = set()
+    connected_consumer_keys: Set[Tuple[str, int]] = set()
+    instruction: GraphicConnectionInstruction
+
+    # A resolved cable owns its consumer pin and cannot also be interpreted as
+    # an intentionally disconnected input.
+    for instruction in connections:
+        if instruction.consumer_input_index is None:
+            pass
+        else:
+            connected_consumer_keys.add((
+                instruction.consumer_node_id,
+                instruction.consumer_input_index,
+            ))
+
+    graphical_signal: BlkSig
+    for graphical_signal in graphical_signals:
+        signal_name: str = _normalize_graph_signal_name(
+            name=graphical_signal.loc_name,
+        )
+        source_node_id: str = _normalize_dgs_pointer_id(
+            pointer_value=graphical_signal.pnodfrom,
+        )
+        source_block: Block | None = child_blocks.get(source_node_id, None)
+        source_connector_kind: DgsGraphicalConnectorKind | None = (
+            _parse_effective_graphical_connector_kind(
+                connector_code=int(graphical_signal.iconfrom),
+                endpoint_node=node_by_id.get(source_node_id, None),
+                is_source_endpoint=True,
+            )
+        )
+        source_output_index: int | None = (
+            _resolve_graphical_runtime_output_index(
+                endpoint_node=node_by_id.get(source_node_id, None),
+                graphical_output_index=int(graphical_signal.inodfrom),
+                runtime_output_count=(
+                    0 if source_block is None else len(source_block.out_vars)
+                ),
+            )
+        )
+        parent_internal_var: Var | None = parent_internal_vars.get(
+            signal_name,
+            None,
+        )
+
+        # The concrete source UID is authoritative for a parent internal with
+        # the same exact DGS signal identity.
+        if (
+            signal_name not in parent_internal_names
+            or signal_name in resolved_internal_names
+            or source_block is None
+            or source_connector_kind != DgsGraphicalConnectorKind.Output
+            or source_output_index is None
+            or parent_internal_var is None
+        ):
+            pass
+        else:
+            source_output_var: Var = source_block.out_vars[source_output_index]
+            parent_block.update_model(parent_internal_var, source_output_var)
+            resolved_internal_names.add(signal_name)
+
+    for graphical_signal in graphical_signals:
+        signal_name = _normalize_graph_signal_name(
+            name=graphical_signal.loc_name,
+        )
+        source_node_id = _normalize_dgs_pointer_id(
+            pointer_value=graphical_signal.pnodfrom,
+        )
+        consumer_node_id: str = _normalize_dgs_pointer_id(
+            pointer_value=graphical_signal.pnodto,
+        )
+        consumer_block: Block | None = child_blocks.get(
+            consumer_node_id,
+            None,
+        )
+        consumer_connector_kind: DgsGraphicalConnectorKind | None = (
+            _parse_effective_graphical_connector_kind(
+                connector_code=int(graphical_signal.iconto),
+                endpoint_node=node_by_id.get(consumer_node_id, None),
+                is_source_endpoint=False,
+            )
+        )
+        consumer_index_lookup: Dict[
+            Tuple[DgsGraphicalConnectorKind, int],
+            int,
+        ] | None = child_input_index_by_connector.get(
+            consumer_node_id,
+            None,
+        )
+        if consumer_connector_kind is None or consumer_index_lookup is None:
+            consumer_runtime_index: int | None = None
+        else:
+            consumer_runtime_index = consumer_index_lookup.get(
+                (
+                    consumer_connector_kind,
+                    int(graphical_signal.inodto),
+                ),
+                None,
+            )
+        if consumer_runtime_index is None:
+            consumer_is_connected: bool = False
+        else:
+            consumer_is_connected = (
+                consumer_node_id,
+                consumer_runtime_index,
+            ) in connected_consumer_keys
+        parent_internal_var = parent_internal_vars.get(signal_name, None)
+
+        # Only one exact blank producer on a free child pin qualifies for the
+        # PowerFactory disconnected-input value.
+        if (
+            signal_name not in parent_internal_names
+            or signal_name in resolved_internal_names
+            or source_node_id != ""
+            or consumer_block is None
+            or consumer_runtime_index is None
+            or consumer_runtime_index < 0
+            or consumer_runtime_index >= len(consumer_block.in_vars)
+            or consumer_is_connected
+            or parent_internal_var is None
+        ):
+            pass
+        elif signal_name in routed_source_signal_names:
+            # A selected From node proves this is a live route whose producer
+            # class is absent, so zero would conceal missing parser coverage.
+            unresolved_input_names.add(signal_name)
+        else:
+            consumer_input_var: Var = consumer_block.in_vars[
+                consumer_runtime_index
+            ]
+            parent_block.update_model(parent_internal_var, consumer_input_var)
+            consumer_block.event_dict[consumer_input_var] = Const(0.0)
+            resolved_internal_names.add(signal_name)
+            disconnected_input_names.add(signal_name)
+
+    return DgsGraphicalParentBindingResult(
+        resolved_internal_names=sorted(resolved_internal_names),
+        disconnected_input_names=sorted(disconnected_input_names),
+        unresolved_input_names=sorted(unresolved_input_names),
+    )
+
+
 def _build_graph_signal_alias_map(
     node_ids: Set[str],
     node_by_id: Dict[str, object],
@@ -3807,8 +4189,12 @@ def _resolve_graphic_block_connections(
 
     # Reproduce direct cables before considering any label-based fallback.
     for graphical_signal in graphical_signals:
-        source_node_id: str = graphical_signal.pnodfrom.strip()
-        consumer_node_id: str = graphical_signal.pnodto.strip()
+        source_node_id: str = _normalize_dgs_pointer_id(
+            pointer_value=graphical_signal.pnodfrom,
+        )
+        consumer_node_id: str = _normalize_dgs_pointer_id(
+            pointer_value=graphical_signal.pnodto,
+        )
         source_kind: DgsGraphicalConnectorKind | None = (
             _parse_effective_graphical_connector_kind(
                 connector_code=int(graphical_signal.iconfrom),
@@ -4216,7 +4602,7 @@ def _build_sum_runtime_input_index_by_connector(
     # Record only concrete incoming cables owned by this summation node.
     for signal in circuit.blksigs:
         if (
-                signal.pnodto.strip() == str(blk_sum.ID)
+                _normalize_dgs_pointer_id(signal.pnodto) == str(blk_sum.ID)
                 and _normalize_graph_signal_name(signal.loc_name) != ''
         ):
             incoming_slots.add(int(signal.inodto))
@@ -4281,7 +4667,7 @@ def _collect_graphical_operator_signal_specs(
             )
         )
         if (
-                str(signal.pnodto).strip() == node_id
+                _normalize_dgs_pointer_id(signal.pnodto) == node_id
                 and target_kind == DgsGraphicalConnectorKind.Input
                 and signal_name != ''
         ):
@@ -4289,7 +4675,7 @@ def _collect_graphical_operator_signal_specs(
         else:
             pass
         if (
-                str(signal.pnodfrom).strip() == node_id
+                _normalize_dgs_pointer_id(signal.pnodfrom) == node_id
                 and source_kind == DgsGraphicalConnectorKind.Output
                 and signal_name != ''
         ):
@@ -4449,7 +4835,10 @@ def build_graphical_switch_block(
                 is_source_endpoint=False,
             )
         )
-        if str(signal.pnodto).strip() == str(node.ID) and signal_name != '':
+        if (
+                _normalize_dgs_pointer_id(signal.pnodto) == str(node.ID)
+                and signal_name != ''
+        ):
             if target_kind == DgsGraphicalConnectorKind.Input:
                 data_inputs_by_port[int(signal.inodto)] = signal_name
             elif target_kind in {
@@ -4464,7 +4853,7 @@ def build_graphical_switch_block(
         else:
             pass
         if (
-                str(signal.pnodfrom).strip() == str(node.ID)
+                _normalize_dgs_pointer_id(signal.pnodfrom) == str(node.ID)
                 and source_kind == DgsGraphicalConnectorKind.Output
                 and signal_name != ''
         ):
@@ -5258,6 +5647,44 @@ def extract_root_slot_block_graphical_tree(
         root_runtime_block=selected_runtime_block,
     )
 
+    # Root-output cables identify the child variable that actually owns each
+    # public result. Propagate that UID through parent initialization before
+    # assembling the graphical shell, or inc() remains attached to a dead Var.
+    original_root_outputs: List[Var] = list(selected_runtime_block.out_vars)
+    resolved_output_count_by_uid: Dict[int, int] = dict()
+    counted_resolved_output: Var
+    for counted_resolved_output in resolved_outputs:
+        resolved_output_count_by_uid[counted_resolved_output.uid] = (
+            resolved_output_count_by_uid.get(counted_resolved_output.uid, 0)
+            + 1
+        )
+
+    root_output_index: int
+    for root_output_index in range(len(original_root_outputs)):
+        if root_output_index >= len(resolved_outputs):
+            pass
+        else:
+            original_root_output: Var = original_root_outputs[root_output_index]
+            resolved_root_output: Var = resolved_outputs[root_output_index]
+            if original_root_output.uid == resolved_root_output.uid:
+                pass
+            else:
+                selected_runtime_block.update_model(
+                    original_root_output,
+                    resolved_root_output,
+                )
+                if resolved_output_count_by_uid.get(
+                    resolved_root_output.uid,
+                    0,
+                ) == 1:
+                    # A unique producer inherits the public macro label while
+                    # retaining its executable equation and runtime identity.
+                    resolved_root_output.name = original_root_output.name
+                else:
+                    # One producer may feed several public aliases, so its
+                    # private label remains less misleading than one alias.
+                    pass
+
     child_lookup: dict[str, Block] = dict()
     node_id: str
     for node_id in child_node_ids:
@@ -5285,12 +5712,34 @@ def extract_root_slot_block_graphical_tree(
             else:
                 pass
 
+    # Parent initialization now consumes the final connected child UIDs. Only
+    # exact blank-source pins become zero; live routed gaps remain unresolved.
+    parent_bindings: DgsGraphicalParentBindingResult = (
+        _connect_graphical_parent_internal_signals(
+            selected_block=selection.parsed_block,
+            parent_block=selected_runtime_block,
+            child_blocks=child_lookup,
+            child_input_index_by_connector=child_input_index_by_connector,
+            graphical_signals=circuit.blksigs,
+            connections=connections,
+            routed_source_signal_names=(
+                _collect_routed_graphical_source_signal_names(
+                    node_ids=node_ids,
+                    node_by_id=node_by_id,
+                    node_signals=node_signals,
+                )
+            ),
+            node_by_id=node_by_id,
+        )
+    )
+
     view_block = Block(
         name=selection.parsed_block.blkdef.loc_name,
         children=child_blocks,
         in_vars=selected_runtime_block.in_vars,
         out_vars=resolved_outputs,
         algebraic_vars=selected_runtime_block.algebraic_vars,
+        init_eqs=selected_runtime_block.init_eqs,
     )
 
     return DgsGraphicTreeResult(
@@ -5302,6 +5751,7 @@ def extract_root_slot_block_graphical_tree(
         node_kinds=node_kinds,
         child_node_ids=child_node_ids,
         connections=connections,
+        parent_bindings=parent_bindings,
     )
 
 def export_named_block_subgraph_to_python(

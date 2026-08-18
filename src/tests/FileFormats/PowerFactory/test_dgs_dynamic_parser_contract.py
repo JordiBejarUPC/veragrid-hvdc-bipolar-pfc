@@ -5,6 +5,7 @@
 
 import runpy
 from pathlib import Path
+from types import FunctionType
 
 import pytest
 
@@ -14,12 +15,14 @@ from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.IO.dgs.dgs_circuit import DgsCircuit
 from VeraGridEngine.IO.dgs.dgs_to_blocks import (
+    DgsGraphicTreeResult,
     DgsGraphicalConnectorKind,
     UnsupportedDgsExpression,
     build_graphical_arithmetic_block,
     build_graphical_switch_block,
     build_standalone_blkdef_block_from_parsed_block,
     export_standalone_blkdef_to_python,
+    extract_root_slot_block_graphical_tree,
     parse_dgs_block_definitions_from_context,
 )
 from VeraGridEngine.IO.dgs.dynamic_models.dynamic_model_import import (
@@ -36,6 +39,52 @@ from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic import Expr
 from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.enumerations import DeviceType, DynamicSimulationMode, FileType
+
+
+class ExportedBlockPythonModule:
+    """Provide a typed boundary around one module loaded through ``runpy``.
+
+    :param module_members: Runtime namespace produced from the exported module.
+    """
+
+    __slots__ = ("_block_builder",)
+
+    def __init__(self, module_members: dict[str, object]) -> None:
+        """Validate and store the generated module's block builder.
+
+        :param module_members: Runtime namespace produced from the exported
+            module.
+        :return: None.
+        """
+        block_builder: object | None = module_members.get("get_block", None)
+        if isinstance(block_builder, FunctionType):
+            self._block_builder: FunctionType = block_builder
+        else:
+            raise AssertionError(
+                "The exported DGS module must define a get_block function"
+            )
+
+    def build(
+        self,
+        variable_factory: VarFactory,
+        block_name: str,
+    ) -> Block:
+        """Build and validate one block through the generated function.
+
+        :param variable_factory: Factory that owns rebuilt symbolic variables.
+        :param block_name: Runtime name assigned to the rebuilt block.
+        :return: Validated rebuilt symbolic block.
+        """
+        rebuilt_block: object = self._block_builder(
+            variable_factory,
+            block_name,
+        )
+        if isinstance(rebuilt_block, Block):
+            return rebuilt_block
+        else:
+            raise AssertionError(
+                "The exported DGS get_block function must return a Block"
+            )
 
 
 def _get_dynamic_gain_block_dgs_path() -> Path:
@@ -65,6 +114,20 @@ def _get_native_graphical_operator_dgs_path() -> Path:
     )
 
 
+def _get_graphical_parent_signal_binding_dgs_path() -> Path:
+    """Return the portable DGS fixture for parent-to-child signal binding.
+
+    :return: Path to the versioned graphical parent contract fixture.
+    """
+    return (
+        Path(__file__).resolve().parents[2]
+        / "data"
+        / "grids"
+        / "DGS"
+        / "graphical_parent_signal_binding.dgs"
+    )
+
+
 def _parse_native_graphical_operator_fixture() -> DgsCircuit:
     """
     Parse the portable graph containing native arithmetic and switching nodes.
@@ -90,18 +153,13 @@ def _build_exported_block(
     :param block_name: Name assigned to the rebuilt block.
     :return: Validated rebuilt symbolic block.
     """
-    block_builder: object = module_members["get_block"]
-    if callable(block_builder):
-        rebuilt_block: object = block_builder(
-            vf=variable_factory,
-            name=block_name,
-        )
-        if isinstance(rebuilt_block, Block):
-            return rebuilt_block
-        else:
-            raise AssertionError("The exported DGS get_block function must return a Block")
-    else:
-        raise AssertionError("The exported DGS module must define a get_block function")
+    exported_module: ExportedBlockPythonModule = ExportedBlockPythonModule(
+        module_members=module_members,
+    )
+    return exported_module.build(
+        variable_factory=variable_factory,
+        block_name=block_name,
+    )
 
 
 def test_dgs_parser_preserves_dynamic_composite_rows_without_inventing_types() -> None:
@@ -316,6 +374,75 @@ def test_native_graphical_switch_record_builds_threshold_logic() -> None:
         changed_input=20.0,
         control=0.6,
     ) == pytest.approx(10.0)
+
+
+def test_graphical_parent_binds_exact_child_signals_and_keeps_live_gaps() -> None:
+    """Bind parent initialization through a complete portable DGS graph.
+
+    :return: None.
+    """
+    graphical_tree: DgsGraphicTreeResult | None = (
+        extract_root_slot_block_graphical_tree(
+            dgs_path=str(_get_graphical_parent_signal_binding_dgs_path()),
+            slot_name="Graphical parent",
+            root_name="Graphical root",
+            root_typ_id="FRAME",
+        )
+    )
+
+    assert graphical_tree is not None
+    assert graphical_tree.parent_bindings.resolved_internal_names == [
+        "blank_internal",
+        "produced_internal",
+    ]
+    assert graphical_tree.parent_bindings.disconnected_input_names == [
+        "blank_internal",
+    ]
+    assert graphical_tree.parent_bindings.unresolved_input_names == [
+        "routed_internal",
+    ]
+
+    produced_output_uid: int | None = None
+    disconnected_input_uid: int | None = None
+    disconnected_event: Expr | None = None
+    child_block: Block
+
+    # Locate the concrete child identities that must replace the parent's raw
+    # internal variables.
+    for child_block in graphical_tree.view_block.children:
+        if child_block.name == "Multiply parent inputs":
+            produced_output_uid = child_block.out_vars[0].uid
+        else:
+            pass
+        if child_block.name == "Consume disconnected input":
+            assert len(child_block.event_dict) == 1
+            disconnected_input_uid = list(child_block.event_dict.keys())[0].uid
+            disconnected_event = list(child_block.event_dict.values())[0]
+        else:
+            pass
+
+    assert produced_output_uid is not None
+    assert disconnected_input_uid is not None
+    assert disconnected_event is not None
+    assert disconnected_event.eval() == 0.0
+    assert graphical_tree.view_block.out_vars[0].uid == produced_output_uid
+    assert graphical_tree.view_block.out_vars[0].name == "public_y"
+
+    parent_init_expressions: list[Expr] = list(
+        graphical_tree.view_block.init_eqs.values()
+    )
+    assert len(parent_init_expressions) == 1
+    parent_dependency_uids: set[int] = set(
+        dependency_var.uid
+        for dependency_var in parent_init_expressions[0].get_vars()
+    )
+    parent_dependency_names: set[str] = set(
+        dependency_var.name
+        for dependency_var in parent_init_expressions[0].get_vars()
+    )
+    assert produced_output_uid in parent_dependency_uids
+    assert disconnected_input_uid in parent_dependency_uids
+    assert "routed_internal" in parent_dependency_names
 
 
 def test_dgs_block_definition_builds_one_self_contained_symbolic_block() -> None:
