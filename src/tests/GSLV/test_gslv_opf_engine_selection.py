@@ -7,7 +7,6 @@ import numpy as np
 
 import VeraGridEngine.api as vg
 from VeraGridEngine.enumerations import LogSeverity, SolverType
-import VeraGridEngine.Simulations.OPF.opf_driver as opf_driver_module
 from VeraGridEngine.Simulations.OPF.opf_driver import OptimalPowerFlowDriver
 from VeraGridEngine.Simulations.OPF.opf_ts_driver import OptimalPowerFlowTimeSeriesDriver
 
@@ -26,13 +25,22 @@ def get_warning_messages(driver) -> list[str]:
     ]
 
 
-def test_gslv_snapshot_linear_opf_uses_gslv(monkeypatch) -> None:
+def require_gslv() -> None:
+    """Skip the current test when the optional GSLV backend is unavailable."""
+    import pytest
+    from VeraGridEngine.Compilers.Gslv.activation import GSLV_AVAILABLE
+
+    if not GSLV_AVAILABLE:
+        pytest.skip("GSLV is not installed or licensed")
+
+
+def test_gslv_snapshot_linear_opf_uses_gslv() -> None:
     """
     Snapshot linear OPF must dispatch to the GSLV implementation.
     """
+    require_gslv()
     grid = vg.open_file(filename=os.path.join('data', 'grids', 'case14.gridcal'))
     options = vg.OptimalPowerFlowOptions(solver=SolverType.LINEAR_OPF)
-    driver = OptimalPowerFlowDriver(grid=grid, options=options, engine=vg.EngineType.GSLV)
     state = dict()
 
     class ResultStub:
@@ -112,7 +120,19 @@ def test_gslv_snapshot_linear_opf_uses_gslv(monkeypatch) -> None:
         result.error_values = np.zeros(1, dtype=float)
         return result
 
-    monkeypatch.setattr(opf_driver_module, "gslv_opf", fake_gslv_opf)
+    class DriverStub(OptimalPowerFlowDriver):
+        """Inject the local GSLV result stub without patching module state."""
+
+        def run_gslv_opf(self):
+            return fake_gslv_opf(
+                circuit=self.grid,
+                opf_options=self.options,
+                time_series=False,
+                time_indices=None,
+                logger=self.logger,
+            )
+
+    driver = DriverStub(grid=grid, options=options, engine=vg.EngineType.GSLV)
 
     driver.run()
 
@@ -121,13 +141,13 @@ def test_gslv_snapshot_linear_opf_uses_gslv(monkeypatch) -> None:
     assert "GSLV OPF snapshot only supports LINEAR_OPF, falling back to VeraGrid" not in get_warning_messages(driver)
 
 
-def test_gslv_snapshot_nonlinear_opf_uses_gslv(monkeypatch) -> None:
+def test_gslv_snapshot_nonlinear_opf_uses_gslv() -> None:
     """
     Snapshot non-linear OPF must dispatch to the GSLV implementation.
     """
+    require_gslv()
     grid = vg.open_file(filename=os.path.join('data', 'grids', 'case14.gridcal'))
     options = vg.OptimalPowerFlowOptions(solver=SolverType.NONLINEAR_OPF)
-    driver = OptimalPowerFlowDriver(grid=grid, options=options, engine=vg.EngineType.GSLV)
     state = dict()
 
     class ResultStub:
@@ -215,7 +235,19 @@ def test_gslv_snapshot_nonlinear_opf_uses_gslv(monkeypatch) -> None:
         result.error_values = np.zeros(1, dtype=float)
         return result
 
-    monkeypatch.setattr(opf_driver_module, "gslv_opf", fake_gslv_opf)
+    class DriverStub(OptimalPowerFlowDriver):
+        """Inject the local GSLV result stub without patching module state."""
+
+        def run_gslv_opf(self):
+            return fake_gslv_opf(
+                circuit=self.grid,
+                opf_options=self.options,
+                time_series=False,
+                time_indices=None,
+                logger=self.logger,
+            )
+
+    driver = DriverStub(grid=grid, options=options, engine=vg.EngineType.GSLV)
 
     driver.run()
 
@@ -226,13 +258,13 @@ def test_gslv_snapshot_nonlinear_opf_uses_gslv(monkeypatch) -> None:
     )
 
 
-def test_gslv_nonlinear_opf_ts_falls_back_to_veragrid(monkeypatch) -> None:
+def test_gslv_nonlinear_opf_ts_falls_back_to_veragrid() -> None:
     """
     GSLV time-series OPF must fall back for non-linear OPF.
     """
+    require_gslv()
     grid = vg.open_file(filename=os.path.join('data', 'grids', 'case14.gridcal'))
     options = vg.OptimalPowerFlowOptions(solver=SolverType.NONLINEAR_OPF)
-    driver = OptimalPowerFlowTimeSeriesDriver(grid=grid, options=options, engine=vg.EngineType.GSLV)
     state = dict()
 
     def fake_opf(self) -> None:
@@ -241,7 +273,13 @@ def test_gslv_nonlinear_opf_ts_falls_back_to_veragrid(monkeypatch) -> None:
         """
         state["called"] = True
 
-    monkeypatch.setattr(OptimalPowerFlowTimeSeriesDriver, "opf", fake_opf)
+    class TimeSeriesDriverStub(OptimalPowerFlowTimeSeriesDriver):
+        """Record native fallback dispatch without patching class state."""
+
+        def opf(self) -> None:
+            fake_opf(self)
+
+    driver = TimeSeriesDriverStub(grid=grid, options=options, engine=vg.EngineType.GSLV)
 
     driver.run()
 
