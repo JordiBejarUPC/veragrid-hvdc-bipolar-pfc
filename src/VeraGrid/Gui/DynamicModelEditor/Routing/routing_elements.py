@@ -5,8 +5,7 @@
 
 from __future__ import annotations
 
-from VeraGrid.Gui.DynamicModelEditor.enumerations import RoutingNodeKind
-from VeraGridEngine.enumerations import RoutingAxis, RoutingPortSide
+from VeraGridEngine.enumerations import RoutingAxis, RoutingNodeKind, RoutingPortSide
 
 class RoutingPoint:
     """

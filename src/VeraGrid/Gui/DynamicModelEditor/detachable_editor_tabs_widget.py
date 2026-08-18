@@ -13,8 +13,7 @@ from PySide6.QtWidgets import (QAbstractItemView, QComboBox, QDialogButtonBox,
                                QLineEdit, QPushButton, QSizePolicy, QSpacerItem,
                                QTableWidget, QTableWidgetItem, QVBoxLayout)
 from VeraGrid.Session.dynamic_editor_entries import DynamicEditorEntry
-from VeraGrid.Gui.DynamicModelEditor.enumerations import DynamicEditorMimeType
-from VeraGridEngine.enumerations import DynamicSimulationMode
+from VeraGridEngine.enumerations import DynamicEditorMimeType, DynamicSimulationMode
 
 
 class DynamicEditorPickerDialog(QtWidgets.QDialog):

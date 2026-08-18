@@ -15,9 +15,8 @@ from typing import Dict, List, Mapping, Sequence
 from PySide6 import QtCore, QtGui, QtWidgets
 from PySide6.QtCore import Qt, Signal
 
-from VeraGrid.Gui.DynamicModelEditor.enumerations import ProceduralFieldType
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
-from VeraGridEngine.enumerations import ProceduralLogicType
+from VeraGridEngine.enumerations import ProceduralFieldType, ProceduralLogicType
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic import (
     CmpOp,

@@ -7,13 +7,13 @@ import re
 from enum import Enum
 from typing import Dict, List
 
-from VeraGrid.Gui.DynamicModelEditor.enumerations import JMartiDataSourceMode
 from VeraGridEngine.Devices.Branches.transformer import Transformer2W
 from VeraGridEngine.Devices.Branches.winding import Winding
 from VeraGridEngine.enumerations import (
     BlockType,
     EmtFaultPlacementSide,
     FaultType,
+    JMartiDataSourceMode,
     ShuntConnectionType,
     WindingType,
 )

@@ -12,8 +12,8 @@ from typing import BinaryIO, List, Mapping, Sequence
 
 from PySide6 import QtCore, QtGui, QtSvg
 
-from VeraGrid.Gui.DynamicModelEditor.enumerations import EquationExportSection, EquationPdfStyle
 from VeraGrid.Gui.DynamicModelEditor.dynamic_latex_renderer import LatexRenderer, RenderedSvgEquation
+from VeraGridEngine.enumerations import EquationExportSection, EquationPdfStyle
 from VeraGridEngine.Utils.Symbolic.latex_printer import symbolic_to_latex
 from VeraGridEngine.Utils.Symbolic.symbolic import Expr, Var, symbolic_to_string
 

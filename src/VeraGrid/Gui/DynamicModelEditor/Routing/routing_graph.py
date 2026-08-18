@@ -6,14 +6,12 @@
 from __future__ import annotations
 
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_elements import RoutingNode
-from VeraGrid.Gui.DynamicModelEditor.enumerations import RoutingNodeKind
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_elements import RoutingSegment
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_elements import derive_segment_axis
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_geometry import RoutingGeometry
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_validation import RoutingValidationMessage
-from VeraGridEngine.enumerations import RoutingValidationMessageLevel
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_validation import RoutingValidationReport
-from VeraGridEngine.enumerations import RoutingAxis
+from VeraGridEngine.enumerations import RoutingAxis, RoutingNodeKind, RoutingValidationMessageLevel
 
 
 class RoutingGraph:

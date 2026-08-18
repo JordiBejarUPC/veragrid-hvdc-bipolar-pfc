@@ -22,7 +22,7 @@ from VeraGrid.Gui.base_python_code_editor import BasePythonCodeEditor
 from VeraGrid.Gui.DynamicModelEditor.dynamic_block_properties_gui import (
     Ui_DynamicBlockPropertiesDialog,
 )
-from VeraGrid.Gui.DynamicModelEditor.enumerations import (
+from VeraGridEngine.enumerations import (
     BlockSymbolCategory,
     BlockSymbolKind,
     EquationExportSection,
