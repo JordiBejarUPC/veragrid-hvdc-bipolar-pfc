@@ -24,15 +24,15 @@ from VeraGridEngine.IO.dgs.dynamic_models.dynamic_model_import import (
     add_dynamic_import_selection_requests_to_circuit,
     build_dgs_dynamic_model_import_bundle,
 )
+from VeraGridEngine.IO.file_open import FileOpen, FileOpenOptions
 from VeraGridEngine.IO.dynamic_model_import_types import (
     DynamicModelImportEntryAvailability,
     DynamicModelImportSelectionRequest,
     DynamicModelImportSource,
-    DynamicModelImportTargetDomain,
 )
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.basic_structures import Logger
-from VeraGridEngine.enumerations import DeviceType
+from VeraGridEngine.enumerations import DeviceType, DynamicSimulationMode, FileType
 
 
 def _get_dynamic_gain_block_dgs_path() -> Path:
@@ -45,6 +45,33 @@ def _get_dynamic_gain_block_dgs_path() -> Path:
         / "DGS"
         / "dynamic_gain_block.dgs"
     )
+
+
+def _build_exported_block(
+        module_members: dict[str, object],
+        variable_factory: VarFactory,
+        block_name: str,
+) -> Block:
+    """
+    Build one exported block after validating the generated callable and result.
+
+    :param module_members: Runtime namespace produced from the exported module.
+    :param variable_factory: Variable factory passed to the generated builder.
+    :param block_name: Name assigned to the rebuilt block.
+    :return: Validated rebuilt symbolic block.
+    """
+    block_builder: object = module_members["get_block"]
+    if isinstance(block_builder, FunctionType):
+        rebuilt_block: object = block_builder(
+            vf=variable_factory,
+            name=block_name,
+        )
+        if isinstance(rebuilt_block, Block):
+            return rebuilt_block
+        else:
+            raise AssertionError("The exported DGS get_block function must return a Block")
+    else:
+        raise AssertionError("The exported DGS module must define a get_block function")
 
 
 def test_dgs_parser_preserves_dynamic_composite_rows_without_inventing_types() -> None:
@@ -169,13 +196,10 @@ def test_exported_dgs_block_module_rebuilds_the_source_equation(
     )
     generated_source: str = exported_path.read_text(encoding="utf-8")
     module_members: dict[str, object] = runpy.run_path(str(exported_path))
-    block_builder: object = module_members["get_block"]
-
-    assert isinstance(block_builder, FunctionType)
-
-    rebuilt_block: Block = block_builder(
-        vf=VarFactory(),
-        name="Rebuilt dynamic gain",
+    rebuilt_block: Block = _build_exported_block(
+        module_members=module_members,
+        variable_factory=VarFactory(),
+        block_name="Rebuilt dynamic gain",
     )
 
     assert "EmtModelTemplate" not in generated_source
@@ -223,16 +247,14 @@ def test_dgs_dynamic_import_bundle_reports_supported_and_failed_blocks() -> None
 
 
 @pytest.mark.parametrize(
-    ("target_domain", "expected_template_class", "template_collection_name"),
+    "target_domain",
     [
-        (DynamicModelImportTargetDomain.Rms, RmsModelTemplate, "rms_models"),
-        (DynamicModelImportTargetDomain.Emt, EmtModelTemplate, "emt_models"),
+        DynamicSimulationMode.RMS,
+        DynamicSimulationMode.EMT,
     ],
 )
 def test_dgs_dynamic_import_materializes_the_selected_domain_end_to_end(
-        target_domain: DynamicModelImportTargetDomain,
-        expected_template_class: type[RmsModelTemplate] | type[EmtModelTemplate],
-        template_collection_name: str,
+        target_domain: DynamicSimulationMode,
 ) -> None:
     """Preserve one DGS equation through parsing, selection and installation."""
 
@@ -263,13 +285,84 @@ def test_dgs_dynamic_import_materializes_the_selected_domain_end_to_end(
         ],
         logger=install_logger,
     )
-    installed_templates = getattr(circuit, template_collection_name)
+    installed_template: RmsModelTemplate | EmtModelTemplate
+    if target_domain is DynamicSimulationMode.RMS:
+        assert len(circuit.rms_models) == 1
+        assert len(circuit.emt_models) == 0
+        installed_template = circuit.rms_models[0]
+    else:
+        assert target_domain is DynamicSimulationMode.EMT
+        assert len(circuit.emt_models) == 1
+        assert len(circuit.rms_models) == 0
+        installed_template = circuit.emt_models[0]
 
     assert added_count == 1
     assert install_logger.error_count() == 0
-    assert len(installed_templates) == 1
-    assert isinstance(installed_templates[0], expected_template_class)
-    assert installed_templates[0].name == "Dynamic gain"
-    assert installed_templates[0].tpe is DeviceType.NoDevice
-    assert installed_templates[0].block is not source_block
-    assert len(installed_templates[0].block.algebraic_eqs) == 1
+    assert installed_template.name == "Dynamic gain"
+    assert installed_template.tpe is DeviceType.NoDevice
+    assert installed_template.block is not source_block
+    assert len(installed_template.block.algebraic_eqs) == 1
+
+
+@pytest.mark.parametrize(
+    "dynamic_simulation_mode",
+    [
+        DynamicSimulationMode.RMS,
+        DynamicSimulationMode.EMT,
+    ],
+)
+def test_file_open_installs_dgs_models_in_the_explicit_dynamic_simulation_mode(
+        dynamic_simulation_mode: DynamicSimulationMode,
+) -> None:
+    """Carry the selected RMS or EMT mode through the public DGS file-open path."""
+
+    file_open: FileOpen = FileOpen(
+        file_name=str(_get_dynamic_gain_block_dgs_path()),
+        options=FileOpenOptions(
+            file_type=FileType.DGS,
+            dgs_use_dynamic_information=True,
+            dgs_dynamic_simulation_mode=dynamic_simulation_mode,
+        ),
+    )
+    circuit: MultiCircuit | None = file_open.open()
+
+    assert circuit is not None
+
+    installed_template: RmsModelTemplate | EmtModelTemplate
+    if dynamic_simulation_mode is DynamicSimulationMode.RMS:
+        assert len(circuit.rms_models) == 1
+        assert len(circuit.emt_models) == 0
+        installed_template = circuit.rms_models[0]
+    else:
+        assert dynamic_simulation_mode is DynamicSimulationMode.EMT
+        assert len(circuit.emt_models) == 1
+        assert len(circuit.rms_models) == 0
+        installed_template = circuit.emt_models[0]
+
+    assert installed_template.name == "Dynamic gain"
+    assert any(
+        entry.msg == "DGS dynamic model import completed"
+        for entry in file_open.logger.entries
+    )
+
+
+def test_file_open_rejects_dynamic_dgs_import_without_an_explicit_mode() -> None:
+    """Keep the static DGS result and report the missing RMS/EMT selection."""
+
+    file_open: FileOpen = FileOpen(
+        file_name=str(_get_dynamic_gain_block_dgs_path()),
+        options=FileOpenOptions(
+            file_type=FileType.DGS,
+            dgs_use_dynamic_information=True,
+        ),
+    )
+    circuit: MultiCircuit | None = file_open.open()
+
+    assert circuit is not None
+
+    assert len(circuit.rms_models) == 0
+    assert len(circuit.emt_models) == 0
+    assert any(
+        entry.msg == "DGS dynamic model import requires an explicit RMS or EMT simulation mode"
+        for entry in file_open.logger.entries
+    )

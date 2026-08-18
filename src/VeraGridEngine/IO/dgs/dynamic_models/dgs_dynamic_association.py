@@ -14,11 +14,11 @@ from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic_io import duplicate_block
 from VeraGridEngine.IO.dynamic_model_import_types import (
     DynamicModelImportEntryStatus,
-    DynamicModelImportTargetDomain,
 )
 from VeraGridEngine.enumerations import (
     DeviceType,
     DgsDynamicAssociationRole,
+    DynamicSimulationMode,
     PrpCat,
     SubObjectType,
 )
@@ -69,7 +69,7 @@ class DgsDynamicAssociationRecord:
             source_element_name: str | None,
             source_element_class: str | None,
             final_template_name: str | None,
-            target_domain: DynamicModelImportTargetDomain,
+            target_domain: DynamicSimulationMode,
             status: DynamicModelImportEntryStatus,
             role: DgsDynamicAssociationRole = DgsDynamicAssociationRole.Unknown,
     ) -> None:
@@ -109,7 +109,7 @@ class DgsDynamicAssociationRecord:
         self._source_element_class: str | None = source_element_class
         self._final_template_name: str | None = final_template_name
         self._role: DgsDynamicAssociationRole = role
-        self._target_domain: DynamicModelImportTargetDomain = target_domain
+        self._target_domain: DynamicSimulationMode = target_domain
         self._status: DynamicModelImportEntryStatus = status
 
     def get_unique_key(self) -> str:
@@ -216,7 +216,7 @@ class DgsDynamicAssociationRecord:
         """
         return self._final_template_name
 
-    def get_target_domain(self) -> DynamicModelImportTargetDomain:
+    def get_target_domain(self) -> DynamicSimulationMode:
         """
         Return the final reusable-template domain.
 
@@ -334,7 +334,7 @@ class DgsDynamicAssociation(EditableDevice):
         GCProp(
             "target_domain",
             "",
-            DynamicModelImportTargetDomain,
+            DynamicSimulationMode,
             "Reusable-template target domain.",
             cat=[PrpCat.RMS, PrpCat.EMT],
         ),
@@ -377,7 +377,7 @@ class DgsDynamicAssociation(EditableDevice):
             source_element_class: str | None = None,
             final_template_name: str | None = None,
             role: DgsDynamicAssociationRole = DgsDynamicAssociationRole.Unknown,
-            target_domain: DynamicModelImportTargetDomain = DynamicModelImportTargetDomain.Rms,
+            target_domain: DynamicSimulationMode = DynamicSimulationMode.RMS,
             status: DynamicModelImportEntryStatus = DynamicModelImportEntryStatus.Skipped,
     ) -> None:
         """
@@ -458,10 +458,10 @@ class DgsDynamicAssociation(EditableDevice):
 
         # Invalid external enum values are handled deterministically instead of
         # leaving the entity in a partially initialized state.
-        if isinstance(target_domain, DynamicModelImportTargetDomain):
-            self._target_domain: DynamicModelImportTargetDomain = target_domain
+        if isinstance(target_domain, DynamicSimulationMode):
+            self._target_domain: DynamicSimulationMode = target_domain
         else:
-            self._target_domain = DynamicModelImportTargetDomain.Rms
+            self._target_domain = DynamicSimulationMode.RMS
 
         if isinstance(status, DynamicModelImportEntryStatus):
             self._status: DynamicModelImportEntryStatus = status
@@ -1078,7 +1078,7 @@ class DgsDynamicAssociation(EditableDevice):
             self._optional_field_mask |= 256
 
     @property
-    def target_domain(self) -> DynamicModelImportTargetDomain:
+    def target_domain(self) -> DynamicSimulationMode:
         """
         Return the reusable-template target domain.
 
@@ -1109,17 +1109,17 @@ class DgsDynamicAssociation(EditableDevice):
             self._role = DgsDynamicAssociationRole.Unknown
 
     @target_domain.setter
-    def target_domain(self, value: DynamicModelImportTargetDomain) -> None:
+    def target_domain(self, value: DynamicSimulationMode) -> None:
         """
         Set the reusable-template target domain when valid.
 
         :param value: Reusable-template target domain.
         :return: None.
         """
-        if isinstance(value, DynamicModelImportTargetDomain):
+        if isinstance(value, DynamicSimulationMode):
             self._target_domain = value
         else:
-            self._target_domain = DynamicModelImportTargetDomain.Rms
+            self._target_domain = DynamicSimulationMode.RMS
 
     @property
     def status(self) -> DynamicModelImportEntryStatus:

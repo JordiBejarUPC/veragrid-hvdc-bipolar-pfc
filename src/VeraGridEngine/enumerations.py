@@ -1,4 +1,4 @@
-﻿# This Source Code Form is subject to the terms of the Mozilla Public
+# This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
@@ -4411,17 +4411,21 @@ class EmtLineTypes(Enum):
 
 
 class DynamicSimulationMode(Enum):
-    RMS = "RMS",
-    EMT = "EMT",
+    """
+    Dynamic simulation domains supported by VeraGrid.
+    """
+
+    RMS = "RMS"
+    EMT = "EMT"
 
     def __str__(self) -> str:
         return str(self.value)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return str(self)
 
     @staticmethod
-    def argparse(s):
+    def argparse(s: str) -> "DynamicSimulationMode | str":
         """
         :param s:
         :return:

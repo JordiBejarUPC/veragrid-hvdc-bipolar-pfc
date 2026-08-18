@@ -18,14 +18,24 @@ from VeraGridEngine.enumerations import (
     ConverterFaultControlType,
     GeneratorType,
     GeneratorControlMode,
-    BusGraphicType
+    BusGraphicType,
+    DynamicSimulationMode,
 )
 import VeraGridEngine.Devices as dev
 from VeraGridEngine.Devices.Branches.wire import Wire
 from VeraGridEngine.Devices.Branches.overhead_line_type import OverheadLineType, WireInTower
 from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.IO.dgs.dgs_circuit import DgsCircuit
+from VeraGridEngine.IO.dgs.dynamic_models.dynamic_model_import import (
+    DgsDynamicParserContractError,
+    add_all_dynamic_import_bundle_to_circuit_with_report,
+    build_dgs_dynamic_model_import_bundle,
+)
 from VeraGridEngine.IO.dgs.dgs_objects import *
+from VeraGridEngine.IO.dynamic_model_import_types import (
+    DynamicModelImportBundle,
+    DynamicModelImportReport,
+)
 
 TDgsObject = TypeVar("TDgsObject")
 
@@ -5758,16 +5768,72 @@ def _apply_elmtow_tower_coupling(dgs_grid: DgsCircuit,
                     )
 
 
+def _add_dgs_dynamic_models_to_circuit(
+        dgs_path: str,
+        dgs_grid: DgsCircuit,
+        grid: dev.MultiCircuit,
+        dynamic_simulation_mode: DynamicSimulationMode | None,
+        logger: Logger,
+) -> None:
+    """
+    Import domain-neutral DGS equations into one explicit RMS or EMT destination.
+
+    :param dgs_path: Source DGS path.
+    :param dgs_grid: DGS object graph already parsed by the static importer.
+    :param grid: Target VeraGrid circuit.
+    :param dynamic_simulation_mode: Explicit RMS or EMT destination.
+    :param logger: Import logger.
+    :return: None.
+    """
+    if dynamic_simulation_mode is None:
+        logger.add_error(
+            msg="DGS dynamic model import requires an explicit RMS or EMT simulation mode",
+        )
+        return
+
+    dynamic_model_bundle: DynamicModelImportBundle
+    dynamic_model_logger: Logger
+    try:
+        dynamic_model_bundle, dynamic_model_logger = build_dgs_dynamic_model_import_bundle(
+            dgs_path=dgs_path,
+            dgs_circuit=dgs_grid,
+        )
+    except DgsDynamicParserContractError as error:
+        logger.add_error(
+            msg="DGS dynamic model import is unavailable",
+            value=str(error),
+        )
+        return
+
+    logger += dynamic_model_logger
+    dynamic_model_report: DynamicModelImportReport = add_all_dynamic_import_bundle_to_circuit_with_report(
+        circuit=grid,
+        bundle=dynamic_model_bundle,
+        logger=logger,
+        target_domain=dynamic_simulation_mode,
+    )
+    logger.add_info(
+        msg="DGS dynamic model import completed",
+        value=(
+            f"added={dynamic_model_report.get_added_count()}, "
+            f"failed={dynamic_model_report.get_failed_count()}, "
+            f"skipped={dynamic_model_report.get_skipped_count()}"
+        ),
+    )
+
+
 def dgs_to_circuit(path: str,
                    use_vsc_for_injections: bool = False,
                    use_dynamic_information: bool = False,
+                   dynamic_simulation_mode: DynamicSimulationMode | None = None,
                    logger_: Logger | None = None) -> dev.MultiCircuit:
     """
     Dgs to circuit.
 
     :param path: path parameter.
     :param use_vsc_for_injections: use_vsc_for_injections parameter.
-    :param use_dynamic_information: use_dynamic_information parameter.
+    :param use_dynamic_information: Import dynamic DGS equations when available.
+    :param dynamic_simulation_mode: Explicit RMS or EMT destination for imported dynamic models.
     :param logger_: logger_ parameter.
     :return: Function result.
     """
@@ -6028,5 +6094,14 @@ def dgs_to_circuit(path: str,
         switch_by_cubic_id=switch_by_cubic_id,
         branch_group_by_id=branch_group_by_id,
     )
+
+    if use_dynamic_information:
+        _add_dgs_dynamic_models_to_circuit(
+            dgs_path=path,
+            dgs_grid=dgs_grid,
+            grid=grid,
+            dynamic_simulation_mode=dynamic_simulation_mode,
+            logger=logger,
+        )
 
     return grid

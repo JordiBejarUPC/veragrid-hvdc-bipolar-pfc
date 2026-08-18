@@ -15,7 +15,6 @@ from VeraGridEngine.IO.dgs.dynamic_models.dgs_dynamic_association import (
 from VeraGridEngine.IO.dynamic_model_import_types import (
     DynamicModelImportEntryStatus,
     DynamicModelImportSource,
-    DynamicModelImportTargetDomain,
 )
 from VeraGridEngine.IO.dynamic_model_import_utils import (
     append_python_syntax_assignment,
@@ -29,6 +28,7 @@ from VeraGridEngine.Utils.Symbolic.symbolic import Func, Func2, Var
 from VeraGridEngine.enumerations import (
     DeviceType,
     DgsDynamicAssociationRole,
+    DynamicSimulationMode,
 )
 
 
@@ -170,7 +170,7 @@ def test_dynamic_dgs_association_reuses_import_contract_enums() -> None:
     association = DgsDynamicAssociation()
 
     assert association.device_type is DeviceType.DynamicModelHostDevice
-    assert association.target_domain is DynamicModelImportTargetDomain.Rms
+    assert association.target_domain is DynamicSimulationMode.RMS
     assert association.status is DynamicModelImportEntryStatus.Skipped
     assert DgsDynamicAssociationRole.__module__ == "VeraGridEngine.enumerations"
 

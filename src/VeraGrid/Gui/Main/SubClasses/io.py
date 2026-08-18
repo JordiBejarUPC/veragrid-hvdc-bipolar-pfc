@@ -751,7 +751,7 @@ class IoMain(ScenariosMain):
                 self.cgmes_import_dialogue = CgmesImportDialogue(app=self, options=options)
                 self.cgmes_import_dialogue.exec()
             elif options.file_type == FileType.DGS:
-                self.dgs_import_dialogue = DgsImportDialogue(app=self, options=options)
+                self.dgs_import_dialogue = DgsImportDialogue(options=options)
                 self.dgs_import_dialogue.exec()
 
             # create thread

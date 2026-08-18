@@ -48,7 +48,6 @@ from VeraGridEngine.IO.dynamic_model_import_types import (
     DynamicModelImportSelectionRequest,
     DynamicModelImportSource,
     DynamicModelImportSourceContext,
-    DynamicModelImportTargetDomain,
     DynamicModelLoadedUserTemplate,
     DynamicModelPersistenceKind,
     DynamicModelPersistenceSpec,
@@ -100,6 +99,7 @@ from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.enumerations import (
     BlockType,
     DeviceType,
+    DynamicSimulationMode,
     VarPowerFlowReferenceType,
 )
 
@@ -1362,7 +1362,7 @@ def _build_selected_template_from_import_entry(
         # so the ordinary GUI property selector must expose it.
         pass
 
-    if selection_request.get_target_domain() == DynamicModelImportTargetDomain.Emt:
+    if selection_request.get_target_domain() == DynamicSimulationMode.EMT:
         emt_template = EmtModelTemplate(name=template_name)
         emt_template.tpe = selection_request.get_device_tpe()
         emt_template.block = cloned_block
@@ -1370,7 +1370,7 @@ def _build_selected_template_from_import_entry(
         emt_template.comment = template_comment
         return emt_template
     else:
-        if selection_request.get_target_domain() == DynamicModelImportTargetDomain.Rms:
+        if selection_request.get_target_domain() == DynamicSimulationMode.RMS:
             rms_template = RmsModelTemplate(name=template_name)
             rms_template.tpe = selection_request.get_device_tpe()
             rms_template.block = cloned_block
@@ -1602,7 +1602,7 @@ def build_dynamic_import_template_canonical_text(
     :return: Canonical Python module text, or ``None`` when canonicalization fails.
     """
     fingerprint_block: Block
-    target_domain: DynamicModelImportTargetDomain
+    target_domain: DynamicSimulationMode
     module_text: str
     can_use_read_only_block: bool
 
@@ -1634,9 +1634,9 @@ def build_dynamic_import_template_canonical_text(
         fingerprint_block.name = "__veragrid_dynamic_template_root__"
 
         if isinstance(template_obj, RmsModelTemplate):
-            target_domain = DynamicModelImportTargetDomain.Rms
+            target_domain = DynamicSimulationMode.RMS
         else:
-            target_domain = DynamicModelImportTargetDomain.Emt
+            target_domain = DynamicSimulationMode.EMT
 
         module_text = _build_user_dynamic_template_module_text(
             block=fingerprint_block,
@@ -2316,7 +2316,7 @@ def _find_exact_dgs_dynamic_host_devices(
 def _find_dgs_dynamic_activation_template(
         circuit: MultiCircuit,
         template_name: str,
-        target_domain: DynamicModelImportTargetDomain,
+        target_domain: DynamicSimulationMode,
 ) -> RmsModelTemplate | EmtModelTemplate | None:
     """
     Resolve one unique installed template by exact final name and domain.
@@ -2330,7 +2330,7 @@ def _find_dgs_dynamic_activation_template(
     rms_template: RmsModelTemplate
     emt_template: EmtModelTemplate
 
-    if target_domain == DynamicModelImportTargetDomain.Rms:
+    if target_domain == DynamicSimulationMode.RMS:
         for rms_template in circuit.rms_models:
             if rms_template.name == template_name:
                 matching_templates.append(rms_template)
@@ -2589,7 +2589,7 @@ def add_all_dynamic_import_bundle_to_circuit_with_report(
         circuit: MultiCircuit,
         bundle: DynamicModelImportBundle,
         logger: Logger,
-        target_domain: DynamicModelImportTargetDomain,
+        target_domain: DynamicSimulationMode,
         progress_callback: Callable[[int, str], None] | None = None,
         user_root_folder: str | None = None,
         persist_to_user_catalog: bool = False,
@@ -2817,7 +2817,7 @@ def add_all_dynamic_import_bundle_to_circuit(
         circuit: MultiCircuit,
         bundle: DynamicModelImportBundle,
         logger: Logger,
-        target_domain: DynamicModelImportTargetDomain,
+        target_domain: DynamicSimulationMode,
         progress_callback: Callable[[int, str], None] | None = None,
         user_root_folder: str | None = None,
         persist_to_user_catalog: bool = False,
@@ -2850,7 +2850,7 @@ def add_dynamic_import_bundle_to_circuit(
         circuit: MultiCircuit,
         bundle: DynamicModelImportBundle,
         selected_keys: Sequence[str],
-        target_domain: DynamicModelImportTargetDomain,
+        target_domain: DynamicSimulationMode,
         device_tpe: DeviceType,
         logger: Logger,
 ) -> int:
@@ -2976,7 +2976,7 @@ def load_user_dynamic_model_templates(
     """
     effective_logger: Logger = Logger() if logger is None else logger
     templates: List[DynamicModelLoadedUserTemplate] = list()
-    seen_template_signatures: Set[tuple[DynamicModelImportTargetDomain, str]] = set()
+    seen_template_signatures: Set[tuple[DynamicSimulationMode, str]] = set()
     folder_path: Path
     module_path: Path
     payload_path: Path
@@ -3053,7 +3053,7 @@ def load_user_dynamic_model_templates(
 
 def _append_loaded_user_dynamic_template_once(
         template: DynamicModelLoadedUserTemplate,
-        seen_template_signatures: Set[tuple[DynamicModelImportTargetDomain, str]],
+        seen_template_signatures: Set[tuple[DynamicSimulationMode, str]],
         templates: List[DynamicModelLoadedUserTemplate],
 ) -> None:
     """
@@ -3064,7 +3064,7 @@ def _append_loaded_user_dynamic_template_once(
     :param templates: Mutable ordered output collection.
     :return: None.
     """
-    template_signature: tuple[DynamicModelImportTargetDomain, str] = (
+    template_signature: tuple[DynamicSimulationMode, str] = (
         template.get_domain(),
         template.get_template_obj().name,
     )
@@ -3131,7 +3131,7 @@ def _get_legacy_user_dynamic_models_folder_path(create: bool = False,
 
 
 def _get_user_dynamic_models_domain_folder_path(
-        target_domain: DynamicModelImportTargetDomain,
+        target_domain: DynamicSimulationMode,
         create: bool = True,
         user_root_folder: str | None = None,
 ) -> Path:
@@ -3145,10 +3145,10 @@ def _get_user_dynamic_models_domain_folder_path(
     """
     folder_name: str
 
-    if target_domain == DynamicModelImportTargetDomain.Rms:
+    if target_domain == DynamicSimulationMode.RMS:
         folder_name = "rms"
     else:
-        if target_domain == DynamicModelImportTargetDomain.Emt:
+        if target_domain == DynamicSimulationMode.EMT:
             folder_name = "emt"
         else:
             raise ValueError(f"Unsupported user dynamic-model domain {target_domain}")
@@ -3174,12 +3174,12 @@ def _iter_user_dynamic_models_folder_paths(user_root_folder: str | None = None) 
     """
     folder_paths: List[Path] = list()
     rms_folder_path: Path = _get_user_dynamic_models_domain_folder_path(
-        DynamicModelImportTargetDomain.Rms,
+        DynamicSimulationMode.RMS,
         create=False,
         user_root_folder=user_root_folder,
     )
     emt_folder_path: Path = _get_user_dynamic_models_domain_folder_path(
-        DynamicModelImportTargetDomain.Emt,
+        DynamicSimulationMode.EMT,
         create=False,
         user_root_folder=user_root_folder,
     )
@@ -3215,7 +3215,7 @@ def _sanitize_file_stem(text: str) -> str:
 
 def build_user_dynamic_template_catalog_output_path(
         template_name: str,
-        target_domain: DynamicModelImportTargetDomain,
+        target_domain: DynamicSimulationMode,
         catalog_root_folder: str | None = None,
 ) -> Path:
     """
@@ -3251,7 +3251,7 @@ def build_user_dynamic_template_catalog_output_path(
 
 def build_user_dynamic_template_payload_output_path(
         template_name: str,
-        target_domain: DynamicModelImportTargetDomain,
+        target_domain: DynamicSimulationMode,
         catalog_root_folder: str | None = None,
 ) -> Path:
     """
@@ -3273,7 +3273,7 @@ def build_user_dynamic_template_payload_output_path(
 def _build_user_dynamic_template_catalog_identity(
         block: Block,
         template_name: str,
-        target_domain: DynamicModelImportTargetDomain,
+        target_domain: DynamicSimulationMode,
         device_tpe: DeviceType,
 ) -> RmsModelTemplate | EmtModelTemplate:
     """
@@ -3287,10 +3287,10 @@ def _build_user_dynamic_template_catalog_identity(
     """
     template_obj: RmsModelTemplate | EmtModelTemplate
 
-    if target_domain == DynamicModelImportTargetDomain.Rms:
+    if target_domain == DynamicSimulationMode.RMS:
         template_obj = RmsModelTemplate(name=template_name)
     else:
-        if target_domain == DynamicModelImportTargetDomain.Emt:
+        if target_domain == DynamicSimulationMode.EMT:
             template_obj = EmtModelTemplate(name=template_name)
         else:
             raise ValueError(f"Unsupported user dynamic-model domain {target_domain}")
@@ -3404,7 +3404,7 @@ def _read_user_dynamic_template_payload_identity(
 
 def _build_user_dynamic_template_module_identity_header(
         template_name: str,
-        target_domain: DynamicModelImportTargetDomain,
+        target_domain: DynamicSimulationMode,
         device_tpe: DeviceType,
         template_fingerprint: str | None,
 ) -> str:
@@ -3502,7 +3502,7 @@ def _read_user_dynamic_template_module_identity(
 
 def _find_current_user_dynamic_template_catalog_module(
         template_name: str,
-        target_domain: DynamicModelImportTargetDomain,
+        target_domain: DynamicSimulationMode,
         device_tpe: DeviceType,
         template_fingerprint: str,
         catalog_root_folder: str | None,
@@ -3558,7 +3558,7 @@ def _find_current_user_dynamic_template_catalog_module(
 def _catalog_module_matches_template_identity(
         module_path: Path,
         template_name: str,
-        target_domain: DynamicModelImportTargetDomain,
+        target_domain: DynamicSimulationMode,
         device_tpe: DeviceType,
         desired_fingerprint: str | None,
 ) -> bool:
@@ -3574,7 +3574,7 @@ def _catalog_module_matches_template_identity(
     """
     load_logger: Logger = Logger()
     loaded_template: DynamicModelLoadedUserTemplate | None
-    loaded_payload: Tuple[Block, str, DynamicModelImportTargetDomain, DeviceType] | None
+    loaded_payload: Tuple[Block, str, DynamicSimulationMode, DeviceType] | None
     existing_template: RmsModelTemplate | EmtModelTemplate
     payload_path: Path = module_path.with_suffix(".payload.json")
     existing_fingerprint: str | None
@@ -3630,7 +3630,7 @@ def _catalog_module_matches_template_identity(
 def _resolve_user_dynamic_template_catalog_output_path(
         block: Block,
         template_name: str,
-        target_domain: DynamicModelImportTargetDomain,
+        target_domain: DynamicSimulationMode,
         device_tpe: DeviceType,
         module_text: str,
         catalog_root_folder: str | None,
@@ -3800,7 +3800,7 @@ def _build_user_dynamic_variable_allocation_text(
 
 def _build_user_dynamic_template_module_text(block: Block,
                                              template_name: str,
-                                             target_domain: DynamicModelImportTargetDomain,
+                                             target_domain: DynamicSimulationMode,
                                              device_tpe: DeviceType) -> str:
     """
     Build one persisted Python module that recreates one symbolic user template.
@@ -3832,11 +3832,11 @@ def _build_user_dynamic_template_module_text(block: Block,
     template_class_name: str
     template_class_import: str
 
-    if target_domain == DynamicModelImportTargetDomain.Rms:
+    if target_domain == DynamicSimulationMode.RMS:
         template_class_name = "RmsModelTemplate"
         template_class_import = "from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate"
     else:
-        if target_domain == DynamicModelImportTargetDomain.Emt:
+        if target_domain == DynamicSimulationMode.EMT:
             template_class_name = "EmtModelTemplate"
             template_class_import = "from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate"
         else:
@@ -4137,7 +4137,7 @@ def export_user_dynamic_template_module_from_block(
         block: Block,
         output_path: str,
         template_name: str,
-        target_domain: DynamicModelImportTargetDomain,
+        target_domain: DynamicSimulationMode,
         device_tpe: DeviceType,
         progress_callback: Callable[[int, str], None] | None = None,
 ) -> Path:
@@ -4174,7 +4174,7 @@ def export_user_dynamic_template_module_from_block(
 def _build_user_dynamic_template_payload_text(
         block: Block,
         template_name: str,
-        target_domain: DynamicModelImportTargetDomain,
+        target_domain: DynamicSimulationMode,
         device_tpe: DeviceType,
         template_fingerprint: str | None = None,
 ) -> str:
@@ -4814,7 +4814,7 @@ def _write_user_dynamic_template_catalog_pair_transactionally(
 def save_user_dynamic_template_module_to_catalog(
         block: Block,
         template_name: str,
-        target_domain: DynamicModelImportTargetDomain,
+        target_domain: DynamicSimulationMode,
         device_tpe: DeviceType,
         catalog_root_folder: str | None = None,
         progress_callback: Callable[[int, str], None] | None = None,
@@ -4950,7 +4950,7 @@ def export_user_dynamic_template_json_from_block(
         block: Block,
         output_path: str,
         template_name: str,
-        target_domain: DynamicModelImportTargetDomain,
+        target_domain: DynamicSimulationMode,
         device_tpe: DeviceType,
         progress_callback: Callable[[int, str], None] | None = None,
 ) -> Path:
@@ -4988,7 +4988,7 @@ def export_user_dynamic_template_json_from_block(
 def load_user_dynamic_template_json_payload(
         json_path: str,
         progress_callback: Callable[[int, str], None] | None = None,
-) -> Tuple[Block, str, DynamicModelImportTargetDomain, DeviceType] | None:
+) -> Tuple[Block, str, DynamicSimulationMode, DeviceType] | None:
     """
     Load one intermediate JSON snapshot exported from the dynamic block editor.
 
@@ -5009,7 +5009,7 @@ def load_user_dynamic_template_json_payload(
     runtime_post_update_helper_names_obj = None
     powerfactory_astable_integration_obj: object | None = None
     template_name: str
-    target_domain: DynamicModelImportTargetDomain
+    target_domain: DynamicSimulationMode
     device_tpe: DeviceType
     block: Block
 
@@ -5078,11 +5078,11 @@ def load_user_dynamic_template_json_payload(
     else:
         pass
 
-    if target_domain_obj == DynamicModelImportTargetDomain.Rms.value:
-        target_domain = DynamicModelImportTargetDomain.Rms
+    if target_domain_obj == DynamicSimulationMode.RMS.value:
+        target_domain = DynamicSimulationMode.RMS
     else:
-        if target_domain_obj == DynamicModelImportTargetDomain.Emt.value:
-            target_domain = DynamicModelImportTargetDomain.Emt
+        if target_domain_obj == DynamicSimulationMode.EMT.value:
+            target_domain = DynamicSimulationMode.EMT
         else:
             return None
 

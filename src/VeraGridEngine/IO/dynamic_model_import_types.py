@@ -14,7 +14,7 @@ from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Utils.Symbolic.block import Block
-from VeraGridEngine.enumerations import DeviceType
+from VeraGridEngine.enumerations import DeviceType, DynamicSimulationMode
 
 
 def _emit_dynamic_model_import_progress(progress_callback: Callable[[int, str], None] | None,
@@ -117,17 +117,6 @@ class DynamicModelImportSource(Enum):
 
     ModelicaXml = "Modelica XML"
     PowerFactoryDgs = "PowerFactory DGS"
-
-
-class DynamicModelImportTargetDomain(Enum):
-    """
-    Target reusable-template domain selected for one imported model.
-    """
-
-    __slots__ = ()
-
-    Rms = "RMS"
-    Emt = "EMT"
 
 
 class DynamicModelImportSourceContext:
@@ -305,7 +294,7 @@ class DynamicModelImportEntryResult:
             unique_key: str,
             requested_name: str,
             final_name: str | None,
-            domain: DynamicModelImportTargetDomain,
+            domain: DynamicSimulationMode,
             status: DynamicModelImportEntryStatus,
             source_context: DynamicModelImportSourceContext | None,
             message: str,
@@ -325,7 +314,7 @@ class DynamicModelImportEntryResult:
         self._unique_key: str = unique_key
         self._requested_name: str = requested_name
         self._final_name: str | None = final_name
-        self._domain: DynamicModelImportTargetDomain = domain
+        self._domain: DynamicSimulationMode = domain
         self._status: DynamicModelImportEntryStatus = status
         self._source_context: DynamicModelImportSourceContext | None = source_context
         self._persisted_path: Path | None = None
@@ -343,7 +332,7 @@ class DynamicModelImportEntryResult:
         """Return the final circuit template name."""
         return self._final_name
 
-    def get_domain(self) -> DynamicModelImportTargetDomain:
+    def get_domain(self) -> DynamicSimulationMode:
         """Return the selected target domain."""
         return self._domain
 
@@ -703,7 +692,7 @@ class DynamicModelImportSelectionRequest:
     def __init__(
             self,
             entry_key: str,
-            target_domain: DynamicModelImportTargetDomain,
+            target_domain: DynamicSimulationMode,
             device_tpe: DeviceType,
     ) -> None:
         """
@@ -715,7 +704,7 @@ class DynamicModelImportSelectionRequest:
         :return: None.
         """
         self._entry_key: str = str(entry_key)
-        self._target_domain: DynamicModelImportTargetDomain = target_domain
+        self._target_domain: DynamicSimulationMode = target_domain
         self._device_tpe: DeviceType = device_tpe
 
     def get_entry_key(self) -> str:
@@ -726,7 +715,7 @@ class DynamicModelImportSelectionRequest:
         """
         return self._entry_key
 
-    def get_target_domain(self) -> DynamicModelImportTargetDomain:
+    def get_target_domain(self) -> DynamicSimulationMode:
         """
         Return the selected reusable-template domain.
 
@@ -763,7 +752,7 @@ class DynamicModelLoadedUserTemplate:
     def __init__(
             self,
             module_path: Path,
-            domain: DynamicModelImportTargetDomain,
+            domain: DynamicSimulationMode,
             device_tpe: DeviceType,
             template_obj: RmsModelTemplate | EmtModelTemplate,
     ) -> None:
@@ -777,7 +766,7 @@ class DynamicModelLoadedUserTemplate:
         :return: None.
         """
         self._module_path: Path = module_path
-        self._domain: DynamicModelImportTargetDomain = domain
+        self._domain: DynamicSimulationMode = domain
         self._device_tpe: DeviceType = device_tpe
         self._template_obj: RmsModelTemplate | EmtModelTemplate = template_obj
 
@@ -789,7 +778,7 @@ class DynamicModelLoadedUserTemplate:
         """
         return self._module_path
 
-    def get_domain(self) -> DynamicModelImportTargetDomain:
+    def get_domain(self) -> DynamicSimulationMode:
         """
         Return the restored reusable-template domain.
 
