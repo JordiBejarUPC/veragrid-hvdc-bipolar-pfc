@@ -1845,6 +1845,29 @@ def test_ntc_pmode3_vsc_without_reference_bus_is_reported() -> None:
     assert np.isclose(float(res.vsc_Pf[1].real), 0.0, atol=1e-6)
 
 
+def test_ntc_pmode3_saturates_at_dc_bottleneck() -> None:
+    """
+    P-mode 3 droop must saturate at the DC-cable capacity, not only at the converter rating.
+    """
+    grid = gce.open_file(get_grid_path("NTC_8_bus_2pmode3_dc_bottleneck.veragrid"))
+    drv = run_pmode3_link_ntc(grid)
+    res = drv.results
+
+    assert res.converged
+
+    # every P-mode 3 converter saturated at its DC-cable capacity (2 x 1000 MW),
+    # not necessarily at the converter rate if it is for instance set at 5000 MW
+    vsc_flows = np.abs(np.real(res.vsc_Pf))
+    assert np.allclose(vsc_flows, 2000.0, atol=1.0)
+
+    # the DC cables carry their full rating
+    dc_idx = [i for i, name in enumerate(res.branch_names) if str(name).startswith("Dc line")]
+    assert np.allclose(np.abs(res.Sf[dc_idx].real), 1000.0, atol=1.0)
+
+    tie_idx = [i for i, rate in enumerate(res.rates) if rate == 8000.0]
+    assert np.allclose(res.Sf[tie_idx].real, 3000.0, atol=1.0)
+
+
 if __name__ == '__main__':
     # test_issue_372_1()
     # test_issue_372_2()
