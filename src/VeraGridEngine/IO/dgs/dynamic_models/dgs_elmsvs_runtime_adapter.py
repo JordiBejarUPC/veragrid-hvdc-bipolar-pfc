@@ -5,7 +5,7 @@ from typing import Dict, Iterable, List, Set, Tuple
 
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Utils.Symbolic.block import Block
-from VeraGridEngine.Utils.Symbolic.symbolic import Const, Expr, Var
+from VeraGridEngine.Utils.Symbolic.symbolic import Const, Expr, Var, safe_divide
 from VeraGridEngine.enumerations import (
     DeviceType,
     ParamPowerFlowReferenceType,
@@ -427,7 +427,11 @@ def build_dgs_elmsvs_rms_runtime_template(
     reactive_power_expression: Expr = (
             bsvs * terminal_voltage * terminal_voltage / system_power_base
     )
-    susceptance_seed_expression: Expr = reactive_power * system_power_base / terminal_voltage * terminal_voltage
+    susceptance_seed_expression: Expr = safe_divide(
+        numerator=reactive_power * system_power_base,
+        denominator=terminal_voltage * terminal_voltage,
+        zero_denominator_value=Const(1.0e-6),
+    )
 
     wrapper_outputs: List[Var] = list([active_power, reactive_power])
     controller_output: Var

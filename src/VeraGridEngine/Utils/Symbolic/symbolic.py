@@ -1607,6 +1607,45 @@ def atan2(x: Expr, y: Expr) -> Expr:
     return Func2("atan2", _to_expr(x), _to_expr(y))
 
 
+def safe_divide(
+        numerator: Expr | NUMBER,
+        denominator: Expr | NUMBER,
+        zero_denominator_value: Expr | NUMBER,
+) -> Expr:
+    """Build a division that remains defined for an exact zero denominator.
+
+    Non-zero denominators retain ordinary division. The caller must state the
+    value that replaces an exact zero denominator so the complete numerical
+    rule remains visible at every equation site.
+
+    :param numerator: Dividend expression.
+    :param denominator: Divisor expression.
+    :param zero_denominator_value: Explicit replacement for an exact zero.
+    :return: Symbolic division with an explicit zero-denominator branch.
+    """
+    numerator_expression: Expr = _to_expr(numerator)
+    denominator_expression: Expr = _to_expr(denominator)
+    zero_denominator_expression: Expr = _to_expr(zero_denominator_value)
+    if (
+            isinstance(zero_denominator_expression, Const)
+            and zero_denominator_expression.value == 0
+    ):
+        raise ValueError("zero_denominator_value must be non-zero")
+    else:
+        pass
+
+    denominator_is_nonzero: Expr = (
+        heaviside(denominator_expression)
+        + heaviside(-denominator_expression)
+    )
+    effective_denominator: Expr = (
+        denominator_is_nonzero * denominator_expression
+        + (Const(1.0) - denominator_is_nonzero)
+        * zero_denominator_expression
+    )
+    return numerator_expression / effective_denominator
+
+
 def hard_sat(x: Expr, x_min: Expr | NUMBER, x_max: Expr | NUMBER) -> Expr:
     """
     Apply a symbolic hard saturation to an expression.
@@ -1731,7 +1770,6 @@ class Func2(Expr):
             return heaviside(y - x) * dx + heaviside(x - y) * dy
         if self.name == "max":
             return heaviside(x - y) * dx + heaviside(y - x) * dy
-
         raise ValueError(f"Unknown binary function '{self.name}'")
 
     # --- simplification ------------------------------------------------------
@@ -2524,6 +2562,7 @@ __all__ = [
     "heaviside",
     "rand",
     "atan2",
+    "safe_divide",
     "piecewise",
     "symbolic_to_string",
     "string_to_symbolic",

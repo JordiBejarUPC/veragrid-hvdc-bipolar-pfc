@@ -251,6 +251,7 @@ class Block:
                  init_eqs: Dict[Var, Expr] | None = None,
                  diff_init_eqs: Dict[Var, Expr] | None = None,
                  discrete_eqs: Dict[Var, Expr] | None = None,
+                 post_init_seed_eqs: Dict[Var, Expr | Const] | None = None,
                  children: List["Block"] | None = None,
                  in_vars: List[Var] | None = None,
                  out_vars: List[Var] | None = None,
@@ -317,6 +318,9 @@ class Block:
         self.parameters: Dict[Var, Const] = dict() if parameters is None else parameters
 
         self.discrete_eqs: Dict[Var, Expr] = dict() if discrete_eqs is None else discrete_eqs
+        self.post_init_seed_eqs: Dict[Var, Expr | Const] = (
+            dict() if post_init_seed_eqs is None else post_init_seed_eqs
+        )
         self.external_mapping: Dict[VarPowerFlowReferenceType, Var | None] = (dict()
                                                                               if external_mapping is None
                                                                               else external_mapping)
@@ -470,6 +474,14 @@ class Block:
                 for k, v in self.discrete_eqs.items()
             },
 
+            "post_init_seed_eqs": {
+                k.uid: {
+                    "key": _expr_to_dict(k),
+                    "value": _expr_to_dict(v),
+                }
+                for k, v in self.post_init_seed_eqs.items()
+            },
+
             "children": [child.to_dict() for child in self.children],
 
             "diagram": self.diagram.to_dict(),
@@ -510,6 +522,10 @@ class Block:
             discrete_eqs={
                 _dict_to_expr(data=item["key"]): _dict_to_expr(data=item["value"])
                 for item in data.get("discrete_eqs", {}).values()
+            },
+            post_init_seed_eqs={
+                _dict_to_expr(data=item["key"]): _dict_to_expr(data=item["value"])
+                for item in data.get("post_init_seed_eqs", {}).values()
             },
             children=[
                 Block.parse(child_data)
@@ -617,6 +633,7 @@ class Block:
             result.out_vars = copy.deepcopy(self.out_vars, memo)
             result.parameters = copy.deepcopy(self.parameters, memo)
             result.discrete_eqs = copy.deepcopy(self.discrete_eqs, memo)
+            result.post_init_seed_eqs = copy.deepcopy(self.post_init_seed_eqs, memo)
             result.external_mapping = copy.deepcopy(self.external_mapping, memo)
             result.api_obj_mapping = copy.deepcopy(self.api_obj_mapping, memo)
             result.init_values = copy.deepcopy(self.init_values, memo)
@@ -694,6 +711,7 @@ class Block:
                 not self.init_values and
                 not self.init_eqs and
                 not self.diff_init_eqs and
+                not self.post_init_seed_eqs and
                 not self.children and
                 not self.in_vars and
                 not self.out_vars and
@@ -807,6 +825,9 @@ class Block:
         for diffvar, diff_init_eq in block.diff_init_eqs.items():
             self.diff_init_eqs[diffvar] = diff_init_eq
 
+        for seed_var, seed_expression in block.post_init_seed_eqs.items():
+            self.post_init_seed_eqs[seed_var] = seed_expression
+
     def unify_blocks(self):
         """
         This function collects all variables and equations of a block, returns a flat block
@@ -848,6 +869,9 @@ class Block:
             for diffvar, diff_init_eq in b.diff_init_eqs.items():
                 mdl_placeholder.diff_init_eqs[diffvar] = diff_init_eq
 
+            for seed_var, seed_expression in b.post_init_seed_eqs.items():
+                mdl_placeholder.post_init_seed_eqs[seed_var] = seed_expression
+
             mdl_placeholder.procedural_logic.extend(b.procedural_logic)
 
         self.algebraic_vars = mdl_placeholder.algebraic_vars
@@ -863,6 +887,7 @@ class Block:
         self.parameters = mdl_placeholder.parameters
         self.init_eqs = mdl_placeholder.init_eqs
         self.diff_init_eqs = mdl_placeholder.diff_init_eqs
+        self.post_init_seed_eqs = mdl_placeholder.post_init_seed_eqs
         self.reformulated_vars = mdl_placeholder.reformulated_vars
         self.external_mapping = mdl_placeholder.external_mapping
         self.api_obj_mapping = mdl_placeholder.api_obj_mapping
@@ -920,6 +945,7 @@ class Block:
         """
         init_eqs_new = dict()
         diff_init_eqs_new = dict()
+        post_init_seed_eqs_new: Dict[Var, Expr | Const] = dict()
         event_dict_new = dict()
         mode_dict_new = dict()
         boolean_guards_new = dict()
@@ -953,6 +979,14 @@ class Block:
                 diff_init_eqs_new.update({var: new_expr})
 
         self.diff_init_eqs = diff_init_eqs_new
+
+        for var, expr in self.post_init_seed_eqs.items():
+            new_expr: Expr = expr.subs({old: new})
+            if var is old and isinstance(new, Var):
+                post_init_seed_eqs_new[new] = new_expr
+            else:
+                post_init_seed_eqs_new[var] = new_expr
+        self.post_init_seed_eqs = post_init_seed_eqs_new
 
         for var, expr in self.event_dict.items():
             new_expr = expr.subs({old: new})
@@ -1030,6 +1064,7 @@ class Block:
         uid_mapping: Dict[int, Var] = dict((old_var.uid, new_var) for old_var, new_var in var_mapping.items())
         init_eqs_new: Dict[Var, Expr] = dict()
         diff_init_eqs_new: Dict[Var, Expr] = dict()
+        post_init_seed_eqs_new: Dict[Var, Expr | Const] = dict()
         event_dict_new: Dict[Var, Expr] = dict()
         mode_dict_new: Dict[Var, Expr] = dict()
         boolean_guards_new: Dict[Var, Expr | Comparison] = dict()
@@ -1065,6 +1100,13 @@ class Block:
             new_var = uid_mapping.get(var.uid, None)
             diff_init_eqs_new[var if new_var is None else new_var] = expr.subs(var_mapping)
         self.diff_init_eqs = diff_init_eqs_new
+
+        for var, expr in self.post_init_seed_eqs.items():
+            new_var = uid_mapping.get(var.uid, None)
+            post_init_seed_eqs_new[
+                var if new_var is None else new_var
+            ] = expr.subs(var_mapping)
+        self.post_init_seed_eqs = post_init_seed_eqs_new
 
         for var, expr in self.event_dict.items():
             new_var = uid_mapping.get(var.uid, None)
@@ -1175,36 +1217,43 @@ class Block:
         :return:
         """
 
-        for i, eq in enumerate(self.algebraic_eqs):
-            if eq.contains_var:
+        equation: Expr
+        equation_var: Var
+
+        for equation in self.algebraic_eqs:
+            if equation.contains_var(var):
                 return True
 
-        for i, eq in enumerate(self.state_eqs):
-            if eq.contains_var:
+        for equation in self.state_eqs:
+            if equation.contains_var(var):
                 return True
 
-        for i, eq in enumerate(self.differential_eqs):
-            if eq.contains_var:
+        for equation in self.differential_eqs:
+            if equation.contains_var(var):
                 return True
 
-        for var, eq in self.init_eqs.items():
-            if eq.contains_var:
+        for equation_var, equation in self.init_eqs.items():
+            if equation_var.uid == var.uid or equation.contains_var(var):
                 return True
 
-        for var, eq in self.diff_init_eqs.items():
-            if eq.contains_var:
+        for equation_var, equation in self.diff_init_eqs.items():
+            if equation_var.uid == var.uid or equation.contains_var(var):
                 return True
 
-        for var, eq in self.event_dict.items():
-            if eq.contains_var:
+        for equation_var, equation in self.post_init_seed_eqs.items():
+            if equation_var.uid == var.uid or equation.contains_var(var):
                 return True
 
-        for var, eq in self.mode_dict.items():
-            if eq.contains_var:
+        for equation_var, equation in self.event_dict.items():
+            if equation_var.uid == var.uid or equation.contains_var(var):
                 return True
 
-        for var_pf_ref, mdl_var in self.external_mapping.items():
-            if mdl_var is var:
+        for equation_var, equation in self.mode_dict.items():
+            if equation_var.uid == var.uid or equation.contains_var(var):
+                return True
+
+        for mdl_var in self.external_mapping.values():
+            if mdl_var is not None and mdl_var.uid == var.uid:
                 return True
 
         return False

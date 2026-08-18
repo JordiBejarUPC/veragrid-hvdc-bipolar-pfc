@@ -761,6 +761,22 @@ class BlockSaver:
                 }
             )
 
+        post_init_seed_list: List[Dict[str, Any]] = list()
+        for var, expr in blk.post_init_seed_eqs.items():
+            self._ensure_var_registered(var)
+            post_init_seed_list.append(
+                {
+                    "var": var.non_mutable_uid,
+                    "expr": expr_to_dict(
+                        expr=expr,
+                        const_dict=self.var_factory.get_const_dict(),
+                        var_dict=self.var_factory.get_vars_dict(),
+                        diff_var_dict=self.var_factory.get_diff_var_dict(),
+                        composite_expression_ids=composite_expression_ids,
+                    ),
+                }
+            )
+
         events_list: List[Dict[str, Any]] = list()
         for var, expr in blk.event_dict.items():
             self._ensure_var_registered(var)
@@ -891,6 +907,8 @@ class BlockSaver:
             "init_eqs": init_eq_list,
 
             "diff_init_eqs": diff_init_eq_list,
+
+            "post_init_seed_eqs": post_init_seed_list,
 
             "discrete_eqs": discrete_list,
 
@@ -1403,6 +1421,25 @@ class BlockParser:
             else:
                 pass
 
+        post_init_seed_eqs: Dict[Var, Expr | Const] = dict()
+        for entry in data.get("post_init_seed_eqs", list()):
+            seed_var: Var | None = self._resolve_var_or_warn(
+                entry.get("var", None),
+                block_name,
+                block_uid_value,
+                "post_init_seed_eqs",
+            )
+            if seed_var is not None:
+                post_init_seed_eqs[seed_var] = parse_expr(
+                    data=entry["expr"],
+                    const_dict=self.var_factory.get_const_dict(),
+                    var_dict=self._var_identity_lookup,
+                    diff_var_dict=self._diff_var_identity_lookup,
+                    composite_expressions=composite_expressions,
+                )
+            else:
+                pass
+
         event_dict: Dict[Var, Expr] = dict()
         for entry in data.get("event_dict", list()):
             var = self._resolve_var_or_warn(entry.get("var", None), block_name, block_uid_value, "event_dict")
@@ -1536,6 +1573,7 @@ class BlockParser:
             out_vars=out_vars,
             init_eqs=init_eqs,
             diff_init_eqs=diff_init_eqs,
+            post_init_seed_eqs=post_init_seed_eqs,
             discrete_eqs=discrete_eqs,
             event_dict=event_dict,
             mode_dict=mode_dict,
@@ -1761,6 +1799,7 @@ def _collect_block_vars_by_uid(block: Block, vars_by_uid: Dict[int, Var] | None 
             block.init_values,
             block.init_eqs,
             block.diff_init_eqs,
+            block.post_init_seed_eqs,
             block.discrete_eqs,
             block.event_dict,
             block.mode_dict,
@@ -1894,6 +1933,16 @@ def _duplicate_block(block: Block,
         for k, v in block.diff_init_eqs.items()
     }
 
+    new_post_init_seed_eqs: Dict[Var, Expr | Const] = {
+        duplicate_required_var(var_factory, old_to_new_var, k): duplicate_expr(
+            var_factory,
+            old_to_new_const,
+            old_to_new_var,
+            v,
+        )
+        for k, v in block.post_init_seed_eqs.items()
+    }
+
     new_discrete_eqs: Dict[Var, Expr] = {
         duplicate_required_var(var_factory, old_to_new_var, k): duplicate_expr(
             var_factory,
@@ -1969,6 +2018,7 @@ def _duplicate_block(block: Block,
         init_values=new_init_values,
         init_eqs=new_init_eqs,
         diff_init_eqs=new_diff_init_eqs,
+        post_init_seed_eqs=new_post_init_seed_eqs,
         discrete_eqs=new_discrete_eqs,
         children=new_children,
         in_vars=new_in_vars,

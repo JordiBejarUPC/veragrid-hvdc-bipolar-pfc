@@ -1,15 +1,16 @@
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.
+# SPDX-License-Identifier: MPL-2.0
+
 from __future__ import annotations
 
 import copy
-import difflib
 import hashlib
-import importlib.util
 import json
 import uuid
-from enum import Enum
 from pathlib import Path
-from types import FunctionType, ModuleType
-from typing import Callable, cast, Dict, Iterable, List, Sequence, Set, Tuple, TYPE_CHECKING
+from typing import Callable, Dict, List, Sequence, Set, Tuple
 
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
@@ -23,18 +24,11 @@ from VeraGridEngine.IO.dgs.dgs_to_blocks import DgsStandaloneBlockCatalogEntry
 from VeraGridEngine.IO.dgs.dgs_to_blocks import ElmCompInstanceEntry
 from VeraGridEngine.IO.dgs.dgs_to_blocks import ParsedDgsBlockDefinition
 from VeraGridEngine.IO.dgs.dgs_to_blocks import _TemplateModuleVariableGroups
-from VeraGridEngine.IO.dgs.dgs_to_blocks import _append_humanized_metadata_assignment
 from VeraGridEngine.IO.dgs.dgs_to_blocks import _build_template_module_variable_groups
 from VeraGridEngine.IO.dgs.dgs_to_blocks import _emit_block_code
 from VeraGridEngine.IO.dgs.dgs_to_blocks import _make_identifier_map
 from VeraGridEngine.IO.dgs.dgs_to_blocks import _procedural_logic_import_names
 from VeraGridEngine.IO.dgs.dgs_to_blocks import _safe_name
-from VeraGridEngine.IO.dgs.dgs_to_blocks import build_dgs_standalone_block_catalog_from_context
-from VeraGridEngine.IO.dgs.dgs_to_blocks import build_dgs_graphical_parse_context
-from VeraGridEngine.IO.dgs.dgs_to_blocks import build_standalone_blkdef_emt_template
-from VeraGridEngine.IO.dgs.dgs_to_blocks import build_standalone_blkdef_emt_template_from_parsed_block
-from VeraGridEngine.IO.dgs.dgs_to_blocks import dgs_to_root_block_from_context
-from VeraGridEngine.IO.dgs.dgs_to_blocks import parse_dgs_block_definitions_from_context
 from VeraGridEngine.IO.dgs.dgs_to_blocks import export_named_block_subgraph_to_python
 from VeraGridEngine.IO.dgs.dgs_to_blocks import export_root_elmcomp_template_to_python
 from VeraGridEngine.IO.dgs.dgs_to_blocks import export_root_slot_block_graphical_template_to_python
@@ -44,24 +38,30 @@ from VeraGridEngine.IO.dgs.dgs_discrete_event import (
     dgs_discrete_event_action_from_dict,
 )
 from VeraGridEngine.IO.dgs.dgs_to_blocks import DgsGraphicTreeResult
-from VeraGridEngine.IO.dgs.dgs_to_blocks import DgsGraphicalParseContext
-from VeraGridEngine.IO.dgs.dgs_to_blocks import build_direct_root_elmcomp_result_from_context
-from VeraGridEngine.IO.dgs.dgs_to_blocks import DgsDirectRootBuildResult
 from VeraGridEngine.IO.dgs.dgs_to_blocks import extract_elmcomp_direct_instances
-from VeraGridEngine.IO.dgs.dgs_to_blocks import extract_root_slot_block_graphical_tree_from_context
-from VeraGridEngine.IO.dgs.dgs_to_blocks import get_blkslot_signal_interface
 from VeraGridEngine.IO.dgs.dgs_objects import BlkSlot
 from VeraGridEngine.IO.dgs.dgs_objects import ElmComp
-from VeraGridEngine.IO.dgs.dynamic_models.dgs_dynamic_association import DgsDynamicAssociationManifest
+from VeraGridEngine.IO.dynamic_model_import_types import (
+    DgsDynamicModelActivationReport,
+    DynamicModelImportBundle,
+    DynamicModelImportEntry,
+    DynamicModelImportEntryAvailability,
+    DynamicModelImportEntryResult,
+    DynamicModelImportEntryStatus,
+    DynamicModelImportReport,
+    DynamicModelImportSelectionRequest,
+    DynamicModelImportSource,
+    DynamicModelImportSourceContext,
+    DynamicModelImportTargetDomain,
+    DynamicModelLoadedUserTemplate,
+    DynamicModelPersistenceKind,
+    DynamicModelPersistenceSpec,
+    SelectedDynamicImportWork,
+    _DynamicUserTemplatePythonModule,
+    _emit_dynamic_model_import_progress,
+)
 from VeraGridEngine.IO.dgs.dynamic_models.dgs_dynamic_association import DgsDynamicAssociationRecord
-from VeraGridEngine.IO.dgs.dynamic_models.dgs_dynamic_association import DgsDynamicAssociationStatus
-from VeraGridEngine.IO.dgs.dynamic_models.dgs_dynamic_association import DgsDynamicAssociationTargetDomain
-from VeraGridEngine.IO.dgs.dynamic_models.dgs_dynamic_association import DgsDynamicAssociationRole
-from VeraGridEngine.IO.dgs.dynamic_models.dgs_dynamic_association import build_dgs_dynamic_association_manifest_output_path
 from VeraGridEngine.IO.dgs.dynamic_models.dgs_dynamic_association import infer_dgs_dynamic_association_role
-from VeraGridEngine.IO.dgs.dynamic_models.dgs_dynamic_association import install_dgs_dynamic_association_manifest_in_circuit
-from VeraGridEngine.IO.dgs.dynamic_models.dgs_dynamic_association import save_dgs_dynamic_association_manifest
-from VeraGridEngine.IO.dgs.dynamic_models.dgs_dynamic_association import DgsDynamicAssociation
 from VeraGridEngine.IO.dgs.dynamic_models.dgs_elmvsc_runtime_adapter import (
     build_dgs_elmvscmono_rms_runtime_template,
     build_dgs_elmvsc_rms_runtime_template,
@@ -70,7 +70,7 @@ from VeraGridEngine.IO.dgs.dynamic_models.dgs_elmvsc_runtime_adapter import (
     is_dgs_elmvscmono_slot_contract,
     is_dgs_elmvsc_slot_contract,
 )
-from VeraGridEngine.IO.dynamic_models.dgs_elmsym_runtime_adapter import (
+from VeraGridEngine.IO.dgs.dynamic_models.dgs_elmsym_runtime_adapter import (
     build_dgs_elmsym_rms_runtime_template,
     configure_dgs_elmsym_runtime_template_for_device,
     is_dgs_elmsym_slot_contract,
@@ -84,8 +84,12 @@ from VeraGridEngine.IO.dgs.dynamic_models.dgs_elmsvs_runtime_adapter import (
     is_dgs_elmsvs_slot_contract,
 )
 from VeraGridEngine.IO.file_system import get_create_veragrid_folder
+from VeraGridEngine.IO.dynamic_model_import_utils import (
+    append_python_syntax_assignment,
+    sanitize_dynamic_model_file_stem,
+)
 from VeraGridEngine.Utils.Symbolic.block import Block
-from VeraGridEngine.Utils.Symbolic.symbolic import BinOp, Const, Expr, Func, Func2, UnOp, Var
+from VeraGridEngine.Utils.Symbolic.symbolic import Const, Var
 from VeraGridEngine.Utils.procedural_logic import AnalogFlipFlopLogic
 from VeraGridEngine.Utils.procedural_logic import FixedSampleLogic
 from VeraGridEngine.Utils.procedural_logic import FlipFlopLogic
@@ -98,1741 +102,15 @@ from VeraGridEngine.Utils.procedural_logic import ResetOnRisingEdgeLogic
 from VeraGridEngine.Utils.procedural_logic import SampledValueLogic
 from VeraGridEngine.Utils.procedural_logic import TimeDelayLogic
 from VeraGridEngine.basic_structures import Logger
-from VeraGridEngine.enumerations import BlockScopeMode, BlockType, DeviceType, VarPowerFlowReferenceType
-
-if TYPE_CHECKING:
-    from VeraGridEngine.IO.modelica.modelica_parser import ExternalFunc
-    from VeraGridEngine.IO.modelica.modelica_parser import LogicExpr
-    from VeraGridEngine.IO.modelica.modelica_parser import ModelicaXMLParser
-    from VeraGridEngine.IO.modelica.template_generator import ModelicaToPythonTranspiler
-else:
-    pass
-
-
-DynamicModelImportProgressCallback = Callable[[int, str], None]
-
-
-def _emit_dynamic_model_import_progress(progress_callback: DynamicModelImportProgressCallback | None,
-                                        progress_value: int,
-                                        progress_text: str) -> None:
-    """
-    Emit one dynamic-model import progress update when a callback is available.
-
-    :param progress_callback: Optional UI progress callback.
-    :param progress_value: Integer percentage in ``[0, 100]``.
-    :param progress_text: User-facing progress label.
-    :return: None.
-    """
-    if progress_callback is None:
-        pass
-    else:
-        progress_callback(progress_value, progress_text)
-
-
-class DynamicModelImportProgressScaler:
-    """
-    Scale one local import progress range into one parent progress interval.
-    """
-
-    __slots__ = ("_progress_callback", "_progress_start", "_progress_end", "_prefix_text")
-
-    def __init__(self,
-                 progress_callback: DynamicModelImportProgressCallback | None,
-                 progress_start: int,
-                 progress_end: int,
-                 prefix_text: str = "") -> None:
-        """
-        Store one scaled progress callback configuration.
-
-        :param progress_callback: Parent UI progress callback.
-        :param progress_start: Inclusive start percentage.
-        :param progress_end: Inclusive end percentage.
-        :param prefix_text: Optional prefix prepended to the progress text.
-        :return: None.
-        """
-        self._progress_callback: DynamicModelImportProgressCallback | None = progress_callback
-        self._progress_start: int = progress_start
-        self._progress_end: int = progress_end
-        self._prefix_text: str = prefix_text
-
-    def __call__(self, progress_value: int, progress_text: str) -> None:
-        """
-        Forward one scaled progress update to the parent callback.
-
-        :param progress_value: Local integer percentage in ``[0, 100]``.
-        :param progress_text: Local user-facing progress label.
-        :return: None.
-        """
-        scaled_progress_value: int
-        clamped_progress_value: int
-        prefixed_progress_text: str
-
-        if progress_value < 0:
-            clamped_progress_value = 0
-        else:
-            if progress_value > 100:
-                clamped_progress_value = 100
-            else:
-                clamped_progress_value = progress_value
-
-        scaled_progress_value = self._progress_start + int(round((self._progress_end - self._progress_start) * float(clamped_progress_value) / 100.0))
-
-        if len(self._prefix_text) == 0:
-            prefixed_progress_text = progress_text
-        else:
-            prefixed_progress_text = f"{self._prefix_text}: {progress_text}"
-
-        _emit_dynamic_model_import_progress(self._progress_callback, scaled_progress_value, prefixed_progress_text)
-
-
-class SelectedDynamicImportWork:
-    """
-    Store one selected import item and its materialized reusable template.
-    """
-
-    __slots__ = (
-        "_selection_request",
-        "_template_obj",
-        "_entry_result",
-        "_template_fingerprint",
-        "_include_validation_snapshot",
-    )
-
-    def __init__(self,
-                 selection_request: "DynamicModelImportSelectionRequest",
-                 template_obj: RmsModelTemplate | EmtModelTemplate,
-                 entry_result: "DynamicModelImportEntryResult | None" = None,
-                 template_fingerprint: str | None = None,
-                 include_validation_snapshot: bool = True) -> None:
-        """
-        Store one selected import work item.
-
-        :param selection_request: Explicit selected import request.
-        :param template_obj: Materialized reusable template.
-        :param entry_result: Optional structured result updated after persistence.
-        :param template_fingerprint: Optional precomputed structural identity.
-        :param include_validation_snapshot: Persist the optional JSON validation sidecar.
-        :return: None.
-        """
-        self._selection_request: DynamicModelImportSelectionRequest = selection_request
-        self._template_obj: RmsModelTemplate | EmtModelTemplate = template_obj
-        self._entry_result: DynamicModelImportEntryResult | None = entry_result
-        self._template_fingerprint: str | None = template_fingerprint
-        self._include_validation_snapshot: bool = include_validation_snapshot
-
-    def get_selection_request(self) -> "DynamicModelImportSelectionRequest":
-        """
-        Return the explicit selected import request.
-
-        :return: Explicit selected import request.
-        """
-        return self._selection_request
-
-    def get_template_obj(self) -> RmsModelTemplate | EmtModelTemplate:
-        """
-        Return the materialized reusable template.
-
-        :return: Materialized reusable template.
-        """
-        return self._template_obj
-
-    def get_entry_result(self) -> "DynamicModelImportEntryResult | None":
-        """
-        Return the structured import result updated by persistence.
-
-        :return: Structured result or ``None`` for legacy callers.
-        """
-        return self._entry_result
-
-    def get_template_fingerprint(self) -> str | None:
-        """Return the precomputed structural identity when available.
-
-        :return: SHA-256 template fingerprint or ``None``.
-        """
-        return self._template_fingerprint
-
-    def get_include_validation_snapshot(self) -> bool:
-        """Return whether optional JSON snapshot persistence is requested.
-
-        :return: Validation-snapshot persistence flag.
-        """
-        return self._include_validation_snapshot
-
-
-class DynamicModelImportSource(Enum):
-    """
-    Source format used by one imported dynamic-model bundle.
-    """
-
-    __slots__ = ()
-
-    ModelicaXml = "Modelica XML"
-    PowerFactoryDgs = "PowerFactory DGS"
-
-
-class DynamicModelImportTargetDomain(Enum):
-    """
-    Target reusable-template domain selected for one imported model.
-    """
-
-    __slots__ = ()
-
-    Rms = "RMS"
-    Emt = "EMT"
-
-
-class DynamicModelImportSourceContext:
-    """
-    Typed DGS provenance for one separate dynamic catalogue entry.
-
-    :param root_dgs_id: Owning root ElmComp identifier.
-    :param root_name: Owning root ElmComp display name.
-    :param root_typ_id: Owning root ElmComp type identifier.
-    :param slot_dgs_id: Optional direct slot identifier.
-    :param slot_name: Optional direct slot display name.
-    :param slot_index: Optional ordinal pblk/pelm index.
-    :param slot_element: Optional raw BlkSlot default or prototype element reference.
-    :param slot_filter: Optional raw BlkSlot allowed-class filter.
-    :param source_element_dgs_id: Optional pElm source identifier.
-    :param source_element_name: Optional pElm source display name.
-    :param source_element_class: Optional pElm PowerFactory class name.
-    """
-
-    __slots__ = (
-        "_root_dgs_id",
-        "_root_name",
-        "_root_typ_id",
-        "_slot_dgs_id",
-        "_slot_name",
-        "_slot_index",
-        "_slot_element",
-        "_slot_filter",
-        "_source_element_dgs_id",
-        "_source_element_name",
-        "_source_element_class",
-    )
-
-    def __init__(
-            self,
-            root_dgs_id: str,
-            root_name: str,
-            root_typ_id: str,
-            slot_dgs_id: str | None = None,
-            slot_name: str | None = None,
-            slot_index: int | None = None,
-            slot_element: str | None = None,
-            slot_filter: str | None = None,
-            source_element_dgs_id: str | None = None,
-            source_element_name: str | None = None,
-            source_element_class: str | None = None,
-    ) -> None:
-        """
-        Store immutable root, slot and source-element fields.
-
-        :param root_dgs_id: Owning root ElmComp identifier.
-        :param root_name: Owning root ElmComp display name.
-        :param root_typ_id: Owning root ElmComp type identifier.
-        :param slot_dgs_id: Optional direct slot identifier.
-        :param slot_name: Optional direct slot display name.
-        :param slot_index: Optional ordinal pblk/pelm index.
-        :param slot_element: Optional raw compatible-element reference.
-        :param slot_filter: Optional raw model filter text.
-        :param source_element_dgs_id: Optional pElm source identifier.
-        :param source_element_name: Optional pElm source display name.
-        :param source_element_class: Optional pElm class name.
-        :return: None.
-        """
-        self._root_dgs_id: str = root_dgs_id
-        self._root_name: str = root_name
-        self._root_typ_id: str = root_typ_id
-        self._slot_dgs_id: str | None = slot_dgs_id
-        self._slot_name: str | None = slot_name
-        self._slot_index: int | None = slot_index
-        self._slot_element: str | None = slot_element
-        self._slot_filter: str | None = slot_filter
-        self._source_element_dgs_id: str | None = source_element_dgs_id
-        self._source_element_name: str | None = source_element_name
-        self._source_element_class: str | None = source_element_class
-
-    def get_root_dgs_id(self) -> str:
-        """Return the owning root ElmComp DGS identifier."""
-        return self._root_dgs_id
-
-    def get_root_name(self) -> str:
-        """Return the owning root ElmComp display name."""
-        return self._root_name
-
-    def get_root_typ_id(self) -> str:
-        """Return the owning root ElmComp type identifier."""
-        return self._root_typ_id
-
-    def get_slot_dgs_id(self) -> str | None:
-        """Return the optional direct slot identifier."""
-        return self._slot_dgs_id
-
-    def get_slot_name(self) -> str | None:
-        """Return the optional direct slot display name."""
-        return self._slot_name
-
-    def get_slot_index(self) -> int | None:
-        """Return the optional ordinal pblk/pelm index."""
-        return self._slot_index
-
-    def get_slot_element(self) -> str | None:
-        """Return the optional raw BlkSlot compatible-element reference."""
-        return self._slot_element
-
-    def get_slot_filter(self) -> str | None:
-        """Return the optional raw BlkSlot model filter text."""
-        return self._slot_filter
-
-    def get_source_element_dgs_id(self) -> str | None:
-        """Return the optional pElm element identifier."""
-        return self._source_element_dgs_id
-
-    def get_source_element_name(self) -> str | None:
-        """Return the optional pElm element display name."""
-        return self._source_element_name
-
-    def get_source_element_class(self) -> str | None:
-        """Return the optional pElm PowerFactory class name."""
-        return self._source_element_class
-
-class DynamicModelImportEntryAvailability(Enum):
-    """
-    Source availability classification for one catalogue entry.
-
-    Context-only nodes preserve PowerFactory hierarchy and association metadata;
-    they are intentionally not reusable templates and are not parser failures.
-    """
-
-    __slots__ = ()
-
-    Importable = "Importable"
-    ContextOnly = "Context only"
-    Failed = "Failed"
-
-
-class DynamicModelImportEntryStatus(Enum):
-    """
-    Final processing state for one selected dynamic catalogue entry.
-    """
-
-    __slots__ = ()
-
-    Added = "Added"
-    Deduplicated = "Deduplicated"
-    Renamed = "Renamed"
-    Failed = "Failed"
-    Skipped = "Skipped"
-
-
-class DynamicModelImportEntryResult:
-    """
-    Structured result for one dynamic-model catalogue entry.
-
-    :param unique_key: Stable source catalogue key.
-    :param requested_name: Source display name.
-    :param final_name: Final circuit template name, when available.
-    :param domain: Selected target domain.
-    :param status: Explicit processing outcome.
-    :param source_context: DGS root/slot/element provenance, when available.
-    :param message: Human-readable diagnostic.
-    """
-
-    __slots__ = (
-        "_unique_key",
-        "_requested_name",
-        "_final_name",
-        "_domain",
-        "_status",
-        "_source_context",
-        "_persisted_path",
-        "_message",
-    )
-
-    def __init__(
-            self,
-            unique_key: str,
-            requested_name: str,
-            final_name: str | None,
-            domain: DynamicModelImportTargetDomain,
-            status: DynamicModelImportEntryStatus,
-            source_context: DynamicModelImportSourceContext | None,
-            message: str,
-    ) -> None:
-        """
-        Store one fixed-size import result.
-
-        :param unique_key: Stable source catalogue key.
-        :param requested_name: Source display name.
-        :param final_name: Final circuit template name, when available.
-        :param domain: Selected target domain.
-        :param status: Explicit processing outcome.
-        :param source_context: DGS root/slot/element provenance, when available.
-        :param message: Human-readable diagnostic.
-        :return: None.
-        """
-        self._unique_key: str = unique_key
-        self._requested_name: str = requested_name
-        self._final_name: str | None = final_name
-        self._domain: DynamicModelImportTargetDomain = domain
-        self._status: DynamicModelImportEntryStatus = status
-        self._source_context: DynamicModelImportSourceContext | None = source_context
-        self._persisted_path: Path | None = None
-        self._message: str = message
-
-    def get_unique_key(self) -> str:
-        """Return the stable source key."""
-        return self._unique_key
-
-    def get_requested_name(self) -> str:
-        """Return the requested source display name."""
-        return self._requested_name
-
-    def get_final_name(self) -> str | None:
-        """Return the final circuit template name."""
-        return self._final_name
-
-    def get_domain(self) -> DynamicModelImportTargetDomain:
-        """Return the selected target domain."""
-        return self._domain
-
-    def get_status(self) -> DynamicModelImportEntryStatus:
-        """Return the explicit processing status."""
-        return self._status
-
-    def get_source_context(self) -> DynamicModelImportSourceContext | None:
-        """Return the DGS root/slot/element provenance, when available."""
-        return self._source_context
-
-    def set_persisted_path(self, persisted_path: Path) -> None:
-        """
-        Store the canonical Python module written for this result.
-
-        :param persisted_path: Written human-readable Python path.
-        :return: None.
-        """
-        self._persisted_path = persisted_path
-
-    def get_persisted_path(self) -> Path | None:
-        """Return the canonical Python module path, when persistence succeeded."""
-        return self._persisted_path
-
-    def set_message(self, message: str) -> None:
-        """
-        Replace the handled outcome diagnostic.
-
-        :param message: New human-readable diagnostic.
-        :return: None.
-        """
-        self._message = message
-
-    def get_message(self) -> str:
-        """Return the handled outcome diagnostic."""
-        return self._message
-
-
-def _count_dynamic_model_import_result_status(
-        entry_results: Sequence[DynamicModelImportEntryResult],
-        status: DynamicModelImportEntryStatus,
-) -> int:
-    """
-    Count entry results with one explicit processing status.
-
-    :param entry_results: Ordered structured entry results.
-    :param status: Status to count.
-    :return: Matching result count.
-    """
-    count: int = 0
-    entry_result: DynamicModelImportEntryResult
-    for entry_result in entry_results:
-        if entry_result.get_status() == status:
-            count += 1
-        else:
-            pass
-    return count
-
-
-def _count_persisted_dynamic_model_import_results(
-        entry_results: Sequence[DynamicModelImportEntryResult],
-) -> int:
-    """
-    Count entry results with a successfully written canonical Python module.
-
-    :param entry_results: Ordered structured entry results.
-    :return: Results carrying a persisted module path.
-    """
-    count: int = 0
-    entry_result: DynamicModelImportEntryResult
-    for entry_result in entry_results:
-        if entry_result.get_persisted_path() is None:
-            pass
-        else:
-            count += 1
-    return count
-
-
-def _count_dgs_source_associations(
-        entry_results: Sequence[DynamicModelImportEntryResult],
-) -> int:
-    """
-    Count results carrying one exact ElmComp pblk/pelm source relation.
-
-    :param entry_results: Ordered structured entry results.
-    :return: Results with a root slot and referenced source element.
-    """
-    count: int = 0
-    entry_result: DynamicModelImportEntryResult
-    source_context: DynamicModelImportSourceContext | None
-
-    for entry_result in entry_results:
-        source_context = entry_result.get_source_context()
-        if (source_context is not None and
-                source_context.get_slot_index() is not None and
-                source_context.get_source_element_dgs_id() is not None):
-            count += 1
-        else:
-            pass
-
-    return count
-
-
-class DynamicModelImportReport:
-    """
-    Aggregate structured result for one massive dynamic-model import.
-
-    :param discovered_count: Total source catalogue entries.
-    :param importable_count: Entries with a materialized source template.
-    """
-
-    __slots__ = (
-        "_discovered_count",
-        "_importable_count",
-        "_entry_results",
-        "_association_manifest",
-        "_association_manifest_path",
-        "_activation_report",
-    )
-
-    def __init__(self, discovered_count: int, importable_count: int) -> None:
-        """
-        Initialize one empty report with source catalogue counts.
-
-        :param discovered_count: Total source catalogue entries.
-        :param importable_count: Entries with a materialized source template.
-        :return: None.
-        """
-        self._discovered_count: int = discovered_count
-        self._importable_count: int = importable_count
-        self._entry_results: List[DynamicModelImportEntryResult] = list()
-        self._association_manifest: DgsDynamicAssociationManifest | None = None
-        self._association_manifest_path: Path | None = None
-        self._activation_report: DgsDynamicModelActivationReport | None = None
-
-    def add_entry_result(self, entry_result: DynamicModelImportEntryResult) -> None:
-        """
-        Append one entry result in deterministic catalogue order.
-
-        :param entry_result: Completed entry outcome.
-        :return: None.
-        """
-        self._entry_results.append(entry_result)
-
-    def get_discovered_count(self) -> int:
-        """Return the number of source catalogue entries."""
-        return self._discovered_count
-
-    def get_importable_count(self) -> int:
-        """Return the number of materialized source entries."""
-        return self._importable_count
-
-    def get_entry_results(self) -> List[DynamicModelImportEntryResult]:
-        """Return a defensive copy of the ordered entry results."""
-        return list(self._entry_results)
-
-    def get_added_count(self) -> int:
-        """Return added templates, including collision-safe renamed additions."""
-        return _count_dynamic_model_import_result_status(
-            self._entry_results,
-            DynamicModelImportEntryStatus.Added,
-        ) + _count_dynamic_model_import_result_status(
-            self._entry_results,
-            DynamicModelImportEntryStatus.Renamed,
-        )
-
-    def get_deduplicated_count(self) -> int:
-        """Return structurally equivalent entries reused from the circuit."""
-        return _count_dynamic_model_import_result_status(
-            self._entry_results,
-            DynamicModelImportEntryStatus.Deduplicated,
-        )
-
-    def get_renamed_count(self) -> int:
-        """Return non-equivalent name collisions installed with contextual names."""
-        return _count_dynamic_model_import_result_status(
-            self._entry_results,
-            DynamicModelImportEntryStatus.Renamed,
-        )
-
-    def get_failed_count(self) -> int:
-        """Return entries that could not be materialized or installed."""
-        return _count_dynamic_model_import_result_status(
-            self._entry_results,
-            DynamicModelImportEntryStatus.Failed,
-        )
-
-    def get_skipped_count(self) -> int:
-        """Return context-only or duplicate entries intentionally not installed."""
-        return _count_dynamic_model_import_result_status(
-            self._entry_results,
-            DynamicModelImportEntryStatus.Skipped,
-        )
-
-    def get_persisted_count(self) -> int:
-        """Return successfully written canonical Python template modules."""
-        return _count_persisted_dynamic_model_import_results(self._entry_results)
-
-    def get_source_association_count(self) -> int:
-        """Return exact DGS root/slot/element relations retained by the report."""
-        return _count_dgs_source_associations(self._entry_results)
-
-    def set_association_manifest(
-            self,
-            manifest: DgsDynamicAssociationManifest,
-    ) -> None:
-        """
-        Store the typed association manifest built from this import.
-
-        :param manifest: Separate DGS association manifest.
-        :return: None.
-        """
-        self._association_manifest = manifest
-
-    def get_association_manifest(self) -> DgsDynamicAssociationManifest | None:
-        """
-        Return the typed association manifest built from this import.
-
-        :return: Association manifest or ``None`` for non-DGS imports.
-        """
-        return self._association_manifest
-
-    def set_association_manifest_path(self, manifest_path: Path) -> None:
-        """
-        Store the persisted association manifest path.
-
-        :param manifest_path: Written association manifest path.
-        :return: None.
-        """
-        self._association_manifest_path = manifest_path
-
-    def get_association_manifest_path(self) -> Path | None:
-        """
-        Return the persisted association manifest path.
-
-        :return: Written manifest path or ``None`` when persistence was disabled.
-        """
-        return self._association_manifest_path
-
-    def set_activation_report(
-            self,
-            activation_report: "DgsDynamicModelActivationReport",
-    ) -> None:
-        """
-        Store the explicit DGS host activation outcome.
-
-        :param activation_report: Root-to-device activation report.
-        :return: None.
-        """
-        self._activation_report = activation_report
-
-    def get_activation_report(self) -> "DgsDynamicModelActivationReport | None":
-        """
-        Return the explicit DGS host activation outcome.
-
-        :return: Activation report or ``None`` for non-DGS imports.
-        """
-        return self._activation_report
-
-    def get_activated_device_model_count(self) -> int:
-        """
-        Return the number of device models assigned by exact DGS identity.
-
-        :return: Newly activated device model count.
-        """
-        if self._activation_report is None:
-            result: int = 0
-        else:
-            result = self._activation_report.get_physical_activated_count()
-        return result
-
-
-class DgsDynamicModelActivationReport:
-    """
-    Summarize exact DGS composite-root activation on physical devices.
-
-    The counters separate safe assignments from already active, ambiguous,
-    unresolved, conflicting and failed roots so partial imports remain
-    inspectable without turning one unsupported controller into a file failure.
-    """
-
-    __slots__ = (
-        "_activated_count",
-        "_physical_activated_count",
-        "_logical_activated_count",
-        "_already_active_count",
-        "_ambiguous_count",
-        "_unresolved_count",
-        "_conflict_count",
-        "_failed_count",
-    )
-
-    def __init__(self) -> None:
-        """
-        Initialize an empty fixed-shape activation report.
-
-        :return: None.
-        """
-        self._activated_count: int = 0
-        self._physical_activated_count: int = 0
-        self._logical_activated_count: int = 0
-        self._already_active_count: int = 0
-        self._ambiguous_count: int = 0
-        self._unresolved_count: int = 0
-        self._conflict_count: int = 0
-        self._failed_count: int = 0
-
-    def record_physical_activated(self) -> None:
-        """Record one newly assigned physical dynamic host.
-
-        :return: None.
-        """
-        self._activated_count += 1
-        self._physical_activated_count += 1
-
-    def record_logical_activated(self) -> None:
-        """Record one newly assigned non-physical composite controller.
-
-        :return: None.
-        """
-        self._activated_count += 1
-        self._logical_activated_count += 1
-
-    def record_already_active(self) -> None:
-        """Record one idempotently retained host assignment."""
-        self._already_active_count += 1
-
-    def record_ambiguous(self) -> None:
-        """Record one root with several possible physical hosts."""
-        self._ambiguous_count += 1
-
-    def record_unresolved(self) -> None:
-        """Record one exact source host that is absent from the circuit."""
-        self._unresolved_count += 1
-
-    def record_conflict(self) -> None:
-        """Record one host that already carries another dynamic template."""
-        self._conflict_count += 1
-
-    def record_failed(self) -> None:
-        """Record one handled template-assignment failure."""
-        self._failed_count += 1
-
-    def get_activated_count(self) -> int:
-        """Return newly assigned host count."""
-        return self._activated_count
-
-    def get_physical_activated_count(self) -> int:
-        """Return newly assigned physical-device host count.
-
-        :return: Physical activation count.
-        """
-        return self._physical_activated_count
-
-    def get_logical_activated_count(self) -> int:
-        """Return newly assigned non-physical controller count.
-
-        :return: Logical activation count.
-        """
-        return self._logical_activated_count
-
-    def get_already_active_count(self) -> int:
-        """Return idempotently retained host count."""
-        return self._already_active_count
-
-    def get_ambiguous_count(self) -> int:
-        """Return ambiguous root count."""
-        return self._ambiguous_count
-
-    def get_unresolved_count(self) -> int:
-        """Return unresolved exact host count."""
-        return self._unresolved_count
-
-    def get_conflict_count(self) -> int:
-        """Return conflicting pre-existing assignment count."""
-        return self._conflict_count
-
-    def get_failed_count(self) -> int:
-        """Return handled assignment failure count."""
-        return self._failed_count
-
-
-class DynamicModelImportSelectionRequest:
-    """
-    Explicit import request for one selected entry.
-
-    :param entry_key: Stable key of the selected import entry.
-    :param target_domain: Selected target reusable-template domain.
-    :param device_tpe: Selected supported VeraGrid device type.
-    """
-
-    __slots__ = (
-        "_entry_key",
-        "_target_domain",
-        "_device_tpe",
-    )
-
-    def __init__(
-            self,
-            entry_key: str,
-            target_domain: DynamicModelImportTargetDomain,
-            device_tpe: DeviceType,
-    ) -> None:
-        """
-        Build one explicit import request.
-
-        :param entry_key: Stable entry key.
-        :param target_domain: Selected reusable-template domain.
-        :param device_tpe: Selected supported device type.
-        :return: None.
-        """
-        self._entry_key: str = str(entry_key)
-        self._target_domain: DynamicModelImportTargetDomain = target_domain
-        self._device_tpe: DeviceType = device_tpe
-
-    def get_entry_key(self) -> str:
-        """
-        Return the selected entry key.
-
-        :return: Stable entry key.
-        """
-        return self._entry_key
-
-    def get_target_domain(self) -> DynamicModelImportTargetDomain:
-        """
-        Return the selected reusable-template domain.
-
-        :return: Target domain.
-        """
-        return self._target_domain
-
-    def get_device_tpe(self) -> DeviceType:
-        """
-        Return the selected supported device type.
-
-        :return: Supported device type.
-        """
-        return self._device_tpe
-
-
-class DynamicModelLoadedUserTemplate:
-    """
-    One persisted user template materialized from the ``user_templates`` folder.
-
-    :param module_path: Source persisted Python module path.
-    :param domain: Selected reusable-template domain restored from metadata.
-    :param device_tpe: Selected supported device type restored from metadata.
-    :param template_obj: Materialized RMS or EMT reusable template.
-    """
-
-    __slots__ = (
-        "_module_path",
-        "_domain",
-        "_device_tpe",
-        "_template_obj",
-    )
-
-    def __init__(
-            self,
-            module_path: Path,
-            domain: DynamicModelImportTargetDomain,
-            device_tpe: DeviceType,
-            template_obj: RmsModelTemplate | EmtModelTemplate,
-    ) -> None:
-        """
-        Build one materialized persisted user template descriptor.
-
-        :param module_path: Source Python module path.
-        :param domain: Restored reusable-template domain.
-        :param device_tpe: Restored supported device type.
-        :param template_obj: Materialized RMS or EMT template.
-        :return: None.
-        """
-        self._module_path: Path = module_path
-        self._domain: DynamicModelImportTargetDomain = domain
-        self._device_tpe: DeviceType = device_tpe
-        self._template_obj: RmsModelTemplate | EmtModelTemplate = template_obj
-
-    def get_module_path(self) -> Path:
-        """
-        Return the persisted module path.
-
-        :return: Persisted Python module path.
-        """
-        return self._module_path
-
-    def get_domain(self) -> DynamicModelImportTargetDomain:
-        """
-        Return the restored reusable-template domain.
-
-        :return: Restored domain.
-        """
-        return self._domain
-
-    def get_device_tpe(self) -> DeviceType:
-        """
-        Return the restored supported device type.
-
-        :return: Restored device type.
-        """
-        return self._device_tpe
-
-    def get_template_obj(self) -> RmsModelTemplate | EmtModelTemplate:
-        """
-        Return the materialized reusable template object.
-
-        :return: RMS or EMT template object.
-        """
-        return self._template_obj
-
-class _DynamicUserTemplatePythonModule:
-    """
-    Typed call boundary for one human-readable user-template Python module.
-
-    Dynamic module discovery necessarily resolves a function at runtime.  This
-    light wrapper contains that single dynamic boundary and exposes an explicit
-    typed method to the rest of the importer.
-
-    :param module_path: Python file that owns the builder.
-    :param template_builder: Validated module-level ``get_template`` function.
-    """
-
-    __slots__ = ("_module_path", "_template_builder")
-
-    def __init__(
-            self,
-            module_path: Path,
-            template_builder: FunctionType,
-    ) -> None:
-        """
-        Store one validated Python template-builder boundary.
-
-        :param module_path: Python file that owns the builder.
-        :param template_builder: Validated module-level ``get_template`` function.
-        :return: None.
-        """
-        self._module_path: Path = module_path
-        self._template_builder: Callable[
-            [VarFactory, str | None],
-            RmsModelTemplate | EmtModelTemplate,
-        ] = cast(
-            Callable[[VarFactory, str | None], RmsModelTemplate | EmtModelTemplate],
-            template_builder,
-        )
-
-    def materialize(self, var_factory: VarFactory) -> RmsModelTemplate | EmtModelTemplate:
-        """
-        Materialize the template through the module's canonical Python builder.
-
-        :param var_factory: Variable factory that owns the runtime symbols.
-        :return: Materialized RMS or EMT template.
-        """
-        template_obj: RmsModelTemplate | EmtModelTemplate = self._template_builder(
-            var_factory,
-            None,
-        )
-        return template_obj
-
-
-class DynamicModelPersistenceKind(Enum):
-    """
-    Persistence strategy used to export one imported dynamic model as Python.
-    """
-
-    __slots__ = ()
-
-    ModelicaXml = "Modelica XML"
-    DgsStandaloneBlkdef = "DGS standalone BlkDef"
-    DgsRootElmComp = "DGS root ElmComp"
-    DgsRootSlotGraphicalTree = "DGS root slot graphical tree"
-    DgsNamedBlockInternalOnly = "DGS named block internal only"
-
-
-class DynamicModelPersistenceSpec:
-    """
-    Typed persistence descriptor used to export one imported entry to Python.
-
-    :param kind: Export strategy.
-    :param source_path: Source file path.
-    :param template_name: Output template name.
-    :param root_name: Optional root ElmComp display name.
-    :param root_typ_id: Optional root ElmComp typ_id.
-    :param slot_name: Optional root slot name.
-    :param block_name: Optional selected block name.
-    :param block_id: Optional selected block identifier.
-    :param module_stem: Output module stem.
-    """
-
-    __slots__ = (
-        "_kind",
-        "_source_path",
-        "_template_name",
-        "_root_name",
-        "_root_typ_id",
-        "_slot_name",
-        "_block_name",
-        "_block_id",
-        "_module_stem",
-    )
-
-    def __init__(
-            self,
-            kind: DynamicModelPersistenceKind,
-            source_path: str,
-            template_name: str,
-            module_stem: str,
-            root_name: str | None = None,
-            root_typ_id: str | None = None,
-            slot_name: str | None = None,
-            block_name: str | None = None,
-            block_id: str | None = None,
-    ) -> None:
-        """
-        Build one typed persistence descriptor.
-
-        :param kind: Export strategy.
-        :param source_path: Source file path.
-        :param template_name: Output template name.
-        :param module_stem: Output module stem.
-        :param root_name: Optional root ElmComp display name.
-        :param root_typ_id: Optional root ElmComp typ_id.
-        :param slot_name: Optional root slot name.
-        :param block_name: Optional selected block name.
-        :param block_id: Optional selected block identifier.
-        :return: None.
-        """
-        self._kind: DynamicModelPersistenceKind = kind
-        self._source_path: str = str(source_path)
-        self._template_name: str = str(template_name)
-        self._module_stem: str = str(module_stem)
-        self._root_name: str | None = None if root_name is None else str(root_name)
-        self._root_typ_id: str | None = None if root_typ_id is None else str(root_typ_id)
-        self._slot_name: str | None = None if slot_name is None else str(slot_name)
-        self._block_name: str | None = None if block_name is None else str(block_name)
-        self._block_id: str | None = None if block_id is None else str(block_id)
-
-    def get_kind(self) -> DynamicModelPersistenceKind:
-        """
-        Return the export strategy.
-
-        :return: Export strategy.
-        """
-        return self._kind
-
-    def get_source_path(self) -> str:
-        """
-        Return the source file path.
-
-        :return: Source path.
-        """
-        return self._source_path
-
-    def get_template_name(self) -> str:
-        """
-        Return the output template name.
-
-        :return: Template name.
-        """
-        return self._template_name
-
-    def get_root_name(self) -> str | None:
-        """
-        Return the optional root ElmComp name.
-
-        :return: Root name or ``None``.
-        """
-        return self._root_name
-
-    def get_root_typ_id(self) -> str | None:
-        """
-        Return the optional root ElmComp typ_id.
-
-        :return: Root typ_id or ``None``.
-        """
-        return self._root_typ_id
-
-    def get_slot_name(self) -> str | None:
-        """
-        Return the optional slot name.
-
-        :return: Slot name or ``None``.
-        """
-        return self._slot_name
-
-    def get_block_name(self) -> str | None:
-        """
-        Return the optional selected block name.
-
-        :return: Block name or ``None``.
-        """
-        return self._block_name
-
-    def get_block_id(self) -> str | None:
-        """
-        Return the optional selected block identifier.
-
-        :return: Block identifier or ``None``.
-        """
-        return self._block_id
-
-    def get_module_stem(self) -> str:
-        """
-        Return the output module stem.
-
-        :return: Module stem.
-        """
-        return self._module_stem
-
-
-class DynamicModelImportEntry:
-    """
-    One importable dynamic-model template entry.
-
-    :param unique_key: Stable key used by the GUI selection dialog.
-    :param display_name: Human-readable entry label.
-    :param source_tpe: Source format used to build this entry.
-    :param template: Imported EMT template or ``None`` when the source entry could not be materialized.
-    :param notes_text: Human-readable warning or support notes.
-    """
-
-    __slots__ = (
-        "_unique_key",
-        "_display_name",
-        "_source_tpe",
-        "_template",
-        "_notes_text",
-        "_parent_key",
-        "_persistence_spec",
-        "_source_context",
-        "_installed_template",
-        "_availability",
-    )
-
-    def __init__(
-            self,
-            unique_key: str,
-            display_name: str,
-            source_tpe: DynamicModelImportSource,
-            template: EmtModelTemplate | None,
-            notes_text: str,
-            parent_key: str | None = None,
-            persistence_spec: DynamicModelPersistenceSpec | None = None,
-            source_context: DynamicModelImportSourceContext | None = None,
-            availability: DynamicModelImportEntryAvailability | None = None,
-    ) -> None:
-        """
-        Build one importable dynamic-model entry.
-
-        :param unique_key: Stable selection key.
-        :param display_name: Human-readable entry label.
-        :param source_tpe: Source format.
-        :param template: Imported EMT template or ``None``.
-        :param notes_text: Human-readable notes.
-        :param parent_key: Optional parent catalogue entry key.
-        :param persistence_spec: Optional canonical Python persistence specification.
-        :param source_context: Optional typed DGS provenance and host context.
-        :param availability: Explicit source availability, or automatic template-based classification.
-        :return: None.
-        """
-        self._unique_key: str = str(unique_key)
-        self._display_name: str = str(display_name)
-        self._source_tpe: DynamicModelImportSource = source_tpe
-        self._template: EmtModelTemplate | None = template
-        self._notes_text: str = str(notes_text)
-        self._parent_key: str | None = None if parent_key is None else str(parent_key)
-        self._persistence_spec: DynamicModelPersistenceSpec | None = persistence_spec
-        self._source_context: DynamicModelImportSourceContext | None = source_context
-        self._installed_template: RmsModelTemplate | EmtModelTemplate | None = None
-        if availability is None:
-            if template is None:
-                self._availability: DynamicModelImportEntryAvailability = DynamicModelImportEntryAvailability.Failed
-            else:
-                self._availability = DynamicModelImportEntryAvailability.Importable
-        else:
-            self._availability = availability
-
-    def get_unique_key(self) -> str:
-        """
-        Return the stable selection key.
-
-        :return: Stable selection key.
-        """
-        return self._unique_key
-
-    def get_display_name(self) -> str:
-        """
-        Return the human-readable display name.
-
-        :return: Entry display name.
-        """
-        return self._display_name
-
-    def get_source_tpe(self) -> DynamicModelImportSource:
-        """
-        Return the source format.
-
-        :return: Source format enum.
-        """
-        return self._source_tpe
-
-    def get_template(self) -> EmtModelTemplate | None:
-        """
-        Return the imported EMT template.
-
-        :return: Imported EMT template or ``None``.
-        """
-        return self._template
-
-    def get_notes_text(self) -> str:
-        """
-        Return the import notes string.
-
-        :return: Import notes.
-        """
-        return self._notes_text
-
-    def get_parent_key(self) -> str | None:
-        """
-        Return the parent selection key when this entry belongs to a hierarchy.
-
-        :return: Parent entry key or ``None``.
-        """
-        return self._parent_key
-
-    def get_persistence_spec(self) -> DynamicModelPersistenceSpec | None:
-        """
-        Return the Python-export persistence descriptor.
-
-        :return: Persistence descriptor or ``None``.
-        """
-        return self._persistence_spec
-
-    def get_source_context(self) -> DynamicModelImportSourceContext | None:
-        """
-        Return typed DGS provenance and host-resolution context.
-
-        :return: Source context or ``None`` for formats without DGS provenance.
-        """
-        return self._source_context
-
-    def get_availability(self) -> DynamicModelImportEntryAvailability:
-        """
-        Return the explicit source availability classification.
-
-        :return: Importable, context-only or failed classification.
-        """
-        return self._availability
-
-    def set_installed_template(
-            self,
-            template_obj: RmsModelTemplate | EmtModelTemplate | None,
-    ) -> None:
-        """
-        Store the circuit template selected by add or deduplication processing.
-
-        :param template_obj: Installed or equivalent circuit template, or ``None``.
-        :return: None.
-        """
-        self._installed_template = template_obj
-
-    def get_installed_template(self) -> RmsModelTemplate | EmtModelTemplate | None:
-        """
-        Return the circuit template produced by the latest import operation.
-
-        :return: Added/equivalent circuit template or ``None``.
-        """
-        return self._installed_template
-
-    def is_importable(self) -> bool:
-        """
-        Return whether the entry can be added to the circuit.
-
-        :return: ``True`` when the entry has a materialized template.
-        """
-        if (self._availability == DynamicModelImportEntryAvailability.Importable and
-                self._template is not None):
-            return True
-        else:
-            return False
-
-
-class DynamicModelImportBundle:
-    """
-    Group of imported dynamic-model entries built from one source file.
-
-    :param source_tpe: Source format used to build the bundle.
-    :param source_path: Source file path.
-    :param entries: Importable or non-importable entries discovered in the file.
-    """
-
-    __slots__ = (
-        "_source_tpe",
-        "_source_path",
-        "_entries",
-    )
-
-    def __init__(
-            self,
-            source_tpe: DynamicModelImportSource,
-            source_path: str,
-            entries: List[DynamicModelImportEntry],
-    ) -> None:
-        """
-        Build one imported dynamic-model bundle.
-
-        :param source_tpe: Source format.
-        :param source_path: Source file path.
-        :param entries: Discovered import entries.
-        :return: None.
-        """
-        self._source_tpe: DynamicModelImportSource = source_tpe
-        self._source_path: str = str(source_path)
-        self._entries: List[DynamicModelImportEntry] = entries
-
-    def get_source_tpe(self) -> DynamicModelImportSource:
-        """
-        Return the bundle source format.
-
-        :return: Source format enum.
-        """
-        return self._source_tpe
-
-    def get_source_path(self) -> str:
-        """
-        Return the source file path.
-
-        :return: Source file path.
-        """
-        return self._source_path
-
-    def get_entries(self) -> List[DynamicModelImportEntry]:
-        """
-        Return the bundle entries.
-
-        :return: Bundle entries.
-        """
-        return self._entries
-
-    def get_entry_by_key(self, entry_key: str) -> DynamicModelImportEntry | None:
-        """
-        Resolve one bundle entry by its stable source key.
-
-        :param entry_key: Stable source catalogue key.
-        :return: Matching entry or ``None``.
-        """
-        entry: DynamicModelImportEntry
-        for entry in self._entries:
-            if entry.get_unique_key() == entry_key:
-                return entry
-            else:
-                pass
-        return None
-
-
-def _collect_vars_from_modelica_expr(
-        expression: Expr | LogicExpr | ExternalFunc,
-        vars_found: Dict[int, Var],
-) -> None:
-    """
-    Collect every symbolic variable referenced by one Modelica-derived expression.
-
-    :param expression: Modelica-derived symbolic expression.
-    :param vars_found: UID-indexed variable collector.
-    :return: None.
-    """
-    # Modelica support is experimental and lives outside the packaged runtime.
-    # Importing its types only when this feature is invoked keeps normal GUI
-    # startup independent from the repository-only ``trunk`` tree.
-    from VeraGridEngine.IO.modelica.modelica_parser import ExternalFunc, LogicExpr
-
-    if isinstance(expression, Var):
-        vars_found[expression.uid] = expression
-    else:
-        if isinstance(expression, BinOp):
-            _collect_vars_from_modelica_expr(expression.left, vars_found)
-            _collect_vars_from_modelica_expr(expression.right, vars_found)
-        else:
-            if isinstance(expression, UnOp):
-                _collect_vars_from_modelica_expr(expression.operand, vars_found)
-            else:
-                if isinstance(expression, Func):
-                    _collect_vars_from_modelica_expr(expression.arg, vars_found)
-                else:
-                    if isinstance(expression, Func2):
-                        _collect_vars_from_modelica_expr(expression.arg1, vars_found)
-                        _collect_vars_from_modelica_expr(expression.arg2, vars_found)
-                    else:
-                        if isinstance(expression, ExternalFunc):
-                            arg_expression: Expr | LogicExpr | ExternalFunc
-                            for arg_expression in expression.args:
-                                _collect_vars_from_modelica_expr(arg_expression, vars_found)
-                        else:
-                            if isinstance(expression, LogicExpr):
-                                arg_expression = None
-                                for arg_expression in expression.args:
-                                    _collect_vars_from_modelica_expr(arg_expression, vars_found)
-                            else:
-                                pass
-
-
-def _split_modelica_residual_equation(
-        equation: Expr,
-) -> Tuple[Var | None, Expr | None]:
-    """
-    Split one residual-form Modelica equation into ``lhs`` and ``rhs``.
-
-    The experimental Modelica parser stores equations as ``lhs - rhs = 0``
-    symbolic residuals. Importing them into VeraGrid requires recovering the
-    target variable on the left-hand side and the explicit right-hand side.
-
-    :param equation: Residual-form equation.
-    :return: Pair ``(lhs_var, rhs_expr)`` or ``(None, None)`` when the pattern is unsupported.
-    """
-    if isinstance(equation, BinOp):
-        if equation.op == "-":
-            if isinstance(equation.left, Var):
-                return equation.left, equation.right
-            else:
-                return None, None
-        else:
-            return None, None
-    else:
-        return None, None
-
-
-def _append_unique_var(target_list: List[Var], candidate_var: Var) -> None:
-    """
-    Append one variable only when its UID is not already present.
-
-    :param target_list: Output variable list.
-    :param candidate_var: Candidate variable.
-    :return: None.
-    """
-    existing_var: Var
-    for existing_var in target_list:
-        if existing_var.uid == candidate_var.uid:
-            return
-        else:
-            pass
-
-    target_list.append(candidate_var)
-
-
-def _build_modelica_parameter_list(
-        collected_vars: Dict[int, Var],
-        state_vars: List[Var],
-        algebraic_vars: List[Var],
-        diff_vars: List[Var],
-) -> List[Var]:
-    """
-    Build the parameter-variable list from one parsed Modelica symbol set.
-
-    :param collected_vars: UID-indexed variable collector.
-    :param state_vars: State variables already classified.
-    :param algebraic_vars: Algebraic variables already classified.
-    :param diff_vars: Differential variables already classified.
-    :return: Parameter-variable list.
-    """
-    state_uids: Set[int] = set()
-    algebraic_uids: Set[int] = set()
-    diff_uids: Set[int] = set()
-    parameter_vars: List[Var] = list()
-    candidate_var: Var
-
-    for candidate_var in state_vars:
-        state_uids.add(candidate_var.uid)
-
-    for candidate_var in algebraic_vars:
-        algebraic_uids.add(candidate_var.uid)
-
-    for candidate_var in diff_vars:
-        diff_uids.add(candidate_var.uid)
-
-    for candidate_var in collected_vars.values():
-        if candidate_var.name == "time":
-            pass
-        else:
-            if candidate_var.uid in state_uids:
-                pass
-            else:
-                if candidate_var.uid in algebraic_uids:
-                    pass
-                else:
-                    if candidate_var.uid in diff_uids:
-                        pass
-                    else:
-                        parameter_vars.append(candidate_var)
-
-    return parameter_vars
-
-
-def _build_modelica_parameter_mapping(
-        parser: ModelicaXMLParser,
-        parameter_vars: List[Var],
-) -> Dict[Var, Const]:
-    """
-    Build one editable runtime-parameter mapping for one imported Modelica template.
-
-    :param parser: Parsed Modelica source.
-    :param parameter_vars: Classified parameter variables.
-    :return: Parameter-to-constant mapping.
-    """
-    parameter_mapping: Dict[Var, Const] = dict()
-    parameter_var: Var
-
-    for parameter_var in parameter_vars:
-        initial_value: float | None = parser.initial_guesses.get(parameter_var.uid, None)
-
-        if initial_value is None:
-            parameter_mapping[parameter_var] = Const(None)
-        else:
-            parameter_mapping[parameter_var] = Const(float(initial_value))
-
-    return parameter_mapping
-
-
-def _build_modelica_initialization_maps(
-        parser: ModelicaXMLParser,
-        state_vars: List[Var],
-        algebraic_vars: List[Var],
-        diff_vars: List[Var],
-) -> Tuple[Dict[Var, Expr], Dict[Var, Expr]]:
-    """
-    Build ``init_eqs`` and ``diff_init_eqs`` from parsed Modelica initial equations.
-
-    :param parser: Parsed Modelica source.
-    :param state_vars: Classified state variables.
-    :param algebraic_vars: Classified algebraic variables.
-    :param diff_vars: Classified differential variables.
-    :return: Pair ``(init_eqs, diff_init_eqs)``.
-    """
-    init_eqs: Dict[Var, Expr] = dict()
-    diff_init_eqs: Dict[Var, Expr] = dict()
-    state_uids: Set[int] = set()
-    algebraic_uids: Set[int] = set()
-    diff_uids: Set[int] = set()
-    equation: Expr
-
-    for state_var in state_vars:
-        state_uids.add(state_var.uid)
-
-    for algebraic_var in algebraic_vars:
-        algebraic_uids.add(algebraic_var.uid)
-
-    for diff_var in diff_vars:
-        diff_uids.add(diff_var.uid)
-
-    for equation in parser.initial_equations:
-        lhs_var: Var | None
-        rhs_expr: Expr | None
-        lhs_var, rhs_expr = _split_modelica_residual_equation(equation)
-
-        if lhs_var is None or rhs_expr is None:
-            pass
-        else:
-            if lhs_var.uid in diff_uids:
-                diff_init_eqs[lhs_var] = rhs_expr
-            else:
-                if lhs_var.uid in state_uids or lhs_var.uid in algebraic_uids:
-                    init_eqs[lhs_var] = rhs_expr
-                else:
-                    pass
-
-    state_var: Var
-    for state_var in state_vars:
-        if state_var in init_eqs:
-            pass
-        else:
-            guessed_value: float | None = parser.initial_guesses.get(state_var.uid, None)
-            if guessed_value is None:
-                pass
-            else:
-                init_eqs[state_var] = Const(float(guessed_value))
-
-    algebraic_var: Var
-    for algebraic_var in algebraic_vars:
-        if algebraic_var in init_eqs:
-            pass
-        else:
-            guessed_value = parser.initial_guesses.get(algebraic_var.uid, None)
-            if guessed_value is None:
-                pass
-            else:
-                init_eqs[algebraic_var] = Const(float(guessed_value))
-
-    diff_var: Var
-    for diff_var in diff_vars:
-        if diff_var in diff_init_eqs:
-            pass
-        else:
-            guessed_value = parser.initial_guesses.get(diff_var.uid, None)
-            if guessed_value is None:
-                pass
-            else:
-                diff_init_eqs[diff_var] = Const(float(guessed_value))
-
-    return init_eqs, diff_init_eqs
-
-
-def _build_modelica_equation_partition(
-        parser: ModelicaXMLParser,
-) -> Tuple[List[Var], List[Var], List[Var], List[Expr], List[Expr], Dict[Var, Const], Dict[Var, Expr], Dict[Var, Expr], List[str]]:
-    """
-    Partition one parsed Modelica source into VeraGrid EMT template structures.
-
-    :param parser: Parsed Modelica source.
-    :return: State vars, diff vars, algebraic vars, state equations, algebraic equations,
-        parameter mapping, init_eqs, diff_init_eqs, and warning messages.
-    """
-    collected_vars: Dict[int, Var] = dict()
-    state_vars: List[Var] = list()
-    diff_vars: List[Var] = list()
-    algebraic_vars: List[Var] = list()
-    state_eqs: List[Expr] = list()
-    algebraic_eqs: List[Expr] = list()
-    warnings_text: List[str] = list()
-    equation: Expr
-
-    for equation in parser.equations:
-        _collect_vars_from_modelica_expr(equation, collected_vars)
-
-    for equation in parser.initial_equations:
-        _collect_vars_from_modelica_expr(equation, collected_vars)
-
-    for condition_expr, statement_list in parser.when_equations.items():
-        _collect_vars_from_modelica_expr(condition_expr, collected_vars)
-        for equation in statement_list:
-            _collect_vars_from_modelica_expr(equation, collected_vars)
-
-    for candidate_var in collected_vars.values():
-        if candidate_var.name.startswith("d_") and candidate_var.base_var is not None:
-            _append_unique_var(diff_vars, candidate_var)
-            _append_unique_var(state_vars, candidate_var.base_var)
-        else:
-            pass
-
-    for equation in parser.equations:
-        lhs_var: Var | None
-        rhs_expr: Expr | None
-        lhs_var, rhs_expr = _split_modelica_residual_equation(equation)
-
-        if lhs_var is None or rhs_expr is None:
-            warnings_text.append(f"Unsupported Modelica equation shape skipped: {equation}")
-        else:
-            if lhs_var.name.startswith("d_") and lhs_var.base_var is not None:
-                state_eqs.append(rhs_expr)
-            else:
-                _append_unique_var(algebraic_vars, lhs_var)
-                algebraic_eqs.append(equation)
-
-    if len(parser.when_equations) > 0:
-        warnings_text.append("Modelica when-equations are not imported yet and were ignored.")
-    else:
-        pass
-
-    parameter_vars: List[Var] = _build_modelica_parameter_list(
-        collected_vars=collected_vars,
-        state_vars=state_vars,
-        algebraic_vars=algebraic_vars,
-        diff_vars=diff_vars,
-    )
-    parameter_mapping: Dict[Var, Const] = _build_modelica_parameter_mapping(parser, parameter_vars)
-    init_eqs: Dict[Var, Expr]
-    diff_init_eqs: Dict[Var, Expr]
-    init_eqs, diff_init_eqs = _build_modelica_initialization_maps(
-        parser=parser,
-        state_vars=state_vars,
-        algebraic_vars=algebraic_vars,
-        diff_vars=diff_vars,
-    )
-
-    return (
-        state_vars,
-        diff_vars,
-        algebraic_vars,
-        state_eqs,
-        algebraic_eqs,
-        parameter_mapping,
-        init_eqs,
-        diff_init_eqs,
-        warnings_text,
-    )
-
-
-def _build_modelica_emt_template(xml_path: str) -> Tuple[EmtModelTemplate | None, List[str]]:
-    """
-    Build one generic EMT template from one flattened Modelica XML source.
-
-    :param xml_path: Source XML file path.
-    :return: Pair ``(template_or_none, warnings_text)``.
-    """
-    from VeraGridEngine.IO.modelica.modelica_parser import ModelicaXMLParser
-
-    parser: ModelicaXMLParser = ModelicaXMLParser(xml_source=xml_path, is_file=True)
-    model_name: str = Path(xml_path).stem
-    parser.parse_and_build(block_name=model_name)
-
-    state_vars: List[Var]
-    diff_vars: List[Var]
-    algebraic_vars: List[Var]
-    state_eqs: List[Expr]
-    algebraic_eqs: List[Expr]
-    parameter_mapping: Dict[Var, Const]
-    init_eqs: Dict[Var, Expr]
-    diff_init_eqs: Dict[Var, Expr]
-    warnings_text: List[str]
-    (
-        state_vars,
-        diff_vars,
-        algebraic_vars,
-        state_eqs,
-        algebraic_eqs,
-        parameter_mapping,
-        init_eqs,
-        diff_init_eqs,
-        warnings_text,
-    ) = _build_modelica_equation_partition(parser)
-
-    if len(state_eqs) == 0 and len(algebraic_eqs) == 0:
-        warnings_text.append("No supported continuous equations were extracted from the Modelica XML file.")
-        return None, warnings_text
-    else:
-        pass
-
-    template: EmtModelTemplate = EmtModelTemplate(name=model_name)
-    template.tpe = DeviceType.NoDevice
-    template.block = Block(
-        name=model_name,
-        state_vars=state_vars,
-        state_eqs=state_eqs,
-        diff_vars=diff_vars,
-        algebraic_vars=algebraic_vars,
-        algebraic_eqs=algebraic_eqs,
-        event_dict=parameter_mapping,
-        init_eqs=init_eqs,
-        diff_init_eqs=diff_init_eqs,
-    )
-    return template, warnings_text
+from VeraGridEngine.enumerations import (
+    BlockScopeMode,
+    BlockType,
+    DeviceType,
+    VarPowerFlowReferenceType,
+)
+
+class DgsDynamicParserContractError(RuntimeError):
+    """Report that the dynamic DGS parser boundary is incomplete."""
 
 
 def _wrap_block_as_generic_emt_template(block: Block, template_name: str) -> EmtModelTemplate:
@@ -1850,20 +128,6 @@ def _wrap_block_as_generic_emt_template(block: Block, template_name: str) -> Emt
     return template
 
 
-def _build_modelica_persistence_spec(xml_path: str, template_name: str) -> DynamicModelPersistenceSpec:
-    """
-    Build the persistence descriptor for one imported Modelica template.
-
-    :param xml_path: Source XML path.
-    :param template_name: Template name.
-    :return: Persistence descriptor.
-    """
-    return DynamicModelPersistenceSpec(
-        kind=DynamicModelPersistenceKind.ModelicaXml,
-        source_path=xml_path,
-        template_name=template_name,
-        module_stem=_sanitize_file_stem(template_name),
-    )
 
 
 def _select_root_frame_display_name(root_block: Block) -> str | None:
@@ -1904,7 +168,12 @@ def _build_dgs_context_slot_notes(circuit: DgsCircuit, root_name: str, entry: El
     :param entry: Direct slot entry.
     :return: Human-readable notes text.
     """
-    incoming_signals, outgoing_signals = get_blkslot_signal_interface(circuit=circuit, slot_id=entry.slot_id)
+    from VeraGridEngine.IO.dgs.dgs_to_blocks import get_blkslot_signal_interface
+
+    incoming_signals, outgoing_signals = get_blkslot_signal_interface(
+        circuit=circuit,
+        slot_id=entry.slot_id,
+    )
     notes_parts: List[str] = [f"Root: {root_name}", "Context slot"]
     slot_obj: BlkSlot | None = None
     candidate_slot: BlkSlot
@@ -2000,7 +269,7 @@ def _build_dgs_import_source_context(
 
 def _build_dgs_root_elmcomp_entries_with_progress(
         dgs_path: str,
-        progress_callback: DynamicModelImportProgressCallback | None,
+        progress_callback: Callable[[int, str], None] | None,
         progress_start: int,
         progress_end: int,
         dgs_circuit: DgsCircuit | None = None,
@@ -2017,6 +286,18 @@ def _build_dgs_root_elmcomp_entries_with_progress(
     :param parsed_dgs_blocks: Optional definitions parsed from ``dgs_circuit``.
     :return: Pair ``(entries, logger)``.
     """
+    from VeraGridEngine.IO.dgs.dgs_to_blocks import (
+        DgsDirectRootBuildResult,
+        DgsGraphicalParseContext,
+        build_dgs_graphical_parse_context,
+        build_direct_root_elmcomp_result_from_context,
+        build_standalone_blkdef_emt_template,
+        build_standalone_blkdef_emt_template_from_parsed_block,
+        dgs_to_root_block_from_context,
+        extract_root_slot_block_graphical_tree_from_context,
+        parse_dgs_block_definitions_from_context,
+    )
+
     circuit: DgsCircuit
     entries: List[DynamicModelImportEntry] = list()
     logger: Logger = Logger()
@@ -2552,73 +833,13 @@ def _build_dgs_root_elmcomp_entries_with_progress(
     return entries, logger
 
 
-def build_modelica_dynamic_model_import_bundle(xml_path: str) -> Tuple[DynamicModelImportBundle, Logger]:
-    """
-    Parse one flattened Modelica XML file into one import bundle.
-
-    :param xml_path: Source Modelica XML path.
-    :return: Pair ``(bundle, logger)``.
-    """
-    logger: Logger = Logger()
-    template: EmtModelTemplate | None
-    warnings_text: List[str]
-    template, warnings_text = _build_modelica_emt_template(xml_path)
-    notes_lines: List[str] = list()
-    notes_text: str
-    entry: DynamicModelImportEntry
-
-    if template is None:
-        logger.add_error(msg="Modelica import failed", value=xml_path)
-        notes_lines.append("Template could not be materialized.")
-    else:
-        pass
-
-    for warning_text in warnings_text:
-        notes_lines.append(warning_text)
-        logger.add_warning(msg="Modelica import warning", value=warning_text)
-
-    notes_text = "\n".join(notes_lines)
-    entry = DynamicModelImportEntry(
-        unique_key=f"modelica|{Path(xml_path).stem}",
-        display_name=Path(xml_path).stem,
-        source_tpe=DynamicModelImportSource.ModelicaXml,
-        template=template,
-        notes_text=notes_text,
-        persistence_spec=None if template is None else _build_modelica_persistence_spec(xml_path, template.name),
-    )
-    bundle = DynamicModelImportBundle(
-        source_tpe=DynamicModelImportSource.ModelicaXml,
-        source_path=xml_path,
-        entries=list([entry]),
-    )
-    return bundle, logger
 
 
-def build_modelica_dynamic_model_import_bundle_with_progress(
-        xml_path: str,
-        progress_callback: DynamicModelImportProgressCallback | None = None,
-) -> Tuple[DynamicModelImportBundle, Logger]:
-    """
-    Parse one flattened Modelica XML file into one import bundle with visible progress.
-
-    :param xml_path: Source Modelica XML path.
-    :param progress_callback: Optional UI progress callback.
-    :return: Pair ``(bundle, logger)``.
-    """
-    bundle: DynamicModelImportBundle
-    logger: Logger
-
-    _emit_dynamic_model_import_progress(progress_callback, 0, "Scanning Modelica XML import request...")
-    _emit_dynamic_model_import_progress(progress_callback, 20, "Parsing flattened Modelica XML...")
-    bundle, logger = build_modelica_dynamic_model_import_bundle(xml_path)
-    _emit_dynamic_model_import_progress(progress_callback, 85, "Building Modelica import catalogue...")
-    _emit_dynamic_model_import_progress(progress_callback, 100, "Modelica dynamic model catalogue ready")
-    return bundle, logger
 
 
 def build_dgs_dynamic_model_import_bundle(
         dgs_path: str,
-        progress_callback: DynamicModelImportProgressCallback | None = None,
+        progress_callback: Callable[[int, str], None] | None = None,
         dgs_circuit: DgsCircuit | None = None,
 ) -> Tuple[DynamicModelImportBundle, Logger]:
     """
@@ -2629,6 +850,19 @@ def build_dgs_dynamic_model_import_bundle(
     :param dgs_circuit: Optional circuit already parsed by the static importer.
     :return: Pair ``(bundle, logger)``.
     """
+    try:
+        from VeraGridEngine.IO.dgs.dgs_to_blocks import (
+            build_dgs_standalone_block_catalog_from_context,
+            build_standalone_blkdef_emt_template_from_parsed_block,
+            parse_dgs_block_definitions_from_context,
+        )
+    except ImportError as error:
+        raise DgsDynamicParserContractError(
+            "The dynamic DGS importer requires parser functions that are not "
+            "present after the parser reversion. Restore and test that parser "
+            "boundary before importing dynamic DGS models."
+        ) from error
+
     logger: Logger = Logger()
     shared_circuit: DgsCircuit
     shared_parsed_blocks: Dict[str, ParsedDgsBlockDefinition]
@@ -3154,123 +1388,6 @@ def guess_dynamic_model_import_hierarchy_device_tpe(
     return result
 
 
-def _find_named_block_var_recursive(block: Block, var_name: str) -> Var | None:
-    """
-    Find one symbolic variable by exact name inside one block tree.
-
-    :param block: Root block.
-    :param var_name: Exact variable name.
-    :return: Matching variable or ``None``.
-    """
-    var_groups: List[Iterable[Var]] = list([
-        block.in_vars,
-        block.out_vars,
-        block.algebraic_vars,
-        block.state_vars,
-        block.diff_vars,
-        block.reformulated_vars,
-        list(block.event_dict.keys()),
-        list(block.parameters.keys()),
-        list(block.mode_dict.keys()),
-        list(block.init_eqs.keys()),
-        list(block.diff_init_eqs.keys()),
-        list(block.init_values.keys()),
-        list(block.discrete_eqs.keys()),
-    ])
-    group: Iterable[Var]
-    candidate_var: Var
-    child_block: Block
-    found_var: Var | None
-
-    for group in var_groups:
-        for candidate_var in group:
-            if candidate_var.name == var_name:
-                return candidate_var
-            else:
-                pass
-
-    for child_block in block.children:
-        found_var = _find_named_block_var_recursive(child_block, var_name)
-        if found_var is None:
-            pass
-        else:
-            return found_var
-
-    return None
-
-
-def _append_unique_block_interface_var(var_list: List[Var], candidate_var: Var | None) -> None:
-    """
-    Append one block interface variable only once.
-
-    :param var_list: Target interface list.
-    :param candidate_var: Candidate variable.
-    :return: None.
-    """
-    existing_var: Var
-
-    if candidate_var is None:
-        return
-    else:
-        pass
-
-    for existing_var in var_list:
-        if existing_var.uid == candidate_var.uid:
-            return
-        else:
-            pass
-
-    var_list.append(candidate_var)
-
-
-def _promote_named_vars_to_root_inputs(block: Block, var_names: Sequence[str]) -> None:
-    """
-    Promote selected existing variables to the imported root input interface.
-
-    :param block: Imported root block.
-    :param var_names: Exact variable names to promote.
-    :return: None.
-    """
-    var_name: str
-
-    for var_name in var_names:
-        _append_unique_block_interface_var(block.in_vars, _find_named_block_var_recursive(block, var_name))
-
-
-def _promote_named_vars_to_root_outputs(block: Block, var_names: Sequence[str]) -> None:
-    """
-    Promote selected existing variables to the imported root output interface.
-
-    :param block: Imported root block.
-    :param var_names: Exact variable names to promote.
-    :return: None.
-    """
-    var_name: str
-
-    for var_name in var_names:
-        _append_unique_block_interface_var(block.out_vars, _find_named_block_var_recursive(block, var_name))
-
-
-def _ensure_named_root_event_default(block: Block, var_name: str, default_value: float) -> None:
-    """
-    Seed one imported root variable with one constant fallback value.
-
-    :param block: Imported root block.
-    :param var_name: Exact variable name.
-    :param default_value: Constant fallback value.
-    :return: None.
-    """
-    target_var: Var | None = _find_named_block_var_recursive(block, var_name)
-
-    if target_var is None:
-        pass
-    else:
-        if target_var in block.event_dict:
-            pass
-        else:
-            block.event_dict[target_var] = Const(float(default_value))
-
-
 def _apply_composite_child_interface_if_missing(block: Block) -> None:
     """
     Synthesize one composite interface from child ports when the root lacks one.
@@ -3649,7 +1766,7 @@ def build_dynamic_import_template_canonical_text(
             # DGS materialization has already deep-copied and consolidated this
             # block. A shallow root copy lets canonicalization neutralize only
             # the root name while every large immutable symbolic collection is
-            # shared read-only during humanized Python emission.
+            # shared read-only during Python source emission.
             fingerprint_block = copy.copy(template_obj.block)
         else:
             fingerprint_block = build_user_dynamic_template_persistable_block(
@@ -3701,7 +1818,7 @@ def _can_build_dynamic_import_canonical_text_read_only(
     :type block: Block
     :param template_name: Runtime template name used by suffix detection.
     :type template_name: str
-    :return: ``True`` when humanized emission is strictly read-only.
+    :return: ``True`` when Python source emission is strictly read-only.
     :rtype: bool
     """
     node_data: object
@@ -3857,68 +1974,17 @@ def _append_dynamic_model_import_entry_result(
     return entry_result
 
 
-def _map_dynamic_import_domain_to_dgs_association_domain(
-        domain: DynamicModelImportTargetDomain,
-) -> DgsDynamicAssociationTargetDomain:
-    """
-    Map one importer target domain to the persistent DGS association enum.
-
-    :param domain: Importer target domain.
-    :return: Persistent association target domain.
-    """
-    association_domain: DgsDynamicAssociationTargetDomain
-
-    if domain == DynamicModelImportTargetDomain.Rms:
-        association_domain = DgsDynamicAssociationTargetDomain.Rms
-    else:
-        association_domain = DgsDynamicAssociationTargetDomain.Emt
-
-    return association_domain
-
-
-def _map_dynamic_import_status_to_dgs_association_status(
-        status: DynamicModelImportEntryStatus,
-) -> DgsDynamicAssociationStatus:
-    """
-    Map one importer result status to the persistent DGS association enum.
-
-    :param status: Importer result status.
-    :return: Persistent association import status.
-    """
-    association_status: DgsDynamicAssociationStatus
-
-    if status == DynamicModelImportEntryStatus.Added:
-        association_status = DgsDynamicAssociationStatus.Added
-    else:
-        if status == DynamicModelImportEntryStatus.Deduplicated:
-            association_status = DgsDynamicAssociationStatus.Deduplicated
-        else:
-            if status == DynamicModelImportEntryStatus.Renamed:
-                association_status = DgsDynamicAssociationStatus.Renamed
-            else:
-                if status == DynamicModelImportEntryStatus.Failed:
-                    association_status = DgsDynamicAssociationStatus.Failed
-                else:
-                    association_status = DgsDynamicAssociationStatus.Skipped
-
-    return association_status
-
-
-def build_dgs_dynamic_association_manifest(
-        bundle: DynamicModelImportBundle,
+def build_dgs_dynamic_association_records(
         report: DynamicModelImportReport,
-) -> DgsDynamicAssociationManifest:
+) -> List[DgsDynamicAssociationRecord]:
     """
-    Build a persistent many-to-one association manifest from one DGS import.
+    Build the source association records from one DGS import.
 
-    The manifest is deliberately separate from physical devices.  It preserves
-    the DGS composite hierarchy and the final catalogue identity so later GUI
-    workflows can present or explicitly promote associations without activating
-    a runtime dynamic model during file import.
+    The records preserve the DGS composite hierarchy and final catalogue
+    identity without activating a runtime dynamic model during file import.
 
-    :param bundle: Source DGS dynamic import bundle.
     :param report: Completed massive-import report.
-    :return: Typed persistent association manifest.
+    :return: Ordered source association records.
     """
     records: List[DgsDynamicAssociationRecord] = list()
     root_template_name_by_dgs_id: Dict[str, str] = dict()
@@ -3957,7 +2023,7 @@ def build_dgs_dynamic_association_manifest(
             )
             if final_template_name is None and is_physical_root_slot:
                 # A physical pElm is context rather than a reusable template.
-                # Carry the owning root-template identity onto its manifest
+                # Carry the owning root-template identity onto its association
                 # record so consumers can answer which composite controls the
                 # exact equipment FID while keeping activation as a distinct,
                 # explicitly validated runtime step.
@@ -3987,19 +2053,12 @@ def build_dgs_dynamic_association_manifest(
                         source_element_class=source_context.get_source_element_class(),
                         slot_filter=source_context.get_slot_filter(),
                     ),
-                    target_domain=_map_dynamic_import_domain_to_dgs_association_domain(
-                        domain=entry_result.get_domain(),
-                    ),
-                    status=_map_dynamic_import_status_to_dgs_association_status(
-                        status=entry_result.get_status(),
-                    ),
+                    target_domain=entry_result.get_domain(),
+                    status=entry_result.get_status(),
                 )
             )
 
-    return DgsDynamicAssociationManifest(
-        source_path=bundle.get_source_path(),
-        records=records,
-    )
+    return records
 
 
 def add_dynamic_import_selection_requests_to_circuit(
@@ -4007,7 +2066,7 @@ def add_dynamic_import_selection_requests_to_circuit(
         bundle: DynamicModelImportBundle,
         selection_requests: Sequence[DynamicModelImportSelectionRequest],
         logger: Logger,
-        progress_callback: DynamicModelImportProgressCallback | None = None,
+        progress_callback: Callable[[int, str], None] | None = None,
         user_root_folder: str | None = None,
         rename_conflicting_templates: bool = False,
         persist_to_user_catalog: bool = False,
@@ -4402,21 +2461,21 @@ def _find_exact_dgs_dynamic_host_devices(
 def _find_dgs_dynamic_activation_template(
         circuit: MultiCircuit,
         template_name: str,
-        target_domain: DgsDynamicAssociationTargetDomain,
+        target_domain: DynamicModelImportTargetDomain,
 ) -> RmsModelTemplate | EmtModelTemplate | None:
     """
     Resolve one unique installed template by exact final name and domain.
 
     :param circuit: Circuit containing the imported reusable catalogue.
     :param template_name: Collision-resolved final template name.
-    :param target_domain: RMS or EMT target domain retained by the manifest.
+    :param target_domain: RMS or EMT target domain retained by the association.
     :return: Unique template or ``None`` when missing or ambiguous.
     """
     matching_templates: List[RmsModelTemplate | EmtModelTemplate] = list()
     rms_template: RmsModelTemplate
     emt_template: EmtModelTemplate
 
-    if target_domain == DgsDynamicAssociationTargetDomain.Rms:
+    if target_domain == DynamicModelImportTargetDomain.Rms:
         for rms_template in circuit.rms_models:
             if rms_template.name == template_name:
                 matching_templates.append(rms_template)
@@ -4438,7 +2497,7 @@ def _find_dgs_dynamic_activation_template(
 
 
 def _assign_dgs_dynamic_template_to_host(
-        host_device: DynamicDevice | DgsDynamicAssociation,
+        host_device: DynamicDevice,
         template_obj: RmsModelTemplate | EmtModelTemplate,
         activation_report: DgsDynamicModelActivationReport,
 ) -> None:
@@ -4450,45 +2509,32 @@ def _assign_dgs_dynamic_template_to_host(
     :param activation_report: Mutable structured outcome report.
     :return: None.
     """
-    if isinstance(host_device, DgsDynamicAssociation):
-        if isinstance(template_obj, RmsModelTemplate):
-            current_template: RmsModelTemplate | EmtModelTemplate | None = host_device.rms_template
-        else:
-            current_template = template_obj
+    if isinstance(template_obj, RmsModelTemplate):
+        current_template: RmsModelTemplate | EmtModelTemplate | None = host_device.rms_template
     else:
-        if isinstance(template_obj, RmsModelTemplate):
-            current_template = host_device.rms_template
-        else:
-            current_template = host_device.emt_template
+        current_template = host_device.emt_template
 
-    if isinstance(host_device, DgsDynamicAssociation) and not isinstance(template_obj, RmsModelTemplate):
-        activation_report.record_unresolved()
-    elif isinstance(template_obj, RmsModelTemplate):
+    if isinstance(template_obj, RmsModelTemplate):
         if current_template is template_obj:
             activation_report.record_already_active()
         else:
             if current_template is None:
                 try:
                     host_device.rms_template = template_obj
-                except (TypeError, ValueError, KeyError) as exc:
-                    _unused_exception: Exception = exc
+                except (TypeError, ValueError, KeyError):
                     activation_report.record_failed()
                 else:
-                    if isinstance(host_device, DgsDynamicAssociation):
-                        activation_report.record_logical_activated()
-                    else:
-                        activation_report.record_physical_activated()
+                    activation_report.record_physical_activated()
             else:
                 activation_report.record_conflict()
     else:
         if current_template is template_obj:
             activation_report.record_already_active()
         else:
-            if current_template is None and isinstance(host_device, DynamicDevice):
+            if current_template is None:
                 try:
                     host_device.emt_template = template_obj
-                except (TypeError, ValueError, KeyError) as exc:
-                    _unused_exception = exc
+                except (TypeError, ValueError, KeyError):
                     activation_report.record_failed()
                 else:
                     activation_report.record_physical_activated()
@@ -4498,7 +2544,7 @@ def _assign_dgs_dynamic_template_to_host(
 
 def activate_unambiguous_dgs_dynamic_models_in_circuit(
         circuit: MultiCircuit,
-        manifest: DgsDynamicAssociationManifest,
+        records: Sequence[DgsDynamicAssociationRecord],
         logger: Logger,
 ) -> DgsDynamicModelActivationReport:
     """
@@ -4511,7 +2557,7 @@ def activate_unambiguous_dgs_dynamic_models_in_circuit(
     explicit catalogue objects for a later user-directed composition workflow.
 
     :param circuit: Destination circuit with static devices and templates.
-    :param manifest: Exact root-slot-pElm association manifest.
+    :param records: Exact root-slot-pElm source associations.
     :param logger: Diagnostic sink for handled unresolved roots.
     :return: Structured activation report.
     """
@@ -4528,13 +2574,10 @@ def activate_unambiguous_dgs_dynamic_models_in_circuit(
     template_name: str | None
     host_devices: List[DynamicDevice]
     template_obj: RmsModelTemplate | EmtModelTemplate | None
-    logical_root_record: DgsDynamicAssociationRecord | None
-    logical_host_devices: List[DgsDynamicAssociation]
-    has_logical_actuator: bool
 
     # Group once by exact root FID so the ambiguity decision is linear in the
     # number of source associations even for large PowerFactory catalogues.
-    for record in manifest.get_records():
+    for record in records:
         existing_root_records = records_by_root_id.get(record.get_root_dgs_id(), None)
         if existing_root_records is None:
             root_records = list()
@@ -4561,53 +2604,9 @@ def activate_unambiguous_dgs_dynamic_models_in_circuit(
                     host_record_by_identity[host_identity] = record
 
         if len(host_record_by_identity) == 0:
-            # A multi-actuator composite owns one shared state machine and must
-            # not be duplicated onto each passive branch or valve. Store that
-            # executable root on its typed, non-physical association entity.
-            # Pure controller libraries without actuator relations remain
-            # catalogue-only and therefore do not enter the runtime DAE.
-            logical_root_record = None
-            has_logical_actuator = False
-            for record in root_records:
-                if record.get_role() == DgsDynamicAssociationRole.CompositeController:
-                    logical_root_record = record
-                else:
-                    pass
-                if record.get_role() in (
-                        DgsDynamicAssociationRole.ValveActuator,
-                        DgsDynamicAssociationRole.PassiveActuator,
-                ):
-                    has_logical_actuator = True
-                else:
-                    pass
-
-            if logical_root_record is None or not has_logical_actuator:
-                pass
-            else:
-                template_name = logical_root_record.get_final_template_name()
-                if template_name is None:
-                    activation_report.record_unresolved()
-                else:
-                    template_obj = _find_dgs_dynamic_activation_template(
-                        circuit=circuit,
-                        template_name=template_name,
-                        target_domain=logical_root_record.get_target_domain(),
-                    )
-                    logical_host_devices = list(
-                        association
-                        for association in circuit.get_dgs_dynamic_associations()
-                        if (
-                            association.unique_key == logical_root_record.get_unique_key()
-                        )
-                    )
-                    if len(logical_host_devices) != 1 or template_obj is None:
-                        activation_report.record_unresolved()
-                    else:
-                        _assign_dgs_dynamic_template_to_host(
-                            host_device=logical_host_devices[0],
-                            template_obj=template_obj,
-                            activation_report=activation_report,
-                        )
+            # Roots without one exact physical host remain local catalogue
+            # metadata. They are not promoted to global circuit devices.
+            pass
         else:
             if len(host_record_by_identity) > 1:
                 activation_report.record_ambiguous()
@@ -4735,7 +2734,7 @@ def add_all_dynamic_import_bundle_to_circuit_with_report(
         circuit: MultiCircuit,
         bundle: DynamicModelImportBundle,
         logger: Logger,
-        progress_callback: DynamicModelImportProgressCallback | None = None,
+        progress_callback: Callable[[int, str], None] | None = None,
         user_root_folder: str | None = None,
         persist_to_user_catalog: bool = False,
         consume_bundle_templates: bool = False,
@@ -4846,23 +2845,8 @@ def add_all_dynamic_import_bundle_to_circuit_with_report(
     # report result preserves aliases after many-to-one template deduplication
     # without assigning any template to an electrical device.
     if bundle.get_source_tpe() == DynamicModelImportSource.PowerFactoryDgs:
-        association_manifest: DgsDynamicAssociationManifest = build_dgs_dynamic_association_manifest(
-            bundle=bundle,
+        association_records: List[DgsDynamicAssociationRecord] = build_dgs_dynamic_association_records(
             report=report,
-        )
-        report.set_association_manifest(manifest=association_manifest)
-
-        # Keep source-to-template relations in the circuit as typed non-physical
-        # entities.  This makes a normal DGS open self-contained and preserves
-        # every alias after catalogue deduplication without activating a runtime
-        # controller on an electrical device merely from ambiguous source data.
-        installed_association_count: int = install_dgs_dynamic_association_manifest_in_circuit(
-            circuit=circuit,
-            manifest=association_manifest,
-        )
-        logger.add_info(
-            msg="DGS dynamic association records installed",
-            value=installed_association_count,
         )
 
         # Exact single-host composites can now follow the same end state as a
@@ -4871,7 +2855,7 @@ def add_all_dynamic_import_bundle_to_circuit_with_report(
         activation_report: DgsDynamicModelActivationReport = (
             activate_unambiguous_dgs_dynamic_models_in_circuit(
                 circuit=circuit,
-                manifest=association_manifest,
+                records=association_records,
                 logger=logger,
             )
         )
@@ -4966,27 +2950,6 @@ def add_all_dynamic_import_bundle_to_circuit_with_report(
         else:
             pass
 
-        if persist_to_user_catalog:
-            association_manifest_path: Path = build_dgs_dynamic_association_manifest_output_path(
-                source_path=bundle.get_source_path(),
-                catalog_root_folder=user_root_folder,
-            )
-            try:
-                persisted_association_manifest_path: Path = save_dgs_dynamic_association_manifest(
-                    manifest=association_manifest,
-                    output_path=str(association_manifest_path),
-                )
-            except OSError as exc:
-                logger.add_warning(
-                    msg="DGS dynamic association manifest could not be persisted",
-                    value=f"{association_manifest_path}: {exc}",
-                )
-            else:
-                report.set_association_manifest_path(
-                    manifest_path=persisted_association_manifest_path,
-                )
-        else:
-            pass
     else:
         pass
 
@@ -4997,7 +2960,7 @@ def add_all_dynamic_import_bundle_to_circuit(
         circuit: MultiCircuit,
         bundle: DynamicModelImportBundle,
         logger: Logger,
-        progress_callback: DynamicModelImportProgressCallback | None = None,
+        progress_callback: Callable[[int, str], None] | None = None,
         user_root_folder: str | None = None,
         persist_to_user_catalog: bool = False,
 ) -> int:
@@ -5377,16 +3340,7 @@ def _sanitize_file_stem(text: str) -> str:
     :param text: Source text.
     :return: Filesystem-safe stem.
     """
-    safe_chars: List[str] = list()
-    char: str
-
-    for char in text:
-        if char.isalnum() or char in {"_", "-"}:
-            safe_chars.append(char)
-        else:
-            safe_chars.append("_")
-
-    return "".join(safe_chars).strip("_")
+    return sanitize_dynamic_model_file_stem(text=text)
 
 
 def build_user_dynamic_template_catalog_output_path(
@@ -5927,7 +3881,7 @@ def _build_user_dynamic_variable_allocation_text(
         identifier_map: Dict[int, str],
         is_derivative: bool,
 ) -> str:
-    """Build one metadata-preserving humanized VarFactory allocation.
+    """Build one metadata-preserving Python VarFactory allocation.
 
     Power-flow references are executable wiring metadata, not cosmetic labels.
     Persisting only the variable name leaves a reloaded RMS input disconnected
@@ -6040,7 +3994,7 @@ def _build_user_dynamic_template_module_text(block: Block,
     # Child block references share the generated function namespace with
     # imports, arguments and local variables. Reserving that complete surface
     # prevents a DGS block such as ``delay`` from hiding the imported
-    # procedural constructor ``delay()`` when the humanized module reloads.
+    # procedural constructor ``delay()`` when the Python module reloads.
     generated_scope_identifiers.update(procedural_import_names)
     reserved_identifiers.update(generated_scope_identifiers)
     child_ref_names = _build_recursive_child_ref_names(
@@ -6170,9 +4124,9 @@ def _build_user_dynamic_template_module_text(block: Block,
     )
     if isinstance(direct_slot_interfaces_raw, list):
         # The native equipment adapter is selected from this exported signal
-        # contract after the humanized Python template is loaded again.
+        # contract after the Python template is loaded again.
         lines.append("    # Preserve native DGS slot contracts for typed runtime adapters.")
-        _append_humanized_metadata_assignment(
+        append_python_syntax_assignment(
             lines=lines,
             prefix="dgs_direct_slot_interfaces: list[dict[str, object]] = ",
             value=direct_slot_interfaces_raw,
@@ -6315,7 +4269,7 @@ def export_user_dynamic_template_module_from_block(
         template_name: str,
         target_domain: DynamicModelImportTargetDomain,
         device_tpe: DeviceType,
-        progress_callback: DynamicModelImportProgressCallback | None = None,
+        progress_callback: Callable[[int, str], None] | None = None,
 ) -> Path:
     """
     Export one editor block to one persisted Python user-template module.
@@ -6993,7 +4947,7 @@ def save_user_dynamic_template_module_to_catalog(
         target_domain: DynamicModelImportTargetDomain,
         device_tpe: DeviceType,
         catalog_root_folder: str | None = None,
-        progress_callback: DynamicModelImportProgressCallback | None = None,
+        progress_callback: Callable[[int, str], None] | None = None,
         template_fingerprint: str | None = None,
         include_validation_snapshot: bool = True,
 ) -> Path:
@@ -7128,7 +5082,7 @@ def export_user_dynamic_template_json_from_block(
         template_name: str,
         target_domain: DynamicModelImportTargetDomain,
         device_tpe: DeviceType,
-        progress_callback: DynamicModelImportProgressCallback | None = None,
+        progress_callback: Callable[[int, str], None] | None = None,
 ) -> Path:
     """
     Export one editor block to one standalone JSON payload.
@@ -7163,7 +5117,7 @@ def export_user_dynamic_template_json_from_block(
 
 def load_user_dynamic_template_json_payload(
         json_path: str,
-        progress_callback: DynamicModelImportProgressCallback | None = None,
+        progress_callback: Callable[[int, str], None] | None = None,
 ) -> Tuple[Block, str, DynamicModelImportTargetDomain, DeviceType] | None:
     """
     Load one intermediate JSON snapshot exported from the dynamic block editor.
@@ -7265,496 +5219,3 @@ def load_user_dynamic_template_json_payload(
     if isinstance(device_tpe_obj, str):
         if device_tpe_obj in DeviceType.__members__:
             device_tpe = DeviceType[device_tpe_obj]
-        else:
-            device_tpe = DeviceType.NoDevice
-    else:
-        device_tpe = DeviceType.NoDevice
-
-    block.name = template_name
-    _emit_dynamic_model_import_progress(progress_callback, 100, "JSON snapshot loaded")
-    return block, template_name, target_domain, device_tpe
-
-
-def _persist_dynamic_import_entry_to_python(
-        entry: DynamicModelImportEntry,
-        output_folder: Path,
-        target_domain: DynamicModelImportTargetDomain,
-        device_tpe: DeviceType,
-) -> None:
-    """
-    Persist one imported entry to a Python template module.
-
-    :param entry: Imported entry.
-    :param output_folder: Destination folder.
-    :param target_domain: Selected reusable-template domain.
-    :param device_tpe: Selected supported device type.
-    :return: None.
-    """
-    persistence_spec: DynamicModelPersistenceSpec | None = entry.get_persistence_spec()
-    output_path: Path
-    parser: ModelicaXMLParser
-    block: Block
-    transpiler: ModelicaToPythonTranspiler
-
-    if persistence_spec is None:
-        return
-    else:
-        pass
-
-    output_path = output_folder / f"{persistence_spec.get_module_stem()}.py"
-
-    if persistence_spec.get_kind() == DynamicModelPersistenceKind.ModelicaXml:
-        from VeraGridEngine.IO.modelica.modelica_parser import ModelicaXMLParser
-        from VeraGridEngine.IO.modelica.template_generator import ModelicaToPythonTranspiler
-
-        parser = ModelicaXMLParser(xml_source=persistence_spec.get_source_path(), is_file=True)
-        block = parser.parse_and_build(persistence_spec.get_template_name())
-        transpiler = ModelicaToPythonTranspiler(block, parser, persistence_spec.get_template_name())
-        output_path = transpiler.generate_python_file(str(output_folder))
-        _append_modelica_user_template_wrapper(
-            output_path=output_path,
-            template_name=persistence_spec.get_template_name(),
-            target_domain=target_domain,
-            device_tpe=device_tpe,
-        )
-    else:
-        if persistence_spec.get_kind() == DynamicModelPersistenceKind.DgsStandaloneBlkdef:
-            export_standalone_blkdef_to_python(
-                dgs_path=persistence_spec.get_source_path(),
-                output_path=str(output_path),
-                block_id=str(persistence_spec.get_block_id()),
-            )
-        else:
-            if persistence_spec.get_kind() == DynamicModelPersistenceKind.DgsRootElmComp:
-                export_root_elmcomp_template_to_python(
-                    dgs_path=persistence_spec.get_source_path(),
-                    output_path=str(output_path),
-                    root_name=str(persistence_spec.get_root_name()),
-                    root_typ_id=persistence_spec.get_root_typ_id(),
-                )
-            else:
-                if persistence_spec.get_kind() == DynamicModelPersistenceKind.DgsRootSlotGraphicalTree:
-                    export_root_slot_block_graphical_template_to_python(
-                        dgs_path=persistence_spec.get_source_path(),
-                        output_path=str(output_path),
-                        slot_name=str(persistence_spec.get_slot_name()),
-                        root_name=str(persistence_spec.get_root_name()),
-                        root_typ_id=persistence_spec.get_root_typ_id(),
-                    )
-                else:
-                    if persistence_spec.get_kind() == DynamicModelPersistenceKind.DgsNamedBlockInternalOnly:
-                        export_named_block_subgraph_to_python(
-                            dgs_path=persistence_spec.get_source_path(),
-                            output_path=str(output_path),
-                            block_name=str(persistence_spec.get_block_name()),
-                            block_id=persistence_spec.get_block_id(),
-                            root_name=str(persistence_spec.get_root_name()),
-                            root_typ_id=persistence_spec.get_root_typ_id(),
-                            mode=BlockScopeMode.InternalOnly,
-                        )
-                    else:
-                        pass
-
-        _append_imported_template_runtime_metadata(
-            output_path=output_path,
-            target_domain=target_domain,
-            device_tpe=device_tpe,
-        )
-
-
-def _persist_selected_dynamic_import_work_list(
-        persistable_work_list: Sequence[SelectedDynamicImportWork],
-        logger: Logger,
-        progress_callback: DynamicModelImportProgressCallback | None = None,
-        user_root_folder: str | None = None,
-) -> None:
-    """
-    Persist selected reusable templates directly from their materialized symbolic blocks.
-
-    This avoids reparsing or re-exporting the original source file after the user
-    already waited for the import selection dialog. The catalogue `.py` files are
-    written from the exact reusable template block that was just accepted into the
-    circuit, so the post-selection delay stays predictable.
-
-    :param persistable_work_list: Selected import work items to persist.
-    :param logger: Logger receiving persistence diagnostics.
-    :param progress_callback: Optional UI progress callback.
-    :param user_root_folder: Optional explicit VeraGrid user root used mainly by tests.
-    :return: None.
-    """
-    total_work_count: int = len(persistable_work_list)
-    work_index: int = 0
-    work_item: SelectedDynamicImportWork
-    selection_request: DynamicModelImportSelectionRequest
-    template_obj: RmsModelTemplate | EmtModelTemplate
-    progress_start: int
-    progress_end: int
-    progress_scaler: DynamicModelImportProgressScaler
-    display_name: str
-    entry_result: DynamicModelImportEntryResult | None
-    output_path: Path
-
-    for work_item in persistable_work_list:
-        selection_request = work_item.get_selection_request()
-        template_obj = work_item.get_template_obj()
-        entry_result = work_item.get_entry_result()
-        display_name = str(template_obj.name)
-        progress_start = 60 + int(round(40.0 * float(work_index) / float(max(total_work_count, 1))))
-        progress_end = 60 + int(round(40.0 * float(work_index + 1) / float(max(total_work_count, 1))))
-        progress_scaler = DynamicModelImportProgressScaler(
-            progress_callback=progress_callback,
-            progress_start=progress_start,
-            progress_end=progress_end,
-            prefix_text=f"Saving selected dynamic templates: {work_index + 1}/{total_work_count}",
-        )
-
-        try:
-            output_path = save_user_dynamic_template_module_to_catalog(
-                block=template_obj.block,
-                template_name=display_name,
-                target_domain=selection_request.get_target_domain(),
-                device_tpe=selection_request.get_device_tpe(),
-                catalog_root_folder=user_root_folder,
-                progress_callback=progress_scaler,
-                template_fingerprint=work_item.get_template_fingerprint(),
-                include_validation_snapshot=(
-                    work_item.get_include_validation_snapshot()
-                ),
-            )
-        except Exception as exc:
-            logger.add_warning(
-                msg="Persisted dynamic model export skipped",
-                value=f"{display_name}: {exc}",
-            )
-            if entry_result is None:
-                pass
-            else:
-                entry_result.set_message(
-                    f"{entry_result.get_message()}; canonical Python persistence failed: {exc}"
-                )
-        else:
-            if entry_result is None:
-                pass
-            else:
-                entry_result.set_persisted_path(persisted_path=output_path)
-
-        work_index += 1
-
-
-def _append_modelica_user_template_wrapper(
-        output_path: Path,
-        template_name: str,
-        target_domain: DynamicModelImportTargetDomain,
-        device_tpe: DeviceType,
-) -> None:
-    """
-    Append the stable ``get_template`` wrapper expected by the user-template loader.
-
-    The Modelica transpiler generates one concrete EMT builder but not the common
-    compatibility wrapper already emitted by the DGS exporters.
-
-    :param output_path: Generated Modelica module path.
-    :param template_name: Default template name restored by the wrapper.
-    :param target_domain: Selected reusable-template domain.
-    :param device_tpe: Selected supported device type.
-    :return: None.
-    """
-    module_text: str = output_path.read_text(encoding="utf-8")
-    candidate_function_names: List[str] = list()
-    line: str
-    stripped_line: str
-    function_name: str
-    wrapper_default_name: str = repr(template_name)
-
-    if "def get_template(" in module_text:
-        return
-    else:
-        pass
-
-    for line in module_text.splitlines():
-        stripped_line = line.strip()
-        if stripped_line.startswith("def get_") and stripped_line.endswith(") -> EmtModelTemplate:"):
-            function_name = stripped_line[4:stripped_line.index("(")]
-            if function_name == "get_template":
-                pass
-            else:
-                candidate_function_names.append(function_name)
-        else:
-            pass
-
-    if len(candidate_function_names) != 1:
-        return
-    else:
-        pass
-
-    module_text += (
-        "\n\n"
-        "def get_template(vf: VarFactory, name: str | None = None) -> EmtModelTemplate:\n"
-        f"    templ = {candidate_function_names[0]}(vf=vf, name={wrapper_default_name} if name is None else name)\n"
-        "    return templ\n"
-    )
-    output_path.write_text(module_text, encoding="utf-8")
-
-
-def _load_user_dynamic_template_python_module(
-        module_path: Path,
-        logger: Logger,
-) -> _DynamicUserTemplatePythonModule | None:
-    """
-    Load and validate one canonical human-readable user-template module.
-
-    :param module_path: Candidate Python template file.
-    :param logger: Logger receiving syntax, import and contract diagnostics.
-    :return: Typed module wrapper or ``None`` when the file is invalid.
-    """
-    module_name: str = "_veragrid_user_dynamic_" + hashlib.sha256(
-        str(module_path.resolve()).encode("utf-8"),
-    ).hexdigest()
-    module_spec: importlib.machinery.ModuleSpec | None = importlib.util.spec_from_file_location(
-        module_name,
-        module_path,
-    )
-    module_obj: ModuleType
-    template_builder_obj: object | None
-
-    if module_spec is None or module_spec.loader is None:
-        logger.add_error(
-            msg="Persisted user dynamic model Python module has no import loader",
-            value=str(module_path),
-        )
-        loaded_module = None
-    else:
-        try:
-            module_obj = importlib.util.module_from_spec(module_spec)
-            module_spec.loader.exec_module(module_obj)
-        except Exception as err:
-            logger.add_error(
-                msg="Persisted user dynamic model Python module failed syntax or import validation",
-                value=f"{module_path}: {err}",
-            )
-            loaded_module = None
-        else:
-            template_builder_obj = module_obj.__dict__.get("get_template", None)
-            if isinstance(template_builder_obj, FunctionType):
-                loaded_module = _DynamicUserTemplatePythonModule(
-                    module_path=module_path,
-                    template_builder=template_builder_obj,
-                )
-            else:
-                logger.add_error(
-                    msg="Persisted user dynamic model Python module has no valid get_template function",
-                    value=str(module_path),
-                )
-                loaded_module = None
-
-    return loaded_module
-
-
-def _load_user_dynamic_template_from_module_path(
-        module_path: Path,
-        var_factory: VarFactory,
-        logger: Logger,
-) -> DynamicModelLoadedUserTemplate | None:
-    """
-    Materialize one canonical user template directly from its Python module.
-
-    :param module_path: Persisted human-readable Python module path.
-    :param var_factory: Variable factory used to allocate runtime symbols.
-    :param logger: Logger receiving load diagnostics.
-    :return: Materialized descriptor or ``None`` when validation fails.
-    """
-    loaded_module: _DynamicUserTemplatePythonModule | None = _load_user_dynamic_template_python_module(
-        module_path=module_path,
-        logger=logger,
-    )
-    template_obj: RmsModelTemplate | EmtModelTemplate
-    domain: DynamicModelImportTargetDomain
-    valid_template: bool
-
-    if loaded_module is None:
-        loaded_template = None
-    else:
-        try:
-            template_obj = loaded_module.materialize(var_factory=var_factory)
-        except Exception as err:
-            logger.add_error(
-                msg="Persisted user dynamic model Python get_template failed",
-                value=f"{module_path}: {err}",
-            )
-            loaded_template = None
-        else:
-            if isinstance(template_obj, RmsModelTemplate):
-                domain = DynamicModelImportTargetDomain.Rms
-                valid_template = True
-            else:
-                if isinstance(template_obj, EmtModelTemplate):
-                    domain = DynamicModelImportTargetDomain.Emt
-                    valid_template = True
-                else:
-                    # The wrapper annotation constrains normal generated modules,
-                    # while this explicit branch rejects hand-edited violations.
-                    domain = DynamicModelImportTargetDomain.Emt
-                    valid_template = False
-
-            if valid_template:
-                _apply_composite_child_interface_if_missing(template_obj.block)
-                if template_obj.tpe in {
-                    DeviceType.NoDevice,
-                    DeviceType.DynamicModelHostDevice,
-                }:
-                    mark_imported_template_editor_only(template_obj.block)
-                else:
-                    # Exact physical-host templates stay assignable after the
-                    # human-readable Python catalogue is loaded again.
-                    pass
-                loaded_template = DynamicModelLoadedUserTemplate(
-                    module_path=module_path,
-                    domain=domain,
-                    device_tpe=template_obj.tpe,
-                    template_obj=template_obj,
-                )
-            else:
-                logger.add_error(
-                    msg="Persisted user dynamic model Python get_template returned an unsupported object",
-                    value=str(module_path),
-                )
-                loaded_template = None
-
-    return loaded_template
-
-
-def _report_user_dynamic_template_snapshot_difference(
-        loaded_module_template: DynamicModelLoadedUserTemplate,
-        payload_path: Path,
-        var_factory: VarFactory,
-        logger: Logger,
-) -> None:
-    """
-    Compare one canonical Python model against its optional JSON snapshot.
-
-    :param loaded_module_template: Template materialized from canonical Python.
-    :param payload_path: Optional JSON validation snapshot path.
-    :param var_factory: Variable factory accepted by the compatibility loader.
-    :param logger: Logger receiving snapshot mismatch diagnostics.
-    :return: None.
-    """
-    payload_template: DynamicModelLoadedUserTemplate | None
-    python_fingerprint: str | None
-    payload_fingerprint: str | None
-    python_canonical_text: str | None
-    payload_canonical_text: str | None
-
-    if payload_path.is_file():
-        payload_template = _load_user_dynamic_template_from_payload_path(
-            payload_path=payload_path,
-            var_factory=var_factory,
-            logger=logger,
-        )
-    else:
-        payload_template = None
-
-    if payload_template is None:
-        pass
-    else:
-        python_fingerprint = build_dynamic_import_template_fingerprint(
-            loaded_module_template.get_template_obj(),
-        )
-        payload_fingerprint = build_dynamic_import_template_fingerprint(
-            payload_template.get_template_obj(),
-        )
-        if python_fingerprint is not None and python_fingerprint == payload_fingerprint:
-            pass
-        else:
-            python_canonical_text = build_dynamic_import_template_canonical_text(
-                template_obj=loaded_module_template.get_template_obj(),
-                logger=None,
-            )
-            payload_canonical_text = build_dynamic_import_template_canonical_text(
-                template_obj=payload_template.get_template_obj(),
-                logger=None,
-            )
-            difference_preview: str = "canonicalization unavailable"
-            if python_canonical_text is None or payload_canonical_text is None:
-                pass
-            else:
-                difference_lines: List[str] = list(
-                    difflib.unified_diff(
-                        python_canonical_text.splitlines(),
-                        payload_canonical_text.splitlines(),
-                        fromfile="python",
-                        tofile="payload",
-                        lineterm="",
-                    )
-                )
-                difference_preview = " | ".join(difference_lines[:12])
-            logger.add_warning(
-                msg="Canonical Python user dynamic model differs from its JSON validation snapshot",
-                value=f"{loaded_module_template.get_module_path()} | {difference_preview}",
-            )
-
-
-def _load_user_dynamic_template_from_payload_path(
-        payload_path: Path,
-        var_factory: VarFactory,
-        logger: Logger,
-) -> DynamicModelLoadedUserTemplate | None:
-    """
-    Materialize one persisted user template payload into one reusable template.
-
-    :param payload_path: Persisted JSON payload path.
-    :param var_factory: Variable factory used to build the template block.
-    :param logger: Logger receiving load diagnostics.
-    :return: Materialized user template descriptor or ``None`` when loading fails.
-    """
-    loaded_payload: Tuple[Block, str, DynamicModelImportTargetDomain, DeviceType] | None
-    source_block: Block
-    template_name: str
-    domain: DynamicModelImportTargetDomain
-    device_tpe: DeviceType
-    template_union: RmsModelTemplate | EmtModelTemplate
-    rms_template: RmsModelTemplate
-    emt_template: EmtModelTemplate
-    _unused = var_factory
-
-    try:
-        loaded_payload = load_user_dynamic_template_json_payload(str(payload_path))
-    except Exception as err:
-        logger.add_error(
-            msg="Persisted user dynamic model payload failed to load",
-            value=f"{payload_path}: {err}",
-        )
-        return None
-
-    if loaded_payload is None:
-        return None
-    else:
-        pass
-
-    source_block, template_name, domain, device_tpe = loaded_payload
-    _apply_composite_child_interface_if_missing(source_block)
-    if device_tpe in {
-        DeviceType.NoDevice,
-        DeviceType.DynamicModelHostDevice,
-    }:
-        mark_imported_template_editor_only(source_block)
-    else:
-        # Preserve direct device assignment for legacy JSON sidecars too.
-        pass
-
-    if domain == DynamicModelImportTargetDomain.Rms:
-        rms_template = RmsModelTemplate(name=template_name)
-        rms_template.tpe = device_tpe
-        rms_template.block = source_block
-        template_union = rms_template
-    else:
-        emt_template = EmtModelTemplate(name=template_name)
-        emt_template.tpe = device_tpe
-        emt_template.block = source_block
-        template_union = emt_template
-
-    return DynamicModelLoadedUserTemplate(
-        module_path=payload_path,
-        domain=domain,
-        device_tpe=device_tpe,
-        template_obj=template_union,
-    )

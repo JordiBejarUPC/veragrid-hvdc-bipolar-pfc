@@ -4,112 +4,26 @@
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
 
-import hashlib
-import json
 import copy
 
-from pathlib import Path
-from typing import Dict, List, Sequence, Set, Tuple, TYPE_CHECKING
-from enum import Enum
-from VeraGridEngine.IO.file_system import get_create_veragrid_folder
-from VeraGridEngine.basic_structures import Logger
-from VeraGridEngine.Devices.multi_circuit import MultiCircuit
+from typing import Set, Tuple
 from VeraGridEngine.Devices.Parents.editable_device import EditableDevice, GCProp
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic_io import duplicate_block
+from VeraGridEngine.IO.dynamic_model_import_types import (
+    DynamicModelImportEntryStatus,
+    DynamicModelImportTargetDomain,
+)
 from VeraGridEngine.enumerations import (
     DeviceType,
+    DgsDynamicAssociationRole,
     PrpCat,
     SubObjectType,
 )
 
 
-
-
-class DgsDynamicAssociationTargetDomain(Enum):
-    """Define the reusable-template domain of one DGS association."""
-
-    __slots__ = ()
-
-    Rms = "RMS"
-    Emt = "EMT"
-
-    def __str__(self) -> str:
-        """
-        Return the persistent enum value.
-
-        :return: Persistent target-domain value.
-        """
-        return str(self.value)
-
-    def __repr__(self) -> str:
-        """
-        Return the persistent enum representation.
-
-        :return: Persistent target-domain representation.
-        """
-        return str(self)
-
-
-class DgsDynamicAssociationStatus(Enum):
-    """Define the import outcome retained by one DGS association."""
-
-    __slots__ = ()
-
-    Added = "Added"
-    Deduplicated = "Deduplicated"
-    Renamed = "Renamed"
-    Failed = "Failed"
-    Skipped = "Skipped"
-
-    def __str__(self) -> str:
-        """
-        Return the persistent enum value.
-
-        :return: Persistent import-outcome value.
-        """
-        return str(self.value)
-
-    def __repr__(self) -> str:
-        """
-        Return the persistent enum representation.
-
-        :return: Persistent import-outcome representation.
-        """
-        return str(self)
-
-
-class DgsDynamicAssociationRole(Enum):
-    """Define the physical or logical role of one DGS composite relation."""
-
-    __slots__ = ()
-
-    CompositeController = "CompositeController"
-    ControllerModel = "ControllerModel"
-    PhysicalHost = "PhysicalHost"
-    Measurement = "Measurement"
-    SwitchActuator = "SwitchActuator"
-    ValveActuator = "ValveActuator"
-    PassiveActuator = "PassiveActuator"
-    Unknown = "Unknown"
-
-    def __str__(self) -> str:
-        """
-        Return the persistent enum value.
-
-        :return: Persistent association-role value.
-        """
-        return str(self.value)
-
-    def __repr__(self) -> str:
-        """
-        Return the persistent enum representation.
-
-        :return: Persistent association-role representation.
-        """
-        return str(self)
 
 
 class DgsDynamicAssociationRecord:
@@ -155,8 +69,8 @@ class DgsDynamicAssociationRecord:
             source_element_name: str | None,
             source_element_class: str | None,
             final_template_name: str | None,
-            target_domain: DgsDynamicAssociationTargetDomain,
-            status: DgsDynamicAssociationStatus,
+            target_domain: DynamicModelImportTargetDomain,
+            status: DynamicModelImportEntryStatus,
             role: DgsDynamicAssociationRole = DgsDynamicAssociationRole.Unknown,
     ) -> None:
         """
@@ -195,8 +109,8 @@ class DgsDynamicAssociationRecord:
         self._source_element_class: str | None = source_element_class
         self._final_template_name: str | None = final_template_name
         self._role: DgsDynamicAssociationRole = role
-        self._target_domain: DgsDynamicAssociationTargetDomain = target_domain
-        self._status: DgsDynamicAssociationStatus = status
+        self._target_domain: DynamicModelImportTargetDomain = target_domain
+        self._status: DynamicModelImportEntryStatus = status
 
     def get_unique_key(self) -> str:
         """
@@ -302,7 +216,7 @@ class DgsDynamicAssociationRecord:
         """
         return self._final_template_name
 
-    def get_target_domain(self) -> DgsDynamicAssociationTargetDomain:
+    def get_target_domain(self) -> DynamicModelImportTargetDomain:
         """
         Return the final reusable-template domain.
 
@@ -318,39 +232,13 @@ class DgsDynamicAssociationRecord:
         """
         return self._role
 
-    def get_status(self) -> DgsDynamicAssociationStatus:
+    def get_status(self) -> DynamicModelImportEntryStatus:
         """
         Return the final import outcome.
 
         :return: Final import outcome.
         """
         return self._status
-
-    def to_dict(self) -> Dict[str, object]:
-        """
-        Serialize the typed record to plain JSON-compatible values.
-
-        :return: JSON-compatible record dictionary.
-        """
-        payload: Dict[str, object] = dict()
-        payload["unique_key"] = self._unique_key
-        payload["root_dgs_id"] = self._root_dgs_id
-        payload["root_name"] = self._root_name
-        payload["root_typ_id"] = self._root_typ_id
-        payload["slot_dgs_id"] = self._slot_dgs_id
-        payload["slot_name"] = self._slot_name
-        payload["slot_index"] = self._slot_index
-        payload["slot_element"] = self._slot_element
-        payload["slot_filter"] = self._slot_filter
-        payload["source_element_dgs_id"] = self._source_element_dgs_id
-        payload["source_element_name"] = self._source_element_name
-        payload["source_element_class"] = self._source_element_class
-        payload["final_template_name"] = self._final_template_name
-        payload["role"] = self._role.value
-        payload["target_domain"] = self._target_domain.value
-        payload["status"] = self._status.value
-        return payload
-
 
 class DgsDynamicAssociation(EditableDevice):
     """Represent one non-physical DGS root-slot-``pElm`` association."""
@@ -446,14 +334,14 @@ class DgsDynamicAssociation(EditableDevice):
         GCProp(
             "target_domain",
             "",
-            DgsDynamicAssociationTargetDomain,
+            DynamicModelImportTargetDomain,
             "Reusable-template target domain.",
             cat=[PrpCat.RMS, PrpCat.EMT],
         ),
         GCProp(
             "status",
             "",
-            DgsDynamicAssociationStatus,
+            DynamicModelImportEntryStatus,
             "Dynamic import outcome.",
             cat=[PrpCat.RMS, PrpCat.EMT],
         ),
@@ -489,8 +377,8 @@ class DgsDynamicAssociation(EditableDevice):
             source_element_class: str | None = None,
             final_template_name: str | None = None,
             role: DgsDynamicAssociationRole = DgsDynamicAssociationRole.Unknown,
-            target_domain: DgsDynamicAssociationTargetDomain = DgsDynamicAssociationTargetDomain.Rms,
-            status: DgsDynamicAssociationStatus = DgsDynamicAssociationStatus.Skipped,
+            target_domain: DynamicModelImportTargetDomain = DynamicModelImportTargetDomain.Rms,
+            status: DynamicModelImportEntryStatus = DynamicModelImportEntryStatus.Skipped,
     ) -> None:
         """
         Build one persistable dynamic association without physical semantics.
@@ -522,7 +410,7 @@ class DgsDynamicAssociation(EditableDevice):
             name=name,
             code=code,
             idtag=idtag,
-            device_type=DeviceType.DgsDynamicAssociationDevice,
+            device_type=DeviceType.DynamicModelHostDevice,
         )
 
         # Association records remain non-physical, while root records may own
@@ -570,15 +458,15 @@ class DgsDynamicAssociation(EditableDevice):
 
         # Invalid external enum values are handled deterministically instead of
         # leaving the entity in a partially initialized state.
-        if isinstance(target_domain, DgsDynamicAssociationTargetDomain):
-            self._target_domain: DgsDynamicAssociationTargetDomain = target_domain
+        if isinstance(target_domain, DynamicModelImportTargetDomain):
+            self._target_domain: DynamicModelImportTargetDomain = target_domain
         else:
-            self._target_domain = DgsDynamicAssociationTargetDomain.Rms
+            self._target_domain = DynamicModelImportTargetDomain.Rms
 
-        if isinstance(status, DgsDynamicAssociationStatus):
-            self._status: DgsDynamicAssociationStatus = status
+        if isinstance(status, DynamicModelImportEntryStatus):
+            self._status: DynamicModelImportEntryStatus = status
         else:
-            self._status = DgsDynamicAssociationStatus.Skipped
+            self._status = DynamicModelImportEntryStatus.Skipped
 
     @property
     def active(self) -> bool:
@@ -1190,7 +1078,7 @@ class DgsDynamicAssociation(EditableDevice):
             self._optional_field_mask |= 256
 
     @property
-    def target_domain(self) -> DgsDynamicAssociationTargetDomain:
+    def target_domain(self) -> DynamicModelImportTargetDomain:
         """
         Return the reusable-template target domain.
 
@@ -1221,20 +1109,20 @@ class DgsDynamicAssociation(EditableDevice):
             self._role = DgsDynamicAssociationRole.Unknown
 
     @target_domain.setter
-    def target_domain(self, value: DgsDynamicAssociationTargetDomain) -> None:
+    def target_domain(self, value: DynamicModelImportTargetDomain) -> None:
         """
         Set the reusable-template target domain when valid.
 
         :param value: Reusable-template target domain.
         :return: None.
         """
-        if isinstance(value, DgsDynamicAssociationTargetDomain):
+        if isinstance(value, DynamicModelImportTargetDomain):
             self._target_domain = value
         else:
-            self._target_domain = DgsDynamicAssociationTargetDomain.Rms
+            self._target_domain = DynamicModelImportTargetDomain.Rms
 
     @property
-    def status(self) -> DgsDynamicAssociationStatus:
+    def status(self) -> DynamicModelImportEntryStatus:
         """
         Return the retained dynamic import outcome.
 
@@ -1243,17 +1131,17 @@ class DgsDynamicAssociation(EditableDevice):
         return self._status
 
     @status.setter
-    def status(self, value: DgsDynamicAssociationStatus) -> None:
+    def status(self, value: DynamicModelImportEntryStatus) -> None:
         """
         Set the retained dynamic import outcome when valid.
 
         :param value: Dynamic import outcome.
         :return: None.
         """
-        if isinstance(value, DgsDynamicAssociationStatus):
+        if isinstance(value, DynamicModelImportEntryStatus):
             self._status = value
         else:
-            self._status = DgsDynamicAssociationStatus.Skipped
+            self._status = DynamicModelImportEntryStatus.Skipped
 
     @property
     def optional_field_mask(self) -> int:
@@ -1275,15 +1163,6 @@ class DgsDynamicAssociation(EditableDevice):
         # Only the nine declared bits are meaningful.  Masking corrupt or
         # future values keeps the current entity state explicit and bounded.
         self._optional_field_mask = int(value) & 511
-
-    def get_manifest_identity(self) -> Tuple[str, str]:
-        """
-        Return the idempotent source-manifest identity.
-
-        :return: Original source path and stable association key.
-        """
-        return self._source_path, self._unique_key
-
 
 def infer_dgs_dynamic_association_role(
         slot_index: int | None,
@@ -1355,562 +1234,3 @@ def infer_dgs_dynamic_association_role(
                         else:
                             role = DgsDynamicAssociationRole.Unknown
     return role
-
-
-class DgsDynamicAssociationManifest:
-    """
-    Store all separate dynamic associations imported from one DGS source.
-    """
-
-    __slots__ = ("_source_path", "_records")
-
-    def __init__(
-            self,
-            source_path: str,
-            records: Sequence[DgsDynamicAssociationRecord],
-    ) -> None:
-        """
-        Build one fixed-size association manifest.
-
-        :param source_path: Original DGS source path.
-        :param records: Ordered DGS association records.
-        :return: None.
-        """
-        self._source_path: str = source_path
-        self._records: List[DgsDynamicAssociationRecord] = list(records)
-
-    def get_source_path(self) -> str:
-        """
-        Return the original DGS source path.
-
-        :return: Original DGS source path.
-        """
-        return self._source_path
-
-    def get_records(self) -> List[DgsDynamicAssociationRecord]:
-        """
-        Return a defensive copy of the ordered association records.
-
-        :return: Ordered association records.
-        """
-        return list(self._records)
-
-    def get_direct_source_association_count(self) -> int:
-        """
-        Count exact root-slot-pElm relations in this manifest.
-
-        :return: Number of records with a slot index and referenced element FID.
-        """
-        count: int = 0
-        record: DgsDynamicAssociationRecord
-
-        for record in self._records:
-            if record.get_slot_index() is not None and record.get_source_element_dgs_id() is not None:
-                count += 1
-            else:
-                pass
-
-        return count
-
-    def to_dict(self) -> Dict[str, object]:
-        """
-        Serialize the manifest to plain JSON-compatible values.
-
-        :return: JSON-compatible manifest dictionary.
-        """
-        payload: Dict[str, object] = dict()
-        association_payloads: List[Dict[str, object]] = list()
-        record: DgsDynamicAssociationRecord
-
-        for record in self._records:
-            association_payloads.append(record.to_dict())
-
-        payload["schema"] = "veragrid-dgs-dynamic-associations"
-        payload["version"] = 1
-        payload["source_path"] = self._source_path
-        payload["associations"] = association_payloads
-        return payload
-
-
-def install_dgs_dynamic_association_manifest_in_circuit(
-        circuit: MultiCircuit,
-        manifest: DgsDynamicAssociationManifest,
-) -> int:
-    """
-    Install one typed manifest as non-physical ``MultiCircuit`` entities.
-
-    Reinstalling the same source path and unique record key is idempotent.  A
-    structurally deduplicated template may still have several distinct source
-    associations because the source record key, rather than template name, is
-    the entity identity.
-
-    :param circuit: Destination VeraGrid circuit.
-    :param manifest: Typed DGS association manifest.
-    :return: Number of newly installed association entities.
-    """
-    existing_identities: Set[Tuple[str, str]] = set()
-    existing_association: DgsDynamicAssociation
-    source_path: str = manifest.get_source_path()
-    record: DgsDynamicAssociationRecord
-    association_identity: Tuple[str, str]
-    slot_name: str | None
-    association_name: str
-    association: DgsDynamicAssociation
-    added_count: int = 0
-
-    # Snapshot the existing semantic identities once so massive imports remain
-    # linear and repeated manifest installation cannot grow duplicate objects.
-    for existing_association in circuit.get_dgs_dynamic_associations():
-        existing_identities.add(existing_association.get_manifest_identity())
-
-    # Materialize every source relation independently.  The entity records
-    # provenance only; it deliberately does not activate a runtime controller.
-    for record in manifest.get_records():
-        association_identity = source_path, record.get_unique_key()
-        if association_identity in existing_identities:
-            pass
-        else:
-            slot_name = record.get_slot_name()
-            if slot_name is None or len(slot_name) == 0:
-                association_name = record.get_root_name()
-            else:
-                association_name = f"{record.get_root_name()} :: {slot_name}"
-
-            association = DgsDynamicAssociation(
-                name=association_name,
-                code=record.get_unique_key(),
-                source_path=source_path,
-                unique_key=record.get_unique_key(),
-                root_dgs_id=record.get_root_dgs_id(),
-                root_name=record.get_root_name(),
-                root_typ_id=record.get_root_typ_id(),
-                slot_dgs_id=record.get_slot_dgs_id(),
-                slot_name=slot_name,
-                slot_index=record.get_slot_index(),
-                slot_element=record.get_slot_element(),
-                slot_filter=record.get_slot_filter(),
-                source_element_dgs_id=record.get_source_element_dgs_id(),
-                source_element_name=record.get_source_element_name(),
-                source_element_class=record.get_source_element_class(),
-                final_template_name=record.get_final_template_name(),
-                role=record.get_role(),
-                target_domain=record.get_target_domain(),
-                status=record.get_status(),
-            )
-            circuit.add_dgs_dynamic_association(obj=association)
-            existing_identities.add(association_identity)
-            added_count += 1
-
-    return added_count
-
-
-def _read_required_string(payload: Dict[str, object], key: str) -> str | None:
-    """
-    Read one required non-empty string from a JSON object.
-
-    :param payload: Parsed JSON record.
-    :param key: Field name.
-    :return: String value or ``None`` when invalid.
-    """
-    raw_value: object | None = payload.get(key, None)
-    result: str | None
-
-    if isinstance(raw_value, str) and len(raw_value) > 0:
-        result = raw_value
-    else:
-        result = None
-
-    return result
-
-
-def _read_optional_string(payload: Dict[str, object], key: str) -> str | None:
-    """
-    Read one optional string from a JSON object.
-
-    :param payload: Parsed JSON record.
-    :param key: Field name.
-    :return: String value or ``None`` when absent.
-    """
-    raw_value: object | None = payload.get(key, None)
-    result: str | None
-
-    if raw_value is None:
-        result = None
-    else:
-        if isinstance(raw_value, str):
-            result = raw_value
-        else:
-            result = None
-
-    return result
-
-
-def _read_optional_int(payload: Dict[str, object], key: str) -> int | None:
-    """
-    Read one optional integer from a JSON object.
-
-    :param payload: Parsed JSON record.
-    :param key: Field name.
-    :return: Integer value or ``None`` when absent or invalid.
-    """
-    raw_value: object | None = payload.get(key, None)
-    result: int | None
-
-    if raw_value is None:
-        result = None
-    else:
-        if isinstance(raw_value, int) and not isinstance(raw_value, bool):
-            result = raw_value
-        else:
-            result = None
-
-    return result
-
-
-def _has_valid_optional_string(payload: Dict[str, object], key: str) -> bool:
-    """
-    Check that one optional JSON field is absent, null or textual.
-
-    :param payload: Parsed JSON record.
-    :param key: Field name.
-    :return: ``True`` when the optional string field is losslessly readable.
-    """
-    raw_value: object | None = payload.get(key, None)
-    is_valid: bool
-
-    if raw_value is None or isinstance(raw_value, str):
-        is_valid = True
-    else:
-        is_valid = False
-
-    return is_valid
-
-
-def _has_valid_optional_int(payload: Dict[str, object], key: str) -> bool:
-    """
-    Check that one optional JSON field is absent, null or an integer.
-
-    :param payload: Parsed JSON record.
-    :param key: Field name.
-    :return: ``True`` when the optional integer field is losslessly readable.
-    """
-    raw_value: object | None = payload.get(key, None)
-    is_valid: bool
-
-    if raw_value is None:
-        is_valid = True
-    else:
-        if isinstance(raw_value, int) and not isinstance(raw_value, bool):
-            is_valid = True
-        else:
-            is_valid = False
-
-    return is_valid
-
-
-def _parse_target_domain(raw_value: object) -> DgsDynamicAssociationTargetDomain | None:
-    """
-    Parse one persistent target-domain value.
-
-    :param raw_value: Raw JSON field value.
-    :return: Parsed target domain or ``None``.
-    """
-    result: DgsDynamicAssociationTargetDomain | None
-
-    if raw_value == DgsDynamicAssociationTargetDomain.Rms.value:
-        result = DgsDynamicAssociationTargetDomain.Rms
-    else:
-        if raw_value == DgsDynamicAssociationTargetDomain.Emt.value:
-            result = DgsDynamicAssociationTargetDomain.Emt
-        else:
-            result = None
-
-    return result
-
-
-def _parse_role(raw_value: object) -> DgsDynamicAssociationRole | None:
-    """
-    Parse one persistent association-role value.
-
-    :param raw_value: Raw JSON field value.
-    :return: Parsed role or ``None``.
-    """
-    result: DgsDynamicAssociationRole | None = None
-    candidate_role: DgsDynamicAssociationRole
-
-    for candidate_role in DgsDynamicAssociationRole:
-        if result is None and raw_value == candidate_role.value:
-            result = candidate_role
-        else:
-            pass
-    return result
-
-
-def _parse_status(raw_value: object) -> DgsDynamicAssociationStatus | None:
-    """
-    Parse one persistent import-outcome value.
-
-    :param raw_value: Raw JSON field value.
-    :return: Parsed import outcome or ``None``.
-    """
-    result: DgsDynamicAssociationStatus | None = None
-    candidate_status: DgsDynamicAssociationStatus
-
-    for candidate_status in DgsDynamicAssociationStatus:
-        if result is None and raw_value == candidate_status.value:
-            result = candidate_status
-        else:
-            pass
-
-    return result
-
-
-def _parse_record(payload: Dict[str, object]) -> DgsDynamicAssociationRecord | None:
-    """
-    Parse one typed association record from JSON-compatible values.
-
-    :param payload: Parsed JSON record.
-    :return: Typed record or ``None`` when required fields are invalid.
-    """
-    unique_key: str | None = _read_required_string(payload=payload, key="unique_key")
-    root_dgs_id: str | None = _read_required_string(payload=payload, key="root_dgs_id")
-    root_name: str | None = _read_required_string(payload=payload, key="root_name")
-    root_typ_id: str | None = _read_required_string(payload=payload, key="root_typ_id")
-    target_domain: DgsDynamicAssociationTargetDomain | None = _parse_target_domain(
-        payload.get("target_domain", None)
-    )
-    role: DgsDynamicAssociationRole | None = _parse_role(payload.get("role", None))
-    status: DgsDynamicAssociationStatus | None = _parse_status(payload.get("status", None))
-    optional_fields_valid: bool = (
-        _has_valid_optional_string(payload=payload, key="slot_dgs_id") and
-        _has_valid_optional_string(payload=payload, key="slot_name") and
-        _has_valid_optional_int(payload=payload, key="slot_index") and
-        _has_valid_optional_string(payload=payload, key="slot_element") and
-        _has_valid_optional_string(payload=payload, key="slot_filter") and
-        _has_valid_optional_string(payload=payload, key="source_element_dgs_id") and
-        _has_valid_optional_string(payload=payload, key="source_element_name") and
-        _has_valid_optional_string(payload=payload, key="source_element_class") and
-        _has_valid_optional_string(payload=payload, key="final_template_name")
-    )
-    if role is None and optional_fields_valid:
-        # Manifests written before typed actuator roles were introduced remain
-        # readable because the role is reproducible from their DGS class data.
-        role = infer_dgs_dynamic_association_role(
-            slot_index=_read_optional_int(payload=payload, key="slot_index"),
-            source_element_class=_read_optional_string(
-                payload=payload,
-                key="source_element_class",
-            ),
-            slot_filter=_read_optional_string(payload=payload, key="slot_filter"),
-        )
-    else:
-        pass
-    result: DgsDynamicAssociationRecord | None
-
-    if (unique_key is None or root_dgs_id is None or root_name is None or
-            root_typ_id is None or target_domain is None or status is None or
-            role is None or not optional_fields_valid):
-        result = None
-    else:
-        result = DgsDynamicAssociationRecord(
-            unique_key=unique_key,
-            root_dgs_id=root_dgs_id,
-            root_name=root_name,
-            root_typ_id=root_typ_id,
-            slot_dgs_id=_read_optional_string(payload=payload, key="slot_dgs_id"),
-            slot_name=_read_optional_string(payload=payload, key="slot_name"),
-            slot_index=_read_optional_int(payload=payload, key="slot_index"),
-            slot_element=_read_optional_string(payload=payload, key="slot_element"),
-            slot_filter=_read_optional_string(payload=payload, key="slot_filter"),
-            source_element_dgs_id=_read_optional_string(payload=payload, key="source_element_dgs_id"),
-            source_element_name=_read_optional_string(payload=payload, key="source_element_name"),
-            source_element_class=_read_optional_string(payload=payload, key="source_element_class"),
-            final_template_name=_read_optional_string(payload=payload, key="final_template_name"),
-            role=role,
-            target_domain=target_domain,
-            status=status,
-        )
-
-    return result
-
-
-def build_dgs_dynamic_association_manifest_output_path(
-        source_path: str,
-        catalog_root_folder: str | None = None,
-) -> Path:
-    """
-    Build a collision-safe persistent path for one DGS association manifest.
-
-    :param source_path: Original DGS source path.
-    :param catalog_root_folder: Optional explicit VeraGrid user root.
-    :return: Manifest JSON path under the separate association catalogue.
-    """
-    root_folder: Path
-    source_file_path: Path = Path(source_path)
-    safe_stem_chars: List[str] = list()
-    char: str
-    safe_stem: str
-    source_key: str
-
-    if catalog_root_folder is None:
-        root_folder = Path(get_create_veragrid_folder())
-    else:
-        root_folder = Path(catalog_root_folder)
-
-    for char in source_file_path.stem:
-        if char.isalnum() or char in {"_", "-"}:
-            safe_stem_chars.append(char)
-        else:
-            safe_stem_chars.append("_")
-
-    safe_stem = "".join(safe_stem_chars).strip("_")
-    if len(safe_stem) == 0:
-        safe_stem = "dgs_dynamic_models"
-    else:
-        pass
-
-    # Hash the normalized source path so equal file names from different
-    # projects retain independent association manifests on Windows.
-    source_key = hashlib.sha256(str(source_file_path).casefold().encode("utf-8")).hexdigest()[:12]
-    return root_folder / "user_defined_models" / "associations" / f"{safe_stem}_{source_key}.associations.json"
-
-
-def save_dgs_dynamic_association_manifest(
-        manifest: DgsDynamicAssociationManifest,
-        output_path: str,
-) -> Path:
-    """
-    Persist one typed DGS dynamic association manifest.
-
-    :param manifest: Typed manifest to persist.
-    :param output_path: Destination JSON path.
-    :return: Written manifest path.
-    """
-    destination_path: Path = Path(output_path)
-    temporary_path: Path = destination_path.with_name(f"{destination_path.name}.tmp")
-    manifest_payload: Dict[str, object] = manifest.to_dict()
-
-    destination_path.parent.mkdir(parents=True, exist_ok=True)
-    # Write beside the destination and replace only after serialization
-    # succeeds, so a prior valid manifest survives an interrupted refresh.
-    temporary_path.write_text(
-        json.dumps(manifest_payload, indent=2, ensure_ascii=True) + "\n",
-        encoding="utf-8",
-    )
-    temporary_path.replace(destination_path)
-    return destination_path
-
-
-def load_dgs_dynamic_association_manifest(
-        input_path: str,
-        logger: Logger | None = None,
-) -> DgsDynamicAssociationManifest | None:
-    """
-    Load and validate one persistent DGS dynamic association manifest.
-
-    Invalid records make the whole manifest invalid because silently dropping
-    one relation would break the many-to-one provenance contract.
-
-    :param input_path: Source JSON path.
-    :param logger: Optional diagnostic logger.
-    :return: Typed manifest or ``None`` when validation fails.
-    """
-    source_path: Path = Path(input_path)
-    payload_obj: object
-    source_dgs_path: str | None
-    associations_obj: object | None
-    records: List[DgsDynamicAssociationRecord] = list()
-    record_obj: object
-    parsed_record: DgsDynamicAssociationRecord | None
-    load_failed: bool = False
-
-    try:
-        payload_obj = json.loads(source_path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
-        if logger is None:
-            pass
-        else:
-            logger.add_warning(
-                msg="DGS dynamic association manifest could not be read",
-                value=f"{source_path}: {exc}",
-            )
-        return None
-
-    if isinstance(payload_obj, dict):
-        schema_obj: object | None = payload_obj.get("schema", None)
-        version_obj: object | None = payload_obj.get("version", None)
-        source_dgs_path = _read_required_string(payload=payload_obj, key="source_path")
-        associations_obj = payload_obj.get("associations", None)
-        if schema_obj == "veragrid-dgs-dynamic-associations" and version_obj == 1:
-            pass
-        else:
-            load_failed = True
-    else:
-        source_dgs_path = None
-        associations_obj = None
-        load_failed = True
-
-    if isinstance(associations_obj, list):
-        for record_obj in associations_obj:
-            if isinstance(record_obj, dict):
-                parsed_record = _parse_record(payload=record_obj)
-            else:
-                parsed_record = None
-
-            if parsed_record is None:
-                load_failed = True
-            else:
-                records.append(parsed_record)
-    else:
-        load_failed = True
-
-    if load_failed or source_dgs_path is None:
-        if logger is None:
-            pass
-        else:
-            logger.add_warning(
-                msg="DGS dynamic association manifest has an invalid schema",
-                value=str(source_path),
-            )
-        return None
-    else:
-        return DgsDynamicAssociationManifest(source_path=source_dgs_path, records=records)
-
-
-def load_user_dgs_dynamic_association_manifests(
-        catalog_root_folder: str | None = None,
-        logger: Logger | None = None,
-) -> List[DgsDynamicAssociationManifest]:
-    """
-    Load every valid association manifest from the separate user catalogue.
-
-    :param catalog_root_folder: Optional explicit VeraGrid user root.
-    :param logger: Optional diagnostic logger.
-    :return: Valid manifests in deterministic file-name order.
-    """
-    root_folder: Path
-    associations_folder: Path
-    manifests: List[DgsDynamicAssociationManifest] = list()
-    manifest_path: Path
-    manifest: DgsDynamicAssociationManifest | None
-
-    if catalog_root_folder is None:
-        root_folder = Path(get_create_veragrid_folder())
-    else:
-        root_folder = Path(catalog_root_folder)
-
-    associations_folder = root_folder / "user_defined_models" / "associations"
-    if associations_folder.exists():
-        for manifest_path in sorted(associations_folder.glob("*.associations.json")):
-            manifest = load_dgs_dynamic_association_manifest(
-                input_path=str(manifest_path),
-                logger=logger,
-            )
-            if manifest is None:
-                pass
-            else:
-                manifests.append(manifest)
-    else:
-        pass
-
-    return manifests

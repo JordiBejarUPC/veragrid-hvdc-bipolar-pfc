@@ -4,8 +4,7 @@ import math
 from typing import Dict, List
 
 from VeraGridEngine.basic_structures import Logger
-from VeraGridEngine.IO.dgs.dynamic_models.dgs_dynamic_association import DgsDynamicAssociation, \
-    DgsDynamicAssociationRole
+from VeraGridEngine.IO.dgs.dynamic_models.dgs_dynamic_association import DgsDynamicAssociation
 from VeraGridEngine.Devices.Branches.line import Line
 from VeraGridEngine.Devices.Branches.series_reactance import SeriesReactance
 from VeraGridEngine.Devices.Substation.bus import Bus
@@ -20,7 +19,7 @@ from VeraGridEngine.IO.dgs.dgs_rms_measurement_binding import (
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic import Const, Expr, Var, heaviside
 from VeraGridEngine.enumerations import (
-
+    DgsDynamicAssociationRole,
     ParamPowerFlowReferenceType,
 )
 

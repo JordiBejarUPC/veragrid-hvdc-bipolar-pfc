@@ -1736,6 +1736,29 @@ class PrpCat(Enum):
 #         return list(enum_item.value for enum_item in cls)
 
 
+class DgsDynamicAssociationRole(Enum):
+    """Define the physical or logical role of one DGS composite relation."""
+
+    __slots__ = ()
+
+    CompositeController = "CompositeController"
+    ControllerModel = "ControllerModel"
+    PhysicalHost = "PhysicalHost"
+    Measurement = "Measurement"
+    SwitchActuator = "SwitchActuator"
+    ValveActuator = "ValveActuator"
+    PassiveActuator = "PassiveActuator"
+    Unknown = "Unknown"
+
+    def __str__(self) -> str:
+        """Return the persistent enum value."""
+        return str(self.value)
+
+    def __repr__(self) -> str:
+        """Return the persistent enum representation."""
+        return str(self)
+
+
 class DeviceType(Enum):
     """
     Device types

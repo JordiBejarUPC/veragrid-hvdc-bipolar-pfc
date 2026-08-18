@@ -39,6 +39,57 @@ def test_binary_arithmetic() -> None:
     assert result == 20
 
 
+def test_safe_divide_uses_explicit_zero_denominator_value() -> None:
+    numerator: sym.Var = sym.Var("numerator")
+    denominator: sym.Var = sym.Var("denominator")
+    expression: sym.Expr = sym.safe_divide(
+        numerator=numerator,
+        denominator=denominator,
+        zero_denominator_value=sym.Const(0.25),
+    )
+
+    assert expression.eval(numerator=12.0, denominator=3.0) == 4.0
+    assert expression.eval(numerator=12.0, denominator=0.0) == 48.0
+    with pytest.raises(ValueError, match="must be non-zero"):
+        sym.safe_divide(
+            numerator=numerator,
+            denominator=denominator,
+            zero_denominator_value=sym.Const(0.0),
+        )
+
+
+def test_safe_divide_derivative_matches_generated_expression() -> None:
+    numerator: sym.Var = sym.Var("numerator")
+    denominator: sym.Var = sym.Var("denominator")
+    expression: sym.Expr = sym.safe_divide(
+        numerator=numerator,
+        denominator=denominator,
+        zero_denominator_value=sym.Const(0.25),
+    )
+    numerator_derivative: sym.Expr = expression.diff(numerator)
+    compiler_names: Dict[int, str] = {
+        numerator.uid: "numerator",
+        denominator.uid: "denominator",
+    }
+    generated_expression: str = sym.expression2numba(
+        expr=expression,
+        compiler_names_dict=compiler_names,
+    )
+
+    assert numerator_derivative.eval(numerator=12.0, denominator=3.0) == 1.0 / 3.0
+    assert numerator_derivative.eval(numerator=12.0, denominator=0.0) == 4.0
+    assert eval(
+        generated_expression,
+        sym.get_namespace(),
+        {"numerator": 12.0, "denominator": 3.0},
+    ) == expression.eval(numerator=12.0, denominator=3.0)
+    assert eval(
+        generated_expression,
+        sym.get_namespace(),
+        {"numerator": 12.0, "denominator": 0.0},
+    ) == expression.eval(numerator=12.0, denominator=0.0)
+
+
 def test_unary_neg_pow() -> None:
     x = sym.Var("x")
     expr = -(x ** 2)

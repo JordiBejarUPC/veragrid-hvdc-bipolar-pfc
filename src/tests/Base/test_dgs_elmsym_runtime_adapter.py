@@ -1,4 +1,4 @@
-from VeraGridEngine.IO.dynamic_models.dgs_elmsym_runtime_adapter import (
+from VeraGridEngine.IO.dgs.dynamic_models.dgs_elmsym_runtime_adapter import (
     is_dgs_elmsym_slot_contract,
 )
 from VeraGridEngine.Utils.Symbolic.block import Block
