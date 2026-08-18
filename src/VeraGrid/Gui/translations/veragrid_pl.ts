@@ -3637,7 +3637,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
         <location filename="../Main/MainWindow.ui" line="5115"/>
         <location filename="../Main/MainWindow.ui" line="8549"/>
         <source>Solver</source>
-        <translation type="unfinished">Rozwiązywacz</translation>
+        <translation type="unfinished">algorytm obliczeniowy</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="4580"/>

@@ -266,7 +266,10 @@ def interpret_line(raw_line: str, splitter=','):
     pattern = splitter + r"\s*(?=(?:[^']*'[^']*')*[^']*$)"
 
     # Use re.split to apply the pattern
-    elms = re.split(pattern, lne)
+    if ',' in lne:
+        elms = re.split(pattern, lne)
+    else:
+        elms = lne.split()
 
     for elm in elms:
 
