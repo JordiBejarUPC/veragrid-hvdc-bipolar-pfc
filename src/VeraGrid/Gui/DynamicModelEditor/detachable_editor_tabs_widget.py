@@ -5,7 +5,6 @@
 
 from __future__ import annotations
 
-from enum import Enum
 from typing import Optional
 
 from PySide6 import QtCore, QtGui, QtWidgets
@@ -14,13 +13,8 @@ from PySide6.QtWidgets import (QAbstractItemView, QComboBox, QDialogButtonBox,
                                QLineEdit, QPushButton, QSizePolicy, QSpacerItem,
                                QTableWidget, QTableWidgetItem, QVBoxLayout)
 from VeraGrid.Session.dynamic_editor_entries import DynamicEditorEntry
+from VeraGrid.Gui.DynamicModelEditor.enumerations import DynamicEditorMimeType
 from VeraGridEngine.enumerations import DynamicSimulationMode
-
-
-class DynamicEditorMimeType(Enum):
-    """MIME identifiers used by Dynamic Editor drag-and-drop workflows."""
-
-    TAB = "application/x-veragrid-dynamic-editor-tab"
 
 
 class DynamicEditorPickerDialog(QtWidgets.QDialog):

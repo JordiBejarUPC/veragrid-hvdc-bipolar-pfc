@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_elements import RoutingNode
-from VeraGrid.Gui.DynamicModelEditor.Routing.routing_elements import RoutingNodeKind
+from VeraGrid.Gui.DynamicModelEditor.enumerations import RoutingNodeKind
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_elements import RoutingSegment
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_elements import derive_segment_axis
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_geometry import RoutingGeometry

@@ -7,7 +7,6 @@
 
 from __future__ import annotations
 
-from enum import Enum
 import keyword
 from pathlib import Path
 import re
@@ -16,6 +15,7 @@ from typing import Dict, List, Mapping, Sequence
 from PySide6 import QtCore, QtGui, QtWidgets
 from PySide6.QtCore import Qt, Signal
 
+from VeraGrid.Gui.DynamicModelEditor.enumerations import ProceduralFieldType
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.enumerations import ProceduralLogicType
 from VeraGridEngine.Utils.Symbolic.block import Block
@@ -118,18 +118,6 @@ def normalize_runtime_expression_source(source: str,
         parser_namespace[alias] = namespace[symbol_name]
         replacement_index += 1
     return normalized, parser_namespace
-
-
-class ProceduralFieldType(Enum):
-    """Semantic editor kind for one procedural-logic field."""
-
-    EXPRESSION = "Expression"
-    MODE_REFERENCE = "Retained mode"
-    VARIABLE_REFERENCE = "DAE variable"
-    RUNTIME_REFERENCE = "Runtime parameter"
-    TARGET_REFERENCE = "Mutable target"
-    FLOAT = "Number"
-    OPTIONAL_FLOAT = "Optional number"
 
 
 class ProceduralFieldDraft:

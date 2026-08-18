@@ -4253,6 +4253,28 @@ class PlotSimulationType(Enum):
         return self.value
 
 
+class ResultTablePlotType(Enum):
+    """
+    Plot representation used by a results table.
+
+    The representation describes how table dimensions map to graphical
+    coordinates without coupling the generic results infrastructure to a
+    particular simulation.
+    """
+
+    SERIES = "SERIES"
+    COMPLEX_POINTS = "COMPLEX_POINTS"
+    COMPLEX_VECTORS = "COMPLEX_VECTORS"
+
+    def __str__(self) -> str:
+        """
+        Return the persistent plot-representation label.
+
+        :return: Persistent plot-representation label.
+        """
+        return self.value
+
+
 class DynamicPlotMode(Enum):
     """
     Plotting mode used by persistent dynamic plot definitions.

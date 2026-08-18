@@ -8,7 +8,6 @@
 from __future__ import annotations
 
 import ast
-from enum import Enum
 from io import StringIO
 import re
 import tokenize
@@ -22,10 +21,14 @@ from VeraGrid.Gui.base_python_code_editor import BasePythonCodeEditor
 from VeraGrid.Gui.DynamicModelEditor.dynamic_block_properties_gui import (
     Ui_DynamicBlockPropertiesDialog,
 )
-from VeraGrid.Gui.DynamicModelEditor.dynamic_equation_pdf import (
-    EquationExportEntry,
+from VeraGrid.Gui.DynamicModelEditor.enumerations import (
+    BlockSymbolCategory,
+    BlockSymbolKind,
     EquationExportSection,
     EquationPdfStyle,
+)
+from VeraGrid.Gui.DynamicModelEditor.dynamic_equation_pdf import (
+    EquationExportEntry,
     build_equation_pdf_suggested_name,
     build_list_equation_entries,
     build_mapping_equation_entries,
@@ -231,26 +234,6 @@ class ParameterDraftRow:
         :return: ``True`` for an unchanged ``Const(None)`` draft.
         """
         return self._constant.value is None and self._draft_text.strip().lower() == "none"
-
-
-class BlockSymbolKind(Enum):
-    """Editable primary role of one block symbol."""
-
-    INPUT = "Input"
-    ALGEBRAIC = "Algebraic"
-    STATE = "State"
-    DIFFERENTIAL = "Differential"
-    PARAMETER = "Parameter"
-    EVENT_PARAMETER = "Dynamic parameter"
-    MODE_PARAMETER = "Mode parameter"
-    OUTPUT_ONLY = "Output only (legacy)"
-
-
-class BlockSymbolCategory(Enum):
-    """Visible DAE symbol group used by the two filtered tables."""
-
-    VARIABLES = "Variables"
-    PARAMETERS = "Parameters"
 
 
 class BlockStructuralEditRequest:

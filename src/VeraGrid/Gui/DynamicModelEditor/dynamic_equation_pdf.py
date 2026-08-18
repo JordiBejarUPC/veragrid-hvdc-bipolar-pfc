@@ -8,30 +8,14 @@
 from __future__ import annotations
 
 from datetime import datetime
-from enum import Enum
 from typing import BinaryIO, List, Mapping, Sequence
 
 from PySide6 import QtCore, QtGui, QtSvg
 
+from VeraGrid.Gui.DynamicModelEditor.enumerations import EquationExportSection, EquationPdfStyle
 from VeraGrid.Gui.DynamicModelEditor.dynamic_latex_renderer import LatexRenderer, RenderedSvgEquation
 from VeraGridEngine.Utils.Symbolic.latex_printer import symbolic_to_latex
 from VeraGridEngine.Utils.Symbolic.symbolic import Expr, Var, symbolic_to_string
-
-
-class EquationExportSection(Enum):
-    """Equation groups that can be selected independently for PDF export."""
-
-    STATE = "State equations"
-    ALGEBRAIC = "Algebraic equations"
-    INITIALIZATION = "Initialization equations"
-    DERIVATIVE_INITIALIZATION = "Derivative initialization equations"
-
-
-class EquationPdfStyle(Enum):
-    """Visual representation used for equations inside an exported PDF."""
-
-    LATEX_SOURCE = "LaTeX source"
-    RENDERED = "Rendered equations"
 
 
 def build_equation_pdf_suggested_name(root_block_name: str,

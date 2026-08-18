@@ -5,8 +5,7 @@
 
 from __future__ import annotations
 
-from enum import Enum
-
+from VeraGrid.Gui.DynamicModelEditor.enumerations import RoutingNodeKind
 from VeraGridEngine.enumerations import RoutingAxis, RoutingPortSide
 
 class RoutingPoint:
@@ -67,18 +66,6 @@ class RoutingPoint:
         """
         point_copy: RoutingPoint = RoutingPoint(self._x, self._y)
         return point_copy
-
-
-class RoutingNodeKind(Enum):
-    """
-    Enumerate the supported node kinds in Phase 1.
-
-    :return: Enumeration values describing supported node kinds.
-    """
-
-    PORT = "port"
-    STUB = "stub"
-    ELBOW = "elbow"
 
 
 class RoutingNode:

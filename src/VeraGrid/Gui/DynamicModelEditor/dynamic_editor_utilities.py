@@ -4,9 +4,9 @@
 # SPDX-License-Identifier: MPL-2.0
 
 import re
-from enum import Enum
 from typing import Dict, List
 
+from VeraGrid.Gui.DynamicModelEditor.enumerations import JMartiDataSourceMode
 from VeraGridEngine.Devices.Branches.transformer import Transformer2W
 from VeraGridEngine.Devices.Branches.winding import Winding
 from VeraGridEngine.enumerations import (
@@ -100,13 +100,6 @@ class RlcComboBlockTemplateDefinition(TemplateDefinition):
             direct_c_value=float(self.get_value("direct_c_value")),
             name=str(self.get_value("name")),
         )
-
-
-class JMartiDataSourceMode(Enum):
-    """Available sources for the offline JMarti frequency-domain fit."""
-
-    AUTOMATIC_TEMPLATE = "Auto from attached template"
-    IMPORT_FREQUENCY_SAMPLES = "Import NPZ frequency samples"
 
 
 class JMartiBlockTemplateDefinition(TemplateDefinition):
