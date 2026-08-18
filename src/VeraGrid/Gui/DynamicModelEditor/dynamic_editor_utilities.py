@@ -4,6 +4,7 @@
 # SPDX-License-Identifier: MPL-2.0
 
 import re
+from enum import Enum
 from typing import Dict, List
 
 from VeraGrid.Gui.DynamicModelEditor.enumerations import JMartiDataSourceMode

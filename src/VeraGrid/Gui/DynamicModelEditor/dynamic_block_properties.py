@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 import ast
+from enum import Enum
 from io import StringIO
 import re
 import tokenize
