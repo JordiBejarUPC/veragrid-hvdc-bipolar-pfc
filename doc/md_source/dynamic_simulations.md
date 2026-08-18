@@ -1261,6 +1261,7 @@ The editor-based workflow is especially useful when:
 
 The [Dynamic model library](dyn_templates/index.md) provides a browsable index of all documented dynamic models and blocks:
 
+- [DAE Block authoring guide](dyn_templates/dae_block_authoring.md)
 - [RMS device templates](dyn_templates/RMS/index.md)
 - [EMT device templates](dyn_templates/EMT/index.md)
 - [Dynamic library blocks](dyn_templates/library/index.md)

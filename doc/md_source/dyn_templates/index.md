@@ -2,6 +2,16 @@
 
 This library is the entry point for the dynamic models and reusable blocks available in VeraGrid. Use the sections below to browse device-level templates for RMS and EMT simulations, the lower-level blocks used to assemble those models, and the procedural logic evaluated between accepted simulation steps.
 
+## Authoring models
+
+Start with the authoring guide when creating a new symbolic model or modifying an existing one. It explains the complete `Block` contract, initialization and mappings, hierarchical composition, runtime procedural logic, and the equivalent GUI and scripting workflows.
+
+```{toctree}
+:maxdepth: 1
+
+dae_block_authoring
+```
+
 ## Device templates
 
 Device templates represent complete electrical devices or composite dynamic models that can be assigned to grid elements.
