@@ -461,7 +461,7 @@ def build_modelica_dynamic_model_import_bundle(xml_path: str) -> Tuple[DynamicMo
         unique_key=f"modelica|{Path(xml_path).stem}",
         display_name=Path(xml_path).stem,
         source_tpe=DynamicModelImportSource.ModelicaXml,
-        template=template,
+        source_block=None if template is None else template.block,
         notes_text=notes_text,
         persistence_spec=None if template is None else _build_modelica_persistence_spec(xml_path, template.name),
     )

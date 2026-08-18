@@ -6,10 +6,7 @@
 import ast
 from pathlib import Path
 
-import pytest
-
 from VeraGridEngine.IO.dgs.dynamic_models.dynamic_model_import import (
-    DgsDynamicParserContractError,
     build_dgs_dynamic_model_import_bundle,
 )
 from VeraGridEngine.IO.dgs.dynamic_models.dgs_dynamic_association import (
@@ -55,11 +52,17 @@ def test_dynamic_model_import_formats_do_not_cross_import_parsers() -> None:
     modelica_module_path: Path = Path(
         build_modelica_dynamic_model_import_bundle.__code__.co_filename
     )
+    dgs_blocks_module_path: Path = (
+        dgs_module_path.parents[1] / "dgs_to_blocks.py"
+    )
     dgs_tree: ast.Module = ast.parse(
         dgs_module_path.read_text(encoding="utf-8")
     )
     modelica_tree: ast.Module = ast.parse(
         modelica_module_path.read_text(encoding="utf-8")
+    )
+    dgs_blocks_tree: ast.Module = ast.parse(
+        dgs_blocks_module_path.read_text(encoding="utf-8")
     )
     dgs_imports: list[str] = [
         node.module
@@ -71,6 +74,11 @@ def test_dynamic_model_import_formats_do_not_cross_import_parsers() -> None:
         for node in ast.walk(modelica_tree)
         if isinstance(node, ast.ImportFrom) and node.module is not None
     ]
+    dgs_block_imports: list[str] = [
+        node.module
+        for node in ast.walk(dgs_blocks_tree)
+        if isinstance(node, ast.ImportFrom) and node.module is not None
+    ]
 
     assert not any(
         module_name.startswith("VeraGridEngine.IO.modelica")
@@ -80,6 +88,13 @@ def test_dynamic_model_import_formats_do_not_cross_import_parsers() -> None:
         module_name.startswith("VeraGridEngine.IO.dgs")
         for module_name in modelica_imports
     )
+    assert not any(
+        module_name in {
+            "VeraGridEngine.Devices.Dynamic.emt_template",
+            "VeraGridEngine.Devices.Dynamic.rms_template",
+        }
+        for module_name in dgs_block_imports
+    )
 
 
 def test_dynamic_model_import_modules_do_not_define_global_values() -> None:
@@ -87,6 +102,8 @@ def test_dynamic_model_import_modules_do_not_define_global_values() -> None:
 
     module_paths: list[Path] = [
         Path(build_dgs_dynamic_model_import_bundle.__code__.co_filename),
+        Path(build_dgs_dynamic_model_import_bundle.__code__.co_filename).parents[1]
+        / "dgs_to_blocks.py",
         Path(build_dgs_dynamic_model_import_bundle.__code__.co_filename).with_name(
             "dgs_dynamic_association.py"
         ),
@@ -191,22 +208,6 @@ def test_modelica_expression_variable_collection_visits_each_node_type() -> None
         third_var.uid,
         fourth_var.uid,
     }
-
-
-def test_dynamic_dgs_import_fails_closed_while_parser_boundary_is_reverted() -> None:
-    """Block dynamic import until every required parser function is restored."""
-
-    dgs_path: Path = (
-        Path(__file__).resolve().parents[1]
-        / "data"
-        / "grids"
-        / "test_ieee14_svs.dgs"
-    )
-    with pytest.raises(
-        DgsDynamicParserContractError,
-        match="requires parser functions that are not present",
-    ):
-        build_dgs_dynamic_model_import_bundle(dgs_path=str(dgs_path))
 
 
 def test_dynamic_model_metadata_assignment_is_readable_python() -> None:

@@ -9,7 +9,7 @@ import math
 import pprint
 import re
 from pathlib import Path
-from typing import Dict, Iterable, List, Set, Tuple
+from typing import Dict, Iterable, List, Sequence, Set, Tuple
 
 from VeraGridEngine.IO.dgs.dgs_circuit import DgsCircuit
 from VeraGridEngine.IO.dgs.dgs_objects import BlkDef, BlkFrom, BlkGoto, BlkRef, BlkSlot, BlkSum, ElmComp, ElmDsl, DGSElement
@@ -30,14 +30,6 @@ from VeraGridEngine.Utils.Symbolic.block import Block, find_name_in_block
 from VeraGridEngine.Utils.Symbolic.symbolic import CmpOp, Comparison, Const, Expr, Func2, Var, abs, cos, exp, hard_sat, log, max, min, sin, sqrt
 from VeraGridEngine.enumerations import BlockScopeMode
 
-
-STRICT_PROCEDURAL_LOGIC_ONLY: bool = True
-
-DgsParameterValue = float | int | bool | str | complex | None
-DgsParameterValues = Dict[str, DgsParameterValue]
-SymbolReplacementKey = Var | Const | str
-SymbolReplacementValue = Expr | Const
-SymbolReplacementMap = Dict[SymbolReplacementKey, SymbolReplacementValue]
 
 def _safe_name(name: str) -> str:
     cleaned: str = re.sub(r"[^0-9a-zA-Z_]", "_", name)
@@ -416,7 +408,7 @@ class ElmCompInstanceEntry:
         element_kind: str | None,
         type_id: str | None,
         type_name: str | None,
-        parameter_values: DgsParameterValues | None = None,
+        parameter_values: Dict[str, float | int | bool | str | complex | None] | None = None,
     ) -> None:
         self.slot_id: str | None = slot_id
         self.slot_name: str | None = slot_name
@@ -425,7 +417,9 @@ class ElmCompInstanceEntry:
         self.element_kind: str | None = element_kind
         self.type_id: str | None = type_id
         self.type_name: str | None = type_name
-        self.parameter_values: DgsParameterValues = dict(parameter_values or {})
+        self.parameter_values: Dict[str, float | int | bool | str | complex | None] = dict(
+            parameter_values or {}
+        )
 
 
 class DgsBlockInstanceSelection:
@@ -1160,84 +1154,6 @@ class DgsStandaloneBlockCatalogEntry:
         self.build_error = build_error
 
 
-class DgsStandaloneBlockOccurrence:
-    """
-    One standalone block occurrence extracted from a DGS catalog.
-    """
-
-    __slots__ = ("blkref_id", "typ_id", "blkdef_name", "sample_display_name", "connected")
-
-    def __init__(self,
-                 blkref_id: str,
-                 typ_id: str,
-                 blkdef_name: str,
-                 sample_display_name: str,
-                 connected: bool) -> None:
-        """
-        Store one standalone block occurrence.
-
-        :param blkref_id: BlkRef identifier.
-        :param typ_id: Referenced BlkDef identifier.
-        :param blkdef_name: Referenced BlkDef display name.
-        :param sample_display_name: Human-facing occurrence label.
-        :param connected: Whether the occurrence belongs to a connected graphical component.
-        :returns: None.
-        """
-        self.blkref_id = blkref_id
-        self.typ_id = typ_id
-        self.blkdef_name = blkdef_name
-        self.sample_display_name = sample_display_name
-        self.connected = connected
-
-
-class DgsStandaloneBlockCatalogEntry:
-    """
-    Aggregated standalone block catalog entry built from DGS occurrences.
-    """
-
-    __slots__ = (
-        "typ_id",
-        "blkdef_name",
-        "sample_display_name",
-        "occurrence_count",
-        "isolated_occurrence_count",
-        "connected_occurrence_count",
-        "unsupported_lines",
-        "build_error",
-    )
-
-    def __init__(self,
-                 typ_id: str,
-                 blkdef_name: str,
-                 sample_display_name: str,
-                 occurrence_count: int,
-                 isolated_occurrence_count: int,
-                 connected_occurrence_count: int,
-                 unsupported_lines: List[str],
-                 build_error: str | None) -> None:
-        """
-        Store one aggregated standalone block catalog entry.
-
-        :param typ_id: Referenced BlkDef identifier.
-        :param blkdef_name: Referenced BlkDef display name.
-        :param sample_display_name: Representative human-facing occurrence label.
-        :param occurrence_count: Number of occurrences included in this view.
-        :param isolated_occurrence_count: Number of isolated occurrences included in this view.
-        :param connected_occurrence_count: Number of connected occurrences included in this view.
-        :param unsupported_lines: Unsupported DGS source statements.
-        :param build_error: Build error when materialization fails.
-        :returns: None.
-        """
-        self.typ_id = typ_id
-        self.blkdef_name = blkdef_name
-        self.sample_display_name = sample_display_name
-        self.occurrence_count = occurrence_count
-        self.isolated_occurrence_count = isolated_occurrence_count
-        self.connected_occurrence_count = connected_occurrence_count
-        self.unsupported_lines = unsupported_lines
-        self.build_error = build_error
-
-
 def _graph_to_serializable(graph: Dict[str, Set[str]]) -> Dict[str, List[str]]:
     serializable_graph: Dict[str, List[str]] = dict()
     key: str
@@ -1729,9 +1645,9 @@ def _emit_block_code(
         lines.append("    ]")
 
 
-class _TemplateModuleVariableGroups:
+class _BlockModuleVariableGroups:
     """
-    Variable groups used by the DGS template emitter.
+    Variable groups used while emitting one symbolic block.
     """
 
     __slots__ = ("param_vars", "state_vars", "algebraic_vars", "diff_vars")
@@ -1742,7 +1658,7 @@ class _TemplateModuleVariableGroups:
                  algebraic_vars: List[Var],
                  diff_vars: List[Var]) -> None:
         """
-        Store the variable groups used by one emitted template module.
+        Store the variable groups used by one emitted block module.
 
         :param param_vars: Runtime parameter variables.
         :param state_vars: State variables.
@@ -1756,9 +1672,9 @@ class _TemplateModuleVariableGroups:
         self.diff_vars = diff_vars
 
 
-def _build_template_module_variable_groups(block: Block) -> _TemplateModuleVariableGroups:
+def _build_block_module_variable_groups(block: Block) -> _BlockModuleVariableGroups:
     """
-    Build the variable groups required by the template emitter.
+    Build the variable groups required by a symbolic-block emitter.
 
     :param block: Root block to emit.
     :returns: Variable groups used during emission.
@@ -1780,7 +1696,7 @@ def _build_template_module_variable_groups(block: Block) -> _TemplateModuleVaria
         if v.uid not in state_uids and v.uid not in diff_uids and v.uid not in param_uids
     ]
 
-    return _TemplateModuleVariableGroups(
+    return _BlockModuleVariableGroups(
         param_vars=param_vars,
         state_vars=state_vars,
         algebraic_vars=algebraic_vars,
@@ -1788,9 +1704,9 @@ def _build_template_module_variable_groups(block: Block) -> _TemplateModuleVaria
     )
 
 
-class DgsTemplateModuleEmitter:
+class DgsBlockModuleEmitter:
     """
-    Structured emitter for one standalone EMT template module.
+    Structured emitter for one standalone symbolic-block module.
     """
 
     __slots__ = (
@@ -1799,7 +1715,7 @@ class DgsTemplateModuleEmitter:
         "dgs_path",
         "block",
         "identifier_map",
-        "resolved_template_name",
+        "resolved_block_name",
         "func_base_name",
         "has_procedural_logic",
         "procedural_import_names",
@@ -1812,14 +1728,14 @@ class DgsTemplateModuleEmitter:
                  result: DgsRootBlockResult,
                  subgraph: DgsBlockSubgraphResult,
                  dgs_path: str,
-                 template_name: str | None = None) -> None:
+                 block_name: str | None = None) -> None:
         """
-        Build the standalone EMT template emitter.
+        Build the standalone symbolic-block emitter.
 
         :param result: Root parse result.
         :param subgraph: Selected block subgraph.
         :param dgs_path: Source DGS path.
-        :param template_name: Optional explicit template name.
+        :param block_name: Optional explicit block name.
         :returns: None.
         """
         self.result = result
@@ -1827,25 +1743,28 @@ class DgsTemplateModuleEmitter:
         self.dgs_path = dgs_path
         self.block = subgraph.view_block
         self.identifier_map = _make_identifier_map(self.block)
-        self.resolved_template_name = template_name if template_name is not None else subgraph.selected_block.blkdef.loc_name
-        self.func_base_name = _safe_name(self.resolved_template_name).lower()
+        if block_name is None:
+            self.resolved_block_name = subgraph.selected_block.blkdef.loc_name
+        else:
+            self.resolved_block_name = block_name
+        self.func_base_name = _safe_name(self.resolved_block_name).lower()
         self.has_procedural_logic = any(len(item.procedural_logic) > 0 for item in _iter_blocks_recursive(self.block))
         self.procedural_import_names = _procedural_logic_import_names(self.block)
-        self.variable_groups = _build_template_module_variable_groups(self.block)
+        self.variable_groups = _build_block_module_variable_groups(self.block)
         self.child_ref_names_by_node = self._build_child_ref_names_by_node()
         self.child_ref_names = self._build_child_ref_names()
 
     def render(self) -> str:
         """
-        Render the standalone EMT template module.
+        Render the standalone symbolic-block module.
 
         :returns: Python module text.
         """
         lines: List[str] = list()
         self._append_header(lines)
         self._append_imports(lines)
-        self._append_template_function(lines)
-        self._append_template_wrapper(lines)
+        self._append_block_function(lines)
+        self._append_block_wrapper(lines)
         return "\n".join(lines) + "\n"
 
     def _append_header(self, lines: List[str]) -> None:
@@ -1855,7 +1774,7 @@ class DgsTemplateModuleEmitter:
         :param lines: Output line buffer.
         :returns: None.
         """
-        lines.append("# --- AUTO-GENERATED EMT TEMPLATE FROM DGS ---")
+        lines.append("# --- AUTO-GENERATED SYMBOLIC BLOCK FROM DGS ---")
         lines.append(f"# Source: {self.dgs_path}")
         lines.append("")
 
@@ -1868,7 +1787,6 @@ class DgsTemplateModuleEmitter:
         """
         lines.append("from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory")
         lines.append("from VeraGridEngine.Utils.Symbolic import symbolic as sym")
-        lines.append("from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate")
         if isinstance(self.subgraph, DgsGraphicTreeResult) and len(self.subgraph.connections) > 0:
             lines.append("from VeraGridEngine.Utils.Symbolic.block import Block, find_name_in_block")
         else:
@@ -1879,31 +1797,29 @@ class DgsTemplateModuleEmitter:
         else:
             pass
 
-        lines.append("from VeraGridEngine.enumerations import DeviceType")
         lines.append("")
 
-    def _append_template_function(self, lines: List[str]) -> None:
+    def _append_block_function(self, lines: List[str]) -> None:
         """
-        Append the main EMT template builder function.
+        Append the domain-neutral symbolic block builder function.
 
         :param lines: Output line buffer.
         :returns: None.
         """
         lines.append(
-            f"def get_{self.func_base_name}_emt_template(vf: VarFactory, name: str = {repr(self.resolved_template_name)}) -> EmtModelTemplate:"
+            f"def get_{self.func_base_name}_block("
+            f"vf: VarFactory, name: str = {repr(self.resolved_block_name)}) -> Block:"
         )
-        lines.append("    templ = EmtModelTemplate()")
-        lines.append("    templ.tpe = DeviceType.NoDevice")
-        lines.append("    templ.name = name")
+        lines.append("    block = Block(name=name)")
         lines.append("")
         self._append_variable_declarations(lines)
         lines.append("    # --- Block Assembly ---")
         self._append_child_blocks(lines)
         self._append_graphical_connections(lines)
-        _emit_block_code(self.block, self.identifier_map, "templ.block", lines, self.child_ref_names)
-        lines.append("    templ.block.name = name")
+        _emit_block_code(self.block, self.identifier_map, "block", lines, self.child_ref_names)
+        lines.append("    block.name = name")
         lines.append("")
-        lines.append("    return templ")
+        lines.append("    return block")
         lines.append("")
 
     def _append_variable_declarations(self, lines: List[str]) -> None:
@@ -1978,16 +1894,16 @@ class DgsTemplateModuleEmitter:
         else:
             pass
 
-    def _append_template_wrapper(self, lines: List[str]) -> None:
+    def _append_block_wrapper(self, lines: List[str]) -> None:
         """
-        Append the stable ``get_template`` wrapper.
+        Append the stable ``get_block`` wrapper.
 
         :param lines: Output line buffer.
         :returns: None.
         """
-        lines.append("def get_template(vf: VarFactory, name: str | None = None) -> EmtModelTemplate:")
+        lines.append("def get_block(vf: VarFactory, name: str | None = None) -> Block:")
         lines.append(
-            f"    return get_{self.func_base_name}_emt_template(vf=vf, name={repr(self.resolved_template_name)} if name is None else name)"
+            f"    return get_{self.func_base_name}_block(vf=vf, name={repr(self.resolved_block_name)} if name is None else name)"
         )
 
     def _build_child_ref_names_by_node(self) -> Dict[str, str]:
@@ -2028,13 +1944,18 @@ class DgsTemplateModuleEmitter:
         return child_ref_names
 
 
-def _emit_template_style_module(
+def _emit_block_module(
     result: DgsRootBlockResult,
     subgraph: DgsBlockSubgraphResult,
     dgs_path: str,
-    template_name: str | None = None,
+    block_name: str | None = None,
 ) -> str:
-    emitter = DgsTemplateModuleEmitter(result=result, subgraph=subgraph, dgs_path=dgs_path, template_name=template_name)
+    emitter = DgsBlockModuleEmitter(
+        result=result,
+        subgraph=subgraph,
+        dgs_path=dgs_path,
+        block_name=block_name,
+    )
     return emitter.render()
 
 
@@ -2326,7 +2247,7 @@ def _collect_block_vars_recursive(block: Block, vars_out: Dict[int, Var], consts
 def _clone_block_with_var_factory_recursive(block: Block,
                                             name: str,
                                             created_vars: Dict[int, Var],
-                                            var_mapping: SymbolReplacementMap,
+                                            var_mapping: Dict[Var | Const | str, Expr | Const],
                                             vf: VarFactory) -> Block:
     """
     Clone one block recursively using the target variable factory and remapping.
@@ -2400,7 +2321,7 @@ def materialize_block_with_var_factory(block_data: dict | Block, vf: VarFactory,
     consts_out: Dict[int, Const] = dict()
     _collect_block_vars_recursive(source_block, vars_out, consts_out)
 
-    var_mapping: SymbolReplacementMap = dict()
+    var_mapping: Dict[Var | Const | str, Expr | Const] = dict()
     created_vars: Dict[int, Var] = dict()
 
     non_diff_vars = [var for var in vars_out.values() if var.base_var is None]
@@ -2535,6 +2456,31 @@ def _parse_blkdef(blkdef: BlkDef,
         unsupported_lines=unsupported_lines,
         signal_dependencies=signal_dependencies,
     )
+
+
+def parse_dgs_block_definitions_from_context(
+        circuit: DgsCircuit,
+) -> Dict[str, ParsedDgsBlockDefinition]:
+    """
+    Parse every block definition from one already loaded DGS circuit.
+
+    All definitions share the same signal table so equal DGS signal names map
+    to the same symbolic variables when blocks are composed later.
+
+    :param circuit: Already loaded DGS circuit.
+    :return: Parsed block definitions indexed by their exact DGS identifiers.
+    """
+    shared_signals: Dict[str, Var] = dict()
+    parsed_blocks: Dict[str, ParsedDgsBlockDefinition] = dict()
+    blkdef: BlkDef
+
+    for blkdef in circuit.blkdefs:
+        parsed_blocks[blkdef.ID] = _parse_blkdef(
+            blkdef=blkdef,
+            shared_signals=shared_signals,
+        )
+
+    return parsed_blocks
 
 
 def _score_root_candidate(blkdef: ParsedDgsBlockDefinition) -> Tuple[int, int, int, int, int]:
@@ -2701,14 +2647,19 @@ def _filter_internal_candidates(
 
     return filtered
 
-def _parameter_values_by_type_id(entries: Iterable[ElmCompInstanceEntry]) -> Dict[str, DgsParameterValues]:
+def _parameter_values_by_type_id(
+        entries: Iterable[ElmCompInstanceEntry],
+) -> Dict[str, Dict[str, float | int | bool | str | complex | None]]:
     """
     Build a unique parameter lookup keyed by block-definition identifier.
 
     :param entries: Direct instance entries extracted from one ElmComp.
     :return: Parameter values keyed by BlkDef identifier when the type appears only once.
     """
-    parameter_values_by_type: Dict[str, DgsParameterValues] = dict()
+    parameter_values_by_type: Dict[
+        str,
+        Dict[str, float | int | bool | str | complex | None],
+    ] = dict()
     duplicated_type_ids: Set[str] = set()
 
     for entry in entries:
@@ -2730,7 +2681,7 @@ def _parameter_values_by_type_id(entries: Iterable[ElmCompInstanceEntry]) -> Dic
 def _build_block_from_parsed(
     parsed: ParsedDgsBlockDefinition,
     shared_signals: Dict[str, Var],
-    parameter_values: DgsParameterValues | None = None,
+    parameter_values: Dict[str, float | int | bool | str | complex | None] | None = None,
 ) -> Block:
     """
     Materialize one parsed DGS block into a runtime Block.
@@ -2746,7 +2697,7 @@ def _build_block_from_parsed(
         if name not in symbol_table:
             symbol_table[name] = Var(name=old_var.name)
 
-    var_mapping: SymbolReplacementMap = dict()
+    var_mapping: Dict[Var | Const | str, Expr | Const] = dict()
     for name, old_var in parsed.symbol_table.items():
         new_var = symbol_table.get(name, None)
         if new_var is not None:
@@ -2783,7 +2734,10 @@ def _build_block_from_parsed(
             state_eqs.append(parsed.state_rhs[state_name].subs(var_mapping))
 
     # The BlkDef stores the parameter names, while the ElmDsl instance stores the concrete numbers.
-    resolved_parameter_values: DgsParameterValues = dict(parameter_values or {})
+    resolved_parameter_values: Dict[
+        str,
+        float | int | bool | str | complex | None,
+    ] = dict(parameter_values or {})
     event_dict: Dict[Var, Const] = dict()
     param_name: str
     param_var: Var
@@ -3090,6 +3044,36 @@ def _build_catalog_entry_info_by_typ_id() -> Dict[str, tuple[Sequence[str], str 
     return info_by_typ_id
 
 
+def list_dgs_blkref_catalog_occurrences_from_context(
+        circuit: DgsCircuit,
+) -> List[DgsStandaloneBlockOccurrence]:
+    """
+    List standalone block occurrences from one already loaded DGS circuit.
+
+    :param circuit: Already loaded DGS circuit.
+    :return: Valid ``BlkRef`` occurrences with their connection state.
+    """
+    adjacency: Dict[str, Set[str]] = _build_blksig_adjacency(circuit=circuit)
+    blkdef_by_id: Dict[str, BlkDef] = _build_blkdef_index(circuit=circuit)
+    occurrences: List[DgsStandaloneBlockOccurrence] = list()
+    blkref: BlkRef
+
+    for blkref in circuit.blkrefs:
+        occurrence: DgsStandaloneBlockOccurrence | None = (
+            _build_standalone_block_occurrence(
+                blkref=blkref,
+                blkdef_by_id=blkdef_by_id,
+                adjacency=adjacency,
+            )
+        )
+        if occurrence is None:
+            pass
+        else:
+            occurrences.append(occurrence)
+
+    return occurrences
+
+
 def list_dgs_blkref_catalog_occurrences(dgs_path: str) -> List[DgsStandaloneBlockOccurrence]:
     """
     List every BlkRef occurrence that belongs to the standalone DGS block catalog.
@@ -3097,21 +3081,9 @@ def list_dgs_blkref_catalog_occurrences(dgs_path: str) -> List[DgsStandaloneBloc
     :param dgs_path: Source DGS file.
     :returns: Standalone block occurrences.
     """
-    circuit = DgsCircuit()
+    circuit: DgsCircuit = DgsCircuit()
     circuit.parse_dgs(dgs_path)
-    adjacency: dict[str, set[str]] = _build_blksig_adjacency(circuit)
-    blkdef_by_id: dict[str, BlkDef] = _build_blkdef_index(circuit)
-    occurrences: List[DgsStandaloneBlockOccurrence] = list()
-    blkref: BlkRef
-
-    for blkref in circuit.blkrefs:
-        occurrence: DgsStandaloneBlockOccurrence | None = _build_standalone_block_occurrence(blkref, blkdef_by_id, adjacency)
-        if occurrence is None:
-            pass
-        else:
-            occurrences.append(occurrence)
-
-    return occurrences
+    return list_dgs_blkref_catalog_occurrences_from_context(circuit=circuit)
 
 
 def _build_standalone_catalog_entry(typ_id: str,
@@ -3162,7 +3134,59 @@ def _build_standalone_catalog_entry(typ_id: str,
     )
 
 
-def build_dgs_standalone_block_catalog(dgs_path: str, isolated_only: bool = True) -> List[DgsStandaloneBlockCatalogEntry]:
+def build_dgs_standalone_block_catalog_from_context(
+        circuit: DgsCircuit,
+        parsed_blocks: Dict[str, ParsedDgsBlockDefinition],
+        isolated_only: bool = True,
+) -> List[DgsStandaloneBlockCatalogEntry]:
+    """
+    Build the standalone block catalogue from one already loaded DGS circuit.
+
+    :param circuit: Already loaded DGS circuit.
+    :param parsed_blocks: Definitions previously parsed from ``circuit``.
+    :param isolated_only: Exclude occurrences connected to a graphical model.
+    :return: Aggregated catalogue entries ordered by numeric DGS type id.
+    """
+    catalog_info_by_type_id: Dict[str, tuple[Sequence[str], str | None]] = (
+        _build_catalog_entry_info_by_typ_id()
+    )
+    occurrences: List[DgsStandaloneBlockOccurrence] = (
+        list_dgs_blkref_catalog_occurrences_from_context(circuit=circuit)
+    )
+    occurrences_by_type_id: Dict[str, List[DgsStandaloneBlockOccurrence]] = dict()
+    occurrence: DgsStandaloneBlockOccurrence
+
+    for occurrence in occurrences:
+        if isolated_only and occurrence.connected:
+            pass
+        else:
+            if occurrence.typ_id not in occurrences_by_type_id:
+                occurrences_by_type_id[occurrence.typ_id] = list()
+            else:
+                pass
+            occurrences_by_type_id[occurrence.typ_id].append(occurrence)
+
+    entries: List[DgsStandaloneBlockCatalogEntry] = list()
+    type_id: str
+    grouped_occurrences: List[DgsStandaloneBlockOccurrence]
+    for type_id, grouped_occurrences in occurrences_by_type_id.items():
+        entries.append(
+            _build_standalone_catalog_entry(
+                typ_id=type_id,
+                occurrences=grouped_occurrences,
+                parsed_blocks=parsed_blocks,
+                catalog_info_by_typ_id=catalog_info_by_type_id,
+            )
+        )
+
+    entries.sort(key=lambda entry: int(entry.typ_id))
+    return entries
+
+
+def build_dgs_standalone_block_catalog(
+        dgs_path: str,
+        isolated_only: bool = True,
+) -> List[DgsStandaloneBlockCatalogEntry]:
     """
     Build the aggregated standalone DGS block catalog.
 
@@ -3170,41 +3194,89 @@ def build_dgs_standalone_block_catalog(dgs_path: str, isolated_only: bool = True
     :param isolated_only: Keep only isolated occurrences when ``True``.
     :returns: Aggregated catalog entries.
     """
-    circuit = DgsCircuit()
+    circuit: DgsCircuit = DgsCircuit()
     circuit.parse_dgs(dgs_path)
-    shared_signals: Dict[str, Var] = dict()
-    parsed_blocks: Dict[str, ParsedDgsBlockDefinition] = dict()
-    catalog_info_by_typ_id: Dict[str, tuple[Sequence[str], str | None]] = _build_catalog_entry_info_by_typ_id()
-    blkdef: BlkDef
-    for blkdef in circuit.blkdefs:
-        parsed_blocks[blkdef.ID] = _parse_blkdef(blkdef, shared_signals)
+    parsed_blocks: Dict[str, ParsedDgsBlockDefinition] = (
+        parse_dgs_block_definitions_from_context(circuit=circuit)
+    )
+    return build_dgs_standalone_block_catalog_from_context(
+        circuit=circuit,
+        parsed_blocks=parsed_blocks,
+        isolated_only=isolated_only,
+    )
 
-    occurrences: List[DgsStandaloneBlockOccurrence] = list_dgs_blkref_catalog_occurrences(dgs_path)
-    occurrences_by_typ_id: Dict[str, List[DgsStandaloneBlockOccurrence]] = dict()
-    occurrence: DgsStandaloneBlockOccurrence
-    for occurrence in occurrences:
-        if isolated_only and occurrence.connected:
-            pass
-        else:
-            if occurrence.typ_id not in occurrences_by_typ_id:
-                occurrences_by_typ_id[occurrence.typ_id] = list()
-            else:
-                pass
-            occurrences_by_typ_id[occurrence.typ_id].append(occurrence)
 
-    entries: List[DgsStandaloneBlockCatalogEntry] = list()
-    typ_id: str
-    grouped_occurrences: List[DgsStandaloneBlockOccurrence]
-    for typ_id, grouped_occurrences in occurrences_by_typ_id.items():
-        entries.append(_build_standalone_catalog_entry(typ_id, grouped_occurrences, parsed_blocks, catalog_info_by_typ_id))
+def build_standalone_blkdef_block(
+        dgs_path: str,
+        typ_id: str,
+        block_name: str | None = None,
+) -> Block:
+    """
+    Build one domain-neutral symbolic block from a DGS block definition.
 
-    entries.sort(key=lambda item: int(item.typ_id))
-    return entries
+    :param dgs_path: Source DGS file.
+    :param typ_id: Exact DGS identifier of the required ``BlkDef``.
+    :param block_name: Optional block name overriding the DGS name.
+    :return: Materialized symbolic block.
+    :raises ValueError: When the requested ``BlkDef`` does not exist.
+    """
+    circuit: DgsCircuit = DgsCircuit()
+    circuit.parse_dgs(dgs_path)
+    parsed_blocks: Dict[str, ParsedDgsBlockDefinition] = (
+        parse_dgs_block_definitions_from_context(circuit=circuit)
+    )
+
+    if typ_id not in parsed_blocks:
+        raise ValueError(
+            f"DGS block definition '{typ_id}' was not found in '{dgs_path}'."
+        )
+
+    return build_standalone_blkdef_block_from_parsed_block(
+        parsed_block=parsed_blocks[typ_id],
+        block_name=block_name,
+    )
+
+
+def build_standalone_blkdef_block_from_parsed_block(
+        parsed_block: ParsedDgsBlockDefinition,
+        block_name: str | None = None,
+) -> Block:
+    """
+    Build one domain-neutral symbolic block from a parsed DGS definition.
+
+    A standalone ``BlkDef`` contains equations but does not establish whether
+    they will be used by an RMS or EMT simulation. The importer selects and
+    validates that target domain after this parser boundary.
+
+    :param parsed_block: Parsed DGS block definition.
+    :param block_name: Optional block name overriding the DGS name.
+    :return: Materialized symbolic block containing the parsed equations.
+    :raises UnsupportedDgsExpression: When any source statement was not parsed.
+    """
+    if len(parsed_block.unsupported_lines) > 0:
+        unsupported_syntax: str = "; ".join(parsed_block.unsupported_lines)
+        raise UnsupportedDgsExpression(
+            f"DGS block definition '{parsed_block.blkdef.loc_name}' contains "
+            f"unsupported syntax: {unsupported_syntax}"
+        )
+
+    resolved_block_name: str
+    if block_name is None:
+        resolved_block_name = parsed_block.blkdef.loc_name
+    else:
+        resolved_block_name = str(block_name)
+
+    runtime_block: Block = _build_block_from_parsed(
+        parsed=parsed_block,
+        shared_signals=dict(),
+    )
+    runtime_block.name = resolved_block_name
+    return runtime_block
 
 
 def export_standalone_blkdef_to_python(dgs_path: str, output_path: str, block_id: str) -> Path:
     """
-    Export one standalone BlkDef leaf as a Python EMT template module.
+    Export one standalone BlkDef leaf as a Python symbolic-block module.
 
     :param dgs_path: Source DGS file.
     :param output_path: Destination `.py` file.
@@ -3247,7 +3319,7 @@ def export_standalone_blkdef_to_python(dgs_path: str, output_path: str, block_id
         downstream=dict(),
     )
 
-    module_text = _emit_template_style_module(root_result, subgraph, dgs_path)
+    module_text = _emit_block_module(root_result, subgraph, dgs_path)
     out_path.write_text(module_text, encoding="utf-8")
     return out_path
 
@@ -3824,7 +3896,10 @@ def extract_elmcomp_direct_instances(
         element_kind: str | None = None
         type_id: str | None = None
         type_name: str | None = None
-        parameter_values: DgsParameterValues = dict()
+        parameter_values: Dict[
+            str,
+            float | int | bool | str | complex | None,
+        ] = dict()
 
         if slot_id is not None:
             slot_obj: object | None = element_by_id.get(slot_id, None)
@@ -4196,7 +4271,10 @@ def extract_root_slot_block_internal_signal_tree(
     sub_children: List[Block] = list()
     element_by_id = _build_dgs_element_index(circuit)
     selected_element_obj = element_by_id.get(selection.instance_entry.element_id or "", None)
-    nested_parameter_values_by_type_id: Dict[str, DgsParameterValues] = dict()
+    nested_parameter_values_by_type_id: Dict[
+        str,
+        Dict[str, float | int | bool | str | complex | None],
+    ] = dict()
     if isinstance(selected_element_obj, ElmComp):
         nested_parameter_values_by_type_id = _parameter_values_by_type_id(extract_elmcomp_direct_instances(circuit, selected_element_obj))
 
@@ -4290,7 +4368,10 @@ def extract_root_slot_block_graphical_tree(
     selected_element_obj = element_by_id.get(selection.instance_entry.element_id or "", None)
     nested_entries_by_label: Dict[str, ElmCompInstanceEntry] = dict()
     nested_entries_by_type_name: Dict[str, ElmCompInstanceEntry] = dict()
-    nested_parameter_values_by_type_id: Dict[str, DgsParameterValues] = dict()
+    nested_parameter_values_by_type_id: Dict[
+        str,
+        Dict[str, float | int | bool | str | complex | None],
+    ] = dict()
     if isinstance(selected_element_obj, ElmComp):
         nested_entries = extract_elmcomp_direct_instances(circuit, selected_element_obj)
         nested_entries_by_label = _build_instance_entry_lookup_by_slot_name(nested_entries)
@@ -4443,7 +4524,7 @@ def export_named_block_subgraph_to_python(
     out_path = Path(output_path)
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
-    module_text = _emit_template_style_module(result, subgraph, dgs_path)
+    module_text = _emit_block_module(result, subgraph, dgs_path)
 
     out_path.write_text(module_text, encoding="utf-8")
     return out_path
@@ -4562,7 +4643,7 @@ def export_root_slot_block_graphical_template_to_python(
     root_typ_id: str | None = None,
 ) -> Path:
     """
-    Export the exact graphical tree of a root slot as a standalone EMT template module.
+    Export the exact graphical tree of a root slot as a symbolic-block module.
 
     :param dgs_path: Source DGS file.
     :param output_path: Destination `.py` file.
@@ -4584,7 +4665,7 @@ def export_root_slot_block_graphical_template_to_python(
     out_path = Path(output_path)
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
-    module_text = _emit_template_style_module(result, graph_tree, dgs_path)
+    module_text = _emit_block_module(result, graph_tree, dgs_path)
 
     out_path.write_text(module_text, encoding="utf-8")
     return out_path
@@ -4598,7 +4679,7 @@ def export_root_elmcomp_template_to_python(
     root_typ_id: str | None = None,
 ) -> Path:
     """
-    Export one root ElmComp as a standalone EMT template module.
+    Export one root ElmComp as a symbolic-block module.
 
     :param dgs_path: Source DGS file.
     :param output_path: Destination `.py` file.
@@ -4621,11 +4702,11 @@ def export_root_elmcomp_template_to_python(
 
     out_path = Path(output_path)
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    module_text = _emit_template_style_module(
+    module_text = _emit_block_module(
         result,
         root_subgraph,
         dgs_path,
-        template_name=result.root_element.loc_name,
+        block_name=result.root_element.loc_name,
     )
     out_path.write_text(module_text, encoding="utf-8")
     return out_path
@@ -4639,7 +4720,7 @@ def export_root_slot_block_internal_signal_template_to_python(
     root_typ_id: str | None = None,
 ) -> Path:
     """
-    Export a root-slot internal signal-tree approximation as an EMT template module.
+    Export a root-slot internal signal-tree approximation as a symbolic-block module.
 
     :param dgs_path: Source DGS file.
     :param output_path: Destination `.py` file.
@@ -4663,6 +4744,6 @@ def export_root_slot_block_internal_signal_template_to_python(
 
     out_path = Path(output_path)
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    module_text = _emit_template_style_module(result, subgraph, dgs_path)
+    module_text = _emit_block_module(result, subgraph, dgs_path)
     out_path.write_text(module_text, encoding="utf-8")
     return out_path

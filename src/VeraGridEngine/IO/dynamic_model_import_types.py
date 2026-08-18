@@ -13,6 +13,7 @@ from typing import Callable, cast, List, Sequence
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
+from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.enumerations import DeviceType
 
 
@@ -1013,12 +1014,13 @@ class DynamicModelPersistenceSpec:
 
 class DynamicModelImportEntry:
     """
-    One importable dynamic-model template entry.
+    One importable dynamic-model source entry.
 
     :param unique_key: Stable key used by the GUI selection dialog.
     :param display_name: Human-readable entry label.
     :param source_tpe: Source format used to build this entry.
-    :param template: Imported EMT template or ``None`` when the source entry could not be materialized.
+    :param source_block: Domain-neutral imported block, or ``None`` when the
+        source entry could not be materialized.
     :param notes_text: Human-readable warning or support notes.
     """
 
@@ -1026,7 +1028,7 @@ class DynamicModelImportEntry:
         "_unique_key",
         "_display_name",
         "_source_tpe",
-        "_template",
+        "_source_block",
         "_notes_text",
         "_parent_key",
         "_persistence_spec",
@@ -1040,7 +1042,7 @@ class DynamicModelImportEntry:
             unique_key: str,
             display_name: str,
             source_tpe: DynamicModelImportSource,
-            template: EmtModelTemplate | None,
+            source_block: Block | None,
             notes_text: str,
             parent_key: str | None = None,
             persistence_spec: DynamicModelPersistenceSpec | None = None,
@@ -1053,25 +1055,26 @@ class DynamicModelImportEntry:
         :param unique_key: Stable selection key.
         :param display_name: Human-readable entry label.
         :param source_tpe: Source format.
-        :param template: Imported EMT template or ``None``.
+        :param source_block: Domain-neutral imported block or ``None``.
         :param notes_text: Human-readable notes.
         :param parent_key: Optional parent catalogue entry key.
         :param persistence_spec: Optional canonical Python persistence specification.
         :param source_context: Optional typed DGS provenance and host context.
-        :param availability: Explicit source availability, or automatic template-based classification.
+        :param availability: Explicit source availability, or automatic
+            source-block classification.
         :return: None.
         """
         self._unique_key: str = str(unique_key)
         self._display_name: str = str(display_name)
         self._source_tpe: DynamicModelImportSource = source_tpe
-        self._template: EmtModelTemplate | None = template
+        self._source_block: Block | None = source_block
         self._notes_text: str = str(notes_text)
         self._parent_key: str | None = None if parent_key is None else str(parent_key)
         self._persistence_spec: DynamicModelPersistenceSpec | None = persistence_spec
         self._source_context: DynamicModelImportSourceContext | None = source_context
         self._installed_template: RmsModelTemplate | EmtModelTemplate | None = None
         if availability is None:
-            if template is None:
+            if source_block is None:
                 self._availability: DynamicModelImportEntryAvailability = DynamicModelImportEntryAvailability.Failed
             else:
                 self._availability = DynamicModelImportEntryAvailability.Importable
@@ -1102,13 +1105,13 @@ class DynamicModelImportEntry:
         """
         return self._source_tpe
 
-    def get_template(self) -> EmtModelTemplate | None:
+    def get_source_block(self) -> Block | None:
         """
-        Return the imported EMT template.
+        Return the imported domain-neutral symbolic block.
 
-        :return: Imported EMT template or ``None``.
+        :return: Imported symbolic block or ``None``.
         """
-        return self._template
+        return self._source_block
 
     def get_notes_text(self) -> str:
         """
@@ -1174,10 +1177,10 @@ class DynamicModelImportEntry:
         """
         Return whether the entry can be added to the circuit.
 
-        :return: ``True`` when the entry has a materialized template.
+        :return: ``True`` when the entry has a materialized source block.
         """
         if (self._availability == DynamicModelImportEntryAvailability.Importable and
-                self._template is not None):
+                self._source_block is not None):
             return True
         else:
             return False

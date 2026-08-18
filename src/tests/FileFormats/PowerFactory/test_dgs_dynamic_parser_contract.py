@@ -3,9 +3,48 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 
+import runpy
 from pathlib import Path
+from types import FunctionType
 
+import pytest
+
+from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
+from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
+from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
+from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.IO.dgs.dgs_circuit import DgsCircuit
+from VeraGridEngine.IO.dgs.dgs_to_blocks import (
+    UnsupportedDgsExpression,
+    build_standalone_blkdef_block_from_parsed_block,
+    export_standalone_blkdef_to_python,
+    parse_dgs_block_definitions_from_context,
+)
+from VeraGridEngine.IO.dgs.dynamic_models.dynamic_model_import import (
+    add_dynamic_import_selection_requests_to_circuit,
+    build_dgs_dynamic_model_import_bundle,
+)
+from VeraGridEngine.IO.dynamic_model_import_types import (
+    DynamicModelImportEntryAvailability,
+    DynamicModelImportSelectionRequest,
+    DynamicModelImportSource,
+    DynamicModelImportTargetDomain,
+)
+from VeraGridEngine.Utils.Symbolic.block import Block
+from VeraGridEngine.basic_structures import Logger
+from VeraGridEngine.enumerations import DeviceType
+
+
+def _get_dynamic_gain_block_dgs_path() -> Path:
+    """Return the versioned DGS fixture containing supported and unsupported blocks."""
+
+    return (
+        Path(__file__).resolve().parents[2]
+        / "data"
+        / "grids"
+        / "DGS"
+        / "dynamic_gain_block.dgs"
+    )
 
 
 def test_dgs_parser_preserves_dynamic_composite_rows_without_inventing_types() -> None:
@@ -71,3 +110,166 @@ def test_dgs_parser_preserves_static_var_system_runtime_constants() -> None:
         ("88", "SVS_Qcontrol", 30.0, -15.0, 2, 1, -5.0),
         ("89", "SVS_Ucontrol", 0.0, 0.0, 0, 0, 0.0),
     ]
+
+
+def test_dgs_block_definition_builds_one_self_contained_symbolic_block() -> None:
+    """Materialize the equation declared by a versioned DGS block definition."""
+
+    dgs_path: Path = _get_dynamic_gain_block_dgs_path()
+    circuit: DgsCircuit = DgsCircuit()
+    circuit.parse_dgs(path=str(dgs_path))
+    parsed_blocks = parse_dgs_block_definitions_from_context(circuit=circuit)
+    parsed_gain_block = parsed_blocks["2"]
+    block: Block = build_standalone_blkdef_block_from_parsed_block(
+        parsed_block=parsed_gain_block,
+    )
+
+    assert parsed_gain_block.unsupported_lines == []
+    assert block.name == "Dynamic gain"
+    assert [var.name for var in block.in_vars] == ["u"]
+    assert [var.name for var in block.out_vars] == ["y"]
+    assert len(block.algebraic_eqs) == 1
+
+    parameter_var = next(iter(block.event_dict))
+    equation_bindings: dict[str, float] = {
+        block.in_vars[0].name: 3.0,
+        block.out_vars[0].name: 6.0,
+        parameter_var.name: 2.0,
+    }
+    assert block.algebraic_eqs[0].eval(**equation_bindings) == 0.0
+
+
+def test_dgs_block_definition_rejects_unsupported_syntax() -> None:
+    """Reject a partial template when one DGS equation cannot be represented."""
+
+    dgs_path: Path = _get_dynamic_gain_block_dgs_path()
+    circuit: DgsCircuit = DgsCircuit()
+    circuit.parse_dgs(path=str(dgs_path))
+    parsed_blocks = parse_dgs_block_definitions_from_context(circuit=circuit)
+
+    with pytest.raises(
+        UnsupportedDgsExpression,
+        match="Unsupported dynamic block.*unsupported syntax",
+    ):
+        build_standalone_blkdef_block_from_parsed_block(
+            parsed_block=parsed_blocks["3"],
+        )
+
+
+def test_exported_dgs_block_module_rebuilds_the_source_equation(
+        tmp_path: Path,
+) -> None:
+    """Execute a generated DGS block module without selecting RMS or EMT."""
+
+    output_path: Path = tmp_path / "dynamic_gain_block.py"
+    exported_path: Path = export_standalone_blkdef_to_python(
+        dgs_path=str(_get_dynamic_gain_block_dgs_path()),
+        output_path=str(output_path),
+        block_id="2",
+    )
+    generated_source: str = exported_path.read_text(encoding="utf-8")
+    module_members: dict[str, object] = runpy.run_path(str(exported_path))
+    block_builder: object = module_members["get_block"]
+
+    assert isinstance(block_builder, FunctionType)
+
+    rebuilt_block: Block = block_builder(
+        vf=VarFactory(),
+        name="Rebuilt dynamic gain",
+    )
+
+    assert "EmtModelTemplate" not in generated_source
+    assert "RmsModelTemplate" not in generated_source
+    assert rebuilt_block.name == "Rebuilt dynamic gain"
+    assert [var.name for var in rebuilt_block.in_vars] == [
+        "u_Rebuilt dynamic gain"
+    ]
+    assert [var.name for var in rebuilt_block.out_vars] == [
+        "y_Rebuilt dynamic gain"
+    ]
+    assert len(rebuilt_block.algebraic_eqs) == 1
+
+    rebuilt_parameter = next(iter(rebuilt_block.event_dict))
+    rebuilt_bindings: dict[str, float] = {
+        rebuilt_block.in_vars[0].name: 3.0,
+        rebuilt_block.out_vars[0].name: 6.0,
+        rebuilt_parameter.name: 2.0,
+    }
+    assert rebuilt_block.algebraic_eqs[0].eval(**rebuilt_bindings) == 0.0
+
+
+def test_dgs_dynamic_import_bundle_reports_supported_and_failed_blocks() -> None:
+    """Expose valid DGS equations while retaining unsupported blocks as failures."""
+
+    dgs_path: Path = _get_dynamic_gain_block_dgs_path()
+    bundle, _logger = build_dgs_dynamic_model_import_bundle(
+        dgs_path=str(dgs_path),
+    )
+    entries_by_name = {
+        entry.get_display_name(): entry
+        for entry in bundle.get_entries()
+    }
+
+    assert bundle.get_source_tpe() is DynamicModelImportSource.PowerFactoryDgs
+    assert set(entries_by_name) == {
+        "Dynamic gain",
+        "Unsupported dynamic block",
+    }
+    assert entries_by_name["Dynamic gain"].is_importable()
+    assert (
+        entries_by_name["Unsupported dynamic block"].get_availability()
+        is DynamicModelImportEntryAvailability.Failed
+    )
+
+
+@pytest.mark.parametrize(
+    ("target_domain", "expected_template_class", "template_collection_name"),
+    [
+        (DynamicModelImportTargetDomain.Rms, RmsModelTemplate, "rms_models"),
+        (DynamicModelImportTargetDomain.Emt, EmtModelTemplate, "emt_models"),
+    ],
+)
+def test_dgs_dynamic_import_materializes_the_selected_domain_end_to_end(
+        target_domain: DynamicModelImportTargetDomain,
+        expected_template_class: type[RmsModelTemplate] | type[EmtModelTemplate],
+        template_collection_name: str,
+) -> None:
+    """Preserve one DGS equation through parsing, selection and installation."""
+
+    bundle, bundle_logger = build_dgs_dynamic_model_import_bundle(
+        dgs_path=str(_get_dynamic_gain_block_dgs_path()),
+    )
+    gain_entry = next(
+        entry
+        for entry in bundle.get_entries()
+        if entry.get_display_name() == "Dynamic gain"
+    )
+    source_block: Block | None = gain_entry.get_source_block()
+    circuit: MultiCircuit = MultiCircuit()
+    install_logger: Logger = Logger()
+
+    assert bundle_logger.error_count() == 0
+    assert source_block is not None
+
+    added_count: int = add_dynamic_import_selection_requests_to_circuit(
+        circuit=circuit,
+        bundle=bundle,
+        selection_requests=[
+            DynamicModelImportSelectionRequest(
+                entry_key=gain_entry.get_unique_key(),
+                target_domain=target_domain,
+                device_tpe=DeviceType.NoDevice,
+            )
+        ],
+        logger=install_logger,
+    )
+    installed_templates = getattr(circuit, template_collection_name)
+
+    assert added_count == 1
+    assert install_logger.error_count() == 0
+    assert len(installed_templates) == 1
+    assert isinstance(installed_templates[0], expected_template_class)
+    assert installed_templates[0].name == "Dynamic gain"
+    assert installed_templates[0].tpe is DeviceType.NoDevice
+    assert installed_templates[0].block is not source_block
+    assert len(installed_templates[0].block.algebraic_eqs) == 1

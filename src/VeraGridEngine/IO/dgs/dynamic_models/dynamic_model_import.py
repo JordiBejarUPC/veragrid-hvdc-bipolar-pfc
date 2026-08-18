@@ -23,16 +23,12 @@ from VeraGridEngine.IO.dgs.dgs_circuit import DgsCircuit
 from VeraGridEngine.IO.dgs.dgs_to_blocks import DgsStandaloneBlockCatalogEntry
 from VeraGridEngine.IO.dgs.dgs_to_blocks import ElmCompInstanceEntry
 from VeraGridEngine.IO.dgs.dgs_to_blocks import ParsedDgsBlockDefinition
-from VeraGridEngine.IO.dgs.dgs_to_blocks import _TemplateModuleVariableGroups
-from VeraGridEngine.IO.dgs.dgs_to_blocks import _build_template_module_variable_groups
+from VeraGridEngine.IO.dgs.dgs_to_blocks import _BlockModuleVariableGroups
+from VeraGridEngine.IO.dgs.dgs_to_blocks import _build_block_module_variable_groups
 from VeraGridEngine.IO.dgs.dgs_to_blocks import _emit_block_code
 from VeraGridEngine.IO.dgs.dgs_to_blocks import _make_identifier_map
 from VeraGridEngine.IO.dgs.dgs_to_blocks import _procedural_logic_import_names
 from VeraGridEngine.IO.dgs.dgs_to_blocks import _safe_name
-from VeraGridEngine.IO.dgs.dgs_to_blocks import export_named_block_subgraph_to_python
-from VeraGridEngine.IO.dgs.dgs_to_blocks import export_root_elmcomp_template_to_python
-from VeraGridEngine.IO.dgs.dgs_to_blocks import export_root_slot_block_graphical_template_to_python
-from VeraGridEngine.IO.dgs.dgs_to_blocks import export_standalone_blkdef_to_python
 from VeraGridEngine.IO.dgs.dgs_discrete_event import (
     DgsDiscreteEventAction,
     dgs_discrete_event_action_from_dict,
@@ -57,7 +53,6 @@ from VeraGridEngine.IO.dynamic_model_import_types import (
     DynamicModelPersistenceKind,
     DynamicModelPersistenceSpec,
     SelectedDynamicImportWork,
-    _DynamicUserTemplatePythonModule,
     _emit_dynamic_model_import_progress,
 )
 from VeraGridEngine.IO.dgs.dynamic_models.dgs_dynamic_association import DgsDynamicAssociationRecord
@@ -89,7 +84,7 @@ from VeraGridEngine.IO.dynamic_model_import_utils import (
     sanitize_dynamic_model_file_stem,
 )
 from VeraGridEngine.Utils.Symbolic.block import Block
-from VeraGridEngine.Utils.Symbolic.symbolic import Const, Var
+from VeraGridEngine.Utils.Symbolic.symbolic import Var
 from VeraGridEngine.Utils.procedural_logic import AnalogFlipFlopLogic
 from VeraGridEngine.Utils.procedural_logic import FixedSampleLogic
 from VeraGridEngine.Utils.procedural_logic import FlipFlopLogic
@@ -103,7 +98,6 @@ from VeraGridEngine.Utils.procedural_logic import SampledValueLogic
 from VeraGridEngine.Utils.procedural_logic import TimeDelayLogic
 from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.enumerations import (
-    BlockScopeMode,
     BlockType,
     DeviceType,
     VarPowerFlowReferenceType,
@@ -111,23 +105,6 @@ from VeraGridEngine.enumerations import (
 
 class DgsDynamicParserContractError(RuntimeError):
     """Report that the dynamic DGS parser boundary is incomplete."""
-
-
-def _wrap_block_as_generic_emt_template(block: Block, template_name: str) -> EmtModelTemplate:
-    """
-    Wrap one runtime block as a generic EMT template.
-
-    :param block: Runtime block to expose.
-    :param template_name: Imported template name.
-    :return: Generic EMT template.
-    """
-    template: EmtModelTemplate = EmtModelTemplate(name=template_name)
-    template.tpe = DeviceType.NoDevice
-    template.block = block
-    template.name = template_name
-    return template
-
-
 
 
 def _select_root_frame_display_name(root_block: Block) -> str | None:
@@ -291,8 +268,8 @@ def _build_dgs_root_elmcomp_entries_with_progress(
         DgsGraphicalParseContext,
         build_dgs_graphical_parse_context,
         build_direct_root_elmcomp_result_from_context,
-        build_standalone_blkdef_emt_template,
-        build_standalone_blkdef_emt_template_from_parsed_block,
+        build_standalone_blkdef_block,
+        build_standalone_blkdef_block_from_parsed_block,
         dgs_to_root_block_from_context,
         extract_root_slot_block_graphical_tree_from_context,
         parse_dgs_block_definitions_from_context,
@@ -303,7 +280,7 @@ def _build_dgs_root_elmcomp_entries_with_progress(
     logger: Logger = Logger()
     root_element: ElmComp
     root_result = None
-    root_template: EmtModelTemplate
+    root_block: Block | None
     root_entry: DynamicModelImportEntry
     root_direct_entries: List[ElmCompInstanceEntry]
     direct_entry: ElmCompInstanceEntry
@@ -402,7 +379,7 @@ def _build_dgs_root_elmcomp_entries_with_progress(
                     unique_key=root_entry_key,
                     display_name=root_element.loc_name,
                     source_tpe=DynamicModelImportSource.PowerFactoryDgs,
-                    template=None,
+                    source_block=None,
                     notes_text="Root ElmComp could not be materialized",
                     source_context=root_source_context,
                 )
@@ -428,7 +405,7 @@ def _build_dgs_root_elmcomp_entries_with_progress(
                         unique_key=f"dgs-unavailable|{root_element.ID}|{slot_identity}|{direct_entry.element_id}",
                         display_name=slot_display_name,
                         source_tpe=DynamicModelImportSource.PowerFactoryDgs,
-                        template=None,
+                        source_block=None,
                         notes_text=(
                             f"Root: {root_element.loc_name} | "
                             "Slot unavailable because its root could not be materialized"
@@ -463,35 +440,33 @@ def _build_dgs_root_elmcomp_entries_with_progress(
                 direct_graphical_slot_ids = (
                     direct_root_build_result.graphical_slot_ids
                 )
-                root_template = _wrap_block_as_generic_emt_template(
-                    block=direct_root_block,
-                    template_name=root_element.loc_name,
-                )
+                root_block = direct_root_block
+                root_block.name = root_element.loc_name
             except Exception as exc:
                 logger.add_warning(
                     msg="DGS root ElmComp materialization skipped",
                     value=f"{root_element.loc_name}: {exc}",
                 )
-                root_template = None
+                root_block = None
                 direct_child_block_by_slot_id = dict()
                 direct_graphical_slot_ids = set()
                 # Keep the independently parsed pblk/pelm relations so every
                 # failed slot remains visible in the partial-import report.
                 root_direct_entries = list(root_direct_entries)
 
-            if root_template is None:
+            if root_block is None:
                 frame_display_name = None
             else:
                 frame_display_name = _select_root_frame_display_name(root_result.root_block)
             frame_entry_key = None
 
-            if root_template is None:
+            if root_block is None:
                 entries.append(
                     DynamicModelImportEntry(
                         unique_key=root_entry_key,
                         display_name=root_element.loc_name,
                         source_tpe=DynamicModelImportSource.PowerFactoryDgs,
-                        template=None,
+                        source_block=None,
                         notes_text="Root ElmComp block could not be materialized",
                         source_context=root_source_context,
                     )
@@ -501,7 +476,7 @@ def _build_dgs_root_elmcomp_entries_with_progress(
                     unique_key=root_entry_key,
                     display_name=root_element.loc_name,
                     source_tpe=DynamicModelImportSource.PowerFactoryDgs,
-                    template=root_template,
+                    source_block=root_block,
                     notes_text="Root ElmComp block",
                     persistence_spec=DynamicModelPersistenceSpec(
                         kind=DynamicModelPersistenceKind.DgsRootElmComp,
@@ -524,7 +499,7 @@ def _build_dgs_root_elmcomp_entries_with_progress(
                         unique_key=frame_entry_key,
                         display_name=frame_display_name,
                         source_tpe=DynamicModelImportSource.PowerFactoryDgs,
-                        template=None,
+                        source_block=None,
                         notes_text=f"Root: {root_element.loc_name} | Composite frame",
                         parent_key=root_entry_key,
                         source_context=root_source_context,
@@ -555,7 +530,7 @@ def _build_dgs_root_elmcomp_entries_with_progress(
                             ),
                             display_name=f"Slot {direct_entry.slot_index}",
                             source_tpe=DynamicModelImportSource.PowerFactoryDgs,
-                            template=None,
+                            source_block=None,
                             notes_text=f"Root: {root_element.loc_name} | Slot has no exported name",
                             parent_key=root_entry_key if frame_entry_key is None else frame_entry_key,
                             source_context=slot_source_context,
@@ -585,7 +560,7 @@ def _build_dgs_root_elmcomp_entries_with_progress(
                     )
 
                     slot_template_name: str = f"{root_element.loc_name}::{direct_entry.slot_name}"
-                    slot_template: EmtModelTemplate | None = None
+                    slot_block: Block | None = None
 
                     if direct_entry.type_id is None:
                         entries.append(
@@ -593,7 +568,7 @@ def _build_dgs_root_elmcomp_entries_with_progress(
                                 unique_key=f"dgs-context|{root_element.ID}|{slot_identity}|{direct_entry.element_id}",
                                 display_name=slot_display_name,
                                 source_tpe=DynamicModelImportSource.PowerFactoryDgs,
-                                template=None,
+                                source_block=None,
                                 notes_text=_build_dgs_context_slot_notes(circuit=circuit, root_name=root_element.loc_name, entry=direct_entry),
                                 parent_key=slot_parent_key,
                                 source_context=slot_source_context,
@@ -701,24 +676,24 @@ def _build_dgs_root_elmcomp_entries_with_progress(
                             parsed_slot_block = root_result.parsed_blocks.get(str(direct_entry.type_id), None)
                             try:
                                 if parsed_slot_block is None:
-                                    slot_template = build_standalone_blkdef_emt_template(
+                                    slot_block = build_standalone_blkdef_block(
                                         dgs_path=dgs_path,
                                         typ_id=direct_entry.type_id,
-                                        template_name=slot_template_name,
+                                        block_name=slot_template_name,
                                     )
                                 else:
-                                    slot_template = build_standalone_blkdef_emt_template_from_parsed_block(
+                                    slot_block = build_standalone_blkdef_block_from_parsed_block(
                                         parsed_block=parsed_slot_block,
-                                        template_name=slot_template_name,
+                                        block_name=slot_template_name,
                                     )
                             except Exception as exc:
                                 logger.add_warning(
                                     msg="DGS slot block materialization skipped",
                                     value=f"{root_element.loc_name}/{direct_entry.slot_name}: {exc}",
                                 )
-                                slot_template = None
+                                slot_block = None
 
-                            if slot_template is None:
+                            if slot_block is None:
                                 entries.append(
                                     DynamicModelImportEntry(
                                         unique_key=(
@@ -727,7 +702,7 @@ def _build_dgs_root_elmcomp_entries_with_progress(
                                         ),
                                         display_name=slot_display_name,
                                         source_tpe=DynamicModelImportSource.PowerFactoryDgs,
-                                        template=None,
+                                        source_block=None,
                                         notes_text=(
                                             f"Root: {root_element.loc_name} | "
                                             f"Slot: {direct_entry.slot_name} | Block could not be materialized"
@@ -742,7 +717,7 @@ def _build_dgs_root_elmcomp_entries_with_progress(
                                         unique_key=f"dgs-slot|{root_element.ID}|{slot_identity}|{direct_entry.element_id}",
                                         display_name=slot_display_name,
                                         source_tpe=DynamicModelImportSource.PowerFactoryDgs,
-                                        template=slot_template,
+                                        source_block=slot_block,
                                         notes_text=f"Root: {root_element.loc_name} | Slot: {direct_entry.slot_name}",
                                         parent_key=slot_parent_key,
                                         persistence_spec=DynamicModelPersistenceSpec(
@@ -758,18 +733,16 @@ def _build_dgs_root_elmcomp_entries_with_progress(
                                 )
                         else:
                             try:
-                                slot_template = _wrap_block_as_generic_emt_template(
-                                    block=materialized_slot_block,
-                                    template_name=slot_template_name,
-                                )
+                                slot_block = materialized_slot_block
+                                slot_block.name = slot_template_name
                             except Exception as exc:
                                 logger.add_warning(
                                     msg="DGS graphical slot materialization skipped",
                                     value=f"{root_element.loc_name}/{direct_entry.slot_name}: {exc}",
                                 )
-                                slot_template = None
+                                slot_block = None
 
-                            if slot_template is None:
+                            if slot_block is None:
                                 entries.append(
                                     DynamicModelImportEntry(
                                         unique_key=(
@@ -778,7 +751,7 @@ def _build_dgs_root_elmcomp_entries_with_progress(
                                         ),
                                         display_name=slot_display_name,
                                         source_tpe=DynamicModelImportSource.PowerFactoryDgs,
-                                        template=None,
+                                        source_block=None,
                                         notes_text=(
                                             f"Root: {root_element.loc_name} | "
                                             f"Slot: {direct_entry.slot_name} | Graph could not be materialized"
@@ -812,7 +785,7 @@ def _build_dgs_root_elmcomp_entries_with_progress(
                                         unique_key=f"dgs-slot|{root_element.ID}|{slot_identity}|{direct_entry.element_id}",
                                         display_name=slot_display_name,
                                         source_tpe=DynamicModelImportSource.PowerFactoryDgs,
-                                        template=slot_template,
+                                        source_block=slot_block,
                                         notes_text=f"Root: {root_element.loc_name} | Slot: {direct_entry.slot_name}",
                                         parent_key=slot_parent_key,
                                         persistence_spec=slot_persistence_spec,
@@ -843,7 +816,7 @@ def build_dgs_dynamic_model_import_bundle(
         dgs_circuit: DgsCircuit | None = None,
 ) -> Tuple[DynamicModelImportBundle, Logger]:
     """
-    Parse one PowerFactory DGS file into a bundle of EMT template candidates.
+    Parse one PowerFactory DGS file into domain-neutral block candidates.
 
     :param dgs_path: Source DGS path.
     :param progress_callback: Optional UI progress callback.
@@ -853,7 +826,7 @@ def build_dgs_dynamic_model_import_bundle(
     try:
         from VeraGridEngine.IO.dgs.dgs_to_blocks import (
             build_dgs_standalone_block_catalog_from_context,
-            build_standalone_blkdef_emt_template_from_parsed_block,
+            build_standalone_blkdef_block_from_parsed_block,
             parse_dgs_block_definitions_from_context,
         )
     except ImportError as error:
@@ -900,15 +873,15 @@ def build_dgs_dynamic_model_import_bundle(
     _emit_dynamic_model_import_progress(progress_callback, 15, "Building standalone DGS block catalogue...")
 
     for catalog_entry in catalog_entries:
-        template: EmtModelTemplate | None = None
+        source_block: Block | None = None
         notes_lines: List[str] = list()
         notes_text: str
 
         if catalog_entry.build_error is None:
             try:
-                template = build_standalone_blkdef_emt_template_from_parsed_block(
+                source_block = build_standalone_blkdef_block_from_parsed_block(
                     parsed_block=shared_parsed_blocks[catalog_entry.typ_id],
-                    template_name=catalog_entry.blkdef_name,
+                    block_name=catalog_entry.blkdef_name,
                 )
             except Exception as exc:
                 notes_lines.append(f"Build error: {exc}")
@@ -935,7 +908,7 @@ def build_dgs_dynamic_model_import_bundle(
                 unique_key=f"dgs|{catalog_entry.typ_id}|{catalog_entry.blkdef_name}",
                 display_name=catalog_entry.blkdef_name,
                 source_tpe=DynamicModelImportSource.PowerFactoryDgs,
-                template=template,
+                source_block=source_block,
                 notes_text=notes_text,
                 persistence_spec=DynamicModelPersistenceSpec(
                     kind=DynamicModelPersistenceKind.DgsStandaloneBlkdef,
@@ -948,22 +921,26 @@ def build_dgs_dynamic_model_import_bundle(
             )
         )
 
-    try:
-        root_entries, root_logger = _build_dgs_root_elmcomp_entries_with_progress(
-            dgs_path=dgs_path,
-            progress_callback=progress_callback,
-            progress_start=15,
-            progress_end=95,
-            dgs_circuit=shared_circuit,
-            parsed_dgs_blocks=shared_parsed_blocks,
-        )
-    except Exception as exc:
+    if len(shared_circuit.elmcomps) == 0:
         root_entries = list()
         root_logger = Logger()
-        logger.add_warning(
-            msg="Root DGS dynamic-model catalogue skipped",
-            value=str(exc),
-        )
+    else:
+        try:
+            root_entries, root_logger = _build_dgs_root_elmcomp_entries_with_progress(
+                dgs_path=dgs_path,
+                progress_callback=progress_callback,
+                progress_start=15,
+                progress_end=95,
+                dgs_circuit=shared_circuit,
+                parsed_dgs_blocks=shared_parsed_blocks,
+            )
+        except Exception as exc:
+            root_entries = list()
+            root_logger = Logger()
+            logger.add_warning(
+                msg="Root DGS dynamic-model catalogue skipped",
+                value=str(exc),
+            )
     if root_logger.has_logs():
         logger += root_logger
     else:
@@ -1008,118 +985,6 @@ def get_dynamic_model_import_supported_device_types() -> List[DeviceType]:
         DeviceType.DCLineDevice,
         DeviceType.SwitchDevice,
     ])
-
-
-def _collect_block_names_recursive(block: Block) -> List[str]:
-    """
-    Collect the visible block names from one imported block tree.
-
-    :param block: Imported symbolic block.
-    :return: Recursive block-name list.
-    """
-    names: List[str] = list([str(block.name)])
-    child_block: Block
-
-    for child_block in block.children:
-        names.extend(_collect_block_names_recursive(child_block))
-
-    return names
-
-
-def guess_dynamic_model_import_default_target_domain(entry: "DynamicModelImportEntry") -> DynamicModelImportTargetDomain:
-    """
-    Guess the most likely default target domain for one imported entry.
-
-    Some PowerFactory root controls describe RMS phasor controllers even when they
-    arrive through the generic DGS path. The dialog keeps EMT as the generic
-    fallback, but roots explicitly labelled as RMS default to that domain.
-
-    :param entry: Imported entry.
-    :return: Default target domain guess.
-    """
-    source_template: EmtModelTemplate | None = entry.get_template()
-    searchable_names: List[str] = list([entry.get_display_name().lower()])
-    searchable_text: str
-
-    if entry.get_source_tpe() != DynamicModelImportSource.PowerFactoryDgs:
-        return DynamicModelImportTargetDomain.Emt
-    else:
-        pass
-
-    if source_template is None:
-        pass
-    else:
-        searchable_names.extend(name.lower() for name in _collect_block_names_recursive(source_template.block))
-
-    searchable_text = "\n".join(searchable_names)
-
-    if "(rms" in searchable_text or "rms balanced" in searchable_text:
-        return DynamicModelImportTargetDomain.Rms
-    else:
-        return DynamicModelImportTargetDomain.Emt
-
-
-def guess_dynamic_model_import_hierarchy_target_domain(
-        bundle: "DynamicModelImportBundle",
-        entry: "DynamicModelImportEntry",
-) -> DynamicModelImportTargetDomain:
-    """
-    Infer the target domain once for an entire DGS composite hierarchy.
-
-    PowerFactory child ``ElmDsl`` occurrences do not independently declare the
-    simulation domain.  Their use domain comes from the owning composite frame,
-    so every entry with the same root FID must receive one coherent target.
-
-    :param bundle: Bundle containing the complete source hierarchy.
-    :param entry: Entry whose owning hierarchy is being classified.
-    :return: Coherent RMS or EMT catalogue target for the hierarchy.
-    """
-    target_domain: DynamicModelImportTargetDomain = guess_dynamic_model_import_default_target_domain(entry)
-    source_context: DynamicModelImportSourceContext | None = entry.get_source_context()
-    candidate_entry: DynamicModelImportEntry
-    candidate_context: DynamicModelImportSourceContext | None
-    candidate_domain: DynamicModelImportTargetDomain
-    candidate_source_class: str | None
-    rms_equipment_classes: Set[str] = set([
-        "ElmVsc",
-        "ElmVscmono",
-        "ElmSym",
-        "ElmGenstat",
-        "ElmSvs",
-        "ElmXnet",
-    ])
-
-    if entry.get_source_tpe() != DynamicModelImportSource.PowerFactoryDgs or source_context is None:
-        pass
-    else:
-        # Any explicit RMS evidence in the root/frame subtree governs every
-        # occurrence.  The existing EMT value remains the conservative storage
-        # fallback only when the DGS hierarchy carries no RMS evidence.
-        for candidate_entry in bundle.get_entries():
-            candidate_context = candidate_entry.get_source_context()
-            if candidate_context is None:
-                pass
-            else:
-                if candidate_context.get_root_dgs_id() != source_context.get_root_dgs_id():
-                    pass
-                else:
-                    candidate_source_class = (
-                        candidate_context.get_source_element_class()
-                    )
-                    candidate_domain = guess_dynamic_model_import_default_target_domain(candidate_entry)
-                    if (
-                            candidate_domain == DynamicModelImportTargetDomain.Rms
-                            or candidate_source_class in rms_equipment_classes
-                    ):
-                        # Native RMS equipment slots determine the use domain
-                        # even when a controller's display name contains no
-                        # ``RMS`` token. The physical class is exported in the
-                        # DGS and therefore requires no licensed API inference.
-                        target_domain = DynamicModelImportTargetDomain.Rms
-                    else:
-                        pass
-
-    return target_domain
 
 
 def guess_dynamic_model_import_default_device_tpe(entry: "DynamicModelImportEntry") -> DeviceType:
@@ -1204,8 +1069,8 @@ def get_dgs_dynamic_host_device_tpe(source_element_class: str | None) -> DeviceT
     return result
 
 
-def is_dgs_dynamic_template_runtime_assignable(
-        template_obj: RmsModelTemplate | EmtModelTemplate,
+def is_dgs_dynamic_block_runtime_assignable(
+        block: Block,
         device_tpe: DeviceType,
 ) -> bool:
     """
@@ -1217,11 +1082,10 @@ def is_dgs_dynamic_template_runtime_assignable(
     device compiler. Unsupported families remain catalogue-only until their
     typed adapters are implemented and validated.
 
-    :param template_obj: Materialized external root template.
+    :param block: Imported domain-neutral symbolic block.
     :param device_tpe: Exact physical host type inferred from DGS.
     :return: ``True`` only for a complete supported runtime interface.
     """
-    block: Block = template_obj.block
     mapping_refs: Set[VarPowerFlowReferenceType] = set(block.external_mapping)
     input_refs: Set[VarPowerFlowReferenceType] = set()
     input_var: Var
@@ -1315,7 +1179,7 @@ def guess_dynamic_model_import_hierarchy_device_tpe(
     candidate_class: str | None
     candidate_device_tpe: DeviceType | None
     candidate_element_id: str | None
-    source_template: EmtModelTemplate | None = entry.get_template()
+    source_block: Block | None = entry.get_source_block()
 
     if (
             entry.get_source_tpe() != DynamicModelImportSource.PowerFactoryDgs
@@ -1346,31 +1210,31 @@ def guess_dynamic_model_import_hierarchy_device_tpe(
 
         if len(host_identities) == 1:
             host_identity: Tuple[str, DeviceType] = next(iter(host_identities))
-            if source_template is None:
+            if source_block is None:
                 result = fallback_tpe
             else:
-                runtime_contract_ready: bool = is_dgs_dynamic_template_runtime_assignable(
-                    template_obj=source_template,
+                runtime_contract_ready: bool = is_dgs_dynamic_block_runtime_assignable(
+                    block=source_block,
                     device_tpe=host_identity[1],
                 )
                 elmvsc_adapter_supported: bool = (
                     host_identity[1] == DeviceType.VscDevice
                     and (
-                        is_dgs_elmvsc_slot_contract(source_template.block)
-                        or is_dgs_elmvscmono_slot_contract(source_template.block)
+                        is_dgs_elmvsc_slot_contract(source_block)
+                        or is_dgs_elmvscmono_slot_contract(source_block)
                     )
                 )
                 elmsym_adapter_supported: bool = (
                     host_identity[1] == DeviceType.GeneratorDevice
-                    and is_dgs_elmsym_slot_contract(source_template.block)
+                    and is_dgs_elmsym_slot_contract(source_block)
                 )
                 elmgenstat_adapter_supported: bool = (
                     host_identity[1] == DeviceType.GeneratorDevice
-                    and is_dgs_elmgenstat_slot_contract(source_template.block)
+                    and is_dgs_elmgenstat_slot_contract(source_block)
                 )
                 elmsvs_adapter_supported: bool = (
                     host_identity[1] == DeviceType.ControllableShuntDevice
-                    and is_dgs_elmsvs_slot_contract(source_template.block)
+                    and is_dgs_elmsvs_slot_contract(source_block)
                 )
                 if (
                         runtime_contract_ready
@@ -1468,23 +1332,25 @@ def _build_selected_template_from_import_entry(
     :param clone_source_block: Clone the source block for reusable GUI bundles.
     :return: Materialized RMS or EMT reusable template, or ``None``.
     """
-    source_template: EmtModelTemplate | None = entry.get_template()
+    source_block: Block | None = entry.get_source_block()
     cloned_block: Block
+    template_name: str = entry.get_display_name()
+    template_comment: str = f"{entry.get_source_tpe().value} dynamic model: {template_name}"
     emt_template: EmtModelTemplate
     rms_template: RmsModelTemplate
 
-    if source_template is None:
+    if source_block is None:
         return None
     else:
         pass
 
     if clone_source_block:
-        cloned_block = _clone_import_block(source_template.block)
+        cloned_block = _clone_import_block(source_block)
     else:
         # A normal massive DGS open owns an ephemeral bundle. Transfer its
         # symbolic block into the circuit wrapper instead of retaining a second
         # deep copy of every OEM model at peak memory.
-        cloned_block = source_template.block
+        cloned_block = source_block
         _apply_composite_child_interface_if_missing(cloned_block)
     if selection_request.get_device_tpe() in {
         DeviceType.NoDevice,
@@ -1497,16 +1363,19 @@ def _build_selected_template_from_import_entry(
         pass
 
     if selection_request.get_target_domain() == DynamicModelImportTargetDomain.Emt:
-        emt_template = EmtModelTemplate(name=source_template.name)
+        emt_template = EmtModelTemplate(name=template_name)
         emt_template.tpe = selection_request.get_device_tpe()
         emt_template.block = cloned_block
-        emt_template.name = source_template.name
+        emt_template.name = template_name
+        emt_template.comment = template_comment
         return emt_template
     else:
         if selection_request.get_target_domain() == DynamicModelImportTargetDomain.Rms:
-            rms_template = RmsModelTemplate(name=source_template.name)
+            rms_template = RmsModelTemplate(name=template_name)
             rms_template.tpe = selection_request.get_device_tpe()
             rms_template.block = cloned_block
+            rms_template.name = template_name
+            rms_template.comment = template_comment
             if (
                     entry.get_source_tpe() == DynamicModelImportSource.PowerFactoryDgs
                     and selection_request.get_device_tpe() == DeviceType.VscDevice
@@ -1585,20 +1454,6 @@ def _build_selected_template_from_import_entry(
                             return rms_template
         else:
             return None
-
-
-def _build_default_import_selection_request(entry_key: str) -> DynamicModelImportSelectionRequest:
-    """
-    Build the backward-compatible default selection used by non-interactive callers.
-
-    :param entry_key: Stable entry key.
-    :return: Default import request.
-    """
-    return DynamicModelImportSelectionRequest(
-        entry_key=entry_key,
-        target_domain=DynamicModelImportTargetDomain.Emt,
-        device_tpe=DeviceType.NoDevice,
-    )
 
 
 def _normalize_procedural_logic_runtime_variable_names(
@@ -1681,7 +1536,7 @@ def _normalize_dynamic_import_runtime_variable_names(block: Block,
     :param template_name: Runtime template name whose suffix is normalized.
     :return: None.
     """
-    variable_groups: _TemplateModuleVariableGroups = _build_template_module_variable_groups(block)
+    variable_groups: _BlockModuleVariableGroups = _build_block_module_variable_groups(block)
     variable_collections: List[List[Var]] = list()
     runtime_suffix: str = f"_{template_name}"
     variable_collection: List[Var]
@@ -1823,7 +1678,7 @@ def _can_build_dynamic_import_canonical_text_read_only(
     """
     node_data: object
     has_editor_interface_wrapper: bool = False
-    variable_groups: _TemplateModuleVariableGroups
+    variable_groups: _BlockModuleVariableGroups
     variable_collections: List[List[Var]] = list()
     variable_collection: List[Var]
     variable: Var
@@ -1850,7 +1705,7 @@ def _can_build_dynamic_import_canonical_text_read_only(
     # A module loaded from disk carries the runtime template suffix on every
     # allocated variable. It must retain the established normalized deep-copy
     # path because variable names are shared throughout the expression graph.
-    variable_groups = _build_template_module_variable_groups(block)
+    variable_groups = _build_block_module_variable_groups(block)
     variable_collections.append(variable_groups.param_vars)
     variable_collections.append(variable_groups.state_vars)
     variable_collections.append(variable_groups.algebraic_vars)
@@ -2697,8 +2552,8 @@ def activate_unambiguous_dgs_dynamic_models_in_circuit(
                         template_obj is not None
                         and template_obj.tpe == host_identity[1]
                         and adapter_configuration_ready
-                        and is_dgs_dynamic_template_runtime_assignable(
-                            template_obj=template_obj,
+                        and is_dgs_dynamic_block_runtime_assignable(
+                            block=template_obj.block,
                             device_tpe=host_identity[1],
                         )
                     )
@@ -2734,6 +2589,7 @@ def add_all_dynamic_import_bundle_to_circuit_with_report(
         circuit: MultiCircuit,
         bundle: DynamicModelImportBundle,
         logger: Logger,
+        target_domain: DynamicModelImportTargetDomain,
         progress_callback: Callable[[int, str], None] | None = None,
         user_root_folder: str | None = None,
         persist_to_user_catalog: bool = False,
@@ -2751,6 +2607,7 @@ def add_all_dynamic_import_bundle_to_circuit_with_report(
     :param circuit: Target circuit.
     :param bundle: Parsed dynamic-model bundle.
     :param logger: Logger receiving partial-failure and deduplication diagnostics.
+    :param target_domain: Explicit RMS or EMT destination for every selected entry.
     :param progress_callback: Optional UI progress callback.
     :param user_root_folder: Optional explicit VeraGrid user root used mainly by tests.
     :param persist_to_user_catalog: Persist added models as readable Python user templates.
@@ -2794,7 +2651,7 @@ def add_all_dynamic_import_bundle_to_circuit_with_report(
                 unavailable_message = "Source entry could not be materialized"
             selection_request = DynamicModelImportSelectionRequest(
                 entry_key=entry.get_unique_key(),
-                target_domain=guess_dynamic_model_import_hierarchy_target_domain(bundle=bundle, entry=entry),
+                target_domain=target_domain,
                 device_tpe=guess_dynamic_model_import_hierarchy_device_tpe(bundle=bundle, entry=entry),
             )
             _append_dynamic_model_import_entry_result(
@@ -2817,7 +2674,7 @@ def add_all_dynamic_import_bundle_to_circuit_with_report(
                 selection_requests.append(
                     DynamicModelImportSelectionRequest(
                         entry_key=entry_key,
-                        target_domain=guess_dynamic_model_import_hierarchy_target_domain(bundle=bundle, entry=entry),
+                        target_domain=target_domain,
                         device_tpe=guess_dynamic_model_import_hierarchy_device_tpe(bundle=bundle, entry=entry),
                     )
                 )
@@ -2960,6 +2817,7 @@ def add_all_dynamic_import_bundle_to_circuit(
         circuit: MultiCircuit,
         bundle: DynamicModelImportBundle,
         logger: Logger,
+        target_domain: DynamicModelImportTargetDomain,
         progress_callback: Callable[[int, str], None] | None = None,
         user_root_folder: str | None = None,
         persist_to_user_catalog: bool = False,
@@ -2970,6 +2828,7 @@ def add_all_dynamic_import_bundle_to_circuit(
     :param circuit: Target circuit.
     :param bundle: Parsed dynamic-model bundle.
     :param logger: Logger receiving partial-failure and deduplication diagnostics.
+    :param target_domain: Explicit RMS or EMT destination for every selected entry.
     :param progress_callback: Optional UI progress callback.
     :param user_root_folder: Optional explicit VeraGrid user root used mainly by tests.
     :param persist_to_user_catalog: Persist added models as readable Python user templates.
@@ -2979,6 +2838,7 @@ def add_all_dynamic_import_bundle_to_circuit(
         circuit=circuit,
         bundle=bundle,
         logger=logger,
+        target_domain=target_domain,
         progress_callback=progress_callback,
         user_root_folder=user_root_folder,
         persist_to_user_catalog=persist_to_user_catalog,
@@ -2990,17 +2850,21 @@ def add_dynamic_import_bundle_to_circuit(
         circuit: MultiCircuit,
         bundle: DynamicModelImportBundle,
         selected_keys: Sequence[str],
+        target_domain: DynamicModelImportTargetDomain,
+        device_tpe: DeviceType,
         logger: Logger,
 ) -> int:
     """
     Add the selected imported dynamic models to the circuit.
 
-    Imported templates are stored as generic ``NoDevice`` EMT templates so they
-    remain visible in every Dynamic Editor template library.
+    The caller selects the simulation domain and compatible device family before
+    any RMS or EMT template is materialized.
 
     :param circuit: Target circuit.
     :param bundle: Imported dynamic-model bundle.
     :param selected_keys: Selected entry keys.
+    :param target_domain: Explicit RMS or EMT destination.
+    :param device_tpe: Compatible VeraGrid device family.
     :param logger: Logger receiving duplicate or importability diagnostics.
     :return: Number of templates added to the circuit.
     """
@@ -3008,7 +2872,13 @@ def add_dynamic_import_bundle_to_circuit(
     entry_key: str
 
     for entry_key in selected_keys:
-        selection_requests.append(_build_default_import_selection_request(entry_key))
+        selection_requests.append(
+            DynamicModelImportSelectionRequest(
+                entry_key=entry_key,
+                target_domain=target_domain,
+                device_tpe=device_tpe,
+            )
+        )
 
     return add_dynamic_import_selection_requests_to_circuit(
         circuit=circuit,
@@ -3943,7 +3813,7 @@ def _build_user_dynamic_template_module_text(block: Block,
     """
     identifier_map: Dict[int, str] = _make_identifier_map(block)
     child_ref_names: Dict[int, str]
-    variable_groups = _build_template_module_variable_groups(block)
+    variable_groups = _build_block_module_variable_groups(block)
     procedural_import_names: List[str] = _procedural_logic_import_names(block)
     has_dgs_discrete_events: bool = False
     event_block: Block
