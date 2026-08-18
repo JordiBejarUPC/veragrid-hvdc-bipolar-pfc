@@ -7,7 +7,7 @@ import numpy as np
 
 from VeraGridEngine.Simulations.results_table import ResultsTable
 from VeraGridEngine.Utils.Filtering.results_table_filtering import FilterResultsTable
-from VeraGridEngine.enumerations import DeviceType
+from VeraGridEngine.enumerations import DeviceType, ResultTablePlotType
 
 
 def build_results_table() -> ResultsTable:
@@ -180,6 +180,39 @@ def test_numeric_filter_masks_values_that_do_not_match() -> None:
     expected_data: np.ndarray = np.array(((np.nan, 0.200), (0.300, np.nan)), dtype=float)
     assert filtered_table.data_c.shape == (2, 2)
     assert np.allclose(filtered_table.data_c, expected_data, equal_nan=True)
+
+
+def test_complex_point_filter_preserves_coordinate_pairs() -> None:
+    """
+    Verify a matching complex point retains both graphical coordinates.
+
+    :return: None.
+    """
+    table: ResultsTable = ResultsTable(
+        data=np.array(((-1.0, 2.0), (-2.0, -3.0)), dtype=float),
+        columns=np.array(("Real", "Imaginary"), dtype=str),
+        index=np.array(("Mode 0", "Mode 1"), dtype=str),
+        title="Complex points",
+        cols_device_type=DeviceType.NoDevice,
+        idx_device_type=DeviceType.NoDevice,
+        plot_type=ResultTablePlotType.COMPLEX_POINTS,
+        damping_ratio_boundary=0.05,
+        complex_plot_x_column="Real",
+        complex_plot_y_columns=np.array(("Imaginary",), dtype=str),
+        complex_plot_y_scales=np.array((1.0,), dtype=float),
+    )
+
+    filtered_table: ResultsTable = apply_search(table=table, expression="val > 0")
+    column_search_table: ResultsTable = apply_search(table=table, expression="Real")
+    structured_column_table: ResultsTable = apply_search(table=table, expression="col like Imaginary")
+
+    assert filtered_table.plot_type == ResultTablePlotType.COMPLEX_POINTS
+    assert filtered_table.damping_ratio_boundary == 0.05
+    assert filtered_table.complex_plot_x_column == "Real"
+    assert tuple(filtered_table.index_c.tolist()) == ("Mode 0",)
+    assert np.array_equal(filtered_table.data_c, np.array(((-1.0, 2.0),), dtype=float))
+    assert tuple(column_search_table.cols_c.tolist()) == ("Real",)
+    assert tuple(structured_column_table.cols_c.tolist()) == ("Imaginary",)
 
 
 def test_numeric_range_conditions_apply_to_the_same_cell() -> None:

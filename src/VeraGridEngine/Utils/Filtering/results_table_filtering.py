@@ -6,6 +6,7 @@ from typing import Tuple, Any, List
 import numpy as np
 from VeraGridEngine.Simulations.results_table import ResultsTable
 from VeraGridEngine.basic_structures import BoolVec, Mat
+from VeraGridEngine.enumerations import ResultTablePlotType
 from VeraGridEngine.Utils.Filtering.filtering import (MasterFilter, Filter, FilterOps, FilterSubject,
                                                       is_numeric, parse_expression)
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
@@ -359,22 +360,37 @@ class FilterResultsTable:
             else:
                 raise Exception("Unsupported number of filters. Use and or concatenation")
 
-            # Derive both table dimensions from the final cell-level mask. This
-            # guarantees that combined numeric conditions apply to the same
-            # cell instead of to unrelated values in one row or column.
+            # Derive table dimensions from the final cell-level mask. Complex
+            # points retain both coordinate columns because Real and Imaginary
+            # are an inseparable pair once a matching mode row is retained.
             row_mask: BoolVec = np.any(data_mask, axis=1)
-            column_mask: BoolVec = np.any(data_mask, axis=0)
             row_indices: np.ndarray = np.where(row_mask)[0]
-            column_indices: np.ndarray = np.where(column_mask)[0]
+            column_indices: np.ndarray
+            data: np.ndarray
+            has_column_filter: bool = False
+            filter_stack_position: int
+            for filter_stack_position in range(0, self.master_filter.size(), 2):
+                coordinate_filter: Filter = self.master_filter.stack[filter_stack_position]
+                if coordinate_filter.element == FilterSubject.COL:
+                    has_column_filter = True
+                else:
+                    pass
 
-            # Preserve floating and complex arrays when they can represent NaN.
-            # Other result types use an object array so unmatched cells can be
-            # blanked without coercing text or integer values.
-            if np.issubdtype(self.table.data_c.dtype, np.inexact):
-                data: np.ndarray = self.table.data_c.copy()
+            if self.table.plot_type == ResultTablePlotType.COMPLEX_POINTS and not has_column_filter:
+                column_indices = np.arange(self.table.c, dtype=np.int64)
+                data = self.table.data_c.copy()
             else:
-                data = self.table.data_c.astype(object, copy=True)
-            data[np.logical_not(data_mask)] = np.nan
+                column_mask: BoolVec = np.any(data_mask, axis=0)
+                column_indices = np.where(column_mask)[0]
+
+                # Preserve floating and complex arrays when they can represent
+                # NaN. Other result types use an object array so unmatched
+                # cells can be blanked without coercing text or integers.
+                if np.issubdtype(self.table.data_c.dtype, np.inexact):
+                    data = self.table.data_c.copy()
+                else:
+                    data = self.table.data_c.astype(object, copy=True)
+                data[np.logical_not(data_mask)] = np.nan
 
             return ResultsTable(data=data[np.ix_(row_indices, column_indices)],
                                 columns=np.array([self.table.cols_c[j] for j in column_indices]),
@@ -387,7 +403,13 @@ class FilterResultsTable:
                                 editable_min_idx=self.table.editable_min_idx,
                                 decimals=self.table.decimals,
                                 cols_device_type=self.table.cols_device_type,
-                                idx_device_type=self.table.idx_device_type)
+                                idx_device_type=self.table.idx_device_type,
+                                plot_type=self.table.plot_type,
+                                damping_ratio_boundary=self.table.damping_ratio_boundary,
+                                plot_title=self.table.plot_title,
+                                complex_plot_x_column=self.table.complex_plot_x_column,
+                                complex_plot_y_columns=self.table.complex_plot_y_columns,
+                                complex_plot_y_scales=self.table.complex_plot_y_scales)
 
         else:
             return self.table
