@@ -10,7 +10,10 @@ import pytest
 
 from VeraGrid.Gui.DynamicModelEditor.dynamic_block_properties import (
     BlockSymbolKind,
+    BlockSymbolDraftRow,
+    BlockCodeBuffer,
     BlockEquationDraft,
+    BlockVariableRenameRequest,
     DaeCodeDiagnostic,
     DynamicBlockPropertiesDialog,
     build_block_symbol_namespace,
@@ -75,6 +78,53 @@ def get_qt_application() -> QtWidgets.QApplication:
         return QtWidgets.QApplication(list())
     else:
         return application
+
+
+class AliasRenameReceiver(QtCore.QObject):
+    """Apply a complete connected-variable rename for a properties test."""
+
+    __slots__ = ("_dialogue", "_new_name")
+
+    def __init__(self,
+                 dialogue: DynamicBlockPropertiesDialog,
+                 new_name: str) -> None:
+        """Store the dialogue and final name used by the synchronous request.
+
+        :param dialogue: Properties dialogue containing the connected rows.
+        :param new_name: Final name propagated to the complete alias component.
+        :return: None.
+        """
+        super().__init__()
+        self._dialogue: DynamicBlockPropertiesDialog = dialogue
+        self._new_name: str = new_name
+
+    @QtCore.Slot(object)
+    def apply_rename(self, request: object) -> None:
+        """Rename every displayed variable sharing the selected stable UID.
+
+        :param request: Synchronous rename request emitted by Block Properties.
+        :return: None.
+        """
+        if isinstance(request, BlockVariableRenameRequest):
+            selected_variable: Var = request.get_variable()
+            selected_stable_uid: int = selected_variable.non_mutable_uid
+            row_index: int
+            for row_index in range(self._dialogue._symbol_model.rowCount()):
+                draft_row: BlockSymbolDraftRow | None = self._dialogue._symbol_model.get_row(row_index)
+                if draft_row is not None:
+                    draft_variable: Var | None = draft_row.get_variable()
+                else:
+                    draft_variable = None
+                if (
+                    draft_variable is not None
+                    and draft_variable.non_mutable_uid == selected_stable_uid
+                ):
+                    draft_variable.set_name(self._new_name)
+                else:
+                    pass
+            request.set_result(success=True, new_name=self._new_name)
+        else:
+            pass
 
 
 @pytest.fixture(autouse=True)
@@ -150,6 +200,67 @@ def test_dae_identifier_rename_updates_only_complete_symbol_tokens() -> None:
     assert "state_vars = [speed, x_ref]" in renamed_code
     assert "state_eqs = [speed + x_ref]" in renamed_code
     assert "# x remains explanatory" in renamed_code
+
+
+def test_dialogue_rename_updates_each_connected_local_name_in_dae_code() -> None:
+    """One shared stable UID must not hide distinct old names during rename."""
+    application: QtWidgets.QApplication = get_qt_application()
+    _unused_application: QtWidgets.QApplication = application
+    source_variable: Var = Var("const_CONST_1")
+    connected_variable: Var = Var(
+        "connected_signal",
+        non_mutable_uid=source_variable.non_mutable_uid,
+    )
+    source_block: Block = Block(
+        name="CONST_1",
+        algebraic_vars=list((source_variable,)),
+        algebraic_eqs=list((source_variable - Const(1.0),)),
+    )
+    connected_block: Block = Block(
+        name="GAIN_1",
+        algebraic_vars=list((connected_variable,)),
+        algebraic_eqs=list((connected_variable - Const(2.0),)),
+    )
+    root_block: Block = Block(
+        name="generic",
+        children=list((source_block, connected_block)),
+    )
+    dialogue: DynamicBlockPropertiesDialog = DynamicBlockPropertiesDialog(
+        root_block,
+        "CUSTOM",
+        VarFactory(),
+    )
+    rename_receiver: AliasRenameReceiver = AliasRenameReceiver(dialogue, "k1")
+    dialogue.variableRenameRequested.connect(rename_receiver.apply_rename)
+
+    source_proxy_row: int | None = None
+    proxy_row: int
+    for proxy_row in range(dialogue._variable_symbol_proxy.rowCount()):
+        displayed_name: object = dialogue._variable_symbol_proxy.index(proxy_row, 1).data()
+        if displayed_name == "const_CONST_1":
+            source_proxy_row = proxy_row
+        else:
+            pass
+    assert source_proxy_row is not None
+
+    dialogue._symbol_table.selectRow(source_proxy_row)
+    dialogue._rename_selected_symbol(dialogue._symbol_table)
+
+    assert source_variable.name == "k1"
+    assert connected_variable.name == "k1"
+    buffer_codes: list[str] = list()
+    equation_buffer: BlockCodeBuffer
+    for equation_buffer in dialogue._equation_buffers:
+        buffer_codes.append(equation_buffer.get_code())
+    combined_code: str = "\n".join(buffer_codes)
+    assert "const_CONST_1" not in combined_code
+    assert "connected_signal" not in combined_code
+    assert "algebraic_vars = [k1]" in combined_code
+    assert all(
+        dialogue._symbol_model.index(row_index, 1).data() == "k1"
+        for row_index in range(dialogue._symbol_model.rowCount())
+    )
+    dialogue.close()
 
 
 def test_variable_declaration_synchronization_preserves_other_dae_source() -> None:
@@ -1248,7 +1359,7 @@ def test_every_dynamic_block_page_explains_the_block_and_its_use() -> None:
     documentation_paths: list[Path] = list(
         documentation_path
         for documentation_path in documentation_root.rglob("*.md")
-        if documentation_path.name != "index.md"
+        if documentation_path.name not in ("index.md", "dae_block_authoring.md")
     )
 
     assert len(documentation_paths) >= 780

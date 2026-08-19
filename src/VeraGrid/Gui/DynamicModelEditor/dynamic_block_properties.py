@@ -5575,10 +5575,13 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         else:
             pass
 
-        # Capture every displayed name before the editor propagates the alias
-        # component. This updates all affected code buffers, not only the row
-        # from which the rename was initiated.
-        old_names_by_stable_uid: Dict[int, str] = dict()
+        # Capture every row independently before the editor propagates the
+        # alias component. Connected variables can share one stable UID while
+        # still using different local names, so a UID-keyed dictionary would
+        # lose all but the last old name and leave stale identifiers in DAE
+        # source owned by the other connected blocks.
+        old_names_by_row: List[tuple[BlockSymbolDraftRow, str]] = list()
+        selected_old_name: str = selected_row.get_name()
         row_index: int
         for row_index in range(self._symbol_model.rowCount()):
             draft_row: BlockSymbolDraftRow | None = self._symbol_model.get_row(row_index)
@@ -5587,7 +5590,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
             else:
                 draft_variable = None
             if draft_variable is not None:
-                old_names_by_stable_uid[draft_variable.non_mutable_uid] = draft_variable.name
+                old_names_by_row.append((draft_row, draft_variable.name))
             else:
                 pass
 
@@ -5595,18 +5598,17 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         self.variableRenameRequested.emit(request)
         if request.is_successful():
             rename_pairs: List[tuple[str, str]] = list()
-            for row_index in range(self._symbol_model.rowCount()):
-                draft_row = self._symbol_model.get_row(row_index)
-                if draft_row is not None:
-                    draft_variable = draft_row.get_variable()
-                else:
-                    draft_variable = None
+            selected_rename_pair: tuple[str, str] = (selected_old_name, request.get_new_name())
+            if selected_old_name != request.get_new_name():
+                rename_pairs.append(selected_rename_pair)
+            else:
+                pass
+
+            old_name: str
+            for draft_row, old_name in old_names_by_row:
+                draft_variable = draft_row.get_variable()
                 if draft_variable is not None:
-                    old_name: str | None = old_names_by_stable_uid.get(
-                        draft_variable.non_mutable_uid,
-                        None,
-                    )
-                    if old_name is not None and old_name != draft_variable.name:
+                    if old_name != draft_variable.name:
                         rename_pair: tuple[str, str] = (old_name, draft_variable.name)
                         if rename_pair not in rename_pairs:
                             rename_pairs.append(rename_pair)
@@ -5628,10 +5630,15 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
 
             self._symbol_model.refresh_existing_names()
             self._namespace = self._build_joint_validation_namespace()
-            self._dae_highlighter.set_symbol_names(tuple(self._namespace.keys()))
             active_buffer: BlockCodeBuffer = self._equation_buffers[self._active_equation_buffer_index]
+
+            # Load the renamed source before rehighlighting it. Rehighlighting
+            # can emit a document change; while the editor still showed the
+            # old source, that signal wrote the stale text back over the newly
+            # updated active buffer.
             self._loading_equation_buffer = True
             self._dae_editor.setPlainText(active_buffer.get_code())
+            self._dae_highlighter.set_symbol_names(tuple(self._namespace.keys()))
             self._loading_equation_buffer = False
             self._clear_dae_validation_feedback()
             self._status_label.setStyleSheet("color: #16825d;")
