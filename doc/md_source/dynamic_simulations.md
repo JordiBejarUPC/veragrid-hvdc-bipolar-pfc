@@ -13,6 +13,22 @@ If power flow tells you where the system is standing, dynamic simulation tells y
 
 The classical theoretical foundations for power-system dynamic simulation can be found in Kundur's treatment of electromechanical stability, in Milano's differential-algebraic modelling framework, and in standard EMT references such as Dommel and Mahseredjian's ATP/EMTP-oriented literature and the EMTP-RV theory texts [1]-[6]. VeraGrid follows the same general modelling philosophy: represent the network and devices as coupled differential-algebraic systems, initialize them consistently from a solved operating point, and integrate them in time with suitable numerical methods.
 
+## Dynamic simulation documentation
+
+This page provides the common theory, architecture, initialization, solver, event, and scripting concepts shared by VeraGrid's dynamic studies. Continue with the domain-specific guides or the model reference according to the task:
+
+- **RMS simulations** cover phasor-domain time simulation and contain the RMS small-signal analysis guide.
+- **EMT simulations** cover waveform- and phase-domain time simulation.
+- **Dynamic model library** contains model authoring guidance, device templates, reusable DAE blocks, and procedural runtime logic.
+
+```{toctree}
+:maxdepth: 2
+
+rms_simulations
+emt_simulations
+dyn_templates/index
+```
+
 ## Why dynamic simulations are different from static simulations
 
 Static simulations such as power flow, short circuit, or linearized analyses answer questions about one operating point or one algebraic condition. Dynamic simulations answer questions about the trajectory that follows a disturbance.

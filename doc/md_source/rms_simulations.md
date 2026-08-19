@@ -4,6 +4,14 @@ Root-mean-square (RMS) simulation is VeraGrid's phasor-domain dynamic-simulation
 
 RMS simulation is usually the first dynamic study to run because it captures the global dynamic picture at moderate computational cost.
 
+The RMS model also provides the operating point and linearization used by VeraGrid's small-signal stability analysis.
+
+```{toctree}
+:maxdepth: 1
+
+small_signal_stability
+```
+
 ## When to use RMS simulation
 
 Use RMS simulation when the study objective is mainly related to:

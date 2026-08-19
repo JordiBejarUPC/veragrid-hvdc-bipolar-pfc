@@ -45,8 +45,8 @@ from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_emt_mod
 from VeraGridEngine.enumerations import (BranchImpedanceMode, DynamicIntegrationMethod, EmtInitializationMethod,
                                          DynamicEventTransitionType, EmtSolverTypes, ShuntConnectionType, SolverType)
 
-from trunk.GridsForLoads_dynamic.gridsforloads_converter_template_V3 import (get_trafo_grid_connection_G4L,
-                                                                          get_complete_load_template_G4L)
+from trunk.GridsForLoads_dynamic.gridsforloads_converter_template_V5_noDC import (get_trafo_grid_connection_G4L,
+                                                                                get_complete_load_template_G4L)
 import VeraGridEngine.api as gce
 
 from VeraGridEngine.Devices.Events.emt_events_group import EmtEventsGroup
@@ -221,6 +221,46 @@ def save_selected_figures(output_folder: Path, figures: list[tuple[str, plt.Figu
         print(f"Saved plot: {figure_path}")
 
 
+def validate_emt_simulation(
+        time_values: np.ndarray,
+        state_values: np.ndarray,
+        differential_values: np.ndarray,
+        well_initialized: bool,
+        converged: bool,
+) -> None:
+    """Validate the EMT result before plots or CSV files are generated.
+
+    A solver can return a complete time vector after a failed Newton step while
+    filling the remaining state history with ``NaN``.  Rejecting that result is
+    essential because the comparison workflow must never interpolate across a
+    failed simulation.
+
+    :param time_values: EMT simulation time vector.
+    :param state_values: State and algebraic-variable history.
+    :param differential_values: Differential-variable history.
+    :param well_initialized: Solver initialization status.
+    :param converged: Solver convergence status.
+    :return: None.
+    """
+    if well_initialized:
+        pass
+    else:
+        raise RuntimeError("EMT initialization failed; comparison CSV was not generated.")
+
+    if converged:
+        pass
+    else:
+        raise RuntimeError("EMT simulation did not converge; comparison CSV was not generated.")
+
+    time_is_finite: bool = bool(np.all(np.isfinite(time_values)))
+    states_are_finite: bool = bool(np.all(np.isfinite(state_values)))
+    differentials_are_finite: bool = bool(np.all(np.isfinite(differential_values)))
+    if time_is_finite and states_are_finite and differentials_are_finite:
+        pass
+    else:
+        raise RuntimeError("EMT simulation contains NaN or Inf; comparison CSV was not generated.")
+
+
 ######################################################################################################
 # Build grid
 ######################################################################################################
@@ -262,7 +302,11 @@ i_C0 = -0.34355869914723824
 P_loss_f_pu = R_f_pu * (i_A0*i_A0 + i_B0*i_B0 + i_C0*i_C0)
 
 P_load_pu = P_dc_pu + P_loss_f_pu
-P_target = 1.6
+# Simulink starts the averaged converter with zero AC/DC current and lets the
+# dynamic controls build the requested 0.8 pu power.  A non-zero static load
+# forces PF currents into the EMT state while the converter voltage starts at
+# zero power, which creates a 1 pu DC-link current mismatch and divergence.
+P_target = 0.0
 load = gce.Load(name="load",P = P_target, P1= P_target/3, P2= P_target/3, P3= P_target/3, Q =0.0, Q1= 0.0, Q2= 0.0, Q3= 0.0)
 load.conn = ShuntConnectionType.GroundedStar
 
@@ -350,7 +394,7 @@ print(f"Selected EMT test: {selected_test}")
 t_P_GFM = 1.0
 d_P_GFM = -0.4
 t_P_GFM_2 = 1.5
-d_P_GFM_2 = -0.8
+d_P_GFM_2 = 0.0
 ## Deviation of frequency with a Rate-of-Change-of-Frequency (ROCOF)
 # The Thevenin source frequency event is applied as an absolute scale target,
 # with a ramp from t_omega to t_omega_end.
@@ -414,6 +458,7 @@ if selected_test == TEST_NONE:
     pass
 elif selected_test == TEST_P_GFM:
     events_to_add = [
+        EmtEvent(device=load, parameter=P_ref, time=0.0, value=-P_dc_pu, group=events_group),
         EmtEvent(device=load, parameter=P_ref, time=t_P_GFM, value=d_P_GFM, group=events_group),
         EmtEvent(device=load, parameter=P_ref, time=t_P_GFM_2, value=d_P_GFM_2, group=events_group),
     ]
@@ -507,13 +552,12 @@ print(res.get_branch_df())
 ######################################################################################################
 
 
-options = EmtOptions(time_step = 1e-6,
-                     simulation_time =  2, # s
+options = EmtOptions(time_step = 5.0e-6,
+                     simulation_time = 2.0,
                      tolerance = 1e-6,
                      solver_type = EmtSolverTypes.Automatic,
-                     # initialization_method = EmtInitializationMethod.PseudoTransient,
                      initialization_method = EmtInitializationMethod.Explicit,
-                     integration_method = DynamicIntegrationMethod.DaeBackEuler,
+                     integration_method = DynamicIntegrationMethod.DaeTrapezoidal,
                      verbose = 1)
 
 problem = EmtProblemDae(grid=grid,
@@ -669,6 +713,14 @@ print(f"EMT well initialized: {well_initialized}")
 print(f"EMT converged: {converged}")
 if hasattr(solver, "get_last_runtime_stats"):
     print(solver.get_last_runtime_stats())
+
+validate_emt_simulation(
+    time_values=t_arr,
+    state_values=y_arr,
+    differential_values=dy_arr,
+    well_initialized=well_initialized,
+    converged=converged,
+)
 
 print("Time-series diagnostics")
 for name in [
@@ -1010,7 +1062,9 @@ plot_scaled_with_tracking(axes_si_overview[4], t_arr, problem, y_arr, "Pac_G4L_g
 plot_scaled_with_tracking(axes_si_overview[4], t_arr, problem, y_arr, "p_dc_G4L_load_side_converter_control",
                           Sb_va / 1e6, "p_dc [MW]", negate=True)
 if selected_test == TEST_P_GFM:
-    pref_series_mw = step_series(t_arr, t_P_GFM, P_dc_pu * Sb_va / 1e6, (P_dc_pu + d_P_GFM) * Sb_va / 1e6)
+    pref_series_mw = np.full_like(t_arr, P_dc_pu * Sb_va / 1e6, dtype=float)
+    pref_series_mw[t_arr >= t_P_GFM] = -d_P_GFM * Sb_va / 1e6
+    pref_series_mw[t_arr >= t_P_GFM_2] = -d_P_GFM_2 * Sb_va / 1e6
 else:
     pref_series_mw = np.full_like(t_arr, P_dc_pu * Sb_va / 1e6, dtype=float)
 axes_si_overview[4].plot(t_arr, pref_series_mw, linestyle="--", label="P_ref [MW]")
@@ -1291,7 +1345,7 @@ for ax in axes_si_pll:
 
 csv_suffix = TEST_CSV_SUFFIX.get(selected_test, selected_test)
 # csv_path = os.path.join(REPO_ROOT, "trunk", "GridsForLoads_dynamic", f"veragrid_G4L_{csv_suffix}_v3.csv")
-csv_path = os.path.join(REPO_ROOT, "trunk", "GridsForLoads_dynamic", f"veragrid_G4L_{csv_suffix}_v3_2pref.csv")
+csv_path = os.path.join(REPO_ROOT, "trunk", "GridsForLoads_dynamic", f"veragrid_G4L_{csv_suffix}_v3_discrete.csv")
 plot_output_folder = get_plot_output_folder(csv_suffix)
 csv_columns = {"time_s": t_arr}
 
@@ -1347,6 +1401,7 @@ add_csv_array("phase_a", phase_a_grid_series)
 add_csv_array("phase_b", phase_b_grid_series)
 add_csv_array("phase_c", phase_c_grid_series)
 add_csv_array("omega_grid", omega_grid_series)
+add_csv_array("P_ref_MW", pref_series_mw)
 add_csv_array("Vq_ref", v_q_ref_series_V)
 add_csv_array("Vd_ref", v_d_ref_series_V)
 if "phase_vsm" in csv_columns and "theta_pll" in csv_columns:
