@@ -2307,6 +2307,72 @@ def get_contingency_monitorable_branches(branch_data_t: PassiveBranchData,
     return monitorable
 
 
+def screen_contingency_violations(multi_contingencies: List[LinearMultiContingency],
+                                  skip_groups: set,
+                                  f0: Vec,
+                                  hvdc0: Vec,
+                                  vsc0: Vec,
+                                  inj0: Vec,
+                                  monitorable: BoolVec,
+                                  con_rates_pu: Vec,
+                                  con_loading: Vec,
+                                  tol_pu: float) -> IntVec:
+    """
+    Numerically evaluate every candidate contingency group against a solved operating point
+    and return the groups that violate a monitored post-contingency limit. This makes the
+    calculation much faster.
+
+    :param multi_contingencies: list of LinearMultiContingency
+    :param skip_groups: group indices already formulated in the LP (never re-screened)
+    :param f0: solved branch flows (p.u.)
+    :param hvdc0: solved HVDC flows (p.u.)
+    :param vsc0: solved VSC flows (p.u.)
+    :param inj0: solved bus injections (p.u.)
+    :param monitorable: per-branch flag of branches that may get a post-contingency limit
+    :param con_rates_pu: branch contingency ratings (p.u.)
+    :param con_loading: base loading w.r.t. the contingency ratings (skip rows >= 1)
+    :param tol_pu: feasibility tolerance (p.u.) added to the rating before flagging
+    :return: array of violated group indices
+    """
+    # rows the formulation would actually constrain: monitorable and not pre-overloaded
+    checkable: BoolVec = monitorable & (con_loading < 1.0)
+    limits: Vec = con_rates_pu + tol_pu
+
+    violated: List[int] = list()
+    for c, contingency in enumerate(multi_contingencies):
+        if c in skip_groups:
+            # already in the LP, its constraints are enforced exactly
+            pass
+        else:
+            fc: Vec = f0.copy()
+            if len(contingency.branch_indices) > 0:
+                fc += contingency.mlodf_factors @ f0[contingency.branch_indices]
+            else:
+                pass  # no branch outages in this group
+            if len(contingency.hvdc_indices) > 0:
+                fc += contingency.hvdc_odf @ hvdc0[contingency.hvdc_indices]
+            else:
+                pass  # no HVDC outages in this group
+            if len(contingency.vsc_indices) > 0:
+                fc += contingency.vsc_odf @ vsc0[contingency.vsc_indices]
+            else:
+                pass  # no VSC outages in this group
+            if len(contingency.bus_indices) > 0:
+                # same expression as the LP path: factor-scaled injection loss
+                fc += contingency.compensated_ptdf_factors @ (
+                        contingency.injections_factor * inj0[contingency.bus_indices])
+            else:
+                pass  # no injection outages in this group
+
+            if np.any(checkable & (np.abs(fc) > limits)):
+                violated.append(c)
+            else:
+                # the current solution already survives this outage
+                pass
+
+    return np.array(violated, dtype=int)
+
+
 def add_linear_branches_contingencies_formulation(t_idx: int,
                                                   Sbase: float,
                                                   branch_data_t: PassiveBranchData,
@@ -2327,7 +2393,8 @@ def add_linear_branches_contingencies_formulation(t_idx: int,
                                                   logger: Logger,
                                                   corrective_contingencies: bool = False,
                                                   vsc_active: BoolVec | None = None,
-                                                  hvdc_active: BoolVec | None = None):
+                                                  hvdc_active: BoolVec | None = None,
+                                                  group_indices: Union[IntVec, None] = None):
     """
     Formulate the branches
     :param t_idx: time index
@@ -2349,6 +2416,7 @@ def add_linear_branches_contingencies_formulation(t_idx: int,
     :param con_loading: Loading w.r.t the contingency rates
     :param logger
     :param corrective_contingencies: if True, allow corrective re-dispatch of the VSC/HVDC
+    :param group_indices: subset of multi-contingency indices to formulate (None = all)
     :return objective function
     """
     f_obj = 0.0
@@ -2372,7 +2440,14 @@ def add_linear_branches_contingencies_formulation(t_idx: int,
     for branch_m, branch_sense in branch_vars.inter_space_branches:
         corrective_rows[branch_m] = True
 
-    for c, contingency in enumerate(linear_multi_contingencies.multi_contingencies):
+    # which multi-contingency indices to formulate: either all, or the caller's subset
+    if group_indices is None:
+        group_list: IntVec = np.arange(len(linear_multi_contingencies.multi_contingencies))
+    else:
+        group_list = group_indices
+
+    for c in group_list:
+        contingency = linear_multi_contingencies.multi_contingencies[c]
 
         contingency_flows, mask, changed_idx = contingency.get_lp_contingency_flows(
             base_flow=branch_vars.flows[t_idx, :],
@@ -3077,6 +3152,11 @@ def run_linear_ntc_opf(grid: MultiCircuit,
                                                       bus_data_t=nc.bus_data)
     )
 
+    # lazy formulation state is filled when contingencies are on and there are groups
+    lazy_mctg: Union[LinearMultiContingencies, None] = None
+    lazy_alpha_n1: Union[Mat, None] = None
+    lazy_con_loading: Union[Vec, None] = None
+
     if zonal_grouping == ZonalGrouping.NoGrouping:
 
         # declare the linear analysis and compute the PTDF and LODF
@@ -3168,30 +3248,11 @@ def run_linear_ntc_opf(grid: MultiCircuit,
                 branch_loading_con = np.abs(
                     branch_flows / (nc.passive_branch_data.contingency_rates / nc.Sbase + 1e-20))
 
-                # formulate the contingencies
-                f_obj += add_linear_branches_contingencies_formulation(
-                    t_idx=t_idx,
-                    Sbase=nc.Sbase,
-                    branch_data_t=nc.passive_branch_data,
-                    branch_vars=mip_vars.branch_vars,
-                    bus_vars=mip_vars.bus_vars,
-                    hvdc_vars=mip_vars.hvdc_vars,
-                    vsc_vars=mip_vars.vsc_vars,
-                    prob=lp_model,
-                    linear_multi_contingencies=mctg,
-                    monitor_only_sensitive_branches=monitor_only_sensitive_branches,
-                    monitor_only_ntc_load_rule_branches=monitor_only_ntc_load_rule_branches,
-                    structural_ntc=structural_ntc,
-                    ntc_load_rule=ntc_load_rule,
-                    alpha_threshold=alpha_threshold,
-                    alpha_n1=alpha_n1,
-                    base_loading=branch_loading,
-                    con_loading=branch_loading_con,
-                    logger=logger,
-                    corrective_contingencies=corrective_contingencies,
-                    vsc_active=nc.vsc_data.active,
-                    hvdc_active=nc.hvdc_data.active
-                )
+                # Lazy constraint generation, so no contingency rows are built here. Groups
+                # enter the LP only when the screening after each solve finds them violated
+                lazy_mctg = mctg
+                lazy_alpha_n1 = alpha_n1
+                lazy_con_loading = branch_loading_con
 
             else:
                 print("Contingencies enabled, but no contingency groups provided")
@@ -3214,6 +3275,87 @@ def run_linear_ntc_opf(grid: MultiCircuit,
 
     # solve the model
     status = lp_model.solve(robust=robust, show_logs=verbose > 0, progress_text=progress_text)
+
+    if lazy_mctg is not None and status == lp_model.OPTIMAL:
+        # Screen every not-yet-formulated group against the solved operating point, add only 
+        # the violated ones, re-solve, and repeat until a screening pass is clean. 
+        monitorable_lazy: BoolVec = get_contingency_monitorable_branches(
+            branch_data_t=nc.passive_branch_data,
+            branch_vars=mip_vars.branch_vars,
+            t_idx=t_idx,
+            corrective_contingencies=corrective_contingencies,
+            monitor_only_sensitive_branches=monitor_only_sensitive_branches,
+            monitor_only_ntc_load_rule_branches=monitor_only_ntc_load_rule_branches,
+            alpha_threshold=alpha_threshold,
+            alpha_n1=lazy_alpha_n1,
+            structural_ntc=float(mip_vars.structural_ntc[t_idx]),
+            ntc_load_rule=ntc_load_rule
+        )
+
+        for lazy_branch_m, _lazy_branch_sense in mip_vars.branch_vars.inter_space_branches:
+            monitorable_lazy[lazy_branch_m] = True
+        monitorable_lazy = monitorable_lazy | (nc.passive_branch_data.dc.astype(bool)
+                                               & nc.passive_branch_data.monitor_loading.astype(bool))
+        con_rates_pu_lazy: Vec = nc.passive_branch_data.contingency_rates / nc.Sbase
+        formulated: set = set()
+        lazy_round: int = 0
+        max_lazy_rounds: int = 20
+
+        while lazy_round < max_lazy_rounds and status == lp_model.OPTIMAL:
+            # numeric snapshot of the solved operating point
+            f0_num: Vec = np.array([lp_model.get_value(x) for x in mip_vars.branch_vars.flows[t_idx, :]])
+            hvdc0_num: Vec = np.array([lp_model.get_value(x) for x in mip_vars.hvdc_vars.flows[t_idx, :]])
+            vsc0_num: Vec = np.array([lp_model.get_value(x) for x in mip_vars.vsc_vars.flows[t_idx, :]])
+            inj0_num: Vec = np.array([lp_model.get_value(x) for x in mip_vars.bus_vars.Pinj[t_idx, :]])
+
+            violated_groups: IntVec = screen_contingency_violations(
+                multi_contingencies=lazy_mctg.multi_contingencies,
+                skip_groups=formulated,
+                f0=f0_num, hvdc0=hvdc0_num, vsc0=vsc0_num, inj0=inj0_num,
+                monitorable=monitorable_lazy,
+                con_rates_pu=con_rates_pu_lazy,
+                con_loading=lazy_con_loading,
+                tol_pu=1e-4
+            )
+
+            if len(violated_groups) == 0:
+                # clean screening pass as the solution survives every contingency group
+                lazy_round = max_lazy_rounds
+            else:
+                f_obj += add_linear_branches_contingencies_formulation(
+                    t_idx=t_idx,
+                    Sbase=nc.Sbase,
+                    branch_data_t=nc.passive_branch_data,
+                    branch_vars=mip_vars.branch_vars,
+                    bus_vars=mip_vars.bus_vars,
+                    hvdc_vars=mip_vars.hvdc_vars,
+                    vsc_vars=mip_vars.vsc_vars,
+                    prob=lp_model,
+                    linear_multi_contingencies=lazy_mctg,
+                    monitor_only_sensitive_branches=monitor_only_sensitive_branches,
+                    monitor_only_ntc_load_rule_branches=monitor_only_ntc_load_rule_branches,
+                    structural_ntc=float(mip_vars.structural_ntc[t_idx]),
+                    ntc_load_rule=ntc_load_rule,
+                    alpha_threshold=alpha_threshold,
+                    alpha_n1=lazy_alpha_n1,
+                    base_loading=np.abs(f0_num) / (nc.passive_branch_data.rates / nc.Sbase + 1e-20),
+                    con_loading=lazy_con_loading,
+                    logger=logger,
+                    corrective_contingencies=corrective_contingencies,
+                    vsc_active=nc.vsc_data.active,
+                    hvdc_active=nc.hvdc_data.active,
+                    group_indices=violated_groups
+                )
+                formulated.update(int(g) for g in violated_groups)
+                lp_model.minimize(f_obj)
+                status = lp_model.solve(robust=robust, show_logs=verbose > 0, progress_text=progress_text)
+                lazy_round += 1
+
+        logger.add_info("Lazy contingency formulation: groups added",
+                        value=f"{len(formulated)} of {len(lazy_mctg.multi_contingencies)} in {lazy_round if lazy_round < max_lazy_rounds else 'final'} rounds")
+    else:
+        # full formulation, or the base problem did not solve
+        pass
 
     # gather the results
     logger.add_info(msg="Status", value=lp_model.status2string(status))
