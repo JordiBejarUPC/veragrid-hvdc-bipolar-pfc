@@ -8,7 +8,7 @@ from __future__ import annotations
 from enum import Enum
 from pathlib import Path
 from types import FunctionType
-from typing import Callable, cast, List, Sequence
+from typing import Callable, List, Sequence
 
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
@@ -119,7 +119,7 @@ class DynamicModelImportSource(Enum):
     PowerFactoryDgs = "PowerFactory DGS"
 
 
-class DynamicModelImportSourceContext:
+class DynamicModelImportSourceProvenance:
     """
     Typed DGS provenance for one separate dynamic catalogue entry.
 
@@ -240,14 +240,14 @@ class DynamicModelImportEntryAvailability(Enum):
     """
     Source availability classification for one catalogue entry.
 
-    Context-only nodes preserve PowerFactory hierarchy and association metadata;
+    Metadata-only nodes preserve PowerFactory hierarchy and association data;
     they are intentionally not reusable templates and are not parser failures.
     """
 
     __slots__ = ()
 
     Importable = "Importable"
-    ContextOnly = "Context only"
+    MetadataOnly = "Metadata only"
     Failed = "Failed"
 
 
@@ -274,7 +274,7 @@ class DynamicModelImportEntryResult:
     :param final_name: Final circuit template name, when available.
     :param domain: Selected target domain.
     :param status: Explicit processing outcome.
-    :param source_context: DGS root/slot/element provenance, when available.
+    :param source_provenance: DGS root/slot/element provenance, when available.
     :param message: Human-readable diagnostic.
     """
 
@@ -284,7 +284,7 @@ class DynamicModelImportEntryResult:
         "_final_name",
         "_domain",
         "_status",
-        "_source_context",
+        "_source_provenance",
         "_persisted_path",
         "_message",
     )
@@ -296,7 +296,7 @@ class DynamicModelImportEntryResult:
             final_name: str | None,
             domain: DynamicSimulationMode,
             status: DynamicModelImportEntryStatus,
-            source_context: DynamicModelImportSourceContext | None,
+            source_provenance: DynamicModelImportSourceProvenance | None,
             message: str,
     ) -> None:
         """
@@ -307,7 +307,7 @@ class DynamicModelImportEntryResult:
         :param final_name: Final circuit template name, when available.
         :param domain: Selected target domain.
         :param status: Explicit processing outcome.
-        :param source_context: DGS root/slot/element provenance, when available.
+        :param source_provenance: DGS root/slot/element provenance, when available.
         :param message: Human-readable diagnostic.
         :return: None.
         """
@@ -316,7 +316,9 @@ class DynamicModelImportEntryResult:
         self._final_name: str | None = final_name
         self._domain: DynamicSimulationMode = domain
         self._status: DynamicModelImportEntryStatus = status
-        self._source_context: DynamicModelImportSourceContext | None = source_context
+        self._source_provenance: DynamicModelImportSourceProvenance | None = (
+            source_provenance
+        )
         self._persisted_path: Path | None = None
         self._message: str = message
 
@@ -340,9 +342,9 @@ class DynamicModelImportEntryResult:
         """Return the explicit processing status."""
         return self._status
 
-    def get_source_context(self) -> DynamicModelImportSourceContext | None:
+    def get_source_provenance(self) -> DynamicModelImportSourceProvenance | None:
         """Return the DGS root/slot/element provenance, when available."""
-        return self._source_context
+        return self._source_provenance
 
     def set_persisted_path(self, persisted_path: Path) -> None:
         """
@@ -422,13 +424,13 @@ def _count_dgs_source_associations(
     """
     count: int = 0
     entry_result: DynamicModelImportEntryResult
-    source_context: DynamicModelImportSourceContext | None
+    source_provenance: DynamicModelImportSourceProvenance | None
 
     for entry_result in entry_results:
-        source_context = entry_result.get_source_context()
-        if (source_context is not None and
-                source_context.get_slot_index() is not None and
-                source_context.get_source_element_dgs_id() is not None):
+        source_provenance = entry_result.get_source_provenance()
+        if (source_provenance is not None and
+                source_provenance.get_slot_index() is not None and
+                source_provenance.get_source_element_dgs_id() is not None):
             count += 1
         else:
             pass
@@ -503,7 +505,7 @@ class DynamicModelImportReport:
         )
 
     def get_renamed_count(self) -> int:
-        """Return non-equivalent name collisions installed with contextual names."""
+        """Return collisions installed with source-qualified names."""
         return _count_dynamic_model_import_result_status(
             self._entry_results,
             DynamicModelImportEntryStatus.Renamed,
@@ -517,7 +519,7 @@ class DynamicModelImportReport:
         )
 
     def get_skipped_count(self) -> int:
-        """Return context-only or duplicate entries intentionally not installed."""
+        """Return metadata-only or duplicate entries intentionally not installed."""
         return _count_dynamic_model_import_result_status(
             self._entry_results,
             DynamicModelImportEntryStatus.Skipped,
@@ -829,13 +831,7 @@ class _DynamicUserTemplatePythonModule:
         :return: None.
         """
         self._module_path: Path = module_path
-        self._template_builder: Callable[
-            [VarFactory, str | None],
-            RmsModelTemplate | EmtModelTemplate,
-        ] = cast(
-            Callable[[VarFactory, str | None], RmsModelTemplate | EmtModelTemplate],
-            template_builder,
-        )
+        self._template_builder: FunctionType = template_builder
 
     def materialize(self, var_factory: VarFactory) -> RmsModelTemplate | EmtModelTemplate:
         """
@@ -844,10 +840,16 @@ class _DynamicUserTemplatePythonModule:
         :param var_factory: Variable factory that owns the runtime symbols.
         :return: Materialized RMS or EMT template.
         """
-        template_obj: RmsModelTemplate | EmtModelTemplate = self._template_builder(
+        template_candidate: object = self._template_builder(
             var_factory,
             None,
         )
+        if isinstance(template_candidate, (RmsModelTemplate, EmtModelTemplate)):
+            template_obj: RmsModelTemplate | EmtModelTemplate = template_candidate
+        else:
+            raise TypeError(
+                "Dynamic user template builder returned an unsupported object"
+            )
         return template_obj
 
 
@@ -1021,7 +1023,7 @@ class DynamicModelImportEntry:
         "_notes_text",
         "_parent_key",
         "_persistence_spec",
-        "_source_context",
+        "_source_provenance",
         "_installed_template",
         "_availability",
     )
@@ -1035,7 +1037,7 @@ class DynamicModelImportEntry:
             notes_text: str,
             parent_key: str | None = None,
             persistence_spec: DynamicModelPersistenceSpec | None = None,
-            source_context: DynamicModelImportSourceContext | None = None,
+            source_provenance: DynamicModelImportSourceProvenance | None = None,
             availability: DynamicModelImportEntryAvailability | None = None,
     ) -> None:
         """
@@ -1048,7 +1050,7 @@ class DynamicModelImportEntry:
         :param notes_text: Human-readable notes.
         :param parent_key: Optional parent catalogue entry key.
         :param persistence_spec: Optional canonical Python persistence specification.
-        :param source_context: Optional typed DGS provenance and host context.
+        :param source_provenance: Optional typed DGS origin and host metadata.
         :param availability: Explicit source availability, or automatic
             source-block classification.
         :return: None.
@@ -1060,7 +1062,9 @@ class DynamicModelImportEntry:
         self._notes_text: str = str(notes_text)
         self._parent_key: str | None = None if parent_key is None else str(parent_key)
         self._persistence_spec: DynamicModelPersistenceSpec | None = persistence_spec
-        self._source_context: DynamicModelImportSourceContext | None = source_context
+        self._source_provenance: DynamicModelImportSourceProvenance | None = (
+            source_provenance
+        )
         self._installed_template: RmsModelTemplate | EmtModelTemplate | None = None
         if availability is None:
             if source_block is None:
@@ -1126,19 +1130,19 @@ class DynamicModelImportEntry:
         """
         return self._persistence_spec
 
-    def get_source_context(self) -> DynamicModelImportSourceContext | None:
+    def get_source_provenance(self) -> DynamicModelImportSourceProvenance | None:
         """
-        Return typed DGS provenance and host-resolution context.
+        Return typed DGS provenance and host-resolution metadata.
 
-        :return: Source context or ``None`` for formats without DGS provenance.
+        :return: Source provenance or ``None`` for formats without DGS origin.
         """
-        return self._source_context
+        return self._source_provenance
 
     def get_availability(self) -> DynamicModelImportEntryAvailability:
         """
         Return the explicit source availability classification.
 
-        :return: Importable, context-only or failed classification.
+        :return: Importable, metadata-only or failed classification.
         """
         return self._availability
 

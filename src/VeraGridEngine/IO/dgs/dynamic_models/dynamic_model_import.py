@@ -9,9 +9,12 @@ import copy
 import hashlib
 import json
 import uuid
+from enum import Enum, auto
 from pathlib import Path
 from typing import Callable, Dict, List, Sequence, Set, Tuple
 
+from VeraGridEngine.Devices.Diagrams.block_diagram import BlockDiagramConnection
+from VeraGridEngine.Devices.Diagrams.block_diagram import BlockDiagramNode
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
@@ -20,21 +23,36 @@ from VeraGridEngine.Devices.Branches.vsc import VSC
 from VeraGridEngine.Devices.Injections.generator import Generator
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.IO.dgs.dgs_circuit import DgsCircuit
-from VeraGridEngine.IO.dgs.dgs_to_blocks import DgsStandaloneBlockCatalogEntry
-from VeraGridEngine.IO.dgs.dgs_to_blocks import ElmCompInstanceEntry
-from VeraGridEngine.IO.dgs.dgs_to_blocks import ParsedDgsBlockDefinition
-from VeraGridEngine.IO.dgs.dgs_to_blocks import _BlockModuleVariableGroups
-from VeraGridEngine.IO.dgs.dgs_to_blocks import _build_block_module_variable_groups
-from VeraGridEngine.IO.dgs.dgs_to_blocks import _emit_block_code
-from VeraGridEngine.IO.dgs.dgs_to_blocks import _make_identifier_map
-from VeraGridEngine.IO.dgs.dgs_to_blocks import _procedural_logic_import_names
-from VeraGridEngine.IO.dgs.dgs_to_blocks import _safe_name
+from VeraGridEngine.IO.dgs.dgs_to_blocks import (
+    DgsDirectRootBuildResult,
+    DgsGraphicalIndexes,
+    DgsGraphicTreeResult,
+    DgsRootBlockResult,
+    DgsStandaloneBlockCatalogEntry,
+    ElmCompInstanceEntry,
+    ParsedDgsBlockDefinition,
+    _BlockModuleVariableGroups,
+    _build_block_module_variable_groups,
+    _emit_block_code,
+    _make_identifier_map,
+    _procedural_logic_import_names,
+    _safe_name,
+    build_dgs_graphical_indexes,
+    build_dgs_standalone_block_catalog_from_circuit,
+    build_direct_root_elmcomp_block,
+    build_standalone_blkdef_block,
+    build_standalone_blkdef_block_from_parsed_block,
+    build_dgs_root_block_from_circuit,
+    extract_elmcomp_direct_instances,
+    extract_root_slot_graphical_tree_from_circuit,
+    get_blkslot_signal_interface,
+    get_unique_elmcomp_slot_entries,
+    parse_dgs_block_definitions_from_circuit,
+)
 from VeraGridEngine.IO.dgs.dgs_discrete_event import (
     DgsDiscreteEventAction,
     dgs_discrete_event_action_from_dict,
 )
-from VeraGridEngine.IO.dgs.dgs_to_blocks import DgsGraphicTreeResult
-from VeraGridEngine.IO.dgs.dgs_to_blocks import extract_elmcomp_direct_instances
 from VeraGridEngine.IO.dgs.dgs_objects import BlkSlot
 from VeraGridEngine.IO.dgs.dgs_objects import ElmComp
 from VeraGridEngine.IO.dynamic_model_import_types import (
@@ -47,7 +65,7 @@ from VeraGridEngine.IO.dynamic_model_import_types import (
     DynamicModelImportReport,
     DynamicModelImportSelectionRequest,
     DynamicModelImportSource,
-    DynamicModelImportSourceContext,
+    DynamicModelImportSourceProvenance,
     DynamicModelLoadedUserTemplate,
     DynamicModelPersistenceKind,
     DynamicModelPersistenceSpec,
@@ -99,12 +117,232 @@ from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.enumerations import (
     BlockType,
     DeviceType,
+    DgsDynamicAssociationRole,
     DynamicSimulationMode,
     VarPowerFlowReferenceType,
 )
 
 class DgsDynamicParserContractError(RuntimeError):
     """Report that the dynamic DGS parser boundary is incomplete."""
+
+
+class _DgsRuntimeAdapterKind(Enum):
+    """Identify the typed runtime-adapter contract queried by the importer."""
+
+    VSC_MONOPOLAR = auto()
+    VSC_BIPOLAR = auto()
+    SYNCHRONOUS_MACHINE_PENDING = auto()
+    SYNCHRONOUS_MACHINE = auto()
+
+
+class _DgsElmCompRelationKind(Enum):
+    """Classify one direct DGS relation before any block is executed."""
+
+    __slots__ = ()
+
+    DYNAMIC_CANDIDATE = auto()
+    PHYSICAL_REFERENCE = auto()
+    OPAQUE_REFERENCE = auto()
+    INVALID = auto()
+
+
+class _DgsElmCompRelationClassification:
+    """Carry one typed DGS relation decision and its evidence.
+
+    :param kind: Exact non-executable or dynamic relation kind.
+    :param reason: Human-readable evidence behind the decision.
+    """
+
+    __slots__ = ("_kind", "_reason")
+
+    def __init__(
+            self,
+            kind: _DgsElmCompRelationKind,
+            reason: str,
+    ) -> None:
+        """Store one relation decision.
+
+        :param kind: Exact non-executable or dynamic relation kind.
+        :param reason: Human-readable evidence behind the decision.
+        :return: None.
+        """
+        self._kind: _DgsElmCompRelationKind = kind
+        self._reason: str = reason
+
+    def get_kind(self) -> _DgsElmCompRelationKind:
+        """Return the typed relation kind.
+
+        :return: Exact classification kind.
+        """
+        return self._kind
+
+    def get_reason(self) -> str:
+        """Return the evidence behind the relation decision.
+
+        :return: Human-readable classification evidence.
+        """
+        return self._reason
+
+
+class _DgsRuntimeBlockContract:
+    """Expose legacy runtime metadata through one typed importer boundary."""
+
+    __slots__ = ("_block",)
+
+    def __init__(self, block: Block) -> None:
+        """Create a typed view over one symbolic runtime block.
+
+        :param block: Symbolic block whose adapter contract is queried.
+        :return: None.
+        """
+        self._block: Block = block
+
+    def matches(self, adapter_kind: _DgsRuntimeAdapterKind) -> bool:
+        """Return whether the block declares one exact adapter contract.
+
+        Dynamic metadata is confined to this compatibility boundary so the
+        import algorithm never reads ``Block.__dict__`` or string markers.
+
+        :param adapter_kind: Exact runtime-adapter contract to query.
+        :return: ``True`` only when the block declares that contract.
+        """
+        adapter_marker: object | None
+        if adapter_kind == _DgsRuntimeAdapterKind.VSC_MONOPOLAR:
+            adapter_marker = self._block.__dict__.get(
+                "dgs_elmvscmono_runtime_adapter",
+                None,
+            )
+        else:
+            if adapter_kind == _DgsRuntimeAdapterKind.VSC_BIPOLAR:
+                adapter_marker = self._block.__dict__.get(
+                    "dgs_elmvsc_runtime_adapter",
+                    None,
+                )
+            else:
+                if (
+                        adapter_kind
+                        == _DgsRuntimeAdapterKind.SYNCHRONOUS_MACHINE_PENDING
+                ):
+                    adapter_marker = self._block.__dict__.get(
+                        "dgs_elmsym_runtime_adapter_pending",
+                        None,
+                    )
+                else:
+                    adapter_marker = self._block.__dict__.get(
+                        "dgs_elmsym_runtime_adapter",
+                        None,
+                    )
+
+        if isinstance(adapter_marker, bool):
+            result: bool = adapter_marker
+        else:
+            result = False
+        return result
+
+
+def _classify_dgs_elmcomp_relation(
+        entry: ElmCompInstanceEntry,
+        unique_slot_indices: Set[int],
+) -> _DgsElmCompRelationClassification:
+    """Classify one direct ``ElmComp`` relation without using display names.
+
+    A unique resolved ``pblk`` establishes the source slot envelope. A complete
+    resolved dynamic target may then be materialized. Resolved physical targets
+    and intentionally empty physical or vendor slots remain visible metadata,
+    while missing, unresolved or repeated slot references and unresolved
+    supplied targets fail closed.
+
+    :param entry: Exact direct relation extracted from the DGS document.
+    :param unique_slot_indices: Ordinals whose ``pblk`` resolves uniquely.
+    :return: Typed pre-execution relation classification.
+    """
+    physical_roles: Set[DgsDynamicAssociationRole] = set([
+        DgsDynamicAssociationRole.PhysicalHost,
+        DgsDynamicAssociationRole.Measurement,
+        DgsDynamicAssociationRole.SwitchActuator,
+        DgsDynamicAssociationRole.ValveActuator,
+        DgsDynamicAssociationRole.PassiveActuator,
+    ])
+
+    if entry.slot_index is None or entry.slot_index not in unique_slot_indices:
+        if entry.slot_id is None:
+            invalid_reason: str = "missing pblk slot reference"
+        else:
+            if not entry.slot_reference_is_resolved:
+                invalid_reason = "unresolved pblk slot reference"
+            else:
+                invalid_reason = "repeated pblk slot reference"
+        return _DgsElmCompRelationClassification(
+            kind=_DgsElmCompRelationKind.INVALID,
+            reason=invalid_reason,
+        )
+    else:
+        pass
+
+    association_role: DgsDynamicAssociationRole = (
+        infer_dgs_dynamic_association_role(
+            slot_index=entry.slot_index,
+            source_element_class=entry.element_kind,
+            slot_filter=entry.slot_filter,
+        )
+    )
+
+    if entry.element_id is None:
+        if association_role in physical_roles:
+            empty_kind: _DgsElmCompRelationKind = (
+                _DgsElmCompRelationKind.PHYSICAL_REFERENCE
+            )
+            empty_reason: str = "physical slot has no exported pElm target"
+        else:
+            empty_kind = _DgsElmCompRelationKind.OPAQUE_REFERENCE
+            empty_reason = "slot has no exported pElm target"
+        return _DgsElmCompRelationClassification(
+            kind=empty_kind,
+            reason=empty_reason,
+        )
+    else:
+        pass
+
+    if not entry.element_reference_is_resolved:
+        return _DgsElmCompRelationClassification(
+            kind=_DgsElmCompRelationKind.INVALID,
+            reason="unresolved supplied pElm target",
+        )
+    else:
+        pass
+
+    if entry.element_kind == "ElmDsl" or entry.element_kind == "ElmComp":
+        if entry.type_id is None:
+            return _DgsElmCompRelationClassification(
+                kind=_DgsElmCompRelationKind.INVALID,
+                reason="dynamic pElm target has no exported type reference",
+            )
+        else:
+            return _DgsElmCompRelationClassification(
+                kind=_DgsElmCompRelationKind.DYNAMIC_CANDIDATE,
+                reason="complete dynamic pblk/pelm relation",
+            )
+    else:
+        pass
+
+    if entry.type_id is None:
+        if association_role in physical_roles:
+            resolved_kind: _DgsElmCompRelationKind = (
+                _DgsElmCompRelationKind.PHYSICAL_REFERENCE
+            )
+            resolved_reason: str = "resolved physical pElm target"
+        else:
+            resolved_kind = _DgsElmCompRelationKind.OPAQUE_REFERENCE
+            resolved_reason = "resolved non-dynamic pElm target"
+        return _DgsElmCompRelationClassification(
+            kind=resolved_kind,
+            reason=resolved_reason,
+        )
+    else:
+        return _DgsElmCompRelationClassification(
+            kind=_DgsElmCompRelationKind.INVALID,
+            reason="non-dynamic pElm target declares a dynamic type reference",
+        )
 
 
 def _select_root_frame_display_name(root_block: Block) -> str | None:
@@ -136,22 +374,24 @@ def _select_root_frame_display_name(root_block: Block) -> str | None:
         return candidate_names[0]
 
 
-def _build_dgs_context_slot_notes(circuit: DgsCircuit, root_name: str, entry: ElmCompInstanceEntry) -> str:
+def _build_dgs_non_executable_slot_notes(
+        circuit: DgsCircuit,
+        root_name: str,
+        entry: ElmCompInstanceEntry,
+) -> str:
     """
-    Build one readable note string for a DGS context slot without a materialized block.
+    Build notes for a DGS slot that has no materialized block.
 
     :param circuit: Parsed DGS circuit.
     :param root_name: Root ElmComp display name.
     :param entry: Direct slot entry.
     :return: Human-readable notes text.
     """
-    from VeraGridEngine.IO.dgs.dgs_to_blocks import get_blkslot_signal_interface
-
     incoming_signals, outgoing_signals = get_blkslot_signal_interface(
         circuit=circuit,
         slot_id=entry.slot_id,
     )
-    notes_parts: List[str] = [f"Root: {root_name}", "Context slot"]
+    notes_parts: List[str] = [f"Root: {root_name}", "Non-executable slot"]
     slot_obj: BlkSlot | None = None
     candidate_slot: BlkSlot
 
@@ -198,16 +438,16 @@ def _build_dgs_context_slot_notes(circuit: DgsCircuit, root_name: str, entry: El
     return " | ".join(notes_parts)
 
 
-def _build_dgs_import_source_context(
+def _build_dgs_import_source_provenance(
         root_element: ElmComp,
         direct_entry: ElmCompInstanceEntry | None = None,
-) -> DynamicModelImportSourceContext:
+) -> DynamicModelImportSourceProvenance:
     """
     Build typed provenance for one root or direct ElmComp slot entry.
 
     :param root_element: Owning root ElmComp.
     :param direct_entry: Optional direct pBlk/pElm slot relation.
-    :return: Typed root/slot/element source context.
+    :return: Typed root/slot/element source provenance.
     """
     if direct_entry is None:
         slot_dgs_id: str | None = None
@@ -228,20 +468,22 @@ def _build_dgs_import_source_context(
         source_element_name = direct_entry.element_name
         source_element_class = direct_entry.element_kind
 
-    source_context: DynamicModelImportSourceContext = DynamicModelImportSourceContext(
-        root_dgs_id=root_element.ID,
-        root_name=root_element.loc_name,
-        root_typ_id=root_element.typ_id,
-        slot_dgs_id=slot_dgs_id,
-        slot_name=slot_name,
-        slot_index=slot_index,
-        slot_element=slot_element,
-        slot_filter=slot_filter,
-        source_element_dgs_id=source_element_dgs_id,
-        source_element_name=source_element_name,
-        source_element_class=source_element_class,
+    source_provenance: DynamicModelImportSourceProvenance = (
+        DynamicModelImportSourceProvenance(
+            root_dgs_id=root_element.ID,
+            root_name=root_element.loc_name,
+            root_typ_id=root_element.typ_id,
+            slot_dgs_id=slot_dgs_id,
+            slot_name=slot_name,
+            slot_index=slot_index,
+            slot_element=slot_element,
+            slot_filter=slot_filter,
+            source_element_dgs_id=source_element_dgs_id,
+            source_element_name=source_element_name,
+            source_element_class=source_element_class,
+        )
     )
-    return source_context
+    return source_provenance
 
 
 def _build_dgs_root_elmcomp_entries_with_progress(
@@ -259,43 +501,39 @@ def _build_dgs_root_elmcomp_entries_with_progress(
     :param progress_callback: Optional UI progress callback.
     :param progress_start: Inclusive start percentage for this phase.
     :param progress_end: Inclusive end percentage for this phase.
-    :param dgs_circuit: Optional already parsed massive-import context.
+    :param dgs_circuit: Optional circuit already parsed for the massive import.
     :param parsed_dgs_blocks: Optional definitions parsed from ``dgs_circuit``.
     :return: Pair ``(entries, logger)``.
     """
-    from VeraGridEngine.IO.dgs.dgs_to_blocks import (
-        DgsDirectRootBuildResult,
-        DgsGraphicalParseContext,
-        build_dgs_graphical_parse_context,
-        build_direct_root_elmcomp_result_from_context,
-        build_standalone_blkdef_block,
-        build_standalone_blkdef_block_from_parsed_block,
-        dgs_to_root_block_from_context,
-        extract_root_slot_block_graphical_tree_from_context,
-        parse_dgs_block_definitions_from_context,
-    )
-
     circuit: DgsCircuit
     entries: List[DynamicModelImportEntry] = list()
     logger: Logger = Logger()
     root_element: ElmComp
-    root_result = None
+    root_result: DgsRootBlockResult | None
     root_block: Block | None
     root_entry: DynamicModelImportEntry
     root_direct_entries: List[ElmCompInstanceEntry]
+    unique_slot_entries: List[ElmCompInstanceEntry]
+    unique_slot_entry: ElmCompInstanceEntry
+    unique_slot_indices: Set[int]
     direct_entry: ElmCompInstanceEntry
+    relation_classification: _DgsElmCompRelationClassification
+    relation_kind: _DgsElmCompRelationKind
     frame_display_name: str | None
     frame_entry_key: str | None
     slot_display_name: str
+    non_executable_notes_text: str
+    slot_notes_text: str
     slot_parent_key: str
     slot_identity: str
     slot_availability: DynamicModelImportEntryAvailability
-    graph_tree: DgsGraphicTreeResult | None = None
-    cached_slot_block: Block | None = None
-    materialized_slot_block: Block | None = None
-    slot_was_graphical: bool = False
+    graph_tree: DgsGraphicTreeResult | None
+    cached_slot_block: Block | None
+    materialized_slot_block: Block | None
+    slot_was_graphical: bool
     slot_persistence_spec: DynamicModelPersistenceSpec
-    parsed_slot_block: ParsedDgsBlockDefinition | None = None
+    parsed_slot_block: ParsedDgsBlockDefinition | None
+    effective_type_id: str | None
     total_root_count: int
     total_slot_count: int = 0
     total_steps: int
@@ -304,10 +542,13 @@ def _build_dgs_root_elmcomp_entries_with_progress(
     processed_slot_count: int = 0
     progress_span: int = progress_end - progress_start
     current_progress_value: int
-    root_source_context: DynamicModelImportSourceContext
-    slot_source_context: DynamicModelImportSourceContext
-    direct_child_block_by_slot_id: Dict[str, Block] = dict()
-    direct_graphical_slot_ids: Set[str] = set()
+    root_source_provenance: DynamicModelImportSourceProvenance
+    slot_source_provenance: DynamicModelImportSourceProvenance
+    direct_child_block_by_slot_id: Dict[str, Block]
+    direct_graphical_tree_by_slot_id: Dict[
+        str,
+        DgsGraphicTreeResult,
+    ]
     reported_unresolved_graphical_contracts: Set[Tuple[str, ...]] = set()
 
     if dgs_circuit is None:
@@ -328,25 +569,36 @@ def _build_dgs_root_elmcomp_entries_with_progress(
         pass
 
     # Parsing BlkDef expressions is independent of the concrete ElmDsl
-    # parameters. Share that immutable context across every root in a massive
-    # DGS import, while each root below still materializes its own instances.
+    # parameters. Share those parsed definitions across every root in a massive DGS
+    # import, while each root below still materializes its own instances.
     shared_parsed_dgs_blocks: Dict[str, ParsedDgsBlockDefinition]
     if parsed_dgs_blocks is None:
-        shared_parsed_dgs_blocks = parse_dgs_block_definitions_from_context(
+        shared_parsed_dgs_blocks = parse_dgs_block_definitions_from_circuit(
             circuit=circuit
         )
     else:
         shared_parsed_dgs_blocks = parsed_dgs_blocks
-    graphical_context: DgsGraphicalParseContext = (
-        build_dgs_graphical_parse_context(circuit=circuit)
+    graphical_indexes: DgsGraphicalIndexes = (
+        build_dgs_graphical_indexes(circuit=circuit)
     )
 
     for root_element in circuit.elmcomps:
         root_direct_entries = list(extract_elmcomp_direct_instances(circuit, root_element))
+        unique_slot_entries = get_unique_elmcomp_slot_entries(
+            entries=root_direct_entries,
+        )
+        unique_slot_indices = set()
+        for unique_slot_entry in unique_slot_entries:
+            if unique_slot_entry.slot_index is None:
+                pass
+            else:
+                unique_slot_indices.add(unique_slot_entry.slot_index)
         root_entry_key: str = f"dgs-root|{root_element.ID}"
-        root_source_context = _build_dgs_import_source_context(root_element=root_element)
+        root_source_provenance = _build_dgs_import_source_provenance(
+            root_element=root_element
+        )
         try:
-            root_result = dgs_to_root_block_from_context(
+            root_result = build_dgs_root_block_from_circuit(
                 circuit=circuit,
                 parsed_blocks=shared_parsed_dgs_blocks,
                 root_name=root_element.loc_name,
@@ -381,7 +633,7 @@ def _build_dgs_root_elmcomp_entries_with_progress(
                     source_tpe=DynamicModelImportSource.PowerFactoryDgs,
                     source_block=None,
                     notes_text="Root ElmComp could not be materialized",
-                    source_context=root_source_context,
+                    source_provenance=root_source_provenance,
                 )
             )
 
@@ -396,7 +648,7 @@ def _build_dgs_root_elmcomp_entries_with_progress(
                 else:
                     slot_display_name = str(direct_entry.slot_name)
 
-                slot_source_context = _build_dgs_import_source_context(
+                slot_source_provenance = _build_dgs_import_source_provenance(
                     root_element=root_element,
                     direct_entry=direct_entry,
                 )
@@ -411,7 +663,7 @@ def _build_dgs_root_elmcomp_entries_with_progress(
                             "Slot unavailable because its root could not be materialized"
                         ),
                         parent_key=root_entry_key,
-                        source_context=slot_source_context,
+                        source_provenance=slot_source_provenance,
                     )
                 )
                 processed_slot_count += 1
@@ -427,18 +679,18 @@ def _build_dgs_root_elmcomp_entries_with_progress(
         else:
             try:
                 direct_root_build_result: DgsDirectRootBuildResult = (
-                    build_direct_root_elmcomp_result_from_context(
+                    build_direct_root_elmcomp_block(
                         circuit=circuit,
                         result=root_result,
-                        graphical_context=graphical_context,
+                        graphical_indexes=graphical_indexes,
                     )
                 )
                 direct_root_block: Block = direct_root_build_result.root_block
                 direct_child_block_by_slot_id = (
                     direct_root_build_result.child_block_by_slot_id
                 )
-                direct_graphical_slot_ids = (
-                    direct_root_build_result.graphical_slot_ids
+                direct_graphical_tree_by_slot_id = (
+                    direct_root_build_result.graphical_tree_by_slot_id
                 )
                 root_block = direct_root_block
                 root_block.name = root_element.loc_name
@@ -449,7 +701,7 @@ def _build_dgs_root_elmcomp_entries_with_progress(
                 )
                 root_block = None
                 direct_child_block_by_slot_id = dict()
-                direct_graphical_slot_ids = set()
+                direct_graphical_tree_by_slot_id = dict()
                 # Keep the independently parsed pblk/pelm relations so every
                 # failed slot remains visible in the partial-import report.
                 root_direct_entries = list(root_direct_entries)
@@ -468,7 +720,7 @@ def _build_dgs_root_elmcomp_entries_with_progress(
                         source_tpe=DynamicModelImportSource.PowerFactoryDgs,
                         source_block=None,
                         notes_text="Root ElmComp block could not be materialized",
-                        source_context=root_source_context,
+                        source_provenance=root_source_provenance,
                     )
                 )
             else:
@@ -486,7 +738,7 @@ def _build_dgs_root_elmcomp_entries_with_progress(
                         root_name=root_element.loc_name,
                         root_typ_id=root_element.typ_id,
                     ),
-                    source_context=root_source_context,
+                    source_provenance=root_source_provenance,
                 )
                 entries.append(root_entry)
 
@@ -502,38 +754,68 @@ def _build_dgs_root_elmcomp_entries_with_progress(
                         source_block=None,
                         notes_text=f"Root: {root_element.loc_name} | Composite frame",
                         parent_key=root_entry_key,
-                        source_context=root_source_context,
-                        availability=DynamicModelImportEntryAvailability.ContextOnly,
+                        source_provenance=root_source_provenance,
+                        availability=DynamicModelImportEntryAvailability.MetadataOnly,
                     )
                 )
 
-            direct_entry = None
             for direct_entry in root_direct_entries:
+                relation_classification = _classify_dgs_elmcomp_relation(
+                    entry=direct_entry,
+                    unique_slot_indices=unique_slot_indices,
+                )
+                relation_kind = relation_classification.get_kind()
+                slot_parent_key = (
+                    root_entry_key
+                    if frame_entry_key is None
+                    else frame_entry_key
+                )
                 if direct_entry.slot_name is None:
-                    if direct_entry.slot_id is None:
-                        slot_identity = f"index-{direct_entry.slot_index}"
+                    slot_display_name = f"Slot {direct_entry.slot_index}"
+                else:
+                    slot_display_name = str(direct_entry.slot_name)
+                if direct_entry.slot_id is None:
+                    slot_identity = f"index-{direct_entry.slot_index}"
+                else:
+                    slot_identity = str(direct_entry.slot_id)
+                slot_source_provenance = _build_dgs_import_source_provenance(
+                    root_element=root_element,
+                    direct_entry=direct_entry,
+                )
+
+                if relation_kind != _DgsElmCompRelationKind.DYNAMIC_CANDIDATE:
+                    if relation_kind == _DgsElmCompRelationKind.INVALID:
+                        slot_availability = (
+                            DynamicModelImportEntryAvailability.Failed
+                        )
+                        slot_notes_text = (
+                            f"Root: {root_element.loc_name} | Invalid relation: "
+                            f"{relation_classification.get_reason()}"
+                        )
                     else:
-                        slot_identity = str(direct_entry.slot_id)
-                    slot_source_context = _build_dgs_import_source_context(
-                        root_element=root_element,
-                        direct_entry=direct_entry,
-                    )
-                    if direct_entry.type_id is None:
-                        slot_availability = DynamicModelImportEntryAvailability.ContextOnly
-                    else:
-                        slot_availability = DynamicModelImportEntryAvailability.Failed
+                        slot_availability = (
+                            DynamicModelImportEntryAvailability.MetadataOnly
+                        )
+                        non_executable_notes_text = (
+                            _build_dgs_non_executable_slot_notes(
+                                circuit=circuit,
+                                root_name=root_element.loc_name,
+                                entry=direct_entry,
+                            )
+                        )
+                        slot_notes_text = (
+                            f"{non_executable_notes_text}"
+                            f" | Relation: {relation_classification.get_reason()}"
+                        )
                     entries.append(
                         DynamicModelImportEntry(
-                            unique_key=(
-                                f"dgs-unavailable|{root_element.ID}|"
-                                f"{slot_identity}|{direct_entry.element_id}"
-                            ),
-                            display_name=f"Slot {direct_entry.slot_index}",
+                            unique_key=f"dgs-metadata|{root_element.ID}|{slot_identity}|{direct_entry.element_id}",
+                            display_name=slot_display_name,
                             source_tpe=DynamicModelImportSource.PowerFactoryDgs,
                             source_block=None,
-                            notes_text=f"Root: {root_element.loc_name} | Slot has no exported name",
-                            parent_key=root_entry_key if frame_entry_key is None else frame_entry_key,
-                            source_context=slot_source_context,
+                            notes_text=slot_notes_text,
+                            parent_key=slot_parent_key,
+                            source_provenance=slot_source_provenance,
                             availability=slot_availability,
                         )
                     )
@@ -548,31 +830,33 @@ def _build_dgs_root_elmcomp_entries_with_progress(
                         f"Importing DGS slots: {processed_slot_count}/{total_slot_count}",
                     )
                 else:
-                    slot_parent_key = root_entry_key if frame_entry_key is None else frame_entry_key
-                    slot_display_name = str(direct_entry.slot_name)
-                    if direct_entry.slot_id is None:
-                        slot_identity = f"index-{direct_entry.slot_index}"
-                    else:
-                        slot_identity = str(direct_entry.slot_id)
-                    slot_source_context = _build_dgs_import_source_context(
-                        root_element=root_element,
-                        direct_entry=direct_entry,
+                    slot_template_name: str = (
+                        f"{root_element.loc_name}::{slot_display_name}"
                     )
+                    slot_block: Block | None
+                    effective_type_id = direct_entry.type_id
 
-                    slot_template_name: str = f"{root_element.loc_name}::{direct_entry.slot_name}"
-                    slot_block: Block | None = None
-
-                    if direct_entry.type_id is None:
+                    if effective_type_id is None:
+                        slot_availability = (
+                            DynamicModelImportEntryAvailability.Failed
+                        )
+                        slot_notes_text = (
+                            f"Root: {root_element.loc_name} | "
+                            "Dynamic relation has no executable type reference"
+                        )
                         entries.append(
                             DynamicModelImportEntry(
-                                unique_key=f"dgs-context|{root_element.ID}|{slot_identity}|{direct_entry.element_id}",
+                                unique_key=(
+                                    f"dgs-unavailable|{root_element.ID}|"
+                                    f"{slot_identity}|{direct_entry.element_id}"
+                                ),
                                 display_name=slot_display_name,
                                 source_tpe=DynamicModelImportSource.PowerFactoryDgs,
                                 source_block=None,
-                                notes_text=_build_dgs_context_slot_notes(circuit=circuit, root_name=root_element.loc_name, entry=direct_entry),
+                                notes_text=slot_notes_text,
                                 parent_key=slot_parent_key,
-                                source_context=slot_source_context,
-                                availability=DynamicModelImportEntryAvailability.ContextOnly,
+                                source_provenance=slot_source_provenance,
+                                availability=slot_availability,
                             )
                         )
                     else:
@@ -581,27 +865,38 @@ def _build_dgs_root_elmcomp_entries_with_progress(
                         # controller twice during a massive DGS import.
                         if direct_entry.slot_id is None:
                             cached_slot_block = None
+                            graph_tree = None
                         else:
-                            cached_slot_block = direct_child_block_by_slot_id.get(
-                                str(direct_entry.slot_id),
+                            slot_id: str = str(direct_entry.slot_id)
+                            cached_slot_block = (
+                                direct_child_block_by_slot_id.get(
+                                    slot_id,
+                                    None,
+                                )
+                            )
+                            graph_tree = direct_graphical_tree_by_slot_id.get(
+                                slot_id,
                                 None,
                             )
 
                         if cached_slot_block is None:
-                            try:
-                                graph_tree = extract_root_slot_block_graphical_tree_from_context(
-                                    circuit=circuit,
-                                    result=root_result,
-                                    slot_name=direct_entry.slot_name,
-                                    slot_dgs_id=direct_entry.slot_id,
-                                    graphical_context=graphical_context,
-                                )
-                            except Exception as exc:
-                                logger.add_warning(
-                                    msg="DGS slot import skipped",
-                                    value=f"{root_element.loc_name}/{direct_entry.slot_name}: {exc}",
-                                )
-                                graph_tree = None
+                            if graph_tree is None:
+                                try:
+                                    graph_tree = extract_root_slot_graphical_tree_from_circuit(
+                                        circuit=circuit,
+                                        result=root_result,
+                                        slot_name=slot_display_name,
+                                        slot_dgs_id=direct_entry.slot_id,
+                                        graphical_indexes=graphical_indexes,
+                                    )
+                                except Exception as exc:
+                                    logger.add_warning(
+                                        msg="DGS slot import skipped",
+                                        value=f"{root_element.loc_name}/{slot_display_name}: {exc}",
+                                    )
+                                    graph_tree = None
+                                else:
+                                    pass
                             else:
                                 pass
 
@@ -612,44 +907,24 @@ def _build_dgs_root_elmcomp_entries_with_progress(
                                 materialized_slot_block = graph_tree.view_block
                                 slot_was_graphical = True
                         else:
-                            graph_tree = None
                             materialized_slot_block = cached_slot_block
-                            if direct_entry.slot_id is None:
+                            if graph_tree is None:
                                 slot_was_graphical = False
                             else:
-                                slot_was_graphical = (
-                                    str(direct_entry.slot_id) in direct_graphical_slot_ids
-                                )
+                                slot_was_graphical = True
 
-                        if materialized_slot_block is None:
+                        if graph_tree is None:
                             unresolved_graphical_input_names: List[str] = list()
                         else:
-                            raw_unresolved_graphical_input_names: object | None = (
-                                materialized_slot_block.__dict__.get(
-                                    "dgs_unresolved_graphical_input_names",
-                                    None,
-                                )
+                            unresolved_graphical_input_names = list(
+                                graph_tree.parent_bindings.unresolved_input_names
                             )
-                            unresolved_graphical_input_names = list()
-                            if isinstance(raw_unresolved_graphical_input_names, list):
-                                raw_unresolved_graphical_input_name: object
-                                for raw_unresolved_graphical_input_name in raw_unresolved_graphical_input_names:
-                                    if isinstance(raw_unresolved_graphical_input_name, str):
-                                        unresolved_graphical_input_names.append(
-                                            raw_unresolved_graphical_input_name
-                                        )
-                                    else:
-                                        pass
-                                else:
-                                    pass
-                            else:
-                                pass
                         unresolved_graphical_input_names.sort()
                         if len(unresolved_graphical_input_names) == 0:
                             pass
                         else:
                             unresolved_contract_parts: List[str] = list()
-                            unresolved_contract_parts.append(str(direct_entry.type_id))
+                            unresolved_contract_parts.append(effective_type_id)
                             unresolved_contract_parts.extend(
                                 unresolved_graphical_input_names
                             )
@@ -673,12 +948,15 @@ def _build_dgs_root_elmcomp_entries_with_progress(
                                 )
 
                         if materialized_slot_block is None:
-                            parsed_slot_block = root_result.parsed_blocks.get(str(direct_entry.type_id), None)
+                            parsed_slot_block = root_result.parsed_blocks.get(
+                                effective_type_id,
+                                None,
+                            )
                             try:
                                 if parsed_slot_block is None:
                                     slot_block = build_standalone_blkdef_block(
                                         dgs_path=dgs_path,
-                                        typ_id=direct_entry.type_id,
+                                        typ_id=effective_type_id,
                                         block_name=slot_template_name,
                                     )
                                 else:
@@ -689,7 +967,7 @@ def _build_dgs_root_elmcomp_entries_with_progress(
                             except Exception as exc:
                                 logger.add_warning(
                                     msg="DGS slot block materialization skipped",
-                                    value=f"{root_element.loc_name}/{direct_entry.slot_name}: {exc}",
+                                    value=f"{root_element.loc_name}/{slot_display_name}: {exc}",
                                 )
                                 slot_block = None
 
@@ -705,10 +983,10 @@ def _build_dgs_root_elmcomp_entries_with_progress(
                                         source_block=None,
                                         notes_text=(
                                             f"Root: {root_element.loc_name} | "
-                                            f"Slot: {direct_entry.slot_name} | Block could not be materialized"
+                                            f"Slot: {slot_display_name} | Block could not be materialized"
                                         ),
                                         parent_key=slot_parent_key,
-                                        source_context=slot_source_context,
+                                        source_provenance=slot_source_provenance,
                                     )
                                 )
                             else:
@@ -718,17 +996,17 @@ def _build_dgs_root_elmcomp_entries_with_progress(
                                         display_name=slot_display_name,
                                         source_tpe=DynamicModelImportSource.PowerFactoryDgs,
                                         source_block=slot_block,
-                                        notes_text=f"Root: {root_element.loc_name} | Slot: {direct_entry.slot_name}",
+                                        notes_text=f"Root: {root_element.loc_name} | Slot: {slot_display_name}",
                                         parent_key=slot_parent_key,
                                         persistence_spec=DynamicModelPersistenceSpec(
                                             kind=DynamicModelPersistenceKind.DgsStandaloneBlkdef,
                                             source_path=dgs_path,
                                             template_name=slot_template_name,
                                             module_stem=_sanitize_file_stem(slot_template_name),
-                                            block_id=str(direct_entry.type_id),
+                                            block_id=effective_type_id,
                                             block_name=str(direct_entry.type_name),
                                         ),
-                                        source_context=slot_source_context,
+                                        source_provenance=slot_source_provenance,
                                     )
                                 )
                         else:
@@ -738,7 +1016,7 @@ def _build_dgs_root_elmcomp_entries_with_progress(
                             except Exception as exc:
                                 logger.add_warning(
                                     msg="DGS graphical slot materialization skipped",
-                                    value=f"{root_element.loc_name}/{direct_entry.slot_name}: {exc}",
+                                    value=f"{root_element.loc_name}/{slot_display_name}: {exc}",
                                 )
                                 slot_block = None
 
@@ -754,10 +1032,10 @@ def _build_dgs_root_elmcomp_entries_with_progress(
                                         source_block=None,
                                         notes_text=(
                                             f"Root: {root_element.loc_name} | "
-                                            f"Slot: {direct_entry.slot_name} | Graph could not be materialized"
+                                            f"Slot: {slot_display_name} | Graph could not be materialized"
                                         ),
                                         parent_key=slot_parent_key,
-                                        source_context=slot_source_context,
+                                        source_provenance=slot_source_provenance,
                                     )
                                 )
                             else:
@@ -769,7 +1047,7 @@ def _build_dgs_root_elmcomp_entries_with_progress(
                                         module_stem=_sanitize_file_stem(slot_template_name),
                                         root_name=root_element.loc_name,
                                         root_typ_id=root_element.typ_id,
-                                        slot_name=direct_entry.slot_name,
+                                        slot_name=slot_display_name,
                                     )
                                 else:
                                     slot_persistence_spec = DynamicModelPersistenceSpec(
@@ -777,7 +1055,7 @@ def _build_dgs_root_elmcomp_entries_with_progress(
                                         source_path=dgs_path,
                                         template_name=slot_template_name,
                                         module_stem=_sanitize_file_stem(slot_template_name),
-                                        block_id=str(direct_entry.type_id),
+                                        block_id=effective_type_id,
                                         block_name=str(direct_entry.type_name),
                                     )
                                 entries.append(
@@ -786,10 +1064,10 @@ def _build_dgs_root_elmcomp_entries_with_progress(
                                         display_name=slot_display_name,
                                         source_tpe=DynamicModelImportSource.PowerFactoryDgs,
                                         source_block=slot_block,
-                                        notes_text=f"Root: {root_element.loc_name} | Slot: {direct_entry.slot_name}",
+                                        notes_text=f"Root: {root_element.loc_name} | Slot: {slot_display_name}",
                                         parent_key=slot_parent_key,
                                         persistence_spec=slot_persistence_spec,
-                                        source_context=slot_source_context,
+                                        source_provenance=slot_source_provenance,
                                     )
                                 )
 
@@ -823,19 +1101,6 @@ def build_dgs_dynamic_model_import_bundle(
     :param dgs_circuit: Optional circuit already parsed by the static importer.
     :return: Pair ``(bundle, logger)``.
     """
-    try:
-        from VeraGridEngine.IO.dgs.dgs_to_blocks import (
-            build_dgs_standalone_block_catalog_from_context,
-            build_standalone_blkdef_block_from_parsed_block,
-            parse_dgs_block_definitions_from_context,
-        )
-    except ImportError as error:
-        raise DgsDynamicParserContractError(
-            "The dynamic DGS importer requires parser functions that are not "
-            "present after the parser reversion. Restore and test that parser "
-            "boundary before importing dynamic DGS models."
-        ) from error
-
     logger: Logger = Logger()
     shared_circuit: DgsCircuit
     shared_parsed_blocks: Dict[str, ParsedDgsBlockDefinition]
@@ -853,13 +1118,13 @@ def build_dgs_dynamic_model_import_bundle(
         shared_circuit.parse_dgs(dgs_path)
     else:
         shared_circuit = dgs_circuit
-    shared_parsed_blocks = parse_dgs_block_definitions_from_context(
+    shared_parsed_blocks = parse_dgs_block_definitions_from_circuit(
         circuit=shared_circuit
     )
 
     _emit_dynamic_model_import_progress(progress_callback, 0, "Scanning DGS dynamic model structure...")
     try:
-        catalog_entries = build_dgs_standalone_block_catalog_from_context(
+        catalog_entries = build_dgs_standalone_block_catalog_from_circuit(
             circuit=shared_circuit,
             parsed_blocks=shared_parsed_blocks,
             isolated_only=False,
@@ -1000,14 +1265,16 @@ def guess_dynamic_model_import_default_device_tpe(entry: "DynamicModelImportEntr
     :return: Default device type guess.
     """
     persistence_spec: DynamicModelPersistenceSpec | None = entry.get_persistence_spec()
-    source_context: DynamicModelImportSourceContext | None = entry.get_source_context()
+    source_provenance: DynamicModelImportSourceProvenance | None = (
+        entry.get_source_provenance()
+    )
     is_root_composite: bool = (
         persistence_spec is not None and
         persistence_spec.get_kind() == DynamicModelPersistenceKind.DgsRootElmComp
     )
     is_nested_composite: bool = (
-        source_context is not None and
-        source_context.get_source_element_class() == "ElmComp"
+        source_provenance is not None and
+        source_provenance.get_source_element_class() == "ElmComp"
     )
 
     if is_root_composite or is_nested_composite:
@@ -1089,6 +1356,9 @@ def is_dgs_dynamic_block_runtime_assignable(
     mapping_refs: Set[VarPowerFlowReferenceType] = set(block.external_mapping)
     input_refs: Set[VarPowerFlowReferenceType] = set()
     input_var: Var
+    runtime_block_contract: _DgsRuntimeBlockContract = (
+        _DgsRuntimeBlockContract(block)
+    )
 
     for input_var in block.in_vars:
         if isinstance(input_var.ref, VarPowerFlowReferenceType):
@@ -1096,48 +1366,59 @@ def is_dgs_dynamic_block_runtime_assignable(
         else:
             pass
 
+    required_mapping_values: Tuple[VarPowerFlowReferenceType, ...]
+    required_input_values: Tuple[VarPowerFlowReferenceType, ...]
     if device_tpe == DeviceType.VscDevice:
-        required_mapping_refs: Set[VarPowerFlowReferenceType] = set([
+        required_mapping_values = (
             VarPowerFlowReferenceType.Pf,
             VarPowerFlowReferenceType.Pt,
             VarPowerFlowReferenceType.Qt,
-        ])
-        if block.__dict__.get("dgs_elmvscmono_runtime_adapter", None) is True:
-            required_input_refs: Set[VarPowerFlowReferenceType] = set([
+        )
+        if runtime_block_contract.matches(
+                _DgsRuntimeAdapterKind.VSC_MONOPOLAR
+        ):
+            required_input_values = (
                 VarPowerFlowReferenceType.Vf_dc,
                 VarPowerFlowReferenceType.Vmt,
                 VarPowerFlowReferenceType.Vat,
-            ])
+            )
         else:
-            required_input_refs = set([
+            required_input_values = (
                 VarPowerFlowReferenceType.Vf_dc,
                 VarPowerFlowReferenceType.Vt_dc,
                 VarPowerFlowReferenceType.Vmt,
                 VarPowerFlowReferenceType.Vat,
-            ])
+            )
     else:
         if device_tpe == DeviceType.ControllableShuntDevice:
-            required_mapping_refs = set([
+            required_mapping_values = (
                 VarPowerFlowReferenceType.P,
                 VarPowerFlowReferenceType.Q,
-            ])
-            required_input_refs = set([
+            )
+            required_input_values = (
                 VarPowerFlowReferenceType.Vm,
                 VarPowerFlowReferenceType.Va,
-            ])
+            )
         else:
             if device_tpe == DeviceType.GeneratorDevice:
-                required_mapping_refs = set([
+                required_mapping_values = (
                     VarPowerFlowReferenceType.P,
                     VarPowerFlowReferenceType.Q,
-                ])
-                required_input_refs = set([
+                )
+                required_input_values = (
                     VarPowerFlowReferenceType.Vm,
                     VarPowerFlowReferenceType.Va,
-                ])
+                )
             else:
-                required_mapping_refs = set()
-                required_input_refs = set()
+                required_mapping_values = tuple()
+                required_input_values = tuple()
+
+    required_mapping_refs: Set[VarPowerFlowReferenceType] = set(
+        required_mapping_values
+    )
+    required_input_refs: Set[VarPowerFlowReferenceType] = set(
+        required_input_values
+    )
 
     if len(required_mapping_refs) == 0 or len(required_input_refs) == 0:
         result: bool = False
@@ -1167,7 +1448,9 @@ def guess_dynamic_model_import_hierarchy_device_tpe(
     :return: Physical device type or the conservative generic classification.
     """
     fallback_tpe: DeviceType = guess_dynamic_model_import_default_device_tpe(entry=entry)
-    source_context: DynamicModelImportSourceContext | None = entry.get_source_context()
+    source_provenance: DynamicModelImportSourceProvenance | None = (
+        entry.get_source_provenance()
+    )
     persistence_spec: DynamicModelPersistenceSpec | None = entry.get_persistence_spec()
     is_root_composite: bool = (
         persistence_spec is not None
@@ -1175,7 +1458,7 @@ def guess_dynamic_model_import_hierarchy_device_tpe(
     )
     host_identities: Set[Tuple[str, DeviceType]] = set()
     candidate_entry: DynamicModelImportEntry
-    candidate_context: DynamicModelImportSourceContext | None
+    candidate_provenance: DynamicModelImportSourceProvenance | None
     candidate_class: str | None
     candidate_device_tpe: DeviceType | None
     candidate_element_id: str | None
@@ -1183,7 +1466,7 @@ def guess_dynamic_model_import_hierarchy_device_tpe(
 
     if (
             entry.get_source_tpe() != DynamicModelImportSource.PowerFactoryDgs
-            or source_context is None
+            or source_provenance is None
             or not is_root_composite
     ):
         result: DeviceType = fallback_tpe
@@ -1191,18 +1474,25 @@ def guess_dynamic_model_import_hierarchy_device_tpe(
         # FID and class are the only admissible join keys. Display names remain
         # provenance and never participate in host inference.
         for candidate_entry in bundle.get_entries():
-            candidate_context = candidate_entry.get_source_context()
-            if candidate_context is None:
+            candidate_provenance = candidate_entry.get_source_provenance()
+            if candidate_provenance is None:
                 pass
             else:
-                if candidate_context.get_root_dgs_id() != source_context.get_root_dgs_id():
+                if (
+                        candidate_provenance.get_root_dgs_id()
+                        != source_provenance.get_root_dgs_id()
+                ):
                     pass
                 else:
-                    candidate_class = candidate_context.get_source_element_class()
+                    candidate_class = (
+                        candidate_provenance.get_source_element_class()
+                    )
                     candidate_device_tpe = get_dgs_dynamic_host_device_tpe(
                         source_element_class=candidate_class,
                     )
-                    candidate_element_id = candidate_context.get_source_element_dgs_id()
+                    candidate_element_id = (
+                        candidate_provenance.get_source_element_dgs_id()
+                    )
                     if candidate_device_tpe is None or candidate_element_id is None:
                         pass
                     else:
@@ -1456,6 +1746,36 @@ def _build_selected_template_from_import_entry(
             return None
 
 
+def _normalize_output_logic_runtime_variable_name(
+        logic: FixedSampleLogic
+        | SampledValueLogic
+        | FlipFlopLogic
+        | AnalogFlipFlopLogic
+        | PickupDropoffLogic
+        | TimeDelayLogic
+        | MovingAverageLogic
+        | GradientLimiterLogic
+        | HardSaturationLogic,
+        runtime_suffix: str,
+) -> None:
+    """Normalize one procedural output name and its matching logic name.
+
+    :param logic: Procedural logic exposing an ``output_var_name`` slot.
+    :param runtime_suffix: Generated template suffix to remove.
+    :return: None.
+    """
+    old_output_name: str = logic.output_var_name
+    if len(runtime_suffix) > 1 and old_output_name.endswith(runtime_suffix):
+        new_output_name: str = old_output_name[:-len(runtime_suffix)]
+        if logic.name == old_output_name:
+            logic.name = new_output_name
+        else:
+            pass
+        logic.output_var_name = new_output_name
+    else:
+        pass
+
+
 def _normalize_procedural_logic_runtime_variable_names(
         block: Block,
         runtime_suffix: str,
@@ -1502,16 +1822,10 @@ def _normalize_procedural_logic_runtime_variable_names(
                         HardSaturationLogic,
                     ),
             ):
-                old_output_name: str = logic.output_var_name
-                if len(runtime_suffix) > 1 and old_output_name.endswith(runtime_suffix):
-                    new_output_name: str = old_output_name[:-len(runtime_suffix)]
-                    if logic.name == old_output_name:
-                        logic.name = new_output_name
-                    else:
-                        pass
-                    logic.output_var_name = new_output_name
-                else:
-                    pass
+                _normalize_output_logic_runtime_variable_name(
+                    logic=logic,
+                    runtime_suffix=runtime_suffix,
+                )
             else:
                 pass
 
@@ -1748,7 +2062,7 @@ def build_dynamic_import_template_fingerprint(
         return hashlib.sha256(module_text.encode("utf-8")).hexdigest()
 
 
-def _build_contextual_dynamic_import_template_name(
+def _build_source_qualified_dynamic_import_template_name(
         entry: DynamicModelImportEntry,
         existing_names: Set[str],
 ) -> str:
@@ -1761,33 +2075,35 @@ def _build_contextual_dynamic_import_template_name(
     """
     base_name: str = entry.get_display_name()
     key_parts: List[str] = entry.get_unique_key().split("|")
-    source_context: DynamicModelImportSourceContext | None = entry.get_source_context()
-    context_label: str = "imported variant"
+    source_provenance: DynamicModelImportSourceProvenance | None = (
+        entry.get_source_provenance()
+    )
+    source_label: str = "imported variant"
     candidate_name: str
     suffix_index: int = 2
 
-    if source_context is None:
+    if source_provenance is None:
         if len(key_parts) >= 3 and key_parts[0] == "dgs-slot":
-            context_label = "child slot"
+            source_label = "child slot"
         else:
             if len(key_parts) >= 2 and key_parts[0].startswith("dgs-"):
-                context_label = "DGS variant"
+                source_label = "DGS variant"
             else:
                 pass
     else:
         # Stable FIDs belong in metadata; collision names remain readable by
         # presenting the exported root/slot labels to humans.
-        if source_context.get_root_name().casefold() == base_name.casefold():
-            if source_context.get_slot_name() is None:
-                context_label = "root variant"
+        if source_provenance.get_root_name().casefold() == base_name.casefold():
+            if source_provenance.get_slot_name() is None:
+                source_label = "root variant"
             else:
-                context_label = source_context.get_slot_name()
+                source_label = source_provenance.get_slot_name()
         else:
-            context_label = source_context.get_root_name()
+            source_label = source_provenance.get_root_name()
 
-    candidate_name = f"{base_name} [{context_label}]"
+    candidate_name = f"{base_name} [{source_label}]"
     while candidate_name in existing_names:
-        candidate_name = f"{base_name} [{context_label} {suffix_index}]"
+        candidate_name = f"{base_name} [{source_label} {suffix_index}]"
         suffix_index += 1
 
     return candidate_name
@@ -1821,7 +2137,7 @@ def _append_dynamic_model_import_entry_result(
             final_name=final_name,
             domain=selection_request.get_target_domain(),
             status=status,
-            source_context=entry.get_source_context(),
+            source_provenance=entry.get_source_provenance(),
             message=message,
         )
         report.add_entry_result(entry_result=entry_result)
@@ -1844,7 +2160,7 @@ def build_dgs_dynamic_association_records(
     records: List[DgsDynamicAssociationRecord] = list()
     root_template_name_by_dgs_id: Dict[str, str] = dict()
     entry_result: DynamicModelImportEntryResult
-    source_context: DynamicModelImportSourceContext | None
+    source_provenance: DynamicModelImportSourceProvenance | None
     final_template_name: str | None
 
     # Resolve the reusable composite template once per exact ElmComp FID.  The
@@ -1852,38 +2168,46 @@ def build_dgs_dynamic_association_records(
     # catalogue entries, so this first pass provides the safe join key between
     # them without relying on display names.
     for entry_result in report.get_entry_results():
-        source_context = entry_result.get_source_context()
+        source_provenance = entry_result.get_source_provenance()
         final_template_name = entry_result.get_final_name()
         is_root_result: bool = (
-            source_context is not None
-            and source_context.get_slot_index() is None
+            source_provenance is not None
+            and source_provenance.get_slot_index() is None
             and final_template_name is not None
         )
-        if is_root_result and source_context is not None and final_template_name is not None:
-            root_template_name_by_dgs_id[source_context.get_root_dgs_id()] = final_template_name
+        if (
+                is_root_result
+                and source_provenance is not None
+                and final_template_name is not None
+        ):
+            root_template_name_by_dgs_id[
+                source_provenance.get_root_dgs_id()
+            ] = final_template_name
         else:
             pass
 
     for entry_result in report.get_entry_results():
-        source_context = entry_result.get_source_context()
-        if source_context is None:
+        source_provenance = entry_result.get_source_provenance()
+        if source_provenance is None:
             pass
         else:
             final_template_name = entry_result.get_final_name()
-            source_element_class: str | None = source_context.get_source_element_class()
+            source_element_class: str | None = (
+                source_provenance.get_source_element_class()
+            )
             is_physical_root_slot: bool = (
-                source_context.get_slot_index() is not None
+                source_provenance.get_slot_index() is not None
                 and source_element_class is not None
                 and source_element_class not in {"ElmDsl", "ElmComp"}
             )
             if final_template_name is None and is_physical_root_slot:
-                # A physical pElm is context rather than a reusable template.
+                # A physical pElm is a source reference, not a reusable template.
                 # Carry the owning root-template identity onto its association
                 # record so consumers can answer which composite controls the
                 # exact equipment FID while keeping activation as a distinct,
                 # explicitly validated runtime step.
                 final_template_name = root_template_name_by_dgs_id.get(
-                    source_context.get_root_dgs_id(),
+                    source_provenance.get_root_dgs_id(),
                     None,
                 )
             else:
@@ -1891,22 +2215,28 @@ def build_dgs_dynamic_association_records(
             records.append(
                 DgsDynamicAssociationRecord(
                     unique_key=entry_result.get_unique_key(),
-                    root_dgs_id=source_context.get_root_dgs_id(),
-                    root_name=source_context.get_root_name(),
-                    root_typ_id=source_context.get_root_typ_id(),
-                    slot_dgs_id=source_context.get_slot_dgs_id(),
-                    slot_name=source_context.get_slot_name(),
-                    slot_index=source_context.get_slot_index(),
-                    slot_element=source_context.get_slot_element(),
-                    slot_filter=source_context.get_slot_filter(),
-                    source_element_dgs_id=source_context.get_source_element_dgs_id(),
-                    source_element_name=source_context.get_source_element_name(),
-                    source_element_class=source_context.get_source_element_class(),
+                    root_dgs_id=source_provenance.get_root_dgs_id(),
+                    root_name=source_provenance.get_root_name(),
+                    root_typ_id=source_provenance.get_root_typ_id(),
+                    slot_dgs_id=source_provenance.get_slot_dgs_id(),
+                    slot_name=source_provenance.get_slot_name(),
+                    slot_index=source_provenance.get_slot_index(),
+                    slot_element=source_provenance.get_slot_element(),
+                    slot_filter=source_provenance.get_slot_filter(),
+                    source_element_dgs_id=(
+                        source_provenance.get_source_element_dgs_id()
+                    ),
+                    source_element_name=source_provenance.get_source_element_name(),
+                    source_element_class=(
+                        source_provenance.get_source_element_class()
+                    ),
                     final_template_name=final_template_name,
                     role=infer_dgs_dynamic_association_role(
-                        slot_index=source_context.get_slot_index(),
-                        source_element_class=source_context.get_source_element_class(),
-                        slot_filter=source_context.get_slot_filter(),
+                        slot_index=source_provenance.get_slot_index(),
+                        source_element_class=(
+                            source_provenance.get_source_element_class()
+                        ),
+                        slot_filter=source_provenance.get_slot_filter(),
                     ),
                     target_domain=entry_result.get_domain(),
                     status=entry_result.get_status(),
@@ -2093,7 +2423,7 @@ def add_dynamic_import_selection_requests_to_circuit(
                         if template_obj.name in existing_rms_names:
                             if rename_conflicting_templates:
                                 original_name: str = template_obj.name
-                                template_obj.name = _build_contextual_dynamic_import_template_name(
+                                template_obj.name = _build_source_qualified_dynamic_import_template_name(
                                     entry=entry,
                                     existing_names=existing_rms_names,
                                 )
@@ -2142,7 +2472,7 @@ def add_dynamic_import_selection_requests_to_circuit(
                             if template_obj.name in existing_emt_names:
                                 if rename_conflicting_templates:
                                     original_name = template_obj.name
-                                    template_obj.name = _build_contextual_dynamic_import_template_name(
+                                    template_obj.name = _build_source_qualified_dynamic_import_template_name(
                                         entry=entry,
                                         existing_names=existing_emt_names,
                                     )
@@ -2489,52 +2819,61 @@ def activate_unambiguous_dgs_dynamic_models_in_circuit(
                         template_name=template_name,
                         target_domain=host_record.get_target_domain(),
                     )
+                    template_runtime_contract: _DgsRuntimeBlockContract | None
+                    if template_obj is None:
+                        template_runtime_contract = None
+                    else:
+                        template_runtime_contract = _DgsRuntimeBlockContract(
+                            template_obj.block
+                        )
+                    host_device: DynamicDevice | None
+                    if len(host_devices) == 1:
+                        host_device = host_devices[0]
+                    else:
+                        host_device = None
                     adapter_configuration_ready: bool = True
                     if (
                             isinstance(template_obj, RmsModelTemplate)
-                            and len(host_devices) == 1
-                            and isinstance(host_devices[0], VSC)
-                            and template_obj.block.__dict__.get(
-                                "dgs_elmvscmono_runtime_adapter",
-                                None,
-                            ) is True
+                            and isinstance(host_device, VSC)
+                            and template_runtime_contract is not None
+                            and template_runtime_contract.matches(
+                                _DgsRuntimeAdapterKind.VSC_MONOPOLAR
+                            )
                     ):
                         # Monopolar bridges use the grounded return represented
                         # by their one exported DC terminal and native base.
                         adapter_configuration_ready = (
                             configure_dgs_elmvscmono_runtime_template_for_device(
                                 template=template_obj,
-                                device=host_devices[0],
+                                device=host_device,
                                 system_base_mva=float(circuit.Sbase),
                             )
                         )
                     else:
                         if (
-                            isinstance(template_obj, RmsModelTemplate)
-                            and len(host_devices) == 1
-                            and isinstance(host_devices[0], VSC)
-                            and template_obj.block.__dict__.get(
-                                "dgs_elmvsc_runtime_adapter",
-                                None,
-                            ) is True
+                                isinstance(template_obj, RmsModelTemplate)
+                                and isinstance(host_device, VSC)
+                                and template_runtime_contract is not None
+                                and template_runtime_contract.matches(
+                                    _DgsRuntimeAdapterKind.VSC_BIPOLAR
+                                )
                         ):
                             # Bipolar bridges use both exported pole bases.
                             adapter_configuration_ready = (
                                 configure_dgs_elmvsc_runtime_template_for_device(
                                     template=template_obj,
-                                    device=host_devices[0],
+                                    device=host_device,
                                     system_base_mva=float(circuit.Sbase),
                                 )
                             )
                         else:
                             if (
                                     isinstance(template_obj, RmsModelTemplate)
-                                    and len(host_devices) == 1
-                                    and isinstance(host_devices[0], Generator)
-                                    and template_obj.block.__dict__.get(
-                                        "dgs_elmsym_runtime_adapter_pending",
-                                        None,
-                                    ) is True
+                                    and isinstance(host_device, Generator)
+                                    and template_runtime_contract is not None
+                                    and template_runtime_contract.matches(
+                                        _DgsRuntimeAdapterKind.SYNCHRONOUS_MACHINE_PENDING
+                                    )
                             ):
                                 # The exact TypSym selects salient or round
                                 # rotor structure and supplies every physical
@@ -2542,7 +2881,7 @@ def activate_unambiguous_dgs_dynamic_models_in_circuit(
                                 adapter_configuration_ready = (
                                     configure_dgs_elmsym_runtime_template_for_device(
                                         template=template_obj,
-                                        device=host_devices[0],
+                                        device=host_device,
                                         system_base_mva=float(circuit.Sbase),
                                     )
                                 )
@@ -2600,7 +2939,7 @@ def add_all_dynamic_import_bundle_to_circuit_with_report(
 
     Structurally equivalent entries are deduplicated across names within the same
     target domain and device classification.  Same-name entries with a different
-    symbolic structure receive a deterministic human-readable contextual name so
+    symbolic structure receive a deterministic source-qualified name so
     the bulk path never discards a valid variant merely because another root
     exposed the same slot label.
 
@@ -2643,9 +2982,12 @@ def add_all_dynamic_import_bundle_to_circuit_with_report(
     for entry in bundle.get_entries():
         if not entry.is_importable():
             entry_availability = entry.get_availability()
-            if entry_availability == DynamicModelImportEntryAvailability.ContextOnly:
+            if entry_availability == DynamicModelImportEntryAvailability.MetadataOnly:
                 unavailable_status = DynamicModelImportEntryStatus.Skipped
-                unavailable_message = "Source hierarchy/association context retained without a reusable template"
+                unavailable_message = (
+                    "Source hierarchy and association metadata retained without "
+                    "a reusable template"
+                )
             else:
                 unavailable_status = DynamicModelImportEntryStatus.Failed
                 unavailable_message = "Source entry could not be materialized"
@@ -2750,19 +3092,19 @@ def add_all_dynamic_import_bundle_to_circuit_with_report(
                         pass
                     else:
                         selected_template_object_id: int = id(selected_template)
+                        selected_runtime_contract: _DgsRuntimeBlockContract = (
+                            _DgsRuntimeBlockContract(selected_template.block)
+                        )
                         adapter_requires_refingerprint: bool = (
-                            selected_template.block.__dict__.get(
-                                "dgs_elmvscmono_runtime_adapter",
-                                None,
-                            ) is True
-                            or selected_template.block.__dict__.get(
-                                "dgs_elmvsc_runtime_adapter",
-                                None,
-                            ) is True
-                            or selected_template.block.__dict__.get(
-                                "dgs_elmsym_runtime_adapter",
-                                None,
-                            ) is True
+                            selected_runtime_contract.matches(
+                                _DgsRuntimeAdapterKind.VSC_MONOPOLAR
+                            )
+                            or selected_runtime_contract.matches(
+                                _DgsRuntimeAdapterKind.VSC_BIPOLAR
+                            )
+                            or selected_runtime_contract.matches(
+                                _DgsRuntimeAdapterKind.SYNCHRONOUS_MACHINE
+                            )
                         )
                         if (
                                 not adapter_requires_refingerprint
@@ -3355,12 +3697,13 @@ def _read_user_dynamic_template_payload_identity(
         or incomplete payload.
     """
     identity_values: Dict[str, str] = dict()
-    required_keys: Set[str] = set([
+    required_key_values: Tuple[str, ...] = (
         "template_name",
         "target_domain",
         "device_tpe",
         "template_fingerprint",
-    ])
+    )
+    required_keys: Set[str] = set(required_key_values)
     payload_line: str
     stripped_line: str
     identity_key: str
@@ -3453,12 +3796,13 @@ def _read_user_dynamic_template_module_identity(
     stripped_line: str
     decoded_payload: object
     identity_payload: Dict[str, object]
-    required_keys: Set[str] = set([
+    required_key_values: Tuple[str, ...] = (
         "template_name",
         "target_domain",
         "device_tpe",
         "template_fingerprint",
-    ])
+    )
+    required_keys: Set[str] = set(required_key_values)
     identity: Tuple[str, str, str, str] | None = None
     inspected_line_count: int = 0
 
@@ -3843,7 +4187,7 @@ def _build_user_dynamic_template_module_text(block: Block,
             raise ValueError(f"Unsupported user dynamic-model domain {target_domain}")
 
     reserved_identifiers: Set[str] = set(identifier_map.values())
-    generated_scope_identifiers: Set[str] = set([
+    generated_scope_identifier_values: Tuple[str, ...] = (
         "Block",
         "DeviceType",
         "DgsDiscreteEventAction",
@@ -3860,7 +4204,10 @@ def _build_user_dynamic_template_module_text(block: Block,
         "template",
         "template_name_runtime",
         "vf",
-    ])
+    )
+    generated_scope_identifiers: Set[str] = set(
+        generated_scope_identifier_values
+    )
     # Child block references share the generated function namespace with
     # imports, arguments and local variables. Reserving that complete surface
     # prevents a DGS block such as ``delay`` from hiding the imported
@@ -4102,11 +4449,11 @@ def build_user_dynamic_template_persistable_block(block: Block) -> Block:
     filtered_children: List[Block] = list()
     child_block: Block
     node_uid: int
-    node_data: object
+    node_data: BlockDiagramNode
     connection_uid: int
-    connection_data: object
-    filtered_node_data: Dict[int, object] = dict()
-    filtered_connection_data: Dict[int, object] = dict()
+    connection_data: BlockDiagramConnection
+    filtered_node_data: Dict[int, BlockDiagramNode] = dict()
+    filtered_connection_data: Dict[int, BlockDiagramConnection] = dict()
 
     for node_uid, node_data in export_block.diagram.node_data.items():
         if node_data.tpe == BlockType.INPUT_CONN.name or node_data.tpe == BlockType.OUTPUT_CONN.name:
@@ -4284,8 +4631,7 @@ def _restore_powerfactory_astable_integration(
                         if (
                                 isinstance(raw_child_index, int)
                                 and not isinstance(raw_child_index, bool)
-                                and 0 <= raw_child_index
-                                and raw_child_index < len(current_block.children)
+                                and 0 <= raw_child_index < len(current_block.children)
                         ):
                             current_block = current_block.children[
                                 raw_child_index
@@ -4394,8 +4740,7 @@ def _restore_runtime_post_update_helper_names(
                         if (
                                 isinstance(raw_child_index, int)
                                 and not isinstance(raw_child_index, bool)
-                                and 0 <= raw_child_index
-                                and raw_child_index < len(current_block.children)
+                                and 0 <= raw_child_index < len(current_block.children)
                         ):
                             current_block = current_block.children[
                                 raw_child_index
@@ -4501,7 +4846,6 @@ def _restore_dgs_discrete_event_actions(
             )
             path_ready: bool = isinstance(raw_path, list)
         else:
-            record = dict()
             raw_path = None
             action = None
             path_ready = False
@@ -4513,8 +4857,7 @@ def _restore_dgs_discrete_event_actions(
                 child_index_ready: bool = (
                     isinstance(raw_child_index, int)
                     and not isinstance(raw_child_index, bool)
-                    and raw_child_index >= 0
-                    and raw_child_index < len(target_block.children)
+                    and 0 <= raw_child_index < len(target_block.children)
                 )
                 if child_index_ready:
                     target_block = target_block.children[raw_child_index]
@@ -4999,38 +5342,36 @@ def load_user_dynamic_template_json_payload(
     _emit_dynamic_model_import_progress(progress_callback, 0, "Reading JSON snapshot...")
     payload_text: str = Path(json_path).read_text(encoding="utf-8")
     _emit_dynamic_model_import_progress(progress_callback, 20, "Parsing JSON snapshot...")
-    payload_obj = json.loads(payload_text)
-    block_data_obj = None
-    template_name_obj = None
-    target_domain_obj = None
-    device_tpe_obj = None
-    dgs_discrete_event_actions_obj = None
-    dgs_direct_slot_interfaces_obj = None
-    runtime_post_update_helper_names_obj = None
-    powerfactory_astable_integration_obj: object | None = None
+    payload_obj: object = json.loads(payload_text)
     template_name: str
     target_domain: DynamicSimulationMode
     device_tpe: DeviceType
     block: Block
 
     if isinstance(payload_obj, dict):
-        block_data_obj = payload_obj.get("block_data", None)
-        template_name_obj = payload_obj.get("template_name", None)
-        target_domain_obj = payload_obj.get("target_domain", None)
-        device_tpe_obj = payload_obj.get("device_tpe", None)
-        dgs_discrete_event_actions_obj = payload_obj.get(
+        block_data_obj: object | None = payload_obj.get("block_data", None)
+        template_name_obj: object | None = payload_obj.get(
+            "template_name",
+            None,
+        )
+        target_domain_obj: object | None = payload_obj.get(
+            "target_domain",
+            None,
+        )
+        device_tpe_obj: object | None = payload_obj.get("device_tpe", None)
+        dgs_discrete_event_actions_obj: object | None = payload_obj.get(
             "dgs_discrete_event_actions",
             None,
         )
-        dgs_direct_slot_interfaces_obj = payload_obj.get(
+        dgs_direct_slot_interfaces_obj: object | None = payload_obj.get(
             "dgs_direct_slot_interfaces",
             None,
         )
-        runtime_post_update_helper_names_obj = payload_obj.get(
+        runtime_post_update_helper_names_obj: object | None = payload_obj.get(
             "runtime_post_update_helper_names",
             None,
         )
-        powerfactory_astable_integration_obj = payload_obj.get(
+        powerfactory_astable_integration_obj: object | None = payload_obj.get(
             "dgs_powerfactory_astable_integration",
             None,
         )
@@ -5089,3 +5430,14 @@ def load_user_dynamic_template_json_payload(
     if isinstance(device_tpe_obj, str):
         if device_tpe_obj in DeviceType.__members__:
             device_tpe = DeviceType[device_tpe_obj]
+        else:
+            return None
+    else:
+        return None
+
+    _emit_dynamic_model_import_progress(
+        progress_callback,
+        100,
+        "JSON snapshot loaded",
+    )
+    return block, template_name, target_domain, device_tpe

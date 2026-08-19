@@ -34,6 +34,8 @@ from VeraGridEngine.IO.dgs.dgs_to_blocks import (
     ElmCompInstanceEntry,
     extract_elmcomp_direct_instances,
     get_blkslot_signal_interface,
+    get_unambiguous_elmcomp_direct_instances,
+    get_unique_elmcomp_slot_entries,
 )
 from VeraGridEngine.Templates.Rms.rms_meter_templates import (
     build_rms_current_meter_outputs_from_pq,
@@ -285,15 +287,13 @@ def _build_dgs_element_index(dgs_circuit: DgsCircuit) -> Dict[str, DGSElement]:
     :return: DGS element lookup keyed by FID.
     """
     element_by_id: Dict[str, DGSElement] = dict()
-    element_list: List[DGSElement]
     element: DGSElement
 
-    for element_list in dgs_circuit._CLASS_TO_LIST.values():
-        for element in element_list:
-            if element.ID == "":
-                pass
-            else:
-                element_by_id[element.ID] = element
+    for element in dgs_circuit.get_all_elements_iter():
+        if element.ID == "":
+            pass
+        else:
+            element_by_id[element.ID] = element
     return element_by_id
 
 
@@ -1713,9 +1713,15 @@ def bind_dgs_rms_measurements(
     root_element: ElmComp
 
     for root_element in dgs_circuit.elmcomps:
-        entries: List[ElmCompInstanceEntry] = extract_elmcomp_direct_instances(
+        raw_entries: List[ElmCompInstanceEntry] = extract_elmcomp_direct_instances(
             circuit=dgs_circuit,
             root_element=root_element,
+        )
+        entries: List[ElmCompInstanceEntry] = get_unique_elmcomp_slot_entries(
+            entries=raw_entries,
+        )
+        unambiguous_entries: List[ElmCompInstanceEntry] = (
+            get_unambiguous_elmcomp_direct_instances(entries=raw_entries)
         )
         host_devices: List[DynamicDevice | DgsDynamicAssociation] = list()
         entry: ElmCompInstanceEntry
@@ -1729,7 +1735,7 @@ def bind_dgs_rms_measurements(
 
         # A composite is executable on one physical object only when its exact
         # pElm relations resolve to one already activated runtime host.
-        for entry in entries:
+        for entry in unambiguous_entries:
             is_supported_host_class: bool = entry.element_kind in (
                 "ElmVsc",
                 "ElmVscmono",
@@ -1773,7 +1779,7 @@ def bind_dgs_rms_measurements(
             pass
 
         if len(host_devices) == 1:
-            host_device: DynamicDevice = host_devices[0]
+            host_device: DynamicDevice | DgsDynamicAssociation = host_devices[0]
             # Every native meter of this composite targets the same activated
             # symbolic tree. Build its expensive recursive legacy index once,
             # then let each meter overlay its exact DGS endpoint resolution.

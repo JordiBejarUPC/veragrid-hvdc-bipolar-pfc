@@ -6,6 +6,7 @@
 import runpy
 from pathlib import Path
 from types import FunctionType
+from typing import Sequence
 
 import pytest
 
@@ -15,29 +16,46 @@ from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.IO.dgs.dgs_circuit import DgsCircuit
 from VeraGridEngine.IO.dgs.dgs_to_blocks import (
+    DgsDirectRootBuildResult,
     DgsGraphicTreeResult,
+    DgsGraphicalIndexes,
     DgsGraphicalConnectorKind,
+    DgsRootBlockResult,
+    ElmCompInstanceEntry,
     UnsupportedDgsExpression,
+    build_dgs_graphical_indexes,
+    build_direct_root_elmcomp_block,
     build_graphical_arithmetic_block,
     build_graphical_switch_block,
     build_standalone_blkdef_block_from_parsed_block,
+    dgs_to_root_block,
+    build_dgs_root_block_from_circuit,
     export_standalone_blkdef_to_python,
+    extract_elmcomp_direct_instances,
     extract_root_slot_block_graphical_tree,
-    parse_dgs_block_definitions_from_context,
+    get_unambiguous_elmcomp_direct_instances,
+    parse_dgs_block_definitions_from_circuit,
 )
+from VeraGridEngine.IO.dgs.dgs_objects import BlkDef, BlkDiv, BlkMul, ElmComp
 from VeraGridEngine.IO.dgs.dynamic_models.dynamic_model_import import (
     add_dynamic_import_selection_requests_to_circuit,
     build_dgs_dynamic_model_import_bundle,
+    export_user_dynamic_template_json_from_block,
+    load_user_dynamic_template_json_payload,
 )
 from VeraGridEngine.IO.file_open import FileOpen, FileOpenOptions
 from VeraGridEngine.IO.dynamic_model_import_types import (
+    DynamicModelImportBundle,
+    DynamicModelImportEntry,
     DynamicModelImportEntryAvailability,
     DynamicModelImportSelectionRequest,
     DynamicModelImportSource,
+    DynamicModelPersistenceKind,
+    DynamicModelPersistenceSpec,
 )
 from VeraGridEngine.Utils.Symbolic.block import Block
-from VeraGridEngine.Utils.Symbolic.symbolic import Expr
-from VeraGridEngine.basic_structures import Logger
+from VeraGridEngine.Utils.Symbolic.symbolic import Expr, Var
+from VeraGridEngine.basic_structures import LogEntry, Logger
 from VeraGridEngine.enumerations import DeviceType, DynamicSimulationMode, FileType
 
 
@@ -125,6 +143,20 @@ def _get_graphical_parent_signal_binding_dgs_path() -> Path:
         / "grids"
         / "DGS"
         / "graphical_parent_signal_binding.dgs"
+    )
+
+
+def _get_non_executable_slots_dgs_path() -> Path:
+    """Return the portable DGS fixture for non-executable source slots.
+
+    :return: Path to physical and vendor slots without exported pElm targets.
+    """
+    return (
+        Path(__file__).resolve().parents[2]
+        / "data"
+        / "grids"
+        / "DGS"
+        / "non_executable_slots.dgs"
     )
 
 
@@ -261,6 +293,28 @@ def test_native_graphical_arithmetic_records_build_executable_blocks(
     :return: None.
     """
     circuit: DgsCircuit = _parse_native_graphical_operator_fixture()
+    arithmetic_nodes: tuple[BlkDiv | BlkMul, ...] = (
+        circuit.blkdivs[0],
+        circuit.blkmuls[0],
+    )
+    arithmetic_results: list[
+        tuple[
+            Block,
+            list[str],
+            list[str],
+            dict[tuple[DgsGraphicalConnectorKind, int], int],
+        ]
+    ] = list()
+    arithmetic_node: BlkDiv | BlkMul
+
+    for arithmetic_node in arithmetic_nodes:
+        arithmetic_results.append(
+            build_graphical_arithmetic_block(
+                node=arithmetic_node,
+                circuit=circuit,
+            )
+        )
+
     division_block: Block
     division_inputs: list[str]
     division_outputs: list[str]
@@ -273,10 +327,7 @@ def test_native_graphical_arithmetic_records_build_executable_blocks(
         division_inputs,
         division_outputs,
         division_input_index_by_connector,
-    ) = build_graphical_arithmetic_block(
-        node=circuit.blkdivs[0],
-        circuit=circuit,
-    )
+    ) = arithmetic_results[0]
     multiplication_block: Block
     multiplication_inputs: list[str]
     multiplication_outputs: list[str]
@@ -289,10 +340,7 @@ def test_native_graphical_arithmetic_records_build_executable_blocks(
         multiplication_inputs,
         multiplication_outputs,
         multiplication_input_index_by_connector,
-    ) = build_graphical_arithmetic_block(
-        node=circuit.blkmuls[0],
-        circuit=circuit,
-    )
+    ) = arithmetic_results[1]
 
     assert division_inputs == ["Pord", "Vt"]
     assert division_outputs == ["Ip_unlim"]
@@ -445,13 +493,187 @@ def test_graphical_parent_binds_exact_child_signals_and_keeps_live_gaps() -> Non
     assert "routed_internal" in parent_dependency_names
 
 
+def test_dgs_root_selection_does_not_require_a_model_specific_name() -> None:
+    """Select the only valid document root without a hard-coded model name.
+
+    :return: None.
+    """
+    root_result: DgsRootBlockResult = dgs_to_root_block(
+        path=str(_get_graphical_parent_signal_binding_dgs_path()),
+    )
+
+    assert root_result.root_element.ID == "ROOT"
+    assert root_result.root_element.loc_name == "Graphical root"
+    assert root_result.root_element.typ_id == "FRAME"
+
+
+def test_dgs_root_selection_rejects_distinct_resolvable_roots() -> None:
+    """Reject an ambiguous document even when candidate sizes differ.
+
+    :return: None.
+    """
+    circuit: DgsCircuit = DgsCircuit()
+    circuit.parse_dgs(str(_get_graphical_parent_signal_binding_dgs_path()))
+
+    alternate_frame: BlkDef = BlkDef()
+    alternate_frame.ID = "ALTERNATE_FRAME"
+    alternate_frame.loc_name = "Alternate frame"
+    alternate_frame.inputs.append("alternate_x")
+    alternate_frame.outputs.append("alternate_y")
+    alternate_frame.outputs.append("alternate_z")
+    circuit.blkdefs.append(alternate_frame)
+
+    alternate_root: ElmComp = ElmComp()
+    alternate_root.ID = "ALTERNATE_ROOT"
+    alternate_root.loc_name = "Alternate root"
+    alternate_root.typ_id = alternate_frame.ID
+    circuit.elmcomps.append(alternate_root)
+
+    parsed_blocks: dict[str, ParsedDgsBlockDefinition] = (
+        parse_dgs_block_definitions_from_circuit(circuit=circuit)
+    )
+    with pytest.raises(
+        ValueError,
+        match="Several ElmComp roots match the available selectors",
+    ):
+        build_dgs_root_block_from_circuit(
+            circuit=circuit,
+            parsed_blocks=parsed_blocks,
+            root_name=None,
+        )
+
+
+def test_dgs_direct_instances_reject_incomplete_and_ambiguous_relations() -> None:
+    """Keep malformed source relations visible without executing them.
+
+    :return: None.
+    """
+    circuit: DgsCircuit = DgsCircuit()
+    circuit.parse_dgs(str(_get_graphical_parent_signal_binding_dgs_path()))
+    root_element: ElmComp = circuit.elmcomps[0]
+    parsed_blocks: dict[str, ParsedDgsBlockDefinition] = (
+        parse_dgs_block_definitions_from_circuit(circuit=circuit)
+    )
+    root_result: DgsRootBlockResult = build_dgs_root_block_from_circuit(
+        circuit=circuit,
+        parsed_blocks=parsed_blocks,
+        root_name=root_element.loc_name,
+        root_typ_id=root_element.typ_id,
+        root_dgs_id=root_element.ID,
+    )
+    graphical_indexes: DgsGraphicalIndexes = (
+        build_dgs_graphical_indexes(circuit=circuit)
+    )
+    slot_id_value: str | None = root_element.pblk[0]
+    element_id_value: str | None = root_element.pelm[0]
+    assert slot_id_value is not None
+    assert element_id_value is not None
+    slot_id: str = slot_id_value
+    element_id: str = element_id_value
+
+    selected_counts: list[int] = list()
+    child_counts: list[int] = list()
+    child_cache_counts: list[int] = list()
+    graphical_cache_counts: list[int] = list()
+    relation_stage: int
+    for relation_stage in range(3):
+        if relation_stage == 0:
+            # The extra pElm stays reportable, but cannot create a child.
+            root_element.pelm.append(element_id)
+        elif relation_stage == 1:
+            # Reusing the slot makes both complete rows ambiguous.
+            root_element.pblk.append(slot_id)
+        else:
+            # A non-resolving pblk cannot become valid through name fallback.
+            root_element.pblk.clear()
+            root_element.pblk.append("MISSING_SLOT")
+            root_element.pelm.clear()
+            root_element.pelm.append(element_id)
+
+        entries: list[ElmCompInstanceEntry] = (
+            extract_elmcomp_direct_instances(circuit, root_element)
+        )
+        selected_entries: list[ElmCompInstanceEntry] = (
+            get_unambiguous_elmcomp_direct_instances(entries=entries)
+        )
+        direct_build: DgsDirectRootBuildResult = (
+            build_direct_root_elmcomp_block(
+                circuit=circuit,
+                result=root_result,
+                graphical_indexes=graphical_indexes,
+            )
+        )
+        if relation_stage == 0:
+            assert len(entries) == 2
+            assert entries[1].slot_id is None
+            assert len(selected_entries) == 1
+            assert selected_entries[0].slot_id == slot_id
+        elif relation_stage == 1:
+            assert len(entries) == 2
+            assert len(selected_entries) == 0
+        else:
+            assert len(entries) == 1
+            assert not entries[0].slot_reference_is_resolved
+            assert len(selected_entries) == 0
+
+        selected_counts.append(len(selected_entries))
+        child_counts.append(len(direct_build.root_block.children))
+        child_cache_counts.append(len(direct_build.child_block_by_slot_id))
+        graphical_cache_counts.append(
+            len(direct_build.graphical_tree_by_slot_id)
+        )
+
+    assert tuple(selected_counts) == (1, 0, 0)
+    assert tuple(child_counts) == (1, 0, 0)
+    assert tuple(child_cache_counts) == (1, 0, 0)
+    assert tuple(graphical_cache_counts) == (1, 0, 0)
+
+
+def test_dgs_dynamic_import_catalog_reports_live_graphical_binding_gaps() -> None:
+    """Carry typed parent-binding diagnostics into the DGS import catalogue.
+
+    :return: None.
+    """
+    bundle: DynamicModelImportBundle
+    bundle_logger: Logger
+    bundle, bundle_logger = build_dgs_dynamic_model_import_bundle(
+        dgs_path=str(_get_graphical_parent_signal_binding_dgs_path()),
+    )
+    graphical_entries: list[DynamicModelImportEntry] = [
+        entry
+        for entry in bundle.get_entries()
+        if entry.get_display_name() == "Graphical parent"
+    ]
+    assert len(graphical_entries) == 1
+    graphical_entry: DynamicModelImportEntry = graphical_entries[0]
+    source_block: Block | None = graphical_entry.get_source_block()
+    persistence_spec: DynamicModelPersistenceSpec | None = (
+        graphical_entry.get_persistence_spec()
+    )
+    topology_warnings: list[LogEntry] = [
+        entry
+        for entry in bundle_logger.entries
+        if entry.msg == "DGS graphical operator topology incomplete"
+    ]
+
+    assert source_block is not None
+    assert persistence_spec is not None
+    assert (
+        persistence_spec.get_kind()
+        is DynamicModelPersistenceKind.DgsRootSlotGraphicalTree
+    )
+    assert len(topology_warnings) == 1
+    assert "routed_internal" in str(topology_warnings[0].value)
+    assert "blank_internal" not in str(topology_warnings[0].value)
+
+
 def test_dgs_block_definition_builds_one_self_contained_symbolic_block() -> None:
     """Materialize the equation declared by a versioned DGS block definition."""
 
     dgs_path: Path = _get_dynamic_gain_block_dgs_path()
     circuit: DgsCircuit = DgsCircuit()
     circuit.parse_dgs(path=str(dgs_path))
-    parsed_blocks = parse_dgs_block_definitions_from_context(circuit=circuit)
+    parsed_blocks = parse_dgs_block_definitions_from_circuit(circuit=circuit)
     parsed_gain_block = parsed_blocks["2"]
     block: Block = build_standalone_blkdef_block_from_parsed_block(
         parsed_block=parsed_gain_block,
@@ -459,16 +681,17 @@ def test_dgs_block_definition_builds_one_self_contained_symbolic_block() -> None
 
     assert parsed_gain_block.unsupported_lines == []
     assert block.name == "Dynamic gain"
-    assert [var.name for var in block.in_vars] == ["u"]
-    assert [var.name for var in block.out_vars] == ["y"]
+    assert tuple(var.name for var in block.in_vars) == ("u",)
+    assert tuple(var.name for var in block.out_vars) == ("y",)
     assert len(block.algebraic_eqs) == 1
-
-    parameter_var = next(iter(block.event_dict))
-    equation_bindings: dict[str, float] = {
-        block.in_vars[0].name: 3.0,
-        block.out_vars[0].name: 6.0,
-        parameter_var.name: 2.0,
-    }
+    parameter_vars: list[Var] = list(block.event_dict)
+    assert len(parameter_vars) == 1
+    parameter_var: Var = parameter_vars[0]
+    assert parameter_var.name == "Dynamic gain__K"
+    equation_bindings: dict[str, float] = dict()
+    equation_bindings[block.in_vars[0].name] = 3.0
+    equation_bindings[block.out_vars[0].name] = 6.0
+    equation_bindings[parameter_var.name] = 2.0
     assert block.algebraic_eqs[0].eval(**equation_bindings) == 0.0
 
 
@@ -478,7 +701,7 @@ def test_dgs_block_definition_rejects_unsupported_syntax() -> None:
     dgs_path: Path = _get_dynamic_gain_block_dgs_path()
     circuit: DgsCircuit = DgsCircuit()
     circuit.parse_dgs(path=str(dgs_path))
-    parsed_blocks = parse_dgs_block_definitions_from_context(circuit=circuit)
+    parsed_blocks = parse_dgs_block_definitions_from_circuit(circuit=circuit)
 
     with pytest.raises(
         UnsupportedDgsExpression,
@@ -528,6 +751,37 @@ def test_exported_dgs_block_module_rebuilds_the_source_equation(
     assert rebuilt_block.algebraic_eqs[0].eval(**rebuilt_bindings) == 0.0
 
 
+def test_user_dynamic_template_json_round_trips_the_typed_identity(
+        tmp_path: Path,
+) -> None:
+    """Preserve the block and its typed catalogue identity through JSON."""
+
+    source_block: Block = Block(name="Portable dynamic template")
+    output_path: Path = tmp_path / "portable_dynamic_template.json"
+    exported_path: Path = export_user_dynamic_template_json_from_block(
+        block=source_block,
+        output_path=str(output_path),
+        template_name="Portable dynamic template",
+        target_domain=DynamicSimulationMode.RMS,
+        device_tpe=DeviceType.GeneratorDevice,
+    )
+    loaded_payload: (
+        tuple[Block, str, DynamicSimulationMode, DeviceType] | None
+    ) = load_user_dynamic_template_json_payload(str(exported_path))
+
+    assert loaded_payload is not None
+
+    loaded_block: Block = loaded_payload[0]
+    loaded_name: str = loaded_payload[1]
+    loaded_domain: DynamicSimulationMode = loaded_payload[2]
+    loaded_device_tpe: DeviceType = loaded_payload[3]
+
+    assert loaded_block.name == source_block.name
+    assert loaded_name == "Portable dynamic template"
+    assert loaded_domain is DynamicSimulationMode.RMS
+    assert loaded_device_tpe is DeviceType.GeneratorDevice
+
+
 def test_dgs_dynamic_import_bundle_reports_supported_and_failed_blocks() -> None:
     """Expose valid DGS equations while retaining unsupported blocks as failures."""
 
@@ -549,6 +803,42 @@ def test_dgs_dynamic_import_bundle_reports_supported_and_failed_blocks() -> None
     assert (
         entries_by_name["Unsupported dynamic block"].get_availability()
         is DynamicModelImportEntryAvailability.Failed
+    )
+
+
+def test_dgs_dynamic_import_keeps_empty_physical_and_vendor_slot_metadata() -> None:
+    """Preserve valid empty slots as visible, non-executable metadata.
+
+    :return: None.
+    """
+    bundle: DynamicModelImportBundle
+    bundle, _logger = build_dgs_dynamic_model_import_bundle(
+        dgs_path=str(_get_non_executable_slots_dgs_path()),
+    )
+    entries_by_name: dict[str, DynamicModelImportEntry] = {
+        entry.get_display_name(): entry
+        for entry in bundle.get_entries()
+    }
+    reference_name: str
+    for reference_name in (
+            "Physical phase measurement",
+            "Vendor extension reference",
+    ):
+        reference_entry: DynamicModelImportEntry = entries_by_name[reference_name]
+        assert (
+            reference_entry.get_availability()
+            is DynamicModelImportEntryAvailability.MetadataOnly
+        )
+        assert reference_entry.get_source_block() is None
+        assert not reference_entry.is_importable()
+
+    assert (
+        "physical slot has no exported pElm target"
+        in entries_by_name["Physical phase measurement"].get_notes_text()
+    )
+    assert (
+        "slot has no exported pElm target"
+        in entries_by_name["Vendor extension reference"].get_notes_text()
     )
 
 
@@ -591,16 +881,22 @@ def test_dgs_dynamic_import_materializes_the_selected_domain_end_to_end(
         ],
         logger=install_logger,
     )
-    installed_template: RmsModelTemplate | EmtModelTemplate
+    installed_templates: Sequence[RmsModelTemplate | EmtModelTemplate]
+    other_template_count: int
     if target_domain is DynamicSimulationMode.RMS:
-        assert len(circuit.rms_models) == 1
-        assert len(circuit.emt_models) == 0
-        installed_template = circuit.rms_models[0]
+        installed_templates = circuit.rms_models
+        other_template_count = len(circuit.emt_models)
     else:
         assert target_domain is DynamicSimulationMode.EMT
-        assert len(circuit.emt_models) == 1
-        assert len(circuit.rms_models) == 0
-        installed_template = circuit.emt_models[0]
+        installed_templates = circuit.emt_models
+        other_template_count = len(circuit.rms_models)
+
+    assert len(installed_templates) == 1
+    assert other_template_count == 0
+
+    installed_template: RmsModelTemplate | EmtModelTemplate = (
+        installed_templates[0]
+    )
 
     assert added_count == 1
     assert install_logger.error_count() == 0

@@ -532,6 +532,11 @@ class ElmCompInstanceEntry:
     :param element_kind: Element kind, for example ElmDsl or ElmComp.
     :param type_id: Underlying BlkDef identifier if available.
     :param type_name: Underlying BlkDef display name if available.
+    :param slot_index: Ordinal index of the paired pblk/pelm relation.
+    :param slot_element: Raw BlkSlot compatible-element reference.
+    :param slot_filter: Raw BlkSlot model filter text.
+    :param slot_reference_is_resolved: Whether pblk resolves to a BlkSlot.
+    :param element_reference_is_resolved: Whether pelm resolves to a DGS object.
     """
 
     __slots__ = (
@@ -543,6 +548,11 @@ class ElmCompInstanceEntry:
         "type_id",
         "type_name",
         "parameter_values",
+        "slot_index",
+        "slot_element",
+        "slot_filter",
+        "slot_reference_is_resolved",
+        "element_reference_is_resolved",
     )
 
     def __init__(
@@ -555,7 +565,29 @@ class ElmCompInstanceEntry:
         type_id: str | None,
         type_name: str | None,
         parameter_values: Dict[str, float | int | bool | str | complex | None] | None = None,
+        slot_index: int | None = None,
+        slot_element: str | None = None,
+        slot_filter: str | None = None,
+        slot_reference_is_resolved: bool = False,
+        element_reference_is_resolved: bool = False,
     ) -> None:
+        """Store one exact composite slot relation.
+
+        :param slot_id: Slot identifier.
+        :param slot_name: Slot display name.
+        :param element_id: Instantiated element identifier.
+        :param element_name: Instantiated element display name.
+        :param element_kind: Instantiated DGS class.
+        :param type_id: Dynamic BlkDef identifier, when applicable.
+        :param type_name: Dynamic BlkDef display name, when applicable.
+        :param parameter_values: Instance parameter values.
+        :param slot_index: Ordinal pblk/pelm index.
+        :param slot_element: Raw BlkSlot compatible-element reference.
+        :param slot_filter: Raw BlkSlot model filter text.
+        :param slot_reference_is_resolved: Whether pblk resolves to a BlkSlot.
+        :param element_reference_is_resolved: Whether pelm resolves to a DGS object.
+        :return: None.
+        """
         self.slot_id: str | None = slot_id
         self.slot_name: str | None = slot_name
         self.element_id: str | None = element_id
@@ -563,8 +595,19 @@ class ElmCompInstanceEntry:
         self.element_kind: str | None = element_kind
         self.type_id: str | None = type_id
         self.type_name: str | None = type_name
-        self.parameter_values: Dict[str, float | int | bool | str | complex | None] = dict(
-            parameter_values or {}
+        if parameter_values is None:
+            self.parameter_values: Dict[
+                str,
+                float | int | bool | str | complex | None,
+            ] = dict()
+        else:
+            self.parameter_values = dict(parameter_values)
+        self.slot_index: int | None = slot_index
+        self.slot_element: str | None = slot_element
+        self.slot_filter: str | None = slot_filter
+        self.slot_reference_is_resolved: bool = slot_reference_is_resolved
+        self.element_reference_is_resolved: bool = (
+            element_reference_is_resolved
         )
 
 
@@ -1260,6 +1303,81 @@ class DgsGraphicTreeResult:
             self.parent_bindings = parent_bindings
 
 
+class DgsGraphicalIndexes:
+    """Store graphical indexes shared across one DGS import.
+
+    :param adjacency: Undirected graphical adjacency keyed by DGS identifier.
+    :param node_by_id: Graphical objects keyed by DGS identifier.
+    :param node_signals: Signal names attached to each graphical object.
+    :param element_by_id: Parsed DGS elements keyed by identifier.
+    """
+
+    __slots__ = (
+        "adjacency",
+        "node_by_id",
+        "node_signals",
+        "element_by_id",
+    )
+
+    def __init__(
+        self,
+        adjacency: Dict[str, Set[str]],
+        node_by_id: Dict[str, object],
+        node_signals: Dict[str, Set[str]],
+        element_by_id: Dict[str, object],
+    ) -> None:
+        """Store the indexes reused by graphical slot materialization.
+
+        :param adjacency: Undirected graphical adjacency keyed by DGS
+            identifier.
+        :param node_by_id: Graphical objects keyed by DGS identifier.
+        :param node_signals: Signal names attached to each graphical object.
+        :param element_by_id: Parsed DGS elements keyed by identifier.
+        :return: None.
+        """
+        self.adjacency: Dict[str, Set[str]] = adjacency
+        self.node_by_id: Dict[str, object] = node_by_id
+        self.node_signals: Dict[str, Set[str]] = node_signals
+        self.element_by_id: Dict[str, object] = element_by_id
+
+
+class DgsDirectRootBuildResult:
+    """Store one direct root and its reusable slot materializations.
+
+    :param root_block: Materialized direct root block.
+    :param child_block_by_slot_id: Direct child blocks keyed by slot FID.
+    :param graphical_tree_by_slot_id: Typed graphical results keyed by slot
+        FID.
+    """
+
+    __slots__ = (
+        "root_block",
+        "child_block_by_slot_id",
+        "graphical_tree_by_slot_id",
+    )
+
+    def __init__(
+        self,
+        root_block: Block,
+        child_block_by_slot_id: Dict[str, Block],
+        graphical_tree_by_slot_id: Dict[str, DgsGraphicTreeResult],
+    ) -> None:
+        """Store the root and exact direct-child lookup tables.
+
+        :param root_block: Materialized direct root block.
+        :param child_block_by_slot_id: Direct child blocks keyed by slot FID.
+        :param graphical_tree_by_slot_id: Typed graphical results keyed by slot
+            FID.
+        :return: None.
+        """
+        self.root_block: Block = root_block
+        self.child_block_by_slot_id: Dict[str, Block] = child_block_by_slot_id
+        self.graphical_tree_by_slot_id: Dict[
+            str,
+            DgsGraphicTreeResult,
+        ] = graphical_tree_by_slot_id
+
+
 class DgsStatementReportEntry:
     """
     One line-by-line parsing report entry for a DGS block statement.
@@ -1625,6 +1743,52 @@ def _normalize_dgs_pointer_id(pointer_value: object | None) -> str:
     else:
         pointer_id = str(pointer_value).strip()
     return pointer_id
+
+
+def get_blkslot_signal_interface(
+        circuit: DgsCircuit,
+        slot_id: str | None,
+) -> Tuple[List[str], List[str]]:
+    """Return the normalized signal interface attached to one DGS slot.
+
+    Signal rows can repeat a name at several graphical pins. The catalogue and
+    runtime association layers need the semantic interface, so this boundary
+    deduplicates names and returns a deterministic order.
+
+    :param circuit: Parsed DGS circuit containing the graphical signal rows.
+    :param slot_id: Exact ``BlkSlot`` identifier, or ``None`` for no slot.
+    :return: Pair ``(incoming_signals, outgoing_signals)``.
+    """
+    slot_key: str = _normalize_dgs_pointer_id(slot_id)
+    incoming_names: Set[str] = set()
+    outgoing_names: Set[str] = set()
+    signal: BlkSig
+
+    if slot_key == "":
+        incoming_result: List[str] = list()
+        outgoing_result: List[str] = list()
+    else:
+        # Inspect both endpoints because PowerFactory stores slot direction on
+        # the signal row rather than duplicating it on the ``BlkSlot`` object.
+        for signal in circuit.blksigs:
+            signal_name: str = _normalize_graph_signal_name(signal.loc_name)
+            if signal_name == "":
+                pass
+            else:
+                source_id: str = _normalize_dgs_pointer_id(signal.pnodfrom)
+                target_id: str = _normalize_dgs_pointer_id(signal.pnodto)
+                if target_id == slot_key:
+                    incoming_names.add(signal_name)
+                else:
+                    pass
+                if source_id == slot_key:
+                    outgoing_names.add(signal_name)
+                else:
+                    pass
+        incoming_result = sorted(incoming_names)
+        outgoing_result = sorted(outgoing_names)
+
+    return incoming_result, outgoing_result
 
 
 def _iter_blocks_recursive(block: Block) -> Iterable[Block]:
@@ -2688,7 +2852,7 @@ def _parse_blkdef(blkdef: BlkDef,
     )
 
 
-def parse_dgs_block_definitions_from_context(
+def parse_dgs_block_definitions_from_circuit(
         circuit: DgsCircuit,
 ) -> Dict[str, ParsedDgsBlockDefinition]:
     """
@@ -2713,48 +2877,71 @@ def parse_dgs_block_definitions_from_context(
     return parsed_blocks
 
 
-def _score_root_candidate(blkdef: ParsedDgsBlockDefinition) -> Tuple[int, int, int, int, int]:
-    return (
-        len(blkdef.blkdef.inputs),
-        len(blkdef.blkdef.outputs),
-        len(blkdef.blkdef.states),
-        len(blkdef.algebraic_rhs) + len(blkdef.state_rhs),
-        len(blkdef.blkdef.internals),
-    )
+def _select_root_element(
+    circuit: DgsCircuit,
+    parsed_blocks: Dict[str, ParsedDgsBlockDefinition],
+    root_name: str | None,
+    root_typ_id: str | None,
+    root_dgs_id: str | None = None,
+) -> Tuple[ElmComp, ParsedDgsBlockDefinition]:
+    """Select one exact composite root from an already parsed DGS circuit.
 
-
-def _select_root_element(circuit: DgsCircuit, parsed_blocks: Dict[str, ParsedDgsBlockDefinition], root_name: str | None, root_typ_id: str | None) -> Tuple[ElmComp, ParsedDgsBlockDefinition]:
+    :param circuit: Parsed DGS circuit.
+    :param parsed_blocks: Parsed block definitions keyed by DGS identifier.
+    :param root_name: Optional root display name.
+    :param root_typ_id: Optional root frame identifier.
+    :param root_dgs_id: Optional exact root ``ElmComp`` identifier.
+    :return: Selected root element and parsed frame definition.
+    """
     candidates: List[ElmComp] = list(circuit.elmcomps)
     if root_name is not None:
         candidates = [elm for elm in candidates if elm.loc_name == root_name]
+    else:
+        pass
 
     if root_typ_id is not None:
         candidates = [elm for elm in candidates if str(elm.typ_id).strip() == str(root_typ_id).strip()]
+    else:
+        pass
 
-    if not candidates:
+    if root_dgs_id is not None:
+        candidates = [elm for elm in candidates if str(elm.ID) == str(root_dgs_id)]
+    else:
+        pass
+
+    if len(candidates) == 0:
         raise ValueError("No matching ElmComp root candidate found in the DGS file")
+    else:
+        pass
 
-    best_element: ElmComp | None = None
-    best_block: ParsedDgsBlockDefinition | None = None
-    best_score: Tuple[int, int, int, int, int] | None = None
+    resolved_candidates: List[
+        Tuple[ElmComp, ParsedDgsBlockDefinition]
+    ] = list()
+    elm: ElmComp
+    blk: ParsedDgsBlockDefinition | None
 
     for elm in candidates:
-        blk = parsed_blocks.get(str(elm.typ_id).strip())
+        blk = parsed_blocks.get(str(elm.typ_id).strip(), None)
         if blk is None:
             pass
         else:
-            score = _score_root_candidate(blk)
-            if best_score is None or score > best_score:
-                best_element = elm
-                best_block = blk
-                best_score = score
-            else:
-                pass
+            resolved_candidates.append((elm, blk))
 
-    if best_element is None or best_block is None:
+    if len(resolved_candidates) == 0:
         raise ValueError("No ElmComp candidate could be resolved to a parsed BlkDef")
+    else:
+        if len(resolved_candidates) != 1:
+            raise ValueError(
+                "Several ElmComp roots match the available selectors; provide "
+                "an exact root selector"
+            )
+        else:
+            pass
 
-    return best_element, best_block
+    selected_element: ElmComp
+    selected_block: ParsedDgsBlockDefinition
+    selected_element, selected_block = resolved_candidates[0]
+    return selected_element, selected_block
 
 
 def _collect_reachable_blocks(root_blkdef: ParsedDgsBlockDefinition, parsed_blocks: Dict[str, ParsedDgsBlockDefinition]) -> Dict[str, ParsedDgsBlockDefinition]:
@@ -2892,7 +3079,11 @@ def _parameter_values_by_type_id(
     ] = dict()
     duplicated_type_ids: Set[str] = set()
 
-    for entry in entries:
+    unambiguous_entries: List[ElmCompInstanceEntry] = (
+        get_unambiguous_elmcomp_direct_instances(entries=entries)
+    )
+    entry: ElmCompInstanceEntry
+    for entry in unambiguous_entries:
         # We only propagate values when one block type appears once inside the parent ElmComp.
         if entry.type_id is None or len(entry.parameter_values) == 0:
             pass
@@ -3046,19 +3237,69 @@ def _build_dependency_graph(parsed_blocks: Dict[str, ParsedDgsBlockDefinition]) 
     return dependency_graph, producer_map, consumer_map
 
 
-def dgs_to_root_block(path: str, root_name: str = "Grid Forming Converter", root_typ_id: str | None = None) -> DgsRootBlockResult:
-    circuit = DgsCircuit()
+def dgs_to_root_block(
+    path: str,
+    root_name: str | None = None,
+    root_typ_id: str | None = None,
+    root_dgs_id: str | None = None,
+) -> DgsRootBlockResult:
+    """Parse one DGS file and materialize one selected composite root.
+
+    :param path: Source DGS path.
+    :param root_name: Optional root ``ElmComp`` display name.
+    :param root_typ_id: Optional exact frame identifier.
+    :param root_dgs_id: Optional exact root ``ElmComp`` identifier.
+    :return: Parsed root hierarchy and dependency metadata.
+    """
+    circuit: DgsCircuit = DgsCircuit()
     circuit.parse_dgs(path)
+    parsed_blocks: Dict[str, ParsedDgsBlockDefinition] = (
+        parse_dgs_block_definitions_from_circuit(circuit=circuit)
+    )
+    return build_dgs_root_block_from_circuit(
+        circuit=circuit,
+        parsed_blocks=parsed_blocks,
+        root_name=root_name,
+        root_typ_id=root_typ_id,
+        root_dgs_id=root_dgs_id,
+    )
 
+
+def build_dgs_root_block_from_circuit(
+    circuit: DgsCircuit,
+    parsed_blocks: Dict[str, ParsedDgsBlockDefinition],
+    root_name: str | None,
+    root_typ_id: str | None = None,
+    root_dgs_id: str | None = None,
+) -> DgsRootBlockResult:
+    """Materialize one root from an already parsed DGS circuit.
+
+    :param circuit: Parsed DGS circuit.
+    :param parsed_blocks: Parsed block definitions shared by the import.
+    :param root_name: Optional root display name.
+    :param root_typ_id: Optional exact frame identifier.
+    :param root_dgs_id: Optional exact root ``ElmComp`` identifier.
+    :return: Parsed root hierarchy and dependency metadata.
+    """
     shared_signals: Dict[str, Var] = dict()
-    parsed_blocks: Dict[str, ParsedDgsBlockDefinition] = dict()
-    blk: BlkDef
-    for blk in circuit.blkdefs:
-        parsed_blocks[blk.ID] = _parse_blkdef(blk, shared_signals)
-
-    root_element, root_blkdef = _select_root_element(circuit, parsed_blocks, root_name=root_name, root_typ_id=root_typ_id)
-    reachable_blocks = _collect_reachable_blocks(root_blkdef, parsed_blocks)
-    parameter_values_by_type_id = _parameter_values_by_type_id(extract_elmcomp_direct_instances(circuit, root_element))
+    root_element: ElmComp
+    root_blkdef: ParsedDgsBlockDefinition
+    root_element, root_blkdef = _select_root_element(
+        circuit=circuit,
+        parsed_blocks=parsed_blocks,
+        root_name=root_name,
+        root_typ_id=root_typ_id,
+        root_dgs_id=root_dgs_id,
+    )
+    reachable_blocks: Dict[str, ParsedDgsBlockDefinition] = (
+        _collect_reachable_blocks(root_blkdef, parsed_blocks)
+    )
+    parameter_values_by_type_id: Dict[
+        str,
+        Dict[str, float | int | bool | str | complex | None],
+    ] = _parameter_values_by_type_id(
+        extract_elmcomp_direct_instances(circuit, root_element)
+    )
 
     child_blocks: List[Block] = list()
     ordered_reachable_blocks: List[tuple[str, str, ParsedDgsBlockDefinition]] = [
@@ -3074,7 +3315,7 @@ def dgs_to_root_block(path: str, root_name: str = "Grid Forming Converter", root
             _build_block_from_parsed(parsed, shared_signals, parameter_values=parameter_values_by_type_id.get(parsed.blkdef.ID, None))
         )
 
-    root_block = Block(
+    root_block: Block = Block(
         name=root_element.loc_name,
         children=child_blocks,
         in_vars=[shared_signals[name] for name in root_blkdef.blkdef.inputs if name in shared_signals],
@@ -3086,7 +3327,12 @@ def dgs_to_root_block(path: str, root_name: str = "Grid Forming Converter", root
     combined_blocks[root_blkdef.blkdef.ID] = root_blkdef
     for block_id, parsed in reachable_blocks.items():
         combined_blocks[block_id] = parsed
-    dependency_graph, producer_map, consumer_map = _build_dependency_graph(combined_blocks)
+    dependency_graph: Dict[str, Set[str]]
+    producer_map: Dict[str, Set[str]]
+    consumer_map: Dict[str, Set[str]]
+    dependency_graph, producer_map, consumer_map = _build_dependency_graph(
+        combined_blocks
+    )
 
     return DgsRootBlockResult(
         root_block=root_block,
@@ -3099,16 +3345,17 @@ def dgs_to_root_block(path: str, root_name: str = "Grid Forming Converter", root
     )
 
 
-def _build_direct_root_elmcomp_block(
+def build_direct_root_elmcomp_block(
     circuit: DgsCircuit,
     result: DgsRootBlockResult,
-) -> Block:
-    """
-    Build a root ElmComp block using only its direct DGS child instances.
+    graphical_indexes: DgsGraphicalIndexes | None = None,
+) -> DgsDirectRootBuildResult:
+    """Build a root ElmComp block using only its direct DGS child instances.
 
     :param circuit: Parsed DGS circuit.
     :param result: Root selection result.
-    :return: Root runtime block with direct DSL children only.
+    :param graphical_indexes: Optional shared graphical indexes.
+    :return: Root runtime block and exact reusable slot materializations.
     """
     shared_signals: Dict[str, Var] = dict()
     root_signal_names: List[str] = list()
@@ -3126,29 +3373,93 @@ def _build_direct_root_elmcomp_block(
             pass
 
     child_blocks: List[Block] = list()
-    direct_entries = extract_elmcomp_direct_instances(circuit, result.root_element)
+    child_block_by_slot_id: Dict[str, Block] = dict()
+    graphical_tree_by_slot_id: Dict[str, DgsGraphicTreeResult] = dict()
+    direct_entries: List[ElmCompInstanceEntry] = (
+        get_unambiguous_elmcomp_direct_instances(
+            entries=extract_elmcomp_direct_instances(
+                circuit,
+                result.root_element,
+            )
+        )
+    )
+    entry: ElmCompInstanceEntry
     for entry in direct_entries:
         if entry.type_id is None:
             pass
         else:
-            parsed_block = result.parsed_blocks.get(entry.type_id, None)
+            parsed_block: ParsedDgsBlockDefinition | None = (
+                result.parsed_blocks.get(entry.type_id, None)
+            )
             if parsed_block is None:
                 pass
             else:
-                # Each direct ElmDsl instance provides the concrete parameter constants for its block type.
-                child_block = _build_block_from_parsed(
-                    parsed_block,
-                    shared_signals,
-                    parameter_values=entry.parameter_values,
-                )
-                child_blocks.append(child_block)
+                graphical_tree: DgsGraphicTreeResult | None
+                if parsed_block.blkdef.isMacro == 0:
+                    graphical_tree = None
+                else:
+                    graphical_tree = (
+                        extract_root_slot_graphical_tree_from_circuit(
+                            circuit=circuit,
+                            result=result,
+                            slot_name=str(entry.slot_name or entry.type_name or ""),
+                            slot_dgs_id=entry.slot_id,
+                            graphical_indexes=graphical_indexes,
+                        )
+                    )
 
-    return Block(
+                if graphical_tree is None:
+                    # Formula blocks share the exact root interface variables
+                    # while retaining their instance-specific parameters.
+                    child_block: Block = _build_block_from_parsed(
+                        parsed_block,
+                        shared_signals,
+                        parameter_values=entry.parameter_values,
+                    )
+                else:
+                    child_block = graphical_tree.view_block
+                    interface_var: Var
+                    interface_vars: List[Var] = list(child_block.in_vars)
+                    interface_vars.extend(child_block.out_vars)
+                    for interface_var in interface_vars:
+                        shared_interface_var: Var | None = shared_signals.get(
+                            interface_var.name,
+                            None,
+                        )
+                        if shared_interface_var is None:
+                            pass
+                        else:
+                            # The root and its graphical child must expose one
+                            # variable identity for every shared public port.
+                            child_block.update_model(
+                                interface_var,
+                                shared_interface_var,
+                            )
+
+                    if entry.slot_id is None:
+                        pass
+                    else:
+                        graphical_tree_by_slot_id[entry.slot_id] = (
+                            graphical_tree
+                        )
+
+                child_blocks.append(child_block)
+                if entry.slot_id is None:
+                    pass
+                else:
+                    child_block_by_slot_id[entry.slot_id] = child_block
+
+    root_block: Block = Block(
         name=result.root_element.loc_name,
         children=child_blocks,
         in_vars=[shared_signals[var.name] for var in result.root_block.in_vars if var.name in shared_signals],
         out_vars=[shared_signals[var.name] for var in result.root_block.out_vars if var.name in shared_signals],
         algebraic_vars=[shared_signals[var.name] for var in result.root_block.algebraic_vars if var.name in shared_signals],
+    )
+    return DgsDirectRootBuildResult(
+        root_block=root_block,
+        child_block_by_slot_id=child_block_by_slot_id,
+        graphical_tree_by_slot_id=graphical_tree_by_slot_id,
     )
 
 def _build_dgs_element_index(circuit: DgsCircuit) -> dict[str, object]:
@@ -3159,15 +3470,15 @@ def _build_dgs_element_index(circuit: DgsCircuit) -> dict[str, object]:
     :return: Dictionary from identifier to object.
     """
     element_by_id: dict[str, object] = dict()
+    element: DGSElement
 
-    for elmcomp in circuit.elmcomps:
-        element_by_id[elmcomp.ID] = elmcomp
-
-    for elmdsl in circuit.elmdsls:
-        element_by_id[elmdsl.ID] = elmdsl
-
-    for blkdef in circuit.blkdefs:
-        element_by_id[blkdef.ID] = blkdef
+    # pElm can reference dynamic or physical objects. Preserve every exact FID
+    # through the circuit's public, typed element boundary.
+    for element in circuit.get_all_elements_iter():
+        if element.ID == "":
+            pass
+        else:
+            element_by_id[element.ID] = element
 
     return element_by_id
 
@@ -3280,7 +3591,7 @@ def _build_catalog_entry_info_by_typ_id() -> Dict[str, tuple[Sequence[str], str 
     return info_by_typ_id
 
 
-def list_dgs_blkref_catalog_occurrences_from_context(
+def list_dgs_blkref_catalog_occurrences_from_circuit(
         circuit: DgsCircuit,
 ) -> List[DgsStandaloneBlockOccurrence]:
     """
@@ -3319,7 +3630,7 @@ def list_dgs_blkref_catalog_occurrences(dgs_path: str) -> List[DgsStandaloneBloc
     """
     circuit: DgsCircuit = DgsCircuit()
     circuit.parse_dgs(dgs_path)
-    return list_dgs_blkref_catalog_occurrences_from_context(circuit=circuit)
+    return list_dgs_blkref_catalog_occurrences_from_circuit(circuit=circuit)
 
 
 def _build_standalone_catalog_entry(typ_id: str,
@@ -3370,7 +3681,7 @@ def _build_standalone_catalog_entry(typ_id: str,
     )
 
 
-def build_dgs_standalone_block_catalog_from_context(
+def build_dgs_standalone_block_catalog_from_circuit(
         circuit: DgsCircuit,
         parsed_blocks: Dict[str, ParsedDgsBlockDefinition],
         isolated_only: bool = True,
@@ -3387,7 +3698,7 @@ def build_dgs_standalone_block_catalog_from_context(
         _build_catalog_entry_info_by_typ_id()
     )
     occurrences: List[DgsStandaloneBlockOccurrence] = (
-        list_dgs_blkref_catalog_occurrences_from_context(circuit=circuit)
+        list_dgs_blkref_catalog_occurrences_from_circuit(circuit=circuit)
     )
     occurrences_by_type_id: Dict[str, List[DgsStandaloneBlockOccurrence]] = dict()
     occurrence: DgsStandaloneBlockOccurrence
@@ -3433,9 +3744,9 @@ def build_dgs_standalone_block_catalog(
     circuit: DgsCircuit = DgsCircuit()
     circuit.parse_dgs(dgs_path)
     parsed_blocks: Dict[str, ParsedDgsBlockDefinition] = (
-        parse_dgs_block_definitions_from_context(circuit=circuit)
+        parse_dgs_block_definitions_from_circuit(circuit=circuit)
     )
-    return build_dgs_standalone_block_catalog_from_context(
+    return build_dgs_standalone_block_catalog_from_circuit(
         circuit=circuit,
         parsed_blocks=parsed_blocks,
         isolated_only=isolated_only,
@@ -3459,7 +3770,7 @@ def build_standalone_blkdef_block(
     circuit: DgsCircuit = DgsCircuit()
     circuit.parse_dgs(dgs_path)
     parsed_blocks: Dict[str, ParsedDgsBlockDefinition] = (
-        parse_dgs_block_definitions_from_context(circuit=circuit)
+        parse_dgs_block_definitions_from_circuit(circuit=circuit)
     )
 
     if typ_id not in parsed_blocks:
@@ -3713,6 +4024,22 @@ def _build_graphic_node_signal_map(circuit: DgsCircuit) -> dict[str, set[str]]:
                 _append_to_string_set_map(node_signals, blk_goto.ID, clean)
 
     return node_signals
+
+
+def build_dgs_graphical_indexes(
+    circuit: DgsCircuit,
+) -> DgsGraphicalIndexes:
+    """Build graphical indexes once for every slot in one DGS import.
+
+    :param circuit: Already parsed DGS circuit.
+    :return: Immutable graphical lookup indexes.
+    """
+    return DgsGraphicalIndexes(
+        adjacency=_build_blksig_adjacency(circuit=circuit),
+        node_by_id=_build_graphic_node_index(circuit=circuit),
+        node_signals=_build_graphic_node_signal_map(circuit=circuit),
+        element_by_id=_build_dgs_element_index(circuit=circuit),
+    )
 
 
 def _collect_routed_graphical_source_signal_names(
@@ -5001,9 +5328,12 @@ def extract_elmcomp_direct_instances(
     """
     Extract direct root instances from ElmComp pblk/pelm relations.
 
+    Unpaired rows remain in the result as source evidence. Consumers must use
+    :func:`get_unambiguous_elmcomp_direct_instances` before materialization.
+
     :param circuit: Parsed DGS circuit.
     :param root_element: Root ElmComp.
-    :return: Direct instance list.
+    :return: Direct instance list, including incomplete source relations.
     """
     element_by_id: dict[str, object] = _build_dgs_element_index(circuit)
     blkdef_by_id: dict[str, BlkDef] = _build_blkdef_index(circuit)
@@ -5013,14 +5343,21 @@ def extract_elmcomp_direct_instances(
     len_pblk: int = len(root_element.pblk)
     len_pelm: int = len(root_element.pelm)
 
-    if len_pblk <= len_pelm:
+    if len_pblk >= len_pelm:
         n_pairs: int = len_pblk
     else:
         n_pairs = len_pelm
 
+    idx: int
     for idx in range(n_pairs):
-        slot_id: str | None = root_element.pblk[idx]
-        element_id: str | None = root_element.pelm[idx]
+        if idx < len_pblk:
+            slot_id: str | None = root_element.pblk[idx]
+        else:
+            slot_id = None
+        if idx < len_pelm:
+            element_id: str | None = root_element.pelm[idx]
+        else:
+            element_id = None
 
         slot_name: str | None
         element_name: str | None
@@ -5031,19 +5368,38 @@ def extract_elmcomp_direct_instances(
             str,
             float | int | bool | str | complex | None,
         ]
+        slot_element: str | None
+        slot_filter: str | None
+        slot_reference_is_resolved: bool
+        element_reference_is_resolved: bool
 
         if slot_id is not None:
             slot_obj: object | None = element_by_id.get(slot_id, None)
-            if isinstance(slot_obj, DGSElement):
+            if isinstance(slot_obj, BlkSlot):
                 slot_name = slot_obj.loc_name
+                slot_element = slot_obj.element
+                slot_filter = slot_obj.filtmod
+                slot_reference_is_resolved = True
+            elif isinstance(slot_obj, DGSElement):
+                slot_name = slot_obj.loc_name
+                slot_element = None
+                slot_filter = None
+                slot_reference_is_resolved = False
             else:
                 slot_name = None
+                slot_element = None
+                slot_filter = None
+                slot_reference_is_resolved = False
         else:
             slot_name = None
+            slot_element = None
+            slot_filter = None
+            slot_reference_is_resolved = False
 
         if element_id is not None:
             element_obj: object | None = element_by_id.get(element_id, None)
             if isinstance(element_obj, ElmDsl):
+                element_reference_is_resolved = True
                 element_name = element_obj.loc_name
                 element_kind = "ElmDsl"
                 if element_obj.typ_id != "":
@@ -5052,6 +5408,7 @@ def extract_elmcomp_direct_instances(
                     type_id = None
                 parameter_values = element_obj.get_parameter_map()
             elif isinstance(element_obj, ElmComp):
+                element_reference_is_resolved = True
                 element_name = element_obj.loc_name
                 element_kind = "ElmComp"
                 if element_obj.typ_id != "":
@@ -5059,12 +5416,21 @@ def extract_elmcomp_direct_instances(
                 else:
                     type_id = None
                 parameter_values = dict()
+            elif isinstance(element_obj, DGSElement):
+                # Physical pElm targets are provenance, not dynamic BlkDefs.
+                element_reference_is_resolved = True
+                element_name = element_obj.loc_name
+                element_kind = element_obj.element_type
+                type_id = None
+                parameter_values = dict()
             else:
+                element_reference_is_resolved = False
                 element_name = None
                 element_kind = None
                 type_id = None
                 parameter_values = dict()
         else:
+            element_reference_is_resolved = False
             element_name = None
             element_kind = None
             type_id = None
@@ -5087,7 +5453,7 @@ def extract_elmcomp_direct_instances(
         else:
             pass
 
-        entry = ElmCompInstanceEntry(
+        entry: ElmCompInstanceEntry = ElmCompInstanceEntry(
             slot_id=slot_id,
             slot_name=slot_name,
             element_id=element_id,
@@ -5096,16 +5462,96 @@ def extract_elmcomp_direct_instances(
             type_id=type_id,
             type_name=type_name,
             parameter_values=parameter_values,
+            slot_index=idx,
+            slot_element=slot_element,
+            slot_filter=slot_filter,
+            slot_reference_is_resolved=slot_reference_is_resolved,
+            element_reference_is_resolved=element_reference_is_resolved,
         )
 
         entries.append(entry)
 
     return entries
 
+
+def get_unique_elmcomp_slot_entries(
+        entries: Iterable[ElmCompInstanceEntry],
+) -> List[ElmCompInstanceEntry]:
+    """Select relations whose pblk resolves to one unique BlkSlot.
+
+    This slot-only envelope supports native equipment such as ``ElmPhi`` whose
+    owned object can be resolved from its exact DGS topology even when ``pelm``
+    is empty. It never accepts a missing, unresolved or repeated ``pblk``.
+
+    :param entries: Extracted direct relations, including source gaps.
+    :return: Relations whose resolved slot identifier occurs exactly once.
+    """
+    entry_list: List[ElmCompInstanceEntry] = list(entries)
+    slot_occurrences: Dict[str, int] = dict()
+    entry: ElmCompInstanceEntry
+    for entry in entry_list:
+        if entry.slot_id is None:
+            pass
+        else:
+            previous_count: int | None = slot_occurrences.get(
+                entry.slot_id,
+                None,
+            )
+            if previous_count is None:
+                slot_occurrences[entry.slot_id] = 1
+            else:
+                slot_occurrences[entry.slot_id] = previous_count + 1
+
+    selected_entries: List[ElmCompInstanceEntry] = list()
+    for entry in entry_list:
+        if (
+                entry.slot_id is None
+                or not entry.slot_reference_is_resolved
+        ):
+            pass
+        else:
+            slot_count: int | None = slot_occurrences.get(entry.slot_id, None)
+            if slot_count == 1:
+                selected_entries.append(entry)
+            else:
+                pass
+
+    return selected_entries
+
+
+def get_unambiguous_elmcomp_direct_instances(
+        entries: Iterable[ElmCompInstanceEntry],
+) -> List[ElmCompInstanceEntry]:
+    """Select complete pblk/pelm relations with one unique slot identifier.
+
+    Incomplete relations remain available in the source catalogue, but cannot
+    become executable children or provide runtime parameter values.
+
+    :param entries: Extracted direct relations, including source gaps.
+    :return: Complete relations whose slot identifier occurs exactly once.
+    """
+    unique_slot_entries: List[ElmCompInstanceEntry] = (
+        get_unique_elmcomp_slot_entries(entries=entries)
+    )
+    selected_entries: List[ElmCompInstanceEntry] = list()
+    entry: ElmCompInstanceEntry
+    for entry in unique_slot_entries:
+        if (
+                entry.element_id is None
+                or not entry.element_reference_is_resolved
+        ):
+            pass
+        else:
+            selected_entries.append(entry)
+
+    return selected_entries
+
+
 def select_block_instance_from_root(
     circuit: DgsCircuit,
     result: DgsRootBlockResult,
     slot_name: str,
+    slot_dgs_id: str | None = None,
 ) -> DgsBlockInstanceSelection | None:
     """
     Resolve a parsed block from the explicit root ElmComp slot mapping.
@@ -5113,26 +5559,36 @@ def select_block_instance_from_root(
     :param circuit: Parsed DGS circuit.
     :param result: Root block parsing result.
     :param slot_name: Slot name in the root ElmComp.
-    :return: Block selection or None.
+    :param slot_dgs_id: Optional exact ``BlkSlot`` identifier.
+    :return: Unique block selection, or ``None`` when absent or ambiguous.
     """
-    entries: list[ElmCompInstanceEntry] = extract_elmcomp_direct_instances(circuit, result.root_element)
-
-    selected_entry: ElmCompInstanceEntry | None = None
+    entries: list[ElmCompInstanceEntry] = (
+        get_unambiguous_elmcomp_direct_instances(
+            entries=extract_elmcomp_direct_instances(
+                circuit,
+                result.root_element,
+            )
+        )
+    )
+    matching_entries: List[ElmCompInstanceEntry] = list()
+    entry: ElmCompInstanceEntry
 
     for entry in entries:
-        if entry.slot_name == slot_name:
-            selected_entry = entry
-            break
-        elif entry.type_name == slot_name:
-            selected_entry = entry
-            break
+        if slot_dgs_id is not None:
+            if entry.slot_id == slot_dgs_id:
+                matching_entries.append(entry)
+            else:
+                pass
         else:
-            pass
+            if entry.slot_name == slot_name or entry.type_name == slot_name:
+                matching_entries.append(entry)
+            else:
+                pass
 
-    if selected_entry is None:
-        return None
+    if len(matching_entries) == 1:
+        selected_entry: ElmCompInstanceEntry = matching_entries[0]
     else:
-        pass
+        return None
 
     if selected_entry.type_id is None:
         return None
@@ -5182,34 +5638,53 @@ def _closure_from_node(graph: Dict[str, Set[str]], start_node: str) -> Set[str]:
     return visited
 
 
-def _select_named_block(parsed_blocks: Dict[str, ParsedDgsBlockDefinition], block_name: str, block_id: str | None = None) -> Tuple[str, ParsedDgsBlockDefinition]:
+def _select_named_block(
+    parsed_blocks: Dict[str, ParsedDgsBlockDefinition],
+    block_name: str,
+    block_id: str | None = None,
+) -> Tuple[str, ParsedDgsBlockDefinition]:
+    """Select one block by exact identifier or unique display name.
+
+    :param parsed_blocks: Parsed block definitions keyed by DGS identifier.
+    :param block_name: Expected block display name.
+    :param block_id: Optional exact DGS block identifier.
+    :return: Exact block identifier and parsed block definition.
+    """
     if block_id is not None:
-        selected = parsed_blocks.get(block_id)
+        selected: ParsedDgsBlockDefinition | None = parsed_blocks.get(
+            block_id,
+            None,
+        )
         if selected is None:
             raise ValueError(f"Block id '{block_id}' not found")
-        if selected.blkdef.loc_name != block_name:
-            raise ValueError(f"Block id '{block_id}' does not match block name '{block_name}'")
-        return block_id, selected
-
-    candidates = [(bid, parsed) for bid, parsed in parsed_blocks.items() if parsed.blkdef.loc_name == block_name]
-    if not candidates:
-        raise ValueError(f"Block name '{block_name}' not found")
-
-    best_candidate: Tuple[str, ParsedDgsBlockDefinition] | None = None
-    best_score: Tuple[int, int, int, int, int] | None = None
-    candidate: Tuple[str, ParsedDgsBlockDefinition]
-    for candidate in candidates:
-        score = _score_root_candidate(candidate[1])
-        if best_score is None or score > best_score:
-            best_candidate = candidate
-            best_score = score
         else:
             pass
-
-    if best_candidate is None:
-        raise ValueError(f"Block name '{block_name}' not found")
+        if selected.blkdef.loc_name != block_name:
+            raise ValueError(
+                f"Block id '{block_id}' does not match block name "
+                f"'{block_name}'"
+            )
+        else:
+            pass
+        return block_id, selected
     else:
-        return best_candidate
+        candidates: List[Tuple[str, ParsedDgsBlockDefinition]] = [
+            (candidate_id, parsed_block)
+            for candidate_id, parsed_block in parsed_blocks.items()
+            if parsed_block.blkdef.loc_name == block_name
+        ]
+        if len(candidates) == 0:
+            raise ValueError(f"Block name '{block_name}' not found")
+        else:
+            pass
+        if len(candidates) != 1:
+            raise ValueError(
+                f"Several blocks use name '{block_name}'; provide an exact "
+                "block identifier"
+            )
+        else:
+            pass
+        return candidates[0]
 
 
 def extract_named_block_subgraph(
@@ -5313,7 +5788,7 @@ def extract_named_block_internal_only(
 def extract_root_slot_block_internal_only(
     dgs_path: str,
     slot_name: str,
-    root_name: str = "Grid Forming Converter",
+    root_name: str | None = None,
     root_typ_id: str | None = None,
 ) -> DgsBlockSubgraphResult | None:
     """
@@ -5321,7 +5796,7 @@ def extract_root_slot_block_internal_only(
 
     :param dgs_path: Source DGS path.
     :param slot_name: Root slot name.
-    :param root_name: Root ElmComp name.
+    :param root_name: Optional root ElmComp name.
     :param root_typ_id: Optional root type identifier.
     :return: Internal-only block subgraph or None.
     """
@@ -5347,7 +5822,7 @@ def extract_root_slot_block_internal_only(
 def extract_root_slot_block_internal_signal_tree(
     dgs_path: str,
     slot_name: str,
-    root_name: str = "Grid Forming Converter",
+    root_name: str | None = None,
     root_typ_id: str | None = None,
 ) -> DgsBlockSubgraphResult | None:
     """
@@ -5356,7 +5831,7 @@ def extract_root_slot_block_internal_signal_tree(
 
     :param dgs_path: Source DGS path.
     :param slot_name: Root slot name or type name fallback.
-    :param root_name: Root ElmComp name.
+    :param root_name: Optional root ElmComp name.
     :param root_typ_id: Optional root type identifier.
     :return: Subgraph result or None.
     """
@@ -5446,7 +5921,7 @@ def extract_root_slot_block_internal_signal_tree(
 def extract_root_slot_block_graphical_tree(
     dgs_path: str,
     slot_name: str,
-    root_name: str = "Grid Forming Converter",
+    root_name: str | None = None,
     root_typ_id: str | None = None,
 ) -> DgsGraphicTreeResult | None:
     """
@@ -5458,31 +5933,77 @@ def extract_root_slot_block_graphical_tree(
 
     :param dgs_path: Source DGS path.
     :param slot_name: Root slot name or type-name fallback.
-    :param root_name: Root ElmComp name.
+    :param root_name: Optional root ElmComp name.
     :param root_typ_id: Optional root type identifier.
     :return: Graphical tree result or None.
     """
     circuit: DgsCircuit = DgsCircuit()
     circuit.parse_dgs(dgs_path)
+    parsed_blocks: Dict[str, ParsedDgsBlockDefinition] = (
+        parse_dgs_block_definitions_from_circuit(circuit=circuit)
+    )
+    result: DgsRootBlockResult = build_dgs_root_block_from_circuit(
+        circuit=circuit,
+        parsed_blocks=parsed_blocks,
+        root_name=root_name,
+        root_typ_id=root_typ_id,
+    )
+    graphical_indexes: DgsGraphicalIndexes = (
+        build_dgs_graphical_indexes(circuit=circuit)
+    )
+    return extract_root_slot_graphical_tree_from_circuit(
+        circuit=circuit,
+        result=result,
+        slot_name=slot_name,
+        graphical_indexes=graphical_indexes,
+    )
 
-    result: DgsRootBlockResult = dgs_to_root_block(dgs_path, root_name=root_name, root_typ_id=root_typ_id)
+
+def extract_root_slot_graphical_tree_from_circuit(
+    circuit: DgsCircuit,
+    result: DgsRootBlockResult,
+    slot_name: str,
+    slot_dgs_id: str | None = None,
+    graphical_indexes: DgsGraphicalIndexes | None = None,
+) -> DgsGraphicTreeResult | None:
+    """Extract one graphical slot from an already parsed DGS circuit.
+
+    :param circuit: Parsed DGS circuit.
+    :param result: Parsed root selection result.
+    :param slot_name: Slot name or type-name fallback.
+    :param slot_dgs_id: Optional exact ``BlkSlot`` identifier.
+    :param graphical_indexes: Optional shared graphical indexes.
+    :return: Graphical tree result or ``None`` for a non-graphical slot.
+    """
     selection: DgsBlockInstanceSelection | None = select_block_instance_from_root(
         circuit=circuit,
         result=result,
         slot_name=slot_name,
+        slot_dgs_id=slot_dgs_id,
     )
 
     if selection is None or selection.instance_entry.type_id is None:
         return None
     else:
-        pass
+        if selection.parsed_block.blkdef.isMacro == 0:
+            return None
+        else:
+            pass
 
-    adjacency: dict[str, set[str]] = _build_blksig_adjacency(circuit)
+    resolved_graphical_indexes: DgsGraphicalIndexes
+    if graphical_indexes is None:
+        resolved_graphical_indexes = build_dgs_graphical_indexes(
+            circuit=circuit
+        )
+    else:
+        resolved_graphical_indexes = graphical_indexes
+
+    adjacency: dict[str, set[str]] = resolved_graphical_indexes.adjacency
     root_node_id: str = str(selection.instance_entry.type_id)
     explicit_component: set[str] = _graphic_connected_component(adjacency, root_node_id)
 
-    node_by_id: dict[str, object] = _build_graphic_node_index(circuit)
-    node_signals: dict[str, set[str]] = _build_graphic_node_signal_map(circuit)
+    node_by_id: dict[str, object] = resolved_graphical_indexes.node_by_id
+    node_signals: dict[str, set[str]] = resolved_graphical_indexes.node_signals
     if len(explicit_component) <= 1:
         node_ids: set[str] = explicit_component
     else:
@@ -5505,10 +6026,23 @@ def extract_root_slot_block_graphical_tree(
     child_output_specs: dict[str, List[str]] = dict()
     child_node_ids: list[str] = list()
 
-    alias_map = _build_graph_signal_alias_map(node_ids, node_by_id, node_signals)
-    local_adj = _build_augmented_graphical_adjacency(node_ids, adjacency, node_by_id, node_signals, alias_map)
-    element_by_id = _build_dgs_element_index(circuit)
-    selected_element_obj = element_by_id.get(selection.instance_entry.element_id or "", None)
+    alias_map: Dict[str, Set[str]] = _build_graph_signal_alias_map(
+        node_ids,
+        node_by_id,
+        node_signals,
+    )
+    local_adj: Dict[str, Set[str]] = _build_augmented_graphical_adjacency(
+        node_ids,
+        adjacency,
+        node_by_id,
+        node_signals,
+        alias_map,
+    )
+    element_by_id: Dict[str, object] = resolved_graphical_indexes.element_by_id
+    selected_element_obj: object | None = element_by_id.get(
+        selection.instance_entry.element_id or "",
+        None,
+    )
     nested_entries_by_label: Dict[str, ElmCompInstanceEntry] = dict()
     nested_entries_by_type_name: Dict[str, ElmCompInstanceEntry] = dict()
     nested_parameter_values_by_type_id: Dict[
@@ -5516,7 +6050,14 @@ def extract_root_slot_block_graphical_tree(
         Dict[str, float | int | bool | str | complex | None],
     ] = dict()
     if isinstance(selected_element_obj, ElmComp):
-        nested_entries = extract_elmcomp_direct_instances(circuit, selected_element_obj)
+        nested_entries: List[ElmCompInstanceEntry] = (
+            get_unambiguous_elmcomp_direct_instances(
+                entries=extract_elmcomp_direct_instances(
+                    circuit,
+                    selected_element_obj,
+                )
+            )
+        )
         nested_entries_by_label = _build_instance_entry_lookup_by_slot_name(nested_entries)
         nested_entries_by_type_name = _build_instance_entry_lookup_by_type_name(nested_entries)
         nested_parameter_values_by_type_id = _parameter_values_by_type_id(nested_entries)
@@ -5760,7 +6301,7 @@ def export_named_block_subgraph_to_python(
     block_name: str,
     *,
     block_id: str | None = None,
-    root_name: str = "Grid Forming Converter",
+    root_name: str | None = None,
     root_typ_id: str | None = None,
     mode: BlockScopeMode = BlockScopeMode.InternalOnly,
 ) -> Path:
@@ -5771,7 +6312,7 @@ def export_named_block_subgraph_to_python(
     :param output_path: Destination `.py` file.
     :param block_name: Target block name inside the parsed DGS library.
     :param block_id: Optional exact DGS block identifier.
-    :param root_name: Root ElmComp display name.
+    :param root_name: Optional root ElmComp display name.
     :param root_typ_id: Optional exact root typ_id.
     :param mode: Dependency scope included in the exported block.
     :return: Path to the generated Python module.
@@ -5799,12 +6340,20 @@ def export_named_block_subgraph_tree_to_python(
     block_name: str,
     *,
     block_id: str | None = None,
-    root_name: str = "Grid Forming Converter",
+    root_name: str | None = None,
     root_typ_id: str | None = None,
     mode: BlockScopeMode = BlockScopeMode.InternalOnly,
 ) -> Path:
-    """
-    Export a selected DGS block subgraph as a serialized block-tree Python module.
+    """Export a selected subgraph as a serialized block-tree Python module.
+
+    :param dgs_path: Source DGS path.
+    :param output_path: Destination Python module path.
+    :param block_name: Display name of the selected block.
+    :param block_id: Optional exact DGS block identifier.
+    :param root_name: Optional root ``ElmComp`` display name.
+    :param root_typ_id: Optional exact root frame identifier.
+    :param mode: Dependency scope included in the exported tree.
+    :return: Path to the generated Python module.
     """
     result = dgs_to_root_block(dgs_path, root_name=root_name, root_typ_id=root_typ_id)
     subgraph = extract_named_block_subgraph(
@@ -5825,7 +6374,7 @@ def export_root_slot_block_internal_signal_tree_to_python(
     output_path: str,
     slot_name: str,
     *,
-    root_name: str = "Grid Forming Converter",
+    root_name: str | None = None,
     root_typ_id: str | None = None,
 ) -> Path:
     """
@@ -5834,7 +6383,7 @@ def export_root_slot_block_internal_signal_tree_to_python(
     :param dgs_path: Source DGS file.
     :param output_path: Destination `.py` file.
     :param slot_name: Root slot name or type-name fallback.
-    :param root_name: Root ElmComp display name.
+    :param root_name: Optional root ElmComp display name.
     :param root_typ_id: Optional exact root typ_id.
     :return: Path to the generated Python module.
     """
@@ -5863,7 +6412,7 @@ def export_root_slot_block_graphical_tree_to_python(
     output_path: str,
     slot_name: str,
     *,
-    root_name: str = "Grid Forming Converter",
+    root_name: str | None = None,
     root_typ_id: str | None = None,
 ) -> Path:
     """
@@ -5872,7 +6421,7 @@ def export_root_slot_block_graphical_tree_to_python(
     :param dgs_path: Source DGS file.
     :param output_path: Destination `.py` file.
     :param slot_name: Root slot name.
-    :param root_name: Root ElmComp display name.
+    :param root_name: Optional root ElmComp display name.
     :param root_typ_id: Optional root type identifier.
     :return: Path to the generated Python module.
     """
@@ -5902,7 +6451,7 @@ def export_root_slot_block_graphical_template_to_python(
     output_path: str,
     slot_name: str,
     *,
-    root_name: str = "Grid Forming Converter",
+    root_name: str | None = None,
     root_typ_id: str | None = None,
 ) -> Path:
     """
@@ -5911,7 +6460,7 @@ def export_root_slot_block_graphical_template_to_python(
     :param dgs_path: Source DGS file.
     :param output_path: Destination `.py` file.
     :param slot_name: Root slot name.
-    :param root_name: Root ElmComp display name.
+    :param root_name: Optional root ElmComp display name.
     :param root_typ_id: Optional exact root typ_id.
     :return: Path to the generated Python module.
     """
@@ -5950,11 +6499,29 @@ def export_root_elmcomp_template_to_python(
     :param root_typ_id: Optional exact root typ_id.
     :return: Path to the generated Python module.
     """
-    circuit = DgsCircuit()
+    circuit: DgsCircuit = DgsCircuit()
     circuit.parse_dgs(dgs_path)
-    result = dgs_to_root_block(dgs_path, root_name=root_name, root_typ_id=root_typ_id)
-    direct_root_block = _build_direct_root_elmcomp_block(circuit, result)
-    root_subgraph = DgsBlockSubgraphResult(
+    parsed_blocks: Dict[str, ParsedDgsBlockDefinition] = (
+        parse_dgs_block_definitions_from_circuit(circuit=circuit)
+    )
+    result: DgsRootBlockResult = build_dgs_root_block_from_circuit(
+        circuit=circuit,
+        parsed_blocks=parsed_blocks,
+        root_name=root_name,
+        root_typ_id=root_typ_id,
+    )
+    graphical_indexes: DgsGraphicalIndexes = (
+        build_dgs_graphical_indexes(circuit=circuit)
+    )
+    direct_root_result: DgsDirectRootBuildResult = (
+        build_direct_root_elmcomp_block(
+            circuit=circuit,
+            result=result,
+            graphical_indexes=graphical_indexes,
+        )
+    )
+    direct_root_block: Block = direct_root_result.root_block
+    root_subgraph: DgsBlockSubgraphResult = DgsBlockSubgraphResult(
         selected_block=result.root_blkdef,
         view_block=direct_root_block,
         node_ids=set(result.dependency_graph.keys()),
@@ -5979,7 +6546,7 @@ def export_root_slot_block_internal_signal_template_to_python(
     output_path: str,
     slot_name: str,
     *,
-    root_name: str = "Grid Forming Converter",
+    root_name: str | None = None,
     root_typ_id: str | None = None,
 ) -> Path:
     """
@@ -5988,7 +6555,7 @@ def export_root_slot_block_internal_signal_template_to_python(
     :param dgs_path: Source DGS file.
     :param output_path: Destination `.py` file.
     :param slot_name: Root slot name or type-name fallback.
-    :param root_name: Root ElmComp display name.
+    :param root_name: Optional root ElmComp display name.
     :param root_typ_id: Optional exact root typ_id.
     :return: Path to the generated Python module.
     """

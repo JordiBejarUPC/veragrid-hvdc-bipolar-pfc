@@ -6,7 +6,7 @@ from __future__ import annotations
 import sys
 import os
 from pathlib import Path
-from typing import Dict, List, Type, Optional, Tuple
+from typing import Dict, Iterator, List, Type, Optional, Tuple
 from VeraGridEngine.IO.dgs.dgs_objects import (
     BlkDef,
     BlkDiv,
@@ -359,6 +359,20 @@ class DgsCircuit:
         """
         self._id_counter += 1
         return str(self._id_counter)
+
+    def get_all_elements_iter(self) -> Iterator[DGSElement]:
+        """Iterate over every parsed DGS element in schema order.
+
+        This public boundary lets import layers build exact FID indexes without
+        reaching into the circuit's private class registry.
+
+        :return: Iterator over all parsed DGS elements.
+        """
+        element_list: List[DGSElement]
+        element: DGSElement
+        for element_list in self._CLASS_TO_LIST.values():
+            for element in element_list:
+                yield element
 
     def add_element_cubicles(self, element_id: str, dgs_buses: List[ElmTerm]):
         """
