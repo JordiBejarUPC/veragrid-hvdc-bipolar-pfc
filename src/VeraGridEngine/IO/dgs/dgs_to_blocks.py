@@ -32,6 +32,11 @@ from VeraGridEngine.enumerations import BlockScopeMode
 
 
 def _safe_name(name: str) -> str:
+    """
+
+    :param name:
+    :return:
+    """
     cleaned: str = re.sub(r"[^0-9a-zA-Z_]", "_", name)
     cleaned = re.sub(r"_+", "_", cleaned).strip("_")
     if cleaned == "":
@@ -79,6 +84,11 @@ def _sort_candidate_names_with_preferred_first(names: List[str], preferred_name:
 
 
 def _split_symbol_blob(raw: str) -> List[str]:
+    """
+
+    :param raw:
+    :return:
+    """
     values: List[str] = list()
     token: List[str] = list()
 
@@ -99,6 +109,11 @@ def _split_symbol_blob(raw: str) -> List[str]:
 
 
 def _split_equation_statements(raw_equations: Iterable[str]) -> List[str]:
+    """
+
+    :param raw_equations:
+    :return:
+    """
     statements: List[str] = list()
 
     for blob in raw_equations:
