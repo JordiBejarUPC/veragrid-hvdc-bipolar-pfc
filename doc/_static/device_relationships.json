@@ -728,7 +728,7 @@
       "module_name": "src.VeraGridEngine.Devices.Branches.transformer3w",
       "file_path": "src/VeraGridEngine/Devices/Branches/transformer3w.py",
       "bases": [
-        "PhysicalDevice"
+        "DynamicDevice"
       ],
       "doc_url": "../md_source/modelling.html#transformer3w"
     },
@@ -1978,10 +1978,35 @@
     },
     {
       "source": "Transformer3W",
+      "target": "EmtModelTemplate",
+      "kind": "references",
+      "properties": [
+        "emt_template"
+      ]
+    },
+    {
+      "source": "Transformer3W",
+      "target": "FmuTemplate",
+      "kind": "references",
+      "properties": [
+        "emt_fmu_template",
+        "rms_fmu_template"
+      ]
+    },
+    {
+      "source": "Transformer3W",
       "target": "ModellingAuthority",
       "kind": "references",
       "properties": [
         "modelling_authority"
+      ]
+    },
+    {
+      "source": "Transformer3W",
+      "target": "RmsModelTemplate",
+      "kind": "references",
+      "properties": [
+        "rms_template"
       ]
     },
     {
