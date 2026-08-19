@@ -26,19 +26,6 @@ from VeraGridEngine.enumerations import (
 GSLV_RECOMMENDED_VERSION: str = "0.7.10"
 GSLV_VERSION: str = ''
 GSLV_AVAILABLE: bool = False
-
-# pygslv statically links its own copy of HiGHS and exports the symbols globally, so if it
-# loads before highspy, the dynamic linker resolves part of highspy against pygslv's
-# incompatible HiGHS internals and the process segfaults mid-solve (seen as a GUI hard
-# close on any NTC MIP entering branch & bound). Importing highspy first binds its symbols
-# to its own library, which makes both coexist. Inert when highspy or pygslv are absent.
-# Remove once GSLV builds with hidden symbol visibility.
-try:
-    import highspy as _highspy_loaded_before_pygslv
-except ImportError:
-    # highspy is optional; without it there is no clash to prevent
-    _highspy_loaded_before_pygslv = None
-
 try:
     import pygslv as pg
     # The wrapper owns the license discovery logic, so activation is centralized here.
