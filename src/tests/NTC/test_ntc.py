@@ -1868,6 +1868,59 @@ def test_ntc_pmode3_saturates_at_dc_bottleneck() -> None:
     assert np.allclose(res.Sf[tie_idx].real, 3000.0, atol=1.0)
 
 
+def test_ntc_structural_n1_overload_is_relaxed_not_infeasible() -> None:
+    """
+    A structurally unavoidable N-1 overload must relax the limit (penalized slack, reported)
+    instead of making the whole LP infeasible.
+
+    Grid: gen area -> tie -> radial pair A (rate=100, x=0.01) / B (rate=50, x=0.02) feeding a
+    fixed 120 MW load. Base split is 80/40 (B at 80 % of its rating, so its N-1 limit is
+    enforced), but losing A forces all 120 MW through B. Thus 70 MW of violation where 
+    no exchange reduction can remove. With slacks an optimal solution should be reached.
+    """
+    grid = gce.MultiCircuit()
+    a1 = gce.Area("A1")
+    a2 = gce.Area("A2")
+    grid.add_area(a1)
+    grid.add_area(a2)
+    b0 = gce.Bus("B0", Vnom=400, area=a1)
+    b0.is_slack = True
+    b1 = gce.Bus("B1", Vnom=400, area=a2)
+    b2 = gce.Bus("B2", Vnom=400, area=a2)
+    for b in (b0, b1, b2):
+        grid.add_bus(b)
+    grid.add_generator(b0, gce.Generator("G", P=120, Pmax=1000, Pmin=0))
+    grid.add_load(b2, gce.Load("L", P=120))
+    line_tie = gce.Line(b0, b1, name="tie", x=0.01, rate=1000)
+    line_a = gce.Line(b1, b2, name="A", x=0.01, rate=100)
+    line_b = gce.Line(b1, b2, name="B", x=0.02, rate=50)
+    for ln in (line_tie, line_a, line_b):
+        grid.add_line(ln)
+    cg = gce.ContingencyGroup(name="A out")
+    grid.add_contingency_group(cg)
+    grid.add_contingency(gce.Contingency(device=line_a, group=cg))
+
+    info = grid.get_inter_aggregation_info(objects_from=[a1], objects_to=[a2])
+    opts = gce.OptimalNetTransferCapacityOptions(
+        sending_bus_idx=info.idx_bus_from,
+        receiving_bus_idx=info.idx_bus_to,
+        transfer_method=gce.AvailableTransferMode.InstalledPower,
+        consider_contingencies=True,
+        use_branch_exchange_sensitivity=False,
+        opf_options=gce.OptimalPowerFlowOptions(),
+    )
+    drv = gce.OptimalNetTransferCapacityDriver(grid, opts)
+    drv.run()
+    res = drv.results
+
+    # the LP stays optimal despite the structural violation
+    assert bool(np.all(res.converged))
+
+    # the base flows are the physical 80/40 split, untouched by the relaxation
+    assert np.isclose(float(res.Sf[1].real), 80.0, atol=1.0)
+    assert np.isclose(float(res.Sf[2].real), 40.0, atol=1.0)
+
+
 if __name__ == '__main__':
     # test_issue_372_1()
     # test_issue_372_2()

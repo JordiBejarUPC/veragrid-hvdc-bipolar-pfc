@@ -2107,7 +2107,7 @@ def add_corrective_contingency_formulation(t_idx: int,
                 pass
 
             if isinstance(flow_expr, LpExp):
-                # symmetric rating limits with slacks so an infeasible contingency is reported, not crashed
+                # Slack to relax the rates, not the other way around as before
                 rate_pu: float = branch_data_t.contingency_rates[m] / Sbase
                 pos_slack: LpVar = prob.add_var(0, 1e20, join("br_cst_flow_pos_sl_", [t_idx, m, c], "_"))
                 neg_slack: LpVar = prob.add_var(0, 1e20, join("br_cst_flow_neg_sl_", [t_idx, m, c], "_"))
@@ -2116,13 +2116,13 @@ def add_corrective_contingency_formulation(t_idx: int,
                 branch_vars.add_contingency_flow(t=t_idx, m=m, c=c, flow_var=flow_expr,
                                                  neg_slack=neg_slack, pos_slack=pos_slack)
 
-                prob.add_cst(cst=flow_expr + pos_slack <= rate_pu,
+                prob.add_cst(cst=flow_expr - pos_slack <= rate_pu,
                              name=join("br_cst_flow_upper_lim_", [t_idx, m, c], "_"))
-                prob.add_cst(cst=flow_expr - neg_slack >= -rate_pu,
+                prob.add_cst(cst=flow_expr + neg_slack >= -rate_pu,
                              name=join("br_cst_flow_lower_lim_", [t_idx, m, c], "_"))
 
-                # in-place accumulation: "f_obj = f_obj + ..." is slow
-                f_obj += pos_slack + neg_slack
+                # 1e4 per p.u. of slack penalty, arbitrary
+                f_obj += 1e4 * (pos_slack + neg_slack)
             else:
                 # the flow is a pure constant (no decision variables): there is nothing to constrain
                 pass
@@ -2212,20 +2212,20 @@ def add_preventive_contingency_formulation(t_idx: int,
                                                      neg_slack=neg_slack,
                                                      pos_slack=pos_slack)
 
-                    # upper rate constraint
+                    # Ensure the slacks relax
                     prob.add_cst(
-                        cst=contingency_flows[m] + pos_slack <= branch_data_t.contingency_rates[m] / Sbase,
+                        cst=contingency_flows[m] - pos_slack <= branch_data_t.contingency_rates[m] / Sbase,
                         name=join("br_cst_flow_upper_lim_", [t_idx, m, c, occ])
                     )
 
                     # lower rate constraint
                     prob.add_cst(
-                        cst=contingency_flows[m] - neg_slack >= -branch_data_t.contingency_rates[m] / Sbase,
+                        cst=contingency_flows[m] + neg_slack >= -branch_data_t.contingency_rates[m] / Sbase,
                         name=join("br_cst_flow_lower_lim_", [t_idx, m, c, occ])
                     )
 
-                    # in-place accumulation, see the note in the corrective formulation
-                    f_obj += pos_slack + neg_slack
+                    # Penalty for the slacks which is arbitrary
+                    f_obj += 1e4 * (pos_slack + neg_slack)
                 else:
                     # the branch is already overloaded at the base contingency loading: report and skip its limit
                     logger.add_error("Contingency overload on sensitive branch, contingency skipped",
@@ -3287,6 +3287,23 @@ def run_linear_ntc_opf(grid: MultiCircuit,
 
         if sl_down > 0.0:
             logger.add_warning("Overload (-)", device=f"({k}) - {nc.passive_branch_data.names[k]}", value=sl_down)
+
+    # report every post-contingency limit that had to be relaxed to keep the LP feasible:
+    # these are structural N-1 overloads the dispatch cannot avoid, and the NTC result is
+    # only meaningful knowing they exist
+    for (t_c, m_c, c_c, flow_c, neg_sl, pos_sl) in vars_v.branch_vars.contingency_flow_data:
+        if isinstance(neg_sl, float) and isinstance(pos_sl, float):
+            slack_mw: float = abs(neg_sl) + abs(pos_sl)
+            if slack_mw > 1e-6:
+                logger.add_warning("Unavoidable post-contingency overload (limit relaxed)",
+                                   device=f"({m_c}) - {nc.passive_branch_data.names[m_c]} @ctg {c_c}",
+                                   value=slack_mw)
+            else:
+                # the limit held without relaxation
+                pass
+        else:
+            # the slack was not evaluated to a number (should not happen after get_values)
+            pass
 
     # The summation of flow increments in the inter-area branches must be ΔP in A1.
     vars_v.inter_area_flows[t_idx] = (
