@@ -121,6 +121,7 @@ class InjectionParent(DynamicDevice):
             tpe=DeviceType.FacilityDevice,
             definition='Facility where this is located',
             editable=True,
+            cat=[PrpCat.OPF, PrpCat.TP],
         ),
         GCProp(
             prop_name='technologies',
