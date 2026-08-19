@@ -13,8 +13,6 @@ If power flow tells you where the system is standing, dynamic simulation tells y
 
 The classical theoretical foundations for power-system dynamic simulation can be found in Kundur's treatment of electromechanical stability, in Milano's differential-algebraic modelling framework, and in standard EMT references such as Dommel and Mahseredjian's ATP/EMTP-oriented literature and the EMTP-RV theory texts [1]-[6]. VeraGrid follows the same general modelling philosophy: represent the network and devices as coupled differential-algebraic systems, initialize them consistently from a solved operating point, and integrate them in time with suitable numerical methods.
 
-## Dynamic simulation documentation
-
 This page provides the common theory, architecture, initialization, solver, event, and scripting concepts shared by VeraGrid's dynamic studies. Continue with the domain-specific guides or the model reference according to the task:
 
 - **RMS simulations** cover phasor-domain time simulation and contain the RMS small-signal analysis guide.
@@ -26,7 +24,7 @@ This page provides the common theory, architecture, initialization, solver, even
 
 rms_simulations
 emt_simulations
-dyn_templates/index
+dynamic_model_library_index
 ```
 
 ## Why dynamic simulations are different from static simulations
@@ -1275,9 +1273,9 @@ The editor-based workflow is especially useful when:
 
 ### Dynamic model documentation
 
-The [Dynamic model library](dyn_templates/index.md) provides a browsable index of all documented dynamic models and blocks:
+The [Dynamic model library](dynamic_model_library_index.md) provides a browsable index of all documented dynamic models and blocks:
 
-- [DAE Block authoring guide](dyn_templates/dae_block_authoring.md)
+- [DAE Block authoring guide](dae_block_authoring.md)
 - [RMS device templates](dyn_templates/RMS/index.md)
 - [EMT device templates](dyn_templates/EMT/index.md)
 - [Dynamic library blocks](dyn_templates/library/index.md)

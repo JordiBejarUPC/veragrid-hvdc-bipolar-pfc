@@ -665,7 +665,7 @@ def enrich_static_dynamic_documentation(repository_root: Path) -> int:
     documentation_path: Path
     for documentation_path in documentation_root.rglob("*.md"):
         relative_path: Path = documentation_path.relative_to(documentation_root)
-        is_index: bool = documentation_path.name == "index.md"
+        is_index: bool = documentation_path.name == "dynamic_model_library_index.md"
         is_generated_catalogue: bool = "catalog" in relative_path.parts
         if is_index or is_generated_catalogue:
             pass

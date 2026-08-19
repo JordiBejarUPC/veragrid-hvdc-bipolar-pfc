@@ -1,4 +1,4 @@
-# Dynamic model library
+# 📚 Dynamic model library
 
 This library is the entry point for the dynamic models and reusable blocks available in VeraGrid. Use the sections below to browse device-level templates for RMS and EMT simulations, the lower-level blocks used to assemble those models, and the procedural logic evaluated between accepted simulation steps.
 
@@ -19,8 +19,8 @@ Device templates represent complete electrical devices or composite dynamic mode
 ```{toctree}
 :maxdepth: 2
 
-RMS/index
-EMT/index
+dyn_templates/RMS/index
+dyn_templates/EMT/index
 ```
 
 ## Reusable blocks and logic
@@ -30,6 +30,6 @@ The dynamic library contains the reusable mathematical and electrical building b
 ```{toctree}
 :maxdepth: 2
 
-library/index
-procedural_logic/index
+dyn_templates/library/index
+dyn_templates/procedural_logic/index
 ```

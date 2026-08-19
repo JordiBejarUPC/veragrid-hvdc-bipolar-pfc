@@ -19,7 +19,7 @@ If `ss_assessment_time > 0.0`, the driver first runs an RMS simulation from `t =
 
 This is the Small-Signal settings page:
 
-![](figures/smallsignal_settings.png)
+![](figures/dynamics/dynamic_settings.png)
 
 ### Small-signal settings
 
@@ -169,7 +169,7 @@ To use hertz on the imaginary axis:
 
 Only a complete pair consisting of `Real` and one of the two `Imaginary` columns changes the plot coordinates. Selecting ordinary cells chooses modes; it does not redefine the coordinate pair.
 
-![](figures/SDomain_plot_VeraGrid.png)
+![](figures/dynamics/SDomain_plot_VeraGrid.png)
 
 ### Right eigenvectors and mode-shape plots
 
@@ -397,7 +397,7 @@ def stability_andes():
 
 Comparing the case of Kundur two-area system VeraGrid gets exactly the same results.
 
-![](figures/andes_vs_veragrid_kundur.png)
+![](figures/dynamics/andes_vs_veragrid_kundur.png)
 
 The following plot template is used to compare results.
 

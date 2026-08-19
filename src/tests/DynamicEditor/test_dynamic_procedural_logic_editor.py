@@ -178,7 +178,7 @@ def test_every_procedural_type_has_typed_fields_and_documentation() -> None:
             assert "## Purpose" in documentation
             assert "## Runtime behavior" in documentation
     assert concrete_count == 15
-    assert (documentation_root / "index.md").is_file()
+    assert (documentation_root / "dynamic_model_library_index.md").is_file()
 
 
 def test_comparisons_are_serialized_with_python_parser_tokens() -> None:

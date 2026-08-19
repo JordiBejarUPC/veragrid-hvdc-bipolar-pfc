@@ -1359,7 +1359,7 @@ def test_every_dynamic_block_page_explains_the_block_and_its_use() -> None:
     documentation_paths: list[Path] = list(
         documentation_path
         for documentation_path in documentation_root.rglob("*.md")
-        if documentation_path.name not in ("index.md", "dae_block_authoring.md")
+        if documentation_path.name not in ("dynamic_model_library_index.md", "dae_block_authoring.md")
     )
 
     assert len(documentation_paths) >= 780

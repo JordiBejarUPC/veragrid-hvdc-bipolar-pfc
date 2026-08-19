@@ -2,7 +2,7 @@
 
 This guide explains how to author dynamic models with VeraGrid's symbolic `Block` system. It covers the mathematical contract, every user-facing part of a block, initialization, network and API mappings, hierarchical composition, procedural modes, and the equivalent workflows in Python and the Dynamic Model Editor.
 
-Use this guide when you need to create a new RMS or EMT model. Use the [Dynamic model library](index.md) when you need the reference page for an existing model or reusable block, and [Dynamic simulations](../dynamic_simulations.md) for the theory and simulation workflow.
+Use this guide when you need to create a new RMS or EMT model. Use the [Dynamic model library](dynamic_model_library_index.md) when you need the reference page for an existing model or reusable block, and [Dynamic simulations](dynamic_simulations.md) for the theory and simulation workflow.
 
 ## The mental model
 
@@ -334,7 +334,7 @@ The different trip and reset thresholds provide hysteresis and avoid chatter. A 
 
 Equation-level `select()` and `ifelse()` are intentionally blocked in the public procedural API. Move the switching decision to `procedural_logic` and consume its retained mode in the equations, or use a physically justified smooth continuous approximation.
 
-The available runtime entries are documented under [Runtime procedural logic](procedural_logic/index.md).
+The available runtime entries are documented under [Runtime procedural logic](dyn_templates/procedural_logic/index.md).
 
 ## A complete scripting example
 
@@ -477,16 +477,23 @@ The GUI edits the same `Block` objects used by scripting. There is no separate g
 7. Use the workspace **Validate** action before saving the model.
 8. Use the editor's apply/save button and confirm the **Model saved** notification. Until then, the editor is working on an isolated copy.
 
-The [RMS practical session](../RMS_practical_session.md) and [EMT practical session](../EMT_practical_session.md) show the device-level workflow with screenshots.
+The [RMS practical session](RMS_practical_session.md) and [EMT practical session](EMT_practical_session.md) show the device-level workflow with screenshots.
 
 ### Block Properties
 
 Double-click a block to open **Block properties**. The main pages are:
 
 - **General options**: block identity, generated structural settings, numeric fixed parameters, event parameters, and modes.
+
+![General options](figures/dynamics/block_properties_general_options.png)
+- 
 - **DAE model**: recursive Variables and Parameters tables, the equation owner selector, safe Python-like equation code, and LaTeX/PDF export.
+
+![Block Properties](figures/dynamics/block_properties_DAE_model.png)
+
 - **Runtime logic**: retained modes and ordered procedural entries.
 - **Special settings**: structured builder data for blocks that need it, such as lookup tables.
+
 
 Edits in the dialog are staged. **Apply changes** validates the complete draft and applies it atomically to the editor working copy; it does not by itself save the complete device model back to the grid.
 
@@ -648,7 +655,7 @@ Place user-facing reference documentation here:
 - reusable block pages: `doc/md_source/dyn_templates/library/`
 - procedural entry pages: `doc/md_source/dyn_templates/procedural_logic/`
 
-Each new model page should document its physical purpose, equations, interface, parameter units, initialization assumptions, mappings, procedural behavior, and known domain limitations. Add or generate the corresponding catalogue entry so the model remains reachable from the [Dynamic model library](index.md).
+Each new model page should document its physical purpose, equations, interface, parameter units, initialization assumptions, mappings, procedural behavior, and known domain limitations. Add or generate the corresponding catalogue entry so the model remains reachable from the [Dynamic model library](dynamic_model_library_index.md).
 
 ## Author checklist
 
