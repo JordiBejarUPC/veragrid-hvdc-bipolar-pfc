@@ -170,15 +170,6 @@ class RoutingNode:
         """
         return self._port_side
 
-    def set_port_side(self, port_side: RoutingPortSide | None) -> None:
-        """
-        Set the physical block side for this node.
-
-        :param port_side: Physical port side or ``None``.
-        :returns: None.
-        """
-        self._port_side = port_side
-
     def get_incident_segment_ids(self) -> list[int]:
         """
         Return the incident segment identifiers.

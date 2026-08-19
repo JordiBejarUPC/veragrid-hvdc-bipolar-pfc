@@ -288,32 +288,6 @@ class RoutingConstraintEngine:
             # without duplicating constraint sequencing.
             return True
 
-    def is_connection_valid(
-            self,
-            port_node: RoutingNode,
-            neighbour_node: RoutingNode,
-            segment: RoutingSegment,
-            block_bounds: object | None = None,
-    ) -> bool:
-        """
-        Return whether one local port connection satisfies every active constraint.
-
-        This temporary alias keeps the migration incremental while the higher-
-        level public API moves toward ``validate_connection(...)``.
-
-        :param port_node: Port node to inspect.
-        :param neighbour_node: First neighbour of the port node.
-        :param segment: Connecting segment between both nodes.
-        :param block_bounds: Placeholder block geometry payload.
-        :returns: ``True`` when every active constraint is satisfied.
-        """
-        return self.validate_connection(
-            port_node=port_node,
-            neighbour_node=neighbour_node,
-            segment=segment,
-            block_bounds=block_bounds,
-        )
-
     def _get_port_perpendicular_axis(self, port_node: RoutingNode) -> RoutingAxis | None:
         """
         Return the expected perpendicular axis for one port connection.

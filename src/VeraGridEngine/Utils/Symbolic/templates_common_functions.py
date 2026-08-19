@@ -1238,6 +1238,8 @@ def reconcile_saved_emt_model_against_current_topology(device: Any,
         _clear_saved_branch_root_external_mapping(device=device)
         _rebuild_saved_branch_root_contract_from_live_sides(device=device,
                                                             var_factory=var_factory)
+        register_saved_emt_model_vars_for_device(device=device,
+                                                 var_factory=var_factory)
         seed_template_derived_dynamic_connection_intents(device=device)
         rematerialize_saved_dynamic_connection_intents(device=device,
                                                        var_factory=var_factory)
@@ -1255,18 +1257,8 @@ def reconcile_saved_emt_model_against_current_topology(device: Any,
         _prune_saved_root_external_mapping_to_live_contract(device=device)
         _ensure_saved_root_io_vars_for_live_contract(device=device,
                                                      var_factory=var_factory)
-        seed_template_derived_dynamic_connection_intents(device=device)
-        attach_emt_model_to_buses(device=device,
-                                  model=device.emt_model,
-                                  var_factory=var_factory)
-
-    if _is_branch_like_device(device):
-        pass
-    else:
-        _prune_saved_root_io_vars_to_supported_contract(device=device)
-        _prune_saved_root_external_mapping_to_live_contract(device=device)
-        _ensure_saved_root_io_vars_for_live_contract(device=device,
-                                                     var_factory=var_factory)
+        register_saved_emt_model_vars_for_device(device=device,
+                                                 var_factory=var_factory)
         seed_template_derived_dynamic_connection_intents(device=device)
         attach_emt_model_to_buses(device=device,
                                   model=device.emt_model,
@@ -1797,9 +1789,12 @@ def register_saved_emt_model_vars_for_device(device: Any,
     :return: None.
     """
     model: Block = device.emt_model
-    algebraic_var = None
-    state_var = None
-    diff_var = None
+    block_model: Block
+    model_var: Var
+    standard_var_lists: tuple[List[Var], ...]
+    standard_var_list: List[Var]
+    registered_standard_uids: set[int] = set()
+    registered_diff_uids: set[int] = set()
 
     if model.empty():
         return
@@ -1813,36 +1808,35 @@ def register_saved_emt_model_vars_for_device(device: Any,
     # later lookups reflect the authoritative post-editor symbolic objects.
     var_factory.vars_info[device] = list()
 
-    for algebraic_var in model.algebraic_vars:
-        # The var-factory connection propagation operates through the central var
-        # registries keyed by stable ``non_mutable_uid``. Re-registering only in
-        # ``vars_info`` is not enough for the saved editor-built vars to receive
-        # propagated bus-side uid updates.
-        vars_dict[algebraic_var.non_mutable_uid] = algebraic_var
-        var_factory.register_var(device, algebraic_var)
+    # Register the complete persisted tree, not only the root block. Editor
+    # commit replaces child-block Var objects as well, and the connection graph
+    # addresses those objects by stable identity. Leaving the factory pointed at
+    # a previous working-copy instance makes topology reconnection update that
+    # obsolete clone while the saved model retains stale bus UIDs.
+    for block_model in model.get_all_blocks():
+        standard_var_lists = (
+            block_model.algebraic_vars,
+            block_model.state_vars,
+            block_model.reformulated_vars,
+            block_model.in_vars,
+            block_model.out_vars,
+        )
+        for standard_var_list in standard_var_lists:
+            for model_var in standard_var_list:
+                if model_var.non_mutable_uid in registered_standard_uids:
+                    pass
+                else:
+                    vars_dict[model_var.non_mutable_uid] = model_var
+                    var_factory.register_var(device, model_var)
+                    registered_standard_uids.add(model_var.non_mutable_uid)
 
-    for state_var in model.state_vars:
-        vars_dict[state_var.non_mutable_uid] = state_var
-        var_factory.register_var(device, state_var)
-
-    # Editor-built EMT models expose their bus contract through root input and
-    # output vars. The bus connection helpers propagate live bus identities via
-    # ``VarFactory`` using those root connection vars directly. If they are not
-    # registered in the central var registry, ``add_connections()`` cannot find
-    # them by ``non_mutable_uid`` and the saved editor model keeps stale bus-side
-    # ``uid`` values even though the template setter path succeeds.
-    io_var: Var
-    for io_var in model.in_vars:
-        vars_dict[io_var.non_mutable_uid] = io_var
-        var_factory.register_var(device, io_var)
-
-    for io_var in model.out_vars:
-        vars_dict[io_var.non_mutable_uid] = io_var
-        var_factory.register_var(device, io_var)
-
-    for diff_var in model.diff_vars:
-        diff_vars_dict[diff_var.non_mutable_uid] = diff_var
-        var_factory.register_var(device, diff_var)
+        for model_var in block_model.diff_vars:
+            if model_var.non_mutable_uid in registered_diff_uids:
+                pass
+            else:
+                diff_vars_dict[model_var.non_mutable_uid] = model_var
+                var_factory.register_var(device, model_var)
+                registered_diff_uids.add(model_var.non_mutable_uid)
 
 
 def unregister_saved_emt_model_var_connections_for_device(device: Any,

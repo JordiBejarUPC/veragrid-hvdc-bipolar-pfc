@@ -1,0 +1,170 @@
+ANDES VERSUS VERAGRID RMS DYNAMIC BENCHMARK [rotor_speed_state_step]
+==============================================================================
+
+SCOPE AND FAIRNESS
+The five validated networks use the same fixed-step Backward Euler method, 1 ms integration step, 2.0 s horizon and 1e-6 nonlinear tolerance. Both programs start from the unperturbed equilibrium and apply the same additive 1e-4 pu step to the same physical rotor-speed state at t=0.2 s.
+On IEEE39 and WECC179, ANDES attempted a floating-point zero-length trailing step after storing t=2.0 s. Those runs are accepted only because the script verifies that the full requested 2,001-point grid is present; a genuinely early termination remains a hard failure. No adaptive step reduction is accepted.
+Both programs solve power flow twice. The first cold run is retained only as a warm-up diagnostic; the second warm solve initializes RMS and is the only power-flow time included in the analyzed total. Result export is excluded.
+Times are single wall-clock observations, not a statistical performance study. They explain the present runs but should be repeated before publishing claims.
+
+NUMERICAL AGREEMENT SUMMARY
+           case  common_states  max_abs_error         rmse        dominant_state  initial_error_of_dominant_state  final_error_of_dominant_state  relative_A_error_from_SSS
+KUNDUR_no_shunt              8   4.614090e-07 1.622421e-07        delta GENCLS 3                     4.614089e-07                   4.479119e-07               1.692291e-10
+         IEEE14             56   1.169621e-04 8.522151e-06       LAW2_y ESST3A 2                     8.892600e-09                   7.940784e-06               1.835490e-09
+         IEEE39            130   5.694640e-06 7.339084e-07 LAG_y TGOV1N TGOV1 10                     5.694398e-06                   5.694620e-06               6.902046e-08
+        NPCC140            334   4.780440e-07 6.554454e-08           vp IEEEX1 4                     4.776010e-07                   4.774670e-07               5.657571e-08
+        WECC179            507   1.535531e-03 3.827806e-05      LAW2_y ESST3A 26                     2.419620e-07                   2.677133e-04               6.023567e-07
+
+TIMING BY PHASE, WITH WINNER
+           case                                          phase      ANDES_s   VeraGrid_s   winner  winner_factor_x                                  timing_role
+KUNDUR_no_shunt              Case/model build and pre-PF setup 4.361225e-01 1.879950e-02 VeraGrid     2.319862e+01                           INCLUDED COMPONENT
+KUNDUR_no_shunt                     Cold power flow (excluded) 1.098200e-02 2.944404e+00    ANDES     2.681118e+02                           EXCLUDED COMPONENT
+KUNDUR_no_shunt                     Warm power flow (analyzed) 6.549500e-03 1.047120e-02    ANDES     1.598779e+00                           INCLUDED COMPONENT
+KUNDUR_no_shunt Dynamic initialization and symbolic-to-numeric 6.739200e-03 1.609423e-01    ANDES     2.388151e+01                           INCLUDED COMPONENT
+KUNDUR_no_shunt                                RMS integration 4.421487e+00 5.255784e+00    ANDES     1.188692e+00                           INCLUDED COMPONENT
+KUNDUR_no_shunt                       Analyzed benchmark total 4.870898e+00 5.445997e+00    ANDES     1.118068e+00 ANALYZED TOTAL (sum, not an extra component)
+         IEEE14              Case/model build and pre-PF setup 8.034348e-01 3.157327e-01 VeraGrid     2.544668e+00                           INCLUDED COMPONENT
+         IEEE14                     Cold power flow (excluded) 1.741180e-02 3.003796e+00    ANDES     1.725150e+02                           EXCLUDED COMPONENT
+         IEEE14                     Warm power flow (analyzed) 1.290960e-02 1.158460e-02 VeraGrid     1.114376e+00                           INCLUDED COMPONENT
+         IEEE14 Dynamic initialization and symbolic-to-numeric 4.861100e-02 7.269920e-01    ANDES     1.495530e+01                           INCLUDED COMPONENT
+         IEEE14                                RMS integration 2.494536e+01 8.450036e+00 VeraGrid     2.952101e+00                           INCLUDED COMPONENT
+         IEEE14                       Analyzed benchmark total 2.581031e+01 9.504345e+00 VeraGrid     2.715633e+00 ANALYZED TOTAL (sum, not an extra component)
+         IEEE39              Case/model build and pre-PF setup 5.071477e-01 2.640354e-01 VeraGrid     1.920756e+00                           INCLUDED COMPONENT
+         IEEE39                     Cold power flow (excluded) 9.818100e-03 4.738845e+00    ANDES     4.826642e+02                           EXCLUDED COMPONENT
+         IEEE39                     Warm power flow (analyzed) 6.355400e-03 1.846680e-02    ANDES     2.905687e+00                           INCLUDED COMPONENT
+         IEEE39 Dynamic initialization and symbolic-to-numeric 2.123870e-02 1.811534e+00    ANDES     8.529401e+01                           INCLUDED COMPONENT
+         IEEE39                                RMS integration 1.081093e+01 2.978295e+01    ANDES     2.754892e+00                           INCLUDED COMPONENT
+         IEEE39                       Analyzed benchmark total 1.134567e+01 3.187698e+01    ANDES     2.809616e+00 ANALYZED TOTAL (sum, not an extra component)
+        NPCC140              Case/model build and pre-PF setup 6.787169e-01 8.603359e-01    ANDES     1.267592e+00                           INCLUDED COMPONENT
+        NPCC140                     Cold power flow (excluded) 3.304100e-02 3.071820e+00    ANDES     9.296995e+01                           EXCLUDED COMPONENT
+        NPCC140                     Warm power flow (analyzed) 3.144550e-02 2.194130e-02 VeraGrid     1.433165e+00                           INCLUDED COMPONENT
+        NPCC140 Dynamic initialization and symbolic-to-numeric 5.613080e-02 4.273585e+00    ANDES     7.613618e+01                           INCLUDED COMPONENT
+        NPCC140                                RMS integration 1.969635e+01 5.601390e+01    ANDES     2.843872e+00                           INCLUDED COMPONENT
+        NPCC140                       Analyzed benchmark total 2.046264e+01 6.116976e+01    ANDES     2.989339e+00 ANALYZED TOTAL (sum, not an extra component)
+        WECC179              Case/model build and pre-PF setup 1.392232e+00 1.688963e+00    ANDES     1.213133e+00                           INCLUDED COMPONENT
+        WECC179                     Cold power flow (excluded) 9.850300e-03 5.564914e+00    ANDES     5.649486e+02                           EXCLUDED COMPONENT
+        WECC179                     Warm power flow (analyzed) 1.168500e-02 3.197980e-02    ANDES     2.736825e+00                           INCLUDED COMPONENT
+        WECC179 Dynamic initialization and symbolic-to-numeric 1.067364e-01 5.418579e+00    ANDES     5.076599e+01                           INCLUDED COMPONENT
+        WECC179                                RMS integration 5.737993e+01 8.261171e+01    ANDES     1.439732e+00                           INCLUDED COMPONENT
+        WECC179                       Analyzed benchmark total 5.889059e+01 8.975124e+01    ANDES     1.524034e+00 ANALYZED TOTAL (sum, not an extra component)
+
+WHAT EACH TIMING PHASE CONTAINS
+Case/model build and pre-PF setup: ANDES parses the case and creates model arrays, addresses, sparse patterns and references; VeraGrid constructs the MultiCircuit, assigns every RMS template and wires symbolic variables.
+Cold power flow: first solve and compilation/warm-up effects. It is excluded.
+Warm power flow: second Newton solve. Its result is authoritative and included.
+Dynamic initialization and symbolic-to-numeric: ANDES TDS.init versus VeraGrid RmsProblemDae construction, explicit dynamic initialization, residual/Jacobian compilation and solver-array allocation.
+RMS integration: all 2,000 implicit Backward Euler steps. Each step evaluates the DAE, refreshes the honest Jacobian, solves the Newton linear system and checks the common tolerance.
+Analyzed total: build/setup + warm power flow + dynamic preparation + integration. Cold power flow and CSV/figure export are not included.
+
+TECHNICAL CONCLUSIONS
+1. The models are locally equivalent in the selected linearization branch. The separately validated small-signal state matrices have relative errors from about 1.7e-10 to 6.0e-7, and their eigenvalues agree correspondingly. A broad equation or network-topology mismatch would not produce that result. This does not prove global nonlinear equivalence when a limiter changes branch.
+2. State inventories are not textually identical. ANDES retains several BusFreq, zero-time-constant and limiter auxiliary states that VeraGrid folds into algebraic equations. Comparisons therefore use every common physical state, while explicitly reporting ANDES-only implementation states.
+3. IEEE14 TGOV1 is now nonlinearly equivalent for the tested lower-limit transition: the previous 3.741e-4 governor-state mismatch is 7.61e-10. Its remaining 1.17e-4 residue is localized in zero-TA ESST3A LAW2 states. In WECC179, the VeraGrid IEEEG1 model still omits the ANDES rate and anti-windup branches by design, so that benchmark model is not globally equivalent outside its documented interior regime.
+4. ANDES dominates VeraGrid dynamic preparation because it loads generated numerical model calls, while VeraGrid builds and compiles the composed symbolic DAE per run.
+5. Over the two-second event horizon, VeraGrid wins IEEE14 integration while ANDES wins Kundur, IEEE39, NPCC140 and WECC179. The advantage is most pronounced for IEEE14 in VeraGrid and for IEEE39/NPCC140 in ANDES. The cost depends on total DAE dimension, Jacobian sparsity/fill-in, nonlinear iterations and factorization reuse, not only on the number of buses.
+6. In these event measurements, ANDES wins the second warm power flow in three cases and VeraGrid in two. Warm-PF times are tiny compared with integration and show normal run-to-run noise; neither tool reads a pre-solved operating point for the measured warm solve.
+
+PER-CASE DIAGNOSTIC EVIDENCE
+
+KUNDUR_no_shunt
+---------------
+The remaining error is almost entirely a sub-microradian rotor-angle offset. Rotor speeds agree at about 1e-11 pu, so the native VeraGrid classical-machine dynamics and the ANDES GENCLS realization are equivalent for this disturbance.
+
+Error by time segment:
+  segment      start_s        end_s  max_abs_error  mean_abs_error         rmse  sample_count
+    TOTAL 0.000000e+00 2.000000e+00   4.614090e-07    7.039010e-08 1.622421e-07          2001
+SEGMENT_1 0.000000e+00 5.000000e-01   4.614090e-07    7.032400e-08 1.646604e-07           500
+SEGMENT_2 5.000000e-01 1.000000e+00   4.610436e-07    7.072065e-08 1.636040e-07           500
+SEGMENT_3 1.000000e+00 1.500000e+00   4.527912e-07    7.036239e-08 1.604402e-07           500
+SEGMENT_4 1.500000e+00 2.000000e+00   4.479119e-07    7.015385e-08 1.602213e-07           501
+
+Five states with the largest absolute error:
+         state  max_abs_error  mean_abs_error         rmse  normalized_rmse  initial_abs_error  final_abs_error  peak_error_time_s
+delta GENCLS 3   4.614090e-07    4.535186e-07 4.535650e-07     2.155335e-06       4.614089e-07     4.479119e-07       2.010000e-01
+delta GENCLS 2   6.991254e-08    5.802811e-08 5.826273e-08     1.034410e-07       5.425394e-08     6.991254e-08       2.000000e+00
+delta GENCLS 4   3.903833e-08    3.151073e-08 3.207041e-08     4.763858e-06       2.314716e-08     3.421575e-08       1.592000e+00
+delta GENCLS 1   2.491506e-08    1.995385e-08 2.087212e-08     2.816742e-08       2.314716e-08     2.322464e-09       6.730000e-01
+omega GENCLS 1   1.140001e-10    3.228725e-11 4.868663e-11     4.868628e-11       0.000000e+00     4.500000e-11       1.736000e+00
+
+IEEE14
+------
+The event confirms the TGOV1 anti-windup correction. TGOV1-4 remains at its VMIN=0.3 pu in both programs and its maximum LAG_y difference is 7.61e-10. The former 1.07e-3 event error falls to 1.17e-4 and decays over the horizon. The remaining dominant differences are the LAW2 states of the zero-TA ESST3A exciters, not the governor or synchronous-machine equations.
+
+Error by time segment:
+  segment      start_s        end_s  max_abs_error  mean_abs_error         rmse  sample_count
+    TOTAL 0.000000e+00 2.000000e+00   1.169621e-04    1.662689e-06 8.522151e-06          2001
+SEGMENT_1 0.000000e+00 5.000000e-01   1.169621e-04    2.285973e-06 1.229396e-05           500
+SEGMENT_2 5.000000e-01 1.000000e+00   8.981689e-05    3.111182e-06 1.125555e-05           500
+SEGMENT_3 1.000000e+00 1.500000e+00   2.747270e-05    8.704524e-07 3.354016e-06           500
+SEGMENT_4 1.500000e+00 2.000000e+00   8.360043e-06    3.857013e-07 1.253816e-06           501
+
+Five states with the largest absolute error:
+          state  max_abs_error  mean_abs_error         rmse  normalized_rmse  initial_abs_error  final_abs_error  peak_error_time_s
+LAW2_y ESST3A 2   1.169621e-04    2.812805e-05 4.312058e-05     9.892842e-05       8.892600e-09     7.940784e-06       4.150000e-01
+LAW2_y ESST3A 3   7.675995e-05    2.099983e-05 3.149303e-05     7.490310e-05       1.375340e-08     3.766621e-07       4.050000e-01
+LAW2_y ESST3A 4   6.496172e-05    1.853030e-05 2.774724e-05     6.310139e-05       1.122520e-08     2.561988e-07       4.120000e-01
+LAW2_y ESST3A 5   4.465598e-05    1.296066e-05 1.931730e-05     5.011544e-05       3.990600e-09     1.145342e-06       4.220000e-01
+   LR_y EXST1 1   1.835401e-05    5.813023e-06 8.226197e-06     4.173351e-06       8.259300e-08     5.910660e-07       5.230000e-01
+
+IEEE39
+------
+The largest errors are nearly constant micro-scale offsets in TGOV1N/TGOV1 and IEEEX1 states. There is no growing trajectory divergence, which is the signature of slightly different stored initial values rather than different differential equations.
+
+Error by time segment:
+  segment      start_s        end_s  max_abs_error  mean_abs_error         rmse  sample_count
+    TOTAL 0.000000e+00 2.000000e+00   5.694640e-06    1.764000e-07 7.339084e-07          2001
+SEGMENT_1 0.000000e+00 5.000000e-01   5.694527e-06    1.763631e-07 7.339196e-07           500
+SEGMENT_2 5.000000e-01 1.000000e+00   5.694522e-06    1.764228e-07 7.339225e-07           500
+SEGMENT_3 1.000000e+00 1.500000e+00   5.694495e-06    1.764147e-07 7.338906e-07           500
+SEGMENT_4 1.500000e+00 2.000000e+00   5.694640e-06    1.763994e-07 7.339008e-07           501
+
+Five states with the largest absolute error:
+                state  max_abs_error  mean_abs_error         rmse  normalized_rmse  initial_abs_error  final_abs_error  peak_error_time_s
+LAG_y TGOV1N TGOV1 10   5.694640e-06    5.694371e-06 5.694371e-06     9.932420e-07       5.694398e-06     5.694620e-06       1.931000e+00
+ LL_x TGOV1N TGOV1 10   5.694418e-06    5.694393e-06 5.694393e-06     9.931848e-07       5.694398e-06     5.694376e-06       1.132000e+00
+        LA_y IEEEX1 5   1.528402e-06    1.524775e-06 1.524776e-06     9.660780e-07       1.524679e-06     1.523566e-06       9.330000e-01
+       WO_x IEEEST 10   9.498652e-07    9.498546e-07 9.498546e-07     9.932242e-07       9.498578e-07     9.498560e-07       1.071000e+00
+      LL2_x IEEEST 10   4.751030e-07    4.749254e-07 4.749254e-07     9.933616e-07       4.749289e-07     4.750426e-07       1.846000e+00
+
+NPCC140
+-------
+All common trajectories remain below 5e-7 absolute error. The dominant IEEEX1 and GENROU differences are constant at numerical-seed precision; no material model mismatch is observed.
+
+Error by time segment:
+  segment      start_s        end_s  max_abs_error  mean_abs_error         rmse  sample_count
+    TOTAL 0.000000e+00 2.000000e+00   4.780440e-07    1.279432e-08 6.554454e-08          2001
+SEGMENT_1 0.000000e+00 5.000000e-01   4.779190e-07    1.279725e-08 6.554507e-08           500
+SEGMENT_2 5.000000e-01 1.000000e+00   4.780440e-07    1.281028e-08 6.554592e-08           500
+SEGMENT_3 1.000000e+00 1.500000e+00   4.777570e-07    1.279109e-08 6.554280e-08           500
+SEGMENT_4 1.500000e+00 2.000000e+00   4.776400e-07    1.277871e-08 6.554437e-08           501
+
+Five states with the largest absolute error:
+          state  max_abs_error  mean_abs_error         rmse  normalized_rmse  initial_abs_error  final_abs_error  peak_error_time_s
+    vp IEEEX1 4   4.780440e-07    4.776621e-07 4.776621e-07     2.508030e-07       4.776010e-07     4.774670e-07       6.860000e-01
+   W_x IEEEX1 4   4.777580e-07    4.776643e-07 4.776643e-07     2.508038e-07       4.776010e-07     4.775970e-07       9.180000e-01
+    vp IEEEX1 3   3.917430e-07    3.914629e-07 3.914629e-07     2.047520e-07       3.915240e-07     3.916580e-07       1.285000e+00
+   W_x IEEEX1 3   3.915290e-07    3.914607e-07 3.914607e-07     2.047505e-07       3.915240e-07     3.915290e-07       2.000000e+00
+delta GENROU 25   3.577740e-07    3.575992e-07 3.575992e-07     3.084735e-07       3.575780e-07     3.577460e-07       1.909000e+00
+
+WECC179
+-------
+The dominant mismatch is localized at LAW2_y ESST3A 26 and the IEEEG1-17 limiter chain. VeraGrid's IEEEG1 template explicitly implements the normal interior-limiter regime, whereas ANDES includes valve-rate limiting and an anti-windup valve-position integrator. The initial 3.575e-4 IEEEG1-17 offset excites ESST3A-26, whose error then decays. The validated 6e-7 relative state-matrix error rules out a network-wide machine-equation mismatch but does not establish equivalence of the nonlinear limiter branches.
+
+Error by time segment:
+  segment      start_s        end_s  max_abs_error  mean_abs_error         rmse  sample_count
+    TOTAL 0.000000e+00 2.000000e+00   1.535531e-03    4.629186e-06 3.827806e-05          2001
+SEGMENT_1 0.000000e+00 5.000000e-01   1.535531e-03    4.734489e-06 4.994686e-05           500
+SEGMENT_2 5.000000e-01 1.000000e+00   1.059306e-03    4.797701e-06 3.866054e-05           500
+SEGMENT_3 1.000000e+00 1.500000e+00   4.178908e-04    4.463009e-06 3.075920e-05           500
+SEGMENT_4 1.500000e+00 2.000000e+00   3.595989e-04    4.521760e-06 3.043784e-05           501
+
+Five states with the largest absolute error:
+           state  max_abs_error  mean_abs_error         rmse  normalized_rmse  initial_abs_error  final_abs_error  peak_error_time_s
+LAW2_y ESST3A 26   1.535531e-03    4.163324e-04 5.818206e-04     7.176364e-04       2.419620e-07     2.677133e-04       3.890000e-01
+ IAW_y IEEEG1 17   3.595989e-04    3.574831e-04 3.574839e-04     6.908391e-06       3.574703e-04     3.595989e-04       2.000000e+00
+  L4_y IEEEG1 17   3.577895e-04    3.573555e-04 3.573555e-04     6.905818e-06       3.574703e-04     3.577895e-04       2.000000e+00
+  L7_y IEEEG1 17   3.574703e-04    3.574618e-04 3.574618e-04     6.907797e-06       3.574703e-04     3.574458e-04       0.000000e+00
+LAW2_y ESST3A 27   1.111961e-04    5.854825e-05 6.894086e-05     1.838786e-04       1.410815e-07     2.500235e-05       1.052000e+00
+
+GENERATED FIGURES
+Every <case>_rms_dynamic_event_Andes_vs_VeraGrid folder contains the trajectory-error envelope, segment errors, phase timings and representative_state_trajectories.png with the four physical states that expose the largest differences.

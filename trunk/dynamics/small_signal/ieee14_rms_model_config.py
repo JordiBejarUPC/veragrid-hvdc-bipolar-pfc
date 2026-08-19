@@ -84,6 +84,30 @@ def _get_exciter_types() -> tuple[GenrouExciterType, ...]:
     )
 
 
+def get_ieee14_andes_style_state_labels() -> list[str]:
+    """Return IEEE14 physical state labels in VeraGrid compiled order.
+
+    :return: ANDES-style labels aligned with the 56-state VeraGrid trajectory.
+    """
+    labels: list[str] = list()
+    esst3a_ordinal_by_generator: dict[int, int] = dict(((1, 2), (3, 3), (4, 4), (5, 5)))
+    generator_ordinal: int
+    for generator_ordinal in range(1, 6):
+        state_name: str
+        for state_name in ("delta", "omega", "e1q", "e1d", "e2d", "e2q"):
+            labels.append(f"{state_name} GENROU {generator_ordinal}")
+        labels.append(f"LAG_y TGOV1 {generator_ordinal}")
+        labels.append(f"LL_x TGOV1 {generator_ordinal}")
+        if generator_ordinal == 2:
+            for state_name in ("LG_y", "LL_x", "LR_y", "WF_x"):
+                labels.append(f"{state_name} EXST1 1")
+        else:
+            exciter_ordinal: int = esst3a_ordinal_by_generator[generator_ordinal]
+            for state_name in ("LG_y", "LL_x", "LAW2_y"):
+                labels.append(f"{state_name} ESST3A {exciter_ordinal}")
+    return labels
+
+
 def get_ieee14_genrou_rms_template(
     vfactory: VarFactory,
     generator_index: int,
@@ -129,4 +153,3 @@ def get_ieee14_genrou_rms_template(
     else:
         configure_exst1_block(exciter_block, _get_exst1_parameters(), vfactory)
     return template
-

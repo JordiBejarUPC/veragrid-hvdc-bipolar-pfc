@@ -207,15 +207,6 @@ class ValidationRow:
         """
         self._details.append(detail)
 
-    def set_ok(self, val: bool) -> None:
-        """
-        Store the row status.
-
-        :param val: Whether the row is informationally correct.
-        :return: None.
-        """
-        self._ok = val
-
     def is_ok(self) -> bool:
         """
         Return whether the row is informationally correct.
@@ -437,21 +428,6 @@ def add_validation_detail(section: ValidationSection, block_label: str, detail: 
     """
     row: ValidationRow = section.get_or_create_row(block_label=block_label)
     row.add_detail(detail=detail)
-
-
-def add_validation_status_detail(section: ValidationSection, block_label: str, detail: str, ok: bool) -> None:
-    """
-    Append one formatted validation detail and status to a section.
-
-    :param section: Mutable validation section.
-    :param block_label: Human-readable block identifier.
-    :param detail: One validation detail for that block.
-    :param ok: Whether the row is informationally correct.
-    :return: None.
-    """
-    row: ValidationRow = section.get_or_create_row(block_label=block_label)
-    row.add_detail(detail=detail)
-    row.set_ok(val=ok)
 
 
 def add_validation_port_detail(

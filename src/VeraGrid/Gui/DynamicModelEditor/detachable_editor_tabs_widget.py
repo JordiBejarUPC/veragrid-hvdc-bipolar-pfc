@@ -5,7 +5,6 @@
 
 from __future__ import annotations
 
-from typing import Any
 from PySide6 import QtCore, QtGui, QtWidgets
 from PySide6.QtWidgets import (QAbstractItemView, QComboBox, QDialogButtonBox,
                                QGroupBox, QHBoxLayout, QLabel,

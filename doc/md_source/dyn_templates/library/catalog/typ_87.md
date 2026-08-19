@@ -1,0 +1,28 @@
+# time
+
+This is Basic Block Catalog type `87` (`time`). It generates or evaluates a time-dependent waveform.
+
+## Behaviour
+
+- Library location: `Native / Waveforms and Time / Time Sources and Timers`.
+- Inputs: 0.
+- Outputs: 1.
+- Declared states: 0.
+- Configurable parameters: 0.
+- The imported definition is fully supported by the Dynamic Editor catalogue.
+
+## Characteristic equations
+
+$$
+0 = (yo - glob_{time})
+$$
+
+## Interface table
+
+| Category | Name | Meaning | Units |
+| --- | --- | --- | --- |
+| Output | `yo` | Output signal produced by the block | model-dependent |
+
+## Editing notes
+
+Use General options for numeric parameter values and the DAE tab for symbolic variables and equations. Changing an Output flag only controls whether a variable is exported; it does not remove the variable from the model.

@@ -19,7 +19,6 @@ from PySide6.QtWidgets import QAbstractGraphicsShapeItem, QApplication, QColorDi
 
 from PySide6.QtCore import Signal
 
-import VeraGrid.ThirdParty.darkdetect as darkdetect
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.enumerations import BlockType
 from VeraGridEngine.Utils.Symbolic.block import Block
@@ -314,19 +313,6 @@ def _notify_block_item_manual_route_drag(item: QGraphicsItem, started: bool) -> 
                     conn.end_manual_block_drag(port)
             else:
                 pass
-
-
-def _port_stub_axis(side: str | None) -> str:
-    """
-    Return the dominant stub axis for one connection side.
-
-    :param side: Attachment side of the port on the block.
-    :return: ``"x"`` for horizontal stubs and ``"y"`` for vertical stubs.
-    """
-    if side in ("left", "right"):
-        return "x"
-    else:
-        return "y"
 
 
 def _finalize_block_drop(item: QGraphicsItem, margin: float = 6.0) -> None:
@@ -1269,8 +1255,13 @@ class GenericBlockItem(QGraphicsRectItem):
         _notify_block_item_manual_route_drag(self, started=False)
         _finalize_block_drop(self)
 
-    def mouseDoubleClickEvent(self, event):
-        pass
+    def mouseDoubleClickEvent(self, event: QtWidgets.QGraphicsSceneMouseEvent) -> None:
+        """Open the modal block properties dialogue on a left-button double click."""
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.editor.request_open_block_properties(self.subsys)
+            event.accept()
+        else:
+            super().mouseDoubleClickEvent(event)
 
     def set_subsystem(self, block: Block) -> None:
         self.subsys = block
@@ -1944,9 +1935,6 @@ class BlockItem(QGraphicsRectItem):
             (rect.height() - text_height) / 2,
         )
 
-    def _refresh_connection_color(self) -> None:
-        pass
-
     def refresh_port_metadata(self) -> None:
         if self.subsys is not None:
             i: int
@@ -2068,6 +2056,14 @@ class BlockItem(QGraphicsRectItem):
         super().mouseReleaseEvent(event)
         _notify_block_item_manual_route_drag(self, started=False)
         _finalize_block_drop(self)
+
+    def mouseDoubleClickEvent(self, event: QtWidgets.QGraphicsSceneMouseEvent) -> None:
+        """Open the modal block properties dialogue on a left-button double click."""
+        if event.button() == Qt.MouseButton.LeftButton and self.subsys is not None:
+            self.editor.request_open_block_properties(self.subsys)
+            event.accept()
+        else:
+            super().mouseDoubleClickEvent(event)
 
     def itemChange(self, change: QGraphicsItem.GraphicsItemChange, value: Any) -> Any:
         value = _handle_block_item_change(self, change, value)
@@ -2465,6 +2461,14 @@ class RoundBaseArithmeticOpItem(QGraphicsEllipseItem):
         _notify_block_item_manual_route_drag(self, started=False)
         _finalize_block_drop(self)
 
+    def mouseDoubleClickEvent(self, event: QtWidgets.QGraphicsSceneMouseEvent) -> None:
+        """Open the modal properties editor for a compact arithmetic block."""
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.editor.request_open_block_properties(self.subsys)
+            event.accept()
+        else:
+            super().mouseDoubleClickEvent(event)
+
     def itemChange(self, change: QGraphicsItem.GraphicsItemChange, value: Any) -> Any:
         value = _handle_block_item_change(self, change, value)
         if change == QGraphicsItem.GraphicsItemChange.ItemPositionChange:
@@ -2658,6 +2662,14 @@ class RectBaseArithmeticOpItem(QGraphicsRectItem):
         _notify_block_item_manual_route_drag(self, started=False)
         _finalize_block_drop(self)
 
+    def mouseDoubleClickEvent(self, event: QtWidgets.QGraphicsSceneMouseEvent) -> None:
+        """Open the modal properties editor for an arithmetic block."""
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.editor.request_open_block_properties(self.subsys)
+            event.accept()
+        else:
+            super().mouseDoubleClickEvent(event)
+
     def itemChange(self, change: QGraphicsItem.GraphicsItemChange, value: Any) -> Any:
         value = _handle_block_item_change(self, change, value)
         if change == QGraphicsItem.GraphicsItemChange.ItemPositionChange:
@@ -2837,9 +2849,6 @@ class DiagramScene(QGraphicsScene):
         self.context_item = None
         self.editor = None
         self.clear()
-
-    def get_modal_template_metadata(self, block: Block | None) -> tuple[str | None, Dict[str, Any] | None]:
-        return self.editor.get_modal_template_metadata(block)
 
     def change_item_fill_color(self,
                                item: BlockItem | GenericBlockItem | ConnectionItem | RoundBaseArithmeticOpItem | RectBaseArithmeticOpItem | PairedItem) -> None:

@@ -46,14 +46,6 @@ class QtRoutingPortSnapshot:
         self._position: RoutingPoint = position
         self._port_side: RoutingPortSide = port_side
 
-    def get_block_uid(self) -> int:
-        """
-        Return the owning block identifier.
-
-        :returns: Owning block identifier.
-        """
-        return self._block_uid
-
     def get_port_index(self) -> int:
         """
         Return the port index.
@@ -61,14 +53,6 @@ class QtRoutingPortSnapshot:
         :returns: Port index.
         """
         return self._port_index
-
-    def is_input_port(self) -> bool:
-        """
-        Return whether the snapshot belongs to one input port.
-
-        :returns: Input-port state.
-        """
-        return self._is_input
 
     def get_position(self) -> RoutingPoint:
         """

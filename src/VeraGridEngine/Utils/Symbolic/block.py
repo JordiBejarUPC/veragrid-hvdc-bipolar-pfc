@@ -183,6 +183,22 @@ def rehash_block_tree_var_keyed_dicts(root_block: "Block") -> None:
         rehash_block_var_keyed_dicts(block_model=block_model)
 
 
+def refresh_block_tree_var_name_mappings(root_block: "Block") -> None:
+    """
+    Rebuild algebraic-variable lookups after connected names change.
+
+    :param root_block: Root of the block tree whose names were propagated.
+    :return: None.
+    """
+    block_model: Block
+    algebraic_var: Var
+
+    for block_model in root_block.get_all_blocks():
+        block_model.var_mapping = dict()
+        for algebraic_var in block_model.algebraic_vars:
+            block_model.var_mapping[algebraic_var.name] = algebraic_var
+
+
 def _new_uid() -> int:
     """
     Generate a fresh UUID‑v4 string.
