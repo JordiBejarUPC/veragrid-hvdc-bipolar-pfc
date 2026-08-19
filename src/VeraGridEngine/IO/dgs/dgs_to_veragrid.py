@@ -6096,6 +6096,13 @@ def dgs_to_circuit(path: str,
     )
 
     if use_dynamic_information:
+
+        # 1: Convert dynamic templates and add them to the templates at the multicircuit
+        #    this should return a dictionary with the dgs template ->veragrid template mapping
+
+        # 2: Apply those templates to the veragrid objects (generators, loads, etc)
+        #    we use the template mapping to apply the dynamic models accordingly
+
         _add_dgs_dynamic_models_to_circuit(
             dgs_path=path,
             dgs_grid=dgs_grid,
