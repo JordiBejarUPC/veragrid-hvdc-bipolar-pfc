@@ -2586,6 +2586,46 @@ def add_linear_hvdc_formulation(t_idx: int,
     return f_obj
 
 
+def compute_vsc_pmode3_saturation_rates(vsc_data_t: VscData,
+                                        branch_data_t: PassiveBranchData,
+                                        bus_data_t: BusData) -> Vec:
+    """
+    Compute the effective P-mode 3 saturation rate of each VSC in MW.
+    A P-mode 3 droop saturates when the converter cannot deliver more power, and that limit
+    is the converter rating or the total rating of the DC branches attached to the
+    converter's DC bus, whichever is lower.
+    
+    :param vsc_data_t: VscData structure
+    :param branch_data_t: PassiveBranchData structure (contains the DC lines)
+    :param bus_data_t: BusData structure (provides the is_dc marker)
+    :return: array of effective saturation rates (MW) per VSC
+    """
+    # total rating of the active DC branches incident to each bus
+    dc_rate_per_bus: Vec = np.zeros(bus_data_t.nbus)
+    for k in range(branch_data_t.nelm):
+        f: int = branch_data_t.F[k]
+        t: int = branch_data_t.T[k]
+        if branch_data_t.active[k] and bus_data_t.is_dc[f] and bus_data_t.is_dc[t]:
+            dc_rate_per_bus[f] += branch_data_t.rates[k]
+            dc_rate_per_bus[t] += branch_data_t.rates[k]
+        else:
+            # AC branch or inactive branch: it does not limit the DC-side transfer
+            pass
+
+    # a meshed DC grid may have remoter bottlenecks, avoid for now
+    sat_rates: Vec = vsc_data_t.rates.copy()
+    for m in range(vsc_data_t.nelm):
+        fr: int = vsc_data_t.F[m]
+        if bus_data_t.is_dc[fr] and dc_rate_per_bus[fr] > 0.0:
+            # the converter cannot push more than what its DC cables can carry
+            sat_rates[m] = min(sat_rates[m], dc_rate_per_bus[fr])
+        else:
+            # back-to-back converter or no DC branch attached, so keep the converter rating
+            pass
+
+    return sat_rates
+
+
 def add_linear_vsc_formulation(t_idx: int,
                                Sbase: float,
                                vsc_data_t: VscData,
@@ -2593,6 +2633,7 @@ def add_linear_vsc_formulation(t_idx: int,
                                bus_vars: BusNtcVars,
                                prob: LpModel,
                                logger: Logger,
+                               sat_rates: Vec,
                                saturate: bool = True):
     """
 
@@ -2604,6 +2645,7 @@ def add_linear_vsc_formulation(t_idx: int,
     :param bus_vars:
     :param prob:
     :param logger:
+    :param sat_rates: per VSC P-mode 3 saturation rates in MW
     :param saturate:
     :return:
     """
@@ -2658,7 +2700,7 @@ def add_linear_vsc_formulation(t_idx: int,
                     vsc_vars.flows[t_idx, m] = pmode3_formulation_impr(prob=prob,
                                                                        t_idx=t_idx,
                                                                        m=m,
-                                                                       rate=vsc_data_t.rates[m] / Sbase,
+                                                                       rate=sat_rates[m] / Sbase,
                                                                        P0=P0,
                                                                        droop=droop,
                                                                        theta_f=bus_vars.Va[t_idx, control_bus_idx],
@@ -2671,8 +2713,8 @@ def add_linear_vsc_formulation(t_idx: int,
 
                     # declare the flow var
                     vsc_vars.flows[t_idx, m] = prob.add_var(
-                        lb=-vsc_data_t.rates[m] / Sbase,
-                        ub=vsc_data_t.rates[m] / Sbase,
+                        lb=-sat_rates[m] / Sbase,
+                        ub=sat_rates[m] / Sbase,
                         name=join("vsc_flow_", [t_idx, m], "_")
                     )
 
@@ -3029,7 +3071,10 @@ def run_linear_ntc_opf(grid: MultiCircuit,
         vsc_vars=mip_vars.vsc_vars,
         bus_vars=mip_vars.bus_vars,
         prob=lp_model,
-        logger=logger
+        logger=logger,
+        sat_rates=compute_vsc_pmode3_saturation_rates(vsc_data_t=nc.vsc_data,
+                                                      branch_data_t=nc.passive_branch_data,
+                                                      bus_data_t=nc.bus_data)
     )
 
     if zonal_grouping == ZonalGrouping.NoGrouping:
