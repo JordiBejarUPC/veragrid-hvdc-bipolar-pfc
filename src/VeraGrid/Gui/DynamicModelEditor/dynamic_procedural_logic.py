@@ -121,22 +121,6 @@ def normalize_runtime_expression_source(source: str,
     return normalized, parser_namespace
 
 
-class ProceduralFieldType(Enum):
-    """Semantic editor kind for one procedural-logic field."""
-
-    EXPRESSION = "Expression"
-    MODE_REFERENCE = "Retained mode"
-    VARIABLE_REFERENCE = "DAE variable"
-    RUNTIME_REFERENCE = "Runtime parameter"
-    TARGET_REFERENCE = "Mutable target"
-    FLOAT = "Number"
-    OPTIONAL_FLOAT = "Optional number"
-    TEXT = "Text"
-    REQUIRED_TEXT = "Required text"
-    INTEGER = "Integer"
-    BOOLEAN = "Boolean"
-
-
 class ProceduralFieldDraft:
     """One typed editable field belonging to a procedural entry draft."""
 

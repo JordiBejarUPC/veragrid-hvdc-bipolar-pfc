@@ -254,7 +254,6 @@ class Block:
         self.uid: int = _new_uid() if uid is None else uid
 
         self.is_decomposable = is_decomposable
-        self.is_root_interface_wrapper: bool = is_root_interface_wrapper
         self.tpe_uid: int | None = None
         self.vars_glob_name2uid: Dict[str, int] = dict()
 

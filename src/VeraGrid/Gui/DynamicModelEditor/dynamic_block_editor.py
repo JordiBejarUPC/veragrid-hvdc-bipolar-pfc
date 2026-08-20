@@ -6599,12 +6599,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             if recovered_block_type is None:
                 pass
             else:
-                if not child_block.is_root_interface_wrapper:
-                    child_block.is_root_interface_wrapper = True
-                    changed = True
-                else:
-                    pass
-
                 if diagram_node is not None and diagram_node.tpe == recovered_block_type.name:
                     pass
                 elif diagram_node is not None:

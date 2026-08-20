@@ -4848,6 +4848,10 @@ class ProceduralFieldType(Enum):
     TARGET_REFERENCE = "Mutable target"
     FLOAT = "Number"
     OPTIONAL_FLOAT = "Optional number"
+    TEXT = "Text"
+    REQUIRED_TEXT = "Required text"
+    INTEGER = "Integer"
+    BOOLEAN = "Boolean"
 
 
 class RoutingNodeKind(Enum):
