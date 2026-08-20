@@ -7,19 +7,18 @@ from __future__ import annotations
 
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_constraint_engine import RoutingConstraintEngine
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_elements import RoutingNode
-from VeraGrid.Gui.DynamicModelEditor.Routing.routing_elements import RoutingNodeKind
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_elements import RoutingPoint
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_elements import RoutingSegment
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_geometry import RoutingGeometry
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_graph import RoutingGraph
-from VeraGridEngine.enumerations import RoutingAxis
+from VeraGridEngine.enumerations import RoutingAxis, RoutingNodeKind
 
 
 class RoutingEditor:
     """
     Transform one routing graph while preserving graph invariants.
 
-    :returns: None.
+    :return: None.
     """
 
     __slots__ = ("_graph", "_geometry", "_constraints")
@@ -29,7 +28,7 @@ class RoutingEditor:
         Build one routing editor bound to one graph.
 
         :param graph: Graph to edit.
-        :returns: None.
+        :return: None.
         """
         self._graph: RoutingGraph = graph
         self._geometry: RoutingGeometry = graph.get_geometry()
@@ -37,9 +36,7 @@ class RoutingEditor:
 
     def get_graph(self) -> RoutingGraph:
         """
-        Return the edited graph.
-
-        :returns: Edited graph.
+        :return: Edited graph.
         """
         return self._graph
 
@@ -49,7 +46,7 @@ class RoutingEditor:
 
         :param elbow_id: Elbow node identifier.
         :param new_position: Requested new elbow position.
-        :returns: ``True`` when the elbow changed position.
+        :return: ``True`` when the elbow changed position.
         """
         elbow_node: RoutingNode | None = self._graph.get_node(elbow_id)
         if elbow_node is None:
@@ -97,7 +94,7 @@ class RoutingEditor:
         # change only because they are incident to that node; no topology is
         # rebuilt and no unrelated geometry is touched.
         elbow_node.set_position(chosen_position)
-        if self._incident_segments_are_valid_for_nodes([elbow_id]):
+        if self._incident_segments_are_valid_for_nodes(list((elbow_id,))):
             return True
         else:
             elbow_node.set_position(original_position)
@@ -110,7 +107,7 @@ class RoutingEditor:
 
         :param node_id: Port node identifier.
         :param new_position: New port position.
-        :returns: ``True`` when the port was updated.
+        :return: ``True`` when the port was updated.
         """
         route_node: RoutingNode | None = self._graph.get_node(node_id)
         if route_node is None:
@@ -185,7 +182,7 @@ class RoutingEditor:
 
         :param segment_id: Segment identifier.
         :param coordinate_offset: Requested offset along the allowed drag axis.
-        :returns: ``True`` when the segment moved.
+        :return: ``True`` when the segment moved.
         """
         route_segment: RoutingSegment | None = self._graph.get_segment(segment_id)
         if route_segment is None:
@@ -247,7 +244,7 @@ class RoutingEditor:
             )
 
         if self._incident_segments_are_valid_for_nodes(
-                [start_node.get_node_id(), end_node.get_node_id()]
+                list((start_node.get_node_id(), end_node.get_node_id(),))
         ):
             return True
         else:
@@ -266,7 +263,7 @@ class RoutingEditor:
         :param requested_position: Requested elbow position.
         :param first_candidate: First valid orthogonal corner.
         :param second_candidate: Second valid orthogonal corner.
-        :returns: Chosen orthogonal corner.
+        :return: Chosen orthogonal corner.
         """
         first_distance: float = self._distance_squared(requested_position, first_candidate)
         second_distance: float = self._distance_squared(requested_position, second_candidate)
@@ -281,7 +278,7 @@ class RoutingEditor:
 
         :param first_point: First point.
         :param second_point: Second point.
-        :returns: Squared Euclidean distance.
+        :return: Squared Euclidean distance.
         """
         delta_x: float = first_point.get_x() - second_point.get_x()
         delta_y: float = first_point.get_y() - second_point.get_y()
@@ -292,7 +289,7 @@ class RoutingEditor:
         Update the local source-side neighbourhood after moving its port stub.
 
         :param stub_node_id: Source stub node identifier.
-        :returns: ``True`` when the local update succeeded.
+        :return: ``True`` when the local update succeeded.
         """
         return self._update_stub_neighbourhood(
             stub_node_id=stub_node_id,
@@ -304,7 +301,7 @@ class RoutingEditor:
         Update the local destination-side neighbourhood after moving its port stub.
 
         :param stub_node_id: Destination stub node identifier.
-        :returns: ``True`` when the local update succeeded.
+        :return: ``True`` when the local update succeeded.
         """
         return self._update_stub_neighbourhood(
             stub_node_id=stub_node_id,
@@ -326,7 +323,7 @@ class RoutingEditor:
 
         :param stub_node_id: Stub node identifier.
         :param source_side: Whether the edited port is the source side.
-        :returns: ``True`` when the local update succeeded.
+        :return: ``True`` when the local update succeeded.
         """
         ordered_nodes: list[RoutingNode] = self._graph.get_ordered_nodes()
         if len(ordered_nodes) < 3:
@@ -354,7 +351,7 @@ class RoutingEditor:
                 second_node=first_neighbour,
         ):
             return self._incident_segments_are_valid_for_nodes(
-                [anchor_node.get_node_id(), first_neighbour.get_node_id()]
+                list((anchor_node.get_node_id(), first_neighbour.get_node_id(),))
             )
         elif first_neighbour.get_kind() != RoutingNodeKind.ELBOW and first_neighbour.get_kind() != RoutingNodeKind.STUB:
             return False
@@ -387,7 +384,7 @@ class RoutingEditor:
         :param port_node: Edited port node.
         :param elbow_node: First elbow next to the edited port.
         :param adjacent_node: Node behind that elbow.
-        :returns: ``True`` when the local topology remains valid.
+        :return: ``True`` when the local topology remains valid.
         """
         second_segment: RoutingSegment | None = self._graph.find_segment_between_nodes(
             elbow_node.get_node_id(),
@@ -426,7 +423,7 @@ class RoutingEditor:
                 second_node=elbow_node,
         ):
             return self._incident_segments_are_valid_for_nodes(
-                [port_node.get_node_id(), elbow_node.get_node_id(), adjacent_node.get_node_id()]
+                list((port_node.get_node_id(), elbow_node.get_node_id(), adjacent_node.get_node_id(),))
             )
         else:
             return False
@@ -436,7 +433,7 @@ class RoutingEditor:
         Return whether every segment incident to the given nodes remains valid.
 
         :param node_ids: Node identifiers whose local neighbourhood changed.
-        :returns: ``True`` when every incident segment remains orthogonal and non-zero.
+        :return: ``True`` when every incident segment remains orthogonal and non-zero.
         """
         segment_ids: list[int] = list()
         node_id: int
@@ -473,6 +470,6 @@ class RoutingEditor:
 
         :param first_point: First point.
         :param second_point: Second point.
-        :returns: ``True`` when both coordinates are equal.
+        :return: ``True`` when both coordinates are equal.
         """
         return self._geometry.are_points_numerically_equal(first_point, second_point)

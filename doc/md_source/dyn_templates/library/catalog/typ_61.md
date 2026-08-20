@@ -2,6 +2,15 @@
 
 This is Basic Block Catalog type `61` (`SQRT(3/2)`). It evaluates the mathematical function identified by the block name.
 
+<!-- veragrid-block-introduction:start -->
+**SQRT(3/2)** is a mathematical signal-processing primitive. It forms an algebraic relation between inputs, parameters, and outputs and is commonly combined with dynamic and nonlinear blocks to construct larger control equations without introducing an independent physical state.
+
+## Typical use
+
+- Use it to express the exact algebraic operation required by a controller or measurement chain.
+- Check signal dimensions, signs, and zero-division or domain restrictions where applicable.
+<!-- veragrid-block-introduction:end -->
+
 ## Behaviour
 
 - Library location: `Native / Math and Functions / Constants and Scaling`.
@@ -18,7 +27,7 @@ $$
 $$
 
 $$
-SQRT(3/2)_{yo0}(t_0) = \sqrt\left(\frac{3}{2}\right)
+SQRT(3/2)_{yo0}(t_0) = \sqrt{\frac{3}{2}}
 $$
 
 ## Interface table

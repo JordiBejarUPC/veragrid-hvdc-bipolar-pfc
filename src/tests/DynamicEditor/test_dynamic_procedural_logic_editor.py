@@ -402,7 +402,6 @@ def test_dialogue_applies_dae_code_and_runtime_logic_together() -> None:
     dialogue._dae_editor.setPlainText(
         "state_eqs = []\n"
         "algebraic_eqs = [source - held]\n"
-        "differential_eqs = []\n"
         "init_eqs = {}\n"
         "diff_init_eqs = {}"
     )

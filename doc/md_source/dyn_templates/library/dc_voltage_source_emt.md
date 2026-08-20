@@ -1,5 +1,14 @@
 # DC voltage source EMT
 
+<!-- veragrid-block-introduction:start -->
+**DC voltage source EMT** imposes or controls an electrical excitation in an EMT network. Depending on the variant, it prescribes voltage or current directly or through a source-equivalent impedance. It is used to represent the grid, a controlled converter terminal, or a standardized transient waveform.
+
+## Typical use
+
+- Use it as a network boundary, disturbance source, or controlled electrical terminal.
+- Match polarity, phase convention, grounding, and source impedance to the connected topology.
+<!-- veragrid-block-introduction:end -->
+
 Fixed DC EMT voltage source represented as a Norton equivalent. The block reads
 the connected bus voltage and injects the current required by its internal
 source voltage and conductance.

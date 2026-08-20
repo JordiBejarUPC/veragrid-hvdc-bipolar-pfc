@@ -2,6 +2,15 @@
 
 This is Basic Block Catalog type `42` (`yi1 greater than yi2 _ip`). It generates or evaluates a time-dependent waveform.
 
+<!-- veragrid-block-introduction:start -->
+**yi1 greater than yi2 (pulse)** belongs to an electromechanical machine or prime-mover model. It links electrical torque and flux with rotor speed, angle, mechanical power, or actuator dynamics, making it central to frequency, voltage, and rotor-angle stability studies.
+
+## Typical use
+
+- Use it when electrical transients must interact with rotating mass or machine controls.
+- Initialize torque, power, flux, and speed consistently with the solved power flow.
+<!-- veragrid-block-introduction:end -->
+
 ## Behaviour
 
 - Library location: `Native / Waveforms and Time / Signal Generators`.

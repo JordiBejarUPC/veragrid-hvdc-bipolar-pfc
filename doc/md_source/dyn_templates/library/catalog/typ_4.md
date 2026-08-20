@@ -2,6 +2,15 @@
 
 This is Basic Block Catalog type `4` (`mx + n`). It evaluates the mathematical function identified by the block name.
 
+<!-- veragrid-block-introduction:start -->
+**mx + n** is a mathematical signal-processing primitive. It forms an algebraic relation between inputs, parameters, and outputs and is commonly combined with dynamic and nonlinear blocks to construct larger control equations without introducing an independent physical state.
+
+## Typical use
+
+- Use it to express the exact algebraic operation required by a controller or measurement chain.
+- Check signal dimensions, signs, and zero-division or domain restrictions where applicable.
+<!-- veragrid-block-introduction:end -->
+
 ## Behaviour
 
 - Library location: `Native / Math and Functions / Scaling and Products`.
@@ -14,7 +23,7 @@ This is Basic Block Catalog type `4` (`mx + n`). It evaluates the mathematical f
 ## Characteristic equations
 
 $$
-0 = (yo - m \cdot yi + n)
+0 = (yo - (m \cdot yi + n))
 $$
 
 ## Interface table

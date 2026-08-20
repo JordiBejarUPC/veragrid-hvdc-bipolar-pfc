@@ -132,6 +132,13 @@ def get_generator_thevenin_rl_emt_template_with_ref(
     R_s = vf.add_var(name=f"R_s_{name}")
     X_s = vf.add_var(name=f"X_s_{name}")
 
+    # Static positive-sequence parameters use the conventional three-phase
+    # impedance base.  The instantaneous EMT current signals use phase voltage
+    # together with the three-phase power base, so the phase impedance is 3x.
+    pu_z_to_emt: float = 3.0
+    R_s_emt = pu_z_to_emt * R_s
+    X_s_emt = pu_z_to_emt * X_s
+
     phi_v = vf.add_var(name=f"phi_v_{name}")
     phi = vf.add_var(name=f"phi_{name}")
     Vpk = vf.add_var(name=f"Vpk_{name}")
@@ -170,9 +177,9 @@ def get_generator_thevenin_rl_emt_template_with_ref(
     # Build the EMT block.
     # ------------------------------------------------------------------
     state_eqs: List[Any] = list([
-        omega_base * (e_A - R_s * i_A - v_A) / X_s,
-        omega_base * (e_B - R_s * i_B - v_B) / X_s,
-        omega_base * (e_C - R_s * i_C - v_C) / X_s,
+        omega_base * (e_A - R_s_emt * i_A - v_A) / X_s_emt,
+        omega_base * (e_B - R_s_emt * i_B - v_B) / X_s_emt,
+        omega_base * (e_C - R_s_emt * i_C - v_C) / X_s_emt,
         theta_speed * w_scale,
     ])
 
@@ -306,9 +313,9 @@ def get_generator_thevenin_rl_emt_template_with_ref(
     # these keep the standard EMT explicit-init semantics.
     # ------------------------------------------------------------------
     templ.block.diff_init_eqs = dict({
-        d_i_A: omega_base * (e_A - R_s * i_A - v_A) / X_s,
-        d_i_B: omega_base * (e_B - R_s * i_B - v_B) / X_s,
-        d_i_C: omega_base * (e_C - R_s * i_C - v_C) / X_s,
+        d_i_A: omega_base * (e_A - R_s_emt * i_A - v_A) / X_s_emt,
+        d_i_B: omega_base * (e_B - R_s_emt * i_B - v_B) / X_s_emt,
+        d_i_C: omega_base * (e_C - R_s_emt * i_C - v_C) / X_s_emt,
         d_theta: theta_speed * w_scale,
     })
 

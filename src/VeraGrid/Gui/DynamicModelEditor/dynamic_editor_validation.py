@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import re
-from typing import Optional, TYPE_CHECKING
+from typing import Optional, Protocol, runtime_checkable
 
 from PySide6 import QtGui, QtWidgets
 from PySide6.QtCore import QObject, Qt
@@ -13,8 +13,20 @@ from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic import Var
 from VeraGridEngine.enumerations import VarPowerFlowReferenceType
 
-if TYPE_CHECKING:
-    from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI
+
+@runtime_checkable
+class ValidationIssuePresenter(Protocol):
+    """Expose the editor operation required by the validation dialogue."""
+
+    __slots__ = ()
+
+    def show_validation_issues_in_model(self, section_results: list["ValidationSection"]) -> None:
+        """Highlight validation issues in the owning model editor.
+
+        :param section_results: Validation sections to present.
+        :return: None.
+        """
+        ...
 
 
 def collect_block_tree(root_block: Block) -> list[Block]:
@@ -24,7 +36,7 @@ def collect_block_tree(root_block: Block) -> list[Block]:
     :param root_block: Root block to traverse.
     :return: Flat block list in pre-order.
     """
-    collected_blocks: list[Block] = list([root_block])
+    collected_blocks: list[Block] = list((root_block,))
     child_block: Block
 
     for child_block in root_block.children:
@@ -321,6 +333,11 @@ class ValidationSection:
         return self._show_issue_label
 
     def get_or_create_row(self, block_label: str) -> ValidationRow:
+        """Return the row for one block, creating it when absent.
+
+        :param block_label: Display label identifying the validated block.
+        :return: Existing or newly appended validation row.
+        """
         row: ValidationRow
         for row in self._rows:
             if row.get_block_label() == block_label:
@@ -341,20 +358,43 @@ class ValidationTraversalNode:
     __slots__ = ("_block", "_effective_external_vars", "_children")
 
     def __init__(self, block: Block, effective_external_vars: set[Var]) -> None:
+        """Create one node in the recursive validation context.
+
+        :param block: Symbolic block represented by this traversal node.
+        :param effective_external_vars: External variables inherited at this level.
+        :return: None.
+        """
         self._block: Block = block
         self._effective_external_vars: set[Var] = set(effective_external_vars)
         self._children: list[ValidationTraversalNode] = list()
 
     def get_block(self) -> Block:
+        """Return the symbolic block represented by this node.
+
+        :return: Traversal block.
+        """
         return self._block
 
     def get_effective_external_vars(self) -> set[Var]:
+        """Return external variables visible at this traversal level.
+
+        :return: Effective external-variable set.
+        """
         return self._effective_external_vars
 
     def get_children(self) -> list["ValidationTraversalNode"]:
+        """Return the ordered child traversal nodes.
+
+        :return: Child validation contexts.
+        """
         return self._children
 
     def add_child(self, child_node: "ValidationTraversalNode") -> None:
+        """Append one child validation context.
+
+        :param child_node: Child context to append.
+        :return: None.
+        """
         self._children.append(child_node)
 
 
@@ -410,7 +450,7 @@ def collect_validation_traversal_list(root_node: ValidationTraversalNode) -> lis
     :param root_node: Root traversal node.
     :return: Flat traversal-node list.
     """
-    flat_nodes: list[ValidationTraversalNode] = list([root_node])
+    flat_nodes: list[ValidationTraversalNode] = list((root_node,))
     child_node: ValidationTraversalNode
     for child_node in root_node.get_children():
         flat_nodes.extend(collect_validation_traversal_list(root_node=child_node))
@@ -627,7 +667,7 @@ class ValidationSectionDialog(QDialog):
 
             table_widget: QTableWidget = QTableWidget(self)
             table_widget.setColumnCount(2)
-            table_widget.setHorizontalHeaderLabels([section.get_first_column_title(), "Details"])
+            table_widget.setHorizontalHeaderLabels(list((section.get_first_column_title(), "Details",)))
             table_widget.setRowCount(len(rows))
             table_widget.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
             table_widget.setSelectionMode(QTableWidget.SelectionMode.NoSelection)
@@ -721,14 +761,11 @@ class ValidationSectionDialog(QDialog):
 
         :return: None.
         """
-        parent_widget: QObject | None = self.parent()
-
-        # The dialog is created by the dynamic editor itself. The call remains
-        # guarded so the action safely becomes a no-op if the parent changes.
-        from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI
-
-        if isinstance(parent_widget, DynamicBlockEditorGUI):
-            parent_widget.show_validation_issues_in_model(section_results=self.get_section_results())
+        # The structural protocol keeps this module independent from the
+        # editor's runtime import cycle while validating the required method.
+        parent_object: QObject | None = self.parent()
+        if isinstance(parent_object, ValidationIssuePresenter):
+            parent_object.show_validation_issues_in_model(section_results=self.get_section_results())
             self.accept()
         else:
             pass

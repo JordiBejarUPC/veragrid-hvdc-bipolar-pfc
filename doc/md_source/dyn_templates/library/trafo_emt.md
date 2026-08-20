@@ -1,5 +1,14 @@
 # Transformer EMT
 
+<!-- veragrid-block-introduction:start -->
+**Transformer EMT** represents passive network physics through resistance, inductance, capacitance, coupling, or switching topology. Its equations enforce voltage-current constitutive relations and therefore affect energy storage, damping, propagation, fault current, or grounding behavior.
+
+## Typical use
+
+- Use it to reproduce the electrical path between sources, converters, machines, and loads.
+- Keep phases, terminal orientation, connection type, and SI/per-unit parameter bases consistent.
+<!-- veragrid-block-introduction:end -->
+
 EMT transformer template represented directly in the phase domain. The block
 couples the from-side and to-side terminal voltages and currents while applying
 the transformer ratio, winding connection, and leakage behavior.

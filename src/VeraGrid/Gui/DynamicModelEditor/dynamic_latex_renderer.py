@@ -55,15 +55,21 @@ class RenderedEquation:
         self._uses_mathtext: bool = uses_mathtext
 
     def get_pixmap(self) -> QPixmap:
-        """Return the rendered equation image."""
+        """
+        :return: The rendered equation image.
+        """
         return self._pixmap
 
     def get_size(self) -> QtCore.QSize:
-        """Return the preferred table-cell size."""
+        """
+        :return: The preferred table-cell size.
+        """
         return self._size
 
     def get_uses_mathtext(self) -> bool:
-        """Return whether the source compiled instead of using plain text."""
+        """
+        :return: Whether the source compiled instead of using plain text.
+        """
         return self._uses_mathtext
 
 
@@ -88,15 +94,21 @@ class RenderedSvgEquation:
         self._uses_mathtext: bool = uses_mathtext
 
     def get_data(self) -> QtCore.QByteArray:
-        """Return the self-contained SVG document payload."""
+        """
+        :return: The self-contained SVG document payload.
+        """
         return self._data
 
     def get_size(self) -> QtCore.QSize:
-        """Return the intrinsic SVG display size."""
+        """
+        :return: The intrinsic SVG display size.
+        """
         return self._size
 
     def get_uses_mathtext(self) -> bool:
-        """Return whether the SVG contains compiled mathematical glyphs."""
+        """
+        :return: Whether the SVG contains compiled mathematical glyphs.
+        """
         return self._uses_mathtext
 
 
@@ -168,6 +180,9 @@ class LatexRenderer:
         Return a cached :class:`RenderedEquation` for *latex*.
 
         If not yet in the cache it is rendered with matplotlib and stored.
+
+        :param latex: LaTeX source handled by the operation.
+        :return: A cached :class:`RenderedEquation` for *latex*.
         """
         cached: RenderedEquation | None = self._cache.get(latex, None)
         if cached is not None:
@@ -252,17 +267,30 @@ class LatexRenderer:
             return rendered
 
     def invalidate(self, latex: str) -> None:
-        """Remove one entry from the cache (called after an edit)."""
+        """
+        Remove one entry from the cache (called after an edit).
+
+        :param latex: LaTeX source handled by the operation.
+        :return: None.
+        """
         self._cache.pop(latex, None)
         self._svg_cache.pop(latex, None)
 
     def clear(self) -> None:
-        """Drop the entire cache."""
+        """
+        Drop the entire cache.
+
+        :return: None.
+        """
         self._cache.clear()
         self._svg_cache.clear()
 
     def get_maximum_mathtext_length(self) -> int:
-        """Return the safe single-expression MathText character limit."""
+        """
+        Return the safe single-expression MathText character limit.
+
+        :return: The safe single-expression MathText character limit.
+        """
         return self._maximum_mathtext_length
 
     # -- internals ---------------------------------------------------------
@@ -449,9 +477,18 @@ class LatexEquationDelegate(QtWidgets.QStyledItemDelegate):
     # -- cache management --------------------------------------------------
 
     def invalidate(self, latex: str) -> None:
-        """Drop one cached entry after the underlying data changes."""
+        """
+        Drop one cached entry after the underlying data changes.
+
+        :param latex: LaTeX source handled by the operation.
+        :return: None.
+        """
         self._renderer.invalidate(latex)
 
     def clear_cache(self) -> None:
-        """Drop the entire rendering cache."""
+        """
+        Drop the entire rendering cache.
+
+        :return: None.
+        """
         self._renderer.clear()

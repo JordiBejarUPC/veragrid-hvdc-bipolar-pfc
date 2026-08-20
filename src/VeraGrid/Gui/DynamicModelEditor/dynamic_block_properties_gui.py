@@ -54,11 +54,6 @@ class Ui_DynamicBlockPropertiesDialog(object):
 
         self.button_layout.addWidget(self.apply_button)
 
-        self.close_button = QPushButton(DynamicBlockPropertiesDialog)
-        self.close_button.setObjectName(u"close_button")
-
-        self.button_layout.addWidget(self.close_button)
-
 
         self.main_layout.addLayout(self.button_layout)
 
@@ -75,5 +70,4 @@ class Ui_DynamicBlockPropertiesDialog(object):
         DynamicBlockPropertiesDialog.setWindowTitle(QCoreApplication.translate("DynamicBlockPropertiesDialog", u"Block properties", None))
         self.status_label.setText("")
         self.apply_button.setText(QCoreApplication.translate("DynamicBlockPropertiesDialog", u"Apply changes", None))
-        self.close_button.setText(QCoreApplication.translate("DynamicBlockPropertiesDialog", u"Close", None))
     # retranslateUi

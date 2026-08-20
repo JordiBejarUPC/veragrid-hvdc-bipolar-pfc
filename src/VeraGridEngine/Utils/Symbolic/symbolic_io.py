@@ -14,7 +14,11 @@ from VeraGridEngine.Devices.Dynamic.var_factory import (Connection,
                                                         find_var_by_persisted_identity)
 from VeraGridEngine.Utils.Symbolic import SharedVarReferenceType
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Expr, Const, BinOp, UnOp, Func, Func2
-from VeraGridEngine.Utils.Symbolic.block import Block
+from VeraGridEngine.Utils.Symbolic.block import Block, normalize_dynamic_connection_intents
+from VeraGridEngine.Utils.Symbolic.dynamic_connection_intent import (DynamicConnectionIntent,
+                                                                     DynamicConnectionIntentDirection,
+                                                                     dynamic_connection_intent_from_dict,
+                                                                     dynamic_connection_intent_to_dict)
 from VeraGridEngine.enumerations import VarPowerFlowReferenceType, ParamPowerFlowReferenceType
 
 
@@ -601,6 +605,10 @@ class BlockSaver:
     )
 
     def __init__(self, var_factory: VarFactory):
+        """Create a serializer bound to one symbolic variable factory.
+
+        :param var_factory: Factory containing the variables and shared references to serialize.
+        """
         self.var_factory = var_factory
         self.main_block_uids: List[int] = list()
         self.blocks: Dict[int, Dict[str, Any]] = dict()
@@ -934,6 +942,11 @@ class BlockSaver:
             "in_vars": in_vars,
             "out_vars": out_vars,
 
+            # Only the current semantic state is persisted. Graphical history
+            # and topology-specific materialization remain outside the model.
+            "connection_intents": [dynamic_connection_intent_to_dict(intent)
+                                   for intent in blk.connection_intents],
+
             "diagram": diagram
         }
 
@@ -954,6 +967,11 @@ class BlockParser:
     )
 
     def __init__(self, var_factory: VarFactory, logger: Logger | None = None):
+        """Create a block parser bound to one symbolic variable factory.
+
+        :param var_factory: Factory used to resolve persisted symbolic identities.
+        :param logger: Optional logger receiving recoverable parsing warnings.
+        """
         self.var_factory = var_factory
         self.block_dict: Dict[int, Block] = dict()
         self.logger: Logger | None = logger
@@ -1588,6 +1606,32 @@ class BlockParser:
             name=block_name,
             uid=block_uid_value
         )
+
+        # Children have already been parsed, so both current stable variable
+        # UIDs and legacy positional port references can now be resolved.
+        persisted_intent: object
+        for persisted_intent in data.get("connection_intents", list()):
+            if isinstance(persisted_intent, dict):
+                parsed_intent: DynamicConnectionIntent | None = dynamic_connection_intent_from_dict(
+                    data=persisted_intent,
+                    root_block=block,
+                )
+                if parsed_intent is not None:
+                    block.connection_intents.append(parsed_intent)
+                else:
+                    self._add_warning(msg="Invalid dynamic connection intent ignored while parsing persisted data",
+                                      block_name=block_name,
+                                      block_uid=block_uid_value,
+                                      field_name="connection_intents",
+                                      missing_uid=None)
+            else:
+                self._add_warning(msg="Invalid dynamic connection intent ignored while parsing persisted data",
+                                  block_name=block_name,
+                                  block_uid=block_uid_value,
+                                  field_name="connection_intents",
+                                  missing_uid=None)
+        normalize_dynamic_connection_intents(block=block)
+
         diagram_data = data.get("diagram", None)
         if diagram_data is not None:
             block.diagram.parse(diagram_data)
@@ -1861,7 +1905,8 @@ def _build_var_mapping(old_vars_by_uid: Dict[int, Var], old_to_new_var: Dict[int
 def _duplicate_block(block: Block,
                      var_factory: VarFactory,
                      old_to_new_var: Dict[int, Var],
-                     old_to_new_const: Dict[int, Const]) -> Block:
+                     old_to_new_const: Dict[int, Const],
+                     old_to_new_block_uid: Dict[int, int]) -> Block:
     """
     Duplicate a block using shared maps so child/parent variable links remain coherent.
 
@@ -1869,6 +1914,7 @@ def _duplicate_block(block: Block,
     :param var_factory: Variable factory used to allocate cloned variables and constants.
     :param old_to_new_var: UID-to-variable clone map shared across the block tree.
     :param old_to_new_const: UID-to-constant clone map shared across the block tree.
+    :param old_to_new_block_uid: Source-to-clone block UID map shared across the block tree.
     :return: Duplicated block.
     """
     old_vars_by_uid: Dict[int, Var] = _collect_block_vars_by_uid(block)
@@ -1993,7 +2039,7 @@ def _duplicate_block(block: Block,
     }
 
     new_children: List[Block] = [
-        _duplicate_block(child, var_factory, old_to_new_var, old_to_new_const)
+        _duplicate_block(child, var_factory, old_to_new_var, old_to_new_const, old_to_new_block_uid)
         for child in block.children
     ]
 
@@ -2031,6 +2077,60 @@ def _duplicate_block(block: Block,
         name=block.name,
     )
 
+    # Intent targets use stable block and variable identities. Rebuild both
+    # identities after the complete cloned child subtree has been allocated.
+    old_to_new_block_uid[block.uid] = new_block.uid
+    source_intent: DynamicConnectionIntent
+    source_internal_block: Block | None
+    source_internal_var: Var | None
+    source_candidate_block: Block
+    source_candidate_var: Var
+    source_variables: List[Var]
+    cloned_internal_block_uid: int | None
+    cloned_internal_var: Var | None
+
+    for source_intent in block.connection_intents:
+        source_internal_block = None
+        for source_candidate_block in block.get_all_blocks():
+            if source_candidate_block.uid == source_intent.get_internal_block_uid():
+                source_internal_block = source_candidate_block
+            else:
+                pass
+
+        source_internal_var = None
+        if source_internal_block is None:
+            source_variables = list()
+        elif source_intent.get_direction() == DynamicConnectionIntentDirection.INPUT:
+            source_variables = source_internal_block.in_vars
+        else:
+            source_variables = source_internal_block.out_vars
+
+        for source_candidate_var in source_variables:
+            if source_candidate_var.non_mutable_uid == source_intent.get_internal_variable_uid():
+                source_internal_var = source_candidate_var
+            else:
+                pass
+
+        cloned_internal_block_uid = old_to_new_block_uid.get(source_intent.get_internal_block_uid(), None)
+        if source_internal_var is None:
+            cloned_internal_var = None
+        else:
+            cloned_internal_var = old_to_new_var.get(source_internal_var.uid, None)
+
+        if cloned_internal_block_uid is None or cloned_internal_var is None:
+            pass
+        else:
+            new_block.connection_intents.append(DynamicConnectionIntent(
+                origin=source_intent.get_origin(),
+                root_reference=source_intent.get_root_reference(),
+                direction=source_intent.get_direction(),
+                internal_block_uid=cloned_internal_block_uid,
+                internal_variable_uid=cloned_internal_var.non_mutable_uid,
+                suppressed=source_intent.is_suppressed(),
+            ))
+
+    normalize_dynamic_connection_intents(block=new_block)
+
     extra_key: str
     extra_value: Any
     for extra_key, extra_value in block.__dict__.items():
@@ -2061,6 +2161,7 @@ def duplicate_block(block: Block, var_factory: VarFactory | None) -> Block:
             var_factory=var_factory,
             old_to_new_var=dict(),
             old_to_new_const=dict(),
+            old_to_new_block_uid=dict(),
         )
 
 

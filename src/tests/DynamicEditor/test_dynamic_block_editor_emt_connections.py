@@ -31,10 +31,10 @@ from VeraGrid.Session.dynamic_editor_workspace_session import DynamicEditorWorks
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
-from VeraGridEngine.Utils.Symbolic.block import (Block,
-                                                 DynamicConnectionIntentOrigin,
-                                                 build_dynamic_connection_intent_record,
-                                                 find_connections)
+from VeraGridEngine.Utils.Symbolic.block import Block, find_connections
+from VeraGridEngine.Utils.Symbolic.dynamic_connection_intent import (DynamicConnectionIntent,
+                                                                     DynamicConnectionIntentDirection,
+                                                                     DynamicConnectionIntentOrigin)
 from VeraGridEngine.Utils.Symbolic.templates_common_functions import (attach_emt_model_to_buses,
                                                                      _ensure_saved_branch_root_contract_side,
                                                                      _normalize_saved_branch_root_contract_from_live_sides,
@@ -60,6 +60,12 @@ class _BusStub:
     __slots__ = ("name", "is_dc", "emt_model", "_connected_emt_models", "_pending_emt_devices")
 
     def __init__(self, name: str, is_dc: bool, emt_model: Block) -> None:
+        """Create a minimal bus object for EMT connection tests.
+
+        :param name: Bus name exposed to connection diagnostics.
+        :param is_dc: Whether the stub represents a DC bus.
+        :param emt_model: Symbolic EMT bus model exposed by the stub.
+        """
         self.name = name
         self.is_dc = is_dc
         self.emt_model = emt_model
@@ -660,7 +666,8 @@ def _collect_wrapper_refs(block: Block) -> tuple[set[VarPowerFlowReferenceType],
     child: Block
 
     for child in block.children:
-        if not dynamic_block_editor.is_root_interface_wrapper_block(child):
+        if not dynamic_block_editor.is_root_interface_wrapper_block(block_model=child,
+                                                                    diagram=block.diagram):
             pass
         elif len(child.out_vars) == 1 and len(child.in_vars) == 0 and child.out_vars[0].ref is not None:
             input_refs.add(child.out_vars[0].ref)
@@ -1781,7 +1788,10 @@ def test_manual_exponential_load_partial_connections_survive_apply_and_reopen() 
             scene_item for scene_item in reopened_editor.scene.items()
             if (isinstance(scene_item, graph.GenericBlockItem)
                 and scene_item.subsys is not None
-                and not scene_item.subsys.is_root_interface_wrapper)
+                and not dynamic_block_editor.is_root_interface_wrapper_block(
+                    block_model=scene_item.subsys,
+                    diagram=reopened_editor.diagram,
+                ))
         )
         assert len(internal_items) == 1
         assert internal_items[0].subsys.name.startswith("EXP_Load_EMT")
@@ -1966,7 +1976,10 @@ def test_workspace_exponential_load_partial_connections_survive_tab_close_and_re
         scene_item for scene_item in reopened_editor.scene.items()
         if (isinstance(scene_item, graph.GenericBlockItem)
             and scene_item.subsys is not None
-            and not scene_item.subsys.is_root_interface_wrapper)
+            and not dynamic_block_editor.is_root_interface_wrapper_block(
+                block_model=scene_item.subsys,
+                diagram=reopened_editor.diagram,
+            ))
     )
     assert len(internal_items) == 1
     assert internal_items[0].subsys.name.startswith("EXP_Load_EMT")
@@ -3152,13 +3165,14 @@ def test_manual_pi_branch_ab_wires_survive_abc_expansion_and_relayout() -> None:
         VarPowerFlowReferenceType.vt_A.value: VarPowerFlowReferenceType.v_A.value,
         VarPowerFlowReferenceType.vt_B.value: VarPowerFlowReferenceType.v_B.value,
     })
-    intent_entry: dict[str, object]
+    intent_entry: DynamicConnectionIntent
     for intent_entry in line.emt_model.connection_intents:
-        if intent_entry["root_ref"] in legacy_voltage_refs:
-            intent_entry["root_ref"] = legacy_voltage_refs[str(intent_entry["root_ref"])]
-            intent_entry["root_direction"] = "output"
+        root_reference_value: str = intent_entry.get_root_reference().value
+        legacy_reference_value: str | None = legacy_voltage_refs.get(root_reference_value, None)
+        if legacy_reference_value is not None:
+            intent_entry.set_root_reference(VarPowerFlowReferenceType(legacy_reference_value))
         else:
-            intent_entry["root_direction"] = "input"
+            pass
 
     _apply_line_phase_transition(line=line, final_phases=list([1, 2, 3]))
     reopened = DynamicBlockEditorGUI(
@@ -3176,15 +3190,18 @@ def test_manual_pi_branch_ab_wires_survive_abc_expansion_and_relayout() -> None:
     try:
         reopened_pi_item: graph.GenericBlockItem | None = reopened.get_scene_item_by_block_uid(pi_block_uid)
         assert reopened_pi_item is not None
-        user_intents: list[dict[str, object]] = list(
+        user_intents: list[DynamicConnectionIntent] = list(
             intent for intent in line.emt_model.connection_intents
-            if intent.get("origin", None) == DynamicConnectionIntentOrigin.USER.value
+            if intent.get_origin() == DynamicConnectionIntentOrigin.USER
         )
         assert len(user_intents) == 8
-        assert set(str(intent["root_ref"]) for intent in user_intents) == set(
+        assert set(intent.get_root_reference().value for intent in user_intents) == set(
             reference.value for reference in input_refs + output_refs
         )
-        assert set(str(intent["root_direction"]) for intent in user_intents) == {"input", "output"}
+        assert set(intent.get_direction() for intent in user_intents) == set([
+            DynamicConnectionIntentDirection.INPUT,
+            DynamicConnectionIntentDirection.OUTPUT,
+        ])
 
         for reference in input_refs:
             wrapper_item = _find_semantic_wrapper_item(reopened, reference, BlockType.INPUT_CONN)
@@ -3587,30 +3604,26 @@ def test_branch_preflight_reconciles_without_reopening_editor() -> None:
         VarPowerFlowReferenceType.it_B: it_b,
     })
     line.emt_model.connection_intents = list([
-        build_dynamic_connection_intent_record(DynamicConnectionIntentOrigin.USER,
-                                                             VarPowerFlowReferenceType.vf_A,
-                                                             "input",
-                                                             internal_from.uid,
-                                                             "output",
-                                                             0),
-        build_dynamic_connection_intent_record(DynamicConnectionIntentOrigin.USER,
-                                                             VarPowerFlowReferenceType.if_A,
-                                                             "output",
-                                                             internal_from.uid,
-                                                             "input",
-                                                             0),
-        build_dynamic_connection_intent_record(DynamicConnectionIntentOrigin.USER,
-                                                             VarPowerFlowReferenceType.vt_B,
-                                                             "input",
-                                                             internal_to.uid,
-                                                             "output",
-                                                             0),
-        build_dynamic_connection_intent_record(DynamicConnectionIntentOrigin.USER,
-                                                             VarPowerFlowReferenceType.it_B,
-                                                             "output",
-                                                             internal_to.uid,
-                                                             "input",
-                                                             0),
+        DynamicConnectionIntent(origin=DynamicConnectionIntentOrigin.USER,
+                                root_reference=VarPowerFlowReferenceType.vf_A,
+                                direction=DynamicConnectionIntentDirection.INPUT,
+                                internal_block_uid=internal_from.uid,
+                                internal_variable_uid=internal_in_from.non_mutable_uid),
+        DynamicConnectionIntent(origin=DynamicConnectionIntentOrigin.USER,
+                                root_reference=VarPowerFlowReferenceType.if_A,
+                                direction=DynamicConnectionIntentDirection.OUTPUT,
+                                internal_block_uid=internal_from.uid,
+                                internal_variable_uid=internal_out_from.non_mutable_uid),
+        DynamicConnectionIntent(origin=DynamicConnectionIntentOrigin.USER,
+                                root_reference=VarPowerFlowReferenceType.vt_B,
+                                direction=DynamicConnectionIntentDirection.INPUT,
+                                internal_block_uid=internal_to.uid,
+                                internal_variable_uid=internal_in_to.non_mutable_uid),
+        DynamicConnectionIntent(origin=DynamicConnectionIntentOrigin.USER,
+                                root_reference=VarPowerFlowReferenceType.it_B,
+                                direction=DynamicConnectionIntentDirection.OUTPUT,
+                                internal_block_uid=internal_to.uid,
+                                internal_variable_uid=internal_out_to.non_mutable_uid),
     ])
 
     dialog_models.initialize_connected_bus_models_for_editor_assignment(api_object=line,
@@ -3683,30 +3696,26 @@ def test_branch_preflight_reconciles_from_and_to_sides_independently() -> None:
         VarPowerFlowReferenceType.it_B: it_b,
     })
     line.emt_model.connection_intents = list([
-        build_dynamic_connection_intent_record(DynamicConnectionIntentOrigin.USER,
-                                                             VarPowerFlowReferenceType.vf_A,
-                                                             "input",
-                                                             internal_from.uid,
-                                                             "output",
-                                                             0),
-        build_dynamic_connection_intent_record(DynamicConnectionIntentOrigin.USER,
-                                                             VarPowerFlowReferenceType.if_A,
-                                                             "output",
-                                                             internal_from.uid,
-                                                             "input",
-                                                             0),
-        build_dynamic_connection_intent_record(DynamicConnectionIntentOrigin.USER,
-                                                             VarPowerFlowReferenceType.vt_B,
-                                                             "input",
-                                                             internal_to.uid,
-                                                             "output",
-                                                             0),
-        build_dynamic_connection_intent_record(DynamicConnectionIntentOrigin.USER,
-                                                             VarPowerFlowReferenceType.it_B,
-                                                             "output",
-                                                             internal_to.uid,
-                                                             "input",
-                                                             0),
+        DynamicConnectionIntent(origin=DynamicConnectionIntentOrigin.USER,
+                                root_reference=VarPowerFlowReferenceType.vf_A,
+                                direction=DynamicConnectionIntentDirection.INPUT,
+                                internal_block_uid=internal_from.uid,
+                                internal_variable_uid=internal_in_from.non_mutable_uid),
+        DynamicConnectionIntent(origin=DynamicConnectionIntentOrigin.USER,
+                                root_reference=VarPowerFlowReferenceType.if_A,
+                                direction=DynamicConnectionIntentDirection.OUTPUT,
+                                internal_block_uid=internal_from.uid,
+                                internal_variable_uid=internal_out_from.non_mutable_uid),
+        DynamicConnectionIntent(origin=DynamicConnectionIntentOrigin.USER,
+                                root_reference=VarPowerFlowReferenceType.vt_B,
+                                direction=DynamicConnectionIntentDirection.INPUT,
+                                internal_block_uid=internal_to.uid,
+                                internal_variable_uid=internal_in_to.non_mutable_uid),
+        DynamicConnectionIntent(origin=DynamicConnectionIntentOrigin.USER,
+                                root_reference=VarPowerFlowReferenceType.it_B,
+                                direction=DynamicConnectionIntentDirection.OUTPUT,
+                                internal_block_uid=internal_to.uid,
+                                internal_variable_uid=internal_out_to.non_mutable_uid),
     ])
 
     dialog_models.initialize_connected_bus_models_for_editor_assignment(api_object=line,
