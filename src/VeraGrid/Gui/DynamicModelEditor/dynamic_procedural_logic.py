@@ -30,6 +30,8 @@ from VeraGridEngine.Utils.Symbolic.symbolic import (
 )
 from VeraGridEngine.Utils.procedural_logic import (
     AnalogFlipFlopLogic,
+    ConditionalDiagnosticLogic,
+    DelayedSwitchEventLogic,
     DelayedThresholdLatchLogic,
     FixedSampleLogic,
     FlipFlopLogic,
@@ -130,6 +132,10 @@ class ProceduralFieldType(Enum):
     TARGET_REFERENCE = "Mutable target"
     FLOAT = "Number"
     OPTIONAL_FLOAT = "Optional number"
+    TEXT = "Text"
+    REQUIRED_TEXT = "Required text"
+    INTEGER = "Integer"
+    BOOLEAN = "Boolean"
 
 
 class ProceduralFieldDraft:
@@ -490,7 +496,39 @@ def get_procedural_fields(entry: ProceduralLogicBase) -> List[ProceduralFieldDra
     runtime_tpe: ProceduralFieldType = ProceduralFieldType.RUNTIME_REFERENCE
     target_tpe: ProceduralFieldType = ProceduralFieldType.TARGET_REFERENCE
 
-    if isinstance(entry, FixedSampleLogic):
+    if isinstance(entry, ConditionalDiagnosticLogic):
+        fields.extend(list([
+            make_procedural_field("condition_expr", "Condition", expression_tpe,
+                                  procedural_expression_to_text(entry.condition_expr),
+                                  "Condition that activates the diagnostic."),
+            make_procedural_field("message", "Message", ProceduralFieldType.TEXT,
+                                  entry.message, "Exact diagnostic message."),
+            make_procedural_field("initialization_only", "Initialization only", ProceduralFieldType.BOOLEAN,
+                                  str(entry.initialization_only).lower(),
+                                  "Whether the diagnostic is restricted to initialization."),
+        ]))
+    elif isinstance(entry, DelayedSwitchEventLogic):
+        fields.extend(list([
+            make_procedural_field("output_var_name", "Output mode", mode_tpe, entry.output_var_name,
+                                  "Retained switch-position mode."),
+            make_procedural_field("guard_expr", "Guard", expression_tpe,
+                                  procedural_expression_to_text(entry.guard_expr), "Event enable expression."),
+            make_procedural_field("trigger_expr", "Trigger", expression_tpe,
+                                  procedural_expression_to_text(entry.trigger_expr), "Rising-edge trigger expression."),
+            make_procedural_field("delay_expr", "Delay", expression_tpe,
+                                  procedural_expression_to_text(entry.delay_expr), "Non-negative command delay."),
+            make_procedural_field("target_device_idtag", "Target device FID", ProceduralFieldType.REQUIRED_TEXT,
+                                  entry.target_device_idtag, "Exact physical equipment identifier."),
+            make_procedural_field("target_switch_idtag", "Target switch FID", ProceduralFieldType.REQUIRED_TEXT,
+                                  entry.target_switch_idtag, "Exact source switch identifier."),
+            make_procedural_field("target_terminal_index", "Target terminal", ProceduralFieldType.INTEGER,
+                                  str(entry.target_terminal_index), "Physical equipment terminal index."),
+            make_procedural_field("initial_closed", "Initially closed", ProceduralFieldType.BOOLEAN,
+                                  str(entry.initial_closed).lower(), "Exported initial switch position."),
+            make_procedural_field("command_closed", "Command closed", ProceduralFieldType.BOOLEAN,
+                                  str(entry.command_closed).lower(), "Switch position applied when the event fires."),
+        ]))
+    elif isinstance(entry, FixedSampleLogic):
         fields.append(make_procedural_field("output_var_name", "Output mode", mode_tpe,
                                             entry.output_var_name, "Boolean value retained after initialization."))
         fields.append(make_procedural_field("condition_expr", "Condition", expression_tpe,
@@ -672,7 +710,31 @@ def get_default_procedural_fields(logic_tpe: ProceduralLogicType) -> List[Proced
     runtime: ProceduralFieldType = ProceduralFieldType.RUNTIME_REFERENCE
     target: ProceduralFieldType = ProceduralFieldType.TARGET_REFERENCE
     fields: List[ProceduralFieldDraft] = list()
-    if logic_tpe == ProceduralLogicType.FixedSample:
+    if logic_tpe == ProceduralLogicType.ConditionalDiagnostic:
+        fields = list([
+            make_procedural_field("condition_expr", "Condition", expr, "0.0", "Diagnostic condition."),
+            make_procedural_field("message", "Message", ProceduralFieldType.TEXT, "", "Exact diagnostic message."),
+            make_procedural_field("initialization_only", "Initialization only", ProceduralFieldType.BOOLEAN,
+                                  "false", "Restrict the diagnostic to initialization."),
+        ])
+    elif logic_tpe == ProceduralLogicType.DelayedSwitchEvent:
+        fields = list([
+            make_procedural_field("output_var_name", "Output mode", mode, "", "Switch-position mode."),
+            make_procedural_field("guard_expr", "Guard", expr, "1.0", "Event enable expression."),
+            make_procedural_field("trigger_expr", "Trigger", expr, "0.0", "Rising-edge trigger expression."),
+            make_procedural_field("delay_expr", "Delay", expr, "0.0", "Non-negative command delay."),
+            make_procedural_field("target_device_idtag", "Target device FID", ProceduralFieldType.REQUIRED_TEXT,
+                                  "", "Exact physical equipment identifier."),
+            make_procedural_field("target_switch_idtag", "Target switch FID", ProceduralFieldType.REQUIRED_TEXT,
+                                  "", "Exact source switch identifier."),
+            make_procedural_field("target_terminal_index", "Target terminal", ProceduralFieldType.INTEGER,
+                                  "0", "Physical equipment terminal index."),
+            make_procedural_field("initial_closed", "Initially closed", ProceduralFieldType.BOOLEAN,
+                                  "false", "Exported initial switch position."),
+            make_procedural_field("command_closed", "Command closed", ProceduralFieldType.BOOLEAN,
+                                  "false", "Switch position applied when the event fires."),
+        ])
+    elif logic_tpe == ProceduralLogicType.FixedSample:
         fields = list([
             make_procedural_field("output_var_name", "Output mode", mode, "", "Retained boolean output."),
             make_procedural_field("condition_expr", "Condition", expr, "0.0", "Condition sampled once."),
@@ -811,7 +873,11 @@ def get_procedural_expression_variables(entry: ProceduralLogicBase) -> List[Var]
     :return: Variables referenced by its symbolic expression fields.
     """
     expressions: List[Expr | Comparison | float | int] = list()
-    if isinstance(entry, FixedSampleLogic):
+    if isinstance(entry, ConditionalDiagnosticLogic):
+        expressions.append(entry.condition_expr)
+    elif isinstance(entry, DelayedSwitchEventLogic):
+        expressions.extend(list([entry.guard_expr, entry.trigger_expr, entry.delay_expr]))
+    elif isinstance(entry, FixedSampleLogic):
         expressions.append(entry.condition_expr)
     elif isinstance(entry, SampledValueLogic):
         expressions.append(entry.source_expr)
@@ -938,6 +1004,48 @@ def get_optional_float(draft: ProceduralLogicDraft, key: str) -> float | None:
     return result
 
 
+def get_required_integer(draft: ProceduralLogicDraft, key: str) -> int:
+    """Parse one required integer field.
+
+    :param draft: Owning procedural entry.
+    :param key: Stable integer field key.
+    :return: Parsed integer value.
+    """
+    return int(get_required_field_value(draft, key))
+
+
+def get_text_field_value(draft: ProceduralLogicDraft, key: str) -> str:
+    """Return one text field while preserving an empty source value.
+
+    :param draft: Owning procedural entry.
+    :param key: Stable text field key.
+    :return: Exact staged text value.
+    """
+    field: ProceduralFieldDraft | None = draft.get_field(key)
+    if field is None:
+        raise ValueError(f"Missing procedural field '{key}'")
+    else:
+        result: str = field.get_value()
+    return result
+
+
+def get_required_boolean(draft: ProceduralLogicDraft, key: str) -> bool:
+    """Parse one required canonical boolean field.
+
+    :param draft: Owning procedural entry.
+    :param key: Stable boolean field key.
+    :return: Parsed boolean value.
+    """
+    value: str = get_required_field_value(draft, key).lower()
+    if value == "true":
+        result: bool = True
+    elif value == "false":
+        result = False
+    else:
+        raise ValueError(f"Procedural field '{key}' must be 'true' or 'false'")
+    return result
+
+
 def build_runtime_logic_entry(draft: ProceduralLogicDraft,
                               namespace: Mapping[str, Expr]) -> ProceduralLogicBase:
     """Construct one runtime entry from a fully validated draft.
@@ -948,8 +1056,24 @@ def build_runtime_logic_entry(draft: ProceduralLogicDraft,
     """
     tpe: ProceduralLogicType = draft.get_logic_tpe()
     name: str = draft.get_name()
-    if tpe == ProceduralLogicType.FixedSample:
-        result: ProceduralLogicBase = FixedSampleLogic(
+    if tpe == ProceduralLogicType.ConditionalDiagnostic:
+        result: ProceduralLogicBase = ConditionalDiagnosticLogic(
+            get_required_expression(draft, "condition_expr", namespace),
+            get_text_field_value(draft, "message"),
+            get_required_boolean(draft, "initialization_only"), name)
+    elif tpe == ProceduralLogicType.DelayedSwitchEvent:
+        result = DelayedSwitchEventLogic(
+            get_required_field_value(draft, "output_var_name"),
+            get_required_expression(draft, "guard_expr", namespace),
+            get_required_expression(draft, "trigger_expr", namespace),
+            get_required_expression(draft, "delay_expr", namespace),
+            get_required_field_value(draft, "target_device_idtag"),
+            get_required_field_value(draft, "target_switch_idtag"),
+            get_required_integer(draft, "target_terminal_index"),
+            get_required_boolean(draft, "initial_closed"),
+            get_required_boolean(draft, "command_closed"), name)
+    elif tpe == ProceduralLogicType.FixedSample:
+        result = FixedSampleLogic(
             get_required_field_value(draft, "output_var_name"),
             get_required_expression(draft, "condition_expr", namespace), name)
     elif tpe == ProceduralLogicType.SampledValue:
@@ -1413,6 +1537,21 @@ class RuntimeLogicDraftCollection:
                                 raise ValueError("number must be finite")
                             else:
                                 pass
+                        else:
+                            pass
+                    elif field_tpe == ProceduralFieldType.REQUIRED_TEXT:
+                        if len(field_value) == 0:
+                            raise ValueError("text cannot be empty")
+                        else:
+                            pass
+                    elif field_tpe == ProceduralFieldType.TEXT:
+                        pass
+                    elif field_tpe == ProceduralFieldType.INTEGER:
+                        parsed_integer: int = int(field_value)
+                        _unused_integer: int = parsed_integer
+                    elif field_tpe == ProceduralFieldType.BOOLEAN:
+                        if field_value.lower() not in ("true", "false"):
+                            raise ValueError("boolean must be 'true' or 'false'")
                         else:
                             pass
                     elif field_tpe == ProceduralFieldType.MODE_REFERENCE:

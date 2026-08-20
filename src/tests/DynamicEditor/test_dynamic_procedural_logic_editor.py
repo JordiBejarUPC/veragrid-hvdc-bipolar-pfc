@@ -35,6 +35,8 @@ from VeraGridEngine.Utils.Symbolic.symbolic import (
 )
 from VeraGridEngine.Utils.procedural_logic import (
     AnalogFlipFlopLogic,
+    ConditionalDiagnosticLogic,
+    DelayedSwitchEventLogic,
     DelayedThresholdLatchLogic,
     FixedSampleLogic,
     FlipFlopLogic,
@@ -92,7 +94,7 @@ def build_complete_runtime_logic_block() -> tuple[Block, Dict[str, Expr]]:
         "fixed_mode", "sample_mode", "saturation_mode", "delay_mode",
         "average_mode", "gradient_mode", "flip_mode", "analog_mode",
         "relay_mode", "latch_mode", "handover_mode", "valve_mode",
-        "gate_a", "gate_b", "gate_c", "sample_a", "sample_b", "sample_c",
+        "gate_a", "gate_b", "gate_c", "sample_a", "sample_b", "sample_c", "switch_mode",
     ])
     modes: List[Var] = list()
     mode_name: str
@@ -119,6 +121,10 @@ def build_complete_runtime_logic_block() -> tuple[Block, Dict[str, Expr]]:
         event_dict[event_variable] = Const(0.0)
 
     entries: List[ProceduralLogicBase] = list([
+        ConditionalDiagnosticLogic(x > Const(0.0), "", False, "diagnostic"),
+        DelayedSwitchEventLogic(
+            "switch_mode", Const(1.0), y > Const(0.0), Const(0.01),
+            "DEVICE_FID", "SWITCH_FID", 1, True, False, "switch_event"),
         FixedSampleLogic("fixed_mode", x > Const(0.0), "fixed"),
         SampledValueLogic("sample_mode", x, "sample"),
         HardSaturationLogic("saturation_mode", x, Const(-1.0), Const(1.0), "saturation"),
@@ -177,7 +183,7 @@ def test_every_procedural_type_has_typed_fields_and_documentation() -> None:
             documentation: str = documentation_path.read_text(encoding="utf-8")
             assert "## Purpose" in documentation
             assert "## Runtime behavior" in documentation
-    assert concrete_count == 15
+    assert concrete_count == 17
     assert (documentation_root / "index.md").is_file()
 
 
@@ -212,8 +218,19 @@ def test_every_existing_procedural_type_roundtrips_through_typed_drafts() -> Non
     entry: ProceduralLogicDraft
     for entry in drafts.get_entries():
         rebuilt.append(build_runtime_logic_entry(entry, namespace))
-    assert len(rebuilt) == 15
+    assert len(rebuilt) == 17
     assert [entry.logic_tpe for entry in rebuilt] == [entry.logic_tpe for entry in block.procedural_logic]
+    rebuilt_diagnostic: ProceduralLogicBase = rebuilt[0]
+    rebuilt_switch_event: ProceduralLogicBase = rebuilt[1]
+    assert isinstance(rebuilt_diagnostic, ConditionalDiagnosticLogic)
+    assert rebuilt_diagnostic.message == ""
+    assert not rebuilt_diagnostic.initialization_only
+    assert isinstance(rebuilt_switch_event, DelayedSwitchEventLogic)
+    assert rebuilt_switch_event.target_device_idtag == "DEVICE_FID"
+    assert rebuilt_switch_event.target_switch_idtag == "SWITCH_FID"
+    assert rebuilt_switch_event.target_terminal_index == 1
+    assert rebuilt_switch_event.initial_closed
+    assert not rebuilt_switch_event.command_closed
 
 
 def test_every_catalogue_runtime_entry_opens_as_a_valid_typed_draft() -> None:

@@ -16,6 +16,8 @@ A retained mode is a runtime parameter with an initialization expression. Its va
 - [Time delay](time_delay.md)
 - [Moving average](moving_average.md)
 - [Gradient limiter](gradient_limiter.md)
+- [Conditional diagnostic](conditional_diagnostic.md)
+- [Delayed switch event](delayed_switch_event.md)
 - [Flip-flop](flipflop.md)
 - [Analog flip-flop](analog_flipflop.md)
 - [Pickup/dropoff relay](pickup_dropoff.md)
