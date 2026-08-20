@@ -114,6 +114,7 @@ class ScriptingPythonEditor(BasePythonCodeEditor):
         popup: QtWidgets.QAbstractItemView = self._qt_completer.popup()
         pressed_key: int = event.key()
         popup_visible: bool = popup.isVisible()
+        pressed_modifiers: QtCore.Qt.KeyboardModifier = event.modifiers()
         completion_keys: tuple[QtCore.Qt.Key, ...] = (
             QtCore.Qt.Key.Key_Tab,
             QtCore.Qt.Key.Key_Return,
@@ -149,7 +150,10 @@ class ScriptingPythonEditor(BasePythonCodeEditor):
         elif popup_visible and pressed_key in horizontal_keys:
             event.accept()
         elif (pressed_key == QtCore.Qt.Key.Key_Space
-              and event.modifiers() & QtCore.Qt.KeyboardModifier.ControlModifier):
+              and pressed_modifiers == QtCore.Qt.KeyboardModifier.ControlModifier):
+            # Windows reports AltGr as Ctrl+Alt on many layouts. Requiring the
+            # exact Ctrl modifier keeps completion from swallowing text input
+            # for characters such as "]".
             self._trigger_completion()
             event.accept()
         else:
