@@ -3104,12 +3104,12 @@ def test_dgs_modulo_and_variadic_extrema_preserve_numeric_semantics() -> None:
     angle_name: str = parsed.symbol_table["angle"].name
 
     assert parsed.unsupported_lines == []
-    assert angle_name == "modulo_variadic_extrema__angle"
-    assert wrapped_expr.eval(modulo_variadic_extrema__angle=-1.5 * math.pi) == pytest.approx(
+    assert angle_name == "angle"
+    assert wrapped_expr.eval(angle=-1.5 * math.pi) == pytest.approx(
         0.5 * math.pi,
     )
-    assert limited_expr.eval(modulo_variadic_extrema__angle=-3.0) == 1.0
-    assert limited_expr.eval(modulo_variadic_extrema__angle=5.0) == 3.0
+    assert limited_expr.eval(angle=-3.0) == 1.0
+    assert limited_expr.eval(angle=5.0) == 3.0
 
 
 def test_dgs_not_equal_is_supported_inside_a_selector_condition() -> None:
