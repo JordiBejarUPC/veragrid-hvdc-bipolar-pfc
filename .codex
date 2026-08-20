@@ -36,6 +36,16 @@ Good code is evident once you understand what it is required from it.
 - Adding new dependencies is strictly forbidden without human intervention and validation.
 - Every time you are about to write new code, you must try to avoid it. Great engineers delete code.
 
+### Import and persistence boundaries
+- Imported or user-provided data must remain data. Import and persistence paths must never generate, compile, evaluate, execute, or dynamically import source code in order to store or reconstruct a model.
+- Persist imported models through one versioned declarative representation owned by VeraGridEngine. Reconstruct the declared VeraGrid objects with explicit, typed parsing and validation. Never maintain generated source code and a data snapshot as competing canonical representations.
+- Build the canonical VeraGrid object as soon as source validation permits. Do not create a parallel object graph or a chain of transfer objects that duplicates state already owned by the final VeraGrid object.
+- Source-format parsing structures are allowed only when they are strictly required to resolve references, ordering, syntax, ambiguity, or fail-closed validation before the final object can exist. They must be minimal, bounded to the import operation, discarded after conversion, and never persisted or attached to MultiCircuit.
+- When a transformation requires a lookup between source and destination objects, retain only the minimal typed mapping needed to complete the conversion and device assignment, then release it. Do not retain the complete source representation through later VeraGrid layers.
+- When source cardinality is known, preallocate and fill collections instead of growing them. A device-instance `Block` copied by an existing template setter is permitted because it owns an independent `VarFactory` and lifecycle; this is not the forbidden duplication of one import-stage semantic model.
+- Do not attach undeclared state through `__dict__` or other dynamic attributes. Runtime state and persistence metadata must have an explicit typed owner and declared access path.
+- For DGS dynamics, construct `Block` and `RmsModelTemplate` or `EmtModelTemplate` objects directly, register the templates in `MultiCircuit`, return the typed DGS-template-to-VeraGrid-template association required for assignment, and apply that association to the network devices. Do not route this process through generated Python modules.
+
 ### Performance
 - Always declare the sizes in advance if you can know them. Use a numpy array instead of a list if you know the size in advance.
 - Vectorization of numerical arrays is always preferred. Alternatively numba functions with painfully explicit loops are preferred.
