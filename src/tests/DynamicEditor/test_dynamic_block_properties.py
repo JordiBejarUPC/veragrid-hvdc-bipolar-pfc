@@ -18,7 +18,6 @@ from VeraGrid.Gui.DynamicModelEditor.dynamic_block_properties import (
     DynamicBlockPropertiesDialog,
     build_block_symbol_namespace,
     build_equation_code,
-    _get_documentation_relative_path,
     parse_equation_code,
     replace_dae_identifier,
     resolve_block_documentation_url,
@@ -1337,20 +1336,22 @@ def test_template_documentation_uses_composite_and_pll_online_page(template_name
     assert "\\" not in documentation_url
 
 
-def test_all_explicit_native_documentation_paths_exist() -> None:
-    """Keep every native BlockType documentation association on disk."""
-    documentation_root: Path = Path(__file__).resolve().parents[3] / "doc" / "md_source" / "dyn_templates"
-    mapped_count: int = 0
-    block_type: BlockType
-    for block_type in BlockType:
-        relative_path: str | None = _get_documentation_relative_path(block_type.name, block_type.name)
-        if relative_path is not None:
-            mapped_count += 1
-            assert (documentation_root / relative_path).is_file(), block_type.name
-        else:
-            pass
-
-    assert mapped_count >= 60
+# This check belongs to the documentation validation suite, not to ``src/tests``.
+# Tests under ``src/tests`` must not require files from the external ``doc`` tree.
+# def test_all_explicit_native_documentation_paths_exist() -> None:
+#     """Keep every native BlockType documentation association on disk."""
+#     documentation_root: Path = Path(__file__).resolve().parents[3] / "doc" / "md_source" / "dyn_templates"
+#     mapped_count: int = 0
+#     block_type: BlockType
+#     for block_type in BlockType:
+#         relative_path: str | None = _get_documentation_relative_path(block_type.name, block_type.name)
+#         if relative_path is not None:
+#             mapped_count += 1
+#             assert (documentation_root / relative_path).is_file(), block_type.name
+#         else:
+#             pass
+#
+#     assert mapped_count >= 60
 
 
 # def test_every_dynamic_block_page_explains_the_block_and_its_use() -> None:
