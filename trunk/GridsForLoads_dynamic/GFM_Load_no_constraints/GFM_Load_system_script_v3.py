@@ -702,13 +702,21 @@ if theta_pll_init is not None and phase_vsm_init is not None:
 
 init_runtime_param_names = [
     "theta_pll_mode_G4L_PLL",
+    "x_e_pll_acc_G4L_PLL",
+    "theta_pll_acc_G4L_PLL",
+    "y_acc_G4L_VSM",
+    "phase_vsm_acc_G4L_VSM",
     "i_dc_mode_G4L_grid_side_converter",
+    "x_e_mode_G4L_load_side_converter_control",
     "i_dc_L_mode_G4L_load_side_converter_control",
-    "v_con_A_mode_G4L_current_loop",
-    "v_con_B_mode_G4L_current_loop",
-    "v_con_C_mode_G4L_current_loop",
-    "i_q_lim_mode_G4L_current_limiter",
-    "i_d_lim_mode_G4L_current_limiter",
+    "v_ffw_q_u1_G4L_current_loop",
+    "v_ffw_d_u1_G4L_current_loop",
+    "v_ffw_q_y1_G4L_current_loop",
+    "v_ffw_d_y1_G4L_current_loop",
+    "x_e_q_acc_G4L_current_loop",
+    "x_e_d_acc_G4L_current_loop",
+    "err_q_z1_G4L_Virtual_admittance",
+    "err_d_z1_G4L_Virtual_admittance",
 ]
 
 print("Initial runtime parameter diagnostics")
@@ -728,24 +736,26 @@ i_dc_init = init_diagnostics["i_dc_G4L_grid_side_converter"]
 i_dc_L_init = init_diagnostics["i_dc_L_G4L_load_side_converter_control"]
 i_cap_dc_init = init_diagnostics["i_cap_dc_G4L_load_side_converter"]
 if None not in (i_dc_init, i_dc_L_init, i_cap_dc_init):
-    dc_current_balance = i_dc_init - i_dc_L_init - i_cap_dc_init
+    dc_current_balance = i_dc_init + i_dc_L_init - i_cap_dc_init
     print(f"  dc_current_balance = {dc_current_balance}")
 else:
     print("  dc_current_balance = unavailable")
 
 # RL branch residual diagnostics at t = 0 for the grid-side converter.
 omega_base = 2 * np.pi * 50.0
-X_f_pu = 1.0 / 10.0
-R_f_pu = 0.1 / 10.0
+# The instantaneous EMT phase-current base requires 3x the conventional
+# positive-sequence impedance used in the parameter script.
+X_f_pu = 3.0 * (1.0 / 10.0)
+R_f_pu = 3.0 * (0.1 / 10.0)
 L_f = X_f_pu / omega_base
 for ph in ["A", "B", "C"]:
     v_bus = try_get_init_value(problem, f"v_{ph}_Bus1_emt_template")
-    v_con = try_get_init_value(problem, f"v_con_{ph}_mode_G4L_current_loop")
+    v_con = try_get_init_value(problem, f"v_con_{ph}_G4L_current_loop")
     i_ser = try_get_init_value(problem, f"i_ser_{ph}_G4L_grid_side_converter")
     di_ser = try_get_init_diff_value(problem, f"di_ser_{ph}_G4L_grid_side_converter")
     if None not in (v_bus, v_con, i_ser, di_ser):
-        residual = v_bus - v_con - R_f_pu * i_ser - L_f * di_ser
-        v_con_required = v_bus - R_f_pu * i_ser - L_f * di_ser
+        residual = v_con - v_bus - R_f_pu * i_ser - L_f * di_ser
+        v_con_required = v_bus + R_f_pu * i_ser + L_f * di_ser
         print(f"grid-side RL residual phase {ph}: {residual}")
         print(f"  v_bus={v_bus}, v_con={v_con}, i={i_ser}, di={di_ser}")
         print(f"  v_con_required={v_con_required}, dv_con={(v_con - v_con_required)}")
@@ -846,22 +856,22 @@ for name in [
 
 print("Differential-state diagnostics")
 for name in [
-    "dx_e_pll_G4L_PLL",
-    "dy_G4L_VSM",
-    "d_phase_vsm_G4L_VSM",
-    "dx1_1_G4L_Virtual_admittance",
-    "dx2_1_G4L_Virtual_admittance",
-    "dx1_2_G4L_Virtual_admittance",
-    "dx2_2_G4L_Virtual_admittance",
-    "dv_ffw_q_G4L_current_loop",
-    "dv_ffw_d_G4L_current_loop",
-    "dx_e_q_G4L_current_loop",
-    "dx_e_d_G4L_current_loop",
-    "dx_e_G4L_load_side_converter_control",
+    # Controllers are now explicit discrete recurrences stored as runtime
+    # modes. Only physical energy-storage elements remain differential states.
     "dq_cap_G4L_load_side_converter",
     "di_ser_A_G4L_grid_side_converter",
     "di_ser_B_G4L_grid_side_converter",
-        "di_ser_C_G4L_grid_side_converter",
+    "di_ser_C_G4L_grid_side_converter",
+    "di_ser_A_G4L_transformer",
+    "di_ser_B_G4L_transformer",
+    "di_ser_C_G4L_transformer",
+    "dq_t_A_G4L_transformer",
+    "dq_t_B_G4L_transformer",
+    "dq_t_C_G4L_transformer",
+    "d_i_A_emt_thevenin_eq_generator_template",
+    "d_i_B_emt_thevenin_eq_generator_template",
+    "d_i_C_emt_thevenin_eq_generator_template",
+    "d_theta_emt_thevenin_eq_generator_template",
 ]:
     print_diff_summary(problem, dy_arr, name)
 

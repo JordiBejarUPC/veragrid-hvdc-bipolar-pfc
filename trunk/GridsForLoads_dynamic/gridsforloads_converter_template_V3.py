@@ -543,9 +543,9 @@ def get_grid_side_converter_control_GFL(vf: VarFactory, name: str = "G4L_grid_si
                            VSM_mdl.in_vars[2], # Pac
                            ]
     # OUT VARS:  v_con_A, v_con_B, v_con_C,
-    templ.block.out_vars = [current_loop_mdl.out_vars[0], # v_con_A_mode
-                            current_loop_mdl.out_vars[1], # v_con_B_mode
-                            current_loop_mdl.out_vars[2], # v_con_C_mode
+    templ.block.out_vars = [current_loop_mdl.out_vars[0], # v_con_A
+                            current_loop_mdl.out_vars[1], # v_con_B
+                            current_loop_mdl.out_vars[2], # v_con_C
                             current_loop_mdl.out_vars[3],  # v_con_A
                             current_loop_mdl.out_vars[4],  # v_con_B
                             current_loop_mdl.out_vars[5],  # v_con_C
