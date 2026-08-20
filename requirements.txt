@@ -1,4 +1,4 @@
-numpy>=2.2.0,<=2.3
+numpy>=2.2.0
 autograd>=1.7.0
 scipy>=1.10.0
 networkx>=3.6.1
