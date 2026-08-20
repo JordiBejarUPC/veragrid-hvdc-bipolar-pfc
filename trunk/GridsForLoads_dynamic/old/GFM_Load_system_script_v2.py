@@ -31,7 +31,7 @@ from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_dae import EmtProblemDae
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowDriver
-from trunk.GridsForLoads_dynamic.thevenin_equivalent_emt_generator_template_1pu import get_generator_thevenin_rl_emt_template_with_ref
+from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template_with_ref
 
 from VeraGridEngine.Utils.Symbolic.bus_emt_template import get_bus_emt_template
 
@@ -45,8 +45,8 @@ from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_emt_mod
 from VeraGridEngine.enumerations import (BranchImpedanceMode, DynamicIntegrationMethod, EmtInitializationMethod,
                                          DynamicEventTransitionType, EmtSolverTypes, ShuntConnectionType, SolverType)
 
-from trunk.GridsForLoads_dynamic.gridsforloads_converter_template_v4_simpleVA import (get_trafo_grid_connection_G4L,
-                                                                          get_complete_load_template_G4L)
+from trunk.GridsForLoads_dynamic.old.gridsforloads_converter_template_V2 import (get_trafo_grid_connection_G4L,
+                                                                                 get_complete_load_template_G4L)
 import VeraGridEngine.api as gce
 
 from VeraGridEngine.Devices.Events.emt_events_group import EmtEventsGroup
@@ -210,7 +210,7 @@ def sanitize_file_name(name: str) -> str:
 
 def get_plot_output_folder(selected_test_name: str) -> Path:
     base_folder = Path(REPO_ROOT) / "trunk" / "GridsForLoads_dynamic" / "generated_plots"
-    return base_folder / f"GFM_Load_no_constraints_{sanitize_file_name(selected_test_name)}_v3"
+    return base_folder / f"GFM_Load_no_constraints_{sanitize_file_name(selected_test_name)}_v2"
 
 
 def save_selected_figures(output_folder: Path, figures: list[tuple[str, plt.Figure]]) -> None:
@@ -264,8 +264,7 @@ P_loss_f_pu = R_f_pu * (i_A0*i_A0 + i_B0*i_B0 + i_C0*i_C0)
 
 P_load_pu = P_dc_pu + P_loss_f_pu
 # P_target = P_load_pu * 2.0  # MW, because Sb = 2 MVA
-# P_target = 1.6
-P_target = 0.4
+P_target = 1.6
 load = gce.Load(name="load",P = P_target, P1= P_target/3, P2= P_target/3, P3= P_target/3, Q =0.0, Q1= 0.0, Q2= 0.0, Q3= 0.0)
 load.conn = ShuntConnectionType.GroundedStar
 
@@ -352,8 +351,7 @@ print(f"Selected EMT test: {selected_test}")
 ## Active power reference change (GFM controller)
 t_P_GFM = 1.0
 d_P_GFM = -0.4
-t_P_GFM_2 = 1.5
-d_P_GFM_2 = -0.8
+
 ## Deviation of frequency with a Rate-of-Change-of-Frequency (ROCOF)
 # The Thevenin source frequency event is applied as an absolute scale target,
 # with a ramp from t_omega to t_omega_end.
@@ -416,18 +414,8 @@ events_to_add: list[EmtEvent] = []
 if selected_test == TEST_NONE:
     pass
 elif selected_test == TEST_P_GFM:
-    # events_to_add = [
-    #     EmtEvent(device=load, parameter=P_ref, time=t_P_GFM, value=d_P_GFM, group=events_group),
-    #     EmtEvent(device=load, parameter=P_ref, time=t_P_GFM_2, value=d_P_GFM_2, group=events_group),
-    # ]
     events_to_add = [
-        EmtEvent(device=load, parameter=P_ref, time=0.5, value=-0.3, group=events_group),
-        EmtEvent(device=load, parameter=P_ref, time=1, value=-0.4, group=events_group),
-        EmtEvent(device=load, parameter=P_ref, time=1.5, value=-0.5, group=events_group),
-        EmtEvent(device=load, parameter=P_ref, time=2, value=-0.6, group=events_group),
-        EmtEvent(device=load, parameter=P_ref, time=2.5, value=-0.7, group=events_group),
-        EmtEvent(device=load, parameter=P_ref, time=3, value=-0.8, group=events_group),
-        EmtEvent(device=load, parameter=P_ref, time=3.5, value=-0.9, group=events_group),
+        EmtEvent(device=load, parameter=P_ref, time=t_P_GFM, value=d_P_GFM, group=events_group),
     ]
 elif selected_test == TEST_ROCOF:
     if t_omega_end <= t_omega:
@@ -520,7 +508,7 @@ print(res.get_branch_df())
 
 
 options = EmtOptions(time_step = 1e-6,
-                     simulation_time =  4, # s
+                     simulation_time =  2, # s
                      tolerance = 1e-6,
                      solver_type = EmtSolverTypes.Automatic,
                      # initialization_method = EmtInitializationMethod.PseudoTransient,
@@ -1302,8 +1290,7 @@ for ax in axes_si_pll:
     ax.set_xlabel("Time [s]")
 
 csv_suffix = TEST_CSV_SUFFIX.get(selected_test, selected_test)
-# csv_path = os.path.join(REPO_ROOT, "trunk", "GridsForLoads_dynamic", f"veragrid_G4L_{csv_suffix}_v3.csv")
-csv_path = os.path.join(REPO_ROOT, "trunk", "GridsForLoads_dynamic", f"veragrid_G4L_{csv_suffix}_v3_2pref.csv")
+csv_path = os.path.join(REPO_ROOT, "trunk", "GridsForLoads_dynamic", f"veragrid_G4L_{csv_suffix}_v2.csv")
 plot_output_folder = get_plot_output_folder(csv_suffix)
 csv_columns = {"time_s": t_arr}
 
@@ -1320,15 +1307,14 @@ def add_csv_array(column_name: str, series):
     if series is not None:
         csv_columns[column_name] = series
 
-add_csv_series("vA_Bus0_kV", "v_A", V_phase_rms_base / 1000.0)
-add_csv_series("vB_Bus0_kV", "v_B", V_phase_rms_base / 1000.0)
-add_csv_series("vC_Bus0_kV", "v_C", V_phase_rms_base / 1000.0)
-add_csv_series("iA_Bus0_A", "i_A_emt_thevenin_eq_generator_template", Ibase_vg)
-add_csv_series("iB_Bus0_A", "i_B_emt_thevenin_eq_generator_template", Ibase_vg)
-add_csv_series("iC_Bus0_A", "i_C_emt_thevenin_eq_generator_template", Ibase_vg)
+
 add_csv_series("vA_Bus1_kV", "v_A", V_phase_rms_base / 1000.0)
 add_csv_series("vB_Bus1_kV", "v_B", V_phase_rms_base / 1000.0)
 add_csv_series("vC_Bus1_kV", "v_C", V_phase_rms_base / 1000.0)
+# Simulink exports converter terminal voltages measured at the converter-side
+# AC terminals. In this VeraGrid model those are the same electrical node as
+# the grid-side converter AC input voltages, which coincide with the PCC bus
+# shell variables exposed by the assembled EMT network.
 add_csv_series("vA_conv_kV", "v_A", V_phase_rms_base / 1000.0)
 add_csv_series("vB_conv_kV", "v_B", V_phase_rms_base / 1000.0)
 add_csv_series("vC_conv_kV", "v_C", V_phase_rms_base / 1000.0)

@@ -91,6 +91,25 @@ def try_get_var_series(problem: EmtProblemDae, y_arr: np.ndarray, variable: Var 
         return y_arr[:, variable_index]
 
 
+def try_get_var_init_value(problem: EmtProblemDae, variable: Var | None) -> float | None:
+    """Return an initialized value using the exact symbolic variable UID.
+
+    Bus phase-voltage names are local and therefore not unique.  Using the
+    variable object preserves the UID assigned to the requested bus and avoids
+    accidentally resolving another bus with the same local name.
+
+    :param problem: Initialized EMT problem containing the variable index map.
+    :param variable: Exact symbolic variable, or ``None`` when unavailable.
+    :return: Initialized scalar value, or ``None`` when unavailable.
+    """
+    if variable is None:
+        return None
+    else:
+        variable_index: int = problem.get_var_idx(variable)
+        initial_values: np.ndarray = problem.get_x0()
+        return float(initial_values[variable_index])
+
+
 def plot_if_available(ax, t_arr: np.ndarray, series, label: str):
     if series is not None:
         ax.plot(t_arr, series, label=label)
@@ -230,7 +249,7 @@ def sanitize_file_name(name: str) -> str:
 
 def get_plot_output_folder(selected_test_name: str) -> Path:
     base_folder = Path(REPO_ROOT) / "trunk" / "GridsForLoads_dynamic" / "generated_plots"
-    return base_folder / f"GFM_Load_no_constraints_{sanitize_file_name(selected_test_name)}_v3_2pref"
+    return base_folder / f"GFM_Load_no_constraints_{sanitize_file_name(selected_test_name)}_v3_continuous_3s"
 
 
 def save_selected_figures(output_folder: Path, figures: list[tuple[str, plt.Figure]]) -> None:
@@ -345,6 +364,7 @@ def validate_nyquist_ringing(
 U       = 33000 / 1000 # V -> kV
 Sb      = 2000000 / 1000000 # VA -> MVA
 omega   = 2 * np.pi * 50.0
+sample_time_s = 5.0e-6
 
 grid = gce.MultiCircuit(Sbase=Sb, fbase=50.0)
 
@@ -416,7 +436,7 @@ gen_mdl = get_generator_thevenin_rl_emt_template_with_ref(vf= grid.var_factory).
 
 line_mdl = get_trafo_grid_connection_G4L(vf= grid.var_factory).block
 
-load_mdl = get_complete_load_template_G4L(vf= grid.var_factory).block
+load_mdl = get_complete_load_template_G4L(vf=grid.var_factory).block
 
 ######################################################################################################
 # Add models to devices
@@ -636,7 +656,7 @@ print(res.get_branch_df())
 ######################################################################################################
 
 
-options = EmtOptions(time_step = 5.0e-6,
+options = EmtOptions(time_step = sample_time_s,
                      simulation_time = 3.0,
                      tolerance = 1e-6,
                      solver_type = EmtSolverTypes.Automatic,
@@ -702,21 +722,8 @@ if theta_pll_init is not None and phase_vsm_init is not None:
 
 init_runtime_param_names = [
     "theta_pll_mode_G4L_PLL",
-    "x_e_pll_acc_G4L_PLL",
-    "theta_pll_acc_G4L_PLL",
-    "y_acc_G4L_VSM",
-    "phase_vsm_acc_G4L_VSM",
     "i_dc_mode_G4L_grid_side_converter",
-    "x_e_mode_G4L_load_side_converter_control",
     "i_dc_L_mode_G4L_load_side_converter_control",
-    "v_ffw_q_u1_G4L_current_loop",
-    "v_ffw_d_u1_G4L_current_loop",
-    "v_ffw_q_y1_G4L_current_loop",
-    "v_ffw_d_y1_G4L_current_loop",
-    "x_e_q_acc_G4L_current_loop",
-    "x_e_d_acc_G4L_current_loop",
-    "err_q_z1_G4L_Virtual_admittance",
-    "err_d_z1_G4L_Virtual_admittance",
 ]
 
 print("Initial runtime parameter diagnostics")
@@ -748,8 +755,13 @@ omega_base = 2 * np.pi * 50.0
 X_f_pu = 3.0 * (1.0 / 10.0)
 R_f_pu = 3.0 * (0.1 / 10.0)
 L_f = X_f_pu / omega_base
-for ph in ["A", "B", "C"]:
-    v_bus = try_get_init_value(problem, f"v_{ph}_Bus1_emt_template")
+bus1_phase_variables: tuple[tuple[str, Var], ...] = (
+    ("A", bus1_v_a),
+    ("B", bus1_v_b),
+    ("C", bus1_v_c),
+)
+for ph, bus_voltage_variable in bus1_phase_variables:
+    v_bus = try_get_var_init_value(problem, bus_voltage_variable)
     v_con = try_get_init_value(problem, f"v_con_{ph}_G4L_current_loop")
     i_ser = try_get_init_value(problem, f"i_ser_{ph}_G4L_grid_side_converter")
     di_ser = try_get_init_diff_value(problem, f"di_ser_{ph}_G4L_grid_side_converter")
@@ -856,8 +868,23 @@ for name in [
 
 print("Differential-state diagnostics")
 for name in [
-    # Controllers are now explicit discrete recurrences stored as runtime
-    # modes. Only physical energy-storage elements remain differential states.
+    "dx_e_pll_G4L_PLL",
+    "d_theta_pll_G4L_PLL",
+    "dy_G4L_VSM",
+    "d_phase_vsm_G4L_VSM",
+    "dx1_1_G4L_Virtual_admittance",
+    "dx2_1_G4L_Virtual_admittance",
+    "dx1_2_G4L_Virtual_admittance",
+    "dx2_2_G4L_Virtual_admittance",
+    "dx1_3_G4L_Virtual_admittance",
+    "dx2_3_G4L_Virtual_admittance",
+    "dx1_4_G4L_Virtual_admittance",
+    "dx2_4_G4L_Virtual_admittance",
+    "dv_ffw_q_G4L_current_loop",
+    "dv_ffw_d_G4L_current_loop",
+    "dx_e_q_G4L_current_loop",
+    "dx_e_d_G4L_current_loop",
+    "dx_e_G4L_load_side_converter_control",
     "dq_cap_G4L_load_side_converter",
     "di_ser_A_G4L_grid_side_converter",
     "di_ser_B_G4L_grid_side_converter",
@@ -880,8 +907,10 @@ for name in [
 fig_overview, axes_overview = plt.subplots(3, 2, figsize=(14, 11), sharex=True)
 axes_overview = axes_overview.ravel()
 
-for name in ["v_A_Bus1_emt_template", "v_B_Bus1_emt_template", "v_C_Bus1_emt_template"]:
-    plot_if_available(axes_overview[0], t_arr, try_get_series(problem, y_arr, name), name)
+for name, bus_voltage_variable in bus1_phase_variables:
+    voltage_label: str = f"v_{name}_Bus1"
+    voltage_series: np.ndarray | None = try_get_var_series(problem, y_arr, bus_voltage_variable)
+    plot_if_available(axes_overview[0], t_arr, voltage_series, voltage_label)
 axes_overview[0].set_title("Grid-Side AC Voltages")
 axes_overview[0].grid(True)
 if axes_overview[0].lines:
@@ -1464,7 +1493,7 @@ for ax in axes_si_pll:
 
 csv_suffix = TEST_CSV_SUFFIX.get(selected_test, selected_test)
 # csv_path = os.path.join(REPO_ROOT, "trunk", "GridsForLoads_dynamic", f"veragrid_G4L_{csv_suffix}_v3.csv")
-csv_path = os.path.join(REPO_ROOT, "trunk", "GridsForLoads_dynamic", f"veragrid_G4L_{csv_suffix}_v3_discrete.csv")
+csv_path = os.path.join(REPO_ROOT, "trunk", "GridsForLoads_dynamic", f"veragrid_G4L_{csv_suffix}_v3_continuous.csv")
 plot_output_folder = get_plot_output_folder(csv_suffix)
 csv_columns = {"time_s": t_arr}
 

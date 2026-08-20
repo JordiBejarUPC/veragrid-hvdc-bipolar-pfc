@@ -47,7 +47,7 @@ SIMULINK_P_REF_SECOND_STEP_MW: float = 0.0
 #     ("post_event_2", 1.75, 1.80, "After second event"),
 # ]
 
-TEST_NAME: str = "p_ref_step_v3_discrete_3s"
+TEST_NAME: str = "p_ref_step_v3_discretized_3s"
 SIMULINK_CSV_PATH: Path = Path(
     r"C:\Users\maria\OneDrive\Documentos\Projects\grids4loads\sim_model\sim_model\simulink_results_G4L_p_ref_discrete.csv"
 )
@@ -1058,8 +1058,23 @@ def save_group_plot(
 
     unit_names: set[str] = set()
     for signal, simulink_values, veragrid_values, error_values in plot_rows:
-        upper_axis.plot(common_time, simulink_values, linestyle="--", label=f"Simulink - {signal.name}")
-        upper_axis.plot(common_time, veragrid_values, linestyle="-", label=f"VeraGrid - {signal.name}")
+        veragrid_line = upper_axis.plot(
+            common_time,
+            veragrid_values,
+            linestyle="-",
+            linewidth=1.2,
+            zorder=2,
+            label=f"VeraGrid - {signal.name}",
+        )[0]
+        upper_axis.plot(
+            common_time,
+            simulink_values,
+            color=veragrid_line.get_color(),
+            linestyle="--",
+            linewidth=1.8,
+            zorder=3,
+            label=f"Simulink - {signal.name}",
+        )
         lower_axis.plot(common_time, error_values, linestyle="-", label=f"Error - {signal.name}")
         unit_names.add(signal.unit)
 
@@ -1146,8 +1161,23 @@ def save_steady_state_overlay_plot(
     for signal, simulink_values, veragrid_values, error_values in plot_rows:
         simulink_window: np.ndarray = simulink_values[window_mask]
         veragrid_window: np.ndarray = veragrid_values[window_mask]
-        axis.plot(common_time[window_mask], simulink_window, linestyle="--", label=f"Simulink - {signal.name}")
-        axis.plot(common_time[window_mask], veragrid_window, linestyle="-", label=f"VeraGrid - {signal.name}")
+        veragrid_line = axis.plot(
+            common_time[window_mask],
+            veragrid_window,
+            linestyle="-",
+            linewidth=1.2,
+            zorder=2,
+            label=f"VeraGrid - {signal.name}",
+        )[0]
+        axis.plot(
+            common_time[window_mask],
+            simulink_window,
+            color=veragrid_line.get_color(),
+            linestyle="--",
+            linewidth=1.8,
+            zorder=3,
+            label=f"Simulink - {signal.name}",
+        )
         plotted_series.append(simulink_window)
         plotted_series.append(veragrid_window)
 
@@ -1207,16 +1237,46 @@ def save_dual_steady_state_overlay_plot(
     for signal, simulink_values, veragrid_values, error_values in voltage_rows:
         simulink_window: np.ndarray = simulink_values[window_mask]
         veragrid_window: np.ndarray = veragrid_values[window_mask]
-        voltage_axis.plot(common_time[window_mask], simulink_window, linestyle="--", label=f"Simulink - {signal.name}")
-        voltage_axis.plot(common_time[window_mask], veragrid_window, linestyle="-", label=f"VeraGrid - {signal.name}")
+        veragrid_line = voltage_axis.plot(
+            common_time[window_mask],
+            veragrid_window,
+            linestyle="-",
+            linewidth=1.2,
+            zorder=2,
+            label=f"VeraGrid - {signal.name}",
+        )[0]
+        voltage_axis.plot(
+            common_time[window_mask],
+            simulink_window,
+            color=veragrid_line.get_color(),
+            linestyle="--",
+            linewidth=1.8,
+            zorder=3,
+            label=f"Simulink - {signal.name}",
+        )
         voltage_series.append(simulink_window)
         voltage_series.append(veragrid_window)
 
     for signal, simulink_values, veragrid_values, error_values in current_rows:
         simulink_window: np.ndarray = simulink_values[window_mask]
         veragrid_window: np.ndarray = veragrid_values[window_mask]
-        current_axis.plot(common_time[window_mask], simulink_window, linestyle="--", label=f"Simulink - {signal.name}")
-        current_axis.plot(common_time[window_mask], veragrid_window, linestyle="-", label=f"VeraGrid - {signal.name}")
+        veragrid_line = current_axis.plot(
+            common_time[window_mask],
+            veragrid_window,
+            linestyle="-",
+            linewidth=1.2,
+            zorder=2,
+            label=f"VeraGrid - {signal.name}",
+        )[0]
+        current_axis.plot(
+            common_time[window_mask],
+            simulink_window,
+            color=veragrid_line.get_color(),
+            linestyle="--",
+            linewidth=1.8,
+            zorder=3,
+            label=f"Simulink - {signal.name}",
+        )
         current_series.append(simulink_window)
         current_series.append(veragrid_window)
 

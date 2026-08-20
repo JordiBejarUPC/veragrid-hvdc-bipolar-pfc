@@ -43,8 +43,8 @@ from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_emt_mod
 
 from VeraGridEngine.enumerations import (BranchImpedanceMode, DynamicIntegrationMethod, EmtInitializationMethod,
                                          DynamicEventTransitionType, EmtSolverTypes, ShuntConnectionType, SolverType)
-from trunk.GridsForLoads_dynamic.gridsforloads_converter_template_no_pll import (get_trafo_grid_connection_G4L,
-                                                                                  get_complete_load_template_G4L)
+from trunk.GridsForLoads_dynamic.old.gridsforloads_converter_template_no_pll import (get_trafo_grid_connection_G4L,
+                                                                                     get_complete_load_template_G4L)
 import VeraGridEngine.api as gce
 
 from VeraGridEngine.Devices.Events.emt_events_group import EmtEventsGroup

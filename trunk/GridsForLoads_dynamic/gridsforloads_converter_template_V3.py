@@ -409,9 +409,15 @@ def get_load_side_converter_GFL(vf: VarFactory, name: str = "G4L_load_side_conve
 
     return templ
 
-def get_load_side_converter_control_GFL(vf: VarFactory, name: str = "G4L_load_side_converter_control") -> EmtModelTemplate:
+def get_load_side_converter_control_GFL(
+        vf: VarFactory,
+        name: str = "G4L_load_side_converter_control",
+) -> EmtModelTemplate:
     """
-    Build the discrete load-side DC-voltage PI controller.
+    Build the continuous load-side DC-voltage PI controller.
+
+    The EMT solver applies the selected integration kernel to the symbolic PI
+    state, keeping the controller independent of the numerical time step.
 
     :param vf: EMT variable factory.
     :param name: Symbolic block name.
@@ -460,27 +466,24 @@ def get_load_side_converter_control_GFL(vf: VarFactory, name: str = "G4L_load_si
     err = vf.add_var(name=f"err_{name}")
     # integral state of I (PI)
     x_e = vf.add_var(name=f"x_e_{name}")
-    x_e_mode = vf.add_var(name=f"x_e_mode_{name}")
+    dx_e = vf.add_diff_var(name=f"dx_e_{name}", base_var=x_e)
     p_dc_initial = vf.add_const(0.8)
-    sample_time = vf.add_const(5.0e-6)
-
     templ.block = Block(
         # --------------------------------------------------------------------------------------
         # STATE EQUATIONS (seconds + pu)
         # --------------------------------------------------------------------------------------
-        state_eqs=[],
-        state_vars=[],
-        diff_vars=[],
+        state_eqs=[Ki_E * err],
+        state_vars=[x_e],
+        diff_vars=[dx_e],
         # --------------------------------------------------------------------------------------
         # ALGEBRAIC EQUATIONS
         # --------------------------------------------------------------------------------------
         algebraic_eqs=[
             err - (v_dc_ref*v_dc_ref - v_dc*v_dc),
-            x_e - x_e_mode,
             p_dc -(Kp_E*err + x_e), # PI output
             i_dc_L - i_dc_L_mode,
         ],
-        algebraic_vars=[err, x_e, p_dc, i_dc_L],
+        algebraic_vars=[err, p_dc, i_dc_L],
         in_vars=inputs,
         out_vars=[i_dc_L],
         init_eqs={
@@ -489,20 +492,17 @@ def get_load_side_converter_control_GFL(vf: VarFactory, name: str = "G4L_load_si
             # The first sampled update then applies p_dc / v_dc = 0.8 pu.
             i_dc_L: c0,
             err: v_dc_ref*v_dc_ref - v_dc*v_dc,
-            x_e: x_e_mode,
+            x_e: p_dc_initial,
             p_dc: Kp_E*err + x_e,
+        },
+        diff_init_eqs={
+            dx_e: Ki_E * err,
         },
         event_dict=event_dict,
         mode_dict={
-            x_e_mode: p_dc_initial,
             i_dc_L_mode: c0,
         },
         procedural_logic=[
-            sampled_value(
-                output=x_e_mode,
-                source=x_e_mode + sample_time * Ki_E * err,
-                name=f"x_e_mode_sample_{name}",
-            ),
             sampled_value(
                 output=i_dc_L_mode,
                 source=p_dc / sym.max(v_dc, eps),
@@ -513,7 +513,10 @@ def get_load_side_converter_control_GFL(vf: VarFactory, name: str = "G4L_load_si
 
     return templ
 
-def get_grid_side_converter_control_GFL(vf: VarFactory, name: str = "G4L_grid_side_converter_control") -> EmtModelTemplate:
+def get_grid_side_converter_control_GFL(
+        vf: VarFactory,
+        name: str = "G4L_grid_side_converter_control",
+) -> EmtModelTemplate:
     """
     This function connects all converter controls:
     - Clark-park transform
@@ -697,105 +700,88 @@ def get_clark_park_transforms_qd_GFL(vf: VarFactory, name: str = "G4L_clark_park
 
 def get_PLL_GFL(vf: VarFactory, name: str = "G4L_PLL") -> EmtModelTemplate:
     """
-    Build the sample-equivalent discrete PLL used by Simulink.
+    Build the continuous symbolic PLL.
+
+    The PI integrator and electrical angle remain DAE states.  The selected EMT
+    integration method supplies their numerical kernel.  Only the explicit
+    one-sample angle delay remains procedural because it is a genuine digital
+    block in the Simulink model.
 
     :param vf: EMT variable factory.
     :param name: Symbolic block name.
-    :return: Configured PLL template.
+    :return: Configured continuous PLL template.
     """
     templ = EmtModelTemplate()
     templ.tpe = DeviceType.NoDevice
     templ.name = name
-
     templ.block.name = name
 
     v_A = vf.add_var(name=f"v_A_{name}", reference=VarPowerFlowReferenceType.v_A)
     v_B = vf.add_var(name=f"v_B_{name}", reference=VarPowerFlowReferenceType.v_B)
     v_C = vf.add_var(name=f"v_C_{name}", reference=VarPowerFlowReferenceType.v_C)
+    inputs = [v_A, v_B, v_C]
 
-    inputs =[v_A, v_B, v_C]
-
-
-    sample_time: float = 5.0e-6
     tau_pll: float = 0.01
     xi_pll: float = 0.707
-    Vac: float = np.sqrt(2)
-    Kp_pll_expr = 4*xi_pll*xi_pll/(tau_pll*Vac)
-    Ki_pll_expr = Kp_pll_expr / tau_pll
+    vac_peak_pu: float = np.sqrt(2.0)
+    kp_pll_value: float = 4.0 * xi_pll * xi_pll / (tau_pll * vac_peak_pu)
+    ki_pll_value: float = kp_pll_value / tau_pll
     Kp_pll = vf.add_var(name=f"Kp_pll_{name}")
     Ki_pll = vf.add_var(name=f"Ki_pll_{name}")
 
-    event_dict = {
-        Kp_pll: vf.add_const(Kp_pll_expr),
-        Ki_pll: vf.add_const(Ki_pll_expr),
-    }
-
     alpha = vf.add_var(name=f"alpha_{name}")
-    beta =  vf.add_var(name=f"beta_{name}")
+    beta = vf.add_var(name=f"beta_{name}")
     v_q = vf.add_var(name=f"v_q_{name}")
     v_d = vf.add_var(name=f"v_d_{name}")
 
+    x_e_pll = vf.add_var(name=f"x_e_pll_{name}")
+    dx_e_pll = vf.add_diff_var(name=f"dx_e_pll_{name}", base_var=x_e_pll)
     theta_pll = vf.add_var(name=f"theta_pll_{name}")
+    d_theta_pll = vf.add_diff_var(name=f"d_theta_pll_{name}", base_var=theta_pll)
     w_pll = vf.add_var(name=f"w_pll_{name}")
     theta_pll_mode = vf.add_var(name=f"theta_pll_mode_{name}")
 
-    x_e_pll = vf.add_var(name=f"x_e_pll_{name}")
-    x_e_pll_acc = vf.add_var(name=f"x_e_pll_acc_{name}")
-    theta_pll_acc = vf.add_var(name=f"theta_pll_acc_{name}")
-
     omega_init: float = 2.0 * np.pi * 50.0
-    theta_pll_delay_init = vf.add_const(-np.pi / 2.0)
-    theta_pll_acc_init = vf.add_const(-np.pi / 2.0 - 0.5 * omega_init * sample_time)
-    half_sample_time = vf.add_const(0.5 * sample_time)
-    full_sample_time = vf.add_const(sample_time)
-    x_e_pll_expr = x_e_pll_acc + half_sample_time * Ki_pll * (-v_d)
-    w_pll_expr = -v_d * Kp_pll + x_e_pll
-    theta_pll_expr = theta_pll_acc + half_sample_time * w_pll
+    theta_init = vf.add_const(-np.pi / 2.0)
 
     templ.block = Block(
-        state_eqs=[],
-        state_vars=[],
-        diff_vars=[],
-        algebraic_eqs=[
-            alpha - ((1/3) * (2*v_A - v_B - v_C)),
-            beta - ((1/3) * (-np.sqrt(3)*v_B + np.sqrt(3)*v_C)),
-            v_q -(alpha * cos(theta_pll_mode) - beta * sin(theta_pll_mode)),
-            v_d -(alpha * sin(theta_pll_mode) + beta * cos(theta_pll_mode)),
-            x_e_pll - x_e_pll_expr,
-            w_pll - w_pll_expr,
-            theta_pll - theta_pll_expr,
+        state_eqs=[
+            Ki_pll * (-v_d),
+            w_pll,
         ],
-        algebraic_vars=[alpha, beta, v_q, v_d, x_e_pll, w_pll, theta_pll],
+        state_vars=[x_e_pll, theta_pll],
+        diff_vars=[dx_e_pll, d_theta_pll],
+        algebraic_eqs=[
+            alpha - (1.0 / 3.0) * (2.0 * v_A - v_B - v_C),
+            beta - (1.0 / 3.0) * (-np.sqrt(3.0) * v_B + np.sqrt(3.0) * v_C),
+            v_q - (alpha * cos(theta_pll_mode) - beta * sin(theta_pll_mode)),
+            v_d - (alpha * sin(theta_pll_mode) + beta * cos(theta_pll_mode)),
+            w_pll - (-v_d * Kp_pll + x_e_pll),
+        ],
+        algebraic_vars=[alpha, beta, v_q, v_d, w_pll],
         in_vars=inputs,
         out_vars=[theta_pll, w_pll],
         init_eqs={
-            alpha: (1/3) * (2*v_A - v_B - v_C),
-            beta: (1/3) * (-np.sqrt(3)*v_B + np.sqrt(3)*v_C),
+            x_e_pll: vf.add_const(omega_init),
+            theta_pll: theta_init,
+            alpha: (1.0 / 3.0) * (2.0 * v_A - v_B - v_C),
+            beta: (1.0 / 3.0) * (-np.sqrt(3.0) * v_B + np.sqrt(3.0) * v_C),
             v_q: alpha * cos(theta_pll_mode) - beta * sin(theta_pll_mode),
             v_d: alpha * sin(theta_pll_mode) + beta * cos(theta_pll_mode),
-            x_e_pll: x_e_pll_expr,
-            w_pll: w_pll_expr,
-            theta_pll: theta_pll_expr,
+            w_pll: -v_d * Kp_pll + x_e_pll,
         },
-        event_dict=event_dict,
+        diff_init_eqs={
+            dx_e_pll: Ki_pll * (-v_d),
+            d_theta_pll: w_pll,
+        },
+        event_dict={
+            Kp_pll: vf.add_const(kp_pll_value),
+            Ki_pll: vf.add_const(ki_pll_value),
+        },
         mode_dict={
-            x_e_pll_acc: vf.add_const(omega_init),
-            theta_pll_acc: theta_pll_acc_init,
-            # This is the Initial condition of the explicit Simulink Delay,
-            # not the shifted accumulator IC of the angle integrator.
-            theta_pll_mode: theta_pll_delay_init,
+            theta_pll_mode: theta_init,
         },
         procedural_logic=[
-            sampled_value(
-                output=x_e_pll_acc,
-                source=x_e_pll_acc + full_sample_time * Ki_pll * (-v_d),
-                name=f"x_e_pll_acc_sample_{name}",
-            ),
-            sampled_value(
-                output=theta_pll_acc,
-                source=theta_pll_acc + full_sample_time * w_pll,
-                name=f"theta_pll_acc_sample_{name}",
-            ),
             sampled_value(
                 output=theta_pll_mode,
                 source=theta_pll,
@@ -812,21 +798,21 @@ def get_PLL_GFL(vf: VarFactory, name: str = "G4L_PLL") -> EmtModelTemplate:
 
     return templ
 
+
 def get_VSM_GFL(vf: VarFactory, name: str = "G4L_VSM") -> EmtModelTemplate:
     """
-    Build the sample-equivalent discrete virtual synchronous machine.
+    Build the continuous symbolic virtual synchronous machine.
 
     :param vf: EMT variable factory.
     :param name: Symbolic block name.
-    :return: Configured VSM template.
+    :return: Configured continuous VSM template.
     """
     templ = EmtModelTemplate()
     templ.tpe = DeviceType.NoDevice
     templ.name = name
-
     templ.block.name = name
 
-    eps = vf.add_const(1e-9)
+    eps = vf.add_const(1.0e-9)
 
     Pac = vf.add_var(name=f"Pac_{name}")
     w_pll = vf.add_var(name=f"w_pll_{name}")
@@ -837,86 +823,70 @@ def get_VSM_GFL(vf: VarFactory, name: str = "G4L_VSM") -> EmtModelTemplate:
     i_A = vf.add_var(name=f"i_A_{name}", reference=VarPowerFlowReferenceType.i_A)
     i_B = vf.add_var(name=f"i_B_{name}", reference=VarPowerFlowReferenceType.i_B)
     i_C = vf.add_var(name=f"i_C_{name}", reference=VarPowerFlowReferenceType.i_C)
+    inputs = [theta_pll, w_pll, Pac, v_A, v_B, v_C, i_A, i_B, i_C]
 
     P_ref = vf.add_var(name=f"P_ref_{name}")
-    inputs =[theta_pll, w_pll, Pac, v_A, v_B, v_C, i_A, i_B, i_C]
-
-    phase_vsm = vf.add_var(name=f"phase_vsm_{name}")
-    omega_vsm = vf.add_var(name=f"omega_vsm_{name}")
-
-    Sb_va = 2000000.0
-    omega_expr = 2 * np.pi * 50
-    Vdc_ref_si = 1200.0
-    C_DC_si = Sb_va * 0.02 * 2 / (Vdc_ref_si * Vdc_ref_si)
-    C_pu = C_DC_si * Vdc_ref_si * Vdc_ref_si / Sb_va
-    Sb_expr = 1.0
-    Zaparent = 0.5
-    chi = 0.8
-    kH = (1.935 / 2 / 50) / (1 - (665 * 665 / (Vdc_ref_si * Vdc_ref_si)))
-    kP = chi * 2 * np.sqrt(kH * (1 / Zaparent) * omega_expr * 2 / C_pu) / (kH * (1 / Zaparent) * omega_expr)
-
     k_d = vf.add_var(name=f"k_d_{name}")
     omega_ref = vf.add_var(name=f"omega_ref_{name}")
     H = vf.add_var(name=f"H_{name}")
     Sb = vf.add_var(name=f"Sb_{name}")
     k_p = vf.add_var(name=f"k_p_{name}")
 
-    event_dict = {
-        P_ref: vf.add_const(-0.8),
-        # P_ref: vf.add_const(-0.2),
-        k_d: vf.add_const(kP * (C_pu / 2 * (1 / Zaparent) * omega_expr)),
-        omega_ref: vf.add_const(omega_expr),
-        H: vf.add_const(C_pu / (kH * 4)),
-        Sb: vf.add_const(Sb_expr),
-        k_p: vf.add_const(20),
-    }
+    sb_va: float = 2000000.0
+    omega_value: float = 2.0 * np.pi * 50.0
+    vdc_ref_si: float = 1200.0
+    c_dc_si: float = sb_va * 0.02 * 2.0 / (vdc_ref_si * vdc_ref_si)
+    c_pu: float = c_dc_si * vdc_ref_si * vdc_ref_si / sb_va
+    z_apparent: float = 0.5
+    chi: float = 0.8
+    k_h: float = (1.935 / 2.0 / 50.0) / (1.0 - 665.0 * 665.0 / (vdc_ref_si * vdc_ref_si))
+    k_p_damping: float = (
+        chi * 2.0 * np.sqrt(k_h * (1.0 / z_apparent) * omega_value * 2.0 / c_pu)
+        / (k_h * (1.0 / z_apparent) * omega_value)
+    )
 
     x = vf.add_var(name=f"x_{name}")
     y = vf.add_var(name=f"y_{name}")
-    y_acc = vf.add_var(name=f"y_acc_{name}")
-    phase_vsm_acc = vf.add_var(name=f"phase_vsm_acc_{name}")
+    dy = vf.add_diff_var(name=f"dy_{name}", base_var=y)
+    phase_vsm = vf.add_var(name=f"phase_vsm_{name}")
+    d_phase_vsm = vf.add_diff_var(name=f"d_phase_vsm_{name}", base_var=phase_vsm)
+    omega_vsm = vf.add_var(name=f"omega_vsm_{name}")
 
-    sample_time: float = 5.0e-6
-    half_sample_time = vf.add_const(0.5 * sample_time)
-    full_sample_time = vf.add_const(sample_time)
-    omega_init: float = 2.0 * np.pi * 50.0
-    phase_vsm_acc_init = vf.add_const(-np.pi / 2.0 - 0.4 - 0.5 * omega_init * sample_time)
-    y_rate_expr = ((1 - y) * k_p + P_ref - Pac + x) / (2 * sym.max(H, eps))
-    y_expr = y_acc + half_sample_time * y_rate_expr
-    omega_vsm_expr = y * omega_ref
-    phase_vsm_expr = phase_vsm_acc + half_sample_time * omega_vsm
+    y_rate_expr = ((1.0 - y) * k_p + P_ref - Pac + x) / (2.0 * sym.max(H, eps))
+    phase_init = vf.add_const(-np.pi / 2.0 - 0.4)
 
     templ.block = Block(
-        state_eqs=[],
-        state_vars=[],
-        diff_vars=[],
+        state_eqs=[
+            y_rate_expr,
+            omega_vsm,
+        ],
+        state_vars=[y, phase_vsm],
+        diff_vars=[dy, d_phase_vsm],
         algebraic_eqs=[
             x - ((w_pll / sym.max(omega_ref, eps)) - y) * k_d,
-            y - y_expr,
-            omega_vsm - omega_vsm_expr,
-            phase_vsm - phase_vsm_expr,
-
+            omega_vsm - y * omega_ref,
         ],
-        algebraic_vars=[x, y, omega_vsm, phase_vsm],
+        algebraic_vars=[x, omega_vsm],
         in_vars=inputs,
         out_vars=[phase_vsm, omega_vsm],
         init_eqs={
-            x: (w_pll / sym.max(omega_ref, eps) - y) * k_d,
-            y: y_expr,
-            omega_vsm: omega_vsm_expr,
-            phase_vsm: phase_vsm_expr,
+            y: vf.add_const(1.0),
+            phase_vsm: phase_init,
+            x: ((w_pll / sym.max(omega_ref, eps)) - y) * k_d,
+            omega_vsm: y * omega_ref,
         },
-        event_dict= event_dict,
-        mode_dict={
-            y_acc: vf.add_const(1.0),
-            phase_vsm_acc: phase_vsm_acc_init,
+        diff_init_eqs={
+            dy: y_rate_expr,
+            d_phase_vsm: omega_vsm,
         },
-        procedural_logic=[
-            sampled_value(output=y_acc, source=y_acc + full_sample_time * y_rate_expr,
-                          name=f"y_acc_sample_{name}"),
-            sampled_value(output=phase_vsm_acc, source=phase_vsm_acc + full_sample_time * omega_vsm,
-                          name=f"phase_vsm_acc_sample_{name}"),
-        ],
+        event_dict={
+            P_ref: vf.add_const(-0.8),
+            k_d: vf.add_const(k_p_damping * (c_pu / 2.0 * (1.0 / z_apparent) * omega_value)),
+            omega_ref: vf.add_const(omega_value),
+            H: vf.add_const(c_pu / (k_h * 4.0)),
+            Sb: vf.add_const(1.0),
+            k_p: vf.add_const(20.0),
+        },
     )
 
     templ.block.external_mapping = {
@@ -932,155 +902,144 @@ def get_VSM_GFL(vf: VarFactory, name: str = "G4L_VSM") -> EmtModelTemplate:
     return templ
 
 
-def get_virtual_admittance_GFL(vf: VarFactory, name: str = "G4L_Virtual_admittance") -> EmtModelTemplate:
+def get_virtual_admittance_GFL(
+        vf: VarFactory,
+        name: str = "G4L_Virtual_admittance",
+) -> EmtModelTemplate:
     """
-    Build the discrete virtual-admittance controller used by Simulink.
+    Build the continuous symbolic virtual-admittance controller.
 
-    The four second-order paths are evaluated as normalized Tustin difference
-    equations at 5 microseconds.  Keeping their input/output histories as EMT
-    modes avoids integrating a continuous realization with the outer DAE
-    solver, which is not sample-equivalent to Simulink's Discrete Transfer Fcn.
+    Each transfer-function path is expressed as a second-order state-space
+    realization.  The EMT solver discretizes these states with its selected
+    integration method.
 
     :param vf: EMT variable factory.
     :param name: Symbolic block name.
-    :return: Configured discrete virtual-admittance template.
+    :return: Configured continuous virtual-admittance template.
     """
-
     templ = EmtModelTemplate()
     templ.tpe = DeviceType.NoDevice
     templ.name = name
-
     templ.block.name = name
 
     c0 = vf.add_const(0.0)
+    eps = vf.add_const(1.0e-12)
+
     v_q = vf.add_var(name=f"v_q_{name}")
     v_d = vf.add_var(name=f"v_d_{name}")
     inputs = [v_q, v_d]
 
     v_q_ref = vf.add_var(name=f"v_q_ref_{name}")
     v_d_ref = vf.add_var(name=f"v_d_ref_{name}")
-    event_dict = {
-        v_q_ref: vf.add_const(np.sqrt(2)),
-        v_d_ref: vf.add_const(0.0),
-    }
 
-    sample_time: float = 5.0e-6
-    omega_ref_expr: float = 2.0 * np.pi * 50.0
-    # Simulink evaluates Zvirtual on the conventional impedance base.  The
-    # VeraGrid instantaneous phase-current base requires a 3x impedance.
+    omega_value: float = 2.0 * np.pi * 50.0
     pu_z_to_emt: float = 3.0
     zvirtual_emt: float = pu_z_to_emt * 0.6
     r_l_ratio: float = 0.1
-    lv_value: float = zvirtual_emt / omega_ref_expr
-    rv_value: float = zvirtual_emt * r_l_ratio
+    Lv = vf.add_const(zvirtual_emt / omega_value)
+    Rv = vf.add_const(zvirtual_emt * r_l_ratio)
+    omega_ref = vf.add_const(omega_value)
 
-    i_d_out_VA = vf.add_var(name=f"i_d_out_VA_{name}")
-    i_q_out_VA = vf.add_var(name=f"i_q_out_VA_{name}")
     err_q = vf.add_var(name=f"err_q_{name}")
-    err_d =  vf.add_var(name=f"err_d_{name}")
+    err_d = vf.add_var(name=f"err_d_{name}")
     y1 = vf.add_var(name=f"y1_{name}")
     y2 = vf.add_var(name=f"y2_{name}")
     y3 = vf.add_var(name=f"y3_{name}")
     y4 = vf.add_var(name=f"y4_{name}")
+    i_q_out_VA = vf.add_var(name=f"i_q_out_VA_{name}")
+    i_d_out_VA = vf.add_var(name=f"i_d_out_VA_{name}")
 
-    # Histories shared by the two filters driven by each voltage error.
-    err_q_z1 = vf.add_var(name=f"err_q_z1_{name}")
-    err_q_z2 = vf.add_var(name=f"err_q_z2_{name}")
-    err_d_z1 = vf.add_var(name=f"err_d_z1_{name}")
-    err_d_z2 = vf.add_var(name=f"err_d_z2_{name}")
-    y1_z1 = vf.add_var(name=f"y1_z1_{name}")
-    y1_z2 = vf.add_var(name=f"y1_z2_{name}")
-    y2_z1 = vf.add_var(name=f"y2_z1_{name}")
-    y2_z2 = vf.add_var(name=f"y2_z2_{name}")
-    y3_z1 = vf.add_var(name=f"y3_z1_{name}")
-    y3_z2 = vf.add_var(name=f"y3_z2_{name}")
-    y4_z1 = vf.add_var(name=f"y4_z1_{name}")
-    y4_z2 = vf.add_var(name=f"y4_z2_{name}")
+    x1_1 = vf.add_var(name=f"x1_1_{name}")
+    x2_1 = vf.add_var(name=f"x2_1_{name}")
+    dx1_1 = vf.add_diff_var(name=f"dx1_1_{name}", base_var=x1_1)
+    dx2_1 = vf.add_diff_var(name=f"dx2_1_{name}", base_var=x2_1)
+    x1_2 = vf.add_var(name=f"x1_2_{name}")
+    x2_2 = vf.add_var(name=f"x2_2_{name}")
+    dx1_2 = vf.add_diff_var(name=f"dx1_2_{name}", base_var=x1_2)
+    dx2_2 = vf.add_diff_var(name=f"dx2_2_{name}", base_var=x2_2)
+    x1_3 = vf.add_var(name=f"x1_3_{name}")
+    x2_3 = vf.add_var(name=f"x2_3_{name}")
+    dx1_3 = vf.add_diff_var(name=f"dx1_3_{name}", base_var=x1_3)
+    dx2_3 = vf.add_diff_var(name=f"dx2_3_{name}", base_var=x2_3)
+    x1_4 = vf.add_var(name=f"x1_4_{name}")
+    x2_4 = vf.add_var(name=f"x2_4_{name}")
+    dx1_4 = vf.add_diff_var(name=f"dx1_4_{name}", base_var=x1_4)
+    dx2_4 = vf.add_diff_var(name=f"dx2_4_{name}", base_var=x2_4)
 
-    # Bilinear transform of D(s)=(Lv*s+Rv)^2+(Lv*w)^2.
-    tustin_gain: float = 2.0 / sample_time
-    d2_value: float = lv_value * lv_value
-    d1_value: float = 2.0 * lv_value * rv_value
-    d0_value: float = lv_value * lv_value * omega_ref_expr * omega_ref_expr + rv_value * rv_value
-    denominator_0: float = d2_value * tustin_gain * tustin_gain + d1_value * tustin_gain + d0_value
-    a1 = vf.add_const((-2.0 * d2_value * tustin_gain * tustin_gain + 2.0 * d0_value) / denominator_0)
-    a2 = vf.add_const((d2_value * tustin_gain * tustin_gain - d1_value * tustin_gain + d0_value) / denominator_0)
+    n1_main = Lv
+    n0_main = Rv
+    n0_cross = Lv * omega_ref
+    d2 = Lv * Lv
+    d1 = 2.0 * Lv * Rv
+    d0 = Lv * Lv * omega_ref * omega_ref + Rv * Rv
 
-    # Main numerator Lv*s+Rv and cross numerator Lv*w.
-    b_main_0 = vf.add_const((lv_value * tustin_gain + rv_value) / denominator_0)
-    b_main_1 = vf.add_const((2.0 * rv_value) / denominator_0)
-    b_main_2 = vf.add_const((-lv_value * tustin_gain + rv_value) / denominator_0)
-    cross_numerator: float = lv_value * omega_ref_expr
-    b_cross_0 = vf.add_const(cross_numerator / denominator_0)
-    b_cross_1 = vf.add_const((2.0 * cross_numerator) / denominator_0)
-    b_cross_2 = vf.add_const(cross_numerator / denominator_0)
-
-    y1_expr = b_main_0 * err_q + b_main_1 * err_q_z1 + b_main_2 * err_q_z2 - a1 * y1_z1 - a2 * y1_z2
-    y2_expr = b_cross_0 * err_d + b_cross_1 * err_d_z1 + b_cross_2 * err_d_z2 - a1 * y2_z1 - a2 * y2_z2
-    y3_expr = b_cross_0 * err_q + b_cross_1 * err_q_z1 + b_cross_2 * err_q_z2 - a1 * y3_z1 - a2 * y3_z2
-    y4_expr = b_main_0 * err_d + b_main_1 * err_d_z1 + b_main_2 * err_d_z2 - a1 * y4_z1 - a2 * y4_z2
+    x2_dot_1 = (err_q - d1 * x2_1 - d0 * x1_1) / sym.max(d2, eps)
+    x2_dot_2 = (err_d - d1 * x2_2 - d0 * x1_2) / sym.max(d2, eps)
+    x2_dot_3 = (err_q - d1 * x2_3 - d0 * x1_3) / sym.max(d2, eps)
+    x2_dot_4 = (err_d - d1 * x2_4 - d0 * x1_4) / sym.max(d2, eps)
 
     templ.block = Block(
-        state_eqs=[],
-        state_vars=[],
-        diff_vars=[],
+        state_eqs=[
+            x2_1,
+            x2_dot_1,
+            x2_2,
+            x2_dot_2,
+            x2_3,
+            x2_dot_3,
+            x2_4,
+            x2_dot_4,
+        ],
+        state_vars=[x1_1, x2_1, x1_2, x2_2, x1_3, x2_3, x1_4, x2_4],
+        diff_vars=[dx1_1, dx2_1, dx1_2, dx2_2, dx1_3, dx2_3, dx1_4, dx2_4],
         algebraic_eqs=[
             err_q - (v_q_ref - v_q),
             err_d - (v_d_ref - v_d),
-            y1 - y1_expr,
-            y2 - y2_expr,
-            y3 - y3_expr,
-            y4 - y4_expr,
-            i_q_out_VA - (y1 - y2) ,
-            i_d_out_VA - (y3 + y4) ,
+            y1 - (n1_main * x2_1 + n0_main * x1_1),
+            y2 - n0_cross * x1_2,
+            y3 - n0_cross * x1_3,
+            y4 - (n1_main * x2_4 + n0_main * x1_4),
+            i_q_out_VA - (y1 - y2),
+            i_d_out_VA - (y3 + y4),
         ],
         algebraic_vars=[err_q, err_d, y1, y2, y3, y4, i_q_out_VA, i_d_out_VA],
         in_vars=inputs,
         out_vars=[i_q_out_VA, i_d_out_VA],
         init_eqs={
+            x1_1: c0,
+            x2_1: c0,
+            x1_2: c0,
+            x2_2: c0,
+            x1_3: c0,
+            x2_3: c0,
+            x1_4: c0,
+            x2_4: c0,
             err_q: v_q_ref - v_q,
             err_d: v_d_ref - v_d,
-            y1: y1_expr,
-            y2: y2_expr,
-            y3: y3_expr,
-            y4: y4_expr,
+            y1: n1_main * x2_1 + n0_main * x1_1,
+            y2: n0_cross * x1_2,
+            y3: n0_cross * x1_3,
+            y4: n1_main * x2_4 + n0_main * x1_4,
             i_q_out_VA: y1 - y2,
             i_d_out_VA: y3 + y4,
         },
-        mode_dict={
-            err_q_z1: c0,
-            err_q_z2: c0,
-            err_d_z1: c0,
-            err_d_z2: c0,
-            y1_z1: c0,
-            y1_z2: c0,
-            y2_z1: c0,
-            y2_z2: c0,
-            y3_z1: c0,
-            y3_z2: c0,
-            y4_z1: c0,
-            y4_z2: c0,
+        diff_init_eqs={
+            dx1_1: x2_1,
+            dx2_1: x2_dot_1,
+            dx1_2: x2_2,
+            dx2_2: x2_dot_2,
+            dx1_3: x2_3,
+            dx2_3: x2_dot_3,
+            dx1_4: x2_4,
+            dx2_4: x2_dot_4,
         },
-        procedural_logic=[
-            # Shift the oldest sample first so every source still sees the
-            # histories from the just-completed sample.
-            sampled_value(output=err_q_z2, source=err_q_z1, name=f"err_q_z2_sample_{name}"),
-            sampled_value(output=err_q_z1, source=err_q, name=f"err_q_z1_sample_{name}"),
-            sampled_value(output=err_d_z2, source=err_d_z1, name=f"err_d_z2_sample_{name}"),
-            sampled_value(output=err_d_z1, source=err_d, name=f"err_d_z1_sample_{name}"),
-            sampled_value(output=y1_z2, source=y1_z1, name=f"y1_z2_sample_{name}"),
-            sampled_value(output=y1_z1, source=y1, name=f"y1_z1_sample_{name}"),
-            sampled_value(output=y2_z2, source=y2_z1, name=f"y2_z2_sample_{name}"),
-            sampled_value(output=y2_z1, source=y2, name=f"y2_z1_sample_{name}"),
-            sampled_value(output=y3_z2, source=y3_z1, name=f"y3_z2_sample_{name}"),
-            sampled_value(output=y3_z1, source=y3, name=f"y3_z1_sample_{name}"),
-            sampled_value(output=y4_z2, source=y4_z1, name=f"y4_z2_sample_{name}"),
-            sampled_value(output=y4_z1, source=y4, name=f"y4_z1_sample_{name}"),
-        ],
-        event_dict=event_dict,
+        event_dict={
+            v_q_ref: vf.add_const(np.sqrt(2.0)),
+            v_d_ref: vf.add_const(0.0),
+        },
     )
 
     return templ
+
 
 def get_current_limiter_GFL(vf: VarFactory, name: str = "G4L_current_limiter") -> EmtModelTemplate:
     """
@@ -1130,20 +1089,22 @@ def get_current_limiter_GFL(vf: VarFactory, name: str = "G4L_current_limiter") -
 
 def get_current_loop_GFL(vf: VarFactory, name: str = "G4L_current_loop") -> EmtModelTemplate:
     """
-    Build the discrete current controller and inverse qd/abc transform.
+    Build the continuous current controller and inverse qd/abc transform.
+
+    The feed-forward filters and both PI integrators are symbolic DAE states.
+    Their numerical discretization is delegated to the EMT solver.
 
     :param vf: EMT variable factory.
     :param name: Symbolic block name.
-    :return: Configured current-loop template.
+    :return: Configured continuous current-loop template.
     """
-
     templ = EmtModelTemplate()
     templ.tpe = DeviceType.NoDevice
     templ.name = name
-
     templ.block.name = name
 
     c0 = vf.add_const(0.0)
+    c_sqrt3 = vf.add_const(np.sqrt(3.0))
 
     v_d = vf.add_var(name=f"v_d_{name}")
     v_q = vf.add_var(name=f"v_q_{name}")
@@ -1151,133 +1112,119 @@ def get_current_loop_GFL(vf: VarFactory, name: str = "G4L_current_loop") -> EmtM
     i_q = vf.add_var(name=f"i_q_{name}")
     phase_pll = vf.add_var(name=f"phase_pll_{name}")
     omega_pll = vf.add_var(name=f"omega_pll_{name}")
-    phase_cmd = phase_pll
-    c_sqrt3 = vf.add_const(np.sqrt(3.0))
-
-    v_con_A = vf.add_var(name=f"v_con_A_{name}")
-    v_con_B = vf.add_var(name=f"v_con_B_{name}")
-    v_con_C = vf.add_var(name=f"v_con_C_{name}")
-
-    v_con_q = vf.add_var(name=f"v_con_q_{name}")
-    v_con_d = vf.add_var(name=f"v_con_d_{name}")
-
-    i_d_lim = vf.add_var(name=f"i_d_lim_{name}")
     i_q_lim = vf.add_var(name=f"i_q_lim_{name}")
-
+    i_d_lim = vf.add_var(name=f"i_d_lim_{name}")
     inputs = [v_q, v_d, i_q, i_d, phase_pll, omega_pll, i_q_lim, i_d_lim]
 
     v_ffw_q = vf.add_var(name=f"v_ffw_q_{name}")
     v_ffw_d = vf.add_var(name=f"v_ffw_d_{name}")
-    v_ffw_q_u1 = vf.add_var(name=f"v_ffw_q_u1_{name}")
-    v_ffw_d_u1 = vf.add_var(name=f"v_ffw_d_u1_{name}")
-    v_ffw_q_y1 = vf.add_var(name=f"v_ffw_q_y1_{name}")
-    v_ffw_d_y1 = vf.add_var(name=f"v_ffw_d_y1_{name}")
+    dv_ffw_q = vf.add_diff_var(name=f"dv_ffw_q_{name}", base_var=v_ffw_q)
+    dv_ffw_d = vf.add_diff_var(name=f"dv_ffw_d_{name}", base_var=v_ffw_d)
+    tau_ffw = vf.add_const(0.0005)
 
-    sample_time: float = 5.0e-6
-    tau_ffw: float = 0.0005
-    b_ffw = vf.add_const(sample_time / (2.0 * tau_ffw + sample_time))
-    a_ffw = vf.add_const((sample_time - 2.0 * tau_ffw) / (sample_time + 2.0 * tau_ffw))
-    v_ffw_q_expr = b_ffw * v_q + b_ffw * v_ffw_q_u1 - a_ffw * v_ffw_q_y1
-    v_ffw_d_expr = b_ffw * v_d + b_ffw * v_ffw_d_u1 - a_ffw * v_ffw_d_y1
+    tau_cc: float = 0.001
+    omega_value: float = 2.0 * np.pi * 50.0
+    pu_z_to_emt: float = 3.0
+    r_f_pu: float = pu_z_to_emt * (0.1 / 10.0)
+    x_f_pu: float = pu_z_to_emt * (1.0 / 10.0)
+    l_f_value: float = x_f_pu / omega_value
+    Kp_cc = vf.add_const(l_f_value / tau_cc)
+    Ki_cc = vf.add_const(r_f_pu / tau_cc)
+    L_f = vf.add_const(l_f_value)
 
-    tau_cc = 0.001
-    omega_ref_expr = 2 * np.pi * 50
-    PU_Z_TO_EMT = 3.0
-
-    R_f_pu = PU_Z_TO_EMT * (0.1 / 10.0)  # 0.03
-    X_f_pu = PU_Z_TO_EMT * (1.0 / 10.0)  # 0.30
-    L_f_expr = X_f_pu / omega_ref_expr
-    Kp_cc = vf.add_const(L_f_expr / tau_cc)
-    Ki_cc = vf.add_const(R_f_pu / tau_cc)
-    L_f = vf.add_const(L_f_expr)
     err_q = vf.add_var(name=f"err_q_{name}")
     err_d = vf.add_var(name=f"err_d_{name}")
     x_e_q = vf.add_var(name=f"x_e_q_{name}")
+    dx_e_q = vf.add_diff_var(name=f"dx_e_q_{name}", base_var=x_e_q)
     x_e_d = vf.add_var(name=f"x_e_d_{name}")
-    x_e_q_acc = vf.add_var(name=f"x_e_q_acc_{name}")
-    x_e_d_acc = vf.add_var(name=f"x_e_d_acc_{name}")
+    dx_e_d = vf.add_diff_var(name=f"dx_e_d_{name}", base_var=x_e_d)
     y_q = vf.add_var(name=f"y_q_{name}")
     y_d = vf.add_var(name=f"y_d_{name}")
 
-    half_sample_time = vf.add_const(0.5 * sample_time)
-    full_sample_time = vf.add_const(sample_time)
-    x_e_q_expr = x_e_q_acc + half_sample_time * Ki_cc * err_q
-    x_e_d_expr = x_e_d_acc + half_sample_time * Ki_cc * err_d
-
+    v_con_q = vf.add_var(name=f"v_con_q_{name}")
+    v_con_d = vf.add_var(name=f"v_con_d_{name}")
     alpha = vf.add_var(name=f"alpha_{name}")
     beta = vf.add_var(name=f"beta_{name}")
+    v_con_A = vf.add_var(name=f"v_con_A_{name}")
+    v_con_B = vf.add_var(name=f"v_con_B_{name}")
+    v_con_C = vf.add_var(name=f"v_con_C_{name}")
+
+    v_ffw_q_dot = (v_q - v_ffw_q) / tau_ffw
+    v_ffw_d_dot = (v_d - v_ffw_d) / tau_ffw
+    x_e_q_dot = Ki_cc * err_q
+    x_e_d_dot = Ki_cc * err_d
 
     templ.block = Block(
-        state_eqs=[],
-        state_vars=[],
-        diff_vars=[],
+        state_eqs=[
+            v_ffw_q_dot,
+            v_ffw_d_dot,
+            x_e_q_dot,
+            x_e_d_dot,
+        ],
+        state_vars=[v_ffw_q, v_ffw_d, x_e_q, x_e_d],
+        diff_vars=[dv_ffw_q, dv_ffw_d, dx_e_q, dx_e_d],
         algebraic_eqs=[
-            v_ffw_q - v_ffw_q_expr,
-            v_ffw_d - v_ffw_d_expr,
             err_q - (i_q_lim - i_q),
             err_d - (i_d_lim - i_d),
-            x_e_q - x_e_q_expr,
-            x_e_d - x_e_d_expr,
-            y_q - (err_q * Kp_cc + x_e_q),
-            y_d - (err_d * Kp_cc + x_e_d),
-            # Simulink uses vff_q - PIq_SL - wLf*id_SL.  Both current axes and
-            # the PI output reverse sign in VeraGrid, hence the positive term.
+            y_q - (Kp_cc * err_q + x_e_q),
+            y_d - (Kp_cc * err_d + x_e_d),
+            # Current and PI signs are reversed with respect to Simulink.  The
+            # q-axis cross-coupling is therefore positive in VeraGrid.
             v_con_q - (v_ffw_q + y_q + omega_pll * L_f * i_d),
             v_con_d - (v_ffw_d + y_d - omega_pll * L_f * i_q),
-            alpha - (v_con_q * cos(phase_cmd) + v_con_d * sin(phase_cmd)),
-            beta - (-v_con_q * sin(phase_cmd) + v_con_d * cos(phase_cmd)),
-            v_con_A - 0.5 * (2 * alpha),
-            v_con_B - 0.5 * (-alpha - np.sqrt(3) * beta),
-            v_con_C - 0.5 * (-alpha + np.sqrt(3) * beta),
-
+            alpha - (v_con_q * cos(phase_pll) + v_con_d * sin(phase_pll)),
+            beta - (-v_con_q * sin(phase_pll) + v_con_d * cos(phase_pll)),
+            v_con_A - alpha,
+            v_con_B - 0.5 * (-alpha - c_sqrt3 * beta),
+            v_con_C - 0.5 * (-alpha + c_sqrt3 * beta),
         ],
-        algebraic_vars=[v_ffw_q, v_ffw_d, err_q, err_d, x_e_q, x_e_d, y_q, y_d,
-                        v_con_q, v_con_d, alpha, beta, v_con_A, v_con_B, v_con_C],
+        algebraic_vars=[
+            err_q,
+            err_d,
+            y_q,
+            y_d,
+            v_con_q,
+            v_con_d,
+            alpha,
+            beta,
+            v_con_A,
+            v_con_B,
+            v_con_C,
+        ],
         in_vars=inputs,
-        # Preserve the six-output interface while removing the extra one-sample
-        # command delay that is absent from the Simulink controller.
         out_vars=[v_con_A, v_con_B, v_con_C, v_con_A, v_con_B, v_con_C],
         init_eqs={
-            v_ffw_q: v_ffw_q_expr,
-            v_ffw_d: v_ffw_d_expr,
+            v_ffw_q: c0,
+            v_ffw_d: c0,
+            x_e_q: c0,
+            x_e_d: c0,
             err_q: i_q_lim - i_q,
             err_d: i_d_lim - i_d,
-            x_e_q: x_e_q_expr,
-            x_e_d: x_e_d_expr,
-            y_q: err_q * Kp_cc + x_e_q,
-            y_d: err_d * Kp_cc + x_e_d,
+            y_q: Kp_cc * err_q + x_e_q,
+            y_d: Kp_cc * err_d + x_e_d,
             v_con_q: v_ffw_q + y_q + omega_pll * L_f * i_d,
             v_con_d: v_ffw_d + y_d - omega_pll * L_f * i_q,
-            alpha: v_con_q * cos(phase_cmd) + v_con_d * sin(phase_cmd),
-            beta: -v_con_q * sin(phase_cmd) + v_con_d * cos(phase_cmd),
+            alpha: v_con_q * cos(phase_pll) + v_con_d * sin(phase_pll),
+            beta: -v_con_q * sin(phase_pll) + v_con_d * cos(phase_pll),
             v_con_A: alpha,
             v_con_B: 0.5 * (-alpha - c_sqrt3 * beta),
             v_con_C: 0.5 * (-alpha + c_sqrt3 * beta),
         },
-        mode_dict={
-            v_ffw_q_u1: c0,
-            v_ffw_d_u1: c0,
-            v_ffw_q_y1: c0,
-            v_ffw_d_y1: c0,
-            x_e_q_acc: c0,
-            x_e_d_acc: c0,
+        diff_init_eqs={
+            dv_ffw_q: v_ffw_q_dot,
+            dv_ffw_d: v_ffw_d_dot,
+            dx_e_q: x_e_q_dot,
+            dx_e_d: x_e_d_dot,
         },
-        procedural_logic=[
-            sampled_value(output=v_ffw_q_u1, source=v_q, name=f"v_ffw_q_u1_sample_{name}"),
-            sampled_value(output=v_ffw_d_u1, source=v_d, name=f"v_ffw_d_u1_sample_{name}"),
-            sampled_value(output=v_ffw_q_y1, source=v_ffw_q, name=f"v_ffw_q_y1_sample_{name}"),
-            sampled_value(output=v_ffw_d_y1, source=v_ffw_d, name=f"v_ffw_d_y1_sample_{name}"),
-            sampled_value(output=x_e_q_acc, source=x_e_q_acc + full_sample_time * Ki_cc * err_q,
-                          name=f"x_e_q_acc_sample_{name}"),
-            sampled_value(output=x_e_d_acc, source=x_e_d_acc + full_sample_time * Ki_cc * err_d,
-                          name=f"x_e_d_acc_sample_{name}"),
-        ]
     )
 
     return templ
 
 
-def get_complete_load_template_G4L(vf: VarFactory, name: str = "G4L_complete_load") -> EmtModelTemplate:
+def get_complete_load_template_G4L(
+        vf: VarFactory,
+        name: str = "G4L_complete_load",
+) -> EmtModelTemplate:
     """
     Complete GFL load composed by:
     - grid side converter
@@ -1289,6 +1236,10 @@ def get_complete_load_template_G4L(vf: VarFactory, name: str = "G4L_complete_loa
         - Current Limitation
         - Current control
     - Load side converter control
+
+    :param vf: EMT variable factory.
+    :param name: Symbolic block name.
+    :return: Configured complete GFL load template.
     """
 
     templ = EmtModelTemplate()

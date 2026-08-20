@@ -29,8 +29,8 @@ from VeraGridEngine.enumerations import (BranchImpedanceMode, DynamicIntegration
                                          SmallSignalEmtBuildTypes)
 # from trunk.GridsForLoads_dynamic.gridsforloads_converter_template import (get_trafo_grid_connection_G4L,
 #                                                                           get_complete_load_template_G4L)
-from trunk.GridsForLoads_dynamic.gridsforloads_converter_template_no_pll import (get_trafo_grid_connection_G4L,
-                                                                          get_complete_load_template_G4L)
+from trunk.GridsForLoads_dynamic.old.gridsforloads_converter_template_no_pll import (get_trafo_grid_connection_G4L,
+                                                                                     get_complete_load_template_G4L)
 import VeraGridEngine.api as gce
 
 from VeraGridEngine.Simulations.SmallSignalStabilityEmt.small_signal_stability_emt_options import SmallSignalStabilityEmtOptions
