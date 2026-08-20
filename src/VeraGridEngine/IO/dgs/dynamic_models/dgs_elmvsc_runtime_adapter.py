@@ -485,62 +485,37 @@ def is_dgs_elmvsc_slot_contract(block: Block) -> bool:
     """
     Detect the native PowerFactory ``ElmVsc`` composite-slot contract.
 
-    The decision uses the exported slot filter and its complete ordered signal
-    interface. Model names and project-specific controller names are ignored.
+    This helper validates one already isolated equipment boundary. It never
+    searches children: unrelated controller signals cannot establish a VSC
+    contract. The automatic DGS path additionally proves the boundary's typed
+    BlkSlot and equipment FID before invoking the runtime adapter.
 
     :param block: Imported DGS composite root.
     :return: ``True`` when one direct slot exposes the supported ElmVsc shell.
     """
-    raw_interfaces: object | None = block.__dict__.get(
-        "dgs_direct_slot_interfaces",
-        None,
+    input_names: List[str] = list()
+    output_names: List[str] = list()
+    boundary_var: Var
+    for boundary_var in block.in_vars:
+        input_names.append(boundary_var.name)
+    for boundary_var in block.out_vars:
+        output_names.append(boundary_var.name)
+    input_name_set: Set[str] = set(input_names)
+    output_name_set: Set[str] = set(output_names)
+    dc_current_count: int = int("iDC" in output_name_set) + int(
+        "idc" in output_name_set
     )
-    if isinstance(raw_interfaces, list):
-        interface_items: List[object] = raw_interfaces
-    else:
-        interface_items = list()
-
-    interface_item: object
-    for interface_item in interface_items:
-        if isinstance(interface_item, dict):
-            slot_filter_raw: object | None = interface_item.get("slot_filter", None)
-            element_kind_raw: object | None = interface_item.get("element_kind", None)
-            incoming_raw: object | None = interface_item.get("incoming_signals", None)
-            outgoing_raw: object | None = interface_item.get("outgoing_signals", None)
-            if isinstance(slot_filter_raw, str):
-                slot_filter: str = slot_filter_raw
-            else:
-                slot_filter = ""
-            if isinstance(element_kind_raw, str):
-                element_kind: str = element_kind_raw
-            else:
-                element_kind = ""
-            if isinstance(incoming_raw, list):
-                incoming_names: Set[str] = set(str(item) for item in incoming_raw)
-            else:
-                incoming_names = set()
-            if isinstance(outgoing_raw, list):
-                outgoing_names: Set[str] = set(str(item) for item in outgoing_raw)
-            else:
-                outgoing_names = set()
-            contract_matches: bool = (
-                    ("ElmVsc" in slot_filter or element_kind == "ElmVsc")
-                    and set(["block", "Pmr", "Pmi", "mdc"]).issubset(incoming_names)
-                    # PowerFactory 2025 reports iDC/yUcell through the API, while
-                    # its DGS 6/7 slot export names the same ports idc/Ucap.
-                    and (
-                            set(["iDC", "yUcell"]).issubset(outgoing_names)
-                            or set(["idc", "Ucap"]).issubset(outgoing_names)
-                    )
-            )
-            if contract_matches:
-                return True
-            else:
-                pass
-        else:
-            pass
-
-    return False
+    cell_voltage_count: int = int("yUcell" in output_name_set) + int(
+        "Ucap" in output_name_set
+    )
+    return (
+        len(input_names) == len(input_name_set)
+        and len(output_names) == len(output_name_set)
+        and input_name_set.isdisjoint(output_name_set)
+        and {"Pmr", "Pmi", "mdc"}.issubset(input_name_set)
+        and dc_current_count == 1
+        and cell_voltage_count == 1
+    )
 
 
 def _get_dgs_elmvscmono_angle_signal_names(
@@ -550,73 +525,66 @@ def _get_dgs_elmvscmono_angle_signal_names(
     Resolve the angle-vector port names declared by the native VSC slot.
 
     PowerFactory DGS versions expose the same unit-vector contract as either
-    ``cosphi/sinphi`` or ``cosref/sinref``. The exported slot selects the
-    variant; unrelated equal-named variables elsewhere in the composite do not.
+    ``cosphi/sinphi`` or ``cosref/sinref``. The exact host FID and the remaining
+    bridge ports disambiguate the structural match.
 
     :param block: Imported DGS composite root.
     :return: Exact cosine/sine port-name pair, or ``None``.
     """
-    raw_interfaces: object | None = block.__dict__.get(
-        "dgs_direct_slot_interfaces",
-        None,
-    )
-    if isinstance(raw_interfaces, list):
-        interface_items: List[object] = raw_interfaces
-    else:
-        interface_items = list()
-
-    interface_item: object
-    for interface_item in interface_items:
-        if isinstance(interface_item, dict):
-            element_kind_raw: object | None = interface_item.get("element_kind", None)
-            incoming_raw: object | None = interface_item.get("incoming_signals", None)
-            outgoing_raw: object | None = interface_item.get("outgoing_signals", None)
-            if isinstance(element_kind_raw, str):
-                element_kind: str = element_kind_raw
-            else:
-                element_kind = ""
-            if isinstance(incoming_raw, list):
-                incoming_names: Set[str] = set(str(item) for item in incoming_raw)
-            else:
-                incoming_names = set()
-            if isinstance(outgoing_raw, list):
-                outgoing_names: Set[str] = set(str(item) for item in outgoing_raw)
-            else:
-                outgoing_names = set()
-            base_contract_matches: bool = (
-                    element_kind == "ElmVscmono"
-                    and set(["Pmd", "Pmq"]).issubset(incoming_names)
-                    and set(["id", "iq", "uDC"]).issubset(outgoing_names)
-            )
-            if base_contract_matches:
-                if set(["cosphi", "sinphi"]).issubset(incoming_names):
-                    return "cosphi", "sinphi"
-                else:
-                    if set(["cosref", "sinref"]).issubset(incoming_names):
-                        return "cosref", "sinref"
-                    else:
-                        pass
-            else:
-                pass
+    required_names: Tuple[str, ...] = ("Pmd", "Pmq", "id", "iq", "uDC")
+    required_name: str
+    for required_name in required_names:
+        if _find_named_var_recursive(block=block, var_name=required_name) is None:
+            return None
         else:
             pass
-    return None
+
+    cosphi: Var | None = _find_named_var_recursive(block=block, var_name="cosphi")
+    sinphi: Var | None = _find_named_var_recursive(block=block, var_name="sinphi")
+    if cosphi is not None and sinphi is not None:
+        result: Tuple[str, str] | None = "cosphi", "sinphi"
+    else:
+        cosref: Var | None = _find_named_var_recursive(block=block, var_name="cosref")
+        sinref: Var | None = _find_named_var_recursive(block=block, var_name="sinref")
+        if cosref is not None and sinref is not None:
+            result = "cosref", "sinref"
+        else:
+            result = None
+    return result
 
 
 def is_dgs_elmvscmono_slot_contract(block: Block) -> bool:
     """
     Detect the native monopolar ``VSC_Frame`` equipment-slot contract.
 
-    The contract is intentionally structural. No project, object or template
-    display name participates in the decision.
+    The contract is intentionally directional and local to this boundary. No
+    recursive child search, project, object or template display name
+    participates in the decision.
 
     :param block: Imported DGS composite root.
     :return: ``True`` for a complete native monopolar converter slot.
     """
-    angle_signal_names: Tuple[str, str] | None = (
-        _get_dgs_elmvscmono_angle_signal_names(block=block)
+    input_names: List[str] = list()
+    output_names: List[str] = list()
+    boundary_var: Var
+    for boundary_var in block.in_vars:
+        input_names.append(boundary_var.name)
+    for boundary_var in block.out_vars:
+        output_names.append(boundary_var.name)
+    input_name_set: Set[str] = set(input_names)
+    output_name_set: Set[str] = set(output_names)
+    has_angle_inputs: bool = bool(
+        {"cosphi", "sinphi"}.issubset(input_name_set)
+        or {"cosref", "sinref"}.issubset(input_name_set)
     )
-    return angle_signal_names is not None
+    return (
+        len(input_names) == len(input_name_set)
+        and len(output_names) == len(output_name_set)
+        and input_name_set.isdisjoint(output_name_set)
+        and {"Pmd", "Pmq"}.issubset(input_name_set)
+        and {"id", "iq", "uDC"}.issubset(output_name_set)
+        and has_angle_inputs
+    )
 
 
 def build_dgs_elmvscmono_rms_runtime_template(
@@ -666,7 +634,7 @@ def build_dgs_elmvscmono_rms_runtime_template(
             and current_q_port is not None
             and controller_dc_voltage_port is not None
     )
-    if not is_dgs_elmvscmono_slot_contract(control_block) or not required_vars_ready:
+    if not required_vars_ready:
         return None
     else:
         pass
@@ -915,35 +883,6 @@ def build_dgs_elmvscmono_rms_runtime_template(
             ),
         ]),
     )
-    wrapper_block.__dict__["dgs_elmvscmono_runtime_adapter"] = True
-    # Terminal powers come directly from the solved physical VSC operating
-    # point. They are boundary values for controller initialization, not
-    # unknowns of the controller-to-equipment ``inc()`` cycle. Excluding only
-    # these three physical names lets the generic explicit initializer solve
-    # controller states, dq current and modulation around the authoritative
-    # load-flow point instead of selecting another mathematically valid branch.
-    wrapper_block.__dict__["explicit_init_excluded_var_names"] = tuple([
-        ac_active_power.name,
-        ac_reactive_power.name,
-        dc_power.name,
-    ])
-    # Native remote-meter dependencies are registered in the shared RMS
-    # variable dictionaries before this physical device is initialized. Keep
-    # the normal explicit-initialization pass enabled so the exported ``inc()``
-    # equations seed bridge current and modulation consistently with the
-    # solved network operating point. Skipping that pass leaves a valid model
-    # on the wrong algebraic branch and forces a large first-step Newton jump.
-    wrapper_block.__dict__["dgs_elmvscmono_parameter_uids"] = dict(
-        resistance=resistance.uid,
-        reactance=reactance.uid,
-        modulation_gain=modulation_gain.uid,
-        dc_bus_to_controller_gain=dc_bus_to_controller_gain.uid,
-        converter_to_system_power_gain=converter_to_system_power_gain.uid,
-        terminal_power=dc_power.uid,
-        conversion_power=dc_conversion_power.uid,
-        terminal_power_equation_index=7,
-    )
-
     result: RmsModelTemplate = RmsModelTemplate(name=control_template.name)
     result.name = control_template.name
     result.tpe = DeviceType.VscDevice
@@ -964,48 +903,41 @@ def configure_dgs_elmvscmono_runtime_template_for_device(
     :param system_base_mva: Circuit power base in MVA.
     :return: ``True`` when every physical bridge parameter was configured.
     """
-    adapter_flag: object | None = template.block.__dict__.get(
-        "dgs_elmvscmono_runtime_adapter",
-        None,
+    resistance_var: Var | None = _find_named_var_recursive(
+        block=template.block,
+        var_name="elmvscmono_reactor_r_pu",
     )
-    parameter_uids_raw: object | None = template.block.__dict__.get(
-        "dgs_elmvscmono_parameter_uids",
-        None,
+    reactance_var: Var | None = _find_named_var_recursive(
+        block=template.block,
+        var_name="elmvscmono_reactor_x_pu",
     )
-    if adapter_flag is True and isinstance(parameter_uids_raw, dict):
-        parameter_uids: Dict[str, object] = parameter_uids_raw
-    else:
+    modulation_gain_var: Var | None = _find_named_var_recursive(
+        block=template.block,
+        var_name="elmvscmono_modulation_gain",
+    )
+    dc_voltage_gain_var: Var | None = _find_named_var_recursive(
+        block=template.block,
+        var_name="elmvscmono_dc_voltage_gain",
+    )
+    power_gain_var: Var | None = _find_named_var_recursive(
+        block=template.block,
+        var_name="elmvscmono_converter_to_system_power_gain",
+    )
+    if (
+            resistance_var is None
+            or reactance_var is None
+            or modulation_gain_var is None
+            or dc_voltage_gain_var is None
+            or power_gain_var is None
+    ):
         return False
-
-    resistance_uid_raw: object | None = parameter_uids.get("resistance", None)
-    reactance_uid_raw: object | None = parameter_uids.get("reactance", None)
-    modulation_gain_uid_raw: object | None = parameter_uids.get(
-        "modulation_gain",
-        None,
-    )
-    dc_voltage_gain_uid_raw: object | None = parameter_uids.get(
-        "dc_bus_to_controller_gain",
-        None,
-    )
-    power_gain_uid_raw: object | None = parameter_uids.get(
-        "converter_to_system_power_gain",
-        None,
-    )
-    identifiers_ready: bool = (
-            isinstance(resistance_uid_raw, int)
-            and isinstance(reactance_uid_raw, int)
-            and isinstance(modulation_gain_uid_raw, int)
-            and isinstance(dc_voltage_gain_uid_raw, int)
-            and isinstance(power_gain_uid_raw, int)
-    )
-    if identifiers_ready:
-        resistance_uid: int = resistance_uid_raw
-        reactance_uid: int = reactance_uid_raw
-        modulation_gain_uid: int = modulation_gain_uid_raw
-        dc_voltage_gain_uid: int = dc_voltage_gain_uid_raw
-        power_gain_uid: int = power_gain_uid_raw
     else:
-        return False
+        pass
+    resistance_uid: int = resistance_var.uid
+    reactance_uid: int = reactance_var.uid
+    modulation_gain_uid: int = modulation_gain_var.uid
+    dc_voltage_gain_uid: int = dc_voltage_gain_var.uid
+    power_gain_uid: int = power_gain_var.uid
 
     ac_voltage_base_kv: float = float(device.bus_to.Vnom)
     dc_bus_voltage_base_kv: float = float(device.bus_from.Vnom)
@@ -1054,34 +986,6 @@ def configure_dgs_elmvscmono_runtime_template_for_device(
             configured_uids.add(event_var.uid)
         else:
             pass
-    submodule_capacitance_uf: float = float(
-        device.mmc_submodule_capacitance_uf
-    )
-    submodules_per_arm: int = int(device.mmc_submodules_per_arm)
-    if submodule_capacitance_uf > 0.0 and submodules_per_arm > 0:
-        # ElmVscmono refers its three phase-leg capacitor banks to the single
-        # DC terminal as Ceq = 3*Cmod/(2*Nsm).  Store the nodal per-unit energy
-        # coefficient beside the symbolic contract so compilation never needs
-        # the originating PowerFactory object or any case-specific constant.
-        equivalent_capacitance_f: float = (
-                1.5
-                * submodule_capacitance_uf
-                * 1.0e-6
-                / float(submodules_per_arm)
-        )
-        dc_bus_base_volts: float = dc_bus_voltage_base_kv * 1.0e3
-        system_base_watts: float = system_base_mva * 1.0e6
-        dc_capacitance_pu_seconds: float = (
-                equivalent_capacitance_f
-                * dc_bus_base_volts
-                * dc_bus_base_volts
-                / system_base_watts
-        )
-    else:
-        dc_capacitance_pu_seconds = 0.0
-    template.block.__dict__[
-        "dgs_elmvscmono_dc_capacitance_pu_seconds"
-    ] = dc_capacitance_pu_seconds
     return len(configured_uids) == len(values_by_uid)
 
 
@@ -1126,7 +1030,7 @@ def build_dgs_elmvsc_rms_runtime_template(
             and cell_voltage is not None
     )
 
-    if not is_dgs_elmvsc_slot_contract(control_block) or not required_vars_ready:
+    if not required_vars_ready:
         return None
     else:
         pass
@@ -1233,12 +1137,10 @@ def build_dgs_elmvsc_rms_runtime_template(
     # converter nominal DC voltage.  Its physical terminal span supplies the
     # corresponding insertion index to an exported ``inc(mdc)`` cable.  This
     # is the native device/control boundary missing from the ElmDsl equations.
-    mdc_alias_binding_count: int = (
-        _bind_direct_initialization_alias_to_equipment_signal(
-            block=control_block,
-            target_var=mdc_var,
-            equipment_signal=physical_dc_span / nominal_cell_voltage,
-        )
+    _bind_direct_initialization_alias_to_equipment_signal(
+        block=control_block,
+        target_var=mdc_var,
+        equipment_signal=physical_dc_span / nominal_cell_voltage,
     )
     converter_loss = (
             idle_loss
@@ -1538,58 +1440,6 @@ def build_dgs_elmvsc_rms_runtime_template(
         # Other ElmVsc controller families remain valid without this optional
         # native modulation-factor initialization contract.
         pass
-    wrapper_block.__dict__["dgs_elmvsc_runtime_adapter"] = True
-    wrapper_block.__dict__["dgs_elmvsc_ac_nominal_voltage_var_uid"] = ac_nominal_voltage.uid
-    wrapper_block.__dict__["dgs_elmvsc_dc_positive_nominal_voltage_var_uid"] = (
-        dc_positive_nominal_voltage.uid
-    )
-    wrapper_block.__dict__["dgs_elmvsc_dc_negative_nominal_voltage_var_uid"] = (
-        dc_negative_nominal_voltage.uid
-    )
-    wrapper_block.__dict__["dgs_elmvsc_controller_current_power_gain_var_uid"] = (
-        controller_current_power_gain.uid
-    )
-    wrapper_block.__dict__["dgs_elmvsc_reactor_resistance_var_uid"] = (
-        reactor_resistance.uid
-    )
-    wrapper_block.__dict__["dgs_elmvsc_reactor_reactance_var_uid"] = (
-        reactor_reactance.uid
-    )
-    wrapper_block.__dict__["dgs_elmvsc_nominal_cell_voltage_var_uid"] = (
-        nominal_cell_voltage.uid
-    )
-    wrapper_block.__dict__["dgs_elmvsc_equivalent_capacitance_var_uid"] = (
-        equivalent_capacitance.uid
-    )
-    wrapper_block.__dict__["dgs_elmvsc_system_power_base_var_uid"] = (
-        system_power_base.uid
-    )
-    # Equal-named signals can legitimately coexist inside one imported
-    # composite, for example the native ElmVsc current and a downstream
-    # filtered ``idc`` cable. Preserve the exact equipment UIDs so diagnostics,
-    # result exporters and future device bindings never infer ownership from
-    # random UID ordering or from a display name alone.
-    wrapper_block.__dict__["dgs_elmvsc_controller_current_var_uid"] = idc_var.uid
-    wrapper_block.__dict__["dgs_elmvsc_equipment_current_observer_var_uid"] = (
-        equipment_dc_current_observer.uid
-    )
-    wrapper_block.__dict__["dgs_elmvsc_cell_voltage_var_uid"] = (
-        cell_voltage_var.uid
-    )
-    wrapper_block.__dict__["dgs_elmvsc_network_current_var_uid"] = (
-        network_dc_current.uid
-    )
-    wrapper_block.__dict__["dgs_elmvsc_dc_power_var_uid"] = dc_power.uid
-    wrapper_block.__dict__["dgs_elmvsc_mdc_alias_binding_count"] = (
-        mdc_alias_binding_count
-    )
-    # Native meter refreshes can change Pdc/mdc immediately before Newton.
-    # Declare the directly solvable equipment current shell so the runtime
-    # layer refreshes that initial guess inside this adapter ownership boundary.
-    wrapper_block.__dict__["runtime_equipment_shell_sync_names"] = list([
-        idc_var.name,
-    ])
-
     result: RmsModelTemplate = RmsModelTemplate(name=control_template.name)
     result.name = control_template.name
     result.tpe = DeviceType.VscDevice
@@ -1610,75 +1460,71 @@ def configure_dgs_elmvsc_runtime_template_for_device(
     :param system_base_mva: VeraGrid system power base in MVA.
     :return: ``True`` when all physical adapter bases were configured.
     """
-    adapter_flag: object | None = template.block.__dict__.get(
-        "dgs_elmvsc_runtime_adapter",
-        None,
+    ac_nominal_voltage_var: Var | None = _find_named_var_recursive(
+        block=template.block,
+        var_name="elmvsc_ac_nominal_voltage_kv",
     )
-    ac_nominal_voltage_uid_raw: object | None = template.block.__dict__.get(
-        "dgs_elmvsc_ac_nominal_voltage_var_uid",
-        None,
+    dc_positive_nominal_voltage_var: Var | None = _find_named_var_recursive(
+        block=template.block,
+        var_name="elmvsc_dc_positive_nominal_voltage_kv",
     )
-    dc_positive_nominal_voltage_uid_raw: object | None = template.block.__dict__.get(
-        "dgs_elmvsc_dc_positive_nominal_voltage_var_uid",
-        None,
+    dc_negative_nominal_voltage_var: Var | None = _find_named_var_recursive(
+        block=template.block,
+        var_name="elmvsc_dc_negative_nominal_voltage_kv",
     )
-    dc_negative_nominal_voltage_uid_raw: object | None = template.block.__dict__.get(
-        "dgs_elmvsc_dc_negative_nominal_voltage_var_uid",
-        None,
+    controller_current_power_gain_var: Var | None = _find_named_var_recursive(
+        block=template.block,
+        var_name="elmvsc_controller_current_power_gain",
     )
-    controller_current_power_gain_uid_raw: object | None = template.block.__dict__.get(
-        "dgs_elmvsc_controller_current_power_gain_var_uid",
-        None,
+    nominal_cell_voltage_var: Var | None = _find_named_var_recursive(
+        block=template.block,
+        var_name="elmvsc_nominal_cell_voltage_kv",
     )
-    nominal_cell_voltage_uid_raw: object | None = template.block.__dict__.get(
-        "dgs_elmvsc_nominal_cell_voltage_var_uid",
-        None,
+    equivalent_capacitance_var: Var | None = _find_named_var_recursive(
+        block=template.block,
+        var_name="elmvsc_equivalent_capacitance_uf",
     )
-    equivalent_capacitance_uid_raw: object | None = template.block.__dict__.get(
-        "dgs_elmvsc_equivalent_capacitance_var_uid",
-        None,
+    system_power_base_var: Var | None = _find_named_var_recursive(
+        block=template.block,
+        var_name="elmvsc_system_power_base_mva",
     )
-    system_power_base_uid_raw: object | None = template.block.__dict__.get(
-        "dgs_elmvsc_system_power_base_var_uid",
-        None,
+    reactor_resistance_var: Var | None = _find_named_var_recursive(
+        block=template.block,
+        var_name="elmvsc_reactor_r_system_pu",
     )
-    reactor_resistance_uid_raw: object | None = template.block.__dict__.get(
-        "dgs_elmvsc_reactor_resistance_var_uid",
-        None,
+    reactor_reactance_var: Var | None = _find_named_var_recursive(
+        block=template.block,
+        var_name="elmvsc_reactor_x_system_pu",
     )
-    reactor_reactance_uid_raw: object | None = template.block.__dict__.get(
-        "dgs_elmvsc_reactor_reactance_var_uid",
-        None,
-    )
-    metadata_ready: bool = (
-            adapter_flag is True
-            and isinstance(ac_nominal_voltage_uid_raw, int)
-            and isinstance(dc_positive_nominal_voltage_uid_raw, int)
-            and isinstance(dc_negative_nominal_voltage_uid_raw, int)
-            and isinstance(controller_current_power_gain_uid_raw, int)
-            and isinstance(nominal_cell_voltage_uid_raw, int)
-            and isinstance(equivalent_capacitance_uid_raw, int)
-            and isinstance(system_power_base_uid_raw, int)
-            and isinstance(reactor_resistance_uid_raw, int)
-            and isinstance(reactor_reactance_uid_raw, int)
-    )
-    if metadata_ready:
-        ac_nominal_voltage_uid: int = ac_nominal_voltage_uid_raw
-        dc_positive_nominal_voltage_uid: int = dc_positive_nominal_voltage_uid_raw
-        dc_negative_nominal_voltage_uid: int = dc_negative_nominal_voltage_uid_raw
-        controller_current_power_gain_uid: int = (
-            controller_current_power_gain_uid_raw
-        )
-        nominal_cell_voltage_uid: int = nominal_cell_voltage_uid_raw
-        equivalent_capacitance_uid: int = equivalent_capacitance_uid_raw
-        system_power_base_uid: int = system_power_base_uid_raw
-        reactor_resistance_uid: int = reactor_resistance_uid_raw
-        reactor_reactance_uid: int = reactor_reactance_uid_raw
-    else:
+    if (
+            ac_nominal_voltage_var is None
+            or dc_positive_nominal_voltage_var is None
+            or dc_negative_nominal_voltage_var is None
+            or controller_current_power_gain_var is None
+            or nominal_cell_voltage_var is None
+            or equivalent_capacitance_var is None
+            or system_power_base_var is None
+            or reactor_resistance_var is None
+            or reactor_reactance_var is None
+    ):
         return False
+    else:
+        pass
+    ac_nominal_voltage_uid: int = ac_nominal_voltage_var.uid
+    dc_positive_nominal_voltage_uid: int = dc_positive_nominal_voltage_var.uid
+    dc_negative_nominal_voltage_uid: int = dc_negative_nominal_voltage_var.uid
+    controller_current_power_gain_uid: int = (
+        controller_current_power_gain_var.uid
+    )
+    nominal_cell_voltage_uid: int = nominal_cell_voltage_var.uid
+    equivalent_capacitance_uid: int = equivalent_capacitance_var.uid
+    system_power_base_uid: int = system_power_base_var.uid
+    reactor_resistance_uid: int = reactor_resistance_var.uid
+    reactor_reactance_uid: int = reactor_reactance_var.uid
 
     ac_nominal_voltage_kv: float = float(device.bus_to.Vnom)
     dc_positive_nominal_voltage_kv: float = float(device.bus_from.Vnom)
+    dc_converter_voltage_base_kv: float = float(device.dc_voltage_base)
     if device.bus_dc_n is None:
         return False
     else:
@@ -1688,10 +1534,12 @@ def configure_dgs_elmvsc_runtime_template_for_device(
             ac_nominal_voltage_kv <= 0.0
             or dc_positive_nominal_voltage_kv <= 0.0
             or dc_negative_nominal_voltage_kv <= 0.0
+            or dc_converter_voltage_base_kv <= 0.0
             or system_base_mva <= 0.0
             or float(device.rate) <= 0.0
-            or float(device.mmc_submodule_capacitance_uf) <= 0.0
-            or int(device.mmc_submodules_per_arm) <= 0
+            or float(device.r_series) < 0.0
+            or float(device.x_series) <= 0.0
+            or float(device.mmc_arm_capacitance_uf) <= 0.0
             or bool(device.mmc_consider_arm_reactor_dc)
     ):
         return False
@@ -1702,12 +1550,11 @@ def configure_dgs_elmvsc_runtime_template_for_device(
     # electrical powers compiled by VeraGrid use the circuit system base.
     controller_current_power_gain: float = system_base_mva / float(device.rate)
     # The fundamental-frequency MMC represents the six physical arm capacitor
-    # banks through Ceq = 6 * Csm / Nsm.  Requiring both exported inputs avoids
+    # banks through Ceq = 6 * Carm.  Requiring the canonical arm capacitance avoids
     # silently replacing internal energy storage with an algebraic power balance.
     equivalent_capacitance_uf: float = (
             6.0
-            * float(device.mmc_submodule_capacitance_uf)
-            / float(device.mmc_submodules_per_arm)
+            * float(device.mmc_arm_capacitance_uf)
     )
     # The static VSC conversion has already reconstructed PowerFactory's exact
     # equipment impedance ``Zsr + Zarm / 2`` from the same DGS. Controller-side
@@ -1752,7 +1599,7 @@ def configure_dgs_elmvsc_runtime_template_for_device(
                         else:
                             if event_var.uid == nominal_cell_voltage_uid:
                                 template.block.event_dict[event_var] = Const(
-                                    float(device.dc_voltage_base),
+                                    dc_converter_voltage_base_kv,
                                 )
                                 configured_uids.add(event_var.uid)
                             else:

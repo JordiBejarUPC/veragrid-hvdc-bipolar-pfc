@@ -14,6 +14,7 @@ from VeraGridEngine.Devices.Branches.series_reactance import SeriesReactance
 from VeraGridEngine.Devices.Branches.switch import Switch
 from VeraGridEngine.Devices.Branches.transformer import Transformer2W
 from VeraGridEngine.Devices.Branches.vsc import VSC
+from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Devices.Injections.battery import Battery
 from VeraGridEngine.Devices.Injections.controllable_shunt import ControllableShunt
@@ -26,7 +27,6 @@ from VeraGridEngine.Devices.Injections.static_generator import StaticGenerator
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Devices.Parents.dynamic_parent import DynamicDevice
 from VeraGridEngine.Devices.Substation.bus import Bus
-from VeraGridEngine.IO.dgs.dgs_objects import DgsElmGenstatRmsModel
 from VeraGridEngine.enumerations import (
     ConverterControlType,
     DeviceType,
@@ -56,6 +56,7 @@ from VeraGridEngine.Templates.Rms.voltage_source_template import (
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.bus_rms_template import initialize_bus_rms
 from VeraGridEngine.Utils.Symbolic.symbolic import Const, Expr, Var
+from VeraGridEngine.Utils.procedural_logic import DelayedSwitchEventLogic
 import VeraGridEngine.Utils.Symbolic.symbolic as sym
 
 
@@ -639,60 +640,24 @@ def _build_dgs_standard_vsc_rms_template(
 
 def _build_dgs_elmgenstat_rms_template(
         circuit: MultiCircuit,
-        source_id: str,
-        elmgenstat_rms_model_by_source_id: Dict[
-            str,
-            DgsElmGenstatRmsModel,
-        ],
+        device_tpe: DeviceType,
 ) -> RmsModelTemplate:
-    """Build the native static-generator RMS electrical source law.
+    """Build the supported ElmGenstat current-source RMS shell.
+
+    Current DGS rows do not declare ``iSimModel``. The importer therefore
+    materializes only PowerFactory's documented legacy current-source default
+    instead of inventing an unavailable selector.
 
     :param circuit: Circuit owning the shared variable factory.
-    :param source_id: Exact ``ElmGenstat`` DGS FID.
-    :param elmgenstat_rms_model_by_source_id: Native RMS selector lookup.
-    :return: Standard RMS template matching ``ElmGenstat.iSimModel``.
+    :param device_tpe: Exact VeraGrid presentation type of the imported host.
+    :return: Standard constant-current RMS template.
     """
-    source_rms_model: DgsElmGenstatRmsModel | None = (
-        elmgenstat_rms_model_by_source_id.get(source_id, None)
+    template: RmsModelTemplate = get_voltage_dependent_power_rms_template(
+        vfactory=circuit.var_factory,
+        voltage_model=VoltageDependentPowerModel.ConstantCurrent,
+        name="DGS ElmGenstat constant current RMS model",
     )
-    if source_rms_model is None:
-        # Legacy DGS files omit iSimModel. The native default is "according to
-        # input signals" and becomes a current source without a controller.
-        source_rms_model = (
-            DgsElmGenstatRmsModel.AccordingToConnectedInputSignals
-        )
-    else:
-        pass
-
-    uses_current_source: bool = source_rms_model in (
-        DgsElmGenstatRmsModel.AccordingToConnectedInputSignals,
-        DgsElmGenstatRmsModel.CurrentSource,
-    )
-    if uses_current_source:
-        template: RmsModelTemplate = get_voltage_dependent_power_rms_template(
-            vfactory=circuit.var_factory,
-            voltage_model=VoltageDependentPowerModel.ConstantCurrent,
-            name="DGS ElmGenstat constant current RMS model",
-        )
-    else:
-        if source_rms_model == DgsElmGenstatRmsModel.VoltageSource:
-            template = VoltageSourceBuild(
-                vfactory=circuit.var_factory,
-                name="DGS ElmGenstat voltage source RMS model",
-            )
-        else:
-            if source_rms_model == DgsElmGenstatRmsModel.ConstantImpedance:
-                template = get_voltage_dependent_power_rms_template(
-                    vfactory=circuit.var_factory,
-                    voltage_model=VoltageDependentPowerModel.ConstantImpedance,
-                    name="DGS ElmGenstat constant impedance RMS model",
-                )
-            else:
-                # The only remaining native selector is constant power.
-                template = get_load_rms_template(
-                    vfactory=circuit.var_factory,
-                    name="DGS ElmGenstat constant power RMS model",
-                )
+    template.tpe = device_tpe
     return template
 
 
@@ -701,7 +666,6 @@ def _build_dgs_default_rms_template(
         device: DynamicDevice,
         external_grid_source_ids: Set[str],
         elmgenstat_source_ids: Set[str],
-        elmgenstat_rms_model_by_source_id: Dict[str, DgsElmGenstatRmsModel],
         elmsym_source_ids: Set[str],
         typeless_elmlod_source_ids: Set[str],
         ideal_ac_connector_constraint_ids: Set[str],
@@ -717,8 +681,6 @@ def _build_dgs_default_rms_template(
     :param device: Physical device whose RMS model is missing.
     :param external_grid_source_ids: Exact FIDs exported from ``ElmXnet``.
     :param elmgenstat_source_ids: Exact FIDs exported from ``ElmGenstat``.
-    :param elmgenstat_rms_model_by_source_id: Native RMS model selection keyed
-        by exact ``ElmGenstat`` FID.
     :param elmsym_source_ids: Exact FIDs exported from ``ElmSym``.
     :param typeless_elmlod_source_ids: Exact FIDs of ``ElmLod`` objects whose
         DGS type reference is empty.
@@ -877,10 +839,7 @@ def _build_dgs_default_rms_template(
                                 # class, owns the native RMS source law.
                                 template = _build_dgs_elmgenstat_rms_template(
                                     circuit=circuit,
-                                    source_id=source_id,
-                                    elmgenstat_rms_model_by_source_id=(
-                                        elmgenstat_rms_model_by_source_id
-                                    ),
+                                    device_tpe=device.device_type,
                                 )
                             else:
                                 if (
@@ -940,6 +899,31 @@ def _build_dgs_default_rms_template(
     return template
 
 
+def _find_unique_rms_conduction_parameter(
+        block: Block,
+) -> tuple[Block | None, Var | None]:
+    """Find the single retained ``u`` parameter in a standard RMS shell.
+
+    :param block: Root block of one prepared physical device.
+    :return: Owning block and parameter, or two ``None`` values if ambiguous.
+    """
+    parameter_owner: Block | None = None
+    conduction_parameter: Var | None = None
+    candidate_block: Block
+    candidate_parameter: Var
+    for candidate_block in block.get_all_blocks():
+        for candidate_parameter in candidate_block.event_dict.keys():
+            if candidate_parameter.name == "u":
+                if conduction_parameter is None:
+                    parameter_owner = candidate_block
+                    conduction_parameter = candidate_parameter
+                else:
+                    return None, None
+            else:
+                pass
+    return parameter_owner, conduction_parameter
+
+
 def _seed_rms_conduction_status_from_device(device: DynamicDevice) -> bool:
     """Seed a retained RMS conduction parameter from physical service state.
 
@@ -950,30 +934,154 @@ def _seed_rms_conduction_status_from_device(device: DynamicDevice) -> bool:
     :param device: Physical device owning the connected RMS block.
     :return: ``True`` when a retained conduction parameter was initialized.
     """
-    status_uid_raw: object | None = device.rms_model.__dict__.get(
-        "rms_conduction_status_var_uid",
-        None,
+    status_owner: Block | None
+    status_parameter: Var | None
+    status_owner, status_parameter = _find_unique_rms_conduction_parameter(
+        block=device.rms_model,
     )
     seeded: bool = False
-    if isinstance(status_uid_raw, int) and not isinstance(status_uid_raw, bool):
+    if status_owner is not None and status_parameter is not None:
         status_value: float = 1.0 if bool(device.active) else 0.0
-        block: Block
-        parameter: Var
-        parameter_expression: Expr | Const
-        for block in device.rms_model.get_all_blocks():
-            for parameter, parameter_expression in block.event_dict.items():
-                if parameter.uid == status_uid_raw:
-                    block.event_dict[parameter] = Const(status_value)
-                    seeded = True
-                else:
-                    pass
-            else:
-                pass
-        else:
-            pass
+        status_owner.event_dict[status_parameter] = Const(status_value)
+        seeded = True
     else:
         pass
     return seeded
+
+
+def bind_dgs_switch_event_runtime(
+        circuit: MultiCircuit,
+        templates_by_root_dgs_id: Dict[
+            str,
+            RmsModelTemplate | EmtModelTemplate,
+        ],
+        logger: Logger,
+) -> int:
+    """Connect imported guarded switch modes to physical RMS conduction states.
+
+    Multiple physical switches can sit in series on one equipment object. Their
+    exported binary positions are multiplied so opening either terminal removes
+    that equipment from the fixed-size RMS equations.
+
+    :param circuit: Prepared circuit containing physical RMS shells.
+    :param templates_by_root_dgs_id: Imported composite templates keyed by root FID.
+    :param logger: Import diagnostic sink.
+    :return: Number of physical RMS shells connected to switch-event modes.
+    """
+    device_by_idtag: Dict[str, DynamicDevice] = dict()
+    physical_device: DynamicDevice
+    for physical_device in circuit.get_branches_iter(
+            add_vsc=False,
+            add_hvdc=False,
+            add_switch=True,
+    ):
+        device_by_idtag[physical_device.idtag] = physical_device
+
+    modes_by_device_idtag: Dict[str, List[Var]] = dict()
+    root_template: RmsModelTemplate | EmtModelTemplate
+    root_block: Block
+    logic_entry: object
+    mode_block: Block
+    mode_parameter: Var
+    for root_template in templates_by_root_dgs_id.values():
+        if isinstance(root_template, RmsModelTemplate):
+            pass
+        else:
+            raise ValueError(
+                "DGS RMS switch-event binding received a non-RMS template"
+            )
+        for root_block in root_template.block.get_all_blocks():
+            for logic_entry in root_block.procedural_logic:
+                if isinstance(logic_entry, DelayedSwitchEventLogic):
+                    if logic_entry.command_closed:
+                        logger.add_warning(
+                            msg="DGS close-switch event binding is not supported",
+                            device=logic_entry.name,
+                            value=logic_entry.target_switch_idtag,
+                        )
+                    else:
+                        matching_modes: List[Var] = list()
+                        matching_mode_uids: Set[int] = set()
+                        for mode_block in root_template.block.get_all_blocks():
+                            for mode_parameter in mode_block.mode_dict.keys():
+                                if mode_parameter.name == logic_entry.output_var_name:
+                                    if mode_parameter.uid not in matching_mode_uids:
+                                        matching_modes.append(mode_parameter)
+                                        matching_mode_uids.add(mode_parameter.uid)
+                                    else:
+                                        pass
+                                else:
+                                    pass
+                        if len(matching_modes) == 1:
+                            device_modes: List[Var] | None = modes_by_device_idtag.get(
+                                logic_entry.target_device_idtag,
+                                None,
+                            )
+                            if device_modes is None:
+                                device_modes = list()
+                                device_modes.append(matching_modes[0])
+                                modes_by_device_idtag[
+                                    logic_entry.target_device_idtag
+                                ] = device_modes
+                            else:
+                                mode_is_new: bool = True
+                                existing_device_mode: Var
+                                for existing_device_mode in device_modes:
+                                    if existing_device_mode.uid == matching_modes[0].uid:
+                                        mode_is_new = False
+                                    else:
+                                        pass
+                                if mode_is_new:
+                                    device_modes.append(matching_modes[0])
+                                else:
+                                    pass
+                        else:
+                            logger.add_warning(
+                                msg="DGS switch event mode is missing or ambiguous",
+                                device=logic_entry.name,
+                                value=(
+                                    f"{logic_entry.output_var_name}; "
+                                    f"matches={len(matching_modes)}"
+                                ),
+                            )
+                else:
+                    pass
+
+    bound_count: int = 0
+    device_idtag: str
+    switch_modes: List[Var]
+    for device_idtag, switch_modes in modes_by_device_idtag.items():
+        physical_device = device_by_idtag.get(device_idtag, None)
+        if physical_device is None or physical_device.rms_model.empty():
+            logger.add_warning(
+                msg="DGS switch event physical target is unavailable",
+                device=device_idtag,
+            )
+        else:
+            conduction_owner: Block | None
+            conduction_parameter: Var | None
+            conduction_owner, conduction_parameter = (
+                _find_unique_rms_conduction_parameter(
+                    block=physical_device.rms_model,
+                )
+            )
+            if conduction_owner is None or conduction_parameter is None:
+                logger.add_warning(
+                    msg="DGS switch event target has no unique RMS conduction state",
+                    device=device_idtag,
+                )
+            else:
+                conduction_expression: Expr | Const = conduction_owner.event_dict[
+                    conduction_parameter
+                ]
+                switch_mode: Var
+                for switch_mode in switch_modes:
+                    conduction_expression = conduction_expression * switch_mode
+                conduction_owner.event_dict[conduction_parameter] = (
+                    conduction_expression
+                )
+                bound_count += 1
+    return bound_count
 
 
 def _prepare_dgs_rms_device(
@@ -981,7 +1089,6 @@ def _prepare_dgs_rms_device(
         device: DynamicDevice,
         external_grid_source_ids: Set[str],
         elmgenstat_source_ids: Set[str],
-        elmgenstat_rms_model_by_source_id: Dict[str, DgsElmGenstatRmsModel],
         elmsym_source_ids: Set[str],
         typeless_elmlod_source_ids: Set[str],
         ideal_ac_connector_constraint_ids: Set[str],
@@ -995,8 +1102,6 @@ def _prepare_dgs_rms_device(
     :param device: Physical device to inspect.
     :param external_grid_source_ids: Exact FIDs exported from ``ElmXnet``.
     :param elmgenstat_source_ids: Exact FIDs exported from ``ElmGenstat``.
-    :param elmgenstat_rms_model_by_source_id: Native RMS model selection keyed
-        by exact ``ElmGenstat`` FID.
     :param elmsym_source_ids: Exact FIDs exported from ``ElmSym``.
     :param typeless_elmlod_source_ids: Exact FIDs of typeless ``ElmLod``.
     :param ideal_ac_connector_constraint_ids: Ideal links selected for the
@@ -1011,7 +1116,6 @@ def _prepare_dgs_rms_device(
             device=device,
             external_grid_source_ids=external_grid_source_ids,
             elmgenstat_source_ids=elmgenstat_source_ids,
-            elmgenstat_rms_model_by_source_id=elmgenstat_rms_model_by_source_id,
             elmsym_source_ids=elmsym_source_ids,
             typeless_elmlod_source_ids=typeless_elmlod_source_ids,
             ideal_ac_connector_constraint_ids=ideal_ac_connector_constraint_ids,
@@ -1072,15 +1176,11 @@ def _get_monopolar_vsc_dc_capacitance_pu_seconds(
         and converter.bus_from.is_dc
         and not converter.bus_from.is_grounded
     )
-    submodule_capacitance_uf: float = float(
-        converter.mmc_submodule_capacitance_uf
-    )
-    submodules_per_arm: int = int(converter.mmc_submodules_per_arm)
+    arm_capacitance_uf: float = float(converter.mmc_arm_capacitance_uf)
     dc_bus_base_kv: float = float(converter.bus_from.Vnom)
     physical_data_ready: bool = (
         is_monopolar_dc_converter
-        and submodule_capacitance_uf > 0.0
-        and submodules_per_arm > 0
+        and arm_capacitance_uf > 0.0
         and dc_bus_base_kv > 0.0
         and system_base_mva > 0.0
     )
@@ -1090,9 +1190,8 @@ def _get_monopolar_vsc_dc_capacitance_pu_seconds(
         # controller names, event definitions and the validation case.
         equivalent_capacitance_f: float = (
             1.5
-            * submodule_capacitance_uf
+            * arm_capacitance_uf
             * 1.0e-6
-            / float(submodules_per_arm)
         )
         dc_bus_base_volts: float = dc_bus_base_kv * 1.0e3
         system_base_watts: float = system_base_mva * 1.0e6
@@ -1112,10 +1211,6 @@ def prepare_dgs_circuit_for_rms(
         external_grid_source_ids: Set[str],
         logger: Logger,
         elmgenstat_source_ids: Set[str] | None = None,
-        elmgenstat_rms_model_by_source_id: Dict[
-            str,
-            DgsElmGenstatRmsModel,
-        ] | None = None,
         elmsym_source_ids: Set[str] | None = None,
         elmsym_reference_source_ids: Set[str] | None = None,
         typeless_elmlod_source_ids: Set[str] | None = None,
@@ -1131,9 +1226,6 @@ def prepare_dgs_circuit_for_rms(
     :param external_grid_source_ids: Exact FIDs exported from ``ElmXnet``.
     :param logger: Diagnostic sink for unsupported classes and partial failures.
     :param elmgenstat_source_ids: Optional exact FIDs exported from ``ElmGenstat``.
-    :param elmgenstat_rms_model_by_source_id: Optional native RMS selector keyed
-        by exact ``ElmGenstat`` FID. Missing legacy values retain the documented
-        PowerFactory current-source fallback.
     :param elmsym_source_ids: Optional exact FIDs exported from ``ElmSym``.
     :param elmsym_reference_source_ids: Optional active ``ElmSym.ip_ctrl=1``
         FIDs defining the frequency frame of each connected AC area.
@@ -1147,16 +1239,6 @@ def prepare_dgs_circuit_for_rms(
         effective_elmgenstat_source_ids = set()
     else:
         effective_elmgenstat_source_ids = elmgenstat_source_ids
-    effective_elmgenstat_rms_model_by_source_id: Dict[
-        str,
-        DgsElmGenstatRmsModel,
-    ]
-    if elmgenstat_rms_model_by_source_id is None:
-        effective_elmgenstat_rms_model_by_source_id = dict()
-    else:
-        effective_elmgenstat_rms_model_by_source_id = (
-            elmgenstat_rms_model_by_source_id
-        )
     effective_elmsym_source_ids: Set[str]
     if elmsym_source_ids is None:
         effective_elmsym_source_ids = set()
@@ -1264,9 +1346,6 @@ def prepare_dgs_circuit_for_rms(
             bus.rms_model.external_mapping[
                 VarPowerFlowReferenceType.dVdc_dt
             ] = vdc_derivative
-            bus.rms_model.__dict__["dc_shunt_capacitance_pu_seconds"] = float(
-                bus_capacitance
-            )
             report.record_prepared_bus()
         else:
             pass
@@ -1279,9 +1358,6 @@ def prepare_dgs_circuit_for_rms(
             device=device,
             external_grid_source_ids=external_grid_source_ids,
             elmgenstat_source_ids=effective_elmgenstat_source_ids,
-            elmgenstat_rms_model_by_source_id=(
-                effective_elmgenstat_rms_model_by_source_id
-            ),
             elmsym_source_ids=effective_elmsym_source_ids,
             typeless_elmlod_source_ids=effective_typeless_elmlod_source_ids,
             ideal_ac_connector_constraint_ids=ideal_ac_connector_constraint_ids,
@@ -1295,9 +1371,6 @@ def prepare_dgs_circuit_for_rms(
             device=device,
             external_grid_source_ids=external_grid_source_ids,
             elmgenstat_source_ids=effective_elmgenstat_source_ids,
-            elmgenstat_rms_model_by_source_id=(
-                effective_elmgenstat_rms_model_by_source_id
-            ),
             elmsym_source_ids=effective_elmsym_source_ids,
             typeless_elmlod_source_ids=effective_typeless_elmlod_source_ids,
             ideal_ac_connector_constraint_ids=ideal_ac_connector_constraint_ids,
@@ -1311,9 +1384,6 @@ def prepare_dgs_circuit_for_rms(
             device=device,
             external_grid_source_ids=external_grid_source_ids,
             elmgenstat_source_ids=effective_elmgenstat_source_ids,
-            elmgenstat_rms_model_by_source_id=(
-                effective_elmgenstat_rms_model_by_source_id
-            ),
             elmsym_source_ids=effective_elmsym_source_ids,
             typeless_elmlod_source_ids=effective_typeless_elmlod_source_ids,
             ideal_ac_connector_constraint_ids=ideal_ac_connector_constraint_ids,

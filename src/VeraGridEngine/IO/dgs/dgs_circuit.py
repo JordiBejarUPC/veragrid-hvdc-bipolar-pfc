@@ -29,12 +29,16 @@ from VeraGridEngine.IO.dgs.dgs_objects import (
     ElmDsl,
     ElmFeeder,
     ElmGenstat,
+    # Alex review required: VSC equipment rows converted into the final MultiCircuit.
+    ElmVsc,
+    ElmVscmono,
     ElmLne,
     ElmLnesec,
     ElmLod,
     ElmLodlv,
     ElmLodlvp,
     ElmNet,
+    ElmPhi,
     ElmScap,
     ElmShnt,
     ElmSind,
@@ -63,6 +67,9 @@ from VeraGridEngine.IO.dgs.dgs_objects import (
     StaCt,
     StaCubic,
     StaSwitch,
+    StaImea,
+    StaPqmea,
+    StaVmea,
     StaVt,
     TypAsmo,
     TypCon,
@@ -145,6 +152,9 @@ class DgsCircuit:
         ElmCoup,
         ElmFeeder,
         ElmGenstat,
+        # Alex review required: recognize both VSC formats as declarative DGS elements.
+        ElmVsc,
+        ElmVscmono,
         ElmLne,
         ElmTow,
         ElmZpu,
@@ -156,6 +166,7 @@ class DgsCircuit:
         ElmLodlv,
         ElmLodlvp,
         ElmNet,
+        ElmPhi,
         ElmShnt,
         ElmSvs,
         ElmSite,
@@ -179,7 +190,10 @@ class DgsCircuit:
         RelFuse,
         StaCubic,
         StaCt,
+        StaImea,
+        StaPqmea,
         StaSwitch,
+        StaVmea,
         StaVt,
         TypSwitch,
         TypAsmo,
@@ -226,6 +240,9 @@ class DgsCircuit:
         self.elmcoups: List[ElmCoup] = list()
         self.elmfeeders: List[ElmFeeder] = list()
         self.elmgenstats: List[ElmGenstat] = list()
+        # Alex review required: discard transient collections after creating the final VSC devices.
+        self.elmvscs: List[ElmVsc] = list()
+        self.elmvscmonos: List[ElmVscmono] = list()
         self.elmlnes: List[ElmLne] = list()
         self.elmtows: List[ElmTow] = list()
         self.elmsinds: List[ElmSind] = list()
@@ -235,6 +252,7 @@ class DgsCircuit:
         self.elmlodlvs: List[ElmLodlv] = list()
         self.elmlodlvps: List[ElmLodlvp] = list()
         self.elmnets: List[ElmNet] = list()
+        self.elmphis: List[ElmPhi] = list()
         self.elmshnts: List[ElmShnt] = list()
         self.elmsvss: List[ElmSvs] = list()
         self.elmzpus: List[ElmZpu] = list()
@@ -259,7 +277,10 @@ class DgsCircuit:
         self.relfuses: List[RelFuse] = list()
         self.stacubics: List[StaCubic] = list()
         self.stacts: List[StaCt] = list()
+        self.staimeas: List[StaImea] = list()
+        self.stapqmeas: List[StaPqmea] = list()
         self.staswitchs: List[StaSwitch] = list()
+        self.stavmeas: List[StaVmea] = list()
         self.stavts: List[StaVt] = list()
         self.typswitches: List[TypSwitch] = list()
         self.typasmos: List[TypAsmo] = list()
@@ -298,6 +319,9 @@ class DgsCircuit:
             ElmCoup: self.elmcoups,
             ElmFeeder: self.elmfeeders,
             ElmGenstat: self.elmgenstats,
+            # Alex review required: route each VSC table into its typed import collection.
+            ElmVsc: self.elmvscs,
+            ElmVscmono: self.elmvscmonos,
             ElmLne: self.elmlnes,
             ElmTow: self.elmtows,
             ElmZpu: self.elmzpus,
@@ -309,6 +333,7 @@ class DgsCircuit:
             ElmLodlv: self.elmlodlvs,
             ElmLodlvp: self.elmlodlvps,
             ElmNet: self.elmnets,
+            ElmPhi: self.elmphis,
             ElmShnt: self.elmshnts,
             ElmSvs: self.elmsvss,
             ElmSite: self.elmsites,
@@ -331,7 +356,10 @@ class DgsCircuit:
             RelFuse: self.relfuses,
             StaCubic: self.stacubics,
             StaCt: self.stacts,
+            StaImea: self.staimeas,
+            StaPqmea: self.stapqmeas,
             StaSwitch: self.staswitchs,
+            StaVmea: self.stavmeas,
             StaVt: self.stavts,
             TypSwitch: self.typswitches,
             TypAsmo: self.typasmos,
@@ -403,7 +431,7 @@ class DgsCircuit:
             sw.aUsage = "cbk"  # matches typical PF exports
             self.staswitchs.append(sw)
 
-    def parse_dgs(self, path: str):
+    def parse_dgs(self, path: str) -> None:
         """
         Parse a DGS file and populate the typed lists.
         """
@@ -422,7 +450,15 @@ class DgsCircuit:
                 elif line.startswith("$$"):
                     # Header line
                     element_type, header_map = parse_header(line)
-                    current_cls = self._REGISTRY.get(element_type)
+                    normalized_element_type: str
+                    if element_type in ("ElmPhi__pll", "ElmPhi__Pll"):
+                        # PowerFactory exposes the implementation suffix on
+                        # some native PLL exports. Both names share the exact
+                        # declarative ElmPhi row contract.
+                        normalized_element_type = "ElmPhi"
+                    else:
+                        normalized_element_type = element_type
+                    current_cls = self._REGISTRY.get(normalized_element_type)
 
                 else:
                     # Data line

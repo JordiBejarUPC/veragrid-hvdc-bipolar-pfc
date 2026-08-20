@@ -7,12 +7,10 @@ from __future__ import annotations
 
 from enum import Enum
 from pathlib import Path
-from types import FunctionType
 from typing import Callable, List, Sequence
 
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
-from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.enumerations import DeviceType, DynamicSimulationMode
 
@@ -32,80 +30,6 @@ def _emit_dynamic_model_import_progress(progress_callback: Callable[[int, str], 
         pass
     else:
         progress_callback(progress_value, progress_text)
-
-
-class SelectedDynamicImportWork:
-    """
-    Store one selected import item and its materialized reusable template.
-    """
-
-    __slots__ = (
-        "_selection_request",
-        "_template_obj",
-        "_entry_result",
-        "_template_fingerprint",
-        "_include_validation_snapshot",
-    )
-
-    def __init__(self,
-                 selection_request: "DynamicModelImportSelectionRequest",
-                 template_obj: RmsModelTemplate | EmtModelTemplate,
-                 entry_result: "DynamicModelImportEntryResult | None" = None,
-                 template_fingerprint: str | None = None,
-                 include_validation_snapshot: bool = True) -> None:
-        """
-        Store one selected import work item.
-
-        :param selection_request: Explicit selected import request.
-        :param template_obj: Materialized reusable template.
-        :param entry_result: Optional structured result updated after persistence.
-        :param template_fingerprint: Optional precomputed structural identity.
-        :param include_validation_snapshot: Persist the optional JSON validation sidecar.
-        :return: None.
-        """
-        self._selection_request: DynamicModelImportSelectionRequest = selection_request
-        self._template_obj: RmsModelTemplate | EmtModelTemplate = template_obj
-        self._entry_result: DynamicModelImportEntryResult | None = entry_result
-        self._template_fingerprint: str | None = template_fingerprint
-        self._include_validation_snapshot: bool = include_validation_snapshot
-
-    def get_selection_request(self) -> "DynamicModelImportSelectionRequest":
-        """
-        Return the explicit selected import request.
-
-        :return: Explicit selected import request.
-        """
-        return self._selection_request
-
-    def get_template_obj(self) -> RmsModelTemplate | EmtModelTemplate:
-        """
-        Return the materialized reusable template.
-
-        :return: Materialized reusable template.
-        """
-        return self._template_obj
-
-    def get_entry_result(self) -> "DynamicModelImportEntryResult | None":
-        """
-        Return the structured import result updated by persistence.
-
-        :return: Structured result or ``None`` for legacy callers.
-        """
-        return self._entry_result
-
-    def get_template_fingerprint(self) -> str | None:
-        """Return the precomputed structural identity when available.
-
-        :return: SHA-256 template fingerprint or ``None``.
-        """
-        return self._template_fingerprint
-
-    def get_include_validation_snapshot(self) -> bool:
-        """Return whether optional JSON snapshot persistence is requested.
-
-        :return: Validation-snapshot persistence flag.
-        """
-        return self._include_validation_snapshot
 
 
 class DynamicModelImportSource(Enum):
@@ -348,15 +272,15 @@ class DynamicModelImportEntryResult:
 
     def set_persisted_path(self, persisted_path: Path) -> None:
         """
-        Store the canonical Python module written for this result.
+        Store a canonical persisted artefact path for compatibility reporting.
 
-        :param persisted_path: Written human-readable Python path.
+        :param persisted_path: Written non-executable artefact path.
         :return: None.
         """
         self._persisted_path = persisted_path
 
     def get_persisted_path(self) -> Path | None:
-        """Return the canonical Python module path, when persistence succeeded."""
+        """Return the persisted artefact path, when one was written."""
         return self._persisted_path
 
     def set_message(self, message: str) -> None:
@@ -398,10 +322,10 @@ def _count_persisted_dynamic_model_import_results(
         entry_results: Sequence[DynamicModelImportEntryResult],
 ) -> int:
     """
-    Count entry results with a successfully written canonical Python module.
+    Count entry results carrying a successfully persisted artefact.
 
     :param entry_results: Ordered structured entry results.
-    :return: Results carrying a persisted module path.
+    :return: Results carrying a persisted artefact path.
     """
     count: int = 0
     entry_result: DynamicModelImportEntryResult
@@ -526,7 +450,7 @@ class DynamicModelImportReport:
         )
 
     def get_persisted_count(self) -> int:
-        """Return successfully written canonical Python template modules."""
+        """Return the number of successfully persisted artefacts."""
         return _count_persisted_dynamic_model_import_results(self._entry_results)
 
     def get_source_association_count(self) -> int:
@@ -738,14 +662,14 @@ class DynamicModelLoadedUserTemplate:
     """
     One persisted user template materialized from the ``user_templates`` folder.
 
-    :param module_path: Source persisted Python module path.
+    :param payload_path: Source declarative JSON payload path.
     :param domain: Selected reusable-template domain restored from metadata.
     :param device_tpe: Selected supported device type restored from metadata.
     :param template_obj: Materialized RMS or EMT reusable template.
     """
 
     __slots__ = (
-        "_module_path",
+        "_payload_path",
         "_domain",
         "_device_tpe",
         "_template_obj",
@@ -753,7 +677,7 @@ class DynamicModelLoadedUserTemplate:
 
     def __init__(
             self,
-            module_path: Path,
+            payload_path: Path,
             domain: DynamicSimulationMode,
             device_tpe: DeviceType,
             template_obj: RmsModelTemplate | EmtModelTemplate,
@@ -761,24 +685,24 @@ class DynamicModelLoadedUserTemplate:
         """
         Build one materialized persisted user template descriptor.
 
-        :param module_path: Source Python module path.
+        :param payload_path: Source declarative JSON payload path.
         :param domain: Restored reusable-template domain.
         :param device_tpe: Restored supported device type.
         :param template_obj: Materialized RMS or EMT template.
         :return: None.
         """
-        self._module_path: Path = module_path
+        self._payload_path: Path = payload_path
         self._domain: DynamicSimulationMode = domain
         self._device_tpe: DeviceType = device_tpe
         self._template_obj: RmsModelTemplate | EmtModelTemplate = template_obj
 
-    def get_module_path(self) -> Path:
+    def get_payload_path(self) -> Path:
         """
-        Return the persisted module path.
+        Return the persisted declarative payload path.
 
-        :return: Persisted Python module path.
+        :return: Persisted JSON payload path.
         """
-        return self._module_path
+        return self._payload_path
 
     def get_domain(self) -> DynamicSimulationMode:
         """
@@ -804,67 +728,14 @@ class DynamicModelLoadedUserTemplate:
         """
         return self._template_obj
 
-class _DynamicUserTemplatePythonModule:
-    """
-    Typed call boundary for one human-readable user-template Python module.
-
-    Dynamic module discovery necessarily resolves a function at runtime.  This
-    light wrapper contains that single dynamic boundary and exposes an explicit
-    typed method to the rest of the importer.
-
-    :param module_path: Python file that owns the builder.
-    :param template_builder: Validated module-level ``get_template`` function.
-    """
-
-    __slots__ = ("_module_path", "_template_builder")
-
-    def __init__(
-            self,
-            module_path: Path,
-            template_builder: FunctionType,
-    ) -> None:
-        """
-        Store one validated Python template-builder boundary.
-
-        :param module_path: Python file that owns the builder.
-        :param template_builder: Validated module-level ``get_template`` function.
-        :return: None.
-        """
-        self._module_path: Path = module_path
-        self._template_builder: FunctionType = template_builder
-
-    def materialize(self, var_factory: VarFactory) -> RmsModelTemplate | EmtModelTemplate:
-        """
-        Materialize the template through the module's canonical Python builder.
-
-        :param var_factory: Variable factory that owns the runtime symbols.
-        :return: Materialized RMS or EMT template.
-        """
-        template_candidate: object = self._template_builder(
-            var_factory,
-            None,
-        )
-        if isinstance(template_candidate, (RmsModelTemplate, EmtModelTemplate)):
-            template_obj: RmsModelTemplate | EmtModelTemplate = template_candidate
-        else:
-            raise TypeError(
-                "Dynamic user template builder returned an unsupported object"
-            )
-        return template_obj
-
-
 class DynamicModelPersistenceKind(Enum):
     """
-    Persistence strategy used to export one imported dynamic model as Python.
+    Persistence strategy used for a trusted imported dynamic-model source.
     """
 
     __slots__ = ()
 
     ModelicaXml = "Modelica XML"
-    DgsStandaloneBlkdef = "DGS standalone BlkDef"
-    DgsRootElmComp = "DGS root ElmComp"
-    DgsRootSlotGraphicalTree = "DGS root slot graphical tree"
-    DgsNamedBlockInternalOnly = "DGS named block internal only"
 
 
 class DynamicModelPersistenceSpec:

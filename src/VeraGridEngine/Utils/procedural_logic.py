@@ -701,6 +701,208 @@ class ProceduralLogicBase:
         return eval_compiled
 
 
+class ConditionalDiagnosticLogic(ProceduralLogicBase):
+    """Preserve one conditional source-model diagnostic declaratively.
+
+    The entry deliberately owns no presentation side effect. Solver or UI code
+    may later consume the typed condition and exact message according to its
+    logging policy without making import-time data executable.
+
+    :param condition_expr: Boolean expression that activates the diagnostic.
+    :param message: Exact source diagnostic text.
+    :param initialization_only: Whether PowerFactory evaluates it only during initialisation.
+    :param name: Optional diagnostic display name.
+    """
+
+    __slots__ = ("condition_expr", "message", "initialization_only")
+    logic_tpe = ProceduralLogicType.ConditionalDiagnostic
+
+    def __init__(
+            self,
+            condition_expr: Expr | Comparison,
+            message: str,
+            initialization_only: bool,
+            name: str = "",
+    ) -> None:
+        """Store one source-model diagnostic without executing it.
+
+        :param condition_expr: Boolean expression that activates the diagnostic.
+        :param message: Exact diagnostic text.
+        :param initialization_only: Whether this is an initialisation-only ``outfix`` declaration.
+        :param name: Optional diagnostic display name.
+        :return: None.
+        """
+        super().__init__(name=name)
+        self.condition_expr: Expr | Comparison = condition_expr
+        self.message: str = message
+        self.initialization_only: bool = initialization_only
+
+    def remap(self, var_mapping: VarRemap) -> "ConditionalDiagnosticLogic":
+        """Clone the diagnostic under a symbolic variable mapping.
+
+        :param var_mapping: Variable substitution map.
+        :return: Remapped diagnostic declaration.
+        """
+        remapped_condition: Expr | Comparison = _subs_expr_like(
+            expr=self.condition_expr,
+            mapping=var_mapping,
+        )
+        return ConditionalDiagnosticLogic(
+            condition_expr=remapped_condition,
+            message=self.message,
+            initialization_only=self.initialization_only,
+            name=self.name,
+        )
+
+
+class DelayedSwitchEventLogic(ProceduralLogicBase):
+    """Apply one delayed switch command on a guarded rising trigger edge."""
+
+    __slots__ = (
+        "output_var_name",
+        "guard_expr",
+        "trigger_expr",
+        "delay_expr",
+        "target_device_idtag",
+        "target_switch_idtag",
+        "target_terminal_index",
+        "initial_closed",
+        "command_closed",
+        "output_idx",
+        "state",
+        "initialized",
+        "trigger_was_high",
+        "pending_event_time",
+        "fired",
+    )
+    logic_tpe = ProceduralLogicType.DelayedSwitchEvent
+
+    def __init__(
+        self,
+        output_var_name: str,
+        guard_expr: Expr | Comparison,
+        trigger_expr: Expr | Comparison,
+        delay_expr: Expr | Comparison,
+        target_device_idtag: str,
+        target_switch_idtag: str,
+        target_terminal_index: int,
+        initial_closed: bool,
+        command_closed: bool,
+        name: str = "",
+    ) -> None:
+        """Store one executable switch-event declaration.
+
+        :param output_var_name: Runtime mode representing the switch position.
+        :param guard_expr: Event enable expression; values at least ``0.5`` enable it.
+        :param trigger_expr: Expression whose rising zero crossing arms the event.
+        :param delay_expr: Non-negative delay evaluated when the trigger rises.
+        :param target_device_idtag: Exact physical equipment identifier.
+        :param target_switch_idtag: Exact switch identifier resolved from the source slot.
+        :param target_terminal_index: Physical equipment terminal containing the switch.
+        :param initial_closed: Exported initial switch position.
+        :param command_closed: Switch position applied when the event fires.
+        :param name: Human-readable event name.
+        :return: None.
+        """
+        super().__init__(name=name)
+        self.output_var_name: str = output_var_name
+        self.guard_expr: Expr | Comparison = guard_expr
+        self.trigger_expr: Expr | Comparison = trigger_expr
+        self.delay_expr: Expr | Comparison = delay_expr
+        self.target_device_idtag: str = target_device_idtag
+        self.target_switch_idtag: str = target_switch_idtag
+        self.target_terminal_index: int = target_terminal_index
+        self.initial_closed: bool = initial_closed
+        self.command_closed: bool = command_closed
+        self.output_idx: int = -1
+        self.state: float = 1.0 if initial_closed else 0.0
+        self.initialized: bool = False
+        self.trigger_was_high: bool = False
+        self.pending_event_time: Optional[float] = None
+        self.fired: bool = False
+
+    def bind(self, problem: EmtProblemTemplate) -> None:
+        """Resolve the local switch-position mode and clear runtime state.
+
+        :param problem: Bound RMS or EMT problem.
+        :return: None.
+        """
+        super().bind(problem)
+        output_var: Var = _find_var_by_name(problem.sys_block, self.output_var_name)
+        self.output_idx = int(problem.uid2idx_event_params[output_var.uid])
+        self.state = 1.0 if self.initial_closed else 0.0
+        self.initialized = False
+        self.trigger_was_high = False
+        self.pending_event_time = None
+        self.fired = False
+
+    def get_next_forced_event_time(self, t_prev: float, t_target: float) -> Optional[float]:
+        """Return the exact delayed command boundary inside the next step.
+
+        :param t_prev: Previous solver time.
+        :param t_target: Nominal target time.
+        :return: Pending event time inside the interval, if any.
+        """
+        super().get_next_forced_event_time(t_prev, t_target)
+        if (
+            self.pending_event_time is not None
+            and t_prev < self.pending_event_time <= t_target
+        ):
+            return self.pending_event_time
+        else:
+            return None
+
+    def update(self, t: float, x: Vec, params: Vec) -> None:
+        """Detect a guarded rising edge and apply its delayed command once.
+
+        :param t: Current accepted solver time.
+        :param x: Current accepted state vector.
+        :param params: Runtime parameter vector updated in place.
+        :return: None.
+        """
+        trigger_high: bool = self._eval_numeric(self.trigger_expr, t, x, params) > 0.0
+        if not self.initialized:
+            self.initialized = True
+            self.trigger_was_high = trigger_high
+        else:
+            rising_edge: bool = trigger_high and not self.trigger_was_high
+            guard_enabled: bool = self._eval_numeric(self.guard_expr, t, x, params) >= 0.5
+            if rising_edge and guard_enabled and not self.fired and self.pending_event_time is None:
+                delay: float = max(0.0, self._eval_numeric(self.delay_expr, t, x, params))
+                self.pending_event_time = self._get_sample_time(t) + delay
+            else:
+                pass
+            self.trigger_was_high = trigger_high
+
+        if self.pending_event_time is not None and t >= self.pending_event_time - 1.0e-15:
+            self.state = 1.0 if self.command_closed else 0.0
+            self.pending_event_time = None
+            self.fired = True
+        else:
+            pass
+        params[self.output_idx] = self.state
+
+    def remap(self, var_mapping: VarRemap) -> "DelayedSwitchEventLogic":
+        """Clone the event under one symbolic variable remapping.
+
+        :param var_mapping: Variable substitution map.
+        :return: Remapped switch event.
+        """
+        name_mapping: Dict[str, str] = _build_name_mapping(var_mapping)
+        return DelayedSwitchEventLogic(
+            output_var_name=name_mapping.get(self.output_var_name, self.output_var_name),
+            guard_expr=_subs_expr_like(self.guard_expr, var_mapping),
+            trigger_expr=_subs_expr_like(self.trigger_expr, var_mapping),
+            delay_expr=_subs_expr_like(self.delay_expr, var_mapping),
+            target_device_idtag=self.target_device_idtag,
+            target_switch_idtag=self.target_switch_idtag,
+            target_terminal_index=self.target_terminal_index,
+            initial_closed=self.initial_closed,
+            command_closed=self.command_closed,
+            name=self.name,
+        )
+
+
 class FixedSampleLogic(ProceduralLogicBase):
     """
     Retain the initial truth value of one condition in a runtime mode variable.
@@ -3346,7 +3548,27 @@ def procedural_logic_entry_to_dict(entry: ProceduralLogicBase) -> ProceduralLogi
     """
     data: ProceduralLogicData = _base_logic_data(entry)
 
-    if isinstance(entry, FixedSampleLogic):
+    if isinstance(entry, ConditionalDiagnosticLogic):
+        data.update({
+            "condition_expr": _expr_like_to_dict(entry.condition_expr),
+            "message": entry.message,
+            "initialization_only": entry.initialization_only,
+        })
+        return data
+    elif isinstance(entry, DelayedSwitchEventLogic):
+        data.update({
+            "output_var_name": entry.output_var_name,
+            "guard_expr": _expr_like_to_dict(entry.guard_expr),
+            "trigger_expr": _expr_like_to_dict(entry.trigger_expr),
+            "delay_expr": _expr_like_to_dict(entry.delay_expr),
+            "target_device_idtag": entry.target_device_idtag,
+            "target_switch_idtag": entry.target_switch_idtag,
+            "target_terminal_index": entry.target_terminal_index,
+            "initial_closed": entry.initial_closed,
+            "command_closed": entry.command_closed,
+        })
+        return data
+    elif isinstance(entry, FixedSampleLogic):
         data.update({
             "output_var_name": entry.output_var_name,
             "condition_expr": _expr_like_to_dict(entry.condition_expr),
@@ -3484,6 +3706,46 @@ def _fixed_sample_logic_from_dict(data: ProceduralLogicData) -> FixedSampleLogic
     return FixedSampleLogic(
         output_var_name=str(data["output_var_name"]),
         condition_expr=_expr_like_from_dict(_get_expr_like_field(data, "condition_expr")),
+        name=str(data.get("name", "")),
+    )
+
+
+def _conditional_diagnostic_logic_from_dict(
+        data: ProceduralLogicData,
+) -> ConditionalDiagnosticLogic:
+    """Deserialize one conditional diagnostic declaration.
+
+    :param data: Serialized logic dictionary.
+    :return: Conditional diagnostic declaration.
+    """
+    return ConditionalDiagnosticLogic(
+        condition_expr=_expr_like_from_dict(
+            _get_expr_like_field(data, "condition_expr")
+        ),
+        message=str(data["message"]),
+        initialization_only=bool(data["initialization_only"]),
+        name=str(data.get("name", "")),
+    )
+
+
+def _delayed_switch_event_logic_from_dict(
+        data: ProceduralLogicData,
+) -> DelayedSwitchEventLogic:
+    """Deserialize one guarded delayed switch event.
+
+    :param data: Serialized logic dictionary.
+    :return: Executable switch event.
+    """
+    return DelayedSwitchEventLogic(
+        output_var_name=str(data["output_var_name"]),
+        guard_expr=_expr_like_from_dict(_get_expr_like_field(data, "guard_expr")),
+        trigger_expr=_expr_like_from_dict(_get_expr_like_field(data, "trigger_expr")),
+        delay_expr=_expr_like_from_dict(_get_expr_like_field(data, "delay_expr")),
+        target_device_idtag=str(data["target_device_idtag"]),
+        target_switch_idtag=str(data["target_switch_idtag"]),
+        target_terminal_index=int(data["target_terminal_index"]),
+        initial_closed=bool(data["initial_closed"]),
+        command_closed=bool(data["command_closed"]),
         name=str(data.get("name", "")),
     )
 
@@ -3708,7 +3970,11 @@ def build_procedural_logic_entry(data: ProceduralLogicData) -> ProceduralLogicBa
     logic_tpe_text: str = str(data.get("logic_type", data.get("logic_tpe", "")))
     logic_tpe: ProceduralLogicType = ProceduralLogicType(logic_tpe_text)
 
-    if logic_tpe == ProceduralLogicType.FixedSample:
+    if logic_tpe == ProceduralLogicType.ConditionalDiagnostic:
+        return _conditional_diagnostic_logic_from_dict(data)
+    elif logic_tpe == ProceduralLogicType.DelayedSwitchEvent:
+        return _delayed_switch_event_logic_from_dict(data)
+    elif logic_tpe == ProceduralLogicType.FixedSample:
         return _fixed_sample_logic_from_dict(data)
     elif logic_tpe == ProceduralLogicType.SampledValue:
         return _sampled_value_logic_from_dict(data)

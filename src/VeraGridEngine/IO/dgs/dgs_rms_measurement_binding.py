@@ -12,10 +12,11 @@ from VeraGridEngine.Devices.Branches.vsc import VSC
 from VeraGridEngine.Devices.Branches.line import Line
 from VeraGridEngine.Devices.Branches.series_reactance import SeriesReactance
 from VeraGridEngine.Devices.Branches.transformer import Transformer2W
+from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
+from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Devices.Injections.generator import Generator
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Devices.Parents.dynamic_parent import DynamicDevice
-from VeraGridEngine.IO.dgs.dynamic_models.dgs_dynamic_association import DgsDynamicAssociation
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.IO.dgs.dgs_circuit import DgsCircuit
 from VeraGridEngine.IO.dgs.dgs_objects import (
@@ -1688,6 +1689,10 @@ def _build_meter_targets(
 def bind_dgs_rms_measurements(
         circuit: MultiCircuit,
         dgs_circuit: DgsCircuit,
+        templates_by_root_dgs_id: Dict[
+            str,
+            RmsModelTemplate | EmtModelTemplate,
+        ],
         logger: Logger,
 ) -> DgsRmsMeasurementBindingReport:
     """
@@ -1699,6 +1704,8 @@ def bind_dgs_rms_measurements(
 
     :param circuit: Imported VeraGrid circuit with prepared electrical RMS shells.
     :param dgs_circuit: Parsed source DGS containing measurement topology.
+    :param templates_by_root_dgs_id: Minimal stage-one association from each
+        unique source root FID to its registered final template.
     :param logger: Diagnostic sink for handled partial failures.
     :return: Structured native-meter binding report.
     """
@@ -1710,9 +1717,36 @@ def bind_dgs_rms_measurements(
         circuit=circuit,
     )
     bus_by_id: Dict[str, Bus] = _build_bus_index(circuit=circuit)
+    root_count_by_id: Dict[str, int] = dict()
+    first_root_by_id: Dict[str, ElmComp] = dict()
     root_element: ElmComp
-
     for root_element in dgs_circuit.elmcomps:
+        root_id: str = str(root_element.ID).strip()
+        if len(root_id) == 0:
+            pass
+        else:
+            previous_count: int | None = root_count_by_id.get(root_id, None)
+            if previous_count is None:
+                root_count_by_id[root_id] = 1
+                first_root_by_id[root_id] = root_element
+            else:
+                root_count_by_id[root_id] = previous_count + 1
+
+    eligible_template_by_root_id: Dict[str, RmsModelTemplate] = dict()
+    eligible_root_by_id: Dict[str, ElmComp] = dict()
+    root_id: str
+    for root_id, root_element in first_root_by_id.items():
+        root_count: int | None = root_count_by_id.get(root_id, None)
+        registered_template: RmsModelTemplate | EmtModelTemplate | None = (
+            templates_by_root_dgs_id.get(root_id, None)
+        )
+        if root_count == 1 and isinstance(registered_template, RmsModelTemplate):
+            eligible_root_by_id[root_id] = root_element
+            eligible_template_by_root_id[root_id] = registered_template
+        else:
+            pass
+
+    for root_id, root_element in eligible_root_by_id.items():
         raw_entries: List[ElmCompInstanceEntry] = extract_elmcomp_direct_instances(
             circuit=dgs_circuit,
             root_element=root_element,
@@ -1723,7 +1757,7 @@ def bind_dgs_rms_measurements(
         unambiguous_entries: List[ElmCompInstanceEntry] = (
             get_unambiguous_elmcomp_direct_instances(entries=raw_entries)
         )
-        host_devices: List[DynamicDevice | DgsDynamicAssociation] = list()
+        host_devices: List[DynamicDevice] = list()
         entry: ElmCompInstanceEntry
         implicit_meter_target_by_slot: Dict[str, str] = (
             _build_implicit_meter_target_by_slot(
@@ -1753,7 +1787,13 @@ def bind_dgs_rms_measurements(
                     entry.element_id,
                     None,
                 )
-                if candidate_host is None or candidate_host.rms_model.empty():
+                expected_template: RmsModelTemplate = (
+                    eligible_template_by_root_id[root_id]
+                )
+                if (
+                        candidate_host is None
+                        or candidate_host.rms_template is not expected_template
+                ):
                     pass
                 else:
                     if candidate_host in host_devices:
@@ -1761,25 +1801,8 @@ def bind_dgs_rms_measurements(
                     else:
                         host_devices.append(candidate_host)
 
-        if len(host_devices) == 0:
-            # Multi-actuator composites execute once on their non-physical root
-            # association. This preserves one shared controller state while the
-            # exact native meters below still bind to physical network signals.
-            logical_host: object
-            for logical_host in circuit.get_dgs_dynamic_associations():
-                if (
-                        isinstance(logical_host, DgsDynamicAssociation)
-                        and logical_host.root_dgs_id == str(root_element.ID)
-                        and not logical_host.rms_model.empty()
-                ):
-                    host_devices.append(logical_host)
-                else:
-                    pass
-        else:
-            pass
-
         if len(host_devices) == 1:
-            host_device: DynamicDevice | DgsDynamicAssociation = host_devices[0]
+            host_device: DynamicDevice = host_devices[0]
             # Every native meter of this composite targets the same activated
             # symbolic tree. Build its expensive recursive legacy index once,
             # then let each meter overlay its exact DGS endpoint resolution.

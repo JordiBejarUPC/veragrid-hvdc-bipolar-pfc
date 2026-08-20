@@ -4809,6 +4809,8 @@ class ProceduralLogicType(Enum):
     TimeDelay = "time_delay"
     MovingAverage = "moving_average"
     GradientLimiter = "gradient_limiter"
+    ConditionalDiagnostic = "conditional_diagnostic"
+    DelayedSwitchEvent = "delayed_switch_event"
     DelayedThresholdLatch = "delayed_threshold_latch"
     StartupHandover = "startup_handover"
     ValveState = "valve_state"

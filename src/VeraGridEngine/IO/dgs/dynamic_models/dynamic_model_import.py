@@ -8,7 +8,6 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
-import uuid
 from enum import Enum, auto
 from pathlib import Path
 from typing import Callable, Dict, List, Sequence, Set, Tuple
@@ -16,7 +15,6 @@ from typing import Callable, Dict, List, Sequence, Set, Tuple
 from VeraGridEngine.Devices.Diagrams.block_diagram import BlockDiagramConnection
 from VeraGridEngine.Devices.Diagrams.block_diagram import BlockDiagramNode
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
-from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Devices.Parents.dynamic_parent import DynamicDevice
 from VeraGridEngine.Devices.Branches.vsc import VSC
@@ -29,14 +27,10 @@ from VeraGridEngine.IO.dgs.dgs_to_blocks import (
     DgsGraphicTreeResult,
     DgsRootBlockResult,
     DgsStandaloneBlockCatalogEntry,
+    DgsStandaloneBlockOccurrence,
     ElmCompInstanceEntry,
     ParsedDgsBlockDefinition,
-    _BlockModuleVariableGroups,
-    _build_block_module_variable_groups,
-    _emit_block_code,
-    _make_identifier_map,
-    _procedural_logic_import_names,
-    _safe_name,
+    UnsupportedDgsExpression,
     build_dgs_graphical_indexes,
     build_dgs_standalone_block_catalog_from_circuit,
     build_direct_root_elmcomp_block,
@@ -47,11 +41,8 @@ from VeraGridEngine.IO.dgs.dgs_to_blocks import (
     extract_root_slot_graphical_tree_from_circuit,
     get_blkslot_signal_interface,
     get_unique_elmcomp_slot_entries,
+    list_dgs_blkref_catalog_occurrences_from_circuit,
     parse_dgs_block_definitions_from_circuit,
-)
-from VeraGridEngine.IO.dgs.dgs_discrete_event import (
-    DgsDiscreteEventAction,
-    dgs_discrete_event_action_from_dict,
 )
 from VeraGridEngine.IO.dgs.dgs_objects import BlkSlot
 from VeraGridEngine.IO.dgs.dgs_objects import ElmComp
@@ -67,9 +58,6 @@ from VeraGridEngine.IO.dynamic_model_import_types import (
     DynamicModelImportSource,
     DynamicModelImportSourceProvenance,
     DynamicModelLoadedUserTemplate,
-    DynamicModelPersistenceKind,
-    DynamicModelPersistenceSpec,
-    SelectedDynamicImportWork,
     _emit_dynamic_model_import_progress,
 )
 from VeraGridEngine.IO.dgs.dynamic_models.dgs_dynamic_association import DgsDynamicAssociationRecord
@@ -96,23 +84,9 @@ from VeraGridEngine.IO.dgs.dynamic_models.dgs_elmsvs_runtime_adapter import (
     is_dgs_elmsvs_slot_contract,
 )
 from VeraGridEngine.IO.file_system import get_create_veragrid_folder
-from VeraGridEngine.IO.dynamic_model_import_utils import (
-    append_python_syntax_assignment,
-    sanitize_dynamic_model_file_stem,
-)
+from VeraGridEngine.IO.dynamic_model_import_utils import sanitize_dynamic_model_file_stem
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic import Var
-from VeraGridEngine.Utils.procedural_logic import AnalogFlipFlopLogic
-from VeraGridEngine.Utils.procedural_logic import FixedSampleLogic
-from VeraGridEngine.Utils.procedural_logic import FlipFlopLogic
-from VeraGridEngine.Utils.procedural_logic import GradientLimiterLogic
-from VeraGridEngine.Utils.procedural_logic import HardSaturationLogic
-from VeraGridEngine.Utils.procedural_logic import MovingAverageLogic
-from VeraGridEngine.Utils.procedural_logic import PickupDropoffLogic
-from VeraGridEngine.Utils.procedural_logic import ProceduralLogicBase
-from VeraGridEngine.Utils.procedural_logic import ResetOnRisingEdgeLogic
-from VeraGridEngine.Utils.procedural_logic import SampledValueLogic
-from VeraGridEngine.Utils.procedural_logic import TimeDelayLogic
 from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.enumerations import (
     BlockType,
@@ -133,6 +107,8 @@ class _DgsRuntimeAdapterKind(Enum):
     VSC_BIPOLAR = auto()
     SYNCHRONOUS_MACHINE_PENDING = auto()
     SYNCHRONOUS_MACHINE = auto()
+    STATIC_GENERATOR = auto()
+    STATIC_VAR_SYSTEM = auto()
 
 
 class _DgsElmCompRelationKind(Enum):
@@ -182,62 +158,6 @@ class _DgsElmCompRelationClassification:
         :return: Human-readable classification evidence.
         """
         return self._reason
-
-
-class _DgsRuntimeBlockContract:
-    """Expose legacy runtime metadata through one typed importer boundary."""
-
-    __slots__ = ("_block",)
-
-    def __init__(self, block: Block) -> None:
-        """Create a typed view over one symbolic runtime block.
-
-        :param block: Symbolic block whose adapter contract is queried.
-        :return: None.
-        """
-        self._block: Block = block
-
-    def matches(self, adapter_kind: _DgsRuntimeAdapterKind) -> bool:
-        """Return whether the block declares one exact adapter contract.
-
-        Dynamic metadata is confined to this compatibility boundary so the
-        import algorithm never reads ``Block.__dict__`` or string markers.
-
-        :param adapter_kind: Exact runtime-adapter contract to query.
-        :return: ``True`` only when the block declares that contract.
-        """
-        adapter_marker: object | None
-        if adapter_kind == _DgsRuntimeAdapterKind.VSC_MONOPOLAR:
-            adapter_marker = self._block.__dict__.get(
-                "dgs_elmvscmono_runtime_adapter",
-                None,
-            )
-        else:
-            if adapter_kind == _DgsRuntimeAdapterKind.VSC_BIPOLAR:
-                adapter_marker = self._block.__dict__.get(
-                    "dgs_elmvsc_runtime_adapter",
-                    None,
-                )
-            else:
-                if (
-                        adapter_kind
-                        == _DgsRuntimeAdapterKind.SYNCHRONOUS_MACHINE_PENDING
-                ):
-                    adapter_marker = self._block.__dict__.get(
-                        "dgs_elmsym_runtime_adapter_pending",
-                        None,
-                    )
-                else:
-                    adapter_marker = self._block.__dict__.get(
-                        "dgs_elmsym_runtime_adapter",
-                        None,
-                    )
-
-        if isinstance(adapter_marker, bool):
-            result: bool = adapter_marker
-        else:
-            result = False
-        return result
 
 
 def _classify_dgs_elmcomp_relation(
@@ -530,8 +450,6 @@ def _build_dgs_root_elmcomp_entries_with_progress(
     graph_tree: DgsGraphicTreeResult | None
     cached_slot_block: Block | None
     materialized_slot_block: Block | None
-    slot_was_graphical: bool
-    slot_persistence_spec: DynamicModelPersistenceSpec
     parsed_slot_block: ParsedDgsBlockDefinition | None
     effective_type_id: str | None
     total_root_count: int
@@ -730,14 +648,6 @@ def _build_dgs_root_elmcomp_entries_with_progress(
                     source_tpe=DynamicModelImportSource.PowerFactoryDgs,
                     source_block=root_block,
                     notes_text="Root ElmComp block",
-                    persistence_spec=DynamicModelPersistenceSpec(
-                        kind=DynamicModelPersistenceKind.DgsRootElmComp,
-                        source_path=dgs_path,
-                        template_name=root_element.loc_name,
-                        module_stem=_sanitize_file_stem(root_element.loc_name),
-                        root_name=root_element.loc_name,
-                        root_typ_id=root_element.typ_id,
-                    ),
                     source_provenance=root_source_provenance,
                 )
                 entries.append(root_entry)
@@ -902,16 +812,10 @@ def _build_dgs_root_elmcomp_entries_with_progress(
 
                             if graph_tree is None:
                                 materialized_slot_block = None
-                                slot_was_graphical = False
                             else:
                                 materialized_slot_block = graph_tree.view_block
-                                slot_was_graphical = True
                         else:
                             materialized_slot_block = cached_slot_block
-                            if graph_tree is None:
-                                slot_was_graphical = False
-                            else:
-                                slot_was_graphical = True
 
                         if graph_tree is None:
                             unresolved_graphical_input_names: List[str] = list()
@@ -998,14 +902,6 @@ def _build_dgs_root_elmcomp_entries_with_progress(
                                         source_block=slot_block,
                                         notes_text=f"Root: {root_element.loc_name} | Slot: {slot_display_name}",
                                         parent_key=slot_parent_key,
-                                        persistence_spec=DynamicModelPersistenceSpec(
-                                            kind=DynamicModelPersistenceKind.DgsStandaloneBlkdef,
-                                            source_path=dgs_path,
-                                            template_name=slot_template_name,
-                                            module_stem=_sanitize_file_stem(slot_template_name),
-                                            block_id=effective_type_id,
-                                            block_name=str(direct_entry.type_name),
-                                        ),
                                         source_provenance=slot_source_provenance,
                                     )
                                 )
@@ -1039,25 +935,6 @@ def _build_dgs_root_elmcomp_entries_with_progress(
                                     )
                                 )
                             else:
-                                if slot_was_graphical:
-                                    slot_persistence_spec = DynamicModelPersistenceSpec(
-                                        kind=DynamicModelPersistenceKind.DgsRootSlotGraphicalTree,
-                                        source_path=dgs_path,
-                                        template_name=slot_template_name,
-                                        module_stem=_sanitize_file_stem(slot_template_name),
-                                        root_name=root_element.loc_name,
-                                        root_typ_id=root_element.typ_id,
-                                        slot_name=slot_display_name,
-                                    )
-                                else:
-                                    slot_persistence_spec = DynamicModelPersistenceSpec(
-                                        kind=DynamicModelPersistenceKind.DgsStandaloneBlkdef,
-                                        source_path=dgs_path,
-                                        template_name=slot_template_name,
-                                        module_stem=_sanitize_file_stem(slot_template_name),
-                                        block_id=effective_type_id,
-                                        block_name=str(direct_entry.type_name),
-                                    )
                                 entries.append(
                                     DynamicModelImportEntry(
                                         unique_key=f"dgs-slot|{root_element.ID}|{slot_identity}|{direct_entry.element_id}",
@@ -1066,7 +943,6 @@ def _build_dgs_root_elmcomp_entries_with_progress(
                                         source_block=slot_block,
                                         notes_text=f"Root: {root_element.loc_name} | Slot: {slot_display_name}",
                                         parent_key=slot_parent_key,
-                                        persistence_spec=slot_persistence_spec,
                                         source_provenance=slot_source_provenance,
                                     )
                                 )
@@ -1175,14 +1051,6 @@ def build_dgs_dynamic_model_import_bundle(
                 source_tpe=DynamicModelImportSource.PowerFactoryDgs,
                 source_block=source_block,
                 notes_text=notes_text,
-                persistence_spec=DynamicModelPersistenceSpec(
-                    kind=DynamicModelPersistenceKind.DgsStandaloneBlkdef,
-                    source_path=dgs_path,
-                    template_name=catalog_entry.blkdef_name,
-                    module_stem=_sanitize_file_stem(catalog_entry.blkdef_name),
-                    block_id=catalog_entry.typ_id,
-                    block_name=catalog_entry.blkdef_name,
-                ),
             )
         )
 
@@ -1264,13 +1132,15 @@ def guess_dynamic_model_import_default_device_tpe(entry: "DynamicModelImportEntr
     :param entry: Imported entry.
     :return: Default device type guess.
     """
-    persistence_spec: DynamicModelPersistenceSpec | None = entry.get_persistence_spec()
     source_provenance: DynamicModelImportSourceProvenance | None = (
         entry.get_source_provenance()
     )
     is_root_composite: bool = (
-        persistence_spec is not None and
-        persistence_spec.get_kind() == DynamicModelPersistenceKind.DgsRootElmComp
+        entry.get_source_tpe() == DynamicModelImportSource.PowerFactoryDgs
+        and source_provenance is not None
+        and source_provenance.get_slot_index() is None
+        and entry.get_parent_key() is None
+        and entry.get_source_block() is not None
     )
     is_nested_composite: bool = (
         source_provenance is not None and
@@ -1339,6 +1209,7 @@ def get_dgs_dynamic_host_device_tpe(source_element_class: str | None) -> DeviceT
 def is_dgs_dynamic_block_runtime_assignable(
         block: Block,
         device_tpe: DeviceType,
+        adapter_kind: _DgsRuntimeAdapterKind | None = None,
 ) -> bool:
     """
     Check that an imported root exposes a complete VeraGrid runtime contract.
@@ -1351,15 +1222,13 @@ def is_dgs_dynamic_block_runtime_assignable(
 
     :param block: Imported domain-neutral symbolic block.
     :param device_tpe: Exact physical host type inferred from DGS.
+    :param adapter_kind: Import-local adapter classification. ``None`` retains
+        compatibility with catalogue callers that inspect legacy templates.
     :return: ``True`` only for a complete supported runtime interface.
     """
     mapping_refs: Set[VarPowerFlowReferenceType] = set(block.external_mapping)
     input_refs: Set[VarPowerFlowReferenceType] = set()
     input_var: Var
-    runtime_block_contract: _DgsRuntimeBlockContract = (
-        _DgsRuntimeBlockContract(block)
-    )
-
     for input_var in block.in_vars:
         if isinstance(input_var.ref, VarPowerFlowReferenceType):
             input_refs.add(input_var.ref)
@@ -1374,9 +1243,10 @@ def is_dgs_dynamic_block_runtime_assignable(
             VarPowerFlowReferenceType.Pt,
             VarPowerFlowReferenceType.Qt,
         )
-        if runtime_block_contract.matches(
-                _DgsRuntimeAdapterKind.VSC_MONOPOLAR
-        ):
+        is_monopolar_vsc: bool = (
+            adapter_kind == _DgsRuntimeAdapterKind.VSC_MONOPOLAR
+        )
+        if is_monopolar_vsc:
             required_input_values = (
                 VarPowerFlowReferenceType.Vf_dc,
                 VarPowerFlowReferenceType.Vmt,
@@ -1431,6 +1301,139 @@ def is_dgs_dynamic_block_runtime_assignable(
     return result
 
 
+def _get_dgs_runtime_adapter_kind(
+        block: Block,
+        device_tpe: DeviceType,
+) -> _DgsRuntimeAdapterKind | None:
+    """Classify one source block without attaching metadata to it.
+
+    The classification exists only during the DGS conversion.  It replaces
+    mutable undeclared metadata previously copied onto ``Block`` and is
+    discarded after the final template has been configured and assigned.
+
+    :param block: Directly materialized DGS root block.
+    :param device_tpe: Exact physical host family resolved by FID.
+    :return: Required runtime adapter, or ``None`` for a native contract.
+    """
+    if device_tpe == DeviceType.VscDevice:
+        if is_dgs_elmvscmono_slot_contract(block):
+            adapter_kind: _DgsRuntimeAdapterKind | None = (
+                _DgsRuntimeAdapterKind.VSC_MONOPOLAR
+            )
+        else:
+            if is_dgs_elmvsc_slot_contract(block):
+                adapter_kind = _DgsRuntimeAdapterKind.VSC_BIPOLAR
+            else:
+                adapter_kind = None
+    else:
+        if device_tpe == DeviceType.GeneratorDevice:
+            if is_dgs_elmsym_slot_contract(block):
+                adapter_kind = (
+                    _DgsRuntimeAdapterKind.SYNCHRONOUS_MACHINE_PENDING
+                )
+            else:
+                if is_dgs_elmgenstat_slot_contract(block):
+                    adapter_kind = _DgsRuntimeAdapterKind.STATIC_GENERATOR
+                else:
+                    adapter_kind = None
+        else:
+            if (
+                    device_tpe == DeviceType.ControllableShuntDevice
+                    and is_dgs_elmsvs_slot_contract(block)
+            ):
+                adapter_kind = _DgsRuntimeAdapterKind.STATIC_VAR_SYSTEM
+            else:
+                adapter_kind = None
+    return adapter_kind
+
+
+def _get_dgs_direct_runtime_adapter_kind(
+        direct_result: DgsDirectRootBuildResult,
+        host_identity: Tuple[str, DeviceType, str, str | None],
+) -> _DgsRuntimeAdapterKind | None:
+    """Classify a VSC adapter from one exact typed physical BlkSlot.
+
+    The source equipment FID and class must match exactly one resolved direct
+    relation. Signal names are then checked only inside that relation's declared
+    input/output lists, including uniqueness and direction. Recursive names in
+    unrelated controller children cannot establish an equipment contract.
+
+    :param direct_result: Materialized root plus its validated transient slots.
+    :param host_identity: Exact FID, device type, source class and source name.
+    :return: Structurally proven direct adapter, or ``None``.
+    """
+    host_source_id: str = host_identity[0]
+    host_device_tpe: DeviceType = host_identity[1]
+    host_source_class: str = host_identity[2]
+    matching_entries: List[ElmCompInstanceEntry] = list()
+    direct_entry: ElmCompInstanceEntry
+    for direct_entry in direct_result.direct_entries:
+        if (
+                direct_entry.element_reference_is_resolved
+                and direct_entry.element_id == host_source_id
+                and direct_entry.element_kind == host_source_class
+        ):
+            matching_entries.append(direct_entry)
+        else:
+            pass
+
+    if host_device_tpe != DeviceType.VscDevice or len(matching_entries) != 1:
+        adapter_kind: _DgsRuntimeAdapterKind | None = None
+    else:
+        equipment_entry: ElmCompInstanceEntry = matching_entries[0]
+        host_matches_declared_equipment: bool = (
+            equipment_entry.accepts_element_kind(
+                element_kind=host_source_class,
+            )
+        )
+        output_names: Set[str] = set(equipment_entry.slot_outputs)
+        input_names: Set[str] = set(equipment_entry.slot_inputs)
+        contract_is_unique_and_directional: bool = bool(
+            len(output_names) == len(equipment_entry.slot_outputs)
+            and len(input_names) == len(equipment_entry.slot_inputs)
+            and output_names.isdisjoint(input_names)
+            and host_matches_declared_equipment
+        )
+        if not contract_is_unique_and_directional:
+            adapter_kind = None
+        else:
+            if host_source_class == "ElmVscmono":
+                required_outputs: Set[str] = set(("id", "iq", "uDC"))
+                required_inputs: Set[str] = set(("Pmd", "Pmq"))
+                has_angle_inputs: bool = bool(
+                    {"cosref", "sinref"}.issubset(input_names)
+                    or {"cosphi", "sinphi"}.issubset(input_names)
+                )
+                if (
+                        required_outputs.issubset(output_names)
+                        and required_inputs.issubset(input_names)
+                        and has_angle_inputs
+                ):
+                    adapter_kind = _DgsRuntimeAdapterKind.VSC_MONOPOLAR
+                else:
+                    adapter_kind = None
+            else:
+                if host_source_class == "ElmVsc":
+                    required_inputs = set(("Pmr", "Pmi", "mdc"))
+                    current_output_count: int = int("iDC" in output_names) + int(
+                        "idc" in output_names
+                    )
+                    cell_voltage_output_count: int = int(
+                        "yUcell" in output_names
+                    ) + int("Ucap" in output_names)
+                    if (
+                            required_inputs.issubset(input_names)
+                            and current_output_count == 1
+                            and cell_voltage_output_count == 1
+                    ):
+                        adapter_kind = _DgsRuntimeAdapterKind.VSC_BIPOLAR
+                    else:
+                        adapter_kind = None
+                else:
+                    adapter_kind = None
+    return adapter_kind
+
+
 def guess_dynamic_model_import_hierarchy_device_tpe(
         bundle: "DynamicModelImportBundle",
         entry: "DynamicModelImportEntry",
@@ -1451,10 +1454,11 @@ def guess_dynamic_model_import_hierarchy_device_tpe(
     source_provenance: DynamicModelImportSourceProvenance | None = (
         entry.get_source_provenance()
     )
-    persistence_spec: DynamicModelPersistenceSpec | None = entry.get_persistence_spec()
     is_root_composite: bool = (
-        persistence_spec is not None
-        and persistence_spec.get_kind() == DynamicModelPersistenceKind.DgsRootElmComp
+        source_provenance is not None
+        and source_provenance.get_slot_index() is None
+        and entry.get_parent_key() is None
+        and entry.get_source_block() is not None
     )
     host_identities: Set[Tuple[str, DeviceType]] = set()
     candidate_entry: DynamicModelImportEntry
@@ -1506,6 +1510,10 @@ def guess_dynamic_model_import_hierarchy_device_tpe(
                 runtime_contract_ready: bool = is_dgs_dynamic_block_runtime_assignable(
                     block=source_block,
                     device_tpe=host_identity[1],
+                    adapter_kind=_get_dgs_runtime_adapter_kind(
+                        block=source_block,
+                        device_tpe=host_identity[1],
+                    ),
                 )
                 elmvsc_adapter_supported: bool = (
                     host_identity[1] == DeviceType.VscDevice
@@ -1583,20 +1591,6 @@ def _apply_composite_child_interface_if_missing(block: Block) -> None:
     block.out_vars = list(output_vars_by_uid.values())
 
 
-def mark_imported_template_editor_only(block: Block) -> None:
-    """
-    Mark one imported reusable template block as editor-only.
-
-    Imported control-code templates must remain available in the editor library and
-    the template database, but they must not appear as assignable physical-device
-    templates in the object properties table.
-
-    :param block: Imported reusable template block.
-    :return: None.
-    """
-    block.__dict__["imported_template_editor_only"] = True
-
-
 def _clone_import_block(block: Block) -> Block:
     """
     Clone one imported symbolic block for one selected target template.
@@ -1642,16 +1636,6 @@ def _build_selected_template_from_import_entry(
         # deep copy of every OEM model at peak memory.
         cloned_block = source_block
         _apply_composite_child_interface_if_missing(cloned_block)
-    if selection_request.get_device_tpe() in {
-        DeviceType.NoDevice,
-        DeviceType.DynamicModelHostDevice,
-    }:
-        mark_imported_template_editor_only(cloned_block)
-    else:
-        # An exact one-host DGS composite is a real assignable device template,
-        # so the ordinary GUI property selector must expose it.
-        pass
-
     if selection_request.get_target_domain() == DynamicSimulationMode.EMT:
         emt_template = EmtModelTemplate(name=template_name)
         emt_template.tpe = selection_request.get_device_tpe()
@@ -1746,300 +1730,100 @@ def _build_selected_template_from_import_entry(
             return None
 
 
-def _normalize_output_logic_runtime_variable_name(
-        logic: FixedSampleLogic
-        | SampledValueLogic
-        | FlipFlopLogic
-        | AnalogFlipFlopLogic
-        | PickupDropoffLogic
-        | TimeDelayLogic
-        | MovingAverageLogic
-        | GradientLimiterLogic
-        | HardSaturationLogic,
-        runtime_suffix: str,
-) -> None:
-    """Normalize one procedural output name and its matching logic name.
+def _build_dgs_direct_runtime_template(
+        source_block: Block,
+        template_name: str,
+        target_domain: DynamicSimulationMode,
+        device_tpe: DeviceType,
+        adapter_kind: _DgsRuntimeAdapterKind | None,
+) -> RmsModelTemplate | EmtModelTemplate:
+    """Wrap one directly materialized DGS block in its final template.
 
-    :param logic: Procedural logic exposing an ``output_var_name`` slot.
-    :param runtime_suffix: Generated template suffix to remove.
-    :return: None.
+    The caller transfers ownership of ``source_block``.  No catalogue entry,
+    serialization payload or duplicate symbolic graph is created between the
+    parser and the final ``MultiCircuit`` template.
+
+    :param source_block: Direct root block owned by this conversion.
+    :param template_name: Final reusable-template display name.
+    :param target_domain: Explicit RMS or EMT destination.
+    :param device_tpe: Exact physical host family or generic dynamic host.
+    :param adapter_kind: Import-local runtime adapter classification.
+    :return: Final RMS or EMT template ready for circuit registration.
     """
-    old_output_name: str = logic.output_var_name
-    if len(runtime_suffix) > 1 and old_output_name.endswith(runtime_suffix):
-        new_output_name: str = old_output_name[:-len(runtime_suffix)]
-        if logic.name == old_output_name:
-            logic.name = new_output_name
-        else:
-            pass
-        logic.output_var_name = new_output_name
+    # Complete only the public composite ports already owned by the child graph.
+    _apply_composite_child_interface_if_missing(block=source_block)
+    source_block.name = template_name
+    template_comment: str = (
+        f"PowerFactory DGS dynamic model: {template_name}"
+    )
+
+    if target_domain == DynamicSimulationMode.EMT:
+        emt_template: EmtModelTemplate = EmtModelTemplate(name=template_name)
+        emt_template.tpe = device_tpe
+        emt_template.block = source_block
+        emt_template.name = template_name
+        emt_template.comment = template_comment
+        result: RmsModelTemplate | EmtModelTemplate = emt_template
     else:
-        pass
+        rms_template: RmsModelTemplate = RmsModelTemplate(name=template_name)
+        rms_template.tpe = device_tpe
+        rms_template.block = source_block
+        rms_template.name = template_name
+        rms_template.comment = template_comment
+        adapted_template: RmsModelTemplate | None
 
-
-def _normalize_procedural_logic_runtime_variable_names(
-        block: Block,
-        runtime_suffix: str,
-) -> None:
-    """
-    Normalize generated variable suffixes stored as procedural-logic strings.
-
-    Procedural logic retains its output or target variable by name.  Those names
-    must be normalized together with the symbolic :class:`Var` instances so the
-    canonical emitter can still resolve the local variable after a persisted
-    template has been materialized with a runtime suffix.
-
-    :param block: Block whose complete child tree is normalized.
-    :param runtime_suffix: Generated template suffix to remove.
-    :return: None.
-    """
-    logic: ProceduralLogicBase
-    child_block: Block
-
-    for logic in block.procedural_logic:
-        if isinstance(logic, ResetOnRisingEdgeLogic):
-            old_target_name: str = logic.target_var_name
-            if len(runtime_suffix) > 1 and old_target_name.endswith(runtime_suffix):
-                new_target_name: str = old_target_name[:-len(runtime_suffix)]
-                if logic.name == f"{old_target_name}_reset":
-                    logic.name = f"{new_target_name}_reset"
-                else:
-                    pass
-                logic.target_var_name = new_target_name
-            else:
-                pass
+        # Runtime wrappers consume the same block directly; cloning here would
+        # create the forbidden second semantic model during a massive import.
+        if adapter_kind == _DgsRuntimeAdapterKind.VSC_MONOPOLAR:
+            adapted_template = build_dgs_elmvscmono_rms_runtime_template(
+                control_template=rms_template,
+                clone_control_block=False,
+            )
         else:
-            if isinstance(
-                    logic,
-                    (
-                        FixedSampleLogic,
-                        SampledValueLogic,
-                        FlipFlopLogic,
-                        AnalogFlipFlopLogic,
-                        PickupDropoffLogic,
-                        TimeDelayLogic,
-                        MovingAverageLogic,
-                        GradientLimiterLogic,
-                        HardSaturationLogic,
-                    ),
-            ):
-                _normalize_output_logic_runtime_variable_name(
-                    logic=logic,
-                    runtime_suffix=runtime_suffix,
+            if adapter_kind == _DgsRuntimeAdapterKind.VSC_BIPOLAR:
+                adapted_template = build_dgs_elmvsc_rms_runtime_template(
+                    control_template=rms_template,
+                    clone_control_block=False,
                 )
             else:
-                pass
+                if (
+                        adapter_kind
+                        == _DgsRuntimeAdapterKind.SYNCHRONOUS_MACHINE_PENDING
+                ):
+                    adapted_template = build_dgs_elmsym_rms_runtime_template(
+                        control_template=rms_template,
+                        clone_control_block=False,
+                    )
+                else:
+                    if adapter_kind == _DgsRuntimeAdapterKind.STATIC_GENERATOR:
+                        adapted_template = (
+                            build_dgs_elmgenstat_rms_runtime_template(
+                                control_template=rms_template,
+                                clone_control_block=False,
+                            )
+                        )
+                    else:
+                        if (
+                                adapter_kind
+                                == _DgsRuntimeAdapterKind.STATIC_VAR_SYSTEM
+                        ):
+                            adapted_template = (
+                                build_dgs_elmsvs_rms_runtime_template(
+                                    control_template=rms_template,
+                                    clone_control_block=False,
+                                )
+                            )
+                        else:
+                            adapted_template = rms_template
 
-    for child_block in block.children:
-        _normalize_procedural_logic_runtime_variable_names(
-            block=child_block,
-            runtime_suffix=runtime_suffix,
-        )
-
-
-def _normalize_dynamic_import_runtime_variable_names(block: Block,
-                                                     template_name: str) -> None:
-    """
-    Remove one generated runtime-template suffix from every symbolic variable.
-
-    Persisted template modules append ``_<template name>`` when allocating
-    variables in a :class:`VarFactory`.  The suffix prevents collisions at
-    runtime but is not part of the model structure, so structural fingerprints
-    must remove it before comparing a direct DGS block with a reloaded module.
-
-    :param block: Persistable block copied for canonicalization.
-    :param template_name: Runtime template name whose suffix is normalized.
-    :return: None.
-    """
-    variable_groups: _BlockModuleVariableGroups = _build_block_module_variable_groups(block)
-    variable_collections: List[List[Var]] = list()
-    runtime_suffix: str = f"_{template_name}"
-    variable_collection: List[Var]
-    var_obj: Var
-    variable_count: int = 0
-    every_variable_has_runtime_suffix: bool = True
-
-    # Keep the collections separate so the variable groups remain explicit and
-    # no temporary concatenated list is allocated for this normalization pass.
-    variable_collections.append(variable_groups.param_vars)
-    variable_collections.append(variable_groups.state_vars)
-    variable_collections.append(variable_groups.algebraic_vars)
-    variable_collections.append(variable_groups.diff_vars)
-
-    # Direct DGS variables may naturally end with the template name, for
-    # example parameter ``K__K`` in template ``K``.  A loaded canonical Python
-    # module is distinguishable because the emitter appends the runtime suffix
-    # to every allocated variable.  Normalize only that complete surface so a
-    # coincidental source suffix is never truncated.
-    for variable_collection in variable_collections:
-        for var_obj in variable_collection:
-            variable_count += 1
-            if len(runtime_suffix) > 1 and var_obj.name.endswith(runtime_suffix):
-                pass
-            else:
-                every_variable_has_runtime_suffix = False
-
-    should_normalize_runtime_suffix: bool = (
-        variable_count > 0 and every_variable_has_runtime_suffix
-    )
-    if should_normalize_runtime_suffix:
-        # Procedural records store variable names as strings, so normalize
-        # those records before the referenced variables lose their suffix.
-        _normalize_procedural_logic_runtime_variable_names(
-            block=block,
-            runtime_suffix=runtime_suffix,
-        )
-    else:
-        return
-
-    for variable_collection in variable_collections:
-        for var_obj in variable_collection:
-            if len(runtime_suffix) > 1 and var_obj.name.endswith(runtime_suffix):
-                var_obj.name = var_obj.name[:-len(runtime_suffix)]
-            else:
-                pass
-
-
-def build_dynamic_import_template_canonical_text(
-        template_obj: RmsModelTemplate | EmtModelTemplate,
-        logger: Logger | None = None,
-) -> str | None:
-    """
-    Build deterministic canonical Python for one reusable template.
-
-    The same readable Python emitter used by persisted user templates is also a
-    useful canonical representation once the root name is neutralized.  Exposing
-    the canonical text lets validators report exact roundtrip differences instead
-    of reducing every mismatch immediately to a digest.
-
-    :param template_obj: Materialized reusable template.
-    :param logger: Optional diagnostics sink for canonicalization failures.
-    :return: Canonical Python module text, or ``None`` when canonicalization fails.
-    """
-    fingerprint_block: Block
-    target_domain: DynamicSimulationMode
-    module_text: str
-    can_use_read_only_block: bool
-
-    try:
-        # Use the same canonical block surface that is written to the user
-        # catalogue. Imported editor-only interface nodes are intentionally
-        # omitted because the generated module recreates the semantic model,
-        # not those transient visual helpers.
-        can_use_read_only_block = (
-            _can_build_dynamic_import_canonical_text_read_only(
-                block=template_obj.block,
-                template_name=template_obj.name,
-            )
-        )
-        if can_use_read_only_block:
-            # DGS materialization has already deep-copied and consolidated this
-            # block. A shallow root copy lets canonicalization neutralize only
-            # the root name while every large immutable symbolic collection is
-            # shared read-only during Python source emission.
-            fingerprint_block = copy.copy(template_obj.block)
+        if adapted_template is None:
+            # Preserve the declarative root for inspection, but never expose an
+            # incomplete physical adapter as assignable equipment.
+            rms_template.tpe = DeviceType.DynamicModelHostDevice
+            result = rms_template
         else:
-            fingerprint_block = build_user_dynamic_template_persistable_block(
-                template_obj.block
-            )
-            _normalize_dynamic_import_runtime_variable_names(
-                block=fingerprint_block,
-                template_name=template_obj.name,
-            )
-        fingerprint_block.name = "__veragrid_dynamic_template_root__"
-
-        if isinstance(template_obj, RmsModelTemplate):
-            target_domain = DynamicSimulationMode.RMS
-        else:
-            target_domain = DynamicSimulationMode.EMT
-
-        module_text = _build_user_dynamic_template_module_text(
-            block=fingerprint_block,
-            template_name="__veragrid_dynamic_template__",
-            target_domain=target_domain,
-            device_tpe=template_obj.tpe,
-        )
-    except Exception as err:
-        if logger is None:
-            pass
-        else:
-            logger.add_error(
-                msg="Dynamic template canonicalization failed",
-                value=f"{template_obj.name}: {err}",
-            )
-        return None
-
-    return module_text
-
-
-def _can_build_dynamic_import_canonical_text_read_only(
-        block: Block,
-        template_name: str,
-) -> bool:
-    """Return whether canonical Python can read the materialized block directly.
-
-    The fallback remains mandatory for editor wrapper nodes, incomplete legacy
-    composite interfaces, and templates loaded from canonical Python whose
-    runtime suffix must be stripped from every variable. Direct DGS templates
-    already satisfy those transformations during materialization and therefore
-    need no second recursive clone.
-
-    :param block: Materialized reusable-template block.
-    :type block: Block
-    :param template_name: Runtime template name used by suffix detection.
-    :type template_name: str
-    :return: ``True`` when Python source emission is strictly read-only.
-    :rtype: bool
-    """
-    node_data: object
-    has_editor_interface_wrapper: bool = False
-    variable_groups: _BlockModuleVariableGroups
-    variable_collections: List[List[Var]] = list()
-    variable_collection: List[Var]
-    variable: Var
-    runtime_suffix: str = f"_{template_name}"
-    variable_count: int = 0
-    every_variable_has_runtime_suffix: bool = True
-
-    # Persisted catalogues deliberately remove lateral GUI connection blocks.
-    for node_data in block.diagram.node_data.values():
-        if (
-                node_data.tpe == BlockType.INPUT_CONN.name
-                or node_data.tpe == BlockType.OUTPUT_CONN.name
-        ):
-            has_editor_interface_wrapper = True
-        else:
-            pass
-
-    has_incomplete_composite_interface: bool = bool(
-        len(block.children) > 0
-        and len(block.in_vars) == 0
-        and len(block.out_vars) == 0
-    )
-
-    # A module loaded from disk carries the runtime template suffix on every
-    # allocated variable. It must retain the established normalized deep-copy
-    # path because variable names are shared throughout the expression graph.
-    variable_groups = _build_block_module_variable_groups(block)
-    variable_collections.append(variable_groups.param_vars)
-    variable_collections.append(variable_groups.state_vars)
-    variable_collections.append(variable_groups.algebraic_vars)
-    variable_collections.append(variable_groups.diff_vars)
-    for variable_collection in variable_collections:
-        for variable in variable_collection:
-            variable_count += 1
-            if len(runtime_suffix) > 1 and variable.name.endswith(runtime_suffix):
-                pass
-            else:
-                every_variable_has_runtime_suffix = False
-
-    requires_runtime_suffix_normalization: bool = bool(
-        variable_count > 0 and every_variable_has_runtime_suffix
-    )
-    return not bool(
-        has_editor_interface_wrapper
-        or has_incomplete_composite_interface
-        or requires_runtime_suffix_normalization
-    )
+            result = adapted_template
+    return result
 
 
 def build_dynamic_import_template_fingerprint(
@@ -2051,15 +1835,24 @@ def build_dynamic_import_template_fingerprint(
     :param template_obj: Materialized reusable template.
     :return: SHA-256 fingerprint, or ``None`` when canonicalization fails.
     """
-    module_text: str | None = build_dynamic_import_template_canonical_text(
-        template_obj=template_obj,
-        logger=None,
-    )
+    fingerprint_block: Block = copy.copy(template_obj.block)
+    fingerprint_block.name = "__veragrid_dynamic_template_root__"
+    if isinstance(template_obj, RmsModelTemplate):
+        target_domain: DynamicSimulationMode = DynamicSimulationMode.RMS
+    else:
+        target_domain = DynamicSimulationMode.EMT
 
-    if module_text is None:
+    try:
+        payload_text: str = _build_user_dynamic_template_payload_text(
+            block=fingerprint_block,
+            template_name="__veragrid_dynamic_template__",
+            target_domain=target_domain,
+            device_tpe=template_obj.tpe,
+        )
+    except (KeyError, TypeError, ValueError):
         return None
     else:
-        return hashlib.sha256(module_text.encode("utf-8")).hexdigest()
+        return hashlib.sha256(payload_text.encode("utf-8")).hexdigest()
 
 
 def _build_source_qualified_dynamic_import_template_name(
@@ -2269,7 +2062,8 @@ def add_dynamic_import_selection_requests_to_circuit(
     :param progress_callback: Optional UI progress callback.
     :param user_root_folder: Optional explicit VeraGrid user root used mainly by tests.
     :param rename_conflicting_templates: Rename non-equivalent name collisions instead of dropping them.
-    :param persist_to_user_catalog: Persist successfully added templates as readable Python modules.
+    :param persist_to_user_catalog: Legacy request retained for API compatibility;
+        executable catalogue persistence is refused.
     :param report: Optional structured outcome report populated entry by entry.
     :param template_fingerprint_by_object_id: Optional identity cache shared
         with deferred DGS persistence.
@@ -2282,18 +2076,28 @@ def add_dynamic_import_selection_requests_to_circuit(
     existing_emt_names: Set[str] = set()
     existing_rms_templates_by_fingerprint: Dict[str, RmsModelTemplate] = dict()
     existing_emt_templates_by_fingerprint: Dict[str, EmtModelTemplate] = dict()
-    persistable_work_list: List[SelectedDynamicImportWork] = list()
     processed_entry_keys: Set[str] = set()
     entry: DynamicModelImportEntry
     selection_request: DynamicModelImportSelectionRequest
     template_obj: RmsModelTemplate | EmtModelTemplate | None
     total_selected_count: int
     processed_selected_count: int = 0
-    entry_result: DynamicModelImportEntryResult | None
     template_deduplicated: bool
     template_renamed: bool
     outcome_message: str
     fingerprint_cache: Dict[int, str | None]
+
+    if persist_to_user_catalog:
+        logger.add_warning(
+            msg="Executable dynamic-model catalogue persistence refused",
+            value=(
+                user_root_folder
+                if user_root_folder is not None
+                else "The declarative template remains registered in MultiCircuit"
+            ),
+        )
+    else:
+        pass
 
     if template_fingerprint_by_object_id is None:
         fingerprint_cache = dict()
@@ -2508,7 +2312,7 @@ def add_dynamic_import_selection_requests_to_circuit(
                         entry_status: DynamicModelImportEntryStatus = DynamicModelImportEntryStatus.Renamed
                     else:
                         entry_status = DynamicModelImportEntryStatus.Added
-                    entry_result = _append_dynamic_model_import_entry_result(
+                    _append_dynamic_model_import_entry_result(
                         report=report,
                         entry=entry,
                         selection_request=selection_request,
@@ -2516,27 +2320,6 @@ def add_dynamic_import_selection_requests_to_circuit(
                         status=entry_status,
                         message=outcome_message,
                     )
-                    if persist_to_user_catalog:
-                        persistable_work_list.append(
-                            SelectedDynamicImportWork(
-                                selection_request=selection_request,
-                                template_obj=template_obj,
-                                entry_result=entry_result,
-                                template_fingerprint=template_fingerprint,
-                                # A massive DGS import can contain thousands of
-                                # parameterized variants. Its human-readable
-                                # Python module is canonical and syntax-checked;
-                                # duplicating the complete graph as JSON would
-                                # multiply disk and cold-import cost without
-                                # adding runtime information.
-                                include_validation_snapshot=(
-                                    entry.get_source_tpe()
-                                    is not DynamicModelImportSource.PowerFactoryDgs
-                                ),
-                            )
-                        )
-                    else:
-                        pass
                 else:
                     if template_deduplicated:
                         deduplicated_template: RmsModelTemplate | EmtModelTemplate | None = (
@@ -2572,16 +2355,6 @@ def add_dynamic_import_selection_requests_to_circuit(
                     int(round(60.0 * float(processed_selected_count) / float(total_selected_count))),
                     f"Adding selected dynamic models: {processed_selected_count}/{total_selected_count}",
                 )
-
-    if len(persistable_work_list) > 0:
-        _persist_selected_dynamic_import_work_list(
-            persistable_work_list=persistable_work_list,
-            logger=logger,
-            progress_callback=progress_callback,
-            user_root_folder=user_root_folder,
-        )
-    else:
-        pass
 
     _emit_dynamic_model_import_progress(progress_callback, 100, "Selected dynamic models imported")
 
@@ -2643,44 +2416,6 @@ def _find_exact_dgs_dynamic_host_devices(
     return matches
 
 
-def _find_dgs_dynamic_activation_template(
-        circuit: MultiCircuit,
-        template_name: str,
-        target_domain: DynamicSimulationMode,
-) -> RmsModelTemplate | EmtModelTemplate | None:
-    """
-    Resolve one unique installed template by exact final name and domain.
-
-    :param circuit: Circuit containing the imported reusable catalogue.
-    :param template_name: Collision-resolved final template name.
-    :param target_domain: RMS or EMT target domain retained by the association.
-    :return: Unique template or ``None`` when missing or ambiguous.
-    """
-    matching_templates: List[RmsModelTemplate | EmtModelTemplate] = list()
-    rms_template: RmsModelTemplate
-    emt_template: EmtModelTemplate
-
-    if target_domain == DynamicSimulationMode.RMS:
-        for rms_template in circuit.rms_models:
-            if rms_template.name == template_name:
-                matching_templates.append(rms_template)
-            else:
-                pass
-    else:
-        for emt_template in circuit.emt_models:
-            if emt_template.name == template_name:
-                matching_templates.append(emt_template)
-            else:
-                pass
-
-    if len(matching_templates) == 1:
-        result: RmsModelTemplate | EmtModelTemplate | None = matching_templates[0]
-    else:
-        result = None
-
-    return result
-
-
 def _assign_dgs_dynamic_template_to_host(
         host_device: DynamicDevice,
         template_obj: RmsModelTemplate | EmtModelTemplate,
@@ -2727,9 +2462,721 @@ def _assign_dgs_dynamic_template_to_host(
                 activation_report.record_conflict()
 
 
+def _resolve_dgs_direct_root_host_identity(
+        dgs_circuit: DgsCircuit,
+        root_element: ElmComp,
+        logger: Logger,
+) -> Tuple[str, DeviceType, str, str | None] | None:
+    """Resolve at most one physical host directly from root ``pElm`` FIDs.
+
+    :param dgs_circuit: Parsed declarative DGS object graph.
+    :param root_element: Root composite whose host is being resolved.
+    :param logger: Diagnostic sink for ambiguous source relations.
+    :return: FID, VeraGrid type, source class and source name, or ``None``.
+    """
+    identities: Dict[
+        Tuple[str, DeviceType],
+        Tuple[str, str | None],
+    ] = dict()
+    direct_entries: List[ElmCompInstanceEntry] = (
+        get_unique_elmcomp_slot_entries(
+            entries=extract_elmcomp_direct_instances(
+                circuit=dgs_circuit,
+                root_element=root_element,
+            )
+        )
+    )
+    direct_entry: ElmCompInstanceEntry
+
+    # Only one resolved unique slot may establish each physical FID identity.
+    for direct_entry in direct_entries:
+        source_element_id: str | None = direct_entry.element_id
+        source_element_class: str | None = direct_entry.element_kind
+        host_device_tpe: DeviceType | None = get_dgs_dynamic_host_device_tpe(
+            source_element_class=source_element_class,
+        )
+        if (
+                source_element_id is None
+                or source_element_class is None
+                or not direct_entry.element_reference_is_resolved
+                or host_device_tpe is None
+        ):
+            pass
+        else:
+            host_key: Tuple[str, DeviceType] = (
+                source_element_id,
+                host_device_tpe,
+            )
+            if host_key in identities:
+                pass
+            else:
+                identities[host_key] = (
+                    source_element_class,
+                    direct_entry.element_name,
+                )
+
+    if len(identities) == 1:
+        exact_host_key: Tuple[str, DeviceType] = next(iter(identities))
+        exact_host_source: Tuple[str, str | None] = identities[exact_host_key]
+        result: Tuple[str, DeviceType, str, str | None] | None = (
+            exact_host_key[0],
+            exact_host_key[1],
+            exact_host_source[0],
+            exact_host_source[1],
+        )
+    else:
+        if len(identities) > 1:
+            logger.add_warning(
+                msg=(
+                    "DGS dynamic root retained without activation because "
+                    "it has several physical hosts"
+                ),
+                value=root_element.loc_name,
+            )
+        else:
+            pass
+        result = None
+    return result
+
+
+def _register_dgs_direct_template(
+        circuit: MultiCircuit,
+        template_obj: RmsModelTemplate | EmtModelTemplate,
+        root_dgs_id: str,
+        existing_names: Set[str],
+        logger: Logger,
+) -> bool:
+    """Register one direct DGS template with a deterministic FID collision name.
+
+    :param circuit: Destination circuit.
+    :param template_obj: Final template owning the parsed block.
+    :param root_dgs_id: Exact source root FID used only for collision resolution.
+    :param existing_names: Mutable names already registered in the destination domain.
+    :param logger: Diagnostic sink for irreconcilable collisions.
+    :return: ``True`` when the template was registered.
+    """
+    requested_name: str = str(template_obj.name).strip()
+    if requested_name == "":
+        requested_name = f"DGS dynamic root {root_dgs_id}"
+    else:
+        pass
+
+    if requested_name in existing_names:
+        final_name: str = f"{requested_name} [DGS {root_dgs_id}]"
+    else:
+        final_name = requested_name
+
+    if final_name in existing_names:
+        logger.add_warning(
+            msg="DGS dynamic root skipped because its FID-qualified name already exists",
+            value=final_name,
+        )
+        registered: bool = False
+    else:
+        template_obj.name = final_name
+        template_obj.block.name = final_name
+        if isinstance(template_obj, RmsModelTemplate):
+            circuit.add_rms_model(template_obj)
+        else:
+            circuit.add_emt_model(template_obj)
+        existing_names.add(final_name)
+        registered = True
+    return registered
+
+
+def _activate_dgs_direct_template(
+        circuit: MultiCircuit,
+        template_obj: RmsModelTemplate | EmtModelTemplate,
+        host_identity: Tuple[str, DeviceType, str, str | None],
+        adapter_kind: _DgsRuntimeAdapterKind | None,
+        logger: Logger,
+) -> bool:
+    """Configure and assign one template to the exact imported device FID.
+
+    :param circuit: Circuit containing static devices and the final template.
+    :param template_obj: Registered direct template.
+    :param host_identity: Exact FID, VeraGrid type, source class and source name.
+    :param adapter_kind: Import-local runtime adapter classification.
+    :param logger: Diagnostic sink for fail-closed activation outcomes.
+    :return: ``True`` when the exact host owns this template after the call.
+    """
+    source_element_id: str = host_identity[0]
+    host_device_tpe: DeviceType = host_identity[1]
+    source_element_class: str = host_identity[2]
+    source_element_name: str | None = host_identity[3]
+    host_devices: List[DynamicDevice] = _find_exact_dgs_dynamic_host_devices(
+        circuit=circuit,
+        source_element_dgs_id=source_element_id,
+        device_tpe=host_device_tpe,
+        source_element_class=source_element_class,
+    )
+    if len(host_devices) == 1:
+        host_device: DynamicDevice | None = host_devices[0]
+    else:
+        host_device = None
+
+    adapter_configuration_ready: bool = True
+    if (
+            isinstance(template_obj, RmsModelTemplate)
+            and isinstance(host_device, VSC)
+            and adapter_kind == _DgsRuntimeAdapterKind.VSC_MONOPOLAR
+    ):
+        adapter_configuration_ready = (
+            configure_dgs_elmvscmono_runtime_template_for_device(
+                template=template_obj,
+                device=host_device,
+                system_base_mva=float(circuit.Sbase),
+            )
+        )
+    else:
+        if (
+                isinstance(template_obj, RmsModelTemplate)
+                and isinstance(host_device, VSC)
+                and adapter_kind == _DgsRuntimeAdapterKind.VSC_BIPOLAR
+        ):
+            adapter_configuration_ready = (
+                configure_dgs_elmvsc_runtime_template_for_device(
+                    template=template_obj,
+                    device=host_device,
+                    system_base_mva=float(circuit.Sbase),
+                )
+            )
+        else:
+            if (
+                    isinstance(template_obj, RmsModelTemplate)
+                    and isinstance(host_device, Generator)
+                    and adapter_kind
+                    == _DgsRuntimeAdapterKind.SYNCHRONOUS_MACHINE_PENDING
+            ):
+                adapter_configuration_ready = (
+                    configure_dgs_elmsym_runtime_template_for_device(
+                        template=template_obj,
+                        device=host_device,
+                        system_base_mva=float(circuit.Sbase),
+                    )
+                )
+            else:
+                pass
+
+    runtime_adapter_kind: _DgsRuntimeAdapterKind | None = adapter_kind
+    if (
+            runtime_adapter_kind is None
+            and source_element_class == "ElmVscmono"
+    ):
+        # A native monopolar block may already expose the complete equipment
+        # boundary and therefore need no wrapper, but its voltage contract is
+        # still monopolar during the final fail-closed assignment check.
+        runtime_adapter_kind = _DgsRuntimeAdapterKind.VSC_MONOPOLAR
+    else:
+        pass
+
+    runtime_contract_ready: bool = (
+        host_device is not None
+        and template_obj.tpe == host_device_tpe
+        and adapter_configuration_ready
+        and is_dgs_dynamic_block_runtime_assignable(
+            block=template_obj.block,
+            device_tpe=host_device_tpe,
+            adapter_kind=runtime_adapter_kind,
+        )
+    )
+    if not runtime_contract_ready or host_device is None:
+        # An incomplete physical wrapper remains inspectable, but it must not
+        # appear in the assignable device-template catalogue.
+        template_obj.tpe = DeviceType.DynamicModelHostDevice
+        logger.add_warning(
+            msg=(
+                "DGS dynamic host retained without activation because exact "
+                "resolution or its runtime adapter contract is incomplete"
+            ),
+            device=source_element_name,
+            device_class=source_element_class,
+            value=source_element_id,
+        )
+        activated: bool = False
+    else:
+        if isinstance(template_obj, RmsModelTemplate):
+            current_template: RmsModelTemplate | EmtModelTemplate | None = (
+                host_device.rms_template
+            )
+        else:
+            current_template = host_device.emt_template
+
+        if current_template is template_obj:
+            activated = True
+        else:
+            if current_template is not None:
+                logger.add_warning(
+                    msg="DGS dynamic host already owns a different template",
+                    device=source_element_name,
+                    device_class=source_element_class,
+                    value=source_element_id,
+                )
+                activated = False
+            else:
+                try:
+                    if isinstance(template_obj, RmsModelTemplate):
+                        host_device.rms_template = template_obj
+                    else:
+                        host_device.emt_template = template_obj
+                except (TypeError, ValueError, KeyError) as error:
+                    logger.add_warning(
+                        msg="DGS dynamic template assignment failed",
+                        device=source_element_name,
+                        device_class=source_element_class,
+                        value=str(error),
+                    )
+                    activated = False
+                else:
+                    activated = True
+    return activated
+
+
+def _get_unique_dgs_dynamic_roots_by_id(
+        dgs_circuit: DgsCircuit,
+        logger: Logger,
+        emit_diagnostics: bool,
+) -> Dict[str, ElmComp]:
+    """Select only roots with one non-empty normalized DGS FID.
+
+    The first occurrence of a duplicated FID is deliberately excluded together
+    with every later occurrence.  Keeping the first would let the assignment
+    stage reuse one final template for several source roots.
+
+    :param dgs_circuit: Parsed DGS circuit containing composite roots.
+    :param logger: Import diagnostic sink.
+    :param emit_diagnostics: Whether this validation pass records source errors.
+    :return: Unique roots keyed by their normalized non-empty FID.
+    """
+    root_count_by_id: Dict[str, int] = dict()
+    first_root_by_id: Dict[str, ElmComp] = dict()
+    root_element: ElmComp
+    for root_element in dgs_circuit.elmcomps:
+        root_id: str = str(root_element.ID).strip()
+        if root_id == "":
+            if emit_diagnostics:
+                logger.add_warning(
+                    msg="DGS dynamic root skipped because its FID is empty",
+                    device=root_element.loc_name,
+                    device_class="ElmComp",
+                )
+            else:
+                pass
+        else:
+            current_count: int | None = root_count_by_id.get(root_id, None)
+            if current_count is None:
+                root_count_by_id[root_id] = 1
+                first_root_by_id[root_id] = root_element
+            else:
+                root_count_by_id[root_id] = current_count + 1
+
+    unique_root_by_id: Dict[str, ElmComp] = dict()
+    root_id: str
+    for root_id, root_element in first_root_by_id.items():
+        root_count: int | None = root_count_by_id.get(root_id, None)
+        if root_count == 1:
+            unique_root_by_id[root_id] = root_element
+        else:
+            if emit_diagnostics:
+                logger.add_warning(
+                    msg="DGS dynamic roots skipped because their FID is duplicated",
+                    device=root_element.loc_name,
+                    device_class="ElmComp",
+                    value=root_id,
+                )
+            else:
+                pass
+    return unique_root_by_id
+
+
+def convert_and_add_dgs_dynamic_templates_to_circuit(
+        dgs_circuit: DgsCircuit,
+        circuit: MultiCircuit,
+        target_domain: DynamicSimulationMode,
+        logger: Logger,
+) -> Dict[str, RmsModelTemplate | EmtModelTemplate]:
+    """Convert DGS roots directly into registered final templates.
+
+    The automatic file-open path owns one transient DGS parse graph.  Each
+    successful root follows ``Block -> Template -> MultiCircuit``.  The return
+    value is the only cross-stage state: one minimal lookup from the exact root
+    FID to the final template already owned by ``MultiCircuit``.
+
+    :param dgs_circuit: Declarative DGS graph already used by static import.
+    :param circuit: Destination circuit containing the static devices.
+    :param target_domain: Explicit RMS or EMT destination.
+    :param logger: Import diagnostics.
+    :return: Registered final templates indexed by exact DGS root FID.
+    """
+    templates_by_root_dgs_id: Dict[
+        str,
+        RmsModelTemplate | EmtModelTemplate,
+    ] = dict()
+    if target_domain not in {
+        DynamicSimulationMode.RMS,
+        DynamicSimulationMode.EMT,
+    }:
+        logger.add_error(
+            msg="DGS dynamic model import requires RMS or EMT mode",
+            value=target_domain,
+        )
+        return templates_by_root_dgs_id
+    else:
+        pass
+
+    # Reject empty and duplicated root identities before building the shared
+    # graphical index. Ambiguous roots must not prevent independent valid roots
+    # from reaching their own direct FID conversion.
+    unique_root_by_id: Dict[str, ElmComp] = _get_unique_dgs_dynamic_roots_by_id(
+        dgs_circuit=dgs_circuit,
+        logger=logger,
+        emit_diagnostics=True,
+    )
+    excluded_root_ids: Set[str] = set()
+    candidate_root: ElmComp
+    for candidate_root in dgs_circuit.elmcomps:
+        if (
+                candidate_root.ID != ""
+                and candidate_root.ID not in unique_root_by_id
+        ):
+            excluded_root_ids.add(candidate_root.ID)
+        else:
+            pass
+
+    try:
+        parsed_blocks: Dict[str, ParsedDgsBlockDefinition] = (
+            parse_dgs_block_definitions_from_circuit(
+                circuit=dgs_circuit,
+                simulation_domain=target_domain,
+            )
+        )
+        graphical_indexes: DgsGraphicalIndexes = build_dgs_graphical_indexes(
+            circuit=dgs_circuit,
+            excluded_element_ids=excluded_root_ids,
+        )
+    except (DgsDynamicParserContractError, KeyError, TypeError, ValueError) as error:
+        logger.add_error(
+            msg="DGS dynamic model import is unavailable",
+            value=str(error),
+        )
+        return templates_by_root_dgs_id
+
+    if target_domain == DynamicSimulationMode.RMS:
+        existing_names: Set[str] = set(
+            template.name for template in circuit.rms_models
+        )
+    else:
+        existing_names = set(
+            template.name for template in circuit.emt_models
+        )
+
+    materialized_count: int = 0
+    failed_count: int = 0
+    root_id: str
+    root_element: ElmComp
+    for root_id, root_element in unique_root_by_id.items():
+        host_identity: Tuple[str, DeviceType, str, str | None] | None = (
+            _resolve_dgs_direct_root_host_identity(
+                dgs_circuit=dgs_circuit,
+                root_element=root_element,
+                logger=logger,
+            )
+        )
+        source_block: Block | None
+        try:
+            root_result: DgsRootBlockResult = build_dgs_root_block_from_circuit(
+                circuit=dgs_circuit,
+                parsed_blocks=parsed_blocks,
+                root_name=root_element.loc_name,
+                root_typ_id=root_element.typ_id,
+                root_dgs_id=root_id,
+            )
+            direct_result: DgsDirectRootBuildResult = (
+                build_direct_root_elmcomp_block(
+                    circuit=dgs_circuit,
+                    result=root_result,
+                    graphical_indexes=graphical_indexes,
+                )
+            )
+            source_block = direct_result.root_block
+        except (
+                DgsDynamicParserContractError,
+                KeyError,
+                TypeError,
+                UnsupportedDgsExpression,
+                ValueError,
+        ) as error:
+            logger.add_warning(
+                msg="DGS dynamic root could not be materialized",
+                device=root_element.loc_name,
+                device_class="ElmComp",
+                value=str(error),
+            )
+            failed_count += 1
+            source_block = None
+
+        if source_block is None:
+            pass
+        else:
+            if host_identity is None:
+                resolved_device_tpe: DeviceType = (
+                    DeviceType.DynamicModelHostDevice
+                )
+                adapter_kind: _DgsRuntimeAdapterKind | None = None
+            else:
+                host_device_tpe: DeviceType = host_identity[1]
+                adapter_kind = _get_dgs_direct_runtime_adapter_kind(
+                    direct_result=direct_result,
+                    host_identity=host_identity,
+                )
+                native_runtime_ready: bool = (
+                    is_dgs_dynamic_block_runtime_assignable(
+                        block=source_block,
+                        device_tpe=host_device_tpe,
+                        adapter_kind=adapter_kind,
+                    )
+                )
+                adapter_supported: bool = (
+                    target_domain == DynamicSimulationMode.RMS
+                    and adapter_kind is not None
+                )
+                typed_vsc_contract_ready: bool = bool(
+                    host_device_tpe != DeviceType.VscDevice
+                    or adapter_kind is not None
+                )
+                if (
+                        typed_vsc_contract_ready
+                        and (native_runtime_ready or adapter_supported)
+                ):
+                    resolved_device_tpe = host_device_tpe
+                else:
+                    resolved_device_tpe = DeviceType.DynamicModelHostDevice
+                    logger.add_warning(
+                        msg=(
+                            "DGS dynamic root retained as a generic template "
+                            "because its physical runtime contract is unsupported"
+                        ),
+                        device=root_element.loc_name,
+                        device_class="ElmComp",
+                        value=root_id,
+                    )
+
+            template_obj: RmsModelTemplate | EmtModelTemplate = (
+                _build_dgs_direct_runtime_template(
+                    source_block=source_block,
+                    template_name=root_element.loc_name,
+                    target_domain=target_domain,
+                    device_tpe=resolved_device_tpe,
+                    adapter_kind=adapter_kind,
+                )
+            )
+            registered: bool = _register_dgs_direct_template(
+                circuit=circuit,
+                template_obj=template_obj,
+                root_dgs_id=root_id,
+                existing_names=existing_names,
+                logger=logger,
+            )
+            if registered:
+                templates_by_root_dgs_id[root_id] = template_obj
+                materialized_count += 1
+            else:
+                failed_count += 1
+
+    # Isolated BlkRef occurrences are valid reusable DGS definitions even when
+    # the file has no ElmComp root or physical host. Materialize one final
+    # catalogue template per exact BlkDef without creating Bundle/Entry state.
+    standalone_occurrences: List[DgsStandaloneBlockOccurrence] = (
+        list_dgs_blkref_catalog_occurrences_from_circuit(circuit=dgs_circuit)
+    )
+    standalone_id_count: Dict[str, int] = dict()
+    standalone_occurrence: DgsStandaloneBlockOccurrence
+    for standalone_occurrence in standalone_occurrences:
+        standalone_id: str = str(standalone_occurrence.blkref_id).strip()
+        current_count: int | None = standalone_id_count.get(standalone_id, None)
+        if current_count is None:
+            standalone_id_count[standalone_id] = 1
+        else:
+            standalone_id_count[standalone_id] = current_count + 1
+
+    elmcomp_ids: Set[str] = set()
+    source_root: ElmComp
+    for source_root in dgs_circuit.elmcomps:
+        elmcomp_ids.add(str(source_root.ID).strip())
+    materialized_standalone_type_ids: Set[str] = set()
+    for standalone_occurrence in standalone_occurrences:
+        standalone_id = str(standalone_occurrence.blkref_id).strip()
+        standalone_id_occurrences: int | None = standalone_id_count.get(
+            standalone_id,
+            None,
+        )
+        standalone_is_eligible: bool = bool(
+            not standalone_occurrence.connected
+            and standalone_id != ""
+            and standalone_id_occurrences == 1
+            and standalone_id not in elmcomp_ids
+            and standalone_occurrence.typ_id
+            not in materialized_standalone_type_ids
+        )
+        if not standalone_is_eligible:
+            pass
+        else:
+            parsed_standalone: ParsedDgsBlockDefinition | None = (
+                parsed_blocks.get(standalone_occurrence.typ_id, None)
+            )
+            if parsed_standalone is None:
+                logger.add_warning(
+                    msg="Isolated DGS BlkRef skipped because its BlkDef is missing",
+                    device=standalone_occurrence.sample_display_name,
+                    device_class="BlkRef",
+                    value=standalone_id,
+                )
+                failed_count += 1
+            else:
+                try:
+                    standalone_block: Block = (
+                        build_standalone_blkdef_block_from_parsed_block(
+                            parsed_block=parsed_standalone,
+                            block_name=parsed_standalone.blkdef.loc_name,
+                        )
+                    )
+                    standalone_template: RmsModelTemplate | EmtModelTemplate = (
+                        _build_dgs_direct_runtime_template(
+                            source_block=standalone_block,
+                            template_name=parsed_standalone.blkdef.loc_name,
+                            target_domain=target_domain,
+                            device_tpe=DeviceType.DynamicModelHostDevice,
+                            adapter_kind=None,
+                        )
+                    )
+                    standalone_registered: bool = _register_dgs_direct_template(
+                        circuit=circuit,
+                        template_obj=standalone_template,
+                        root_dgs_id=standalone_id,
+                        existing_names=existing_names,
+                        logger=logger,
+                    )
+                except (
+                        KeyError,
+                        TypeError,
+                        UnsupportedDgsExpression,
+                        ValueError,
+                ) as error:
+                    logger.add_warning(
+                        msg="Isolated DGS BlkRef could not be materialized",
+                        device=standalone_occurrence.sample_display_name,
+                        device_class="BlkRef",
+                        value=str(error),
+                    )
+                    failed_count += 1
+                else:
+                    materialized_standalone_type_ids.add(
+                        standalone_occurrence.typ_id
+                    )
+                    if standalone_registered:
+                        materialized_count += 1
+                    else:
+                        failed_count += 1
+
+    logger.add_info(
+        msg="DGS dynamic template conversion completed",
+        value=(
+            f"templates={materialized_count}, "
+            f"failed={failed_count}"
+        ),
+    )
+    return templates_by_root_dgs_id
+
+
+def apply_dgs_dynamic_templates_to_devices(
+        dgs_circuit: DgsCircuit,
+        circuit: MultiCircuit,
+        templates_by_root_dgs_id: Dict[
+            str,
+            RmsModelTemplate | EmtModelTemplate,
+        ],
+        logger: Logger,
+) -> None:
+    """Apply registered DGS templates to exact static devices by root FID.
+
+    This second stage does not reconstruct source entries or duplicate blocks.
+    It resolves the physical host again from the transient DGS graph, retrieves
+    the already registered final template from the minimal FID lookup, configures
+    each structurally proven adapter and assigns the template fail closed.
+
+    :param dgs_circuit: Declarative DGS graph used for exact host resolution.
+    :param circuit: Destination circuit owning devices and registered templates.
+    :param templates_by_root_dgs_id: Final templates indexed by exact root FID.
+    :param logger: Import diagnostics.
+    :return: None.
+    """
+    activated_count: int = 0
+    failed_count: int = 0
+    unique_root_by_id: Dict[str, ElmComp] = _get_unique_dgs_dynamic_roots_by_id(
+        dgs_circuit=dgs_circuit,
+        logger=logger,
+        emit_diagnostics=False,
+    )
+    root_id: str
+    root_element: ElmComp
+    for root_id, root_element in unique_root_by_id.items():
+        template_obj: RmsModelTemplate | EmtModelTemplate | None = (
+            templates_by_root_dgs_id.get(root_id, None)
+        )
+        if template_obj is None:
+            pass
+        else:
+            host_identity: Tuple[
+                str,
+                DeviceType,
+                str,
+                str | None,
+            ] | None = _resolve_dgs_direct_root_host_identity(
+                dgs_circuit=dgs_circuit,
+                root_element=root_element,
+                logger=logger,
+            )
+            if host_identity is None:
+                pass
+            else:
+                if (
+                        template_obj.tpe == DeviceType.VscDevice
+                        and host_identity[1] == DeviceType.VscDevice
+                        and host_identity[2] == "ElmVscmono"
+                ):
+                    adapter_kind: _DgsRuntimeAdapterKind | None = (
+                        _DgsRuntimeAdapterKind.VSC_MONOPOLAR
+                    )
+                else:
+                    if (
+                            template_obj.tpe == DeviceType.VscDevice
+                            and host_identity[1] == DeviceType.VscDevice
+                            and host_identity[2] == "ElmVsc"
+                    ):
+                        adapter_kind = _DgsRuntimeAdapterKind.VSC_BIPOLAR
+                    else:
+                        adapter_kind = None
+                if _activate_dgs_direct_template(
+                        circuit=circuit,
+                        template_obj=template_obj,
+                        host_identity=host_identity,
+                        adapter_kind=adapter_kind,
+                        logger=logger,
+                ):
+                    activated_count += 1
+                else:
+                    failed_count += 1
+
+    logger.add_info(
+        msg="DGS dynamic device assignment completed",
+        value=f"activated={activated_count}, failed={failed_count}",
+    )
+
+
 def activate_unambiguous_dgs_dynamic_models_in_circuit(
         circuit: MultiCircuit,
         records: Sequence[DgsDynamicAssociationRecord],
+        template_by_root_dgs_id: Dict[str, RmsModelTemplate | EmtModelTemplate],
         logger: Logger,
 ) -> DgsDynamicModelActivationReport:
     """
@@ -2743,6 +3190,8 @@ def activate_unambiguous_dgs_dynamic_models_in_circuit(
 
     :param circuit: Destination circuit with static devices and templates.
     :param records: Exact root-slot-pElm source associations.
+    :param template_by_root_dgs_id: Installed VeraGrid template indexed by the
+        exact source ElmComp FID that produced it.
     :param logger: Diagnostic sink for handled unresolved roots.
     :return: Structured activation report.
     """
@@ -2814,18 +3263,42 @@ def activate_unambiguous_dgs_dynamic_models_in_circuit(
                             host_record.get_source_element_class()
                         ),
                     )
-                    template_obj = _find_dgs_dynamic_activation_template(
-                        circuit=circuit,
-                        template_name=template_name,
-                        target_domain=host_record.get_target_domain(),
+                    template_obj = template_by_root_dgs_id.get(
+                        host_record.get_root_dgs_id(),
+                        None,
                     )
-                    template_runtime_contract: _DgsRuntimeBlockContract | None
-                    if template_obj is None:
-                        template_runtime_contract = None
+                    if (
+                            host_record.get_target_domain() == DynamicSimulationMode.RMS
+                            and not isinstance(template_obj, RmsModelTemplate)
+                    ):
+                        template_obj = None
                     else:
-                        template_runtime_contract = _DgsRuntimeBlockContract(
-                            template_obj.block
+                        if (
+                                host_record.get_target_domain() == DynamicSimulationMode.EMT
+                                and not isinstance(template_obj, EmtModelTemplate)
+                        ):
+                            template_obj = None
+                        else:
+                            pass
+                    source_element_class: str = (
+                        host_record.get_source_element_class()
+                    )
+                    if source_element_class == "ElmVscmono":
+                        template_adapter_kind: _DgsRuntimeAdapterKind | None = (
+                            _DgsRuntimeAdapterKind.VSC_MONOPOLAR
                         )
+                    else:
+                        if source_element_class == "ElmVsc":
+                            template_adapter_kind = (
+                                _DgsRuntimeAdapterKind.VSC_BIPOLAR
+                            )
+                        else:
+                            if source_element_class == "ElmSym":
+                                template_adapter_kind = (
+                                    _DgsRuntimeAdapterKind.SYNCHRONOUS_MACHINE_PENDING
+                                )
+                            else:
+                                template_adapter_kind = None
                     host_device: DynamicDevice | None
                     if len(host_devices) == 1:
                         host_device = host_devices[0]
@@ -2835,10 +3308,8 @@ def activate_unambiguous_dgs_dynamic_models_in_circuit(
                     if (
                             isinstance(template_obj, RmsModelTemplate)
                             and isinstance(host_device, VSC)
-                            and template_runtime_contract is not None
-                            and template_runtime_contract.matches(
-                                _DgsRuntimeAdapterKind.VSC_MONOPOLAR
-                            )
+                            and template_adapter_kind
+                            == _DgsRuntimeAdapterKind.VSC_MONOPOLAR
                     ):
                         # Monopolar bridges use the grounded return represented
                         # by their one exported DC terminal and native base.
@@ -2853,10 +3324,8 @@ def activate_unambiguous_dgs_dynamic_models_in_circuit(
                         if (
                                 isinstance(template_obj, RmsModelTemplate)
                                 and isinstance(host_device, VSC)
-                                and template_runtime_contract is not None
-                                and template_runtime_contract.matches(
-                                    _DgsRuntimeAdapterKind.VSC_BIPOLAR
-                                )
+                                and template_adapter_kind
+                                == _DgsRuntimeAdapterKind.VSC_BIPOLAR
                         ):
                             # Bipolar bridges use both exported pole bases.
                             adapter_configuration_ready = (
@@ -2870,10 +3339,8 @@ def activate_unambiguous_dgs_dynamic_models_in_circuit(
                             if (
                                     isinstance(template_obj, RmsModelTemplate)
                                     and isinstance(host_device, Generator)
-                                    and template_runtime_contract is not None
-                                    and template_runtime_contract.matches(
-                                        _DgsRuntimeAdapterKind.SYNCHRONOUS_MACHINE_PENDING
-                                    )
+                                    and template_adapter_kind
+                                    == _DgsRuntimeAdapterKind.SYNCHRONOUS_MACHINE_PENDING
                             ):
                                 # The exact TypSym selects salient or round
                                 # rotor structure and supplies every physical
@@ -2894,6 +3361,7 @@ def activate_unambiguous_dgs_dynamic_models_in_circuit(
                         and is_dgs_dynamic_block_runtime_assignable(
                             block=template_obj.block,
                             device_tpe=host_identity[1],
+                            adapter_kind=template_adapter_kind,
                         )
                     )
                     if len(host_devices) != 1 or not runtime_contract_ready:
@@ -2949,7 +3417,7 @@ def add_all_dynamic_import_bundle_to_circuit_with_report(
     :param target_domain: Explicit RMS or EMT destination for every selected entry.
     :param progress_callback: Optional UI progress callback.
     :param user_root_folder: Optional explicit VeraGrid user root used mainly by tests.
-    :param persist_to_user_catalog: Persist added models as readable Python user templates.
+    :param persist_to_user_catalog: Deprecated compatibility request; executable persistence is refused.
     :param consume_bundle_templates: Transfer source blocks from an ephemeral
         bundle to avoid a second massive symbolic graph in memory.
     :return: Structured massive-import report.
@@ -2962,11 +3430,23 @@ def add_all_dynamic_import_bundle_to_circuit_with_report(
     entry_availability: DynamicModelImportEntryAvailability
     unavailable_status: DynamicModelImportEntryStatus
     unavailable_message: str
-    defer_dgs_catalog_persistence: bool = (
-        persist_to_user_catalog
-        and bundle.get_source_tpe() == DynamicModelImportSource.PowerFactoryDgs
+    source_is_dgs: bool = (
+        bundle.get_source_tpe() == DynamicModelImportSource.PowerFactoryDgs
+    )
+    effective_persist_to_user_catalog: bool = (
+        persist_to_user_catalog and not source_is_dgs
     )
     template_fingerprint_by_object_id: Dict[int, str | None] = dict()
+
+    # Imported DGS models remain declarative data owned by the circuit. They
+    # must never be converted into executable Python for user-catalog storage.
+    if persist_to_user_catalog and source_is_dgs:
+        logger.add_warning(
+            msg="DGS dynamic model Python persistence refused",
+            value="The imported Block and template remain in the circuit",
+        )
+    else:
+        pass
 
     for entry in bundle.get_entries():
         if entry.is_importable():
@@ -3029,12 +3509,7 @@ def add_all_dynamic_import_bundle_to_circuit_with_report(
         progress_callback=progress_callback,
         user_root_folder=user_root_folder,
         rename_conflicting_templates=True,
-        # DGS physical adapters need the exact host bus bases before their
-        # canonical Python is final. Persist them after association activation.
-        persist_to_user_catalog=(
-            persist_to_user_catalog
-            and not defer_dgs_catalog_persistence
-        ),
+        persist_to_user_catalog=effective_persist_to_user_catalog,
         report=report,
         template_fingerprint_by_object_id=template_fingerprint_by_object_id,
         clone_source_blocks=not consume_bundle_templates,
@@ -3044,6 +3519,55 @@ def add_all_dynamic_import_bundle_to_circuit_with_report(
     # report result preserves aliases after many-to-one template deduplication
     # without assigning any template to an electrical device.
     if bundle.get_source_tpe() == DynamicModelImportSource.PowerFactoryDgs:
+        template_by_root_dgs_id: Dict[
+            str,
+            RmsModelTemplate | EmtModelTemplate,
+        ] = dict()
+        ambiguous_template_root_ids: Set[str] = set()
+
+        # The source-to-destination association exists only while this import is
+        # active. It replaces the former second lookup by a mutable display name
+        # after the templates had already been registered in the circuit.
+        for entry in bundle.get_entries():
+            source_provenance: DynamicModelImportSourceProvenance | None = (
+                entry.get_source_provenance()
+            )
+            installed_template: RmsModelTemplate | EmtModelTemplate | None = (
+                entry.get_installed_template()
+            )
+            if (
+                    source_provenance is None
+                    or source_provenance.get_slot_index() is not None
+                    or installed_template is None
+            ):
+                pass
+            else:
+                root_dgs_id: str = source_provenance.get_root_dgs_id()
+                existing_template: RmsModelTemplate | EmtModelTemplate | None = (
+                    template_by_root_dgs_id.get(root_dgs_id, None)
+                )
+                if root_dgs_id in ambiguous_template_root_ids:
+                    pass
+                else:
+                    if existing_template is None:
+                        template_by_root_dgs_id[root_dgs_id] = installed_template
+                    else:
+                        if existing_template is installed_template:
+                            pass
+                        else:
+                            # More than one destination for one source root is not
+                            # assignable. Remove the partial mapping so activation
+                            # remains fail-closed and report the contradiction.
+                            del template_by_root_dgs_id[root_dgs_id]
+                            ambiguous_template_root_ids.add(root_dgs_id)
+                            logger.add_warning(
+                                msg=(
+                                    "DGS dynamic root retained without activation because "
+                                    "it produced several VeraGrid templates"
+                                ),
+                                value=root_dgs_id,
+                            )
+
         association_records: List[DgsDynamicAssociationRecord] = build_dgs_dynamic_association_records(
             report=report,
         )
@@ -3055,6 +3579,7 @@ def add_all_dynamic_import_bundle_to_circuit_with_report(
             activate_unambiguous_dgs_dynamic_models_in_circuit(
                 circuit=circuit,
                 records=association_records,
+                template_by_root_dgs_id=template_by_root_dgs_id,
                 logger=logger,
             )
         )
@@ -3063,91 +3588,6 @@ def add_all_dynamic_import_bundle_to_circuit_with_report(
             msg="DGS dynamic device models activated by exact source identity",
             value=activation_report.get_activated_count(),
         )
-
-        if defer_dgs_catalog_persistence:
-            deferred_work_list: List[SelectedDynamicImportWork] = list()
-            entry_result_by_key: Dict[str, DynamicModelImportEntryResult] = dict()
-            report_entry_result: DynamicModelImportEntryResult
-            for report_entry_result in report.get_entry_results():
-                entry_result_by_key[report_entry_result.get_unique_key()] = report_entry_result
-
-            for selection_request in selection_requests:
-                selected_entry: DynamicModelImportEntry | None = bundle.get_entry_by_key(
-                    selection_request.get_entry_key(),
-                )
-                selected_result: DynamicModelImportEntryResult | None = (
-                    entry_result_by_key.get(selection_request.get_entry_key(), None)
-                )
-                if selected_entry is None or selected_result is None:
-                    pass
-                else:
-                    selected_template: RmsModelTemplate | EmtModelTemplate | None = (
-                        selected_entry.get_installed_template()
-                    )
-                    should_persist_result: bool = selected_result.get_status() in {
-                        DynamicModelImportEntryStatus.Added,
-                        DynamicModelImportEntryStatus.Renamed,
-                    }
-                    if selected_template is None or not should_persist_result:
-                        pass
-                    else:
-                        selected_template_object_id: int = id(selected_template)
-                        selected_runtime_contract: _DgsRuntimeBlockContract = (
-                            _DgsRuntimeBlockContract(selected_template.block)
-                        )
-                        adapter_requires_refingerprint: bool = (
-                            selected_runtime_contract.matches(
-                                _DgsRuntimeAdapterKind.VSC_MONOPOLAR
-                            )
-                            or selected_runtime_contract.matches(
-                                _DgsRuntimeAdapterKind.VSC_BIPOLAR
-                            )
-                            or selected_runtime_contract.matches(
-                                _DgsRuntimeAdapterKind.SYNCHRONOUS_MACHINE
-                            )
-                        )
-                        if (
-                                not adapter_requires_refingerprint
-                                and selected_template_object_id
-                                in template_fingerprint_by_object_id
-                        ):
-                            selected_template_fingerprint: str | None = (
-                                template_fingerprint_by_object_id[
-                                    selected_template_object_id
-                                ]
-                            )
-                        else:
-                            # Exact VSC adapter activation writes host base
-                            # values into its reusable template. Only those
-                            # mutated templates need a fresh canonical digest.
-                            selected_template_fingerprint = (
-                                build_dynamic_import_template_fingerprint(
-                                    selected_template
-                                )
-                            )
-                            template_fingerprint_by_object_id[
-                                selected_template_object_id
-                            ] = selected_template_fingerprint
-                        deferred_work_list.append(
-                            SelectedDynamicImportWork(
-                                selection_request=selection_request,
-                                template_obj=selected_template,
-                                entry_result=selected_result,
-                                template_fingerprint=(
-                                    selected_template_fingerprint
-                                ),
-                                include_validation_snapshot=False,
-                            )
-                        )
-
-            _persist_selected_dynamic_import_work_list(
-                persistable_work_list=deferred_work_list,
-                logger=logger,
-                progress_callback=progress_callback,
-                user_root_folder=user_root_folder,
-            )
-        else:
-            pass
 
     else:
         pass
@@ -3173,7 +3613,7 @@ def add_all_dynamic_import_bundle_to_circuit(
     :param target_domain: Explicit RMS or EMT destination for every selected entry.
     :param progress_callback: Optional UI progress callback.
     :param user_root_folder: Optional explicit VeraGrid user root used mainly by tests.
-    :param persist_to_user_catalog: Persist added models as readable Python user templates.
+    :param persist_to_user_catalog: Deprecated compatibility request; executable persistence is refused.
     :return: Number of added templates, including collision-safe renamed variants.
     """
     report: DynamicModelImportReport = add_all_dynamic_import_bundle_to_circuit_with_report(
@@ -3246,7 +3686,7 @@ def load_user_dynamic_model_templates_into_circuit(
     :param circuit: Target circuit receiving the persisted templates.
     :param logger: Optional logger receiving load diagnostics.
     :param user_root_folder: Optional explicit VeraGrid user root used mainly by tests.
-    :param allow_executable_python: Execute trusted Python template modules. Disabled by default.
+    :param allow_executable_python: Deprecated compatibility flag. Executable persistence is always refused.
     :return: Number of templates added to the circuit.
     """
     effective_logger: Logger = Logger() if logger is None else logger
@@ -3264,10 +3704,9 @@ def load_user_dynamic_model_templates_into_circuit(
     for template in circuit.emt_models:
         existing_emt_names.add(template.name)
 
-    # Reuse the shared folder scanner so the GUI catalogue and the importer load
-    # exactly the same persisted template modules.
+    # Reuse the shared data-only scanner so the GUI catalogue and the importer
+    # materialize exactly the same declarative template payloads.
     for loaded_template in load_user_dynamic_model_templates(
-            var_factory=circuit.var_factory,
             logger=effective_logger,
             user_root_folder=user_root_folder,
             allow_executable_python=allow_executable_python,
@@ -3302,7 +3741,6 @@ def load_user_dynamic_model_templates_into_circuit(
 
 
 def load_user_dynamic_model_templates(
-        var_factory: VarFactory,
         logger: Logger | None = None,
         user_root_folder: str | None = None,
         allow_executable_python: bool = False,
@@ -3310,80 +3748,38 @@ def load_user_dynamic_model_templates(
     """
     Materialize all persisted user dynamic templates from the VeraGrid user folder.
 
-    :param var_factory: Variable factory used to build the template blocks.
     :param logger: Optional logger receiving load diagnostics.
     :param user_root_folder: Optional explicit VeraGrid user root used mainly by tests.
-    :param allow_executable_python: Execute trusted Python template modules. Disabled by default.
+    :param allow_executable_python: Deprecated compatibility flag. Executable persistence is always refused.
     :return: Materialized persisted user templates.
     """
     effective_logger: Logger = Logger() if logger is None else logger
     templates: List[DynamicModelLoadedUserTemplate] = list()
     seen_template_signatures: Set[tuple[DynamicSimulationMode, str]] = set()
     folder_path: Path
-    module_path: Path
     payload_path: Path
     template: DynamicModelLoadedUserTemplate | None
-    loaded_module_stems: Set[str]
+
+    if allow_executable_python:
+        effective_logger.add_warning(
+            msg="Executable user dynamic-model loading refused; declarative payloads remain available",
+            value=str(user_root_folder),
+        )
+    else:
+        pass
 
     for folder_path in _iter_user_dynamic_models_folder_paths(user_root_folder=user_root_folder):
-        loaded_module_stems = set()
-
-        # Python user modules are executable code. Only materialize them after an
-        # explicit trust decision; JSON sidecars remain available as data-only
-        # fallbacks when execution is disabled.
-        for module_path in sorted(folder_path.glob("*.py")):
-            if module_path.name == "__init__.py":
-                template = None
-            elif allow_executable_python:
-                template = _load_user_dynamic_template_from_module_path(
-                    module_path=module_path,
-                    var_factory=var_factory,
-                    logger=effective_logger,
-                )
-            else:
-                effective_logger.add_warning(
-                    msg="Skipped executable user dynamic-model module because trust was not granted",
-                    value=str(module_path),
-                )
-                template = None
-
-            if template is None:
-                pass
-            else:
-                loaded_module_stems.add(module_path.stem)
-                _report_user_dynamic_template_snapshot_difference(
-                    loaded_module_template=template,
-                    payload_path=module_path.with_suffix(".payload.json"),
-                    var_factory=var_factory,
-                    logger=effective_logger,
-                )
-                _append_loaded_user_dynamic_template_once(
-                    template=template,
-                    seen_template_signatures=seen_template_signatures,
-                    templates=templates,
-                )
-
-        # JSON sidecars are validation snapshots and a compatibility fallback.
-        # They are loaded only when the corresponding canonical Python module is
-        # absent or failed validation/materialization.
+        # Declarative payloads are the only persisted representation accepted at
+        # this boundary, so imported data can never become executable source.
         for payload_path in sorted(folder_path.glob("*.payload.json")):
-            payload_module_stem: str = payload_path.name[:-len(".payload.json")]
-            if payload_module_stem in loaded_module_stems:
-                template = None
-            else:
-                template = _load_user_dynamic_template_from_payload_path(
-                    payload_path=payload_path,
-                    var_factory=var_factory,
-                    logger=effective_logger,
-                )
+            template = _load_user_dynamic_template_from_payload_path(
+                payload_path=payload_path,
+                logger=effective_logger,
+            )
 
             if template is None:
                 pass
             else:
-                effective_logger.add_warning(
-                    msg="Loaded legacy user dynamic model from JSON snapshot fallback",
-                    value=str(payload_path),
-                )
                 _append_loaded_user_dynamic_template_once(
                     template=template,
                     seen_template_signatures=seen_template_signatures,
@@ -3391,6 +3787,55 @@ def load_user_dynamic_model_templates(
                 )
 
     return templates
+
+
+def _load_user_dynamic_template_from_payload_path(
+        payload_path: Path,
+        logger: Logger,
+) -> DynamicModelLoadedUserTemplate | None:
+    """Materialize one validated declarative user-template payload.
+
+    :param payload_path: Exact JSON payload path.
+    :param logger: Diagnostic sink for rejected payloads.
+    :return: Typed loaded-template descriptor, or ``None`` when invalid.
+    """
+    try:
+        loaded_payload: Tuple[
+            Block,
+            str,
+            DynamicSimulationMode,
+            DeviceType,
+        ] | None = load_user_dynamic_template_json_payload(
+            json_path=str(payload_path),
+        )
+    except (OSError, ValueError, KeyError, TypeError) as error:
+        logger.add_warning(
+            msg="Declarative user dynamic-model payload rejected",
+            value=f"{payload_path}: {error}",
+        )
+        loaded_payload = None
+
+    if loaded_payload is None:
+        result: DynamicModelLoadedUserTemplate | None = None
+    else:
+        block: Block = loaded_payload[0]
+        template_name: str = loaded_payload[1]
+        target_domain: DynamicSimulationMode = loaded_payload[2]
+        device_tpe: DeviceType = loaded_payload[3]
+        template_obj: RmsModelTemplate | EmtModelTemplate
+        if target_domain == DynamicSimulationMode.RMS:
+            template_obj = RmsModelTemplate(name=template_name)
+        else:
+            template_obj = EmtModelTemplate(name=template_name)
+        template_obj.tpe = device_tpe
+        template_obj.block = block
+        result = DynamicModelLoadedUserTemplate(
+            payload_path=payload_path,
+            domain=target_domain,
+            device_tpe=device_tpe,
+            template_obj=template_obj,
+        )
+    return result
 
 
 def _append_loaded_user_dynamic_template_once(
@@ -3495,7 +3940,10 @@ def _get_user_dynamic_models_domain_folder_path(
         else:
             raise ValueError(f"Unsupported user dynamic-model domain {target_domain}")
 
-    folder_path: Path = _get_user_dynamic_models_root_folder_path(create=create, user_root_folder=user_root_folder) / folder_name
+    folder_path: Path = _get_user_dynamic_models_root_folder_path(
+        create=create,
+        user_root_folder=user_root_folder,
+    ) / folder_name
 
     if create:
         folder_path.mkdir(parents=True, exist_ok=True)
@@ -3525,7 +3973,10 @@ def _iter_user_dynamic_models_folder_paths(user_root_folder: str | None = None) 
         create=False,
         user_root_folder=user_root_folder,
     )
-    legacy_folder_path: Path = _get_legacy_user_dynamic_models_folder_path(create=False, user_root_folder=user_root_folder)
+    legacy_folder_path: Path = _get_legacy_user_dynamic_models_folder_path(
+        create=False,
+        user_root_folder=user_root_folder,
+    )
 
     if rms_folder_path.exists():
         folder_paths.append(rms_folder_path)
@@ -3555,42 +4006,6 @@ def _sanitize_file_stem(text: str) -> str:
     return sanitize_dynamic_model_file_stem(text=text)
 
 
-def build_user_dynamic_template_catalog_output_path(
-        template_name: str,
-        target_domain: DynamicSimulationMode,
-        catalog_root_folder: str | None = None,
-) -> Path:
-    """
-    Build the preferred unsuffixed path for one persisted user template module.
-
-    The save operation may add a structural-fingerprint suffix when this base
-    name collides with a different existing catalogue artifact.
-
-    :param template_name: Human-facing template name.
-    :param target_domain: Selected RMS or EMT user folder.
-    :param catalog_root_folder: Optional explicit VeraGrid user root used mainly by tests.
-    :return: Preferred Python module output path before collision resolution.
-    """
-    output_folder: Path
-    safe_stem: str = _sanitize_file_stem(template_name)
-
-    if catalog_root_folder is None:
-        output_folder = _get_user_dynamic_models_domain_folder_path(target_domain=target_domain, create=True)
-    else:
-        output_folder = _get_user_dynamic_models_domain_folder_path(
-            target_domain=target_domain,
-            create=True,
-            user_root_folder=catalog_root_folder,
-        )
-
-    if len(safe_stem) == 0:
-        safe_stem = "user_dynamic_model"
-    else:
-        pass
-
-    return output_folder / f"{safe_stem}.py"
-
-
 def build_user_dynamic_template_payload_output_path(
         template_name: str,
         target_domain: DynamicSimulationMode,
@@ -3604,761 +4019,19 @@ def build_user_dynamic_template_payload_output_path(
     :param catalog_root_folder: Optional explicit VeraGrid user root used mainly by tests.
     :return: Preferred JSON payload path before collision resolution.
     """
-    module_path: Path = build_user_dynamic_template_catalog_output_path(
-        template_name=template_name,
+    output_folder: Path = _get_user_dynamic_models_domain_folder_path(
         target_domain=target_domain,
-        catalog_root_folder=catalog_root_folder,
+        create=True,
+        user_root_folder=catalog_root_folder,
     )
-    return module_path.with_suffix(".payload.json")
+    safe_stem: str = _sanitize_file_stem(template_name)
 
-
-def _build_user_dynamic_template_catalog_identity(
-        block: Block,
-        template_name: str,
-        target_domain: DynamicSimulationMode,
-        device_tpe: DeviceType,
-) -> RmsModelTemplate | EmtModelTemplate:
-    """
-    Materialize the fixed metadata used to fingerprint one catalogue artifact.
-
-    :param block: Persistable symbolic block.
-    :param template_name: Final catalogue template name.
-    :param target_domain: Selected RMS or EMT domain.
-    :param device_tpe: Selected supported device type.
-    :return: Typed template identity used only for structural comparison.
-    """
-    template_obj: RmsModelTemplate | EmtModelTemplate
-
-    if target_domain == DynamicSimulationMode.RMS:
-        template_obj = RmsModelTemplate(name=template_name)
-    else:
-        if target_domain == DynamicSimulationMode.EMT:
-            template_obj = EmtModelTemplate(name=template_name)
-        else:
-            raise ValueError(f"Unsupported user dynamic-model domain {target_domain}")
-
-    # Fingerprints include the target class and the declared device family, so
-    # two files are reusable only when their complete catalogue meaning agrees.
-    template_obj.tpe = device_tpe
-    template_obj.block = copy.deepcopy(block)
-    return template_obj
-
-
-def _build_casefold_catalog_module_lookup(output_folder: Path) -> Dict[str, List[Path]]:
-    """
-    Index existing Python catalogue modules by Windows-safe casefolded name.
-
-    :param output_folder: Domain-specific user catalogue folder.
-    :return: Existing module paths grouped by casefolded file name.
-    """
-    module_lookup: Dict[str, List[Path]] = dict()
-    module_path: Path
-    payload_path: Path
-    represented_module_path: Path
-    represented_module_name: str
-    casefolded_name: str
-
-    for module_path in sorted(output_folder.glob("*.py")):
-        if module_path.name == "__init__.py":
-            pass
-        else:
-            casefolded_name = module_path.name.casefold()
-            if casefolded_name in module_lookup:
-                module_lookup[casefolded_name].append(module_path)
-            else:
-                module_lookup[casefolded_name] = list([module_path])
-
-    # Payload-only artifacts left by older versions still reserve their logical
-    # module name.  They are compared structurally before either being repaired
-    # in place or preserved beside a collision-safe new pair.
-    for payload_path in sorted(output_folder.glob("*.payload.json")):
-        represented_module_name = payload_path.name[:-len(".payload.json")] + ".py"
-        represented_module_path = output_folder / represented_module_name
-        casefolded_name = represented_module_name.casefold()
-        if casefolded_name in module_lookup:
-            pass
-        else:
-            module_lookup[casefolded_name] = list([represented_module_path])
-
-    return module_lookup
-
-
-def _read_user_dynamic_template_payload_identity(
-        payload_path: Path,
-) -> Tuple[str, str, str, str] | None:
-    """Read only the small identity header of one catalogue sidecar.
-
-    The deterministic payload writes identity fields before the large symbolic
-    block. Reading line by line avoids deserializing a multi-megabyte controller
-    merely to decide that its already-persisted catalogue artifact is current.
-
-    :param payload_path: JSON sidecar belonging to one Python template module.
-    :return: Name, domain, device type and fingerprint, or ``None`` for a legacy
-        or incomplete payload.
-    """
-    identity_values: Dict[str, str] = dict()
-    required_key_values: Tuple[str, ...] = (
-        "template_name",
-        "target_domain",
-        "device_tpe",
-        "template_fingerprint",
-    )
-    required_keys: Set[str] = set(required_key_values)
-    payload_line: str
-    stripped_line: str
-    identity_key: str
-    raw_value: str
-    decoded_value: object
-
-    if payload_path.is_file():
-        try:
-            with payload_path.open(mode="r", encoding="utf-8") as payload_file:
-                for payload_line in payload_file:
-                    stripped_line = payload_line.strip()
-                    if stripped_line.startswith('"block_data"'):
-                        break
-                    else:
-                        pass
-                    for identity_key in required_keys:
-                        if stripped_line.startswith(f'"{identity_key}"'):
-                            raw_value = stripped_line.split(":", 1)[1].rstrip(",")
-                            decoded_value = json.loads(raw_value)
-                            if isinstance(decoded_value, str):
-                                identity_values[identity_key] = decoded_value
-                            else:
-                                pass
-                        else:
-                            pass
-        except (OSError, ValueError, json.JSONDecodeError):
-            identity_values = dict()
+    if len(safe_stem) == 0:
+        safe_stem = "user_dynamic_model"
     else:
         pass
 
-    if required_keys.issubset(identity_values.keys()):
-        return (
-            identity_values["template_name"],
-            identity_values["target_domain"],
-            identity_values["device_tpe"],
-            identity_values["template_fingerprint"],
-        )
-    else:
-        return None
-
-
-def _build_user_dynamic_template_module_identity_header(
-        template_name: str,
-        target_domain: DynamicSimulationMode,
-        device_tpe: DeviceType,
-        template_fingerprint: str | None,
-) -> str:
-    """Build a compact identity header for one canonical Python template.
-
-    Massive DGS catalogues intentionally omit the redundant full-graph JSON
-    snapshot.  Keeping the immutable identity in Python comments lets repeated
-    imports deduplicate those modules without executing multi-megabyte symbolic
-    builders merely to discover their fingerprints.
-
-    :param template_name: Exact reusable-template name.
-    :param target_domain: RMS or EMT catalogue domain.
-    :param device_tpe: Supported device-family classification.
-    :param template_fingerprint: Structural SHA-256 identity, when available.
-    :return: Deterministic comment header, including its final newline.
-    """
-    identity_payload: Dict[str, str] = dict()
-    header_text: str
-
-    identity_payload["template_name"] = template_name
-    identity_payload["target_domain"] = target_domain.value
-    identity_payload["device_tpe"] = device_tpe.name
-    if template_fingerprint is None:
-        header_text = ""
-    else:
-        identity_payload["template_fingerprint"] = template_fingerprint
-        header_text = (
-            "# VeraGrid dynamic template identity: "
-            + json.dumps(identity_payload, sort_keys=True, ensure_ascii=True)
-            + "\n"
-        )
-    return header_text
-
-
-def _read_user_dynamic_template_module_identity(
-        module_path: Path,
-) -> Tuple[str, str, str, str] | None:
-    """Read the compact identity header without importing the Python module.
-
-    :param module_path: Canonical human-readable Python template module.
-    :return: Name, domain, device type and fingerprint, or ``None`` for a legacy
-        module without a valid identity header.
-    """
-    header_prefix: str = "# VeraGrid dynamic template identity: "
-    module_line: str
-    stripped_line: str
-    decoded_payload: object
-    identity_payload: Dict[str, object]
-    required_key_values: Tuple[str, ...] = (
-        "template_name",
-        "target_domain",
-        "device_tpe",
-        "template_fingerprint",
-    )
-    required_keys: Set[str] = set(required_key_values)
-    identity: Tuple[str, str, str, str] | None = None
-    inspected_line_count: int = 0
-
-    if module_path.is_file():
-        try:
-            with module_path.open(mode="r", encoding="utf-8") as module_file:
-                for module_line in module_file:
-                    stripped_line = module_line.strip()
-                    if stripped_line.startswith(header_prefix):
-                        decoded_payload = json.loads(
-                            stripped_line[len(header_prefix):]
-                        )
-                        if isinstance(decoded_payload, dict):
-                            identity_payload = decoded_payload
-                            if required_keys.issubset(identity_payload.keys()):
-                                identity = (
-                                    str(identity_payload["template_name"]),
-                                    str(identity_payload["target_domain"]),
-                                    str(identity_payload["device_tpe"]),
-                                    str(identity_payload["template_fingerprint"]),
-                                )
-                            else:
-                                pass
-                        else:
-                            pass
-                    else:
-                        pass
-
-                    inspected_line_count += 1
-                    if identity is None and inspected_line_count < 16:
-                        pass
-                    else:
-                        break
-        except (OSError, ValueError, json.JSONDecodeError):
-            identity = None
-    else:
-        pass
-
-    return identity
-
-
-def _find_current_user_dynamic_template_catalog_module(
-        template_name: str,
-        target_domain: DynamicSimulationMode,
-        device_tpe: DeviceType,
-        template_fingerprint: str,
-        catalog_root_folder: str | None,
-) -> Path | None:
-    """Find one already-current module from its lightweight sidecar identity.
-
-    :param template_name: Exact reusable-template name.
-    :param target_domain: RMS or EMT catalogue domain.
-    :param device_tpe: Supported device-family classification.
-    :param template_fingerprint: Precomputed structural SHA-256 identity.
-    :param catalog_root_folder: Optional explicit VeraGrid user root.
-    :return: Matching Python module or ``None``.
-    """
-    base_path: Path = build_user_dynamic_template_catalog_output_path(
-        template_name=template_name,
-        target_domain=target_domain,
-        catalog_root_folder=catalog_root_folder,
-    )
-    candidate_patterns: List[str] = list([
-        base_path.name,
-        f"{base_path.stem}__*{base_path.suffix}",
-    ])
-    candidate_pattern: str
-    candidate_path: Path
-    module_identity: Tuple[str, str, str, str] | None
-    payload_identity: Tuple[str, str, str, str] | None
-    desired_identity: Tuple[str, str, str, str] = (
-        template_name,
-        target_domain.value,
-        device_tpe.name,
-        template_fingerprint,
-    )
-
-    for candidate_pattern in candidate_patterns:
-        for candidate_path in sorted(base_path.parent.glob(candidate_pattern)):
-            module_identity = _read_user_dynamic_template_module_identity(
-                module_path=candidate_path,
-            )
-            if module_identity == desired_identity:
-                return candidate_path
-            else:
-                payload_identity = _read_user_dynamic_template_payload_identity(
-                    payload_path=candidate_path.with_suffix(".payload.json"),
-                )
-                if payload_identity == desired_identity:
-                    return candidate_path
-                else:
-                    pass
-
-    return None
-
-
-def _catalog_module_matches_template_identity(
-        module_path: Path,
-        template_name: str,
-        target_domain: DynamicSimulationMode,
-        device_tpe: DeviceType,
-        desired_fingerprint: str | None,
-) -> bool:
-    """
-    Check whether one existing module is the same complete catalogue template.
-
-    :param module_path: Existing canonical Python module.
-    :param template_name: Desired exact template name.
-    :param target_domain: Desired RMS or EMT domain.
-    :param device_tpe: Desired device-family classification.
-    :param desired_fingerprint: Desired structural fingerprint.
-    :return: ``True`` when the existing artifact can be safely refreshed in place.
-    """
-    load_logger: Logger = Logger()
-    loaded_template: DynamicModelLoadedUserTemplate | None
-    loaded_payload: Tuple[Block, str, DynamicSimulationMode, DeviceType] | None
-    existing_template: RmsModelTemplate | EmtModelTemplate
-    payload_path: Path = module_path.with_suffix(".payload.json")
-    existing_fingerprint: str | None
-    matches_identity: bool
-
-    if desired_fingerprint is None:
-        matches_identity = False
-    else:
-        if module_path.is_file():
-            loaded_template = _load_user_dynamic_template_from_module_path(
-                module_path=module_path,
-                var_factory=VarFactory(),
-                logger=load_logger,
-            )
-            if loaded_template is None:
-                matches_identity = False
-            else:
-                existing_fingerprint = build_dynamic_import_template_fingerprint(
-                    loaded_template.get_template_obj(),
-                )
-                matches_identity = (
-                    loaded_template.get_template_obj().name == template_name and
-                    loaded_template.get_domain() == target_domain and
-                    loaded_template.get_device_tpe() == device_tpe and
-                    existing_fingerprint == desired_fingerprint
-                )
-        else:
-            if payload_path.is_file():
-                loaded_payload = load_user_dynamic_template_json_payload(json_path=str(payload_path))
-            else:
-                loaded_payload = None
-
-            if loaded_payload is None:
-                matches_identity = False
-            else:
-                existing_template = _build_user_dynamic_template_catalog_identity(
-                    block=loaded_payload[0],
-                    template_name=loaded_payload[1],
-                    target_domain=loaded_payload[2],
-                    device_tpe=loaded_payload[3],
-                )
-                existing_fingerprint = build_dynamic_import_template_fingerprint(existing_template)
-                matches_identity = (
-                    loaded_payload[1] == template_name and
-                    loaded_payload[2] == target_domain and
-                    loaded_payload[3] == device_tpe and
-                    existing_fingerprint == desired_fingerprint
-                )
-
-    return matches_identity
-
-
-def _resolve_user_dynamic_template_catalog_output_path(
-        block: Block,
-        template_name: str,
-        target_domain: DynamicSimulationMode,
-        device_tpe: DeviceType,
-        module_text: str,
-        catalog_root_folder: str | None,
-        template_fingerprint: str | None = None,
-) -> Path:
-    """
-    Resolve a collision-safe path without overwriting a different catalogue model.
-
-    Name sanitization and case-insensitive filesystems may map distinct template
-    names to the same file.  Existing paths are reused only after exact metadata
-    and structural-fingerprint comparison; otherwise a deterministic fingerprint
-    suffix preserves both artifacts.
-
-    :param block: Persistable symbolic block.
-    :param template_name: Final catalogue template name.
-    :param target_domain: Selected RMS or EMT domain.
-    :param device_tpe: Selected supported device type.
-    :param module_text: Canonical generated Python module text.
-    :param catalog_root_folder: Optional explicit VeraGrid user root.
-    :param template_fingerprint: Optional precomputed structural identity.
-    :return: Collision-safe canonical Python module path.
-    """
-    base_path: Path = build_user_dynamic_template_catalog_output_path(
-        template_name=template_name,
-        target_domain=target_domain,
-        catalog_root_folder=catalog_root_folder,
-    )
-    module_lookup: Dict[str, List[Path]] = _build_casefold_catalog_module_lookup(
-        output_folder=base_path.parent,
-    )
-    desired_template: RmsModelTemplate | EmtModelTemplate = _build_user_dynamic_template_catalog_identity(
-        block=block,
-        template_name=template_name,
-        target_domain=target_domain,
-        device_tpe=device_tpe,
-    )
-    desired_fingerprint: str | None
-    if template_fingerprint is None:
-        desired_fingerprint = build_dynamic_import_template_fingerprint(
-            desired_template
-        )
-    else:
-        desired_fingerprint = template_fingerprint
-    fallback_digest: str = hashlib.sha256(module_text.encode("utf-8")).hexdigest()
-    suffix_digest: str
-    candidate_path: Path = base_path
-    resolved_path: Path | None = None
-    existing_paths: List[Path]
-    existing_path: Path
-    matching_path: Path | None
-    collision_index: int = 1
-
-    if desired_fingerprint is None:
-        suffix_digest = fallback_digest[:12]
-    else:
-        suffix_digest = desired_fingerprint[:12]
-
-    while resolved_path is None:
-        existing_paths = module_lookup.get(candidate_path.name.casefold(), list())
-        if len(existing_paths) == 0:
-            resolved_path = candidate_path
-        else:
-            matching_path = None
-            for existing_path in existing_paths:
-                if matching_path is None and _catalog_module_matches_template_identity(
-                        module_path=existing_path,
-                        template_name=template_name,
-                        target_domain=target_domain,
-                        device_tpe=device_tpe,
-                        desired_fingerprint=desired_fingerprint,
-                ):
-                    matching_path = existing_path
-                else:
-                    pass
-
-            if matching_path is None:
-                if collision_index == 1:
-                    candidate_path = base_path.with_name(
-                        f"{base_path.stem}__{suffix_digest}{base_path.suffix}"
-                    )
-                else:
-                    candidate_path = base_path.with_name(
-                        f"{base_path.stem}__{suffix_digest}_{collision_index}{base_path.suffix}"
-                    )
-                collision_index += 1
-            else:
-                resolved_path = matching_path
-
-    return resolved_path
-
-
-def _build_sorted_identifier_var_pairs(
-        variables: Sequence[Var],
-        identifier_map: Dict[int, str],
-) -> List[Tuple[str, Var]]:
-    """
-    Order emitted variable declarations by their persistent Python alias.
-
-    Semantic names are not sufficient because a valid composite may expose
-    several distinct variables named, for example, ``uconv_i``. The persistent
-    alias is unique and survives module reload, so it is the deterministic
-    declaration-order key.
-
-    :param variables: Variables belonging to one emitted declaration group.
-    :param identifier_map: Persistent Python alias indexed by variable UID.
-    :return: Alias-variable pairs in deterministic order.
-    """
-    ordered_pairs: List[Tuple[str, Var]] = list()
-    variable: Var
-    for variable in variables:
-        ordered_pairs.append((identifier_map[variable.uid], variable))
-    ordered_pairs.sort()
-    return ordered_pairs
-
-
-def _build_user_dynamic_variable_allocation_text(
-        variable: Var,
-        identifier_map: Dict[int, str],
-        is_derivative: bool,
-) -> str:
-    """Build one metadata-preserving Python VarFactory allocation.
-
-    Power-flow references are executable wiring metadata, not cosmetic labels.
-    Persisting only the variable name leaves a reloaded RMS input disconnected
-    from its bus even though the symbolic equation text remains identical.
-
-    :param variable: Symbolic variable being declared.
-    :param identifier_map: Persistent Python aliases indexed by UID.
-    :param is_derivative: Include the exact base-variable allocation link.
-    :return: Executable ``VarFactory`` allocation expression.
-    """
-    allocation_arguments: List[str] = list([
-        repr(variable.name + "_") + " + template_name_runtime",
-    ])
-    if variable.ref is None:
-        pass
-    else:
-        allocation_arguments.append(
-            "reference=VarPowerFlowReferenceType." + variable.ref.name
-        )
-    if variable.network_conn:
-        allocation_arguments.append("network_conn=True")
-    else:
-        pass
-    if variable.shared_ref is None:
-        pass
-    else:
-        allocation_arguments.append(
-            "shared_reference=" + repr(variable.shared_ref.name)
-        )
-    if is_derivative:
-        if variable.base_var is None:
-            raise ValueError(
-                "A persisted derivative variable requires one base variable"
-            )
-        else:
-            allocation_arguments.append(
-                "base_var=" + identifier_map[variable.base_var.uid]
-            )
-        factory_method_name: str = "add_diff_var"
-    else:
-        factory_method_name = "add_var"
-    return "vf." + factory_method_name + "(" + ", ".join(
-        allocation_arguments
-    ) + ")"
-
-
-def _build_user_dynamic_template_module_text(block: Block,
-                                             template_name: str,
-                                             target_domain: DynamicSimulationMode,
-                                             device_tpe: DeviceType) -> str:
-    """
-    Build one persisted Python module that recreates one symbolic user template.
-
-    :param block: Symbolic block exported from the editor.
-    :param template_name: Default runtime template name.
-    :param target_domain: Selected RMS or EMT template domain.
-    :param device_tpe: Selected supported device type.
-    :return: Python module text.
-    """
-    identifier_map: Dict[int, str] = _make_identifier_map(block)
-    child_ref_names: Dict[int, str]
-    variable_groups = _build_block_module_variable_groups(block)
-    procedural_import_names: List[str] = _procedural_logic_import_names(block)
-    has_dgs_discrete_events: bool = False
-    event_block: Block
-    event_blocks: List[Block] = list([block])
-    event_blocks.extend(_iter_child_blocks_recursive(block))
-    for event_block in event_blocks:
-        raw_discrete_actions: object | None = event_block.__dict__.get(
-            "dgs_discrete_event_actions",
-            None,
-        )
-        if isinstance(raw_discrete_actions, list) and len(raw_discrete_actions) > 0:
-            has_dgs_discrete_events = True
-        else:
-            pass
-    lines: List[str] = list()
-    template_class_name: str
-    template_class_import: str
-
-    if target_domain == DynamicSimulationMode.RMS:
-        template_class_name = "RmsModelTemplate"
-        template_class_import = "from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate"
-    else:
-        if target_domain == DynamicSimulationMode.EMT:
-            template_class_name = "EmtModelTemplate"
-            template_class_import = "from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate"
-        else:
-            raise ValueError(f"Unsupported user dynamic-model domain {target_domain}")
-
-    reserved_identifiers: Set[str] = set(identifier_map.values())
-    generated_scope_identifier_values: Tuple[str, ...] = (
-        "Block",
-        "DeviceType",
-        "DgsDiscreteEventAction",
-        "DgsDiscreteEventCommand",
-        "EmtModelTemplate",
-        "Expr",
-        "ParamPowerFlowReferenceType",
-        "RmsModelTemplate",
-        "Var",
-        "VarPowerFlowReferenceType",
-        "get_template",
-        "name",
-        "sym",
-        "template",
-        "template_name_runtime",
-        "vf",
-    )
-    generated_scope_identifiers: Set[str] = set(
-        generated_scope_identifier_values
-    )
-    # Child block references share the generated function namespace with
-    # imports, arguments and local variables. Reserving that complete surface
-    # prevents a DGS block such as ``delay`` from hiding the imported
-    # procedural constructor ``delay()`` when the Python module reloads.
-    generated_scope_identifiers.update(procedural_import_names)
-    reserved_identifiers.update(generated_scope_identifiers)
-    child_ref_names = _build_recursive_child_ref_names(
-        block=block,
-        reserved_identifiers=reserved_identifiers,
-    )
-
-    lines.append("# This Source Code Form is subject to the terms of the Mozilla Public")
-    lines.append("# License, v. 2.0. If a copy of the MPL was not distributed with this")
-    lines.append("# file, You can obtain one at https://mozilla.org/MPL/2.0/.")
-    lines.append("# SPDX-License-Identifier: MPL-2.0")
-    lines.append("")
-    lines.append("from __future__ import annotations")
-    lines.append("")
-    lines.append(template_class_import)
-    lines.append("from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory")
-    lines.append("import VeraGridEngine.Utils.Symbolic.symbolic as sym")
-    lines.append("from VeraGridEngine.Utils.Symbolic.block import Block")
-    lines.append("from VeraGridEngine.Utils.Symbolic.symbolic import Expr, Var")
-
-    if len(procedural_import_names) > 0:
-        lines.append("from VeraGridEngine.Utils.procedural_logic import " + ", ".join(procedural_import_names))
-    else:
-        pass
-
-    if has_dgs_discrete_events:
-        lines.append(
-            "from VeraGridEngine.IO.dgs.dgs_discrete_event import "
-            "DgsDiscreteEventAction, DgsDiscreteEventCommand"
-        )
-    else:
-        pass
-
-    lines.append("from VeraGridEngine.enumerations import DeviceType, ParamPowerFlowReferenceType, VarPowerFlowReferenceType")
-    lines.append("")
-    lines.append(f"def get_template(vf: VarFactory, name: str | None = None) -> {template_class_name}:")
-    lines.append("    \"\"\"")
-    lines.append("    Materialize the persisted user dynamic template.")
-    lines.append("")
-    lines.append("    :param vf: Variable factory used to allocate the symbolic surface.")
-    lines.append("    :param name: Optional explicit runtime template name.")
-    lines.append("    :return: Materialized reusable template.")
-    lines.append("    \"\"\"")
-    lines.append("    template_name_runtime: str")
-    lines.append(f"    template: {template_class_name} = {template_class_name}()")
-    lines.append("")
-    lines.append("    if name is None:")
-    lines.append(f"        template_name_runtime = {repr(template_name)}")
-    lines.append("    else:")
-    lines.append("        template_name_runtime = str(name)")
-    lines.append("")
-    lines.append(f"    template.tpe = DeviceType.{device_tpe.name}")
-    lines.append("    template.name = template_name_runtime")
-    lines.append("")
-    lines.append("    # --- Parameters ---")
-    identifier_name: str
-    for identifier_name, var_obj in _build_sorted_identifier_var_pairs(
-            variables=variable_groups.param_vars,
-            identifier_map=identifier_map,
-    ):
-        allocation_text: str = _build_user_dynamic_variable_allocation_text(
-            variable=var_obj,
-            identifier_map=identifier_map,
-            is_derivative=False,
-        )
-        lines.append(
-            f"    {identifier_map[var_obj.uid]}: Var = {allocation_text}"
-        )
-    lines.append("")
-    lines.append("    # --- State Variables ---")
-    for identifier_name, var_obj in _build_sorted_identifier_var_pairs(
-            variables=variable_groups.state_vars,
-            identifier_map=identifier_map,
-    ):
-        allocation_text = _build_user_dynamic_variable_allocation_text(
-            variable=var_obj,
-            identifier_map=identifier_map,
-            is_derivative=False,
-        )
-        lines.append(
-            f"    {identifier_map[var_obj.uid]}: Var = {allocation_text}"
-        )
-    lines.append("")
-    lines.append("    # --- Algebraic / Shared Variables ---")
-    for identifier_name, var_obj in _build_sorted_identifier_var_pairs(
-            variables=variable_groups.algebraic_vars,
-            identifier_map=identifier_map,
-    ):
-        allocation_text = _build_user_dynamic_variable_allocation_text(
-            variable=var_obj,
-            identifier_map=identifier_map,
-            is_derivative=False,
-        )
-        lines.append(
-            f"    {identifier_map[var_obj.uid]}: Var = {allocation_text}"
-        )
-    lines.append("")
-    lines.append("    # --- Derivative Variables ---")
-    for identifier_name, var_obj in _build_sorted_identifier_var_pairs(
-            variables=variable_groups.diff_vars,
-            identifier_map=identifier_map,
-    ):
-        allocation_text = _build_user_dynamic_variable_allocation_text(
-            variable=var_obj,
-            identifier_map=identifier_map,
-            is_derivative=True,
-        )
-        lines.append(
-            f"    {identifier_map[var_obj.uid]}: Var = {allocation_text}"
-        )
-    lines.append("")
-    lines.append("    # --- Block Assembly ---")
-    _append_recursive_child_block_code(block, identifier_map, lines, child_ref_names)
-    _emit_block_code(block, identifier_map, "template.block", lines, child_ref_names)
-    lines.append("    # Preserve exact aliases for distinct PowerFactory signals sharing one name.")
-    lines.append("    template.block.__dict__['dgs_persisted_identifier_by_uid'] = {")
-    identifier_uid: int
-    identifier_name: str
-    for identifier_uid, identifier_name in identifier_map.items():
-        lines.append(
-            f"        {identifier_name}.uid: {repr(identifier_name)},"
-        )
-    lines.append("    }")
-    direct_slot_interfaces_raw: object | None = block.__dict__.get(
-        "dgs_direct_slot_interfaces",
-        None,
-    )
-    if isinstance(direct_slot_interfaces_raw, list):
-        # The native equipment adapter is selected from this exported signal
-        # contract after the Python template is loaded again.
-        lines.append("    # Preserve native DGS slot contracts for typed runtime adapters.")
-        append_python_syntax_assignment(
-            lines=lines,
-            prefix="dgs_direct_slot_interfaces: list[dict[str, object]] = ",
-            value=direct_slot_interfaces_raw,
-            indentation=4,
-        )
-        lines.append(
-            "    template.block.__dict__['dgs_direct_slot_interfaces'] = "
-            "dgs_direct_slot_interfaces"
-        )
-    else:
-        pass
-    lines.append("    template.block.name = template_name_runtime")
-    lines.append("    return template")
-
-    return "\n".join(lines) + "\n"
+    return output_folder / f"{safe_stem}.payload.json"
 
 
 def _iter_child_blocks_recursive(block: Block) -> List[Block]:
@@ -4378,68 +4051,16 @@ def _iter_child_blocks_recursive(block: Block) -> List[Block]:
     return child_blocks
 
 
-def _build_recursive_child_ref_names(
-        block: Block,
-        reserved_identifiers: Set[str],
-) -> Dict[int, str]:
-    """
-    Build deterministic reference names for every descendant child block.
-
-    :param block: Root block.
-    :param reserved_identifiers: Variable identifiers already used in the generated function.
-    :return: Reference name by child object identity.
-    """
-    child_ref_names: Dict[int, str] = dict()
-    used_names: Set[str] = set(reserved_identifiers)
-    child_block: Block
-    base_name: str
-    candidate_name: str
-    suffix_index: int
-
-    for child_block in _iter_child_blocks_recursive(block):
-        base_name = _safe_name(child_block.name)
-        candidate_name = base_name
-        suffix_index = 1
-        while candidate_name in used_names:
-            candidate_name = f"{base_name}_{suffix_index}"
-            suffix_index += 1
-        used_names.add(candidate_name)
-        child_ref_names[id(child_block)] = candidate_name
-
-    return child_ref_names
-
-
-def _append_recursive_child_block_code(block: Block,
-                                       identifier_map: Dict[int, str],
-                                       lines: List[str],
-                                       child_ref_names: Dict[int, str]) -> None:
-    """
-    Emit every descendant child block before the parent block constructor uses it.
-
-    :param block: Root block whose descendants must be emitted.
-    :param identifier_map: Python identifier map by variable uid.
-    :param lines: Output line buffer.
-    :param child_ref_names: Deterministic child reference names.
-    :return: None.
-    """
-    child_block: Block
-
-    for child_block in block.children:
-        _append_recursive_child_block_code(child_block, identifier_map, lines, child_ref_names)
-        _emit_block_code(child_block, identifier_map, child_ref_names[id(child_block)], lines, child_ref_names)
-        lines.append("")
-
-
 def build_user_dynamic_template_persistable_block(block: Block) -> Block:
     """
-    Build the reusable block payload persisted into catalogue `.py` templates.
+    Build the reusable block stored in the declarative user-template payload.
 
     Device-bound editors expose lateral `INPUT_CONN` and `OUTPUT_CONN` blocks only
     as one visual wrapper around the reusable template interface. Persisting those
     GUI-only children into the catalogue would duplicate the lateral interface when
-    the template gets opened again. The persisted `.py` template therefore keeps the
-    root symbolic ports but removes the wrapper connection blocks and their diagram
-    branches.
+    the template gets opened again. The persisted declarative payload therefore
+    keeps the root symbolic ports but removes the wrapper connection blocks and
+    their diagram branches.
 
     :param block: Editor working block.
     :return: Persistable reusable block without GUI-only lateral wrappers.
@@ -4480,42 +4101,6 @@ def build_user_dynamic_template_persistable_block(block: Block) -> Block:
     return export_block
 
 
-def export_user_dynamic_template_module_from_block(
-        block: Block,
-        output_path: str,
-        template_name: str,
-        target_domain: DynamicSimulationMode,
-        device_tpe: DeviceType,
-        progress_callback: Callable[[int, str], None] | None = None,
-) -> Path:
-    """
-    Export one editor block to one persisted Python user-template module.
-
-    :param block: Exported symbolic block.
-    :param output_path: Destination Python module path.
-    :param template_name: Default runtime template name.
-    :param target_domain: Selected RMS or EMT catalogue domain.
-    :param device_tpe: Selected supported device type.
-    :param progress_callback: Optional UI progress callback.
-    :return: Written Python module path.
-    """
-    export_block: Block = build_user_dynamic_template_persistable_block(block)
-    destination_path: Path = Path(output_path)
-    module_text: str
-
-    _emit_dynamic_model_import_progress(progress_callback, 0, "Preparing reusable Python template export...")
-    destination_path.parent.mkdir(parents=True, exist_ok=True)
-    _emit_dynamic_model_import_progress(progress_callback, 20, "Consolidating reusable block payload...")
-    module_text = _build_user_dynamic_template_module_text(
-        block=export_block,
-        template_name=template_name,
-        target_domain=target_domain,
-        device_tpe=device_tpe,
-    )
-    _emit_dynamic_model_import_progress(progress_callback, 65, "Writing Python template module...")
-    destination_path.write_text(module_text, encoding="utf-8")
-    _emit_dynamic_model_import_progress(progress_callback, 100, "Reusable Python template saved")
-    return destination_path
 
 
 def _build_user_dynamic_template_payload_text(
@@ -4545,748 +4130,12 @@ def _build_user_dynamic_template_payload_text(
     else:
         payload["template_fingerprint"] = template_fingerprint
     payload["block_data"] = block.to_dict()
-    payload["dgs_discrete_event_actions"] = (
-        _serialize_dgs_discrete_event_actions(block=block)
-    )
-    payload["runtime_post_update_helper_names"] = (
-        _serialize_runtime_post_update_helper_names(block=block)
-    )
-    payload["dgs_powerfactory_astable_integration"] = (
-        _serialize_powerfactory_astable_integration(block=block)
-    )
-    direct_slot_interfaces_raw: object | None = block.__dict__.get(
-        "dgs_direct_slot_interfaces",
-        None,
-    )
-    if isinstance(direct_slot_interfaces_raw, list):
-        payload["dgs_direct_slot_interfaces"] = direct_slot_interfaces_raw
-    else:
-        pass
-    return json.dumps(payload, indent=2, ensure_ascii=True) + "\n"
-
-
-def _serialize_powerfactory_astable_integration(
-        block: Block,
-) -> List[Dict[str, object]]:
-    """Serialize native per-model A-stable selectors by child path.
-
-    :param block: Root symbolic block.
-    :return: Enabled and disabled selector records with deterministic paths.
-    """
-    records: List[Dict[str, object]] = list()
-    pending_blocks: List[Tuple[List[int], Block]] = list([(list(), block)])
-    while len(pending_blocks) > 0:
-        block_path: List[int]
-        current_block: Block
-        block_path, current_block = pending_blocks.pop(0)
-        raw_selector: object | None = current_block.__dict__.get(
-            "dgs_powerfactory_astable_integration",
-            None,
-        )
-        if isinstance(raw_selector, bool):
-            record: Dict[str, object] = dict()
-            record["block_path"] = list(block_path)
-            record["enabled"] = raw_selector
-            records.append(record)
-        else:
-            pass
-        child_index: int
-        child_block: Block
-        for child_index, child_block in enumerate(current_block.children):
-            child_path: List[int] = list(block_path)
-            child_path.append(child_index)
-            pending_blocks.append((child_path, child_block))
-        else:
-            pass
-    return records
-
-
-def _restore_powerfactory_astable_integration(
-        block: Block,
-        raw_records: object,
-) -> None:
-    """Restore native per-model A-stable selectors from JSON records.
-
-    :param block: Rebuilt root symbolic block.
-    :param raw_records: Raw selector records.
-    :return: None.
-    """
-    if isinstance(raw_records, list):
-        raw_record: object
-        for raw_record in raw_records:
-            if isinstance(raw_record, dict):
-                raw_block_path: object | None = raw_record.get(
-                    "block_path",
-                    None,
-                )
-                raw_enabled: object | None = raw_record.get("enabled", None)
-                if isinstance(raw_block_path, list) and isinstance(
-                        raw_enabled,
-                        bool,
-                ):
-                    current_block: Block = block
-                    valid_path: bool = True
-                    raw_child_index: object
-                    for raw_child_index in raw_block_path:
-                        if (
-                                isinstance(raw_child_index, int)
-                                and not isinstance(raw_child_index, bool)
-                                and 0 <= raw_child_index < len(current_block.children)
-                        ):
-                            current_block = current_block.children[
-                                raw_child_index
-                            ]
-                        else:
-                            valid_path = False
-                    else:
-                        pass
-                    if valid_path:
-                        current_block.__dict__[
-                            "dgs_powerfactory_astable_integration"
-                        ] = raw_enabled
-                    else:
-                        pass
-                else:
-                    pass
-            else:
-                pass
-        else:
-            pass
-    else:
-        pass
-
-
-def _serialize_runtime_post_update_helper_names(
-        block: Block,
-) -> List[Dict[str, object]]:
-    """
-    Serialize procedural algebraic-closure declarations by child path.
-
-    :param block: Root symbolic block.
-    :return: Helper-name records with deterministic child-index paths.
-    """
-    records: List[Dict[str, object]] = list()
-    pending_blocks: List[Tuple[List[int], Block]] = list([(list(), block)])
-    while len(pending_blocks) > 0:
-        block_path: List[int]
-        current_block: Block
-        block_path, current_block = pending_blocks.pop(0)
-        raw_helper_names: object | None = current_block.__dict__.get(
-            "runtime_post_update_helper_names",
-            None,
-        )
-        if isinstance(raw_helper_names, list) and len(raw_helper_names) > 0:
-            helper_names: List[str] = list()
-            raw_helper_name: object
-            for raw_helper_name in raw_helper_names:
-                if isinstance(raw_helper_name, str) and raw_helper_name != "":
-                    helper_names.append(raw_helper_name)
-                else:
-                    pass
-            else:
-                pass
-            if len(helper_names) > 0:
-                record: Dict[str, object] = dict()
-                record["block_path"] = list(block_path)
-                record["helper_names"] = helper_names
-                records.append(record)
-            else:
-                pass
-        else:
-            pass
-
-        child_index: int
-        child_block: Block
-        for child_index, child_block in enumerate(current_block.children):
-            child_path: List[int] = list(block_path)
-            child_path.append(child_index)
-            pending_blocks.append((child_path, child_block))
-        else:
-            pass
-    return records
-
-
-def _restore_runtime_post_update_helper_names(
-        block: Block,
-        raw_records: object,
-) -> None:
-    """
-    Restore procedural algebraic-closure declarations from JSON records.
-
-    :param block: Rebuilt root symbolic block.
-    :param raw_records: Raw serialized helper-name records.
-    :return: None.
-    """
-    if isinstance(raw_records, list):
-        raw_record: object
-        for raw_record in raw_records:
-            if isinstance(raw_record, dict):
-                raw_block_path: object | None = raw_record.get(
-                    "block_path",
-                    None,
-                )
-                raw_helper_names: object | None = raw_record.get(
-                    "helper_names",
-                    None,
-                )
-                if isinstance(raw_block_path, list) and isinstance(
-                        raw_helper_names,
-                        list,
-                ):
-                    current_block: Block = block
-                    valid_path: bool = True
-                    raw_child_index: object
-                    for raw_child_index in raw_block_path:
-                        if (
-                                isinstance(raw_child_index, int)
-                                and not isinstance(raw_child_index, bool)
-                                and 0 <= raw_child_index < len(current_block.children)
-                        ):
-                            current_block = current_block.children[
-                                raw_child_index
-                            ]
-                        else:
-                            valid_path = False
-                    else:
-                        pass
-                    if valid_path:
-                        helper_names: List[str] = list()
-                        raw_helper_name: object
-                        for raw_helper_name in raw_helper_names:
-                            if (
-                                    isinstance(raw_helper_name, str)
-                                    and raw_helper_name != ""
-                            ):
-                                helper_names.append(raw_helper_name)
-                            else:
-                                pass
-                        else:
-                            pass
-                        current_block.__dict__[
-                            "runtime_post_update_helper_names"
-                        ] = helper_names
-                    else:
-                        pass
-                else:
-                    pass
-            else:
-                pass
-        else:
-            pass
-    else:
-        pass
-
-
-def _serialize_dgs_discrete_event_actions(
-        block: Block,
-) -> List[Dict[str, object]]:
-    """
-    Serialize deferred DGS actions without coupling ``Block`` to DGS imports.
-
-    :param block: Root symbolic block.
-    :return: Action records with deterministic child-index paths.
-    """
-    records: List[Dict[str, object]] = list()
-    pending_blocks: List[Tuple[List[int], Block]] = list([(
-        list(),
-        block,
-    )])
-    while len(pending_blocks) > 0:
-        block_path: List[int]
-        current_block: Block
-        block_path, current_block = pending_blocks.pop(0)
-        raw_actions: object | None = current_block.__dict__.get(
-            "dgs_discrete_event_actions",
-            None,
-        )
-        if isinstance(raw_actions, list):
-            raw_action: object
-            for raw_action in raw_actions:
-                if isinstance(raw_action, DgsDiscreteEventAction):
-                    record: Dict[str, object] = raw_action.to_dict()
-                    record["block_path"] = list(block_path)
-                    records.append(record)
-                else:
-                    pass
-        else:
-            pass
-
-        child_index: int
-        child_block: Block
-        for child_index, child_block in enumerate(current_block.children):
-            child_path: List[int] = list(block_path)
-            child_path.append(child_index)
-            pending_blocks.append((child_path, child_block))
-    return records
-
-
-def _restore_dgs_discrete_event_actions(
-        block: Block,
-        raw_records: object,
-) -> None:
-    """
-    Restore optional deferred DGS actions onto their exact child blocks.
-
-    :param block: Root block rebuilt from the generic JSON snapshot.
-    :param raw_records: Parsed optional action records.
-    :return: None.
-    """
-    if isinstance(raw_records, list):
-        records: List[object] = raw_records
-    else:
-        records = list()
-
-    raw_record: object
-    for raw_record in records:
-        if isinstance(raw_record, dict):
-            record: Dict[str, object] = raw_record
-            raw_path: object | None = record.get("block_path", None)
-            action: DgsDiscreteEventAction | None = (
-                dgs_discrete_event_action_from_dict(payload=record)
-            )
-            path_ready: bool = isinstance(raw_path, list)
-        else:
-            raw_path = None
-            action = None
-            path_ready = False
-
-        target_block: Block = block
-        if path_ready and isinstance(raw_path, list):
-            raw_child_index: object
-            for raw_child_index in raw_path:
-                child_index_ready: bool = (
-                    isinstance(raw_child_index, int)
-                    and not isinstance(raw_child_index, bool)
-                    and 0 <= raw_child_index < len(target_block.children)
-                )
-                if child_index_ready:
-                    target_block = target_block.children[raw_child_index]
-                else:
-                    path_ready = False
-        else:
-            pass
-
-        if path_ready and action is not None:
-            target_actions_raw: object | None = target_block.__dict__.get(
-                "dgs_discrete_event_actions",
-                None,
-            )
-            if isinstance(target_actions_raw, list):
-                target_actions: List[object] = target_actions_raw
-            else:
-                target_actions = list()
-                target_block.__dict__["dgs_discrete_event_actions"] = target_actions
-            target_actions.append(action)
-        else:
-            pass
-
-
-def _try_remove_catalog_transaction_file(path: Path) -> bool:
-    """
-    Remove one regular transaction artifact without masking the primary result.
-
-    :param path: Temporary or backup artifact path.
-    :return: ``True`` when the path is absent after the cleanup attempt.
-    """
-    removed: bool
-
-    if path.exists():
-        if path.is_file():
-            try:
-                path.unlink()
-            except OSError:
-                removed = False
-            else:
-                removed = True
-        else:
-            removed = False
-    else:
-        removed = True
-
-    return removed
-
-
-def _try_rollback_catalog_transaction_target(
-        target_path: Path,
-        backup_path: Path,
-        original_existed: bool,
-        backup_created: bool,
-        new_published: bool,
-) -> bool:
-    """
-    Restore one target after a failed two-file catalogue transaction.
-
-    :param target_path: Final catalogue artifact path.
-    :param backup_path: Transaction backup path.
-    :param original_existed: Whether a prior final artifact existed.
-    :param backup_created: Whether that prior artifact reached the backup path.
-    :param new_published: Whether the new artifact reached the final path.
-    :return: ``True`` when the target returned to its pre-transaction state.
-    """
-    restored: bool = True
-
-    if backup_created:
-        if target_path.exists():
-            restored = _try_remove_catalog_transaction_file(path=target_path)
-        else:
-            pass
-
-        if restored and backup_path.is_file():
-            try:
-                backup_path.replace(target_path)
-            except OSError:
-                restored = False
-            else:
-                restored = True
-        else:
-            if restored:
-                restored = False
-            else:
-                pass
-    else:
-        if original_existed:
-            # The original never moved, so no action is required.
-            pass
-        else:
-            if new_published:
-                restored = _try_remove_catalog_transaction_file(path=target_path)
-            else:
-                pass
-
-    return restored
-
-
-def _write_user_dynamic_template_module_transactionally(
-        module_output_path: Path,
-        module_text: str,
-) -> None:
-    """Atomically publish one canonical Python catalogue module.
-
-    This path is used for massive DGS catalogues, where the executable,
-    human-readable Python source already contains the complete model and an
-    additional full-graph JSON snapshot would be pure duplication.
-
-    :param module_output_path: Final canonical Python module path.
-    :param module_text: Complete syntax-validated Python module text.
-    :return: None.
-    """
-    transaction_token: str = uuid.uuid4().hex
-    temporary_path: Path = module_output_path.with_name(
-        f"{module_output_path.name}.transaction-{transaction_token}.tmp"
-    )
-    backup_path: Path = module_output_path.with_name(
-        f"{module_output_path.name}.transaction-{transaction_token}.bak"
-    )
-    original_existed: bool = module_output_path.exists()
-    backup_created: bool = False
-    published: bool = False
-    restored: bool
-
-    # Refuse non-file collisions before preparing an atomic replacement.
-    if original_existed:
-        if module_output_path.is_file():
-            pass
-        else:
-            raise IsADirectoryError(str(module_output_path))
-    else:
-        pass
-
-    module_output_path.parent.mkdir(parents=True, exist_ok=True)
-    compile(module_text, str(module_output_path), "exec")
-    try:
-        temporary_path.write_text(module_text, encoding="utf-8")
-    except OSError:
-        _try_remove_catalog_transaction_file(path=temporary_path)
-        raise
-    else:
-        pass
-
-    try:
-        if original_existed:
-            module_output_path.replace(backup_path)
-            backup_created = True
-        else:
-            pass
-        temporary_path.replace(module_output_path)
-        published = True
-    except OSError as exc:
-        restored = _try_rollback_catalog_transaction_target(
-            target_path=module_output_path,
-            backup_path=backup_path,
-            original_existed=original_existed,
-            backup_created=backup_created,
-            new_published=published,
-        )
-        _try_remove_catalog_transaction_file(path=temporary_path)
-        if restored:
-            raise
-        else:
-            raise OSError(
-                f"Catalogue module publication and rollback both failed for {module_output_path}"
-            ) from exc
-    else:
-        _try_remove_catalog_transaction_file(path=backup_path)
-        _try_remove_catalog_transaction_file(path=temporary_path)
-
-
-def _write_user_dynamic_template_catalog_pair_transactionally(
-        module_output_path: Path,
-        module_text: str,
-        payload_text: str,
-) -> None:
-    """
-    Atomically replace the canonical Python module and JSON snapshot as one pair.
-
-    Both complete texts are written to same-directory temporary files first.
-    Existing artifacts move to transaction-specific backups before publication;
-    any failed publication restores both prior files or removes both new files.
-
-    :param module_output_path: Final canonical Python module path.
-    :param module_text: Complete validated Python module text.
-    :param payload_text: Complete JSON snapshot text.
-    :return: None.
-    """
-    payload_output_path: Path = module_output_path.with_suffix(".payload.json")
-    transaction_token: str = uuid.uuid4().hex
-    module_temporary_path: Path = module_output_path.with_name(
-        f"{module_output_path.name}.transaction-{transaction_token}.tmp"
-    )
-    payload_temporary_path: Path = payload_output_path.with_name(
-        f"{payload_output_path.name}.transaction-{transaction_token}.tmp"
-    )
-    module_backup_path: Path = module_output_path.with_name(
-        f"{module_output_path.name}.transaction-{transaction_token}.bak"
-    )
-    payload_backup_path: Path = payload_output_path.with_name(
-        f"{payload_output_path.name}.transaction-{transaction_token}.bak"
-    )
-    module_original_existed: bool = module_output_path.exists()
-    payload_original_existed: bool = payload_output_path.exists()
-    module_backup_created: bool = False
-    payload_backup_created: bool = False
-    module_published: bool = False
-    payload_published: bool = False
-    module_restored: bool
-    payload_restored: bool
-
-    # Reject non-file targets before creating temporaries so the catalogue never
-    # converts a user directory or another filesystem object into a model file.
-    if module_original_existed:
-        if module_output_path.is_file():
-            pass
-        else:
-            raise IsADirectoryError(str(module_output_path))
-    else:
-        pass
-
-    if payload_original_existed:
-        if payload_output_path.is_file():
-            pass
-        else:
-            raise IsADirectoryError(str(payload_output_path))
-    else:
-        pass
-
-    module_output_path.parent.mkdir(parents=True, exist_ok=True)
-    compile(module_text, str(module_output_path), "exec")
-
-    # Preparation happens entirely outside the final names.  A preparation
-    # failure therefore cannot leave either member of the published pair.
-    try:
-        module_temporary_path.write_text(module_text, encoding="utf-8")
-        payload_temporary_path.write_text(payload_text, encoding="utf-8")
-    except OSError:
-        _try_remove_catalog_transaction_file(path=module_temporary_path)
-        _try_remove_catalog_transaction_file(path=payload_temporary_path)
-        raise
-    else:
-        pass
-
-    try:
-        if module_original_existed:
-            module_output_path.replace(module_backup_path)
-            module_backup_created = True
-        else:
-            pass
-
-        if payload_original_existed:
-            payload_output_path.replace(payload_backup_path)
-            payload_backup_created = True
-        else:
-            pass
-
-        # Publish the JSON snapshot first and the canonical Python module last.
-        # The module remains the catalogue's primary artifact and commit point.
-        payload_temporary_path.replace(payload_output_path)
-        payload_published = True
-        module_temporary_path.replace(module_output_path)
-        module_published = True
-    except OSError as exc:
-        module_restored = _try_rollback_catalog_transaction_target(
-            target_path=module_output_path,
-            backup_path=module_backup_path,
-            original_existed=module_original_existed,
-            backup_created=module_backup_created,
-            new_published=module_published,
-        )
-        payload_restored = _try_rollback_catalog_transaction_target(
-            target_path=payload_output_path,
-            backup_path=payload_backup_path,
-            original_existed=payload_original_existed,
-            backup_created=payload_backup_created,
-            new_published=payload_published,
-        )
-        _try_remove_catalog_transaction_file(path=module_temporary_path)
-        _try_remove_catalog_transaction_file(path=payload_temporary_path)
-
-        if module_restored and payload_restored:
-            raise
-        else:
-            raise OSError(
-                f"Catalogue pair publication and rollback both failed for {module_output_path}"
-            ) from exc
-    else:
-        # Backups are outside loader globs and can be safely cleaned only after
-        # both final paths have been published successfully.
-        _try_remove_catalog_transaction_file(path=module_backup_path)
-        _try_remove_catalog_transaction_file(path=payload_backup_path)
-        _try_remove_catalog_transaction_file(path=module_temporary_path)
-        _try_remove_catalog_transaction_file(path=payload_temporary_path)
-
-
-def save_user_dynamic_template_module_to_catalog(
-        block: Block,
-        template_name: str,
-        target_domain: DynamicSimulationMode,
-        device_tpe: DeviceType,
-        catalog_root_folder: str | None = None,
-        progress_callback: Callable[[int, str], None] | None = None,
-        template_fingerprint: str | None = None,
-        include_validation_snapshot: bool = True,
-) -> Path:
-    """
-    Save one editor block directly into the persistent VeraGrid user catalogue.
-
-    :param block: Exported symbolic block.
-    :param template_name: Default runtime template name.
-    :param target_domain: Selected RMS or EMT catalogue domain.
-    :param device_tpe: Selected supported device type.
-    :param catalog_root_folder: Optional explicit VeraGrid user root used mainly by tests.
-    :param progress_callback: Optional UI progress callback.
-    :param template_fingerprint: Optional precomputed structural identity.
-    :param include_validation_snapshot: Persist the optional JSON validation sidecar.
-    :return: Collision-safe written catalogue module path.
-    """
-    persistable_block: Block
-    module_text: str
-    payload_text: str | None
-    output_path: Path
-    current_output_path: Path | None
-    can_emit_read_only: bool
-
-    if template_fingerprint is None:
-        current_output_path = None
-    else:
-        current_output_path = _find_current_user_dynamic_template_catalog_module(
-            template_name=template_name,
-            target_domain=target_domain,
-            device_tpe=device_tpe,
-            template_fingerprint=template_fingerprint,
-            catalog_root_folder=catalog_root_folder,
-        )
-
-    if current_output_path is None:
-        pass
-    else:
-        _emit_dynamic_model_import_progress(
-            progress_callback,
-            100,
-            "Reusable Python template already current",
-        )
-        return current_output_path
-
-    _emit_dynamic_model_import_progress(progress_callback, 0, "Preparing transactional catalogue export...")
-    # Massive DGS imports already materialize canonical, wrapper-free blocks.
-    # Emit those graphs read-only instead of recursively cloning every OEM
-    # expression tree a second time. Editor wrappers and loaded runtime-suffix
-    # templates retain the established normalization/copy path.
-    can_emit_read_only = _can_build_dynamic_import_canonical_text_read_only(
-        block=block,
-        template_name=template_name,
-    )
-    if can_emit_read_only:
-        persistable_block = block
-    else:
-        persistable_block = build_user_dynamic_template_persistable_block(block)
-    module_text = _build_user_dynamic_template_module_text(
-        block=persistable_block,
-        template_name=template_name,
-        target_domain=target_domain,
-        device_tpe=device_tpe,
-    )
-    # The compact comment is part of the canonical Python artifact and makes
-    # massive catalogue imports resumable without a redundant JSON graph.
-    module_text = (
-        _build_user_dynamic_template_module_identity_header(
-            template_name=template_name,
-            target_domain=target_domain,
-            device_tpe=device_tpe,
-            template_fingerprint=template_fingerprint,
-        )
-        + module_text
-    )
-    if include_validation_snapshot:
-        payload_text = _build_user_dynamic_template_payload_text(
-            block=persistable_block,
-            template_name=template_name,
-            target_domain=target_domain,
-            device_tpe=device_tpe,
-            template_fingerprint=template_fingerprint,
-        )
-    else:
-        payload_text = None
-    _emit_dynamic_model_import_progress(progress_callback, 35, "Resolving collision-safe catalogue identity...")
-    output_path = _resolve_user_dynamic_template_catalog_output_path(
-        block=persistable_block,
-        template_name=template_name,
-        target_domain=target_domain,
-        device_tpe=device_tpe,
-        module_text=module_text,
-        catalog_root_folder=catalog_root_folder,
-        template_fingerprint=template_fingerprint,
-    )
-    if payload_text is None:
-        _emit_dynamic_model_import_progress(
-            progress_callback,
-            65,
-            "Publishing canonical Python catalogue module...",
-        )
-        _write_user_dynamic_template_module_transactionally(
-            module_output_path=output_path,
-            module_text=module_text,
-        )
-        _emit_dynamic_model_import_progress(
-            progress_callback,
-            100,
-            "Reusable Python template saved",
-        )
-    else:
-        _emit_dynamic_model_import_progress(
-            progress_callback,
-            65,
-            "Publishing Python and JSON catalogue pair...",
-        )
-        _write_user_dynamic_template_catalog_pair_transactionally(
-            module_output_path=output_path,
-            module_text=module_text,
-            payload_text=payload_text,
-        )
-        _emit_dynamic_model_import_progress(
-            progress_callback,
-            100,
-            "Reusable Python template and snapshot saved",
-        )
-    return output_path
+    return json.dumps(
+        payload,
+        indent=2,
+        ensure_ascii=True,
+        sort_keys=True,
+    ) + "\n"
 
 
 def export_user_dynamic_template_json_from_block(
@@ -5359,48 +4208,12 @@ def load_user_dynamic_template_json_payload(
             None,
         )
         device_tpe_obj: object | None = payload_obj.get("device_tpe", None)
-        dgs_discrete_event_actions_obj: object | None = payload_obj.get(
-            "dgs_discrete_event_actions",
-            None,
-        )
-        dgs_direct_slot_interfaces_obj: object | None = payload_obj.get(
-            "dgs_direct_slot_interfaces",
-            None,
-        )
-        runtime_post_update_helper_names_obj: object | None = payload_obj.get(
-            "runtime_post_update_helper_names",
-            None,
-        )
-        powerfactory_astable_integration_obj: object | None = payload_obj.get(
-            "dgs_powerfactory_astable_integration",
-            None,
-        )
     else:
         return None
 
     if isinstance(block_data_obj, dict):
         _emit_dynamic_model_import_progress(progress_callback, 55, "Rebuilding symbolic block from JSON...")
         block = Block.parse(block_data_obj)
-        _restore_dgs_discrete_event_actions(
-            block=block,
-            raw_records=dgs_discrete_event_actions_obj,
-        )
-        _restore_runtime_post_update_helper_names(
-            block=block,
-            raw_records=runtime_post_update_helper_names_obj,
-        )
-        _restore_powerfactory_astable_integration(
-            block=block,
-            raw_records=powerfactory_astable_integration_obj,
-        )
-        if isinstance(dgs_direct_slot_interfaces_obj, list):
-            # The JSON sidecar mirrors the canonical Python adapter contract so
-            # structural validation compares the same physical model surface.
-            block.__dict__["dgs_direct_slot_interfaces"] = (
-                dgs_direct_slot_interfaces_obj
-            )
-        else:
-            pass
     else:
         return None
 

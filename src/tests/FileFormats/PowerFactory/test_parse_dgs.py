@@ -3,7 +3,7 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 import pytest
-import os
+from pathlib import Path
 import pandas as pd
 import numpy as np
 from types import SimpleNamespace
@@ -11,112 +11,136 @@ from types import SimpleNamespace
 import VeraGridEngine.Devices as dev
 from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.IO.file_open import FileOpen
+from VeraGridEngine.IO.dgs.dgs_circuit import DgsCircuit
 from VeraGridEngine.IO.dgs.dgs_to_veragrid import _apply_elmtow_tower_coupling
 from VeraGridEngine.Simulations.PowerFlow.power_flow_worker import PowerFlowOptions
 from VeraGridEngine.Simulations.PowerFlow.power_flow_options import SolverType
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowDriver
 from VeraGridEngine.IO.dgs.veragrid_to_dgs import circuit_to_dgs
 
-def test_dgs_ieee_grids():
-    files = [
+def test_dgs_ieee_grids() -> None:
+    """Validate DGS IEEE grids against their tracked power-flow results."""
+    files: list[tuple[str, str]] = [
         ('IEEE14_test.dgs', 'IEEE 14 bus.sav.xlsx'),
         ('IEEE30_test.dgs', 'IEEE 30 bus.sav.xlsx'),
         ('IEEE118_v2_test.dgs', 'IEEE 118 Bus.sav.xlsx'),
     ]
 
-    data_dir = os.path.join("data")
-    for solver_type in [SolverType.NR,
-                        SolverType.IWAMOTO,
-                        SolverType.LM,
-                        SolverType.FASTDECOUPLED,
-                        SolverType.PowellDogLeg,
-                        SolverType.HELM]:
+    data_dir: Path = Path(__file__).resolve().parents[2] / "data"
+    solver_types: tuple[SolverType, ...] = (
+        SolverType.NR,
+        SolverType.IWAMOTO,
+        SolverType.LM,
+        SolverType.FASTDECOUPLED,
+        SolverType.PowellDogLeg,
+        SolverType.HELM,
+    )
+    solver_type: SolverType
+    for solver_type in solver_types:
 
-        options = PowerFlowOptions(solver_type,
-                                   verbose=0,
-                                   control_q=False,
-                                   retry_with_other_methods=False)
+        options: PowerFlowOptions = PowerFlowOptions(
+            solver_type,
+            verbose=0,
+            control_q=False,
+            retry_with_other_methods=False,
+        )
 
+        f1: str
+        f2: str
         for f1, f2 in files:
-            fname = os.path.join(data_dir, "grids", "DGS", f1)
-            main_circuit = FileOpen(fname).open()
-            power_flow = PowerFlowDriver(main_circuit, options)
+            fname: Path = data_dir / "grids" / "DGS" / f1
+            main_circuit: dev.MultiCircuit = FileOpen(str(fname)).open()
+            power_flow: PowerFlowDriver = PowerFlowDriver(main_circuit, options)
             power_flow.run()
 
-            results_file = os.path.join(data_dir, "results", f2)
-            df_v = pd.read_excel(results_file, sheet_name='Vabs', index_col=0)
-            df_p = pd.read_excel(results_file, sheet_name='Pbranch', index_col=0)
+            results_file: Path = data_dir / "results" / f2
+            df_v: pd.DataFrame = pd.read_excel(
+                results_file,
+                sheet_name='Vabs',
+                index_col=0,
+            )
+            df_p: pd.DataFrame = pd.read_excel(
+                results_file,
+                sheet_name='Pbranch',
+                index_col=0,
+            )
 
-            v_gc = np.abs(power_flow.results.voltage)
-            v_psse = df_v.values[:, 0]
-            p_gc = power_flow.results.Sf.real
-            p_psse = df_p.values[:, 0]
+            v_gc: np.ndarray = np.abs(power_flow.results.voltage)
+            v_psse: np.ndarray = df_v.values[:, 0]
+            p_gc: np.ndarray = power_flow.results.Sf.real
+            p_psse: np.ndarray = df_p.values[:, 0]
 
-            v_ok = np.allclose(v_gc, v_psse, atol=1e-4)
-            flow_ok = np.allclose(p_gc, p_psse, atol=1e-2)
+            v_ok: bool = bool(np.allclose(v_gc, v_psse, atol=1e-4))
+            flow_ok: bool = bool(np.allclose(p_gc, p_psse, atol=1e-2))
 
             assert v_ok
             assert flow_ok
 
         print(solver_type, 'ok')
 
-def test_roundtrip_raw_to_dgs_to_dgs_ieee_grids():
-    """
-    Roundtrip test:
-      RAW -> powerflow (res1)
-      export to DGS
-      import same DGS -> powerflow (res2)
-      check res1 == res2 (Vabs and Pbranch) with same tolerances as the RAW-vs-PSS/E test
-    """
+def test_roundtrip_raw_to_dgs_to_dgs_ieee_grids(tmp_path: Path) -> None:
+    """Compare power-flow results before and after a RAW-to-DGS roundtrip.
 
-    files = [
+    :param tmp_path: Isolated pytest directory for generated DGS exports.
+    :return: None.
+    """
+    files: list[tuple[str, str]] = [
         ('IEEE 14 bus.raw', 'IEEE 14 bus.sav.xlsx'),
         ('IEEE 30 bus.raw', 'IEEE 30 bus.sav.xlsx'),
         ('IEEE 118 Bus v2.raw', 'IEEE 118 Bus.sav.xlsx'),
     ]
+    data_dir: Path = Path(__file__).resolve().parents[2] / "data"
+    out_dir: Path = tmp_path / "dgs_roundtrip"
+    out_dir.mkdir()
+    solver_types: tuple[SolverType, ...] = (
+        SolverType.NR,
+        SolverType.IWAMOTO,
+        SolverType.LM,
+        SolverType.FASTDECOUPLED,
+        SolverType.PowellDogLeg,
+        SolverType.HELM,
+    )
+    solver_type: SolverType
+    for solver_type in solver_types:
 
+        options: PowerFlowOptions = PowerFlowOptions(
+            solver_type,
+            verbose=0,
+            control_q=False,
+            retry_with_other_methods=False,
+        )
 
-    out_dir = os.path.join("data", "grids", "DGS", "_roundtrip_tmp")
-    os.makedirs(out_dir, exist_ok=True)
+        f1: str
+        unused_result_file: str
+        for f1, unused_result_file in files:
+            raw_path: Path = data_dir / "grids" / "RAW" / f1
+            main_circuit: dev.MultiCircuit = FileOpen(str(raw_path)).open()
 
-    for solver_type in [SolverType.NR,
-                        SolverType.IWAMOTO,
-                        SolverType.LM,
-                        SolverType.FASTDECOUPLED,
-                        SolverType.PowellDogLeg,
-                        SolverType.HELM]:
-
-        options = PowerFlowOptions(solver_type,
-                                   verbose=0,
-                                   control_q=False,
-                                   retry_with_other_methods=False)
-
-        for f1, _ in files:
-            raw_path = os.path.join("data", "grids", "RAW", f1)
-            main_circuit = FileOpen(raw_path).open()
-
-            pf1 = PowerFlowDriver(main_circuit, options)
+            pf1: PowerFlowDriver = PowerFlowDriver(main_circuit, options)
             pf1.run()
 
-            v1 = np.abs(pf1.results.voltage)
-            p1 = pf1.results.Sf.real
+            v1: np.ndarray = np.abs(pf1.results.voltage)
+            p1: np.ndarray = pf1.results.Sf.real
 
             # export to dgs (same logic as FileHandler.save_dgs)
-            dgs_path = os.path.join(out_dir, f1.replace('.raw', f'__{solver_type.name}.dgs'))
-            dgs = circuit_to_dgs(grid=main_circuit)
-            dgs.write_dgs(path=dgs_path)
+            dgs_path: Path = out_dir / f1.replace(
+                '.raw',
+                f'__{solver_type.name}.dgs',
+            )
+            dgs: DgsCircuit = circuit_to_dgs(grid=main_circuit)
+            dgs.write_dgs(path=str(dgs_path))
 
             # import the same dgs and run again
-            rt_circuit = FileOpen(dgs_path).open()
+            rt_circuit: dev.MultiCircuit = FileOpen(str(dgs_path)).open()
 
-            pf2 = PowerFlowDriver(rt_circuit, options)
+            pf2: PowerFlowDriver = PowerFlowDriver(rt_circuit, options)
             pf2.run()
 
-            v2 = np.abs(pf2.results.voltage)
-            p2 = pf2.results.Sf.real
+            v2: np.ndarray = np.abs(pf2.results.voltage)
+            p2: np.ndarray = pf2.results.Sf.real
 
-            v_ok = np.allclose(v1, v2, atol=1e-4)
-            flow_ok = np.allclose(p1, p2, atol=1e-2)
+            v_ok: bool = bool(np.allclose(v1, v2, atol=1e-4))
+            flow_ok: bool = bool(np.allclose(p1, p2, atol=1e-2))
             assert v_ok
             assert flow_ok
 

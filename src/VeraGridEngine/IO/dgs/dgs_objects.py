@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 import csv
-from typing import Any, Dict, List
+from typing import Dict, List
 
 
 def _split_dgs_line(line: str) -> List[str]:
@@ -47,11 +47,38 @@ class DgsProperty:
     Dgs Property
     """
 
-    def __init__(self, name: str, dgs_type: str, description: str, py_name: str):
-        self.name = name
-        self.dgs_type = dgs_type
-        self.description = description
-        self.py_name = py_name
+    __slots__ = (
+        "name",
+        "dgs_type",
+        "description",
+        "py_name",
+        "optional",
+        "py_type",
+        "default_value",
+    )
+
+    def __init__(self,
+                 name: str,
+                 dgs_type: str,
+                 description: str,
+                 py_name: str,
+                 optional: bool = False) -> None:
+        """Describe one typed DGS column.
+
+        :param name: Exact DGS header name.
+        :param dgs_type: Native DGS scalar type declaration.
+        :param description: Human-readable column description.
+        :param py_name: Target Python attribute name.
+        :param optional: Preserve missing placeholders as ``None``.
+        :return: None.
+        """
+        self.name: str = name
+        self.dgs_type: str = dgs_type
+        self.description: str = description
+        self.py_name: str = py_name
+        self.optional: bool = bool(optional)
+        self.py_type: type = str
+        self.default_value: str | int | bool | float | None = None
 
         if dgs_type.startswith("b"):  # boolean
             self.py_type = bool
@@ -78,20 +105,26 @@ class DgsProperty:
             self.py_type = str
             self.default_value = None
 
-    def parse(self, raw: str) -> str | int | bool | float | None:
+    def parse(self, raw: str | None) -> str | int | bool | float | None:
         """
 
         :param raw: incoming value
         :return:
         """
         if raw is None:
-            return self.default_value
+            if self.optional:
+                return None
+            else:
+                return self.default_value
 
         raw = raw.strip()
 
         # PowerFactory placeholders / missing values
         if raw == "" or raw == "*":
-            return self.default_value
+            if self.optional:
+                return None
+            else:
+                return self.default_value
 
         # Boolean parsing
         if self.py_type is bool:
@@ -114,12 +147,15 @@ class DgsProperty:
                 else:
                     return float(raw_norm)
             except ValueError:
-                return self.default_value
+                if self.optional:
+                    return None
+                else:
+                    return self.default_value
 
         # String/reference
         return raw
 
-    def format(self, value: Any) -> str:
+    def format(self, value: str | int | bool | float | None) -> str:
         """
 
         :param value:
@@ -144,7 +180,7 @@ class DGSElement:
         cls.properties = {p.name: p for p in cls.properties_list}
 
     @classmethod
-    def parse_line(cls, line: str, header_map: dict[str, int]):
+    def parse_line(cls, line: str, header_map: dict[str, int]) -> "BlkSlot":
         """
         Parse a DGS data line using a header-derived column map.
 
@@ -605,7 +641,10 @@ class BlkSlot(DGSElement):
     @classmethod
     def parse_line(cls, line: str, header_map: dict[str, int]):
         parts = _split_dgs_line(line)
-        obj = super().parse_line(";".join(parts), header_map)
+        # Preserve the original quoting while the base parser resolves every
+        # header column. Rejoining already-decoded fields would turn embedded
+        # semicolons into false delimiters and shift ``element``/``filtmod``.
+        obj: BlkSlot = super().parse_line(line, header_map)
         raw_outputs = _dgs_get(parts, header_map, 'sOutput:0')
         if raw_outputs is not None and raw_outputs.strip() not in {'', '*'}:
             obj.outputs = [item.strip() for item in raw_outputs.split(',') if item.strip()]
@@ -813,6 +852,239 @@ class ElmGenstat(DGSElement):
         self.usetp: float = 0.0
         self.cQ_min: float = 0.0
         self.cQ_max: float = 0.0
+
+
+# Alex review required: minimal source schema used to build the final three-phase VSC.
+class ElmVsc(DGSElement):
+    """Represent one native three-terminal voltage-source converter.
+
+    DGS cubicles identify terminal zero as AC, terminal one as positive DC and
+    terminal two as negative DC. The row keeps the exact native steady-state
+    and equipment parameters needed to build the final VeraGrid ``VSC``.
+    """
+
+    __slots__ = (
+        "ID",
+        "OP",
+        "loc_name",
+        "for_name",
+        "fold_id",
+        "outserv",
+        "Unom",
+        "usetp",
+        "psetp",
+        "qsetp",
+        "Pnold",
+        "P_max",
+        "Snom",
+        "Pcu",
+        "uk",
+        "Rarm",
+        "Larm",
+        "mmcCmod",
+        "NmmcSM",
+        "MmmcSM",
+        "iZarmDCside",
+        "swtLossFactor",
+        "resLossFactor",
+        "usetpdc",
+        "Unomdc",
+        "i_acdc",
+        "m_p_busac",
+        "m_q_busac",
+    )
+
+    element_type = "ElmVsc"
+    properties_list = [
+        DgsProperty("FID", "a:40", "Unique identifier", py_name="ID"),
+        DgsProperty("OP", "a:1", "DGS operation marker", py_name="OP"),
+        DgsProperty("loc_name", "a:80", "Name", py_name="loc_name"),
+        DgsProperty("for_name", "a:100", "Foreign key", py_name="for_name"),
+        DgsProperty("fold_id", "p", "Parent folder", py_name="fold_id"),
+        DgsProperty("outserv", "i", "Out-of-service flag", py_name="outserv"),
+        DgsProperty("Unom", "r", "Nominal DC voltage in kV", py_name="Unom"),
+        DgsProperty("usetp", "r", "AC voltage setpoint in p.u.", py_name="usetp"),
+        DgsProperty("psetp", "r", "Active-power setpoint in MW", py_name="psetp"),
+        DgsProperty("qsetp", "r", "Reactive-power setpoint in MVAr", py_name="qsetp"),
+        DgsProperty("Pnold", "r", "No-load loss in kW", py_name="Pnold"),
+        DgsProperty("P_max", "r", "Maximum active power in MW", py_name="P_max"),
+        DgsProperty("Snom", "r", "Rated converter power in MVA", py_name="Snom", optional=True),
+        DgsProperty("Pcu", "r", "Series-reactor copper losses in kW", py_name="Pcu", optional=True),
+        DgsProperty("uk", "r", "Series-reactor short-circuit voltage in percent", py_name="uk", optional=True),
+        DgsProperty("Rarm", "r", "MMC arm-reactor resistance in ohm", py_name="Rarm", optional=True),
+        DgsProperty("Larm", "r", "MMC arm-reactor inductance in mH", py_name="Larm", optional=True),
+        DgsProperty("mmcCmod", "r", "MMC submodule capacitance in uF", py_name="mmcCmod", optional=True),
+        DgsProperty("NmmcSM", "i", "Number of MMC submodules per arm", py_name="NmmcSM", optional=True),
+        DgsProperty("MmmcSM", "i", "Legacy MMC submodule count", py_name="MmmcSM", optional=True),
+        DgsProperty("iZarmDCside", "i", "Place MMC arm reactor on the DC side", py_name="iZarmDCside", optional=True),
+        DgsProperty("swtLossFactor", "r", "Switching loss factor in kW/A", py_name="swtLossFactor", optional=True),
+        DgsProperty("resLossFactor", "r", "Resistive loss factor in ohm", py_name="resLossFactor", optional=True),
+        DgsProperty("usetpdc", "r", "DC voltage setpoint in p.u.", py_name="usetpdc", optional=True),
+        DgsProperty("Unomdc", "r", "Nominal DC voltage in kV", py_name="Unomdc", optional=True),
+        DgsProperty("i_acdc", "i", "Native AC/DC control-mode selector", py_name="i_acdc"),
+        DgsProperty(
+            "m:P:busac", "r", "Optional solved AC active-power evidence in MW",
+            py_name="m_p_busac", optional=True,
+        ),
+        DgsProperty(
+            "m:Q:busac", "r", "Optional solved AC reactive-power evidence in MVAr",
+            py_name="m_q_busac", optional=True,
+        ),
+    ]
+
+    def __init__(self) -> None:
+        """Initialize one empty typed three-terminal converter row.
+
+        :return: None.
+        """
+        self.ID: str = ""
+        self.OP: str = ""
+        self.loc_name: str = ""
+        self.for_name: str = ""
+        self.fold_id: str = ""
+        self.outserv: int = 0
+        self.Unom: float = 0.0
+        self.usetp: float = 1.0
+        self.psetp: float = 0.0
+        self.qsetp: float = 0.0
+        self.Pnold: float = 0.0
+        self.P_max: float = 0.0
+        self.Snom: float | None = None
+        self.Pcu: float | None = None
+        self.uk: float | None = None
+        self.Rarm: float | None = None
+        self.Larm: float | None = None
+        self.mmcCmod: float | None = None
+        self.NmmcSM: int | None = None
+        self.MmmcSM: int | None = None
+        self.iZarmDCside: int | None = None
+        self.swtLossFactor: float | None = None
+        self.resLossFactor: float | None = None
+        self.usetpdc: float | None = None
+        self.Unomdc: float | None = None
+        self.i_acdc: int = 5
+        self.m_p_busac: float | None = None
+        self.m_q_busac: float | None = None
+
+
+# Alex review required: minimal source schema used to build the final monopolar VSC.
+class ElmVscmono(DGSElement):
+    """Represent one native two-terminal monopolar voltage-source converter."""
+
+    __slots__ = (
+        "ID",
+        "OP",
+        "loc_name",
+        "for_name",
+        "fold_id",
+        "outserv",
+        "Unom",
+        "usetp",
+        "psetp",
+        "qsetp",
+        "Pnold",
+        "P_max",
+        "Snom",
+        "Pcu",
+        "uk",
+        "Rarm",
+        "Larm",
+        "mmcCmod",
+        "NmmcSM",
+        "MmmcSM",
+        "iZarmDCside",
+        "swtLossFactor",
+        "resLossFactor",
+        "usetpdc",
+        "Unomdc",
+        "i_acdc",
+        "m_p_busac",
+        "m_q_busac",
+        "m_p_busdc",
+        "m_q_busdc",
+    )
+
+    element_type = "ElmVscmono"
+    properties_list = [
+        DgsProperty("FID", "a:40", "Unique identifier", py_name="ID"),
+        DgsProperty("OP", "a:1", "DGS operation marker", py_name="OP"),
+        DgsProperty("loc_name", "a:80", "Name", py_name="loc_name"),
+        DgsProperty("for_name", "a:100", "Foreign key", py_name="for_name"),
+        DgsProperty("fold_id", "p", "Parent folder", py_name="fold_id"),
+        DgsProperty("outserv", "i", "Out-of-service flag", py_name="outserv"),
+        DgsProperty("Unom", "r", "Nominal converter voltage in kV", py_name="Unom"),
+        DgsProperty("usetp", "r", "Voltage setpoint in p.u.", py_name="usetp"),
+        DgsProperty("psetp", "r", "Active-power setpoint in MW", py_name="psetp"),
+        DgsProperty("qsetp", "r", "Reactive-power setpoint in MVAr", py_name="qsetp"),
+        DgsProperty("Pnold", "r", "No-load loss in kW", py_name="Pnold"),
+        DgsProperty("P_max", "r", "Maximum active power in MW", py_name="P_max"),
+        DgsProperty("Snom", "r", "Rated converter power in MVA", py_name="Snom", optional=True),
+        DgsProperty("Pcu", "r", "Series-reactor copper losses in kW", py_name="Pcu", optional=True),
+        DgsProperty("uk", "r", "Series-reactor short-circuit voltage in percent", py_name="uk", optional=True),
+        DgsProperty("Rarm", "r", "MMC arm-reactor resistance in ohm", py_name="Rarm", optional=True),
+        DgsProperty("Larm", "r", "MMC arm-reactor inductance in mH", py_name="Larm", optional=True),
+        DgsProperty("mmcCmod", "r", "MMC submodule capacitance in uF", py_name="mmcCmod", optional=True),
+        DgsProperty("NmmcSM", "i", "Number of MMC submodules per arm", py_name="NmmcSM", optional=True),
+        DgsProperty("MmmcSM", "i", "Legacy MMC submodule count", py_name="MmmcSM", optional=True),
+        DgsProperty("iZarmDCside", "i", "Place MMC arm reactor on the DC side", py_name="iZarmDCside", optional=True),
+        DgsProperty("swtLossFactor", "r", "Switching loss factor in kW/A", py_name="swtLossFactor", optional=True),
+        DgsProperty("resLossFactor", "r", "Resistive loss factor in ohm", py_name="resLossFactor", optional=True),
+        DgsProperty("usetpdc", "r", "DC voltage setpoint in p.u.", py_name="usetpdc", optional=True),
+        DgsProperty("Unomdc", "r", "Nominal DC voltage in kV", py_name="Unomdc", optional=True),
+        DgsProperty("i_acdc", "i", "Native AC/DC control-mode selector", py_name="i_acdc"),
+        DgsProperty(
+            "m:P:busac", "r", "Optional solved AC active-power evidence in MW",
+            py_name="m_p_busac", optional=True,
+        ),
+        DgsProperty(
+            "m:Q:busac", "r", "Optional solved AC reactive-power evidence in MVAr",
+            py_name="m_q_busac", optional=True,
+        ),
+        DgsProperty(
+            "m:P:busdc", "r", "Optional solved DC active-power evidence in MW",
+            py_name="m_p_busdc", optional=True,
+        ),
+        DgsProperty(
+            "m:Q:busdc", "r", "Optional solved DC reactive-power evidence in MVAr",
+            py_name="m_q_busdc", optional=True,
+        ),
+    ]
+
+    def __init__(self) -> None:
+        """Initialize one empty typed monopolar converter row.
+
+        :return: None.
+        """
+        self.ID: str = ""
+        self.OP: str = ""
+        self.loc_name: str = ""
+        self.for_name: str = ""
+        self.fold_id: str = ""
+        self.outserv: int = 0
+        self.Unom: float = 0.0
+        self.usetp: float = 1.0
+        self.psetp: float = 0.0
+        self.qsetp: float = 0.0
+        self.Pnold: float = 0.0
+        self.P_max: float = 0.0
+        self.Snom: float | None = None
+        self.Pcu: float | None = None
+        self.uk: float | None = None
+        self.Rarm: float | None = None
+        self.Larm: float | None = None
+        self.mmcCmod: float | None = None
+        self.NmmcSM: int | None = None
+        self.MmmcSM: int | None = None
+        self.iZarmDCside: int | None = None
+        self.swtLossFactor: float | None = None
+        self.resLossFactor: float | None = None
+        self.usetpdc: float | None = None
+        self.Unomdc: float | None = None
+        self.i_acdc: int = 5
+        self.m_p_busac: float | None = None
+        self.m_q_busac: float | None = None
+        self.m_p_busdc: float | None = None
+        self.m_q_busdc: float | None = None
 
 
 class ElmLne(DGSElement):
@@ -2348,6 +2620,241 @@ class StaCt(DGSElement):
         self.stapset: float = 0.0
         self.outserv: int = 0
         self.typ_id: str = ""
+
+
+# Dynamic contract: retain only the voltage reference and signal required to
+# resolve the PLL; neither value is inferred from the dynamic block.
+class StaVmea(DGSElement):
+    """Represent one native voltage-measurement object.
+
+    The row remains a signal source owned by its DGS composite. It is not
+    materialized as a second network device.
+    """
+
+    __slots__ = (
+        "ID", "OP", "loc_name", "fold_id", "chr_name", "pbusbar",
+        "pbusbar2", "outserv", "i_mode", "iOutput", "iUdcOutput",
+        "iFreq", "freqOutput", "nominalFreq", "meatech", "nphase",
+        "it2p", "it2p2", "samplingFreq", "samplesPerPeriod",
+        "samplesPerWindow", "windowLength", "rateLim", "clockPeriod",
+    )
+
+    element_type = "StaVmea"
+    properties_list = [
+        DgsProperty("FID", "a:40", "Unique identifier", py_name="ID"),
+        DgsProperty("OP", "a:1", "DGS operation marker", py_name="OP"),
+        DgsProperty("loc_name", "a:80", "Name", py_name="loc_name"),
+        DgsProperty("fold_id", "p", "Owning object", py_name="fold_id"),
+        DgsProperty("chr_name", "a:40", "Short display name", py_name="chr_name"),
+        DgsProperty("pbusbar", "p", "Primary measured terminal", py_name="pbusbar"),
+        DgsProperty("pbusbar2", "p", "Secondary measured terminal", py_name="pbusbar2"),
+        DgsProperty("outserv", "i", "Out-of-service flag", py_name="outserv"),
+        DgsProperty("i_mode", "i", "Voltage measurement mode", py_name="i_mode"),
+        DgsProperty("iOutput", "i", "Voltage output selector", py_name="iOutput"),
+        DgsProperty("iUdcOutput", "i", "DC-voltage output selector", py_name="iUdcOutput"),
+        DgsProperty("iFreq", "i", "Frequency measurement enable", py_name="iFreq"),
+        DgsProperty("freqOutput", "i", "Frequency output selector", py_name="freqOutput"),
+        DgsProperty("nominalFreq", "r", "Nominal frequency", py_name="nominalFreq"),
+        DgsProperty("meatech", "i", "Measurement technology", py_name="meatech"),
+        DgsProperty("nphase", "i", "Number of measured phases", py_name="nphase"),
+        DgsProperty("it2p", "i", "First phase selector", py_name="it2p"),
+        DgsProperty("it2p2", "i", "Second phase selector", py_name="it2p2"),
+        DgsProperty("samplingFreq", "r", "Sampling frequency", py_name="samplingFreq"),
+        DgsProperty("samplesPerPeriod", "i", "Samples per period", py_name="samplesPerPeriod"),
+        DgsProperty("samplesPerWindow", "i", "Samples per window", py_name="samplesPerWindow"),
+        DgsProperty("windowLength", "r", "Window length", py_name="windowLength"),
+        DgsProperty("rateLim", "r", "Output rate limit", py_name="rateLim"),
+        DgsProperty("clockPeriod", "r", "Measurement clock period", py_name="clockPeriod"),
+    ]
+
+    def __init__(self) -> None:
+        """Initialize one empty typed voltage-measurement row.
+
+        :return: None.
+        """
+        self.ID: str = ""
+        self.OP: str = ""
+        self.loc_name: str = ""
+        self.fold_id: str = ""
+        self.chr_name: str = ""
+        self.pbusbar: str = ""
+        self.pbusbar2: str = ""
+        self.outserv: int = 0
+        self.i_mode: int = 0
+        self.iOutput: int = 0
+        self.iUdcOutput: int = 0
+        self.iFreq: int = 0
+        self.freqOutput: int = 0
+        self.nominalFreq: float = 0.0
+        self.meatech: int = 0
+        self.nphase: int = 0
+        self.it2p: int = 0
+        self.it2p2: int = 0
+        self.samplingFreq: float = 0.0
+        self.samplesPerPeriod: int = 0
+        self.samplesPerWindow: int = 0
+        self.windowLength: float = 0.0
+        self.rateLim: float = 0.0
+        self.clockPeriod: float = 0.0
+
+
+# Dynamic contract: retain only the current reference and signal required to
+# bind the measurement; neither value is inferred from the final equipment.
+class StaImea(DGSElement):
+    """Represent one native current-measurement object."""
+
+    __slots__ = (
+        "ID", "OP", "loc_name", "fold_id", "chr_name", "pcubic",
+        "outserv", "i_mode", "iOutput", "Inom", "nominalFreq",
+        "nphase", "it2p", "samplingFreq", "samplesPerPeriod",
+        "samplesPerWindow", "windowLength", "rateLim", "clockPeriod",
+    )
+
+    element_type = "StaImea"
+    properties_list = [
+        DgsProperty("FID", "a:40", "Unique identifier", py_name="ID"),
+        DgsProperty("OP", "a:1", "DGS operation marker", py_name="OP"),
+        DgsProperty("loc_name", "a:80", "Name", py_name="loc_name"),
+        DgsProperty("fold_id", "p", "Owning object", py_name="fold_id"),
+        DgsProperty("chr_name", "a:40", "Short display name", py_name="chr_name"),
+        DgsProperty("pcubic", "p", "Measured cubicle", py_name="pcubic"),
+        DgsProperty("outserv", "i", "Out-of-service flag", py_name="outserv"),
+        DgsProperty("i_mode", "i", "Current measurement mode", py_name="i_mode"),
+        DgsProperty("iOutput", "i", "Current output selector", py_name="iOutput"),
+        DgsProperty("Inom", "r", "Nominal measured current", py_name="Inom"),
+        DgsProperty("nominalFreq", "r", "Nominal frequency", py_name="nominalFreq"),
+        DgsProperty("nphase", "i", "Number of measured phases", py_name="nphase"),
+        DgsProperty("it2p", "i", "Phase selector", py_name="it2p"),
+        DgsProperty("samplingFreq", "r", "Sampling frequency", py_name="samplingFreq"),
+        DgsProperty("samplesPerPeriod", "i", "Samples per period", py_name="samplesPerPeriod"),
+        DgsProperty("samplesPerWindow", "i", "Samples per window", py_name="samplesPerWindow"),
+        DgsProperty("windowLength", "r", "Window length", py_name="windowLength"),
+        DgsProperty("rateLim", "r", "Output rate limit", py_name="rateLim"),
+        DgsProperty("clockPeriod", "r", "Measurement clock period", py_name="clockPeriod"),
+    ]
+
+    def __init__(self) -> None:
+        """Initialize one empty typed current-measurement row.
+
+        :return: None.
+        """
+        self.ID: str = ""
+        self.OP: str = ""
+        self.loc_name: str = ""
+        self.fold_id: str = ""
+        self.chr_name: str = ""
+        self.pcubic: str = ""
+        self.outserv: int = 0
+        self.i_mode: int = 0
+        self.iOutput: int = 0
+        self.Inom: float = 0.0
+        self.nominalFreq: float = 0.0
+        self.nphase: int = 0
+        self.it2p: int = 0
+        self.samplingFreq: float = 0.0
+        self.samplesPerPeriod: int = 0
+        self.samplesPerWindow: int = 0
+        self.windowLength: float = 0.0
+        self.rateLim: float = 0.0
+        self.clockPeriod: float = 0.0
+
+
+# Dynamic contract: retain only the P/Q references and signals required to
+# bind the control; they are not inferred from setpoints or solved m:* values.
+class StaPqmea(DGSElement):
+    """Represent one native active/reactive-power measurement object."""
+
+    __slots__ = (
+        "ID", "OP", "loc_name", "fold_id", "chr_name", "pcubic",
+        "outserv", "i_mode", "i_orient", "Snom", "nominalFreq",
+        "nphase", "it2p", "samplingFreq", "samplesPerPeriod",
+        "samplesPerWindow", "windowLength", "rateLim", "clockPeriod",
+    )
+
+    element_type = "StaPqmea"
+    properties_list = [
+        DgsProperty("FID", "a:40", "Unique identifier", py_name="ID"),
+        DgsProperty("OP", "a:1", "DGS operation marker", py_name="OP"),
+        DgsProperty("loc_name", "a:80", "Name", py_name="loc_name"),
+        DgsProperty("fold_id", "p", "Owning object", py_name="fold_id"),
+        DgsProperty("chr_name", "a:40", "Short display name", py_name="chr_name"),
+        DgsProperty("pcubic", "p", "Measured cubicle", py_name="pcubic"),
+        DgsProperty("outserv", "i", "Out-of-service flag", py_name="outserv"),
+        DgsProperty("i_mode", "i", "Power measurement mode", py_name="i_mode"),
+        DgsProperty("i_orient", "i", "Measured-power orientation", py_name="i_orient"),
+        DgsProperty("Snom", "r", "Nominal apparent power", py_name="Snom"),
+        DgsProperty("nominalFreq", "r", "Nominal frequency", py_name="nominalFreq"),
+        DgsProperty("nphase", "i", "Number of measured phases", py_name="nphase"),
+        DgsProperty("it2p", "i", "Phase selector", py_name="it2p"),
+        DgsProperty("samplingFreq", "r", "Sampling frequency", py_name="samplingFreq"),
+        DgsProperty("samplesPerPeriod", "i", "Samples per period", py_name="samplesPerPeriod"),
+        DgsProperty("samplesPerWindow", "i", "Samples per window", py_name="samplesPerWindow"),
+        DgsProperty("windowLength", "r", "Window length", py_name="windowLength"),
+        DgsProperty("rateLim", "r", "Output rate limit", py_name="rateLim"),
+        DgsProperty("clockPeriod", "r", "Measurement clock period", py_name="clockPeriod"),
+    ]
+
+    def __init__(self) -> None:
+        """Initialize one empty typed power-measurement row.
+
+        :return: None.
+        """
+        self.ID: str = ""
+        self.OP: str = ""
+        self.loc_name: str = ""
+        self.fold_id: str = ""
+        self.chr_name: str = ""
+        self.pcubic: str = ""
+        self.outserv: int = 0
+        self.i_mode: int = 0
+        self.i_orient: int = 0
+        self.Snom: float = 0.0
+        self.nominalFreq: float = 0.0
+        self.nphase: int = 0
+        self.it2p: int = 0
+        self.samplingFreq: float = 0.0
+        self.samplesPerPeriod: int = 0
+        self.samplesPerWindow: int = 0
+        self.windowLength: float = 0.0
+        self.rateLim: float = 0.0
+        self.clockPeriod: float = 0.0
+
+
+# Dynamic contract: represent the minimal native PLL row; its FID and
+# connections are not inferred from ElmComp or the final VSC.
+class ElmPhi(DGSElement):
+    """Represent one native PowerFactory phase-locked-loop measurement."""
+
+    __slots__ = (
+        "ID", "OP", "loc_name", "fold_id", "pbusbar", "outserv",
+        "Kp", "Ki",
+    )
+
+    element_type = "ElmPhi"
+    properties_list = [
+        DgsProperty("FID", "a:40", "Unique PLL identifier", py_name="ID"),
+        DgsProperty("OP", "a:1", "DGS operation marker", py_name="OP"),
+        DgsProperty("loc_name", "a:80", "PLL name", py_name="loc_name"),
+        DgsProperty("fold_id", "p", "Owning composite", py_name="fold_id"),
+        DgsProperty("pbusbar", "p", "Measured terminal or cubicle", py_name="pbusbar"),
+        DgsProperty("outserv", "i", "Out-of-service flag", py_name="outserv"),
+        DgsProperty("Kp", "r", "PLL proportional gain", py_name="Kp"),
+        DgsProperty("Ki", "r", "PLL integration gain", py_name="Ki"),
+    ]
+
+    def __init__(self) -> None:
+        """Initialize one empty typed PLL row.
+
+        :return: None.
+        """
+        self.ID: str = ""
+        self.OP: str = ""
+        self.loc_name: str = ""
+        self.fold_id: str = ""
+        self.pbusbar: str = ""
+        self.outserv: int = 0
+        self.Kp: float = 0.0
+        self.Ki: float = 0.0
 
 
 class StaVt(DGSElement):
