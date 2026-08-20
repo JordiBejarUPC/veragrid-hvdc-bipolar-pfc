@@ -185,10 +185,16 @@ class ScriptingPythonEditor(BasePythonCodeEditor):
         """
         if event.type() == QtCore.QEvent.Type.ShortcutOverride and isinstance(event, QtGui.QKeyEvent):
             pressed_text: str = event.text()
+            is_ctrl_space: bool = (
+                event.key() == QtCore.Qt.Key.Key_Space
+                and event.modifiers() == QtCore.Qt.KeyboardModifier.ControlModifier
+            )
 
             # Accepting ShortcutOverride tells Qt that the editor owns this key
             # sequence, so AltGr-generated text is not stolen by shortcuts.
-            if len(pressed_text) > 0 and pressed_text.isprintable():
+            if is_ctrl_space:
+                return BasePythonCodeEditor.event(self, event)
+            elif len(pressed_text) > 0 and pressed_text.isprintable():
                 event.accept()
                 return True
             else:
