@@ -115,6 +115,7 @@ class ScriptingPythonEditor(BasePythonCodeEditor):
         pressed_key: int = event.key()
         popup_visible: bool = popup.isVisible()
         pressed_modifiers: QtCore.Qt.KeyboardModifier = event.modifiers()
+        pressed_text: str = event.text()
         completion_keys: tuple[QtCore.Qt.Key, ...] = (
             QtCore.Qt.Key.Key_Tab,
             QtCore.Qt.Key.Key_Return,
@@ -130,8 +131,26 @@ class ScriptingPythonEditor(BasePythonCodeEditor):
             QtCore.Qt.Key.Key_Left,
             QtCore.Qt.Key.Key_Right,
         )
+        inserts_printable_text: bool = (
+            len(pressed_text) > 0
+            and pressed_text.isprintable()
+            and pressed_key not in completion_keys
+            and pressed_key != QtCore.Qt.Key.Key_Escape
+        )
 
-        if popup_visible and pressed_key in completion_keys:
+        # On Windows many keyboard layouts emit AltGr text through key events
+        # that also carry Ctrl+Alt modifiers. Real text input must win over the
+        # completion control flow or characters such as "]" are lost.
+        if inserts_printable_text and not (
+            pressed_key == QtCore.Qt.Key.Key_Space
+            and pressed_modifiers == QtCore.Qt.KeyboardModifier.ControlModifier
+        ):
+            BasePythonCodeEditor.keyPressEvent(self, event)
+            if popup_visible:
+                self._trigger_completion()
+            else:
+                pass
+        elif popup_visible and pressed_key in completion_keys:
             completion_index: QtCore.QModelIndex = popup.currentIndex()
             if completion_index.isValid():
                 completion_text: str = str(completion_index.data())
