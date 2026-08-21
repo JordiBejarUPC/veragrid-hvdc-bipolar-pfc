@@ -65,7 +65,6 @@ from VeraGridEngine.Utils.Symbolic.symbolic import (
     abs,
     cos,
     exp,
-    floor,
     hard_sat,
     heaviside,
     log,
@@ -83,6 +82,13 @@ class DgsGraphicalConnectorKind(IntEnum):
     Output = 2
     LowerLimitInput = 3
     UpperLimitInput = 4
+
+
+class DgsSlotSignalDirection(IntEnum):
+    """Select one declared DGS slot-signal direction."""
+
+    Input = 1
+    Output = 2
 
 
 def _parse_dgs_graphical_connector_kind(
@@ -483,7 +489,7 @@ def classify_dgs_statement(statement: str) -> tuple[str, str | None]:
         return 'ignored', None
 
     unit_metadata_match: re.Match[str] | None = re.match(
-        r"^\[(?P<lhs>[A-Za-z_][A-Za-z0-9_]*)\]\s*=\s*(?P<unit>.+)$",
+        r"^\[(?P<lhs>[A-Za-z_][A-Za-z0-9_]*)]\s*=\s*(?P<unit>.+)$",
         stmt,
     )
     if unit_metadata_match is not None:
@@ -634,7 +640,7 @@ def _parse_dgs_unit_metadata(
     :return: Exact source symbol and unit text.
     """
     match: re.Match[str] | None = re.match(
-        r"^\[(?P<lhs>[A-Za-z_][A-Za-z0-9_]*)\]\s*=\s*(?P<unit>.+)$",
+        r"^\[(?P<lhs>[A-Za-z_][A-Za-z0-9_]*)]\s*=\s*(?P<unit>.+)$",
         statement.strip(),
     )
     if match is None:
@@ -1230,6 +1236,39 @@ class ElmCompInstanceEntry:
             element_kind_patterns=element_kind_patterns,
             element_kind=element_kind,
         )
+
+    def get_slot_signal_components(
+            self,
+            direction: DgsSlotSignalDirection,
+    ) -> List[str]:
+        """Normalize one ordered DGS slot-signal declaration.
+
+        :param direction: Exact declared input or output side to normalize.
+        :return: Ordered non-empty component names.
+        """
+        if direction == DgsSlotSignalDirection.Input:
+            raw_signals: List[str] = self.slot_inputs
+        else:
+            if direction == DgsSlotSignalDirection.Output:
+                raw_signals = self.slot_outputs
+            else:
+                raw_signals = list()
+        components: List[str] = list()
+        raw_signal: str
+        raw_component: str
+        normalized_component: str
+        for raw_signal in raw_signals:
+            for raw_component in raw_signal.split(";"):
+                normalized_component = raw_component.strip()
+                if normalized_component == "":
+                    pass
+                else:
+                    components.append(normalized_component)
+            else:
+                pass
+        else:
+            pass
+        return components
 
 
 class DgsBlockInstanceSelection:
@@ -1900,7 +1939,7 @@ class DgsExpressionParser(ast.NodeVisitor):
         if name == 'modulo' and len(args) == 2:
             # PowerFactory uses modulo to wrap angles into a positive period;
             # retain that exact floor-based remainder as symbolic data.
-            return args[0] - floor(args[0] / args[1]) * args[1]
+            return args[0] - symbolic.floor(args[0] / args[1]) * args[1]
         else:
             pass
         if name == 'sqr' and len(args) == 1:
@@ -3908,7 +3947,7 @@ def _slot_pattern_targets_registered_element_kind(
     pattern_has_wildcard: bool = element_kind_pattern.endswith("*")
     targets_registered_kind: bool = False
     registered_element_kind: str
-    for registered_element_kind in DgsCircuit._REGISTRY.keys():
+    for registered_element_kind in DgsCircuit.ELEMENT_CLASS_BY_KIND.keys():
         if pattern_has_wildcard:
             if registered_element_kind.startswith(normalized_kind):
                 targets_registered_kind = True
