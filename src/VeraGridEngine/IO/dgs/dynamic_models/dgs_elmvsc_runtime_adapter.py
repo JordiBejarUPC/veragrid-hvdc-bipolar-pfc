@@ -6,7 +6,12 @@ from typing import Dict, Iterable, List, Set, Tuple
 
 from VeraGridEngine.Devices.Branches.vsc import VSC
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
-from VeraGridEngine.Utils.Symbolic.block import Block, build_name_to_vars_lookup
+from VeraGridEngine.Utils.Symbolic.block import (
+    Block,
+    RmsTerminalPowerContribution,
+    RmsTerminalSide,
+    build_name_to_vars_lookup,
+)
 from VeraGridEngine.Utils.Symbolic.symbolic import Const, Expr, Var
 import VeraGridEngine.Utils.Symbolic.symbolic as sym
 from VeraGridEngine.enumerations import (
@@ -883,6 +888,20 @@ def build_dgs_elmvscmono_rms_runtime_template(
             ),
         ]),
     )
+    # The converter declares which physical terminal owns each power flow.
+    # Bus identity still comes exclusively from the associated VSC topology.
+    wrapper_block.dynamic_model_contract.rms_terminal_power_contributions = list([
+        RmsTerminalPowerContribution(
+            terminal_side=RmsTerminalSide.FROM,
+            active_power_reference=VarPowerFlowReferenceType.Pf,
+            reactive_power_reference=None,
+        ),
+        RmsTerminalPowerContribution(
+            terminal_side=RmsTerminalSide.TO,
+            active_power_reference=VarPowerFlowReferenceType.Pt,
+            reactive_power_reference=VarPowerFlowReferenceType.Qt,
+        ),
+    ])
     result: RmsModelTemplate = RmsModelTemplate(name=control_template.name)
     result.name = control_template.name
     result.tpe = DeviceType.VscDevice
@@ -1340,6 +1359,20 @@ def build_dgs_elmvsc_rms_runtime_template(
             ParamPowerFlowReferenceType.alpha3: quadratic_loss,
         },
     )
+    # The converter declares which physical terminal owns each power flow.
+    # Bus identity still comes exclusively from the associated VSC topology.
+    wrapper_block.dynamic_model_contract.rms_terminal_power_contributions = list([
+        RmsTerminalPowerContribution(
+            terminal_side=RmsTerminalSide.FROM,
+            active_power_reference=VarPowerFlowReferenceType.Pf,
+            reactive_power_reference=None,
+        ),
+        RmsTerminalPowerContribution(
+            terminal_side=RmsTerminalSide.TO,
+            active_power_reference=VarPowerFlowReferenceType.Pt,
+            reactive_power_reference=VarPowerFlowReferenceType.Qt,
+        ),
+    ])
 
     # A current controller commonly anchors the limiter output cable with
     # ``inc(i1d_ref)=i1d`` and ``inc(i1q_ref)=i1q``. Preserve those exact

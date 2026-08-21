@@ -8,7 +8,11 @@ from typing import Any, Callable, Dict
 import VeraGridEngine.Utils.Symbolic.symbolic as sym
 from VeraGridEngine.Utils.Symbolic.compiled_functions import SymbolicJacobian
 from VeraGridEngine.Utils.Symbolic.jit_compiler import SubexpressionAnalyzer
-from VeraGridEngine.Utils.Symbolic.block import Block
+from VeraGridEngine.Utils.Symbolic.block import (
+    Block,
+    RmsTerminalPowerContribution,
+    RmsTerminalSide,
+)
 from VeraGridEngine.Utils.Symbolic.symbolic_io import (duplicate_block, expr_to_dict, parse_expr,
                                                        BlockSaver, BlockParser)
 from VeraGridEngine.basic_structures import Logger
@@ -717,6 +721,103 @@ def test_block_saver_parser_roundtrip_preserves_declarative_procedural_logic() -
     )
     assert isinstance(restored_override, sym.BinOp)
     assert restored_override.left is restored_x
+
+
+def test_rms_terminal_power_contract_roundtrips_and_fails_closed() -> None:
+    """Persist typed terminal references without copying symbolic variables.
+
+    :return: None.
+    """
+    var_factory: VarFactory = VarFactory()
+    dc_power: sym.Var = var_factory.add_var(name="Pdc")
+    ac_active_power: sym.Var = var_factory.add_var(name="Pac")
+    ac_reactive_power: sym.Var = var_factory.add_var(name="Qac")
+    block: Block = Block(
+        algebraic_vars=list((dc_power, ac_active_power, ac_reactive_power)),
+        algebraic_eqs=list((dc_power, ac_active_power, ac_reactive_power)),
+        external_mapping=dict((
+            (VarPowerFlowReferenceType.Pf, dc_power),
+            (VarPowerFlowReferenceType.Pt, ac_active_power),
+            (VarPowerFlowReferenceType.Qt, ac_reactive_power),
+        )),
+    )
+    block.dynamic_model_contract.rms_terminal_power_contributions = list((
+        RmsTerminalPowerContribution(
+            terminal_side=RmsTerminalSide.FROM,
+            active_power_reference=VarPowerFlowReferenceType.Pf,
+            reactive_power_reference=None,
+        ),
+        RmsTerminalPowerContribution(
+            terminal_side=RmsTerminalSide.TO,
+            active_power_reference=VarPowerFlowReferenceType.Pt,
+            reactive_power_reference=VarPowerFlowReferenceType.Qt,
+        ),
+    ))
+
+    persisted_data: dict[str, object] = block.to_dict()
+    restored: Block = Block.parse(data=persisted_data)
+    restored_contributions: list[RmsTerminalPowerContribution] = (
+        restored.dynamic_model_contract.rms_terminal_power_contributions
+    )
+    copied: Block = copy.deepcopy(block)
+    saver: BlockSaver = BlockSaver(var_factory)
+    saver.save_block(block, main=True)
+    parser: BlockParser = BlockParser(var_factory=VarFactory())
+    parser.parse_consts(saver.get_const_to_save())
+    parser.parse_vars(saver.get_vars_to_save())
+    parser.parse_diff_vars(saver.get_diff_vars_to_save())
+    symbolic_io_restored: Block = parser.parse_block(
+        blocks_data=saver.get_blocks(),
+        main_block_uid=block.uid,
+    )
+
+    assert len(restored_contributions) == 2
+    assert restored_contributions[0].get_terminal_side() is RmsTerminalSide.FROM
+    assert (
+        restored_contributions[0].get_active_power_reference()
+        is VarPowerFlowReferenceType.Pf
+    )
+    assert restored_contributions[0].get_reactive_power_reference() is None
+    assert restored_contributions[1].get_terminal_side() is RmsTerminalSide.TO
+    assert (
+        restored_contributions[1].get_reactive_power_reference()
+        is VarPowerFlowReferenceType.Qt
+    )
+    assert (
+        copied.dynamic_model_contract.rms_terminal_power_contributions[0]
+        is not block.dynamic_model_contract.rms_terminal_power_contributions[0]
+    )
+    assert (
+        symbolic_io_restored.dynamic_model_contract
+        .rms_terminal_power_contributions[1].get_active_power_reference()
+        is VarPowerFlowReferenceType.Pt
+    )
+
+    # Version 1 remains readable and explicitly means that no terminal
+    # contribution contract was declared.
+    legacy_data: dict[str, object] = block.to_dict()
+    legacy_contract: object = legacy_data["dynamic_model_contract"]
+    assert isinstance(legacy_contract, dict)
+    legacy_contract["version"] = 1
+    legacy_contract.pop("rms_terminal_power_contributions")
+    legacy_restored: Block = Block.parse(data=legacy_data)
+    assert (
+        legacy_restored.dynamic_model_contract.rms_terminal_power_contributions
+        == list()
+    )
+
+    malformed_data: dict[str, object] = block.to_dict()
+    malformed_contract: object = malformed_data["dynamic_model_contract"]
+    assert isinstance(malformed_contract, dict)
+    malformed_contributions: object = malformed_contract[
+        "rms_terminal_power_contributions"
+    ]
+    assert isinstance(malformed_contributions, list)
+    malformed_first: object = malformed_contributions[0]
+    assert isinstance(malformed_first, dict)
+    malformed_first["active_power_reference"] = VarPowerFlowReferenceType.Vm.value
+    with pytest.raises(ValueError, match="from-terminal active power"):
+        Block.parse(data=malformed_data)
 
 
 def test_dynamic_model_contract_rejects_incoherent_persistence_states() -> None:

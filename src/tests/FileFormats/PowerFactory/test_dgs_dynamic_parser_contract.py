@@ -93,7 +93,12 @@ from VeraGridEngine.IO.dynamic_model_import_types import (
     DynamicModelImportSelectionRequest,
     DynamicModelImportSource,
 )
-from VeraGridEngine.Utils.Symbolic.block import Block, DynamicModelContract
+from VeraGridEngine.Utils.Symbolic.block import (
+    Block,
+    DynamicModelContract,
+    RmsTerminalPowerContribution,
+    RmsTerminalSide,
+)
 from VeraGridEngine.Utils.Symbolic.bus_rms_template import (
     BusRmsTemplate,
     build_dc_bus_nodal_power_equation,
@@ -611,6 +616,34 @@ def test_complete_hvdc_vsc_exports_apply_direct_dynamic_templates_by_fid(
                 ]
                 assert len(matching_hosts) == 1
                 assert matching_hosts[0].rms_template is root_template
+                terminal_contributions: list[RmsTerminalPowerContribution] = (
+                    root_template.block.dynamic_model_contract.rms_terminal_power_contributions
+                )
+                assert len(terminal_contributions) == 2
+                assert (
+                    terminal_contributions[0].get_terminal_side()
+                    is RmsTerminalSide.FROM
+                )
+                assert (
+                    terminal_contributions[0].get_active_power_reference()
+                    is VarPowerFlowReferenceType.Pf
+                )
+                assert (
+                    terminal_contributions[0].get_reactive_power_reference()
+                    is None
+                )
+                assert (
+                    terminal_contributions[1].get_terminal_side()
+                    is RmsTerminalSide.TO
+                )
+                assert (
+                    terminal_contributions[1].get_active_power_reference()
+                    is VarPowerFlowReferenceType.Pt
+                )
+                assert (
+                    terminal_contributions[1].get_reactive_power_reference()
+                    is VarPowerFlowReferenceType.Qt
+                )
                 assigned_converter_count += 1
             else:
                 pass

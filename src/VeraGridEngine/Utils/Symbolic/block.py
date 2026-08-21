@@ -8,6 +8,7 @@ from __future__ import annotations
 import copy
 import math
 import uuid
+from enum import Enum
 from typing import List, Dict, Any, Tuple
 from typing import Iterable, Mapping
 
@@ -28,11 +29,164 @@ from VeraGridEngine.Utils.procedural_logic_contract import (
 )
 
 
+class RmsTerminalSide(Enum):
+    """Identify the physical side of a two-terminal RMS device."""
+
+    FROM = "from"
+    TO = "to"
+
+
+class RmsTerminalPowerContribution:
+    """Declare one device power flow consumed by the RMS nodal assembler.
+
+    The referenced active and reactive powers use the branch convention: a
+    positive value flows from the connected bus into the device. The network
+    assembler therefore contributes the negative of that value to the bus
+    injection balance. The declaration stores semantic references only and
+    never retains a second symbolic variable graph.
+    """
+
+    __slots__ = (
+        "_terminal_side",
+        "_active_power_reference",
+        "_reactive_power_reference",
+    )
+
+    def __init__(
+            self,
+            terminal_side: RmsTerminalSide,
+            active_power_reference: VarPowerFlowReferenceType,
+            reactive_power_reference: VarPowerFlowReferenceType | None,
+    ) -> None:
+        """Create one typed terminal power declaration.
+
+        :param terminal_side: Physical device terminal resolved by topology.
+        :param active_power_reference: Active-power variable in the owning block.
+        :param reactive_power_reference: Reactive-power variable, or None for a DC terminal.
+        :return: None.
+        """
+        if terminal_side is RmsTerminalSide.FROM:
+            if active_power_reference is VarPowerFlowReferenceType.Pf:
+                pass
+            else:
+                raise ValueError("RMS from-terminal active power must use Pf")
+            if reactive_power_reference in (None, VarPowerFlowReferenceType.Qf):
+                pass
+            else:
+                raise ValueError("RMS from-terminal reactive power must use Qf or null")
+        else:
+            if terminal_side is RmsTerminalSide.TO:
+                if active_power_reference is VarPowerFlowReferenceType.Pt:
+                    pass
+                else:
+                    raise ValueError("RMS to-terminal active power must use Pt")
+                if reactive_power_reference in (None, VarPowerFlowReferenceType.Qt):
+                    pass
+                else:
+                    raise ValueError("RMS to-terminal reactive power must use Qt or null")
+            else:
+                raise TypeError("RMS terminal side must be a RmsTerminalSide")
+
+        self._terminal_side: RmsTerminalSide = terminal_side
+        self._active_power_reference: VarPowerFlowReferenceType = active_power_reference
+        self._reactive_power_reference: VarPowerFlowReferenceType | None = reactive_power_reference
+
+    def get_terminal_side(self) -> RmsTerminalSide:
+        """Return the physical terminal selected by network topology.
+
+        :return: Declared terminal side.
+        """
+        return self._terminal_side
+
+    def get_active_power_reference(self) -> VarPowerFlowReferenceType:
+        """Return the active-power reference owned by the symbolic block.
+
+        :return: Active-power reference.
+        """
+        return self._active_power_reference
+
+    def get_reactive_power_reference(self) -> VarPowerFlowReferenceType | None:
+        """Return the reactive-power reference for an AC terminal.
+
+        :return: Reactive-power reference, or None for a DC terminal.
+        """
+        return self._reactive_power_reference
+
+    def to_data(self) -> Dict[str, object]:
+        """Return a declarative representation without symbolic objects.
+
+        :return: Version-owned terminal power data.
+        """
+        reactive_reference: str | None
+        if self._reactive_power_reference is None:
+            reactive_reference = None
+        else:
+            reactive_reference = self._reactive_power_reference.value
+        return {
+            "terminal_side": self._terminal_side.value,
+            "active_power_reference": self._active_power_reference.value,
+            "reactive_power_reference": reactive_reference,
+        }
+
+
+def rms_terminal_power_contribution_from_data(
+        data: Dict[str, object],
+) -> RmsTerminalPowerContribution:
+    """Reconstruct one fail-closed terminal power declaration.
+
+    :param data: Declarative terminal power data.
+    :return: Reconstructed typed declaration.
+    """
+    expected_keys: set[str] = set((
+        "terminal_side",
+        "active_power_reference",
+        "reactive_power_reference",
+    ))
+    actual_keys: set[str] = set(data.keys())
+    if actual_keys == expected_keys:
+        pass
+    else:
+        raise KeyError(
+            "RMS terminal power keys do not match the contract: "
+            f"missing={sorted(expected_keys - actual_keys)}, "
+            f"extra={sorted(actual_keys - expected_keys)}"
+        )
+
+    raw_terminal_side: object = data["terminal_side"]
+    raw_active_reference: object = data["active_power_reference"]
+    raw_reactive_reference: object = data["reactive_power_reference"]
+    if isinstance(raw_terminal_side, str):
+        terminal_side: RmsTerminalSide = RmsTerminalSide(raw_terminal_side)
+    else:
+        raise TypeError("RMS terminal side must be a string")
+    if isinstance(raw_active_reference, str):
+        active_reference: VarPowerFlowReferenceType = VarPowerFlowReferenceType(
+            raw_active_reference
+        )
+    else:
+        raise TypeError("RMS terminal active-power reference must be a string")
+    if raw_reactive_reference is None:
+        reactive_reference: VarPowerFlowReferenceType | None = None
+    else:
+        if isinstance(raw_reactive_reference, str):
+            reactive_reference = VarPowerFlowReferenceType(raw_reactive_reference)
+        else:
+            raise TypeError(
+                "RMS terminal reactive-power reference must be a string or null"
+            )
+    return RmsTerminalPowerContribution(
+        terminal_side=terminal_side,
+        active_power_reference=active_reference,
+        reactive_power_reference=reactive_reference,
+    )
+
+
 class DynamicModelContract:
     """
     Store typed dynamic-behavior declarations owned by one symbolic block.
 
-    The contract contains scalar flags and symbolic UIDs only. It therefore
+    The contract contains semantic references, scalar flags and symbolic UIDs.
+    It therefore
     preserves the canonical ``Block`` object graph instead of retaining import
     parser objects or references to a second dynamic-model representation.
     """
@@ -54,6 +208,7 @@ class DynamicModelContract:
         "dgs_open_resistance_ohm",
         "rms_conduction_status_var_uid",
         "rms_topology_constraint_status_var_uid",
+        "rms_terminal_power_contributions",
         "rms_ideal_ac_connector",
         "rms_ideal_transformer",
         "skip_device_local_explicit_init",
@@ -103,6 +258,7 @@ class DynamicModelContract:
         self.dgs_open_resistance_ohm: float | None = None
         self.rms_conduction_status_var_uid: int | None = None
         self.rms_topology_constraint_status_var_uid: int | None = None
+        self.rms_terminal_power_contributions: List[RmsTerminalPowerContribution] = list()
         self.rms_ideal_ac_connector: bool = False
         self.rms_ideal_transformer: bool = False
         self.skip_device_local_explicit_init: bool = False
@@ -133,7 +289,7 @@ class DynamicModelContract:
         :return: Data-only contract suitable for canonical block persistence.
         """
         return {
-            "version": 1,
+            "version": 2,
             "dgs_elmsym_runtime_adapter": self.dgs_elmsym_runtime_adapter,
             "dgs_elmsym_runtime_adapter_pending": self.dgs_elmsym_runtime_adapter_pending,
             "dgs_elmsym_round_rotor": self.dgs_elmsym_round_rotor,
@@ -150,6 +306,10 @@ class DynamicModelContract:
             "dgs_open_resistance_ohm": self.dgs_open_resistance_ohm,
             "rms_conduction_status_var_uid": self.rms_conduction_status_var_uid,
             "rms_topology_constraint_status_var_uid": self.rms_topology_constraint_status_var_uid,
+            "rms_terminal_power_contributions": list(
+                contribution.to_data()
+                for contribution in self.rms_terminal_power_contributions
+            ),
             "rms_ideal_ac_connector": self.rms_ideal_ac_connector,
             "rms_ideal_transformer": self.rms_ideal_transformer,
             "skip_device_local_explicit_init": self.skip_device_local_explicit_init,
@@ -398,6 +558,49 @@ def _read_dynamic_contract_symbolic_uid_sequence(
         )
 
 
+def _read_rms_terminal_power_contributions(
+        data: Dict[str, object],
+) -> List[RmsTerminalPowerContribution]:
+    """Read the ordered terminal contributions declared by one RMS model.
+
+    :param data: Versioned dynamic-model contract data.
+    :return: Validated terminal power declarations.
+    """
+    field_name: str = "rms_terminal_power_contributions"
+    value: object = _read_required_dynamic_contract_field(data, field_name)
+    if isinstance(value, list):
+        result: List[RmsTerminalPowerContribution] = list()
+        item: object
+        for item in value:
+            if isinstance(item, dict):
+                normalized_item: Dict[str, object] = dict()
+                raw_key: object
+                raw_value: object
+                for raw_key, raw_value in item.items():
+                    if isinstance(raw_key, str):
+                        normalized_item[raw_key] = raw_value
+                    else:
+                        raise TypeError(
+                            "RMS terminal power field names must be strings"
+                        )
+                else:
+                    pass
+                result.append(
+                    rms_terminal_power_contribution_from_data(normalized_item)
+                )
+            else:
+                raise TypeError(
+                    "RMS terminal power contributions must be declarative mappings"
+                )
+        else:
+            pass
+        return result
+    else:
+        raise TypeError(
+            f"Dynamic-model contract field '{field_name}' must be a list"
+        )
+
+
 def dynamic_model_contract_from_data(data: Dict[str, object]) -> DynamicModelContract:
     """Reconstruct one fail-closed versioned dynamic-model contract.
 
@@ -405,13 +608,21 @@ def dynamic_model_contract_from_data(data: Dict[str, object]) -> DynamicModelCon
     :return: Reconstructed typed contract.
     """
     version: object = _read_required_dynamic_contract_field(data, "version")
-    if isinstance(version, int) and not isinstance(version, bool) and version == 1:
+    if isinstance(version, int) and not isinstance(version, bool):
+        version_number: int = version
+    else:
+        raise TypeError("Dynamic-model contract version must be an integer")
+    if version_number in (1, 2):
         pass
     else:
         raise ValueError("Unsupported dynamic-model contract version")
 
     result: DynamicModelContract = DynamicModelContract()
     expected_keys: set[str] = set(result.to_data().keys())
+    if version_number == 1:
+        expected_keys.remove("rms_terminal_power_contributions")
+    else:
+        pass
     actual_keys: set[str] = set(data.keys())
     if actual_keys == expected_keys:
         pass
@@ -419,7 +630,7 @@ def dynamic_model_contract_from_data(data: Dict[str, object]) -> DynamicModelCon
         missing_keys: List[str] = sorted(expected_keys - actual_keys)
         extra_keys: List[str] = sorted(actual_keys - expected_keys)
         raise KeyError(
-            "Dynamic-model contract keys do not match version 1: "
+            f"Dynamic-model contract keys do not match version {version_number}: "
             f"missing={missing_keys}, extra={extra_keys}"
         )
     result.dgs_elmsym_runtime_adapter = _read_required_dynamic_contract_boolean(
@@ -472,6 +683,12 @@ def dynamic_model_contract_from_data(data: Dict[str, object]) -> DynamicModelCon
     result.rms_topology_constraint_status_var_uid = _read_nullable_dynamic_contract_symbolic_uid(
         data, "rms_topology_constraint_status_var_uid"
     )
+    if version_number == 1:
+        result.rms_terminal_power_contributions = list()
+    else:
+        result.rms_terminal_power_contributions = (
+            _read_rms_terminal_power_contributions(data)
+        )
     result.rms_ideal_ac_connector = _read_required_dynamic_contract_boolean(
         data, "rms_ideal_ac_connector"
     )
@@ -663,6 +880,57 @@ def validate_dynamic_model_contract(block: "Block") -> None:
     """
     reachable_uids: set[int] = _collect_contract_reachable_uids(block)
     contract: DynamicModelContract = block.dynamic_model_contract
+
+    # Terminal declarations resolve semantic references through the owning
+    # block. No copied Var is retained, and duplicate topology sides fail
+    # before the network assembler can count one device twice.
+    terminal_sides: set[RmsTerminalSide] = set()
+    terminal_contribution: RmsTerminalPowerContribution
+    for terminal_contribution in contract.rms_terminal_power_contributions:
+        if isinstance(terminal_contribution, RmsTerminalPowerContribution):
+            pass
+        else:
+            raise TypeError(
+                "RMS terminal power contract contains an invalid declaration"
+            )
+        terminal_side: RmsTerminalSide = terminal_contribution.get_terminal_side()
+        if terminal_side in terminal_sides:
+            raise ValueError(
+                f"RMS terminal power contract duplicates side '{terminal_side.value}'"
+            )
+        else:
+            terminal_sides.add(terminal_side)
+
+        active_reference: VarPowerFlowReferenceType = (
+            terminal_contribution.get_active_power_reference()
+        )
+        active_variable: Var | None = block.external_mapping.get(
+            active_reference,
+            None,
+        )
+        if active_variable is None:
+            raise ValueError(
+                "RMS terminal power contract references an absent active-power variable"
+            )
+        else:
+            pass
+
+        reactive_reference: VarPowerFlowReferenceType | None = (
+            terminal_contribution.get_reactive_power_reference()
+        )
+        if reactive_reference is None:
+            pass
+        else:
+            reactive_variable: Var | None = block.external_mapping.get(
+                reactive_reference,
+                None,
+            )
+            if reactive_variable is None:
+                raise ValueError(
+                    "RMS terminal power contract references an absent reactive-power variable"
+                )
+            else:
+                pass
 
     # One block represents one physical equipment adapter. Accepting two
     # adapter families would make runtime dispatch depend on incidental order.
