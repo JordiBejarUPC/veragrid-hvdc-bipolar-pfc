@@ -1176,10 +1176,17 @@ class RmsProblemDae(RmsProblemTemplate):
 
         # print("start creating balance equations")
         # add the nodal balance equations
+        # Legacy split VSC models expose terminal reactive power but no AC
+        # angle input because their companion transformer/control model closes
+        # the virtual AC node. A standalone VSC with ``Vat`` is connected to a
+        # physical AC bus and therefore requires the normal P/Q bus balances.
         ac_virtual_buses = [
             elm.bus_to.idtag
             for elm in grid.get_vsc()
-            if VarPowerFlowReferenceType.Qt in elm.rms_model.external_mapping
+            if (
+                VarPowerFlowReferenceType.Qt in elm.rms_model.external_mapping
+                and VarPowerFlowReferenceType.Vat not in elm.rms_model.external_mapping
+            )
         ]
         for i, elm in enumerate(self.grid.buses):
             if not P_used[i] and not Q_used[i]:

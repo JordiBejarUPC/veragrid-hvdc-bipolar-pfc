@@ -18,6 +18,7 @@ import matplotlib.pyplot as plt
 from VeraGridEngine.Devices.Parents.editable_device import GCProp
 from VeraGridEngine.Simulations.options_template import OptionsTemplate
 from VeraGridEngine.Simulations.Rms.problems.rms_problem_dae import RmsProblemDae
+from VeraGridEngine.Simulations.Rms.problems.rms_problem_template import RmsProblemTemplate
 from VeraGridEngine.Utils.Sparse.csc import pack_4_by_4_scipy
 from VeraGridEngine.Utils.Symbolic.symbolic import get_expression_vars, Var, Const, BinOp
 from VeraGridEngine.basic_structures import Vec, Mat
