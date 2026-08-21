@@ -8971,7 +8971,7 @@ class Assets:
 
     def refine_pointer_objects(self,
                                logger: Logger,
-                               all_elements_dict: Tuple[Dict[str, ALL_DEV_TYPES], bool] | None = None):
+                               all_elements_dict: Dict[str, ALL_DEV_TYPES] | None = None) -> None:
         """
         Find the device types of pointer objects
         :param logger:
