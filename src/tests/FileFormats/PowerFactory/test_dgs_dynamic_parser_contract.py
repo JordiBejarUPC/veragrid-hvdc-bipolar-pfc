@@ -69,6 +69,7 @@ from VeraGridEngine.IO.dgs.dgs_objects import (
     StaCubic,
 )
 from VeraGridEngine.IO.dgs.dynamic_models.dynamic_model_import import (
+    DgsDynamicTemplateConversionResult,
     add_dynamic_import_selection_requests_to_circuit,
     apply_dgs_dynamic_templates_to_devices,
     build_dgs_dynamic_model_import_bundle,
@@ -426,15 +427,18 @@ def test_complete_hvdc_vsc_exports_apply_direct_dynamic_templates_by_fid(
     dgs_circuit.parse_dgs(path=str(dgs_path))
     destination: MultiCircuit = dgs_to_circuit(path=str(dgs_path))
     logger: Logger = Logger()
+    conversion_result: DgsDynamicTemplateConversionResult = (
+        convert_and_add_dgs_dynamic_templates_to_circuit(
+            dgs_circuit=dgs_circuit,
+            circuit=destination,
+            target_domain=DynamicSimulationMode.RMS,
+            logger=logger,
+        )
+    )
     templates_by_root_id: dict[
         str,
         RmsModelTemplate | EmtModelTemplate,
-    ] = convert_and_add_dgs_dynamic_templates_to_circuit(
-        dgs_circuit=dgs_circuit,
-        circuit=destination,
-        target_domain=DynamicSimulationMode.RMS,
-        logger=logger,
-    )
+    ] = conversion_result.templates_by_root_dgs_id
     apply_dgs_dynamic_templates_to_devices(
         dgs_circuit=dgs_circuit,
         circuit=destination,
@@ -496,15 +500,18 @@ def test_v3_switch_events_bind_guarded_modes_to_exact_rms_equipment() -> None:
     dgs_circuit: DgsCircuit = DgsCircuit()
     dgs_circuit.parse_dgs(path=str(dgs_path))
     circuit: MultiCircuit = dgs_to_circuit(path=str(dgs_path))
+    conversion_result: DgsDynamicTemplateConversionResult = (
+        convert_and_add_dgs_dynamic_templates_to_circuit(
+            dgs_circuit=dgs_circuit,
+            circuit=circuit,
+            target_domain=DynamicSimulationMode.RMS,
+            logger=logger,
+        )
+    )
     templates_by_root_id: dict[
         str,
         RmsModelTemplate | EmtModelTemplate,
-    ] = convert_and_add_dgs_dynamic_templates_to_circuit(
-        dgs_circuit=dgs_circuit,
-        circuit=circuit,
-        target_domain=DynamicSimulationMode.RMS,
-        logger=logger,
-    )
+    ] = conversion_result.templates_by_root_dgs_id
     apply_dgs_dynamic_templates_to_devices(
         dgs_circuit=dgs_circuit,
         circuit=circuit,
@@ -2230,13 +2237,16 @@ def test_direct_dynamic_import_rejects_partial_graphical_topology() -> None:
     destination: MultiCircuit = MultiCircuit()
     logger: Logger = Logger()
 
-    templates_by_root_id: dict[str, RmsModelTemplate | EmtModelTemplate] = (
+    conversion_result: DgsDynamicTemplateConversionResult = (
         convert_and_add_dgs_dynamic_templates_to_circuit(
             dgs_circuit=dgs_circuit,
             circuit=destination,
             target_domain=DynamicSimulationMode.RMS,
             logger=logger,
         )
+    )
+    templates_by_root_id: dict[str, RmsModelTemplate | EmtModelTemplate] = (
+        conversion_result.templates_by_root_dgs_id
     )
 
     assert templates_by_root_id == dict()
@@ -2275,13 +2285,16 @@ def test_direct_dynamic_import_rejects_unsupported_root_syntax() -> None:
 
     destination: MultiCircuit = MultiCircuit()
     logger: Logger = Logger()
-    templates_by_root_id: dict[str, RmsModelTemplate | EmtModelTemplate] = (
+    conversion_result: DgsDynamicTemplateConversionResult = (
         convert_and_add_dgs_dynamic_templates_to_circuit(
             dgs_circuit=dgs_circuit,
             circuit=destination,
             target_domain=DynamicSimulationMode.RMS,
             logger=logger,
         )
+    )
+    templates_by_root_id: dict[str, RmsModelTemplate | EmtModelTemplate] = (
+        conversion_result.templates_by_root_dgs_id
     )
 
     assert templates_by_root_id == dict()
@@ -2321,13 +2334,16 @@ def test_direct_dynamic_import_rejects_supported_root_equations() -> None:
 
     destination: MultiCircuit = MultiCircuit()
     logger: Logger = Logger()
-    templates_by_root_id: dict[str, RmsModelTemplate | EmtModelTemplate] = (
+    conversion_result: DgsDynamicTemplateConversionResult = (
         convert_and_add_dgs_dynamic_templates_to_circuit(
             dgs_circuit=dgs_circuit,
             circuit=destination,
             target_domain=DynamicSimulationMode.RMS,
             logger=logger,
         )
+    )
+    templates_by_root_id: dict[str, RmsModelTemplate | EmtModelTemplate] = (
+        conversion_result.templates_by_root_dgs_id
     )
 
     assert templates_by_root_id == dict()
@@ -2370,13 +2386,16 @@ def test_direct_dynamic_import_rejects_root_parameter_limits() -> None:
 
     destination: MultiCircuit = MultiCircuit()
     logger: Logger = Logger()
-    templates_by_root_id: dict[str, RmsModelTemplate | EmtModelTemplate] = (
+    conversion_result: DgsDynamicTemplateConversionResult = (
         convert_and_add_dgs_dynamic_templates_to_circuit(
             dgs_circuit=dgs_circuit,
             circuit=destination,
             target_domain=DynamicSimulationMode.RMS,
             logger=logger,
         )
+    )
+    templates_by_root_id: dict[str, RmsModelTemplate | EmtModelTemplate] = (
+        conversion_result.templates_by_root_dgs_id
     )
 
     assert templates_by_root_id == dict()
@@ -2489,13 +2508,16 @@ def test_direct_dynamic_import_excludes_every_empty_or_duplicate_root_fid() -> N
 
     destination: MultiCircuit = MultiCircuit()
     logger: Logger = Logger()
-    templates_by_root_id: dict[str, RmsModelTemplate | EmtModelTemplate] = (
+    conversion_result: DgsDynamicTemplateConversionResult = (
         convert_and_add_dgs_dynamic_templates_to_circuit(
             dgs_circuit=dgs_circuit,
             circuit=destination,
             target_domain=DynamicSimulationMode.RMS,
             logger=logger,
         )
+    )
+    templates_by_root_id: dict[str, RmsModelTemplate | EmtModelTemplate] = (
+        conversion_result.templates_by_root_dgs_id
     )
     logged_messages: set[str] = set()
     log_entry: LogEntry

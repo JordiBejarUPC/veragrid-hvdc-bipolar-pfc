@@ -6,6 +6,11 @@ from typing import Dict, Iterable, List, Set, Tuple
 
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Devices.Injections.generator import Generator
+from VeraGridEngine.IO.dgs.dgs_to_blocks import (
+    DgsDirectRootBuildResult,
+    DgsSlotSignalDirection,
+    ElmCompInstanceEntry,
+)
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic import Const, Expr, Var
 import VeraGridEngine.Utils.Symbolic.symbolic as sym
@@ -32,103 +37,233 @@ def _float_tuple(values: Iterable[float]) -> Tuple[float, ...]:
     return tuple(result_values)
 
 
-def _flatten_slot_signal_names(raw_signals: object | None) -> Set[str]:
-    """Flatten scalar and semicolon-vector DGS slot signal declarations.
 
-    :param raw_signals: Raw ``incoming_signals`` or ``outgoing_signals`` list.
-    :return: Exact component names exposed by the slot.
+
+
+
+
+
+def is_dgs_elmsym_direct_slot_contract(
+        direct_result: DgsDirectRootBuildResult,
+) -> bool:
+    """Validate one synchronous-machine boundary from transient DGS entries.
+
+    :param direct_result: Direct root and exact source-slot relations.
+    :return: ``True`` for one complete resolved ElmSym equipment slot.
     """
-    result: Set[str] = set()
-    raw_signal: object
-    component: str
+    matching_count: int = 0
+    direct_entry: ElmCompInstanceEntry
+    required_outputs: Set[str] = set([
+        "ID", "IQ", "IFDIEEE", "RPOWER", "SG", "VT", "VTD",
+        "VTQ", "cosn", "speed",
+    ])
+    required_inputs: Set[str] = set(["pt", "ve"])
 
-    if isinstance(raw_signals, list):
-        for raw_signal in raw_signals:
-            for component in str(raw_signal).split(";"):
-                normalized_component: str = component.strip()
-                if normalized_component == "":
-                    pass
-                else:
-                    result.add(normalized_component)
-    else:
-        pass
-    return result
-
-
-def _flatten_slot_signal_names_ordered(raw_signals: object | None) -> List[str]:
-    """Flatten a DGS slot signal declaration while preserving pin order.
-
-    :param raw_signals: Raw ``incoming_signals`` list from one direct slot.
-    :return: Ordered non-empty component names.
-    """
-    result: List[str] = list()
-    raw_signal: object
-    component: str
-
-    if isinstance(raw_signals, list):
-        for raw_signal in raw_signals:
-            for component in str(raw_signal).split(";"):
-                normalized_component: str = component.strip()
-                if normalized_component == "":
-                    pass
-                else:
-                    result.append(normalized_component)
-    else:
-        pass
-    return result
-
-
-def is_dgs_elmsym_slot_contract(block: Block) -> bool:
-    """Detect PowerFactory's native synchronous-machine composite contract.
-
-    The contract is structural and uses the direct ``BlkSlot`` metadata. Model
-    names, controller family names and project-specific labels are irrelevant.
-
-    :param block: Imported direct ElmComp root.
-    :return: ``True`` when one direct slot exposes a supported ``ElmSym`` shell.
-    """
-    raw_interfaces: object | None = block.__dict__.get(
-        "dgs_direct_slot_interfaces",
-        None,
-    )
-    if isinstance(raw_interfaces, list):
-        interface_items: List[object] = raw_interfaces
-    else:
-        interface_items = list()
-
-    interface_item: object
-    for interface_item in interface_items:
-        if isinstance(interface_item, dict):
-            slot_filter_raw: object | None = interface_item.get("slot_filter", None)
-            element_kind_raw: object | None = interface_item.get("element_kind", None)
-            incoming_names: Set[str] = _flatten_slot_signal_names(
-                interface_item.get("incoming_signals", None)
-            )
-            outgoing_names: Set[str] = _flatten_slot_signal_names(
-                interface_item.get("outgoing_signals", None)
-            )
-            slot_filter: str = (
-                slot_filter_raw if isinstance(slot_filter_raw, str) else ""
-            )
-            element_kind: str = (
-                element_kind_raw if isinstance(element_kind_raw, str) else ""
-            )
-            required_outputs: Set[str] = set([
-                "ID", "IQ", "IFDIEEE", "RPOWER", "SG", "VT", "VTD",
-                "VTQ", "cosn", "speed",
-            ])
-            contract_matches: bool = (
-                ("ElmSym" in slot_filter or element_kind == "ElmSym")
-                and set(["pt", "ve"]).issubset(incoming_names)
-                and required_outputs.issubset(outgoing_names)
-            )
-            if contract_matches:
-                return True
-            else:
-                pass
+    for direct_entry in direct_result.direct_entries:
+        if (
+                direct_entry.element_reference_is_resolved
+                and direct_entry.element_kind == "ElmSym"
+                and required_outputs.issubset(set(
+                    direct_entry.get_slot_signal_components(
+                        direction=DgsSlotSignalDirection.Output,
+                    )
+                ))
+                and required_inputs.issubset(set(
+                    direct_entry.get_slot_signal_components(
+                        direction=DgsSlotSignalDirection.Input,
+                    )
+                ))
+        ):
+            matching_count += 1
         else:
             pass
+    else:
+        pass
+    return matching_count == 1
+
+
+def _find_direct_declared_slot_output(
+        direct_result: DgsDirectRootBuildResult,
+        candidate_names: Iterable[str],
+) -> Var | None:
+    """Resolve one public cable from its exact transient slot relation.
+
+    :param direct_result: Direct root with slot-to-child lookup.
+    :param candidate_names: Public cable aliases in priority order.
+    :return: Exact child output variable, or ``None`` when unresolved.
+    """
+    candidate_name: str
+    direct_entry: ElmCompInstanceEntry
+    outgoing_index: int
+    outgoing_name: str
+    child_block: Block | None
+    child_output: Var
+
+    for candidate_name in candidate_names:
+        for direct_entry in direct_result.direct_entries:
+            if direct_entry.slot_id is None:
+                pass
+            else:
+                child_block = direct_result.child_block_by_slot_id.get(
+                    direct_entry.slot_id,
+                    None,
+                )
+                if child_block is None:
+                    pass
+                else:
+                    for outgoing_index, outgoing_name in enumerate(
+                            direct_entry.get_slot_signal_components(
+                                direction=DgsSlotSignalDirection.Output,
+                            )
+                    ):
+                        if outgoing_name == candidate_name:
+                            for child_output in child_block.out_vars:
+                                if child_output.name == outgoing_name:
+                                    return child_output
+                                else:
+                                    pass
+                            else:
+                                pass
+                            if outgoing_index < len(child_block.out_vars):
+                                return child_block.out_vars[outgoing_index]
+                            else:
+                                pass
+                        else:
+                            pass
+                    else:
+                        pass
+        else:
+            pass
+    else:
+        pass
+    return None
+
+
+def _direct_declared_slot_output_is_unconnected(
+        direct_result: DgsDirectRootBuildResult,
+        candidate_names: Iterable[str],
+) -> bool:
+    """Detect one declared public output whose source element is empty.
+
+    :param direct_result: Direct root with validated transient relations.
+    :param candidate_names: Public cable aliases accepted by the equipment.
+    :return: ``True`` only for an exact empty slot exposing one alias.
+    """
+    candidate_name_set: Set[str] = set(candidate_names)
+    direct_entry: ElmCompInstanceEntry
+
+    for direct_entry in direct_result.direct_entries:
+        if (
+                direct_entry.element_id is None
+                and not candidate_name_set.isdisjoint(set(
+                    direct_entry.get_slot_signal_components(
+                        direction=DgsSlotSignalDirection.Output,
+                    )
+                ))
+        ):
+            return True
+        else:
+            pass
+    else:
+        pass
     return False
+
+
+def _collect_direct_declared_controller_machine_inputs(
+        direct_result: DgsDirectRootBuildResult,
+) -> Set[str]:
+    """Collect exact equipment signals consumed by instantiated controllers.
+
+    :param direct_result: Direct root with transient slot and child relations.
+    :return: Exact machine signal names proven to have controller consumers.
+    """
+    result: Set[str] = set()
+    candidate_block: Block
+    candidate_input: Var
+    direct_entry: ElmCompInstanceEntry
+    child_block: Block | None
+
+    for candidate_block in direct_result.root_block.get_all_blocks():
+        for candidate_input in candidate_block.in_vars:
+            result.add(candidate_input.name)
+        else:
+            pass
+    else:
+        pass
+
+    for direct_entry in direct_result.direct_entries:
+        if (
+                direct_entry.element_kind == "ElmSym"
+                or direct_entry.accepts_element_kind(element_kind="ElmSym")
+                or direct_entry.slot_id is None
+                or len(direct_entry.get_slot_signal_components(
+                    direction=DgsSlotSignalDirection.Input,
+                )) != 1
+        ):
+            pass
+        else:
+            child_block = direct_result.child_block_by_slot_id.get(
+                direct_entry.slot_id,
+                None,
+            )
+            if child_block is not None and len(child_block.in_vars) > 0:
+                result.add(direct_entry.get_slot_signal_components(
+                    direction=DgsSlotSignalDirection.Input,
+                )[0])
+            else:
+                pass
+    else:
+        pass
+    return result
+
+
+def _connect_direct_declared_slot_input(
+        direct_result: DgsDirectRootBuildResult,
+        signal_name: str,
+        equipment_var: Var,
+) -> int:
+    """Replace one exact single-input child cable from transient slot data.
+
+    :param direct_result: Direct root with transient slot and child relations.
+    :param signal_name: Native equipment cable name.
+    :param equipment_var: Canonical physical-equipment variable.
+    :return: Number of distinct child inputs replaced.
+    """
+    result: int = 0
+    replaced_uids: Set[int] = set()
+    direct_entry: ElmCompInstanceEntry
+    child_block: Block | None
+    old_input: Var
+
+    for direct_entry in direct_result.direct_entries:
+        if (
+                direct_entry.slot_id is None
+                or len(direct_entry.get_slot_signal_components(
+                    direction=DgsSlotSignalDirection.Input,
+                )) != 1
+                or direct_entry.get_slot_signal_components(
+                    direction=DgsSlotSignalDirection.Input,
+                )[0] != signal_name
+        ):
+            pass
+        else:
+            child_block = direct_result.child_block_by_slot_id.get(
+                direct_entry.slot_id,
+                None,
+            )
+            if child_block is None or len(child_block.in_vars) == 0:
+                pass
+            else:
+                old_input = child_block.in_vars[0]
+                if old_input.uid in replaced_uids:
+                    pass
+                else:
+                    direct_result.root_block.update_model(old_input, equipment_var)
+                    replaced_uids.add(old_input.uid)
+                    result += 1
+    else:
+        pass
+    return result
 
 
 def _find_first_named_var_recursive(
@@ -173,132 +308,8 @@ def _find_first_named_var_recursive(
     return None
 
 
-def _find_declared_slot_output(
-        block: Block,
-        candidate_names: Iterable[str],
-) -> Var | None:
-    """Resolve a controller output from its exported ``BlkSlot`` contract.
-
-    PowerFactory's composite frame owns the public cable name, while a
-    graphical controller may expose the producing variable under an internal
-    name after its private wires have been resolved.  The direct slot metadata
-    preserves both the public signal order and the instantiated child identity,
-    so it is the authoritative bridge between those two representations.
-
-    :param block: Imported direct ElmComp root.
-    :param candidate_names: Public cable aliases in priority order.
-    :return: Exact child output variable or ``None`` when no slot declares it.
-    """
-    raw_interfaces: object | None = block.__dict__.get(
-        "dgs_direct_slot_interfaces",
-        None,
-    )
-    interface_items: List[object]
-    candidate_name: str
-    interface_item: object
-    slot_id_raw: object | None
-    outgoing_names: List[str]
-    outgoing_name: str
-    outgoing_index: int
-    candidate_block: Block
-    candidate_slot_id_raw: object | None
-    candidate_output_var: Var
-
-    if isinstance(raw_interfaces, list):
-        interface_items = raw_interfaces
-    else:
-        interface_items = list()
-
-    # Alias priority remains explicit, but the selected variable is located by
-    # exported slot identity and port position rather than a mutable label.
-    for candidate_name in candidate_names:
-        for interface_item in interface_items:
-            if isinstance(interface_item, dict):
-                slot_id_raw = interface_item.get("slot_id", None)
-                outgoing_names = _flatten_slot_signal_names_ordered(
-                    interface_item.get("outgoing_signals", None)
-                )
-                for outgoing_index, outgoing_name in enumerate(outgoing_names):
-                    if outgoing_name == candidate_name and slot_id_raw is not None:
-                        for candidate_block in block.get_all_blocks():
-                            candidate_slot_id_raw = candidate_block.__dict__.get(
-                                "dgs_slot_id",
-                                None,
-                            )
-                            if (
-                                    candidate_slot_id_raw == slot_id_raw
-                            ):
-                                # A BlkSlot public name selects the identically
-                                # named child port when the instantiated model
-                                # exports it.  Some OEM variants rename their
-                                # private output, so positional selection remains
-                                # the explicit fallback only when no exact port
-                                # exists on that child.
-                                for candidate_output_var in candidate_block.out_vars:
-                                    if candidate_output_var.name == outgoing_name:
-                                        return candidate_output_var
-                                    else:
-                                        pass
-                                else:
-                                    pass
-                                if outgoing_index < len(candidate_block.out_vars):
-                                    return candidate_block.out_vars[outgoing_index]
-                                else:
-                                    pass
-                            else:
-                                pass
-                    else:
-                        pass
-            else:
-                pass
-    return None
 
 
-def _declared_slot_output_is_unconnected(
-        block: Block,
-        candidate_names: Iterable[str],
-) -> bool:
-    """Detect a declared controller slot output with no instantiated element.
-
-    An empty optional slot remains present in PowerFactory's frame metadata.
-    Its output cable has the native disconnected-input value of zero, but no
-    child block exists to produce a symbolic variable for it.
-
-    :param block: Imported direct ElmComp root.
-    :param candidate_names: Public cable aliases accepted by the machine input.
-    :return: ``True`` only for a matching slot whose element reference is empty.
-    """
-    raw_interfaces: object | None = block.__dict__.get(
-        "dgs_direct_slot_interfaces",
-        None,
-    )
-    interface_items: List[object]
-    candidate_name_set: Set[str] = set(candidate_names)
-    interface_item: object
-    outgoing_names: Set[str]
-    element_id_raw: object | None
-
-    if isinstance(raw_interfaces, list):
-        interface_items = raw_interfaces
-    else:
-        interface_items = list()
-
-    for interface_item in interface_items:
-        if isinstance(interface_item, dict):
-            outgoing_names = _flatten_slot_signal_names(
-                interface_item.get("outgoing_signals", None)
-            )
-            element_id_raw = interface_item.get("element_id", None)
-            if (
-                    not candidate_name_set.isdisjoint(outgoing_names)
-                    and (element_id_raw is None or element_id_raw == "")
-            ):
-                return True
-            else:
-                pass
-        else:
-            pass
-    return False
 
 
 def _connect_named_controller_inputs(
@@ -330,168 +341,8 @@ def _connect_named_controller_inputs(
     return len(matching_inputs)
 
 
-def _collect_declared_controller_machine_inputs(block: Block) -> Set[str]:
-    """Collect machine signals demonstrably consumed by controller inputs.
-
-    Exact symbolic input names are authoritative. PowerFactory also permits a
-    one-input controller block to call its pin ``yi`` or ``pgt`` while the sole
-    frame cable is named ``RPOWER``; that one-to-one slot is unambiguous and is
-    retained as a structural alias. Multi-input frame declarations describe a
-    compatibility surface rather than the concrete DSL input order and must not
-    make unused machine signals mandatory.
-
-    :param block: Imported direct composite root.
-    :return: Exact machine signal names consumed by controller slots.
-    """
-    result: Set[str] = set()
-    raw_interfaces: object | None = block.__dict__.get(
-        "dgs_direct_slot_interfaces",
-        None,
-    )
-    interface_items: List[object]
-    interface_item: object
-    candidate_block: Block
-    candidate_input: Var
-    slot_id_raw: object | None
-    candidate_slot_id_raw: object | None
-    incoming_names: List[str]
-
-    # Every exact controller input is a real consumption contract regardless
-    # of whether its enclosing frame also advertises optional compatibility
-    # signals for other model families.
-    for candidate_block in block.get_all_blocks():
-        for candidate_input in candidate_block.in_vars:
-            result.add(candidate_input.name)
-        else:
-            pass
-    else:
-        pass
-
-    if isinstance(raw_interfaces, list):
-        interface_items = raw_interfaces
-    else:
-        interface_items = list()
-
-    for interface_item in interface_items:
-        if isinstance(interface_item, dict):
-            element_kind_raw: object | None = interface_item.get(
-                "element_kind",
-                None,
-            )
-            slot_filter_raw: object | None = interface_item.get(
-                "slot_filter",
-                None,
-            )
-            element_kind: str = (
-                element_kind_raw if isinstance(element_kind_raw, str) else ""
-            )
-            slot_filter: str = (
-                slot_filter_raw if isinstance(slot_filter_raw, str) else ""
-            )
-            if element_kind == "ElmSym" or "ElmSym" in slot_filter:
-                pass
-            else:
-                incoming_names = _flatten_slot_signal_names_ordered(
-                    interface_item.get("incoming_signals", None)
-                )
-                slot_id_raw = interface_item.get("slot_id", None)
-                if len(incoming_names) == 1 and slot_id_raw is not None:
-                    for candidate_block in block.get_all_blocks():
-                        candidate_slot_id_raw = candidate_block.__dict__.get(
-                            "dgs_slot_id",
-                            None,
-                        )
-                        if (
-                                candidate_slot_id_raw == slot_id_raw
-                                and len(candidate_block.in_vars) > 0
-                        ):
-                            result.add(incoming_names[0])
-                        else:
-                            pass
-                    else:
-                        pass
-                else:
-                    pass
-        else:
-            pass
-    return result
 
 
-def _connect_declared_slot_input(
-        block: Block,
-        signal_name: str,
-        equipment_var: Var,
-) -> int:
-    """Connect one unambiguous generic pin through its slot declaration.
-
-    DGS wire labels are collected as a set for catalogue metadata and therefore
-    carry no positional contract.  A positional fallback is safe only for a
-    slot with one incoming cable: its first runtime input is the sole possible
-    consumer.  Multi-input slots must be resolved by exact symbolic names or
-    explicit graphical endpoints; guessing from sorted labels can otherwise
-    merge independent signals such as synchronous-machine ``RPOWER`` and PSS
-    ``upss``.
-
-    :param block: Imported direct composite root.
-    :param signal_name: Native machine signal declared by the slot.
-    :param equipment_var: Canonical physical-machine variable.
-    :return: Number of distinct slot inputs replaced.
-    """
-    result: int = 0
-    raw_interfaces: object | None = block.__dict__.get(
-        "dgs_direct_slot_interfaces",
-        None,
-    )
-    interface_items: List[object]
-    interface_item: object
-    candidate_block: Block
-    slot_id_raw: object | None
-    candidate_slot_id_raw: object | None
-    incoming_names: List[str]
-    old_input: Var
-    replaced_uids: Set[int] = set()
-
-    if isinstance(raw_interfaces, list):
-        interface_items = raw_interfaces
-    else:
-        interface_items = list()
-
-    for interface_item in interface_items:
-        if isinstance(interface_item, dict):
-            slot_id_raw = interface_item.get("slot_id", None)
-            incoming_names = _flatten_slot_signal_names_ordered(
-                interface_item.get("incoming_signals", None)
-            )
-            if (
-                    len(incoming_names) == 1
-                    and incoming_names[0] == signal_name
-                    and slot_id_raw is not None
-            ):
-                for candidate_block in block.get_all_blocks():
-                    candidate_slot_id_raw = candidate_block.__dict__.get(
-                        "dgs_slot_id",
-                        None,
-                    )
-                    if (
-                            candidate_slot_id_raw == slot_id_raw
-                            and len(candidate_block.in_vars) > 0
-                    ):
-                        old_input = candidate_block.in_vars[0]
-                        if old_input.uid in replaced_uids:
-                            pass
-                        else:
-                            block.update_model(old_input, equipment_var)
-                            replaced_uids.add(old_input.uid)
-                            result += 1
-                    else:
-                        pass
-                else:
-                    pass
-            else:
-                pass
-        else:
-            pass
-    return result
 
 
 def install_unconnected_dgs_control_input_defaults(
@@ -567,6 +418,7 @@ def install_unconnected_dgs_control_input_defaults(
 def build_dgs_elmsym_rms_runtime_template(
         control_template: RmsModelTemplate,
         clone_control_block: bool = True,
+        direct_result: DgsDirectRootBuildResult | None = None,
 ) -> RmsModelTemplate | None:
     """Create a pending typed adapter for one native ``ElmSym`` composite.
 
@@ -576,6 +428,7 @@ def build_dgs_elmsym_rms_runtime_template(
 
     :param control_template: Imported controller-only RMS root.
     :param clone_control_block: Clone reusable GUI input before adaptation.
+    :param direct_result: Optional transient direct-root conversion context.
     :return: Pending Generator template or ``None`` for another slot contract.
     """
     control_block: Block
@@ -583,12 +436,19 @@ def build_dgs_elmsym_rms_runtime_template(
         control_block = copy.deepcopy(control_template.block)
     else:
         control_block = control_template.block
-    if is_dgs_elmsym_slot_contract(control_block):
+    direct_contract_is_valid: bool = False
+    if direct_result is None:
+        pass
+    else:
+        direct_contract_is_valid = is_dgs_elmsym_direct_slot_contract(
+            direct_result=direct_result,
+        )
+    if direct_contract_is_valid:
         result: RmsModelTemplate = RmsModelTemplate(name=control_template.name)
         result.name = control_template.name
         result.tpe = DeviceType.GeneratorDevice
         result.block = control_block
-        result.block.__dict__["dgs_elmsym_runtime_adapter_pending"] = True
+        result.block.dynamic_model_contract.dgs_elmsym_runtime_adapter_pending = True
         return result
     else:
         return None
@@ -1373,30 +1233,35 @@ def _build_dgs_elmsym_runtime_block(
         control_block: Block,
         round_rotor: bool,
         equivalent_circuit: _PowerFactoryEquivalentCircuit,
+        direct_result: DgsDirectRootBuildResult,
 ) -> Block | None:
     """Combine one imported controller with the standard RMS machine shell.
 
     :param control_block: Exact imported AVR/governor/PSS hierarchy.
     :param round_rotor: Include the q-axis transient winding when ``True``.
     :param equivalent_circuit: Exact rotor circuit derived from ``TypSym``.
+    :param direct_result: Optional transient direct-root conversion context.
     :return: Complete assignable block or ``None`` for an incomplete cable set.
     """
     # Direct DGS composites declare public controller cables on each BlkSlot.
     # Resolve those structural ports first because a graphical child can retain
     # a different internal output name after private-wire normalization.
-    turbine_power: Var | None = _find_declared_slot_output(
-        block=control_block,
+    turbine_power: Var | None = _find_direct_declared_slot_output(
+        direct_result=direct_result,
         candidate_names=("pt", "PT"),
     )
-    excitation_voltage: Var | None = _find_declared_slot_output(
-        block=control_block,
+    excitation_voltage: Var | None = _find_direct_declared_slot_output(
+        direct_result=direct_result,
         candidate_names=("ve", "EFD", "efd", "Vf"),
     )
     if turbine_power is None:
-        if _declared_slot_output_is_unconnected(
-                block=control_block,
+        turbine_slot_is_unconnected: bool = (
+            _direct_declared_slot_output_is_unconnected(
+                direct_result=direct_result,
                 candidate_names=("pt", "PT"),
-        ):
+            )
+        )
+        if turbine_slot_is_unconnected:
             # An optional governor slot without an element produces the exact
             # disconnected PowerFactory cable value throughout the run.
             turbine_power = Var(name="pt")
@@ -1409,10 +1274,13 @@ def _build_dgs_elmsym_runtime_block(
     else:
         pass
     if excitation_voltage is None:
-        if _declared_slot_output_is_unconnected(
-                block=control_block,
+        excitation_slot_is_unconnected: bool = (
+            _direct_declared_slot_output_is_unconnected(
+                direct_result=direct_result,
                 candidate_names=("ve", "EFD", "efd", "Vf"),
-        ):
+            )
+        )
+        if excitation_slot_is_unconnected:
             # Empty optional excitation slots obey the same native zero-cable
             # rule as every other disconnected DSL controller output.
             excitation_voltage = Var(name="ve")
@@ -1562,9 +1430,13 @@ def _build_dgs_elmsym_runtime_block(
     equipment_signals["TD0S"] = td_transient
     equipment_signals["Gm"] = excitation_gain
     equipment_signals["VFDrated"] = rated_field_voltage
+    declared_machine_inputs: Set[str] = (
+        _collect_direct_declared_controller_machine_inputs(
+            direct_result=direct_result,
+        )
+    )
     required_connection_names: Set[str] = (
-        _collect_declared_controller_machine_inputs(block=control_block)
-        & set(equipment_signals.keys())
+        declared_machine_inputs & set(equipment_signals.keys())
     )
     signal_name: str
     equipment_var: Var
@@ -1576,8 +1448,8 @@ def _build_dgs_elmsym_runtime_block(
             equipment_var=equipment_var,
         )
         if connection_count == 0 and signal_name in required_connection_names:
-            connection_count = _connect_declared_slot_input(
-                block=control_block,
+            connection_count = _connect_direct_declared_slot_input(
+                direct_result=direct_result,
                 signal_name=signal_name,
                 equipment_var=equipment_var,
             )
@@ -2426,23 +2298,24 @@ def _build_dgs_elmsym_runtime_block(
         ]),
         api_obj_mapping=api_mapping,
     )
-    wrapper_block.__dict__["dgs_elmsym_runtime_adapter"] = True
-    wrapper_block.__dict__["dgs_elmsym_round_rotor"] = round_rotor
+    wrapper_block.dynamic_model_contract.dgs_elmsym_runtime_adapter = True
+    wrapper_block.dynamic_model_contract.dgs_elmsym_runtime_adapter_pending = False
+    wrapper_block.dynamic_model_contract.dgs_elmsym_round_rotor = round_rotor
     # Retain exact variable identities so the circuit-level preparation pass
     # can replace the nominal-frequency frame with PowerFactory's exported
     # reference-machine frame after every physical ElmSym has been assigned.
-    wrapper_block.__dict__["dgs_elmsym_rotor_angle_var_uid"] = rotor_angle.uid
-    wrapper_block.__dict__["dgs_elmsym_speed_var_uid"] = speed.uid
-    wrapper_block.__dict__["dgs_elmsym_angular_frequency_var_uid"] = (
+    wrapper_block.dynamic_model_contract.dgs_elmsym_rotor_angle_var_uid = rotor_angle.uid
+    wrapper_block.dynamic_model_contract.dgs_elmsym_speed_var_uid = speed.uid
+    wrapper_block.dynamic_model_contract.dgs_elmsym_angular_frequency_var_uid = (
         angular_frequency.uid
     )
-    wrapper_block.__dict__["dgs_elmsym_rated_field_voltage_var_uid"] = (
+    wrapper_block.dynamic_model_contract.dgs_elmsym_rated_field_voltage_var_uid = (
         rated_field_voltage.uid
     )
-    wrapper_block.__dict__["dgs_elmsym_excitation_gain_var_uid"] = (
+    wrapper_block.dynamic_model_contract.dgs_elmsym_excitation_gain_var_uid = (
         excitation_gain.uid
     )
-    wrapper_block.__dict__["dgs_elmsym_active_base_factor_var_uid"] = (
+    wrapper_block.dynamic_model_contract.dgs_elmsym_active_base_factor_var_uid = (
         machine_active_base_factor.uid
     )
     explicit_initialization_uids: Set[int] = set()
@@ -2451,7 +2324,7 @@ def _build_dgs_elmsym_runtime_block(
         explicit_initialization_uids.add(initial_var.uid)
     else:
         pass
-    wrapper_block.__dict__["dgs_explicit_initialization_uids"] = (
+    wrapper_block.dynamic_model_contract.dgs_explicit_initialization_uids = (
         explicit_initialization_uids
     )
     return wrapper_block
@@ -2461,28 +2334,29 @@ def configure_dgs_elmsym_runtime_template_for_device(
         template: RmsModelTemplate,
         device: Generator,
         system_base_mva: float,
+        direct_result: DgsDirectRootBuildResult | None = None,
 ) -> bool:
     """Materialize one exact synchronous-machine/controller runtime template.
 
     :param template: Pending or already configured DGS template.
     :param device: Exact Generator host selected through the DGS FID.
     :param system_base_mva: VeraGrid system base used for validation.
+    :param direct_result: Optional transient direct-root conversion context.
     :return: ``True`` only for a complete, physically valid adapter.
     """
-    already_configured: bool = template.block.__dict__.get(
-        "dgs_elmsym_runtime_adapter",
-        None,
-    ) is True
-    pending: bool = template.block.__dict__.get(
-        "dgs_elmsym_runtime_adapter_pending",
-        None,
-    ) is True
+    already_configured: bool = (
+        template.block.dynamic_model_contract.dgs_elmsym_runtime_adapter
+    )
+    pending: bool = (
+        template.block.dynamic_model_contract.dgs_elmsym_runtime_adapter_pending
+    )
     if already_configured:
         return True
     else:
         pass
     if (
             not pending
+            or direct_result is None
             or not math.isfinite(system_base_mva)
             or system_base_mva <= 0.0
             or not _machine_parameter_contract_is_valid(device=device)
@@ -2499,17 +2373,24 @@ def configure_dgs_elmsym_runtime_template_for_device(
     else:
         pass
     round_rotor: bool = float(device.Tq0_prime) > 0.0
+    if direct_result is None:
+        control_block: Block = copy.deepcopy(template.block)
+    else:
+        if direct_result.root_block is template.block:
+            control_block = template.block
+        else:
+            return False
     configured_block: Block | None = _build_dgs_elmsym_runtime_block(
-        control_block=copy.deepcopy(template.block),
+        control_block=control_block,
         round_rotor=round_rotor,
         equivalent_circuit=equivalent_circuit,
+        direct_result=direct_result,
     )
     if configured_block is None:
         return False
     else:
-        rated_field_voltage_uid_raw: object | None = configured_block.__dict__.get(
-            "dgs_elmsym_rated_field_voltage_var_uid",
-            None,
+        rated_field_voltage_uid_raw: int | None = (
+            configured_block.dynamic_model_contract.dgs_elmsym_rated_field_voltage_var_uid
         )
         if float(device.rms_rated_field_voltage) > 1.0e-12:
             rated_field_voltage_value: float = float(
@@ -2519,9 +2400,8 @@ def configure_dgs_elmsym_runtime_template_for_device(
             rated_field_voltage_value = (
                 _calculate_unsaturated_rated_field_voltage(device=device)
             )
-        excitation_gain_uid_raw: object | None = configured_block.__dict__.get(
-            "dgs_elmsym_excitation_gain_var_uid",
-            None,
+        excitation_gain_uid_raw: int | None = (
+            configured_block.dynamic_model_contract.dgs_elmsym_excitation_gain_var_uid
         )
         if float(device.rms_excitation_gain) > 1.0e-12:
             excitation_gain_value: float = float(device.rms_excitation_gain)
@@ -2529,11 +2409,8 @@ def configure_dgs_elmsym_runtime_template_for_device(
             # Older DGS files do not carry the calculated ElmSym boundary.
             # Unity retains their historical air-gap-base behavior explicitly.
             excitation_gain_value = 1.0
-        active_base_factor_uid_raw: object | None = (
-            configured_block.__dict__.get(
-                "dgs_elmsym_active_base_factor_var_uid",
-                None,
-            )
+        active_base_factor_uid_raw: int | None = (
+            configured_block.dynamic_model_contract.dgs_elmsym_active_base_factor_var_uid
         )
         active_base_factor_value: float = (
             _calculate_machine_active_base_factor(device=device)

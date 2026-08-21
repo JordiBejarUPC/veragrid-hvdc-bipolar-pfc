@@ -26,6 +26,7 @@ from VeraGridEngine.IO.dgs.dgs_to_blocks import (
     DgsGraphicalIndexes,
     DgsGraphicTreeResult,
     DgsRootBlockResult,
+    DgsSlotSignalDirection,
     DgsStandaloneBlockCatalogEntry,
     DgsStandaloneBlockOccurrence,
     ElmCompInstanceEntry,
@@ -46,6 +47,7 @@ from VeraGridEngine.IO.dgs.dgs_to_blocks import (
 )
 from VeraGridEngine.IO.dgs.dgs_objects import BlkSlot
 from VeraGridEngine.IO.dgs.dgs_objects import ElmComp
+from VeraGridEngine.IO.dgs.dgs_objects import ElmSvs
 from VeraGridEngine.IO.dynamic_model_import_types import (
     DgsDynamicModelActivationReport,
     DynamicModelImportBundle,
@@ -73,15 +75,12 @@ from VeraGridEngine.IO.dgs.dynamic_models.dgs_elmvsc_runtime_adapter import (
 from VeraGridEngine.IO.dgs.dynamic_models.dgs_elmsym_runtime_adapter import (
     build_dgs_elmsym_rms_runtime_template,
     configure_dgs_elmsym_runtime_template_for_device,
-    is_dgs_elmsym_slot_contract,
 )
 from VeraGridEngine.IO.dgs.dynamic_models.dgs_elmgenstat_runtime_adapter import (
     build_dgs_elmgenstat_rms_runtime_template,
-    is_dgs_elmgenstat_slot_contract,
 )
 from VeraGridEngine.IO.dgs.dynamic_models.dgs_elmsvs_runtime_adapter import (
     build_dgs_elmsvs_rms_runtime_template,
-    is_dgs_elmsvs_slot_contract,
 )
 from VeraGridEngine.IO.file_system import get_create_veragrid_folder
 from VeraGridEngine.IO.dynamic_model_import_utils import sanitize_dynamic_model_file_stem
@@ -110,6 +109,38 @@ class _DgsRuntimeAdapterKind(Enum):
     SYNCHRONOUS_MACHINE = auto()
     STATIC_GENERATOR = auto()
     STATIC_VAR_SYSTEM = auto()
+
+
+class DgsDynamicTemplateConversionResult:
+    """Own the minimal transient state required after template conversion.
+
+    The final templates are already owned by ``MultiCircuit``. Child-block
+    lookups point into those same canonical block trees and exist only until
+    exact device assignment and native measurement binding have completed.
+
+    :param templates_by_root_dgs_id: Final templates indexed by root FID.
+    :param child_blocks_by_root_and_slot_id: Canonical child blocks indexed by
+        root FID and source slot FID for exact post-conversion binding.
+    """
+
+    __slots__ = (
+        "templates_by_root_dgs_id",
+        "child_blocks_by_root_and_slot_id",
+    )
+
+    def __init__(self) -> None:
+        """Initialize empty fixed-purpose conversion lookups.
+
+        :return: None.
+        """
+        self.templates_by_root_dgs_id: Dict[
+            str,
+            RmsModelTemplate | EmtModelTemplate,
+        ] = dict()
+        self.child_blocks_by_root_and_slot_id: Dict[
+            str,
+            Dict[str, Block],
+        ] = dict()
 
 
 class _DgsElmCompRelationKind(Enum):
@@ -1327,24 +1358,10 @@ def _get_dgs_runtime_adapter_kind(
             else:
                 adapter_kind = None
     else:
-        if device_tpe == DeviceType.GeneratorDevice:
-            if is_dgs_elmsym_slot_contract(block):
-                adapter_kind = (
-                    _DgsRuntimeAdapterKind.SYNCHRONOUS_MACHINE_PENDING
-                )
-            else:
-                if is_dgs_elmgenstat_slot_contract(block):
-                    adapter_kind = _DgsRuntimeAdapterKind.STATIC_GENERATOR
-                else:
-                    adapter_kind = None
-        else:
-            if (
-                    device_tpe == DeviceType.ControllableShuntDevice
-                    and is_dgs_elmsvs_slot_contract(block)
-            ):
-                adapter_kind = _DgsRuntimeAdapterKind.STATIC_VAR_SYSTEM
-            else:
-                adapter_kind = None
+        # Generator and static-var equipment require the exact transient DGS
+        # relation classified by ``_get_dgs_direct_runtime_adapter_kind``.
+        # A detached Block cannot prove the physical FID association.
+        adapter_kind = None
     return adapter_kind
 
 
@@ -1352,7 +1369,7 @@ def _get_dgs_direct_runtime_adapter_kind(
         direct_result: DgsDirectRootBuildResult,
         host_identity: Tuple[str, DeviceType, str, str | None],
 ) -> _DgsRuntimeAdapterKind | None:
-    """Classify a VSC adapter from one exact typed physical BlkSlot.
+    """Classify one physical adapter from an exact typed DGS slot.
 
     The source equipment FID and class must match exactly one resolved direct
     relation. Signal names are then checked only inside that relation's declared
@@ -1378,7 +1395,7 @@ def _get_dgs_direct_runtime_adapter_kind(
         else:
             pass
 
-    if host_device_tpe != DeviceType.VscDevice or len(matching_entries) != 1:
+    if len(matching_entries) != 1:
         adapter_kind: _DgsRuntimeAdapterKind | None = None
     else:
         equipment_entry: ElmCompInstanceEntry = matching_entries[0]
@@ -1387,11 +1404,17 @@ def _get_dgs_direct_runtime_adapter_kind(
                 element_kind=host_source_class,
             )
         )
-        output_names: Set[str] = set(equipment_entry.slot_outputs)
-        input_names: Set[str] = set(equipment_entry.slot_inputs)
+        output_components: List[str] = equipment_entry.get_slot_signal_components(
+            direction=DgsSlotSignalDirection.Output,
+        )
+        input_components: List[str] = equipment_entry.get_slot_signal_components(
+            direction=DgsSlotSignalDirection.Input,
+        )
+        output_names: Set[str] = set(output_components)
+        input_names: Set[str] = set(input_components)
         contract_is_unique_and_directional: bool = bool(
-            len(output_names) == len(equipment_entry.slot_outputs)
-            and len(input_names) == len(equipment_entry.slot_inputs)
+            len(output_names) == len(output_components)
+            and len(input_names) == len(input_components)
             and output_names.isdisjoint(input_names)
             and host_matches_declared_equipment
         )
@@ -1431,7 +1454,56 @@ def _get_dgs_direct_runtime_adapter_kind(
                     else:
                         adapter_kind = None
                 else:
-                    adapter_kind = None
+                    if (
+                            host_source_class == "ElmSym"
+                            and host_device_tpe == DeviceType.GeneratorDevice
+                    ):
+                        required_outputs = set([
+                            "ID", "IQ", "IFDIEEE", "RPOWER", "SG", "VT",
+                            "VTD", "VTQ", "cosn", "speed",
+                        ])
+                        required_inputs = set(["pt", "ve"])
+                        if (
+                                required_outputs.issubset(output_names)
+                                and required_inputs.issubset(input_names)
+                        ):
+                            adapter_kind = (
+                                _DgsRuntimeAdapterKind.SYNCHRONOUS_MACHINE_PENDING
+                            )
+                        else:
+                            adapter_kind = None
+                    else:
+                        if (
+                                host_source_class == "ElmGenstat"
+                                and host_device_tpe == DeviceType.GeneratorDevice
+                        ):
+                            required_inputs = set(["id_ref", "iq_ref"])
+                            if required_inputs.issubset(input_names):
+                                adapter_kind = _DgsRuntimeAdapterKind.STATIC_GENERATOR
+                            else:
+                                adapter_kind = None
+                        else:
+                            if (
+                                    host_source_class == "ElmSvs"
+                                    and host_device_tpe
+                                    == DeviceType.ControllableShuntDevice
+                            ):
+                                required_outputs = set([
+                                    "ysvs", "qreact", "qcap", "qfixcap",
+                                    "nxcap", "nfixcap",
+                                ])
+                                required_inputs = set(["bsvs"])
+                                if (
+                                        required_outputs.issubset(output_names)
+                                        and required_inputs.issubset(input_names)
+                                ):
+                                    adapter_kind = (
+                                        _DgsRuntimeAdapterKind.STATIC_VAR_SYSTEM
+                                    )
+                                else:
+                                    adapter_kind = None
+                            else:
+                                adapter_kind = None
     return adapter_kind
 
 
@@ -1523,24 +1595,9 @@ def guess_dynamic_model_import_hierarchy_device_tpe(
                         or is_dgs_elmvscmono_slot_contract(source_block)
                     )
                 )
-                elmsym_adapter_supported: bool = (
-                    host_identity[1] == DeviceType.GeneratorDevice
-                    and is_dgs_elmsym_slot_contract(source_block)
-                )
-                elmgenstat_adapter_supported: bool = (
-                    host_identity[1] == DeviceType.GeneratorDevice
-                    and is_dgs_elmgenstat_slot_contract(source_block)
-                )
-                elmsvs_adapter_supported: bool = (
-                    host_identity[1] == DeviceType.ControllableShuntDevice
-                    and is_dgs_elmsvs_slot_contract(source_block)
-                )
                 if (
                         runtime_contract_ready
                         or elmvsc_adapter_supported
-                        or elmsym_adapter_supported
-                        or elmgenstat_adapter_supported
-                        or elmsvs_adapter_supported
                 ):
                     result = host_identity[1]
                 else:
@@ -1678,55 +1735,10 @@ def _build_selected_template_from_import_entry(
                 else:
                     return adapted_template
             else:
-                if (
-                        entry.get_source_tpe() == DynamicModelImportSource.PowerFactoryDgs
-                        and selection_request.get_device_tpe() == DeviceType.GeneratorDevice
-                        and is_dgs_elmsym_slot_contract(cloned_block)
-                ):
-                    adapted_generator_template: RmsModelTemplate | None = (
-                        build_dgs_elmsym_rms_runtime_template(
-                            control_template=rms_template,
-                            clone_control_block=clone_source_block,
-                        )
-                    )
-                    if adapted_generator_template is None:
-                        return rms_template
-                    else:
-                        return adapted_generator_template
-                else:
-                    if (
-                            entry.get_source_tpe() == DynamicModelImportSource.PowerFactoryDgs
-                            and selection_request.get_device_tpe() == DeviceType.GeneratorDevice
-                            and is_dgs_elmgenstat_slot_contract(cloned_block)
-                    ):
-                        adapted_static_generator_template: RmsModelTemplate | None = (
-                            build_dgs_elmgenstat_rms_runtime_template(
-                                control_template=rms_template,
-                                clone_control_block=clone_source_block,
-                            )
-                        )
-                        if adapted_static_generator_template is None:
-                            return rms_template
-                        else:
-                            return adapted_static_generator_template
-                    else:
-                        if (
-                                entry.get_source_tpe() == DynamicModelImportSource.PowerFactoryDgs
-                                and selection_request.get_device_tpe() == DeviceType.ControllableShuntDevice
-                                and is_dgs_elmsvs_slot_contract(cloned_block)
-                        ):
-                            adapted_svs_template: RmsModelTemplate | None = (
-                                build_dgs_elmsvs_rms_runtime_template(
-                                    control_template=rms_template,
-                                    clone_control_block=clone_source_block,
-                                )
-                            )
-                            if adapted_svs_template is None:
-                                return rms_template
-                            else:
-                                return adapted_svs_template
-                        else:
-                            return rms_template
+                # Detached catalogue blocks do not carry the transient FID
+                # relation required by equipment adapters. Keep them generic
+                # and fail closed until a direct DGS conversion supplies it.
+                return rms_template
         else:
             return None
 
@@ -1737,6 +1749,8 @@ def _build_dgs_direct_runtime_template(
         target_domain: DynamicSimulationMode,
         device_tpe: DeviceType,
         adapter_kind: _DgsRuntimeAdapterKind | None,
+        direct_result: DgsDirectRootBuildResult | None,
+        source_svs: ElmSvs | None,
 ) -> RmsModelTemplate | EmtModelTemplate:
     """Wrap one directly materialized DGS block in its final template.
 
@@ -1749,6 +1763,8 @@ def _build_dgs_direct_runtime_template(
     :param target_domain: Explicit RMS or EMT destination.
     :param device_tpe: Exact physical host family or generic dynamic host.
     :param adapter_kind: Import-local runtime adapter classification.
+    :param direct_result: Transient direct-root conversion context, if present.
+    :param source_svs: Exact transient ElmSvs source, when adapting an SVC.
     :return: Final RMS or EMT template ready for circuit registration.
     """
     # Complete only the public composite ports already owned by the child graph.
@@ -1794,6 +1810,7 @@ def _build_dgs_direct_runtime_template(
                     adapted_template = build_dgs_elmsym_rms_runtime_template(
                         control_template=rms_template,
                         clone_control_block=False,
+                        direct_result=direct_result,
                     )
                 else:
                     if adapter_kind == _DgsRuntimeAdapterKind.STATIC_GENERATOR:
@@ -1801,6 +1818,7 @@ def _build_dgs_direct_runtime_template(
                             build_dgs_elmgenstat_rms_runtime_template(
                                 control_template=rms_template,
                                 clone_control_block=False,
+                                direct_result=direct_result,
                             )
                         )
                     else:
@@ -1812,6 +1830,8 @@ def _build_dgs_direct_runtime_template(
                                 build_dgs_elmsvs_rms_runtime_template(
                                     control_template=rms_template,
                                     clone_control_block=False,
+                                    direct_result=direct_result,
+                                    source_svs=source_svs,
                                 )
                             )
                         else:
@@ -2793,9 +2813,9 @@ def _get_unique_dgs_dynamic_roots_by_id(
 def convert_and_add_dgs_dynamic_templates_to_circuit(
         dgs_circuit: DgsCircuit,
         circuit: MultiCircuit,
-        target_domain: DynamicSimulationMode,
+        target_domain: DynamicSimulationMode | None,
         logger: Logger,
-) -> Dict[str, RmsModelTemplate | EmtModelTemplate]:
+) -> DgsDynamicTemplateConversionResult:
     """Convert DGS roots directly into registered final templates.
 
     The automatic file-open path owns one transient DGS parse graph.  Each
@@ -2805,14 +2825,17 @@ def convert_and_add_dgs_dynamic_templates_to_circuit(
 
     :param dgs_circuit: Declarative DGS graph already used by static import.
     :param circuit: Destination circuit containing the static devices.
-    :param target_domain: Explicit RMS or EMT destination.
+    :param target_domain: Explicit RMS or EMT destination; ``None`` is rejected.
     :param logger: Import diagnostics.
-    :return: Registered final templates indexed by exact DGS root FID.
+    :return: Final-template associations plus transient canonical slot lookups.
     """
+    conversion_result: DgsDynamicTemplateConversionResult = (
+        DgsDynamicTemplateConversionResult()
+    )
     templates_by_root_dgs_id: Dict[
         str,
         RmsModelTemplate | EmtModelTemplate,
-    ] = dict()
+    ] = conversion_result.templates_by_root_dgs_id
     if target_domain not in {
         DynamicSimulationMode.RMS,
         DynamicSimulationMode.EMT,
@@ -2821,7 +2844,7 @@ def convert_and_add_dgs_dynamic_templates_to_circuit(
             msg="DGS dynamic model import requires RMS or EMT mode",
             value=target_domain,
         )
-        return templates_by_root_dgs_id
+        return conversion_result
     else:
         pass
 
@@ -2860,7 +2883,7 @@ def convert_and_add_dgs_dynamic_templates_to_circuit(
             msg="DGS dynamic model import is unavailable",
             value=str(error),
         )
-        return templates_by_root_dgs_id
+        return conversion_result
 
     if target_domain == DynamicSimulationMode.RMS:
         existing_names: Set[str] = set(
@@ -2884,6 +2907,7 @@ def convert_and_add_dgs_dynamic_templates_to_circuit(
             )
         )
         source_block: Block | None
+        direct_result: DgsDirectRootBuildResult | None = None
         try:
             root_result: DgsRootBlockResult = build_dgs_root_block_from_circuit(
                 circuit=dgs_circuit,
@@ -2892,12 +2916,10 @@ def convert_and_add_dgs_dynamic_templates_to_circuit(
                 root_typ_id=root_element.typ_id,
                 root_dgs_id=root_id,
             )
-            direct_result: DgsDirectRootBuildResult = (
-                build_direct_root_elmcomp_block(
+            direct_result = build_direct_root_elmcomp_block(
                     circuit=dgs_circuit,
                     result=root_result,
                     graphical_indexes=graphical_indexes,
-                )
             )
             source_block = direct_result.root_block
         except (
@@ -2916,9 +2938,10 @@ def convert_and_add_dgs_dynamic_templates_to_circuit(
             failed_count += 1
             source_block = None
 
-        if source_block is None:
+        if source_block is None or direct_result is None:
             pass
         else:
+            source_svs: ElmSvs | None = None
             if host_identity is None:
                 resolved_device_tpe: DeviceType = (
                     DeviceType.DynamicModelHostDevice
@@ -2962,6 +2985,27 @@ def convert_and_add_dgs_dynamic_templates_to_circuit(
                         value=root_id,
                     )
 
+                if host_identity[2] == "ElmSvs":
+                    candidate_source_svs: ElmSvs
+                    source_svs_is_ambiguous: bool = False
+                    for candidate_source_svs in dgs_circuit.elmsvss:
+                        if candidate_source_svs.ID == host_identity[0]:
+                            if source_svs is None:
+                                source_svs = candidate_source_svs
+                            else:
+                                source_svs = None
+                                source_svs_is_ambiguous = True
+                        else:
+                            pass
+                    else:
+                        pass
+                    if source_svs_is_ambiguous:
+                        source_svs = None
+                    else:
+                        pass
+                else:
+                    pass
+
             template_obj: RmsModelTemplate | EmtModelTemplate = (
                 _build_dgs_direct_runtime_template(
                     source_block=source_block,
@@ -2969,8 +3013,55 @@ def convert_and_add_dgs_dynamic_templates_to_circuit(
                     target_domain=target_domain,
                     device_tpe=resolved_device_tpe,
                     adapter_kind=adapter_kind,
+                    direct_result=direct_result,
+                    source_svs=source_svs,
                 )
             )
+            if (
+                    adapter_kind
+                    == _DgsRuntimeAdapterKind.SYNCHRONOUS_MACHINE_PENDING
+                    and isinstance(template_obj, RmsModelTemplate)
+                    and host_identity is not None
+            ):
+                exact_host_devices: List[DynamicDevice] = (
+                    _find_exact_dgs_dynamic_host_devices(
+                        circuit=circuit,
+                        source_element_dgs_id=host_identity[0],
+                        device_tpe=host_identity[1],
+                        source_element_class=host_identity[2],
+                    )
+                )
+                exact_host_device: DynamicDevice | None = None
+                if len(exact_host_devices) == 1:
+                    exact_host_device = exact_host_devices[0]
+                else:
+                    pass
+                if isinstance(exact_host_device, Generator):
+                    elmsym_configuration_ready: bool = (
+                        configure_dgs_elmsym_runtime_template_for_device(
+                            template=template_obj,
+                            device=exact_host_device,
+                            system_base_mva=float(circuit.Sbase),
+                            direct_result=direct_result,
+                        )
+                    )
+                else:
+                    elmsym_configuration_ready = False
+                if elmsym_configuration_ready:
+                    pass
+                else:
+                    template_obj.tpe = DeviceType.DynamicModelHostDevice
+                    logger.add_warning(
+                        msg=(
+                            "DGS ElmSym template retained as generic because "
+                            "exact runtime configuration failed"
+                        ),
+                        device=root_element.loc_name,
+                        device_class="ElmComp",
+                        value=root_id,
+                    )
+            else:
+                pass
             registered: bool = _register_dgs_direct_template(
                 circuit=circuit,
                 template_obj=template_obj,
@@ -2980,6 +3071,9 @@ def convert_and_add_dgs_dynamic_templates_to_circuit(
             )
             if registered:
                 templates_by_root_dgs_id[root_id] = template_obj
+                conversion_result.child_blocks_by_root_and_slot_id[root_id] = (
+                    dict(direct_result.child_block_by_slot_id)
+                )
                 materialized_count += 1
             else:
                 failed_count += 1
@@ -3048,6 +3142,8 @@ def convert_and_add_dgs_dynamic_templates_to_circuit(
                             target_domain=target_domain,
                             device_tpe=DeviceType.DynamicModelHostDevice,
                             adapter_kind=None,
+                            direct_result=None,
+                            source_svs=None,
                         )
                     )
                     standalone_registered: bool = _register_dgs_direct_template(
@@ -3086,7 +3182,7 @@ def convert_and_add_dgs_dynamic_templates_to_circuit(
             f"failed={failed_count}"
         ),
     )
-    return templates_by_root_dgs_id
+    return conversion_result
 
 
 def apply_dgs_dynamic_templates_to_devices(
@@ -3675,7 +3771,6 @@ def load_user_dynamic_model_templates_into_circuit(
         circuit: MultiCircuit,
         logger: Logger | None = None,
         user_root_folder: str | None = None,
-        allow_executable_python: bool = False,
 ) -> int:
     """
     Load persisted user dynamic templates from the VeraGrid user folder.
@@ -3687,7 +3782,6 @@ def load_user_dynamic_model_templates_into_circuit(
     :param circuit: Target circuit receiving the persisted templates.
     :param logger: Optional logger receiving load diagnostics.
     :param user_root_folder: Optional explicit VeraGrid user root used mainly by tests.
-    :param allow_executable_python: Deprecated compatibility flag. Executable persistence is always refused.
     :return: Number of templates added to the circuit.
     """
     effective_logger: Logger = Logger() if logger is None else logger
@@ -3710,7 +3804,6 @@ def load_user_dynamic_model_templates_into_circuit(
     for loaded_template in load_user_dynamic_model_templates(
             logger=effective_logger,
             user_root_folder=user_root_folder,
-            allow_executable_python=allow_executable_python,
     ):
         template_obj = loaded_template.get_template_obj()
 
@@ -3744,14 +3837,12 @@ def load_user_dynamic_model_templates_into_circuit(
 def load_user_dynamic_model_templates(
         logger: Logger | None = None,
         user_root_folder: str | None = None,
-        allow_executable_python: bool = False,
 ) -> List[DynamicModelLoadedUserTemplate]:
     """
     Materialize all persisted user dynamic templates from the VeraGrid user folder.
 
     :param logger: Optional logger receiving load diagnostics.
     :param user_root_folder: Optional explicit VeraGrid user root used mainly by tests.
-    :param allow_executable_python: Deprecated compatibility flag. Executable persistence is always refused.
     :return: Materialized persisted user templates.
     """
     effective_logger: Logger = Logger() if logger is None else logger
@@ -3760,14 +3851,6 @@ def load_user_dynamic_model_templates(
     folder_path: Path
     payload_path: Path
     template: DynamicModelLoadedUserTemplate | None
-
-    if allow_executable_python:
-        effective_logger.add_warning(
-            msg="Executable user dynamic-model loading refused; declarative payloads remain available",
-            value=str(user_root_folder),
-        )
-    else:
-        pass
 
     for folder_path in _iter_user_dynamic_models_folder_paths(user_root_folder=user_root_folder):
         # Declarative payloads are the only persisted representation accepted at

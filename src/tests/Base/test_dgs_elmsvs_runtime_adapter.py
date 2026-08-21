@@ -2,9 +2,14 @@ from pathlib import Path
 
 from VeraGridEngine.IO.dgs.dynamic_models.dgs_elmsvs_runtime_adapter import (
     build_dgs_elmsvs_rms_runtime_template,
-    is_dgs_elmsvs_slot_contract,
+    is_dgs_elmsvs_direct_slot_contract,
 )
 from VeraGridEngine.IO.dgs.dgs_circuit import DgsCircuit
+from VeraGridEngine.IO.dgs.dgs_objects import ElmSvs
+from VeraGridEngine.IO.dgs.dgs_to_blocks import (
+    DgsDirectRootBuildResult,
+    ElmCompInstanceEntry,
+)
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Utils.Symbolic.block import Block
@@ -16,14 +21,11 @@ from VeraGridEngine.enumerations import (
 )
 
 
-def build_elmsvs_control_template_for_test(
-        qreact_mvar: float,
-        qcap_mvar: float,
-        qfixcap_mvar: float,
-        nxcap: int,
-        nfixcap: int,
-) -> RmsModelTemplate:
-    """Build the smallest complete graphical ElmSvs controller boundary."""
+def build_elmsvs_control_template_for_test() -> RmsModelTemplate:
+    """Build the smallest complete graphical ElmSvs controller boundary.
+
+    :return: Controller template exposing the physical ElmSvs cable surface.
+    """
 
     bsvs: Var = Var(name="bsvs")
     control_block: Block = Block(
@@ -41,79 +43,129 @@ def build_elmsvs_control_template_for_test(
         out_vars=[bsvs],
         algebraic_vars=[bsvs],
     )
-    control_block.__dict__["dgs_direct_slot_interfaces"] = [
-        {
-            "element_kind": "ElmSvs",
-            "incoming_signals": ["bsvs"],
-            "outgoing_signals": [
-                "ysvs",
-                "qreact",
-                "qcap",
-                "qfixcap",
-                "nxcap",
-                "nfixcap",
-            ],
-            "svs_qreact_mvar": qreact_mvar,
-            "svs_qcap_mvar": qcap_mvar,
-            "svs_qfixcap_mvar": qfixcap_mvar,
-            "svs_nxcap": nxcap,
-            "svs_nfixcap": nfixcap,
-        },
-    ]
     template: RmsModelTemplate = RmsModelTemplate(name="ElmSvs controller")
     template.block = control_block
     return template
 
 
+def _build_elmsvs_direct_result(
+        template: RmsModelTemplate,
+        slot_outputs: list[str],
+) -> DgsDirectRootBuildResult:
+    """Build one exact transient static-var-system relation.
+
+    :param template: Canonical controller template used by the relation.
+    :param slot_outputs: Exact signals produced by the equipment slot.
+    :return: Direct conversion result pointing into the template block.
+    """
+    equipment_entry: ElmCompInstanceEntry = ElmCompInstanceEntry(
+        slot_id="svs_equipment_slot",
+        slot_name="Static var system",
+        element_id="svs_fid",
+        element_name="SVS",
+        element_kind="ElmSvs",
+        element_outserv=0,
+        type_id=None,
+        type_name=None,
+        slot_inputs=list(["bsvs"]),
+        slot_outputs=slot_outputs,
+        slot_reference_is_resolved=True,
+        element_reference_is_resolved=True,
+    )
+    controller_entry: ElmCompInstanceEntry = ElmCompInstanceEntry(
+        slot_id="svs_controller_slot",
+        slot_name="SVS controller",
+        element_id="controller_fid",
+        element_name="Controller",
+        element_kind="ElmDsl",
+        element_outserv=0,
+        type_id="controller_type_fid",
+        type_name="Controller type",
+        slot_outputs=list(["bsvs"]),
+        slot_reference_is_resolved=True,
+        element_reference_is_resolved=True,
+    )
+    return DgsDirectRootBuildResult(
+        root_block=template.block,
+        child_block_by_slot_id=dict([(
+            "svs_controller_slot",
+            template.block,
+        )]),
+        graphical_tree_by_slot_id=dict(),
+        direct_entries=list([equipment_entry, controller_entry]),
+    )
+
+
+def _build_source_svs(
+        qreact_mvar: float,
+        qcap_mvar: float,
+        qfixcap_mvar: float,
+        nxcap: int,
+        nfixcap: int,
+) -> ElmSvs:
+    """Build one transient source equipment row for adapter tests.
+
+    :param qreact_mvar: Reactor limit in MVAr.
+    :param qcap_mvar: Capacitor limit in MVAr.
+    :param qfixcap_mvar: Fixed-capacitor rating in MVAr.
+    :param nxcap: Switched-capacitor step count.
+    :param nfixcap: Fixed-capacitor step count.
+    :return: Source ElmSvs with the physical constants under test.
+    """
+    source_svs: ElmSvs = ElmSvs()
+    source_svs.tcrmax = qreact_mvar
+    source_svs.qmin = qcap_mvar
+    source_svs.Qfixcap = qfixcap_mvar
+    source_svs.nxcap = nxcap
+    source_svs.nfixcap = nfixcap
+    return source_svs
+
+
 def test_elmsvs_slot_contract_accepts_complete_equipment_boundary() -> None:
-    """Recognize a complete PowerFactory static-var-system slot."""
+    """Recognize a complete PowerFactory static-var-system slot.
 
-    block: Block = Block()
-    block.__dict__["dgs_direct_slot_interfaces"] = [
-        {
-            "element_kind": "ElmSvs",
-            "incoming_signals": ["bsvs"],
-            "outgoing_signals": [
-                "ysvs",
-                "qreact",
-                "qcap",
-                "qfixcap",
-                "nxcap",
-                "nfixcap",
-            ],
-        },
-    ]
+    :return: None.
+    """
 
-    assert is_dgs_elmsvs_slot_contract(block=block)
+    template: RmsModelTemplate = build_elmsvs_control_template_for_test()
+    direct_result: DgsDirectRootBuildResult = _build_elmsvs_direct_result(
+        template=template,
+        slot_outputs=list(["ysvs;qreact;qcap;qfixcap;nxcap;nfixcap"]),
+    )
+    assert is_dgs_elmsvs_direct_slot_contract(direct_result=direct_result)
 
 
 def test_elmsvs_slot_contract_rejects_incomplete_equipment_boundary() -> None:
-    """Reject a static-var-system slot without its reactive-power output."""
+    """Reject a static-var-system slot without its reactive-power output.
 
-    block: Block = Block()
-    block.__dict__["dgs_direct_slot_interfaces"] = [
-        {
-            "element_kind": "ElmSvs",
-            "incoming_signals": ["bsvs"],
-            "outgoing_signals": [
-                "ysvs",
-                "qcap",
-                "qfixcap",
-                "nxcap",
-                "nfixcap",
-            ],
-        },
-    ]
+    :return: None.
+    """
 
-    assert not is_dgs_elmsvs_slot_contract(block=block)
+    template: RmsModelTemplate = build_elmsvs_control_template_for_test()
+    direct_result: DgsDirectRootBuildResult = _build_elmsvs_direct_result(
+        template=template,
+        slot_outputs=list(["ysvs;qcap;qfixcap;nxcap;nfixcap"]),
+    )
+    assert not is_dgs_elmsvs_direct_slot_contract(direct_result=direct_result)
 
 
 def test_elmsvs_susceptance_seed_uses_visible_safe_division() -> None:
-    """Reconstruct susceptance from Q, Sbase and the squared terminal voltage."""
+    """Reconstruct susceptance from Q, Sbase and squared terminal voltage.
 
+    :return: None.
+    """
+
+    control_template: RmsModelTemplate = build_elmsvs_control_template_for_test()
+    direct_result: DgsDirectRootBuildResult = _build_elmsvs_direct_result(
+        template=control_template,
+        slot_outputs=list(["ysvs;qreact;qcap;qfixcap;nxcap;nfixcap"]),
+    )
     adapted_template: RmsModelTemplate | None = (
         build_dgs_elmsvs_rms_runtime_template(
-            control_template=build_elmsvs_control_template_for_test(
+            control_template=control_template,
+            clone_control_block=False,
+            direct_result=direct_result,
+            source_svs=_build_source_svs(
                 qreact_mvar=100.0,
                 qcap_mvar=0.0,
                 qfixcap_mvar=0.0,
@@ -159,7 +211,10 @@ def test_elmsvs_susceptance_seed_uses_visible_safe_division() -> None:
 
 
 def test_elmsvs_adapter_preserves_equipment_values_from_real_dgs() -> None:
-    """Carry the physical SVC constants from a tracked DGS into the wrapper."""
+    """Carry the physical SVC constants from a tracked DGS into the wrapper.
+
+    :return: None.
+    """
 
     dgs_path: Path = (
         Path(__file__).resolve().parents[1]
@@ -169,21 +224,23 @@ def test_elmsvs_adapter_preserves_equipment_values_from_real_dgs() -> None:
     )
     dgs_circuit: DgsCircuit = DgsCircuit()
     dgs_circuit.parse_dgs(path=str(dgs_path))
-    source_svs = next(
+    source_svs: ElmSvs = next(
         svs
         for svs in dgs_circuit.elmsvss
         if svs.loc_name == "SVS_Droop"
     )
+    control_template: RmsModelTemplate = build_elmsvs_control_template_for_test()
+    direct_result: DgsDirectRootBuildResult = _build_elmsvs_direct_result(
+        template=control_template,
+        slot_outputs=list(["ysvs;qreact;qcap;qfixcap;nxcap;nfixcap"]),
+    )
 
     adapted_template: RmsModelTemplate | None = (
         build_dgs_elmsvs_rms_runtime_template(
-            control_template=build_elmsvs_control_template_for_test(
-                qreact_mvar=source_svs.tcrmax,
-                qcap_mvar=source_svs.qmin,
-                qfixcap_mvar=source_svs.Qfixcap,
-                nxcap=source_svs.nxcap,
-                nfixcap=source_svs.nfixcap,
-            ),
+            control_template=control_template,
+            clone_control_block=False,
+            direct_result=direct_result,
+            source_svs=source_svs,
         )
     )
     assert adapted_template is not None

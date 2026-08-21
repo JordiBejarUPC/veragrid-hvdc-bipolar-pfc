@@ -409,14 +409,10 @@ def _bind_dgs_elmsym_reference_frequencies(
             pass
         else:
             reference_block: Block = reference_generator.rms_model
-            reference_speed_uid_raw: object | None = reference_block.__dict__.get(
-                "dgs_elmsym_speed_var_uid",
-                None,
+            reference_speed_uid_raw: int | None = (
+                reference_block.dynamic_model_contract.dgs_elmsym_speed_var_uid
             )
-            if isinstance(reference_speed_uid_raw, int) and not isinstance(
-                    reference_speed_uid_raw,
-                    bool,
-            ):
+            if reference_speed_uid_raw is not None:
                 reference_speed: Var | None = _find_root_var_by_uid(
                     block=reference_block,
                     variable_uid=reference_speed_uid_raw,
@@ -436,40 +432,33 @@ def _bind_dgs_elmsym_reference_frequencies(
                 # not its terminal-bus voltage angle.  Retain that distinction
                 # for DAE assembly so the bus active-power balance remains and
                 # the reference rotor supplies the absolute angular coordinate.
-                reference_block.__dict__["dgs_elmsym_network_angle_anchor"] = True
+                reference_block.dynamic_model_contract.dgs_elmsym_network_angle_anchor = True
     else:
         pass
 
     bound_machine_count: int = 0
     for generator in circuit.get_generators():
         machine_block: Block = generator.rms_model
-        is_adapted_machine: bool = machine_block.__dict__.get(
-            "dgs_elmsym_runtime_adapter",
-            None,
-        ) is True
+        is_adapted_machine: bool = (
+            machine_block.dynamic_model_contract.dgs_elmsym_runtime_adapter
+        )
         if is_adapted_machine and bool(generator.active) and generator.bus is not None:
             component = components.find(bus=generator.bus)
             reference_speed = reference_speed_by_component.get(component, None)
-            rotor_angle_uid_raw: object | None = machine_block.__dict__.get(
-                "dgs_elmsym_rotor_angle_var_uid",
-                None,
+            rotor_angle_uid_raw: int | None = (
+                machine_block.dynamic_model_contract.dgs_elmsym_rotor_angle_var_uid
             )
-            local_speed_uid_raw: object | None = machine_block.__dict__.get(
-                "dgs_elmsym_speed_var_uid",
-                None,
+            local_speed_uid_raw: int | None = (
+                machine_block.dynamic_model_contract.dgs_elmsym_speed_var_uid
             )
-            angular_frequency_uid_raw: object | None = machine_block.__dict__.get(
-                "dgs_elmsym_angular_frequency_var_uid",
-                None,
+            angular_frequency_uid_raw: int | None = (
+                machine_block.dynamic_model_contract.dgs_elmsym_angular_frequency_var_uid
             )
             metadata_is_complete: bool = (
                 reference_speed is not None
-                and isinstance(rotor_angle_uid_raw, int)
-                and not isinstance(rotor_angle_uid_raw, bool)
-                and isinstance(local_speed_uid_raw, int)
-                and not isinstance(local_speed_uid_raw, bool)
-                and isinstance(angular_frequency_uid_raw, int)
-                and not isinstance(angular_frequency_uid_raw, bool)
+                and rotor_angle_uid_raw is not None
+                and local_speed_uid_raw is not None
+                and angular_frequency_uid_raw is not None
             )
             if metadata_is_complete:
                 rotor_angle: Var | None = _find_root_var_by_uid(
@@ -499,7 +488,7 @@ def _bind_dgs_elmsym_reference_frequencies(
                 machine_block.state_eqs[rotor_angle_index] = (
                     angular_frequency * (local_speed - reference_speed)
                 )
-                machine_block.__dict__["dgs_elmsym_reference_speed_var_uid"] = (
+                machine_block.dynamic_model_contract.dgs_elmsym_reference_speed_var_uid = (
                     reference_speed.uid
                 )
                 bound_machine_count += 1

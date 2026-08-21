@@ -4,6 +4,12 @@ import copy
 from typing import Dict, Iterable, List, Set, Tuple
 
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
+from VeraGridEngine.IO.dgs.dgs_objects import ElmSvs
+from VeraGridEngine.IO.dgs.dgs_to_blocks import (
+    DgsDirectRootBuildResult,
+    DgsSlotSignalDirection,
+    ElmCompInstanceEntry,
+)
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic import Const, Expr, Var, safe_divide
 from VeraGridEngine.enumerations import (
@@ -13,107 +19,92 @@ from VeraGridEngine.enumerations import (
 )
 
 
-def _flatten_slot_signal_names(raw_signals: object | None) -> Set[str]:
-    """Return individual signal names from one DGS slot declaration.
 
-    PowerFactory writes multiple aliases in one slot cell separated by a
-    semicolon. The runtime contract is based on individual cable names, so the
-    raw declaration must be normalized before it is inspected.
 
-    :param raw_signals: Raw ``incoming_signals`` or ``outgoing_signals`` value.
-    :return: Normalized non-empty signal names.
+
+
+
+
+def is_dgs_elmsvs_direct_slot_contract(
+        direct_result: DgsDirectRootBuildResult,
+) -> bool:
+    """Validate one ElmSvs boundary from transient DGS slot relations.
+
+    :param direct_result: Direct root and exact source-slot relations.
+    :return: ``True`` for one complete resolved ElmSvs equipment slot.
     """
-    result: Set[str] = set()
-    raw_signal: object
-    signal_part: str
+    matching_count: int = 0
+    direct_entry: ElmCompInstanceEntry
+    required_outputs: Set[str] = set([
+        "ysvs", "qreact", "qcap", "qfixcap", "nxcap", "nfixcap",
+    ])
 
-    if isinstance(raw_signals, list):
-        for raw_signal in raw_signals:
-            if isinstance(raw_signal, str):
-                for signal_part in raw_signal.split(";"):
-                    if signal_part.strip() == "":
-                        pass
-                    else:
-                        result.add(signal_part.strip())
-            else:
+    for direct_entry in direct_result.direct_entries:
+        if (
+                direct_entry.element_reference_is_resolved
+                and direct_entry.element_kind == "ElmSvs"
+                and set(["bsvs"]).issubset(set(
+                    direct_entry.get_slot_signal_components(
+                        direction=DgsSlotSignalDirection.Input,
+                    )
+                ))
+                and required_outputs.issubset(set(
+                    direct_entry.get_slot_signal_components(
+                        direction=DgsSlotSignalDirection.Output,
+                    )
+                ))
+        ):
+            matching_count += 1
+        else:
+            pass
+    else:
+        pass
+    return matching_count == 1
+
+
+def _find_direct_elmsvs_command(
+        direct_result: DgsDirectRootBuildResult,
+) -> Var | None:
+    """Resolve the exact controller output cabled to ElmSvs ``bsvs``.
+
+    :param direct_result: Direct root with slot-to-child lookup.
+    :return: Exact controller command variable, or ``None`` when ambiguous.
+    """
+    result: Var | None = None
+    direct_entry: ElmCompInstanceEntry
+    child_block: Block | None
+    child_output: Var
+
+    for direct_entry in direct_result.direct_entries:
+        if (
+                direct_entry.element_kind == "ElmSvs"
+                or direct_entry.slot_id is None
+                or "bsvs" not in direct_entry.get_slot_signal_components(
+                    direction=DgsSlotSignalDirection.Output,
+                )
+        ):
+            pass
+        else:
+            child_block = direct_result.child_block_by_slot_id.get(
+                direct_entry.slot_id,
+                None,
+            )
+            if child_block is None:
                 pass
+            else:
+                for child_output in child_block.out_vars:
+                    if child_output.name == "bsvs":
+                        if result is None:
+                            result = child_output
+                        else:
+                            return None
+                    else:
+                        pass
+                else:
+                    pass
     else:
         pass
     return result
-
-
-def _get_elmsvs_interface(block: Block) -> Dict[str, object] | None:
-    """Return the exact physical ``ElmSvs`` slot metadata.
-
-    :param block: Imported PowerFactory composite root.
-    :return: Physical slot metadata or ``None`` when the contract is absent.
-    """
-    interfaces_raw: object | None = block.__dict__.get(
-        "dgs_direct_slot_interfaces",
-        None,
-    )
-    interface_raw: object
-
-    if isinstance(interfaces_raw, list):
-        for interface_raw in interfaces_raw:
-            if isinstance(interface_raw, dict):
-                element_kind_raw: object | None = interface_raw.get(
-                    "element_kind",
-                    None,
-                )
-                slot_filter_raw: object | None = interface_raw.get(
-                    "slot_filter",
-                    None,
-                )
-                element_kind: str = (
-                    element_kind_raw
-                    if isinstance(element_kind_raw, str)
-                    else ""
-                )
-                slot_filter: str = (
-                    slot_filter_raw
-                    if isinstance(slot_filter_raw, str)
-                    else ""
-                )
-                if element_kind == "ElmSvs" or "ElmSvs" in slot_filter:
-                    return interface_raw
-                else:
-                    pass
-            else:
-                pass
-    else:
-        pass
-    return None
-
-
-def is_dgs_elmsvs_slot_contract(block: Block) -> bool:
-    """Return whether a DGS root contains the native SVC equipment boundary.
-
-    :param block: Imported PowerFactory composite root.
-    :return: ``True`` when the controller is wired to one physical ``ElmSvs``.
-    """
-    interface_spec: Dict[str, object] | None = _get_elmsvs_interface(block=block)
-
-    if interface_spec is None:
-        return False
-    else:
-        incoming_signals: Set[str] = _flatten_slot_signal_names(
-            raw_signals=interface_spec.get("incoming_signals", None),
-        )
-        outgoing_signals: Set[str] = _flatten_slot_signal_names(
-            raw_signals=interface_spec.get("outgoing_signals", None),
-        )
-        required_outputs: Set[str] = set([
-            "ysvs",
-            "qreact",
-            "qcap",
-            "qfixcap",
-            "nxcap",
-            "nfixcap",
-        ])
-        return "bsvs" in incoming_signals and required_outputs.issubset(
-            outgoing_signals,
-        )
 
 
 def _find_produced_var_recursive(block: Block, var_name: str) -> Var | None:
@@ -199,112 +190,13 @@ def _append_unique_var(variables: List[Var], variable: Var) -> None:
     variables.append(variable)
 
 
-def _copy_dgs_runtime_signal_identity(
-        source_block: Block,
-        destination_block: Block,
-) -> None:
-    """Preserve controller signal aliases and element ownership on a wrapper.
-
-    RMS compilation flattens the wrapped SVC hierarchy.  Copying these lookup
-    tables to the physical wrapper keeps each runtime parameter traceable to
-    both its humanized identifier and immutable DGS block FID afterwards.
-
-    :param source_block: Exact imported graphical controller hierarchy.
-    :param destination_block: Physical SVC wrapper receiving the metadata.
-    :return: None.
-    """
-    persisted_identifiers: Dict[int, str] = dict()
-    element_ids: Dict[int, str] = dict()
-    candidate_block: Block
-    raw_identifier_map: object | None
-    raw_identifier_uid: object
-    raw_identifier: object
-    raw_element_id: object | None
-    variable_groups: Tuple[Iterable[Var], ...]
-    variable_group: Iterable[Var]
-    candidate_variable: Var
-
-    # Traverse the complete source tree because a graphical composite stores
-    # its stable identifier map at the root and its FIDs on nested DSL blocks.
-    for candidate_block in source_block.get_all_blocks():
-        raw_identifier_map = candidate_block.__dict__.get(
-            "dgs_persisted_identifier_by_uid",
-            None,
-        )
-        if isinstance(raw_identifier_map, dict):
-            for raw_identifier_uid, raw_identifier in raw_identifier_map.items():
-                if isinstance(raw_identifier_uid, int) and isinstance(
-                        raw_identifier,
-                        str,
-                ):
-                    persisted_identifiers[raw_identifier_uid] = raw_identifier
-                else:
-                    pass
-            else:
-                pass
-        else:
-            pass
-
-        raw_element_id = candidate_block.__dict__.get("dgs_element_id", None)
-        if raw_element_id is None:
-            pass
-        else:
-            variable_groups = (
-                candidate_block.in_vars,
-                candidate_block.out_vars,
-                candidate_block.algebraic_vars,
-                candidate_block.state_vars,
-                candidate_block.diff_vars,
-                tuple(candidate_block.event_dict.keys()),
-                tuple(candidate_block.mode_dict.keys()),
-                tuple(candidate_block.parameters.keys()),
-            )
-            for variable_group in variable_groups:
-                for candidate_variable in variable_group:
-                    element_ids[candidate_variable.uid] = str(raw_element_id)
-                else:
-                    pass
-            else:
-                pass
-    else:
-        pass
-
-    if len(persisted_identifiers) == 0:
-        pass
-    else:
-        destination_block.__dict__["dgs_persisted_identifier_by_uid"] = dict(
-            persisted_identifiers,
-        )
-    if len(element_ids) == 0:
-        pass
-    else:
-        destination_block.__dict__["dgs_element_id_by_uid"] = dict(element_ids)
-
-
-def _read_float_metadata(
-        interface_spec: Dict[str, object],
-        key: str,
-) -> float | None:
-    """Read one finite numeric SVC metadata field.
-
-    :param interface_spec: Exact physical slot metadata.
-    :param key: Metadata key.
-    :return: Numeric value or ``None`` for an invalid/missing field.
-    """
-    value_raw: object | None = interface_spec.get(key, None)
-
-    if isinstance(value_raw, bool):
-        return None
-    else:
-        if isinstance(value_raw, (int, float)):
-            return float(value_raw)
-        else:
-            return None
 
 
 def build_dgs_elmsvs_rms_runtime_template(
         control_template: RmsModelTemplate,
         clone_control_block: bool = True,
+        direct_result: DgsDirectRootBuildResult | None = None,
+        source_svs: ElmSvs | None = None,
 ) -> RmsModelTemplate | None:
     """Wrap one graphical ``ElmSvs`` controller in its physical RMS equations.
 
@@ -316,6 +208,8 @@ def build_dgs_elmsvs_rms_runtime_template(
 
     :param control_template: Imported exact graphical controller template.
     :param clone_control_block: Clone the controller before modifying its ports.
+    :param direct_result: Optional transient direct-root conversion context.
+    :param source_svs: Optional exact source equipment used during conversion.
     :return: Assignable controllable-shunt template or ``None`` if incomplete.
     """
     control_block: Block
@@ -325,43 +219,26 @@ def build_dgs_elmsvs_rms_runtime_template(
     else:
         control_block = control_template.block
 
-    if is_dgs_elmsvs_slot_contract(block=control_block):
+    if direct_result is None or source_svs is None:
+        return None
+    else:
+        pass
+    if is_dgs_elmsvs_direct_slot_contract(direct_result=direct_result):
         pass
     else:
         return None
 
-    interface_spec: Dict[str, object] | None = _get_elmsvs_interface(
-        block=control_block,
-    )
-    bsvs: Var | None = _find_produced_var_recursive(
-        block=control_block,
-        var_name="bsvs",
-    )
-    if interface_spec is None or bsvs is None:
+    bsvs: Var | None = _find_direct_elmsvs_command(direct_result=direct_result)
+    if bsvs is None:
         return None
     else:
         pass
 
-    qreact_value: float | None = _read_float_metadata(
-        interface_spec=interface_spec,
-        key="svs_qreact_mvar",
-    )
-    qcap_value: float | None = _read_float_metadata(
-        interface_spec=interface_spec,
-        key="svs_qcap_mvar",
-    )
-    qfixcap_value: float | None = _read_float_metadata(
-        interface_spec=interface_spec,
-        key="svs_qfixcap_mvar",
-    )
-    nxcap_value: float | None = _read_float_metadata(
-        interface_spec=interface_spec,
-        key="svs_nxcap",
-    )
-    nfixcap_value: float | None = _read_float_metadata(
-        interface_spec=interface_spec,
-        key="svs_nfixcap",
-    )
+    qreact_value: float | None = float(source_svs.tcrmax)
+    qcap_value: float | None = float(source_svs.qmin)
+    qfixcap_value: float | None = float(source_svs.Qfixcap)
+    nxcap_value: float | None = float(source_svs.nxcap)
+    nfixcap_value: float | None = float(source_svs.nfixcap)
     metadata_values: List[float | None] = list([
         qreact_value,
         qcap_value,
@@ -479,31 +356,27 @@ def build_dgs_elmsvs_rms_runtime_template(
         ]),
         api_obj_mapping=api_mapping,
     )
-    wrapper_block.__dict__["dgs_elmsvs_runtime_adapter"] = True
-    _copy_dgs_runtime_signal_identity(
-        source_block=control_block,
-        destination_block=wrapper_block,
-    )
+    wrapper_block.dynamic_model_contract.dgs_elmsvs_runtime_adapter = True
     # The solved terminal Q is a physical initialization boundary, not another
     # controller assignment. Keep it outside the local explicit-init graph and
     # make the derived susceptance equation outrank the graphical limiter's
     # duplicate ``inc(bsvs)`` target. The remaining OEM chain then initializes
     # SV03 from that physical value exactly as declared in the source DGS.
-    wrapper_block.__dict__["explicit_init_excluded_var_names"] = list([
+    wrapper_block.dynamic_model_contract.explicit_init_excluded_var_names = list([
         reactive_power.name,
     ])
-    wrapper_block.__dict__["explicit_init_override_init_exprs"] = dict([
+    wrapper_block.dynamic_model_contract.explicit_init_override_init_exprs = dict([
         (bsvs.name, susceptance_seed_expression),
     ])
     # The physical susceptance is reconstructed from the solved terminal Q at
     # t=0. Mark that equipment assignment as authoritative so graphical helper
     # closure cannot replace it with a provisional controller iterate before
     # the SVC states reach the same operating point.
-    wrapper_block.__dict__["dgs_explicit_initialization_uids"] = set([
+    wrapper_block.dynamic_model_contract.dgs_explicit_initialization_uids = set([
         bsvs.uid,
     ])
-    wrapper_block.__dict__["dgs_elmsvs_remote_voltage_var_uid"] = remote_voltage.uid
-    wrapper_block.__dict__["dgs_equipment_owned_signal_names"] = list([
+    wrapper_block.dynamic_model_contract.dgs_elmsvs_remote_voltage_var_uid = remote_voltage.uid
+    wrapper_block.dynamic_model_contract.dgs_equipment_owned_signal_names = list([
         "u",
         "uremote",
         "ysvs",

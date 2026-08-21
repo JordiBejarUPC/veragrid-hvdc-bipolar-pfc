@@ -5,6 +5,11 @@ import math
 from typing import Dict, Iterable, List, Mapping, Sequence, Set, Tuple
 
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
+from VeraGridEngine.IO.dgs.dgs_to_blocks import (
+    DgsDirectRootBuildResult,
+    DgsSlotSignalDirection,
+    ElmCompInstanceEntry,
+)
 from VeraGridEngine.IO.dgs.dynamic_models.dgs_elmsym_runtime_adapter import (
     install_unconnected_dgs_control_input_defaults,
 )
@@ -18,31 +23,6 @@ from VeraGridEngine.enumerations import (
 )
 
 
-def _flatten_slot_signal_names(raw_signals: object | None) -> Set[str]:
-    """Flatten scalar and semicolon-vector DGS slot signals.
-
-    :param raw_signals: Raw slot signal list.
-    :return: Exact non-empty component names.
-    """
-    result: Set[str] = set()
-    raw_signal: object
-    component: str
-
-    if isinstance(raw_signals, list):
-        for raw_signal in raw_signals:
-            for component in str(raw_signal).split(";"):
-                normalized_component: str = component.strip()
-                if normalized_component == "":
-                    pass
-                else:
-                    result.add(normalized_component)
-            else:
-                pass
-        else:
-            pass
-    else:
-        pass
-    return result
 
 
 def _remove_child_post_init_seed_targets(
@@ -183,60 +163,90 @@ def _retain_first_algebraic_assignment_for_target(
         pass
 
 
-def is_dgs_elmgenstat_slot_contract(block: Block) -> bool:
-    """Detect PowerFactory's controlled static-generator slot contract.
 
-    The equipment name and controller family are deliberately ignored. The
-    exported physical slot must consume the active/reactive current reference
-    pair used by PowerFactory's RMS ``ElmGenstat`` interface.
 
-    :param block: Imported composite root.
-    :return: ``True`` when one native ``ElmGenstat`` slot is complete.
+def is_dgs_elmgenstat_direct_slot_contract(
+        direct_result: DgsDirectRootBuildResult,
+) -> bool:
+    """Validate one static-generator boundary from transient DGS entries.
+
+    :param direct_result: Direct root and exact source-slot relations.
+    :return: ``True`` for one complete resolved ElmGenstat equipment slot.
     """
-    candidate_block: Block
-    raw_interfaces: object | None
-    interface_items: List[object]
-    interface_item: object
-    for candidate_block in block.get_all_blocks():
-        raw_interfaces = candidate_block.__dict__.get(
-            "dgs_direct_slot_interfaces",
-            None,
-        )
-        if isinstance(raw_interfaces, list):
-            interface_items = raw_interfaces
-        else:
-            interface_items = list()
+    matching_count: int = 0
+    direct_entry: ElmCompInstanceEntry
+    required_inputs: Set[str] = set(["id_ref", "iq_ref"])
 
-        for interface_item in interface_items:
-            if isinstance(interface_item, dict):
-                slot_filter_raw: object | None = interface_item.get("slot_filter", None)
-                element_kind_raw: object | None = interface_item.get("element_kind", None)
-                incoming_names: Set[str] = _flatten_slot_signal_names(
-                    raw_signals=interface_item.get("incoming_signals", None),
-                )
-                if isinstance(slot_filter_raw, str):
-                    slot_filter: str = slot_filter_raw
-                else:
-                    slot_filter = ""
-                if isinstance(element_kind_raw, str):
-                    element_kind: str = element_kind_raw
-                else:
-                    element_kind = ""
-                contract_matches: bool = (
-                    ("ElmGenstat" in slot_filter or element_kind == "ElmGenstat")
-                    and set(["id_ref", "iq_ref"]).issubset(incoming_names)
-                )
-                if contract_matches:
-                    return True
-                else:
-                    pass
-            else:
-                pass
+    for direct_entry in direct_result.direct_entries:
+        if (
+                direct_entry.element_reference_is_resolved
+                and direct_entry.element_kind == "ElmGenstat"
+                and required_inputs.issubset(set(
+                    direct_entry.get_slot_signal_components(
+                        direction=DgsSlotSignalDirection.Input,
+                    )
+                ))
+        ):
+            matching_count += 1
         else:
             pass
     else:
         pass
-    return False
+    return matching_count == 1
+
+
+def _find_direct_elmgenstat_current_reference_pair(
+        direct_result: DgsDirectRootBuildResult,
+) -> Tuple[Var | None, Var | None]:
+    """Resolve current commands from one exact transient controller slot.
+
+    :param direct_result: Direct root with slot-to-child lookup.
+    :return: Active and reactive command variables, or two ``None`` values.
+    """
+    direct_entry: ElmCompInstanceEntry
+    child_block: Block | None
+    active_reference: Var | None = None
+    reactive_reference: Var | None = None
+    child_output: Var
+
+    for direct_entry in direct_result.direct_entries:
+        if (
+                direct_entry.element_kind == "ElmGenstat"
+                or direct_entry.slot_id is None
+                or not set(["id_ref", "iq_ref"]).issubset(
+                    set(direct_entry.get_slot_signal_components(
+                        direction=DgsSlotSignalDirection.Output,
+                    ))
+                )
+        ):
+            pass
+        else:
+            child_block = direct_result.child_block_by_slot_id.get(
+                direct_entry.slot_id,
+                None,
+            )
+            if child_block is None:
+                pass
+            else:
+                for child_output in child_block.out_vars:
+                    if child_output.name in ("id_ref", "idref"):
+                        if active_reference is None:
+                            active_reference = child_output
+                        else:
+                            return None, None
+                    else:
+                        if child_output.name in ("iq_ref", "iqref"):
+                            if reactive_reference is None:
+                                reactive_reference = child_output
+                            else:
+                                return None, None
+                        else:
+                            pass
+                else:
+                    pass
+    else:
+        pass
+    return active_reference, reactive_reference
 
 
 def _is_dgs_elmgenstat_runtime_adapter_contract(block: Block) -> bool:
@@ -266,19 +276,10 @@ def _is_dgs_elmgenstat_runtime_adapter_contract(block: Block) -> bool:
     has_parameter_contract: bool = required_parameter_references.issubset(
         set(block.api_obj_mapping.keys())
     )
-    explicit_marker: object | None = block.__dict__.get(
-        "dgs_elmgenstat_runtime_adapter",
-        None,
-    )
-
-    if explicit_marker is True:
+    if block.dynamic_model_contract.dgs_elmgenstat_runtime_adapter:
         return True
     else:
-        return (
-            has_external_contract
-            and has_parameter_contract
-            and is_dgs_elmgenstat_slot_contract(block=block)
-        )
+        return has_external_contract and has_parameter_contract
 
 
 def _upgrade_dgs_elmgenstat_runtime_adapter(block: Block) -> None:
@@ -349,7 +350,7 @@ def _upgrade_dgs_elmgenstat_runtime_adapter(block: Block) -> None:
         authoritative_initialization_uids.add(initialized_var.uid)
     else:
         pass
-    block.__dict__["dgs_explicit_initialization_uids"] = (
+    block.dynamic_model_contract.dgs_explicit_initialization_uids = (
         authoritative_initialization_uids
     )
     active_current_command = _find_root_initialization_var_by_alias(
@@ -452,7 +453,7 @@ def _upgrade_dgs_elmgenstat_runtime_adapter(block: Block) -> None:
         authoritative_initialization_uids.add(physical_command_var.uid)
     else:
         pass
-    block.__dict__["dgs_explicit_initialization_uids"] = (
+    block.dynamic_model_contract.dgs_explicit_initialization_uids = (
         authoritative_initialization_uids
     )
     if active_power_equipment is None or reactive_power_equipment is None:
@@ -507,8 +508,8 @@ def _upgrade_dgs_elmgenstat_runtime_adapter(block: Block) -> None:
             block.event_dict[voltage_reference] = terminal_voltage
         else:
             pass
-    block.__dict__["dgs_elmgenstat_runtime_adapter"] = True
-    block.__dict__["dgs_equipment_owned_signal_names"] = list([
+    block.dynamic_model_contract.dgs_elmgenstat_runtime_adapter = True
+    block.dynamic_model_contract.dgs_equipment_owned_signal_names = list([
         "Pe",
         "Qgen",
         "Vt_r",
@@ -520,10 +521,10 @@ def _upgrade_dgs_elmgenstat_runtime_adapter(block: Block) -> None:
         "Qext",
         "Vref1",
     ])
-    block.__dict__["runtime_equipment_shell_sync_names"] = (
+    block.dynamic_model_contract.runtime_equipment_shell_sync_names = (
         runtime_equipment_shell_names
     )
-    block.__dict__["runtime_equipment_shell_sync_var_uids"] = (
+    block.dynamic_model_contract.runtime_equipment_shell_sync_var_uids = (
         runtime_equipment_shell_uids
     )
     active_power_var: Var = block.external_mapping[
@@ -532,7 +533,7 @@ def _upgrade_dgs_elmgenstat_runtime_adapter(block: Block) -> None:
     reactive_power_var: Var = block.external_mapping[
         VarPowerFlowReferenceType.Q
     ]
-    block.__dict__["explicit_init_excluded_var_names"] = tuple([
+    block.dynamic_model_contract.explicit_init_excluded_var_names = list([
         active_power_var.name,
         reactive_power_var.name,
     ])
@@ -585,118 +586,6 @@ def _find_first_produced_var_recursive(
     return None
 
 
-def _find_elmgenstat_current_reference_pair(
-        block: Block,
-) -> Tuple[Var | None, Var | None]:
-    """Find the exact controller outputs cabled to the ElmGenstat slot.
-
-    A composite can contain an electrical-controller output named ``id_ref``
-    as well as the converter output that actually feeds ``ElmGenstat``.  DGS
-    slot provenance identifies the latter without relying on traversal order
-    or on equipment/model names.
-
-    :param block: Imported composite root with native slot provenance.
-    :return: Active and reactive current-reference variables, when resolved.
-    """
-    producer_slot_ids: Set[str] = set()
-    candidate_block: Block
-    raw_interfaces: object | None
-    interface_items: List[object]
-    interface_item: object
-
-    # Locate the non-physical slot whose declared outputs provide both current
-    # references consumed by the ElmGenstat equipment interface.
-    for candidate_block in block.get_all_blocks():
-        raw_interfaces = candidate_block.__dict__.get(
-            "dgs_direct_slot_interfaces",
-            None,
-        )
-        if isinstance(raw_interfaces, list):
-            interface_items = raw_interfaces
-        else:
-            interface_items = list()
-        for interface_item in interface_items:
-            if isinstance(interface_item, dict):
-                outgoing_names: Set[str] = _flatten_slot_signal_names(
-                    raw_signals=interface_item.get("outgoing_signals", None),
-                )
-                element_kind_raw: object | None = interface_item.get(
-                    "element_kind",
-                    None,
-                )
-                slot_id_raw: object | None = interface_item.get("slot_id", None)
-                supplies_current_pair: bool = set([
-                    "id_ref",
-                    "iq_ref",
-                ]).issubset(outgoing_names)
-                if (
-                        supplies_current_pair
-                        and element_kind_raw != "ElmGenstat"
-                        and isinstance(slot_id_raw, str)
-                ):
-                    producer_slot_ids.add(slot_id_raw)
-                else:
-                    pass
-            else:
-                pass
-        else:
-            pass
-    else:
-        pass
-
-    # Resolve the exact variables only inside the structurally selected slot.
-    for candidate_block in block.get_all_blocks():
-        candidate_slot_raw: object | None = candidate_block.__dict__.get(
-            "dgs_slot_id",
-            None,
-        )
-        if (
-                isinstance(candidate_slot_raw, str)
-                and candidate_slot_raw in producer_slot_ids
-        ):
-            active_reference: Var | None = _find_unique_local_var_by_alias(
-                block=candidate_block,
-                candidate_alias="id_ref",
-            )
-            if active_reference is None:
-                active_reference = _find_unique_local_var_by_alias(
-                    block=candidate_block,
-                    candidate_alias="idref",
-                )
-            else:
-                pass
-            reactive_reference: Var | None = _find_unique_local_var_by_alias(
-                block=candidate_block,
-                candidate_alias="iq_ref",
-            )
-            if reactive_reference is None:
-                reactive_reference = _find_unique_local_var_by_alias(
-                    block=candidate_block,
-                    candidate_alias="iqref",
-                )
-            else:
-                pass
-            output_uids: Set[int] = set()
-            output_var: Var
-            for output_var in candidate_block.out_vars:
-                output_uids.add(output_var.uid)
-            else:
-                pass
-            pair_is_exported: bool = (
-                active_reference is not None
-                and reactive_reference is not None
-                and active_reference.uid in output_uids
-                and reactive_reference.uid in output_uids
-            )
-            if pair_is_exported:
-                return active_reference, reactive_reference
-            else:
-                pass
-        else:
-            pass
-    else:
-        pass
-    return None, None
 
 
 def _collect_unowned_named_references(
@@ -847,19 +736,10 @@ def _connect_named_controller_inputs(
     :param equipment_var: Canonical physical signal.
     :return: Number of distinct input UIDs replaced.
     """
-    raw_identifier_lookup: object | None = block.__dict__.get(
-        "dgs_persisted_identifier_by_uid",
-        None,
-    )
-    identifier_by_uid: Mapping[int, str] | None
-    if isinstance(raw_identifier_lookup, dict):
-        identifier_by_uid = raw_identifier_lookup
-    else:
-        identifier_by_uid = None
     matching_inputs: List[Var] = _collect_unowned_named_references(
         block=block,
         signal_name=signal_name,
-        identifier_by_uid=identifier_by_uid,
+        identifier_by_uid=None,
     )
     input_var: Var
 
@@ -964,38 +844,42 @@ def _remove_connected_controller_signal_ownership(
         else:
             pass
 
-        raw_explicit_uids = candidate_block.__dict__.get(
-            "dgs_explicit_initialization_uids",
-            None,
+        candidate_block.dynamic_model_contract.dgs_explicit_initialization_uids.discard(
+            input_var.uid
         )
-        if isinstance(raw_explicit_uids, set):
-            raw_explicit_uids.discard(input_var.uid)
-        else:
-            pass
 
         # Runtime and startup shell declarations use names because they are
         # persisted in human-readable templates. Remove the connected name
         # from both supported ownership lists to prevent a late meter replay.
-        for sync_attribute_name in list([
-            "runtime_measurement_shell_sync_names",
-            "startup_ordered_shell_sync_names",
-        ]):
-            raw_sync_names = candidate_block.__dict__.get(
-                sync_attribute_name,
-                None,
-            )
-            if isinstance(raw_sync_names, list):
-                retained_sync_names = list(
-                    raw_sync_name
-                    for raw_sync_name in raw_sync_names
-                    if isinstance(raw_sync_name, str)
-                    and raw_sync_name != signal_name
-                )
-                candidate_block.__dict__[sync_attribute_name] = retained_sync_names
+        retained_runtime_names: List[str] = list()
+        runtime_name: str
+        for runtime_name in (
+                candidate_block.dynamic_model_contract.runtime_measurement_shell_sync_names
+        ):
+            if runtime_name != signal_name:
+                retained_runtime_names.append(runtime_name)
             else:
                 pass
         else:
             pass
+        candidate_block.dynamic_model_contract.runtime_measurement_shell_sync_names = (
+            retained_runtime_names
+        )
+
+        retained_startup_names: List[str] = list()
+        startup_name: str
+        for startup_name in (
+                candidate_block.dynamic_model_contract.startup_ordered_shell_sync_names
+        ):
+            if startup_name != signal_name:
+                retained_startup_names.append(startup_name)
+            else:
+                pass
+        else:
+            pass
+        candidate_block.dynamic_model_contract.startup_ordered_shell_sync_names = (
+            retained_startup_names
+        )
     else:
         pass
 
@@ -1530,8 +1414,8 @@ def _install_regc_voltage_source_equations(block: Block) -> bool:
     block.post_init_seed_eqs[state_quadrature] = unfiltered_quadrature
     block.post_init_seed_eqs[source_real] = source_real_expression
     block.post_init_seed_eqs[source_imaginary] = source_imaginary_expression
-    block.__dict__["dgs_open_standard_regc_voltage_source"] = True
-    block.__dict__["startup_final_init_replay_var_names"] = list([
+    block.dynamic_model_contract.dgs_open_standard_regc_voltage_source = True
+    block.dynamic_model_contract.startup_final_init_replay_var_names = list([
         state_direct.name,
         state_quadrature.name,
         source_real.name,
@@ -1746,8 +1630,8 @@ def _install_regc_current_pll_equations(
     block.init_eqs[current_quadrature] = current_quadrature_expression
     block.post_init_seed_eqs[current_direct] = current_direct_expression
     block.post_init_seed_eqs[current_quadrature] = current_quadrature_expression
-    block.__dict__["dgs_open_standard_regc_current_pll"] = True
-    block.__dict__["startup_final_init_replay_var_names"] = list([
+    block.dynamic_model_contract.dgs_open_standard_regc_current_pll = True
+    block.dynamic_model_contract.startup_final_init_replay_var_names = list([
         current_direct.name,
         current_quadrature.name,
     ])
@@ -1762,27 +1646,7 @@ def _install_protected_open_standard_equations(block: Block) -> int:
     """
     restored_count: int = 0
     candidate_block: Block
-    raw_identifier_lookup: object | None = block.__dict__.get(
-        "dgs_persisted_identifier_by_uid",
-        None,
-    )
     identifier_by_uid: Dict[int, str] = dict()
-    raw_identifier_uid: object
-    raw_identifier: object
-
-    # Humanized templates retain one root-level stable identifier map for the
-    # complete hierarchy. Fresh DGS objects need no map because their symbols
-    # still carry the exact local names.
-    if isinstance(raw_identifier_lookup, dict):
-        for raw_identifier_uid, raw_identifier in raw_identifier_lookup.items():
-            if isinstance(raw_identifier_uid, int) and isinstance(raw_identifier, str):
-                identifier_by_uid[raw_identifier_uid] = raw_identifier
-            else:
-                pass
-        else:
-            pass
-    else:
-        pass
 
     for candidate_block in block.get_all_blocks():
         if _install_regc_current_pll_equations(
@@ -1871,6 +1735,7 @@ def _has_closed_explicit_initialization_contract(block: Block) -> bool:
 def build_dgs_elmgenstat_rms_runtime_template(
         control_template: RmsModelTemplate,
         clone_control_block: bool = True,
+        direct_result: DgsDirectRootBuildResult | None = None,
 ) -> RmsModelTemplate | None:
     """Wrap an imported controller with the native ElmGenstat injection.
 
@@ -1881,6 +1746,7 @@ def build_dgs_elmgenstat_rms_runtime_template(
 
     :param control_template: Imported DGS composite template.
     :param clone_control_block: Clone reusable GUI input before adaptation.
+    :param direct_result: Optional transient direct-root conversion context.
     :return: Assignable Generator RMS template, or ``None`` if incomplete.
     """
     control_block: Block
@@ -1908,7 +1774,11 @@ def build_dgs_elmgenstat_rms_runtime_template(
         control_block = copy.deepcopy(control_template.block)
     else:
         control_block = control_template.block
-    if not is_dgs_elmgenstat_slot_contract(block=control_block):
+    if direct_result is None:
+        return None
+    else:
+        pass
+    if not is_dgs_elmgenstat_direct_slot_contract(direct_result=direct_result):
         return None
     else:
         pass
@@ -1917,25 +1787,14 @@ def build_dgs_elmgenstat_rms_runtime_template(
     # formulas PowerFactory omitted from the otherwise complete DGS surface.
     _install_protected_open_standard_equations(block=control_block)
 
-    # Prefer the exact converter outputs cabled to the physical slot.  A
-    # traversal-order alias fallback remains necessary for legacy DGS exports
-    # that predate direct slot provenance.
+    # Resolve only the exact converter outputs cabled to the physical slot.
     active_current_command: Var | None
     reactive_current_command: Var | None
     active_current_command, reactive_current_command = (
-        _find_elmgenstat_current_reference_pair(block=control_block)
+        _find_direct_elmgenstat_current_reference_pair(
+            direct_result=direct_result,
+        )
     )
-    if active_current_command is None or reactive_current_command is None:
-        active_current_command = _find_first_produced_var_recursive(
-            block=control_block,
-            candidate_names=("id_ref", "idref"),
-        )
-        reactive_current_command = _find_first_produced_var_recursive(
-            block=control_block,
-            candidate_names=("iq_ref", "iqref"),
-        )
-    else:
-        pass
     if active_current_command is None or reactive_current_command is None:
         return None
     else:
@@ -2264,7 +2123,7 @@ def build_dgs_elmgenstat_rms_runtime_template(
         ]),
         api_obj_mapping=api_mapping,
     )
-    wrapper_block.__dict__["dgs_elmgenstat_runtime_adapter"] = True
+    wrapper_block.dynamic_model_contract.dgs_elmgenstat_runtime_adapter = True
     # The physical ElmGenstat boundary owns these solved operating-point
     # values. Mark the exact UIDs as authoritative so a nested graphical
     # controller ``inc()`` helper cannot replace the P/Q-derived current
@@ -2275,13 +2134,13 @@ def build_dgs_elmgenstat_rms_runtime_template(
         authoritative_initialization_uids.add(initialized_var.uid)
     else:
         pass
-    wrapper_block.__dict__["dgs_explicit_initialization_uids"] = (
+    wrapper_block.dynamic_model_contract.dgs_explicit_initialization_uids = (
         authoritative_initialization_uids
     )
     # These aliases are physical equipment-base boundaries supplied by this
     # adapter. The later generic DGS meter pass must not rematerialize its raw
     # MW/MVAr expressions on the already converted per-unit variables.
-    wrapper_block.__dict__["dgs_equipment_owned_signal_names"] = list([
+    wrapper_block.dynamic_model_contract.dgs_equipment_owned_signal_names = list([
         "Pe",
         "Qgen",
         "Vt_r",
@@ -2297,7 +2156,7 @@ def build_dgs_elmgenstat_rms_runtime_template(
     # Newton guesses. Refresh them from their canonical wrapper equations after
     # every physical boundary update so the controller sees one coherent
     # terminal snapshot at startup and during RMS events.
-    wrapper_block.__dict__["runtime_equipment_shell_sync_names"] = list([
+    wrapper_block.dynamic_model_contract.runtime_equipment_shell_sync_names = list([
         active_power_equipment.name,
         reactive_power_equipment.name,
         terminal_voltage_real.name,
@@ -2305,7 +2164,7 @@ def build_dgs_elmgenstat_rms_runtime_template(
         terminal_current_real.name,
         terminal_current_imaginary.name,
     ])
-    wrapper_block.__dict__["runtime_equipment_shell_sync_var_uids"] = list([
+    wrapper_block.dynamic_model_contract.runtime_equipment_shell_sync_var_uids = list([
         active_power_equipment.uid,
         reactive_power_equipment.uid,
         terminal_voltage_real.uid,
@@ -2328,7 +2187,7 @@ def build_dgs_elmgenstat_rms_runtime_template(
         )
     else:
         pass
-    wrapper_block.__dict__["explicit_init_excluded_var_names"] = tuple([
+    wrapper_block.dynamic_model_contract.explicit_init_excluded_var_names = list([
         active_power_system.name,
         reactive_power_system.name,
     ])

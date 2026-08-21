@@ -34,6 +34,7 @@ from VeraGridEngine.IO.dgs.dgs_rms_preparation import (
     prepare_dgs_circuit_for_rms,
 )
 from VeraGridEngine.IO.dgs.dynamic_models.dynamic_model_import import (
+    DgsDynamicTemplateConversionResult,
     apply_dgs_dynamic_templates_to_devices,
     convert_and_add_dgs_dynamic_templates_to_circuit,
 )
@@ -6753,15 +6754,18 @@ def dgs_to_circuit(path: str,
         else:
             # 1: Convert each DGS root to its final template, register it in
             # MultiCircuit and retain only the irreducible root-FID lookup.
+            conversion_result: DgsDynamicTemplateConversionResult = (
+                convert_and_add_dgs_dynamic_templates_to_circuit(
+                    dgs_circuit=dgs_grid,
+                    circuit=grid,
+                    target_domain=dynamic_simulation_mode,
+                    logger=logger,
+                )
+            )
             templates_by_root_dgs_id: Dict[
                 str,
                 RmsModelTemplate | EmtModelTemplate,
-            ] = convert_and_add_dgs_dynamic_templates_to_circuit(
-                dgs_circuit=dgs_grid,
-                circuit=grid,
-                target_domain=dynamic_simulation_mode,
-                logger=logger,
-            )
+            ] = conversion_result.templates_by_root_dgs_id
 
             # 2: Apply the registered templates to exact static devices using
             # that minimal lookup and the original declarative FID relations.
