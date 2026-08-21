@@ -7,11 +7,43 @@ import numpy as np
 
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Utils.Symbolic import symbolic as sym
-from VeraGridEngine.Utils.Symbolic.symbolic import cos, sin
+from VeraGridEngine.Utils.Symbolic.symbolic import Var, cos, sin
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.procedural_logic import sampled_value
 from VeraGridEngine.enumerations import VarPowerFlowReferenceType, DeviceType
+
+
+def _connect_with_shared_reference(vf: VarFactory,
+                                   target_var: Var,
+                                   source_var: Var,
+                                   shared_name: str) -> None:
+    """
+    Connect two symbolic ports and expose their relationship to the block editor.
+
+    The variable factory owns the runtime alias used by the DAE model, while
+    the shared reference is the explicit semantic tag used by the dynamic
+    editor to discover and draw the corresponding inter-block wire.
+
+    :param vf: Variable factory shared by the complete converter model.
+    :param target_var: Input variable whose runtime identity is substituted.
+    :param source_var: Output or root-interface variable driving the target.
+    :param shared_name: Stable semantic name shared by every endpoint of the signal.
+    :return: None.
+    """
+    # Fan-out signals call this helper once per target. Avoid registering the
+    # same variable repeatedly when it already owns the requested reference.
+    if source_var.shared_ref is None or source_var.shared_ref.name != shared_name:
+        vf.add_shared_ref_to_var(source_var, shared_name)
+    else:
+        pass
+
+    if target_var.shared_ref is None or target_var.shared_ref.name != shared_name:
+        vf.add_shared_ref_to_var(target_var, shared_name)
+    else:
+        pass
+
+    vf.add_connection(var_to_subs=target_var, incoming_var=source_var)
 
 
 def get_trafo_grid_connection_G4L(vf: VarFactory, name: str = "G4L_transformer") -> EmtModelTemplate:
@@ -102,7 +134,10 @@ def get_trafo_grid_connection_G4L(vf: VarFactory, name: str = "G4L_transformer")
     Pac = vf.add_var(name=f"Pac_{name}")
     Qac = vf.add_var(name=f"Qac_{name}")
 
-    templ.block = Block(
+    # Keep the template root as a pure hierarchical container.  The physical
+    # line equations live in one named child so the Dynamic Editor presents the
+    # branch as one block that can be opened to inspect its internals.
+    line_block: Block = Block(
         # --------------------------------------------------------------------------------------
         # STATE EQUATIONS (seconds + pu)
         # --------------------------------------------------------------------------------------
@@ -168,9 +203,10 @@ def get_trafo_grid_connection_G4L(vf: VarFactory, name: str = "G4L_transformer")
             dq_t_C: i_cap_t_C,
         },
         event_dict=event_dict,
+        name=f"{name}_line",
     )
 
-    templ.block.external_mapping = {
+    line_block.external_mapping = {
         VarPowerFlowReferenceType.vf_N: None,
         VarPowerFlowReferenceType.vf_A: v_f_A,
         VarPowerFlowReferenceType.vf_B: v_f_B,
@@ -190,6 +226,16 @@ def get_trafo_grid_connection_G4L(vf: VarFactory, name: str = "G4L_transformer")
         VarPowerFlowReferenceType.Pt: Pac,
         VarPowerFlowReferenceType.Qt: Qac,
     }
+
+    # Publish the physical line as the only child and mirror its external
+    # contract on the root.  EMT compilation still flattens the child, while
+    # serialization preserves this hierarchy for the GUI.
+    templ.block.children.append(line_block)
+    templ.block.external_mapping = line_block.external_mapping
+    templ.block.api_obj_mapping = line_block.api_obj_mapping
+    templ.block.parameters = line_block.parameters
+    templ.block.in_vars = line_block.in_vars
+    templ.block.out_vars = line_block.out_vars
 
     return templ
 
@@ -546,54 +592,123 @@ def get_grid_side_converter_control_GFL(
                            VSM_mdl.in_vars[2], # Pac
                            ]
     # OUT VARS:  v_con_A, v_con_B, v_con_C,
-    templ.block.out_vars = [current_loop_mdl.out_vars[0], # v_con_A
-                            current_loop_mdl.out_vars[1], # v_con_B
-                            current_loop_mdl.out_vars[2], # v_con_C
-                            current_loop_mdl.out_vars[3],  # v_con_A
-                            current_loop_mdl.out_vars[4],  # v_con_B
-                            current_loop_mdl.out_vars[5],  # v_con_C
+    templ.block.out_vars = [current_loop_mdl.out_vars[0],  # v_con_A
+                            current_loop_mdl.out_vars[1],  # v_con_B
+                            current_loop_mdl.out_vars[2],  # v_con_C
                             ]
 
     # CONNECT VARIABLES BETWEEN CHILDREN
     # phase_vsm
-    vf.add_connection(clark_park_transforms_mdl.in_vars[6], VSM_mdl.out_vars[0])
-    vf.add_connection(current_loop_mdl.in_vars[4], VSM_mdl.out_vars[0])
+    _connect_with_shared_reference(vf=vf,
+                                   target_var=clark_park_transforms_mdl.in_vars[6],
+                                   source_var=VSM_mdl.out_vars[0],
+                                   shared_name=f"{name}_phase_vsm")
+    _connect_with_shared_reference(vf=vf,
+                                   target_var=current_loop_mdl.in_vars[4],
+                                   source_var=VSM_mdl.out_vars[0],
+                                   shared_name=f"{name}_phase_vsm")
     # bus voltages into PLL
-    vf.add_connection(PLL_mdl.in_vars[0], clark_park_transforms_mdl.in_vars[0]) # VA
-    vf.add_connection(PLL_mdl.in_vars[1], clark_park_transforms_mdl.in_vars[1]) # VB
-    vf.add_connection(PLL_mdl.in_vars[2], clark_park_transforms_mdl.in_vars[2]) # VC
+    _connect_with_shared_reference(vf=vf,
+                                   target_var=PLL_mdl.in_vars[0],
+                                   source_var=clark_park_transforms_mdl.in_vars[0],
+                                   shared_name=f"{name}_v_A")
+    _connect_with_shared_reference(vf=vf,
+                                   target_var=PLL_mdl.in_vars[1],
+                                   source_var=clark_park_transforms_mdl.in_vars[1],
+                                   shared_name=f"{name}_v_B")
+    _connect_with_shared_reference(vf=vf,
+                                   target_var=PLL_mdl.in_vars[2],
+                                   source_var=clark_park_transforms_mdl.in_vars[2],
+                                   shared_name=f"{name}_v_C")
     # bus voltages into VSM for steady-state phase offset initialization
-    vf.add_connection(VSM_mdl.in_vars[3], clark_park_transforms_mdl.in_vars[0]) # VA
-    vf.add_connection(VSM_mdl.in_vars[4], clark_park_transforms_mdl.in_vars[1]) # VB
-    vf.add_connection(VSM_mdl.in_vars[5], clark_park_transforms_mdl.in_vars[2]) # VC
+    _connect_with_shared_reference(vf=vf,
+                                   target_var=VSM_mdl.in_vars[3],
+                                   source_var=clark_park_transforms_mdl.in_vars[0],
+                                   shared_name=f"{name}_v_A")
+    _connect_with_shared_reference(vf=vf,
+                                   target_var=VSM_mdl.in_vars[4],
+                                   source_var=clark_park_transforms_mdl.in_vars[1],
+                                   shared_name=f"{name}_v_B")
+    _connect_with_shared_reference(vf=vf,
+                                   target_var=VSM_mdl.in_vars[5],
+                                   source_var=clark_park_transforms_mdl.in_vars[2],
+                                   shared_name=f"{name}_v_C")
     # measured currents into VSM for steady-state phase offset initialization
-    vf.add_connection(VSM_mdl.in_vars[6], clark_park_transforms_mdl.in_vars[3]) # iA
-    vf.add_connection(VSM_mdl.in_vars[7], clark_park_transforms_mdl.in_vars[4]) # iB
-    vf.add_connection(VSM_mdl.in_vars[8], clark_park_transforms_mdl.in_vars[5]) # iC
+    _connect_with_shared_reference(vf=vf,
+                                   target_var=VSM_mdl.in_vars[6],
+                                   source_var=clark_park_transforms_mdl.in_vars[3],
+                                   shared_name=f"{name}_i_A")
+    _connect_with_shared_reference(vf=vf,
+                                   target_var=VSM_mdl.in_vars[7],
+                                   source_var=clark_park_transforms_mdl.in_vars[4],
+                                   shared_name=f"{name}_i_B")
+    _connect_with_shared_reference(vf=vf,
+                                   target_var=VSM_mdl.in_vars[8],
+                                   source_var=clark_park_transforms_mdl.in_vars[5],
+                                   shared_name=f"{name}_i_C")
     # omega VSM
-    vf.add_connection(current_loop_mdl.in_vars[5], VSM_mdl.out_vars[1])
+    _connect_with_shared_reference(vf=vf,
+                                   target_var=current_loop_mdl.in_vars[5],
+                                   source_var=VSM_mdl.out_vars[1],
+                                   shared_name=f"{name}_omega_vsm")
     # theta pll
-    vf.add_connection(VSM_mdl.in_vars[0], PLL_mdl.out_vars[0])
+    _connect_with_shared_reference(vf=vf,
+                                   target_var=VSM_mdl.in_vars[0],
+                                   source_var=PLL_mdl.out_vars[0],
+                                   shared_name=f"{name}_theta_pll")
     # omega pll
-    vf.add_connection(VSM_mdl.in_vars[1], PLL_mdl.out_vars[1])
+    _connect_with_shared_reference(vf=vf,
+                                   target_var=VSM_mdl.in_vars[1],
+                                   source_var=PLL_mdl.out_vars[1],
+                                   shared_name=f"{name}_omega_pll")
     # v_q
-    vf.add_connection(VA_mdl.in_vars[0], clark_park_transforms_mdl.out_vars[0])
-    vf.add_connection(current_loop_mdl.in_vars[0], clark_park_transforms_mdl.out_vars[0])
+    _connect_with_shared_reference(vf=vf,
+                                   target_var=VA_mdl.in_vars[0],
+                                   source_var=clark_park_transforms_mdl.out_vars[0],
+                                   shared_name=f"{name}_v_q")
+    _connect_with_shared_reference(vf=vf,
+                                   target_var=current_loop_mdl.in_vars[0],
+                                   source_var=clark_park_transforms_mdl.out_vars[0],
+                                   shared_name=f"{name}_v_q")
     # v_d
-    vf.add_connection(VA_mdl.in_vars[1], clark_park_transforms_mdl.out_vars[1])
-    vf.add_connection(current_loop_mdl.in_vars[1], clark_park_transforms_mdl.out_vars[1])
+    _connect_with_shared_reference(vf=vf,
+                                   target_var=VA_mdl.in_vars[1],
+                                   source_var=clark_park_transforms_mdl.out_vars[1],
+                                   shared_name=f"{name}_v_d")
+    _connect_with_shared_reference(vf=vf,
+                                   target_var=current_loop_mdl.in_vars[1],
+                                   source_var=clark_park_transforms_mdl.out_vars[1],
+                                   shared_name=f"{name}_v_d")
     # i_q
-    vf.add_connection(current_loop_mdl.in_vars[2], clark_park_transforms_mdl.out_vars[2])
+    _connect_with_shared_reference(vf=vf,
+                                   target_var=current_loop_mdl.in_vars[2],
+                                   source_var=clark_park_transforms_mdl.out_vars[2],
+                                   shared_name=f"{name}_i_q")
     # i_d
-    vf.add_connection(current_loop_mdl.in_vars[3], clark_park_transforms_mdl.out_vars[3])
+    _connect_with_shared_reference(vf=vf,
+                                   target_var=current_loop_mdl.in_vars[3],
+                                   source_var=clark_park_transforms_mdl.out_vars[3],
+                                   shared_name=f"{name}_i_d")
     # i_q out VA
-    vf.add_connection(current_limiter_mdl.in_vars[0], VA_mdl.out_vars[0])
+    _connect_with_shared_reference(vf=vf,
+                                   target_var=current_limiter_mdl.in_vars[0],
+                                   source_var=VA_mdl.out_vars[0],
+                                   shared_name=f"{name}_i_q_va")
     # i_d out VA
-    vf.add_connection(current_limiter_mdl.in_vars[1], VA_mdl.out_vars[1])
+    _connect_with_shared_reference(vf=vf,
+                                   target_var=current_limiter_mdl.in_vars[1],
+                                   source_var=VA_mdl.out_vars[1],
+                                   shared_name=f"{name}_i_d_va")
     # i_q_lim
-    vf.add_connection(current_loop_mdl.in_vars[6], current_limiter_mdl.out_vars[0])
+    _connect_with_shared_reference(vf=vf,
+                                   target_var=current_loop_mdl.in_vars[6],
+                                   source_var=current_limiter_mdl.out_vars[0],
+                                   shared_name=f"{name}_i_q_lim")
     # i_d_lim
-    vf.add_connection(current_loop_mdl.in_vars[7], current_limiter_mdl.out_vars[1])
+    _connect_with_shared_reference(vf=vf,
+                                   target_var=current_loop_mdl.in_vars[7],
+                                   source_var=current_limiter_mdl.out_vars[1],
+                                   shared_name=f"{name}_i_d_lim")
 
     # APPEND CHILDREN
     templ.block.children.append(clark_park_transforms_mdl)
@@ -1192,7 +1307,10 @@ def get_current_loop_GFL(vf: VarFactory, name: str = "G4L_current_loop") -> EmtM
             v_con_C,
         ],
         in_vars=inputs,
-        out_vars=[v_con_A, v_con_B, v_con_C, v_con_A, v_con_B, v_con_C],
+        # Each physical controller voltage is one output. Repeating the same
+        # Var objects produced six indistinguishable GUI ports without adding
+        # any mathematical degree of freedom.
+        out_vars=[v_con_A, v_con_B, v_con_C],
         init_eqs={
             v_ffw_q: c0,
             v_ffw_d: c0,
@@ -1263,21 +1381,66 @@ def get_complete_load_template_G4L(
                             grid_side_vsc_mdl.out_vars[2],  # i_C
                             ]
 
-    vf.add_connection(load_side_vsc_mdl.in_vars[0], grid_side_vsc_mdl.out_vars[3])
-    vf.add_connection(grid_side_vsc_mdl.in_vars[3], load_side_vsc_mdl.out_vars[0])
-    vf.add_connection(load_side_ctrl_mdl.in_vars[0], load_side_vsc_mdl.out_vars[0])
-    vf.add_connection(load_side_vsc_mdl.in_vars[1], load_side_ctrl_mdl.out_vars[0])
-    vf.add_connection(grid_side_vsc_mdl.in_vars[4], grid_side_ctrl_mdl.out_vars[3])
-    vf.add_connection(grid_side_vsc_mdl.in_vars[5], grid_side_ctrl_mdl.out_vars[4])
-    vf.add_connection(grid_side_vsc_mdl.in_vars[6], grid_side_ctrl_mdl.out_vars[5])
-    vf.add_connection(grid_side_ctrl_mdl.in_vars[0], grid_side_vsc_mdl.in_vars[0])
-    vf.add_connection(grid_side_ctrl_mdl.in_vars[1], grid_side_vsc_mdl.in_vars[1])
-    vf.add_connection(grid_side_ctrl_mdl.in_vars[2], grid_side_vsc_mdl.in_vars[2])
-    vf.add_connection(grid_side_ctrl_mdl.in_vars[3], grid_side_vsc_mdl.out_vars[0])
-    vf.add_connection(grid_side_ctrl_mdl.in_vars[4], grid_side_vsc_mdl.out_vars[1])
-    vf.add_connection(grid_side_ctrl_mdl.in_vars[5], grid_side_vsc_mdl.out_vars[2])
-    vf.add_connection(grid_side_ctrl_mdl.in_vars[6], grid_side_vsc_mdl.out_vars[4])
-    vf.add_connection(load_side_ctrl_mdl.in_vars[1], grid_side_vsc_mdl.out_vars[5])
+    _connect_with_shared_reference(vf=vf,
+                                   target_var=load_side_vsc_mdl.in_vars[0],
+                                   source_var=grid_side_vsc_mdl.out_vars[3],
+                                   shared_name=f"{name}_i_dc_grid")
+    _connect_with_shared_reference(vf=vf,
+                                   target_var=grid_side_vsc_mdl.in_vars[3],
+                                   source_var=load_side_vsc_mdl.out_vars[0],
+                                   shared_name=f"{name}_v_dc")
+    _connect_with_shared_reference(vf=vf,
+                                   target_var=load_side_ctrl_mdl.in_vars[0],
+                                   source_var=load_side_vsc_mdl.out_vars[0],
+                                   shared_name=f"{name}_v_dc")
+    _connect_with_shared_reference(vf=vf,
+                                   target_var=load_side_vsc_mdl.in_vars[1],
+                                   source_var=load_side_ctrl_mdl.out_vars[0],
+                                   shared_name=f"{name}_i_dc_load")
+    _connect_with_shared_reference(vf=vf,
+                                   target_var=grid_side_vsc_mdl.in_vars[4],
+                                   source_var=grid_side_ctrl_mdl.out_vars[0],
+                                   shared_name=f"{name}_v_con_A")
+    _connect_with_shared_reference(vf=vf,
+                                   target_var=grid_side_vsc_mdl.in_vars[5],
+                                   source_var=grid_side_ctrl_mdl.out_vars[1],
+                                   shared_name=f"{name}_v_con_B")
+    _connect_with_shared_reference(vf=vf,
+                                   target_var=grid_side_vsc_mdl.in_vars[6],
+                                   source_var=grid_side_ctrl_mdl.out_vars[2],
+                                   shared_name=f"{name}_v_con_C")
+    _connect_with_shared_reference(vf=vf,
+                                   target_var=grid_side_ctrl_mdl.in_vars[0],
+                                   source_var=grid_side_vsc_mdl.in_vars[0],
+                                   shared_name=f"{grid_side_ctrl_mdl.name}_v_A")
+    _connect_with_shared_reference(vf=vf,
+                                   target_var=grid_side_ctrl_mdl.in_vars[1],
+                                   source_var=grid_side_vsc_mdl.in_vars[1],
+                                   shared_name=f"{grid_side_ctrl_mdl.name}_v_B")
+    _connect_with_shared_reference(vf=vf,
+                                   target_var=grid_side_ctrl_mdl.in_vars[2],
+                                   source_var=grid_side_vsc_mdl.in_vars[2],
+                                   shared_name=f"{grid_side_ctrl_mdl.name}_v_C")
+    _connect_with_shared_reference(vf=vf,
+                                   target_var=grid_side_ctrl_mdl.in_vars[3],
+                                   source_var=grid_side_vsc_mdl.out_vars[0],
+                                   shared_name=f"{grid_side_ctrl_mdl.name}_i_A")
+    _connect_with_shared_reference(vf=vf,
+                                   target_var=grid_side_ctrl_mdl.in_vars[4],
+                                   source_var=grid_side_vsc_mdl.out_vars[1],
+                                   shared_name=f"{grid_side_ctrl_mdl.name}_i_B")
+    _connect_with_shared_reference(vf=vf,
+                                   target_var=grid_side_ctrl_mdl.in_vars[5],
+                                   source_var=grid_side_vsc_mdl.out_vars[2],
+                                   shared_name=f"{grid_side_ctrl_mdl.name}_i_C")
+    _connect_with_shared_reference(vf=vf,
+                                   target_var=grid_side_ctrl_mdl.in_vars[6],
+                                   source_var=grid_side_vsc_mdl.out_vars[4],
+                                   shared_name=f"{name}_Pac_bus")
+    _connect_with_shared_reference(vf=vf,
+                                   target_var=load_side_ctrl_mdl.in_vars[1],
+                                   source_var=grid_side_vsc_mdl.out_vars[5],
+                                   shared_name=f"{name}_Pac_grid")
 
     templ.block.children.append(grid_side_vsc_mdl)
     templ.block.children.append(load_side_vsc_mdl)
