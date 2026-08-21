@@ -5,14 +5,14 @@
 
 from __future__ import annotations
 
-from typing import Dict, Generic, Iterable, Protocol, TypeVar
+from typing import Dict, Iterable, Protocol, TypeVar
 
 
 ExpressionT = TypeVar("ExpressionT")
 ProceduralLogicData = Dict[str, object]
 
 
-class ProceduralLogicEntryContract(Protocol, Generic[ExpressionT]):
+class ProceduralLogicEntryContract(Protocol[ExpressionT]):
     """Declare the behavior a symbolic block requires from procedural logic."""
 
     __slots__ = ()
@@ -36,7 +36,7 @@ class ProceduralLogicEntryContract(Protocol, Generic[ExpressionT]):
         ...
 
 
-class ProceduralLogicCodecContract(Protocol, Generic[ExpressionT]):
+class ProceduralLogicCodecContract(Protocol[ExpressionT]):
     """Declare fail-closed reconstruction of declarative procedural entries."""
 
     __slots__ = ()

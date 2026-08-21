@@ -14,7 +14,7 @@ from VeraGridEngine.Devices.Dynamic.var_factory import (Connection,
                                                         build_persisted_identity_lookup,
                                                         find_var_by_persisted_identity)
 from VeraGridEngine.Utils.Symbolic import SharedVarReferenceType
-from VeraGridEngine.Utils.Symbolic.symbolic import Var, Expr, Const, BinOp, UnOp, Func, Func2, Comparison, NUMBER
+from VeraGridEngine.Utils.Symbolic.symbolic import Var, Expr, Const, BinOp, UnOp, Func, Func2, Comparison
 from VeraGridEngine.Utils.Symbolic.block import (
     Block,
     DynamicModelContract,
@@ -36,7 +36,7 @@ from VeraGridEngine.enumerations import VarPowerFlowReferenceType, ParamPowerFlo
 
 def symbolic_objects_to_dict(obj_dict: Dict[int | str, Var | Const | Var | SharedVarReferenceType]) -> List[Dict[str, Any]]:
     """
-    Save the list of all unique vars, diffvars and const
+    Save all unique variables, differential variables, and constants.
     :param obj_dict: Dictionary storing the unique objects
     :return: List of dictionaries representing each object
     """
@@ -283,19 +283,16 @@ def expr_to_dict(expr: Expr,
                  diff_var_dict: Dict[int, Var],
                  composite_expression_ids: Dict[int, int] | None = None) -> Dict[str, Any]:
     """
-    Serialise any `Expr` tree into a plain Python dictionary that’s
-    JSON-friendly.  Each node type becomes a small dict that records:
+    Serialize any ``Expr`` tree into a JSON-compatible Python dictionary.
 
-        • its own type      (\"Const\", \"Var\", \"BinOp\", …)
-        • the data it carries (value, name, operator…)
-        • its unique uid     (string, so it survives round-trip)
-        • nested children    (recursively serialised)
+    Each node record contains its symbolic kind, payload, stable UID, and
+    recursively serialized child expressions.
     :param expr: Expression child
     :param const_dict: Dictionary that keeps a reference of the Const objects already saved
-    :param var_dict: Dictionary that keeps a reference of the VAr objects already saved
+    :param var_dict: Dictionary that retains variables already saved.
     :param diff_var_dict: Dictionary that keeps a reference of the DiffVar objects already saved
     :param composite_expression_ids: Object identities already serialized in the current block
-    :return: Dict to save in jason
+    :return: Declarative expression record suitable for JSON persistence.
     """
     active_composite_expression_ids: Dict[int, int]
     if composite_expression_ids is None:
@@ -465,15 +462,15 @@ def parse_expr(data: Dict[str, Any],
                const_dict: Dict[int, Const],
                var_dict: Dict[int, Var],
                diff_var_dict: Dict[int, Var],
-               composite_expressions: Dict[int, Expr] | None = None) -> Const | Var | UnOp | BinOp | Func | Func2:
+               composite_expressions: Dict[int, Expr] | None = None) -> Expr:
     """
     De-Serialize expression from dictionary
     :param data: Some dictionary containing the expression
     :param const_dict: Dictionary that keeps a reference of the Const objects already saved
-    :param var_dict: Dictionary that keeps a reference of the VAr objects already saved
+    :param var_dict: Dictionary that retains variables already saved.
     :param diff_var_dict: Dictionary that keeps a reference of the DiffVar objects already saved
     :param composite_expressions: Composite graph nodes already parsed in the current block
-    :return: Expression chil
+    :return: Reconstructed expression node.
     """
     active_composite_expressions: Dict[int, Expr]
     if composite_expressions is None:
@@ -547,12 +544,12 @@ def parse_expr(data: Dict[str, Any],
         obj = Func(arg=arg, op=data["op"], uid=data["uid"])
 
     elif t == "Func2":
-        arg1: Const | Var | UnOp | BinOp | Func | Func2 = parse_expr(data=data["arg1"],
+        arg1: Expr = parse_expr(data=data["arg1"],
                                                                       const_dict=const_dict,
                                                                       var_dict=var_dict,
                                                                       diff_var_dict=diff_var_dict,
                                                                       composite_expressions=active_composite_expressions)
-        arg2: Const | Var | UnOp | BinOp | Func | Func2 = parse_expr(data=data["arg2"],
+        arg2: Expr = parse_expr(data=data["arg2"],
                                                                       const_dict=const_dict,
                                                                       var_dict=var_dict,
                                                                       diff_var_dict=diff_var_dict,
@@ -578,7 +575,7 @@ def parse_expr_list(lst: List[Dict[str, Any]],
                     const_dict: Dict[int, Const],
                     var_dict: Dict[int, Var],
                     diff_var_dict: Dict[int, Var],
-                    composite_expressions: Dict[int, Expr] | None = None) -> List[Const | Var | UnOp | BinOp | Func | Func2]:
+                    composite_expressions: Dict[int, Expr] | None = None) -> List[Expr]:
     """
 
     :param lst:
@@ -594,7 +591,7 @@ def parse_expr_list(lst: List[Dict[str, Any]],
     else:
         active_composite_expressions = composite_expressions
 
-    lst2: List[Const | Var | UnOp | BinOp | Func | Func2] = list()
+    lst2: List[Expr] = list()
     data: Dict[str, Any]
     for data in lst:
         lst2.append(
@@ -676,13 +673,14 @@ class BlockSaver:
         :param var: Variable to register.
         :return: None.
         """
-        try:
-            found_var = self.var_factory.get_var(var.non_mutable_uid)
-        except Exception:
-            found_var = None
+        registered_vars: Dict[int, Var] = self.var_factory.get_vars_dict()
+        found_var: Var | None = find_var_by_persisted_identity(
+            var_dict=registered_vars,
+            persisted_uid=var.non_mutable_uid,
+        )
 
         if found_var is None:
-            self.var_factory._var_dict[var.non_mutable_uid] = var
+            registered_vars[var.non_mutable_uid] = var
         else:
             pass
 
@@ -693,20 +691,21 @@ class BlockSaver:
         :param diff_var: Differential variable to register.
         :return: None.
         """
-        try:
-            found_var = self.var_factory.get_diff_var(diff_var.non_mutable_uid)
-        except Exception:
-            found_var = None
+        registered_diff_vars: Dict[int, Var] = self.var_factory.get_diff_var_dict()
+        found_var: Var | None = find_var_by_persisted_identity(
+            var_dict=registered_diff_vars,
+            persisted_uid=diff_var.non_mutable_uid,
+        )
 
         if found_var is None:
-            self.var_factory._diff_var_dict[diff_var.non_mutable_uid] = diff_var
+            registered_diff_vars[diff_var.non_mutable_uid] = diff_var
         else:
             pass
 
     def save_block(self, blk: Block, main: bool = False) -> Dict[str, Any]:
         """
         Get a dictionary representing the block
-        All "global references" such a as Conts, Var and DiffVar are stored in the class for later
+        All global constant, variable, and differential-variable references are retained for later serialization.
         :param blk: Block
         :param main: is it the main block?
         :return: Dictionary representing the block
@@ -1585,7 +1584,7 @@ class BlockParser:
             else:
                 # Rebuild PF-exposed mappings using the stable symbolic
                 # identity. A non-null UID that is absent from both factory
-                # dictionaries is a broken persisted reference and matters to
+                # dictionaries is a broken persisted-data reference and matters to
                 # the user even though parsing can continue without it.
                 var_in_varfactory: Var | None = self._find_var_or_diff_var_by_non_mutable_uid(var_uid)
                 if var_in_varfactory is not None:
@@ -1807,9 +1806,12 @@ def duplicate_var(var_factory: VarFactory, old_to_new_var: Dict[int, Var], var: 
         if var.uid in old_to_new_var:
             new_var = old_to_new_var[var.uid]
         else:
-            base_var_new: Var | None = None
             if var.base_var is not None:
-                base_var_new = duplicate_required_var(var_factory, old_to_new_var, var.base_var)
+                base_var_new: Var = duplicate_required_var(
+                    var_factory,
+                    old_to_new_var,
+                    var.base_var,
+                )
 
                 # Differential variables must be linked to the cloned base variable. Passing the
                 # original differential pointer here would reconnect the new chain to the source.
@@ -1919,9 +1921,9 @@ def duplicate_condition(
     :return: Condition rebuilt against the resolved symbolic mapping.
     """
     if isinstance(condition, Comparison):
-        source_rhs: Expr | NUMBER = condition.rhs
+        source_rhs: Expr | int | float | complex = condition.rhs
         if isinstance(source_rhs, Expr):
-            target_rhs: Expr | NUMBER = duplicate_expr(
+            target_rhs: Expr | int | float | complex = duplicate_expr(
                 var_factory,
                 old_to_new_const,
                 old_to_new_var,
@@ -2560,25 +2562,40 @@ def duplicate_block(block: Block, var_factory: VarFactory | None) -> Block:
         return duplicated_block
 
 
-def compare_blocks(block1: Block, block2: Block, var_factory1: VarFactory, var_factory2: VarFactory, testing=False):
-    """
-    Create depp copy of a block
+def compare_blocks(
+        block1: Block,
+        block2: Block,
+        var_factory1: VarFactory,
+        var_factory2: VarFactory,
+        testing: bool = False,
+) -> bool:
+    """Compare the declarative symbolic content of two blocks.
+
     :param block1:
     :param block2:
-    :param var_factory:
-    :param testing:
-    :return:
+    :param var_factory1: Variable factory that owns ``block1`` references.
+    :param var_factory2: Variable factory that owns ``block2`` references.
+    :param testing: Backward-compatible diagnostic flag; equality semantics
+        remain identical in production and diagnostic callers.
+    :return: Whether both blocks produce the same persisted symbolic content.
     """
+    if testing:
+        # Diagnostic callers intentionally exercise the production equality
+        # path, so the flag does not select a weaker comparison algorithm.
+        pass
+    else:
+        pass
+
     # TODO: do not use dictionaries and compare directly using the block information
     saver1 = BlockSaver(var_factory1)
-    d1 = saver1.save_block(block1, main=False)
+    saver1.save_block(block1, main=False)
     const_save1 = saver1.get_const_to_save()
     vars_save1 = saver1.get_vars_to_save()
     diff_vars_save1 = saver1.get_diff_vars_to_save()
     blocks1 = saver1.get_blocks()
 
     saver2 = BlockSaver(var_factory2)
-    d2 = saver2.save_block(block2, main=False)
+    saver2.save_block(block2, main=False)
     const_save2 = saver2.get_const_to_save()
     vars_save2 = saver2.get_vars_to_save()
     diff_vars_save2 = saver2.get_diff_vars_to_save()

@@ -17,6 +17,7 @@ from VeraGridEngine.Utils.procedural_logic_contract import (
     ProceduralLogicData,
     ProceduralLogicEntryContract,
 )
+from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic import CmpOp, Comparison, Const, Expr, Var
 from VeraGridEngine.basic_structures import Vec
 from VeraGridEngine.enumerations import ProceduralLogicType
@@ -24,36 +25,134 @@ from VeraGridEngine.enumerations import ProceduralLogicType
 VarRemap = Dict[Expr | str, Expr]
 
 
-class ProceduralBlock(Protocol):
-    """Declare the symbolic block surface used by procedural logic."""
+def _read_procedural_expression_record(
+        data: ProceduralLogicData,
+        field_name: str,
+) -> ProceduralLogicData:
+    """Read one required declarative symbolic-expression record.
 
-    state_vars: List[Var]
-    algebraic_vars: List[Var]
-    diff_vars: List[Var]
-    in_vars: List[Var]
-    out_vars: List[Var]
-    event_dict: Dict[Var, Expr | Const]
-    mode_dict: Dict[Var, Expr | Const]
-    children: List["ProceduralBlock"]
-    procedural_logic: Iterable[ProceduralLogicEntryContract[Expr]]
+    Field names are normalized into an independent typed mapping so arbitrary
+    imported keys cannot cross the procedural reconstruction boundary.
 
-    def get_all_blocks(self) -> Iterable["ProceduralBlock"]:
-        """Return this block and every nested child.
+    :param data: Declarative procedural-logic entry.
+    :param field_name: Required field containing one symbolic record.
+    :return: Validated symbolic record with string field names.
+    """
+    raw_record: object = data.get(field_name, None)
+    if isinstance(raw_record, dict):
+        record: ProceduralLogicData = dict()
+        raw_key: object
+        raw_value: object
+        for raw_key, raw_value in raw_record.items():
+            if isinstance(raw_key, str):
+                record[raw_key] = raw_value
+            else:
+                raise TypeError(
+                    f"Procedural field '{field_name}' must use string keys"
+                )
+        else:
+            pass
+        return record
+    else:
+        raise TypeError(
+            f"Procedural field '{field_name}' must be a declarative mapping"
+        )
 
-        :return: Iterable block hierarchy.
-        """
-        ...
+
+def _read_finite_procedural_float(
+        data: ProceduralLogicData,
+        field_name: str,
+) -> float:
+    """Read one required finite numeric procedural declaration.
+
+    :param data: Declarative procedural-logic entry.
+    :param field_name: Required numeric field.
+    :return: Finite floating-point value.
+    """
+    raw_value: object = data.get(field_name, None)
+    if isinstance(raw_value, (float, int)) and not isinstance(raw_value, bool):
+        numeric_value: float = float(raw_value)
+        if math.isfinite(numeric_value):
+            return numeric_value
+        else:
+            raise ValueError(
+                f"Procedural field '{field_name}' must be finite"
+            )
+    else:
+        raise TypeError(
+            f"Procedural field '{field_name}' must be numeric"
+        )
+
+
+def _read_procedural_integer(
+        data: ProceduralLogicData,
+        field_name: str,
+) -> int:
+    """Read one required integer procedural declaration.
+
+    :param data: Declarative procedural-logic entry.
+    :param field_name: Required integer field.
+    :return: Exact integer value.
+    """
+    raw_value: object = data.get(field_name, None)
+    if isinstance(raw_value, int) and not isinstance(raw_value, bool):
+        return raw_value
+    else:
+        raise TypeError(
+            f"Procedural field '{field_name}' must be an integer"
+        )
 
 
 class ProceduralProblem(Protocol):
     """Declare the EMT surface required by procedural runtime logic."""
 
-    uid2idx_vars: Dict[int, int]
-    uid2idx_event_params: Dict[int, int]
-    uid2idx_params: Dict[int, int]
-    event_params_values: Vec
-    glob_time: Var
-    sys_block: ProceduralBlock
+    @property
+    def uid2idx_vars(self) -> Dict[int, int]:
+        """Return compiled state-variable indexes keyed by symbolic UID.
+
+        :return: State-vector indexes keyed by stable symbolic UID.
+        """
+        ...
+
+    @property
+    def uid2idx_event_params(self) -> Dict[int, int]:
+        """Return mutable runtime-parameter indexes keyed by symbolic UID.
+
+        :return: Runtime-parameter indexes keyed by stable symbolic UID.
+        """
+        ...
+
+    @property
+    def uid2idx_params(self) -> Dict[int, int]:
+        """Return constant-parameter indexes keyed by symbolic UID.
+
+        :return: Constant-parameter indexes keyed by stable symbolic UID.
+        """
+        ...
+
+    @property
+    def event_params_values(self) -> Vec:
+        """Return the current mutable runtime-parameter vector.
+
+        :return: Runtime values updated by procedural boundary logic.
+        """
+        ...
+
+    @property
+    def glob_time(self) -> Var:
+        """Return the symbolic variable representing global solver time.
+
+        :return: Canonical symbolic solver-time variable.
+        """
+        ...
+
+    @property
+    def sys_block(self) -> Block:
+        """Return the canonical root block compiled by the runtime problem.
+
+        :return: Root block owning all attached procedural declarations.
+        """
+        ...
 
     def get_parameters_values(self) -> List[Const]:
         """Return constant parameter values in compiled order."""
@@ -111,20 +210,42 @@ def _expr_like_from_dict(data: ProceduralLogicData) -> Expr | Comparison:
     :param data: Serialized expression dictionary.
     :return: Reconstructed symbolic expression or comparison.
     """
-    kind: str = str(data.get("kind", "Expr"))
+    raw_kind: object = data.get("kind", "Expr")
+    if isinstance(raw_kind, str):
+        kind: str = raw_kind
+    else:
+        raise TypeError("Procedural expression kind must be a string")
     if kind == "Expr":
-        return Expr.from_dict(data["expr"])
+        return Expr.from_dict(
+            _read_procedural_expression_record(data, "expr")
+        )
 
     if kind == "Scalar":
-        return Const(float(data["value"]))
+        return Const(_read_finite_procedural_float(data, "value"))
 
     if kind == "Comparison":
-        rhs_raw: object = data["rhs"]
-        rhs: Expr | float | int = Expr.from_dict(rhs_raw) if bool(data.get("rhs_is_expr", False)) else rhs_raw
-        op_text: str = str(data["op"])
+        rhs_is_expr_raw: object = data.get("rhs_is_expr", None)
+        if isinstance(rhs_is_expr_raw, bool):
+            rhs_is_expr: bool = rhs_is_expr_raw
+        else:
+            raise TypeError("Procedural comparison expression flag must be boolean")
+        if rhs_is_expr:
+            rhs: Expr | float | int = Expr.from_dict(
+                _read_procedural_expression_record(data, "rhs")
+            )
+        else:
+            rhs = _read_finite_procedural_float(data, "rhs")
+
+        op_raw: object = data.get("op", None)
+        if isinstance(op_raw, str):
+            op_text: str = op_raw
+        else:
+            raise TypeError("Procedural comparison operator must be a string")
 
         return Comparison(
-            lhs=Expr.from_dict(data["lhs"]),
+            lhs=Expr.from_dict(
+                _read_procedural_expression_record(data, "lhs")
+            ),
             op=CmpOp(op_text),
             rhs=rhs,
         )
@@ -198,8 +319,7 @@ def _get_expr_like_field(data: ProceduralLogicData, key: str) -> ProceduralLogic
     :param key: Field name containing one serialized expression.
     :return: Serialized expression dictionary.
     """
-    field_data: ProceduralLogicData = data[key]
-    return field_data
+    return _read_procedural_expression_record(data, key)
 
 
 def _coerce_var_name(var_or_name: Var | str) -> str:
@@ -457,7 +577,7 @@ class ProceduralNumericEvaluator:
         :param params: Runtime parameter vector.
         :return: Numeric expression value.
         """
-        return self._logic._eval_numeric(
+        return self._logic.evaluate_numeric_expression(
             expr=self._expression,
             t=t,
             x=x,
@@ -613,7 +733,7 @@ class ProceduralLogicBase(ProceduralLogicEntryContract[Expr]):
         """
         return float(t if self._sample_time is None else self._sample_time)
 
-    def _eval_numeric(
+    def evaluate_numeric_expression(
             self,
             expr: Expr | Comparison | float | int | bool,
             t: float,
@@ -717,7 +837,7 @@ class ProceduralLogicBase(ProceduralLogicEntryContract[Expr]):
         :param params: Runtime parameter vector.
         :return: True when the expression evaluates above 0.5.
         """
-        return self._eval_numeric(expr, t, x, params) > 0.5
+        return self.evaluate_numeric_expression(expr, t, x, params) > 0.5
 
     def _build_numeric_evaluator(
             self,
@@ -742,7 +862,7 @@ class ConditionalDiagnosticLogic(ProceduralLogicBase):
 
     :param condition_expr: Boolean expression that activates the diagnostic.
     :param message: Exact source diagnostic text.
-    :param initialization_only: Whether PowerFactory evaluates it only during initialisation.
+    :param initialization_only: Whether PowerFactory evaluates it only during initialization.
     :param name: Optional diagnostic display name.
     """
 
@@ -760,7 +880,7 @@ class ConditionalDiagnosticLogic(ProceduralLogicBase):
 
         :param condition_expr: Boolean expression that activates the diagnostic.
         :param message: Exact diagnostic text.
-        :param initialization_only: Whether this is an initialisation-only ``outfix`` declaration.
+        :param initialization_only: Whether this is an initialization-only ``outfix`` declaration.
         :param name: Optional diagnostic display name.
         :return: None.
         """
@@ -892,16 +1012,21 @@ class DelayedSwitchEventLogic(ProceduralLogicBase):
         :param params: Runtime parameter vector updated in place.
         :return: None.
         """
-        trigger_high: bool = self._eval_numeric(self.trigger_expr, t, x, params) > 0.0
+        trigger_high: bool = self.evaluate_numeric_expression(self.trigger_expr, t, x, params) > 0.0
         if not self.initialized:
             self.initialized = True
             self.trigger_was_high = trigger_high
         else:
             rising_edge: bool = trigger_high and not self.trigger_was_high
-            guard_enabled: bool = self._eval_numeric(self.guard_expr, t, x, params) >= 0.5
+            guard_enabled: bool = self.evaluate_numeric_expression(self.guard_expr, t, x, params) >= 0.5
             if rising_edge and guard_enabled and not self.fired and self.pending_event_time is None:
-                delay: float = max(0.0, self._eval_numeric(self.delay_expr, t, x, params))
-                self.pending_event_time = self._get_sample_time(t) + delay
+                effective_delay_seconds: float = max(
+                    0.0,
+                    self.evaluate_numeric_expression(self.delay_expr, t, x, params),
+                )
+                self.pending_event_time = (
+                    self._get_sample_time(t) + effective_delay_seconds
+                )
             else:
                 pass
             self.trigger_was_high = trigger_high
@@ -964,7 +1089,7 @@ class FixedSampleLogic(ProceduralLogicBase):
 
     def update(self, t: float, x: Vec, params: Vec) -> None:
         """
-        Sample the condition once and keep it fixed afterwards.
+        Sample the condition once and keep it fixed afterward.
 
         :param t: Current solver time.
         :param x: Accepted state vector.
@@ -1183,8 +1308,11 @@ class TimeDelayLogic(ProceduralLogicBase):
 
     def update(self, t: float, x: Vec, params: Vec) -> None:
         sample_time = self._get_sample_time(t)
-        source_value = self._eval_numeric(self.source_expr, t, x, params)
-        delay_value = max(0.0, self._eval_numeric(self.delay_expr, t, x, params))
+        source_value = self.evaluate_numeric_expression(self.source_expr, t, x, params)
+        delay_value = max(
+            0.0,
+            self.evaluate_numeric_expression(self.delay_expr, t, x, params),
+        )
 
         _append_history_sample(self.history, sample_time, source_value)
 
@@ -1238,9 +1366,15 @@ class MovingAverageLogic(ProceduralLogicBase):
 
     def update(self, t: float, x: Vec, params: Vec) -> None:
         sample_time = self._get_sample_time(t)
-        source_value = self._eval_numeric(self.source_expr, t, x, params)
-        delay_value = max(0.0, self._eval_numeric(self.delay_expr, t, x, params))
-        window_value = max(0.0, self._eval_numeric(self.window_expr, t, x, params))
+        source_value = self.evaluate_numeric_expression(self.source_expr, t, x, params)
+        delay_value = max(
+            0.0,
+            self.evaluate_numeric_expression(self.delay_expr, t, x, params),
+        )
+        window_value = max(
+            0.0,
+            self.evaluate_numeric_expression(self.window_expr, t, x, params),
+        )
 
         _append_history_sample(self.history, sample_time, source_value)
 
@@ -1305,9 +1439,9 @@ class GradientLimiterLogic(ProceduralLogicBase):
 
     def update(self, t: float, x: Vec, params: Vec) -> None:
         sample_time = self._get_sample_time(t)
-        source_value = self._eval_numeric(self.source_expr, t, x, params)
-        lower_rate = self._eval_numeric(self.lower_rate_expr, t, x, params)
-        upper_rate = self._eval_numeric(self.upper_rate_expr, t, x, params)
+        source_value = self.evaluate_numeric_expression(self.source_expr, t, x, params)
+        lower_rate = self.evaluate_numeric_expression(self.lower_rate_expr, t, x, params)
+        upper_rate = self.evaluate_numeric_expression(self.upper_rate_expr, t, x, params)
 
         if not self.initialized or self.last_time is None:
             self.held_value = source_value
@@ -1477,7 +1611,7 @@ class AnalogFlipFlopLogic(ProceduralLogicBase):
         :return: None
         """
         # Evaluate the analog input and the set/reset conditions first.
-        input_value = self._eval_numeric(self.input_expr, t, x, params)
+        input_value = self.evaluate_numeric_expression(self.input_expr, t, x, params)
         set_on = self._eval_bool(self.set_expr, t, x, params)
         reset_on = self._eval_bool(self.reset_expr, t, x, params)
 
@@ -1602,7 +1736,7 @@ class PickupDropoffLogic(ProceduralLogicBase):
         :param params: Runtime parameter vector.
         :return: Non-negative evaluated delay.
         """
-        return max(0.0, self._eval_numeric(expr, t, x, params))
+        return max(0.0, self.evaluate_numeric_expression(expr, t, x, params))
 
     def update(self, t: float, x: Vec, params: Vec) -> None:
         """
@@ -1750,7 +1884,7 @@ class ResetOnRisingEdgeLogic(ProceduralLogicBase):
             return
 
         if (not self.last_reset_high) and reset_high:
-            reset_value = self._eval_numeric(self.value_expr, t, x, params)
+            reset_value = self.evaluate_numeric_expression(self.value_expr, t, x, params)
             if self.target_state_idx >= 0:
                 x[self.target_state_idx] = reset_value
             else:
@@ -2100,7 +2234,7 @@ def startup_handover(mode: Var | str, t_enable: Var | str, name: str = "") -> St
         name=mode_name if name == "" else name,
     )
 
-def _iter_block_vars(block: ProceduralBlock) -> List[Var]:
+def _iter_block_vars(block: Block) -> List[Var]:
     """
     Collect all variables reachable from one block tree.
 
@@ -2122,7 +2256,7 @@ def _iter_block_vars(block: ProceduralBlock) -> List[Var]:
     return vars_found
 
 
-def _find_var_by_name(block: ProceduralBlock, var_name: str) -> Var:
+def _find_var_by_name(block: Block, var_name: str) -> Var:
     """
     Find one symbolic variable by name inside a block tree.
 
@@ -2153,7 +2287,7 @@ def _find_var_by_name(block: ProceduralBlock, var_name: str) -> Var:
 
 
 def _find_var_by_uid_optional(
-        block: ProceduralBlock,
+        block: Block,
         var_uid: int,
 ) -> Var | None:
     """Return one exact variable by canonical UID.
@@ -2173,7 +2307,7 @@ def _find_var_by_uid_optional(
 
 
 def _find_var_by_name_optional(
-        block: ProceduralBlock,
+        block: Block,
         var_name: str,
 ) -> Var | None:
     """
@@ -2939,11 +3073,11 @@ class ValveStateLogic(ProceduralLogicBase):
 
 class ThreePhaseCarrierPwmLogic(ProceduralLogicBase):
     """
-    Regular-sampled three-phase carrier PWM logic.
+    Regularly sampled three-phase carrier PWM logic.
 
     The logic samples the modulation references at each carrier half-period,
     computes the exact gate transitions inside that interval, and stores the gate
-    values as retained runtime modes. The symbolic DAE therefore sees piecewise-
+    values as retained runtime modes. The symbolic DAE therefore sees piecewise
     constant gate parameters instead of symbolic comparator expressions.
     """
 
@@ -3857,7 +3991,10 @@ def _delayed_switch_event_logic_from_dict(
         delay_expr=_expr_like_from_dict(_get_expr_like_field(data, "delay_expr")),
         target_device_idtag=str(data["target_device_idtag"]),
         target_switch_idtag=str(data["target_switch_idtag"]),
-        target_terminal_index=int(data["target_terminal_index"]),
+        target_terminal_index=_read_procedural_integer(
+            data,
+            "target_terminal_index",
+        ),
         initial_closed=bool(data["initial_closed"]),
         command_closed=bool(data["command_closed"]),
         name=str(data.get("name", "")),
@@ -4000,9 +4137,15 @@ def _delayed_threshold_latch_logic_from_dict(data: ProceduralLogicData) -> Delay
     :return: Delayed-threshold-latch procedural logic entry.
     """
     reset_delay_raw: object = data.get("reset_delay", None)
-    reset_delay_value: Optional[float] = None if reset_delay_raw is None else float(reset_delay_raw)
-    threshold_value: float = float(data["threshold"])
-    delay_value: float = float(data["delay"])
+    if reset_delay_raw is None:
+        reset_delay_value: Optional[float] = None
+    else:
+        reset_delay_value = _read_finite_procedural_float(
+            data,
+            "reset_delay",
+        )
+    threshold_value: float = _read_finite_procedural_float(data, "threshold")
+    delay_value: float = _read_finite_procedural_float(data, "delay")
     return DelayedThresholdLatchLogic(
         monitored_var_name=str(data["monitored_var_name"]),
         mode_var_name=str(data["mode_var_name"]),
@@ -4185,15 +4328,23 @@ def procedural_logic_from_dict(
     return normalized_entries
 
 
-def clone_procedural_logic_entries(entries: List[ProceduralLogicBase], var_mapping: VarRemap) -> List[ProceduralLogicBase]:
-    """
-    Clone procedural logic entries under a variable remapping.
+def clone_procedural_logic_entries(
+        entries: Iterable[ProceduralLogicEntryContract[Expr]],
+        var_mapping: VarRemap,
+) -> List[ProceduralLogicEntryContract[Expr]]:
+    """Clone procedural logic entries under a variable remapping.
 
     :param entries: Source procedural logic entries.
     :param var_mapping: Mapping from old variables/names to remapped expressions.
     :return: Remapped procedural logic entries.
     """
-    return [entry.remap(var_mapping) for entry in entries]
+    remapped_entries: List[ProceduralLogicEntryContract[Expr]] = list()
+    entry: ProceduralLogicEntryContract[Expr]
+    for entry in entries:
+        remapped_entries.append(entry.remap(var_mapping))
+    else:
+        pass
+    return remapped_entries
 
 
 class ProceduralLogicCodec(ProceduralLogicCodecContract[Expr]):
@@ -4222,7 +4373,7 @@ def build_boundary_updater_from_block(problem: ProceduralProblem) -> Optional[Bl
     :return: Boundary updater or None.
     """
     entries: List[ProceduralLogicBase] = list()
-    block: ProceduralBlock
+    block: Block
     contract_entry: ProceduralLogicEntryContract[Expr]
     for block in problem.sys_block.get_all_blocks():
         for contract_entry in block.procedural_logic:
