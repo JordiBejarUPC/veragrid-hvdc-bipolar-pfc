@@ -11,11 +11,13 @@ from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.Simulations.PowerFlow.power_flow_options import PowerFlowOptions
 from VeraGridEngine.Simulations.results_table import ResultsTable
 from VeraGridEngine.Simulations.results_template import ResultsTemplate, ResultsProperty
-from VeraGridEngine.enumerations import ResultTypes, DeviceType, SimulationTypes, StudyResultsType
+from VeraGridEngine.enumerations import (ResultTypes, DeviceType, StudyResultsType, SimulationTypes,
+                                         ShuntControlMode, GeneratorControlMode)
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Compilers.circuit_to_data import compile_numerical_circuit_at
 from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.helm_power_flow import (helm_coefficients_josep,
                                                                                    sigma_function)
+from VeraGridEngine.Simulations.SigmaAnalysis.sigma_dpr import DprSigmaResult, sigma_dpr
 from VeraGridEngine.Simulations.driver_template import DriverTemplate
 from VeraGridEngine.basic_structures import Vec, StrVec, CxVec
 
@@ -175,7 +177,7 @@ class SigmaAnalysisResults(ResultsTemplate):
 
         fig.canvas.mpl_connect("motion_notify_event", hover)
 
-    def mdl(self, result_type: ResultTypes, indices=None, names=None) -> Union[None, "ResultsTable"]:
+    def mdl(self, result_type: ResultTypes, indices=None, names=None) -> ResultsTable | None:
         """
 
         :param result_type:
@@ -256,12 +258,14 @@ class SigmaAnalysisResults(ResultsTemplate):
 
 def multi_island_sigma(multi_circuit: MultiCircuit,
                        options: PowerFlowOptions,
-                       logger=Logger()) -> "SigmaAnalysisResults":
+                       logger: Logger = Logger(),
+                       classical_sigma: bool = False) -> SigmaAnalysisResults:
     """
     Multiple islands power flow (this is the most generic power flow function)
     :param multi_circuit: MultiCircuit instance
     :param options: PowerFlowOptions instance
     :param logger: list of events to add to
+    :param classical_sigma: Use the original single-embedding HELM sigma instead of DPR path sigma.
     :return: PowerFlowResults instance
     """
     n = len(multi_circuit.buses)
@@ -321,14 +325,23 @@ def multi_island_sigma(multi_circuit: MultiCircuit,
 
         S0 = island.get_power_injections_pu()
         Sbus = S0 + Shvdc[island.bus_data.original_idx]
-        indices = island.get_simulation_indices(Sbus=Sbus, force_only_pq_pv_vd_types=True)
+        if classical_sigma:
+            indices = island.get_simulation_indices(Sbus=Sbus, force_only_pq_pv_vd_types=True)
+        else:
+            # DPR sigma can use the same remote-voltage and control-aware bus partitions as DPR power flow.
+            indices = island.get_simulation_indices(Sbus=Sbus, force_only_pq_pv_vd_types=False)
 
         if len(indices.vd) > 0:
 
             adm = island.get_admittance_matrices()
             adms = island.get_series_admittance_matrices()
 
-            if len(indices.pv) + len(indices.pq) + len(indices.vd) == island.nbus:
+            if classical_sigma:
+                run_classical_sigma: bool = len(indices.pv) + len(indices.pq) + len(indices.vd) == island.nbus
+            else:
+                run_classical_sigma = False
+
+            if run_classical_sigma:
 
                 # V, converged, norm_f, Scalc, iter_, elapsed, Sig_re, Sig_im
                 U, X, Q, V, iter_, converged = helm_coefficients_josep(Ybus=adm.Ybus,
@@ -361,7 +374,6 @@ def multi_island_sigma(multi_circuit: MultiCircuit,
                         sig_im = np.zeros(n, dtype=float)
                 except np.linalg.LinAlgError:
                     print('numpy.linalg.LinAlgError: Matrix is singular to machine precision.')
-                    # sigma = np.zeros(n, dtype=complex)
                     sig_re = np.zeros(n, dtype=float)
                     sig_im = np.zeros(n, dtype=float)
 
@@ -379,7 +391,57 @@ def multi_island_sigma(multi_circuit: MultiCircuit,
                 # merge the results from this island
                 results.apply_from_island(island_results, island.bus_data.original_idx)
             else:
-                logger.add_info("Handled bus types don't match")
+                if classical_sigma:
+                    logger.add_info("Handled bus types don't match")
+                else:
+                    # DPR sigma follows the controlled DPR power-flow path. Control changes are model restarts, so the
+                    # sigma values are computed from the accepted DPR segments of the final settled controlled model.
+                    Qmax: Vec
+                    Qmin: Vec
+                    Qmax, Qmin = island.get_reactive_power_limits()
+                    dpr_result: DprSigmaResult = sigma_dpr(
+                        nc=island,
+                        Ybus=adm.Ybus,
+                        Yshunt_bus=adm.Yshunt_bus,
+                        Yseries=adms.Yseries,
+                        V0=island.bus_data.Vbus,
+                        S0=Sbus,
+                        Ysh0=adms.Yshunt,
+                        pq=indices.pq,
+                        pv=indices.pv,
+                        vd=indices.vd,
+                        no_slack=indices.no_slack,
+                        tolerance=options.tolerance,
+                        max_coefficients=options.max_iter,
+                        restart_order=6,
+                        max_restarts=20,
+                        use_classical_germ=False,
+                        control_q=options.control_Q,
+                        pqv=indices.pqv,
+                        p=indices.p,
+                        Qmin=Qmin,
+                        Qmax=Qmax,
+                        control_discrete_shunts=np.any(
+                            island.shunt_data.control_mode_int == ShuntControlMode.Discrete.idx()),
+                        control_qv_droop=np.any(
+                            island.generator_data.control_mode_int == GeneratorControlMode.QVDroop.idx()),
+                        distributed_slack=options.distributed_slack,
+                        bus_installed_power=island.bus_data.installed_power,
+                        controls_tol=options.controls_start_tolerance,
+                        verbose=0,
+                        logger=logger
+                    )
+
+                    island_results = SigmaAnalysisResults(n=island.bus_data.nbus)
+                    island_results.lambda_value = 1.0
+                    island_results.Sbus = Sbus
+                    island_results.sigma_re = dpr_result.sigma_re
+                    island_results.sigma_im = dpr_result.sigma_im
+                    island_results.distances = dpr_result.distances
+                    island_results.converged = dpr_result.converged
+
+                    # merge the results from this island
+                    results.apply_from_island(island_results, island.bus_data.original_idx)
         else:
             logger.add_info('No slack nodes in the island', str(i))
 
@@ -460,22 +522,25 @@ def sigma_distance(sigma_real, sigma_imag) -> Vec:
 class SigmaAnalysisDriver(DriverTemplate):
     __slots__ = (
         "options",
+        "classical_sigma",
         "convergence_reports",
     )
 
     name = 'Sigma Analysis'
     tpe = SimulationTypes.SigmaAnalysis_run
 
-    def __init__(self, grid: MultiCircuit, options: PowerFlowOptions):
+    def __init__(self, grid: MultiCircuit, options: PowerFlowOptions, classical_sigma: bool = True):
         """
         PowerFlowDriver class constructor
         :param grid: MultiCircuit instance
         :param options: PowerFlowOptions instance
+        :param classical_sigma: Use the original single-embedding HELM sigma instead of DPR path sigma.
         """
         DriverTemplate.__init__(self, grid=grid)
 
         # Options to use
         self.options = options
+        self.classical_sigma = classical_sigma
 
         self.results: Union[None, SigmaAnalysisResults] = None
 
@@ -500,7 +565,8 @@ class SigmaAnalysisDriver(DriverTemplate):
         self.tic()
         self.results = multi_island_sigma(multi_circuit=self.grid,
                                           options=self.options,
-                                          logger=self.logger)
+                                          logger=self.logger,
+                                          classical_sigma=self.classical_sigma)
         self.toc()
 
     def cancel(self):

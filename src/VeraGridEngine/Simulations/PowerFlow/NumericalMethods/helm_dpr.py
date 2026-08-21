@@ -6,14 +6,26 @@
 # AUTHORS: Josep Fanals Batllori and Santiago Peñate Vera
 # CONTACT:  u1946589@campus.udg.edu and santiago.penate.vera@gmail.com
 # thanks to Llorenç Fanals Batllori for his help at coding
-import pandas as pd
+"""
+DPRHEM power-flow solver.
+
+This module implements VeraGrid's Dynamic Power Restart HELM variant and the remote-voltage ``PVQ/P`` extension.
+The comments in the coefficient code refer to these two papers:
+
+* Dynamic power restart HELM / DPRHEM, used here as the shifted-germ restart strategy:
+  https://www.sciencedirect.com/science/article/pii/S0142061525004715
+* Remote voltage control HELM, used here for the embedded ``PVQ/P`` bus equations:
+  https://doi.org/10.1109/TSG.2019.2901865
+
+The important modelling rule is that every DPR segment solves one fixed algebraic model. Discrete controls are
+therefore applied only between fixed-model DPR solves, never inside a coefficient recurrence.
+"""
 import numpy as np
 import numba as nb
 import time
-from warnings import warn
 from scipy.sparse import csc_matrix, coo_matrix
 from scipy.sparse import hstack as hs, vstack as vs
-from scipy.sparse.linalg import spsolve, factorized
+from scipy.sparse.linalg import factorized
 
 from VeraGridEngine.DataStructures.numerical_circuit import NumericalCircuit
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results import NumericPowerFlowResults
@@ -25,57 +37,13 @@ from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.discrete_controls imp
 from VeraGridEngine.basic_structures import Logger, CscMat, CxVec, IntVec, Vec
 
 
-def epsilon(Sn, n, E):
-    """
-    Fast recursive Wynn's epsilon algorithm from:
-        NONLINEAR SEQUENCE TRANSFORMATIONS FOR THE ACCELERATION OF CONVERGENCE
-        AND THE SUMMATION OF DIVERGENT SERIES
-
-        by Ernst Joachim Weniger
-    Args:
-        Sn: sum of coefficients
-        n: order
-        E: Coefficients structure copy that is modified in this algorithm
-
-    Returns:
-
-    """
-    Zero = complex(0)
-    One = complex(1)
-    Tiny = np.finfo(complex).tiny  # np.finfo(complex).min
-    Huge = np.finfo(complex).max
-
-    E[n] = Sn
-
-    if n == 0:
-        estim = Sn
-    else:
-        AUX2 = Zero
-
-        for j in range(n, 0, -1):  # range from n to 1 (both included)
-            AUX1 = AUX2
-            AUX2 = E[j - 1]
-            DIFF = E[j] - AUX2
-
-            if abs(DIFF) <= Tiny:
-                E[j - 1] = Huge
-            else:
-                if DIFF == 0:
-                    DIFF = Tiny
-                E[j - 1] = AUX1 + One / DIFF
-
-        if np.mod(n, 2) == 0:
-            estim = E[0]
-        else:
-            estim = E[1]
-
-    return estim, E
-
-
 # @nb.njit("(c16[:])(i8, c16[:, :], f8)")
 def pade4all(order, coeff_mat, s=1.0):
     """
     Computes the "order" Padè approximant of the coefficients at the approximation point s
+
+    In DPRHEM this is only a local segment accelerator. It is not used to build one global Padé approximation across
+    restart boundaries because each restart changes the expansion center.
 
     Arguments:
         coeff_mat: coefficient matrix (order, buses)
@@ -140,6 +108,10 @@ def pade4all(order, coeff_mat, s=1.0):
 def conv1(A, B, c):
     """
     Performs the convolution of A* and B
+
+    DPRHEM keeps the reciprocal-conjugate series ``X(s) = 1 / conj(U(s))`` used by HELM. This convolution forms the
+    lower-order part of ``conj(U) * X``; the current-order term is handled explicitly after solving ``U[c]``.
+
     :param A: Coefficients matrix 1 (orders, buses)
     :param B: Coefficients matrix 2 (orders, buses)
     :param c: order of the coefficients
@@ -157,6 +129,10 @@ def conv1(A, B, c):
 def conv2(A, B, c, indices):
     """
     Performs the convolution of A and B
+
+    This is used in the PV and remote P recurrences for the already-known part of ``X(s) * Q(s)``. The current-order
+    unknown reactive coefficient is placed as a matrix unknown instead of being included in this convolution.
+
     :param A: Coefficients matrix 1 (orders, buses)
     :param B: Coefficients matrix 2 (orders, buses)
     :param c: order of the coefficients
@@ -175,6 +151,10 @@ def conv2(A, B, c, indices):
 def conv3(A, B, c, indices):
     """
     Performs the convolution of A and B*
+
+    This supports the voltage-magnitude equations from conventional PV HELM and from the remote-voltage paper's PVQ
+    buses. The matrix contains the current-order linear terms; this helper returns only lower-order products.
+
     :param A: Coefficients matrix 1 (orders, buses)
     :param B: Coefficients matrix 2 (orders, buses)
     :param c: order of the coefficients
@@ -190,8 +170,9 @@ def conv3(A, B, c, indices):
 
 # Dynamic Power Restart HELM (DPRHEM)
 #
-# This section intentionally lives in the same module as a full copy of the base HELM implementation.  The copied base
-# functions above make it easy to compare each modified DPRHEM step against Josep's original coefficient recursion.
+# The DPRHEM paper replaces one long HELM expansion by local expansions around accepted physical states. The local
+# segment recovers the target power direction from the current germ, then the outer restart loop accepts the best
+# candidate voltage and repeats. This is also where VeraGrid discrete controls can safely change the fixed model.
 # =====================================================================================================================
 from scipy.sparse import diags as dpr_diags
 
@@ -245,6 +226,51 @@ class DprSegmentResult:
         self.improved: bool = improved
 
 
+class DprCoefficientPath:
+    """
+    Result of a DPRHEM coefficient solve with the accepted restart path.
+
+    :param U: Last segment voltage coefficients in reduced no-slack coordinates.
+    :param X: Last segment reciprocal-conjugate voltage coefficients in reduced no-slack coordinates.
+    :param Q: Last segment reactive-power coefficients in reduced no-slack coordinates.
+    :param V: Final full voltage vector.
+    :param iterations: Total coefficient orders consumed by the fixed-model solve.
+    :param converged: True if the final voltage satisfies the requested tolerance.
+    :param segments: Accepted DPRHEM segments for this fixed algebraic model.
+    """
+
+    __slots__ = ("U", "X", "Q", "V", "iterations", "converged", "segments")
+
+    def __init__(self,
+                 U: np.ndarray,
+                 X: np.ndarray,
+                 Q: np.ndarray,
+                 V: CxVec,
+                 iterations: int,
+                 converged: bool,
+                 segments: list[DprSegmentResult]) -> None:
+        """
+        Build the DPRHEM coefficient path.
+
+        :param U: Last segment voltage coefficients in reduced no-slack coordinates.
+        :param X: Last segment reciprocal-conjugate voltage coefficients in reduced no-slack coordinates.
+        :param Q: Last segment reactive-power coefficients in reduced no-slack coordinates.
+        :param V: Final full voltage vector.
+        :param iterations: Total coefficient orders consumed by the fixed-model solve.
+        :param converged: True if the final voltage satisfies the requested tolerance.
+        :param segments: Accepted DPRHEM segments for this fixed algebraic model.
+        :return: None.
+        """
+
+        self.U: np.ndarray = U
+        self.X: np.ndarray = X
+        self.Q: np.ndarray = Q
+        self.V: CxVec = V
+        self.iterations: int = iterations
+        self.converged: bool = converged
+        self.segments: list[DprSegmentResult] = segments
+
+
 class DprAdmittanceControlView:
     """
     Hold the admittance references that discrete shunt control mutates.
@@ -286,6 +312,9 @@ def dpr_reduced_bus_indices(no_slack: IntVec,
     """
 
     pqpv_original: IntVec = no_slack.copy()
+
+    # DPR solves all non-slack voltage coefficients in one reduced vector. The remote-voltage paper adds P and PVQ
+    # bus types to the classical PQ/PV set, so all original index sets must be remapped into this same vector.
     pq_reduced: IntVec = np.searchsorted(pqpv_original, pq)
     pv_reduced: IntVec = np.searchsorted(pqpv_original, pv)
     pqv_reduced: IntVec = np.searchsorted(pqpv_original, pqv)
@@ -316,6 +345,9 @@ def dpr_power_mismatch(Ybus: CscMat,
 
     Scalc: CxVec = cf.compute_power(Ybus, V)
     q_idx: IntVec = np.r_[pq, pqv]
+
+    # The mismatch must match the algebraic model solved by the coefficient matrix:
+    # active power at every non-slack bus, reactive power at PQ/PVQ buses, and PVQ voltage magnitude constraints.
     fx: np.ndarray = np.r_[
         (Scalc - S0)[no_slack].real,
         (Scalc - S0)[q_idx].imag,
@@ -370,8 +402,21 @@ def dpr_safe_voltage_germ(V: CxVec, no_slack: IntVec) -> CxVec:
 
 
 def dpr_classical_no_load_germ(Yseries: CscMat, Vset: CxVec, sl: IntVec, no_slack: IntVec, pv: IntVec) -> CxVec:
-    """Paper-style classical germ: flat 1 p.u., with slack angle and PV magnitudes fixed."""
+    """
+    Build the flat classical HELM germ used when no voltage estimate is supplied.
 
+    The DPRHEM paper compares against a classical HELM-like flat start. For VeraGrid integration the normal path uses
+    ``use_classical_germ=False`` so stored/user voltage guesses can seed the first DPR segment.
+
+    :param Yseries: Series admittance matrix kept for interface symmetry with the shifted-germ path.
+    :param Vset: Voltage set-point vector.
+    :param sl: Slack bus indices.
+    :param no_slack: Non-slack bus indices.
+    :param pv: PV bus indices kept for interface symmetry.
+    :return: Safe full voltage germ.
+    """
+
+    # Use a pure flat state for all non-slack buses. Slack voltage carries the island angle reference.
     Vgerm: CxVec = np.ones_like(Vset, dtype=complex)
     Vgerm[sl] = Vset[sl]
 
@@ -459,11 +504,14 @@ def dpr_build_matrix(Yred: CscMat,
     """
 
     network_matrix: CscMat = (Yred + dpr_diags(Ysh, offsets=0, format="csc")).tocsc()
+
+    # DPRHEM shifts the embedding around a physical voltage germ. The initial physical power is therefore non-zero
+    # and contributes a diagonal coefficient multiplying conj(U[n]) on the left-hand side.
     gamma: CxVec = Sini_rhs / (np.conj(U0) * np.conj(U0))
     gamma_re: CscMat = dpr_diags(gamma.real, offsets=0, format="csc")
     gamma_im: CscMat = dpr_diags(gamma.imag, offsets=0, format="csc")
 
-    # Real form of A*U + gamma*conj(U), with unknown vector [U.real, U.imag, Qpv].
+    # Real form of A*U + gamma*conj(U), with unknown vector [U.real, U.imag, Qpv, Qp].
     upper_left: CscMat = network_matrix.real + gamma_re
     upper_right: CscMat = -network_matrix.imag + gamma_im
     lower_left: CscMat = network_matrix.imag + gamma_im
@@ -472,6 +520,10 @@ def dpr_build_matrix(Yred: CscMat,
     X0: CxVec = 1.0 / np.conj(U0)
     q_rows: IntVec = np.r_[pv, p]
     voltage_rows: IntVec = np.r_[pv, pqv]
+
+    # Unknown Q columns: local PV buses use their own Q unknowns; remote P buses use Q unknowns to enforce PVQ voltage.
+    # This is the one-to-one PVQ/P specialization of the participation-factor block in Eq. (39) of the remote-control
+    # HELM paper. A future multi-controller implementation would replace the identity-style P block by Kp,pvq.
     XIM: CscMat = coo_matrix((-X0[q_rows].imag, (q_rows, np.arange(np_control_q))),
                              shape=(npqpv, np_control_q)).tocsc()
     XRE: CscMat = coo_matrix((X0[q_rows].real, (q_rows, np.arange(np_control_q))),
@@ -538,6 +590,8 @@ def dpr_select_candidate(Ybus: CscMat,
 
         candidates: list[CxVec] = [Uscaled]
 
+        # The paper evaluates the segment at s=1. This restricted Padé fallback is only used at s=1 so it remains an
+        # approximant of the current local segment, not a cross-restart continuation object.
         if scale == 1.0 and order >= 4 and order % 2 == 0:
             try:
                 candidates.append(pade4all(order, U[:order + 1, :], s=scale))
@@ -549,6 +603,8 @@ def dpr_select_candidate(Ybus: CscMat,
             Vscaled[sl] = Vset[sl]
             Vscaled[pqpv_original] = Ucandidate
 
+            # Candidate acceptance is physical, not purely algebraic: it must reduce the actual VeraGrid mismatch and
+            # stay on the expected high-voltage branch according to the slack-relative angle guard.
             scaled_norm: float = dpr_power_mismatch(Ybus=Ybus,
                                                     V=Vscaled,
                                                     S0=S0,
@@ -640,6 +696,9 @@ def dpr_solve_segment(Ybus: CscMat,
     U: np.ndarray = np.zeros((max_order + 1, npqpv), dtype=complex)
     X: np.ndarray = np.zeros((max_order + 1, npqpv), dtype=complex)
     Q: np.ndarray = np.zeros((max_order + 1, npqpv), dtype=complex)
+
+    # Order zero is the DPR germ. All higher orders describe the local analytic segment from this accepted state toward
+    # the current fixed-model target powers.
     U[0, :] = U0
     X[0, :] = 1.0 / np.conj(U0)
 
@@ -680,7 +739,8 @@ def dpr_solve_segment(Ybus: CscMat,
             dval[pq_reduced] = (Sini_rhs[pq_reduced] * X_known[pq_reduced]
                                 + Sdir_pq_rhs * X[order - 1, pq_reduced])
 
-            # Remote controlled PVQ buses have fixed P, fixed Q and fixed voltage magnitude.
+            # Remote voltage paper Eq. (18): PVQ buses have fixed P, fixed Q and fixed voltage magnitude. The voltage
+            # magnitude constraint is added below as a separate real row, so this row is the complex power equation.
             dval[pqv_reduced] = (Sini_rhs[pqv_reduced] * X_known[pqv_reduced]
                                  + Sdir_pqv_rhs * X[order - 1, pqv_reduced])
 
@@ -689,11 +749,15 @@ def dpr_solve_segment(Ybus: CscMat,
                                 + Pdir_pv * X[order - 1, pv_reduced]
                                 - 1j * conv2(X, Q, order, pv_reduced))
 
-            # Remote P buses use unknown reactive power to enforce their associated PVQ voltage constraints.
+            # Remote voltage paper Eq. (19): P buses keep active power fixed and use their unknown reactive power to
+            # satisfy the associated PVQ voltage equation. This implementation supports the one-to-one participation
+            # case, so each P bus gets one local Q unknown.
             dval[p_reduced] = (Sini_rhs[p_reduced] * X_known[p_reduced]
                                + Pdir_p * X[order - 1, p_reduced]
                                - 1j * conv2(X, Q, order, p_reduced))
 
+            # PV and PVQ buses impose |V|^2 constraints. At order 1 the target appears explicitly; at higher orders
+            # only lower-order convolution terms remain on the right-hand side.
             if order == 1:
                 voltage_reduced: IntVec = np.r_[pv_reduced, pqv_reduced]
                 voltage_rhs: np.ndarray = vec_W[voltage_reduced] - (np.abs(U[0, voltage_reduced]) ** 2.0)
@@ -703,6 +767,8 @@ def dpr_solve_segment(Ybus: CscMat,
 
             RHS: np.ndarray = np.r_[dval.real, dval.imag, voltage_rhs]
             LHS: np.ndarray = mat_factorized(RHS)
+
+            # Decode the real sparse solve into complex voltage coefficients and reactive coefficients.
             U[order, :] = LHS[:npqpv] + 1j * LHS[npqpv:2 * npqpv]
             Q[order - 1, pv_reduced] = LHS[2 * npqpv:2 * npqpv + npv]
             Q[order - 1, p_reduced] = LHS[2 * npqpv + npv:]
@@ -744,6 +810,9 @@ def dpr_solve_segment(Ybus: CscMat,
                     ratio: float = dpr_residual_ratio(previous_norm=previous_norm,
                                                       candidate_norm=candidate_norm,
                                                       tolerance=tolerance)
+
+                    # Dynamic restart rule: stop the local segment when residual improvement slows or reverses. The
+                    # next segment starts from the best accepted physical voltage, as in the DPRHEM restart strategy.
                     slow_restart: bool = bool(baseline_ratio >= ratio > 0.0)
                     divergence_restart: bool = bool(ratio < 0.0)
                     restart_now: bool = bool((slow_restart or divergence_restart) and candidate_norm < current_norm)
@@ -783,15 +852,14 @@ def dpr_solve_segment(Ybus: CscMat,
     return result
 
 
-def helm_coefficients_dpr(Ybus: CscMat, Yseries: CscMat, V0: CxVec | None, Vset: CxVec, S0: CxVec, Ysh0: CxVec,
-                          pq: IntVec, pv: IntVec, pqv: IntVec, p: IntVec, sl: IntVec, no_slack: IntVec,
-                          tolerance: float = 1e-6, max_coeff: int = 30,
-                          restart_order: int = 6, max_restarts: int = 20,
-                          use_classical_germ: bool = False,
-                          verbose: bool = False, logger: Logger = None) -> tuple[np.ndarray, np.ndarray, np.ndarray,
-                                                                                  CxVec, int, bool]:
+def helm_coefficients_dpr_path(Ybus: CscMat, Yseries: CscMat, V0: CxVec | None, Vset: CxVec, S0: CxVec, Ysh0: CxVec,
+                               pq: IntVec, pv: IntVec, pqv: IntVec, p: IntVec, sl: IntVec, no_slack: IntVec,
+                               tolerance: float = 1e-6, max_coeff: int = 30,
+                               restart_order: int = 6, max_restarts: int = 20,
+                               use_classical_germ: bool = False,
+                               verbose: bool = False, logger: Logger = None) -> DprCoefficientPath:
     """
-    Compute DPRHEM coefficients and final voltage state.
+    Compute DPRHEM coefficients, final voltage state and accepted restart path.
 
     :param Ybus: Complete admittance matrix.
     :param Yseries: Series-only admittance matrix.
@@ -811,7 +879,7 @@ def helm_coefficients_dpr(Ybus: CscMat, Yseries: CscMat, V0: CxVec | None, Vset:
     :param use_classical_germ: Use the classical no-load germ instead of the supplied voltage estimate.
     :param verbose: Store debug information.
     :param logger: Logger object.
-    :return: Last segment U, X, Q, final voltage, total iterations and convergence flag.
+    :return: DPRHEM coefficient path for one fixed algebraic model.
     """
 
     nbus: int = Yseries.shape[0]
@@ -819,6 +887,7 @@ def helm_coefficients_dpr(Ybus: CscMat, Yseries: CscMat, V0: CxVec | None, Vset:
     Ulast: np.ndarray = np.zeros((1, npqpv), dtype=complex)
     Xlast: np.ndarray = np.zeros((1, npqpv), dtype=complex)
     Qlast: np.ndarray = np.zeros((1, npqpv), dtype=complex)
+    segments: list[DprSegmentResult] = list()
 
     if nbus < 2:
         Vbest: CxVec = V0.copy()
@@ -833,6 +902,8 @@ def helm_coefficients_dpr(Ybus: CscMat, Yseries: CscMat, V0: CxVec | None, Vset:
             p=p
         )
 
+        # The normal VeraGrid integration uses the supplied voltage estimate as the first DPR germ. The classical flat
+        # germ is retained for paper comparisons and direct experiments.
         Vtarget: CxVec = Vset if V0 is None else V0
 
         if use_classical_germ:
@@ -854,6 +925,8 @@ def helm_coefficients_dpr(Ybus: CscMat, Yseries: CscMat, V0: CxVec | None, Vset:
         can_continue: bool = True
         local_restart_order: int = restart_order if restart_order > 0 else max_coeff
 
+        # Outer DPR loop across local analytic segments. The fixed model is not changed here; only the expansion center
+        # changes from one accepted segment voltage to the next.
         while can_continue and not converged:
             remaining_order: int = max_coeff - iterations
             segment_order: int = min(local_restart_order, remaining_order) if remaining_order > 0 else 0
@@ -885,6 +958,8 @@ def helm_coefficients_dpr(Ybus: CscMat, Yseries: CscMat, V0: CxVec | None, Vset:
                 iterations += max(1, segment.iterations)
 
                 if segment.improved:
+                    # Accept the segment output as the next shifted germ. This is the DPRHEM "dynamic power restart".
+                    segments.append(segment)
                     Vbest = segment.V
                     current_norm = segment.norm_f
                     converged = segment.converged
@@ -903,7 +978,71 @@ def helm_coefficients_dpr(Ybus: CscMat, Yseries: CscMat, V0: CxVec | None, Vset:
             else:
                 can_continue = False
 
-    return Ulast, Xlast, Qlast, Vbest, iterations, converged
+    return DprCoefficientPath(U=Ulast,
+                              X=Xlast,
+                              Q=Qlast,
+                              V=Vbest,
+                              iterations=iterations,
+                              converged=converged,
+                              segments=segments)
+
+
+def helm_coefficients_dpr(Ybus: CscMat, Yseries: CscMat, V0: CxVec | None, Vset: CxVec, S0: CxVec, Ysh0: CxVec,
+                          pq: IntVec, pv: IntVec, pqv: IntVec, p: IntVec, sl: IntVec, no_slack: IntVec,
+                          tolerance: float = 1e-6, max_coeff: int = 30,
+                          restart_order: int = 6, max_restarts: int = 20,
+                          use_classical_germ: bool = False,
+                          verbose: bool = False, logger: Logger = None) -> tuple[np.ndarray, np.ndarray, np.ndarray,
+                                                                                  CxVec, int, bool]:
+    """
+    Compute DPRHEM coefficients and final voltage state.
+
+    This keeps the original tuple-returning interface. Use :func:`helm_coefficients_dpr_path` when the accepted DPR
+    restart segments are needed, for example by DPR sigma analysis.
+
+    :param Ybus: Complete admittance matrix.
+    :param Yseries: Series-only admittance matrix.
+    :param V0: Voltage estimate/set-point vector.
+    :param Vset: Voltage set-point vector.
+    :param S0: Specified complex bus powers.
+    :param Ysh0: Bus shunt admittance vector.
+    :param pq: Original PQ bus indices.
+    :param pv: Original PV bus indices.
+    :param pqv: Original PVQ bus indices.
+    :param p: Original P bus indices.
+    :param sl: Slack bus indices.
+    :param no_slack: Original non-slack bus indices.
+    :param tolerance: Target mismatch tolerance.
+    :param max_coeff: Total coefficient budget across restarts.
+    :param restart_order: Maximum coefficient order per segment.
+    :param max_restarts: Maximum number of DPRHEM restarts.
+    :param use_classical_germ: Use the classical no-load germ instead of the supplied voltage estimate.
+    :param verbose: Store debug information.
+    :param logger: Logger object.
+    :return: Last segment U, X, Q, final voltage, total iterations and convergence flag.
+    """
+
+    path: DprCoefficientPath = helm_coefficients_dpr_path(Ybus=Ybus,
+                                                          Yseries=Yseries,
+                                                          V0=V0,
+                                                          Vset=Vset,
+                                                          S0=S0,
+                                                          Ysh0=Ysh0,
+                                                          pq=pq,
+                                                          pv=pv,
+                                                          pqv=pqv,
+                                                          p=p,
+                                                          sl=sl,
+                                                          no_slack=no_slack,
+                                                          tolerance=tolerance,
+                                                          max_coeff=max_coeff,
+                                                          restart_order=restart_order,
+                                                          max_restarts=max_restarts,
+                                                          use_classical_germ=use_classical_germ,
+                                                          verbose=verbose,
+                                                          logger=logger)
+
+    return path.U, path.X, path.Q, path.V, path.iterations, path.converged
 
 
 def helm_dpr_fixed_model(nc: NumericalCircuit,
@@ -946,6 +1085,9 @@ def helm_dpr_fixed_model(nc: NumericalCircuit,
 
     start_time: float = time.time()
     Vset: CxVec = nc.bus_data.Vbus
+
+    # Fixed-model solve: these bus sets and matrices must remain constant for the whole coefficient computation.
+    # Control changes are handled only by the public helm_dpr wrapper after this function returns.
     active_pqv: IntVec = np.zeros(0, dtype=int) if pqv is None else pqv
     active_p: IntVec = np.zeros(0, dtype=int) if p is None else p
 
@@ -985,6 +1127,8 @@ def helm_dpr_fixed_model(nc: NumericalCircuit,
         iter_: int
         converged: bool
 
+        # Compute the DPR coefficients for one fixed algebraic model. This call may internally restart the HELM
+        # expansion center, but it does not apply discrete controls or rebuild the model.
         U, X, Q, V, iter_, converged = helm_coefficients_dpr(Ybus=Ybus,
                                                              Yseries=Yseries,
                                                              V0=V0,
@@ -1005,13 +1149,17 @@ def helm_dpr_fixed_model(nc: NumericalCircuit,
                                                              verbose=bool(verbose),
                                                              logger=logger)
 
-        # Pade across restart boundaries is not meaningful because each segment has its own germ.
+        # Padé across restart boundaries is not meaningful because each segment has its own germ. The argument remains
+        # for interface compatibility with the base HELM solver.
         if use_pade:
             use_pade = use_pade
         else:
             use_pade = use_pade
 
         Scalc: CxVec = cf.compute_power(Ybus, V)
+
+        # Recompute the final mismatch from the physical voltage because the accepted candidate may be a damped or
+        # Padé-evaluated point on the last local segment.
         norm_f: float = dpr_power_mismatch(Ybus=Ybus,
                                            V=V,
                                            S0=S0,
@@ -1130,6 +1278,9 @@ def helm_dpr(nc: NumericalCircuit,
     """
 
     start_time: float = time.time()
+
+    # Work on active copies so control updates do not mutate the caller's base matrices or base power vector. The
+    # public wrapper owns these mutable model states across control restarts.
     active_S0: CxVec = S0.copy()
     active_Ybus: CscMat = Ybus.copy()
     active_Yshunt_bus: CxVec = Yshunt_bus.copy()
@@ -1150,11 +1301,15 @@ def helm_dpr(nc: NumericalCircuit,
     qv_droop_control: QvDroopControlState | None = None
 
     if control_discrete_shunts:
+        # Discrete shunts change Ybus and shunt injections. The control view lets the existing control code update the
+        # active DPR matrices in place, then the wrapper restarts a fixed-model DPR solve from the accepted voltage.
         discrete_shunt_control = DiscreteShuntControlState(nc=nc)
     else:
         discrete_shunt_control = None
 
     if control_qv_droop:
+        # QV droop changes the specified bus injection S0. It is a model update, so it is applied only after DPR has
+        # reached a trustworthy residual for the current fixed model.
         qv_droop_control = QvDroopControlState(S0=active_S0, nc=nc)
     else:
         qv_droop_control = None
@@ -1192,6 +1347,9 @@ def helm_dpr(nc: NumericalCircuit,
         if solution.norm_f < controls_tol:
             if control_q and Qmin is not None and Qmax is not None and (len(active_pv) + len(active_p)) > 0:
                 Scalc_pu: CxVec = cf.compute_power(active_Ybus, solution.V)
+
+                # Reactive limits convert voltage-controlled generators to fixed-Q buses, just like the Newton
+                # formulation update. This changes the bus-type partition, so another fixed-model DPR solve is needed.
                 changed, active_pv, active_pq, active_pqv, active_p = control_q_inside_method(
                     Scalc=Scalc_pu,
                     S0=active_S0,
@@ -1229,6 +1387,9 @@ def helm_dpr(nc: NumericalCircuit,
 
             if distributed_slack and not slack_distributed and bus_installed_power is not None:
                 Scalc_pu = cf.compute_power(active_Ybus, solution.V)
+
+                # Slack redistribution changes target active injections. Apply it once, matching the existing HELM and
+                # linear solver behavior, then restart DPR from the accepted voltage.
                 ok, delta = compute_slack_distribution(
                     Scalc=Scalc_pu,
                     vd=vd,
@@ -1249,6 +1410,8 @@ def helm_dpr(nc: NumericalCircuit,
             control_restart += 1
             total_iterations += solution.iterations
             active_V0 = solution.V
+
+            # After the first control update we must restart from the accepted physical voltage, not from the flat germ.
             active_use_classical_germ = False
             solution = helm_dpr_fixed_model(
                 nc=nc,
