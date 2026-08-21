@@ -1,6 +1,7 @@
 import unittest
 import time
 import statistics
+from typing import Mapping
 
 import numpy as np
 
@@ -25,6 +26,40 @@ from VeraGridEngine.Utils.Symbolic.diagnostic import NewtonTraceCollector
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic import Comparison, Const, Expr, Var
 from VeraGridEngine.enumerations import DynamicIntegrationMethod
+
+
+def _read_benchmark_float(
+        statistics_data: Mapping[str, object],
+        field_name: str,
+) -> float:
+    """Read one numeric statistic from an offline benchmark result.
+
+    :param statistics_data: Benchmark fields produced by the local test run.
+    :param field_name: Required numeric statistic name.
+    :return: Statistic converted to floating-point representation.
+    """
+    raw_value: object = statistics_data.get(field_name, None)
+    if isinstance(raw_value, (float, int)) and not isinstance(raw_value, bool):
+        return float(raw_value)
+    else:
+        raise TypeError(f"Benchmark field '{field_name}' must be numeric")
+
+
+def _read_benchmark_integer(
+        statistics_data: Mapping[str, object],
+        field_name: str,
+) -> int:
+    """Read one exact integer statistic from an offline benchmark result.
+
+    :param statistics_data: Benchmark fields produced by the local test run.
+    :param field_name: Required integer statistic name.
+    :return: Exact integer statistic.
+    """
+    raw_value: object = statistics_data.get(field_name, None)
+    if isinstance(raw_value, int) and not isinstance(raw_value, bool):
+        return raw_value
+    else:
+        raise TypeError(f"Benchmark field '{field_name}' must be an integer")
 
 
 class GenericEmtProblem(EmtProblemTemplate):
@@ -161,11 +196,20 @@ def create_boolean_operator_system(vf: VarFactory) -> tuple[Block, dict[str, Var
     )
 
     block.procedural_logic = [
-        picdro(x_fast > 0.65, 1.0e-3, 0.0, output=trip_fast),
-        picdro(bool_and(x_fast > 0.45, x_slow > 0.30), 2.0e-3, 0.0, output=trip_and),
-        flipflop(bool_or(trip_fast > 0.5, trip_and > 0.5), 0.0, output=master_trip),
+        picdro(x_fast > 0.65, Const(1.0e-3), Const(0.0), output=trip_fast),
+        picdro(
+            bool_and(x_fast > 0.45, x_slow > 0.30),
+            Const(2.0e-3),
+            Const(0.0),
+            output=trip_and,
+        ),
+        flipflop(
+            bool_or(trip_fast > 0.5, trip_and > 0.5),
+            Const(0.0),
+            output=master_trip,
+        ),
         lastvalue(x_mem, output=x_mem_last),
-        reset(x_mem, master_trip > 0.5, 0.0),
+        reset(x_mem, master_trip > 0.5, Const(0.0)),
     ]
 
     return block, {
@@ -306,7 +350,7 @@ def _build_benchmark_case(builder) -> tuple[GenericEmtProblem, JitSymbolicSolver
         method=DynamicIntegrationMethod.DaeTrapezoidal,
         verbose=False,
     )
-    logic_snapshot = problem.sys_block._procedural_logic_to_dict()
+    logic_snapshot = problem.sys_block.serialize_procedural_logic_entries()
     return problem, solver, logic_snapshot
 
 
@@ -315,7 +359,7 @@ def _run_benchmark_simulation(
     solver: JitSymbolicSolver,
     logic_snapshot: list[dict[str, object]],
 ) -> dict[str, object]:
-    problem.sys_block.procedural_logic = Block._procedural_logic_from_dict(
+    problem.sys_block.procedural_logic = Block.reconstruct_procedural_logic_entries(
         data=logic_snapshot,
         procedural_logic_codec=ProceduralLogicCodec(),
     )
@@ -349,7 +393,7 @@ def benchmark_switch_formulation(builder, measured_runs: int = 3) -> dict[str, o
         for _ in range(measured_runs)
     ]
 
-    elapsed = [float(item["elapsed_s"]) for item in measured]
+    elapsed = [_read_benchmark_float(item, "elapsed_s") for item in measured]
     mean_iterations = [float(np.mean(item["iterations_per_step"])) for item in measured]
     max_iterations = [float(np.max(item["iterations_per_step"])) for item in measured]
 
@@ -357,7 +401,9 @@ def benchmark_switch_formulation(builder, measured_runs: int = 3) -> dict[str, o
         "median_elapsed_s": statistics.median(elapsed),
         "mean_newton_iterations": statistics.median(mean_iterations),
         "max_newton_iterations": statistics.median(max_iterations),
-        "records_per_run": [int(item["trace_records"]) for item in measured],
+        "records_per_run": [
+            _read_benchmark_integer(item, "trace_records") for item in measured
+        ],
         "elapsed_samples": elapsed,
         "mean_iteration_samples": mean_iterations,
         "max_iteration_samples": max_iterations,
@@ -603,15 +649,21 @@ class TestConditionalPlacementBenchmark(unittest.TestCase):
         cls.procedural_stats = benchmark_switch_formulation(create_procedural_mode_switch_system)
 
     def test_procedural_switch_reduces_newton_iterations(self) -> None:
-        procedural_mean = float(self.procedural_stats["mean_newton_iterations"])
-        procedural_max = float(self.procedural_stats["max_newton_iterations"])
+        procedural_mean = _read_benchmark_float(
+            self.procedural_stats,
+            "mean_newton_iterations",
+        )
+        procedural_max = _read_benchmark_float(
+            self.procedural_stats,
+            "max_newton_iterations",
+        )
 
         for label, stats in {
             "ifelse_internal": self.internal_ifelse_stats,
             "select_internal": self.internal_select_stats,
         }.items():
-            internal_mean = float(stats["mean_newton_iterations"])
-            internal_max = float(stats["max_newton_iterations"])
+            internal_mean = _read_benchmark_float(stats, "mean_newton_iterations")
+            internal_max = _read_benchmark_float(stats, "max_newton_iterations")
 
             self.assertGreater(
                 internal_mean,
@@ -631,13 +683,16 @@ class TestConditionalPlacementBenchmark(unittest.TestCase):
         )
 
     def test_procedural_switch_reduces_runtime_after_warmup(self) -> None:
-        procedural_elapsed = float(self.procedural_stats["median_elapsed_s"])
+        procedural_elapsed = _read_benchmark_float(
+            self.procedural_stats,
+            "median_elapsed_s",
+        )
 
         for label, stats in {
             "ifelse_internal": self.internal_ifelse_stats,
             "select_internal": self.internal_select_stats,
         }.items():
-            internal_elapsed = float(stats["median_elapsed_s"])
+            internal_elapsed = _read_benchmark_float(stats, "median_elapsed_s")
 
             self.assertLess(
                 procedural_elapsed,
@@ -647,13 +702,13 @@ class TestConditionalPlacementBenchmark(unittest.TestCase):
 
     def test_internal_select_and_ifelse_have_same_benchmark_profile(self) -> None:
         self.assertAlmostEqual(
-            float(self.internal_ifelse_stats["mean_newton_iterations"]),
-            float(self.internal_select_stats["mean_newton_iterations"]),
+            _read_benchmark_float(self.internal_ifelse_stats, "mean_newton_iterations"),
+            _read_benchmark_float(self.internal_select_stats, "mean_newton_iterations"),
             places=9,
         )
         self.assertAlmostEqual(
-            float(self.internal_ifelse_stats["max_newton_iterations"]),
-            float(self.internal_select_stats["max_newton_iterations"]),
+            _read_benchmark_float(self.internal_ifelse_stats, "max_newton_iterations"),
+            _read_benchmark_float(self.internal_select_stats, "max_newton_iterations"),
             places=9,
         )
 

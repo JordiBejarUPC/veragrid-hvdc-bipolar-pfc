@@ -1150,10 +1150,10 @@ def test_delayed_switch_event_opens_on_the_guarded_trigger_boundary() -> None:
         command_closed=False,
         name="Open target switch",
     )
-    event_values: dict[Var, float] = dict()
-    event_values[trigger] = 0.0
-    mode_values: dict[Var, float] = dict()
-    mode_values[switch_mode] = 1.0
+    event_values: dict[Var, Expr] = dict()
+    event_values[trigger] = Const(0.0)
+    mode_values: dict[Var, Expr] = dict()
+    mode_values[switch_mode] = Const(1.0)
     procedural_entries: list[DelayedSwitchEventLogic] = list()
     procedural_entries.append(event_logic)
     block: Block = Block(
