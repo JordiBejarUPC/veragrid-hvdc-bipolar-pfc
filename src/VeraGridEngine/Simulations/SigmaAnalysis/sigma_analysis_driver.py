@@ -529,7 +529,7 @@ class SigmaAnalysisDriver(DriverTemplate):
     name = 'Sigma Analysis'
     tpe = SimulationTypes.SigmaAnalysis_run
 
-    def __init__(self, grid: MultiCircuit, options: PowerFlowOptions, classical_sigma: bool = True):
+    def __init__(self, grid: MultiCircuit, options: PowerFlowOptions, classical_sigma: bool = False):
         """
         PowerFlowDriver class constructor
         :param grid: MultiCircuit instance

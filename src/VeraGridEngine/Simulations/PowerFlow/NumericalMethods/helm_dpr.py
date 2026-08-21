@@ -25,7 +25,7 @@ import numba as nb
 import time
 from scipy.sparse import csc_matrix, coo_matrix
 from scipy.sparse import hstack as hs, vstack as vs
-from scipy.sparse.linalg import factorized
+from scipy.sparse.linalg import factorized, spsolve
 
 from VeraGridEngine.DataStructures.numerical_circuit import NumericalCircuit
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results import NumericPowerFlowResults
@@ -416,9 +416,21 @@ def dpr_classical_no_load_germ(Yseries: CscMat, Vset: CxVec, sl: IntVec, no_slac
     :return: Safe full voltage germ.
     """
 
-    # Use a pure flat state for all non-slack buses. Slack voltage carries the island angle reference.
+    # The classical HELM germ is the network no-load voltage, not a flat voltage. Sigma analysis depends on this
+    # analytic reference because its coefficients represent the whole loading path from no-load to target load.
     Vgerm: CxVec = np.ones_like(Vset, dtype=complex)
     Vgerm[sl] = Vset[sl]
+
+    if len(no_slack) > 0:
+        Yred: CscMat = Yseries[np.ix_(no_slack, no_slack)]
+        Yslack: CscMat = -Yseries[np.ix_(no_slack, sl)]
+
+        if len(sl) > 1:
+            Vgerm[no_slack] = spsolve(Yred, Yslack.sum(axis=1))
+        else:
+            Vgerm[no_slack] = spsolve(Yred, Yslack)
+    else:
+        Vgerm = Vgerm
 
     return dpr_safe_voltage_germ(Vgerm, no_slack)
 
@@ -643,7 +655,8 @@ def dpr_solve_segment(Ybus: CscMat,
                       pqpv_original: IntVec,
                       tolerance: float,
                       max_order: int,
-                      current_norm: float) -> DprSegmentResult:
+                      current_norm: float,
+                      allow_dynamic_restart: bool = True) -> DprSegmentResult:
     """
     Solve one DPRHEM shifted-germ segment.
 
@@ -667,6 +680,7 @@ def dpr_solve_segment(Ybus: CscMat,
     :param tolerance: Target mismatch tolerance.
     :param max_order: Maximum coefficient order for this segment.
     :param current_norm: Mismatch norm at the germ.
+    :param allow_dynamic_restart: Stop early when the DPR residual-ratio rule asks for a restart.
     :return: Segment result.
     """
 
@@ -815,7 +829,9 @@ def dpr_solve_segment(Ybus: CscMat,
                     # next segment starts from the best accepted physical voltage, as in the DPRHEM restart strategy.
                     slow_restart: bool = bool(baseline_ratio >= ratio > 0.0)
                     divergence_restart: bool = bool(ratio < 0.0)
-                    restart_now: bool = bool((slow_restart or divergence_restart) and candidate_norm < current_norm)
+                    restart_now: bool = bool(allow_dynamic_restart
+                                             and (slow_restart or divergence_restart)
+                                             and candidate_norm < current_norm)
 
                     if restart_now:
                         Vbest = Vcandidate
@@ -857,6 +873,7 @@ def helm_coefficients_dpr_path(Ybus: CscMat, Yseries: CscMat, V0: CxVec | None, 
                                tolerance: float = 1e-6, max_coeff: int = 30,
                                restart_order: int = 6, max_restarts: int = 20,
                                use_classical_germ: bool = False,
+                               allow_dynamic_restart: bool = True,
                                verbose: bool = False, logger: Logger = None) -> DprCoefficientPath:
     """
     Compute DPRHEM coefficients, final voltage state and accepted restart path.
@@ -877,6 +894,7 @@ def helm_coefficients_dpr_path(Ybus: CscMat, Yseries: CscMat, V0: CxVec | None, 
     :param restart_order: Maximum coefficient order per segment.
     :param max_restarts: Maximum number of DPRHEM restarts.
     :param use_classical_germ: Use the classical no-load germ instead of the supplied voltage estimate.
+    :param allow_dynamic_restart: Let the residual-ratio rule truncate a segment and restart from its best voltage.
     :param verbose: Store debug information.
     :param logger: Logger object.
     :return: DPRHEM coefficient path for one fixed algebraic model.
@@ -951,7 +969,8 @@ def helm_coefficients_dpr_path(Ybus: CscMat, Yseries: CscMat, V0: CxVec | None, 
                                                               pqpv_original=pqpv_original,
                                                               tolerance=tolerance,
                                                               max_order=segment_order,
-                                                              current_norm=current_norm)
+                                                              current_norm=current_norm,
+                                                              allow_dynamic_restart=allow_dynamic_restart)
                 Ulast = segment.U
                 Xlast = segment.X
                 Qlast = segment.Q
@@ -992,6 +1011,7 @@ def helm_coefficients_dpr(Ybus: CscMat, Yseries: CscMat, V0: CxVec | None, Vset:
                           tolerance: float = 1e-6, max_coeff: int = 30,
                           restart_order: int = 6, max_restarts: int = 20,
                           use_classical_germ: bool = False,
+                          allow_dynamic_restart: bool = True,
                           verbose: bool = False, logger: Logger = None) -> tuple[np.ndarray, np.ndarray, np.ndarray,
                                                                                   CxVec, int, bool]:
     """
@@ -1017,6 +1037,7 @@ def helm_coefficients_dpr(Ybus: CscMat, Yseries: CscMat, V0: CxVec | None, Vset:
     :param restart_order: Maximum coefficient order per segment.
     :param max_restarts: Maximum number of DPRHEM restarts.
     :param use_classical_germ: Use the classical no-load germ instead of the supplied voltage estimate.
+    :param allow_dynamic_restart: Let the residual-ratio rule truncate a segment and restart from its best voltage.
     :param verbose: Store debug information.
     :param logger: Logger object.
     :return: Last segment U, X, Q, final voltage, total iterations and convergence flag.
@@ -1039,6 +1060,7 @@ def helm_coefficients_dpr(Ybus: CscMat, Yseries: CscMat, V0: CxVec | None, Vset:
                                                           restart_order=restart_order,
                                                           max_restarts=max_restarts,
                                                           use_classical_germ=use_classical_germ,
+                                                          allow_dynamic_restart=allow_dynamic_restart,
                                                           verbose=verbose,
                                                           logger=logger)
 

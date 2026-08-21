@@ -206,6 +206,7 @@ def sigma_dpr_fixed_model(Ybus: CscMat,
                           restart_order: int,
                           max_restarts: int,
                           use_classical_germ: bool,
+                          allow_dynamic_restart: bool,
                           verbose: int,
                           logger: Logger | None) -> tuple[DprCoefficientPath, float, bool]:
     """
@@ -228,6 +229,7 @@ def sigma_dpr_fixed_model(Ybus: CscMat,
     :param restart_order: Maximum coefficient order per DPR segment.
     :param max_restarts: Maximum DPR restart count.
     :param use_classical_germ: Use the classical flat germ instead of the supplied voltage estimate.
+    :param allow_dynamic_restart: Let the residual-ratio rule truncate a segment and restart from its best voltage.
     :param verbose: Verbosity flag.
     :param logger: Logger object.
     :return: DPR coefficient path, final mismatch norm and convergence flag.
@@ -250,6 +252,7 @@ def sigma_dpr_fixed_model(Ybus: CscMat,
                                                           restart_order=restart_order,
                                                           max_restarts=max_restarts,
                                                           use_classical_germ=use_classical_germ,
+                                                          allow_dynamic_restart=allow_dynamic_restart,
                                                           verbose=bool(verbose),
                                                           logger=logger)
     norm_f: float = dpr_power_mismatch(Ybus=Ybus,
@@ -374,6 +377,7 @@ def sigma_dpr(nc: NumericalCircuit,
                                                     restart_order=restart_order,
                                                     max_restarts=max_restarts,
                                                     use_classical_germ=active_use_classical_germ,
+                                                    allow_dynamic_restart=True,
                                                     verbose=verbose,
                                                     logger=logger)
 
@@ -451,13 +455,38 @@ def sigma_dpr(nc: NumericalCircuit,
                                                             restart_order=restart_order,
                                                             max_restarts=max_restarts,
                                                             use_classical_germ=active_use_classical_germ,
+                                                            allow_dynamic_restart=True,
                                                             verbose=verbose,
                                                             logger=logger)
         else:
             controls_pending = controls_pending
 
     total_iterations += path.iterations
-    sigma_path: DprSigmaPath = dpr_sigma_from_segments(segments=path.segments,
+    # Sigma needs continuation coefficients, not the tiny correction coefficients produced by accepted DPR restarts.
+    # Once controls have settled, compute one full non-restarting DPR embedding from the no-load germ to the final
+    # controlled model and use those coefficients for the sigma Padé system.
+    sigma_coeff_path, norm_f, converged = sigma_dpr_fixed_model(Ybus=active_Ybus,
+                                                                Yseries=Yseries,
+                                                                V0=None,
+                                                                Vset=Vset,
+                                                                S0=active_S0,
+                                                                Ysh0=active_Ysh0,
+                                                                pq=active_pq,
+                                                                pv=active_pv,
+                                                                pqv=active_pqv,
+                                                                p=active_p,
+                                                                vd=vd,
+                                                                no_slack=no_slack,
+                                                                tolerance=tolerance,
+                                                                max_coefficients=max_coefficients,
+                                                                restart_order=max_coefficients,
+                                                                max_restarts=0,
+                                                                use_classical_germ=True,
+                                                                allow_dynamic_restart=False,
+                                                                verbose=verbose,
+                                                                logger=logger)
+
+    sigma_path: DprSigmaPath = dpr_sigma_from_segments(segments=sigma_coeff_path.segments,
                                                        Vset=Vset,
                                                        sl=vd,
                                                        no_slack=no_slack,
