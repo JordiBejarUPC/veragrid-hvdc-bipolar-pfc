@@ -4,13 +4,17 @@ import math
 from typing import Dict, List
 
 from VeraGridEngine.basic_structures import Logger
-from VeraGridEngine.IO.dgs.dynamic_models.dgs_dynamic_association import DgsDynamicAssociation
 from VeraGridEngine.Devices.Branches.line import Line
 from VeraGridEngine.Devices.Branches.series_reactance import SeriesReactance
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.IO.dgs.dgs_circuit import DgsCircuit
+from VeraGridEngine.IO.dgs.dgs_to_blocks import (
+    ElmCompInstanceEntry,
+    extract_elmcomp_direct_instances,
+    get_unambiguous_elmcomp_direct_instances,
+)
 from VeraGridEngine.IO.dgs.dgs_objects import DGSElement, ElmComp, ElmSind, StaVmea
 from VeraGridEngine.IO.dgs.dgs_rms_measurement_binding import (
     _build_dgs_element_index,
@@ -18,19 +22,18 @@ from VeraGridEngine.IO.dgs.dgs_rms_measurement_binding import (
 )
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic import Const, Expr, Var, heaviside
-from VeraGridEngine.enumerations import (
-    DgsDynamicAssociationRole,
-    ParamPowerFlowReferenceType,
-)
+from VeraGridEngine.Utils.Symbolic.symbolic_io import duplicate_block
+from VeraGridEngine.Utils.procedural_logic import sampled_value
+from VeraGridEngine.enumerations import ParamPowerFlowReferenceType
 
 
-def _association_slot_sort_key(association: DgsDynamicAssociation) -> int:
-    """Return the exported frame order of one association.
+def _entry_slot_sort_key(entry: ElmCompInstanceEntry) -> int:
+    """Return the exported frame order of one direct DGS entry.
 
-    :param association: Persisted DGS association.
+    :param entry: Transient direct root-slot entry.
     :return: Source slot index, with absent indices sorted last.
     """
-    slot_index: int | None = association.get_slot_index()
+    slot_index: int | None = entry.slot_index
     if slot_index is None:
         return 2_147_483_647
     else:
@@ -71,102 +74,6 @@ def _find_common_passive_bus(
             else:
                 pass
     return common_bus
-
-
-def synchronize_dgs_logical_actuator_service_states(
-        circuit: MultiCircuit,
-        dgs_circuit: DgsCircuit,
-        logger: Logger,
-) -> int:
-    """Apply each source ``ElmComp.outserv`` state to its complete RMS group.
-
-    A composite controller is not physical equipment. Its service state must
-    therefore be retained on the logical association instead of changing the
-    static host device. Matching by the exported FID keeps identical display
-    names and structurally deduplicated templates independent.
-
-    :param circuit: Imported circuit containing logical DGS associations.
-    :param dgs_circuit: Parsed source DGS tables.
-    :param logger: Import diagnostic sink.
-    :return: Number of logical associations synchronized.
-    """
-    composite_by_id: Dict[str, ElmComp] = dict()
-    source_composite: ElmComp
-    for source_composite in dgs_circuit.elmcomps:
-        composite_by_id[str(source_composite.ID)] = source_composite
-
-    synchronized_count: int = 0
-    association: DgsDynamicAssociation
-    for association in circuit.get_dgs_dynamic_associations():
-        source_root: ElmComp | None = composite_by_id.get(
-            association.root_dgs_id,
-            None,
-        )
-        if source_root is None:
-            if association.role == DgsDynamicAssociationRole.CompositeController:
-                logger.add_warning(
-                    msg="DGS logical controller service state could not be resolved",
-                    device=association.name,
-                    value=association.root_dgs_id,
-                )
-            else:
-                pass
-        else:
-            # PowerFactory initialises a composite only when its controller,
-            # measurement and actuator slots participate as one atomic group.
-            association.active = int(source_root.outserv) == 0
-            synchronized_count += 1
-
-    return synchronized_count
-
-
-def set_dgs_logical_actuator_service_state(
-        circuit: MultiCircuit,
-        root_dgs_id: str,
-        in_service: bool,
-) -> int:
-    """Set one logical composite, every slot and passive shell in service.
-
-    This operation is intended before constructing an RMS problem. The fixed
-    DAE then contains either the complete controller-actuator system or none of
-    it, matching PowerFactory's study-case service selection without changing
-    the physical network representation.
-
-    :param circuit: Circuit containing the imported logical composite.
-    :param root_dgs_id: Exact owning ``ElmComp`` FID.
-    :param in_service: Whether the controller participates in the next run.
-    :return: Number of logical associations and passive branches updated.
-    """
-    updated_count: int = 0
-    association: DgsDynamicAssociation
-    for association in circuit.get_dgs_dynamic_associations():
-        is_target_root: bool = association.root_dgs_id == root_dgs_id
-        if is_target_root:
-            association.active = in_service
-            updated_count += 1
-        else:
-            pass
-
-    physical_branch: object
-    for physical_branch in circuit.get_branches_iter(
-            add_vsc=False,
-            add_hvdc=False,
-            add_switch=False,
-    ):
-        if isinstance(physical_branch, (Line, SeriesReactance)):
-            actuator_root_raw: object | None = physical_branch.rms_model.__dict__.get(
-                "dgs_logical_actuator_root_id",
-                None,
-            )
-            if actuator_root_raw == root_dgs_id:
-                physical_branch.rms_model.__dict__["rms_force_compile"] = in_service
-                updated_count += 1
-            else:
-                pass
-        else:
-            pass
-
-    return updated_count
 
 
 def _collect_unique_named_vars(block: Block, variable_name: str) -> List[Var]:
@@ -241,7 +148,7 @@ def _collect_unique_exported_leaf_vars(
 def _seed_open_resistive_actuator(
         block: Block,
         open_resistance_ohm: float | None = None,
-) -> None:
+) -> bool:
     """Seed an open gated resistor from its exported physical resistance.
 
     PowerFactory models can leave ``inc(R)=inc(Rinc)=inc(xR)`` as a neutral
@@ -255,7 +162,7 @@ def _seed_open_resistive_actuator(
 
     :param block: Imported logical controller root.
     :param open_resistance_ohm: Optional native open resistance in Ohm.
-    :return: None.
+    :return: Whether the complete declared seed was applied.
     """
     maximum_vars: List[Var] = _collect_unique_exported_leaf_vars(
         block=block,
@@ -309,13 +216,50 @@ def _seed_open_resistive_actuator(
                         pass
             else:
                 pass
+        return True
     else:
-        pass
+        return False
+
+
+def _can_seed_open_resistive_actuator(
+        block: Block,
+        open_resistance_ohm: float | None,
+) -> bool:
+    """Check whether the complete open-resistance seed can be declared.
+
+    :param block: Imported logical controller root.
+    :param open_resistance_ohm: Optional coherent physical resistance in Ohm.
+    :return: Whether every required target and one seed source exist.
+    """
+    maximum_vars: List[Var] = _collect_unique_exported_leaf_vars(
+        block=block,
+        variable_name="Rmax",
+    )
+    complete_target_set: bool = True
+    target_name: str
+    for target_name in list(["R", "Rinc", "Rx", "xR"]):
+        target_vars: List[Var] = _collect_unique_exported_leaf_vars(
+            block=block,
+            variable_name=target_name,
+        )
+        if len(target_vars) > 0:
+            pass
+        else:
+            complete_target_set = False
+
+    has_physical_seed: bool = (
+            open_resistance_ohm is not None
+            and math.isfinite(open_resistance_ohm)
+            and open_resistance_ohm > 0.0
+    )
+    has_model_seed: bool = len(maximum_vars) == 1
+    return complete_target_set and (has_physical_seed or has_model_seed)
 
 
 def prepare_dgs_logical_actuator_topology(
         circuit: MultiCircuit,
         dgs_circuit: DgsCircuit,
+        templates_by_root_dgs_id: Dict[str, RmsModelTemplate],
         logger: Logger,
 ) -> int:
     """Reconstruct zero-impedance valve placement for logical composites.
@@ -328,10 +272,10 @@ def prepare_dgs_logical_actuator_topology(
 
     :param circuit: Imported VeraGrid circuit.
     :param dgs_circuit: Parsed source DGS tables.
+    :param templates_by_root_dgs_id: Registered RMS templates by exact root FID.
     :param logger: Import diagnostic sink.
     :return: Number of passive actuator branches prepared for RMS.
     """
-    associations: List[DgsDynamicAssociation] = circuit.get_dgs_dynamic_associations()
     dgs_element_by_id: Dict[str, DGSElement] = _build_dgs_element_index(
         dgs_circuit=dgs_circuit,
     )
@@ -354,43 +298,43 @@ def prepare_dgs_logical_actuator_topology(
             pass
 
     prepared_count: int = 0
-    root_association: DgsDynamicAssociation
-    for root_association in associations:
+    source_root: ElmComp
+    for source_root in dgs_circuit.elmcomps:
+        root_id: str = str(source_root.ID)
+        root_template: RmsModelTemplate | None = templates_by_root_dgs_id.get(
+            root_id,
+            None,
+        )
         if (
-                root_association.role == DgsDynamicAssociationRole.CompositeController
-                and not root_association.rms_model.empty()
+                isinstance(root_template, RmsModelTemplate)
+                and int(source_root.outserv) == 0
         ):
-            root_id: str = root_association.root_dgs_id
-            passive_associations: List[DgsDynamicAssociation] = list()
-            voltage_associations: List[DgsDynamicAssociation] = list()
-            candidate_association: DgsDynamicAssociation
-            for candidate_association in associations:
-                if candidate_association.root_dgs_id == root_id:
-                    if candidate_association.role == DgsDynamicAssociationRole.PassiveActuator:
-                        passive_associations.append(candidate_association)
-                    else:
-                        source_element_id: str | None = candidate_association.get_source_element_dgs_id()
-                        source_element: DGSElement | None = (
-                            dgs_element_by_id.get(source_element_id, None)
-                            if source_element_id is not None
-                            else None
-                        )
-                        if (
-                                candidate_association.role == DgsDynamicAssociationRole.Measurement
-                                and isinstance(source_element, StaVmea)
-                        ):
-                            voltage_associations.append(candidate_association)
-                        else:
-                            pass
+            direct_entries: List[ElmCompInstanceEntry] = (
+                get_unambiguous_elmcomp_direct_instances(
+                    entries=extract_elmcomp_direct_instances(
+                        circuit=dgs_circuit,
+                        root_element=source_root,
+                    )
+                )
+            )
+            passive_entries: List[ElmCompInstanceEntry] = list()
+            voltage_entries: List[ElmCompInstanceEntry] = list()
+            direct_entry: ElmCompInstanceEntry
+            for direct_entry in direct_entries:
+                if direct_entry.element_kind == "ElmSind":
+                    passive_entries.append(direct_entry)
                 else:
-                    pass
+                    if direct_entry.element_kind == "StaVmea":
+                        voltage_entries.append(direct_entry)
+                    else:
+                        pass
 
-            passive_associations.sort(key=_association_slot_sort_key)
-            voltage_associations.sort(key=_association_slot_sort_key)
+            passive_entries.sort(key=_entry_slot_sort_key)
+            voltage_entries.sort(key=_entry_slot_sort_key)
             passive_lines: List[Line | SeriesReactance] = list()
-            passive_association: DgsDynamicAssociation
-            for passive_association in passive_associations:
-                passive_source_id: str | None = passive_association.get_source_element_dgs_id()
+            passive_entry: ElmCompInstanceEntry
+            for passive_entry in passive_entries:
+                passive_source_id: str | None = passive_entry.element_id
                 passive_line: Line | SeriesReactance | None = (
                     line_by_id.get(passive_source_id, None)
                     if passive_source_id is not None
@@ -405,23 +349,105 @@ def prepare_dgs_logical_actuator_topology(
             if (
                     common_bus is None
                     or len(passive_lines) == 0
-                    or len(passive_lines) != len(voltage_associations)
+                    or len(passive_lines) != len(passive_entries)
+                    or len(passive_lines) != len(voltage_entries)
             ):
-                if len(passive_lines) > 0:
+                if len(passive_entries) > 0:
                     logger.add_warning(
                         msg="DGS logical actuator topology is ambiguous",
-                        device=root_association.name,
-                        value=len(passive_lines),
-                        expected_value=len(voltage_associations),
+                        device=source_root.loc_name,
+                        value=(
+                            f"lines={len(passive_lines)}, "
+                            f"meters={len(voltage_entries)}"
+                        ),
+                        expected_value=f"ElmSind={len(passive_entries)}",
                     )
                 else:
                     pass
             else:
+                rail_buses: List[Bus | None] = list(
+                    None for passive_line in passive_lines
+                )
+                open_resistance_by_pair: List[float | None] = list(
+                    None for passive_line in passive_lines
+                )
+                topology_is_complete: bool = True
+                root_open_resistance_ohm: float | None = None
+                resistance_is_coherent: bool = True
+                physical_resistance_declared: bool = False
+                legacy_resistance_omitted: bool = False
+                template_gate_vars: List[Var] = _collect_unique_named_vars(
+                    block=root_template.block,
+                    variable_name="gate",
+                )
+                template_resistance_vars: List[Var] = _collect_unique_named_vars(
+                    block=root_template.block,
+                    variable_name="R",
+                )
+                if (
+                        len(template_gate_vars) == 1
+                        and len(template_resistance_vars) == 1
+                ):
+                    pass
+                else:
+                    topology_is_complete = False
+                    logger.add_warning(
+                        msg="DGS logical actuator controller interface is incomplete",
+                        device=root_id,
+                    )
                 pair_index: int
                 for pair_index, passive_line in enumerate(passive_lines):
-                    voltage_source_id: str | None = voltage_associations[
+                    passive_source_id: str | None = passive_entries[
                         pair_index
-                    ].get_source_element_dgs_id()
+                    ].element_id
+                    passive_source_element: DGSElement | None = (
+                        dgs_element_by_id.get(passive_source_id, None)
+                        if passive_source_id is not None
+                        else None
+                    )
+                    if isinstance(passive_source_element, ElmSind):
+                        if passive_source_element.initial_resistance_column_declared:
+                            physical_resistance_declared = True
+                            if (
+                                    passive_source_element.Rin is not None
+                                    and math.isfinite(passive_source_element.Rin)
+                                    and passive_source_element.Rin > 0.0
+                            ):
+                                pair_resistance_ohm: float = float(
+                                    passive_source_element.Rin
+                                )
+                                open_resistance_by_pair[pair_index] = pair_resistance_ohm
+                                if root_open_resistance_ohm is None:
+                                    root_open_resistance_ohm = pair_resistance_ohm
+                                else:
+                                    if math.isclose(
+                                            root_open_resistance_ohm,
+                                            pair_resistance_ohm,
+                                            rel_tol=1.0e-12,
+                                            abs_tol=1.0e-12,
+                                    ):
+                                        pass
+                                    else:
+                                        resistance_is_coherent = False
+                            else:
+                                topology_is_complete = False
+                                logger.add_warning(
+                                    msg="DGS logical actuator has invalid physical open resistance",
+                                    device=passive_source_id,
+                                    value=passive_source_element.Rin,
+                                )
+                        else:
+                            legacy_resistance_omitted = True
+                    else:
+                        topology_is_complete = False
+                        logger.add_warning(
+                            msg="DGS logical actuator physical source could not be resolved",
+                            device=passive_source_id,
+                        )
+
+                    voltage_source_id: str | None = voltage_entries[
+                        pair_index
+                    ].element_id
                     voltage_meter: DGSElement | None = (
                         dgs_element_by_id.get(voltage_source_id, None)
                         if voltage_source_id is not None
@@ -441,25 +467,101 @@ def prepare_dgs_logical_actuator_topology(
                         else None
                     )
                     if rail_bus is None:
+                        topology_is_complete = False
                         logger.add_warning(
                             msg="DGS logical actuator rail could not be resolved",
                             device=passive_line.name,
                             value=voltage_source_id,
                         )
                     else:
-                        if passive_line.bus_from is common_bus:
-                            passive_line.bus_to = rail_bus
+                        rail_buses[pair_index] = rail_bus
+                        if (
+                                passive_line.bus_from is common_bus
+                                or passive_line.bus_to is common_bus
+                        ):
+                            pass
                         else:
-                            if passive_line.bus_to is common_bus:
-                                passive_line.bus_from = rail_bus
+                            topology_is_complete = False
+                            logger.add_warning(
+                                msg="DGS passive actuator does not touch the shared node",
+                                device=passive_line.name,
+                                value=root_id,
+                            )
+                        existing_template: RmsModelTemplate | None = (
+                            passive_line.rms_template
+                        )
+                        if isinstance(existing_template, RmsModelTemplate):
+                            if passive_line.bus_from is common_bus:
+                                future_voltage_base_kv: float = float(
+                                    passive_line.bus_from.Vnom
+                                )
                             else:
+                                future_voltage_base_kv = float(rail_bus.Vnom)
+                            branch_plan: _DgsLogicalActuatorBranchBindingPlan | None = (
+                                _build_logical_actuator_branch_plan(
+                                    line=passive_line,
+                                    circuit=circuit,
+                                    voltage_base_kv=future_voltage_base_kv,
+                                )
+                            )
+                            if branch_plan is None:
+                                topology_is_complete = False
                                 logger.add_warning(
-                                    msg="DGS passive actuator does not touch the shared node",
+                                    msg="DGS logical actuator branch interface is incomplete",
                                     device=passive_line.name,
                                     value=root_id,
                                 )
-                        existing_template: RmsModelTemplate | None = passive_line.rms_template
-                        if isinstance(existing_template, RmsModelTemplate):
+                            else:
+                                pass
+                        else:
+                            topology_is_complete = False
+                            logger.add_warning(
+                                msg="DGS passive actuator has no RMS template",
+                                device=passive_line.name,
+                                value=root_id,
+                            )
+
+                if resistance_is_coherent:
+                    pass
+                else:
+                    topology_is_complete = False
+                    logger.add_warning(
+                        msg="DGS logical actuator has conflicting physical open resistances",
+                        device=root_id,
+                    )
+                if physical_resistance_declared and legacy_resistance_omitted:
+                    topology_is_complete = False
+                    logger.add_warning(
+                        msg="DGS logical actuator mixes enriched and legacy resistance evidence",
+                        device=root_id,
+                    )
+                else:
+                    pass
+                if _can_seed_open_resistive_actuator(
+                        block=root_template.block,
+                        open_resistance_ohm=root_open_resistance_ohm,
+                ):
+                    pass
+                else:
+                    topology_is_complete = False
+                    logger.add_warning(
+                        msg="DGS logical actuator controller seed is incomplete",
+                        device=root_id,
+                    )
+
+                if topology_is_complete:
+                    for pair_index, passive_line in enumerate(passive_lines):
+                        rail_bus = rail_buses[pair_index]
+                        existing_template = passive_line.rms_template
+                        if (
+                                rail_bus is not None
+                                and isinstance(existing_template, RmsModelTemplate)
+                        ):
+                            if passive_line.bus_from is common_bus:
+                                passive_line.bus_to = rail_bus
+                            else:
+                                passive_line.bus_from = rail_bus
+
                             # The first shell was connected to the source's
                             # valve-side placeholder bus. Reassigning the same
                             # template reconnects it to the resolved rail.
@@ -470,71 +572,219 @@ def prepare_dgs_logical_actuator_topology(
                             # exported in-service ElmSind must therefore not
                             # enter the static power flow by itself when the
                             # omitted ElmValve is open. Keep the physical shell
-                            # out of the static admittance matrix and compile it
-                            # explicitly for RMS, where gate and resistance are
-                            # projected from the logical controller.
+                            # out of the static admittance matrix. The DAE RMS
+                            # formulation compiles every non-empty branch model,
+                            # where gate and resistance are projected from the
+                            # logical controller.
                             passive_line.active = False
-                            passive_line.rms_model.__dict__["rms_force_compile"] = (
-                                root_association.active
+                            passive_line.active_prof.fill(False)
+                            passive_line.rms_model.dynamic_model_contract.dgs_logical_actuator_root_id = root_id
+                            pair_resistance_ohm: float | None = (
+                                open_resistance_by_pair[pair_index]
                             )
-                            passive_line.rms_model.__dict__["dgs_logical_actuator_root_id"] = root_id
-                            passive_source_id: str | None = passive_associations[
-                                pair_index
-                            ].get_source_element_dgs_id()
-                            passive_source_element: DGSElement | None = (
-                                dgs_element_by_id.get(passive_source_id, None)
-                                if passive_source_id is not None
-                                else None
-                            )
-                            if (
-                                    isinstance(passive_source_element, ElmSind)
-                                    and passive_source_element.Rin is not None
-                                    and math.isfinite(passive_source_element.Rin)
-                                    and passive_source_element.Rin > 0.0
-                            ):
-                                passive_line.rms_model.__dict__["dgs_open_resistance_ohm"] = float(
-                                    passive_source_element.Rin
+                            if pair_resistance_ohm is not None:
+                                passive_line.rms_model.dynamic_model_contract.dgs_open_resistance_ohm = float(
+                                    pair_resistance_ohm
                                 )
                             else:
                                 pass
                             prepared_count += 1
                         else:
-                            logger.add_warning(
-                                msg="DGS passive actuator has no RMS template",
-                                device=passive_line.name,
-                                value=root_id,
-                            )
+                            pass
+                else:
+                    pass
         else:
             pass
     return prepared_count
 
 
+class _DgsLogicalActuatorBranchBindingPlan:
+    """Hold one validated, transient branch-binding operation."""
+
+    __slots__ = (
+        "line",
+        "status_owner",
+        "status_var",
+        "resistance_parameter",
+        "resistance_owner",
+        "inductance_parameter",
+        "inductance_owner",
+        "impedance_base_ohm",
+        "inductance_pu_seconds",
+    )
+
+    def __init__(
+            self,
+            line: Line | SeriesReactance,
+            status_owner: Block,
+            status_var: Var,
+            resistance_parameter: Var,
+            resistance_owner: Block,
+            inductance_parameter: Var | None,
+            inductance_owner: Block | None,
+            impedance_base_ohm: float,
+            inductance_pu_seconds: float | None,
+    ) -> None:
+        """Create one plan after every referenced owner has been resolved.
+
+        :param line: Final physical actuator branch.
+        :param status_owner: Block owning the conduction event variable.
+        :param status_var: Exact conduction event variable.
+        :param resistance_parameter: Exact static resistance parameter.
+        :param resistance_owner: Block owning the resistance parameter.
+        :param inductance_parameter: Optional exact inductance parameter.
+        :param inductance_owner: Optional block owning the inductance parameter.
+        :param impedance_base_ohm: Branch impedance base in Ohm.
+        :param inductance_pu_seconds: Optional RMS inductance coefficient.
+        :return: None.
+        """
+        self.line: Line | SeriesReactance = line
+        self.status_owner: Block = status_owner
+        self.status_var: Var = status_var
+        self.resistance_parameter: Var = resistance_parameter
+        self.resistance_owner: Block = resistance_owner
+        self.inductance_parameter: Var | None = inductance_parameter
+        self.inductance_owner: Block | None = inductance_owner
+        self.impedance_base_ohm: float = impedance_base_ohm
+        self.inductance_pu_seconds: float | None = inductance_pu_seconds
+
+
+def _build_logical_actuator_branch_plan(
+        line: Line | SeriesReactance,
+        circuit: MultiCircuit,
+        voltage_base_kv: float | None = None,
+) -> _DgsLogicalActuatorBranchBindingPlan | None:
+    """Resolve one complete branch plan without changing the circuit.
+
+    :param line: Prepared physical actuator branch.
+    :param circuit: Circuit providing RMS system bases.
+    :param voltage_base_kv: Optional post-topology voltage base.
+    :return: Complete transient plan or ``None`` when evidence is incomplete.
+    """
+    status_uid: int | None = (
+        line.rms_model.dynamic_model_contract.rms_conduction_status_var_uid
+    )
+    status_owners: List[Block] = list()
+    status_vars: List[Var] = list()
+    child_block: Block
+    event_var: Var
+    if status_uid is None:
+        pass
+    else:
+        for child_block in line.rms_model.get_all_blocks():
+            for event_var in child_block.event_dict.keys():
+                if event_var.uid == status_uid:
+                    status_owners.append(child_block)
+                    status_vars.append(event_var)
+                else:
+                    pass
+
+    resistance_parameter: Var | None = line.rms_model.api_obj_mapping.get(
+        ParamPowerFlowReferenceType.r,
+        None,
+    )
+    resistance_owners: List[Block] = list()
+    if resistance_parameter is None:
+        pass
+    else:
+        for child_block in line.rms_model.get_all_blocks():
+            if resistance_parameter in child_block.parameters:
+                resistance_owners.append(child_block)
+            else:
+                pass
+
+    inductance_parameter: Var | None = line.rms_model.api_obj_mapping.get(
+        ParamPowerFlowReferenceType.dc_line_l_pu_seconds,
+        None,
+    )
+    inductance_owners: List[Block] = list()
+    if inductance_parameter is None:
+        pass
+    else:
+        for child_block in line.rms_model.get_all_blocks():
+            if inductance_parameter in child_block.parameters:
+                inductance_owners.append(child_block)
+            else:
+                pass
+
+    sbase: float = float(circuit.Sbase)
+    if voltage_base_kv is None:
+        effective_voltage_base_kv: float = float(line.bus_from.Vnom)
+    else:
+        effective_voltage_base_kv = float(voltage_base_kv)
+    if sbase > 0.0 and effective_voltage_base_kv > 0.0:
+        impedance_base_ohm: float = (
+            effective_voltage_base_kv * effective_voltage_base_kv / sbase
+        )
+    else:
+        impedance_base_ohm = 0.0
+
+    if inductance_parameter is None:
+        inductance_owner: Block | None = None
+        inductance_pu_seconds: float | None = None
+        inductance_is_complete: bool = True
+    else:
+        if len(inductance_owners) == 1:
+            inductance_owner = inductance_owners[0]
+            if isinstance(line, Line):
+                inductance_pu_seconds = float(
+                    line.dc_series_inductance_pu_seconds
+                )
+                inductance_is_complete = True
+            else:
+                frequency_base_hz: float = float(circuit.fBase)
+                if frequency_base_hz > 0.0:
+                    inductance_pu_seconds = float(line.X) / (
+                        2.0 * math.pi * frequency_base_hz
+                    )
+                    inductance_is_complete = True
+                else:
+                    inductance_pu_seconds = None
+                    inductance_is_complete = False
+        else:
+            inductance_owner = None
+            inductance_pu_seconds = None
+            inductance_is_complete = False
+
+    if (
+            not line.rms_model.empty()
+            and len(status_owners) == 1
+            and len(status_vars) == 1
+            and resistance_parameter is not None
+            and len(resistance_owners) == 1
+            and impedance_base_ohm > 0.0
+            and inductance_is_complete
+    ):
+        return _DgsLogicalActuatorBranchBindingPlan(
+            line=line,
+            status_owner=status_owners[0],
+            status_var=status_vars[0],
+            resistance_parameter=resistance_parameter,
+            resistance_owner=resistance_owners[0],
+            inductance_parameter=inductance_parameter,
+            inductance_owner=inductance_owner,
+            impedance_base_ohm=impedance_base_ohm,
+            inductance_pu_seconds=inductance_pu_seconds,
+        )
+    else:
+        return None
+
+
 def bind_dgs_logical_actuator_runtime(
         circuit: MultiCircuit,
+        templates_by_root_dgs_id: Dict[str, RmsModelTemplate],
         logger: Logger,
 ) -> int:
-    """Bind logical gate and resistance outputs to prepared passive branches.
+    """Bind each complete logical actuator group as one atomic operation.
 
     :param circuit: Imported circuit after standard RMS shell preparation.
+    :param templates_by_root_dgs_id: Registered RMS templates by exact root FID.
     :param logger: Import diagnostic sink.
     :return: Number of passive actuator RMS models bound.
     """
-    root_by_id: Dict[str, DgsDynamicAssociation] = dict()
-    association: DgsDynamicAssociation
-    for association in circuit.get_dgs_dynamic_associations():
-        if (
-                association.role == DgsDynamicAssociationRole.CompositeController
-                and not association.rms_model.empty()
-        ):
-            root_by_id[association.root_dgs_id] = association
-        else:
-            pass
-
-    # Resolve one coherent physical open resistance per composite before any
-    # controller is seeded. Conflicting pole values remain explicit and use
-    # the model-defined Rmax compatibility path.
+    branches_by_root_id: Dict[str, List[Line | SeriesReactance]] = dict()
     open_resistance_by_root_id: Dict[str, float] = dict()
-    conflicting_open_resistance_root_ids: set[str] = set()
+    conflicting_root_ids: set[str] = set()
     candidate_branch: object
     for candidate_branch in circuit.get_branches_iter(
             add_vsc=False,
@@ -542,222 +792,224 @@ def bind_dgs_logical_actuator_runtime(
             add_switch=False,
     ):
         if isinstance(candidate_branch, (Line, SeriesReactance)):
-            candidate_root_raw: object | None = candidate_branch.rms_model.__dict__.get(
-                "dgs_logical_actuator_root_id",
-                None,
+            root_id: str | None = (
+                candidate_branch.rms_model.dynamic_model_contract.dgs_logical_actuator_root_id
             )
-            candidate_resistance_raw: object | None = candidate_branch.rms_model.__dict__.get(
-                "dgs_open_resistance_ohm",
-                None,
+            resistance_ohm: float | None = (
+                candidate_branch.rms_model.dynamic_model_contract.dgs_open_resistance_ohm
             )
-            if (
-                    isinstance(candidate_root_raw, str)
-                    and isinstance(candidate_resistance_raw, (int, float))
-                    and math.isfinite(float(candidate_resistance_raw))
-                    and float(candidate_resistance_raw) > 0.0
-            ):
-                existing_resistance: float | None = open_resistance_by_root_id.get(
-                    candidate_root_raw,
-                    None,
-                )
-                if existing_resistance is None:
-                    open_resistance_by_root_id[candidate_root_raw] = float(
-                        candidate_resistance_raw
-                    )
-                else:
-                    if math.isclose(
-                            existing_resistance,
-                            float(candidate_resistance_raw),
-                            rel_tol=1.0e-12,
-                            abs_tol=1.0e-12,
-                    ):
-                        pass
-                    else:
-                        conflicting_open_resistance_root_ids.add(candidate_root_raw)
-            else:
+            if root_id is None:
                 pass
+            else:
+                root_branches: List[Line | SeriesReactance] | None = (
+                    branches_by_root_id.get(root_id, None)
+                )
+                if root_branches is None:
+                    root_branches = list()
+                    branches_by_root_id[root_id] = root_branches
+                else:
+                    pass
+                root_branches.append(candidate_branch)
+
+                if (
+                        resistance_ohm is not None
+                        and math.isfinite(resistance_ohm)
+                        and resistance_ohm > 0.0
+                ):
+                    existing_resistance: float | None = (
+                        open_resistance_by_root_id.get(root_id, None)
+                    )
+                    if existing_resistance is None:
+                        open_resistance_by_root_id[root_id] = resistance_ohm
+                    else:
+                        if math.isclose(
+                                existing_resistance,
+                                resistance_ohm,
+                                rel_tol=1.0e-12,
+                                abs_tol=1.0e-12,
+                        ):
+                            pass
+                        else:
+                            conflicting_root_ids.add(root_id)
+                else:
+                    pass
         else:
             pass
 
-    conflicting_root_id: str
-    for conflicting_root_id in conflicting_open_resistance_root_ids:
-        open_resistance_by_root_id.pop(conflicting_root_id, None)
-        logger.add_warning(
-            msg="DGS logical actuator has conflicting physical open resistances",
-            device=conflicting_root_id,
-        )
-    else:
-        pass
-
     bound_count: int = 0
-    physical_branch: object
-    for physical_branch in circuit.get_branches_iter(
+    root_id: str
+    for root_id in sorted(branches_by_root_id.keys()):
+        root_template: RmsModelTemplate | None = templates_by_root_dgs_id.get(
+            root_id,
+            None,
+        )
+        template_gate_vars: List[Var] = list()
+        template_resistance_vars: List[Var] = list()
+        if isinstance(root_template, RmsModelTemplate):
+            template_gate_vars = _collect_unique_named_vars(
+                block=root_template.block,
+                variable_name="gate",
+            )
+            template_resistance_vars = _collect_unique_named_vars(
+                block=root_template.block,
+                variable_name="R",
+            )
+        else:
+            pass
+
+        branch_plans: List[_DgsLogicalActuatorBranchBindingPlan] = list()
+        plan_is_complete: bool = True
+        branch: Line | SeriesReactance
+        for branch in branches_by_root_id[root_id]:
+            branch_plan: _DgsLogicalActuatorBranchBindingPlan | None = (
+                _build_logical_actuator_branch_plan(
+                    line=branch,
+                    circuit=circuit,
+                )
+            )
+            if branch_plan is None:
+                plan_is_complete = False
+            else:
+                branch_plans.append(branch_plan)
+
+        if (
+                root_id in conflicting_root_ids
+                or not isinstance(root_template, RmsModelTemplate)
+                or root_template.block.empty()
+                or len(template_gate_vars) != 1
+                or len(template_resistance_vars) != 1
+                or not plan_is_complete
+                or len(branch_plans) == 0
+        ):
+            logger.add_warning(
+                msg="DGS logical actuator group is incomplete or contradictory",
+                device=root_id,
+                value=len(branch_plans),
+                expected_value=len(branches_by_root_id[root_id]),
+            )
+        else:
+            controller_block: Block = duplicate_block(
+                block=root_template.block,
+                var_factory=circuit.var_factory,
+            )
+            seed_applied: bool = _seed_open_resistive_actuator(
+                block=controller_block,
+                open_resistance_ohm=open_resistance_by_root_id.get(root_id, None),
+            )
+            controller_gate_vars: List[Var] = _collect_unique_named_vars(
+                block=controller_block,
+                variable_name="gate",
+            )
+            controller_resistance_vars: List[Var] = _collect_unique_named_vars(
+                block=controller_block,
+                variable_name="R",
+            )
+            if (
+                    seed_applied
+                    and len(controller_gate_vars) == 1
+                    and len(controller_resistance_vars) == 1
+            ):
+                # The first branch owns the sole controller instance. Every
+                # other pole references its variables in the final RMS graph.
+                branch_plans[0].line.rms_model.add(controller_block)
+                gate_expression: Expr = heaviside(controller_gate_vars[0])
+                branch_plan: _DgsLogicalActuatorBranchBindingPlan
+                for branch_plan in branch_plans:
+                    branch_plan.status_owner.event_dict[
+                        branch_plan.status_var
+                    ] = gate_expression
+                    branch_plan.status_owner.procedural_logic.append(
+                        sampled_value(
+                            output=branch_plan.status_var,
+                            source=gate_expression,
+                            name=(
+                                f"project_{branch_plan.status_var.name}"
+                                "_from_gate"
+                            ),
+                        )
+                    )
+
+                    branch_plan.resistance_owner.parameters.pop(
+                        branch_plan.resistance_parameter,
+                        None,
+                    )
+                    resistance_expression: Expr = (
+                        controller_resistance_vars[0]
+                        / Const(branch_plan.impedance_base_ohm)
+                    )
+                    branch_plan.resistance_owner.event_dict[
+                        branch_plan.resistance_parameter
+                    ] = resistance_expression
+                    branch_plan.resistance_owner.procedural_logic.append(
+                        sampled_value(
+                            output=branch_plan.resistance_parameter,
+                            source=resistance_expression,
+                            name=(
+                                f"project_{branch_plan.resistance_parameter.name}"
+                                "_from_resistance"
+                            ),
+                        )
+                    )
+
+                    if (
+                            branch_plan.inductance_parameter is not None
+                            and branch_plan.inductance_owner is not None
+                            and branch_plan.inductance_pu_seconds is not None
+                    ):
+                        branch_plan.inductance_owner.parameters[
+                            branch_plan.inductance_parameter
+                        ] = Const(branch_plan.inductance_pu_seconds)
+                    else:
+                        pass
+                    # A successfully bound branch remains outside the static
+                    # admittance matrix because its RMS model represents the
+                    # complete valve-plus-impedance assembly.
+                    branch_plan.line.active = False
+                    branch_plan.line.active_prof.fill(False)
+                    bound_count += 1
+            else:
+                logger.add_warning(
+                    msg="DGS logical actuator controller initialization is incomplete",
+                    device=root_id,
+                )
+
+    return bound_count
+
+
+def release_dgs_logical_actuator_import_context(
+        circuit: MultiCircuit,
+) -> int:
+    """Discard source-only actuator identity after exact RMS binding.
+
+    Procedural projections remain on the final block because the standard
+    boundary updater consumes them declaratively. The DGS root FID and
+    exported resistance are import evidence only and must not survive on
+    ``MultiCircuit`` blocks.
+
+    :param circuit: Circuit whose logical actuators have completed binding.
+    :return: Number of branch blocks whose import context was released.
+    """
+    released_count: int = 0
+    candidate_branch: object
+    for candidate_branch in circuit.get_branches_iter(
             add_vsc=False,
             add_hvdc=False,
             add_switch=False,
     ):
-        if isinstance(physical_branch, (Line, SeriesReactance)):
-            line: Line | SeriesReactance | None = physical_branch
-        else:
-            line = None
-        if line is None:
-            pass
-        else:
-            root_id_raw: object | None = line.rms_model.__dict__.get(
-                "dgs_logical_actuator_root_id",
-                None,
-            )
-            if isinstance(root_id_raw, str):
-                root_association: DgsDynamicAssociation | None = root_by_id.get(
-                    root_id_raw,
-                    None,
-                )
+        if isinstance(candidate_branch, (Line, SeriesReactance)):
+            block: Block = candidate_branch.rms_model
+            if (
+                    block.dynamic_model_contract.dgs_logical_actuator_root_id
+                    is not None
+                    or block.dynamic_model_contract.dgs_open_resistance_ohm
+                    is not None
+            ):
+                block.dynamic_model_contract.dgs_logical_actuator_root_id = None
+                block.dynamic_model_contract.dgs_open_resistance_ohm = None
+                released_count += 1
             else:
-                root_association = None
-
-            if root_association is None or line.rms_model.empty():
                 pass
-            else:
-                _seed_open_resistive_actuator(
-                    block=root_association.rms_model,
-                    open_resistance_ohm=open_resistance_by_root_id.get(
-                        root_association.root_dgs_id,
-                        None,
-                    ),
-                )
-                gate_vars: List[Var] = _collect_unique_named_vars(
-                    block=root_association.rms_model,
-                    variable_name="gate",
-                )
-                resistance_vars: List[Var] = _collect_unique_named_vars(
-                    block=root_association.rms_model,
-                    variable_name="R",
-                )
-                resistance_parameter: Var | None = line.rms_model.api_obj_mapping.get(
-                    ParamPowerFlowReferenceType.r,
-                    None,
-                )
-                inductance_parameter: Var | None = line.rms_model.api_obj_mapping.get(
-                    ParamPowerFlowReferenceType.dc_line_l_pu_seconds,
-                    None,
-                )
-                status_uid_raw: object | None = line.rms_model.__dict__.get(
-                    "rms_conduction_status_var_uid",
-                    None,
-                )
-                status_var: Var | None = None
-                status_owner: Block | None = None
-                child_block: Block
-                event_var: Var
-                if isinstance(status_uid_raw, int):
-                    for child_block in line.rms_model.get_all_blocks():
-                        for event_var in child_block.event_dict.keys():
-                            if event_var.uid == status_uid_raw:
-                                status_var = event_var
-                                status_owner = child_block
-                            else:
-                                pass
-                else:
-                    pass
+        else:
+            pass
 
-                if (
-                        len(gate_vars) != 1
-                        or len(resistance_vars) != 1
-                        or resistance_parameter is None
-                        or status_var is None
-                        or status_owner is None
-                ):
-                    logger.add_warning(
-                        msg="DGS logical actuator runtime interface is incomplete",
-                        device=line.name,
-                        value=root_id_raw,
-                    )
-                else:
-                    gate_expression: Expr = heaviside(gate_vars[0])
-                    status_owner.event_dict[status_var] = gate_expression
-
-                    # PowerFactory exports chopper R in Ohm, while the standard
-                    # DC branch shell uses system pu on the connected rail base.
-                    impedance_base_ohm: float = (
-                            float(line.bus_from.Vnom) * float(line.bus_from.Vnom)
-                            / float(circuit.Sbase)
-                    )
-                    if impedance_base_ohm > 0.0:
-                        parameter_owner: Block | None = None
-                        for child_block in line.rms_model.get_all_blocks():
-                            if resistance_parameter in child_block.parameters:
-                                parameter_owner = child_block
-                            else:
-                                pass
-                        if parameter_owner is None:
-                            logger.add_warning(
-                                msg="DGS passive actuator resistance parameter has no owner",
-                                device=line.name,
-                                value=resistance_parameter.name,
-                            )
-                        else:
-                            parameter_owner.parameters.pop(resistance_parameter, None)
-                            parameter_owner.event_dict[resistance_parameter] = resistance_vars[0] / Const(
-                                impedance_base_ohm)
-
-                            if inductance_parameter is None:
-                                # A purely resistive actuator intentionally has
-                                # no inductance parameter. Its gate and dynamic
-                                # resistance remain fully executable without a
-                                # fictitious energy-storage state.
-                                pass
-                            else:
-                                if isinstance(line, Line):
-                                    inductance_pu_seconds: float = float(
-                                        line.dc_series_inductance_pu_seconds
-                                    )
-                                else:
-                                    inductance_pu_seconds = float(line.X) / (
-                                            2.0 * math.pi * float(circuit.fBase)
-                                    )
-                                inductance_owner: Block | None = None
-                                for child_block in line.rms_model.get_all_blocks():
-                                    if inductance_parameter in child_block.parameters:
-                                        inductance_owner = child_block
-                                    else:
-                                        pass
-                                if inductance_owner is None:
-                                    logger.add_warning(
-                                        msg="DGS passive actuator inductance parameter has no owner",
-                                        device=line.name,
-                                        value=inductance_parameter.name,
-                                    )
-                                else:
-                                    # ElmSind exports X on the nominal-frequency
-                                    # pu base. Convert it to the seconds coefficient
-                                    # used by the DC R-L shell.
-                                    inductance_owner.parameters[inductance_parameter] = Const(
-                                        inductance_pu_seconds
-                                    )
-                            # Runtime event expressions that depend on solved
-                            # DAE variables are seeded at startup and projected
-                            # explicitly at each solver boundary. Store typed
-                            # fixed-size specifications for that projection.
-                            line.rms_model.__dict__["dgs_runtime_parameter_projections"] = list([
-                                (
-                                    status_var.uid,
-                                    gate_vars[0].uid,
-                                    1.0,
-                                    True,
-                                ),
-                                (
-                                    resistance_parameter.uid,
-                                    resistance_vars[0].uid,
-                                    1.0 / impedance_base_ohm,
-                                    False,
-                                ),
-                            ])
-                            bound_count += 1
-                    else:
-                        logger.add_warning(
-                            msg="DGS passive actuator has invalid impedance base",
-                            device=line.name,
-                            value=line.bus_from.Vnom,
-                        )
-
-    return bound_count
+    return released_count
