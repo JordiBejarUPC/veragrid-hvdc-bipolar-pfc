@@ -8,7 +8,7 @@ import time
 import numpy as np
 from scipy.sparse import csc_matrix, coo_matrix, diags
 from scipy.sparse import hstack as hs, vstack as vs
-from scipy.sparse.linalg import factorized
+from scipy.sparse.linalg import factorized, spsolve
 
 from VeraGridEngine.DataStructures.numerical_circuit import NumericalCircuit
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results import NumericPowerFlowResults
@@ -162,6 +162,32 @@ def _safe_voltage_germ(V: CxVec, no_slack: IntVec) -> CxVec:
     return Vgerm
 
 
+def _classical_no_load_germ(Yseries: CscMat, Vset: CxVec, sl: IntVec, no_slack: IntVec) -> CxVec:
+    """
+    Compute the classical HELM no-load germ used as the first DPRHEM state.
+
+    :param Yseries: Series-only admittance matrix.
+    :param Vset: Voltage set-point vector.
+    :param sl: Slack bus indices.
+    :param no_slack: Non-slack bus indices.
+    :return: Full voltage vector containing the no-load germ.
+    """
+
+    Vgerm: CxVec = Vset.copy()
+    Yred: CscMat = Yseries[np.ix_(no_slack, no_slack)]
+    Yslack: CscMat = -Yseries[np.ix_(no_slack, sl)]
+
+    # The first germ follows the classical HEM construction.  This keeps the
+    # initial branch tied to the high-voltage no-load solution before any
+    # dynamic power restart is attempted.
+    if len(sl) > 1:
+        Vgerm[no_slack] = spsolve(Yred, Yslack.sum(axis=1))
+    else:
+        Vgerm[no_slack] = spsolve(Yred, Yslack)
+
+    return _safe_voltage_germ(Vgerm, no_slack)
+
+
 def _known_inverse_voltage_coefficient(U: np.ndarray, X: np.ndarray, order: int) -> np.ndarray:
     """
     Compute the known part of X[order] before U[order] is solved.
@@ -187,6 +213,26 @@ def _known_inverse_voltage_coefficient(U: np.ndarray, X: np.ndarray, order: int)
         known = known
 
     return known
+
+
+def _residual_ratio(previous_norm: float, candidate_norm: float, tolerance: float) -> float:
+    """
+    Compute the DPRHEM residual-ratio restart indicator.
+
+    :param previous_norm: Previous order mismatch norm.
+    :param candidate_norm: Current order mismatch norm.
+    :param tolerance: Target mismatch tolerance.
+    :return: Residual convergence ratio.
+    """
+
+    denominator: float = previous_norm - tolerance
+
+    if abs(denominator) > 1e-30:
+        ratio: float = (previous_norm - candidate_norm) / denominator
+    else:
+        ratio = 0.0
+
+    return ratio
 
 
 def _build_dpr_matrix(Yred: CscMat,
@@ -323,6 +369,9 @@ def _solve_dpr_segment(Ybus: CscMat,
         Vbest: CxVec = Vgerm.copy()
         best_norm: float = current_norm
         best_order: int = 0
+        previous_norm: float = current_norm
+        norm_order_1: float = current_norm
+        baseline_ratio: float = np.inf
         converged: bool = current_norm <= tolerance
         improved: bool = False
         order: int = 1
@@ -358,11 +407,31 @@ def _solve_dpr_segment(Ybus: CscMat,
             X[order, :] = -helm_power_flow.conv1(U, X, order) / np.conj(U[0, :])
 
             Vcandidate: CxVec = Vgerm.copy()
-            Vcandidate[sl] = Vset[sl]
-            Vcandidate[pqpv_original] = U[:order + 1, :].sum(axis=0)
+            candidate_norm: float = np.inf
+            candidate_ok: bool = False
+            candidate_scales: np.ndarray = np.array([1.0, 0.5, 0.25, 0.1, 0.05, 0.01, 0.001], dtype=float)
 
-            candidate_norm: float = _power_mismatch(Ybus, Vcandidate, S0, no_slack, pq)
-            candidate_ok: bool = bool(np.isfinite(candidate_norm) and _angle_guard(Vcandidate, sl, no_slack))
+            # ponytail: damped segment evaluation; replace with radius-aware
+            # analytical continuation if a formal DPRHEM proof is needed.
+            for scale in candidate_scales:
+                Vscaled: CxVec = Vgerm.copy()
+                Uscaled: CxVec = U[0, :].copy()
+
+                for scale_order in range(1, order + 1):
+                    Uscaled += U[scale_order, :] * scale ** scale_order
+
+                Vscaled[sl] = Vset[sl]
+                Vscaled[pqpv_original] = Uscaled
+
+                scaled_norm: float = _power_mismatch(Ybus, Vscaled, S0, no_slack, pq)
+                scaled_ok: bool = bool(np.isfinite(scaled_norm) and _angle_guard(Vscaled, sl, no_slack))
+
+                if scaled_ok and scaled_norm < candidate_norm:
+                    Vcandidate = Vscaled
+                    candidate_norm = scaled_norm
+                    candidate_ok = True
+                else:
+                    Vcandidate = Vcandidate
 
             if candidate_ok:
                 if candidate_norm < best_norm:
@@ -372,15 +441,50 @@ def _solve_dpr_segment(Ybus: CscMat,
                     improved = True
                 else:
                     Vbest = Vbest
+
+                if candidate_norm <= tolerance:
+                    converged = True
+                    restart_now = True
+                elif order == 1:
+                    # The first residual is only used to define the paper's
+                    # dynamic restart reference after order two is available.
+                    norm_order_1 = candidate_norm
+                    restart_now = False
+                elif order == 2:
+                    baseline_ratio = _residual_ratio(previous_norm=norm_order_1,
+                                                     candidate_norm=candidate_norm,
+                                                     tolerance=tolerance)
+                    restart_now = False
+                else:
+                    ratio: float = _residual_ratio(previous_norm=previous_norm,
+                                                  candidate_norm=candidate_norm,
+                                                  tolerance=tolerance)
+                    slow_restart: bool = bool(baseline_ratio >= ratio > 0.0)
+                    divergence_restart: bool = bool(ratio < 0.0)
+
+                    # The slow/stagnating case is exactly the paper criterion.
+                    # The divergence case is only accepted when the angle guard
+                    # already accepted the candidate as physically plausible
+                    # and the segment still improves on its starting germ.
+                    restart_now = bool((slow_restart or divergence_restart) and candidate_norm < current_norm)
+
+                if restart_now and not converged:
+                    Vbest = Vcandidate
+                    best_norm = candidate_norm
+                    best_order = order
+                    improved = True
+                else:
+                    Vbest = Vbest
             else:
                 Vbest = Vbest
+                restart_now = False
 
-            if best_norm <= tolerance:
-                converged = True
+            if restart_now:
                 keep_solving = False
             else:
                 keep_solving = True
 
+            previous_norm = candidate_norm
             order += 1
 
         result: DprSegmentResult = DprSegmentResult(U=U,
@@ -408,6 +512,7 @@ def helm_coefficients_dpr(Ybus: CscMat, Yseries: CscMat, V0: CxVec, S0: CxVec, Y
                           pq: IntVec, pv: IntVec, sl: IntVec, no_slack: IntVec,
                           tolerance: float = 1e-6, max_coeff: int = 30,
                           restart_order: int = 6, max_restarts: int = 20,
+                          use_classical_germ: bool = False,
                           verbose: bool = False, logger: Logger = None) -> tuple[np.ndarray, np.ndarray, np.ndarray,
                                                                                   CxVec, int, bool]:
     """
@@ -426,6 +531,7 @@ def helm_coefficients_dpr(Ybus: CscMat, Yseries: CscMat, V0: CxVec, S0: CxVec, Y
     :param max_coeff: Total coefficient budget across all restarts.
     :param restart_order: Maximum order computed before forcing a restart.
     :param max_restarts: Maximum number of dynamic power restarts.
+    :param use_classical_germ: Use the classical HELM no-load germ instead of the supplied voltage.
     :param verbose: Store debug information in the logger.
     :param logger: Logger object.
     :return: Last segment coefficients, voltage vector, total iterations and convergence flag.
@@ -445,7 +551,12 @@ def helm_coefficients_dpr(Ybus: CscMat, Yseries: CscMat, V0: CxVec, S0: CxVec, Y
         Vbest: CxVec = V0.copy()
     else:
         pq_reduced, pv_reduced, pqpv_original = _reduced_bus_indices(nbus, pq, pv, sl)
-        Vbest = _safe_voltage_germ(V0, no_slack)
+
+        if use_classical_germ:
+            Vbest = _classical_no_load_germ(Yseries=Yseries, Vset=V0, sl=sl, no_slack=no_slack)
+        else:
+            Vbest = _safe_voltage_germ(V0, no_slack)
+
         Vbest[sl] = V0[sl]
         current_norm: float = _power_mismatch(Ybus, Vbest, S0, no_slack, pq)
         converged = current_norm <= tolerance
@@ -516,6 +627,7 @@ def helm_dpr(nc: NumericalCircuit,
              pq: IntVec, pv: IntVec, vd: IntVec, no_slack: IntVec,
              tolerance: float = 1e-6, max_coefficients: int = 30, use_pade: bool = True,
              restart_order: int = 6, max_restarts: int = 20,
+             use_classical_germ: bool = False,
              verbose: int = 0, logger: Logger = None) -> NumericPowerFlowResults:
     """
     Solve the power flow with a dynamic-power-restart HELM variant.
@@ -538,6 +650,7 @@ def helm_dpr(nc: NumericalCircuit,
     :param use_pade: Kept for interface compatibility; DPRHEM uses restart summation.
     :param restart_order: Maximum order computed before forcing a restart.
     :param max_restarts: Maximum number of dynamic power restarts.
+    :param use_classical_germ: Use the classical HELM no-load germ instead of the supplied voltage.
     :param verbose: Verbosity flag.
     :param logger: Logger object.
     :return: Numeric power-flow results.
@@ -594,6 +707,7 @@ def helm_dpr(nc: NumericalCircuit,
                                                              max_coeff=max_coefficients,
                                                              restart_order=restart_order,
                                                              max_restarts=max_restarts,
+                                                             use_classical_germ=use_classical_germ,
                                                              verbose=bool(verbose),
                                                              logger=logger)
 
