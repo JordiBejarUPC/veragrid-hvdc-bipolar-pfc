@@ -244,18 +244,18 @@ class TrafoRmsTemplate(RmsModelTemplate):
 
         block.in_vars = inputs
 
-        block.__dict__["rms_conduction_status_var_uid"] = conduction_status.uid
+        block.dynamic_model_contract.rms_conduction_status_var_uid = conduction_status.uid
         # Transformer terminal powers are deterministic algebraic views of the
         # bus phasors, tap and admittance. Refresh these four shells before the
         # startup/Newton residual so the global ideal-connector projection does
         # not begin from stale load-flow flow variables.
-        block.__dict__["runtime_equipment_shell_sync_names"] = list([
+        block.dynamic_model_contract.runtime_equipment_shell_sync_names = list([
             Pf.name,
             Pt.name,
             Qf.name,
             Qt.name,
         ])
-        block.__dict__["runtime_equipment_shell_sync_var_uids"] = list([
+        block.dynamic_model_contract.runtime_equipment_shell_sync_var_uids = list([
             Pf.uid,
             Pt.uid,
             Qf.uid,
@@ -395,14 +395,14 @@ class IdealTrafoRmsTemplate(RmsModelTemplate):
         block.parameters[voltage_tap_from] = vf.add_const(1.0)
         block.parameters[voltage_tap_to] = vf.add_const(1.0)
         block.event_dict[conduction_status] = vf.add_const(1.0)
-        block.__dict__["rms_conduction_status_var_uid"] = conduction_status.uid
-        block.__dict__["rms_ideal_transformer"] = True
+        block.dynamic_model_contract.rms_conduction_status_var_uid = conduction_status.uid
+        block.dynamic_model_contract.rms_ideal_transformer = True
         # An ideal transformer has no local constitutive equation that fixes
         # transfer power: the two connected nodal balances determine it. Keep
         # the power-flow Pf/Pt/Qf/Qt seeds until the global DAE is assembled
         # instead of applying the underdetermined device-local initializer.
-        block.__dict__["skip_device_local_explicit_init"] = True
-        block.__dict__["startup_initial_reduced_polish_var_names"] = list([
+        block.dynamic_model_contract.skip_device_local_explicit_init = True
+        block.dynamic_model_contract.startup_initial_reduced_polish_var_names = list([
             "Pf",
             "Pt",
             "Qf",
@@ -515,7 +515,7 @@ class TrafoPhasorRmsTemplate(RmsModelTemplate):
         block.parameters[phase_displacement] = vf.add_const(0)
         block.event_dict[conduction_status] = vf.add_const(1.0)
 
-        block.__dict__["rms_conduction_status_var_uid"] = conduction_status.uid
+        block.dynamic_model_contract.rms_conduction_status_var_uid = conduction_status.uid
         self._block = block
 
 

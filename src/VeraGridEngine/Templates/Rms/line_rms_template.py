@@ -86,8 +86,8 @@ def get_line_rms_template(vfactory: VarFactory, name="Line_rms_template") -> Rms
     templ.block.out_vars = [Pf, Pt, Qf, Qt]
     # The fixed-size DAE keeps the branch compiled while a scheduled event
     # changes only this retained conduction parameter.
-    templ.block.__dict__["rms_conduction_status_var_uid"] = u.uid
-    block.__dict__["rms_conduction_status_var_uid"] = u.uid
+    templ.block.dynamic_model_contract.rms_conduction_status_var_uid = u.uid
+    block.dynamic_model_contract.rms_conduction_status_var_uid = u.uid
 
 
 
@@ -212,8 +212,8 @@ def get_dc_line_rms_template(
 
     templ.block.in_vars = inputs
     templ.block.out_vars = list([If_dc, Pf, Pt])
-    templ.block.__dict__["rms_conduction_status_var_uid"] = u.uid
-    block.__dict__["rms_conduction_status_var_uid"] = u.uid
+    templ.block.dynamic_model_contract.rms_conduction_status_var_uid = u.uid
+    block.dynamic_model_contract.rms_conduction_status_var_uid = u.uid
 
     templ.comment = 'DC line RMS series R-L model'
     return templ
@@ -347,20 +347,24 @@ def get_ideal_ac_connector_rms_template(
     # initialization would be underdetermined, so retain the power-flow seeds
     # until the complete DAE is assembled and polished.
     polish_variable_names: List[str] = list(["Pf", "Pt", "Qf", "Qt"])
-    template.block.__dict__["rms_conduction_status_var_uid"] = conduction_status.uid
-    template.block.__dict__["rms_topology_constraint_status_var_uid"] = (
+    template.block.dynamic_model_contract.rms_conduction_status_var_uid = conduction_status.uid
+    template.block.dynamic_model_contract.rms_topology_constraint_status_var_uid = (
         topology_constraint_status.uid
     )
-    template.block.__dict__["rms_ideal_ac_connector"] = True
-    template.block.__dict__["skip_device_local_explicit_init"] = True
-    template.block.__dict__["startup_initial_reduced_polish_var_names"] = polish_variable_names
-    block.__dict__["rms_conduction_status_var_uid"] = conduction_status.uid
-    block.__dict__["rms_topology_constraint_status_var_uid"] = (
+    template.block.dynamic_model_contract.rms_ideal_ac_connector = True
+    template.block.dynamic_model_contract.skip_device_local_explicit_init = True
+    template.block.dynamic_model_contract.startup_initial_reduced_polish_var_names = list(
+        polish_variable_names
+    )
+    block.dynamic_model_contract.rms_conduction_status_var_uid = conduction_status.uid
+    block.dynamic_model_contract.rms_topology_constraint_status_var_uid = (
         topology_constraint_status.uid
     )
-    block.__dict__["rms_ideal_ac_connector"] = True
-    block.__dict__["skip_device_local_explicit_init"] = True
-    block.__dict__["startup_initial_reduced_polish_var_names"] = list(polish_variable_names)
+    block.dynamic_model_contract.rms_ideal_ac_connector = True
+    block.dynamic_model_contract.skip_device_local_explicit_init = True
+    block.dynamic_model_contract.startup_initial_reduced_polish_var_names = list(
+        polish_variable_names
+    )
 
     template.comment = 'Ideal AC connector RMS model'
     return template
