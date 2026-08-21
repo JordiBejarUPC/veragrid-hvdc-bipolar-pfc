@@ -6988,15 +6988,12 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             rebuilt_node_data[wrapper_block.uid] = self.diagram.node_data[wrapper_block.uid]
             next_input_y += 100.0
 
-        expected_output_by_ref: dict[VarPowerFlowReferenceType, Var] = dict()
-        for root_var in self.main_block.out_vars:
-            if root_var.ref is not None:
-                expected_output_by_ref[root_var.ref] = root_var
-            else:
-                pass
-
         for reference in sorted(expected_outputs_by_ref.keys(), key=get_reference_sort_key):
-            root_var = expected_output_by_ref[reference]
+            # RMS branches can expose one root variable through a side-specific
+            # external-mapping reference such as ``If_dc`` while the Var itself
+            # retains its generic physical reference. The resolved contract is
+            # therefore authoritative for both identity and wrapper placement.
+            root_var = expected_outputs_by_ref[reference]
             wrapper_block = interface_output_wrappers.get(reference, None)
             if wrapper_block is None:
                 wrapper_block = Block(name=root_var.name)
