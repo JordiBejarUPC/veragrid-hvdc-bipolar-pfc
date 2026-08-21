@@ -54,7 +54,10 @@ from VeraGridEngine.Templates.Rms.voltage_source_template import (
     build_thevenin_voltage_source,
 )
 from VeraGridEngine.Utils.Symbolic.block import Block
-from VeraGridEngine.Utils.Symbolic.bus_rms_template import initialize_bus_rms
+from VeraGridEngine.Utils.Symbolic.bus_rms_template import (
+    initialize_bus_rms,
+    promote_dc_bus_voltage_to_capacitive_state,
+)
 from VeraGridEngine.Utils.Symbolic.symbolic import Const, Expr, Var
 from VeraGridEngine.Utils.procedural_logic import DelayedSwitchEventLogic
 import VeraGridEngine.Utils.Symbolic.symbolic as sym
@@ -1278,13 +1281,22 @@ def prepare_dgs_circuit_for_rms(
     for bus in circuit.buses:
         dc_bus_capacitance[bus] = 0.0
     for line in circuit.lines:
-        if line.active and line.bus_from.is_dc and line.bus_to.is_dc:
-            terminal_capacitance: float = 0.5 * max(
-                0.0,
-                float(line.dc_shunt_capacitance_pu_seconds),
-            )
-            dc_bus_capacitance[line.bus_from] += terminal_capacitance
-            dc_bus_capacitance[line.bus_to] += terminal_capacitance
+        is_dc_cable: bool = line.bus_from.is_dc and line.bus_to.is_dc
+        if is_dc_cable:
+            if not line.dc_cable_dynamic_parameters_complete:
+                raise ValueError(
+                    f"DGS DC cable {line.idtag} lacks complete RMS energy parameters."
+                )
+            else:
+                pass
+            if line.active:
+                terminal_capacitance: float = (
+                    0.5 * float(line.dc_shunt_capacitance_pu_seconds)
+                )
+                dc_bus_capacitance[line.bus_from] += terminal_capacitance
+                dc_bus_capacitance[line.bus_to] += terminal_capacitance
+            else:
+                pass
         else:
             pass
 
@@ -1335,17 +1347,11 @@ def prepare_dgs_circuit_for_rms(
             # Dynamic association has already connected controller inputs to
             # this exact Vdc UID. Promote the existing variable in place so no
             # imported symbolic connection is invalidated by a replacement.
-            vdc_derivative: Var = circuit.var_factory.add_diff_var(
-                name="dVdc_dt",
-                base_var=vdc_shell_var,
+            promote_dc_bus_voltage_to_capacitive_state(
+                bus_rms_model=bus.rms_model,
+                vf=circuit.var_factory,
+                dc_shunt_capacitance_pu_seconds=bus_capacitance,
             )
-            bus.rms_model.algebraic_vars = list()
-            bus.rms_model.state_vars = list([vdc_shell_var])
-            bus.rms_model.state_eqs = list([Const(0.0)])
-            bus.rms_model.diff_vars = list([vdc_derivative])
-            bus.rms_model.external_mapping[
-                VarPowerFlowReferenceType.dVdc_dt
-            ] = vdc_derivative
             report.record_prepared_bus()
         else:
             pass

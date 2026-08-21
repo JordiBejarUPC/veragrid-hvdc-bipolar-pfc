@@ -3851,6 +3851,7 @@ class VarPowerFlowReferenceType(Enum):
     Iit = "Iit"  # Imaginary current at branch to end
 
     Vdc = "Vdc"  # Bus voltage for DC voltage in p.u.
+    d_Vdc = "d_Vdc"  # Bus DC-voltage derivative in p.u. per second.
     Vf_dc = "Vf_dc"  # Branch from-side DC voltage in p.u.
     Vt_dc = "Vt_dc"  # Branch to-side DC voltage in p.u.
     DcPathModeSeed = "DcPathModeSeed"  # PF-derived discrete conduction seed for DC branch EMT devices.

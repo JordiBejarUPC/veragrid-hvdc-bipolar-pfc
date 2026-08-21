@@ -29,7 +29,11 @@ from VeraGridEngine.Devices.Events.rms_events_group import RmsEventsGroup
 from VeraGridEngine.Devices.Events.rms_event import RmsEvent
 from VeraGridEngine.Devices.Branches.transformer import Transformer2W
 from VeraGridEngine.Utils.Symbolic.jit_compiler import RMSCompiler, RMSCompilerVec
-from VeraGridEngine.Utils.Symbolic.bus_rms_template import get_bus_rms_algebraic_vars
+from VeraGridEngine.Utils.Symbolic.bus_rms_template import (
+    build_dc_bus_nodal_power_equation,
+    dc_bus_rms_model_has_capacitive_state,
+    get_bus_rms_algebraic_vars,
+)
 from VeraGridEngine.Utils.procedural_logic import build_boundary_updater_from_block
 from VeraGridEngine.IO.fmu.importer.experimental_cs import (
     advance_rms_fmu_cs_devices,
@@ -519,6 +523,17 @@ class RmsProblemDaeVec(RmsProblemTemplate):
 
             bus_dict[elm] = bus_num
 
+            if (
+                    elm.is_dc
+                    and dc_bus_rms_model_has_capacitive_state(
+                        bus_rms_model=elm.rms_model,
+                    )
+            ):
+                raise ValueError(
+                    "Capacitive DC buses require the scalar RMS DAE problem."
+                )
+            else:
+                pass
 
             self.add_variables_to_compilation_dicts(elm, elm.rms_model)
 
@@ -974,7 +989,12 @@ class RmsProblemDaeVec(RmsProblemTemplate):
                 self.logger.add_error("Isolated bus", value=i)
             else:
                 if elm.is_dc:
-                    self._algebraic_eqs.append(P[i])
+                    self._algebraic_eqs.append(
+                        build_dc_bus_nodal_power_equation(
+                            bus_rms_model=elm.rms_model,
+                            nodal_power_balance=P[i],
+                        )
+                    )
                 elif (elm.idtag in ac_virtual_buses):
                     self._algebraic_eqs.append(P[i])
                 else:

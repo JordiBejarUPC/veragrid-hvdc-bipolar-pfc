@@ -59,6 +59,9 @@ class Line(BranchParent):
         '_X2',
         '_B2',
         '_G2',
+        'dc_series_inductance_pu_seconds',
+        'dc_shunt_capacitance_pu_seconds',
+        'dc_cable_dynamic_parameters_complete',
         '_ys',
         '_ysh',
         'temp_base',
@@ -168,6 +171,28 @@ class Line(BranchParent):
             tpe=float,
             definition='Total negative sequence shunt conductance.',
             cat=[PrpCat.SC, PrpCat.PF3],
+        ),
+        GCProp(
+            prop_name='dc_series_inductance_pu_seconds',
+            units='p.u. s',
+            tpe=float,
+            definition='DC series inductance coefficient on the system power base.',
+            cat=[PrpCat.RMS],
+            dyn_ref=ParamPowerFlowReferenceType.dc_line_l_pu_seconds,
+        ),
+        GCProp(
+            prop_name='dc_shunt_capacitance_pu_seconds',
+            units='p.u. s',
+            tpe=float,
+            definition='DC shunt capacitance coefficient on the system power base.',
+            cat=[PrpCat.RMS],
+        ),
+        GCProp(
+            prop_name='dc_cable_dynamic_parameters_complete',
+            units='',
+            tpe=bool,
+            definition='Whether the DC cable energy coefficients come from complete source evidence.',
+            cat=[PrpCat.RMS],
         ),
         GCProp(
             prop_name='ys',
@@ -283,12 +308,13 @@ class Line(BranchParent):
                  monitor_loading=True,
                  r0=1e-20, x0=1e-20, b0=1e-20, g0: float = 0.0,
                  r2=1e-20, x2=1e-20, b2=1e-20, g2: float = 0.0,
-                 dc_series_inductance_pu_seconds: float = 0.0,
-                 dc_shunt_capacitance_pu_seconds: float = 0.0,
                  capex=0,
                  opex=0,
                  circuit_idx: int = 1,
-                 build_status: BuildStatus = BuildStatus.Commissioned):
+                 build_status: BuildStatus = BuildStatus.Commissioned,
+                 dc_series_inductance_pu_seconds: float = 0.0,
+                 dc_shunt_capacitance_pu_seconds: float = 0.0,
+                 dc_cable_dynamic_parameters_complete: bool = False):
         """
         AC current Line
         :param bus_from: "From" :ref:`bus<Bus>` object
@@ -330,6 +356,9 @@ class Line(BranchParent):
         :param capex: Cost of investment (e/MW)
         :param opex: Cost of operation (e/MWh)
         :param build_status: build status (now time)
+        :param dc_series_inductance_pu_seconds: DC series inductance coefficient in p.u. seconds
+        :param dc_shunt_capacitance_pu_seconds: DC shunt capacitance coefficient in p.u. seconds
+        :param dc_cable_dynamic_parameters_complete: Whether both coefficients have complete source evidence
         """
 
         BranchParent.__init__(self,
@@ -383,6 +412,11 @@ class Line(BranchParent):
         self._X2 = float(x2)
         self._B2 = float(b2)
         self._G2 = float(g2)
+
+        # Preserve the irreducible DC cable data required by the RMS topology.
+        self.dc_series_inductance_pu_seconds: float = float(dc_series_inductance_pu_seconds)
+        self.dc_shunt_capacitance_pu_seconds: float = float(dc_shunt_capacitance_pu_seconds)
+        self.dc_cable_dynamic_parameters_complete: bool = bool(dc_cable_dynamic_parameters_complete)
 
         self._ys = AdmittanceMatrix()
         self._ysh = AdmittanceMatrix()
@@ -678,20 +712,42 @@ class Line(BranchParent):
         else:
             raise ValueError(f'{val} is not a AdmittanceMatrix')
 
-    def change_base(self, Sbase_old: float, Sbase_new: float):
+    def change_base(self, Sbase_old: float, Sbase_new: float) -> None:
         """
         Change the impedance base
         :param Sbase_old: old base (MVA)
         :param Sbase_new: new base (MVA)
+        :return: None.
         """
-        b = Sbase_new / Sbase_old
+        has_valid_base_change: bool = (
+            np.isfinite(Sbase_old)
+            and Sbase_old > 0.0
+            and np.isfinite(Sbase_new)
+            and Sbase_new > 0.0
+        )
+        if has_valid_base_change:
+            b: float = Sbase_new / Sbase_old
+            self.R *= b
+            self.X *= b
+            self.B *= b
+            self.G *= b
+            self.G0 *= b
+            self.G2 *= b
 
-        self.R *= b
-        self.X *= b
-        self.B *= b
-        self.G *= b
-        self.G0 *= b
-        self.G2 *= b
+            # The dynamic impedance and admittance coefficients use reciprocal
+            # base transformations. Invalidate cross-domain evidence after a
+            # non-identity change until the legacy static B scaling is reviewed.
+            if self.dc_cable_dynamic_parameters_complete:
+                self.dc_series_inductance_pu_seconds *= b
+                self.dc_shunt_capacitance_pu_seconds /= b
+                if b != 1.0:
+                    self.dc_cable_dynamic_parameters_complete = False
+                else:
+                    pass
+            else:
+                pass
+        else:
+            pass
 
     def get_weight(self) -> float:
         """

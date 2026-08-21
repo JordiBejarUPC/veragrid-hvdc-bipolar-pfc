@@ -31,7 +31,11 @@ from VeraGridEngine.Devices.Events.rms_events_group import RmsEventsGroup
 from VeraGridEngine.Devices.Events.rms_event import RmsEvent
 from VeraGridEngine.Devices.Branches.transformer import Transformer2W
 from VeraGridEngine.Utils.Symbolic.jit_compiler import RMSCompiler
-from VeraGridEngine.Utils.Symbolic.bus_rms_template import get_bus_rms_algebraic_vars
+from VeraGridEngine.Utils.Symbolic.bus_rms_template import (
+    build_dc_bus_nodal_power_equation,
+    dc_bus_rms_model_has_capacitive_state,
+    get_bus_rms_algebraic_vars,
+)
 from VeraGridEngine.Utils.procedural_logic import build_boundary_updater_from_block
 from VeraGridEngine.IO.fmu.importer.experimental_cs import (
     advance_rms_fmu_cs_devices,
@@ -1079,26 +1083,54 @@ class RmsProblemDae(RmsProblemTemplate):
         ]
         for i, elm in enumerate(self.grid.buses):
             if not P_used[i] and not Q_used[i]:
-                if elm.active:
-                    self.logger.add_error("Isolated active bus", device=elm.name, value=i)
-                else:
-                    # Detached out-of-service buses must not leave free algebraic
-                    # voltage variables in an otherwise square RMS system.
-                    boundary_equations: List[Expr] = build_inactive_bus_boundary_equations(
-                        bus=elm,
-                        init_guess=self.init_guess,
+                has_capacitive_dc_state: bool = (
+                    elm.is_dc
+                    and dc_bus_rms_model_has_capacitive_state(
+                        bus_rms_model=elm.rms_model,
                     )
-                    if len(boundary_equations) > 0:
-                        self._algebraic_eqs.extend(boundary_equations)
-                        self.logger.add_info("Inactive isolated bus fixed at its initial voltage",
-                                             device=elm.name)
+                )
+                if has_capacitive_dc_state:
+                    # With no connected power, Pbus=0 keeps the voltage state
+                    # constant without leaving its algebraic bridge variable free.
+                    self._algebraic_eqs.append(
+                        build_dc_bus_nodal_power_equation(
+                            bus_rms_model=elm.rms_model,
+                            nodal_power_balance=Const(0.0),
+                        )
+                    )
+                    if elm.active:
+                        self.logger.add_error("Isolated active bus", device=elm.name, value=i)
                     else:
-                        self.logger.add_error("Invalid RMS model for inactive isolated bus",
-                                              device=elm.name,
-                                              value=i)
+                        self.logger.add_info(
+                            "Inactive capacitive DC bus retained at its initial voltage",
+                            device=elm.name,
+                        )
+                else:
+                    if elm.active:
+                        self.logger.add_error("Isolated active bus", device=elm.name, value=i)
+                    else:
+                        # Detached out-of-service buses must not leave free algebraic
+                        # voltage variables in an otherwise square RMS system.
+                        boundary_equations: List[Expr] = build_inactive_bus_boundary_equations(
+                            bus=elm,
+                            init_guess=self.init_guess,
+                        )
+                        if len(boundary_equations) > 0:
+                            self._algebraic_eqs.extend(boundary_equations)
+                            self.logger.add_info("Inactive isolated bus fixed at its initial voltage",
+                                                 device=elm.name)
+                        else:
+                            self.logger.add_error("Invalid RMS model for inactive isolated bus",
+                                                  device=elm.name,
+                                                  value=i)
             else:
                 if elm.is_dc:
-                    self._algebraic_eqs.append(P[i])
+                    self._algebraic_eqs.append(
+                        build_dc_bus_nodal_power_equation(
+                            bus_rms_model=elm.rms_model,
+                            nodal_power_balance=P[i],
+                        )
+                    )
                 elif (elm.idtag in ac_virtual_buses):
                     self._algebraic_eqs.append(P[i])
                 else:
