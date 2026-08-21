@@ -452,7 +452,7 @@ def __solve_island_limited_support(island: NumericalCircuit,
                                          tolerance=options.tolerance,
                                          max_coefficients=options.max_iter,
                                          use_pade=False,
-                                         use_classical_germ=not options.use_stored_guess,
+                                         use_classical_germ=False,
                                          verbose=options.verbose,
                                          logger=logger)
 
@@ -477,7 +477,7 @@ def __solve_island_limited_support(island: NumericalCircuit,
                                                  tolerance=options.tolerance,
                                                  max_coefficients=options.max_iter,
                                                  use_pade=False,
-                                                 use_classical_germ=not options.use_stored_guess,
+                                                 use_classical_germ=False,
                                                  verbose=options.verbose,
                                                  logger=logger)
 
