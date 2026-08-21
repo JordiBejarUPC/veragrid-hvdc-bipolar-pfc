@@ -6,13 +6,14 @@
 import hashlib
 import math
 from pathlib import Path
-from typing import Sequence
+from typing import Sequence, get_type_hints
 
 import numpy as np
 import pytest
 
 from VeraGridEngine.Devices.Branches.vsc import VSC
 from VeraGridEngine.Devices.Branches.line import Line
+from VeraGridEngine.Devices.Branches.series_reactance import SeriesReactance
 from VeraGridEngine.Devices.Branches.transformer import Transformer2W
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
@@ -21,6 +22,9 @@ from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Devices.Parents.dynamic_parent import DynamicDevice
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.IO.dgs.dgs_circuit import DgsCircuit
+from VeraGridEngine.IO.dgs.dgs_logical_actuator_binding import (
+    prepare_dgs_logical_actuator_topology,
+)
 from VeraGridEngine.IO.dgs.dgs_rms_measurement_binding import (
     DgsRmsMeasurementBindingReport,
     bind_dgs_rms_measurements,
@@ -29,6 +33,7 @@ from VeraGridEngine.IO.dgs.dgs_rms_preparation import (
     bind_dgs_switch_event_runtime,
 )
 from VeraGridEngine.IO.dgs.dgs_to_veragrid import (
+    add_dgs_terminal_buses,
     convert_dgs_to_monopolar_vsc,
     dgs_to_circuit,
 )
@@ -65,6 +70,8 @@ from VeraGridEngine.IO.dgs.dgs_objects import (
     BlkSum,
     ElmComp,
     ElmDsl,
+    ElmSind,
+    ElmTerm,
     ElmVscmono,
     StaCubic,
 )
@@ -86,7 +93,12 @@ from VeraGridEngine.IO.dynamic_model_import_types import (
     DynamicModelImportSelectionRequest,
     DynamicModelImportSource,
 )
-from VeraGridEngine.Utils.Symbolic.block import Block
+from VeraGridEngine.Utils.Symbolic.block import Block, DynamicModelContract
+from VeraGridEngine.Utils.Symbolic.bus_rms_template import (
+    BusRmsTemplate,
+    build_dc_bus_nodal_power_equation,
+    dc_bus_rms_model_has_capacitive_state,
+)
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import (
     EmtProblemTemplate,
 )
@@ -101,6 +113,7 @@ from VeraGridEngine.Utils.procedural_logic import (
     ConditionalDiagnosticLogic,
     DelayedSwitchEventLogic,
     ProceduralLogicCodec,
+    SampledValueLogic,
 )
 from VeraGridEngine.Templates.Rms.line_rms_template import (
     get_dc_line_rms_template,
@@ -114,6 +127,7 @@ from VeraGridEngine.enumerations import (
     DeviceType,
     DynamicSimulationMode,
     FileType,
+    VarPowerFlowReferenceType,
 )
 
 
@@ -121,6 +135,124 @@ class DgsSwitchEventProblem(EmtProblemTemplate):
     """Provide the smallest runtime problem needed to exercise a DGS switch event."""
 
     __slots__ = tuple()
+
+
+def test_dc_bus_nodal_power_equation_annotations_resolve() -> None:
+    """Keep the public DC nodal helper annotations runtime-resolvable.
+
+    :return: None.
+    """
+    assert (
+        get_type_hints(build_dc_bus_nodal_power_equation)["return"]
+        == Expr | Const
+    )
+
+
+def test_ac_bus_rms_power_ports_have_distinct_symbolic_names() -> None:
+    """Keep active and reactive bus ports unambiguous by name and reference.
+
+    :return: None.
+    """
+    bus_template: BusRmsTemplate = BusRmsTemplate(
+        vf=VarFactory(),
+        is_dc=False,
+    )
+    active_power: Var | None = bus_template.block.external_mapping.get(
+        VarPowerFlowReferenceType.P,
+        None,
+    )
+    reactive_power: Var | None = bus_template.block.external_mapping.get(
+        VarPowerFlowReferenceType.Q,
+        None,
+    )
+
+    assert isinstance(active_power, Var)
+    assert isinstance(reactive_power, Var)
+    assert active_power.name == "P"
+    assert reactive_power.name == "Q"
+    assert active_power.uid != reactive_power.uid
+    assert active_power.ref is VarPowerFlowReferenceType.P
+    assert reactive_power.ref is VarPowerFlowReferenceType.Q
+
+
+def test_dc_bus_capacitive_state_detection_rejects_incomplete_topology() -> None:
+    """Reject a mapped DC derivative that does not own a complete state.
+
+    :return: None.
+    """
+    valid_template: BusRmsTemplate = BusRmsTemplate(
+        vf=VarFactory(),
+        is_dc=True,
+        dc_shunt_capacitance_pu_seconds=0.1,
+    )
+    assert dc_bus_rms_model_has_capacitive_state(
+        bus_rms_model=valid_template.block,
+    )
+
+    incomplete_template: BusRmsTemplate = BusRmsTemplate(
+        vf=VarFactory(),
+        is_dc=True,
+    )
+    incomplete_derivative: Var = Var(name="dVdc_dt")
+    incomplete_template.block.external_mapping[
+        VarPowerFlowReferenceType.d_Vdc
+    ] = incomplete_derivative
+
+    with pytest.raises(
+            ValueError,
+            match="DC bus has an incomplete capacitive-state topology",
+    ):
+        dc_bus_rms_model_has_capacitive_state(
+            bus_rms_model=incomplete_template.block,
+        )
+
+
+def test_elmterm_bus_addition_rejects_empty_fid_atomically() -> None:
+    """Reject an empty terminal FID before adding any source bus.
+
+    :return: None.
+    """
+    dgs_circuit: DgsCircuit = DgsCircuit()
+    valid_terminal: ElmTerm = ElmTerm()
+    valid_terminal.ID = "valid-terminal"
+    invalid_terminal: ElmTerm = ElmTerm()
+    invalid_terminal.ID = ""
+    dgs_circuit.elmterms.append(valid_terminal)
+    dgs_circuit.elmterms.append(invalid_terminal)
+    destination: MultiCircuit = MultiCircuit()
+
+    with pytest.raises(ValueError, match="ElmTerm FID must not be empty"):
+        add_dgs_terminal_buses(
+            dgs_grid=dgs_circuit,
+            grid=destination,
+            pos_by_objid=dict(),
+        )
+
+    assert len(destination.buses) == 0
+
+
+def test_elmterm_bus_addition_rejects_duplicate_fid_atomically() -> None:
+    """Reject repeated terminal identity before distinct nodes can merge.
+
+    :return: None.
+    """
+    dgs_circuit: DgsCircuit = DgsCircuit()
+    first_terminal: ElmTerm = ElmTerm()
+    first_terminal.ID = "duplicate-terminal"
+    second_terminal: ElmTerm = ElmTerm()
+    second_terminal.ID = "folder\\duplicate-terminal"
+    dgs_circuit.elmterms.append(first_terminal)
+    dgs_circuit.elmterms.append(second_terminal)
+    destination: MultiCircuit = MultiCircuit()
+
+    with pytest.raises(ValueError, match="Duplicate ElmTerm FID: duplicate-terminal"):
+        add_dgs_terminal_buses(
+            dgs_grid=dgs_circuit,
+            grid=destination,
+            pos_by_objid=dict(),
+        )
+
+    assert len(destination.buses) == 0
 
 
 def _get_dynamic_gain_block_dgs_path() -> Path:
@@ -486,6 +618,339 @@ def test_complete_hvdc_vsc_exports_apply_direct_dynamic_templates_by_fid(
     assert assigned_converter_count == 2
     assert logger.warning_count() == 0
     assert logger.error_count() == 0
+
+
+def test_v3_dynamic_route_binds_both_logical_chopper_actuators() -> None:
+    """Bind each V3 chopper gate and resistance through the public DGS route.
+
+    :return: None.
+    """
+    dgs_path: Path = _get_complete_hvdc_vsc_dgs_path(
+        file_name="hvdc_vsc_v3_complete_static_dynamic.dgs",
+    )
+    dgs_circuit: DgsCircuit = DgsCircuit()
+    dgs_circuit.parse_dgs(path=str(dgs_path))
+    logger: Logger = Logger()
+    circuit: MultiCircuit = dgs_to_circuit(
+        path=str(dgs_path),
+        use_dynamic_information=True,
+        dynamic_simulation_mode=DynamicSimulationMode.RMS,
+        logger_=logger,
+    )
+    actuator_source_ids: set[str] = set()
+    source_root: ElmComp
+    for source_root in dgs_circuit.elmcomps:
+        direct_entry: ElmCompInstanceEntry
+        for direct_entry in extract_elmcomp_direct_instances(
+                circuit=dgs_circuit,
+                root_element=source_root,
+        ):
+            if (
+                    direct_entry.element_kind == "ElmSind"
+                    and direct_entry.element_id is not None
+            ):
+                actuator_source_ids.add(direct_entry.element_id)
+            else:
+                pass
+    assert actuator_source_ids == set(("254", "255"))
+    enriched_resistance_count: int = 0
+    passive_source: ElmSind
+    for passive_source in dgs_circuit.elmsinds:
+        if passive_source.ID in actuator_source_ids:
+            assert passive_source.initial_resistance_column_declared
+            assert passive_source.Rin == 99999.0
+            enriched_resistance_count += 1
+        else:
+            pass
+    assert enriched_resistance_count == 2
+    actuator_branches: list[Line | SeriesReactance] = list()
+    candidate_branch: object
+    for candidate_branch in circuit.get_branches_iter(
+            add_vsc=False,
+            add_hvdc=False,
+            add_switch=False,
+    ):
+        if (
+                isinstance(candidate_branch, (Line, SeriesReactance))
+                and candidate_branch.idtag in actuator_source_ids
+        ):
+            actuator_branches.append(candidate_branch)
+        else:
+            pass
+
+    assert len(actuator_branches) == 2
+
+    projection_source_uids: set[int] = set()
+    actuator_branch: Line | SeriesReactance
+    for actuator_branch in actuator_branches:
+        contract: DynamicModelContract = (
+            actuator_branch.rms_model.dynamic_model_contract
+        )
+        assert actuator_branch.bus_from is not actuator_branch.bus_to
+        assert contract.dgs_logical_actuator_root_id is None
+        assert contract.dgs_open_resistance_ohm is None
+        projection_entries: list[SampledValueLogic] = list(
+            entry
+            for block in actuator_branch.rms_model.get_all_blocks()
+            for entry in block.procedural_logic
+            if (
+                    isinstance(entry, SampledValueLogic)
+                    and entry.name.startswith("project_")
+            )
+        )
+        assert len(projection_entries) == 2, str(logger)
+        assert not actuator_branch.active, str(logger)
+        projection_entry: SampledValueLogic
+        for projection_entry in projection_entries:
+            assert projection_entry.output_var_uid is not None
+            source_var: Var
+            for source_var in projection_entry.source_expr.get_vars():
+                projection_source_uids.add(source_var.uid)
+
+    # Both physical poles consume the same gate and resistance variables from
+    # one controller instance rather than cloning a controller per branch.
+    assert len(projection_source_uids) == 2
+
+    assert logger.error_count() == 0
+
+
+def test_v3_dynamic_route_keeps_native_meters_as_connected_editor_blocks() -> None:
+    """Keep every active V3 meter as one visible connected RMS child block.
+
+    :return: None.
+    """
+    dgs_path: Path = _get_complete_hvdc_vsc_dgs_path(
+        file_name="hvdc_vsc_v3_complete_static_dynamic.dgs",
+    )
+    logger: Logger = Logger()
+    circuit: MultiCircuit = dgs_to_circuit(
+        path=str(dgs_path),
+        use_dynamic_information=True,
+        dynamic_simulation_mode=DynamicSimulationMode.RMS,
+        logger_=logger,
+    )
+    expected_meter_names: set[str] = set((
+        "PowerFactory StaImea 423",
+        "PowerFactory StaImea 424",
+        "PowerFactory StaImea 425",
+        "PowerFactory StaImea 426",
+        "PowerFactory StaImea 428",
+        "PowerFactory StaImea 429",
+        "PowerFactory StaVmea 455",
+        "PowerFactory StaVmea 456",
+        "PowerFactory StaVmea 457",
+        "PowerFactory StaVmea 458",
+        "PowerFactory StaVmea 460",
+        "PowerFactory StaVmea 461",
+        "PowerFactory StaVmea 462",
+        "PowerFactory StaVmea 463",
+        "PowerFactory StaVmea 465",
+        "PowerFactory StaVmea 466",
+        "PowerFactory ElmPhi PLL 472",
+        "PowerFactory ElmPhi PLL 473",
+    ))
+    meter_block_by_name: dict[str, Block] = dict()
+    owner_model_by_meter_name: dict[str, Block] = dict()
+    candidate_device: object
+
+    # Inspect only final device-owned RMS graphs. Registered templates are
+    # catalogue definitions and must not be counted as duplicate GUI nodes.
+    for candidate_device in circuit.get_injection_devices():
+        if isinstance(candidate_device, DynamicDevice):
+            candidate_block: Block
+            for candidate_block in candidate_device.rms_model.get_all_blocks():
+                if candidate_block.name in expected_meter_names:
+                    meter_block_by_name[candidate_block.name] = candidate_block
+                    owner_model_by_meter_name[candidate_block.name] = candidate_device.rms_model
+                else:
+                    pass
+        else:
+            pass
+    for candidate_device in circuit.get_branches(
+            add_vsc=True,
+            add_hvdc=True,
+            add_switch=True,
+    ):
+        if isinstance(candidate_device, DynamicDevice):
+            for candidate_block in candidate_device.rms_model.get_all_blocks():
+                if candidate_block.name in expected_meter_names:
+                    meter_block_by_name[candidate_block.name] = candidate_block
+                    owner_model_by_meter_name[candidate_block.name] = candidate_device.rms_model
+                else:
+                    pass
+        else:
+            pass
+
+    assert set(meter_block_by_name.keys()) == expected_meter_names, str(logger)
+    meter_name: str
+    meter_block: Block
+    for meter_name, meter_block in meter_block_by_name.items():
+        owner_model: Block = owner_model_by_meter_name[meter_name]
+        meter_output_reference_uids: set[int] = set(
+            output_var.shared_ref.uid
+            for output_var in meter_block.out_vars
+            if output_var.shared_ref is not None
+        )
+        connected_controller_reference_uids: set[int] = set(
+            input_var.shared_ref.uid
+            for owner_child in owner_model.get_all_blocks()
+            if owner_child is not meter_block
+            for input_var in owner_child.in_vars
+            if input_var.shared_ref is not None
+        )
+        assert (
+            len(
+                meter_output_reference_uids.intersection(
+                    connected_controller_reference_uids,
+                )
+            ) > 0
+        ), meter_name
+
+    assert logger.error_count() == 0
+
+
+@pytest.mark.parametrize(
+    ("file_name", "expected_meter_names"),
+    (
+        (
+            "hvdc_vsc_v1_complete_static_dynamic.dgs",
+            set((
+                "PowerFactory StaPqmea 220",
+                "PowerFactory StaPqmea 221",
+            )),
+        ),
+        (
+            "hvdc_vsc_v2_complete_static_dynamic.dgs",
+            set((
+                "PowerFactory StaPqmea 228",
+                "PowerFactory StaPqmea 229",
+            )),
+        ),
+    ),
+)
+def test_v1_v2_dynamic_routes_keep_power_meters_as_editor_blocks(
+        file_name: str,
+        expected_meter_names: set[str],
+) -> None:
+    """Keep V1 and V2 active-power meters as connected RMS child blocks.
+
+    :param file_name: Exact tracked DGS fixture name.
+    :param expected_meter_names: Expected explicit ``StaPqmea`` block names.
+    :return: None.
+    """
+    dgs_path: Path = _get_complete_hvdc_vsc_dgs_path(file_name=file_name)
+    logger: Logger = Logger()
+    circuit: MultiCircuit = dgs_to_circuit(
+        path=str(dgs_path),
+        use_dynamic_information=True,
+        dynamic_simulation_mode=DynamicSimulationMode.RMS,
+        logger_=logger,
+    )
+    meter_block_by_name: dict[str, Block] = dict()
+    owner_model_by_meter_name: dict[str, Block] = dict()
+    candidate_device: object
+
+    for candidate_device in circuit.get_injection_devices():
+        if isinstance(candidate_device, DynamicDevice):
+            candidate_block: Block
+            for candidate_block in candidate_device.rms_model.get_all_blocks():
+                if candidate_block.name in expected_meter_names:
+                    meter_block_by_name[candidate_block.name] = candidate_block
+                    owner_model_by_meter_name[candidate_block.name] = candidate_device.rms_model
+                else:
+                    pass
+        else:
+            pass
+    for candidate_device in circuit.get_branches(
+            add_vsc=True,
+            add_hvdc=True,
+            add_switch=True,
+    ):
+        if isinstance(candidate_device, DynamicDevice):
+            for candidate_block in candidate_device.rms_model.get_all_blocks():
+                if candidate_block.name in expected_meter_names:
+                    meter_block_by_name[candidate_block.name] = candidate_block
+                    owner_model_by_meter_name[candidate_block.name] = candidate_device.rms_model
+                else:
+                    pass
+        else:
+            pass
+
+    assert set(meter_block_by_name.keys()) == expected_meter_names, str(logger)
+    meter_name: str
+    meter_block: Block
+    for meter_name, meter_block in meter_block_by_name.items():
+        owner_model: Block = owner_model_by_meter_name[meter_name]
+        meter_output_reference_uids: set[int] = set(
+            output_var.shared_ref.uid
+            for output_var in meter_block.out_vars
+            if output_var.shared_ref is not None
+        )
+        connected_controller_reference_uids: set[int] = set(
+            input_var.shared_ref.uid
+            for owner_child in owner_model.get_all_blocks()
+            if owner_child is not meter_block
+            for input_var in owner_child.in_vars
+            if input_var.shared_ref is not None
+        )
+        assert len(
+            meter_output_reference_uids.intersection(
+                connected_controller_reference_uids,
+            )
+        ) > 0, meter_name
+
+    assert logger.error_count() == 0
+
+
+def test_logical_actuator_missing_physical_branches_is_diagnostic() -> None:
+    """Report declared actuator slots when no physical branch can be resolved.
+
+    :return: None.
+    """
+    dgs_path: Path = _get_complete_hvdc_vsc_dgs_path(
+        file_name="hvdc_vsc_v3_complete_static_dynamic.dgs",
+    )
+    dgs_circuit: DgsCircuit = DgsCircuit()
+    dgs_circuit.parse_dgs(path=str(dgs_path))
+    templates_by_root_id: dict[str, RmsModelTemplate] = dict()
+    source_root: ElmComp
+    for source_root in dgs_circuit.elmcomps:
+        has_passive_entry: bool = False
+        direct_entry: ElmCompInstanceEntry
+        for direct_entry in extract_elmcomp_direct_instances(
+                circuit=dgs_circuit,
+                root_element=source_root,
+        ):
+            if direct_entry.element_kind == "ElmSind":
+                has_passive_entry = True
+            else:
+                pass
+        if has_passive_entry:
+            templates_by_root_id[source_root.ID] = RmsModelTemplate(
+                name=source_root.loc_name,
+            )
+        else:
+            pass
+
+    destination: MultiCircuit = MultiCircuit()
+    logger: Logger = Logger()
+    prepared_count: int = prepare_dgs_logical_actuator_topology(
+        circuit=destination,
+        dgs_circuit=dgs_circuit,
+        templates_by_root_dgs_id=templates_by_root_id,
+        logger=logger,
+    )
+    topology_warnings: list[LogEntry] = list(
+        entry
+        for entry in logger.entries
+        if entry.msg == "DGS logical actuator topology is ambiguous"
+    )
+
+    assert len(templates_by_root_id) > 0
+    assert prepared_count == 0
+    assert len(destination.buses) == 0
+    assert len(topology_warnings) == len(templates_by_root_id)
+    assert all("lines=0" in str(entry.value) for entry in topology_warnings)
 
 
 def test_v3_switch_events_bind_guarded_modes_to_exact_rms_equipment() -> None:
@@ -2593,6 +3058,7 @@ def test_rms_measurement_binding_rejects_a_duplicated_root_with_a_shell() -> Non
         circuit=destination,
         dgs_circuit=dgs_circuit,
         templates_by_root_dgs_id={source_root.ID: prepared_shell},
+        child_blocks_by_root_and_slot_id=dict(),
         logger=Logger(),
     )
 
@@ -2600,6 +3066,68 @@ def test_rms_measurement_binding_rejects_a_duplicated_root_with_a_shell() -> Non
     assert report.get_bound_signal_count() == 0
     assert report.get_skipped_meter_count() == 0
     assert report.get_failed_meter_count() == 0
+
+
+def test_rms_measurement_binding_reports_active_meter_without_host() -> None:
+    """Fail closed when an active supported root has no resolvable RMS host.
+
+    :return: None.
+    """
+    dgs_circuit: DgsCircuit = DgsCircuit()
+    dgs_circuit.parse_dgs(
+        str(
+            _get_complete_hvdc_vsc_dgs_path(
+                file_name="hvdc_vsc_v1_complete_static_dynamic.dgs",
+            )
+        )
+    )
+    source_root: ElmComp | None = None
+    candidate_root: ElmComp
+    for candidate_root in dgs_circuit.elmcomps:
+        candidate_entry: ElmCompInstanceEntry
+        for candidate_entry in extract_elmcomp_direct_instances(
+                circuit=dgs_circuit,
+                root_element=candidate_root,
+        ):
+            if (
+                    source_root is None
+                    and int(candidate_root.outserv) == 0
+                    and candidate_entry.element_kind in (
+                        "StaVmea",
+                        "StaImea",
+                        "StaPqmea",
+                        "ElmPhi",
+                    )
+            ):
+                source_root = candidate_root
+            else:
+                pass
+    assert source_root is not None
+    prepared_template: RmsModelTemplate = RmsModelTemplate(
+        name="Registered active controller",
+    )
+    templates_by_root_id: dict[str, RmsModelTemplate] = dict()
+    templates_by_root_id[source_root.ID] = prepared_template
+    logger: Logger = Logger()
+
+    report: DgsRmsMeasurementBindingReport = bind_dgs_rms_measurements(
+        circuit=MultiCircuit(),
+        dgs_circuit=dgs_circuit,
+        templates_by_root_dgs_id=templates_by_root_id,
+        child_blocks_by_root_and_slot_id=dict(),
+        logger=logger,
+    )
+    host_warnings: list[LogEntry] = list(
+        entry
+        for entry in logger.entries
+        if entry.msg == "DGS native RMS meter has no unique active host"
+    )
+
+    assert source_root.outserv == 0
+    assert report.get_bound_meter_count() == 0
+    assert report.get_bound_signal_count() == 0
+    assert report.get_failed_meter_count() > 0
+    assert len(host_warnings) == report.get_failed_meter_count()
 
 
 def test_dgs_dynamic_import_catalog_reports_live_graphical_binding_gaps() -> None:

@@ -28,6 +28,11 @@ from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.IO.dgs.dgs_circuit import DgsCircuit
+from VeraGridEngine.IO.dgs.dgs_logical_actuator_binding import (
+    bind_dgs_logical_actuator_runtime,
+    prepare_dgs_logical_actuator_topology,
+    release_dgs_logical_actuator_import_context,
+)
 from VeraGridEngine.IO.dgs.dgs_rms_measurement_binding import bind_dgs_rms_measurements
 from VeraGridEngine.IO.dgs.dgs_rms_preparation import (
     bind_dgs_switch_event_runtime,
@@ -6777,6 +6782,14 @@ def dgs_to_circuit(path: str,
             )
 
             if dynamic_simulation_mode == DynamicSimulationMode.RMS:
+                # Narrow the domain explicitly so logical actuator completion
+                # cannot consume an EMT template through the shared lookup.
+                rms_templates_by_root_dgs_id: Dict[str, RmsModelTemplate] = dict(
+                    (root_id, template)
+                    for root_id, template in templates_by_root_dgs_id.items()
+                    if isinstance(template, RmsModelTemplate)
+                )
+
                 # RMS completion is not a third template-transfer stage. It
                 # fills only empty electrical shells, then binds exact native
                 # measurement FIDs to the already assigned controller block.
@@ -6825,12 +6838,44 @@ def dgs_to_circuit(path: str,
                     elmsym_reference_source_ids=elmsym_reference_source_ids,
                     typeless_elmlod_source_ids=typeless_elmlod_source_ids,
                 )
+                # Passive shells exist now, so exported meter FIDs can place
+                # omitted valve terminals on their exact electrical rails.
+                prepared_actuator_count: int = prepare_dgs_logical_actuator_topology(
+                    circuit=grid,
+                    dgs_circuit=dgs_grid,
+                    templates_by_root_dgs_id=rms_templates_by_root_dgs_id,
+                    logger=logger,
+                )
+                # Bind native meters on the registered controller before its
+                # sole runtime instance is duplicated into a physical owner.
                 bind_dgs_rms_measurements(
                     circuit=grid,
                     dgs_circuit=dgs_grid,
                     templates_by_root_dgs_id=templates_by_root_dgs_id,
+                    child_blocks_by_root_and_slot_id=(
+                        conversion_result.child_blocks_by_root_and_slot_id
+                    ),
                     logger=logger,
                 )
+                bound_actuator_count: int = bind_dgs_logical_actuator_runtime(
+                    circuit=grid,
+                    templates_by_root_dgs_id=rms_templates_by_root_dgs_id,
+                    logger=logger,
+                )
+                if (
+                        prepared_actuator_count > 0
+                        and bound_actuator_count == prepared_actuator_count
+                ):
+                    release_dgs_logical_actuator_import_context(circuit=grid)
+                else:
+                    if bound_actuator_count != prepared_actuator_count:
+                        logger.add_warning(
+                            msg="DGS logical actuator import context retained after incomplete binding",
+                            value=bound_actuator_count,
+                            expected_value=prepared_actuator_count,
+                        )
+                    else:
+                        pass
                 bind_dgs_switch_event_runtime(
                     circuit=grid,
                     templates_by_root_dgs_id=templates_by_root_dgs_id,
