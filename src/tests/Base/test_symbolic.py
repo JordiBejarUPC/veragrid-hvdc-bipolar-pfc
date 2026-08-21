@@ -468,6 +468,24 @@ def test_block_deepcopy_reuses_copied_vars_inside_equations() -> None:
     assert c.value == 3.0
 
 
+def test_block_deepcopy_preserves_editor_structure_metadata() -> None:
+    """Keep editor structure metadata available on an isolated block copy.
+
+    The dynamic editor commits a deep working copy back into the owned block.
+    Losing either field during that boundary makes a valid editor model
+    impossible to apply or changes whether its internal structure is exposed.
+
+    :return: None.
+    """
+    source_block: Block = Block(is_decomposable=False)
+    source_block.tpe_uid = 73
+
+    copied_block: Block = copy.deepcopy(source_block)
+
+    assert copied_block.is_decomposable is False
+    assert copied_block.tpe_uid == 73
+
+
 def test_duplicate_block_preserves_parent_child_variable_links_with_new_uids() -> None:
     """
     Check that block duplication keeps parent and child references coherent.
@@ -812,6 +830,32 @@ def test_dynamic_model_contract_rejects_invalid_open_resistance(
 
     with pytest.raises((ValueError, TypeError)):
         Block.parse(data=source_data)
+
+
+def test_block_parse_rejects_malformed_structural_fields() -> None:
+    """Reject malformed containers before reconstructing a partial block graph.
+
+    :return: None.
+    """
+    source_block: Block = Block(name="typed persistence boundary")
+
+    # Expression collections must remain ordered declarative records.
+    malformed_sequence_data: dict[str, object] = source_block.to_dict()
+    malformed_sequence_data["state_vars"] = dict()
+    with pytest.raises(TypeError, match="field 'state_vars' must be a list"):
+        Block.parse(data=malformed_sequence_data)
+
+    # Child declarations cannot retain arbitrary imported objects.
+    malformed_child_data: dict[str, object] = source_block.to_dict()
+    malformed_child_data["children"] = list((None,))
+    with pytest.raises(TypeError, match="field 'children' item 0"):
+        Block.parse(data=malformed_child_data)
+
+    # Scalar identity fields are validated before the final constructor runs.
+    malformed_name_data: dict[str, object] = source_block.to_dict()
+    malformed_name_data["name"] = 17
+    with pytest.raises(TypeError, match="field 'name' must be a string"):
+        Block.parse(data=malformed_name_data)
 
 
 def test_block_parser_only_warns_for_broken_optional_mapping_references() -> None:

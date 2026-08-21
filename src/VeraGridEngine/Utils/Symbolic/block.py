@@ -11,8 +11,7 @@ import uuid
 from typing import List, Dict, Any, Tuple
 from typing import Iterable, Mapping
 
-from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const, Expr, _expr_to_dict, _dict_to_expr, BinOp, UnOp, Func, \
-    Func2, Comparison
+from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const, Expr, _expr_to_dict, _dict_to_expr, Comparison
 from VeraGridEngine.Devices.Diagrams.block_diagram import BlockDiagram
 from VeraGridEngine.enumerations import VarPowerFlowReferenceType, ParamPowerFlowReferenceType
 from VeraGridEngine.Utils.Symbolic.compare_expressions_structure import equivalent_systems
@@ -190,41 +189,54 @@ class DynamicModelContract:
         }
 
 
-def _contract_value(data: Dict[str, object], key: str) -> object:
+def _read_required_dynamic_contract_field(
+        data: Dict[str, object],
+        field_name: str,
+) -> object:
     """Read one required field from a present versioned contract.
 
     :param data: Versioned dynamic-model contract data.
-    :param key: Exact required field name.
+    :param field_name: Exact required field name.
     :return: Stored field value, including an explicit ``None``.
     """
-    if key in data:
-        return data[key]
+    if field_name in data:
+        return data[field_name]
     else:
-        raise KeyError(f"Dynamic-model contract field '{key}' is missing")
+        raise KeyError(
+            f"Dynamic-model contract field '{field_name}' is missing"
+        )
 
 
-def _contract_bool(data: Dict[str, object], key: str) -> bool:
+def _read_required_dynamic_contract_boolean(
+        data: Dict[str, object],
+        field_name: str,
+) -> bool:
     """Read one required boolean contract field.
 
     :param data: Versioned dynamic-model contract data.
-    :param key: Exact field name.
+    :param field_name: Exact field whose declaration must be boolean.
     :return: Validated boolean value.
     """
-    value: object = _contract_value(data, key)
+    value: object = _read_required_dynamic_contract_field(data, field_name)
     if isinstance(value, bool):
         return value
     else:
-        raise TypeError(f"Dynamic-model contract field '{key}' must be boolean")
+        raise TypeError(
+            f"Dynamic-model contract field '{field_name}' must be boolean"
+        )
 
 
-def _contract_optional_bool(data: Dict[str, object], key: str) -> bool | None:
-    """Read one optional boolean contract field.
+def _read_nullable_dynamic_contract_boolean(
+        data: Dict[str, object],
+        field_name: str,
+) -> bool | None:
+    """Read one required field whose declared value may be boolean or null.
 
     :param data: Versioned dynamic-model contract data.
-    :param key: Exact field name.
-    :return: Validated boolean or ``None``.
+    :param field_name: Exact required field whose value may be nullable.
+    :return: Declared boolean, or ``None`` for the explicit inapplicable state.
     """
-    value: object = _contract_value(data, key)
+    value: object = _read_required_dynamic_contract_field(data, field_name)
     if value is None:
         return None
     else:
@@ -232,18 +244,21 @@ def _contract_optional_bool(data: Dict[str, object], key: str) -> bool | None:
             return value
         else:
             raise TypeError(
-                f"Dynamic-model contract field '{key}' must be boolean or null"
+                f"Dynamic-model contract field '{field_name}' must be boolean or null"
             )
 
 
-def _contract_optional_int(data: Dict[str, object], key: str) -> int | None:
-    """Read one optional symbolic UID contract field.
+def _read_nullable_dynamic_contract_symbolic_uid(
+        data: Dict[str, object],
+        field_name: str,
+) -> int | None:
+    """Read one required symbolic-UID field whose value may be null.
 
     :param data: Versioned dynamic-model contract data.
-    :param key: Exact field name.
-    :return: Validated integer UID or ``None``.
+    :param field_name: Exact required field containing a symbolic UID.
+    :return: Integer symbolic UID, or ``None`` when no variable is declared.
     """
-    value: object = _contract_value(data, key)
+    value: object = _read_required_dynamic_contract_field(data, field_name)
     if value is None:
         return None
     else:
@@ -251,18 +266,28 @@ def _contract_optional_int(data: Dict[str, object], key: str) -> int | None:
             return value
         else:
             raise TypeError(
-                f"Dynamic-model contract field '{key}' must be an integer or null"
+                f"Dynamic-model contract field '{field_name}' must be an integer or null"
             )
 
 
-def _contract_optional_float(data: Dict[str, object], key: str) -> float | None:
-    """Read one optional numeric contract field.
+def _read_nullable_dgs_open_resistance_ohm(
+        data: Dict[str, object],
+) -> float | None:
+    """Reconstruct the DGS actuator resistance used for an open branch.
 
-    :param data: Versioned dynamic-model contract data.
-    :param key: Exact field name.
-    :return: Validated finite-compatible float or ``None``.
+    The version-1 field is required even when no open-state resistance applies;
+    that inapplicable state is represented by an explicit ``None``. Integer and
+    floating-point encodings are accepted because both are losslessly converted
+    to the runtime floating-point representation, while booleans and non-finite
+    values are rejected to keep the electrical declaration fail-closed.
+
+    :param data: Versioned dynamic-model contract containing the required
+        ``dgs_open_resistance_ohm`` field.
+    :return: Finite open-state resistance in ohms, or ``None`` when the block
+        does not declare that actuator projection.
     """
-    value: object = _contract_value(data, key)
+    field_name: str = "dgs_open_resistance_ohm"
+    value: object = _read_required_dynamic_contract_field(data, field_name)
     if value is None:
         return None
     else:
@@ -272,22 +297,31 @@ def _contract_optional_float(data: Dict[str, object], key: str) -> float | None:
                 return numeric_value
             else:
                 raise ValueError(
-                    f"Dynamic-model contract field '{key}' must be finite"
+                    f"Dynamic-model contract field '{field_name}' must be finite"
                 )
         else:
             raise TypeError(
-                f"Dynamic-model contract field '{key}' must be numeric or null"
+                f"Dynamic-model contract field '{field_name}' must be numeric or null"
             )
 
 
-def _contract_optional_str(data: Dict[str, object], key: str) -> str | None:
-    """Read one optional string contract field.
+def _read_nullable_dgs_logical_actuator_root_id(
+        data: Dict[str, object],
+) -> str | None:
+    """Reconstruct the source DGS identity shared by one logical actuator.
 
-    :param data: Versioned dynamic-model contract data.
-    :param key: Exact field name.
-    :return: Validated string or ``None``.
+    The field itself is mandatory in version 1. An explicit ``None`` states
+    that the block is not a member of a logical-actuator group; otherwise the
+    exact string is retained so imported actuator fragments can be associated
+    without retaining source parser objects.
+
+    :param data: Versioned dynamic-model contract containing the required
+        ``dgs_logical_actuator_root_id`` field.
+    :return: Exact DGS logical-actuator root identifier, or ``None`` when the
+        block has no logical-actuator association.
     """
-    value: object = _contract_value(data, key)
+    field_name: str = "dgs_logical_actuator_root_id"
+    value: object = _read_required_dynamic_contract_field(data, field_name)
     if value is None:
         return None
     else:
@@ -295,18 +329,26 @@ def _contract_optional_str(data: Dict[str, object], key: str) -> str | None:
             return value
         else:
             raise TypeError(
-                f"Dynamic-model contract field '{key}' must be a string or null"
+                f"Dynamic-model contract field '{field_name}' must be a string or null"
             )
 
 
-def _contract_str_list(data: Dict[str, object], key: str) -> List[str]:
-    """Read one ordered string collection from contract data.
+def _read_dynamic_model_variable_name_sequence(
+        data: Dict[str, object],
+        field_name: str,
+) -> List[str]:
+    """Reconstruct an ordered sequence of declared variable or signal names.
+
+    Ordering is preserved because initialization replay and shell synchronization
+    consume these declarations sequentially. Every item must be a string so an
+    invalid persisted name cannot reach runtime lookup as partially trusted data.
 
     :param data: Versioned dynamic-model contract data.
-    :param key: Exact field name.
-    :return: Validated string list.
+    :param field_name: Required field whose value declares an ordered sequence
+        of symbolic variable or equipment-signal names.
+    :return: Independent validated list that preserves the persisted order.
     """
-    value: object = _contract_value(data, key)
+    value: object = _read_required_dynamic_contract_field(data, field_name)
     if isinstance(value, list):
         result: List[str] = list()
         item: object
@@ -315,23 +357,28 @@ def _contract_str_list(data: Dict[str, object], key: str) -> List[str]:
                 result.append(item)
             else:
                 raise TypeError(
-                    f"Dynamic-model contract field '{key}' must contain strings"
+                    f"Dynamic-model contract field '{field_name}' must contain strings"
                 )
         else:
             pass
         return result
     else:
-        raise TypeError(f"Dynamic-model contract field '{key}' must be a list")
+        raise TypeError(
+            f"Dynamic-model contract field '{field_name}' must be a list"
+        )
 
 
-def _contract_int_list(data: Dict[str, object], key: str) -> List[int]:
-    """Read one ordered UID collection from contract data.
+def _read_dynamic_contract_symbolic_uid_sequence(
+        data: Dict[str, object],
+        field_name: str,
+) -> List[int]:
+    """Read an ordered sequence of declared symbolic variable identifiers.
 
     :param data: Versioned dynamic-model contract data.
-    :param key: Exact field name.
-    :return: Validated integer list.
+    :param field_name: Exact required field containing symbolic UIDs.
+    :return: Independent integer list preserving the persisted order.
     """
-    value: object = _contract_value(data, key)
+    value: object = _read_required_dynamic_contract_field(data, field_name)
     if isinstance(value, list):
         result: List[int] = list()
         item: object
@@ -340,13 +387,15 @@ def _contract_int_list(data: Dict[str, object], key: str) -> List[int]:
                 result.append(item)
             else:
                 raise TypeError(
-                    f"Dynamic-model contract field '{key}' must contain integers"
+                    f"Dynamic-model contract field '{field_name}' must contain integers"
                 )
         else:
             pass
         return result
     else:
-        raise TypeError(f"Dynamic-model contract field '{key}' must be a list")
+        raise TypeError(
+            f"Dynamic-model contract field '{field_name}' must be a list"
+        )
 
 
 def dynamic_model_contract_from_data(data: Dict[str, object]) -> DynamicModelContract:
@@ -355,7 +404,7 @@ def dynamic_model_contract_from_data(data: Dict[str, object]) -> DynamicModelCon
     :param data: Declarative contract data.
     :return: Reconstructed typed contract.
     """
-    version: object = _contract_value(data, "version")
+    version: object = _read_required_dynamic_contract_field(data, "version")
     if isinstance(version, int) and not isinstance(version, bool) and version == 1:
         pass
     else:
@@ -373,78 +422,90 @@ def dynamic_model_contract_from_data(data: Dict[str, object]) -> DynamicModelCon
             "Dynamic-model contract keys do not match version 1: "
             f"missing={missing_keys}, extra={extra_keys}"
         )
-    result.dgs_elmsym_runtime_adapter = _contract_bool(data, "dgs_elmsym_runtime_adapter")
-    result.dgs_elmsym_runtime_adapter_pending = _contract_bool(
+    result.dgs_elmsym_runtime_adapter = _read_required_dynamic_contract_boolean(
+        data, "dgs_elmsym_runtime_adapter"
+    )
+    result.dgs_elmsym_runtime_adapter_pending = _read_required_dynamic_contract_boolean(
         data, "dgs_elmsym_runtime_adapter_pending"
     )
-    result.dgs_elmsym_round_rotor = _contract_optional_bool(data, "dgs_elmsym_round_rotor")
-    result.dgs_elmsym_rotor_angle_var_uid = _contract_optional_int(
+    result.dgs_elmsym_round_rotor = _read_nullable_dynamic_contract_boolean(
+        data, "dgs_elmsym_round_rotor"
+    )
+    result.dgs_elmsym_rotor_angle_var_uid = _read_nullable_dynamic_contract_symbolic_uid(
         data, "dgs_elmsym_rotor_angle_var_uid"
     )
-    result.dgs_elmsym_speed_var_uid = _contract_optional_int(data, "dgs_elmsym_speed_var_uid")
-    result.dgs_elmsym_angular_frequency_var_uid = _contract_optional_int(
+    result.dgs_elmsym_speed_var_uid = _read_nullable_dynamic_contract_symbolic_uid(
+        data, "dgs_elmsym_speed_var_uid"
+    )
+    result.dgs_elmsym_angular_frequency_var_uid = _read_nullable_dynamic_contract_symbolic_uid(
         data, "dgs_elmsym_angular_frequency_var_uid"
     )
-    result.dgs_elmsym_rated_field_voltage_var_uid = _contract_optional_int(
+    result.dgs_elmsym_rated_field_voltage_var_uid = _read_nullable_dynamic_contract_symbolic_uid(
         data, "dgs_elmsym_rated_field_voltage_var_uid"
     )
-    result.dgs_elmsym_excitation_gain_var_uid = _contract_optional_int(
+    result.dgs_elmsym_excitation_gain_var_uid = _read_nullable_dynamic_contract_symbolic_uid(
         data, "dgs_elmsym_excitation_gain_var_uid"
     )
-    result.dgs_elmsym_active_base_factor_var_uid = _contract_optional_int(
+    result.dgs_elmsym_active_base_factor_var_uid = _read_nullable_dynamic_contract_symbolic_uid(
         data, "dgs_elmsym_active_base_factor_var_uid"
     )
-    result.dgs_elmsym_network_angle_anchor = _contract_bool(
+    result.dgs_elmsym_network_angle_anchor = _read_required_dynamic_contract_boolean(
         data, "dgs_elmsym_network_angle_anchor"
     )
-    result.dgs_elmsym_reference_speed_var_uid = _contract_optional_int(
+    result.dgs_elmsym_reference_speed_var_uid = _read_nullable_dynamic_contract_symbolic_uid(
         data, "dgs_elmsym_reference_speed_var_uid"
     )
     result.dgs_explicit_initialization_uids = set(
-        _contract_int_list(data, "dgs_explicit_initialization_uids")
+        _read_dynamic_contract_symbolic_uid_sequence(
+            data, "dgs_explicit_initialization_uids"
+        )
     )
-    result.dgs_logical_actuator_root_id = _contract_optional_str(
-        data, "dgs_logical_actuator_root_id"
+    result.dgs_logical_actuator_root_id = _read_nullable_dgs_logical_actuator_root_id(
+        data
     )
-    result.dgs_open_resistance_ohm = _contract_optional_float(
-        data, "dgs_open_resistance_ohm"
+    result.dgs_open_resistance_ohm = _read_nullable_dgs_open_resistance_ohm(
+        data
     )
-    result.rms_conduction_status_var_uid = _contract_optional_int(
+    result.rms_conduction_status_var_uid = _read_nullable_dynamic_contract_symbolic_uid(
         data, "rms_conduction_status_var_uid"
     )
-    result.rms_topology_constraint_status_var_uid = _contract_optional_int(
+    result.rms_topology_constraint_status_var_uid = _read_nullable_dynamic_contract_symbolic_uid(
         data, "rms_topology_constraint_status_var_uid"
     )
-    result.rms_ideal_ac_connector = _contract_bool(data, "rms_ideal_ac_connector")
-    result.rms_ideal_transformer = _contract_bool(data, "rms_ideal_transformer")
-    result.skip_device_local_explicit_init = _contract_bool(
+    result.rms_ideal_ac_connector = _read_required_dynamic_contract_boolean(
+        data, "rms_ideal_ac_connector"
+    )
+    result.rms_ideal_transformer = _read_required_dynamic_contract_boolean(
+        data, "rms_ideal_transformer"
+    )
+    result.skip_device_local_explicit_init = _read_required_dynamic_contract_boolean(
         data, "skip_device_local_explicit_init"
     )
-    result.startup_initial_reduced_polish_var_names = _contract_str_list(
+    result.startup_initial_reduced_polish_var_names = _read_dynamic_model_variable_name_sequence(
         data, "startup_initial_reduced_polish_var_names"
     )
-    result.runtime_measurement_shell_sync_names = _contract_str_list(
+    result.runtime_measurement_shell_sync_names = _read_dynamic_model_variable_name_sequence(
         data, "runtime_measurement_shell_sync_names"
     )
-    result.startup_ordered_shell_sync_names = _contract_str_list(
+    result.startup_ordered_shell_sync_names = _read_dynamic_model_variable_name_sequence(
         data, "startup_ordered_shell_sync_names"
     )
-    result.dgs_equipment_owned_signal_names = _contract_str_list(
+    result.dgs_equipment_owned_signal_names = _read_dynamic_model_variable_name_sequence(
         data, "dgs_equipment_owned_signal_names"
     )
-    result.dgs_elmgenstat_runtime_adapter = _contract_bool(
+    result.dgs_elmgenstat_runtime_adapter = _read_required_dynamic_contract_boolean(
         data, "dgs_elmgenstat_runtime_adapter"
     )
-    result.dgs_open_standard_regc_current_pll = _contract_bool(
+    result.dgs_open_standard_regc_current_pll = _read_required_dynamic_contract_boolean(
         data, "dgs_open_standard_regc_current_pll"
     )
-    result.dgs_open_standard_regc_voltage_source = _contract_bool(
+    result.dgs_open_standard_regc_voltage_source = _read_required_dynamic_contract_boolean(
         data, "dgs_open_standard_regc_voltage_source"
     )
-    result.explicit_init_excluded_var_names = _contract_str_list(
+    result.explicit_init_excluded_var_names = _read_dynamic_model_variable_name_sequence(
         data, "explicit_init_excluded_var_names"
     )
-    expression_data: object = _contract_value(
+    expression_data: object = _read_required_dynamic_contract_field(
         data,
         "explicit_init_override_init_exprs",
     )
@@ -463,17 +524,19 @@ def dynamic_model_contract_from_data(data: Dict[str, object]) -> DynamicModelCon
                 )
     else:
         raise TypeError("Dynamic-model override expressions must be a mapping")
-    result.runtime_equipment_shell_sync_names = _contract_str_list(
+    result.runtime_equipment_shell_sync_names = _read_dynamic_model_variable_name_sequence(
         data, "runtime_equipment_shell_sync_names"
     )
-    result.runtime_equipment_shell_sync_var_uids = _contract_int_list(
+    result.runtime_equipment_shell_sync_var_uids = _read_dynamic_contract_symbolic_uid_sequence(
         data, "runtime_equipment_shell_sync_var_uids"
     )
-    result.startup_final_init_replay_var_names = _contract_str_list(
+    result.startup_final_init_replay_var_names = _read_dynamic_model_variable_name_sequence(
         data, "startup_final_init_replay_var_names"
     )
-    result.dgs_elmsvs_runtime_adapter = _contract_bool(data, "dgs_elmsvs_runtime_adapter")
-    result.dgs_elmsvs_remote_voltage_var_uid = _contract_optional_int(
+    result.dgs_elmsvs_runtime_adapter = _read_required_dynamic_contract_boolean(
+        data, "dgs_elmsvs_runtime_adapter"
+    )
+    result.dgs_elmsvs_remote_voltage_var_uid = _read_nullable_dynamic_contract_symbolic_uid(
         data, "dgs_elmsvs_remote_voltage_var_uid"
     )
     return result
@@ -977,6 +1040,576 @@ def set_parameter(blk: Block, var_name: str, new_value: float):
                 blk.parameters[var] = Const(new_value)
 
 
+def _require_declarative_record(
+        value: object,
+        context: str,
+) -> Dict[str, object]:
+    """Validate one persisted JSON-style record with string field names.
+
+    :param value: Imported value expected to contain one declarative record.
+    :param context: Domain path included in fail-closed validation messages.
+    :return: Independent record whose field names are validated strings.
+    """
+    if isinstance(value, dict):
+        record: Dict[str, object] = dict()
+        raw_key: object
+        raw_value: object
+        for raw_key, raw_value in value.items():
+            if isinstance(raw_key, str):
+                record[raw_key] = raw_value
+            else:
+                raise TypeError(f"{context} field names must be strings")
+        else:
+            pass
+        return record
+    else:
+        raise TypeError(f"{context} must be a declarative mapping")
+
+
+class _PersistedBlockReader:
+    """Validate the versioned data boundary used to reconstruct one ``Block``."""
+
+    __slots__ = ("_data",)
+
+    def __init__(self, data: Dict[str, object]) -> None:
+        """Create a reader over one imported block payload.
+
+        :param data: Declarative block fields supplied by persistence or import.
+        :return: None.
+        """
+        self._data: Dict[str, object] = data
+
+    def read_required_value(self, field_name: str) -> object:
+        """Read a field whose absence invalidates the block declaration.
+
+        :param field_name: Exact required block field.
+        :return: Persisted value, including an explicit ``None``.
+        """
+        if field_name in self._data:
+            return self._data[field_name]
+        else:
+            raise KeyError(f"Persisted block field '{field_name}' is missing")
+
+    def read_optional_value(self, field_name: str, default_value: object) -> object:
+        """Read a backward-compatible field with an explicit default.
+
+        :param field_name: Exact optional block field.
+        :param default_value: Value used only when the field is absent.
+        :return: Persisted field value or the supplied legacy default.
+        """
+        return self._data.get(field_name, default_value)
+
+    def read_record_sequence(
+            self,
+            field_name: str,
+            required: bool,
+    ) -> List[Dict[str, object]]:
+        """Read an ordered collection of declarative records.
+
+        :param field_name: Field containing expression, child, or intent records.
+        :param required: Whether absence of the field invalidates the payload.
+        :return: Independent validated records in persisted order.
+        """
+        if required:
+            sequence_value: object = self.read_required_value(field_name)
+        else:
+            sequence_value = self.read_optional_value(field_name, list())
+
+        if isinstance(sequence_value, list):
+            records: List[Dict[str, object]] = list()
+            item_index: int
+            raw_record: object
+            for item_index, raw_record in enumerate(sequence_value):
+                records.append(
+                    _require_declarative_record(
+                        value=raw_record,
+                        context=f"Persisted block field '{field_name}' item {item_index}",
+                    )
+                )
+            else:
+                pass
+            return records
+        else:
+            raise TypeError(f"Persisted block field '{field_name}' must be a list")
+
+    def read_record_mapping_values(
+            self,
+            field_name: str,
+            required: bool,
+    ) -> List[Dict[str, object]]:
+        """Read pair records stored as values of a UID-keyed mapping.
+
+        UID keys are persistence indexes only; the embedded symbolic ``key``
+        record remains canonical and is validated by the caller.
+
+        :param field_name: Field containing UID-indexed ``key``/``value`` records.
+        :param required: Whether absence of the field invalidates the payload.
+        :return: Pair records in persisted mapping order.
+        """
+        if required:
+            mapping_value: object = self.read_required_value(field_name)
+        else:
+            mapping_value = self.read_optional_value(field_name, dict())
+
+        if isinstance(mapping_value, dict):
+            records: List[Dict[str, object]] = list()
+            raw_record: object
+            for raw_record in mapping_value.values():
+                records.append(
+                    _require_declarative_record(
+                        value=raw_record,
+                        context=f"Persisted block field '{field_name}' entry",
+                    )
+                )
+            else:
+                pass
+            return records
+        else:
+            raise TypeError(
+                f"Persisted block field '{field_name}' must be a mapping"
+            )
+
+    def read_mapping(
+            self,
+            field_name: str,
+            required: bool,
+    ) -> Dict[object, object]:
+        """Read a mapping whose keys have field-specific domain types.
+
+        :param field_name: Exact mapping field.
+        :param required: Whether absence of the field invalidates the payload.
+        :return: Independent mapping retaining source key and value objects.
+        """
+        if required:
+            mapping_value: object = self.read_required_value(field_name)
+        else:
+            mapping_value = self.read_optional_value(field_name, dict())
+
+        if isinstance(mapping_value, dict):
+            return dict(mapping_value)
+        else:
+            raise TypeError(
+                f"Persisted block field '{field_name}' must be a mapping"
+            )
+
+    def read_block_name(self) -> str:
+        """Read the exact human-readable block name.
+
+        :return: Validated persisted block name.
+        """
+        name_value: object = self.read_required_value("name")
+        if isinstance(name_value, str):
+            return name_value
+        else:
+            raise TypeError("Persisted block field 'name' must be a string")
+
+    def read_block_uid(self) -> int | None:
+        """Read the stable block identifier or its allocation marker.
+
+        :return: Integer UID, or ``None`` when reconstruction must allocate one.
+        """
+        uid_value: object = self.read_required_value("uid")
+        if uid_value is None:
+            return None
+        else:
+            if isinstance(uid_value, int) and not isinstance(uid_value, bool):
+                return uid_value
+            else:
+                raise TypeError(
+                    "Persisted block field 'uid' must be an integer or null"
+                )
+
+    def read_diagram_record(self) -> Dict[str, object]:
+        """Read the optional declarative block-diagram payload.
+
+        :return: Validated diagram record, empty for legacy payloads without one.
+        """
+        diagram_value: object = self.read_optional_value("diagram", dict())
+        return _require_declarative_record(
+            value=diagram_value,
+            context="Persisted block diagram",
+        )
+
+
+def _parse_persisted_symbolic_value(
+        record: Dict[str, object],
+        context: str,
+) -> Expr | Comparison:
+    """Reconstruct one validated symbolic expression record.
+
+    :param record: Declarative symbolic expression data.
+    :param context: Domain path included in type validation failures.
+    :return: Reconstructed symbolic expression or comparison.
+    """
+    symbolic_value: Expr | Var | Const | Comparison = _dict_to_expr(data=record)
+    if isinstance(symbolic_value, (Expr, Comparison)):
+        return symbolic_value
+    else:
+        raise TypeError(f"{context} must reconstruct a symbolic value")
+
+
+def _parse_persisted_var(
+        record: Dict[str, object],
+        context: str,
+) -> Var:
+    """Reconstruct one symbolic variable record.
+
+    :param record: Declarative symbolic expression data.
+    :param context: Domain path included in type validation failures.
+    :return: Reconstructed symbolic variable.
+    """
+    symbolic_value: Expr | Comparison = _parse_persisted_symbolic_value(
+        record=record,
+        context=context,
+    )
+    if isinstance(symbolic_value, Var):
+        return symbolic_value
+    else:
+        raise TypeError(f"{context} must declare a symbolic variable")
+
+
+def _parse_persisted_expr(
+        record: Dict[str, object],
+        context: str,
+) -> Expr:
+    """Reconstruct one non-comparison symbolic expression record.
+
+    :param record: Declarative symbolic expression data.
+    :param context: Domain path included in type validation failures.
+    :return: Reconstructed symbolic expression.
+    """
+    symbolic_value: Expr | Comparison = _parse_persisted_symbolic_value(
+        record=record,
+        context=context,
+    )
+    if isinstance(symbolic_value, Expr):
+        return symbolic_value
+    else:
+        raise TypeError(f"{context} must declare an expression")
+
+
+def _parse_persisted_const(
+        record: Dict[str, object],
+        context: str,
+) -> Const:
+    """Reconstruct one symbolic constant record.
+
+    :param record: Declarative symbolic expression data.
+    :param context: Domain path included in type validation failures.
+    :return: Reconstructed symbolic constant.
+    """
+    symbolic_value: Expr = _parse_persisted_expr(record=record, context=context)
+    if isinstance(symbolic_value, Const):
+        return symbolic_value
+    else:
+        raise TypeError(f"{context} must declare a symbolic constant")
+
+
+def _read_pair_member_record(
+        pair_record: Dict[str, object],
+        member_name: str,
+        context: str,
+) -> Dict[str, object]:
+    """Read one symbolic member from a persisted ``key``/``value`` pair.
+
+    :param pair_record: Declarative pair record.
+    :param member_name: Required ``key`` or ``value`` member.
+    :param context: Domain path included in validation failures.
+    :return: Validated symbolic member record.
+    """
+    if member_name in pair_record:
+        return _require_declarative_record(
+            value=pair_record[member_name],
+            context=f"{context} member '{member_name}'",
+        )
+    else:
+        raise KeyError(f"{context} member '{member_name}' is missing")
+
+
+def _parse_var_sequence(
+        reader: _PersistedBlockReader,
+        field_name: str,
+) -> List[Var]:
+    """Reconstruct an ordered symbolic-variable block field.
+
+    :param reader: Validated persisted-block reader.
+    :param field_name: Required variable-sequence field.
+    :return: Reconstructed variables in persisted order.
+    """
+    records: List[Dict[str, object]] = reader.read_record_sequence(
+        field_name=field_name,
+        required=True,
+    )
+    variables: List[Var] = list()
+    item_index: int
+    record: Dict[str, object]
+    for item_index, record in enumerate(records):
+        variables.append(
+            _parse_persisted_var(
+                record=record,
+                context=f"Persisted block field '{field_name}' item {item_index}",
+            )
+        )
+    else:
+        pass
+    return variables
+
+
+def _parse_expr_sequence(
+        reader: _PersistedBlockReader,
+        field_name: str,
+        required: bool,
+) -> List[Expr]:
+    """Reconstruct an ordered symbolic-expression block field.
+
+    :param reader: Validated persisted-block reader.
+    :param field_name: Expression-sequence field.
+    :param required: Whether absence of the field invalidates the payload.
+    :return: Reconstructed expressions in persisted order.
+    """
+    records: List[Dict[str, object]] = reader.read_record_sequence(
+        field_name=field_name,
+        required=required,
+    )
+    expressions: List[Expr] = list()
+    item_index: int
+    record: Dict[str, object]
+    for item_index, record in enumerate(records):
+        expressions.append(
+            _parse_persisted_expr(
+                record=record,
+                context=f"Persisted block field '{field_name}' item {item_index}",
+            )
+        )
+    else:
+        pass
+    return expressions
+
+
+def _parse_inequality_sequence(
+        reader: _PersistedBlockReader,
+) -> List[Expr | Comparison]:
+    """Reconstruct optional inequality expressions and comparisons.
+
+    :param reader: Validated persisted-block reader.
+    :return: Reconstructed inequality declarations in persisted order.
+    """
+    records: List[Dict[str, object]] = reader.read_record_sequence(
+        field_name="inequalities",
+        required=False,
+    )
+    inequalities: List[Expr | Comparison] = list()
+    item_index: int
+    record: Dict[str, object]
+    for item_index, record in enumerate(records):
+        inequalities.append(
+            _parse_persisted_symbolic_value(
+                record=record,
+                context=f"Persisted block field 'inequalities' item {item_index}",
+            )
+        )
+    else:
+        pass
+    return inequalities
+
+
+def _parse_var_const_mapping(
+        reader: _PersistedBlockReader,
+        field_name: str,
+) -> Dict[Var, Const]:
+    """Reconstruct a required symbolic-variable-to-constant mapping.
+
+    :param reader: Validated persisted-block reader.
+    :param field_name: Required constant mapping field.
+    :return: Reconstructed variable-to-constant mapping.
+    """
+    pair_records: List[Dict[str, object]] = reader.read_record_mapping_values(
+        field_name=field_name,
+        required=True,
+    )
+    result: Dict[Var, Const] = dict()
+    pair_index: int
+    pair_record: Dict[str, object]
+    for pair_index, pair_record in enumerate(pair_records):
+        context: str = f"Persisted block field '{field_name}' entry {pair_index}"
+        key_record: Dict[str, object] = _read_pair_member_record(
+            pair_record=pair_record,
+            member_name="key",
+            context=context,
+        )
+        value_record: Dict[str, object] = _read_pair_member_record(
+            pair_record=pair_record,
+            member_name="value",
+            context=context,
+        )
+        result[_parse_persisted_var(key_record, context)] = _parse_persisted_const(
+            value_record,
+            context,
+        )
+    else:
+        pass
+    return result
+
+
+def _parse_var_expr_mapping(
+        reader: _PersistedBlockReader,
+        field_name: str,
+        required: bool,
+) -> Dict[Var, Expr]:
+    """Reconstruct a symbolic-variable-to-expression mapping.
+
+    :param reader: Validated persisted-block reader.
+    :param field_name: Expression mapping field.
+    :param required: Whether absence of the field invalidates the payload.
+    :return: Reconstructed variable-to-expression mapping.
+    """
+    pair_records: List[Dict[str, object]] = reader.read_record_mapping_values(
+        field_name=field_name,
+        required=required,
+    )
+    result: Dict[Var, Expr] = dict()
+    pair_index: int
+    pair_record: Dict[str, object]
+    for pair_index, pair_record in enumerate(pair_records):
+        context: str = f"Persisted block field '{field_name}' entry {pair_index}"
+        key_record: Dict[str, object] = _read_pair_member_record(
+            pair_record=pair_record,
+            member_name="key",
+            context=context,
+        )
+        value_record: Dict[str, object] = _read_pair_member_record(
+            pair_record=pair_record,
+            member_name="value",
+            context=context,
+        )
+        result[_parse_persisted_var(key_record, context)] = _parse_persisted_expr(
+            value_record,
+            context,
+        )
+    else:
+        pass
+    return result
+
+
+def _parse_boolean_guard_mapping(
+        reader: _PersistedBlockReader,
+) -> Dict[Var, Expr | Comparison]:
+    """Reconstruct optional boolean-guard expressions keyed by output variable.
+
+    :param reader: Validated persisted-block reader.
+    :return: Reconstructed boolean-guard mapping.
+    """
+    pair_records: List[Dict[str, object]] = reader.read_record_mapping_values(
+        field_name="boolean_guards",
+        required=False,
+    )
+    result: Dict[Var, Expr | Comparison] = dict()
+    pair_index: int
+    pair_record: Dict[str, object]
+    for pair_index, pair_record in enumerate(pair_records):
+        context: str = f"Persisted block field 'boolean_guards' entry {pair_index}"
+        key_record: Dict[str, object] = _read_pair_member_record(
+            pair_record=pair_record,
+            member_name="key",
+            context=context,
+        )
+        value_record: Dict[str, object] = _read_pair_member_record(
+            pair_record=pair_record,
+            member_name="value",
+            context=context,
+        )
+        result[_parse_persisted_var(key_record, context)] = (
+            _parse_persisted_symbolic_value(value_record, context)
+        )
+    else:
+        pass
+    return result
+
+
+def _parse_external_mapping(
+        reader: _PersistedBlockReader,
+) -> Dict[VarPowerFlowReferenceType, Var | None]:
+    """Reconstruct nullable power-flow initialization references.
+
+    :param reader: Validated persisted-block reader.
+    :return: External-reference mapping keyed by its domain enum.
+    """
+    persisted_mapping: Dict[object, object] = reader.read_mapping(
+        field_name="external_mapping",
+        required=True,
+    )
+    result: Dict[VarPowerFlowReferenceType, Var | None] = dict()
+    raw_reference: object
+    raw_var_record: object
+    for raw_reference, raw_var_record in persisted_mapping.items():
+        if isinstance(raw_reference, VarPowerFlowReferenceType):
+            reference: VarPowerFlowReferenceType = raw_reference
+        else:
+            if isinstance(raw_reference, str):
+                reference = VarPowerFlowReferenceType(raw_reference)
+            else:
+                raise TypeError(
+                    "Persisted external-mapping keys must be power-flow references"
+                )
+
+        if raw_var_record is None:
+            result[reference] = None
+        else:
+            var_record: Dict[str, object] = _require_declarative_record(
+                value=raw_var_record,
+                context=f"Persisted external mapping '{reference.value}'",
+            )
+            result[reference] = _parse_persisted_var(
+                record=var_record,
+                context=f"Persisted external mapping '{reference.value}'",
+            )
+    else:
+        pass
+    return result
+
+
+def _parse_api_object_mapping(
+        reader: _PersistedBlockReader,
+) -> Dict[ParamPowerFlowReferenceType, Var | None]:
+    """Reconstruct device-property references to symbolic parameters.
+
+    :param reader: Validated persisted-block reader.
+    :return: Device-property mapping keyed by its domain enum.
+    """
+    persisted_mapping: Dict[object, object] = reader.read_mapping(
+        field_name="api_obj_mapping",
+        required=True,
+    )
+    result: Dict[ParamPowerFlowReferenceType, Var | None] = dict()
+    raw_reference: object
+    raw_var_record: object
+    for raw_reference, raw_var_record in persisted_mapping.items():
+        if isinstance(raw_reference, ParamPowerFlowReferenceType):
+            reference: ParamPowerFlowReferenceType = raw_reference
+        else:
+            if isinstance(raw_reference, str):
+                reference = ParamPowerFlowReferenceType(raw_reference)
+            else:
+                raise TypeError(
+                    "Persisted API-mapping keys must be device-property references"
+                )
+
+        if raw_var_record is None:
+            result[reference] = None
+        else:
+            var_record: Dict[str, object] = _require_declarative_record(
+                value=raw_var_record,
+                context=f"Persisted API mapping '{reference.value}'",
+            )
+            result[reference] = _parse_persisted_var(
+                record=var_record,
+                context=f"Persisted API mapping '{reference.value}'",
+            )
+    else:
+        pass
+    return result
+
+
 class Block:
     """
     Class representing a Block
@@ -1005,8 +1638,8 @@ class Block:
                  boolean_guards: Dict[Var, Expr | Comparison] | None = None,
                  procedural_logic: Iterable[ProceduralLogicEntryContract[Expr]] | None = None,
                  connection_intents: List[DynamicConnectionIntent] | None = None,
-                 external_mapping: Dict[VarPowerFlowReferenceType, Var] | None = None,
-                 api_obj_mapping: Dict[ParamPowerFlowReferenceType, Var] | None = None,
+                 external_mapping: Dict[VarPowerFlowReferenceType, Var | None] | None = None,
+                 api_obj_mapping: Dict[ParamPowerFlowReferenceType, Var | None] | None = None,
                  is_decomposable: bool = True,
                  name: str = "",
                  uid: int | None = None):
@@ -1080,9 +1713,9 @@ class Block:
                                                                               if external_mapping is None
                                                                               else external_mapping)
 
-        self.api_obj_mapping: Dict[ParamPowerFlowReferenceType, Var] = (dict()
-                                                                        if api_obj_mapping is None
-                                                                        else api_obj_mapping)
+        self.api_obj_mapping: Dict[ParamPowerFlowReferenceType, Var | None] = (
+            dict() if api_obj_mapping is None else api_obj_mapping
+        )
         # initialization
         self.init_values: Dict[Var, Const] = dict() if init_values is None else init_values
 
@@ -1097,7 +1730,7 @@ class Block:
             list() if procedural_logic is None else list(procedural_logic)
         )
         # Root-interface intents are current semantic connection states. They
-        # are independent from the graphical wires that happen to be visible
+        # are independent of the graphical wires that happen to be visible
         # under the current network topology.
         self.connection_intents: List[DynamicConnectionIntent] = (list()
                                                                   if connection_intents is None
@@ -1205,7 +1838,7 @@ class Block:
                 for k, v in self.boolean_guards.items()
             },
 
-            "procedural_logic": self._procedural_logic_to_dict(),
+            "procedural_logic": self.serialize_procedural_logic_entries(),
             "connection_intents": [dynamic_connection_intent_to_dict(intent) for intent in self.connection_intents],
             "dynamic_model_contract": self.dynamic_model_contract.to_data(),
 
@@ -1261,113 +1894,129 @@ class Block:
             data: Dict[str, object],
             procedural_logic_codec: ProceduralLogicCodecContract[Expr] | None = None,
     ) -> "Block":
-        """
-        Parse the dictionary representation of a block
+        """Reconstruct one canonical block from declarative data.
+
+        Every persisted container and symbolic member is validated before the
+        final block is constructed. Malformed imported data therefore cannot
+        create a partially typed or parallel runtime graph.
+
         :param data: Declarative block representation.
         :param procedural_logic_codec: Explicit codec required when procedural entries exist.
         :return: Reconstructed symbolic block.
         """
-        block = Block(
-            state_vars=[_dict_to_expr(data=v) for v in data["state_vars"]],
-            state_eqs=[_dict_to_expr(data=e) for e in data["state_eqs"]],
-            algebraic_vars=[_dict_to_expr(data=v) for v in data["algebraic_vars"]],
-            algebraic_eqs=[_dict_to_expr(data=e) for e in data["algebraic_eqs"]],
-            inequalities=[_dict_to_expr(data=e) for e in data.get("inequalities", [])],
-            diff_vars=[_dict_to_expr(data=v) for v in data["diff_vars"]],
-            reformulated_vars=[_dict_to_expr(data=v) for v in data["reformulated_vars"]],
-            differential_eqs=[_dict_to_expr(data=e) for e in data["differential_eqs"]],
-            parameters={
-                _dict_to_expr(data=item["key"]): _dict_to_expr(data=item["value"])
-                for item in data["parameters"].values()
-            },
-            init_values={
-                _dict_to_expr(data=item["key"]): _dict_to_expr(data=item["value"])
-                for item in data["init_values"].values()
-            },
-            init_eqs={
-                _dict_to_expr(data=item["key"]): _dict_to_expr(data=item["value"])
-                for item in data["init_eqs"].values()
-            },
-            diff_init_eqs={
-                _dict_to_expr(data=item["key"]): _dict_to_expr(data=item["value"])
-                for item in data["diff_init_eqs"].values()
-            },
-            discrete_eqs={
-                _dict_to_expr(data=item["key"]): _dict_to_expr(data=item["value"])
-                for item in data.get("discrete_eqs", {}).values()
-            },
-            post_init_seed_eqs={
-                _dict_to_expr(data=item["key"]): _dict_to_expr(data=item["value"])
-                for item in data.get("post_init_seed_eqs", {}).values()
-            },
-            children=[
+        reader: _PersistedBlockReader = _PersistedBlockReader(data=data)
+
+        # Child blocks are final graph members, not retained import-stage DTOs.
+        child_records: List[Dict[str, object]] = reader.read_record_sequence(
+            field_name="children",
+            required=True,
+        )
+        children: List[Block] = list()
+        child_record: Dict[str, object]
+        for child_record in child_records:
+            children.append(
                 Block.parse(
-                    data=child_data,
+                    data=child_record,
                     procedural_logic_codec=procedural_logic_codec,
                 )
-                for child_data in data["children"]
-            ],
-            in_vars=[_dict_to_expr(data=v) for v in data["in_vars"]],
-            out_vars=[_dict_to_expr(data=v) for v in data["out_vars"]],
-            event_dict={
-                _dict_to_expr(data=item["key"]): _dict_to_expr(data=item["value"])
-                for item in data["event_dict"].values()
-            },
-            mode_dict={
-                _dict_to_expr(data=item["key"]): _dict_to_expr(data=item["value"])
-                for item in data.get("mode_dict", {}).values()
-            },
-            boolean_guards={
-                _dict_to_expr(data=item["key"]): _dict_to_expr(data=item["value"])
-                for item in data.get("boolean_guards", {}).values()
-            },
-            procedural_logic=Block._procedural_logic_from_dict(
-                data=data.get("procedural_logic", []),
+            )
+        else:
+            pass
+
+        procedural_logic_data: object = reader.read_optional_value(
+            field_name="procedural_logic",
+            default_value=list(),
+        )
+        block: Block = Block(
+            state_vars=_parse_var_sequence(reader, "state_vars"),
+            state_eqs=_parse_expr_sequence(reader, "state_eqs", required=True),
+            algebraic_vars=_parse_var_sequence(reader, "algebraic_vars"),
+            algebraic_eqs=_parse_expr_sequence(
+                reader,
+                "algebraic_eqs",
+                required=True,
+            ),
+            inequalities=_parse_inequality_sequence(reader),
+            diff_vars=_parse_var_sequence(reader, "diff_vars"),
+            reformulated_vars=_parse_var_sequence(reader, "reformulated_vars"),
+            differential_eqs=_parse_expr_sequence(
+                reader,
+                "differential_eqs",
+                required=True,
+            ),
+            parameters=_parse_var_const_mapping(reader, "parameters"),
+            init_values=_parse_var_const_mapping(reader, "init_values"),
+            init_eqs=_parse_var_expr_mapping(reader, "init_eqs", required=True),
+            diff_init_eqs=_parse_var_expr_mapping(
+                reader,
+                "diff_init_eqs",
+                required=True,
+            ),
+            discrete_eqs=_parse_var_expr_mapping(
+                reader,
+                "discrete_eqs",
+                required=False,
+            ),
+            post_init_seed_eqs=_parse_var_expr_mapping(
+                reader,
+                "post_init_seed_eqs",
+                required=False,
+            ),
+            children=children,
+            in_vars=_parse_var_sequence(reader, "in_vars"),
+            out_vars=_parse_var_sequence(reader, "out_vars"),
+            event_dict=_parse_var_expr_mapping(reader, "event_dict", required=True),
+            mode_dict=_parse_var_expr_mapping(reader, "mode_dict", required=False),
+            boolean_guards=_parse_boolean_guard_mapping(reader),
+            procedural_logic=Block.reconstruct_procedural_logic_entries(
+                data=procedural_logic_data,
                 procedural_logic_codec=procedural_logic_codec,
             ),
-            external_mapping={
-                VarPowerFlowReferenceType(k): (_dict_to_expr(v) if v is not None else None)
-                for k, v in data["external_mapping"].items()
-            },
-            api_obj_mapping={
-                ParamPowerFlowReferenceType(k): (_dict_to_expr(v) if v is not None else None)
-                for k, v in data["api_obj_mapping"].items()
-            },
-            name=data["name"],
-            uid=data["uid"]
+            external_mapping=_parse_external_mapping(reader),
+            api_obj_mapping=_parse_api_object_mapping(reader),
+            name=reader.read_block_name(),
+            uid=reader.read_block_uid(),
         )
 
-        # Fill the diagram
-        block.diagram.parse(data.get("diagram", {}))
+        # Diagram data is attached only after the symbolic hierarchy validates.
+        diagram_record: Dict[str, object] = reader.read_diagram_record()
+        block.diagram.parse(diagram_record)
 
         # Parse intents only after the complete block hierarchy exists because
         # legacy records identify the internal variable by its port position.
-        persisted_intent: object
-        for persisted_intent in data.get("connection_intents", list()):
-            if isinstance(persisted_intent, dict):
-                parsed_intent: DynamicConnectionIntent | None = dynamic_connection_intent_from_dict(
-                    data=persisted_intent,
+        intent_records: List[Dict[str, object]] = reader.read_record_sequence(
+            field_name="connection_intents",
+            required=False,
+        )
+        intent_record: Dict[str, object]
+        for intent_record in intent_records:
+            parsed_intent: DynamicConnectionIntent | None = (
+                dynamic_connection_intent_from_dict(
+                    data=intent_record,
                     root_block=block,
                 )
-                if parsed_intent is not None:
-                    block.connection_intents.append(parsed_intent)
-                else:
-                    pass
+            )
+            if parsed_intent is not None:
+                block.connection_intents.append(parsed_intent)
             else:
                 pass
         normalize_dynamic_connection_intents(block=block)
 
-        contract_data: object | None = data.get("dynamic_model_contract", None)
+        contract_data: object = reader.read_optional_value(
+            field_name="dynamic_model_contract",
+            default_value=None,
+        )
         if contract_data is None:
             pass
         else:
-            if isinstance(contract_data, dict):
-                block.dynamic_model_contract = dynamic_model_contract_from_data(
-                    contract_data
-                )
-                validate_dynamic_model_contract(block)
-            else:
-                raise TypeError("Dynamic-model contract must be declarative data")
+            contract_record: Dict[str, object] = _require_declarative_record(
+                value=contract_data,
+                context="Dynamic-model contract",
+            )
+            block.dynamic_model_contract = dynamic_model_contract_from_data(
+                contract_record
+            )
+            validate_dynamic_model_contract(block)
 
         return block
 
@@ -1379,7 +2028,7 @@ class Block:
         """
         return copy.deepcopy(self)
 
-    def _procedural_logic_to_dict(self) -> List[ProceduralLogicData]:
+    def serialize_procedural_logic_entries(self) -> List[ProceduralLogicData]:
         """
         Serialize block-attached procedural logic.
 
@@ -1388,18 +2037,51 @@ class Block:
         return list(entry.to_data() for entry in self.procedural_logic)
 
     @staticmethod
-    def _procedural_logic_from_dict(
-            data: List[ProceduralLogicData],
+    def reconstruct_procedural_logic_entries(
+            data: object,
             procedural_logic_codec: ProceduralLogicCodecContract[Expr] | None,
     ) -> List[ProceduralLogicEntryContract[Expr]]:
         """
-        Deserialize block-attached procedural logic.
+        Reconstruct validated block-attached procedural logic.
 
-        :param data: Serialized logic entries.
-        :param procedural_logic_codec: Explicit reconstruction codec.
-        :return: Procedural logic objects.
+        Persisted entries cross the data-to-runtime boundary here. The parser
+        therefore rejects non-list containers, non-mapping entries, and
+        non-string field names before the explicit codec can reconstruct any
+        runtime object.
+
+        :param data: Persisted declarative logic-entry collection.
+        :param procedural_logic_codec: Explicit codec that reconstructs the
+            validated declarative entries.
+        :return: Reconstructed procedural logic entries in persisted order.
         """
-        if len(data) == 0:
+        if isinstance(data, list):
+            normalized_data: List[ProceduralLogicData] = list()
+            persisted_entry: object
+            for persisted_entry in data:
+                if isinstance(persisted_entry, dict):
+                    normalized_entry: ProceduralLogicData = dict()
+                    persisted_key: object
+                    persisted_value: object
+                    for persisted_key, persisted_value in persisted_entry.items():
+                        if isinstance(persisted_key, str):
+                            normalized_entry[persisted_key] = persisted_value
+                        else:
+                            raise TypeError(
+                                "Procedural logic field names must be strings"
+                            )
+                    else:
+                        pass
+                    normalized_data.append(normalized_entry)
+                else:
+                    raise TypeError(
+                        "Procedural logic entries must be declarative mappings"
+                    )
+            else:
+                pass
+        else:
+            raise TypeError("Procedural logic data must be an ordered list")
+
+        if len(normalized_data) == 0:
             return list()
         else:
             pass
@@ -1411,7 +2093,7 @@ class Block:
         else:
             pass
 
-        return list(procedural_logic_codec.parse_entries(data))
+        return list(procedural_logic_codec.parse_entries(normalized_data))
 
     def __deepcopy__(self, memo: Dict[int, Any]) -> "Block":
         """
@@ -1428,6 +2110,8 @@ class Block:
 
             result.name = copy.deepcopy(self.name, memo)
             result.uid = copy.deepcopy(self.uid, memo)
+            result.is_decomposable = copy.deepcopy(self.is_decomposable, memo)
+            result.tpe_uid = copy.deepcopy(self.tpe_uid, memo)
             result.vars_glob_name2uid = copy.deepcopy(self.vars_glob_name2uid, memo)
             result.state_vars = copy.deepcopy(self.state_vars, memo)
             result.state_eqs = copy.deepcopy(self.state_eqs, memo)
@@ -1642,7 +2326,6 @@ class Block:
         Union[None, VeraGridEngine.Utils.Symbolic.block.Block]
         """
         mdl_placeholder = Block()
-        list_blocks = self.get_all_blocks()
         for b in self.get_all_blocks():
             mdl_placeholder.algebraic_vars.extend(b.algebraic_vars)
             mdl_placeholder.algebraic_eqs.extend(b.algebraic_eqs)
@@ -1966,55 +2649,15 @@ class Block:
         else:
             pass
 
-    def can_use_bulk_connect_update(self, pairs: List[Tuple[Var, Var]]) -> bool:
-        """
-        Return whether one connection batch can be substituted safely in one pass.
-
-        Bulk substitution is used only when the old and new variable sets are
-        both unique and disjoint. If the mappings overlap, the original
-        sequential behaviour is preserved because the substitution order can be
-        semantically relevant.
-
-        :param pairs: Connection pairs ``(old_var, new_var)``.
-        :return: ``True`` when the fast bulk path is safe.
-        """
-        old_uids: List[int] = list()
-        new_uids: List[int] = list()
-        var_to_subs: Var
-        incoming_var: Var
-
-        if len(pairs) <= 1:
-            return False
-        else:
-            pass
-
-        for var_to_subs, incoming_var in pairs:
-            old_uids.append(var_to_subs.uid)
-            new_uids.append(incoming_var.uid)
-
-        if len(set(old_uids)) != len(pairs) or len(set(new_uids)) != len(pairs):
-            return False
-        else:
-            pass
-
-        if len(set(old_uids).intersection(set(new_uids))) > 0:
-            return False
-        else:
-            return True
-
     def connect(self, vars_to_subs: List[Var], incoming_vars: List[Var]):
         """
         Function to connect two blocks by variables sharing
         """
         # here we just change uid and name of the vars_to_subs
         pairs: List[Tuple[Var, Var]] = list(zip(vars_to_subs, incoming_vars))
-        can_use_bulk_update: bool = self.can_use_bulk_connect_update(pairs)
         var_to_subs: Var
         incoming_var: Var
 
-        # if can_use_bulk_update:
-        #     self.update_model_bulk(dict(pairs))
-        # else:
         for var_to_subs, incoming_var in pairs:
             self.update_model(var_to_subs, incoming_var)
             # var_to_subs.uid = incoming_var.uid
