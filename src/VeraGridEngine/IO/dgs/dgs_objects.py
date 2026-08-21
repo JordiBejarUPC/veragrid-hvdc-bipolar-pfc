@@ -1204,6 +1204,13 @@ class ElmSind(DGSElement):
         DgsProperty('Sn', 'r', 'Rated Power in MVA', py_name='Sn'),
         DgsProperty('uk', 'r', 'Short-Circuit Voltage uk in %', py_name='uk'),
         DgsProperty('Pcu', 'r', 'Copper Losses in kW', py_name='Pcu'),
+        DgsProperty(
+            's:Rin',
+            'r',
+            'Initial series resistance in Ohm',
+            py_name='Rin',
+            optional=True,
+        ),
 
         DgsProperty('outserv', 'i', 'Out of Service', py_name='outserv'),
     ]
@@ -1220,6 +1227,8 @@ class ElmSind(DGSElement):
         self.Sn: float = 0.0
         self.uk: float = 0.0
         self.Pcu: float = 0.0
+        self.Rin: float | None = None
+        self.initial_resistance_column_declared: bool = False
 
         self.outserv: int = 0
 

@@ -12,11 +12,67 @@ import VeraGridEngine.Devices as dev
 from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.IO.file_open import FileOpen
 from VeraGridEngine.IO.dgs.dgs_circuit import DgsCircuit
+from VeraGridEngine.IO.dgs.dgs_objects import ElmSind
 from VeraGridEngine.IO.dgs.dgs_to_veragrid import _apply_elmtow_tower_coupling
 from VeraGridEngine.Simulations.PowerFlow.power_flow_worker import PowerFlowOptions
 from VeraGridEngine.Simulations.PowerFlow.power_flow_options import SolverType
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowDriver
 from VeraGridEngine.IO.dgs.veragrid_to_dgs import circuit_to_dgs
+
+
+def test_elm_sind_writer_preserves_resistance_envelope(
+        tmp_path: Path,
+) -> None:
+    """Preserve legacy and enriched ``ElmSind.s:Rin`` table semantics.
+
+    :param tmp_path: Isolated directory for generated DGS files.
+    :return: None.
+    """
+    legacy_circuit: DgsCircuit = DgsCircuit()
+    legacy_element: ElmSind = ElmSind()
+    legacy_element.ID = "legacy-series-impedance"
+    legacy_circuit.elmsinds.append(legacy_element)
+    legacy_path: Path = tmp_path / "legacy_elm_sind.dgs"
+    legacy_circuit.write_dgs(path=str(legacy_path))
+    legacy_text: str = legacy_path.read_text(encoding="utf-8")
+    assert "s:Rin(r)" not in legacy_text
+
+    legacy_roundtrip: DgsCircuit = DgsCircuit()
+    legacy_roundtrip.parse_dgs(path=str(legacy_path))
+    assert len(legacy_roundtrip.elmsinds) == 1
+    assert not legacy_roundtrip.elmsinds[0].initial_resistance_column_declared
+    assert legacy_roundtrip.elmsinds[0].Rin is None
+
+    enriched_circuit: DgsCircuit = DgsCircuit()
+    enriched_element: ElmSind = ElmSind()
+    enriched_element.ID = "enriched-series-impedance"
+    enriched_element.Rin = 99999.0
+    enriched_element.initial_resistance_column_declared = True
+    enriched_circuit.elmsinds.append(enriched_element)
+    enriched_path: Path = tmp_path / "enriched_elm_sind.dgs"
+    enriched_circuit.write_dgs(path=str(enriched_path))
+    enriched_text: str = enriched_path.read_text(encoding="utf-8")
+    assert "s:Rin(r)" in enriched_text
+
+    enriched_roundtrip: DgsCircuit = DgsCircuit()
+    enriched_roundtrip.parse_dgs(path=str(enriched_path))
+    assert len(enriched_roundtrip.elmsinds) == 1
+    assert enriched_roundtrip.elmsinds[0].initial_resistance_column_declared
+    assert enriched_roundtrip.elmsinds[0].Rin == 99999.0
+
+    mixed_circuit: DgsCircuit = DgsCircuit()
+    mixed_legacy_element: ElmSind = ElmSind()
+    mixed_legacy_element.ID = "mixed-legacy-series-impedance"
+    mixed_enriched_element: ElmSind = ElmSind()
+    mixed_enriched_element.ID = "mixed-enriched-series-impedance"
+    mixed_enriched_element.Rin = 99999.0
+    mixed_enriched_element.initial_resistance_column_declared = True
+    mixed_circuit.elmsinds.append(mixed_legacy_element)
+    mixed_circuit.elmsinds.append(mixed_enriched_element)
+    mixed_path: Path = tmp_path / "mixed_elm_sind.dgs"
+    with pytest.raises(ValueError):
+        mixed_circuit.write_dgs(path=str(mixed_path))
+    assert not mixed_path.exists()
 
 def test_dgs_ieee_grids() -> None:
     """Validate DGS IEEE grids against their tracked power-flow results."""

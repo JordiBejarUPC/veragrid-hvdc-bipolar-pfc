@@ -1,10 +1,20 @@
+from pathlib import Path
+
 from VeraGridEngine.IO.dgs.dgs_circuit import DgsCircuit
 
 
-fname = "IEEE_14.dgs"
+def main() -> None:
+    """Parse an externally exported DGS without loading PowerFactory in Engine.
 
-pf_path = r"C:\Program Files\DIgSILENT\PowerFactory 2025 SP1"
-dgs_grid2 = DgsCircuit()
-dgs_grid2.from_api(pf_path=pf_path)
+    :return: None.
+    """
+    dgs_path: Path = Path(__file__).resolve().parent / "IEEE_14.dgs"
+    dgs_grid: DgsCircuit = DgsCircuit()
+    dgs_grid.parse_dgs(path=str(dgs_path))
+    print(f"Parsed dynamic roots: {len(dgs_grid.elmcomps)}")
 
-print()
+
+if __name__ == "__main__":
+    main()
+else:
+    pass
