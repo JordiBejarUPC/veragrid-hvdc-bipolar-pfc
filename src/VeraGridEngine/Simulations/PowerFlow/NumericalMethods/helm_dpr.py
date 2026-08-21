@@ -18,7 +18,9 @@ from scipy.sparse.linalg import spsolve, factorized
 from VeraGridEngine.DataStructures.numerical_circuit import NumericalCircuit
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results import NumericPowerFlowResults
 import VeraGridEngine.Simulations.PowerFlow.NumericalMethods.common_functions as cf
-from VeraGridEngine.basic_structures import Logger, CscMat, CxVec, IntVec
+from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.discrete_controls import (control_q_inside_method,
+                                                                                     compute_slack_distribution)
+from VeraGridEngine.basic_structures import Logger, CscMat, CxVec, IntVec, Vec
 
 
 def epsilon(Sn, n, E):
@@ -1465,16 +1467,16 @@ def helm_coefficients_dpr(Ybus: CscMat, Yseries: CscMat, V0: CxVec | None, Vset:
     return Ulast, Xlast, Qlast, Vbest, iterations, converged
 
 
-def helm_dpr(nc: NumericalCircuit,
-             Ybus: CscMat, Yf: CscMat, Yt: CscMat, Yshunt_bus: CxVec,
-             Yseries: CscMat, V0: CxVec, S0: CxVec, Ysh0: CxVec,
-             pq: IntVec, pv: IntVec, vd: IntVec, no_slack: IntVec,
-             tolerance: float = 1e-6, max_coefficients: int = 30, use_pade: bool = True,
-             restart_order: int = 6, max_restarts: int = 20,
-             use_classical_germ: bool = False,
-             verbose: int = 0, logger: Logger = None) -> NumericPowerFlowResults:
+def helm_dpr_fixed_model(nc: NumericalCircuit,
+                         Ybus: CscMat, Yf: CscMat, Yt: CscMat, Yshunt_bus: CxVec,
+                         Yseries: CscMat, V0: CxVec | None, S0: CxVec, Ysh0: CxVec,
+                         pq: IntVec, pv: IntVec, vd: IntVec, no_slack: IntVec,
+                         tolerance: float = 1e-6, max_coefficients: int = 30, use_pade: bool = True,
+                         restart_order: int = 6, max_restarts: int = 20,
+                         use_classical_germ: bool = False,
+                         verbose: int = 0, logger: Logger = None) -> NumericPowerFlowResults:
     """
-    Solve power flow with the DPRHEM variant in this module.
+    Solve one fixed-control power flow model with the DPRHEM variant in this module.
 
     :param nc: Numerical circuit island.
     :param Ybus: Complete admittance matrix.
@@ -1497,7 +1499,7 @@ def helm_dpr(nc: NumericalCircuit,
     :param use_classical_germ: Use the classical no-load germ instead of the supplied voltage estimate.
     :param verbose: Verbosity flag.
     :param logger: Logger object.
-    :return: Numeric power-flow results.
+    :return: Numeric power-flow results for the fixed model.
     """
 
     start_time: float = time.time()
@@ -1623,3 +1625,167 @@ def helm_dpr(nc: NumericalCircuit,
 
     return results
 
+
+def helm_dpr(nc: NumericalCircuit,
+             Ybus: CscMat, Yf: CscMat, Yt: CscMat, Yshunt_bus: CxVec,
+             Yseries: CscMat, V0: CxVec | None, S0: CxVec, Ysh0: CxVec,
+             pq: IntVec, pv: IntVec, vd: IntVec, no_slack: IntVec,
+             tolerance: float = 1e-6, max_coefficients: int = 30, use_pade: bool = True,
+             restart_order: int = 6, max_restarts: int = 20,
+             use_classical_germ: bool = False,
+             control_q: bool = False, pqv: IntVec | None = None, p: IntVec | None = None,
+             Qmin: Vec | None = None, Qmax: Vec | None = None,
+             distributed_slack: bool = False, bus_installed_power: Vec | None = None,
+             controls_tol: float = 1e-3, max_control_restarts: int = 3,
+             verbose: int = 0, logger: Logger = None) -> NumericPowerFlowResults:
+    """
+    Solve power flow with DPRHEM and apply discrete controls at DPR restart boundaries.
+
+    :param nc: Numerical circuit island.
+    :param Ybus: Complete admittance matrix.
+    :param Yf: Branch-from admittance matrix.
+    :param Yt: Branch-to admittance matrix.
+    :param Yshunt_bus: Bus shunt admittance vector.
+    :param Yseries: Series-only admittance matrix.
+    :param V0: Voltage estimate/set-point vector.
+    :param S0: Specified complex bus powers in p.u.
+    :param Ysh0: Bus shunt admittance vector including branch shunt legs.
+    :param pq: PQ bus indices.
+    :param pv: PV bus indices.
+    :param vd: Slack bus indices.
+    :param no_slack: Sorted PQ/PV bus indices.
+    :param tolerance: Target mismatch tolerance.
+    :param max_coefficients: Total coefficient budget for each fixed-control DPR solve.
+    :param use_pade: Kept for interface compatibility; restarts use direct summation.
+    :param restart_order: Maximum coefficient order per DPR segment.
+    :param max_restarts: Maximum DPR restart count for each fixed-control solve.
+    :param use_classical_germ: Use the classical flat germ instead of the supplied voltage estimate.
+    :param control_q: Apply PV-to-PQ reactive limit control at accepted DPR states.
+    :param pqv: PQV bus indices used by the Q-limit control.
+    :param p: P bus indices used by the Q-limit control.
+    :param Qmin: Minimum reactive power limits in p.u.
+    :param Qmax: Maximum reactive power limits in p.u.
+    :param distributed_slack: Apply one distributed slack correction at an accepted DPR state.
+    :param bus_installed_power: Installed power per bus for distributed slack participation.
+    :param controls_tol: Residual threshold below which discrete controls are trusted.
+    :param max_control_restarts: Maximum outer restarts caused by controls.
+    :param verbose: Verbosity flag.
+    :param logger: Logger object.
+    :return: Numeric power-flow results.
+    """
+
+    start_time: float = time.time()
+    active_S0: CxVec = S0.copy()
+    active_V0: CxVec | None = None if V0 is None else V0.copy()
+    active_pq: IntVec = pq.copy()
+    active_pv: IntVec = pv.copy()
+    active_pqv: IntVec = np.zeros(0, dtype=int) if pqv is None else pqv.copy()
+    active_p: IntVec = np.zeros(0, dtype=int) if p is None else p.copy()
+    active_use_classical_germ: bool = use_classical_germ
+    control_restart: int = 0
+    total_iterations: int = 0
+    controls_pending: bool = True
+    slack_distributed: bool = False
+    solution: NumericPowerFlowResults = helm_dpr_fixed_model(
+        nc=nc,
+        Ybus=Ybus,
+        Yf=Yf,
+        Yt=Yt,
+        Yshunt_bus=Yshunt_bus,
+        Yseries=Yseries,
+        V0=active_V0,
+        S0=active_S0,
+        Ysh0=Ysh0,
+        pq=active_pq,
+        pv=active_pv,
+        vd=vd,
+        no_slack=no_slack,
+        tolerance=tolerance,
+        max_coefficients=max_coefficients,
+        use_pade=use_pade,
+        restart_order=restart_order,
+        max_restarts=max_restarts,
+        use_classical_germ=active_use_classical_germ,
+        verbose=verbose,
+        logger=logger
+    )
+
+    while controls_pending and control_restart < max_control_restarts:
+        controls_pending = False
+
+        # Controls use physical powers, so only trust them once DPR is close enough to the current fixed model.
+        if solution.norm_f < controls_tol:
+            if control_q and Qmin is not None and Qmax is not None and (len(active_pv) + len(active_p)) > 0:
+                Scalc_pu: CxVec = cf.compute_power(Ybus, solution.V)
+                changed, active_pv, active_pq, active_pqv, active_p = control_q_inside_method(
+                    Scalc=Scalc_pu,
+                    S0=active_S0,
+                    pv=active_pv,
+                    pq=active_pq,
+                    pqv=active_pqv,
+                    p=active_p,
+                    Qmin=Qmin,
+                    Qmax=Qmax
+                )
+                if len(changed) > 0:
+                    controls_pending = True
+                else:
+                    controls_pending = controls_pending
+            else:
+                controls_pending = controls_pending
+
+            if distributed_slack and not slack_distributed and bus_installed_power is not None:
+                Scalc_pu = cf.compute_power(Ybus, solution.V)
+                ok, delta = compute_slack_distribution(
+                    Scalc=Scalc_pu,
+                    vd=vd,
+                    bus_installed_power=bus_installed_power
+                )
+                if ok:
+                    active_S0 += delta
+                    slack_distributed = True
+                    controls_pending = True
+                else:
+                    controls_pending = controls_pending
+            else:
+                controls_pending = controls_pending
+        else:
+            controls_pending = False
+
+        if controls_pending:
+            control_restart += 1
+            total_iterations += solution.iterations
+            active_V0 = solution.V
+            active_use_classical_germ = False
+            solution = helm_dpr_fixed_model(
+                nc=nc,
+                Ybus=Ybus,
+                Yf=Yf,
+                Yt=Yt,
+                Yshunt_bus=Yshunt_bus,
+                Yseries=Yseries,
+                V0=active_V0,
+                S0=active_S0,
+                Ysh0=Ysh0,
+                pq=active_pq,
+                pv=active_pv,
+                vd=vd,
+                no_slack=no_slack,
+                tolerance=tolerance,
+                max_coefficients=max_coefficients,
+                use_pade=use_pade,
+                restart_order=restart_order,
+                max_restarts=max_restarts,
+                use_classical_germ=active_use_classical_germ,
+                verbose=verbose,
+                logger=logger
+            )
+        else:
+            controls_pending = controls_pending
+
+    total_iterations += solution.iterations
+
+    solution.iterations = total_iterations
+    solution.elapsed = time.time() - start_time
+
+    return solution

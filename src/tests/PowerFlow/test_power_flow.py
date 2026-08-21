@@ -219,7 +219,7 @@ def test_voltage_local_control_with_generation() -> None:
 
     # run power flow with the local voltage control enabled
     for solver_type in [SolverType.NR, SolverType.IWAMOTO, SolverType.LM,
-                        SolverType.FASTDECOUPLED, SolverType.PowellDogLeg]:
+                        SolverType.FASTDECOUPLED, SolverType.PowellDogLeg, SolverType.HELM]:
         options = PowerFlowOptions(solver_type,
                                    verbose=0,
                                    control_q=False,
@@ -234,7 +234,7 @@ def test_voltage_local_control_with_generation() -> None:
     # run power flow with the local voltage control disabled
     gen.control_mode = GeneratorControlMode.Q
     for solver_type in [SolverType.NR, SolverType.IWAMOTO, SolverType.LM,
-                        SolverType.FASTDECOUPLED, SolverType.PowellDogLeg]:
+                        SolverType.FASTDECOUPLED, SolverType.PowellDogLeg, SolverType.HELM]:
         options = PowerFlowOptions(solver_type,
                                    verbose=0,
                                    control_q=False,
@@ -679,29 +679,30 @@ def test_generator_Q_lims() -> None:
     grid = gce.open_file(fname)
 
     for control_q in [True, False]:
-        options = PowerFlowOptions(gce.SolverType.NR,
-                                   verbose=1,
-                                   control_q=control_q,
-                                   retry_with_other_methods=False,
-                                   control_taps_modules=False,
-                                   control_taps_phase=False,
-                                   control_remote_voltage=False,
-                                   apply_temperature_correction=False,
-                                   distributed_slack=False)
+        for solver_type in [SolverType.NR, SolverType.HELM]:
+            options = PowerFlowOptions(solver_type,
+                                       verbose=1,
+                                       control_q=control_q,
+                                       retry_with_other_methods=False,
+                                       control_taps_modules=False,
+                                       control_taps_phase=False,
+                                       control_remote_voltage=False,
+                                       apply_temperature_correction=False,
+                                       distributed_slack=False)
 
-        power_flow = PowerFlowDriver(grid, options)
-        power_flow.run()
+            power_flow = PowerFlowDriver(grid, options)
+            power_flow.run()
 
-        # check that the bus Q is at the limit
-        qbus = power_flow.results.Sbus[3].imag
-        ok = np.isclose(qbus, grid.generators[1].Qmin, atol=options.tolerance)
+            # check that the bus Q is at the limit
+            qbus = power_flow.results.Sbus[3].imag
+            ok = np.isclose(qbus, grid.generators[1].Qmin, atol=options.tolerance)
 
-        if control_q:
-            assert ok
-        else:
-            assert not ok
+            if control_q:
+                assert ok
+            else:
+                assert not ok
 
-        assert power_flow.results.converged
+            assert power_flow.results.converged
 
 
 def test_fubm() -> None:
