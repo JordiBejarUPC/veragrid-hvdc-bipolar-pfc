@@ -800,6 +800,7 @@ def test_rms_terminal_power_contract_roundtrips_and_fails_closed() -> None:
     legacy_contract["version"] = 1
     legacy_contract.pop("rms_terminal_power_contributions")
     legacy_contract.pop("emt_terminal_current_contributions")
+    legacy_contract.pop("emt_internal_grounding_link")
     legacy_restored: Block = Block.parse(data=legacy_data)
     assert (
         legacy_restored.dynamic_model_contract.rms_terminal_power_contributions
@@ -816,6 +817,7 @@ def test_rms_terminal_power_contract_roundtrips_and_fails_closed() -> None:
     assert isinstance(version_two_contract, dict)
     version_two_contract["version"] = 2
     version_two_contract.pop("emt_terminal_current_contributions")
+    version_two_contract.pop("emt_internal_grounding_link")
     version_two_restored: Block = Block.parse(data=version_two_data)
     assert len(
         version_two_restored.dynamic_model_contract.rms_terminal_power_contributions
@@ -824,6 +826,15 @@ def test_rms_terminal_power_contract_roundtrips_and_fails_closed() -> None:
         version_two_restored.dynamic_model_contract.emt_terminal_current_contributions
         == list()
     )
+
+    # Version 3 includes both terminal contracts but predates typed grounding.
+    version_three_data: dict[str, object] = block.to_dict()
+    version_three_contract: object = version_three_data["dynamic_model_contract"]
+    assert isinstance(version_three_contract, dict)
+    version_three_contract["version"] = 3
+    version_three_contract.pop("emt_internal_grounding_link")
+    version_three_restored: Block = Block.parse(data=version_three_data)
+    assert not version_three_restored.dynamic_model_contract.emt_internal_grounding_link
 
     malformed_data: dict[str, object] = block.to_dict()
     malformed_contract: object = malformed_data["dynamic_model_contract"]

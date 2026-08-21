@@ -14,14 +14,99 @@ from VeraGridEngine.Simulations.EMT.problems.emt_terminal_current_assembly impor
 from VeraGridEngine.Templates.Emt.dc_load_emt_template import (
     get_dc_load_emt_template,
 )
+from VeraGridEngine.Templates.Emt.load_RLC_emt_template import (
+    get_grounding_link_emt_template,
+)
 from VeraGridEngine.Utils.Symbolic.block import (
     Block,
     EmtTerminalConductor,
     EmtTerminalCurrentContribution,
     EmtTerminalSide,
+    has_emt_internal_grounding_link,
 )
 from VeraGridEngine.Utils.Symbolic.symbolic import Const, Expr, Var
-from VeraGridEngine.enumerations import VarPowerFlowReferenceType
+from VeraGridEngine.enumerations import BlockType, VarPowerFlowReferenceType
+
+
+def _serialize_grounding_contract_as_version_three(block: Block) -> dict[str, object]:
+    """Downgrade one grounding block fixture to its pre-typed contract shape.
+
+    :param block: Canonical grounding block used by the migration test.
+    :return: Declarative version-three record for the parent and ideal-ground child.
+    """
+    legacy_data: dict[str, object] = block.to_dict()
+    legacy_contract: object = legacy_data["dynamic_model_contract"]
+    assert isinstance(legacy_contract, dict)
+    legacy_contract["version"] = 3
+    legacy_contract.pop("emt_internal_grounding_link")
+
+    # The child is parsed first, so its own contract must also match the legacy
+    # schema before the parent migration inspects their shared symbolic UIDs.
+    legacy_children_data: object = legacy_data["children"]
+    assert isinstance(legacy_children_data, list)
+    legacy_child_data: object
+    for legacy_child_data in legacy_children_data:
+        assert isinstance(legacy_child_data, dict)
+        legacy_child_contract: object = legacy_child_data["dynamic_model_contract"]
+        assert isinstance(legacy_child_contract, dict)
+        legacy_child_contract["version"] = 3
+        legacy_child_contract.pop("emt_internal_grounding_link")
+    else:
+        pass
+    return legacy_data
+
+
+def test_emt_grounding_uses_canonical_blocks_not_diagram_projection() -> None:
+    """Keep editor layout from becoming an electrical grounding authority.
+
+    :return: None.
+    """
+    projected_model: Block = Block(name="projected_model")
+    projected_model.diagram.add_node(
+        name="drawn_ground",
+        x=0.0,
+        y=0.0,
+        tpe=BlockType.GROUNDING_LINK_EMT.name,
+        device_uid=1,
+    )
+    grounding_block: Block = get_grounding_link_emt_template(
+        vf=VarFactory(),
+        include_r=True,
+        include_l=False,
+        include_c=False,
+        nested=True,
+        direct_r_value=1.0,
+        name="renamed_without_magic_suffix",
+    ).block
+    grounding_block.diagram.node_data.clear()
+    grounding_block.diagram.con_data.clear()
+    canonical_model: Block = Block(
+        name="canonical_model",
+        children=list((grounding_block,)),
+    )
+    restored_model: Block = Block.parse(data=canonical_model.to_dict())
+    decoy_grounding_block: Block = Block.parse(data=grounding_block.to_dict())
+    decoy_grounding_block.dynamic_model_contract.emt_internal_grounding_link = False
+    isolated_voltage: Var = Var(name="isolated_voltage")
+    decoy_ground_block: Block = decoy_grounding_block.children[0]
+    decoy_ground_block.in_vars[0] = isolated_voltage
+    decoy_ground_block.algebraic_eqs[0] = isolated_voltage
+    legacy_grounding_data: dict[str, object] = (
+        _serialize_grounding_contract_as_version_three(block=grounding_block)
+    )
+    legacy_restored_grounding: Block = Block.parse(data=legacy_grounding_data)
+    legacy_decoy_data: dict[str, object] = (
+        _serialize_grounding_contract_as_version_three(block=decoy_grounding_block)
+    )
+    legacy_restored_decoy: Block = Block.parse(data=legacy_decoy_data)
+
+    assert not has_emt_internal_grounding_link(block=projected_model)
+    assert not has_emt_internal_grounding_link(block=legacy_restored_decoy)
+    assert canonical_model.diagram.empty()
+    assert has_emt_internal_grounding_link(block=canonical_model)
+    assert has_emt_internal_grounding_link(block=restored_model)
+    assert legacy_restored_grounding.dynamic_model_contract.emt_internal_grounding_link
+    assert has_emt_internal_grounding_link(block=legacy_restored_grounding)
 
 
 def test_standard_dc_load_declares_hidden_emt_terminal_current() -> None:

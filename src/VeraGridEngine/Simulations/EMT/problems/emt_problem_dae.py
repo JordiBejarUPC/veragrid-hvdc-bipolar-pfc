@@ -27,7 +27,7 @@ from VeraGridEngine.Simulations.driver_template import DummySignal
 from VeraGridEngine.Devices.Events.emt_events_group import EmtEventsGroup
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Expr, piecewise, Const, hard_sat, heaviside
-from VeraGridEngine.Utils.Symbolic.block import Block
+from VeraGridEngine.Utils.Symbolic.block import Block, has_emt_internal_grounding_link
 from VeraGridEngine.enumerations import (
     VarPowerFlowReferenceType,
     ParamPowerFlowReferenceType,
@@ -431,33 +431,6 @@ def _is_history_runtime_line_block_name(block_name: Any) -> Tuple[bool, bool]:
     is_bergeron: bool = block_name == EmtLineTypes.Bergeron or block_name == EmtLineTypes.Bergeron.value
     is_jmarti: bool = block_name == EmtLineTypes.J_Marti or block_name == EmtLineTypes.J_Marti.value
     return is_bergeron, is_jmarti
-
-
-def _has_internal_grounding_link(block: Block) -> bool:
-    """
-    Return whether one EMT block hierarchy contains one internal grounding link.
-
-    :param block: Candidate EMT block.
-    :return: Boolean state.
-    """
-    diagram_node: Any
-    nested_block: Block
-
-    for diagram_node in block.diagram.node_data.values():
-        if diagram_node.tpe in {"GROUNDING_LINK_EMT", "GROUND_EMT"}:
-            return True
-        else:
-            pass
-
-    for nested_block in block.children:
-        if nested_block.name.endswith("_grounding_link"):
-            return True
-        elif _has_internal_grounding_link(nested_block):
-            return True
-        else:
-            pass
-
-    return False
 
 
 def _get_grid_runtime_events(grid: MultiCircuit) -> List[Any]:
@@ -3732,7 +3705,7 @@ class EmtProblemDae(EmtProblemTemplate):
                         else:
                             pass
 
-                    if _has_internal_grounding_link(inj_emt_model):
+                    if has_emt_internal_grounding_link(block=inj_emt_model):
                         bus_phase_connections[(inj_bus, VarPowerFlowReferenceType.v_N)].add(
                             f"internal_ground:{inj.idtag}"
                         )

@@ -2,6 +2,14 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
+"""Persist the graphical projection of one symbolic block hierarchy.
+
+``BlockDiagram`` stores editor layout, visible ports, and wire routing only.
+Electrical assembly must resolve physical connectivity from ``MultiCircuit``
+and symbolic behavior from ``Block``; diagram records are never authoritative
+runtime topology.
+"""
+
 from __future__ import annotations
 
 from typing import Dict, Any, Sequence

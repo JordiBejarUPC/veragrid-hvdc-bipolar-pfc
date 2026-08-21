@@ -12,7 +12,7 @@ from enum import Enum
 from typing import List, Dict, Any, Tuple
 from typing import Iterable, Mapping
 
-from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const, Expr, _expr_to_dict, _dict_to_expr, Comparison
+from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const, Expr, BinOp, _expr_to_dict, _dict_to_expr, Comparison
 from VeraGridEngine.Devices.Diagrams.block_diagram import BlockDiagram
 from VeraGridEngine.enumerations import VarPowerFlowReferenceType, ParamPowerFlowReferenceType
 from VeraGridEngine.Utils.Symbolic.compare_expressions_structure import equivalent_systems
@@ -398,6 +398,7 @@ class DynamicModelContract:
         "rms_topology_constraint_status_var_uid",
         "rms_terminal_power_contributions",
         "emt_terminal_current_contributions",
+        "emt_internal_grounding_link",
         "rms_ideal_ac_connector",
         "rms_ideal_transformer",
         "skip_device_local_explicit_init",
@@ -449,6 +450,7 @@ class DynamicModelContract:
         self.rms_topology_constraint_status_var_uid: int | None = None
         self.rms_terminal_power_contributions: List[RmsTerminalPowerContribution] = list()
         self.emt_terminal_current_contributions: List[EmtTerminalCurrentContribution] = list()
+        self.emt_internal_grounding_link: bool = False
         self.rms_ideal_ac_connector: bool = False
         self.rms_ideal_transformer: bool = False
         self.skip_device_local_explicit_init: bool = False
@@ -479,7 +481,7 @@ class DynamicModelContract:
         :return: Data-only contract suitable for canonical block persistence.
         """
         return {
-            "version": 3,
+            "version": 4,
             "dgs_elmsym_runtime_adapter": self.dgs_elmsym_runtime_adapter,
             "dgs_elmsym_runtime_adapter_pending": self.dgs_elmsym_runtime_adapter_pending,
             "dgs_elmsym_round_rotor": self.dgs_elmsym_round_rotor,
@@ -504,6 +506,7 @@ class DynamicModelContract:
                 contribution.to_data()
                 for contribution in self.emt_terminal_current_contributions
             ),
+            "emt_internal_grounding_link": self.emt_internal_grounding_link,
             "rms_ideal_ac_connector": self.rms_ideal_ac_connector,
             "rms_ideal_transformer": self.rms_ideal_transformer,
             "skip_device_local_explicit_init": self.skip_device_local_explicit_init,
@@ -849,7 +852,7 @@ def dynamic_model_contract_from_data(data: Dict[str, object]) -> DynamicModelCon
         version_number: int = version
     else:
         raise TypeError("Dynamic-model contract version must be an integer")
-    if version_number in (1, 2, 3):
+    if version_number in (1, 2, 3, 4):
         pass
     else:
         raise ValueError("Unsupported dynamic-model contract version")
@@ -862,6 +865,10 @@ def dynamic_model_contract_from_data(data: Dict[str, object]) -> DynamicModelCon
         pass
     if version_number in (1, 2):
         expected_keys.remove("emt_terminal_current_contributions")
+    else:
+        pass
+    if version_number in (1, 2, 3):
+        expected_keys.remove("emt_internal_grounding_link")
     else:
         pass
     actual_keys: set[str] = set(data.keys())
@@ -935,6 +942,12 @@ def dynamic_model_contract_from_data(data: Dict[str, object]) -> DynamicModelCon
     else:
         result.emt_terminal_current_contributions = (
             _read_emt_terminal_current_contributions(data)
+        )
+    if version_number in (1, 2, 3):
+        result.emt_internal_grounding_link = False
+    else:
+        result.emt_internal_grounding_link = _read_required_dynamic_contract_boolean(
+            data, "emt_internal_grounding_link"
         )
     result.rms_ideal_ac_connector = _read_required_dynamic_contract_boolean(
         data, "rms_ideal_ac_connector"
@@ -2583,6 +2596,23 @@ class Block:
             block.dynamic_model_contract = dynamic_model_contract_from_data(
                 contract_record
             )
+            contract_version_data: object = contract_record["version"]
+            if (
+                    isinstance(contract_version_data, int)
+                    and not isinstance(contract_version_data, bool)
+            ):
+                if (
+                        contract_version_data in (1, 2, 3)
+                        and _is_legacy_emt_internal_grounding_link(block=block)
+                ):
+                    # Old contracts predate the explicit grounding flag. Migrate
+                    # from the canonical symbolic structure while it is still
+                    # available, never from the optional diagram projection.
+                    block.dynamic_model_contract.emt_internal_grounding_link = True
+                else:
+                    pass
+            else:
+                raise TypeError("Dynamic-model contract version must be an integer")
             validate_dynamic_model_contract(block)
 
         return block
@@ -3642,6 +3672,175 @@ def compare_n_blocks_structurally(blocks: List[Block]) -> Tuple[Dict[int, List[i
 #         result[new_uid] = eq_class
 #
 #     return result
+
+def _is_legacy_emt_ground_block(block: Block) -> bool:
+    """Recognize the canonical ideal-ground structure used before contract v4.
+
+    The historical ideal ground owns one input voltage, one output current and
+    one algebraic equation that clamps that exact input voltage to zero. This
+    structural signature is independent of display names and diagram records.
+
+    :param block: Parsed legacy child block to inspect.
+    :return: ``True`` when the child is the historical ideal EMT ground.
+    """
+    has_exact_container_shape: bool = (
+        len(block.in_vars) == 1
+        and len(block.out_vars) == 1
+        and len(block.algebraic_vars) == 1
+        and len(block.algebraic_eqs) == 1
+        and len(block.init_eqs) == 1
+        and len(block.state_vars) == 0
+        and len(block.state_eqs) == 0
+        and len(block.diff_vars) == 0
+        and len(block.reformulated_vars) == 0
+        and len(block.differential_eqs) == 0
+        and len(block.inequalities) == 0
+        and len(block.children) == 0
+        and len(block.parameters) == 0
+        and len(block.init_values) == 0
+        and len(block.diff_init_eqs) == 0
+        and len(block.event_dict) == 0
+        and len(block.mode_dict) == 0
+        and len(block.boolean_guards) == 0
+        and len(block.discrete_eqs) == 0
+        and len(block.post_init_seed_eqs) == 0
+        and len(block.procedural_logic) == 0
+        and len(block.connection_intents) == 0
+        and len(block.external_mapping) == 0
+        and len(block.api_obj_mapping) == 0
+    )
+    if has_exact_container_shape:
+        grounding_voltage: Var = block.in_vars[0]
+        grounding_current: Var = block.out_vars[0]
+        grounding_equation: Expr = block.algebraic_eqs[0]
+        initial_current: Expr | None = block.init_eqs.get(grounding_current, None)
+        if (
+            block.algebraic_vars[0].uid == grounding_current.uid
+            and grounding_voltage.ref is None
+            and grounding_current.ref is None
+            and isinstance(grounding_equation, Var)
+            and grounding_equation.uid == grounding_voltage.uid
+            and isinstance(initial_current, Const)
+            and initial_current.value == 0.0
+        ):
+            return True
+        else:
+            return False
+    else:
+        return False
+
+
+def _is_legacy_emt_ground_current_kcl(
+        equation: Expr,
+        grounding_current_uid: int,
+        terminal_current_uid: int,
+) -> bool:
+    """Recognize the exact historical two-current grounding KCL.
+
+    :param equation: Candidate parent algebraic equation.
+    :param grounding_current_uid: Current output UID of the ideal-ground child.
+    :param terminal_current_uid: External neutral-current output UID of the parent.
+    :return: ``True`` when the equation is exactly their sum.
+    """
+    if (
+        isinstance(equation, BinOp)
+        and equation.op == "+"
+        and isinstance(equation.left, Var)
+        and isinstance(equation.right, Var)
+    ):
+        left_uid: int = equation.left.uid
+        right_uid: int = equation.right.uid
+        if (
+            left_uid == grounding_current_uid
+            and right_uid == terminal_current_uid
+        ):
+            return True
+        elif (
+            left_uid == terminal_current_uid
+            and right_uid == grounding_current_uid
+        ):
+            return True
+        else:
+            return False
+    else:
+        return False
+
+
+def _is_legacy_emt_internal_grounding_link(block: Block) -> bool:
+    """Recognize one pre-v4 grounding link from canonical symbolic structure.
+
+    :param block: Parsed legacy block whose contract lacks the typed flag.
+    :return: ``True`` when neutral voltage/current ports own an ideal-ground child.
+    """
+    if len(block.in_vars) == 1 and len(block.out_vars) == 1:
+        has_neutral_ports: bool = (
+                block.in_vars[0].ref is VarPowerFlowReferenceType.v_N
+                and block.out_vars[0].ref is VarPowerFlowReferenceType.i_N
+        )
+    else:
+        has_neutral_ports = False
+
+    if has_neutral_ports:
+        terminal_current_uid: int = block.out_vars[0].uid
+        parent_algebraic_uids: set[int] = set()
+        algebraic_var: Var
+        for algebraic_var in block.algebraic_vars:
+            parent_algebraic_uids.add(algebraic_var.uid)
+        else:
+            pass
+        child_block: Block
+        for child_block in block.children:
+            if _is_legacy_emt_ground_block(block=child_block):
+                grounding_voltage_uid: int = child_block.in_vars[0].uid
+                grounding_current_uid: int = child_block.out_vars[0].uid
+                has_internal_voltage_connection: bool = (
+                    grounding_voltage_uid in parent_algebraic_uids
+                    and grounding_voltage_uid != block.in_vars[0].uid
+                    and terminal_current_uid in parent_algebraic_uids
+                )
+                if has_internal_voltage_connection:
+                    parent_equation: Expr
+                    for parent_equation in block.algebraic_eqs:
+                        if _is_legacy_emt_ground_current_kcl(
+                                equation=parent_equation,
+                                grounding_current_uid=grounding_current_uid,
+                                terminal_current_uid=terminal_current_uid,
+                        ):
+                            return True
+                        else:
+                            pass
+                else:
+                    pass
+            else:
+                pass
+        return False
+    else:
+        return False
+
+
+def has_emt_internal_grounding_link(block: Block) -> bool:
+    """Return whether a canonical block hierarchy declares internal grounding.
+
+    Diagram nodes are deliberately excluded because they persist editor layout,
+    not executable electrical topology. The declaration lives on the canonical
+    symbolic block and therefore survives diagram removal and block renaming.
+
+    :param block: Root symbolic block to inspect.
+    :return: ``True`` when the root or one descendant owns a grounding link.
+    """
+    if block.dynamic_model_contract.emt_internal_grounding_link:
+        return True
+    else:
+        pass
+
+    child_block: Block
+    for child_block in block.children:
+        if has_emt_internal_grounding_link(block=child_block):
+            return True
+        else:
+            pass
+    return False
+
 
 def compare_blocks_structurally(block1: Block, block2: Block) -> bool:
     block1_compare = block1.copy().unify_blocks()
