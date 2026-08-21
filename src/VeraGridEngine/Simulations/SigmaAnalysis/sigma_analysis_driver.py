@@ -259,6 +259,7 @@ class SigmaAnalysisResults(ResultsTemplate):
 def multi_island_sigma(multi_circuit: MultiCircuit,
                        options: PowerFlowOptions,
                        logger: Logger = Logger(),
+                       t_idx: int | None = None,
                        classical_sigma: bool = False,
                        dpr_use_stored_guess: bool = True,
                        dpr_control_q: bool | None = None,
@@ -270,6 +271,7 @@ def multi_island_sigma(multi_circuit: MultiCircuit,
     :param multi_circuit: MultiCircuit instance
     :param options: PowerFlowOptions instance
     :param logger: list of events to add to
+    :param t_idx: Time-series index to compile. None uses the snapshot values.
     :param classical_sigma: Use the original single-embedding HELM sigma instead of DPR path sigma.
     :param dpr_use_stored_guess: Use stored voltages as DPR initial germ instead of the classical no-load germ.
     :param dpr_control_q: Apply PV/P reactive limit control in DPR sigma. If None, use the power-flow option.
@@ -285,6 +287,7 @@ def multi_island_sigma(multi_circuit: MultiCircuit,
     results = SigmaAnalysisResults(n)
 
     nc = compile_numerical_circuit_at(circuit=multi_circuit,
+                                      t_idx=t_idx,
                                       apply_temperature=options.apply_temperature_correction,
                                       branch_tolerance_mode=options.branch_impedance_tolerance_mode,
                                       opf_results=None,
@@ -534,6 +537,7 @@ def sigma_distance(sigma_real, sigma_imag) -> Vec:
 class SigmaAnalysisDriver(DriverTemplate):
     __slots__ = (
         "options",
+        "t_idx",
         "classical_sigma",
         "dpr_use_stored_guess",
         "dpr_control_q",
@@ -549,6 +553,7 @@ class SigmaAnalysisDriver(DriverTemplate):
     def __init__(self,
                  grid: MultiCircuit,
                  options: PowerFlowOptions,
+                 t_idx: int | None = None,
                  classical_sigma: bool = False,
                  dpr_use_stored_guess: bool = True,
                  dpr_control_q: bool | None = None,
@@ -559,6 +564,7 @@ class SigmaAnalysisDriver(DriverTemplate):
         PowerFlowDriver class constructor
         :param grid: MultiCircuit instance
         :param options: PowerFlowOptions instance
+        :param t_idx: Time-series index to compile. None uses the snapshot values.
         :param classical_sigma: Use the original single-embedding HELM sigma instead of DPR path sigma.
         :param dpr_use_stored_guess: Use stored voltages as DPR initial germ instead of the classical no-load germ.
         :param dpr_control_q: Apply PV/P reactive limit control in DPR sigma. If None, use the power-flow option.
@@ -570,6 +576,7 @@ class SigmaAnalysisDriver(DriverTemplate):
 
         # Options to use
         self.options = options
+        self.t_idx = t_idx
         self.classical_sigma = classical_sigma
         self.dpr_use_stored_guess = dpr_use_stored_guess
         self.dpr_control_q = dpr_control_q
@@ -601,6 +608,7 @@ class SigmaAnalysisDriver(DriverTemplate):
         self.results = multi_island_sigma(multi_circuit=self.grid,
                                           options=self.options,
                                           logger=self.logger,
+                                          t_idx=self.t_idx,
                                           classical_sigma=self.classical_sigma,
                                           dpr_use_stored_guess=self.dpr_use_stored_guess,
                                           dpr_control_q=self.dpr_control_q,
