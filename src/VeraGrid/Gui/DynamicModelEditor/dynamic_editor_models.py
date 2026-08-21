@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import copy
 import re
-from typing import Any
+from collections.abc import Mapping
 
 from PySide6.QtWidgets import (
     QHBoxLayout,
@@ -20,10 +20,11 @@ from VeraGridEngine.Devices.Parents.branch_parent import BranchParent
 from VeraGridEngine.Devices.Parents.injection_parent import InjectionParent
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
+from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.bus_emt_template import BusEmtTemplate, get_bus_emt_algebraic_vars
 from VeraGridEngine.Utils.Symbolic.bus_rms_template import initialize_bus_rms
-from VeraGridEngine.Utils.Symbolic.symbolic import Expr, Var
+from VeraGridEngine.Utils.Symbolic.symbolic import Const, Expr, Var
 from VeraGridEngine.Utils.Symbolic.templates_common_functions import (
     emt_bus_shell_matches_grid_topology,
     reconcile_saved_emt_model_against_current_topology,
@@ -34,6 +35,8 @@ from VeraGridEngine.enumerations import DynamicSimulationMode
 
 class InspectModel(QWidget):
     """Read-only recursive summary of one symbolic block tree."""
+
+    __slots__ = ("block", "list_vars", "table_params", "list_eqns")
 
     def __init__(self, block: Block, parent: QWidget | None = None) -> None:
         """Create the variables, parameters, and equations inspector.
@@ -67,7 +70,7 @@ class InspectModel(QWidget):
 
         self.table_params: QTableWidget = QTableWidget()
         self.table_params.setColumnCount(2)
-        self.table_params.setHorizontalHeaderLabels(list(["Name", "Value"]))
+        self.table_params.setHorizontalHeaderLabels(list(("Name", "Value")))
         self.table_params.horizontalHeader().setStretchLastSection(True)
         self.table_params.verticalHeader().setVisible(False)
         self.table_params.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
@@ -112,13 +115,13 @@ class InspectModel(QWidget):
             for var in variable_group:
                 self.list_vars.addItem(QListWidgetItem(f"{var.name} "))
 
-        parameter_groups: tuple[dict[Var, Any], ...] = (
+        parameter_groups: tuple[Mapping[Var, Const | Expr], ...] = (
             current_model.parameters,
             current_model.event_dict,
         )
-        parameter_group: dict[Var, Any]
+        parameter_group: Mapping[Var, Const | Expr]
         parameter: Var
-        value: Any
+        value: Const | Expr
         row: int
         for parameter_group in parameter_groups:
             for parameter, value in parameter_group.items():
@@ -168,7 +171,6 @@ def copy_block_state(source_block: Block, target_block: Block) -> None:
     target_block.name = source_clone.name
     target_block.uid = source_clone.uid
     target_block.is_decomposable = source_clone.is_decomposable
-    target_block.is_root_interface_wrapper = source_clone.is_root_interface_wrapper
     target_block.tpe_uid = source_clone.tpe_uid
     target_block.vars_glob_name2uid = source_clone.vars_glob_name2uid
     target_block.state_vars = source_clone.state_vars
@@ -251,7 +253,7 @@ def _initialize_editor_assigned_rms_bus_model(bus: Bus, var_factory: VarFactory)
 
 
 def _initialize_editor_assigned_emt_bus_model(bus: Bus,
-                                              api_object: Any,
+                                              api_object: ALL_DEV_TYPES,
                                               circuit: MultiCircuit | None,
                                               var_factory: VarFactory) -> None:
     """Create or reconcile one EMT bus shell before editor attachment.
@@ -301,9 +303,9 @@ def _initialize_editor_assigned_emt_bus_model(bus: Bus,
         if invalid_shell:
             phase_mask: list[bool]
             if bus.is_dc:
-                phase_mask = list([False, False, False, False])
+                phase_mask = list((False, False, False, False))
             else:
-                phase_mask = list([False, True, True, True])
+                phase_mask = list((False, True, True, True))
             bus.emt_model = BusEmtTemplate(
                 vf=var_factory,
                 mask=phase_mask,
@@ -314,7 +316,7 @@ def _initialize_editor_assigned_emt_bus_model(bus: Bus,
             pass
 
 
-def initialize_connected_bus_models_for_editor_assignment(api_object: Any,
+def initialize_connected_bus_models_for_editor_assignment(api_object: ALL_DEV_TYPES,
                                                           circuit: MultiCircuit | None,
                                                           var_factory: VarFactory,
                                                           mode: DynamicSimulationMode) -> None:

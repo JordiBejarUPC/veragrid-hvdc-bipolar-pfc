@@ -20,7 +20,7 @@ class RoutingGeometry:
     builder, editor and renderer all react to the same geometry in the same
     way.
 
-    :returns: None.
+    :return: None.
     """
 
     __slots__ = ("_numerical_epsilon", "_visual_alignment_threshold", "_port_stub_length")
@@ -34,7 +34,7 @@ class RoutingGeometry:
         gives one 3 px tolerance: differences smaller than half the visible port
         body are not visually distinguishable as misalignment to the user.
 
-        :returns: None.
+        :return: None.
         """
         self._numerical_epsilon: float = 1.0e-9
         self._visual_alignment_threshold: float = 3.0
@@ -44,7 +44,7 @@ class RoutingGeometry:
         """
         Return the shared visual alignment threshold.
 
-        :returns: Visual alignment threshold in pixels.
+        :return: Visual alignment threshold in pixels.
         """
         return self._visual_alignment_threshold
 
@@ -62,7 +62,7 @@ class RoutingGeometry:
 
         :param port_position: Port position.
         :param port_side: Physical side of the port.
-        :returns: Stub endpoint.
+        :return: Stub endpoint.
         """
         if port_side == RoutingPortSide.LEFT:
             return RoutingPoint(
@@ -91,7 +91,7 @@ class RoutingGeometry:
 
         :param first_x: First x coordinate.
         :param second_x: Second x coordinate.
-        :returns: ``True`` when both x coordinates are visually aligned.
+        :return: ``True`` when both x coordinates are visually aligned.
         """
         difference: float = abs(float(first_x) - float(second_x))
         if difference <= self._visual_alignment_threshold:
@@ -105,7 +105,7 @@ class RoutingGeometry:
 
         :param first_y: First y coordinate.
         :param second_y: Second y coordinate.
-        :returns: ``True`` when both y coordinates are visually aligned.
+        :return: ``True`` when both y coordinates are visually aligned.
         """
         difference: float = abs(float(first_y) - float(second_y))
         if difference <= self._visual_alignment_threshold:
@@ -119,7 +119,7 @@ class RoutingGeometry:
 
         :param first_point: First point.
         :param second_point: Second point.
-        :returns: ``True`` when both points are visually aligned on x.
+        :return: ``True`` when both points are visually aligned on x.
         """
         return self.are_x_aligned_values(first_point.get_x(), second_point.get_x())
 
@@ -129,7 +129,7 @@ class RoutingGeometry:
 
         :param first_point: First point.
         :param second_point: Second point.
-        :returns: ``True`` when both points are visually aligned on y.
+        :return: ``True`` when both points are visually aligned on y.
         """
         return self.are_y_aligned_values(first_point.get_y(), second_point.get_y())
 
@@ -139,7 +139,7 @@ class RoutingGeometry:
 
         :param first_point: First point.
         :param second_point: Second point.
-        :returns: ``True`` when one horizontal or vertical segment is sufficient.
+        :return: ``True`` when one horizontal or vertical segment is sufficient.
         """
         if self.are_x_aligned(first_point, second_point):
             return True
@@ -162,7 +162,7 @@ class RoutingGeometry:
         :param start_y: Start y coordinate.
         :param end_x: End x coordinate.
         :param end_y: End y coordinate.
-        :returns: Derived axis or ``None`` when the segment is not aligned.
+        :return: Derived axis or ``None`` when the segment is not aligned.
         """
         same_x: bool = self.are_x_aligned_values(start_x, end_x)
         same_y: bool = self.are_y_aligned_values(start_y, end_y)
@@ -189,7 +189,7 @@ class RoutingGeometry:
 
         :param first_point: First point.
         :param second_point: Second point.
-        :returns: ``True`` when both coordinates match numerically.
+        :return: ``True`` when both coordinates match numerically.
         """
         same_x: bool = abs(first_point.get_x() - second_point.get_x()) <= self._numerical_epsilon
         same_y: bool = abs(first_point.get_y() - second_point.get_y()) <= self._numerical_epsilon

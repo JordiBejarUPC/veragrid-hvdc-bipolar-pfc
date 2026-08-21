@@ -10,20 +10,24 @@ A retained mode is a runtime parameter with an initialization expression. Its va
 
 ## Available types
 
-- [Fixed sample](fixed_sample.md)
-- [Sampled value](sampled_value.md)
-- [Hard saturation](hard_saturation.md)
-- [Time delay](time_delay.md)
-- [Moving average](moving_average.md)
-- [Gradient limiter](gradient_limiter.md)
-- [Flip-flop](flipflop.md)
-- [Analog flip-flop](analog_flipflop.md)
-- [Pickup/dropoff relay](pickup_dropoff.md)
-- [Reset on rising edge](reset_on_rising_edge.md)
-- [Delayed threshold latch](delayed_threshold_latch.md)
-- [Startup handover](startup_handover.md)
-- [Valve state](valve_state.md)
-- [Three-phase carrier PWM](three_phase_carrier_pwm.md)
-- [Three-phase carrier sampled modulation](three_phase_carrier_sampled_modulation.md)
+```{toctree}
+:maxdepth: 1
+
+fixed_sample
+sampled_value
+hard_saturation
+time_delay
+moving_average
+gradient_limiter
+flipflop
+analog_flipflop
+pickup_dropoff
+reset_on_rising_edge
+delayed_threshold_latch
+startup_handover
+valve_state
+three_phase_carrier_pwm
+three_phase_carrier_sampled_modulation
+```
 
 Use **Validate runtime logic** before applying. Validation checks names, references, expressions, missing modes, duplicate writers and order-dependent reads.

@@ -2,6 +2,15 @@
 
 This is Basic Block Catalog type `52` (`1/SQRT2`). It evaluates the mathematical function identified by the block name.
 
+<!-- veragrid-block-introduction:start -->
+**1/SQRT2** is a mathematical signal-processing primitive. It forms an algebraic relation between inputs, parameters, and outputs and is commonly combined with dynamic and nonlinear blocks to construct larger control equations without introducing an independent physical state.
+
+## Typical use
+
+- Use it to express the exact algebraic operation required by a controller or measurement chain.
+- Check signal dimensions, signs, and zero-division or domain restrictions where applicable.
+<!-- veragrid-block-introduction:end -->
+
 ## Behaviour
 
 - Library location: `Native / Math and Functions / Constants and Scaling`.
@@ -18,7 +27,7 @@ $$
 $$
 
 $$
-1/SQRT2_{yo0}(t_0) = (\frac{1}{\sqrt\left(2\right)})
+1/SQRT2_{yo0}(t_0) = (\frac{1}{\sqrt{2}})
 $$
 
 ## Interface table

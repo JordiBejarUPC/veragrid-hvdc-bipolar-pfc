@@ -5,13 +5,13 @@
 
 import numpy as np
 import math
-from matplotlib import pyplot as plt
-from typing import List, Any
+from typing import List
 
 from VeraGridEngine.Simulations.results_table import ResultsTable
 from VeraGridEngine.Simulations.results_template import ResultsTemplate, ResultsProperty
 from VeraGridEngine.basic_structures import Vec, Mat, StrVec
-from VeraGridEngine.enumerations import StudyResultsType, ResultTypes, DeviceType
+from VeraGridEngine.enumerations import (StudyResultsType, ResultTypes, DeviceType,
+                                         ResultTablePlotType)
 from VeraGridEngine.Utils.Symbolic.symbolic import Var
 
 
@@ -40,49 +40,41 @@ def _normalize_result_matrix(values: Mat | Vec) -> Mat:
     return matrix
 
 
-class SPlotInteractionHandler:
+def _build_s_domain_table(eigenvalues: Vec,
+                          imaginary_scale: float,
+                          imaginary_column_name: str) -> ResultsTable:
     """
-    Handles interactive annotations and hover events for S-Domain stability plots.
+    Build a selectable complex-plane table for small-signal eigenvalues.
+
+    The table owns the plot semantics, so obtaining a results model remains a
+    side-effect-free operation and plotting can honor subsequent filtering and
+    row selection.
+
+    :param eigenvalues: Small-signal eigenvalues in rad/s.
+    :param imaginary_scale: Display scale applied to the imaginary component.
+    :param imaginary_column_name: Label describing the displayed imaginary units.
+    :return: Results table configured as a complex-point plot.
     """
-    __slots__ = ['sc', 'annot', 'fig', 'ax']
-
-    def __init__(self, sc: Any, annot: Any, fig: Any, ax: Any) -> None:
-        """
-        SPlotInteractionHandler constructor.
-        """
-        self.sc: Any = sc
-        self.annot: Any = annot
-        self.fig: Any = fig
-        self.ax: Any = ax
-
-    def update_annotation(self, ind: dict) -> None:
-        """
-        Updates the annotation text and position based on the hovered point.
-        """
-        pos = self.sc.get_offsets()[ind["ind"][0]]
-        self.annot.xy = pos
-        text: str = f"Re={pos[0]:.2f}, Im={pos[1]:.2f}"
-        self.annot.set_text(text)
-        self.annot.get_bbox_patch().set_alpha(0.8)
-
-    def on_hover(self, event: Any) -> None:
-        """
-        Hover event callback logic.
-        """
-        if event.inaxes == self.ax:
-            cont, ind = self.sc.contains(event)
-            if cont:
-                self.update_annotation(ind)
-                self.annot.set_visible(True)
-                self.fig.canvas.draw_idle()
-            else:
-                if self.annot.get_visible():
-                    self.annot.set_visible(False)
-                    self.fig.canvas.draw_idle()
-                else:
-                    pass
-        else:
-            pass
+    real_values: Vec = eigenvalues.real
+    imaginary_values: Vec = eigenvalues.imag * imaginary_scale
+    table_data: Mat = np.c_[real_values, imaginary_values]
+    mode_names: StrVec = np.array(
+        [f"Mode {mode_index}" for mode_index in range(len(eigenvalues))],
+        dtype=np.str_,
+    )
+    return ResultsTable(
+        data=table_data,
+        index=mode_names,
+        idx_device_type=DeviceType.NoDevice,
+        columns=np.array(["Real", imaginary_column_name], dtype=np.str_),
+        cols_device_type=DeviceType.NoDevice,
+        title="S-Domain Stability plot",
+        plot_type=ResultTablePlotType.COMPLEX_POINTS,
+        damping_ratio_boundary=0.05,
+        complex_plot_x_column="Real",
+        complex_plot_y_columns=np.array([imaginary_column_name], dtype=np.str_),
+        complex_plot_y_scales=np.array([imaginary_scale], dtype=float),
+    )
 
 class SmallSignalStabilityRmsResults(ResultsTemplate):
     """
@@ -129,14 +121,11 @@ class SmallSignalStabilityRmsResults(ResultsTemplate):
         :param stat_vars:
         :param algebraic_vars:
         """
-        # TODO: Add mode shape graphics
         available_list: list = list([
             ResultTypes.StateMatrix,
             ResultTypes.RightEigenvectors,
             ResultTypes.Modes,
             ResultTypes.ParticipationFactors,
-            ResultTypes.SDomainPlot,
-            ResultTypes.SDomainPlotHz
         ])
 
         ResultsTemplate.__init__(
@@ -266,14 +255,42 @@ class SmallSignalStabilityRmsResults(ResultsTemplate):
         elif result_type == ResultTypes.Modes:
             re: Vec = self.eigenvalues.real
             im: Vec = self.eigenvalues.imag
-            data_modes: Mat = np.c_[re, im, self.damping_ratios, self.conjugate_frequencies]
+            im_hz: Vec = im / (2.0 * math.pi)
+            data_modes: Mat = np.c_[
+                re,
+                im,
+                im_hz,
+                self.damping_ratios,
+                self.conjugate_frequencies,
+            ]
             return ResultsTable(
                 data=data_modes,
                 index=np.array([f"Mode {i}" for i in range(len(self.eigenvalues))], dtype=np.str_),
-                columns=np.array(["Real", "Imaginary", "Damping ratio", "Oscillation frequency"]),
+                columns=np.array(
+                    [
+                        "Real",
+                        "Imaginary [rad/s]",
+                        "Imaginary [Hz]",
+                        "Damping ratio",
+                        "Oscillation frequency",
+                    ],
+                    dtype=np.str_,
+                ),
                 title="Eigenvalues",
                 idx_device_type=DeviceType.NoDevice,
-                cols_device_type=DeviceType.NoDevice
+                cols_device_type=DeviceType.NoDevice,
+                plot_type=ResultTablePlotType.COMPLEX_POINTS,
+                damping_ratio_boundary=0.05,
+                plot_title="S-Domain Stability plot",
+                complex_plot_x_column="Real",
+                complex_plot_y_columns=np.array(
+                    ["Imaginary [rad/s]", "Imaginary [Hz]"],
+                    dtype=np.str_,
+                ),
+                complex_plot_y_scales=np.array(
+                    [1.0, 1.0 / (2.0 * math.pi)],
+                    dtype=float,
+                ),
             )
         elif result_type == ResultTypes.RightEigenvectors:
             number_of_states: int = self.right_eigenvectors.shape[0]
@@ -321,315 +338,23 @@ class SmallSignalStabilityRmsResults(ResultsTemplate):
                 columns=mode_names,
                 title="Mode shapes",
                 idx_device_type=DeviceType.NoDevice,
-                cols_device_type=DeviceType.NoDevice
+                cols_device_type=DeviceType.NoDevice,
+                plot_type=ResultTablePlotType.COMPLEX_VECTORS,
             )
 
 
 
         elif result_type == ResultTypes.SDomainPlot:
-            re: Vec = self.eigenvalues.real
-            im: Vec = self.eigenvalues.imag
-            data: Mat = np.c_[re, im]
-
-            # Empty studies have no domain to scale or plot, but they still
-            # return a valid empty table for the results model.
-            if len(self.eigenvalues) == 0:
-                return ResultsTable(data=data,
-                                    index=np.empty(0, dtype=np.str_),
-                                    idx_device_type=DeviceType.NoDevice,
-                                    columns=np.array(['Real', 'Imag']),
-                                    cols_device_type=DeviceType.NoDevice,
-                                    title="S-Domain Stability plot")
-            else:
-                pass
-
-            d: Vec = np.abs(np.nan_to_num(re))
-            maximum_distance: float = float(d.max())
-            if maximum_distance > 0.0:
-                colors: Vec = -d / maximum_distance
-            else:
-                colors = np.zeros_like(d)
-
-            slope: float = 1 / 0.05
-            x_z: Vec = np.linspace(-200, 0, 400)
-            y_z: Vec = slope * x_z
-
-            margin_x: float = float((re.max() - re.min()) * 0.1)
-            margin_y: float = float((im.max() - im.min()) * 0.1)
-            if margin_x > 0.0:
-                pass
-            else:
-                margin_x = max(float(np.abs(re[0])) * 0.1, 1.0)
-            if margin_y > 0.0:
-                pass
-            else:
-                margin_y = max(float(np.abs(im[0])) * 0.1, 1.0)
-            x_min: float = float(re.min() - margin_x)
-            x_max: float = float(re.max() + margin_x)
-            y_min: float = float(im.min() - margin_y)
-            y_max: float = float(im.max() + margin_y)
-
-            if self.plotting_allowed():
-                plt.ion()
-                fig: Any = plt.figure(figsize=(8, 6))
-                ax: Any = fig.add_subplot(111)
-                ax.plot(x_z, y_z, '--', color='grey', linewidth=0.7, alpha=0.6, label='ζ = 5%')
-                ax.plot(x_z, -y_z, '--', color='grey', linewidth=0.7, alpha=0.6)
-                sc: Any = ax.scatter(re, im, c=colors, cmap='winter', s=120, alpha=0.8)
-                fig.suptitle("S-Domain Stability plot")
-                ax.set_xlabel(r'Real')
-                ax.set_ylabel(r'Imaginary [rad/s]')
-                ax.axhline(0, color='black', linewidth=1)
-                ax.axvline(0, color='black', linewidth=1)
-                plt.xlim([x_min, x_max])
-                plt.ylim([y_min, y_max])
-                plt.tight_layout()
-                plt.show()
-                annot: Any = ax.annotate("", xy=(0, 0), xytext=(20, 20),
-                                         textcoords="offset points",
-                                         bbox=dict(boxstyle="round", fc="w"),
-                                         arrowprops=dict(arrowstyle="->"),
-                                         fontsize=8)
-                annot.set_visible(False)
-
-                handler: SPlotInteractionHandler = SPlotInteractionHandler(sc, annot, fig, ax)
-                fig.canvas.mpl_connect("motion_notify_event", handler.on_hover)
-            else:
-                pass
-
-            return ResultsTable(data=data,
-                                index=np.empty(len(self.eigenvalues), dtype=np.str_),
-                                idx_device_type=DeviceType.NoDevice,
-                                columns=np.array(['Real', 'Imag']),
-                                cols_device_type=DeviceType.NoDevice,
-                                title="S-Domain Stability plot"
-                                )
+            return _build_s_domain_table(
+                eigenvalues=self.eigenvalues,
+                imaginary_scale=1.0,
+                imaginary_column_name="Imaginary [rad/s]",
+            )
         elif result_type == ResultTypes.SDomainPlotHz:
-            re: Vec = self.eigenvalues.real
-            im: Vec = self.eigenvalues.imag / (2 * math.pi)
-            data: Mat = np.c_[re, im]
-
-            # Match the rad/s view contract when no modes were produced.
-            if len(self.eigenvalues) == 0:
-                return ResultsTable(data=data,
-                                    index=np.empty(0, dtype=np.str_),
-                                    idx_device_type=DeviceType.NoDevice,
-                                    columns=np.array(['Real', 'Imag [Hz]']),
-                                    cols_device_type=DeviceType.NoDevice,
-                                    title="S-Domain Stability plot")
-            else:
-                pass
-
-            d: Vec = np.abs(np.nan_to_num(re))
-            maximum_distance: float = float(d.max())
-            if maximum_distance > 0.0:
-                colors: Vec = -d / maximum_distance
-            else:
-                colors = np.zeros_like(d)
-
-            slope: float = 1 / 0.05
-            x_z: Vec = np.linspace(-200, 0, 400)
-            y_z: Vec = slope * x_z / (2 * math.pi)
-
-            margin_x: float = float((re.max() - re.min()) * 0.1)
-            margin_y: float = float((im.max() - im.min()) * 0.1)
-            if margin_x > 0.0:
-                pass
-            else:
-                margin_x = max(float(np.abs(re[0])) * 0.1, 1.0)
-            if margin_y > 0.0:
-                pass
-            else:
-                margin_y = max(float(np.abs(im[0])) * 0.1, 1.0)
-            x_min: float = float(re.min() - margin_x)
-            x_max: float = float(re.max() + margin_x)
-            y_min: float = float(im.min() - margin_y)
-            y_max: float = float(im.max() + margin_y)
-
-
-            if self.plotting_allowed():
-                plt.ion()
-                fig: Any = plt.figure(figsize=(8, 6))
-                ax: Any = fig.add_subplot(111)
-                ax.plot(x_z, y_z, '--', color='grey',linewidth=0.7, alpha=0.6, label='ζ = 5%')
-                ax.plot(x_z, -y_z, '--', color='grey',linewidth=0.7, alpha=0.6)
-                sc: Any = ax.scatter(re, im, c=colors, cmap='winter', s=120, alpha=0.8)
-                fig.suptitle("S-Domain Stability plot")
-                ax.set_xlabel(r'Real')
-                ax.set_ylabel(r'Imaginary [Hz]')
-                ax.axhline(0, color='black', linewidth=1)  # eje horizontal (y = 0)
-                ax.axvline(0, color='black', linewidth=1)
-                plt.xlim([x_min, x_max])
-                plt.ylim([y_min, y_max])
-                plt.tight_layout()
-                plt.show()
-                annot: Any = ax.annotate("", xy=(0, 0), xytext=(20, 20),
-                                    textcoords="offset points",
-                                    bbox=dict(boxstyle="round", fc="w"),
-                                    arrowprops=dict(arrowstyle="->"),
-                                    fontsize=8)
-                annot.set_visible(False)
-
-                hz_handler: SPlotInteractionHandler = SPlotInteractionHandler(sc, annot, fig, ax)
-                fig.canvas.mpl_connect("motion_notify_event", hz_handler.on_hover)
-
-            else:
-                pass
-
-            return ResultsTable(data=data,
-                                index=np.empty(len(self.eigenvalues), dtype=np.str_),
-                                idx_device_type=DeviceType.NoDevice,
-                                columns=np.array(['Real', 'Imag [Hz]']),
-                                cols_device_type=DeviceType.NoDevice,
-                                title="S-Domain Stability plot"
-                                )
+            return _build_s_domain_table(
+                eigenvalues=self.eigenvalues,
+                imaginary_scale=1.0 / (2.0 * math.pi),
+                imaginary_column_name="Imaginary [Hz]",
+            )
         else:
             raise Exception(f"Result type not understood: {result_type}")
-
-def plot_mode_shapes(
-    right_eigenvectors: Mat,
-    eigenvalues: Vec,
-    conjugate_frequencies: Vec,
-    damping_ratios: Vec,
-    state_names: np.ndarray,
-    selected_state_indices: np.ndarray,
-    selected_mode_indices: np.ndarray,
-) -> None:
-    """
-    Plot selected state mode shapes for one or more selected modes.
-
-    A polar subplot is created for each selected mode. Each arrow represents
-    the complex component of a selected state in the corresponding right
-    eigenvector.
-    """
-    selected_state_indices = np.asarray(
-        selected_state_indices,
-        dtype=np.int64
-    )
-    selected_mode_indices = np.asarray(
-        selected_mode_indices,
-        dtype=np.int64
-    )
-
-    if selected_state_indices.size == 0:
-        raise ValueError("At least one state must be selected.")
-
-    if selected_mode_indices.size == 0:
-        raise ValueError("At least one mode must be selected.")
-
-    number_of_modes: int = selected_mode_indices.size
-    number_of_columns: int = min(3, number_of_modes)
-    number_of_rows: int = int(
-        np.ceil(number_of_modes / number_of_columns)
-    )
-
-    fig_width: float = min(18.0, 5.5 * number_of_columns)
-    fig_height: float = min(12.0, 5.0 * number_of_rows)
-
-    fig, axes = plt.subplots(
-        number_of_rows,
-        number_of_columns,
-        figsize=(fig_width, fig_height),
-        subplot_kw={'projection': 'polar'},
-        squeeze=False
-    )
-
-    flat_axes: np.ndarray = axes.ravel()
-
-    for plot_index, mode_index in enumerate(selected_mode_indices):
-        ax: Any = flat_axes[plot_index]
-
-        mode_components: np.ndarray = right_eigenvectors[
-            selected_state_indices,
-            mode_index
-        ]
-
-        magnitudes: np.ndarray = np.abs(mode_components)
-        phases: np.ndarray = np.angle(mode_components)
-
-        # Normalize each mode so its largest selected component has radius 1.
-        maximum_magnitude: float = float(magnitudes.max())
-
-        if maximum_magnitude > 0.0:
-            normalized_magnitudes: np.ndarray = (
-                magnitudes / maximum_magnitude
-            )
-        else:
-            normalized_magnitudes = np.zeros_like(magnitudes)
-
-        for state_position, state_index in enumerate(
-            selected_state_indices
-        ):
-            phase: float = float(phases[state_position])
-            magnitude: float = float(
-                normalized_magnitudes[state_position]
-            )
-
-            ax.annotate(
-                '',
-                xy=(phase, magnitude),
-                xytext=(0.0, 0.0),
-                arrowprops={
-                    'arrowstyle': '->',
-                    'linewidth': 1.8
-                }
-            )
-
-            # Dummy plot entry used to generate the legend.
-            ax.plot(
-                [],
-                [],
-                label=str(state_names[state_index])
-            )
-
-        eigenvalue: complex = eigenvalues[mode_index]
-        frequency: float = conjugate_frequencies[mode_index]
-        damping_ratio: float = damping_ratios[mode_index]
-
-        eigenvalue_text: str = (
-            f"λ = {eigenvalue.real:.2f} "
-            f"{eigenvalue.imag:+.2f}j"
-        )
-
-        frequency_text: str = (
-            f"f = {frequency:.2f} Hz"
-            if np.isfinite(frequency)
-            else "f = N/A"
-        )
-
-        damping_text: str = (
-            f"ζ = {damping_ratio:.3f}"
-            if np.isfinite(damping_ratio)
-            else "ζ = N/A"
-        )
-
-        ax.set_title(
-            f"Mode {mode_index}: {eigenvalue_text}\n"
-            f"{frequency_text}, {damping_text}",
-            pad=20,
-            fontsize=10,
-            fontweight='bold'
-        )
-
-        ax.set_ylim(0.0, 1.05)
-        ax.set_yticks([0.2, 0.4, 0.6, 0.8, 1.0])
-        ax.grid(True, alpha=0.4)
-
-        ax.legend(
-            loc='center left',
-            bbox_to_anchor=(1.05, 0.5),
-            fontsize=8
-        )
-
-    # Hide unused axes.
-    for plot_index in range(number_of_modes, flat_axes.size):
-        flat_axes[plot_index].set_visible(False)
-
-    fig.suptitle(
-        "Mode shapes",
-        fontsize=13,
-        fontweight='bold'
-    )
-
-    fig.tight_layout()
-    plt.show()

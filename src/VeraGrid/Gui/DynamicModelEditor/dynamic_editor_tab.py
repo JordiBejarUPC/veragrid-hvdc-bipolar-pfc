@@ -100,6 +100,8 @@ class DynamicEditorDocument:
     * :meth:`is_dirty` — whether the working tree has unsaved changes.
     """
 
+    __slots__ = ("_original_root_block", "_working_root_block")
+
     def __init__(self, original_root_block: Block) -> None:
         """
         Create a new document from the original (persistent) block tree.
@@ -119,12 +121,16 @@ class DynamicEditorDocument:
 
     @property
     def original_root_block(self) -> Block:
-        """Return the original (persistent) block tree."""
+        """
+        :return: The original (persistent) block tree.
+        """
         return self._original_root_block
 
     @property
     def working_root_block(self) -> Block:
-        """Return the working (editable) block tree."""
+        """
+        :return: The working (editable) block tree.
+        """
         return self._working_root_block
 
     # ------------------------------------------------------------------
@@ -181,6 +187,8 @@ class DynamicEditorTab(QtWidgets.QWidget):
     a tab.  All edits target the single working tree owned by the document.
     """
 
+    __slots__ = ()
+
     dirtyStateChanged = Signal(bool)
 
     def __init__(
@@ -194,6 +202,18 @@ class DynamicEditorTab(QtWidgets.QWidget):
             templates_list: Optional[List[RmsModelTemplate | EmtModelTemplate | FmuTemplate]] = None,
             parent: QtWidgets.QWidget | None = None,
     ) -> None:
+        """Create one editor tab and its isolated working document.
+
+        :param var_factory: Factory that owns symbolic variables.
+        :param block: Persistent root block copied into the working document.
+        :param api_object: Static network device associated with the model.
+        :param circuit: Circuit that owns the static device.
+        :param current_theme: Initial editor colour mode.
+        :param mode: Dynamic simulation mode represented by the tab.
+        :param templates_list: Optional templates exposed in the library.
+        :param parent: Owning workspace widget.
+        :return: None.
+        """
         super().__init__(parent)
 
         self._var_factory = var_factory
@@ -227,27 +247,57 @@ class DynamicEditorTab(QtWidgets.QWidget):
     # ------------------------------------------------------------------
 
     def get_dynamic_editor_entry(self) -> DynamicEditorEntry | None:
+        """Return the workspace entry associated with this tab.
+
+        :return: Dynamic editor entry, or ``None`` before registration.
+        """
         return self._dynamic_editor_entry
 
     def set_dynamic_editor_entry(self, entry: DynamicEditorEntry) -> None:
+        """Associate the tab with one workspace entry.
+
+        :param entry: Device/mode entry represented by the tab.
+        :return: None.
+        """
         self._dynamic_editor_entry = entry
 
     def get_dynamic_editor_mode(self) -> DynamicSimulationMode:
+        """Return the simulation mode represented by this tab.
+
+        :return: RMS, EMT, or FMU mode.
+        """
         return self._mode
 
     def get_dynamic_editor_display_title(self) -> str:
+        """Build the user-facing tab title from device and mode.
+
+        :return: Display title for the workspace tab.
+        """
         object_name = self._api_object.name if self._api_object is not None else "Dynamic object"
         return f"{object_name} [{self._mode.name}]"
 
     @property
     def has_unapplied_changes(self) -> bool:
+        """Return whether the hosted editor contains unapplied changes.
+
+        :return: Dirty state reported by the current editor.
+        """
         if self._editor is not None:
             return self._editor.has_unapplied_changes
+        else:
+            pass
         return False
 
     def can_close_editor(self, parent: QtWidgets.QWidget | None = None) -> bool:
+        """Ask the hosted editor whether its page may close.
+
+        :param parent: Widget used as parent for any confirmation prompt.
+        :return: Whether closing may continue.
+        """
         if self._editor is not None:
             return self._editor.can_close_editor(parent)
+        else:
+            pass
         return True
 
     def prepare_to_delete(self) -> None:
@@ -263,6 +313,8 @@ class DynamicEditorTab(QtWidgets.QWidget):
         """
         if self._prepared_to_delete:
             return
+        else:
+            pass
 
         self._prepared_to_delete = True
         self._dispose_editor()
@@ -281,14 +333,26 @@ class DynamicEditorTab(QtWidgets.QWidget):
             pass
 
     def set_dark_mode(self) -> None:
+        """Apply dark mode to the hosted editor.
+
+        :return: None.
+        """
         if self._editor is not None:
             self._editor.set_dark_mode()
             self.current_theme = DynEditorGraphicsModes.DARK
+        else:
+            pass
 
     def set_light_mode(self) -> None:
+        """Apply light mode to the hosted editor.
+
+        :return: None.
+        """
         if self._editor is not None:
             self._editor.set_light_mode()
             self.current_theme = DynEditorGraphicsModes.LIGHT
+        else:
+            pass
 
     # ------------------------------------------------------------------
     # Navigation — always over the working tree
@@ -333,18 +397,34 @@ class DynamicEditorTab(QtWidgets.QWidget):
 
     @property
     def editor(self) -> DynamicBlockEditorGUI | None:
+        """Return the currently hosted block editor.
+
+        :return: Active editor, or ``None`` during teardown.
+        """
         return self._editor
 
     @property
     def is_root_editor(self) -> bool:
+        """Return whether navigation currently points at the document root.
+
+        :return: Root-navigation state.
+        """
         return self._navigation.is_root()
 
     @property
     def root_block(self) -> Block:
+        """Return the root block of the working document.
+
+        :return: Working root block.
+        """
         return self._navigation.root_block
 
     @property
     def current_block(self) -> Block:
+        """Return the block currently displayed by the editor.
+
+        :return: Current working block.
+        """
         return self._navigation.current_block
 
     # ------------------------------------------------------------------
@@ -352,6 +432,11 @@ class DynamicEditorTab(QtWidgets.QWidget):
     # ------------------------------------------------------------------
 
     def _create_editor(self, block: Block) -> None:
+        """Create the single block editor hosted by this tab.
+
+        :param block: Working-tree block to display.
+        :return: None.
+        """
         self._editor = DynamicBlockEditorGUI(
             var_factory=self._var_factory,
             root_block=self._navigation.root_block,
@@ -372,8 +457,14 @@ class DynamicEditorTab(QtWidgets.QWidget):
             self._editor.dirtyStateChanged.connect(self.dirtyStateChanged)
             self._layout.addWidget(self._editor)
             self._refresh_breadcrumb()
+        else:
+            pass
 
     def _replace_editor(self) -> None:
+        """Replace the hosted editor after a navigation change.
+
+        :return: None.
+        """
         self._dispose_editor()
         self._create_editor(self._navigation.current_block)
 
@@ -386,6 +477,8 @@ class DynamicEditorTab(QtWidgets.QWidget):
         editor: DynamicBlockEditorGUI | None = self._editor
         if editor is None:
             return
+        else:
+            pass
 
         try:
             editor.dirtyStateChanged.disconnect(self.dirtyStateChanged)
@@ -398,8 +491,17 @@ class DynamicEditorTab(QtWidgets.QWidget):
         self._editor = None
 
     def _refresh_breadcrumb(self) -> None:
+        """Render the current navigation path in the breadcrumb widget.
+
+        :return: None.
+        """
         path: List[Block] = self._navigation.breadcrumb_path()
         self._breadcrumb.set_path(path)
 
     def _on_breadcrumb_clicked(self, block: Block) -> None:
+        """Navigate to the ancestor selected in the breadcrumb.
+
+        :param block: Working-tree ancestor selected by the user.
+        :return: None.
+        """
         self.navigate_to_breadcrumb_block(block)

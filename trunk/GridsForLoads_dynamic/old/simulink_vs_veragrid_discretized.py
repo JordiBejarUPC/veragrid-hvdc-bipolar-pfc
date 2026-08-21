@@ -9,7 +9,11 @@ import numpy as np
 import pandas as pd
 
 THETA_WRAP_PERIOD_RAD: float = 2.0 * np.pi
-SIMULINK_DELTA_VSM_OFFSET_RAD: float = 1.0035643198967392
+EXPECTED_TIME_STEP_S: float = 5.0e-6
+EXPECTED_END_TIME_S: float = 3.0
+SIMULINK_P_REF_INITIAL_MW: float = 1.6
+SIMULINK_P_REF_FIRST_STEP_MW: float = 0.8
+SIMULINK_P_REF_SECOND_STEP_MW: float = 0.0
 # power reference change in the GFM controller
 # TEST_NAME: str = "p_ref_step_v3_2pref"
 # SIMULINK_CSV_NAME: str = "simulink_results_G4L_p_ref_2events.csv"
@@ -43,19 +47,19 @@ SIMULINK_DELTA_VSM_OFFSET_RAD: float = 1.0035643198967392
 #     ("post_event_2", 1.75, 1.80, "After second event"),
 # ]
 
-TEST_NAME: str = "p_ref_step_simplified"
-SIMULINK_CSV_NAME: str = "simulink_results_G4L_p_ref_simplified.csv"
-VERAGRID_CSV_NAME: str = "veragrid_G4L_p_gfm_v3_simplified.csv"
+TEST_NAME: str = "p_ref_step_v3_discretized_3s"
+SIMULINK_CSV_PATH: Path = Path(
+    r"C:\Users\maria\OneDrive\Documentos\Projects\grids4loads\sim_model\sim_model\simulink_results_G4L_p_ref_discrete.csv"
+)
+VERAGRID_CSV_PATH: Path = Path(__file__).resolve().parent / "veragrid_G4L_p_gfm_v3_discrete.csv"
 COMPARISON_WINDOW_S: Optional[tuple[float, float]] = None
 # COMPARISON_WINDOW_S = (0.0, 0.02)
-# VERAGRID_CSV_NAME: str = "veragrid_G4L_p_gfm_v3_2pref.csv"
-EVENT_TIMES_S: list[float] = [0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5]
-EVENT_WINDOW_HALF_WIDTH_S: float = 0.025
+EVENT_TIMES_S: list[float] = [1.0, 2.0]
+EVENT_WINDOW_HALF_WIDTH_S: float = 0.25
 STEADY_STATE_WINDOWS: list[tuple[str, float, float, str]] = [
-    ("pre_event", 0.25, 0.30, "Before first event"),
-    ("post_event_1", 0.75, 0.80, "After first event"),
-    ("post_event_2", 1.25, 1.30, "After second event"),
-    ("post_event_3", 1.75, 1.80, "After third event"),
+    ("pre_event", 0.90, 0.98, "Before first event"),
+    ("post_event_1", 1.90, 1.98, "After first event"),
+    ("post_event_2", 2.90, 2.98, "After second event"),
 ]
 
 
@@ -263,13 +267,23 @@ def _theta_pll_veragrid_signal(dataframe: pd.DataFrame) -> pd.Series:
     return pd.Series(wrap_to_2pi(theta_values.to_numpy(dtype=float)), index=theta_values.index)
 
 
+def _theta_pll_simulink_signal(dataframe: pd.DataFrame) -> pd.Series:
+    """Return the Simulink PLL angle wrapped to the comparison interval.
+
+    :param dataframe: Source dataframe.
+    :return: Theta PLL series wrapped to ``[0, 2*pi)``.
+    """
+    theta_values: pd.Series = pd.to_numeric(dataframe["theta_pll"], errors="coerce")
+    return pd.Series(wrap_to_2pi(theta_values.to_numpy(dtype=float)), index=theta_values.index)
+
+
 def _phase_vsm_simulink_signal(dataframe: pd.DataFrame) -> pd.Series:
-    """Return the Simulink VSM phase wrapped to ``[0, 2*pi)``.
+    """Return the directly exported Simulink VSM phase.
 
     :param dataframe: Source dataframe.
     :return: Wrapped phase VSM series.
     """
-    phase_values: pd.Series = pd.to_numeric(dataframe["phase_pll"], errors="coerce") + _delta_from_vdq_signal(dataframe, "Vd", "Vq")
+    phase_values: pd.Series = pd.to_numeric(dataframe["phase_vsm"], errors="coerce")
     return pd.Series(wrap_to_2pi(phase_values.to_numpy(dtype=float)), index=phase_values.index)
 
 
@@ -284,12 +298,12 @@ def _phase_vsm_veragrid_signal(dataframe: pd.DataFrame) -> pd.Series:
 
 
 def _delta_vsm_simulink_signal(dataframe: pd.DataFrame) -> pd.Series:
-    """Return the Simulink inferred VSM minus PLL angle offset.
+    """Return the directly exported Simulink VSM minus PLL angle.
 
     :param dataframe: Source dataframe.
     :return: Wrapped inferred delta VSM series.
     """
-    return wrap_to_pi(_delta_from_vdq_signal(dataframe, "Vd", "Vq") + SIMULINK_DELTA_VSM_OFFSET_RAD)
+    return _delta_vsm_signal(dataframe, "phase_vsm", "theta_pll")
 
 
 def _delta_vsm_veragrid_signal(dataframe: pd.DataFrame) -> pd.Series:
@@ -355,6 +369,32 @@ def _constant_series_from_column(dataframe: pd.DataFrame, reference_column: str,
     return pd.Series(np.full(reference_values.shape, value, dtype=float), index=reference_values.index)
 
 
+def _p_ref_simulink_signal(dataframe: pd.DataFrame) -> pd.Series:
+    """Reconstruct the two-step Simulink active-power reference in MW.
+
+    The exported Simulink snapshot contains the measured active power but not
+    the reference signal.  The reference is deterministic for this test:
+    1.6 MW initially, 0.8 MW from 1.0 s, and 0 MW from 2.0 s.
+
+    :param dataframe: Simulink result dataframe containing the time column.
+    :return: Active-power reference series in MW.
+    """
+    time_values: pd.Series = pd.to_numeric(dataframe["time"], errors="coerce")
+    reference_values: np.ndarray = np.full(time_values.shape, SIMULINK_P_REF_INITIAL_MW, dtype=float)
+    reference_values[time_values.to_numpy(dtype=float) >= EVENT_TIMES_S[0]] = SIMULINK_P_REF_FIRST_STEP_MW
+    reference_values[time_values.to_numpy(dtype=float) >= EVENT_TIMES_S[1]] = SIMULINK_P_REF_SECOND_STEP_MW
+    return pd.Series(reference_values, index=time_values.index)
+
+
+def _p_ref_veragrid_signal(dataframe: pd.DataFrame) -> pd.Series:
+    """Return the exported VeraGrid active-power reference in MW.
+
+    :param dataframe: VeraGrid result dataframe containing ``P_ref_MW``.
+    :return: Numeric active-power reference series in MW.
+    """
+    return pd.to_numeric(dataframe["P_ref_MW"], errors="coerce")
+
+
 def create_plot_groups() -> list[PlotGroup]:
     """Create plot groups and editable signal mappings.
 
@@ -394,9 +434,22 @@ def create_plot_groups() -> list[PlotGroup]:
             "ac_voltages",
             list(
                 [
-                    SignalSpec("Va", "Va", "vA_conv_kV", "kV", simulink_scale=1.0 / 1000.0),
-                    SignalSpec("Vb", "Vb", "vB_conv_kV", "kV", simulink_scale=1.0 / 1000.0),
-                    SignalSpec("Vc", "Vc", "vC_conv_kV", "kV", simulink_scale=1.0 / 1000.0),
+                    SignalSpec("Va", "Va", "vA_Bus1_kV", "kV", simulink_scale=1.0 / 1000.0),
+                    SignalSpec("Vb", "Vb", "vB_Bus1_kV", "kV", simulink_scale=1.0 / 1000.0),
+                    SignalSpec("Vc", "Vc", "vC_Bus1_kV", "kV", simulink_scale=1.0 / 1000.0),
+                ]
+            ),
+        )
+    )
+    groups.append(
+        PlotGroup(
+            "Converter commanded voltages",
+            "converter_commanded_voltages",
+            list(
+                [
+                    SignalSpec("Vcon a", "Vcon_a", "vA_conv_kV", "kV", simulink_scale=1.0 / 1000.0),
+                    SignalSpec("Vcon b", "Vcon_b", "vB_conv_kV", "kV", simulink_scale=1.0 / 1000.0),
+                    SignalSpec("Vcon c", "Vcon_c", "vC_conv_kV", "kV", simulink_scale=1.0 / 1000.0),
                 ]
             ),
         )
@@ -491,15 +544,28 @@ def create_plot_groups() -> list[PlotGroup]:
                 [
                     SignalSpec(
                         "P ref",
-                        "Pac",
-                        "Pac_bus_MW_sim_sign",
+                        "time",
+                        "P_ref_MW",
                         "MW",
-                        simulink_columns=["Pac"],
+                        simulink_columns=["time"],
                         veragrid_columns=["P_ref_MW"],
-                        simulink_transform=lambda dataframe: _constant_series_from_column(dataframe, "Pac", 0.0),
-                        veragrid_transform=lambda dataframe: pd.to_numeric(dataframe["P_ref_MW"], errors="coerce"),
+                        simulink_transform=_p_ref_simulink_signal,
+                        veragrid_transform=_p_ref_veragrid_signal,
                     ),
                     SignalSpec("Pac", "Pac", "Pac_MW_sim_sign", "MW", simulink_scale=1.0 / 1000000.0),
+                ]
+            ),
+        )
+    )
+    groups.append(
+        PlotGroup(
+            "DC-link signals",
+            "dc_link_signals",
+            list(
+                [
+                    SignalSpec("Pdc", "Pdc", "pdc_MW_sim_sign", "MW", simulink_scale=1.0 / 1000000.0),
+                    SignalSpec("Vdc", "Vdc", "vdc_V", "V"),
+                    SignalSpec("Idc load", "Idc_L", "idcL_A", "A"),
                 ]
             ),
         )
@@ -510,7 +576,8 @@ def create_plot_groups() -> list[PlotGroup]:
             "pll_frequency",
             list(
                 [
-                    SignalSpec("omega pll", "omega_pll", "w_pll", "rad/s"),
+                    SignalSpec("omega pll", "w_pll", "w_pll", "rad/s"),
+                    SignalSpec("omega vsm", "omega_vsm", "omega_vsm", "rad/s"),
                 ]
             ),
         )
@@ -523,18 +590,20 @@ def create_plot_groups() -> list[PlotGroup]:
                 [
                     SignalSpec(
                         "theta pll",
-                        "phase_pll",
+                        "theta_pll",
                         "theta_pll",
                         "rad",
+                        simulink_columns=["theta_pll"],
                         veragrid_columns=["theta_pll"],
+                        simulink_transform=_theta_pll_simulink_signal,
                         veragrid_transform=_theta_pll_veragrid_signal,
                     ),
                     SignalSpec(
-                        "phase vsm (reconstructed)",
-                        "phase_pll",
+                        "phase vsm",
+                        "phase_vsm",
                         "phase_vsm",
                         "rad",
-                        simulink_columns=["phase_pll", "Vd", "Vq"],
+                        simulink_columns=["phase_vsm"],
                         veragrid_columns=["phase_vsm"],
                         simulink_transform=_phase_vsm_simulink_signal,
                         veragrid_transform=_phase_vsm_veragrid_signal,
@@ -551,10 +620,10 @@ def create_plot_groups() -> list[PlotGroup]:
                 [
                     SignalSpec(
                         "delta vsm",
-                        "Vd",
+                        "phase_vsm",
                         "delta_vsm",
                         "rad",
-                        simulink_columns=["Vd", "Vq"],
+                        simulink_columns=["phase_vsm", "theta_pll"],
                         veragrid_columns=["delta_vsm", "phase_vsm", "theta_pll"],
                         simulink_transform=_delta_vsm_simulink_signal,
                         veragrid_transform=_delta_vsm_veragrid_signal,
@@ -611,6 +680,64 @@ def strip_column_spaces(dataframe: pd.DataFrame) -> pd.DataFrame:
     cleaned: pd.DataFrame = dataframe.copy()
     cleaned.columns = [str(column).strip() for column in cleaned.columns]
     return cleaned
+
+
+def validate_numeric_dataframe(dataframe: pd.DataFrame, label: str) -> bool:
+    """Check that every exported value is numeric and finite.
+
+    Rejecting the entire dataset prevents an incomplete simulation from being
+    silently shortened and extrapolated during the comparison.
+
+    :param dataframe: Result dataframe to validate.
+    :param label: Dataset label used in diagnostic messages.
+    :return: ``True`` when all values are numeric and finite.
+    """
+    is_valid: bool = True
+    for column_name in dataframe.columns:
+        numeric_values: np.ndarray = pd.to_numeric(dataframe[column_name], errors="coerce").to_numpy(dtype=float)
+        invalid_mask: np.ndarray = ~np.isfinite(numeric_values)
+        if np.any(invalid_mask):
+            first_invalid_row: int = int(np.flatnonzero(invalid_mask)[0])
+            print(f"Invalid value in {label}, column '{column_name}', row {first_invalid_row}.")
+            is_valid = False
+            break
+        else:
+            pass
+    return is_valid
+
+
+def validate_discrete_time_grids(simulink_time: np.ndarray, veragrid_time: np.ndarray) -> bool:
+    """Validate the common 5 microsecond, 0--3 second comparison grid.
+
+    :param simulink_time: Simulink time vector in seconds.
+    :param veragrid_time: VeraGrid time vector in seconds.
+    :return: ``True`` when both vectors have the required identical grid.
+    """
+    expected_sample_count: int = int(round(EXPECTED_END_TIME_S / EXPECTED_TIME_STEP_S)) + 1
+    grid_is_valid: bool = True
+    if simulink_time.size != expected_sample_count:
+        print(f"Simulink has {simulink_time.size} samples; expected {expected_sample_count}.")
+        grid_is_valid = False
+    else:
+        pass
+    if veragrid_time.size != expected_sample_count:
+        print(f"VeraGrid has {veragrid_time.size} samples; expected {expected_sample_count}.")
+        grid_is_valid = False
+    else:
+        pass
+    if grid_is_valid:
+        expected_time: np.ndarray = np.arange(expected_sample_count, dtype=float) * EXPECTED_TIME_STEP_S
+        simulink_matches: bool = bool(np.allclose(simulink_time, expected_time, rtol=0.0, atol=1.0e-12))
+        veragrid_matches: bool = bool(np.allclose(veragrid_time, expected_time, rtol=0.0, atol=1.0e-12))
+        grids_match: bool = bool(np.allclose(simulink_time, veragrid_time, rtol=0.0, atol=1.0e-12))
+        if simulink_matches and veragrid_matches and grids_match:
+            pass
+        else:
+            print("The result files do not share the required 5 us grid from 0 to 3 s.")
+            grid_is_valid = False
+    else:
+        pass
+    return grid_is_valid
 
 
 def print_columns(label: str, dataframe: pd.DataFrame) -> None:
@@ -839,15 +966,15 @@ def extract_signal(
     raw_values: np.ndarray = raw_series.to_numpy(dtype=float)
     valid_mask: np.ndarray = np.isfinite(time_values) & np.isfinite(raw_values)
 
-    if not np.any(valid_mask):
-        print(f"No valid numeric samples found for {label}: {value_column}")
+    if not np.all(valid_mask):
+        first_invalid_row: int = int(np.flatnonzero(~valid_mask)[0])
+        print(f"Invalid numeric sample for {label}: {value_column}, row {first_invalid_row}")
         return None
     else:
-        filtered_time: np.ndarray = time_values[valid_mask]
-        filtered_values: np.ndarray = raw_values[valid_mask] * scale + offset
-        order: np.ndarray = np.argsort(filtered_time)
-        sorted_time: np.ndarray = filtered_time[order]
-        sorted_values: np.ndarray = filtered_values[order]
+        scaled_values: np.ndarray = raw_values * scale + offset
+        order: np.ndarray = np.argsort(time_values)
+        sorted_time: np.ndarray = time_values[order]
+        sorted_values: np.ndarray = scaled_values[order]
         unique_time: np.ndarray
         unique_indices: np.ndarray
         unique_time, unique_indices = np.unique(sorted_time, return_index=True)
@@ -931,8 +1058,23 @@ def save_group_plot(
 
     unit_names: set[str] = set()
     for signal, simulink_values, veragrid_values, error_values in plot_rows:
-        upper_axis.plot(common_time, simulink_values, linestyle="--", label=f"Simulink - {signal.name}")
-        upper_axis.plot(common_time, veragrid_values, linestyle="-", label=f"VeraGrid - {signal.name}")
+        veragrid_line = upper_axis.plot(
+            common_time,
+            veragrid_values,
+            linestyle="-",
+            linewidth=1.2,
+            zorder=2,
+            label=f"VeraGrid - {signal.name}",
+        )[0]
+        upper_axis.plot(
+            common_time,
+            simulink_values,
+            color=veragrid_line.get_color(),
+            linestyle="--",
+            linewidth=1.8,
+            zorder=3,
+            label=f"Simulink - {signal.name}",
+        )
         lower_axis.plot(common_time, error_values, linestyle="-", label=f"Error - {signal.name}")
         unit_names.add(signal.unit)
 
@@ -952,8 +1094,6 @@ def save_group_plot(
     output_path: Path = output_folder / f"{sanitize_file_name(group.file_stem)}_{sanitized_test_name}.png"
     figure.tight_layout()
     figure.savefig(output_path, dpi=150)
-    if group.file_stem == "pll_phase_angles":
-        plt.show()
     plt.close(figure)
     print(f"Saved plot: {output_path}")
 
@@ -1021,8 +1161,23 @@ def save_steady_state_overlay_plot(
     for signal, simulink_values, veragrid_values, error_values in plot_rows:
         simulink_window: np.ndarray = simulink_values[window_mask]
         veragrid_window: np.ndarray = veragrid_values[window_mask]
-        axis.plot(common_time[window_mask], simulink_window, linestyle="--", label=f"Simulink - {signal.name}")
-        axis.plot(common_time[window_mask], veragrid_window, linestyle="-", label=f"VeraGrid - {signal.name}")
+        veragrid_line = axis.plot(
+            common_time[window_mask],
+            veragrid_window,
+            linestyle="-",
+            linewidth=1.2,
+            zorder=2,
+            label=f"VeraGrid - {signal.name}",
+        )[0]
+        axis.plot(
+            common_time[window_mask],
+            simulink_window,
+            color=veragrid_line.get_color(),
+            linestyle="--",
+            linewidth=1.8,
+            zorder=3,
+            label=f"Simulink - {signal.name}",
+        )
         plotted_series.append(simulink_window)
         plotted_series.append(veragrid_window)
 
@@ -1082,16 +1237,46 @@ def save_dual_steady_state_overlay_plot(
     for signal, simulink_values, veragrid_values, error_values in voltage_rows:
         simulink_window: np.ndarray = simulink_values[window_mask]
         veragrid_window: np.ndarray = veragrid_values[window_mask]
-        voltage_axis.plot(common_time[window_mask], simulink_window, linestyle="--", label=f"Simulink - {signal.name}")
-        voltage_axis.plot(common_time[window_mask], veragrid_window, linestyle="-", label=f"VeraGrid - {signal.name}")
+        veragrid_line = voltage_axis.plot(
+            common_time[window_mask],
+            veragrid_window,
+            linestyle="-",
+            linewidth=1.2,
+            zorder=2,
+            label=f"VeraGrid - {signal.name}",
+        )[0]
+        voltage_axis.plot(
+            common_time[window_mask],
+            simulink_window,
+            color=veragrid_line.get_color(),
+            linestyle="--",
+            linewidth=1.8,
+            zorder=3,
+            label=f"Simulink - {signal.name}",
+        )
         voltage_series.append(simulink_window)
         voltage_series.append(veragrid_window)
 
     for signal, simulink_values, veragrid_values, error_values in current_rows:
         simulink_window: np.ndarray = simulink_values[window_mask]
         veragrid_window: np.ndarray = veragrid_values[window_mask]
-        current_axis.plot(common_time[window_mask], simulink_window, linestyle="--", label=f"Simulink - {signal.name}")
-        current_axis.plot(common_time[window_mask], veragrid_window, linestyle="-", label=f"VeraGrid - {signal.name}")
+        veragrid_line = current_axis.plot(
+            common_time[window_mask],
+            veragrid_window,
+            linestyle="-",
+            linewidth=1.2,
+            zorder=2,
+            label=f"VeraGrid - {signal.name}",
+        )[0]
+        current_axis.plot(
+            common_time[window_mask],
+            simulink_window,
+            color=veragrid_line.get_color(),
+            linestyle="--",
+            linewidth=1.8,
+            zorder=3,
+            label=f"Simulink - {signal.name}",
+        )
         current_series.append(simulink_window)
         current_series.append(veragrid_window)
 
@@ -1144,13 +1329,13 @@ def run_comparison() -> None:
 
     :return: None.
     """
-    script_folder: Path = Path(__file__).resolve().parent
     test_name: str = TEST_NAME
     if COMPARISON_WINDOW_S is not None:
         window_start_s, window_end_s = COMPARISON_WINDOW_S
         test_name = f"{TEST_NAME}_window_{window_start_s:g}_{window_end_s:g}s"
-    simulink_csv_path: Path = script_folder / SIMULINK_CSV_NAME
-    veragrid_csv_path: Path = script_folder / VERAGRID_CSV_NAME
+    simulink_csv_path: Path = SIMULINK_CSV_PATH
+    veragrid_csv_path: Path = VERAGRID_CSV_PATH
+    script_folder: Path = Path(__file__).resolve().parent
     output_folder: Path = script_folder / get_output_folder_name(test_name)
     preferred_time_base: TimeBase = TimeBase.Simulink
 
@@ -1174,6 +1359,17 @@ def run_comparison() -> None:
     simulink_frame = strip_column_spaces(simulink_frame)
     veragrid_frame = strip_column_spaces(veragrid_frame)
 
+    if not validate_numeric_dataframe(simulink_frame, "Simulink"):
+        print("Simulink CSV is incomplete or non-numeric. Stopping safely.")
+        return
+    else:
+        pass
+    if not validate_numeric_dataframe(veragrid_frame, "VeraGrid"):
+        print("VeraGrid CSV is incomplete or non-numeric. Stopping safely.")
+        return
+    else:
+        pass
+
     print_columns("Simulink", simulink_frame)
     print_columns("VeraGrid", veragrid_frame)
 
@@ -1191,6 +1387,12 @@ def run_comparison() -> None:
 
     if simulink_time is None or veragrid_time is None:
         print("Could not prepare both time vectors. Stopping safely.")
+        return
+    else:
+        pass
+
+    if not validate_discrete_time_grids(simulink_time, veragrid_time):
+        print("Discrete time-grid validation failed. Stopping safely.")
         return
     else:
         pass

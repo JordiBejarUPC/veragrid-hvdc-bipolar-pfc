@@ -2,6 +2,15 @@
 
 This is Basic Block Catalog type `99` (`Pade approximant R12 _incbackward`). It represents a continuous-time dynamic operation, including any declared internal states.
 
+<!-- veragrid-block-introduction:start -->
+**Pade approximant R12 (backward increment)** belongs to the hybrid/event layer of a dynamic model. It selects, stores, delays, or switches signals according to conditions, so its result depends on discrete mode or accepted simulation history in addition to the instantaneous continuous variables.
+
+## Typical use
+
+- Use it for protection, enable/disable sequences, sampled control, reset logic, and mode transfer.
+- Define initial mode and boundary behavior explicitly to avoid unintended event chattering.
+<!-- veragrid-block-introduction:end -->
+
 ## Behaviour
 
 - Library location: `Native / Continuous / Delays and Memory`.
@@ -22,7 +31,7 @@ $$
 $$
 
 $$
-0 = (yo - Pade approximant R12 _{incbackward\_B0} \cdot x1 + Pade approximant R12 _{incbackward\_B1} \cdot x2 + Pade approximant R12 _{incbackward\_offset})
+0 = (yo - (Pade approximant R12 _{incbackward\_B0} \cdot x1 + Pade approximant R12 _{incbackward\_B1} \cdot x2 + Pade approximant R12 _{incbackward\_offset}))
 $$
 
 $$

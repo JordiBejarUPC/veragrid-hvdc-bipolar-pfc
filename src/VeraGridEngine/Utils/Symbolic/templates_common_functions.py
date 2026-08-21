@@ -13,11 +13,12 @@ from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Utils.Symbolic.block import (Block,
                                                  Var,
                                                  Const,
-                                                 DynamicConnectionIntentOrigin,
-                                                 build_dynamic_connection_intent_record,
                                                  find_matching_dynamic_connection_intent,
                                                  normalize_dynamic_connection_intents,
                                                  rehash_block_tree_var_keyed_dicts)
+from VeraGridEngine.Utils.Symbolic.dynamic_connection_intent import (DynamicConnectionIntent,
+                                                                     DynamicConnectionIntentDirection,
+                                                                     DynamicConnectionIntentOrigin)
 from VeraGridEngine.enumerations import DeviceType
 from VeraGridEngine.Utils.Symbolic.bus_rms_template import initialize_bus_rms
 from VeraGridEngine.Utils.Symbolic.bus_emt_template import (BusEmtTemplate,
@@ -49,25 +50,25 @@ def _find_block_by_uid(root_block: Block,
 
 def _find_root_var_by_ref(root_block: Block,
                           reference: VarPowerFlowReferenceType,
-                          direction: str) -> Var | None:
+                          direction: DynamicConnectionIntentDirection) -> Var | None:
     """
     Return one root interface variable by semantic reference and direction.
 
     :param root_block: Root block to inspect.
     :param reference: Desired root reference.
-    :param direction: ``input`` or ``output``.
+    :param direction: Root-interface direction.
     :return: Matching variable or ``None``.
     """
     candidate_var: Var
 
-    if direction == "input":
+    if direction == DynamicConnectionIntentDirection.INPUT:
         for candidate_var in root_block.in_vars:
             if candidate_var.ref == reference:
                 return candidate_var
             else:
                 pass
     else:
-        if direction == "output":
+        if direction == DynamicConnectionIntentDirection.OUTPUT:
             for candidate_var in root_block.out_vars:
                 if candidate_var.ref == reference:
                     return candidate_var
@@ -872,7 +873,7 @@ def _normalize_saved_branch_root_contract_from_live_sides(device: Any) -> None:
     ]):
         input_var = _find_root_var_by_ref(root_block=model,
                                           reference=input_ref,
-                                          direction="input")
+                                          direction=DynamicConnectionIntentDirection.INPUT)
         if input_var is None:
             pass
         else:
@@ -892,7 +893,7 @@ def _normalize_saved_branch_root_contract_from_live_sides(device: Any) -> None:
     ]):
         output_var = _find_root_var_by_ref(root_block=model,
                                            reference=output_ref,
-                                           direction="output")
+                                           direction=DynamicConnectionIntentDirection.OUTPUT)
         if output_var is None:
             pass
         else:
@@ -933,7 +934,7 @@ def _normalize_saved_branch_root_contract_from_live_sides(device: Any) -> None:
     ]):
         input_var = _find_root_var_by_ref(root_block=model,
                                           reference=input_ref,
-                                          direction="input")
+                                          direction=DynamicConnectionIntentDirection.INPUT)
         if input_var is None:
             model.external_mapping[input_ref] = None
         else:
@@ -953,7 +954,7 @@ def _normalize_saved_branch_root_contract_from_live_sides(device: Any) -> None:
     ]):
         output_var = _find_root_var_by_ref(root_block=model,
                                            reference=output_ref,
-                                           direction="output")
+                                           direction=DynamicConnectionIntentDirection.OUTPUT)
         if output_var is None:
             model.external_mapping[output_ref] = None
         else:
@@ -991,12 +992,10 @@ def seed_template_derived_dynamic_connection_intents(device: Any) -> None:
     """
     model: Block = device.emt_model
     child_block: Block
-    input_index: int
-    output_index: int
     input_var: Var
     output_var: Var
-    existing_intent: Dict[str, Any] | None
-    new_intent: Dict[str, Any]
+    existing_intent: DynamicConnectionIntent | None
+    new_intent: DynamicConnectionIntent
     supported_input_refs: List[VarPowerFlowReferenceType]
     supported_output_refs: List[VarPowerFlowReferenceType]
 
@@ -1014,7 +1013,7 @@ def seed_template_derived_dynamic_connection_intents(device: Any) -> None:
     supported_input_refs, supported_output_refs = _build_supported_root_intent_refs_for_device(device)
     for child_block in model.children:
         if len(child_block.algebraic_vars) > 0 or len(child_block.state_vars) > 0 or len(child_block.diff_vars) > 0:
-            for input_index, input_var in enumerate(child_block.in_vars):
+            for input_var in child_block.in_vars:
                 if input_var.ref is None:
                     pass
                 elif input_var.ref not in supported_input_refs:
@@ -1022,27 +1021,25 @@ def seed_template_derived_dynamic_connection_intents(device: Any) -> None:
                 else:
                     existing_intent = find_matching_dynamic_connection_intent(block=model,
                                                                              origin=DynamicConnectionIntentOrigin.TEMPLATE_DERIVED,
-                                                                             root_ref_value=input_var.ref.value,
-                                                                             root_direction="input",
+                                                                             root_reference=input_var.ref,
+                                                                             direction=DynamicConnectionIntentDirection.INPUT,
                                                                              internal_block_uid=child_block.uid,
-                                                                             internal_port_direction="input",
-                                                                             internal_port_index=input_index)
+                                                                             internal_variable_uid=input_var.non_mutable_uid)
 
                     if existing_intent is None:
-                        new_intent = build_dynamic_connection_intent_record(
+                        new_intent = DynamicConnectionIntent(
                             origin=DynamicConnectionIntentOrigin.TEMPLATE_DERIVED,
-                            root_ref=input_var.ref,
-                            root_direction="input",
+                            root_reference=input_var.ref,
+                            direction=DynamicConnectionIntentDirection.INPUT,
                             internal_block_uid=child_block.uid,
-                            internal_port_direction="input",
-                            internal_port_index=input_index,
+                            internal_variable_uid=input_var.non_mutable_uid,
                             suppressed=False,
                         )
                         model.connection_intents.append(new_intent)
                     else:
                         pass
 
-            for output_index, output_var in enumerate(child_block.out_vars):
+            for output_var in child_block.out_vars:
                 if output_var.ref is None:
                     pass
                 elif output_var.ref not in supported_output_refs:
@@ -1050,20 +1047,18 @@ def seed_template_derived_dynamic_connection_intents(device: Any) -> None:
                 else:
                     existing_intent = find_matching_dynamic_connection_intent(block=model,
                                                                              origin=DynamicConnectionIntentOrigin.TEMPLATE_DERIVED,
-                                                                             root_ref_value=output_var.ref.value,
-                                                                             root_direction="output",
+                                                                             root_reference=output_var.ref,
+                                                                             direction=DynamicConnectionIntentDirection.OUTPUT,
                                                                              internal_block_uid=child_block.uid,
-                                                                             internal_port_direction="output",
-                                                                             internal_port_index=output_index)
+                                                                             internal_variable_uid=output_var.non_mutable_uid)
 
                     if existing_intent is None:
-                        new_intent = build_dynamic_connection_intent_record(
+                        new_intent = DynamicConnectionIntent(
                             origin=DynamicConnectionIntentOrigin.TEMPLATE_DERIVED,
-                            root_ref=output_var.ref,
-                            root_direction="output",
+                            root_reference=output_var.ref,
+                            direction=DynamicConnectionIntentDirection.OUTPUT,
                             internal_block_uid=child_block.uid,
-                            internal_port_direction="output",
-                            internal_port_index=output_index,
+                            internal_variable_uid=output_var.non_mutable_uid,
                             suppressed=False,
                         )
                         model.connection_intents.append(new_intent)
@@ -1100,16 +1095,13 @@ def rematerialize_saved_dynamic_connection_intents(device: Any,
     :return: None.
     """
     model: Block = device.emt_model
-    entry: Dict[str, Any]
-    root_ref_value: str | None
-    root_direction: str | None
-    internal_block_uid: int | None
-    internal_port_direction: str | None
-    internal_port_index: int | None
+    entry: DynamicConnectionIntent
+    direction: DynamicConnectionIntentDirection
     root_reference: VarPowerFlowReferenceType
     root_var: Var | None
     internal_block: Block | None
     internal_var: Var | None
+    candidate_var: Var
     supported_input_refs: List[VarPowerFlowReferenceType]
     supported_output_refs: List[VarPowerFlowReferenceType]
 
@@ -1122,78 +1114,55 @@ def rematerialize_saved_dynamic_connection_intents(device: Any,
     supported_input_refs, supported_output_refs = _build_supported_root_intent_refs_for_device(device)
 
     for entry in model.connection_intents:
-        if not isinstance(entry, dict):
-            pass
-        elif entry.get("suppressed", False):
+        if entry.is_suppressed():
             pass
         else:
-            root_ref_value = entry.get("root_ref", None)
-            root_direction = entry.get("root_direction", None)
-            internal_block_uid = entry.get("internal_block_uid", None)
-            internal_port_direction = entry.get("internal_port_direction", None)
-            internal_port_index = entry.get("internal_port_index", None)
+            root_reference = entry.get_root_reference()
+            direction = entry.get_direction()
+            if direction == DynamicConnectionIntentDirection.INPUT and root_reference not in supported_input_refs:
+                root_var = None
+            elif direction == DynamicConnectionIntentDirection.OUTPUT and root_reference not in supported_output_refs:
+                root_var = None
+            else:
+                root_var = _find_root_var_by_ref(root_block=model,
+                                                 reference=root_reference,
+                                                 direction=direction)
 
-            if root_ref_value is None or root_direction is None or internal_block_uid is None or internal_port_direction is None or internal_port_index is None:
+            internal_block = _find_block_by_uid(root_block=model,
+                                                block_uid=entry.get_internal_block_uid())
+            if root_var is None or internal_block is None:
                 pass
             else:
-                root_reference = VarPowerFlowReferenceType(root_ref_value)
-                if root_direction == "input":
-                    if root_reference in supported_input_refs:
-                        pass
-                    else:
-                        root_reference = None  # type: ignore[assignment]
-                else:
-                    if root_direction == "output":
-                        if root_reference in supported_output_refs:
-                            pass
+                internal_var = None
+                if direction == DynamicConnectionIntentDirection.INPUT:
+                    for candidate_var in internal_block.in_vars:
+                        if candidate_var.non_mutable_uid == entry.get_internal_variable_uid():
+                            internal_var = candidate_var
                         else:
-                            root_reference = None  # type: ignore[assignment]
-                    else:
-                        root_reference = None  # type: ignore[assignment]
+                            pass
+                else:
+                    for candidate_var in internal_block.out_vars:
+                        if candidate_var.non_mutable_uid == entry.get_internal_variable_uid():
+                            internal_var = candidate_var
+                        else:
+                            pass
 
-                if root_reference is None:
+                if internal_var is None:
                     pass
-                else:
-                    root_var = _find_root_var_by_ref(model, root_reference, root_direction)
-                    internal_block = _find_block_by_uid(model, internal_block_uid)
-
-                    if root_var is None or internal_block is None:
-                        pass
+                elif direction == DynamicConnectionIntentDirection.INPUT:
+                    if not _connection_exists_in_var_factory(var_factory=var_factory,
+                                                             source_var=root_var,
+                                                             target_var=internal_var):
+                        var_factory.add_connections([internal_var], [root_var])
                     else:
-                        internal_var = None
-                        if internal_port_direction == "input":
-                            if 0 <= internal_port_index < len(internal_block.in_vars):
-                                internal_var = internal_block.in_vars[internal_port_index]
-                            else:
-                                pass
-                        else:
-                            if internal_port_direction == "output":
-                                if 0 <= internal_port_index < len(internal_block.out_vars):
-                                    internal_var = internal_block.out_vars[internal_port_index]
-                                else:
-                                    pass
-                            else:
-                                pass
-
-                        if internal_var is None:
-                            pass
-                        else:
-                            if root_direction == "input" and internal_port_direction == "input":
-                                if not _connection_exists_in_var_factory(var_factory=var_factory,
-                                                                         source_var=root_var,
-                                                                         target_var=internal_var):
-                                    var_factory.add_connections([internal_var], [root_var])
-                                else:
-                                    pass
-                            elif root_direction == "output" and internal_port_direction == "output":
-                                if not _connection_exists_in_var_factory(var_factory=var_factory,
-                                                                         source_var=internal_var,
-                                                                         target_var=root_var):
-                                    var_factory.add_connections([root_var], [internal_var])
-                                else:
-                                    pass
-                            else:
-                                pass
+                        pass
+                else:
+                    if not _connection_exists_in_var_factory(var_factory=var_factory,
+                                                             source_var=internal_var,
+                                                             target_var=root_var):
+                        var_factory.add_connections([root_var], [internal_var])
+                    else:
+                        pass
 
 
 def reconcile_saved_emt_model_against_current_topology(device: Any,

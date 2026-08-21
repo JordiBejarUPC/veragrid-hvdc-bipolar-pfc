@@ -10,32 +10,37 @@ from __future__ import annotations
 import ast
 from enum import Enum
 from io import StringIO
-from pathlib import Path
 import re
 import tokenize
 from typing import Dict, List, Mapping, Sequence
 
-from PySide6 import QtCore, QtGui, QtSvg, QtWidgets
+from PySide6 import QtCore, QtGui, QtWidgets
 from PySide6.QtCore import Qt, Signal
 
 from VeraGrid.Gui.Icons import icons_rc
+from VeraGrid.Gui.base_python_code_editor import BasePythonCodeEditor
 from VeraGrid.Gui.DynamicModelEditor.dynamic_block_properties_gui import (
     Ui_DynamicBlockPropertiesDialog,
 )
+from VeraGridEngine.enumerations import (
+    BlockType,
+    BlockSymbolCategory,
+    BlockSymbolKind,
+    EquationExportSection,
+    ParamPowerFlowReferenceType,
+    ShuntConnectionType,
+    VarPowerFlowReferenceType,
+    WindingType,
+)
 from VeraGrid.Gui.DynamicModelEditor.dynamic_equation_pdf import (
     EquationExportEntry,
-    EquationExportSection,
-    EquationPdfStyle,
     build_equation_pdf_suggested_name,
+    build_latex_source,
     build_list_equation_entries,
     build_mapping_equation_entries,
     build_state_equation_entries,
     order_state_differential_variables,
     write_equation_pdf,
-)
-from VeraGrid.Gui.DynamicModelEditor.dynamic_latex_renderer import (
-    LatexRenderer,
-    RenderedSvgEquation,
 )
 from VeraGrid.Gui.DynamicModelEditor.dynamic_procedural_logic import (
     RuntimeLogicEditorWidget,
@@ -44,13 +49,6 @@ from VeraGrid.Gui.DynamicModelEditor.dynamic_procedural_logic import (
 )
 from VeraGridEngine.Utils.procedural_logic import ProceduralLogicBase
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
-from VeraGridEngine.enumerations import (
-    BlockType,
-    ParamPowerFlowReferenceType,
-    ShuntConnectionType,
-    VarPowerFlowReferenceType,
-    WindingType,
-)
 from VeraGridEngine.Templates.template_definition import TemplateDefinition, TemplateProp
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.latex_printer import symbolic_to_latex
@@ -73,43 +71,75 @@ class BlockEquationDraft:
     __slots__ = (
         "_state_eqs",
         "_algebraic_eqs",
-        "_differential_eqs",
         "_init_eqs",
         "_diff_init_eqs",
+        "_variable_declarations",
     )
 
     def __init__(self,
                  state_eqs: Sequence[Expr],
                  algebraic_eqs: Sequence[Expr],
-                 differential_eqs: Sequence[Expr],
                  init_eqs: Mapping[Var, Expr],
-                 diff_init_eqs: Mapping[Var, Expr]) -> None:
-        """Create a detached draft from already parsed symbolic expressions."""
+                 diff_init_eqs: Mapping[Var, Expr],
+                 variable_declarations: Mapping[str, Sequence[Var]] | None = None) -> None:
+        """
+        Create a detached draft from already parsed symbolic expressions.
+
+        :param state_eqs: Value supplied for ``state_eqs``.
+        :param algebraic_eqs: Value supplied for ``algebraic_eqs``.
+        :param init_eqs: Value supplied for ``init_eqs``.
+        :param diff_init_eqs: Value supplied for ``diff_init_eqs``.
+        :param variable_declarations: Informative ordered DAE variable lists.
+        :return: None.
+        """
         self._state_eqs: List[Expr] = list(state_eqs)
         self._algebraic_eqs: List[Expr] = list(algebraic_eqs)
-        self._differential_eqs: List[Expr] = list(differential_eqs)
         self._init_eqs: Dict[Var, Expr] = dict(init_eqs)
         self._diff_init_eqs: Dict[Var, Expr] = dict(diff_init_eqs)
+        self._variable_declarations: Dict[str, List[Var]] = dict()
+        if variable_declarations is not None:
+            declaration_name: str
+            declaration_variables: Sequence[Var]
+            for declaration_name, declaration_variables in variable_declarations.items():
+                self._variable_declarations[declaration_name] = list(declaration_variables)
+        else:
+            pass
 
     def get_state_eqs(self) -> List[Expr]:
-        """Return a copy of the state equations."""
+        """
+        :return: A copy of the state equations.
+        """
         return list(self._state_eqs)
 
     def get_algebraic_eqs(self) -> List[Expr]:
-        """Return a copy of the algebraic equations."""
+        """
+        :return: A copy of the algebraic equations.
+        """
         return list(self._algebraic_eqs)
 
-    def get_differential_eqs(self) -> List[Expr]:
-        """Return a copy of the differential equations."""
-        return list(self._differential_eqs)
-
     def get_init_eqs(self) -> Dict[Var, Expr]:
-        """Return a copy of the initialization equations."""
+        """
+        :return: A copy of the initialization equations.
+        """
         return dict(self._init_eqs)
 
     def get_diff_init_eqs(self) -> Dict[Var, Expr]:
-        """Return a copy of the derivative initialization equations."""
+        """
+        :return: A copy of the derivative initialization equations.
+        """
         return dict(self._diff_init_eqs)
+
+    def get_variable_declaration(self, section_name: str) -> List[Var] | None:
+        """Return one optional generated variable-order declaration.
+
+        :param section_name: One of ``state_vars``, ``algebraic_vars`` or ``diff_vars``.
+        :return: Declared variables, or ``None`` when older source omitted the section.
+        """
+        variables: List[Var] | None = self._variable_declarations.get(section_name, None)
+        if variables is not None:
+            return list(variables)
+        else:
+            return None
 
 
 class ParameterDraftRow:
@@ -118,34 +148,58 @@ class ParameterDraftRow:
     __slots__ = ("_category", "_variable", "_constant", "_draft_text")
 
     def __init__(self, category: str, variable: Var, constant: Const) -> None:
-        """Capture one parameter and its original constant object."""
+        """
+        Capture one parameter and its original constant object.
+
+        :param category: Value supplied for ``category``.
+        :param variable: Symbolic variable used by the operation.
+        :param constant: Value supplied for ``constant``.
+        :return: None.
+        """
         self._category: str = category
         self._variable: Var = variable
         self._constant: Const = constant
         self._draft_text: str = str(constant.value)
 
     def get_category(self) -> str:
-        """Return the user-facing parameter category."""
+        """
+        :return: The user-facing parameter category.
+        """
         return self._category
 
     def get_variable(self) -> Var:
-        """Return the parameter variable."""
+        """
+        :return: The parameter variable.
+        """
         return self._variable
 
     def get_constant(self) -> Const:
-        """Return the original constant that will be updated on Apply."""
+        """
+        :return: The original constant that will be updated on Apply.
+        """
         return self._constant
 
     def get_draft_text(self) -> str:
-        """Return the pending textual value."""
+        """
+        :return: The pending textual value.
+        """
         return self._draft_text
 
     def set_draft_text(self, value: str) -> None:
-        """Set the pending textual value without touching the source block."""
+        """
+        Set the pending textual value without touching the source block.
+
+        :param value: Value supplied for ``value``.
+        :return: None.
+        """
         self._draft_text = value
 
     def parse_value(self) -> float | complex:
-        """Parse the pending value as a finite real or complex number."""
+        """
+        Parse the pending value as a finite real or complex number.
+
+        :return: Pending value parsed as a finite real or complex number.
+        """
         value_text: str = self._draft_text.strip()
         if len(value_text) == 0:
             raise ValueError(f"Parameter '{self._variable.name}' cannot be empty")
@@ -181,26 +235,6 @@ class ParameterDraftRow:
         return self._constant.value is None and self._draft_text.strip().lower() == "none"
 
 
-class BlockSymbolKind(Enum):
-    """Editable primary role of one block symbol."""
-
-    INPUT = "Input"
-    ALGEBRAIC = "Algebraic"
-    STATE = "State"
-    DIFFERENTIAL = "Differential"
-    PARAMETER = "Parameter"
-    EVENT_PARAMETER = "Event parameter"
-    MODE_PARAMETER = "Mode parameter"
-    OUTPUT_ONLY = "Output only (legacy)"
-
-
-class BlockSymbolCategory(Enum):
-    """Visible DAE symbol group used by the two filtered tables."""
-
-    VARIABLES = "Variables"
-    PARAMETERS = "Parameters"
-
-
 class BlockStructuralEditRequest:
     """Synchronous request for an editor-owned structural block rebuild."""
 
@@ -234,19 +268,27 @@ class BlockStructuralEditRequest:
         self._error_message: str = ""
 
     def get_block(self) -> Block:
-        """Return the existing block targeted by the rebuild."""
+        """
+        :return: The existing block targeted by the rebuild.
+        """
         return self._block
 
     def get_block_type(self) -> BlockType:
-        """Return the native builder type."""
+        """
+        :return: The native builder type.
+        """
         return self._block_type
 
     def get_builder(self) -> TemplateDefinition:
-        """Return the configured template builder."""
+        """
+        :return: The configured template builder.
+        """
         return self._builder
 
     def get_parameter_values(self) -> List[tuple[str, float | complex]]:
-        """Return numeric parameter values that must survive reconstruction."""
+        """
+        :return: Numeric parameter values that must survive reconstruction.
+        """
         return list(self._parameter_values)
 
     def set_result(self, success: bool, error_message: str) -> None:
@@ -260,12 +302,68 @@ class BlockStructuralEditRequest:
         self._error_message = error_message
 
     def is_successful(self) -> bool:
-        """Return whether the owning editor completed the rebuild."""
+        """
+        Return whether the owning editor completed the rebuild.
+
+        :return: Whether the owning editor completed the rebuild.
+        """
         return self._success
 
     def get_error_message(self) -> str:
-        """Return the editor-provided failure detail."""
+        """
+        Return the editor-provided failure detail.
+
+        :return: The editor-provided failure detail.
+        """
         return self._error_message
+
+
+class BlockVariableRenameRequest:
+    """Synchronous request for an editor-owned complete variable rename."""
+
+    __slots__ = (
+        "_variable",
+        "_success",
+        "_new_name",
+    )
+
+    def __init__(self, variable: Var) -> None:
+        """Create a pending rename request for one existing symbolic variable.
+
+        :param variable: Existing variable selected in Block Properties.
+        :return: None.
+        """
+        self._variable: Var = variable
+        self._success: bool = False
+        self._new_name: str = variable.name
+
+    def get_variable(self) -> Var:
+        """
+        :return: Existing variable targeted by the rename.
+        """
+        return self._variable
+
+    def set_result(self, success: bool, new_name: str) -> None:
+        """Store the synchronous result produced by the owning editor.
+
+        :param success: Whether the complete rename was applied.
+        :param new_name: Final accepted variable name.
+        :return: None.
+        """
+        self._success = success
+        self._new_name = new_name
+
+    def is_successful(self) -> bool:
+        """
+        :return: Whether the complete rename was applied.
+        """
+        return self._success
+
+    def get_new_name(self) -> str:
+        """
+        :return: Final accepted variable name.
+        """
+        return self._new_name
 
 
 class BlockStructuralSettingsModel(QtCore.QAbstractTableModel):
@@ -287,21 +385,31 @@ class BlockStructuralSettingsModel(QtCore.QAbstractTableModel):
         self._original_values: List[str] = [repr(prop.value) for prop in self._properties]
 
     def rowCount(self, parent: QtCore.QModelIndex = QtCore.QModelIndex()) -> int:
-        """Return the number of structural settings."""
+        """
+        :param parent: Owning Qt widget.
+        :return: The number of structural settings.
+        """
         if parent.isValid():
             return 0
         else:
             return len(self._properties)
 
     def columnCount(self, parent: QtCore.QModelIndex = QtCore.QModelIndex()) -> int:
-        """Return setting and value columns."""
+        """
+        :param parent: Owning Qt widget.
+        :return: Setting and value columns.
+        """
         if parent.isValid():
             return 0
         else:
             return 2
 
     def data(self, index: QtCore.QModelIndex, role: int = Qt.ItemDataRole.DisplayRole) -> object:
-        """Return one setting name or draft value."""
+        """
+        :param index: Value supplied for ``index``.
+        :param role: Value supplied for ``role``.
+        :return: One setting name or draft value.
+        """
         if not index.isValid() or index.row() >= len(self._properties):
             return None
         else:
@@ -325,7 +433,14 @@ class BlockStructuralSettingsModel(QtCore.QAbstractTableModel):
                 index: QtCore.QModelIndex,
                 value: object,
                 role: int = Qt.ItemDataRole.EditRole) -> bool:
-        """Parse one edited builder value according to its current type."""
+        """
+        Parse one edited builder value according to its current type.
+
+        :param index: Value supplied for ``index``.
+        :param value: Value supplied for ``value``.
+        :param role: Value supplied for ``role``.
+        :return: True when the edited value was accepted; otherwise False.
+        """
         if not index.isValid() or index.column() != 1 or role != Qt.ItemDataRole.EditRole:
             return False
         else:
@@ -337,11 +452,16 @@ class BlockStructuralSettingsModel(QtCore.QAbstractTableModel):
             return False
         else:
             prop.value = parsed_value
-            self.dataChanged.emit(index, index, [role, Qt.ItemDataRole.DisplayRole])
+            self.dataChanged.emit(index, index, list((role, Qt.ItemDataRole.DisplayRole,)))
             return True
 
     def flags(self, index: QtCore.QModelIndex) -> Qt.ItemFlag:
-        """Make only the value column editable."""
+        """
+        Make only the value column editable.
+
+        :param index: Value supplied for ``index``.
+        :return: Item flags that make only the value column editable.
+        """
         if not index.isValid():
             return Qt.ItemFlag.NoItemFlags
         elif index.column() == 1:
@@ -353,7 +473,12 @@ class BlockStructuralSettingsModel(QtCore.QAbstractTableModel):
                    section: int,
                    orientation: Qt.Orientation,
                    role: int = Qt.ItemDataRole.DisplayRole) -> object:
-        """Return structural-settings headers."""
+        """
+        :param section: Value supplied for ``section``.
+        :param orientation: Value supplied for ``orientation``.
+        :param role: Value supplied for ``role``.
+        :return: Structural-settings headers.
+        """
         headers: tuple[str, ...] = ("Setting", "Value")
         if role == Qt.ItemDataRole.DisplayRole and orientation == Qt.Orientation.Horizontal:
             if 0 <= section < len(headers):
@@ -364,7 +489,9 @@ class BlockStructuralSettingsModel(QtCore.QAbstractTableModel):
             return None
 
     def has_changes(self) -> bool:
-        """Return whether any displayed builder value differs from its baseline."""
+        """
+        :return: Whether any displayed builder value differs from its baseline.
+        """
         result: bool = False
         row_index: int
         for row_index in range(len(self._properties)):
@@ -412,7 +539,7 @@ class StructuralSettingDelegate(QtWidgets.QStyledItemDelegate):
             return QtWidgets.QLineEdit(parent)
         elif isinstance(prop.value, bool):
             bool_combo: QtWidgets.QComboBox = QtWidgets.QComboBox(parent)
-            bool_combo.addItems(list(["True", "False"]))
+            bool_combo.addItems(list(("True", "False",)))
             return bool_combo
         elif isinstance(prop.value, int):
             integer_editor: QtWidgets.QSpinBox = QtWidgets.QSpinBox(parent)
@@ -589,7 +716,20 @@ class BlockSymbolDraftRow:
                  external_reference: VarPowerFlowReferenceType | None = None,
                  static_reference: ParamPowerFlowReferenceType | None = None,
                  derivative_base_row: "BlockSymbolDraftRow | None" = None) -> None:
-        """Capture a symbol row without modifying its owner block."""
+        """
+        Capture a symbol row without modifying its owner block.
+
+        :param owner: Value supplied for ``owner``.
+        :param variable: Symbolic variable used by the operation.
+        :param name: Value supplied for ``name``.
+        :param kind: Value supplied for ``kind``.
+        :param exported: Value supplied for ``exported``.
+        :param value_text: Value supplied for ``value_text``.
+        :param external_reference: Value supplied for ``external_reference``.
+        :param static_reference: Value supplied for ``static_reference``.
+        :param derivative_base_row: Value supplied for ``derivative_base_row``.
+        :return: None.
+        """
         self._owner: Block = owner
         self._variable: Var | None = variable
         self._name: str = name
@@ -609,11 +749,15 @@ class BlockSymbolDraftRow:
             self._static_reference = None
 
     def get_owner(self) -> Block:
-        """Return the block that owns this symbol."""
+        """
+        :return: The block that owns this symbol.
+        """
         return self._owner
 
     def get_variable(self) -> Var | None:
-        """Return the existing variable or ``None`` for a staged addition."""
+        """
+        :return: The existing variable or ``None`` for a staged addition.
+        """
         return self._variable
 
     def set_variable(self, variable: Var) -> None:
@@ -625,19 +769,37 @@ class BlockSymbolDraftRow:
         self._variable = variable
 
     def get_name(self) -> str:
-        """Return the symbol name."""
+        """
+        Return the symbol name.
+
+        :return: The symbol name.
+        """
         return self._name
 
     def set_name(self, name: str) -> None:
-        """Set the name of a staged new symbol."""
+        """
+        Set the name of a staged new symbol.
+
+        :param name: Value supplied for ``name``.
+        :return: None.
+        """
         self._name = name
 
     def get_kind(self) -> BlockSymbolKind:
-        """Return the selected primary symbol role."""
+        """
+        Return the selected primary symbol role.
+
+        :return: The selected primary symbol role.
+        """
         return self._kind
 
     def set_kind(self, kind: BlockSymbolKind) -> None:
-        """Set the selected primary symbol role."""
+        """
+        Set the selected primary symbol role.
+
+        :param kind: Value supplied for ``kind``.
+        :return: None.
+        """
         self._kind = kind
         if self.supports_external_reference():
             self._static_reference = None
@@ -648,23 +810,44 @@ class BlockSymbolDraftRow:
             self._static_reference = None
 
     def get_original_kind(self) -> BlockSymbolKind:
-        """Return the primary role captured when the dialogue opened."""
+        """
+        Return the primary role captured when the dialogue opened.
+
+        :return: The primary role captured when the dialogue opened.
+        """
         return self._original_kind
 
     def is_exported(self) -> bool:
-        """Return whether the variable is independently exposed as an output."""
+        """
+        Return whether the variable is independently exposed as an output.
+
+        :return: Whether the variable is independently exposed as an output.
+        """
         return self._exported
 
     def set_exported(self, exported: bool) -> None:
-        """Set the staged output-export role."""
+        """
+        Set the staged output-export role.
+
+        :param exported: Value supplied for ``exported``.
+        :return: None.
+        """
         self._exported = exported
 
     def is_new(self) -> bool:
-        """Return whether the row represents a symbol not yet in VarFactory."""
+        """
+        Return whether the row represents a symbol not yet in VarFactory.
+
+        :return: Whether the row represents a symbol not yet in VarFactory.
+        """
         return self._variable is None
 
     def get_derivative_name(self) -> str:
-        """Return the conventional derivative name for a staged state."""
+        """
+        Return the conventional derivative name for a staged state.
+
+        :return: The conventional derivative name for a staged state.
+        """
         return f"d_{self._name}"
 
     def get_derivative_base_row(self) -> "BlockSymbolDraftRow | None":
@@ -675,7 +858,9 @@ class BlockSymbolDraftRow:
         return self._derivative_base_row
 
     def get_static_reference(self) -> ParamPowerFlowReferenceType | None:
-        """Return the selected device static-parameter mapping, if any."""
+        """
+        :return: The selected device static-parameter mapping, if any.
+        """
         return self._static_reference
 
     def set_static_reference(self, reference: ParamPowerFlowReferenceType | None) -> None:
@@ -691,7 +876,11 @@ class BlockSymbolDraftRow:
             pass
 
     def get_external_reference(self) -> VarPowerFlowReferenceType | None:
-        """Return the staged power-flow initialization mapping."""
+        """
+        Return the staged power-flow initialization mapping.
+
+        :return: The staged power-flow initialization mapping.
+        """
         return self._external_reference
 
     def set_external_reference(self, reference: VarPowerFlowReferenceType | None) -> None:
@@ -707,15 +896,21 @@ class BlockSymbolDraftRow:
             pass
 
     def supports_static_reference(self) -> bool:
-        """Return whether this row represents a fixed static parameter."""
+        """
+        :return: Whether this row represents a fixed static parameter.
+        """
         return self._kind == BlockSymbolKind.PARAMETER
 
     def supports_external_reference(self) -> bool:
-        """Return whether this row can be initialized from power-flow data."""
+        """
+        :return: Whether this row can be initialized from power-flow data.
+        """
         return not self.kind_supports_value()
 
     def kind_supports_export(self) -> bool:
-        """Return whether this primary role can also be an output."""
+        """
+        :return: Whether this primary role can also be an output.
+        """
         # Inputs already belong to the incoming interface. Exposing the same
         # identity in the outgoing interface is ambiguous in both the table and
         # the graphics connection model, so only block-owned variables can be
@@ -723,15 +918,17 @@ class BlockSymbolDraftRow:
         return not self.kind_supports_value() and self._kind != BlockSymbolKind.INPUT
 
     def kind_supports_value(self) -> bool:
-        """Return whether this role stores a numeric constant."""
-        return self._kind in {
-            BlockSymbolKind.PARAMETER,
-            BlockSymbolKind.EVENT_PARAMETER,
-            BlockSymbolKind.MODE_PARAMETER,
-        }
+        """
+        :return: Whether this role stores a numeric constant.
+        """
+        return self._kind in set((BlockSymbolKind.PARAMETER, BlockSymbolKind.EVENT_PARAMETER, BlockSymbolKind.MODE_PARAMETER,))
 
     def parse_value(self) -> float:
-        """Parse a finite numeric parameter value."""
+        """
+        Parse a finite numeric parameter value.
+
+        :return: Parameter value parsed as a finite floating-point number.
+        """
         if self.kind_supports_value():
             value: float = float(self._value_text)
             if value == float("inf") or value == float("-inf") or value != value:
@@ -743,7 +940,11 @@ class BlockSymbolDraftRow:
 
 
 def get_symbol_kind(block: Block, variable: Var) -> BlockSymbolKind:
-    """Return the primary role currently owned by one variable."""
+    """
+    :param block: Symbolic block used by the operation.
+    :param variable: Symbolic variable used by the operation.
+    :return: The primary role currently owned by one variable.
+    """
     if variable in block.in_vars:
         return BlockSymbolKind.INPUT
     elif variable in block.algebraic_vars:
@@ -763,7 +964,12 @@ def get_symbol_kind(block: Block, variable: Var) -> BlockSymbolKind:
 
 
 def get_symbol_value_text(block: Block, variable: Var, kind: BlockSymbolKind) -> str:
-    """Return the numeric text associated with a parameter-like symbol."""
+    """
+    :param block: Symbolic block used by the operation.
+    :param variable: Symbolic variable used by the operation.
+    :param kind: Value supplied for ``kind``.
+    :return: The numeric text associated with a parameter-like symbol.
+    """
     expression: Expr | None = None
     if kind == BlockSymbolKind.PARAMETER:
         expression = block.parameters.get(variable, None)
@@ -870,7 +1076,13 @@ class BlockSymbolDraftModel(QtCore.QAbstractTableModel):
     __slots__ = ("_rows", "_removed_rows")
 
     def __init__(self, block: Block, parent: QtCore.QObject | None = None) -> None:
-        """Capture all directly owned symbols across the selected block tree."""
+        """
+        Capture all directly owned symbols across the selected block tree.
+
+        :param block: Symbolic block used by the operation.
+        :param parent: Owning Qt widget.
+        :return: None.
+        """
         super().__init__(parent)
         self._rows: List[BlockSymbolDraftRow] = list()
         self._removed_rows: List[BlockSymbolDraftRow] = list()
@@ -926,14 +1138,24 @@ class BlockSymbolDraftModel(QtCore.QAbstractTableModel):
         self.endResetModel()
 
     def rowCount(self, parent: QtCore.QModelIndex = QtCore.QModelIndex()) -> int:
-        """Return the number of recursive symbol rows."""
+        """
+        Return the number of recursive symbol rows.
+
+        :param parent: Owning Qt widget.
+        :return: The number of recursive symbol rows.
+        """
         if parent.isValid():
             return 0
         else:
             return len(self._rows)
 
     def columnCount(self, parent: QtCore.QModelIndex = QtCore.QModelIndex()) -> int:
-        """Return owner, name, type, output, and initialization mapping columns."""
+        """
+        Return owner, name, type, output, and initialization mapping columns.
+
+        :param parent: Owning Qt widget.
+        :return: Owner, name, type, output, and initialization mapping columns.
+        """
         if parent.isValid():
             return 0
         else:
@@ -951,7 +1173,11 @@ class BlockSymbolDraftModel(QtCore.QAbstractTableModel):
             return None
 
     def data(self, index: QtCore.QModelIndex, role: int = Qt.ItemDataRole.DisplayRole) -> object:
-        """Return staged symbol data and checkbox state."""
+        """
+        :param index: Value supplied for ``index``.
+        :param role: Value supplied for ``role``.
+        :return: Staged symbol data and checkbox state.
+        """
         if not index.isValid() or index.row() >= len(self._rows):
             return None
         else:
@@ -1006,11 +1232,11 @@ class BlockSymbolDraftModel(QtCore.QAbstractTableModel):
             # algebraic/state variables therefore need the same staged checkbox
             # behavior as newly declared symbols.
             row.set_exported(value == Qt.CheckState.Checked.value or value == Qt.CheckState.Checked)
-            self.dataChanged.emit(index, index, [role])
+            self.dataChanged.emit(index, index, list((role,)))
             return True
         elif role == Qt.ItemDataRole.EditRole and index.column() == 1 and row.is_new():
             row.set_name(str(value).strip())
-            self.dataChanged.emit(index, index, [role])
+            self.dataChanged.emit(index, index, list((role,)))
             return True
         elif role == Qt.ItemDataRole.EditRole and index.column() == 2 and row.is_new():
             selected_kind: BlockSymbolKind | None = get_block_symbol_kind_from_text(str(value))
@@ -1063,7 +1289,7 @@ class BlockSymbolDraftModel(QtCore.QAbstractTableModel):
         else:
             pass
         if accepted:
-            self.dataChanged.emit(index, index, [Qt.ItemDataRole.EditRole, Qt.ItemDataRole.DisplayRole])
+            self.dataChanged.emit(index, index, list((Qt.ItemDataRole.EditRole, Qt.ItemDataRole.DisplayRole,)))
         else:
             pass
         return accepted
@@ -1098,7 +1324,14 @@ class BlockSymbolDraftModel(QtCore.QAbstractTableModel):
                    section: int,
                    orientation: Qt.Orientation,
                    role: int = Qt.ItemDataRole.DisplayRole) -> object:
-        """Return symbol table headers."""
+        """
+        Return symbol table headers.
+
+        :param section: Value supplied for ``section``.
+        :param orientation: Value supplied for ``orientation``.
+        :param role: Value supplied for ``role``.
+        :return: Symbol table headers.
+        """
         headers: tuple[str, ...] = (
             "Block",
             "Name",
@@ -1175,7 +1408,12 @@ class BlockSymbolDraftModel(QtCore.QAbstractTableModel):
         self.endInsertRows()
 
     def remove_new_symbol(self, row_index: int) -> bool:
-        """Remove a staged addition while protecting existing symbolic identities."""
+        """
+        Remove a staged addition while protecting existing symbolic identities.
+
+        :param row_index: Value supplied for ``row_index``.
+        :return: True when the staged symbol was removed; otherwise False.
+        """
         if 0 <= row_index < len(self._rows) and self._rows[row_index].is_new():
             self.beginRemoveRows(QtCore.QModelIndex(), row_index, row_index)
             del self._rows[row_index]
@@ -1185,28 +1423,74 @@ class BlockSymbolDraftModel(QtCore.QAbstractTableModel):
             return False
 
     def remove_symbol(self, row_index: int) -> bool:
-        """Stage deletion of either a new or an existing symbol row.
+        """Stage deletion of one symbol and any derivative owned by a state.
 
         Existing objects remain untouched until Apply. Validation immediately
         excludes deleted names so dependent equations must be corrected first.
+        State deletion is directional: associated differential rows are also
+        removed, while deleting a differential row never removes its base state.
 
         :param row_index: Source-model row selected through a proxy table.
-        :return: Whether one row was staged for deletion.
+        :return: Whether the selected row was staged for deletion.
         """
         if 0 <= row_index < len(self._rows):
-            self.beginRemoveRows(QtCore.QModelIndex(), row_index, row_index)
-            removed_row: BlockSymbolDraftRow = self._rows.pop(row_index)
-            if not removed_row.is_new():
-                self._removed_rows.append(removed_row)
+            selected_row: BlockSymbolDraftRow = self._rows[row_index]
+            removal_indexes: List[int] = list((row_index,))
+            if selected_row.get_kind() == BlockSymbolKind.STATE:
+                selected_variable: Var | None = selected_row.get_variable()
+                candidate_index: int
+                candidate_row: BlockSymbolDraftRow
+                for candidate_index, candidate_row in enumerate(self._rows):
+                    if (candidate_index != row_index
+                            and candidate_row.get_owner() is selected_row.get_owner()
+                            and candidate_row.get_kind() == BlockSymbolKind.DIFFERENTIAL):
+                        staged_base_matches: bool = (
+                            candidate_row.get_derivative_base_row() is selected_row
+                        )
+                        candidate_variable: Var | None = candidate_row.get_variable()
+                        if candidate_variable is not None:
+                            candidate_base_variable: Var | None = candidate_variable.base_var
+                        else:
+                            candidate_base_variable = None
+                        if selected_variable is not None and candidate_base_variable is not None:
+                            existing_base_matches: bool = (
+                                candidate_base_variable.non_mutable_uid
+                                == selected_variable.non_mutable_uid
+                            )
+                        else:
+                            existing_base_matches = False
+                        if staged_base_matches or existing_base_matches:
+                            removal_indexes.append(candidate_index)
+                        else:
+                            pass
+                    else:
+                        pass
             else:
                 pass
-            self.endRemoveRows()
+
+            # Remove from the end so every source-model row index remains valid
+            # while Qt receives one precise removal notification per row.
+            removal_indexes.sort(reverse=True)
+            removal_index: int
+            for removal_index in removal_indexes:
+                self.beginRemoveRows(QtCore.QModelIndex(), removal_index, removal_index)
+                removed_row: BlockSymbolDraftRow = self._rows.pop(removal_index)
+                if not removed_row.is_new():
+                    self._removed_rows.append(removed_row)
+                else:
+                    pass
+                self.endRemoveRows()
             return True
         else:
             return False
 
     def build_validation_namespace(self, base_namespace: Mapping[str, Expr]) -> Dict[str, Expr]:
-        """Build a namespace that includes temporary identities for staged additions."""
+        """
+        Build a namespace that includes temporary identities for staged additions.
+
+        :param base_namespace: Value supplied for ``base_namespace``.
+        :return: Validation namespace including temporary identities for staged additions.
+        """
         namespace: Dict[str, Expr] = dict(base_namespace)
         removed_row: BlockSymbolDraftRow
         for removed_row in self._removed_rows:
@@ -1234,7 +1518,11 @@ class BlockSymbolDraftModel(QtCore.QAbstractTableModel):
         return namespace
 
     def _validate_unique_mappings(self) -> None:
-        """Reject duplicate initialization/static keys inside one owner block."""
+        """
+        Reject duplicate initialization/static keys inside one owner block.
+
+        :return: None.
+        """
         external_owners: set[tuple[int, VarPowerFlowReferenceType]] = set()
         static_owners: set[tuple[int, ParamPowerFlowReferenceType]] = set()
         row: BlockSymbolDraftRow
@@ -1271,7 +1559,12 @@ class BlockSymbolDraftModel(QtCore.QAbstractTableModel):
                 pass
 
     def apply_to_blocks(self, var_factory: VarFactory) -> None:
-        """Apply staged roles and create requested variables after validation."""
+        """
+        Apply staged roles and create requested variables after validation.
+
+        :param var_factory: Factory that owns symbolic variables.
+        :return: None.
+        """
         removed_row: BlockSymbolDraftRow
         for removed_row in self._removed_rows:
             removed_variable: Var | None = removed_row.get_variable()
@@ -1318,7 +1611,11 @@ class BlockSymbolDraftModel(QtCore.QAbstractTableModel):
             apply_symbol_mapping(row.get_owner(), variable, row)
 
     def has_new_symbols(self) -> bool:
-        """Return whether the draft contains unapplied symbol additions."""
+        """
+        Return whether the draft contains unapplied symbol additions.
+
+        :return: Whether the draft contains unapplied symbol additions.
+        """
         result: bool = False
         row: BlockSymbolDraftRow
         for row in self._rows:
@@ -1329,7 +1626,11 @@ class BlockSymbolDraftModel(QtCore.QAbstractTableModel):
         return result
 
     def has_symbol_changes(self) -> bool:
-        """Return whether additions or deletions are staged in the table."""
+        """
+        Return whether additions or deletions are staged in the table.
+
+        :return: Whether additions or deletions are staged in the table.
+        """
         if len(self._removed_rows) > 0:
             result: bool = True
         else:
@@ -1381,9 +1682,49 @@ class BlockSymbolDraftModel(QtCore.QAbstractTableModel):
                 pass
         return result
 
+    def get_role_names(self, owner: Block, kind: BlockSymbolKind) -> List[str]:
+        """Return staged symbol names in their authoritative table order.
+
+        :param owner: Block whose staged symbols are requested.
+        :param kind: Primary DAE role to collect.
+        :return: Ordered staged names for the selected role.
+        """
+        result: List[str] = list()
+        row: BlockSymbolDraftRow
+        for row in self._rows:
+            if row.get_owner() is owner and row.get_kind() == kind:
+                result.append(row.get_name())
+            else:
+                pass
+        return result
+
+    def refresh_existing_names(self) -> None:
+        """Refresh detached row labels after an editor-owned variable rename.
+
+        Existing rows retain their staged role, mapping, and output changes. Only
+        their displayed names follow the authoritative ``Var`` objects changed by
+        the central editor rename operation.
+
+        :return: None.
+        """
+        self.beginResetModel()
+        row: BlockSymbolDraftRow
+        for row in self._rows:
+            variable: Var | None = row.get_variable()
+            if variable is not None:
+                row.set_name(variable.name)
+            else:
+                pass
+        self.endResetModel()
+
 
 def get_block_symbol_kind_from_text(text: str) -> BlockSymbolKind | None:
-    """Resolve a displayed role label to its enum member."""
+    """
+    Resolve a displayed role label to its enum member.
+
+    :param text: User-entered text.
+    :return: Enum member matching the displayed role label, or ``None`` when unmatched.
+    """
     kind: BlockSymbolKind
     for kind in BlockSymbolKind:
         if kind.value == text:
@@ -1503,7 +1844,16 @@ def reclassify_block_symbol(block: Block,
                             kind: BlockSymbolKind,
                             numeric_value: float,
                             var_factory: VarFactory) -> None:
-    """Move one existing identity to exactly one primary block role."""
+    """
+    Move one existing identity to exactly one primary block role.
+
+    :param block: Symbolic block used by the operation.
+    :param variable: Symbolic variable used by the operation.
+    :param kind: Value supplied for ``kind``.
+    :param numeric_value: Value supplied for ``numeric_value``.
+    :param var_factory: Factory that owns symbolic variables.
+    :return: None.
+    """
     previous_constant: Const | None = None
     parameter_expression: Expr | None = block.parameters.get(variable, None)
     event_expression: Expr | None = block.event_dict.get(variable, None)
@@ -1566,7 +1916,15 @@ def build_reclassified_constant(previous_constant: Const | None,
                                 numeric_value: float,
                                 name: str,
                                 var_factory: VarFactory) -> Const:
-    """Reuse an existing Const identity or register a new one in VarFactory."""
+    """
+    Reuse an existing Const identity or register a new one in VarFactory.
+
+    :param previous_constant: Value supplied for ``previous_constant``.
+    :param numeric_value: Value supplied for ``numeric_value``.
+    :param name: Value supplied for ``name``.
+    :param var_factory: Factory that owns symbolic variables.
+    :return: Existing constant identity, or the newly registered replacement constant.
+    """
     if previous_constant is not None:
         previous_constant.value = numeric_value
         return previous_constant
@@ -1583,7 +1941,14 @@ class SymbolKindDelegate(QtWidgets.QStyledItemDelegate):
                      parent: QtWidgets.QWidget,
                      option: QtWidgets.QStyleOptionViewItem,
                      index: QtCore.QModelIndex) -> QtWidgets.QWidget:
-        """Create a role combo box for one symbol row."""
+        """
+        Create a role combo box for one symbol row.
+
+        :param parent: Owning Qt widget.
+        :param option: Value supplied for ``option``.
+        :param index: Value supplied for ``index``.
+        :return: Role combo-box editor for the requested symbol row.
+        """
         _unused_option: QtWidgets.QStyleOptionViewItem = option
         _unused_index: QtCore.QModelIndex = index
         combo: QtWidgets.QComboBox = QtWidgets.QComboBox(parent)
@@ -1593,7 +1958,13 @@ class SymbolKindDelegate(QtWidgets.QStyledItemDelegate):
         return combo
 
     def setEditorData(self, editor: QtWidgets.QWidget, index: QtCore.QModelIndex) -> None:
-        """Select the row's current role in the combo editor."""
+        """
+        Select the row's current role in the combo editor.
+
+        :param editor: Value supplied for ``editor``.
+        :param index: Value supplied for ``index``.
+        :return: None.
+        """
         if isinstance(editor, QtWidgets.QComboBox):
             current_text: str = str(index.data(Qt.ItemDataRole.EditRole))
             editor.setCurrentText(current_text)
@@ -1604,7 +1975,14 @@ class SymbolKindDelegate(QtWidgets.QStyledItemDelegate):
                      editor: QtWidgets.QWidget,
                      model: QtCore.QAbstractItemModel,
                      index: QtCore.QModelIndex) -> None:
-        """Commit the selected enum label to the draft model."""
+        """
+        Commit the selected enum label to the draft model.
+
+        :param editor: Value supplied for ``editor``.
+        :param model: Value supplied for ``model``.
+        :param index: Value supplied for ``index``.
+        :return: None.
+        """
         if isinstance(editor, QtWidgets.QComboBox):
             model.setData(index, editor.currentText(), Qt.ItemDataRole.EditRole)
         else:
@@ -1694,7 +2072,13 @@ class BlockParameterDraftModel(QtCore.QAbstractTableModel):
     __slots__ = ("_rows",)
 
     def __init__(self, block: Block, parent: QtCore.QObject | None = None) -> None:
-        """Build staged rows recursively from fixed, event, and mode constants."""
+        """
+        Build staged rows recursively from fixed, event, and mode constants.
+
+        :param block: Symbolic block used by the operation.
+        :param parent: Owning Qt widget.
+        :return: None.
+        """
         super().__init__(parent)
         self._rows: List[ParameterDraftRow] = list()
         self._load_rows(block)
@@ -1709,7 +2093,7 @@ class BlockParameterDraftModel(QtCore.QAbstractTableModel):
         for child_block in block.get_all_blocks():
             owner_label: str = child_block.name if child_block is not block else block.name
             self._append_constant_rows(f"Parameter - {owner_label}", child_block.parameters)
-            self._append_constant_rows(f"Event parameter - {owner_label}", child_block.event_dict)
+            self._append_constant_rows(f"Dynamic parameter - {owner_label}", child_block.event_dict)
             # Retained modes may have symbolic initialization expressions and
             # execution dependencies. They are edited in Runtime logic, where
             # their writers and readers can be validated as one transaction.
@@ -1741,21 +2125,37 @@ class BlockParameterDraftModel(QtCore.QAbstractTableModel):
                 pass
 
     def rowCount(self, parent: QtCore.QModelIndex = QtCore.QModelIndex()) -> int:
-        """Return the number of staged parameter rows."""
+        """
+        Return the number of staged parameter rows.
+
+        :param parent: Owning Qt widget.
+        :return: The number of staged parameter rows.
+        """
         if parent.isValid():
             return 0
         else:
             return len(self._rows)
 
     def columnCount(self, parent: QtCore.QModelIndex = QtCore.QModelIndex()) -> int:
-        """Return the category, name, and value column count."""
+        """
+        Return the category, name, and value column count.
+
+        :param parent: Owning Qt widget.
+        :return: The category, name, and value column count.
+        """
         if parent.isValid():
             return 0
         else:
             return 3
 
     def data(self, index: QtCore.QModelIndex, role: int = Qt.ItemDataRole.DisplayRole) -> object:
-        """Return one cell value or presentation role."""
+        """
+        Return one cell value or presentation role.
+
+        :param index: Value supplied for ``index``.
+        :param role: Value supplied for ``role``.
+        :return: One cell value or presentation role.
+        """
         if not index.isValid() or index.row() >= len(self._rows):
             return None
         else:
@@ -1779,17 +2179,29 @@ class BlockParameterDraftModel(QtCore.QAbstractTableModel):
                 index: QtCore.QModelIndex,
                 value: object,
                 role: int = Qt.ItemDataRole.EditRole) -> bool:
-        """Stage one edited numeric value as text."""
+        """
+        Stage one edited numeric value as text.
+
+        :param index: Value supplied for ``index``.
+        :param value: Value supplied for ``value``.
+        :param role: Value supplied for ``role``.
+        :return: True when the edited value was accepted; otherwise False.
+        """
         if not index.isValid() or index.column() != 2 or role != Qt.ItemDataRole.EditRole:
             return False
         else:
             row: ParameterDraftRow = self._rows[index.row()]
             row.set_draft_text(str(value))
-            self.dataChanged.emit(index, index, [role])
+            self.dataChanged.emit(index, index, list((role,)))
             return True
 
     def flags(self, index: QtCore.QModelIndex) -> Qt.ItemFlag:
-        """Make only the value column editable."""
+        """
+        Make only the value column editable.
+
+        :param index: Value supplied for ``index``.
+        :return: Item flags that make only the value column editable.
+        """
         if not index.isValid():
             return Qt.ItemFlag.NoItemFlags
         else:
@@ -1804,7 +2216,14 @@ class BlockParameterDraftModel(QtCore.QAbstractTableModel):
                    section: int,
                    orientation: Qt.Orientation,
                    role: int = Qt.ItemDataRole.DisplayRole) -> object:
-        """Return horizontal table headers."""
+        """
+        Return horizontal table headers.
+
+        :param section: Value supplied for ``section``.
+        :param orientation: Value supplied for ``orientation``.
+        :param role: Value supplied for ``role``.
+        :return: Horizontal table headers.
+        """
         if role != Qt.ItemDataRole.DisplayRole or orientation != Qt.Orientation.Horizontal:
             return None
         elif section == 0:
@@ -1817,7 +2236,11 @@ class BlockParameterDraftModel(QtCore.QAbstractTableModel):
             return None
 
     def get_pending_values(self) -> List[tuple[Const, float | complex]]:
-        """Validate and return all staged constant updates."""
+        """
+        Validate and return all staged constant updates.
+
+        :return: All staged constant updates.
+        """
         result: List[tuple[Const, float | complex]] = list()
         row: ParameterDraftRow
         for row in self._rows:
@@ -1830,7 +2253,11 @@ class BlockParameterDraftModel(QtCore.QAbstractTableModel):
         return result
 
     def get_pending_named_values(self) -> List[tuple[str, float | complex]]:
-        """Validate and return staged constants by semantic variable name."""
+        """
+        Validate and return staged constants by semantic variable name.
+
+        :return: Staged constants by semantic variable name.
+        """
         result: List[tuple[str, float | complex]] = list()
         row: ParameterDraftRow
         for row in self._rows:
@@ -1847,30 +2274,57 @@ class EquationLatexModel(QtCore.QAbstractTableModel):
     __slots__ = ("_rows",)
 
     def __init__(self, draft: BlockEquationDraft, parent: QtCore.QObject | None = None) -> None:
-        """Create preview rows from a validated equation draft."""
+        """
+        Create preview rows from a validated equation draft.
+
+        :param draft: Value supplied for ``draft``.
+        :param parent: Owning Qt widget.
+        :return: None.
+        """
         super().__init__(parent)
         self._rows: List[tuple[str, str]] = list()
         self.set_draft(draft)
 
     def set_draft(self, draft: BlockEquationDraft) -> None:
-        """Replace the equation preview atomically."""
+        """
+        Replace the equation preview atomically.
+
+        :param draft: Value supplied for ``draft``.
+        :return: None.
+        """
         self.beginResetModel()
         self._rows.clear()
         self._append_list("State", draft.get_state_eqs())
-        self._append_list("Algebraic", draft.get_algebraic_eqs())
-        self._append_list("Differential", draft.get_differential_eqs())
+        # Algebraic drafts already contain Engine residuals, so the preview
+        # restores the complete mathematical equality expected by the GUI.
+        algebraic_expression: Expr
+        for algebraic_expression in draft.get_algebraic_eqs():
+            algebraic_latex: str = get_safe_expression_latex(algebraic_expression)
+            self._rows.append(("Algebraic", f"0 = {algebraic_latex}"))
         self._append_dict("Initialization", draft.get_init_eqs())
         self._append_dict("Derivative initialization", draft.get_diff_init_eqs())
         self.endResetModel()
 
     def _append_list(self, category: str, expressions: Sequence[Expr]) -> None:
-        """Append a sequence to the preview."""
+        """
+        Append a sequence to the preview.
+
+        :param category: Value supplied for ``category``.
+        :param expressions: Value supplied for ``expressions``.
+        :return: None.
+        """
         expression: Expr
         for expression in expressions:
             self._rows.append((category, get_safe_expression_latex(expression)))
 
     def _append_dict(self, category: str, expressions: Mapping[Var, Expr]) -> None:
-        """Append assignment-like equations to the preview."""
+        """
+        Append assignment-like equations to the preview.
+
+        :param category: Value supplied for ``category``.
+        :param expressions: Value supplied for ``expressions``.
+        :return: None.
+        """
         variable: Var
         expression: Expr
         for variable, expression in expressions.items():
@@ -1880,21 +2334,37 @@ class EquationLatexModel(QtCore.QAbstractTableModel):
             self._rows.append((category, assignment_latex))
 
     def rowCount(self, parent: QtCore.QModelIndex = QtCore.QModelIndex()) -> int:
-        """Return preview equation count."""
+        """
+        Return preview equation count.
+
+        :param parent: Owning Qt widget.
+        :return: Preview equation count.
+        """
         if parent.isValid():
             return 0
         else:
             return len(self._rows)
 
     def columnCount(self, parent: QtCore.QModelIndex = QtCore.QModelIndex()) -> int:
-        """Return type and equation columns."""
+        """
+        Return type and equation columns.
+
+        :param parent: Owning Qt widget.
+        :return: Type and equation columns.
+        """
         if parent.isValid():
             return 0
         else:
             return 2
 
     def data(self, index: QtCore.QModelIndex, role: int = Qt.ItemDataRole.DisplayRole) -> object:
-        """Return the type label or rendered LaTeX source."""
+        """
+        Return the type label or rendered LaTeX source.
+
+        :param index: Value supplied for ``index``.
+        :param role: Value supplied for ``role``.
+        :return: The type label or rendered LaTeX source.
+        """
         if not index.isValid() or index.row() >= len(self._rows):
             return None
         else:
@@ -1913,7 +2383,14 @@ class EquationLatexModel(QtCore.QAbstractTableModel):
                    section: int,
                    orientation: Qt.Orientation,
                    role: int = Qt.ItemDataRole.DisplayRole) -> object:
-        """Return preview headers."""
+        """
+        Return preview headers.
+
+        :param section: Value supplied for ``section``.
+        :param orientation: Value supplied for ``orientation``.
+        :param role: Value supplied for ``role``.
+        :return: Preview headers.
+        """
         if role != Qt.ItemDataRole.DisplayRole or orientation != Qt.Orientation.Horizontal:
             return None
         elif section == 0:
@@ -1968,25 +2445,47 @@ class BlockCodeBuffer:
     __slots__ = ("_block", "_code", "_original_code")
 
     def __init__(self, block: Block) -> None:
-        """Capture the initial equation source of one block."""
+        """
+        Capture the initial equation source of one block.
+
+        :param block: Symbolic block used by the operation.
+        :return: None.
+        """
         self._block: Block = block
         self._code: str = build_equation_code(block)
         self._original_code: str = self._code
 
     def get_block(self) -> Block:
-        """Return the block that owns this source buffer."""
+        """
+        Return the block that owns this source buffer.
+
+        :return: The block that owns this source buffer.
+        """
         return self._block
 
     def get_code(self) -> str:
-        """Return the current detached source text."""
+        """
+        Return the current detached source text.
+
+        :return: The current detached source text.
+        """
         return self._code
 
     def set_code(self, code: str) -> None:
-        """Replace the detached source text."""
+        """
+        Replace the detached source text.
+
+        :param code: Value supplied for ``code``.
+        :return: None.
+        """
         self._code = code
 
     def has_changes(self) -> bool:
-        """Return whether the user changed this equation buffer."""
+        """
+        Return whether the user changed this equation buffer.
+
+        :return: Whether the user changed this equation buffer.
+        """
         return self._code != self._original_code
 
 
@@ -2003,7 +2502,13 @@ class DaeCodeHighlighter(QtGui.QSyntaxHighlighter):
     )
 
     def __init__(self, document: QtGui.QTextDocument, symbol_names: Sequence[str]) -> None:
-        """Create highlighting formats for DAE sections and known symbols."""
+        """
+        Create highlighting formats for DAE sections and known symbols.
+
+        :param document: Value supplied for ``document``.
+        :param symbol_names: Value supplied for ``symbol_names``.
+        :return: None.
+        """
         super().__init__(document)
         self._keyword_format: QtGui.QTextCharFormat = QtGui.QTextCharFormat()
         self._keyword_format.setForeground(QtGui.QColor("#7c3aed"))
@@ -2020,16 +2525,25 @@ class DaeCodeHighlighter(QtGui.QSyntaxHighlighter):
         self._symbol_names: tuple[str, ...] = tuple(symbol_names)
 
     def set_symbol_names(self, symbol_names: Sequence[str]) -> None:
-        """Replace known identifiers and rehighlight the complete document."""
+        """
+        Replace known identifiers and rehighlight the complete document.
+
+        :param symbol_names: Value supplied for ``symbol_names``.
+        :return: None.
+        """
         self._symbol_names = tuple(symbol_names)
         self.rehighlight()
 
     def highlightBlock(self, text: str) -> None:
-        """Apply deterministic formats to one visible source line."""
+        """
+        Apply deterministic formats to one visible source line.
+
+        :param text: User-entered text.
+        :return: None.
+        """
         section_names: tuple[str, ...] = (
             "state_eqs",
             "algebraic_eqs",
-            "differential_eqs",
             "init_eqs",
             "diff_init_eqs",
         )
@@ -2051,30 +2565,18 @@ class DaeCodeHighlighter(QtGui.QSyntaxHighlighter):
             pass
 
     def _apply_pattern(self, text: str, pattern_text: str, text_format: QtGui.QTextCharFormat) -> None:
-        """Apply one regular-expression format to all matches in a line."""
+        """
+        Apply one regular-expression format to all matches in a line.
+
+        :param text: User-entered text.
+        :param pattern_text: Value supplied for ``pattern_text``.
+        :param text_format: Value supplied for ``text_format``.
+        :return: None.
+        """
         pattern: re.Pattern[str] = re.compile(pattern_text)
         match: re.Match[str]
         for match in pattern.finditer(text):
             self.setFormat(match.start(), match.end() - match.start(), text_format)
-
-
-class DaeLineNumberArea(QtWidgets.QWidget):
-    """Gutter widget that delegates line-number painting to its code editor."""
-
-    __slots__ = ("_editor",)
-
-    def __init__(self, editor: "DaeCodeEditor") -> None:
-        """Create a gutter owned by one code editor."""
-        super().__init__(editor)
-        self._editor: DaeCodeEditor = editor
-
-    def sizeHint(self) -> QtCore.QSize:
-        """Return the width required by the current line count."""
-        return QtCore.QSize(self._editor.get_line_number_area_width(), 0)
-
-    def paintEvent(self, event: QtGui.QPaintEvent) -> None:
-        """Ask the editor to paint visible line numbers."""
-        self._editor.paint_line_number_area(event)
 
 
 class DaeCodeDiagnostic:
@@ -2097,19 +2599,27 @@ class DaeCodeDiagnostic:
         self._message: str = message
 
     def get_line(self) -> int:
-        """Return the one-based source line."""
+        """
+        :return: The one-based source line.
+        """
         return self._line
 
     def get_column(self) -> int:
-        """Return the zero-based source column."""
+        """
+        :return: The zero-based source column.
+        """
         return self._column
 
     def get_length(self) -> int:
-        """Return the highlighted source length."""
+        """
+        :return: The highlighted source length.
+        """
         return self._length
 
     def get_message(self) -> str:
-        """Return the user-facing validation explanation."""
+        """
+        :return: The user-facing validation explanation.
+        """
         return self._message
 
 
@@ -2148,6 +2658,112 @@ def brackets_match(opening_bracket: str, closing_bracket: str) -> bool:
     else:
         result = False
     return result
+
+
+def normalize_algebraic_equality_syntax(code: str) -> str:
+    """Translate visible algebraic ``=`` tokens into a parse-only marker.
+
+    A single equality inside a Python list is not valid Python syntax. The DAE
+    surface language nevertheless uses mathematical ``left = right`` equations.
+    Tokenization identifies only equality signs inside ``algebraic_eqs`` and
+    replaces them with the otherwise unsupported bitwise-or operator. That
+    one-character marker preserves every source line and column for diagnostics
+    and is converted to an Engine residual after the temporary AST is built.
+
+    :param code: User-visible DAE source containing mathematical equalities.
+    :return: Temporary Python-parseable source with identical character positions.
+    :raises ValueError: If the reserved marker is written directly by the user.
+    """
+    normalized_tokens: List[tokenize.TokenInfo] = list()
+    bracket_depth: int = 0
+    waiting_for_assignment: bool = False
+    waiting_for_list: bool = False
+    algebraic_list_depth: int | None = None
+    equality_was_replaced: bool = False
+    insignificant_token_types: set[int] = set((
+        tokenize.NL,
+        tokenize.NEWLINE,
+        tokenize.INDENT,
+        tokenize.DEDENT,
+        tokenize.COMMENT,
+    ))
+
+    try:
+        source_token: tokenize.TokenInfo
+        for source_token in tokenize.generate_tokens(StringIO(code).readline):
+            token_text: str = source_token.string
+            replacement_token: tokenize.TokenInfo = source_token
+
+            if algebraic_list_depth is not None:
+                if source_token.type == tokenize.OP and token_text == "=":
+                    replacement_token = source_token._replace(string="|")
+                    equality_was_replaced = True
+                elif source_token.type == tokenize.OP and token_text == "|":
+                    raise ValueError(
+                        "The '|' operator is not supported inside algebraic_eqs; "
+                        "use one '=' to separate the two equation sides"
+                    )
+                else:
+                    pass
+            else:
+                pass
+            normalized_tokens.append(replacement_token)
+
+            if algebraic_list_depth is not None:
+                if source_token.type == tokenize.OP and token_text in ("(", "[", "{"):
+                    bracket_depth += 1
+                elif source_token.type == tokenize.OP and token_text in (")", "]", "}"):
+                    closes_algebraic_list: bool = (
+                        token_text == "]" and bracket_depth == algebraic_list_depth
+                    )
+                    bracket_depth = max(0, bracket_depth - 1)
+                    if closes_algebraic_list:
+                        algebraic_list_depth = None
+                    else:
+                        pass
+                else:
+                    pass
+            elif waiting_for_list:
+                if source_token.type in insignificant_token_types:
+                    pass
+                elif source_token.type == tokenize.OP and token_text == "[":
+                    bracket_depth += 1
+                    algebraic_list_depth = bracket_depth
+                    waiting_for_list = False
+                else:
+                    waiting_for_list = False
+            elif waiting_for_assignment:
+                if source_token.type in insignificant_token_types:
+                    pass
+                elif source_token.type == tokenize.OP and token_text == "=":
+                    waiting_for_assignment = False
+                    waiting_for_list = True
+                else:
+                    waiting_for_assignment = False
+            else:
+                if (bracket_depth == 0
+                        and source_token.type == tokenize.NAME
+                        and token_text == "algebraic_eqs"):
+                    waiting_for_assignment = True
+                else:
+                    pass
+
+                if source_token.type == tokenize.OP and token_text in ("(", "[", "{"):
+                    bracket_depth += 1
+                elif source_token.type == tokenize.OP and token_text in (")", "]", "}"):
+                    bracket_depth = max(0, bracket_depth - 1)
+                else:
+                    pass
+        normalized_code: str = tokenize.untokenize(normalized_tokens)
+    except (IndentationError, tokenize.TokenError):
+        # Tokenization still yields every complete token before an unfinished
+        # tail. Preserve replacements already made so the Python parser reaches
+        # the actual unmatched bracket instead of stopping at the visible '='.
+        if equality_was_replaced:
+            normalized_code = tokenize.untokenize(normalized_tokens)
+        else:
+            normalized_code = code
+    return normalized_code
 
 
 def build_unmatched_opening_bracket_diagnostic(
@@ -2222,6 +2838,88 @@ def build_unmatched_opening_bracket_diagnostic(
     return None
 
 
+def build_missing_algebraic_comma_diagnostic(
+        code: str,
+        syntax_error_line: int) -> DaeCodeDiagnostic | None:
+    """Identify a new algebraic equality following an unseparated entry.
+
+    Complete equalities are normalized to Python expressions before parsing.
+    Without a comma, the following equality starts where Python expects an
+    operator. This check translates that generic syntax failure into the
+    actionable source location while retaining the original line coordinates.
+
+    :param code: Original user-visible DAE source.
+    :param syntax_error_line: One-based line reported by the temporary parser.
+    :return: Missing-comma diagnostic, or ``None`` when the pattern is absent.
+    """
+    source_lines: List[str] = code.splitlines()
+    if syntax_error_line <= 1 or syntax_error_line > len(source_lines):
+        return None
+    else:
+        pass
+    current_line: str = source_lines[syntax_error_line - 1]
+    previous_line_index: int = syntax_error_line - 2
+    while (previous_line_index >= 0
+           and len(source_lines[previous_line_index].strip()) == 0):
+        previous_line_index -= 1
+    if previous_line_index < 0:
+        previous_line: str = ""
+    else:
+        previous_line = source_lines[previous_line_index].rstrip()
+
+    # CPython can locate an adjacent-expression syntax error either at the new
+    # equation or at the preceding one. First test the reported line directly.
+    source_prefix: str = "\n".join(source_lines[:syntax_error_line])
+    algebraic_start: int = source_prefix.rfind("algebraic_eqs")
+    algebraic_end: int = source_prefix.rfind("]")
+    inside_algebraic_section: bool = algebraic_start >= 0 and algebraic_start > algebraic_end
+    previous_entry_is_open: bool = (
+        len(previous_line) > 0
+        and not previous_line.endswith(",")
+        and not previous_line.endswith("[")
+    )
+    reported_line_starts_equation: bool = "=" in current_line
+    if (inside_algebraic_section
+            and reported_line_starts_equation
+            and previous_entry_is_open):
+        first_source_column: int = len(current_line) - len(current_line.lstrip())
+        return DaeCodeDiagnostic(
+            syntax_error_line,
+            first_source_column,
+            max(1, len(current_line.strip())),
+            "Possible missing comma before this algebraic equation",
+        )
+    else:
+        pass
+
+    # When the parser points at the preceding entry, the actionable location
+    # is the first non-separated equation on the following source line.
+    following_line_number: int = syntax_error_line + 1
+    if following_line_number <= len(source_lines):
+        following_line: str = source_lines[following_line_number - 1]
+        current_entry_is_open: bool = (
+            len(current_line.rstrip()) > 0
+            and not current_line.rstrip().endswith(",")
+            and not current_line.rstrip().endswith("[")
+        )
+        following_line_starts_equation: bool = "=" in following_line
+        if (inside_algebraic_section
+                and current_entry_is_open
+                and following_line_starts_equation):
+            following_source_column: int = len(following_line) - len(following_line.lstrip())
+            return DaeCodeDiagnostic(
+                following_line_number,
+                following_source_column,
+                max(1, len(following_line.strip())),
+                "Possible missing comma before this algebraic equation",
+            )
+        else:
+            pass
+    else:
+        pass
+    return None
+
+
 def build_dae_code_diagnostics(code: str,
                                namespace: Mapping[str, Expr]) -> List[DaeCodeDiagnostic]:
     """Collect syntax and unknown-symbol errors without stopping at the first name.
@@ -2232,7 +2930,11 @@ def build_dae_code_diagnostics(code: str,
     """
     result: List[DaeCodeDiagnostic] = list()
     try:
-        module: ast.Module = ast.parse(code, mode="exec")
+        normalized_code: str = normalize_algebraic_equality_syntax(code)
+        module: ast.Module = ast.parse(normalized_code, mode="exec")
+    except ValueError as error:
+        result.append(find_text_diagnostic(code, "|", str(error)))
+        return result
     except SyntaxError as error:
         line: int = 1 if error.lineno is None else int(error.lineno)
         column: int = 0 if error.offset is None else max(0, int(error.offset) - 1)
@@ -2242,49 +2944,21 @@ def build_dae_code_diagnostics(code: str,
             error_text,
             line,
         )
-        if opening_diagnostic is None:
-            result.append(DaeCodeDiagnostic(line, column, 1, error_text))
-        else:
+        missing_comma_diagnostic: DaeCodeDiagnostic | None = (
+            build_missing_algebraic_comma_diagnostic(code, line)
+        )
+        if opening_diagnostic is not None:
             result.append(opening_diagnostic)
+        elif missing_comma_diagnostic is not None:
+            result.append(missing_comma_diagnostic)
+        else:
+            result.append(DaeCodeDiagnostic(line, column, 1, error_text))
         return result
 
-    callable_names: set[str] = set({
-        "abs",
-        "sin",
-        "cos",
-        "tan",
-        "asin",
-        "acos",
-        "atan",
-        "atan2",
-        "sqrt",
-        "exp",
-        "log",
-        "log10",
-        "sinh",
-        "cosh",
-        "tanh",
-        "floor",
-        "ceil",
-        "round",
-        "real",
-        "imag",
-        "conj",
-        "angle",
-        "heaviside",
-        "rand",
-        "min",
-        "max",
-    })
+    callable_names: set[str] = set(("abs", "sin", "cos", "tan", "asin", "acos", "atan", "atan2", "sqrt", "exp", "log", "log10", "sinh", "cosh", "tanh", "floor", "ceil", "round", "real", "imag", "conj", "angle", "heaviside", "rand", "min", "max",))
     allowed_names: set[str] = set(namespace.keys())
     allowed_names.update(callable_names)
-    allowed_names.update(set({
-        "state_eqs",
-        "algebraic_eqs",
-        "differential_eqs",
-        "init_eqs",
-        "diff_init_eqs",
-    }))
+    allowed_names.update(set(("state_eqs", "algebraic_eqs", "init_eqs", "diff_init_eqs",)))
     ast_node: ast.AST
     for ast_node in ast.walk(module):
         if isinstance(ast_node, ast.Call):
@@ -2371,21 +3045,72 @@ def build_semantic_dae_diagnostic(code: str, message: str) -> DaeCodeDiagnostic:
     return find_text_diagnostic(code, token, message)
 
 
-class DaeCodeEditor(QtWidgets.QPlainTextEdit):
-    """Plain-text DAE editor with a persistent line-number gutter."""
+class DaeCodeEditor(BasePythonCodeEditor):
+    """Symbolic DAE specialization with diagnostics and source search."""
 
-    __slots__ = ("_line_number_area", "_diagnostics", "_search_ranges", "_active_search_index")
+    __slots__ = (
+        "_diagnostics",
+        "_search_ranges",
+        "_active_search_index",
+        "_symbol_namespace",
+    )
 
-    def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
-        """Create the editor and connect viewport/gutter synchronization."""
+    def __init__(
+            self,
+            parent: QtWidgets.QWidget | None = None,
+            symbol_namespace: Mapping[str, Expr] | None = None,
+    ) -> None:
+        """Create the DAE-specific parser state and visual overlays.
+
+        :param parent: Optional owning Qt widget.
+        :param symbol_namespace: Symbols accepted by the safe DAE parser.
+        :return: None.
+        """
         super().__init__(parent)
-        self._line_number_area: DaeLineNumberArea = DaeLineNumberArea(self)
         self._diagnostics: List[DaeCodeDiagnostic] = list()
         self._search_ranges: List[tuple[int, int]] = list()
         self._active_search_index: int = -1
-        self.blockCountChanged.connect(self.update_line_number_area_width)
-        self.updateRequest.connect(self.update_line_number_area)
-        self.update_line_number_area_width(0)
+        if symbol_namespace is None:
+            self._symbol_namespace: Dict[str, Expr] = dict()
+        else:
+            self._symbol_namespace = dict(symbol_namespace)
+
+    def set_symbol_namespace(self, symbol_namespace: Mapping[str, Expr]) -> None:
+        """Replace the symbolic identities accepted by DAE validation.
+
+        :param symbol_namespace: Current block symbols keyed by source name.
+        :return: None.
+        """
+        self._symbol_namespace = dict(symbol_namespace)
+
+    def get_symbol_namespace(self) -> Dict[str, Expr]:
+        """Return a detached snapshot of the active symbolic namespace.
+
+        :return: Symbols currently accepted by the DAE parser.
+        """
+        return dict(self._symbol_namespace)
+
+    def build_current_diagnostics(self) -> List[DaeCodeDiagnostic]:
+        """Analyze the visible source against the symbolic namespace.
+
+        :return: Syntax and unknown-symbol diagnostics in source order.
+        """
+        return build_dae_code_diagnostics(self.toPlainText(), self._symbol_namespace)
+
+    def parse_current_code(self) -> BlockEquationDraft:
+        """Parse the visible source using the safe assignment-only DAE parser.
+
+        :return: Parsed equation draft retaining the namespace identities.
+        :raises ValueError: If the DAE source is unsupported or invalid.
+        """
+        return parse_equation_code(self.toPlainText(), self._symbol_namespace)
+
+    def get_diagnostics(self) -> List[DaeCodeDiagnostic]:
+        """Return diagnostics currently rendered by the editor.
+
+        :return: Current diagnostic collection.
+        """
+        return list(self._diagnostics)
 
     def set_diagnostics(self, diagnostics: Sequence[DaeCodeDiagnostic]) -> None:
         """Underline every invalid source span and attach its local explanation.
@@ -2404,7 +3129,7 @@ class DaeCodeEditor(QtWidgets.QPlainTextEdit):
         """
         source_text: str = self.toPlainText()
         normalized_query: str = search_text.strip().lower()
-        self._search_ranges = list()
+        self._search_ranges.clear()
         self._active_search_index = -1
 
         if len(normalized_query) > 0:
@@ -2536,77 +3261,14 @@ class DaeCodeEditor(QtWidgets.QPlainTextEdit):
         else:
             self.setToolTip("")
 
-    def get_line_number_area_width(self) -> int:
-        """Return the gutter width for the largest visible line number."""
-        digit_count: int = 1
-        maximum_line: int = max(1, self.blockCount())
-        while maximum_line >= 10:
-            maximum_line //= 10
-            digit_count += 1
-        spacing: int = 10 + self.fontMetrics().horizontalAdvance("9") * digit_count
-        return spacing
-
-    @QtCore.Slot(int)
-    def update_line_number_area_width(self, unused_block_count: int) -> None:
-        """Reserve viewport space after the document line count changes."""
-        _unused_block_count: int = unused_block_count
-        self.setViewportMargins(self.get_line_number_area_width(), 0, 0, 0)
-
-    @QtCore.Slot(QtCore.QRect, int)
-    def update_line_number_area(self, rectangle: QtCore.QRect, vertical_delta: int) -> None:
-        """Scroll or repaint the gutter together with the text viewport."""
-        if vertical_delta != 0:
-            self._line_number_area.scroll(0, vertical_delta)
-        else:
-            self._line_number_area.update(0, rectangle.y(), self._line_number_area.width(), rectangle.height())
-        if rectangle.contains(self.viewport().rect()):
-            self.update_line_number_area_width(0)
-        else:
-            pass
-
-    def resizeEvent(self, event: QtGui.QResizeEvent) -> None:
-        """Keep the gutter aligned with the editor contents rectangle."""
-        super().resizeEvent(event)
-        contents_rectangle: QtCore.QRect = self.contentsRect()
-        self._line_number_area.setGeometry(
-            QtCore.QRect(
-                contents_rectangle.left(),
-                contents_rectangle.top(),
-                self.get_line_number_area_width(),
-                contents_rectangle.height(),
-            )
-        )
-
-    def paint_line_number_area(self, event: QtGui.QPaintEvent) -> None:
-        """Paint the line numbers corresponding to visible text blocks."""
-        painter: QtGui.QPainter = QtGui.QPainter(self._line_number_area)
-        painter.fillRect(event.rect(), QtGui.QColor("#f1f5f9"))
-        text_block: QtGui.QTextBlock = self.firstVisibleBlock()
-        block_number: int = text_block.blockNumber()
-        top: int = int(self.blockBoundingGeometry(text_block).translated(self.contentOffset()).top())
-        bottom: int = top + int(self.blockBoundingRect(text_block).height())
-        while text_block.isValid() and top <= event.rect().bottom():
-            if text_block.isVisible() and bottom >= event.rect().top():
-                line_number: str = str(block_number + 1)
-                painter.setPen(QtGui.QColor("#64748b"))
-                painter.drawText(
-                    0,
-                    top,
-                    self._line_number_area.width() - 5,
-                    self.fontMetrics().height(),
-                    Qt.AlignmentFlag.AlignRight,
-                    line_number,
-                )
-            else:
-                pass
-            text_block = text_block.next()
-            top = bottom
-            bottom = top + int(self.blockBoundingRect(text_block).height())
-            block_number += 1
-
 
 def build_block_symbol_namespace(block: Block) -> Dict[str, Expr]:
-    """Build a complete safe parser namespace from one selected block tree."""
+    """
+    Build a complete safe parser namespace from one selected block tree.
+
+    :param block: Symbolic block used by the operation.
+    :return: Complete safe-parser namespace for the selected block tree.
+    """
     namespace: Dict[str, Expr] = dict()
     child: Block
     variable: Var
@@ -2642,7 +3304,6 @@ def build_block_symbol_namespace(block: Block) -> Dict[str, Expr]:
         expression_groups: tuple[Sequence[Expr], ...] = (
             child.state_eqs,
             child.algebraic_eqs,
-            child.differential_eqs,
             tuple(child.init_eqs.values()),
             tuple(child.diff_init_eqs.values()),
             tuple(child.discrete_eqs.values()),
@@ -2673,111 +3334,491 @@ def build_block_symbol_namespace(block: Block) -> Dict[str, Expr]:
 
 
 def build_equation_code(block: Block) -> str:
-    """Serialize the five supported equation sections as safe Python-like code."""
+    """
+    Serialize informative variable order and editable equations as safe code.
+
+    :param block: Symbolic block used by the operation.
+    :return: Ordered variable declarations and editable DAE sections.
+    """
     lines: List[str] = list()
-    lines.extend(_serialize_expression_list("state_eqs", block.state_eqs))
+    lines.append(_serialize_variable_list("state_vars", block.state_vars))
+    lines.append(_serialize_variable_list("algebraic_vars", block.algebraic_vars))
+    lines.append(_serialize_variable_list("diff_vars", block.diff_vars))
     lines.append("")
-    lines.extend(_serialize_expression_list("algebraic_eqs", block.algebraic_eqs))
+    lines.extend(_serialize_state_equation_dict(
+        state_variables=block.state_vars,
+        state_equations=block.state_eqs,
+        comments=list((
+            "Map every state variable to the right-hand side of its differential equation.",
+            "Example: for d_x = -x / T, write: x: -x / T,",
+        )),
+    ))
     lines.append("")
-    lines.extend(_serialize_expression_list("differential_eqs", block.differential_eqs))
+    lines.extend(_serialize_algebraic_equation_list(
+        expressions=block.algebraic_eqs,
+        comments=list((
+            "Write each complete equation with one single '=' between its two sides.",
+            "Examples: 0 = y - K * x, or y = K * x,",
+        )),
+    ))
     lines.append("")
-    lines.extend(_serialize_expression_dict("init_eqs", block.init_eqs))
+    lines.extend(_serialize_expression_dict(
+        name="init_eqs",
+        expressions=block.init_eqs,
+        comments=list(("Map each variable to its initial expression. Example: x: x0,",)),
+    ))
     lines.append("")
-    lines.extend(_serialize_expression_dict("diff_init_eqs", block.diff_init_eqs))
+    lines.extend(_serialize_expression_dict(
+        name="diff_init_eqs",
+        expressions=block.diff_init_eqs,
+        comments=list(("Map each derivative to its initial expression. Example: d_x: 0.0,",)),
+    ))
     return "\n".join(lines)
 
 
-def _serialize_expression_list(name: str, expressions: Sequence[Expr]) -> List[str]:
-    """Serialize one expression sequence in a readable multiline form."""
-    lines: List[str] = [f"{name} = ["]
+def _serialize_variable_list(name: str, variables: Sequence[Var]) -> str:
+    """Serialize one informative variable declaration on a single line.
+
+    :param name: Declaration section name.
+    :param variables: Ordered variables shown in the declaration.
+    :return: One-line Python-like variable list.
+    """
+    variable_names: List[str] = list()
+    variable: Var
+    for variable in variables:
+        variable_names.append(variable.name)
+    return f"{name} = [{', '.join(variable_names)}]"
+
+
+def synchronize_dae_variable_declarations(code: str,
+                                          state_names: Sequence[str],
+                                          algebraic_names: Sequence[str],
+                                          differential_names: Sequence[str]) -> str:
+    """Synchronize the three table-owned variable declarations in DAE code.
+
+    Variable declarations are managed projections of the Variables table. A
+    declaration may still be multiline while the user is editing, so each
+    complete assignment is replaced as one unit without touching equations or
+    any other source text. Missing declarations are restored at the beginning
+    for compatibility with older hand-written buffers.
+
+    :param code: Current detached DAE source.
+    :param state_names: Ordered state-variable names from the table draft.
+    :param algebraic_names: Ordered algebraic-variable names from the table draft.
+    :param differential_names: Ordered differential-variable names from the table draft.
+    :return: DAE source with synchronized one-line variable declarations.
+    """
+    sections: tuple[tuple[str, Sequence[str]], ...] = (
+        ("state_vars", state_names),
+        ("algebraic_vars", algebraic_names),
+        ("diff_vars", differential_names),
+    )
+    updated_code: str = code
+    missing_declarations: List[str] = list()
+    section_name: str
+    section_names: Sequence[str]
+    for section_name, section_names in sections:
+        declaration: str = f"{section_name} = [{', '.join(section_names)}]"
+        declaration_pattern: str = (
+            rf"(?ms)^[ \t]*{re.escape(section_name)}[ \t]*=[ \t]*\[[^\]]*\]"
+        )
+        replacement_count: int
+        updated_code, replacement_count = re.subn(
+            declaration_pattern,
+            declaration,
+            updated_code,
+            count=1,
+        )
+        if replacement_count == 0:
+            missing_declarations.append(declaration)
+        else:
+            pass
+
+    if len(missing_declarations) > 0:
+        if "\r\n" in updated_code:
+            newline: str = "\r\n"
+        else:
+            newline = "\n"
+        declaration_prefix: str = newline.join(missing_declarations)
+        if len(updated_code) > 0:
+            updated_code = declaration_prefix + newline + newline + updated_code
+        else:
+            updated_code = declaration_prefix
+    else:
+        pass
+    return updated_code
+
+
+def replace_dae_identifier(code: str, old_name: str, new_name: str) -> str:
+    """Replace one Python identifier without altering partial symbol names.
+
+    The DAE editor can contain an incomplete draft while a rename is requested.
+    Token-aware replacement preserves normal source formatting; a word-boundary
+    fallback still keeps that incomplete draft aligned with the renamed model.
+
+    :param code: Current detached DAE source.
+    :param old_name: Exact identifier used before the rename.
+    :param new_name: Exact identifier accepted by the central editor rename.
+    :return: Source using ``new_name`` for every matching identifier token.
+    """
+    if old_name == new_name:
+        return code
+    else:
+        pass
+
+    replaced_tokens: List[tokenize.TokenInfo] = list()
+    try:
+        source_token: tokenize.TokenInfo
+        for source_token in tokenize.generate_tokens(StringIO(code).readline):
+            if source_token.type == tokenize.NAME and source_token.string == old_name:
+                replaced_tokens.append(source_token._replace(string=new_name))
+            else:
+                replaced_tokens.append(source_token)
+        result: str = tokenize.untokenize(replaced_tokens)
+    except (IndentationError, tokenize.TokenError):
+        identifier_pattern: str = rf"\b{re.escape(old_name)}\b"
+        result = re.sub(identifier_pattern, new_name, code)
+    return result
+
+
+def serialize_dae_expression(expression: Expr | Comparison) -> str:
+    """Serialize one DAE expression without a redundant root pair.
+
+    ``symbolic_to_string`` deliberately parenthesizes every binary expression
+    to preserve its complete tree. At the top level of a list or dictionary
+    value, that outermost pair has no effect. Inner pairs are retained because
+    they can still be required for Python operator precedence.
+
+    :param expression: Symbolic expression shown in the DAE source editor.
+    :return: Parsable expression text without redundant root parentheses.
+    """
+    expression_text: str = symbolic_to_string(expression)
+    if isinstance(expression, (BinOp, Comparison)):
+        return expression_text[1:-1]
+    else:
+        return expression_text
+
+
+def _serialize_algebraic_equation_list(
+        expressions: Sequence[Expr],
+        comments: Sequence[str] | None = None) -> List[str]:
+    """Serialize Engine residuals as complete GUI algebraic equalities.
+
+    The Engine stores each algebraic expression as a residual that must be
+    zero. Placing zero on the visible left side preserves that expression
+    exactly when the GUI parser converts the equality back to a residual.
+
+    :param expressions: Ordered Engine algebraic residual expressions.
+    :param comments: Explanatory lines inserted inside the generated list.
+    :return: Complete algebraic equations serialized as readable source lines.
+    """
+    lines: List[str] = list(("algebraic_eqs = [",))
+    if comments is not None:
+        comment: str
+        for comment in comments:
+            lines.append(f"    # {comment}")
+    else:
+        pass
     expression: Expr
     for expression in expressions:
-        lines.append(f"    {symbolic_to_string(expression)},")
+        lines.append(f"    0 = {serialize_dae_expression(expression)},")
     lines.append("]")
     return lines
 
 
-def _serialize_expression_dict(name: str, expressions: Mapping[Var, Expr]) -> List[str]:
-    """Serialize one variable-to-expression mapping."""
-    lines: List[str] = [f"{name} = {{"]
+def _serialize_state_equation_dict(
+        state_variables: Sequence[Var],
+        state_equations: Sequence[Expr],
+        comments: Sequence[str] | None = None) -> List[str]:
+    """Serialize state-variable/RHS associations as an editable dictionary.
+
+    The Engine stores right-hand sides as a positional list. The GUI exposes
+    the association explicitly so users never need to count list entries to
+    identify a state equation. Inconsistent legacy models remain visible as
+    comments and fail validation until the user repairs the missing pairing.
+
+    :param state_variables: Ordered Engine state variables.
+    :param state_equations: Ordered Engine right-hand-side expressions.
+    :param comments: Explanatory lines inserted inside the generated mapping.
+    :return: State equation mapping serialized as readable source lines.
+    """
+    lines: List[str] = list(("state_eqs = {",))
+    if comments is not None:
+        comment: str
+        for comment in comments:
+            lines.append(f"    # {comment}")
+    else:
+        pass
+
+    paired_count: int = min(len(state_variables), len(state_equations))
+    equation_index: int
+    for equation_index in range(paired_count):
+        state_variable: Var = state_variables[equation_index]
+        state_equation: Expr = state_equations[equation_index]
+        lines.append(
+            f"    {state_variable.name}: {serialize_dae_expression(state_equation)},"
+        )
+
+    missing_index: int
+    for missing_index in range(paired_count, len(state_variables)):
+        lines.append(
+            f"    # Missing equation for state variable: {state_variables[missing_index].name}"
+        )
+
+    extra_index: int
+    for extra_index in range(paired_count, len(state_equations)):
+        extra_equation: Expr = state_equations[extra_index]
+        lines.append(
+            f"    # Unassigned state equation: {serialize_dae_expression(extra_equation)}"
+        )
+    lines.append("}")
+    return lines
+
+
+def _serialize_expression_dict(name: str,
+                               expressions: Mapping[Var, Expr],
+                               comments: Sequence[str] | None = None) -> List[str]:
+    """
+    Serialize one variable-to-expression mapping.
+
+    :param name: Value supplied for ``name``.
+    :param expressions: Value supplied for ``expressions``.
+    :param comments: Explanatory lines inserted inside the generated dictionary.
+    :return: Variable-to-expression mapping serialized as source lines.
+    """
+    lines: List[str] = list((f"{name} = {{",))
+    if comments is not None:
+        comment: str
+        for comment in comments:
+            lines.append(f"    # {comment}")
+    else:
+        pass
     variable: Var
     expression: Expr
     for variable, expression in expressions.items():
-        lines.append(f"    {variable.name}: {symbolic_to_string(expression)},")
+        lines.append(f"    {variable.name}: {serialize_dae_expression(expression)},")
     lines.append("}")
     return lines
 
 
 def parse_equation_code(code: str, namespace: Mapping[str, Expr]) -> BlockEquationDraft:
-    """Parse the supported assignment-only DAE language without executing code."""
+    """
+    Parse the supported assignment-only DAE language without executing code.
+
+    :param code: Value supplied for ``code``.
+    :param namespace: Value supplied for ``namespace``.
+    :return: Detached equation draft parsed without executing the supplied code.
+    """
+    normalized_code: str = normalize_algebraic_equality_syntax(code)
     try:
-        module: ast.Module = ast.parse(code, mode="exec")
+        module: ast.Module = ast.parse(normalized_code, mode="exec")
     except SyntaxError as error:
         raise ValueError(str(error)) from error
 
     parsed_lists: Dict[str, List[Expr]] = dict()
     parsed_dicts: Dict[str, Dict[Var, Expr]] = dict()
+    parsed_variable_lists: Dict[str, List[Var]] = dict()
     statement: ast.stmt
     for statement in module.body:
-        _parse_equation_statement(statement, namespace, parsed_lists, parsed_dicts)
+        _parse_equation_statement(
+            statement=statement,
+            namespace=namespace,
+            parsed_lists=parsed_lists,
+            parsed_dicts=parsed_dicts,
+            parsed_variable_lists=parsed_variable_lists,
+        )
 
-    required_lists: tuple[str, ...] = ("state_eqs", "algebraic_eqs", "differential_eqs")
-    required_dicts: tuple[str, ...] = ("init_eqs", "diff_init_eqs")
+    required_lists: tuple[str, ...] = ("algebraic_eqs",)
+    required_dicts: tuple[str, ...] = ("state_eqs", "init_eqs", "diff_init_eqs")
+    required_variable_lists: tuple[str, ...] = ("state_vars",)
     _validate_required_sections(required_lists, parsed_lists)
     _validate_required_sections(required_dicts, parsed_dicts)
+    _validate_required_sections(required_variable_lists, parsed_variable_lists)
+
+    # The GUI mapping is converted back to the Engine's positional list only
+    # after proving that every declared state owns exactly one right-hand side.
+    state_variables: List[Var] = parsed_variable_lists["state_vars"]
+    state_equation_mapping: Dict[Var, Expr] = parsed_dicts["state_eqs"]
+    missing_state_names: List[str] = list()
+    state_variable: Var
+    for state_variable in state_variables:
+        if state_variable not in state_equation_mapping:
+            missing_state_names.append(state_variable.name)
+        else:
+            pass
+    unexpected_state_names: List[str] = list()
+    mapped_state: Var
+    for mapped_state in state_equation_mapping:
+        if mapped_state not in state_variables:
+            unexpected_state_names.append(mapped_state.name)
+        else:
+            pass
+    if len(missing_state_names) > 0 or len(unexpected_state_names) > 0:
+        raise ValueError(
+            "Section 'state_eqs' must map every state_vars entry exactly once; "
+            f"missing={missing_state_names}, unexpected={unexpected_state_names}"
+        )
+    else:
+        ordered_state_equations: List[Expr] = list()
+        for state_variable in state_variables:
+            ordered_state_equations.append(state_equation_mapping[state_variable])
     return BlockEquationDraft(
-        parsed_lists["state_eqs"],
+        ordered_state_equations,
         parsed_lists["algebraic_eqs"],
-        parsed_lists["differential_eqs"],
         parsed_dicts["init_eqs"],
         parsed_dicts["diff_init_eqs"],
+        parsed_variable_lists,
     )
 
 
 def _parse_equation_statement(statement: ast.stmt,
                               namespace: Mapping[str, Expr],
                               parsed_lists: Dict[str, List[Expr]],
-                              parsed_dicts: Dict[str, Dict[Var, Expr]]) -> None:
-    """Parse one assignment statement from the DAE editor."""
+                              parsed_dicts: Dict[str, Dict[Var, Expr]],
+                              parsed_variable_lists: Dict[str, List[Var]]) -> None:
+    """
+    Parse one assignment statement from the DAE editor.
+
+    :param statement: Value supplied for ``statement``.
+    :param namespace: Value supplied for ``namespace``.
+    :param parsed_lists: Value supplied for ``parsed_lists``.
+    :param parsed_dicts: Value supplied for ``parsed_dicts``.
+    :param parsed_variable_lists: Parsed informative variable-order sections.
+    :return: None.
+    """
     if not isinstance(statement, ast.Assign):
-        raise ValueError("Only assignments to the five DAE sections are allowed")
+        raise ValueError("Only assignments to supported DAE sections are allowed")
     elif len(statement.targets) != 1 or not isinstance(statement.targets[0], ast.Name):
         raise ValueError("Each DAE section must use one simple assignment")
     else:
         section_name: str = statement.targets[0].id
 
-    if section_name in parsed_lists or section_name in parsed_dicts:
+    if (section_name in parsed_lists
+            or section_name in parsed_dicts
+            or section_name in parsed_variable_lists):
         raise ValueError(f"Section '{section_name}' is assigned more than once")
-    elif section_name in ("state_eqs", "algebraic_eqs", "differential_eqs"):
-        parsed_lists[section_name] = _parse_expression_list(statement.value, namespace, section_name)
-    elif section_name in ("init_eqs", "diff_init_eqs"):
+    elif section_name == "algebraic_eqs":
+        parsed_lists[section_name] = _parse_algebraic_equation_list(
+            statement.value,
+            namespace,
+        )
+    elif section_name in ("state_eqs", "init_eqs", "diff_init_eqs"):
         parsed_dicts[section_name] = _parse_expression_dict(statement.value, namespace, section_name)
+    elif section_name in ("state_vars", "algebraic_vars", "diff_vars"):
+        parsed_variable_lists[section_name] = _parse_variable_list(
+            node=statement.value,
+            namespace=namespace,
+            section_name=section_name,
+        )
     else:
         raise ValueError(f"Unsupported DAE section '{section_name}'")
 
 
-def _parse_expression_list(node: ast.expr,
-                           namespace: Mapping[str, Expr],
-                           section_name: str) -> List[Expr]:
-    """Parse an expression list using the Engine safe symbolic parser."""
+def _parse_variable_list(node: ast.expr,
+                         namespace: Mapping[str, Expr],
+                         section_name: str) -> List[Var]:
+    """Parse one informative ordered variable declaration.
+
+    These declarations expose the block's current DAE ordering but do not create,
+    delete, or reclassify symbols. Structural symbol edits remain owned by the
+    Variables and Parameters tables.
+
+    :param node: Assignment value expected to be a list or tuple.
+    :param namespace: Allowed symbolic identities by name.
+    :param section_name: Declaration section being parsed.
+    :return: Ordered existing variables referenced by the declaration.
+    """
     if not isinstance(node, (ast.List, ast.Tuple)):
         raise ValueError(f"Section '{section_name}' must be a list")
+    else:
+        result: List[Var] = list()
+
+    element: ast.expr
+    for element in node.elts:
+        if not isinstance(element, ast.Name):
+            raise ValueError(f"Entries in '{section_name}' must be variable names")
+        else:
+            symbol: Expr | None = namespace.get(element.id, None)
+        if not isinstance(symbol, Var):
+            raise ValueError(f"Unknown variable '{element.id}' in '{section_name}'")
+        elif symbol in result:
+            raise ValueError(f"Variable '{element.id}' is repeated in '{section_name}'")
+        else:
+            result.append(symbol)
+    return result
+
+
+def _parse_algebraic_equation_list(node: ast.expr,
+                                   namespace: Mapping[str, Expr]) -> List[Expr]:
+    """Parse complete GUI equalities into Engine algebraic residuals.
+
+    The normalization layer represents the visible equality with a root
+    bitwise-or AST node. Exactly one such marker is required per list entry.
+    ``right - left`` follows the GUI convention ``0 = residual``; an explicit
+    zero on either side is simplified so opening and applying an unchanged
+    block preserves its existing symbolic expression.
+
+    :param node: Assignment value expected to be a list.
+    :param namespace: Allowed symbolic identities by name.
+    :return: Ordered algebraic residual expressions for the Engine.
+    """
+    if not isinstance(node, ast.List):
+        raise ValueError("Section 'algebraic_eqs' must be a list")
     else:
         result: List[Expr] = list()
         element: ast.expr
         for element in node.elts:
-            expression: Expr | Comparison = _parse_symbolic_ast_node(element, namespace)
-            if isinstance(expression, Comparison):
-                raise ValueError(f"Comparisons are not supported in '{section_name}'")
+            equality_marker_count: int = 0
+            child_node: ast.AST
+            for child_node in ast.walk(element):
+                if isinstance(child_node, ast.BinOp) and isinstance(child_node.op, ast.BitOr):
+                    equality_marker_count += 1
+                else:
+                    pass
+
+            if not isinstance(element, ast.BinOp):
+                raise ValueError(
+                    "Every entry in 'algebraic_eqs' must contain exactly one '=' "
+                    "between two complete symbolic expressions"
+                )
+            elif not isinstance(element.op, ast.BitOr) or equality_marker_count != 1:
+                raise ValueError(
+                    "Every entry in 'algebraic_eqs' must contain exactly one '=' "
+                    "between two complete symbolic expressions"
+                )
             else:
-                result.append(expression)
+                left_expression: Expr | Comparison = _parse_symbolic_ast_node(
+                    element.left,
+                    namespace,
+                )
+                right_expression: Expr | Comparison = _parse_symbolic_ast_node(
+                    element.right,
+                    namespace,
+                )
+
+            if not isinstance(left_expression, Expr) or not isinstance(right_expression, Expr):
+                raise ValueError("Algebraic equality sides must be symbolic expressions")
+            elif isinstance(left_expression, Const) and left_expression.value == 0:
+                residual_expression: Expr = right_expression
+            elif isinstance(right_expression, Const) and right_expression.value == 0:
+                residual_expression = left_expression
+            else:
+                residual_expression = right_expression - left_expression
+            result.append(residual_expression)
         return result
 
 
 def _parse_expression_dict(node: ast.expr,
                            namespace: Mapping[str, Expr],
                            section_name: str) -> Dict[Var, Expr]:
-    """Parse a variable-to-expression mapping with identity-preserving keys."""
+    """
+    Parse a variable-to-expression mapping with identity-preserving keys.
+
+    :param node: Value supplied for ``node``.
+    :param namespace: Value supplied for ``namespace``.
+    :param section_name: Value supplied for ``section_name``.
+    :return: Parsed variable-to-expression mapping with identity-preserving keys.
+    """
     if not isinstance(node, ast.Dict):
         raise ValueError(f"Section '{section_name}' must be a dictionary")
     else:
@@ -2790,7 +3831,7 @@ def _parse_expression_dict(node: ast.expr,
         if not isinstance(key_node, ast.Name):
             raise ValueError(f"Keys in '{section_name}' must be variable names")
         else:
-            key_symbol: Expr | None = namespace.get(key_node.id)
+            key_symbol: Expr | None = namespace.get(key_node.id, None)
         if not isinstance(key_symbol, Var):
             raise ValueError(f"Unknown variable '{key_node.id}' in '{section_name}'")
         elif key_symbol in result:
@@ -2964,7 +4005,13 @@ def _parse_symbolic_comparison(node: ast.Compare,
 
 
 def _validate_required_sections(required: Sequence[str], parsed: Mapping[str, object]) -> None:
-    """Require each supported section exactly once."""
+    """
+    Require each supported section exactly once.
+
+    :param required: Value supplied for ``required``.
+    :param parsed: Value supplied for ``parsed``.
+    :return: None.
+    """
     section_name: str
     for section_name in required:
         if section_name not in parsed:
@@ -2974,7 +4021,10 @@ def _validate_required_sections(required: Sequence[str], parsed: Mapping[str, ob
 
 
 def block_has_advanced_logic(block: Block) -> bool:
-    """Return whether unsupported advanced symbolic fields are present."""
+    """
+    :param block: Symbolic block used by the operation.
+    :return: Whether unsupported advanced symbolic fields are present.
+    """
     result: bool = False
     child: Block
     for child in block.get_all_blocks():
@@ -2992,7 +4042,12 @@ def block_has_advanced_logic(block: Block) -> bool:
 
 
 def build_advanced_logic_summary(block: Block) -> str:
-    """Summarize recursive read-only symbolic fields not covered by DAE code."""
+    """
+    Summarize recursive read-only symbolic fields not covered by DAE code.
+
+    :param block: Symbolic block used by the operation.
+    :return: Summary of recursive read-only symbolic fields not covered by DAE code.
+    """
     inequality_count: int = 0
     discrete_count: int = 0
     guard_count: int = 0
@@ -3011,26 +4066,30 @@ def build_advanced_logic_summary(block: Block) -> str:
     )
 
 
-def resolve_block_documentation(block_type_name: str, block: Block) -> tuple[str, str]:
-    """Resolve explicit documentation or build a truthful generated fallback.
+def resolve_block_documentation_url(block_type_name: str, block_name: str) -> str | None:
+    """Resolve the online catalogue documentation URL for one library block.
+
+    The returned page describes the original predefined block. A working copy
+    edited in the Dynamic Model Editor can intentionally differ from it.
 
     :param block_type_name: Persisted diagram node type.
-    :param block: Symbolic block whose template name can refine the lookup.
-    :return: Markdown content and its filesystem or generated source label.
+    :param block_name: Symbolic template or block name used to refine the lookup.
+    :return: ReadTheDocs URL or ``None`` for a genuinely custom block.
     """
-    # Template catalogue nodes share one generic diagram type, so the symbolic
-    # block name is also required to resolve documentation for packaged models.
-    relative_path: str | None = _get_documentation_relative_path(block_type_name, block.name)
-    if relative_path is not None:
-        repository_root: Path = Path(__file__).resolve().parents[4]
-        documentation_path: Path = repository_root / "doc" / "md_source" / "dyn_templates" / relative_path
-        if documentation_path.is_file():
-            return documentation_path.read_text(encoding="utf-8"), str(documentation_path)
-        else:
-            pass
+    # Reuse the single catalogue mapping and only translate its Sphinx source
+    # path into the HTML path published by ReadTheDocs. Runtime code therefore
+    # never needs the repository's local ``doc`` directory.
+    relative_path: str | None = _get_documentation_relative_path(block_type_name, block_name)
+    if relative_path is None:
+        result: str | None = None
     else:
-        pass
-    return _build_generated_documentation(block_type_name, block), "Generated from the current block"
+        normalized_path: str = relative_path.replace("\\", "/")
+        if normalized_path.endswith(".md"):
+            html_path: str = normalized_path[:-3] + ".html"
+        else:
+            html_path = normalized_path + ".html"
+        result = f"https://veragrid.readthedocs.io/en/latest/md_source/dyn_templates/{html_path}"
+    return result
 
 
 def _get_documentation_relative_path(block_type_name: str, block_name: str) -> str | None:
@@ -3050,81 +4109,7 @@ def _get_documentation_relative_path(block_type_name: str, block_name: str) -> s
         return f"library/catalog/typ_{catalogue_type_match.group(1)}.md"
     else:
         pass
-    mapping: Dict[str, str] = {
-        "GENERIC": "library/generic.md",
-        "CONST": "library/constant.md",
-        "GAIN": "library/gain.md",
-        "ABS": "library/absolute_value.md",
-        "SUM": "library/sum.md",
-        "PRODUCT": "library/product.md",
-        "FROM_GOTO": "library/from_goto.md",
-        "LINE_RMS": "RMS/line.md",
-        "LOAD_RMS": "RMS/load.md",
-        "GENRAW": "RMS/genrou_genrow.md",
-        "GENQEC": "RMS/genqec.md",
-        "GOV_RMS": "RMS/governor.md",
-        "STAB_RMS": "RMS/stabilizer.md",
-        "EXCITER_RMS": "RMS/exciter.md",
-        "EMT_GENERATOR": "EMT/sauer_pai_generator.md",
-        "GOV_EMT": "EMT/governor.md",
-        "STAB_EMT": "EMT/stabilizer.md",
-        "EXCITER_EMT": "EMT/exciter.md",
-        "EMT_PI_LINE": "EMT/pi_line_abc.md",
-        "EMT_BERGERON_LINE": "EMT/bergeron_line_abc.md",
-        "EMT_JMARTI_LINE": "EMT/jmarti_line.md",
-        "EMT_DC_LINE": "EMT/dc_line.md",
-        "EXP_LOAD_EMT": "library/exp_load_emt.md",
-        "ZIP_LOAD_EMT": "EMT/zip_load_abc.md",
-        "DC_LOAD_EMT": "EMT/dc_load.md",
-        "EMT_THEVENIN": "EMT/thevenin_generator.md",
-        "TRAFO_EMT": "library/trafo_emt.md",
-        "XFMR_TRANSFORMER": "library/xfmr_transformer.md",
-        "INDUCTION_MOTOR_EMT": "EMT/single_cage_induction_motor.md",
-        "PV_POWER_PLANT_EMT": "EMT/pv_plant_grid_following.md",
-        "PV_EMT": "EMT/pv_plant_grid_following.md",
-        "COMPLETE_PSEUDO_VSC_EMT": "EMT/full_pseudo_converter.md",
-        "GFL_CONVERTER_RMS": "RMS/converter.md",
-        "BESS_EMT": "EMT/bess.md",
-        "BATTERY_EMT": "library/battery_emt.md",
-        "VOLTAGE_SOURCE_EMT": "library/voltage_source_emt.md",
-        "CURRENT_SOURCE_EMT": "library/current_source_emt.md",
-        "CONTROLLED_VOLTAGE_SOURCE_EMT": "library/controlled_voltage_source_emt.md",
-        "CONTROLLED_CURRENT_SOURCE_EMT": "library/controlled_current_source_emt.md",
-        "ARBITRARY_WAVEFORM_VOLTAGE_SOURCE_EMT": "library/arbitrary_waveform_voltage_source_emt.md",
-        "ARBITRARY_WAVEFORM_CURRENT_SOURCE_EMT": "library/arbitrary_waveform_current_source_emt.md",
-        "BALANCED_3PH_VOLTAGE_SOURCE_EMT": "library/balanced_3ph_voltage_source_emt.md",
-        "BALANCED_3PH_CURRENT_SOURCE_EMT": "library/balanced_3ph_current_source_emt.md",
-        "CONTROLLED_BALANCED_3PH_VOLTAGE_SOURCE_EMT": "library/controlled_balanced_3ph_voltage_source_emt.md",
-        "CONTROLLED_BALANCED_3PH_CURRENT_SOURCE_EMT": "library/controlled_balanced_3ph_current_source_emt.md",
-        "DC_VOLTAGE_SOURCE_EMT": "library/dc_voltage_source_emt.md",
-        "DC_CURRENT_SOURCE_EMT": "library/dc_current_source_emt.md",
-        "CONTROLLED_DC_VOLTAGE_SOURCE_EMT": "library/controlled_dc_voltage_source_emt.md",
-        "CONTROLLED_DC_CURRENT_SOURCE_EMT": "library/controlled_dc_current_source_emt.md",
-        "STEP_VOLTAGE_SOURCE_EMT": "library/step_voltage_source_emt.md",
-        "STEP_CURRENT_SOURCE_EMT": "library/step_current_source_emt.md",
-        "RAMP_VOLTAGE_SOURCE_EMT": "library/ramp_voltage_source_emt.md",
-        "RAMP_CURRENT_SOURCE_EMT": "library/ramp_current_source_emt.md",
-        "DOUBLE_EXPONENTIAL_CURRENT_SOURCE_EMT": "library/double_exponential_current_source_emt.md",
-        "HEIDLER_CURRENT_SOURCE_EMT": "library/heidler_current_source_emt.md",
-        "CIGRE_SURGE_CURRENT_SOURCE_EMT": "library/cigre_surge_current_source_emt.md",
-        "R_LOAD_EMT": "library/r_load_emt.md",
-        "L_LOAD_EMT": "library/l_load_emt.md",
-        "C_LOAD_EMT": "library/c_load_emt.md",
-        "RLC_COMBO_EMT": "library/rlc_combo_emt.md",
-        "GROUND_EMT": "library/ground_emt.md",
-        "GROUNDING_LINK_EMT": "library/grounding_link_emt.md",
-        "SWITCH_EMT": "library/switch_emt.md",
-        "FAULT_EMT": "EMT/fault.md",
-        "NONLINEAR_RESISTOR_EMT": "library/nonlinear_resistor_emt.md",
-        "INVERSE_LOOKUP_ARRAY": "library/inverse-lookup-array-object-linear.md",
-        "LOOKUP_ARRAY_LINEAR": "library/lookup_array.md",
-        "LOOKUP_ARRAY_SPLINE": "library/lookup_array.md",
-        "LOOKUP_MATRIX_LINEAR": "library/lookup_matrix.md",
-        "LOOKUP_MATRIX_SPLINE": "library/lookup_matrix.md",
-        "PI_CURRENT_CONTROLLER": "library/pi_current_controller.md",
-        "PI_POWER_CONTROLLER": "library/pi_power_controller.md",
-        "PLL_TRANSFORM_RMS": "library/pll_transformer.md",
-    }
+    mapping: Dict[str, str] = dict((("GENERIC", "library/generic.md"), ("CONST", "library/constant.md"), ("GAIN", "library/gain.md"), ("ABS", "library/absolute_value.md"), ("SUM", "library/sum.md"), ("PRODUCT", "library/product.md"), ("FROM_GOTO", "library/from_goto.md"), ("LINE_RMS", "RMS/line.md"), ("LOAD_RMS", "RMS/load.md"), ("GENRAW", "RMS/genrou_genrow.md"), ("GENQEC", "RMS/genqec.md"), ("GOV_RMS", "RMS/governor.md"), ("STAB_RMS", "RMS/stabilizer.md"), ("EXCITER_RMS", "RMS/exciter.md"), ("EMT_GENERATOR", "EMT/sauer_pai_generator.md"), ("GOV_EMT", "EMT/governor.md"), ("STAB_EMT", "EMT/stabilizer.md"), ("EXCITER_EMT", "EMT/exciter.md"), ("EMT_PI_LINE", "EMT/pi_line_abc.md"), ("EMT_BERGERON_LINE", "EMT/bergeron_line_abc.md"), ("EMT_JMARTI_LINE", "EMT/jmarti_line.md"), ("EMT_DC_LINE", "EMT/dc_line.md"), ("EXP_LOAD_EMT", "library/exp_load_emt.md"), ("ZIP_LOAD_EMT", "EMT/zip_load_abc.md"), ("DC_LOAD_EMT", "EMT/dc_load.md"), ("EMT_THEVENIN", "EMT/thevenin_generator.md"), ("TRAFO_EMT", "library/trafo_emt.md"), ("XFMR_TRANSFORMER", "library/xfmr_transformer.md"), ("INDUCTION_MOTOR_EMT", "EMT/single_cage_induction_motor.md"), ("PV_POWER_PLANT_EMT", "EMT/pv_plant_grid_following.md"), ("PV_EMT", "EMT/pv_plant_grid_following.md"), ("COMPLETE_PSEUDO_VSC_EMT", "EMT/full_pseudo_converter.md"), ("GFL_CONVERTER_RMS", "RMS/converter.md"), ("BESS_EMT", "EMT/bess.md"), ("BATTERY_EMT", "library/battery_emt.md"), ("VOLTAGE_SOURCE_EMT", "library/voltage_source_emt.md"), ("CURRENT_SOURCE_EMT", "library/current_source_emt.md"), ("CONTROLLED_VOLTAGE_SOURCE_EMT", "library/controlled_voltage_source_emt.md"), ("CONTROLLED_CURRENT_SOURCE_EMT", "library/controlled_current_source_emt.md"), ("ARBITRARY_WAVEFORM_VOLTAGE_SOURCE_EMT", "library/arbitrary_waveform_voltage_source_emt.md"), ("ARBITRARY_WAVEFORM_CURRENT_SOURCE_EMT", "library/arbitrary_waveform_current_source_emt.md"), ("BALANCED_3PH_VOLTAGE_SOURCE_EMT", "library/balanced_3ph_voltage_source_emt.md"), ("BALANCED_3PH_CURRENT_SOURCE_EMT", "library/balanced_3ph_current_source_emt.md"), ("CONTROLLED_BALANCED_3PH_VOLTAGE_SOURCE_EMT", "library/controlled_balanced_3ph_voltage_source_emt.md"), ("CONTROLLED_BALANCED_3PH_CURRENT_SOURCE_EMT", "library/controlled_balanced_3ph_current_source_emt.md"), ("DC_VOLTAGE_SOURCE_EMT", "library/dc_voltage_source_emt.md"), ("DC_CURRENT_SOURCE_EMT", "library/dc_current_source_emt.md"), ("CONTROLLED_DC_VOLTAGE_SOURCE_EMT", "library/controlled_dc_voltage_source_emt.md"), ("CONTROLLED_DC_CURRENT_SOURCE_EMT", "library/controlled_dc_current_source_emt.md"), ("STEP_VOLTAGE_SOURCE_EMT", "library/step_voltage_source_emt.md"), ("STEP_CURRENT_SOURCE_EMT", "library/step_current_source_emt.md"), ("RAMP_VOLTAGE_SOURCE_EMT", "library/ramp_voltage_source_emt.md"), ("RAMP_CURRENT_SOURCE_EMT", "library/ramp_current_source_emt.md"), ("DOUBLE_EXPONENTIAL_CURRENT_SOURCE_EMT", "library/double_exponential_current_source_emt.md"), ("HEIDLER_CURRENT_SOURCE_EMT", "library/heidler_current_source_emt.md"), ("CIGRE_SURGE_CURRENT_SOURCE_EMT", "library/cigre_surge_current_source_emt.md"), ("R_LOAD_EMT", "library/r_load_emt.md"), ("L_LOAD_EMT", "library/l_load_emt.md"), ("C_LOAD_EMT", "library/c_load_emt.md"), ("RLC_COMBO_EMT", "library/rlc_combo_emt.md"), ("GROUND_EMT", "library/ground_emt.md"), ("GROUNDING_LINK_EMT", "library/grounding_link_emt.md"), ("SWITCH_EMT", "library/switch_emt.md"), ("FAULT_EMT", "EMT/fault.md"), ("NONLINEAR_RESISTOR_EMT", "library/nonlinear_resistor_emt.md"), ("INVERSE_LOOKUP_ARRAY", "library/inverse-lookup-array-object-linear.md"), ("LOOKUP_ARRAY_LINEAR", "library/lookup_array.md"), ("LOOKUP_ARRAY_SPLINE", "library/lookup_array.md"), ("LOOKUP_MATRIX_LINEAR", "library/lookup_matrix.md"), ("LOOKUP_MATRIX_SPLINE", "library/lookup_matrix.md"), ("PI_CURRENT_CONTROLLER", "library/pi_current_controller.md"), ("PI_POWER_CONTROLLER", "library/pi_power_controller.md"), ("PLL_TRANSFORM_RMS", "library/pll_transformer.md"),))
     relative_path: str | None = mapping.get(normalized, None)
     if relative_path is not None:
         return relative_path
@@ -3213,205 +4198,6 @@ def _get_documentation_relative_path(block_type_name: str, block_name: str) -> s
         return "library/pll_transformer.md"
     else:
         return None
-
-
-def _build_generated_documentation(block_type_name: str, block: Block) -> str:
-    """Build fallback Markdown when no explicit catalogue document is available."""
-    input_names: str = ", ".join(variable.name for variable in block.in_vars)
-    output_names: str = ", ".join(variable.name for variable in block.out_vars)
-    if len(input_names) == 0:
-        input_names = "None"
-    else:
-        pass
-    if len(output_names) == 0:
-        output_names = "None"
-    else:
-        pass
-    return (
-        f"# {block.name}\n\n"
-        f"No catalogue Markdown file is explicitly mapped for `{block_type_name}`. "
-        "This summary was generated from the current symbolic block.\n\n"
-        f"- Inputs: {input_names}\n"
-        f"- Outputs: {output_names}\n"
-        f"- State variables: {len(block.state_vars)}\n"
-        f"- Algebraic variables: {len(block.algebraic_vars)}\n"
-        f"- Child blocks: {len(block.children)}\n"
-    )
-
-
-class SvgEquationTextObject(QtGui.QPyTextObject):
-    """Vector equation object exposed to Qt through its Python text-object bridge."""
-
-    __slots__ = (
-        "_object_type",
-        "_svg_data_property",
-        "_svg_width_property",
-        "_svg_height_property",
-    )
-
-    def __init__(self, parent: QtCore.QObject) -> None:
-        """Create one reusable SVG handler owned by its documentation browser.
-
-        :param parent: Browser that owns the Python and Qt handler lifetime.
-        :return: None.
-        """
-        super().__init__(parent)
-        self._object_type: int = int(QtGui.QTextFormat.ObjectTypes.UserObject) + 1
-        self._svg_data_property: int = int(QtGui.QTextFormat.Property.UserProperty) + 1
-        self._svg_width_property: int = int(QtGui.QTextFormat.Property.UserProperty) + 2
-        self._svg_height_property: int = int(QtGui.QTextFormat.Property.UserProperty) + 3
-        self.setObjectName("veragrid_svg_equation_text_object")
-
-    def get_object_type(self) -> int:
-        """Return the custom QTextFormat object type handled by this object."""
-        return self._object_type
-
-    def create_text_format(self, rendered: RenderedSvgEquation) -> QtGui.QTextCharFormat:
-        """Build one inline object format carrying vector data and dimensions.
-
-        :param rendered: Compiled vector equation.
-        :return: Character format consumed by this text-object handler.
-        """
-        text_format: QtGui.QTextCharFormat = QtGui.QTextCharFormat()
-        text_format.setObjectType(self._object_type)
-        text_format.setProperty(self._svg_data_property, rendered.get_data())
-        text_format.setProperty(
-            self._svg_width_property,
-            float(rendered.get_size().width()),
-        )
-        text_format.setProperty(
-            self._svg_height_property,
-            float(rendered.get_size().height()),
-        )
-        return text_format
-
-    def get_svg_data(self, text_format: QtGui.QTextFormat) -> QtCore.QByteArray:
-        """Return the SVG payload carried by one equation object format.
-
-        :param text_format: Format attached to an object replacement character.
-        :return: SVG bytes or an empty byte array for an invalid format.
-        """
-        property_value: object = text_format.property(self._svg_data_property)
-        if isinstance(property_value, QtCore.QByteArray):
-            result: QtCore.QByteArray = property_value
-        else:
-            result = QtCore.QByteArray()
-        return result
-
-    def intrinsicSize(self,
-                      document: QtGui.QTextDocument,
-                      position: int,
-                      text_format: QtGui.QTextFormat) -> QtCore.QSizeF:
-        """Return the logical equation box requested by QTextDocument.
-
-        :param document: Document performing layout.
-        :param position: Object position inside the document.
-        :param text_format: Equation object format.
-        :return: Logical vector equation size.
-        """
-        _unused_document: QtGui.QTextDocument = document
-        _unused_position: int = position
-        width_value: object = text_format.property(self._svg_width_property)
-        height_value: object = text_format.property(self._svg_height_property)
-        if isinstance(width_value, (float, int)) and isinstance(height_value, (float, int)):
-            result: QtCore.QSizeF = QtCore.QSizeF(float(width_value), float(height_value))
-        else:
-            result = QtCore.QSizeF(1.0, 1.0)
-        return result
-
-    def drawObject(self,
-                   painter: QtGui.QPainter,
-                   rectangle: QtCore.QRectF,
-                   document: QtGui.QTextDocument,
-                   position: int,
-                   text_format: QtGui.QTextFormat) -> None:
-        """Paint SVG paths directly into the document painter.
-
-        :param painter: Active document painter.
-        :param rectangle: Allocated logical object rectangle.
-        :param document: Document requesting the paint.
-        :param position: Object position inside the document.
-        :param text_format: Equation object format carrying SVG data.
-        :return: None.
-        """
-        _unused_document: QtGui.QTextDocument = document
-        _unused_position: int = position
-        svg_renderer: QtSvg.QSvgRenderer = QtSvg.QSvgRenderer(self.get_svg_data(text_format))
-        if svg_renderer.isValid():
-            svg_renderer.render(painter, rectangle)
-        else:
-            painter.drawText(rectangle, "Equation unavailable")
-
-
-def get_svg_equation_text_object(browser: QtWidgets.QTextBrowser) -> SvgEquationTextObject:
-    """Return the browser-owned vector equation handler, creating it once.
-
-    :param browser: Documentation browser receiving custom equation objects.
-    :return: Stable SVG text-object handler.
-    """
-    existing_handler: SvgEquationTextObject | None = browser.findChild(
-        SvgEquationTextObject,
-        "veragrid_svg_equation_text_object",
-    )
-    if existing_handler is None:
-        result: SvgEquationTextObject = SvgEquationTextObject(browser)
-    else:
-        result = existing_handler
-    return result
-
-
-def set_markdown_with_latex(browser: QtWidgets.QTextBrowser, markdown: str) -> None:
-    """Render display math as custom vector objects inside a QTextDocument.
-
-    :param browser: Documentation browser that owns the generated resources.
-    :param markdown: Catalogue Markdown containing optional ``$$`` blocks.
-    :return: None.
-    """
-    display_math_pattern: re.Pattern[str] = re.compile(r"\$\$(.+?)\$\$", re.DOTALL)
-    matches: List[re.Match[str]] = list(display_math_pattern.finditer(markdown))
-    if len(matches) == 0:
-        browser.setMarkdown(markdown)
-        return
-    else:
-        pass
-
-    # SVG paths are kept out of QTextDocument's image cache. The custom object
-    # handler paints them directly, avoiding Qt's implicit SVG rasterization.
-    renderer: LatexRenderer = LatexRenderer(font_size=14, dpi=110)
-    markdown_parts: List[str] = list()
-    equation_renderings: List[RenderedSvgEquation] = list()
-    source_offset: int = 0
-    match_index: int
-    match: re.Match[str]
-    for match_index, match in enumerate(matches):
-        markdown_parts.append(markdown[source_offset:match.start()])
-        latex_source: str = " ".join(match.group(1).strip().splitlines())
-        rendered: RenderedSvgEquation = renderer.render_svg(latex_source)
-        equation_renderings.append(rendered)
-        # A plain token survives Markdown compilation and gives the cursor an
-        # exact range to replace with one custom vector object.
-        markdown_parts.append(f"\n\nVERAGRID_DAE_EQUATION_{match_index}\n\n")
-        source_offset = match.end()
-    markdown_parts.append(markdown[source_offset:])
-
-    # Compile ordinary Markdown first, then replace each stable token with an
-    # object replacement character carrying the corresponding SVG payload.
-    browser.setMarkdown("".join(markdown_parts))
-    handler: SvgEquationTextObject = get_svg_equation_text_object(browser)
-    document_layout: QtGui.QAbstractTextDocumentLayout = browser.document().documentLayout()
-    document_layout.registerHandler(handler.get_object_type(), handler)
-    for match_index, rendered in enumerate(equation_renderings):
-        token: str = f"VERAGRID_DAE_EQUATION_{match_index}"
-        token_cursor: QtGui.QTextCursor = browser.document().find(token)
-        if token_cursor.isNull():
-            pass
-        else:
-            token_cursor.insertText(
-                "\ufffc",
-                handler.create_text_format(rendered),
-            )
-    browser.document().markContentsDirty(0, browser.document().characterCount())
-    browser.viewport().update()
 
 
 class TableTextFilterProxyModel(QtCore.QSortFilterProxyModel):
@@ -3514,10 +4300,7 @@ class BlockSymbolFilterProxyModel(QtCore.QSortFilterProxyModel):
         if row is None:
             return False
         else:
-            parameter_kinds: set[BlockSymbolKind] = set({
-                BlockSymbolKind.PARAMETER,
-                BlockSymbolKind.EVENT_PARAMETER,
-            })
+            parameter_kinds: set[BlockSymbolKind] = set((BlockSymbolKind.PARAMETER, BlockSymbolKind.EVENT_PARAMETER,))
             is_runtime_mode: bool = row.get_kind() == BlockSymbolKind.MODE_PARAMETER
             is_parameter: bool = row.get_kind() in parameter_kinds
             if is_runtime_mode:
@@ -3565,7 +4348,7 @@ class BlockSymbolFilterProxyModel(QtCore.QSortFilterProxyModel):
                 if self._category == BlockSymbolCategory.PARAMETERS:
                     result = self.tr(
                         "Maps a static parameter through ParamPowerFlowReferenceType "
-                        "to block.api_obj_mapping. Event parameters are not editable here."
+                        "to block.api_obj_mapping. Dynamic parameters are not editable here."
                     )
                 else:
                     result = self.tr(
@@ -3584,6 +4367,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
     # Symbolic UIDs are wider than Qt's 32-bit ``int`` signal type.
     blockApplied = Signal(object)
     structuralRebuildRequested = Signal(object)
+    variableRenameRequested = Signal(object)
     outputExportChangesRequested = Signal(object)
     closeRequested = Signal()
 
@@ -3614,11 +4398,13 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         "_new_symbol_kind",
         "_new_symbol_exported",
         "_new_state_derivative",
+        "_new_variable_options",
         "_new_parameter_value",
+        "_new_parameter_value_label",
         "_new_external_reference",
         "_new_external_reference_label",
         "_new_static_reference",
-        "_new_symbol_options_stack",
+        "_new_static_reference_label",
         "_add_symbol_button",
         "_namespace",
         "_tabs",
@@ -3639,15 +4425,14 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         "_latex_selection_tree",
         "_latex_select_all_button",
         "_latex_clear_button",
-        "_export_latex_source_button",
+        "_latex_source_preview",
         "_export_rendered_button",
-        "_documentation_browser",
-        "_documentation_source",
+        "_block_documentation_url",
+        "_block_info_button",
         "_dock_hosted",
         "_prepared_to_delete",
         "_status_label",
         "_apply_button",
-        "_close_button",
     )
 
     def __init__(self,
@@ -3657,7 +4442,17 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
                  parent: QtWidgets.QWidget | None = None,
                  structural_block_type: BlockType | None = None,
                  structural_builder: TemplateDefinition | None = None) -> None:
-        """Create the modal around a detached parameter and equation draft."""
+        """
+        Create the modal around a detached parameter and equation draft.
+
+        :param block: Symbolic block used by the operation.
+        :param block_type_name: Value supplied for ``block_type_name``.
+        :param var_factory: Factory that owns symbolic variables.
+        :param parent: Owning Qt widget.
+        :param structural_block_type: Value supplied for ``structural_block_type``.
+        :param structural_builder: Value supplied for ``structural_builder``.
+        :return: None.
+        """
         super().__init__(parent)
         # Keep the stable dialogue frame in the Qt Designer form, matching the
         # static TemplateDeviceEditor architecture. Block-dependent pages are
@@ -3724,9 +4519,13 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         self._new_state_derivative: QtWidgets.QCheckBox = QtWidgets.QCheckBox(
             self.tr("Create derivative variable"), self
         )
+        self._new_variable_options: QtWidgets.QWidget = QtWidgets.QWidget(self)
         self._new_parameter_value: QtWidgets.QDoubleSpinBox = QtWidgets.QDoubleSpinBox(self)
         self._new_parameter_value.setDecimals(12)
         self._new_parameter_value.setRange(-1.0e100, 1.0e100)
+        self._new_parameter_value_label: QtWidgets.QLabel = QtWidgets.QLabel(
+            self.tr("Initial numeric value"), self
+        )
         self._new_external_reference: QtWidgets.QComboBox = QtWidgets.QComboBox(self)
         self._new_external_reference.setEditable(True)
         self._new_external_reference.addItem(self.tr("None"), None)
@@ -3737,12 +4536,17 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
                 external_reference,
             )
         self._new_external_reference_label: QtWidgets.QLabel = QtWidgets.QLabel(
-            self.tr("External mapping (power-flow initialization)"), self
+            self.tr("Power-flow variable"), self
+        )
+        self._new_external_reference_label.setToolTip(
+            self.tr("Power-flow variable used to initialize this dynamic variable.")
         )
         self._new_static_reference: QtWidgets.QComboBox = QtWidgets.QComboBox(self)
         self._new_static_reference.setEditable(True)
-        self._new_symbol_options_stack: QtWidgets.QStackedWidget = QtWidgets.QStackedWidget(self)
-        self._add_symbol_button: QtWidgets.QPushButton = QtWidgets.QPushButton(self.tr("Add"), self)
+        self._new_static_reference_label: QtWidgets.QLabel = QtWidgets.QLabel(
+            self.tr("Static device mapping"), self
+        )
+        self._add_symbol_button: QtWidgets.QPushButton = QtWidgets.QPushButton(self.tr("Add symbol"), self)
         self._namespace: Dict[str, Expr] = build_block_symbol_namespace(block)
         self._runtime_logic_editor: RuntimeLogicEditorWidget = RuntimeLogicEditorWidget(
             block,
@@ -3758,7 +4562,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         self._equation_owner_combo: QtWidgets.QComboBox = QtWidgets.QComboBox(self)
         self._active_equation_buffer_index: int = self._find_initial_equation_buffer_index()
         self._loading_equation_buffer: bool = False
-        self._dae_editor: DaeCodeEditor = DaeCodeEditor(self)
+        self._dae_editor: DaeCodeEditor = DaeCodeEditor(self, self._namespace)
         self._dae_code_search: QtWidgets.QLineEdit = QtWidgets.QLineEdit(self)
         self._dae_code_search.setClearButtonEnabled(True)
         self._dae_code_search.setPlaceholderText(self.tr("Search Python code..."))
@@ -3785,7 +4589,6 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         initial_draft: BlockEquationDraft = BlockEquationDraft(
             initial_equation_block.state_eqs,
             initial_equation_block.algebraic_eqs,
-            initial_equation_block.differential_eqs,
             initial_equation_block.init_eqs,
             initial_equation_block.diff_init_eqs,
         )
@@ -3793,19 +4596,28 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         self._latex_selection_tree: QtWidgets.QTreeWidget = QtWidgets.QTreeWidget(self)
         self._latex_select_all_button: QtWidgets.QPushButton = QtWidgets.QPushButton(self.tr("Select all"), self)
         self._latex_clear_button: QtWidgets.QPushButton = QtWidgets.QPushButton(self.tr("Clear"), self)
-        self._export_latex_source_button: QtWidgets.QPushButton = QtWidgets.QPushButton(
-            self.tr("Download LaTeX source PDF"), self
+        self._latex_source_preview: QtWidgets.QPlainTextEdit = QtWidgets.QPlainTextEdit(self)
+        self._latex_source_preview.setReadOnly(True)
+        self._latex_source_preview.setLineWrapMode(QtWidgets.QPlainTextEdit.LineWrapMode.NoWrap)
+        self._latex_source_preview.setFont(self._dae_editor.font())
+        self._latex_source_preview.setPlaceholderText(
+            self.tr("Select equation groups to generate copyable LaTeX source.")
         )
         self._export_rendered_button: QtWidgets.QPushButton = QtWidgets.QPushButton(
             self.tr("Download rendered PDF"), self
         )
-        self._documentation_browser: QtWidgets.QTextBrowser = QtWidgets.QTextBrowser(self)
-        self._documentation_source: str = ""
+        self._block_documentation_url: str | None = resolve_block_documentation_url(
+            block_type_name,
+            block.name,
+        )
+        self._block_info_button: QtWidgets.QPushButton = QtWidgets.QPushButton(
+            self.tr("Block info"),
+            self,
+        )
         self._dock_hosted: bool = False
         self._prepared_to_delete: bool = False
         self._status_label: QtWidgets.QLabel = self.ui.status_label
         self._apply_button: QtWidgets.QPushButton = self.ui.apply_button
-        self._close_button: QtWidgets.QPushButton = self.ui.close_button
         self._build_ui()
         self._connect_signals()
         self._clear_dae_validation_feedback()
@@ -3832,7 +4644,6 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
             self._parameter_symbol_proxy.setSourceModel(None)
             self._dae_highlighter.setDocument(None)
             self._latex_selection_tree.clear()
-            self._documentation_browser.clear()
             self._equation_owner_combo.clear()
 
     def closeEvent(self, event: QtGui.QCloseEvent) -> None:
@@ -3845,7 +4656,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         QtWidgets.QDialog.closeEvent(self, event)
 
     def set_dock_hosted(self, dock_hosted: bool) -> None:
-        """Select whether the native Close button delegates to a dock host.
+        """Select whether close requests must be delegated to a dock host.
 
         :param dock_hosted: Whether a :class:`QDockWidget` owns this content.
         :return: None.
@@ -3864,7 +4675,11 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
             self.close()
 
     def _find_initial_equation_buffer_index(self) -> int:
-        """Prefer the first recursive block that contains editable equations."""
+        """
+        Prefer the first recursive block that contains editable equations.
+
+        :return: Index of the first recursive block containing editable equations.
+        """
         result: int = 0
         index: int
         buffer: BlockCodeBuffer
@@ -3874,7 +4689,6 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
             has_supported_content: bool = bool(
                 candidate.state_eqs
                 or candidate.algebraic_eqs
-                or candidate.differential_eqs
                 or candidate.init_eqs
                 or candidate.diff_init_eqs
             )
@@ -3886,22 +4700,23 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         return result
 
     def _build_ui(self) -> None:
-        """Populate the Designer-owned frame with block-dependent pages."""
+        """
+        Populate the Designer-owned frame with block-dependent pages.
+
+        :return: None.
+        """
         self.setWindowTitle(self.tr("Block properties - {name}").format(name=self._block.name))
         self.setModal(True)
 
         general_page: QtWidgets.QWidget = self._build_general_page()
         dae_page: QtWidgets.QWidget = self._build_dae_page()
         runtime_page: QtWidgets.QWidget = self._runtime_logic_editor
-        info_page: QtWidgets.QWidget = self._build_info_page()
         general_index: int = self._tabs.addTab(general_page, self.tr("General options"))
         dae_index: int = self._tabs.addTab(dae_page, self.tr("DAE model"))
         runtime_index: int = self._tabs.addTab(runtime_page, self.tr("Runtime logic"))
-        info_index: int = self._tabs.addTab(info_page, self.tr("Block info"))
         self._tabs.setTabIcon(general_index, QtGui.QIcon(":/Icons/icons/gear.png"))
         self._tabs.setTabIcon(dae_index, QtGui.QIcon(":/Icons/icons/edit.png"))
         self._tabs.setTabIcon(runtime_index, QtGui.QIcon())
-        self._tabs.setTabIcon(info_index, QtGui.QIcon(":/Icons/icons/message.png"))
         if self._special_structural_model.rowCount() > 0:
             special_page: QtWidgets.QWidget = self._build_special_settings_page()
             special_index: int = self._tabs.addTab(special_page, self.tr("Special settings"))
@@ -3910,7 +4725,11 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
             pass
 
     def _build_general_page(self) -> QtWidgets.QWidget:
-        """Build block identity, configuration, and numeric parameter controls."""
+        """
+        Build block identity, configuration, and numeric parameter controls.
+
+        :return: Page containing block identity, configuration, and numeric parameter controls.
+        """
         page: QtWidgets.QWidget = QtWidgets.QWidget(self)
         layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(page)
         identity_group: QtWidgets.QGroupBox = QtWidgets.QGroupBox(self.tr("Block configuration"), page)
@@ -3923,6 +4742,37 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
             self.tr("Advanced runtime logic"),
             QtWidgets.QLabel(build_advanced_logic_summary(self._block), identity_group),
         )
+        # Online documentation describes the immutable library definition. It
+        # remains useful for edited instances, but the tooltip must make clear
+        # that local equations and symbols can intentionally differ from it.
+        self._block_info_button.setIcon(QtGui.QIcon(":/Icons/icons/message.png"))
+        if self._block_documentation_url is None:
+            self._block_info_button.setEnabled(False)
+            documentation_tooltip: str = self.tr(
+                "No online catalogue documentation is available for this custom block."
+            )
+        else:
+            self._block_info_button.setEnabled(True)
+            documentation_tooltip = self.tr(
+                "Opens the documentation for the original predefined library block. "
+                "If this block has been modified in the editor, its current equations, symbols, "
+                "parameters, or runtime logic may differ from the online documentation."
+            )
+        self._block_info_button.setToolTip(documentation_tooltip)
+        self._block_info_button.setWhatsThis(documentation_tooltip)
+        # QFormLayout otherwise expands the field widget across the complete
+        # row and centres the button contents. Keep this action compact and
+        # anchored directly beside its descriptive label.
+        self._block_info_button.setSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Fixed,
+            QtWidgets.QSizePolicy.Policy.Fixed,
+        )
+        self._block_info_button.setFixedWidth(self._block_info_button.sizeHint().width())
+        documentation_button_layout: QtWidgets.QHBoxLayout = QtWidgets.QHBoxLayout()
+        documentation_button_layout.setContentsMargins(0, 0, 0, 0)
+        documentation_button_layout.addWidget(self._block_info_button)
+        documentation_button_layout.addStretch(1)
+        identity_layout.addRow(self.tr("Online documentation"), documentation_button_layout)
         layout.addWidget(identity_group)
 
         if self._general_structural_model.rowCount() > 0:
@@ -3936,7 +4786,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
             structure_table.setItemDelegateForColumn(1, StructuralSettingDelegate(structure_table))
             structure_table.setAlternatingRowColors(True)
             structure_header: QtWidgets.QHeaderView = structure_table.horizontalHeader()
-            configure_interactive_table_header(structure_header, list([300, 620]))
+            configure_interactive_table_header(structure_header, list((300, 620,)))
             structure_layout.addWidget(structure_table)
             layout.addWidget(structure_group)
         else:
@@ -3948,7 +4798,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         self._general_parameter_table.setParent(parameters_group)
         self._general_parameter_table.setModel(self._general_parameter_proxy)
         parameter_header: QtWidgets.QHeaderView = self._general_parameter_table.horizontalHeader()
-        configure_interactive_table_header(parameter_header, list([270, 520, 180]))
+        configure_interactive_table_header(parameter_header, list((270, 520, 180,)))
         self._general_parameter_table.setAlternatingRowColors(True)
         self._general_parameter_table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows)
         parameters_layout.addWidget(self._general_parameter_table)
@@ -3956,7 +4806,11 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         return page
 
     def _build_special_settings_page(self) -> QtWidgets.QWidget:
-        """Build complex lookup and model-specific builder settings."""
+        """
+        Build complex lookup and model-specific builder settings.
+
+        :return: Page containing complex lookup and model-specific builder settings.
+        """
         page: QtWidgets.QWidget = QtWidgets.QWidget(self)
         layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(page)
         description: QtWidgets.QLabel = QtWidgets.QLabel(
@@ -3973,12 +4827,16 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         settings_table.setItemDelegateForColumn(1, StructuralSettingDelegate(settings_table))
         settings_table.setAlternatingRowColors(True)
         settings_header: QtWidgets.QHeaderView = settings_table.horizontalHeader()
-        configure_interactive_table_header(settings_header, list([320, 760]))
+        configure_interactive_table_header(settings_header, list((320, 760,)))
         layout.addWidget(settings_table, 1)
         return page
 
     def _build_dae_page(self) -> QtWidgets.QWidget:
-        """Build the resizable symbol browser and Python/LaTeX tools."""
+        """
+        Build the resizable symbol browser and Python/LaTeX tools.
+
+        :return: Page containing the resizable symbol browser and Python/LaTeX tools.
+        """
         page: QtWidgets.QWidget = QtWidgets.QWidget(self)
         layout: QtWidgets.QHBoxLayout = QtWidgets.QHBoxLayout(page)
         symbol_panel: QtWidgets.QWidget = self._build_symbol_panel(page)
@@ -4026,54 +4884,90 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         self._dae_splitter.setStretchFactor(1, 2)
         self._dae_splitter.setCollapsible(0, False)
         self._dae_splitter.setCollapsible(1, False)
-        self._dae_splitter.setSizes(list([480, 960]))
+        self._dae_splitter.setSizes(list((480, 960,)))
         layout.addWidget(self._dae_splitter, 1)
         return page
 
     def _build_latex_export_page(self, parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
-        """Build equation selection and the two PDF export actions.
+        """Build equation selection, copyable source, and rendered PDF export.
 
         :param parent: Parent equation-tab widget.
         :return: Configured LaTeX export page.
         """
         page: QtWidgets.QWidget = QtWidgets.QWidget(parent)
         layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(page)
+
+        # The equation selection and generated source have independent useful
+        # heights. A vertical splitter lets the user allocate the available
+        # space according to whether they are selecting or copying equations.
+        latex_splitter: QtWidgets.QSplitter = QtWidgets.QSplitter(
+            Qt.Orientation.Vertical,
+            page,
+        )
+        latex_splitter.setChildrenCollapsible(False)
+        latex_splitter.setHandleWidth(6)
+
+        selection_panel: QtWidgets.QWidget = QtWidgets.QWidget(latex_splitter)
+        selection_panel_layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(selection_panel)
+        selection_panel_layout.setContentsMargins(0, 0, 0, 0)
         explanation: QtWidgets.QLabel = QtWidgets.QLabel(
             self.tr(
                 "Select the equation groups to include. Each internal block and each DAE section "
                 "can be selected independently."
             ),
-            page,
+            selection_panel,
         )
         explanation.setWordWrap(True)
-        layout.addWidget(explanation)
+        selection_panel_layout.addWidget(explanation)
 
         self._latex_selection_tree.setColumnCount(2)
-        self._latex_selection_tree.setHeaderLabels(list([self.tr("Block / equation group"), self.tr("Equations")]))
+        self._latex_selection_tree.setHeaderLabels(list((self.tr("Block / equation group"), self.tr("Equations"),)))
         self._latex_selection_tree.setAlternatingRowColors(True)
         configure_interactive_table_header(
             self._latex_selection_tree.header(),
-            list([640, 170]),
+            list((640, 170,)),
         )
-        layout.addWidget(self._latex_selection_tree, 1)
+        selection_panel_layout.addWidget(self._latex_selection_tree, 1)
         self._rebuild_latex_selection_tree()
 
-        selection_layout: QtWidgets.QHBoxLayout = QtWidgets.QHBoxLayout()
-        selection_layout.addWidget(self._latex_select_all_button)
-        selection_layout.addWidget(self._latex_clear_button)
-        selection_layout.addStretch(1)
-        layout.addLayout(selection_layout)
+        selection_button_layout: QtWidgets.QHBoxLayout = QtWidgets.QHBoxLayout()
+        selection_button_layout.addWidget(self._latex_select_all_button)
+        selection_button_layout.addWidget(self._latex_clear_button)
+        selection_button_layout.addStretch(1)
+        selection_panel_layout.addLayout(selection_button_layout)
+
+        source_panel: QtWidgets.QWidget = QtWidgets.QWidget(latex_splitter)
+        source_panel_layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(source_panel)
+        source_panel_layout.setContentsMargins(0, 0, 0, 0)
+
+        source_label: QtWidgets.QLabel = QtWidgets.QLabel(
+            self.tr("LaTeX source"),
+            source_panel,
+        )
+        source_panel_layout.addWidget(source_label)
+        source_panel_layout.addWidget(self._latex_source_preview, 1)
 
         export_layout: QtWidgets.QHBoxLayout = QtWidgets.QHBoxLayout()
-        self._export_latex_source_button.setIcon(QtGui.QIcon(":/Icons/icons/download.png"))
         self._export_rendered_button.setIcon(QtGui.QIcon(":/Icons/icons/download.png"))
-        export_layout.addWidget(self._export_latex_source_button)
+        export_layout.addStretch(1)
         export_layout.addWidget(self._export_rendered_button)
-        layout.addLayout(export_layout)
+        source_panel_layout.addLayout(export_layout)
+
+        latex_splitter.addWidget(selection_panel)
+        latex_splitter.addWidget(source_panel)
+        latex_splitter.setStretchFactor(0, 2)
+        latex_splitter.setStretchFactor(1, 1)
+        latex_splitter.setSizes(list((420, 230,)))
+        layout.addWidget(latex_splitter, 1)
         return page
 
     def _build_symbol_panel(self, parent: QtWidgets.QWidget) -> QtWidgets.QWidget:
-        """Build the editable recursive variable and parameter table."""
+        """
+        Build the editable recursive variable and parameter table.
+
+        :param parent: Owning Qt widget.
+        :return: Panel containing the editable recursive variable and parameter table.
+        """
         panel: QtWidgets.QWidget = QtWidgets.QWidget(parent)
         # A compact minimum lets the splitter genuinely trade space between
         # symbols and source code. Horizontal scrolling remains available only
@@ -4097,7 +4991,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         symbol_header: QtWidgets.QHeaderView = self._symbol_table.horizontalHeader()
         configure_interactive_table_header(
             symbol_header,
-            list([65, 55, 80, 50, 110]),
+            list((65, 55, 80, 50, 110,)),
         )
         variable_layout.addWidget(self._symbol_table, 1)
         symbol_tabs.addTab(variable_page, self.tr("Variables"))
@@ -4131,7 +5025,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         parameter_symbol_header: QtWidgets.QHeaderView = self._parameter_symbol_table.horizontalHeader()
         configure_interactive_table_header(
             parameter_symbol_header,
-            list([65, 55, 80, 50, 110]),
+            list((65, 55, 80, 50, 110,)),
         )
         parameter_layout.addWidget(self._parameter_symbol_table, 1)
         symbol_tabs.addTab(parameter_page, self.tr("Parameters"))
@@ -4145,47 +5039,82 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         for block_index, child_block in enumerate(self._block.get_all_blocks()):
             owner_label: str = f"{child_block.name} [{block_index + 1}]"
             self._new_symbol_owner.addItem(owner_label, child_block)
-        self._new_symbol_name.setPlaceholderText(self.tr("Symbol name"))
+        self._new_symbol_name.setPlaceholderText(self.tr("Enter a name"))
         self._new_symbol_category.addItem(BlockSymbolCategory.VARIABLES.value, BlockSymbolCategory.VARIABLES)
         self._new_symbol_category.addItem(BlockSymbolCategory.PARAMETERS.value, BlockSymbolCategory.PARAMETERS)
 
-        variable_options: QtWidgets.QWidget = QtWidgets.QWidget(self._new_symbol_options_stack)
-        variable_options_layout: QtWidgets.QHBoxLayout = QtWidgets.QHBoxLayout(variable_options)
+        variable_options_layout: QtWidgets.QHBoxLayout = QtWidgets.QHBoxLayout(
+            self._new_variable_options
+        )
         variable_options_layout.setContentsMargins(0, 0, 0, 0)
         variable_options_layout.addWidget(self._new_symbol_exported)
         variable_options_layout.addWidget(self._new_state_derivative)
         variable_options_layout.addStretch(1)
-        self._new_symbol_options_stack.addWidget(variable_options)
-
-        event_options: QtWidgets.QWidget = QtWidgets.QWidget(self._new_symbol_options_stack)
-        event_options_layout: QtWidgets.QFormLayout = QtWidgets.QFormLayout(event_options)
-        event_options_layout.setContentsMargins(0, 0, 0, 0)
-        event_options_layout.addRow(self.tr("Initial numeric value"), self._new_parameter_value)
-        self._new_symbol_options_stack.addWidget(event_options)
-
-        static_options: QtWidgets.QWidget = QtWidgets.QWidget(self._new_symbol_options_stack)
-        static_options_layout: QtWidgets.QFormLayout = QtWidgets.QFormLayout(static_options)
-        static_options_layout.setContentsMargins(0, 0, 0, 0)
         parameter_reference: ParamPowerFlowReferenceType
         for parameter_reference in ParamPowerFlowReferenceType:
             self._new_static_reference.addItem(
                 f"ParamPowerFlowReferenceType.{parameter_reference.name}",
                 parameter_reference,
             )
-        static_options_layout.addRow(self.tr("Static device mapping"), self._new_static_reference)
-        self._new_symbol_options_stack.addWidget(static_options)
+
+        # Every field is placed in the same grid column. Keeping the optional
+        # controls out of nested form layouts prevents their label widths from
+        # moving or resizing all combo boxes when the symbol category changes.
+        field_widgets: tuple[QtWidgets.QWidget, ...] = (
+            self._new_symbol_owner,
+            self._new_symbol_name,
+            self._new_symbol_category,
+            self._new_symbol_kind,
+            self._new_parameter_value,
+            self._new_static_reference,
+            self._new_external_reference,
+        )
+        field_widget: QtWidgets.QWidget
+        for field_widget in field_widgets:
+            field_widget.setSizePolicy(
+                QtWidgets.QSizePolicy.Policy.Expanding,
+                QtWidgets.QSizePolicy.Policy.Fixed,
+            )
+
+        label_widgets: tuple[QtWidgets.QLabel, ...] = (
+            self._new_parameter_value_label,
+            self._new_static_reference_label,
+            self._new_external_reference_label,
+        )
+        shared_label_width: int = 0
+        label_widget: QtWidgets.QLabel
+        for label_widget in label_widgets:
+            shared_label_width = max(shared_label_width, label_widget.sizeHint().width())
+        add_layout.setColumnMinimumWidth(0, shared_label_width)
+        add_layout.setColumnStretch(1, 1)
 
         add_layout.addWidget(QtWidgets.QLabel(self.tr("Owner block"), add_group), 0, 0)
         add_layout.addWidget(self._new_symbol_owner, 0, 1)
-        add_layout.addWidget(self._new_symbol_name, 1, 0, 1, 2)
+        add_layout.addWidget(QtWidgets.QLabel(self.tr("New symbol name"), add_group), 1, 0)
+        add_layout.addWidget(self._new_symbol_name, 1, 1)
         add_layout.addWidget(QtWidgets.QLabel(self.tr("Symbol category"), add_group), 2, 0)
         add_layout.addWidget(self._new_symbol_category, 2, 1)
         add_layout.addWidget(QtWidgets.QLabel(self.tr("Type"), add_group), 3, 0)
         add_layout.addWidget(self._new_symbol_kind, 3, 1)
-        add_layout.addWidget(self._new_symbol_options_stack, 4, 0, 1, 2)
+        add_layout.addWidget(self._new_variable_options, 4, 0, 1, 2)
+        add_layout.addWidget(self._new_parameter_value_label, 4, 0)
+        add_layout.addWidget(self._new_parameter_value, 4, 1)
+        add_layout.addWidget(self._new_static_reference_label, 4, 0)
+        add_layout.addWidget(self._new_static_reference, 4, 1)
         add_layout.addWidget(self._new_external_reference_label, 5, 0)
         add_layout.addWidget(self._new_external_reference, 5, 1)
-        add_layout.addWidget(self._add_symbol_button, 6, 0, 1, 2)
+        # Optional rows have different visibility by symbol kind. A dedicated
+        # expanding row absorbs that height difference so the stable fields at
+        # the top never move when Variables and Parameters are exchanged.
+        form_spacer: QtWidgets.QSpacerItem = QtWidgets.QSpacerItem(
+            0,
+            0,
+            QtWidgets.QSizePolicy.Policy.Minimum,
+            QtWidgets.QSizePolicy.Policy.Expanding,
+        )
+        add_layout.addItem(form_spacer, 6, 0, 1, 2)
+        add_layout.setRowStretch(6, 1)
+        add_layout.addWidget(self._add_symbol_button, 7, 0, 1, 2)
         # The user can trade form height for table height. This is deliberately
         # a vertical splitter inside the horizontally resizable DAE page, so
         # both dimensions remain independently adjustable.
@@ -4195,42 +5124,20 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         self._symbol_panel_splitter.setStretchFactor(1, 0)
         self._symbol_panel_splitter.setCollapsible(0, False)
         self._symbol_panel_splitter.setCollapsible(1, False)
-        self._symbol_panel_splitter.setSizes(list([560, 190]))
+        self._symbol_panel_splitter.setSizes(list((560, 190,)))
         panel_layout.addWidget(self._symbol_panel_splitter, 1)
         self.update_new_symbol_category()
         self.update_new_symbol_controls()
         return panel
 
-    def _build_info_page(self) -> QtWidgets.QWidget:
-        """Build the Markdown documentation viewer."""
-        page: QtWidgets.QWidget = QtWidgets.QWidget(self)
-        layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(page)
-        documentation: str
-        documentation, self._documentation_source = resolve_block_documentation(
-            self._block_type_name,
-            self._block,
-        )
-        source_label: QtWidgets.QLabel = QtWidgets.QLabel(
-            self.tr("Documentation source: {source}").format(source=self._documentation_source),
-            page,
-        )
-        source_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
-        layout.addWidget(source_label)
-        self._documentation_browser.setOpenExternalLinks(True)
-        source_path: Path = Path(self._documentation_source)
-        if source_path.is_file():
-            documentation_base: QtCore.QUrl = QtCore.QUrl.fromLocalFile(str(source_path.parent) + "/")
-            self._documentation_browser.document().setBaseUrl(documentation_base)
-        else:
-            pass
-        set_markdown_with_latex(self._documentation_browser, documentation)
-        layout.addWidget(self._documentation_browser, 1)
-        return page
-
     def _connect_signals(self) -> None:
-        """Connect actions with explicit named slots."""
+        """
+        Connect actions with explicit named slots.
+
+        :return: None.
+        """
         self._apply_button.clicked.connect(self.apply_changes)
-        self._close_button.clicked.connect(self.request_close)
+        self._block_info_button.clicked.connect(self.open_block_documentation)
         self._validate_code_button.clicked.connect(self.validate_complete_dae_code)
         self._dae_editor.textChanged.connect(self.on_dae_code_changed)
         self._equation_owner_combo.currentIndexChanged.connect(self.on_equation_owner_changed)
@@ -4250,8 +5157,33 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         self._dae_search_next_button.clicked.connect(self.find_next_dae_code_match)
         self._latex_select_all_button.clicked.connect(self.select_all_latex_sections)
         self._latex_clear_button.clicked.connect(self.clear_latex_sections)
-        self._export_latex_source_button.clicked.connect(self.export_latex_source_pdf)
+        self._latex_selection_tree.itemChanged.connect(self.on_latex_selection_changed)
         self._export_rendered_button.clicked.connect(self.export_rendered_equations_pdf)
+
+    @QtCore.Slot()
+    def open_block_documentation(self) -> None:
+        """Open the original library block documentation in the system browser.
+
+        :return: None.
+        """
+        if self._block_documentation_url is None:
+            # This branch also protects programmatic calls made while the
+            # corresponding UI button is disabled for a custom block.
+            self._status_label.setStyleSheet("color: #b42318;")
+            self._status_label.setText(
+                self.tr("No online catalogue documentation is available for this custom block.")
+            )
+        else:
+            documentation_url: QtCore.QUrl = QtCore.QUrl(self._block_documentation_url)
+            opened: bool = QtGui.QDesktopServices.openUrl(documentation_url)
+            if opened:
+                self._status_label.clear()
+                self._status_label.setStyleSheet("")
+            else:
+                self._status_label.setStyleSheet("color: #b42318;")
+                self._status_label.setText(
+                    self.tr("The online block documentation could not be opened in the system browser.")
+                )
 
     @QtCore.Slot(str)
     def filter_general_parameters(self, search_text: str) -> None:
@@ -4347,7 +5279,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         if section == EquationExportSection.STATE:
             result: int = len(draft.get_state_eqs())
         elif section == EquationExportSection.ALGEBRAIC:
-            result = len(draft.get_algebraic_eqs()) + len(draft.get_differential_eqs())
+            result = len(draft.get_algebraic_eqs())
         elif section == EquationExportSection.INITIALIZATION:
             result = len(draft.get_init_eqs())
         else:
@@ -4355,7 +5287,11 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         return result
 
     def _rebuild_latex_selection_tree(self) -> None:
-        """Rebuild block/section choices while retaining checked selections."""
+        """
+        Rebuild block/section choices while retaining checked selections.
+
+        :return: None.
+        """
         selected_keys: set[tuple[int, str]] = set()
         root_index: int
         for root_index in range(self._latex_selection_tree.topLevelItemCount()):
@@ -4373,13 +5309,17 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
                 else:
                     pass
 
+        # Rebuilding creates and checks several items. Suppress intermediate
+        # change notifications so the source view is regenerated once from the
+        # complete selection tree rather than from partially constructed state.
+        previous_signal_state: bool = self._latex_selection_tree.blockSignals(True)
         self._latex_selection_tree.clear()
         buffer_index: int
         buffer: BlockCodeBuffer
         for buffer_index, buffer in enumerate(self._equation_buffers):
             owner_block: Block = buffer.get_block()
             root_item: QtWidgets.QTreeWidgetItem = QtWidgets.QTreeWidgetItem(
-                list([owner_block.name, ""])
+                list((owner_block.name, "",))
             )
             root_item.setFlags(
                 root_item.flags()
@@ -4391,13 +5331,13 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
             try:
                 draft: BlockEquationDraft = parse_equation_code(buffer.get_code(), self._namespace)
             except (TypeError, ValueError):
-                draft = BlockEquationDraft(list(), list(), list(), dict(), dict())
+                draft = BlockEquationDraft(list(), list(), dict(), dict())
 
             section: EquationExportSection
             for section in EquationExportSection:
                 section_count: int = self._get_latex_section_count(draft, section)
                 section_item: QtWidgets.QTreeWidgetItem = QtWidgets.QTreeWidgetItem(
-                    list([section.value, str(section_count)])
+                    list((section.value, str(section_count),))
                 )
                 section_item.setData(0, Qt.ItemDataRole.UserRole, buffer_index)
                 section_item.setData(0, Qt.ItemDataRole.UserRole + 1, section.value)
@@ -4411,10 +5351,49 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
                     section_item.setFlags(section_item.flags() & ~Qt.ItemFlag.ItemIsEnabled)
                 root_item.addChild(section_item)
             root_item.setExpanded(True)
+        self._latex_selection_tree.blockSignals(previous_signal_state)
+        self.refresh_latex_source_preview()
+
+    @QtCore.Slot(QtWidgets.QTreeWidgetItem, int)
+    def on_latex_selection_changed(self,
+                                   changed_item: QtWidgets.QTreeWidgetItem,
+                                   changed_column: int) -> None:
+        """Regenerate copyable source after one equation-group selection changes.
+
+        :param changed_item: Tree item whose checked state changed.
+        :param changed_column: Tree column that emitted the change.
+        :return: None.
+        """
+        _unused_changed_item: QtWidgets.QTreeWidgetItem = changed_item
+        _unused_changed_column: int = changed_column
+        self.refresh_latex_source_preview()
+
+    def refresh_latex_source_preview(self) -> None:
+        """Show copy-ready LaTeX for all currently selected valid equations.
+
+        Invalid DAE drafts leave the source view empty. The normal validation
+        action remains responsible for displaying diagnostics, so merely
+        changing a selection never introduces unrelated red error feedback.
+
+        :return: None.
+        """
+        try:
+            drafts: List[BlockEquationDraft] = self._parse_all_equation_buffers_for_export()
+            entries: List[EquationExportEntry] = self._build_selected_equation_entries(drafts)
+        except (TypeError, ValueError):
+            latex_source: str = ""
+        else:
+            latex_source = build_latex_source(entries)
+        self._latex_source_preview.setPlainText(latex_source)
 
     @QtCore.Slot()
     def select_all_latex_sections(self) -> None:
-        """Select every non-empty block equation section for PDF export."""
+        """
+        Select every non-empty block equation section for PDF export.
+
+        :return: None.
+        """
+        previous_signal_state: bool = self._latex_selection_tree.blockSignals(True)
         root_index: int
         for root_index in range(self._latex_selection_tree.topLevelItemCount()):
             root_item: QtWidgets.QTreeWidgetItem = self._latex_selection_tree.topLevelItem(root_index)
@@ -4425,10 +5404,17 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
                     child_item.setCheckState(0, Qt.CheckState.Checked)
                 else:
                     pass
+        self._latex_selection_tree.blockSignals(previous_signal_state)
+        self.refresh_latex_source_preview()
 
     @QtCore.Slot()
     def clear_latex_sections(self) -> None:
-        """Clear every equation-section PDF selection."""
+        """
+        Clear every equation-section PDF selection.
+
+        :return: None.
+        """
+        previous_signal_state: bool = self._latex_selection_tree.blockSignals(True)
         root_index: int
         for root_index in range(self._latex_selection_tree.topLevelItemCount()):
             root_item: QtWidgets.QTreeWidgetItem = self._latex_selection_tree.topLevelItem(root_index)
@@ -4439,6 +5425,8 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
                     child_item.setCheckState(0, Qt.CheckState.Unchecked)
                 else:
                     pass
+        self._latex_selection_tree.blockSignals(previous_signal_state)
+        self.refresh_latex_source_preview()
 
     def _parse_all_equation_buffers_for_export(self) -> List[BlockEquationDraft]:
         """Parse every equation buffer before creating a PDF.
@@ -4509,7 +5497,6 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
             )
         elif section == EquationExportSection.ALGEBRAIC:
             residual_expressions: List[Expr] = list(draft.get_algebraic_eqs())
-            residual_expressions.extend(draft.get_differential_eqs())
             result = build_list_equation_entries(
                 owner_block.name,
                 section,
@@ -4529,10 +5516,10 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
             )
         return result
 
-    def _export_equation_pdf(self, style: EquationPdfStyle) -> None:
-        """Validate selected equations, request a destination, and create one PDF.
+    @QtCore.Slot()
+    def export_rendered_equations_pdf(self) -> None:
+        """Validate selected equations and export rendered mathematical notation.
 
-        :param style: Source-code or rendered-equation PDF presentation.
         :return: None.
         """
         try:
@@ -4548,12 +5535,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         else:
             pass
 
-        # Source and rendered exports deliberately use different defaults so
-        # accepting the file dialogue cannot overwrite the other PDF silently.
-        suggested_name: str = build_equation_pdf_suggested_name(
-            self._block.name,
-            style,
-        )
+        suggested_name: str = build_equation_pdf_suggested_name(self._block.name)
         selected_path: str
         selected_filter: str
         selected_path, selected_filter = QtWidgets.QFileDialog.getSaveFileName(
@@ -4575,7 +5557,6 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
                 file_path=selected_path,
                 root_block_name=self._block.name,
                 entries=entries,
-                style=style,
             )
         except (OSError, RuntimeError, TypeError, ValueError) as error:
             self._show_validation_error(
@@ -4587,22 +5568,19 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
                 self.tr("Equation PDF created: {path}").format(path=selected_path)
             )
 
-    @QtCore.Slot()
-    def export_latex_source_pdf(self) -> None:
-        """Export selected equations as readable LaTeX source inside a PDF."""
-        self._export_equation_pdf(EquationPdfStyle.LATEX_SOURCE)
-
-    @QtCore.Slot()
-    def export_rendered_equations_pdf(self) -> None:
-        """Export selected equations as rendered mathematical notation inside a PDF."""
-        self._export_equation_pdf(EquationPdfStyle.RENDERED)
-
     @QtCore.Slot(QtCore.QModelIndex, QtCore.QModelIndex, list)
     def on_symbol_draft_changed(self,
                                 top_left: QtCore.QModelIndex,
                                 bottom_right: QtCore.QModelIndex,
                                 roles: List[int]) -> None:
-        """Rebuild validation names after an editable symbol cell changes."""
+        """
+        Rebuild validation names after an editable symbol cell changes.
+
+        :param top_left: Value supplied for ``top_left``.
+        :param bottom_right: Value supplied for ``bottom_right``.
+        :param roles: Value supplied for ``roles``.
+        :return: None.
+        """
         _unused_top_left: QtCore.QModelIndex = top_left
         _unused_bottom_right: QtCore.QModelIndex = bottom_right
         _unused_roles: List[int] = roles
@@ -4666,13 +5644,27 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
                 BlockSymbolKind.PARAMETER,
             ):
                 self._new_symbol_kind.addItem(parameter_kind.value, parameter_kind)
+                if parameter_kind == BlockSymbolKind.EVENT_PARAMETER:
+                    dynamic_parameter_index: int = self._new_symbol_kind.count() - 1
+                    self._new_symbol_kind.setItemData(
+                        dynamic_parameter_index,
+                        self.tr("Parameter whose value may change during the simulation."),
+                        Qt.ItemDataRole.ToolTipRole,
+                    )
+                else:
+                    pass
         else:
             pass
         self.update_new_symbol_controls()
 
     @QtCore.Slot(int)
     def update_new_symbol_controls(self, unused_index: int = 0) -> None:
-        """Show only options that apply to the selected symbol type."""
+        """
+        Show only options that apply to the selected symbol type.
+
+        :param unused_index: Value supplied for ``unused_index``.
+        :return: None.
+        """
         _unused_index: int = unused_index
         selected_data: object = self._new_symbol_kind.currentData()
         if isinstance(selected_data, BlockSymbolKind):
@@ -4697,16 +5689,18 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
             self._new_state_derivative.setVisible(selected_data == BlockSymbolKind.STATE)
             self._new_external_reference_label.setVisible(supports_external_reference)
             self._new_external_reference.setVisible(supports_external_reference)
-            if selected_data in (
+            shows_variable_options: bool = selected_data in (
                 BlockSymbolKind.INPUT,
                 BlockSymbolKind.STATE,
                 BlockSymbolKind.ALGEBRAIC,
-            ):
-                self._new_symbol_options_stack.setCurrentIndex(0)
-            elif selected_data == BlockSymbolKind.EVENT_PARAMETER:
-                self._new_symbol_options_stack.setCurrentIndex(1)
-            else:
-                self._new_symbol_options_stack.setCurrentIndex(2)
+            )
+            shows_initial_value: bool = selected_data == BlockSymbolKind.EVENT_PARAMETER
+            shows_static_mapping: bool = selected_data == BlockSymbolKind.PARAMETER
+            self._new_variable_options.setVisible(shows_variable_options)
+            self._new_parameter_value_label.setVisible(shows_initial_value)
+            self._new_parameter_value.setVisible(shows_initial_value)
+            self._new_static_reference_label.setVisible(shows_static_mapping)
+            self._new_static_reference.setVisible(shows_static_mapping)
             if not supports_export:
                 self._new_symbol_exported.setChecked(False)
             else:
@@ -4717,10 +5711,21 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
                 pass
         else:
             self._new_symbol_exported.setEnabled(False)
+            self._new_variable_options.setVisible(False)
+            self._new_parameter_value_label.setVisible(False)
+            self._new_parameter_value.setVisible(False)
+            self._new_static_reference_label.setVisible(False)
+            self._new_static_reference.setVisible(False)
+            self._new_external_reference_label.setVisible(False)
+            self._new_external_reference.setVisible(False)
 
     @QtCore.Slot()
     def add_staged_symbol(self) -> None:
-        """Add one validated detached symbol row to the selected block."""
+        """
+        Add one validated detached symbol row to the selected block.
+
+        :return: None.
+        """
         name: str = self._new_symbol_name.text().strip()
         selected_data: object = self._new_symbol_kind.currentData()
         selected_owner: object = self._new_symbol_owner.currentData()
@@ -4752,8 +5757,66 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
                 self._show_validation_error(str(error))
             else:
                 self._new_symbol_name.clear()
+                self._synchronize_dae_variable_declarations_for_block(selected_owner)
                 self._dae_highlighter.set_symbol_names(tuple(self._namespace.keys()))
                 self._clear_dae_validation_feedback()
+
+    def _synchronize_dae_variable_declarations_for_block(self, owner: Block) -> None:
+        """Project one owner's staged variable order into its DAE buffer.
+
+        :param owner: Block whose Variables-table rows changed.
+        :return: None.
+        """
+        state_names: List[str] = self._symbol_model.get_role_names(
+            owner,
+            BlockSymbolKind.STATE,
+        )
+        algebraic_names: List[str] = self._symbol_model.get_role_names(
+            owner,
+            BlockSymbolKind.ALGEBRAIC,
+        )
+        differential_names: List[str] = self._symbol_model.get_role_names(
+            owner,
+            BlockSymbolKind.DIFFERENTIAL,
+        )
+        buffer_index: int
+        equation_buffer: BlockCodeBuffer
+        for buffer_index, equation_buffer in enumerate(self._equation_buffers):
+            if equation_buffer.get_block() is owner:
+                previous_code: str = equation_buffer.get_code()
+                updated_code: str = synchronize_dae_variable_declarations(
+                    code=previous_code,
+                    state_names=state_names,
+                    algebraic_names=algebraic_names,
+                    differential_names=differential_names,
+                )
+                if updated_code != previous_code:
+                    equation_buffer.set_code(updated_code)
+                    if buffer_index == self._active_equation_buffer_index:
+                        previous_cursor: QtGui.QTextCursor = self._dae_editor.textCursor()
+                        previous_length: int = len(previous_code)
+                        position_from_end: int = previous_length - previous_cursor.position()
+                        anchor_from_end: int = previous_length - previous_cursor.anchor()
+                        updated_length: int = len(updated_code)
+                        updated_position: int = max(0, updated_length - position_from_end)
+                        updated_anchor: int = max(0, updated_length - anchor_from_end)
+                        self._loading_equation_buffer = True
+                        self._dae_editor.setPlainText(updated_code)
+                        self._loading_equation_buffer = False
+                        restored_cursor: QtGui.QTextCursor = self._dae_editor.textCursor()
+                        restored_cursor.setPosition(min(updated_anchor, updated_length))
+                        restored_cursor.setPosition(
+                            min(updated_position, updated_length),
+                            QtGui.QTextCursor.MoveMode.KeepAnchor,
+                        )
+                        self._dae_editor.setTextCursor(restored_cursor)
+                        self.update_dae_code_search(self._dae_code_search.text())
+                    else:
+                        pass
+                else:
+                    pass
+            else:
+                pass
 
     def _get_selected_new_external_reference(
             self,
@@ -4820,7 +5883,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
     def _show_symbol_context_menu(self,
                                   table: QtWidgets.QTableView,
                                   position: QtCore.QPoint) -> None:
-        """Select the clicked row and offer transactional deletion.
+        """Select the clicked row and offer valid symbol actions.
 
         :param table: Variable or parameter proxy table.
         :param position: Viewport-local click position.
@@ -4830,12 +5893,132 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         if clicked_index.isValid():
             table.selectRow(clicked_index.row())
             menu: QtWidgets.QMenu = QtWidgets.QMenu(table)
+            source_row: BlockSymbolDraftRow | None = self._get_selected_symbol_row(table)
+            rename_action: QtGui.QAction | None
+            if source_row is not None and not source_row.is_new():
+                rename_action = menu.addAction(self.tr("Rename..."))
+            else:
+                rename_action = None
             delete_action: QtGui.QAction = menu.addAction(self.tr("Delete"))
             selected_action: QtGui.QAction | None = menu.exec(table.viewport().mapToGlobal(position))
-            if selected_action is delete_action:
+            if rename_action is not None and selected_action is rename_action:
+                self._rename_selected_symbol(table)
+            elif selected_action is delete_action:
                 self._delete_selected_symbol(table)
             else:
                 pass
+        else:
+            pass
+
+    def _get_selected_symbol_row(self,
+                                 table: QtWidgets.QTableView) -> BlockSymbolDraftRow | None:
+        """Resolve the single selected proxy row to its symbol draft.
+
+        :param table: Variable or parameter table containing the selection.
+        :return: Selected source row, or ``None`` without one valid selection.
+        """
+        selection_model: QtCore.QItemSelectionModel | None = table.selectionModel()
+        if selection_model is None:
+            return None
+        else:
+            selected_rows: List[QtCore.QModelIndex] = selection_model.selectedRows()
+        if len(selected_rows) != 1:
+            return None
+        else:
+            pass
+        proxy_model: QtCore.QAbstractItemModel | None = table.model()
+        if isinstance(proxy_model, BlockSymbolFilterProxyModel):
+            source_index: QtCore.QModelIndex = proxy_model.mapToSource(selected_rows[0])
+            return self._symbol_model.get_row(source_index.row())
+        else:
+            return None
+
+    def _rename_selected_symbol(self, table: QtWidgets.QTableView) -> None:
+        """Request one complete editor-owned rename and refresh detached drafts.
+
+        :param table: Variable or parameter table containing the selected row.
+        :return: None.
+        """
+        selected_row: BlockSymbolDraftRow | None = self._get_selected_symbol_row(table)
+        if selected_row is None or selected_row.is_new():
+            return
+        else:
+            selected_variable: Var | None = selected_row.get_variable()
+        if selected_variable is None:
+            return
+        else:
+            pass
+
+        # Capture every row independently before the editor propagates the
+        # alias component. Connected variables can share one stable UID while
+        # still using different local names, so a UID-keyed dictionary would
+        # lose all but the last old name and leave stale identifiers in DAE
+        # source owned by the other connected blocks.
+        old_names_by_row: List[tuple[BlockSymbolDraftRow, str]] = list()
+        selected_old_name: str = selected_row.get_name()
+        row_index: int
+        for row_index in range(self._symbol_model.rowCount()):
+            draft_row: BlockSymbolDraftRow | None = self._symbol_model.get_row(row_index)
+            if draft_row is not None:
+                draft_variable: Var | None = draft_row.get_variable()
+            else:
+                draft_variable = None
+            if draft_variable is not None:
+                old_names_by_row.append((draft_row, draft_variable.name))
+            else:
+                pass
+
+        request: BlockVariableRenameRequest = BlockVariableRenameRequest(selected_variable)
+        self.variableRenameRequested.emit(request)
+        if request.is_successful():
+            rename_pairs: List[tuple[str, str]] = list()
+            selected_rename_pair: tuple[str, str] = (selected_old_name, request.get_new_name())
+            if selected_old_name != request.get_new_name():
+                rename_pairs.append(selected_rename_pair)
+            else:
+                pass
+
+            old_name: str
+            for draft_row, old_name in old_names_by_row:
+                draft_variable = draft_row.get_variable()
+                if draft_variable is not None:
+                    if old_name != draft_variable.name:
+                        rename_pair: tuple[str, str] = (old_name, draft_variable.name)
+                        if rename_pair not in rename_pairs:
+                            rename_pairs.append(rename_pair)
+                        else:
+                            pass
+                    else:
+                        pass
+                else:
+                    pass
+
+            equation_buffer: BlockCodeBuffer
+            for equation_buffer in self._equation_buffers:
+                updated_code: str = equation_buffer.get_code()
+                old_name: str
+                new_name: str
+                for old_name, new_name in rename_pairs:
+                    updated_code = replace_dae_identifier(updated_code, old_name, new_name)
+                equation_buffer.set_code(updated_code)
+
+            self._symbol_model.refresh_existing_names()
+            self._namespace = self._build_joint_validation_namespace()
+            active_buffer: BlockCodeBuffer = self._equation_buffers[self._active_equation_buffer_index]
+
+            # Load the renamed source before rehighlighting it. Rehighlighting
+            # can emit a document change; while the editor still showed the
+            # old source, that signal wrote the stale text back over the newly
+            # updated active buffer.
+            self._loading_equation_buffer = True
+            self._dae_editor.setPlainText(active_buffer.get_code())
+            self._dae_highlighter.set_symbol_names(tuple(self._namespace.keys()))
+            self._loading_equation_buffer = False
+            self._clear_dae_validation_feedback()
+            self._status_label.setStyleSheet("color: #16825d;")
+            self._status_label.setText(
+                self.tr("Variable renamed to '{name}'.").format(name=request.get_new_name())
+            )
         else:
             pass
 
@@ -4855,12 +6038,22 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         else:
             pass
         proxy_model: QtCore.QAbstractItemModel | None = table.model()
+        removed_owner: Block | None = None
         if isinstance(proxy_model, BlockSymbolFilterProxyModel):
             source_index: QtCore.QModelIndex = proxy_model.mapToSource(selected_rows[0])
+            selected_row: BlockSymbolDraftRow | None = self._symbol_model.get_row(source_index.row())
+            if selected_row is not None:
+                removed_owner = selected_row.get_owner()
+            else:
+                pass
             removed: bool = self._symbol_model.remove_symbol(source_index.row())
         else:
             removed = False
         if removed:
+            if removed_owner is not None:
+                self._synchronize_dae_variable_declarations_for_block(removed_owner)
+            else:
+                pass
             self._namespace = self._build_joint_validation_namespace()
             self._dae_highlighter.set_symbol_names(tuple(self._namespace.keys()))
             self._clear_dae_validation_feedback()
@@ -4869,18 +6062,31 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
 
     @QtCore.Slot()
     def on_dae_code_changed(self) -> None:
-        """Persist edits and clear stale diagnostics until Validate is pressed."""
+        """
+        Persist edits and clear stale diagnostics until Validate is pressed.
+
+        :return: None.
+        """
         if self._loading_equation_buffer:
             pass
         else:
             active_buffer: BlockCodeBuffer = self._equation_buffers[self._active_equation_buffer_index]
             active_buffer.set_code(self._dae_editor.toPlainText())
+            # A source preview must never present LaTeX generated from an older
+            # equation draft. It is rebuilt from the new text when the user
+            # changes the selection or validates the complete DAE model.
+            self._latex_source_preview.clear()
             self._clear_dae_validation_feedback()
             self.update_dae_code_search(self._dae_code_search.text())
 
     @QtCore.Slot(int)
     def on_equation_owner_changed(self, combo_index: int) -> None:
-        """Switch source buffers without flattening equations across child blocks."""
+        """
+        Switch source buffers without flattening equations across child blocks.
+
+        :param combo_index: Value supplied for ``combo_index``.
+        :return: None.
+        """
         selected_data: object = self._equation_owner_combo.itemData(combo_index)
         if isinstance(selected_data, int) and 0 <= selected_data < len(self._equation_buffers):
             self._active_equation_buffer_index = selected_data
@@ -4894,21 +6100,26 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
             pass
 
     def validate_dae_code(self) -> bool:
-        """Validate the active DAE buffer and show explicit inline feedback."""
+        """
+        Validate the active DAE buffer and show explicit inline feedback.
+
+        :return: True when the active DAE code is valid; otherwise False.
+        """
         active_buffer: BlockCodeBuffer = self._equation_buffers[self._active_equation_buffer_index]
-        code: str = active_buffer.get_code()
-        diagnostics: List[DaeCodeDiagnostic] = build_dae_code_diagnostics(code, self._namespace)
+        self._dae_editor.set_symbol_namespace(self._namespace)
+        code: str = self._dae_editor.toPlainText()
+        diagnostics: List[DaeCodeDiagnostic] = self._dae_editor.build_current_diagnostics()
         if len(diagnostics) > 0:
             self._show_dae_validation_diagnostics(diagnostics)
             return False
         else:
             pass
         try:
-            equation_draft: BlockEquationDraft = parse_equation_code(code, self._namespace)
+            equation_draft: BlockEquationDraft = self._dae_editor.parse_current_code()
             self._validate_equation_variable_counts(active_buffer.get_block(), equation_draft)
         except (ValueError, TypeError) as error:
             diagnostic: DaeCodeDiagnostic = build_semantic_dae_diagnostic(code, str(error))
-            self._show_dae_validation_diagnostics(list([diagnostic]))
+            self._show_dae_validation_diagnostics(list((diagnostic,)))
             return False
         else:
             self._latex_model.set_draft(equation_draft)
@@ -4920,7 +6131,11 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
 
     @QtCore.Slot()
     def validate_complete_dae_code(self) -> None:
-        """Validate every recursive equation buffer and focus its first inline error."""
+        """
+        Validate every recursive equation buffer and focus its first inline error.
+
+        :return: None.
+        """
         try:
             symbol_namespace: Dict[str, Expr] = self._symbol_model.build_validation_namespace(
                 build_block_symbol_namespace(self._block)
@@ -5018,6 +6233,24 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         )
         state_equation_count: int = len(equation_draft.get_state_eqs())
         algebraic_equation_count: int = len(equation_draft.get_algebraic_eqs())
+        self._validate_variable_declaration(
+            block=block,
+            equation_draft=equation_draft,
+            section_name="state_vars",
+            kind=BlockSymbolKind.STATE,
+        )
+        self._validate_variable_declaration(
+            block=block,
+            equation_draft=equation_draft,
+            section_name="algebraic_vars",
+            kind=BlockSymbolKind.ALGEBRAIC,
+        )
+        self._validate_variable_declaration(
+            block=block,
+            equation_draft=equation_draft,
+            section_name="diff_vars",
+            kind=BlockSymbolKind.DIFFERENTIAL,
+        )
         if state_count != state_equation_count:
             raise ValueError(
                 f"Block '{block.name}' has {state_count} state variables but "
@@ -5041,9 +6274,49 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         else:
             pass
 
+    def _validate_variable_declaration(self,
+                                       block: Block,
+                                       equation_draft: BlockEquationDraft,
+                                       section_name: str,
+                                       kind: BlockSymbolKind) -> None:
+        """Require a present generated declaration to match the staged table order.
+
+        Older hand-written buffers may omit the declaration for compatibility.
+        When present, the declaration is an explicit ordering contract and must
+        remain synchronized with symbol additions, removals, and reclassification.
+
+        :param block: Block owning the declared variables.
+        :param equation_draft: Parsed source containing optional declarations.
+        :param section_name: Declaration section being checked.
+        :param kind: Symbol-table role corresponding to the declaration.
+        :return: None.
+        :raises ValueError: If declared and staged names differ or are reordered.
+        """
+        declared_variables: List[Var] | None = equation_draft.get_variable_declaration(section_name)
+        if declared_variables is None:
+            return
+        else:
+            declared_names: List[str] = list()
+            declared_variable: Var
+            for declared_variable in declared_variables:
+                declared_names.append(declared_variable.name)
+            expected_names: List[str] = self._symbol_model.get_role_names(block, kind)
+
+        if declared_names != expected_names:
+            raise ValueError(
+                f"Block '{block.name}' has {kind.value.lower()} variables ordered as "
+                f"{expected_names}, but {section_name} declares {declared_names}"
+            )
+        else:
+            pass
+
     @QtCore.Slot()
     def apply_changes(self) -> None:
-        """Validate the complete draft and atomically apply it to the source block."""
+        """
+        Validate the complete draft and atomically apply it to the source block.
+
+        :return: None.
+        """
         parsed_buffers: List[tuple[Block, BlockEquationDraft]] = list()
         try:
             pending_values: List[tuple[Const, float | complex]] = self._parameter_model.get_pending_values()
@@ -5087,7 +6360,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
                 )
                 self._show_equation_buffer_diagnostics(
                     buffer_index,
-                    list([semantic_diagnostic]),
+                    list((semantic_diagnostic,)),
                 )
                 return
             else:
@@ -5185,7 +6458,6 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         for target_block, equation_draft in parsed_buffers:
             target_block.state_eqs = equation_draft.get_state_eqs()
             target_block.algebraic_eqs = equation_draft.get_algebraic_eqs()
-            target_block.differential_eqs = equation_draft.get_differential_eqs()
             target_block.init_eqs = equation_draft.get_init_eqs()
             target_block.diff_init_eqs = equation_draft.get_diff_init_eqs()
 
@@ -5256,7 +6528,12 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
             self._status_label.clear()
 
     def _show_validation_error(self, message: str) -> None:
-        """Display validation feedback without modifying the source block."""
+        """
+        Display validation feedback without modifying the source block.
+
+        :param message: Value supplied for ``message``.
+        :return: None.
+        """
         self._status_label.setStyleSheet("color: #b42318;")
         self._status_label.setText(self.tr("Nothing was applied: {message}").format(message=message))
 

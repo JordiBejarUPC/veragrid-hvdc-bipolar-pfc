@@ -35,6 +35,7 @@ from VeraGridEngine.Templates.Rms.genrow_rms_template import get_genrow_rms_temp
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.Templates.Rms.load_rms_template import get_load_rms_template
 from VeraGridEngine.Utils.Symbolic.block import Block
+from VeraGridEngine.Utils.Symbolic.symbolic import symbolic_to_string
 from VeraGridEngine.Utils.Symbolic.bus_emt_template import get_bus_emt_template
 from VeraGridEngine.Utils.Symbolic.bus_rms_template import initialize_bus_rms
 from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_emt_model, set_rms_model
@@ -655,12 +656,11 @@ def test_rms_editor_reopen_preserves_persisted_connection_arrows(
         qt_app: QtWidgets.QApplication,
 ) -> None:
     """
-    Restore RMS arrows after serialization drops the runtime wrapper marker.
+    Restore RMS arrows from persisted diagram-node wrapper semantics.
 
     Root-interface wrapper blocks are persisted through their diagram node
-    types. The ``is_root_interface_wrapper`` attribute is runtime metadata and
-    therefore returns as ``False`` after a file round trip. Reopening must
-    promote those blocks before duplicate-interface cleanup examines them.
+    types. The symbolic ``Block`` must remain unaware of this GUI role, while
+    reopening must still reconstruct the same graphical connections.
 
     :param qt_app: Shared Qt application fixture.
     :return: None.
@@ -681,7 +681,6 @@ def test_rms_editor_reopen_preserves_persisted_connection_arrows(
     expected_connection_counts: Dict[int, int] = dict()
     device: Generator | Line | Load
     editor: DynamicBlockEditorGUI
-    child_block: Block
 
     # First opening materializes and persists each template's graphical arrows.
     for device in devices:
@@ -701,14 +700,12 @@ def test_rms_editor_reopen_preserves_persisted_connection_arrows(
         editor.deleteLater()
     qt_app.processEvents()
 
-    # Reproduce the persisted representation: node types survive, while this
-    # runtime-only marker is not part of the symbolic block serialization.
+    # Confirm the symbolic tree and its fallback dictionary boundary contain
+    # no GUI-only wrapper state before exercising the persisted diagram path.
     for device in devices:
         for child_block in device.rms_model.children:
-            if child_block.uid in device.rms_model.diagram.node_data:
-                child_block.is_root_interface_wrapper = False
-            else:
-                pass
+            assert "is_root_interface_wrapper" not in child_block.__dict__
+            assert "is_root_interface_wrapper" not in child_block.to_dict()
 
     reopened_editors: List[DynamicBlockEditorGUI] = list()
     try:
@@ -898,6 +895,98 @@ def test_empty_generic_nested_editor_contains_only_boundary_ports(
         assert node_types.count(BlockType.OUTPUT_CONN.name) == 1
         assert BlockType.GENERIC.name not in node_types
         assert all(node.device_uid != generic_block.uid for node in editor.diagram.node_data.values())
+    finally:
+        editor.prepare_to_delete()
+        editor.close()
+        editor.deleteLater()
+        qt_app.processEvents()
+
+
+def test_canvas_copy_paste_clones_blocks_without_parent_connections(
+        qt_app: QtWidgets.QApplication,
+) -> None:
+    """Clone block content and identities while omitting every canvas arrow.
+
+    :param qt_app: Shared Qt application fixture.
+    :return: None.
+    """
+    circuit: MultiCircuit = MultiCircuit()
+    generator: Generator = Generator(name="Clipboard owner")
+    root_block: Block = Block(name="clipboard_root")
+    editor: DynamicBlockEditorGUI = DynamicBlockEditorGUI(
+        var_factory=circuit.var_factory,
+        root_block=root_block,
+        current_block=root_block,
+        api_object=generator,
+        circuit=circuit,
+        mode=DynamicSimulationMode.RMS,
+        current_theme=DynEditorGraphicsModes.LIGHT,
+        templates_list=list(),
+        is_root_editor=False,
+        modal=False,
+        workspace_embedded=False,
+        block2blocktype=dict(),
+    )
+    editor.show()
+    qt_app.processEvents()
+
+    try:
+        source_item: graph.GenericBlockItem | None = editor.create_generic_block_item(
+            block_type=BlockType.GENERIC,
+            x_pos=100.0,
+            y_pos=120.0,
+        )
+        target_item: graph.GenericBlockItem | None = editor.create_generic_block_item(
+            block_type=BlockType.GENERIC,
+            x_pos=360.0,
+            y_pos=120.0,
+        )
+        assert source_item is not None
+        assert target_item is not None
+        source_block: Block = source_item.subsys
+        target_block: Block = target_item.subsys
+
+        source_block.algebraic_vars.append(source_block.out_vars[0])
+        source_block.algebraic_eqs.append(source_block.out_vars[0] - source_block.in_vars[0])
+        editor.scene.connect_ports(source_item.outputs[0], target_item.inputs[0])
+        connection_count_before_copy: int = len(editor.diagram.con_data)
+        assert connection_count_before_copy == 1
+
+        editor.scene.clearSelection()
+        source_item.setSelected(True)
+        editor.copy_selected_blocks()
+        editor.paste_copied_blocks()
+        qt_app.processEvents()
+
+        pasted_candidates: List[Block] = list()
+        child_block: Block
+        for child_block in root_block.children:
+            if child_block.uid not in set((source_block.uid, target_block.uid)):
+                pasted_candidates.append(child_block)
+            else:
+                pass
+        assert len(pasted_candidates) == 1
+        pasted_block: Block = pasted_candidates[0]
+        assert pasted_block.uid != source_block.uid
+        source_variable_uids: set[int] = set(
+            variable.non_mutable_uid
+            for variable in source_block.in_vars + source_block.out_vars + source_block.algebraic_vars
+        )
+        pasted_variable_uids: set[int] = set(
+            variable.non_mutable_uid
+            for variable in pasted_block.in_vars + pasted_block.out_vars + pasted_block.algebraic_vars
+        )
+        assert source_variable_uids.isdisjoint(pasted_variable_uids)
+        assert symbolic_to_string(pasted_block.algebraic_eqs[0]) == symbolic_to_string(
+            source_block.algebraic_eqs[0]
+        )
+        assert len(editor.diagram.con_data) == connection_count_before_copy
+
+        editor.remove_selected_canvas_items()
+        qt_app.processEvents()
+        assert all(child.uid != pasted_block.uid for child in root_block.children)
+        assert pasted_block.uid not in editor.diagram.node_data
+        assert len(editor.diagram.con_data) == connection_count_before_copy
     finally:
         editor.prepare_to_delete()
         editor.close()

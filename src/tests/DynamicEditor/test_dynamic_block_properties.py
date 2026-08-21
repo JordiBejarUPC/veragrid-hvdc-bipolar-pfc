@@ -5,31 +5,33 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Iterator
 
-from PySide6 import QtCore, QtGui, QtSvg, QtWidgets
+from PySide6 import QtCore, QtWidgets
 import pytest
 
 from VeraGrid.Gui.DynamicModelEditor.dynamic_block_properties import (
     BlockSymbolKind,
+    BlockSymbolDraftRow,
+    BlockCodeBuffer,
     BlockEquationDraft,
+    BlockVariableRenameRequest,
     DaeCodeDiagnostic,
     DynamicBlockPropertiesDialog,
-    SvgEquationTextObject,
     build_block_symbol_namespace,
     build_equation_code,
-    _get_documentation_relative_path,
     parse_equation_code,
-    set_markdown_with_latex,
-    resolve_block_documentation,
+    replace_dae_identifier,
+    resolve_block_documentation_url,
+    serialize_dae_expression,
+    synchronize_dae_variable_declarations,
 )
 from VeraGrid.Gui.DynamicModelEditor.dynamic_equation_pdf import (
     EquationExportEntry,
     EquationExportSection,
-    EquationPdfStyle,
     build_equation_pdf_suggested_name,
+    build_latex_source,
     build_list_equation_entries,
     build_mapping_equation_entries,
     build_state_equation_entries,
-    encode_pdf_literal,
     expand_latex_fractions_for_wrapping,
     expand_latex_square_roots_for_wrapping,
     order_state_differential_variables,
@@ -74,6 +76,53 @@ def get_qt_application() -> QtWidgets.QApplication:
         return QtWidgets.QApplication(list())
     else:
         return application
+
+
+class AliasRenameReceiver(QtCore.QObject):
+    """Apply a complete connected-variable rename for a properties test."""
+
+    __slots__ = ("_dialogue", "_new_name")
+
+    def __init__(self,
+                 dialogue: DynamicBlockPropertiesDialog,
+                 new_name: str) -> None:
+        """Store the dialogue and final name used by the synchronous request.
+
+        :param dialogue: Properties dialogue containing the connected rows.
+        :param new_name: Final name propagated to the complete alias component.
+        :return: None.
+        """
+        super().__init__()
+        self._dialogue: DynamicBlockPropertiesDialog = dialogue
+        self._new_name: str = new_name
+
+    @QtCore.Slot(object)
+    def apply_rename(self, request: object) -> None:
+        """Rename every displayed variable sharing the selected stable UID.
+
+        :param request: Synchronous rename request emitted by Block Properties.
+        :return: None.
+        """
+        if isinstance(request, BlockVariableRenameRequest):
+            selected_variable: Var = request.get_variable()
+            selected_stable_uid: int = selected_variable.non_mutable_uid
+            row_index: int
+            for row_index in range(self._dialogue._symbol_model.rowCount()):
+                draft_row: BlockSymbolDraftRow | None = self._dialogue._symbol_model.get_row(row_index)
+                if draft_row is not None:
+                    draft_variable: Var | None = draft_row.get_variable()
+                else:
+                    draft_variable = None
+                if (
+                    draft_variable is not None
+                    and draft_variable.non_mutable_uid == selected_stable_uid
+                ):
+                    draft_variable.set_name(self._new_name)
+                else:
+                    pass
+            request.set_result(success=True, new_name=self._new_name)
+        else:
+            pass
 
 
 @pytest.fixture(autouse=True)
@@ -128,20 +177,310 @@ def test_equation_code_roundtrip_preserves_variable_identity() -> None:
     draft: BlockEquationDraft = parse_equation_code(code, build_block_symbol_namespace(block))
     initialization_keys: list[Var] = list(draft.get_init_eqs().keys())
 
+    assert "state_vars = [x]" in code
+    assert "algebraic_vars = []" in code
+    assert "diff_vars = []" in code
+    assert "Map every state variable to the right-hand side" in code
+    assert "state_eqs = {" in code
+    assert "    x: gain," in code
+    assert "Write each complete equation with one single '='" in code
     assert len(initialization_keys) == 1
     assert initialization_keys[0] is state_variable
     assert symbolic_to_string(draft.get_state_eqs()[0]) == "gain"
+    state_declaration: list[Var] | None = draft.get_variable_declaration("state_vars")
+    assert state_declaration == list([state_variable])
+
+
+def test_state_equation_mapping_is_stored_in_declared_state_order() -> None:
+    """Dictionary insertion order must not change the Engine state-equation order."""
+    first_state: Var = Var("first_state")
+    second_state: Var = Var("second_state")
+    namespace: dict[str, Expr] = dict({
+        first_state.name: first_state,
+        second_state.name: second_state,
+    })
+    code: str = (
+        "state_vars = [first_state, second_state]\n"
+        "state_eqs = {\n"
+        "    second_state: 2.0,\n"
+        "    first_state: 1.0,\n"
+        "}\n"
+        "algebraic_eqs = []\n"
+        "init_eqs = {}\n"
+        "diff_init_eqs = {}"
+    )
+
+    draft: BlockEquationDraft = parse_equation_code(code, namespace)
+
+    assert [symbolic_to_string(expression) for expression in draft.get_state_eqs()] == [
+        "1.0",
+        "2.0",
+    ]
+
+
+def test_state_equation_mapping_requires_exact_state_keys() -> None:
+    """Missing or unrelated state keys must be rejected before changing the Engine."""
+    first_state: Var = Var("first_state")
+    second_state: Var = Var("second_state")
+    unrelated_state: Var = Var("unrelated_state")
+    namespace: dict[str, Expr] = dict({
+        first_state.name: first_state,
+        second_state.name: second_state,
+        unrelated_state.name: unrelated_state,
+    })
+    code: str = (
+        "state_vars = [first_state, second_state]\n"
+        "state_eqs = {first_state: 1.0, unrelated_state: 3.0}\n"
+        "algebraic_eqs = []\n"
+        "init_eqs = {}\n"
+        "diff_init_eqs = {}"
+    )
+
+    with pytest.raises(ValueError, match="missing=.*second_state.*unexpected=.*unrelated_state"):
+        parse_equation_code(code, namespace)
+
+
+def test_complete_algebraic_equalities_convert_to_engine_residuals() -> None:
+    """Every supported equality arrangement must produce the expected residual."""
+    power: Var = Var("power")
+    voltage: Var = Var("voltage")
+    current: Var = Var("current")
+    namespace: dict[str, Expr] = dict({
+        power.name: power,
+        voltage.name: voltage,
+        current.name: current,
+    })
+    generated_block: Block = Block(
+        name="generated_algebraic",
+        algebraic_vars=list((power,)),
+        algebraic_eqs=list((power - voltage * current,)),
+    )
+    generated_code: str = build_equation_code(generated_block)
+    assert "    0 = power - (voltage * current)," in generated_code
+    generated_draft: BlockEquationDraft = parse_equation_code(generated_code, namespace)
+    assert symbolic_to_string(generated_draft.get_algebraic_eqs()[0]) == (
+        "(power - (voltage * current))"
+    )
+
+    code: str = (
+        "state_vars = []\n"
+        "state_eqs = {}\n"
+        "algebraic_eqs = [\n"
+        "    0 = power - voltage * current,\n"
+        "    power = voltage * current,\n"
+        "    power - voltage * current = 0,\n"
+        "]\n"
+        "init_eqs = {}\n"
+        "diff_init_eqs = {}"
+    )
+
+    draft: BlockEquationDraft = parse_equation_code(code, namespace)
+    residual_texts: list[str] = list()
+    residual: Expr
+    for residual in draft.get_algebraic_eqs():
+        residual_texts.append(symbolic_to_string(residual))
+
+    assert residual_texts == list((
+        "(power - (voltage * current))",
+        "((voltage * current) - power)",
+        "(power - (voltage * current))",
+    ))
+
+
+@pytest.mark.parametrize(
+    "invalid_equation",
+    list((
+        "power - voltage * current",
+        "power = voltage = current",
+        "power < voltage * current",
+        "power | voltage",
+    )),
+)
+def test_algebraic_entries_require_one_visible_equality(invalid_equation: str) -> None:
+    """Residual-only, chained, inequality, and reserved-marker forms must fail."""
+    power: Var = Var("power")
+    voltage: Var = Var("voltage")
+    current: Var = Var("current")
+    namespace: dict[str, Expr] = dict({
+        power.name: power,
+        voltage.name: voltage,
+        current.name: current,
+    })
+    code: str = (
+        "state_vars = []\n"
+        "state_eqs = {}\n"
+        f"algebraic_eqs = [{invalid_equation}]\n"
+        "init_eqs = {}\n"
+        "diff_init_eqs = {}"
+    )
+
+    with pytest.raises(ValueError):
+        parse_equation_code(code, namespace)
+
+
+def test_dae_identifier_rename_updates_only_complete_symbol_tokens() -> None:
+    """Variable renames must preserve comments and longer symbol names."""
+    source_code: str = (
+        "state_vars = [x, x_ref]\n"
+        "state_eqs = {x: x + x_ref}\n"
+        "# x remains explanatory"
+    )
+
+    renamed_code: str = replace_dae_identifier(source_code, "x", "speed")
+
+    assert "state_vars = [speed, x_ref]" in renamed_code
+    assert "state_eqs = {speed: speed + x_ref}" in renamed_code
+    assert "# x remains explanatory" in renamed_code
+
+
+def test_dialogue_rename_updates_each_connected_local_name_in_dae_code() -> None:
+    """One shared stable UID must not hide distinct old names during rename."""
+    application: QtWidgets.QApplication = get_qt_application()
+    _unused_application: QtWidgets.QApplication = application
+    source_variable: Var = Var("const_CONST_1")
+    connected_variable: Var = Var(
+        "connected_signal",
+        non_mutable_uid=source_variable.non_mutable_uid,
+    )
+    source_block: Block = Block(
+        name="CONST_1",
+        algebraic_vars=list((source_variable,)),
+        algebraic_eqs=list((source_variable - Const(1.0),)),
+    )
+    connected_block: Block = Block(
+        name="GAIN_1",
+        algebraic_vars=list((connected_variable,)),
+        algebraic_eqs=list((connected_variable - Const(2.0),)),
+    )
+    root_block: Block = Block(
+        name="generic",
+        children=list((source_block, connected_block)),
+    )
+    dialogue: DynamicBlockPropertiesDialog = DynamicBlockPropertiesDialog(
+        root_block,
+        "CUSTOM",
+        VarFactory(),
+    )
+    rename_receiver: AliasRenameReceiver = AliasRenameReceiver(dialogue, "k1")
+    dialogue.variableRenameRequested.connect(rename_receiver.apply_rename)
+
+    source_proxy_row: int | None = None
+    proxy_row: int
+    for proxy_row in range(dialogue._variable_symbol_proxy.rowCount()):
+        displayed_name: object = dialogue._variable_symbol_proxy.index(proxy_row, 1).data()
+        if displayed_name == "const_CONST_1":
+            source_proxy_row = proxy_row
+        else:
+            pass
+    assert source_proxy_row is not None
+
+    dialogue._symbol_table.selectRow(source_proxy_row)
+    dialogue._rename_selected_symbol(dialogue._symbol_table)
+
+    assert source_variable.name == "k1"
+    assert connected_variable.name == "k1"
+    buffer_codes: list[str] = list()
+    equation_buffer: BlockCodeBuffer
+    for equation_buffer in dialogue._equation_buffers:
+        buffer_codes.append(equation_buffer.get_code())
+    combined_code: str = "\n".join(buffer_codes)
+    assert "const_CONST_1" not in combined_code
+    assert "connected_signal" not in combined_code
+    assert "algebraic_vars = [k1]" in combined_code
+    assert all(
+        dialogue._symbol_model.index(row_index, 1).data() == "k1"
+        for row_index in range(dialogue._symbol_model.rowCount())
+    )
+    dialogue.close()
+
+
+def test_variable_declaration_synchronization_preserves_other_dae_source() -> None:
+    """Managed declarations may change without rewriting equations or comments."""
+    source_code: str = (
+        "state_vars = [\n    old_x,\n]\n"
+        "algebraic_vars = []\n"
+        "diff_vars = []\n\n"
+        "state_eqs = {\n    # User equation comment\n    old_x: old_x,\n}\n"
+    )
+
+    updated_code: str = synchronize_dae_variable_declarations(
+        code=source_code,
+        state_names=list(("old_x", "new_x",)),
+        algebraic_names=list(("new_y",)),
+        differential_names=list(("d_new_x",)),
+    )
+
+    assert "state_vars = [old_x, new_x]" in updated_code
+    assert "algebraic_vars = [new_y]" in updated_code
+    assert "diff_vars = [d_new_x]" in updated_code
+    assert "# User equation comment\n    old_x: old_x," in updated_code
+
+
+def test_equation_code_removes_only_redundant_root_parentheses() -> None:
+    """DAE source must stay readable without changing expression precedence."""
+    state_variable: Var = Var("x")
+    input_variable: Var = Var("input_signal")
+    divisor_variable: Var = Var("divisor")
+    expression: Expr = (state_variable - input_variable) / divisor_variable
+    block: Block = Block(
+        name="precedence_test",
+        state_vars=[state_variable],
+        state_eqs=[expression],
+        in_vars=[input_variable],
+        parameters={divisor_variable: Const(2.0, name="divisor")},
+    )
+
+    code: str = build_equation_code(block)
+    assert "    x: (x - input_signal) / divisor," in code
+    assert "    x: ((x - input_signal) / divisor)," not in code
+    assert serialize_dae_expression(expression) == "(x - input_signal) / divisor"
+
+    draft: BlockEquationDraft = parse_equation_code(
+        code,
+        build_block_symbol_namespace(block),
+    )
+    assert symbolic_to_string(draft.get_state_eqs()[0]) == symbolic_to_string(expression)
+
+
+def test_dialogue_footer_only_contains_apply_changes() -> None:
+    """The native title-bar cross must be the only explicit close control."""
+    application: QtWidgets.QApplication = get_qt_application()
+    _unused_application: QtWidgets.QApplication = application
+    block: Block
+    state_variable: Var
+    parameter_variable: Var
+    parameter_constant: Const
+    block, state_variable, parameter_variable, parameter_constant = build_test_block()
+    _unused_state_variable: Var = state_variable
+    _unused_parameter_variable: Var = parameter_variable
+    _unused_parameter_constant: Const = parameter_constant
+    dialogue: DynamicBlockPropertiesDialog = DynamicBlockPropertiesDialog(
+        block,
+        "GENERIC",
+        VarFactory(),
+    )
+
+    assert dialogue.ui.apply_button.text() == "Apply changes"
+    assert dialogue.findChild(QtWidgets.QPushButton, "close_button") is None
+    assert dialogue.ui.button_layout.count() == 2
+    dialogue.close()
 
 
 @pytest.mark.parametrize(
     "invalid_code",
     [
         "import os",
-        "state_eqs = []\nalgebraic_eqs = []\ndifferential_eqs = []\ninit_eqs = {}",
+        "state_eqs = []\nalgebraic_eqs = []\ninit_eqs = {}",
+        (
+            "state_eqs = []\n"
+            "algebraic_eqs = []\n"
+            "differential_eqs = []\n"
+            "init_eqs = {}\n"
+            "diff_init_eqs = {}"
+        ),
         (
             "state_eqs = [unknown]\n"
             "algebraic_eqs = []\n"
-            "differential_eqs = []\n"
             "init_eqs = {}\n"
             "diff_init_eqs = {}"
         ),
@@ -173,18 +512,25 @@ def test_invalid_dialog_draft_does_not_mutate_block() -> None:
     block, state_variable, parameter_variable, parameter_constant = build_test_block()
     original_state_equation: object = block.state_eqs[0]
     dialogue: DynamicBlockPropertiesDialog = DynamicBlockPropertiesDialog(block, "GENERIC", VarFactory())
-    assert dialogue._tabs.count() == 4
+    assert dialogue._tabs.count() == 3
     assert dialogue._tabs.tabText(0) == "General options"
     assert dialogue._tabs.tabText(1) == "DAE model"
     assert dialogue._tabs.tabText(2) == "Runtime logic"
-    assert dialogue._tabs.tabText(3) == "Block info"
     assert dialogue._tabs.tabIcon(2).isNull()
+    assert dialogue._block_info_button.isEnabled()
+    assert "original predefined library block" in dialogue._block_info_button.toolTip()
+    assert "may differ" in dialogue._block_info_button.toolTip()
+    assert dialogue._block_info_button.sizePolicy().horizontalPolicy() == (
+        QtWidgets.QSizePolicy.Policy.Fixed
+    )
+    assert dialogue._block_info_button.width() == dialogue._block_info_button.sizeHint().width()
+    assert dialogue._block_info_button.width() < 180
     assert dialogue._dae_editor.get_line_number_area_width() > 0
-    dialogue._dae_editor.setPlainText("state_eqs = [")
-    assert dialogue._dae_editor._diagnostics == list()
+    dialogue._dae_editor.setPlainText("state_eqs = {")
+    assert dialogue._dae_editor.get_diagnostics() == list()
     dialogue._validate_code_button.click()
-    assert len(dialogue._dae_editor._diagnostics) == 1
-    assert "closed" in dialogue._dae_editor._diagnostics[0].get_message().lower()
+    assert len(dialogue._dae_editor.get_diagnostics()) == 1
+    assert "closed" in dialogue._dae_editor.get_diagnostics()[0].get_message().lower()
 
     dialogue.apply_changes()
 
@@ -207,9 +553,9 @@ def test_valid_dialog_draft_applies_equations_and_parameters_together() -> None:
     value_index = dialogue._parameter_model.index(0, 2)
     assert dialogue._parameter_model.setData(value_index, "3.5")
     dialogue._dae_editor.setPlainText(
-        "state_eqs = [gain + 1]\n"
+        "state_vars = [x]\n"
+        "state_eqs = {x: gain + 1}\n"
         "algebraic_eqs = []\n"
-        "differential_eqs = []\n"
         "init_eqs = {x: 0}\n"
         "diff_init_eqs = {}"
     )
@@ -284,8 +630,13 @@ def test_recursive_dialog_selects_child_with_equations_and_labels_output_role() 
 
     equation_code: str = dialogue._dae_editor.toPlainText()
     equation_code = equation_code.replace(
+        "algebraic_vars = [y2_3_gov, Tm]",
+        "algebraic_vars = [y2_3_gov, Tm, child_probe]",
+        1,
+    )
+    equation_code = equation_code.replace(
         "algebraic_eqs = [",
-        "algebraic_eqs = [\n    child_probe,",
+        "algebraic_eqs = [\n    0 = child_probe,",
         1,
     )
     dialogue._dae_editor.setPlainText(equation_code)
@@ -312,15 +663,15 @@ def test_staged_symbol_is_created_only_when_apply_is_pressed() -> None:
     assert len(block.out_vars) == 0
 
     dialogue._dae_editor.setPlainText(
-        "state_eqs = []\n"
-        "algebraic_eqs = [new_output - 1]\n"
-        "differential_eqs = []\n"
+        "state_vars = []\n"
+        "state_eqs = {}\n"
+        "algebraic_eqs = [0 = new_output - 1]\n"
         "init_eqs = {}\n"
         "diff_init_eqs = {}"
     )
     dialogue._validate_code_button.click()
     assert dialogue._status_label.text() == "DAE code is valid."
-    assert dialogue._dae_editor._diagnostics == list()
+    assert dialogue._dae_editor.get_diagnostics() == list()
 
     dialogue.apply_changes()
     assert [variable.name for variable in block.algebraic_vars] == ["new_output"]
@@ -358,9 +709,9 @@ def test_new_state_derivative_is_visible_and_preserves_its_base_variable() -> No
     # The state equation stores the RHS. The separately staged derivative is
     # the corresponding LHS identity and therefore needs no extra equation.
     dialogue._dae_editor.setPlainText(
-        "state_eqs = [0]\n"
+        "state_vars = [d111]\n"
+        "state_eqs = {d111: 0}\n"
         "algebraic_eqs = []\n"
-        "differential_eqs = []\n"
         "init_eqs = {}\n"
         "diff_init_eqs = {}"
     )
@@ -374,6 +725,117 @@ def test_new_state_derivative_is_visible_and_preserves_its_base_variable() -> No
         str(dialogue._variable_symbol_proxy.index(proxy_row, 1).data())
         for proxy_row in range(dialogue._variable_symbol_proxy.rowCount())
     ] == ["d111", "d_d111"]
+    dialogue.close()
+
+
+def test_new_variables_immediately_update_dae_variable_declarations() -> None:
+    """Adding table rows must immediately synchronize the visible DAE declarations."""
+    application: QtWidgets.QApplication = get_qt_application()
+    _unused_application: QtWidgets.QApplication = application
+    var_factory: VarFactory = VarFactory()
+    block: Block = Block(name="automatic_declarations")
+    dialogue: DynamicBlockPropertiesDialog = DynamicBlockPropertiesDialog(
+        block,
+        "GENERIC",
+        var_factory,
+    )
+
+    dialogue._new_symbol_name.setText("speed")
+    dialogue._new_symbol_kind.setCurrentText(BlockSymbolKind.STATE.value)
+    dialogue._new_state_derivative.setChecked(True)
+    dialogue.add_staged_symbol()
+
+    state_code: str = dialogue._dae_editor.toPlainText()
+    assert "state_vars = [speed]" in state_code
+    assert "algebraic_vars = []" in state_code
+    assert "diff_vars = [d_speed]" in state_code
+    assert "# Map every state variable to the right-hand side" in state_code
+
+    dialogue._new_symbol_name.setText("torque")
+    dialogue._new_symbol_kind.setCurrentText(BlockSymbolKind.ALGEBRAIC.value)
+    dialogue.add_staged_symbol()
+
+    algebraic_code: str = dialogue._dae_editor.toPlainText()
+    assert "state_vars = [speed]" in algebraic_code
+    assert "algebraic_vars = [torque]" in algebraic_code
+    assert "diff_vars = [d_speed]" in algebraic_code
+
+    speed_proxy_row: int | None = None
+    proxy_row: int
+    for proxy_row in range(dialogue._variable_symbol_proxy.rowCount()):
+        if dialogue._variable_symbol_proxy.index(proxy_row, 1).data() == "speed":
+            speed_proxy_row = proxy_row
+        else:
+            pass
+    assert speed_proxy_row is not None
+    dialogue._symbol_table.selectRow(speed_proxy_row)
+    dialogue._delete_selected_symbol(dialogue._symbol_table)
+    staged_removal_code: str = dialogue._dae_editor.toPlainText()
+    assert "state_vars = []" in staged_removal_code
+    assert "algebraic_vars = [torque]" in staged_removal_code
+    assert "diff_vars = []" in staged_removal_code
+    dialogue.close()
+
+
+def test_deleted_variables_immediately_update_dae_variable_declarations() -> None:
+    """State deletion cascades to its derivative, but not in the reverse direction."""
+    application: QtWidgets.QApplication = get_qt_application()
+    _unused_application: QtWidgets.QApplication = application
+    var_factory: VarFactory = VarFactory()
+    speed_variable: Var = Var("speed")
+    speed_differential: Var = Var("d_speed", base_var=speed_variable)
+    angle_variable: Var = Var("angle")
+    angle_differential: Var = Var("d_angle", base_var=angle_variable)
+    algebraic_variable: Var = Var("torque")
+    block: Block = Block(
+        name="deleted_declarations",
+        state_vars=list((speed_variable, angle_variable,)),
+        state_eqs=list((speed_variable, angle_variable,)),
+        algebraic_vars=list((algebraic_variable,)),
+        algebraic_eqs=list((algebraic_variable,)),
+        diff_vars=list((speed_differential, angle_differential,)),
+    )
+    dialogue: DynamicBlockPropertiesDialog = DynamicBlockPropertiesDialog(
+        block,
+        "GENERIC",
+        var_factory,
+    )
+
+    names_to_remove: tuple[str, ...] = ("d_speed", "angle", "torque", "speed")
+    expected_declarations: tuple[str, ...] = (
+        "diff_vars = [d_angle]",
+        "state_vars = [speed]",
+        "algebraic_vars = []",
+        "state_vars = []",
+    )
+    removal_index: int
+    for removal_index in range(len(names_to_remove)):
+        target_name: str = names_to_remove[removal_index]
+        target_proxy_row: int | None = None
+        proxy_row: int
+        for proxy_row in range(dialogue._variable_symbol_proxy.rowCount()):
+            if dialogue._variable_symbol_proxy.index(proxy_row, 1).data() == target_name:
+                target_proxy_row = proxy_row
+            else:
+                pass
+        assert target_proxy_row is not None
+        dialogue._symbol_table.selectRow(target_proxy_row)
+        dialogue._delete_selected_symbol(dialogue._symbol_table)
+        updated_code: str = dialogue._dae_editor.toPlainText()
+        assert expected_declarations[removal_index] in updated_code
+        if target_name == "d_speed":
+            assert "state_vars = [speed, angle]" in updated_code
+        elif target_name == "angle":
+            assert "diff_vars = []" in updated_code
+        else:
+            pass
+
+    final_code: str = dialogue._dae_editor.toPlainText()
+    assert "state_vars = []" in final_code
+    assert "algebraic_vars = []" in final_code
+    assert "diff_vars = []" in final_code
+    assert "state_eqs = {" in final_code
+    assert "algebraic_eqs = [" in final_code
     dialogue.close()
 
 
@@ -406,6 +868,83 @@ def test_new_input_is_applied_without_offering_external_mapping() -> None:
     assert len(block.in_vars) == initial_input_count + 1
     assert block.in_vars[-1].name == "additional_input"
     assert all(mapped_variable is not block.in_vars[-1] for mapped_variable in block.external_mapping.values())
+    dialogue.close()
+
+
+def test_add_symbol_fields_keep_one_width_across_symbol_categories() -> None:
+    """Optional variable and parameter fields must share the form field column."""
+    application: QtWidgets.QApplication = get_qt_application()
+    var_factory: VarFactory = VarFactory()
+    block: Block = Block(name="field_widths")
+    dialogue: DynamicBlockPropertiesDialog = DynamicBlockPropertiesDialog(
+        block,
+        "GENERIC",
+        var_factory,
+    )
+    dialogue.resize(900, 700)
+    dialogue.show()
+    dialogue._tabs.setCurrentIndex(1)
+    application.processEvents()
+
+    stable_fields: tuple[QtWidgets.QWidget, ...] = (
+        dialogue._new_symbol_owner,
+        dialogue._new_symbol_name,
+        dialogue._new_symbol_category,
+        dialogue._new_symbol_kind,
+    )
+    dialogue._new_symbol_category.setCurrentText("Variables")
+    dialogue._new_symbol_kind.setCurrentText(BlockSymbolKind.INPUT.value)
+    application.processEvents()
+    variable_vertical_geometries: List[tuple[int, int]] = list()
+    stable_field: QtWidgets.QWidget
+    for stable_field in stable_fields:
+        variable_position: QtCore.QPoint = stable_field.mapTo(
+            dialogue,
+            QtCore.QPoint(0, 0),
+        )
+        variable_vertical_geometries.append((variable_position.y(), stable_field.height()))
+
+    dialogue._new_symbol_kind.setCurrentText(BlockSymbolKind.STATE.value)
+    application.processEvents()
+    shared_field_geometry: tuple[int, int] = (
+        dialogue._new_symbol_owner.x(),
+        dialogue._new_symbol_owner.width(),
+    )
+    variable_fields: tuple[QtWidgets.QWidget, ...] = (
+        dialogue._new_symbol_name,
+        dialogue._new_symbol_category,
+        dialogue._new_symbol_kind,
+        dialogue._new_external_reference,
+    )
+    variable_field: QtWidgets.QWidget
+    for variable_field in variable_fields:
+        assert (variable_field.x(), variable_field.width()) == shared_field_geometry
+
+    dialogue._new_symbol_category.setCurrentText("Parameters")
+    dialogue._new_symbol_kind.setCurrentText(BlockSymbolKind.EVENT_PARAMETER.value)
+    application.processEvents()
+    parameter_vertical_geometries: List[tuple[int, int]] = list()
+    for stable_field in stable_fields:
+        parameter_position: QtCore.QPoint = stable_field.mapTo(
+            dialogue,
+            QtCore.QPoint(0, 0),
+        )
+        parameter_vertical_geometries.append((parameter_position.y(), stable_field.height()))
+    assert parameter_vertical_geometries == variable_vertical_geometries
+    assert dialogue._new_parameter_value.isVisible()
+    assert (
+        dialogue._new_parameter_value.x(),
+        dialogue._new_parameter_value.width(),
+    ) == shared_field_geometry
+
+    dialogue._new_symbol_kind.setCurrentText(BlockSymbolKind.PARAMETER.value)
+    application.processEvents()
+    assert dialogue._new_static_reference.isVisible()
+    assert (
+        dialogue._new_static_reference.x(),
+        dialogue._new_static_reference.width(),
+    ) == shared_field_geometry
+    assert dialogue._new_external_reference_label.text() == "Power-flow variable"
     dialogue.close()
 
 
@@ -568,29 +1107,29 @@ def test_validate_button_rejects_unknown_symbols_and_python_syntax_errors() -> N
     dialogue: DynamicBlockPropertiesDialog = DynamicBlockPropertiesDialog(block, "GENERIC", var_factory)
 
     dialogue._dae_editor.setPlainText(
-        "state_eqs = []\n"
-        "algebraic_eqs = [missing_symbol]\n"
-        "differential_eqs = []\n"
+        "state_vars = []\n"
+        "state_eqs = {}\n"
+        "algebraic_eqs = [0 = missing_symbol]\n"
         "init_eqs = {}\n"
         "diff_init_eqs = {}"
     )
-    assert dialogue._dae_editor._diagnostics == list()
+    assert dialogue._dae_editor.get_diagnostics() == list()
     dialogue._validate_code_button.click()
     assert "Unknown symbol 'missing_symbol'" in dialogue._dae_editor.toolTip()
-    assert "line 2" in dialogue._status_label.text().lower()
+    assert "line 3" in dialogue._status_label.text().lower()
 
     dialogue._dae_editor.setPlainText(
-        "state_eqs = []\n"
-        "algebraic_eqs = [(1 + 2]\n"
-        "differential_eqs = []\n"
+        "state_vars = []\n"
+        "state_eqs = {}\n"
+        "algebraic_eqs = [0 = (1 + 2]\n"
         "init_eqs = {}\n"
         "diff_init_eqs = {}"
     )
-    assert dialogue._dae_editor._diagnostics == list()
+    assert dialogue._dae_editor.get_diagnostics() == list()
     dialogue._validate_code_button.click()
-    assert len(dialogue._dae_editor._diagnostics) == 1
-    assert dialogue._dae_editor._diagnostics[0].get_line() == 2
-    assert "validate again" in dialogue._dae_editor._diagnostics[0].get_message()
+    assert len(dialogue._dae_editor.get_diagnostics()) == 1
+    assert dialogue._dae_editor.get_diagnostics()[0].get_line() == 3
+    assert "validate again" in dialogue._dae_editor.get_diagnostics()[0].get_message()
     selections: list[QtWidgets.QTextEdit.ExtraSelection] = dialogue._dae_editor.extraSelections()
     assert len(selections) == 1
     assert selections[0].cursor.hasSelection()
@@ -598,8 +1137,8 @@ def test_validate_button_rejects_unknown_symbols_and_python_syntax_errors() -> N
     dialogue.close()
 
 
-def test_validate_button_marks_the_expression_after_a_missing_comma() -> None:
-    """A Python-valid implicit call must point at the actual missing-comma site."""
+def test_validate_button_marks_the_equation_after_a_missing_comma() -> None:
+    """A following complete equality must identify its missing leading comma."""
     application: QtWidgets.QApplication = get_qt_application()
     _unused_application: QtWidgets.QApplication = application
     first: Var = Var("first")
@@ -615,26 +1154,24 @@ def test_validate_button_marks_the_expression_after_a_missing_comma() -> None:
         VarFactory(),
     )
     dialogue._dae_editor.setPlainText(
-        "state_eqs = []\n"
+        "state_vars = []\n"
+        "state_eqs = {}\n"
         "algebraic_eqs = [\n"
-        "    (first - 1)\n"
-        "    (second - 2),\n"
-        "    (missing_name - 3),\n"
+        "    0 = (first - 1)\n"
+        "    0 = (second - 2),\n"
+        "    0 = (missing_name - 3),\n"
         "]\n"
-        "differential_eqs = []\n"
         "init_eqs = {}\n"
         "diff_init_eqs = {}"
     )
 
-    assert dialogue._dae_editor._diagnostics == list()
+    assert dialogue._dae_editor.get_diagnostics() == list()
     dialogue._validate_code_button.click()
 
-    assert len(dialogue._dae_editor._diagnostics) == 2
-    diagnostic: DaeCodeDiagnostic = dialogue._dae_editor._diagnostics[0]
-    assert diagnostic.get_line() == 4
+    assert len(dialogue._dae_editor.get_diagnostics()) == 1
+    diagnostic: DaeCodeDiagnostic = dialogue._dae_editor.get_diagnostics()[0]
+    assert diagnostic.get_line() == 5
     assert "missing comma" in diagnostic.get_message().lower()
-    assert dialogue._dae_editor._diagnostics[1].get_line() == 5
-    assert "missing_name" in dialogue._dae_editor._diagnostics[1].get_message()
     assert "state_eqs" not in dialogue._status_label.text()
     dialogue.close()
 
@@ -649,24 +1186,24 @@ def test_validate_button_marks_a_cross_line_unmatched_opening_parenthesis() -> N
         VarFactory(),
     )
     dialogue._dae_editor.setPlainText(
-        "state_eqs = []\n"
+        "state_vars = []\n"
+        "state_eqs = {}\n"
         "algebraic_eqs = [\n"
-        "    (1 + 2,\n"
+        "    0 = (1 + 2,\n"
         "]\n"
-        "differential_eqs = []\n"
         "init_eqs = {}\n"
         "diff_init_eqs = {}"
     )
 
     dialogue._validate_code_button.click()
 
-    assert len(dialogue._dae_editor._diagnostics) == 1
-    diagnostic: DaeCodeDiagnostic = dialogue._dae_editor._diagnostics[0]
-    assert diagnostic.get_line() == 3
+    assert len(dialogue._dae_editor.get_diagnostics()) == 1
+    diagnostic: DaeCodeDiagnostic = dialogue._dae_editor.get_diagnostics()[0]
+    assert diagnostic.get_line() == 4
     assert "validate again" in diagnostic.get_message()
     selections: list[QtWidgets.QTextEdit.ExtraSelection] = dialogue._dae_editor.extraSelections()
     assert selections[0].cursor.selectedText() == "("
-    assert "line 3" in dialogue._status_label.text().lower()
+    assert "line 4" in dialogue._status_label.text().lower()
     dialogue.close()
 
 
@@ -754,39 +1291,6 @@ def test_every_block_properties_table_column_is_manually_resizable() -> None:
     dialogue.close()
 
 
-def test_markdown_display_math_is_replaced_by_rendered_document_resource() -> None:
-    """Documentation should not expose raw double-dollar math delimiters."""
-    application: QtWidgets.QApplication = get_qt_application()
-    _unused_application: QtWidgets.QApplication = application
-    browser: QtWidgets.QTextBrowser = QtWidgets.QTextBrowser()
-    browser.document().setBaseUrl(
-        QtCore.QUrl.fromLocalFile("C:/documentation/dyn_templates/RMS/")
-    )
-
-    set_markdown_with_latex(browser, "Characteristic equation:\n\n$$x + 1$$")
-
-    assert "$$" not in browser.toPlainText()
-    assert "\ufffc" in browser.toPlainText()
-    handler: SvgEquationTextObject | None = browser.findChild(
-        SvgEquationTextObject,
-        "veragrid_svg_equation_text_object",
-    )
-    assert isinstance(handler, SvgEquationTextObject)
-    object_position: int = browser.toPlainText().index("\ufffc")
-    object_cursor: QtGui.QTextCursor = QtGui.QTextCursor(browser.document())
-    object_cursor.setPosition(object_position)
-    object_cursor.movePosition(
-        QtGui.QTextCursor.MoveOperation.Right,
-        QtGui.QTextCursor.MoveMode.KeepAnchor,
-        1,
-    )
-    svg_data: QtCore.QByteArray = handler.get_svg_data(object_cursor.charFormat())
-    svg_renderer: QtSvg.QSvgRenderer = QtSvg.QSvgRenderer(svg_data)
-    assert svg_renderer.isValid()
-    assert svg_renderer.defaultSize().width() > 0
-    browser.close()
-
-
 def test_emt_generator_binary_functions_validate_in_dialogue() -> None:
     """The EMT generator's ``atan2`` expressions must use the safe GUI parser."""
     application: QtWidgets.QApplication = get_qt_application()
@@ -806,7 +1310,7 @@ def test_emt_generator_binary_functions_validate_in_dialogue() -> None:
     )
     dialogue.validate_complete_dae_code()
     assert dialogue._status_label.text() == "DAE code is valid."
-    assert dialogue._dae_editor._diagnostics == list()
+    assert dialogue._dae_editor.get_diagnostics() == list()
     dialogue.close()
 
 
@@ -870,7 +1374,6 @@ def test_rlc_combo_rendered_pdf_uses_matching_state_derivatives(tmp_path: Path) 
         str(destination),
         block.name,
         entries,
-        EquationPdfStyle.RENDERED,
     )
     payload: bytes = destination.read_bytes()
     assert payload.startswith(b"%PDF")
@@ -955,65 +1458,103 @@ def test_every_phase_selective_builder_defaults_to_abc_without_neutral() -> None
         ("Pll_transform_rms", "library\\pll_transformer.md"),
     ]),
 )
-def test_template_documentation_uses_composite_and_pll_markdown(template_name: str,
-                                                                 expected_suffix: str) -> None:
-    """Generic template nodes must resolve their real packaged-model documentation."""
-    documentation: str
-    source: str
-    documentation, source = resolve_block_documentation(
-        "TEMPLATE",
-        Block(name=template_name),
+def test_template_documentation_uses_composite_and_pll_online_page(template_name: str,
+                                                                    expected_suffix: str) -> None:
+    """Generic template nodes must resolve their exact online documentation page."""
+    expected_html_suffix: str = expected_suffix.replace("\\", "/")[:-3] + ".html"
+    documentation_url: str | None = resolve_block_documentation_url("TEMPLATE", template_name)
+
+    assert documentation_url is not None
+    assert documentation_url.startswith(
+        "https://veragrid.readthedocs.io/en/latest/md_source/dyn_templates/"
     )
+    assert documentation_url.endswith(expected_html_suffix)
+    assert "\\" not in documentation_url
 
-    assert source.endswith(expected_suffix)
-    assert "Interface table" in documentation
+
+# This check belongs to the documentation validation suite, not to ``src/tests``.
+# Tests under ``src/tests`` must not require files from the external ``doc`` tree.
+# def test_all_explicit_native_documentation_paths_exist() -> None:
+#     """Keep every native BlockType documentation association on disk."""
+#     documentation_root: Path = Path(__file__).resolve().parents[3] / "doc" / "md_source" / "dyn_templates"
+#     mapped_count: int = 0
+#     block_type: BlockType
+#     for block_type in BlockType:
+#         relative_path: str | None = _get_documentation_relative_path(block_type.name, block_type.name)
+#         if relative_path is not None:
+#             mapped_count += 1
+#             assert (documentation_root / relative_path).is_file(), block_type.name
+#         else:
+#             pass
+#
+#     assert mapped_count >= 60
 
 
-def test_all_explicit_native_documentation_paths_exist() -> None:
-    """Keep every native BlockType documentation association on disk."""
-    documentation_root: Path = Path(__file__).resolve().parents[3] / "doc" / "md_source" / "dyn_templates"
-    mapped_count: int = 0
-    block_type: BlockType
-    for block_type in BlockType:
-        relative_path: str | None = _get_documentation_relative_path(block_type.name, block_type.name)
-        if relative_path is not None:
-            mapped_count += 1
-            assert (documentation_root / relative_path).is_file(), block_type.name
-        else:
-            pass
-
-    assert mapped_count >= 60
+# def test_every_dynamic_block_page_explains_the_block_and_its_use() -> None:
+#     """Every published block page must explain what it represents and why it is used."""
+#     documentation_root: Path = Path(__file__).resolve().parents[3] / "doc" / "md_source" / "dyn_templates"
+#     documentation_paths: list[Path] = list(
+#         documentation_path
+#         for documentation_path in documentation_root.rglob("*.md")
+#         if documentation_path.name not in ("dynamic_model_library_index.md", "dae_block_authoring.md")
+#     )
+#
+#     assert len(documentation_paths) >= 780
+#     documentation_path: Path
+#     for documentation_path in documentation_paths:
+#         documentation: str = documentation_path.read_text(encoding="utf-8")
+#         assert documentation.count("<!-- veragrid-block-introduction:start -->") == 1, documentation_path
+#         assert documentation.count("<!-- veragrid-block-introduction:end -->") == 1, documentation_path
+#         assert "## Engineering context" not in documentation, documentation_path
+#         assert "## Typical use" in documentation, documentation_path
+#         assert len(documentation.split()) >= 75, documentation_path
 
 
 def test_cigre_surge_source_uses_its_catalogue_markdown() -> None:
-    """Resolve the CIGRE source documentation instead of a generated fallback."""
-    documentation: str
-    source: str
-    documentation, source = resolve_block_documentation(
+    """Resolve the CIGRE source to its exact online catalogue page."""
+    documentation_url: str | None = resolve_block_documentation_url(
         BlockType.CIGRE_SURGE_CURRENT_SOURCE_EMT.name,
-        Block(name="CIGRE_SURGE_CURRENT_SOURCE_EMT_1"),
+        "CIGRE_SURGE_CURRENT_SOURCE_EMT_1",
     )
 
-    assert source.endswith("library\\cigre_surge_current_source_emt.md")
-    assert "CIGRE-standard surge current source" in documentation
+    assert documentation_url is not None
+    assert documentation_url.endswith("library/cigre_surge_current_source_emt.html")
 
 
 def test_every_basic_catalogue_template_resolves_its_own_markdown() -> None:
-    """Require one type-id-specific Markdown page for every draggable template."""
+    """Require one type-id-specific online page for every draggable template."""
     descriptor: BasicBlockTemplateDescriptor
     for descriptor in get_editor_ready_basic_block_catalog_descriptors():
         template: EmtModelTemplate = load_basic_block_catalog_template(
             descriptor=descriptor,
             var_factory=VarFactory(),
         )
-        documentation: str
-        source: str
-        documentation, source = resolve_block_documentation("TEMPLATE", template.block)
+        documentation_url: str | None = resolve_block_documentation_url(
+            "TEMPLATE",
+            template.block.name,
+        )
 
-        assert source.endswith(f"library\\catalog\\typ_{descriptor.typ_id}.md"), descriptor.display_label
-        assert "## Characteristic equations" in documentation
-        assert "## Interface table" in documentation
-        assert "Generated from the current block" not in source
+        assert documentation_url is not None, descriptor.display_label
+        assert documentation_url.endswith(
+            f"library/catalog/typ_{descriptor.typ_id}.html"
+        ), descriptor.display_label
+
+
+def test_custom_block_disables_online_catalogue_documentation() -> None:
+    """A genuinely custom node must not pretend to have catalogue documentation."""
+    application: QtWidgets.QApplication = get_qt_application()
+    _unused_application: QtWidgets.QApplication = application
+    custom_block: Block = Block(name="User-authored control model")
+    dialogue: DynamicBlockPropertiesDialog = DynamicBlockPropertiesDialog(
+        custom_block,
+        "CUSTOM",
+        VarFactory(),
+    )
+
+    assert resolve_block_documentation_url("CUSTOM", custom_block.name) is None
+    assert not dialogue._block_info_button.isEnabled()
+    assert "custom block" in dialogue._block_info_button.toolTip()
+    dialogue.close()
 
 
 def test_symbol_tables_are_separated_and_never_repeat_parameter_values() -> None:
@@ -1262,21 +1803,12 @@ def test_external_mapping_only_identity_remains_visible_in_initialization_column
     dialogue.close()
 
 
-def test_equation_pdf_writer_creates_both_supported_pdf_styles(tmp_path: Path) -> None:
-    """Selected equations must export as valid source and rendered PDF documents."""
+def test_equation_pdf_writer_and_copyable_latex_source(tmp_path: Path) -> None:
+    """Selected equations must provide copyable source and one rendered PDF."""
     application: QtWidgets.QApplication = get_qt_application()
     _unused_application: QtWidgets.QApplication = application
-    source_name: str = build_equation_pdf_suggested_name(
-        "Generator",
-        EquationPdfStyle.LATEX_SOURCE,
-    )
-    rendered_name: str = build_equation_pdf_suggested_name(
-        "Generator",
-        EquationPdfStyle.RENDERED,
-    )
-    assert source_name == "Generator_dynamic_equations_latex_source.pdf"
+    rendered_name: str = build_equation_pdf_suggested_name("Generator")
     assert rendered_name == "Generator_dynamic_equations_latex_rendered.pdf"
-    assert source_name != rendered_name
     entries: list[EquationExportEntry] = list([
         EquationExportEntry(
             "Generator",
@@ -1284,31 +1816,19 @@ def test_equation_pdf_writer_creates_both_supported_pdf_styles(tmp_path: Path) -
             r"\frac{d\omega}{dt}=\frac{T_m-T_e}{M}",
         ),
     ])
-    source_payload: bytes | None = None
-    rendered_payload: bytes | None = None
-    style: EquationPdfStyle
-    for style in (EquationPdfStyle.LATEX_SOURCE, EquationPdfStyle.RENDERED):
-        destination: Path = tmp_path / f"equations_{style.name.lower()}.pdf"
-        write_equation_pdf(str(destination), "Generator template", entries, style)
-        payload: bytes = destination.read_bytes()
-        assert payload.startswith(b"%PDF")
-        assert len(payload) > 1000
-        if style == EquationPdfStyle.LATEX_SOURCE:
-            source_payload = payload
-        else:
-            rendered_payload = payload
+    latex_source: str = build_latex_source(entries)
+    assert "% Generator - State equations" in latex_source
+    assert r"\[" in latex_source
+    assert r"\frac{d\omega}{dt}=\frac{T_m-T_e}{M}" in latex_source
+    assert r"\]" in latex_source
 
-    # Source is painted as real PDF text, not a raster screenshot, so users
-    # can copy a complete display-math block into a LaTeX editor.
-    assert source_payload is not None
-    assert encode_pdf_literal(r"\[") in source_payload
-    assert encode_pdf_literal(r"  \frac{d\omega}{dt}=\frac{T_m-T_e}{M}") in source_payload
-    assert encode_pdf_literal(r"\]") in source_payload
-    assert b" Tj" in source_payload
-    assert b"(Page " not in source_payload
+    destination: Path = tmp_path / rendered_name
+    write_equation_pdf(str(destination), "Generator template", entries)
+    rendered_payload: bytes = destination.read_bytes()
+    assert rendered_payload.startswith(b"%PDF")
+    assert len(rendered_payload) > 1000
     # Rendered documents contain native PDF text and SVG paths. No raster
     # image object may be embedded, otherwise zooming would pixelate content.
-    assert rendered_payload is not None
     assert b"/Subtype /Image" not in rendered_payload
 
 
@@ -1335,12 +1855,13 @@ def test_state_and_algebraic_export_entries_use_dae_equation_sides() -> None:
 
 
 def test_latex_selection_has_no_differential_section() -> None:
-    """Derivative residuals belong to Algebraic equations, not a fifth section."""
+    """Legacy differential residuals are absent from the editable DAE and export groups."""
     application: QtWidgets.QApplication = get_qt_application()
     _unused_application: QtWidgets.QApplication = application
     state_variable: Var = Var("x")
     differential_variable: Var = Var("d_x", base_var=state_variable)
     algebraic_variable: Var = Var("y")
+    legacy_differential_expression: Expr = differential_variable - algebraic_variable
     block: Block = Block(
         name="section_test",
         state_vars=list([state_variable]),
@@ -1348,7 +1869,7 @@ def test_latex_selection_has_no_differential_section() -> None:
         algebraic_vars=list([algebraic_variable]),
         algebraic_eqs=list([algebraic_variable]),
         diff_vars=list([differential_variable]),
-        differential_eqs=list([differential_variable - algebraic_variable]),
+        differential_eqs=list([legacy_differential_expression]),
     )
     dialogue: DynamicBlockPropertiesDialog = DynamicBlockPropertiesDialog(
         block,
@@ -1366,8 +1887,35 @@ def test_latex_selection_has_no_differential_section() -> None:
         section_counts[label] = child_item.text(1)
 
     assert "Differential equations" not in section_labels
+    assert "differential_eqs" not in dialogue._dae_editor.toPlainText()
     assert section_counts["State equations"] == "1"
-    assert section_counts["Algebraic equations"] == "2"
+    assert section_counts["Algebraic equations"] == "1"
+    assert dialogue._latex_source_preview.isReadOnly()
+    assert dialogue._export_rendered_button.text() == "Download rendered PDF"
+    source_panel: QtWidgets.QWidget | None = dialogue._latex_source_preview.parentWidget()
+    assert source_panel is not None
+    latex_splitter: QtWidgets.QWidget | None = source_panel.parentWidget()
+    assert isinstance(latex_splitter, QtWidgets.QSplitter)
+    assert latex_splitter.orientation() == QtCore.Qt.Orientation.Vertical
+    label_texts: list[str] = list()
+    label: QtWidgets.QLabel
+    for label in dialogue.findChildren(QtWidgets.QLabel):
+        label_texts.append(label.text())
+    assert "LaTeX source" in label_texts
+    assert "LaTeX source (select and copy)" not in label_texts
+
+    dialogue.select_all_latex_sections()
+    latex_source: str = dialogue._latex_source_preview.toPlainText()
+    assert "% section_test - State equations" in latex_source
+    assert r"\[" in latex_source
+    assert r"\]" in latex_source
+
+    # Applying the four editable sections must not erase or reinterpret a
+    # legacy Engine field that the dialogue deliberately does not expose.
+    dialogue.apply_changes()
+    assert "Nothing was applied" not in dialogue._status_label.text()
+    assert len(block.differential_eqs) == 1
+    assert block.differential_eqs[0] is legacy_differential_expression
     dialogue.close()
 
 
@@ -1521,7 +2069,6 @@ def test_genraw_rendered_pdf_accepts_absolute_value_initialization(tmp_path: Pat
             owner.diff_vars,
         ))
         residual_expressions: list[Expr] = list(owner.algebraic_eqs)
-        residual_expressions.extend(owner.differential_eqs)
         entries.extend(build_list_equation_entries(
             owner.name,
             EquationExportSection.ALGEBRAIC,
@@ -1543,7 +2090,6 @@ def test_genraw_rendered_pdf_accepts_absolute_value_initialization(tmp_path: Pat
         str(destination),
         block.name,
         entries,
-        EquationPdfStyle.RENDERED,
     )
 
     payload: bytes = destination.read_bytes()

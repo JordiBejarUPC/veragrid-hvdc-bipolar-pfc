@@ -2,6 +2,15 @@
 
 This is Basic Block Catalog type `76` (`lim_const`). It applies the declared limiting or nonlinear relation to its input signals.
 
+<!-- veragrid-block-introduction:start -->
+**lim const** represents passive network physics through resistance, inductance, capacitance, coupling, or switching topology. Its equations enforce voltage-current constitutive relations and therefore affect energy storage, damping, propagation, fault current, or grounding behavior.
+
+## Typical use
+
+- Use it to reproduce the electrical path between sources, converters, machines, and loads.
+- Keep phases, terminal orientation, connection type, and SI/per-unit parameter bases consistent.
+<!-- veragrid-block-introduction:end -->
+
 ## Behaviour
 
 - Library location: `Native / Limits and Nonlinearities / Limiters`.
@@ -14,7 +23,7 @@ This is Basic Block Catalog type `76` (`lim_const`). It applies the declared lim
 ## Characteristic equations
 
 $$
-0 = (yo - y_{min} + (yi - y_{min}) \cdot \Theta\left(yi - y_{min}\right) - (yi - y_{max}) \cdot \Theta\left(yi - y_{max}\right))
+0 = (yo - (y_{min} + (yi - y_{min}) \cdot \Theta\left(yi - y_{min}\right) - (yi - y_{max}) \cdot \Theta\left(yi - y_{max}\right)))
 $$
 
 ## Interface table

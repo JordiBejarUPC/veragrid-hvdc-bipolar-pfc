@@ -476,7 +476,7 @@ def test_parameter_modal_separates_runtime_modes_for_pulse_block() -> None:
         index: QtCore.QModelIndex = dialogue._parameter_model.index(row_index, 0)
         row_types.append(str(dialogue._parameter_model.data(index, QtCore.Qt.ItemDataRole.DisplayRole)))
 
-    assert any(row_type.startswith("Event parameter") for row_type in row_types)
+    assert any(row_type.startswith("Dynamic parameter") for row_type in row_types)
     assert not any(row_type.startswith("Mode parameter") for row_type in row_types)
     assert dialogue._runtime_logic_editor._mode_model.rowCount() > 0
     assert dialogue._tabs.tabText(2) == "Runtime logic"

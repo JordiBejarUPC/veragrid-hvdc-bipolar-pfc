@@ -1,5 +1,14 @@
 # Pickup/dropoff relay
 
+<!-- veragrid-block-introduction:start -->
+**Pickup/dropoff relay** belongs to the hybrid/event layer of a dynamic model. It selects, stores, delays, or switches signals according to conditions, so its result depends on discrete mode or accepted simulation history in addition to the instantaneous continuous variables.
+
+## Typical use
+
+- Use it for protection, enable/disable sequences, sampled control, reset logic, and mode transfer.
+- Define initial mode and boundary behavior explicitly to avoid unintended event chattering.
+<!-- veragrid-block-introduction:end -->
+
 ## Purpose
 
 Creates a binary relay with independent activation and deactivation delays.
