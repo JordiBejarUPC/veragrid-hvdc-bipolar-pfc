@@ -2955,6 +2955,14 @@ class Block:
                     # from the canonical symbolic structure while it is still
                     # available, never from the optional diagram projection.
                     block.dynamic_model_contract.emt_internal_grounding_link = True
+                    if block.in_vars[0].ref is None:
+                        block.in_vars[0].ref = VarPowerFlowReferenceType.v_N
+                    else:
+                        pass
+                    if block.out_vars[0].ref is None:
+                        block.out_vars[0].ref = VarPowerFlowReferenceType.i_N
+                    else:
+                        pass
                 else:
                     pass
             else:
@@ -4119,14 +4127,17 @@ def _is_legacy_emt_internal_grounding_link(block: Block) -> bool:
     :return: ``True`` when neutral voltage/current ports own an ideal-ground child.
     """
     if len(block.in_vars) == 1 and len(block.out_vars) == 1:
-        has_neutral_ports: bool = (
-                block.in_vars[0].ref is VarPowerFlowReferenceType.v_N
-                and block.out_vars[0].ref is VarPowerFlowReferenceType.i_N
+        # Historical expression records did not persist physical references.
+        # Accept only missing or already-neutral ports; an explicit conflicting
+        # conductor remains a fail-closed rejection.
+        has_compatible_neutral_ports: bool = (
+                block.in_vars[0].ref in (None, VarPowerFlowReferenceType.v_N)
+                and block.out_vars[0].ref in (None, VarPowerFlowReferenceType.i_N)
         )
     else:
-        has_neutral_ports = False
+        has_compatible_neutral_ports = False
 
-    if has_neutral_ports:
+    if has_compatible_neutral_ports:
         terminal_current_uid: int = block.out_vars[0].uid
         parent_algebraic_uids: set[int] = set()
         algebraic_var: Var

@@ -559,7 +559,7 @@ def test_duplicate_block_preserves_parent_child_variable_links_with_new_uids() -
         duplicate_block(parent, VarFactory())
     parent.dynamic_model_contract.dgs_elmsym_speed_var_uid = None
     child.dynamic_model_contract.dgs_explicit_initialization_uids.add(-1)
-    with pytest.raises(KeyError, match="UID '-1' was not duplicated"):
+    with pytest.raises(KeyError, match="UID '-1' is not reachable"):
         duplicate_block(parent, VarFactory())
 
 

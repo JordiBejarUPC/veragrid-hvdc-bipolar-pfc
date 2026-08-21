@@ -108,6 +108,8 @@ def test_emt_grounding_uses_canonical_blocks_not_diagram_projection() -> None:
     assert has_emt_internal_grounding_link(block=canonical_model)
     assert has_emt_internal_grounding_link(block=restored_model)
     assert legacy_restored_grounding.dynamic_model_contract.emt_internal_grounding_link
+    assert legacy_restored_grounding.in_vars[0].ref is VarPowerFlowReferenceType.v_N
+    assert legacy_restored_grounding.out_vars[0].ref is VarPowerFlowReferenceType.i_N
     assert has_emt_internal_grounding_link(block=legacy_restored_grounding)
 
 

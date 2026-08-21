@@ -633,6 +633,18 @@ class Var(Expr):
     def ref(self) -> VarPowerFlowReferenceType | None:
         return self._ref
 
+    @ref.setter
+    def ref(self, val: VarPowerFlowReferenceType) -> None:
+        """Set the typed physical-network reference of this variable.
+
+        :param val: Physical-network reference to assign.
+        :return: None.
+        """
+        if isinstance(val, VarPowerFlowReferenceType):
+            self._ref = val
+        else:
+            raise ValueError(f"Symbolic variable cannot accept reference {val}")
+
     def _diff1(self, var: Var | str, dt: Var | None = None) -> Expr:
         """
         differentiation
