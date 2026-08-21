@@ -222,6 +222,7 @@ def test_standard_vsc_template_declares_both_terminal_contributions() -> None:
         model.dynamic_model_contract.rms_terminal_power_contributions
     )
 
+    assert model.out_vars == list()
     assert len(contributions) == 2
     assert contributions[0].get_terminal_side() is RmsTerminalSide.FROM
     assert contributions[1].get_terminal_side() is RmsTerminalSide.TO
