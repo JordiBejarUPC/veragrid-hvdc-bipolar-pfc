@@ -3,6 +3,7 @@
 # file, You can see it at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 
+import math
 import time
 import statistics
 from typing import Dict, List, Optional, Tuple
@@ -23,12 +24,14 @@ from VeraGridEngine.Utils.procedural_logic import (
     ifelse,
     lastvalue,
     picdro,
+    ProceduralLogicCodec,
     reset,
+    sampled_value,
     select,
 )
 from VeraGridEngine.Utils.Symbolic.diagnostic import NewtonTraceCollector
 from VeraGridEngine.Utils.Symbolic.block import Block
-from VeraGridEngine.Utils.Symbolic.symbolic import Comparison, Const, Expr, Var
+from VeraGridEngine.Utils.Symbolic.symbolic import atan2, Comparison, Const, Expr, Var
 from VeraGridEngine.enumerations import DynamicIntegrationMethod
 
 
@@ -553,7 +556,10 @@ def _run_benchmark_simulation(
     solver: JitSymbolicSolver,
     logic_snapshot: list[dict[str, object]],
 ) -> Dict[str, object]:
-    problem.sys_block.procedural_logic = Block._procedural_logic_from_dict(logic_snapshot)
+    problem.sys_block.procedural_logic = Block._procedural_logic_from_dict(
+        data=logic_snapshot,
+        procedural_logic_codec=ProceduralLogicCodec(),
+    )
     updater = build_boundary_updater_from_block(problem)
 
     collector = NewtonTraceCollector()
@@ -653,7 +659,10 @@ def test_block_roundtrip_preserves_procedural_logic() -> None:
     vf = VarFactory()
     block, _ = create_integrator_trip_system_with_logic(vf)
 
-    restored = Block.parse(block.to_dict())
+    restored = Block.parse(
+        data=block.to_dict(),
+        procedural_logic_codec=ProceduralLogicCodec(),
+    )
 
     assert len(restored.procedural_logic) == 1
     logic = restored.procedural_logic[0]
@@ -689,6 +698,52 @@ def test_boundary_updater_builds_from_block_logic() -> None:
     forced_time = updater.get_next_forced_event_time(0.0, 0.01)
     assert forced_time is not None
     assert pytest.approx(forced_time, abs=1e-7) == 1.5e-3
+
+
+def test_sampled_value_uses_declarative_atan2_argument_order() -> None:
+    """Evaluate procedural ``atan2(imaginary, real)`` without generated code.
+
+    :return: None.
+    """
+    vf: VarFactory = VarFactory()
+    imaginary: Var = vf.add_var("imaginary")
+    real: Var = vf.add_var("real")
+    angle: Var = vf.add_var("angle")
+    block: Block = Block(
+        name="ProceduralAtan2Test",
+        algebraic_vars=list((imaginary, real)),
+        algebraic_eqs=list((imaginary, real)),
+        event_dict=dict(((angle, Const(0.0)),)),
+        procedural_logic=list((
+            sampled_value(
+                output=angle,
+                source=atan2(imaginary, real),
+                name="sample_angle",
+            ),
+        )),
+    )
+    block.unify_blocks()
+    block = Block.parse(
+        data=block.to_dict(),
+        procedural_logic_codec=ProceduralLogicCodec(),
+    )
+    problem: GenericEmtProblem = GenericEmtProblem(
+        sys_block=block,
+        glob_time=vf.add_var("t_glob_atan2"),
+        static_parameter_values_mapping=dict(),
+    )
+    updater: BoundaryUpdateWrapper | None = build_boundary_updater_from_block(problem)
+
+    assert updater is not None
+
+    state: np.ndarray = problem.get_x0().copy()
+    parameters: np.ndarray = problem.event_params_values.copy()
+    state[problem.get_var_idx(imaginary)] = 1.0
+    state[problem.get_var_idx(real)] = 0.0
+    updater.update(t=0.0, x=state, params=parameters)
+
+    angle_idx: int = problem.uid2idx_event_params[angle.uid]
+    assert parameters[angle_idx] == pytest.approx(math.pi / 2.0)
 
 
 def test_procedural_logic_demo_path_trips_mode_during_simulation() -> None:

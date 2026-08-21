@@ -99,6 +99,7 @@ from VeraGridEngine.Utils.Symbolic.symbolic import (
 from VeraGridEngine.Utils.procedural_logic import (
     ConditionalDiagnosticLogic,
     DelayedSwitchEventLogic,
+    ProceduralLogicCodec,
 )
 from VeraGridEngine.Templates.Rms.line_rms_template import (
     get_dc_line_rms_template,
@@ -2824,7 +2825,10 @@ def test_dgs_conditional_diagnostics_are_canonical_and_round_trip() -> None:
         for entry in block.procedural_logic
         if isinstance(entry, ConditionalDiagnosticLogic)
     ]
-    rebuilt_block: Block = Block.parse(block.to_dict())
+    rebuilt_block: Block = Block.parse(
+        data=block.to_dict(),
+        procedural_logic_codec=ProceduralLogicCodec(),
+    )
     rebuilt_diagnostics: list[ConditionalDiagnosticLogic] = [
         entry
         for entry in rebuilt_block.procedural_logic

@@ -9,6 +9,7 @@ from typing import Any
 import json
 
 from VeraGridEngine.IO.fmu.exporter.compat import Block
+from VeraGridEngine.Utils.procedural_logic import ProceduralLogicCodec
 
 SNAPSHOT_SCHEMA_VERSION = 1
 
@@ -47,7 +48,10 @@ def build_model_snapshot(model: Block) -> dict[str, Any]:
 
 def reconstruct_block(snapshot: dict[str, Any]) -> Block:
     block_payload = snapshot.get("block", snapshot)
-    return Block.parse(block_payload)
+    return Block.parse(
+        data=block_payload,
+        procedural_logic_codec=ProceduralLogicCodec(),
+    )
 
 
 def save_snapshot(snapshot: dict[str, Any], path: str | Path) -> Path:

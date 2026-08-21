@@ -6,8 +6,10 @@
 from __future__ import annotations
 
 import copy
+import math
 import uuid
 from typing import List, Dict, Any, Tuple
+from typing import Iterable, Mapping
 
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const, Expr, _expr_to_dict, _dict_to_expr, BinOp, UnOp, Func, \
     Func2, Comparison
@@ -20,7 +22,797 @@ from VeraGridEngine.Utils.Symbolic.dynamic_connection_intent import (DynamicConn
                                                                      dynamic_connection_intent_from_dict,
                                                                      dynamic_connection_intent_to_dict)
 from VeraGridEngine.Utils.Symbolic.variable_alignment_engine import align_variables
+from VeraGridEngine.Utils.procedural_logic_contract import (
+    ProceduralLogicCodecContract,
+    ProceduralLogicData,
+    ProceduralLogicEntryContract,
+)
 
+
+class DynamicModelContract:
+    """
+    Store typed dynamic-behavior declarations owned by one symbolic block.
+
+    The contract contains scalar flags and symbolic UIDs only. It therefore
+    preserves the canonical ``Block`` object graph instead of retaining import
+    parser objects or references to a second dynamic-model representation.
+    """
+
+    __slots__ = (
+        "dgs_elmsym_runtime_adapter",
+        "dgs_elmsym_runtime_adapter_pending",
+        "dgs_elmsym_round_rotor",
+        "dgs_elmsym_rotor_angle_var_uid",
+        "dgs_elmsym_speed_var_uid",
+        "dgs_elmsym_angular_frequency_var_uid",
+        "dgs_elmsym_rated_field_voltage_var_uid",
+        "dgs_elmsym_excitation_gain_var_uid",
+        "dgs_elmsym_active_base_factor_var_uid",
+        "dgs_elmsym_network_angle_anchor",
+        "dgs_elmsym_reference_speed_var_uid",
+        "dgs_explicit_initialization_uids",
+        "dgs_logical_actuator_root_id",
+        "dgs_open_resistance_ohm",
+        "rms_conduction_status_var_uid",
+        "rms_topology_constraint_status_var_uid",
+        "rms_ideal_ac_connector",
+        "rms_ideal_transformer",
+        "skip_device_local_explicit_init",
+        "startup_initial_reduced_polish_var_names",
+        "runtime_measurement_shell_sync_names",
+        "startup_ordered_shell_sync_names",
+        "dgs_equipment_owned_signal_names",
+        "dgs_elmgenstat_runtime_adapter",
+        "dgs_open_standard_regc_current_pll",
+        "dgs_open_standard_regc_voltage_source",
+        "explicit_init_excluded_var_names",
+        "explicit_init_override_init_exprs",
+        "runtime_equipment_shell_sync_names",
+        "runtime_equipment_shell_sync_var_uids",
+        "startup_final_init_replay_var_names",
+        "dgs_elmsvs_runtime_adapter",
+        "dgs_elmsvs_remote_voltage_var_uid",
+    )
+
+    def __init__(self) -> None:
+        """
+        Initialize an empty fail-closed dynamic-model contract.
+
+        :return: None.
+        """
+        # Adapter flags default to false so incomplete imports cannot become
+        # runtime-assignable merely because metadata is absent.
+        self.dgs_elmsym_runtime_adapter: bool = False
+        self.dgs_elmsym_runtime_adapter_pending: bool = False
+        self.dgs_elmsym_round_rotor: bool | None = None
+
+        # Symbolic references use stable UIDs and never retain duplicate Var
+        # objects outside the canonical block graph.
+        self.dgs_elmsym_rotor_angle_var_uid: int | None = None
+        self.dgs_elmsym_speed_var_uid: int | None = None
+        self.dgs_elmsym_angular_frequency_var_uid: int | None = None
+        self.dgs_elmsym_rated_field_voltage_var_uid: int | None = None
+        self.dgs_elmsym_excitation_gain_var_uid: int | None = None
+        self.dgs_elmsym_active_base_factor_var_uid: int | None = None
+        self.dgs_elmsym_network_angle_anchor: bool = False
+        self.dgs_elmsym_reference_speed_var_uid: int | None = None
+        self.dgs_explicit_initialization_uids: set[int] = set()
+
+        # Logical actuators retain only exact source identity and fixed-size
+        # runtime projection specifications on their canonical RMS block.
+        self.dgs_logical_actuator_root_id: str | None = None
+        self.dgs_open_resistance_ohm: float | None = None
+        self.rms_conduction_status_var_uid: int | None = None
+        self.rms_topology_constraint_status_var_uid: int | None = None
+        self.rms_ideal_ac_connector: bool = False
+        self.rms_ideal_transformer: bool = False
+        self.skip_device_local_explicit_init: bool = False
+        self.startup_initial_reduced_polish_var_names: list[str] = list()
+
+        # Shell synchronization declarations contain names only and cannot
+        # retain source parser objects or duplicate symbolic variables.
+        self.runtime_measurement_shell_sync_names: list[str] = list()
+        self.startup_ordered_shell_sync_names: list[str] = list()
+        self.dgs_equipment_owned_signal_names: list[str] = list()
+
+        # Equipment adapters declare their runtime and initialization contract
+        # using names, UIDs, expressions, and fail-closed marker flags only.
+        self.dgs_elmgenstat_runtime_adapter: bool = False
+        self.dgs_open_standard_regc_current_pll: bool = False
+        self.dgs_open_standard_regc_voltage_source: bool = False
+        self.explicit_init_excluded_var_names: list[str] = list()
+        self.explicit_init_override_init_exprs: dict[str, Expr] = dict()
+        self.runtime_equipment_shell_sync_names: list[str] = list()
+        self.runtime_equipment_shell_sync_var_uids: list[int] = list()
+        self.startup_final_init_replay_var_names: list[str] = list()
+        self.dgs_elmsvs_runtime_adapter: bool = False
+        self.dgs_elmsvs_remote_voltage_var_uid: int | None = None
+
+    def to_data(self) -> Dict[str, object]:
+        """Return the versioned declarative dynamic-model contract.
+
+        :return: Data-only contract suitable for canonical block persistence.
+        """
+        return {
+            "version": 1,
+            "dgs_elmsym_runtime_adapter": self.dgs_elmsym_runtime_adapter,
+            "dgs_elmsym_runtime_adapter_pending": self.dgs_elmsym_runtime_adapter_pending,
+            "dgs_elmsym_round_rotor": self.dgs_elmsym_round_rotor,
+            "dgs_elmsym_rotor_angle_var_uid": self.dgs_elmsym_rotor_angle_var_uid,
+            "dgs_elmsym_speed_var_uid": self.dgs_elmsym_speed_var_uid,
+            "dgs_elmsym_angular_frequency_var_uid": self.dgs_elmsym_angular_frequency_var_uid,
+            "dgs_elmsym_rated_field_voltage_var_uid": self.dgs_elmsym_rated_field_voltage_var_uid,
+            "dgs_elmsym_excitation_gain_var_uid": self.dgs_elmsym_excitation_gain_var_uid,
+            "dgs_elmsym_active_base_factor_var_uid": self.dgs_elmsym_active_base_factor_var_uid,
+            "dgs_elmsym_network_angle_anchor": self.dgs_elmsym_network_angle_anchor,
+            "dgs_elmsym_reference_speed_var_uid": self.dgs_elmsym_reference_speed_var_uid,
+            "dgs_explicit_initialization_uids": sorted(self.dgs_explicit_initialization_uids),
+            "dgs_logical_actuator_root_id": self.dgs_logical_actuator_root_id,
+            "dgs_open_resistance_ohm": self.dgs_open_resistance_ohm,
+            "rms_conduction_status_var_uid": self.rms_conduction_status_var_uid,
+            "rms_topology_constraint_status_var_uid": self.rms_topology_constraint_status_var_uid,
+            "rms_ideal_ac_connector": self.rms_ideal_ac_connector,
+            "rms_ideal_transformer": self.rms_ideal_transformer,
+            "skip_device_local_explicit_init": self.skip_device_local_explicit_init,
+            "startup_initial_reduced_polish_var_names": list(
+                self.startup_initial_reduced_polish_var_names
+            ),
+            "runtime_measurement_shell_sync_names": list(
+                self.runtime_measurement_shell_sync_names
+            ),
+            "startup_ordered_shell_sync_names": list(
+                self.startup_ordered_shell_sync_names
+            ),
+            "dgs_equipment_owned_signal_names": list(
+                self.dgs_equipment_owned_signal_names
+            ),
+            "dgs_elmgenstat_runtime_adapter": self.dgs_elmgenstat_runtime_adapter,
+            "dgs_open_standard_regc_current_pll": self.dgs_open_standard_regc_current_pll,
+            "dgs_open_standard_regc_voltage_source": self.dgs_open_standard_regc_voltage_source,
+            "explicit_init_excluded_var_names": list(
+                self.explicit_init_excluded_var_names
+            ),
+            "explicit_init_override_init_exprs": dict(
+                (name, _expr_to_dict(expression))
+                for name, expression in self.explicit_init_override_init_exprs.items()
+            ),
+            "runtime_equipment_shell_sync_names": list(
+                self.runtime_equipment_shell_sync_names
+            ),
+            "runtime_equipment_shell_sync_var_uids": list(
+                self.runtime_equipment_shell_sync_var_uids
+            ),
+            "startup_final_init_replay_var_names": list(
+                self.startup_final_init_replay_var_names
+            ),
+            "dgs_elmsvs_runtime_adapter": self.dgs_elmsvs_runtime_adapter,
+            "dgs_elmsvs_remote_voltage_var_uid": self.dgs_elmsvs_remote_voltage_var_uid,
+        }
+
+
+def _contract_value(data: Dict[str, object], key: str) -> object:
+    """Read one required field from a present versioned contract.
+
+    :param data: Versioned dynamic-model contract data.
+    :param key: Exact required field name.
+    :return: Stored field value, including an explicit ``None``.
+    """
+    if key in data:
+        return data[key]
+    else:
+        raise KeyError(f"Dynamic-model contract field '{key}' is missing")
+
+
+def _contract_bool(data: Dict[str, object], key: str) -> bool:
+    """Read one required boolean contract field.
+
+    :param data: Versioned dynamic-model contract data.
+    :param key: Exact field name.
+    :return: Validated boolean value.
+    """
+    value: object = _contract_value(data, key)
+    if isinstance(value, bool):
+        return value
+    else:
+        raise TypeError(f"Dynamic-model contract field '{key}' must be boolean")
+
+
+def _contract_optional_bool(data: Dict[str, object], key: str) -> bool | None:
+    """Read one optional boolean contract field.
+
+    :param data: Versioned dynamic-model contract data.
+    :param key: Exact field name.
+    :return: Validated boolean or ``None``.
+    """
+    value: object = _contract_value(data, key)
+    if value is None:
+        return None
+    else:
+        if isinstance(value, bool):
+            return value
+        else:
+            raise TypeError(
+                f"Dynamic-model contract field '{key}' must be boolean or null"
+            )
+
+
+def _contract_optional_int(data: Dict[str, object], key: str) -> int | None:
+    """Read one optional symbolic UID contract field.
+
+    :param data: Versioned dynamic-model contract data.
+    :param key: Exact field name.
+    :return: Validated integer UID or ``None``.
+    """
+    value: object = _contract_value(data, key)
+    if value is None:
+        return None
+    else:
+        if isinstance(value, int) and not isinstance(value, bool):
+            return value
+        else:
+            raise TypeError(
+                f"Dynamic-model contract field '{key}' must be an integer or null"
+            )
+
+
+def _contract_optional_float(data: Dict[str, object], key: str) -> float | None:
+    """Read one optional numeric contract field.
+
+    :param data: Versioned dynamic-model contract data.
+    :param key: Exact field name.
+    :return: Validated finite-compatible float or ``None``.
+    """
+    value: object = _contract_value(data, key)
+    if value is None:
+        return None
+    else:
+        if isinstance(value, (int, float)) and not isinstance(value, bool):
+            numeric_value: float = float(value)
+            if math.isfinite(numeric_value):
+                return numeric_value
+            else:
+                raise ValueError(
+                    f"Dynamic-model contract field '{key}' must be finite"
+                )
+        else:
+            raise TypeError(
+                f"Dynamic-model contract field '{key}' must be numeric or null"
+            )
+
+
+def _contract_optional_str(data: Dict[str, object], key: str) -> str | None:
+    """Read one optional string contract field.
+
+    :param data: Versioned dynamic-model contract data.
+    :param key: Exact field name.
+    :return: Validated string or ``None``.
+    """
+    value: object = _contract_value(data, key)
+    if value is None:
+        return None
+    else:
+        if isinstance(value, str):
+            return value
+        else:
+            raise TypeError(
+                f"Dynamic-model contract field '{key}' must be a string or null"
+            )
+
+
+def _contract_str_list(data: Dict[str, object], key: str) -> List[str]:
+    """Read one ordered string collection from contract data.
+
+    :param data: Versioned dynamic-model contract data.
+    :param key: Exact field name.
+    :return: Validated string list.
+    """
+    value: object = _contract_value(data, key)
+    if isinstance(value, list):
+        result: List[str] = list()
+        item: object
+        for item in value:
+            if isinstance(item, str):
+                result.append(item)
+            else:
+                raise TypeError(
+                    f"Dynamic-model contract field '{key}' must contain strings"
+                )
+        else:
+            pass
+        return result
+    else:
+        raise TypeError(f"Dynamic-model contract field '{key}' must be a list")
+
+
+def _contract_int_list(data: Dict[str, object], key: str) -> List[int]:
+    """Read one ordered UID collection from contract data.
+
+    :param data: Versioned dynamic-model contract data.
+    :param key: Exact field name.
+    :return: Validated integer list.
+    """
+    value: object = _contract_value(data, key)
+    if isinstance(value, list):
+        result: List[int] = list()
+        item: object
+        for item in value:
+            if isinstance(item, int) and not isinstance(item, bool):
+                result.append(item)
+            else:
+                raise TypeError(
+                    f"Dynamic-model contract field '{key}' must contain integers"
+                )
+        else:
+            pass
+        return result
+    else:
+        raise TypeError(f"Dynamic-model contract field '{key}' must be a list")
+
+
+def dynamic_model_contract_from_data(data: Dict[str, object]) -> DynamicModelContract:
+    """Reconstruct one fail-closed versioned dynamic-model contract.
+
+    :param data: Declarative contract data.
+    :return: Reconstructed typed contract.
+    """
+    version: object = _contract_value(data, "version")
+    if isinstance(version, int) and not isinstance(version, bool) and version == 1:
+        pass
+    else:
+        raise ValueError("Unsupported dynamic-model contract version")
+
+    result: DynamicModelContract = DynamicModelContract()
+    expected_keys: set[str] = set(result.to_data().keys())
+    actual_keys: set[str] = set(data.keys())
+    if actual_keys == expected_keys:
+        pass
+    else:
+        missing_keys: List[str] = sorted(expected_keys - actual_keys)
+        extra_keys: List[str] = sorted(actual_keys - expected_keys)
+        raise KeyError(
+            "Dynamic-model contract keys do not match version 1: "
+            f"missing={missing_keys}, extra={extra_keys}"
+        )
+    result.dgs_elmsym_runtime_adapter = _contract_bool(data, "dgs_elmsym_runtime_adapter")
+    result.dgs_elmsym_runtime_adapter_pending = _contract_bool(
+        data, "dgs_elmsym_runtime_adapter_pending"
+    )
+    result.dgs_elmsym_round_rotor = _contract_optional_bool(data, "dgs_elmsym_round_rotor")
+    result.dgs_elmsym_rotor_angle_var_uid = _contract_optional_int(
+        data, "dgs_elmsym_rotor_angle_var_uid"
+    )
+    result.dgs_elmsym_speed_var_uid = _contract_optional_int(data, "dgs_elmsym_speed_var_uid")
+    result.dgs_elmsym_angular_frequency_var_uid = _contract_optional_int(
+        data, "dgs_elmsym_angular_frequency_var_uid"
+    )
+    result.dgs_elmsym_rated_field_voltage_var_uid = _contract_optional_int(
+        data, "dgs_elmsym_rated_field_voltage_var_uid"
+    )
+    result.dgs_elmsym_excitation_gain_var_uid = _contract_optional_int(
+        data, "dgs_elmsym_excitation_gain_var_uid"
+    )
+    result.dgs_elmsym_active_base_factor_var_uid = _contract_optional_int(
+        data, "dgs_elmsym_active_base_factor_var_uid"
+    )
+    result.dgs_elmsym_network_angle_anchor = _contract_bool(
+        data, "dgs_elmsym_network_angle_anchor"
+    )
+    result.dgs_elmsym_reference_speed_var_uid = _contract_optional_int(
+        data, "dgs_elmsym_reference_speed_var_uid"
+    )
+    result.dgs_explicit_initialization_uids = set(
+        _contract_int_list(data, "dgs_explicit_initialization_uids")
+    )
+    result.dgs_logical_actuator_root_id = _contract_optional_str(
+        data, "dgs_logical_actuator_root_id"
+    )
+    result.dgs_open_resistance_ohm = _contract_optional_float(
+        data, "dgs_open_resistance_ohm"
+    )
+    result.rms_conduction_status_var_uid = _contract_optional_int(
+        data, "rms_conduction_status_var_uid"
+    )
+    result.rms_topology_constraint_status_var_uid = _contract_optional_int(
+        data, "rms_topology_constraint_status_var_uid"
+    )
+    result.rms_ideal_ac_connector = _contract_bool(data, "rms_ideal_ac_connector")
+    result.rms_ideal_transformer = _contract_bool(data, "rms_ideal_transformer")
+    result.skip_device_local_explicit_init = _contract_bool(
+        data, "skip_device_local_explicit_init"
+    )
+    result.startup_initial_reduced_polish_var_names = _contract_str_list(
+        data, "startup_initial_reduced_polish_var_names"
+    )
+    result.runtime_measurement_shell_sync_names = _contract_str_list(
+        data, "runtime_measurement_shell_sync_names"
+    )
+    result.startup_ordered_shell_sync_names = _contract_str_list(
+        data, "startup_ordered_shell_sync_names"
+    )
+    result.dgs_equipment_owned_signal_names = _contract_str_list(
+        data, "dgs_equipment_owned_signal_names"
+    )
+    result.dgs_elmgenstat_runtime_adapter = _contract_bool(
+        data, "dgs_elmgenstat_runtime_adapter"
+    )
+    result.dgs_open_standard_regc_current_pll = _contract_bool(
+        data, "dgs_open_standard_regc_current_pll"
+    )
+    result.dgs_open_standard_regc_voltage_source = _contract_bool(
+        data, "dgs_open_standard_regc_voltage_source"
+    )
+    result.explicit_init_excluded_var_names = _contract_str_list(
+        data, "explicit_init_excluded_var_names"
+    )
+    expression_data: object = _contract_value(
+        data,
+        "explicit_init_override_init_exprs",
+    )
+    result.explicit_init_override_init_exprs = dict()
+    if isinstance(expression_data, dict):
+        expression_name: object
+        raw_expression: object
+        for expression_name, raw_expression in expression_data.items():
+            if isinstance(expression_name, str) and isinstance(raw_expression, dict):
+                result.explicit_init_override_init_exprs[expression_name] = _dict_to_expr(
+                    raw_expression
+                )
+            else:
+                raise TypeError(
+                    "Dynamic-model override expressions must be string-keyed expression data"
+                )
+    else:
+        raise TypeError("Dynamic-model override expressions must be a mapping")
+    result.runtime_equipment_shell_sync_names = _contract_str_list(
+        data, "runtime_equipment_shell_sync_names"
+    )
+    result.runtime_equipment_shell_sync_var_uids = _contract_int_list(
+        data, "runtime_equipment_shell_sync_var_uids"
+    )
+    result.startup_final_init_replay_var_names = _contract_str_list(
+        data, "startup_final_init_replay_var_names"
+    )
+    result.dgs_elmsvs_runtime_adapter = _contract_bool(data, "dgs_elmsvs_runtime_adapter")
+    result.dgs_elmsvs_remote_voltage_var_uid = _contract_optional_int(
+        data, "dgs_elmsvs_remote_voltage_var_uid"
+    )
+    return result
+
+
+def _remember_contract_var_uid(var: Var | None, reachable_uids: set[int]) -> None:
+    """Collect one variable identity and its derivative chain.
+
+    :param var: Reachable symbolic variable or ``None``.
+    :param reachable_uids: Mutable UID set for one block tree.
+    :return: None.
+    """
+    if var is None:
+        pass
+    else:
+        if var.uid in reachable_uids:
+            pass
+        else:
+            reachable_uids.add(var.uid)
+            _remember_contract_var_uid(var.base_var, reachable_uids)
+            _remember_contract_var_uid(var.diff_var, reachable_uids)
+
+
+def _remember_contract_expression_uids(
+        expression: Expr | Comparison,
+        reachable_uids: set[int],
+) -> None:
+    """Collect every variable referenced by one symbolic condition.
+
+    :param expression: Symbolic expression or comparison.
+    :param reachable_uids: Mutable UID set for one block tree.
+    :return: None.
+    """
+    if isinstance(expression, Comparison):
+        _remember_contract_expression_uids(expression.lhs, reachable_uids)
+        if isinstance(expression.rhs, Expr):
+            _remember_contract_expression_uids(expression.rhs, reachable_uids)
+        else:
+            pass
+    else:
+        referenced_var: Var
+        for referenced_var in expression.get_vars():
+            _remember_contract_var_uid(referenced_var, reachable_uids)
+
+
+def _collect_contract_reachable_uids(
+        block: "Block",
+        reachable_uids: set[int] | None = None,
+) -> set[int]:
+    """Collect all structural and expression-reachable UIDs in a block tree.
+
+    :param block: Root block whose declared graph is inspected.
+    :param reachable_uids: Optional accumulator for child recursion.
+    :return: Complete reachable UID set.
+    """
+    if reachable_uids is None:
+        result: set[int] = set()
+    else:
+        result = reachable_uids
+
+    var_list: List[Var]
+    for var_list in (
+            block.state_vars,
+            block.algebraic_vars,
+            block.diff_vars,
+            block.reformulated_vars,
+            block.in_vars,
+            block.out_vars,
+    ):
+        structural_var: Var
+        for structural_var in var_list:
+            _remember_contract_var_uid(structural_var, result)
+
+    var_mapping: Mapping[Var, object]
+    for var_mapping in (
+            block.parameters,
+            block.init_values,
+            block.init_eqs,
+            block.diff_init_eqs,
+            block.post_init_seed_eqs,
+            block.discrete_eqs,
+            block.event_dict,
+            block.mode_dict,
+            block.boolean_guards,
+    ):
+        mapping_var: Var
+        mapping_value: object
+        for mapping_var, mapping_value in var_mapping.items():
+            _remember_contract_var_uid(mapping_var, result)
+            if isinstance(mapping_value, (Expr, Comparison)):
+                _remember_contract_expression_uids(mapping_value, result)
+            else:
+                pass
+
+    optional_var: Var | None
+    for optional_var in block.external_mapping.values():
+        _remember_contract_var_uid(optional_var, result)
+    for optional_var in block.api_obj_mapping.values():
+        _remember_contract_var_uid(optional_var, result)
+
+    expression_list: Iterable[Expr | Comparison]
+    for expression_list in (
+            block.state_eqs,
+            block.algebraic_eqs,
+            block.differential_eqs,
+            block.inequalities,
+    ):
+        expression: Expr | Comparison
+        for expression in expression_list:
+            _remember_contract_expression_uids(expression, result)
+
+    child: Block
+    for child in block.children:
+        _collect_contract_reachable_uids(child, result)
+
+    return result
+
+
+def validate_dynamic_model_contract(block: "Block") -> None:
+    """Reject incomplete or unreachable dynamic-model declarations.
+
+    :param block: Block owning the reconstructed dynamic-model contract.
+    :return: None.
+    """
+    reachable_uids: set[int] = _collect_contract_reachable_uids(block)
+    contract: DynamicModelContract = block.dynamic_model_contract
+
+    # One block represents one physical equipment adapter. Accepting two
+    # adapter families would make runtime dispatch depend on incidental order.
+    adapter_flags: List[bool] = list((
+        contract.dgs_elmsym_runtime_adapter,
+        contract.dgs_elmsym_runtime_adapter_pending,
+        contract.dgs_elmgenstat_runtime_adapter,
+        contract.dgs_elmsvs_runtime_adapter,
+    ))
+    if sum(1 for adapter_flag in adapter_flags if adapter_flag) <= 1:
+        pass
+    else:
+        raise ValueError("Dynamic-model contract declares conflicting equipment adapters")
+
+    # A completed synchronous-machine adapter is executable only when every
+    # variable required by its boundary update has an explicit identity.
+    elmsym_required_uids: List[int | None] = list((
+        contract.dgs_elmsym_rotor_angle_var_uid,
+        contract.dgs_elmsym_speed_var_uid,
+        contract.dgs_elmsym_angular_frequency_var_uid,
+        contract.dgs_elmsym_rated_field_voltage_var_uid,
+        contract.dgs_elmsym_excitation_gain_var_uid,
+        contract.dgs_elmsym_active_base_factor_var_uid,
+    ))
+    if contract.dgs_elmsym_runtime_adapter:
+        if (
+                contract.dgs_elmsym_round_rotor is not None
+                and all(required_uid is not None for required_uid in elmsym_required_uids)
+        ):
+            pass
+        else:
+            raise ValueError("Completed ElmSym adapter contract is incomplete")
+    else:
+        if contract.dgs_elmsym_network_angle_anchor:
+            raise ValueError("ElmSym angle anchor requires a completed adapter")
+        else:
+            pass
+        if contract.dgs_elmsym_reference_speed_var_uid is not None:
+            raise ValueError("ElmSym reference speed requires a completed adapter")
+        else:
+            pass
+
+    # An SVS remote-voltage identity and its adapter flag are one indivisible
+    # declaration. Neither half is meaningful on its own.
+    if contract.dgs_elmsvs_runtime_adapter:
+        if (
+                contract.dgs_elmsvs_remote_voltage_var_uid is not None
+                and len(contract.dgs_explicit_initialization_uids) > 0
+                and len(contract.dgs_equipment_owned_signal_names) > 0
+                and len(contract.explicit_init_excluded_var_names) > 0
+                and len(contract.explicit_init_override_init_exprs) > 0
+        ):
+            pass
+        else:
+            raise ValueError("ElmSvs adapter contract is incomplete")
+    else:
+        if contract.dgs_elmsvs_remote_voltage_var_uid is None:
+            pass
+        else:
+            raise ValueError("ElmSvs remote-voltage UID requires its adapter")
+
+    if (
+            contract.dgs_open_standard_regc_current_pll
+            and contract.dgs_open_standard_regc_voltage_source
+    ):
+        raise ValueError("ElmGenstat REGC boundary modes are mutually exclusive")
+    else:
+        pass
+    if (
+            contract.dgs_open_standard_regc_current_pll
+            or contract.dgs_open_standard_regc_voltage_source
+    ):
+        if (
+                contract.dgs_elmgenstat_runtime_adapter
+                and len(contract.startup_final_init_replay_var_names) > 0
+        ):
+            pass
+        else:
+            raise ValueError("REGC boundary mode requires a complete ElmGenstat adapter")
+    else:
+        pass
+
+    if contract.dgs_elmgenstat_runtime_adapter:
+        if (
+                len(contract.dgs_equipment_owned_signal_names) > 0
+                and len(contract.explicit_init_excluded_var_names) > 0
+        ):
+            pass
+        else:
+            raise ValueError("ElmGenstat adapter contract is incomplete")
+    else:
+        pass
+
+    if (
+            len(contract.runtime_equipment_shell_sync_names)
+            == len(contract.runtime_equipment_shell_sync_var_uids)
+    ):
+        pass
+    else:
+        raise ValueError("Runtime equipment shell names and UIDs must have equal lengths")
+
+    if contract.rms_ideal_ac_connector and contract.rms_ideal_transformer:
+        raise ValueError("RMS ideal connector and transformer flags are mutually exclusive")
+    else:
+        pass
+    if contract.rms_ideal_ac_connector:
+        if (
+                contract.rms_conduction_status_var_uid is not None
+                and contract.rms_topology_constraint_status_var_uid is not None
+                and contract.skip_device_local_explicit_init
+        ):
+            pass
+        else:
+            raise ValueError("RMS ideal AC connector contract is incomplete")
+    else:
+        pass
+    if contract.rms_ideal_transformer:
+        if (
+                contract.rms_conduction_status_var_uid is not None
+                and contract.skip_device_local_explicit_init
+        ):
+            pass
+        else:
+            raise ValueError("RMS ideal transformer contract is incomplete")
+    else:
+        pass
+
+    if contract.dgs_logical_actuator_root_id is None:
+        if contract.dgs_open_resistance_ohm is None:
+            pass
+        else:
+            raise ValueError("Logical-actuator resistance requires a root FID")
+    else:
+        if contract.dgs_logical_actuator_root_id.strip() == "":
+            raise ValueError("Logical-actuator root FID must not be empty")
+        else:
+            pass
+        if (
+                contract.dgs_open_resistance_ohm is None
+                or (
+                    math.isfinite(contract.dgs_open_resistance_ohm)
+                    and contract.dgs_open_resistance_ohm > 0.0
+                )
+        ):
+            pass
+        else:
+            raise ValueError("Logical-actuator resistance must be positive")
+
+    # All persisted names are exact runtime lookup keys. Empty or duplicate
+    # entries would make the consumer silently select an arbitrary boundary.
+    name_collections: List[List[str]] = list((
+        contract.startup_initial_reduced_polish_var_names,
+        contract.runtime_measurement_shell_sync_names,
+        contract.startup_ordered_shell_sync_names,
+        contract.dgs_equipment_owned_signal_names,
+        contract.explicit_init_excluded_var_names,
+        contract.runtime_equipment_shell_sync_names,
+        contract.startup_final_init_replay_var_names,
+    ))
+    name_collection: List[str]
+    for name_collection in name_collections:
+        if (
+                all(name.strip() != "" for name in name_collection)
+                and len(set(name_collection)) == len(name_collection)
+        ):
+            pass
+        else:
+            raise ValueError("Dynamic-model contract names must be non-empty and unique")
+
+    override_name: str
+    override_expression: Expr
+    for override_name, override_expression in contract.explicit_init_override_init_exprs.items():
+        if override_name.strip() == "":
+            raise ValueError("Dynamic-model override name must not be empty")
+        else:
+            pass
+        override_var: Var
+        for override_var in override_expression.get_vars():
+            if override_var.uid in reachable_uids:
+                pass
+            else:
+                raise KeyError(
+                    f"Dynamic-model override UID '{override_var.uid}' is not reachable"
+                )
+
+    declared_uids: List[int] = list(contract.dgs_explicit_initialization_uids)
+    declared_uids.extend(contract.runtime_equipment_shell_sync_var_uids)
+    optional_uid: int | None
+    for optional_uid in (
+            contract.dgs_elmsym_rotor_angle_var_uid,
+            contract.dgs_elmsym_speed_var_uid,
+            contract.dgs_elmsym_angular_frequency_var_uid,
+            contract.dgs_elmsym_rated_field_voltage_var_uid,
+            contract.dgs_elmsym_excitation_gain_var_uid,
+            contract.dgs_elmsym_active_base_factor_var_uid,
+            contract.dgs_elmsym_reference_speed_var_uid,
+            contract.rms_conduction_status_var_uid,
+            contract.rms_topology_constraint_status_var_uid,
+            contract.dgs_elmsvs_remote_voltage_var_uid,
+    ):
+        if optional_uid is None:
+            pass
+        else:
+            declared_uids.append(optional_uid)
+
+    declared_uid: int
+    for declared_uid in declared_uids:
+        if declared_uid in reachable_uids:
+            pass
+        else:
+            raise KeyError(
+                f"Dynamic-model contract UID '{declared_uid}' is not reachable"
+            )
 
 def normalize_dynamic_connection_intents(block: "Block") -> None:
     """
@@ -211,7 +1003,7 @@ class Block:
                  event_dict: Dict[Var, Expr] | None = None,
                  mode_dict: Dict[Var, Expr] | None = None,
                  boolean_guards: Dict[Var, Expr | Comparison] | None = None,
-                 procedural_logic: List[Any] | None = None,
+                 procedural_logic: Iterable[ProceduralLogicEntryContract[Expr]] | None = None,
                  connection_intents: List[DynamicConnectionIntent] | None = None,
                  external_mapping: Dict[VarPowerFlowReferenceType, Var] | None = None,
                  api_obj_mapping: Dict[ParamPowerFlowReferenceType, Var] | None = None,
@@ -301,13 +1093,19 @@ class Block:
         self.event_dict: Dict[Var, Expr | Const] = dict() if event_dict is None else event_dict
         self.mode_dict: Dict[Var, Expr | Const] = dict() if mode_dict is None else mode_dict
         self.boolean_guards: Dict[Var, Expr | Comparison] = dict() if boolean_guards is None else boolean_guards
-        self.procedural_logic: List[Any] = list() if procedural_logic is None else procedural_logic
+        self.procedural_logic: List[ProceduralLogicEntryContract[Expr]] = (
+            list() if procedural_logic is None else list(procedural_logic)
+        )
         # Root-interface intents are current semantic connection states. They
         # are independent from the graphical wires that happen to be visible
         # under the current network topology.
         self.connection_intents: List[DynamicConnectionIntent] = (list()
                                                                   if connection_intents is None
                                                                   else connection_intents)
+
+        # Runtime identity belongs to the canonical block and stores only
+        # scalar flags or UIDs into this block's symbolic variables.
+        self.dynamic_model_contract: DynamicModelContract = DynamicModelContract()
 
         self._diagram: BlockDiagram = BlockDiagram()
 
@@ -347,6 +1145,9 @@ class Block:
         Get dictionary representation of this block
         :return: Dictionary
         """
+        # Persistence is the stable boundary where a fully built in-memory
+        # model must become one coherent declarative contract.
+        validate_dynamic_model_contract(self)
         return {
             "name": self.name,
             "uid": self.uid,
@@ -406,6 +1207,7 @@ class Block:
 
             "procedural_logic": self._procedural_logic_to_dict(),
             "connection_intents": [dynamic_connection_intent_to_dict(intent) for intent in self.connection_intents],
+            "dynamic_model_contract": self.dynamic_model_contract.to_data(),
 
             "parameters": {
                 k.uid: {
@@ -455,11 +1257,15 @@ class Block:
         }
 
     @staticmethod
-    def parse(data: Dict[str, Any]) -> "Block":
+    def parse(
+            data: Dict[str, object],
+            procedural_logic_codec: ProceduralLogicCodecContract[Expr] | None = None,
+    ) -> "Block":
         """
         Parse the dictionary representation of a block
-        :param data:
-        :return:
+        :param data: Declarative block representation.
+        :param procedural_logic_codec: Explicit codec required when procedural entries exist.
+        :return: Reconstructed symbolic block.
         """
         block = Block(
             state_vars=[_dict_to_expr(data=v) for v in data["state_vars"]],
@@ -495,7 +1301,10 @@ class Block:
                 for item in data.get("post_init_seed_eqs", {}).values()
             },
             children=[
-                Block.parse(child_data)
+                Block.parse(
+                    data=child_data,
+                    procedural_logic_codec=procedural_logic_codec,
+                )
                 for child_data in data["children"]
             ],
             in_vars=[_dict_to_expr(data=v) for v in data["in_vars"]],
@@ -512,7 +1321,10 @@ class Block:
                 _dict_to_expr(data=item["key"]): _dict_to_expr(data=item["value"])
                 for item in data.get("boolean_guards", {}).values()
             },
-            procedural_logic=Block._procedural_logic_from_dict(data.get("procedural_logic", [])),
+            procedural_logic=Block._procedural_logic_from_dict(
+                data=data.get("procedural_logic", []),
+                procedural_logic_codec=procedural_logic_codec,
+            ),
             external_mapping={
                 VarPowerFlowReferenceType(k): (_dict_to_expr(v) if v is not None else None)
                 for k, v in data["external_mapping"].items()
@@ -545,6 +1357,18 @@ class Block:
                 pass
         normalize_dynamic_connection_intents(block=block)
 
+        contract_data: object | None = data.get("dynamic_model_contract", None)
+        if contract_data is None:
+            pass
+        else:
+            if isinstance(contract_data, dict):
+                block.dynamic_model_contract = dynamic_model_contract_from_data(
+                    contract_data
+                )
+                validate_dynamic_model_contract(block)
+            else:
+                raise TypeError("Dynamic-model contract must be declarative data")
+
         return block
 
     def copy(self) -> "Block":
@@ -555,34 +1379,39 @@ class Block:
         """
         return copy.deepcopy(self)
 
-    def _procedural_logic_to_dict(self) -> List[Dict[str, Any]]:
+    def _procedural_logic_to_dict(self) -> List[ProceduralLogicData]:
         """
         Serialize block-attached procedural logic.
 
         :return: Serialized procedural logic entries.
         """
-        from VeraGridEngine.Utils.procedural_logic import procedural_logic_to_dict
-        return procedural_logic_to_dict(self.procedural_logic)
+        return list(entry.to_data() for entry in self.procedural_logic)
 
     @staticmethod
-    def _procedural_logic_from_dict(data: List[Dict[str, Any]]) -> List[Any]:
+    def _procedural_logic_from_dict(
+            data: List[ProceduralLogicData],
+            procedural_logic_codec: ProceduralLogicCodecContract[Expr] | None,
+    ) -> List[ProceduralLogicEntryContract[Expr]]:
         """
         Deserialize block-attached procedural logic.
 
         :param data: Serialized logic entries.
+        :param procedural_logic_codec: Explicit reconstruction codec.
         :return: Procedural logic objects.
         """
-        from VeraGridEngine.Utils.procedural_logic import procedural_logic_from_dict
-
         if len(data) == 0:
             return list()
         else:
             pass
 
-        if isinstance(data[0], dict):
-            return procedural_logic_from_dict(data)
+        if procedural_logic_codec is None:
+            raise ValueError(
+                "Procedural logic data requires an explicit reconstruction codec"
+            )
         else:
-            return list(data)
+            pass
+
+        return list(procedural_logic_codec.parse_entries(data))
 
     def __deepcopy__(self, memo: Dict[int, Any]) -> "Block":
         """
@@ -625,15 +1454,9 @@ class Block:
             result.boolean_guards = copy.deepcopy(self.boolean_guards, memo)
             result.procedural_logic = copy.deepcopy(self.procedural_logic, memo)
             result.connection_intents = copy.deepcopy(self.connection_intents, memo)
+            result.dynamic_model_contract = copy.deepcopy(self.dynamic_model_contract, memo)
             result._diagram = copy.deepcopy(self._diagram, memo)
 
-            extra_key: str
-            extra_value: Any
-            for extra_key, extra_value in self.__dict__.items():
-                if extra_key in result.__dict__:
-                    pass
-                else:
-                    setattr(result, extra_key, copy.deepcopy(extra_value, memo))
             return result
 
     def compare(self, block2: Block) -> bool:
@@ -1001,9 +1824,14 @@ class Block:
                 self.external_mapping.update({var_pf_ref: new})
 
         if self.procedural_logic:
-            from VeraGridEngine.Utils.procedural_logic import clone_procedural_logic_entries
-            self.procedural_logic = clone_procedural_logic_entries(self.procedural_logic,
-                                                                   var_mapping={old: new, old.name: new})
+            procedural_var_mapping: Dict[Expr | str, Expr] = dict((
+                (old, new),
+                (old.name, new),
+            ))
+            self.procedural_logic = list(
+                entry.remap(procedural_var_mapping)
+                for entry in self.procedural_logic
+            )
 
     def update_model(self, old: Var | Expr, new: Var | Expr) -> None:
         """
@@ -1116,10 +1944,9 @@ class Block:
         self.external_mapping = external_mapping_new
 
         if self.procedural_logic:
-            from VeraGridEngine.Utils.procedural_logic import clone_procedural_logic_entries
-            self.procedural_logic = clone_procedural_logic_entries(
-                self.procedural_logic,
-                var_mapping=procedural_var_mapping,
+            self.procedural_logic = list(
+                entry.remap(procedural_var_mapping)
+                for entry in self.procedural_logic
             )
         else:
             pass

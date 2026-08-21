@@ -87,6 +87,7 @@ from VeraGridEngine.IO.file_system import get_create_veragrid_folder
 from VeraGridEngine.IO.dynamic_model_import_utils import sanitize_dynamic_model_file_stem
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic import Var
+from VeraGridEngine.Utils.procedural_logic import ProceduralLogicCodec
 from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.enumerations import (
     BlockType,
@@ -4213,7 +4214,10 @@ def load_user_dynamic_template_json_payload(
 
     if isinstance(block_data_obj, dict):
         _emit_dynamic_model_import_progress(progress_callback, 55, "Rebuilding symbolic block from JSON...")
-        block = Block.parse(block_data_obj)
+        block = Block.parse(
+            data=block_data_obj,
+            procedural_logic_codec=ProceduralLogicCodec(),
+        )
     else:
         return None
 

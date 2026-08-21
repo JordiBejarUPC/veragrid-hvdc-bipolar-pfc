@@ -15,7 +15,7 @@ from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.Devices.Diagrams.block_diagram import BlockDiagram
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.enumerations import ParamPowerFlowReferenceType, VarPowerFlowReferenceType
-from VeraGridEngine.Utils.procedural_logic import aflipflop
+from VeraGridEngine.Utils.procedural_logic import ProceduralLogicCodec, aflipflop
 
 # -----------------------------------------------------------------------------
 # Atomic & basic operations
@@ -476,13 +476,22 @@ def test_duplicate_block_preserves_parent_child_variable_links_with_new_uids() -
     """
     x: sym.Var = sym.Var("x")
     dx: sym.Var = sym.Var("dx", base_var=x)
+    parent_signal: sym.Var = sym.Var("parent_signal")
+    guard: sym.Var = sym.Var("guard")
     child: Block = Block(
         state_vars=[x],
         diff_vars=[dx],
+        algebraic_vars=[guard],
         state_eqs=[dx + x],
+        algebraic_eqs=[x - parent_signal],
+        inequalities=[x < parent_signal],
+        boolean_guards={guard: x > parent_signal},
     )
+    child.dynamic_model_contract.dgs_elmsym_speed_var_uid = x.uid
+    child.dynamic_model_contract.dgs_explicit_initialization_uids = set((x.uid,))
     parent: Block = Block(
         children=[child],
+        algebraic_vars=[parent_signal],
         in_vars=[x],
         out_vars=[dx],
     )
@@ -492,6 +501,12 @@ def test_duplicate_block_preserves_parent_child_variable_links_with_new_uids() -
     copied_child: Block = copied.children[0]
     copied_x: sym.Var = copied_child.state_vars[0]
     copied_dx: sym.Var = copied_child.diff_vars[0]
+    copied_parent_signal: sym.Var = copied.algebraic_vars[0]
+    copied_guard: sym.Var = copied_child.algebraic_vars[0]
+    copied_inequality: sym.Expr | sym.Comparison = copied_child.inequalities[0]
+    copied_guard_condition: sym.Expr | sym.Comparison = copied_child.boolean_guards[
+        copied_guard
+    ]
 
     assert copied.in_vars[0] is copied_x
     assert copied.out_vars[0] is copied_dx
@@ -501,8 +516,46 @@ def test_duplicate_block_preserves_parent_child_variable_links_with_new_uids() -
     assert copied_dx.base_var is copied_x
     assert copied_child.state_eqs[0].left is copied_dx
     assert copied_child.state_eqs[0].right is copied_x
+    assert copied_child.algebraic_eqs[0].left is copied_x
+    assert copied_child.algebraic_eqs[0].right is copied_parent_signal
+    assert isinstance(copied_inequality, sym.Comparison)
+    assert copied_inequality.lhs is copied_x
+    assert copied_inequality.rhs is copied_parent_signal
+    assert isinstance(copied_guard_condition, sym.Comparison)
+    assert copied_guard_condition.lhs is copied_x
+    assert copied_guard_condition.rhs is copied_parent_signal
+    assert copied_child.dynamic_model_contract.dgs_elmsym_speed_var_uid == copied_x.uid
+    assert copied_child.dynamic_model_contract.dgs_explicit_initialization_uids == set((copied_x.uid,))
     assert target_vf.get_var(copied_x.non_mutable_uid) is copied_x
     assert target_vf.get_diff_var(copied_dx.non_mutable_uid) is copied_dx
+
+    parent.dynamic_model_contract.dgs_elmsym_speed_var_uid = -1
+    with pytest.raises(KeyError, match="UID '-1' is not reachable"):
+        duplicate_block(parent, VarFactory())
+    parent.dynamic_model_contract.dgs_elmsym_speed_var_uid = None
+    child.dynamic_model_contract.dgs_explicit_initialization_uids.add(-1)
+    with pytest.raises(KeyError, match="UID '-1' was not duplicated"):
+        duplicate_block(parent, VarFactory())
+
+
+def test_duplicate_block_preserves_expression_only_external_variables() -> None:
+    """Keep measured network variables shared when duplicating a controller.
+
+    :return: None.
+    """
+    measured_value: sym.Var = sym.Var("measured_value")
+    external_bus_voltage: sym.Var = sym.Var("external_bus_voltage")
+    source_block: Block = Block(
+        algebraic_vars=[measured_value],
+        algebraic_eqs=[measured_value - external_bus_voltage],
+    )
+
+    copied_block: Block = duplicate_block(source_block, VarFactory())
+    copied_value: sym.Var = copied_block.algebraic_vars[0]
+
+    assert copied_value is not measured_value
+    assert copied_block.algebraic_eqs[0].left is copied_value
+    assert copied_block.algebraic_eqs[0].right is external_bus_voltage
 
 
 def test_block_diagram_parse_accepts_empty_legacy_payload() -> None:
@@ -543,9 +596,9 @@ def test_var_factory_parse_var_dict_accepts_legacy_missing_identity_half() -> No
     assert parsed_var.non_mutable_uid == 55
 
 
-def test_block_saver_parser_roundtrip_preserves_dynamic_runtime_fields() -> None:
+def test_block_saver_parser_roundtrip_preserves_declarative_procedural_logic() -> None:
     """
-    Check that block saver/parser preserve dynamic runtime-only fields.
+    Check that block saver/parser preserve declarative procedural logic.
 
     :return: Nothing.
     """
@@ -565,11 +618,65 @@ def test_block_saver_parser_roundtrip_preserves_dynamic_runtime_fields() -> None
                                     output=out)],
         name="legacy_runtime_block",
     )
+    block.dynamic_model_contract.dgs_elmsvs_runtime_adapter = True
+    block.dynamic_model_contract.dgs_elmsvs_remote_voltage_var_uid = x.uid
+    block.dynamic_model_contract.dgs_explicit_initialization_uids = set((x.uid,))
+    block.dynamic_model_contract.dgs_equipment_owned_signal_names = list(("u",))
+    block.dynamic_model_contract.explicit_init_excluded_var_names = list(("x",))
+    block.dynamic_model_contract.explicit_init_override_init_exprs["x"] = (
+        x + sym.Const(3.0)
+    )
+
+    direct_restored: Block = Block.parse(
+        data=block.to_dict(),
+        procedural_logic_codec=ProceduralLogicCodec(),
+    )
+    direct_restored_x: sym.Var = direct_restored.algebraic_vars[0]
+    direct_override: sym.Expr = (
+        direct_restored.dynamic_model_contract.explicit_init_override_init_exprs["x"]
+    )
+    assert direct_restored.dynamic_model_contract.dgs_elmsvs_runtime_adapter
+    assert (
+        direct_restored.dynamic_model_contract.dgs_elmsvs_remote_voltage_var_uid
+        == direct_restored_x.uid
+    )
+    assert isinstance(direct_override, sym.BinOp)
+    assert direct_override.left.uid == direct_restored_x.uid
+
+    truncated_data: dict[str, object] = block.to_dict()
+    truncated_contract: object = truncated_data["dynamic_model_contract"]
+    assert isinstance(truncated_contract, dict)
+    truncated_contract.pop("dgs_elmsvs_runtime_adapter")
+    with pytest.raises(KeyError, match="dgs_elmsvs_runtime_adapter"):
+        Block.parse(
+            data=truncated_data,
+            procedural_logic_codec=ProceduralLogicCodec(),
+        )
+
+    invalid_uid_data: dict[str, object] = block.to_dict()
+    invalid_uid_contract: object = invalid_uid_data["dynamic_model_contract"]
+    assert isinstance(invalid_uid_contract, dict)
+    invalid_uid_contract["dgs_elmsvs_remote_voltage_var_uid"] = -1
+    with pytest.raises(KeyError, match="UID '-1' is not reachable"):
+        Block.parse(
+            data=invalid_uid_data,
+            procedural_logic_codec=ProceduralLogicCodec(),
+        )
 
     saver: BlockSaver = BlockSaver(vf)
     saver.save_block(block, main=True)
 
-    parser: BlockParser = BlockParser(VarFactory())
+    parser_without_codec: BlockParser = BlockParser(VarFactory())
+    parser_without_codec.parse_consts(saver.get_const_to_save())
+    parser_without_codec.parse_vars(saver.get_vars_to_save())
+    parser_without_codec.parse_diff_vars(saver.get_diff_vars_to_save())
+    with pytest.raises(ValueError, match="requires an explicit codec"):
+        parser_without_codec.parse_block(saver.get_blocks(), block.uid)
+
+    parser: BlockParser = BlockParser(
+        var_factory=VarFactory(),
+        procedural_logic_codec=ProceduralLogicCodec(),
+    )
     parser.parse_consts(saver.get_const_to_save())
     parser.parse_vars(saver.get_vars_to_save())
     parser.parse_diff_vars(saver.get_diff_vars_to_save())
@@ -578,6 +685,133 @@ def test_block_saver_parser_roundtrip_preserves_dynamic_runtime_fields() -> None
     assert len(restored.discrete_eqs) == 1
     assert len(restored.mode_dict) == 1
     assert len(restored.procedural_logic) == 1
+    restored_x: sym.Var = restored.algebraic_vars[0]
+    restored_override: sym.Expr = (
+        restored.dynamic_model_contract.explicit_init_override_init_exprs["x"]
+    )
+    assert restored.dynamic_model_contract.dgs_elmsvs_runtime_adapter
+    assert (
+        restored.dynamic_model_contract.dgs_elmsvs_remote_voltage_var_uid
+        == restored_x.uid
+    )
+    assert restored.dynamic_model_contract.dgs_explicit_initialization_uids == set(
+        (restored_x.uid,)
+    )
+    assert isinstance(restored_override, sym.BinOp)
+    assert restored_override.left is restored_x
+
+
+def test_dynamic_model_contract_rejects_incoherent_persistence_states() -> None:
+    """Reject incomplete adapters and contradictory runtime declarations.
+
+    :return: Nothing.
+    """
+    variable: sym.Var = sym.Var(name="x")
+
+    incomplete_elmsym: Block = Block(
+        algebraic_vars=list((variable,)),
+        algebraic_eqs=list((variable,)),
+    )
+    incomplete_elmsym.dynamic_model_contract.dgs_elmsym_runtime_adapter = True
+    with pytest.raises(ValueError, match="Completed ElmSym adapter contract is incomplete"):
+        incomplete_elmsym.to_dict()
+
+    incomplete_elmsvs: Block = Block(
+        algebraic_vars=list((variable,)),
+        algebraic_eqs=list((variable,)),
+    )
+    incomplete_elmsvs.dynamic_model_contract.dgs_elmsvs_runtime_adapter = True
+    with pytest.raises(ValueError, match="ElmSvs adapter contract is incomplete"):
+        incomplete_elmsvs.to_dict()
+
+    incomplete_genstat: Block = Block(
+        algebraic_vars=list((variable,)),
+        algebraic_eqs=list((variable,)),
+    )
+    incomplete_genstat.dynamic_model_contract.dgs_elmgenstat_runtime_adapter = True
+    with pytest.raises(ValueError, match="ElmGenstat adapter contract is incomplete"):
+        incomplete_genstat.to_dict()
+
+    conflicting_adapters: Block = Block()
+    conflicting_adapters.dynamic_model_contract.dgs_elmsym_runtime_adapter_pending = True
+    conflicting_adapters.dynamic_model_contract.dgs_elmsvs_runtime_adapter = True
+    with pytest.raises(ValueError, match="conflicting equipment adapters"):
+        conflicting_adapters.to_dict()
+
+    incomplete_ideal_connector: Block = Block()
+    incomplete_ideal_connector.dynamic_model_contract.rms_ideal_ac_connector = True
+    with pytest.raises(ValueError, match="RMS ideal AC connector contract is incomplete"):
+        incomplete_ideal_connector.to_dict()
+
+    incomplete_ideal_transformer: Block = Block()
+    incomplete_ideal_transformer.dynamic_model_contract.rms_ideal_transformer = True
+    with pytest.raises(ValueError, match="RMS ideal transformer contract is incomplete"):
+        incomplete_ideal_transformer.to_dict()
+
+    conflicting_ideal_models: Block = Block()
+    conflicting_ideal_models.dynamic_model_contract.rms_ideal_ac_connector = True
+    conflicting_ideal_models.dynamic_model_contract.rms_ideal_transformer = True
+    with pytest.raises(ValueError, match="mutually exclusive"):
+        conflicting_ideal_models.to_dict()
+
+    mismatched_shells: Block = Block()
+    mismatched_shells.dynamic_model_contract.runtime_equipment_shell_sync_names = list(("x",))
+    with pytest.raises(ValueError, match="names and UIDs must have equal lengths"):
+        mismatched_shells.to_dict()
+
+    incomplete_regc: Block = Block()
+    incomplete_regc.dynamic_model_contract.dgs_open_standard_regc_current_pll = True
+    with pytest.raises(ValueError, match="requires a complete ElmGenstat adapter"):
+        incomplete_regc.to_dict()
+
+    duplicate_names: Block = Block()
+    duplicate_names.dynamic_model_contract.runtime_measurement_shell_sync_names = list(("x", "x"))
+    with pytest.raises(ValueError, match="non-empty and unique"):
+        duplicate_names.to_dict()
+
+    unreachable_override: Block = Block()
+    unreachable_override.dynamic_model_contract.explicit_init_override_init_exprs["x"] = variable
+    with pytest.raises(KeyError, match="override UID"):
+        unreachable_override.to_dict()
+
+
+def test_block_saver_rejects_incoherent_dynamic_model_contract() -> None:
+    """Reject an invalid runtime contract at the canonical file boundary.
+
+    :return: Nothing.
+    """
+    variable: sym.Var = sym.Var(name="x")
+    block: Block = Block(
+        algebraic_vars=list((variable,)),
+        algebraic_eqs=list((variable,)),
+    )
+    block.dynamic_model_contract.dgs_elmsvs_runtime_adapter = True
+    saver: BlockSaver = BlockSaver(VarFactory())
+
+    with pytest.raises(ValueError, match="ElmSvs adapter contract is incomplete"):
+        saver.save_block(block, main=True)
+
+
+@pytest.mark.parametrize(
+    "invalid_resistance",
+    (math.nan, math.inf, -math.inf, 0.0, -1.0),
+)
+def test_dynamic_model_contract_rejects_invalid_open_resistance(
+        invalid_resistance: float,
+) -> None:
+    """Reject non-finite and non-positive logical-actuator resistance.
+
+    :param invalid_resistance: Invalid serialized resistance value.
+    :return: Nothing.
+    """
+    source_data: dict[str, object] = Block().to_dict()
+    source_contract: object = source_data["dynamic_model_contract"]
+    assert isinstance(source_contract, dict)
+    source_contract["dgs_logical_actuator_root_id"] = "root-fid"
+    source_contract["dgs_open_resistance_ohm"] = invalid_resistance
+
+    with pytest.raises((ValueError, TypeError)):
+        Block.parse(data=source_data)
 
 
 def test_block_parser_only_warns_for_broken_optional_mapping_references() -> None:

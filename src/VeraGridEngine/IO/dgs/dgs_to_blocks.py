@@ -45,6 +45,7 @@ from VeraGridEngine.Utils.procedural_logic import (
     FlipFlopLogic,
     GradientLimiterLogic,
     MovingAverageLogic,
+    ProceduralLogicCodec,
     ProceduralLogicBase,
     PickupDropoffLogic,
     ResetOnRisingEdgeLogic,
@@ -2914,7 +2915,13 @@ def materialize_block_with_var_factory(block_data: dict | Block, vf: VarFactory,
     :param name: Runtime suffix used to make names unique.
     :return: Materialized Block.
     """
-    source_block = Block.parse(block_data) if isinstance(block_data, dict) else block_data.copy()
+    if isinstance(block_data, dict):
+        source_block: Block = Block.parse(
+            data=block_data,
+            procedural_logic_codec=ProceduralLogicCodec(),
+        )
+    else:
+        source_block = block_data.copy()
 
     vars_out: Dict[int, Var] = dict()
     consts_out: Dict[int, Const] = dict()

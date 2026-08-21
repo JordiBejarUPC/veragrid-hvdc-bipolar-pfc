@@ -18,6 +18,7 @@ import VeraGridEngine.Devices as dev
 from VeraGridEngine.Devices.Parents.editable_device import GCProp, EditableDevice
 from VeraGridEngine.Devices.Profiles import AnyProfile
 from VeraGridEngine.Utils.Symbolic.symbolic_io import BlockSaver, BlockParser, Block
+from VeraGridEngine.Utils.procedural_logic import ProceduralLogicCodec
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES, VERAGRID_FILE_TYPE
 from VeraGridEngine.Devices.Diagrams.base_diagram import copy_diagrams
 from VeraGridEngine.enumerations import (DiagramType, DeviceType, SubObjectType, TapPhaseControl, TapModuleControl,
@@ -1858,7 +1859,11 @@ def parse_veragrid_data(data: VERAGRID_FILE_TYPE,
     # New way of parsing information from .model files (Json files)
     # These files are just .json stored in the model_data inside the zip file
 
-    block_parser = BlockParser(circuit.var_factory, logger=logger)
+    block_parser = BlockParser(
+        var_factory=circuit.var_factory,
+        logger=logger,
+        procedural_logic_codec=ProceduralLogicCodec(),
+    )
     symbolic_data: Dict[str, Any] | None = data.get('symbolic_data', None)
     if symbolic_data is not None:
         if len(symbolic_data) > 0:

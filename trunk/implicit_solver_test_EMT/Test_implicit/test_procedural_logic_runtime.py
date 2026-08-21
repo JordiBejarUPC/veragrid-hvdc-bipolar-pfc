@@ -17,6 +17,7 @@ from VeraGridEngine.Utils.procedural_logic import (
     ifelse,
     lastvalue,
     picdro,
+    ProceduralLogicCodec,
     reset,
     select,
 )
@@ -290,7 +291,13 @@ def _build_benchmark_case(builder) -> tuple[GenericEmtProblem, JitSymbolicSolver
     block, _ = builder(vf)
     block.unify_blocks()
 
-    problem = GenericEmtProblem(sys_block=block, glob_time=vf.add_var(f"t_{block.name}"))
+    # Synthetic benchmark blocks have no device-owned static parameters.
+    static_parameter_values_mapping: dict[Var, Const] = dict()
+    problem: GenericEmtProblem = GenericEmtProblem(
+        sys_block=block,
+        static_parameter_values_mapping=static_parameter_values_mapping,
+        glob_time=vf.add_var(f"t_{block.name}"),
+    )
     solver = JitSymbolicSolver(
         problem=problem,
         t0=0.0,
@@ -308,14 +315,17 @@ def _run_benchmark_simulation(
     solver: JitSymbolicSolver,
     logic_snapshot: list[dict[str, object]],
 ) -> dict[str, object]:
-    problem.sys_block.procedural_logic = Block._procedural_logic_from_dict(logic_snapshot)
+    problem.sys_block.procedural_logic = Block._procedural_logic_from_dict(
+        data=logic_snapshot,
+        procedural_logic_codec=ProceduralLogicCodec(),
+    )
     updater = build_boundary_updater_from_block(problem)
 
     collector = NewtonTraceCollector()
     problem.set_newton_trace_collector(collector)
 
     t_start = time.perf_counter()
-    t, y_hist, _ = solver.simulate(
+    t, y_hist, _, _, _ = solver.simulate(
         params0=problem.event_params_values.copy(),
         boundary_updater=updater,
     )
@@ -381,7 +391,10 @@ class TestProceduralLogicRuntime(unittest.TestCase):
         vf = VarFactory()
         block, _ = create_integrator_trip_system(vf)
 
-        restored = Block.parse(block.to_dict())
+        restored = Block.parse(
+            data=block.to_dict(),
+            procedural_logic_codec=ProceduralLogicCodec(),
+        )
 
         self.assertEqual(len(restored.procedural_logic), 1)
         logic = restored.procedural_logic[0]
@@ -394,7 +407,13 @@ class TestProceduralLogicRuntime(unittest.TestCase):
         vf = VarFactory()
         block, vars_map = create_integrator_trip_system(vf)
         block.unify_blocks()
-        problem = GenericEmtProblem(sys_block=block, glob_time=vf.add_var("t_glob"))
+        # Synthetic runtime blocks have no device-owned static parameters.
+        static_parameter_values_mapping: dict[Var, Const] = dict()
+        problem: GenericEmtProblem = GenericEmtProblem(
+            sys_block=block,
+            static_parameter_values_mapping=static_parameter_values_mapping,
+            glob_time=vf.add_var("t_glob"),
+        )
 
         updater = build_boundary_updater_from_block(problem)
         self.assertIsNotNone(updater)
@@ -416,7 +435,13 @@ class TestProceduralLogicRuntime(unittest.TestCase):
         vf = VarFactory()
         block, vars_map = create_integrator_trip_system(vf)
         block.unify_blocks()
-        problem = GenericEmtProblem(sys_block=block, glob_time=vf.add_var("t_glob"))
+        # Synthetic runtime blocks have no device-owned static parameters.
+        static_parameter_values_mapping: dict[Var, Const] = dict()
+        problem: GenericEmtProblem = GenericEmtProblem(
+            sys_block=block,
+            static_parameter_values_mapping=static_parameter_values_mapping,
+            glob_time=vf.add_var("t_glob"),
+        )
 
         solver = JitSymbolicSolver(
             problem=problem,
@@ -432,7 +457,10 @@ class TestProceduralLogicRuntime(unittest.TestCase):
         logic = updater.logic_entries[0]
 
         params0 = problem.event_params_values.copy()
-        _, y_hist, _ = solver.simulate(params0=params0, boundary_updater=updater)
+        _, y_hist, _, _, _ = solver.simulate(
+            params0=params0,
+            boundary_updater=updater,
+        )
 
         self.assertIsNotNone(logic.trip_applied_time)
         self.assertGreater(logic.trip_applied_time, 0.0)
@@ -443,7 +471,13 @@ class TestProceduralLogicRuntime(unittest.TestCase):
         vf = VarFactory()
         block, vars_map = create_boolean_operator_system(vf)
         block.unify_blocks()
-        problem = GenericEmtProblem(sys_block=block, glob_time=vf.add_var("t_glob_bool"))
+        # Synthetic runtime blocks have no device-owned static parameters.
+        static_parameter_values_mapping: dict[Var, Const] = dict()
+        problem: GenericEmtProblem = GenericEmtProblem(
+            sys_block=block,
+            static_parameter_values_mapping=static_parameter_values_mapping,
+            glob_time=vf.add_var("t_glob_bool"),
+        )
 
         updater = build_boundary_updater_from_block(problem)
         assert updater is not None
@@ -479,7 +513,13 @@ class TestProceduralLogicRuntime(unittest.TestCase):
         vf = VarFactory()
         block, vars_map = create_boolean_operator_system(vf)
         block.unify_blocks()
-        problem = GenericEmtProblem(sys_block=block, glob_time=vf.add_var("t_glob_bool_2"))
+        # Synthetic runtime blocks have no device-owned static parameters.
+        static_parameter_values_mapping: dict[Var, Const] = dict()
+        problem: GenericEmtProblem = GenericEmtProblem(
+            sys_block=block,
+            static_parameter_values_mapping=static_parameter_values_mapping,
+            glob_time=vf.add_var("t_glob_bool_2"),
+        )
 
         updater = build_boundary_updater_from_block(problem)
         assert updater is not None
@@ -512,7 +552,13 @@ class TestProceduralLogicRuntime(unittest.TestCase):
         vf = VarFactory()
         block, vars_map = create_analog_flipflop_system(vf)
         block.unify_blocks()
-        problem = GenericEmtProblem(sys_block=block, glob_time=vf.add_var("t_glob_af"))
+        # Synthetic runtime blocks have no device-owned static parameters.
+        static_parameter_values_mapping: dict[Var, Const] = dict()
+        problem: GenericEmtProblem = GenericEmtProblem(
+            sys_block=block,
+            static_parameter_values_mapping=static_parameter_values_mapping,
+            glob_time=vf.add_var("t_glob_af"),
+        )
 
         updater = build_boundary_updater_from_block(problem)
         assert updater is not None

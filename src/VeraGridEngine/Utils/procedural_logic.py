@@ -6,26 +6,70 @@
 from __future__ import annotations
 
 import math
-import os
 
-from typing import Any, Callable, Dict, List, Optional, Tuple, TYPE_CHECKING
+from typing import Dict, Iterable, List, Optional, Protocol, Tuple
 
 import numpy as np
 
 from VeraGridEngine.Utils.emt_boundary_update_wrapper import BoundaryUpdateWrapper
-from VeraGridEngine.Utils.Symbolic.block import Block
-from VeraGridEngine.Utils.Symbolic.symbolic import CmpOp, Comparison, Const, Expr, Var, expression2numba
+from VeraGridEngine.Utils.procedural_logic_contract import (
+    ProceduralLogicCodecContract,
+    ProceduralLogicData,
+    ProceduralLogicEntryContract,
+)
+from VeraGridEngine.Utils.Symbolic.symbolic import CmpOp, Comparison, Const, Expr, Var
 from VeraGridEngine.basic_structures import Vec
 from VeraGridEngine.enumerations import ProceduralLogicType
 
-if TYPE_CHECKING:
-    from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import EmtProblemTemplate
-else:
-    pass
-
-
-ProceduralLogicData = Dict[str, Any]
 VarRemap = Dict[Expr | str, Expr]
+
+
+class ProceduralBlock(Protocol):
+    """Declare the symbolic block surface used by procedural logic."""
+
+    state_vars: List[Var]
+    algebraic_vars: List[Var]
+    diff_vars: List[Var]
+    in_vars: List[Var]
+    out_vars: List[Var]
+    event_dict: Dict[Var, Expr | Const]
+    mode_dict: Dict[Var, Expr | Const]
+    children: List["ProceduralBlock"]
+    procedural_logic: Iterable[ProceduralLogicEntryContract[Expr]]
+
+    def get_all_blocks(self) -> Iterable["ProceduralBlock"]:
+        """Return this block and every nested child.
+
+        :return: Iterable block hierarchy.
+        """
+        ...
+
+
+class ProceduralProblem(Protocol):
+    """Declare the EMT surface required by procedural runtime logic."""
+
+    uid2idx_vars: Dict[int, int]
+    uid2idx_event_params: Dict[int, int]
+    uid2idx_params: Dict[int, int]
+    event_params_values: Vec
+    glob_time: Var
+    sys_block: ProceduralBlock
+
+    def get_parameters_values(self) -> List[Const]:
+        """Return constant parameter values in compiled order."""
+        ...
+
+    def get_variable_parameter_number(self) -> int:
+        """Return the number of mutable runtime parameters."""
+        ...
+
+    def get_x0(self) -> Vec:
+        """Return the current initialization vector."""
+        ...
+
+    def get_var_idx(self, variable: Var) -> int:
+        """Return the compiled index for one symbolic variable."""
+        ...
 
 
 def _expr_like_to_dict(expr: Expr | Comparison | float | int | bool) -> ProceduralLogicData:
@@ -39,7 +83,7 @@ def _expr_like_to_dict(expr: Expr | Comparison | float | int | bool) -> Procedur
         rhs: Expr | float | int = expr.rhs
         if isinstance(rhs, Expr):
             rhs_expr: Expr = rhs
-            rhs_data: Any = rhs_expr.to_dict()
+            rhs_data: object = rhs_expr.to_dict()
         else:
             rhs_data = rhs
         return {
@@ -75,7 +119,7 @@ def _expr_like_from_dict(data: ProceduralLogicData) -> Expr | Comparison:
         return Const(float(data["value"]))
 
     if kind == "Comparison":
-        rhs_raw: Any = data["rhs"]
+        rhs_raw: object = data["rhs"]
         rhs: Expr | float | int = Expr.from_dict(rhs_raw) if bool(data.get("rhs_is_expr", False)) else rhs_raw
         op_text: str = str(data["op"])
 
@@ -121,6 +165,29 @@ def _build_name_mapping(var_mapping: VarRemap) -> Dict[str, str]:
             new_var = new
             mapping[old] = new_var.name
     return mapping
+
+
+def _remap_var_uid(var_uid: int | None, var_mapping: VarRemap) -> int | None:
+    """Resolve one stored variable UID through a symbolic remapping.
+
+    :param var_uid: Original variable UID or ``None`` for legacy name lookup.
+    :param var_mapping: Symbolic variable replacement map.
+    :return: Remapped UID or the original value when no mapping applies.
+    """
+    if var_uid is None:
+        return None
+    else:
+        pass
+
+    source: Expr | str
+    replacement: Expr
+    for source, replacement in var_mapping.items():
+        if isinstance(source, Expr) and source.uid == var_uid:
+            return replacement.uid
+        else:
+            pass
+
+    return var_uid
 
 
 def _get_expr_like_field(data: ProceduralLogicData, key: str) -> ProceduralLogicData:
@@ -359,7 +426,46 @@ def ifelse(
     )
 
 
-class ProceduralLogicBase:
+class ProceduralNumericEvaluator:
+    """Evaluate one procedural expression against an accepted solver snapshot.
+
+    :param logic: Bound procedural state machine that owns sample-time rules.
+    :param expression: Declarative expression evaluated by the wrapper.
+    """
+
+    __slots__ = ("_logic", "_expression")
+
+    def __init__(
+            self,
+            logic: "ProceduralLogicBase",
+            expression: Expr | Comparison | float | int | bool,
+    ) -> None:
+        """Store one evaluator without creating executable source code.
+
+        :param logic: Bound procedural state machine.
+        :param expression: Declarative expression or scalar.
+        :return: None.
+        """
+        self._logic: ProceduralLogicBase = logic
+        self._expression: Expr | Comparison | float | int | bool = expression
+
+    def __call__(self, t: float, x: Vec, params: Vec) -> float:
+        """Evaluate the stored expression using one accepted runtime snapshot.
+
+        :param t: Solver time supplied to the procedural update.
+        :param x: Accepted state vector.
+        :param params: Runtime parameter vector.
+        :return: Numeric expression value.
+        """
+        return self._logic._eval_numeric(
+            expr=self._expression,
+            t=t,
+            x=x,
+            params=params,
+        )
+
+
+class ProceduralLogicBase(ProceduralLogicEntryContract[Expr]):
     """
     Base class for procedural logic objects attached to symbolic blocks.
 
@@ -373,19 +479,19 @@ class ProceduralLogicBase:
         "_sample_time",
         "_expr_plan_cache",
         "_comparison_expr_cache",
-        "_expr_compiled_cache",
+        "_expr_binding_cache",
     ]
     logic_tpe = ProceduralLogicType.Base
 
     def __init__(self, name: str = "") -> None:
         self.name = name
-        self._problem: Optional[EmtProblemTemplate] = None
+        self._problem: Optional[ProceduralProblem] = None
         self._sample_time: Optional[float] = None
         self._expr_plan_cache: Dict[int, List[Tuple[int, int, int]]] = dict()
         self._comparison_expr_cache: Dict[int, Expr] = dict()
-        self._expr_compiled_cache: Dict[int, Any] = dict()
+        self._expr_binding_cache: Dict[int, Dict[int, float]] = dict()
 
-    def bind(self, problem: EmtProblemTemplate) -> None:
+    def bind(self, problem: ProceduralProblem) -> None:
         """
         Bind the logic to a concrete EMT problem.
 
@@ -396,7 +502,7 @@ class ProceduralLogicBase:
         self._sample_time = None
         self._expr_plan_cache = dict()
         self._comparison_expr_cache = dict()
-        self._expr_compiled_cache = dict()
+        self._expr_binding_cache = dict()
 
     def _get_normalized_expr(self, expr: Expr | Comparison) -> Expr:
         if isinstance(expr, Comparison):
@@ -410,7 +516,7 @@ class ProceduralLogicBase:
 
         return expr
 
-    def _build_expr_plan(self, expr_eval: Expr, problem: EmtProblemTemplate) -> List[Tuple[int, int, int]]:
+    def _build_expr_plan(self, expr_eval: Expr, problem: ProceduralProblem) -> List[Tuple[int, int, int]]:
         # Plan tuple layout: (uid, source_kind, source_idx)
         # source_kind: 0 -> x/state-algebraic vars, 1 -> runtime params, 2 -> const params, 3 -> time
         refs_by_uid: Dict[int, Tuple[int, int, int]] = dict()
@@ -439,7 +545,7 @@ class ProceduralLogicBase:
 
         return list(refs_by_uid.values())
 
-    def _get_expr_plan(self, expr_eval: Expr, problem: EmtProblemTemplate) -> List[Tuple[int, int, int]]:
+    def _get_expr_plan(self, expr_eval: Expr, problem: ProceduralProblem) -> List[Tuple[int, int, int]]:
         key = id(expr_eval)
         if key in self._expr_plan_cache:
             return self._expr_plan_cache[key]
@@ -447,47 +553,6 @@ class ProceduralLogicBase:
         plan = self._build_expr_plan(expr_eval, problem)
         self._expr_plan_cache[key] = plan
         return plan
-
-    @staticmethod
-    def _heaviside_numeric(x: float) -> float:
-        return 1.0 if x > 0.0 else 0.0
-
-    def _report_expr_compile_failure(self, expr_eval: Expr, exc: Exception) -> None:
-        if os.getenv("VERAGRID_PROCLOGIC_DEBUG_COMPILE", "0") != "1":
-            return
-
-        logic_name = self.name if self.name else self.__class__.__name__
-        print(
-            "[proc-logic] Expression compile fallback "
-            f"(logic='{logic_name}', expr_type='{type(expr_eval).__name__}'): {exc}"
-        )
-
-    def _get_compiled_expr_fn(self, expr_eval: Expr, problem: EmtProblemTemplate):
-        key = id(expr_eval)
-        cached = self._expr_compiled_cache.get(key, None)
-        if cached is not None:
-            return cached
-
-        plan = self._get_expr_plan(expr_eval=expr_eval, problem=problem)
-        compiler_names_dict: Dict[int, str] = dict()
-        for pos, (uid, _source_kind, _source_idx) in enumerate(plan):
-            compiler_names_dict[uid] = f"_a[{pos}]"
-
-        try:
-            expr_code = expression2numba(expr_eval, compiler_names_dict)
-            fn_globals = {
-                "np": np,
-                "_heaviside": self._heaviside_numeric,
-            }
-            fn_locals: Dict[str, Any] = dict()
-            exec(f"def _compiled_proc_expr(_a):\n    return {expr_code}", fn_globals, fn_locals)
-            fn = fn_locals["_compiled_proc_expr"]
-            self._expr_compiled_cache[key] = (plan, fn)
-        except Exception as exc:
-            self._report_expr_compile_failure(expr_eval=expr_eval, exc=exc)
-            self._expr_compiled_cache[key] = (plan, None)
-
-        return self._expr_compiled_cache[key]
 
     def update(self, t: float, x: Vec, params: Vec) -> None:
         """
@@ -522,7 +587,14 @@ class ProceduralLogicBase:
         _unused = var_mapping
         return build_procedural_logic_entry(procedural_logic_entry_to_dict(self))
 
-    def _get_problem(self) -> EmtProblemTemplate:
+    def to_data(self) -> ProceduralLogicData:
+        """Return the version-independent declarative logic representation.
+
+        :return: Typed declarative logic data.
+        """
+        return procedural_logic_entry_to_dict(self)
+
+    def _get_problem(self) -> ProceduralProblem:
         """
         Return the bound EMT problem.
 
@@ -541,7 +613,13 @@ class ProceduralLogicBase:
         """
         return float(t if self._sample_time is None else self._sample_time)
 
-    def _eval_numeric(self, expr: Expr | Comparison, t: float, x: Vec, params: Vec) -> float:
+    def _eval_numeric(
+            self,
+            expr: Expr | Comparison | float | int | bool,
+            t: float,
+            x: Vec,
+            params: Vec,
+    ) -> float:
         """
         Evaluate a procedural expression against the accepted EMT state.
 
@@ -585,32 +663,45 @@ class ProceduralLogicBase:
 
             raise KeyError(f"Unknown procedural variable '{expr_eval.name}'")
 
-        plan, compiled_fn = self._get_compiled_expr_fn(expr_eval=expr_eval, problem=problem)
-        n_runtime = problem.get_variable_parameter_number()
-        const_values = problem.get_parameters_values()
-        params_has_consts = len(params) >= n_runtime + len(const_values)
+        plan: List[Tuple[int, int, int]] = self._get_expr_plan(
+            expr_eval=expr_eval,
+            problem=problem,
+        )
+        n_runtime: int = problem.get_variable_parameter_number()
+        const_values: List[Const] = problem.get_parameters_values()
+        params_has_consts: bool = len(params) >= n_runtime + len(const_values)
+        binding_key: int = id(expr_eval)
+        uid_bindings: Dict[int, float] | None = self._expr_binding_cache.get(
+            binding_key,
+            None,
+        )
+        if uid_bindings is None:
+            uid_bindings = dict()
+            self._expr_binding_cache[binding_key] = uid_bindings
+        else:
+            pass
 
-        compiled_input = np.empty(len(plan), dtype=np.float64)
-
-        for pos, (_uid, source_kind, source_idx) in enumerate(plan):
+        uid: int
+        source_kind: int
+        source_idx: int
+        for uid, source_kind, source_idx in plan:
             if source_kind == 0:
-                compiled_input[pos] = float(x[source_idx])
-            elif source_kind == 1:
-                compiled_input[pos] = float(params[source_idx])
-            elif source_kind == 2:
-                if params_has_consts:
-                    compiled_input[pos] = float(params[n_runtime + source_idx])
-                else:
-                    compiled_input[pos] = float(const_values[source_idx].value)
+                uid_bindings[uid] = float(x[source_idx])
             else:
-                compiled_input[pos] = sample_time
-
-        if compiled_fn is not None:
-            return float(compiled_fn(compiled_input))
-
-        uid_bindings: Dict[int, float] = dict()
-        for pos, (uid, _source_kind, _source_idx) in enumerate(plan):
-            uid_bindings[uid] = float(compiled_input[pos])
+                if source_kind == 1:
+                    uid_bindings[uid] = float(params[source_idx])
+                else:
+                    if source_kind == 2:
+                        if params_has_consts:
+                            uid_bindings[uid] = float(
+                                params[n_runtime + source_idx]
+                            )
+                        else:
+                            uid_bindings[uid] = float(
+                                const_values[source_idx].value
+                            )
+                    else:
+                        uid_bindings[uid] = sample_time
 
         uid_bindings[problem.glob_time.uid] = sample_time
 
@@ -628,77 +719,18 @@ class ProceduralLogicBase:
         """
         return self._eval_numeric(expr, t, x, params) > 0.5
 
-    def _build_numeric_evaluator(self, expr: Expr | Comparison | float | int | bool) -> Callable[[float, Vec, Vec], float]:
-        problem = self._get_problem()
+    def _build_numeric_evaluator(
+            self,
+            expr: Expr | Comparison | float | int | bool,
+    ) -> ProceduralNumericEvaluator:
+        """Build one typed evaluator without nested or generated functions.
 
-        if isinstance(expr, (float, int, bool)):
-            const_value = float(expr)
-            return lambda _t, _x, _p: const_value
+        :param expr: Declarative procedural expression or scalar.
+        :return: Evaluator bound to this procedural state machine.
+        """
+        self._get_problem()
+        return ProceduralNumericEvaluator(logic=self, expression=expr)
 
-        expr_eval: Expr = self._get_normalized_expr(expr)
-
-        if isinstance(expr_eval, Const):
-            const_value = 0.0 if expr_eval.value is None else float(expr_eval.value)
-            return lambda _t, _x, _p: const_value
-
-        if isinstance(expr_eval, Var):
-            if expr_eval.name in {"time", "glob_time"}:
-                return lambda t, _x, _p: self._get_sample_time(t)
-
-            idx_var = problem.uid2idx_vars.get(expr_eval.uid, None)
-            if idx_var is not None:
-                i = int(idx_var)
-                return lambda _t, x, _p: float(x[i])
-
-            idx_runtime = problem.uid2idx_event_params.get(expr_eval.uid, None)
-            if idx_runtime is not None:
-                i = int(idx_runtime)
-                return lambda _t, _x, p: float(p[i])
-
-            idx_const = problem.uid2idx_params.get(expr_eval.uid, None)
-            if idx_const is not None:
-                i = int(idx_const)
-                n_runtime = problem.get_variable_parameter_number()
-                const_values = problem.get_parameters_values()
-
-                def eval_const(_t, _x, p):
-                    if len(p) >= n_runtime + len(const_values):
-                        return float(p[n_runtime + i])
-                    return float(const_values[i].value)
-
-                return eval_const
-
-            raise KeyError(f"Unknown procedural variable '{expr_eval.name}'")
-
-        plan, compiled_fn = self._get_compiled_expr_fn(expr_eval=expr_eval, problem=problem)
-        n_runtime = problem.get_variable_parameter_number()
-        const_values = problem.get_parameters_values()
-
-        if compiled_fn is None:
-            return lambda t, x, p: self._eval_numeric(expr_eval, t, x, p)
-
-        compiled_input = np.empty(len(plan), dtype=np.float64)
-
-        def eval_compiled(t, x, p):
-            sample_time = self._get_sample_time(t)
-            params_has_consts = len(p) >= n_runtime + len(const_values)
-
-            for pos, (_uid, source_kind, source_idx) in enumerate(plan):
-                if source_kind == 0:
-                    compiled_input[pos] = float(x[source_idx])
-                elif source_kind == 1:
-                    compiled_input[pos] = float(p[source_idx])
-                elif source_kind == 2:
-                    if params_has_consts:
-                        compiled_input[pos] = float(p[n_runtime + source_idx])
-                    else:
-                        compiled_input[pos] = float(const_values[source_idx].value)
-                else:
-                    compiled_input[pos] = sample_time
-
-            return float(compiled_fn(compiled_input))
-
-        return eval_compiled
 
 
 class ConditionalDiagnosticLogic(ProceduralLogicBase):
@@ -821,7 +853,7 @@ class DelayedSwitchEventLogic(ProceduralLogicBase):
         self.pending_event_time: Optional[float] = None
         self.fired: bool = False
 
-    def bind(self, problem: EmtProblemTemplate) -> None:
+    def bind(self, problem: ProceduralProblem) -> None:
         """Resolve the local switch-position mode and clear runtime state.
 
         :param problem: Bound RMS or EMT problem.
@@ -918,7 +950,7 @@ class FixedSampleLogic(ProceduralLogicBase):
         self.output_idx = -1
         self.initialized = False
 
-    def bind(self, problem: EmtProblemTemplate) -> None:
+    def bind(self, problem: ProceduralProblem) -> None:
         """
         Resolve the runtime output slot for this logic entry.
 
@@ -965,17 +997,38 @@ class SampledValueLogic(ProceduralLogicBase):
     Sample one expression at each accepted step and store it in a runtime mode variable.
     """
 
-    __slots__ = ["output_var_name", "source_expr", "output_idx", "_source_eval"]
+    __slots__ = [
+        "output_var_name",
+        "output_var_uid",
+        "source_expr",
+        "output_idx",
+        "_source_eval",
+    ]
     logic_tpe = ProceduralLogicType.SampledValue
 
-    def __init__(self, output_var_name: str, source_expr: Expr | Comparison, name: str = "") -> None:
-        super().__init__(name=name)
-        self.output_var_name = output_var_name
-        self.source_expr = source_expr
-        self.output_idx = -1
-        self._source_eval: Callable[[float, Vec, Vec], float] | None = None
+    def __init__(
+            self,
+            output_var_name: str,
+            source_expr: Expr | Comparison,
+            name: str = "",
+            output_var_uid: int | None = None,
+    ) -> None:
+        """Create one accepted-state projection into a runtime parameter.
 
-    def bind(self, problem: EmtProblemTemplate) -> None:
+        :param output_var_name: Persisted output name for legacy compatibility.
+        :param source_expr: Declarative source expression.
+        :param name: Optional logic name.
+        :param output_var_uid: Exact canonical output UID when available.
+        :return: None.
+        """
+        super().__init__(name=name)
+        self.output_var_name: str = output_var_name
+        self.output_var_uid: int | None = output_var_uid
+        self.source_expr: Expr | Comparison = source_expr
+        self.output_idx: int = -1
+        self._source_eval: ProceduralNumericEvaluator | None = None
+
+    def bind(self, problem: ProceduralProblem) -> None:
         """
         Resolve the runtime output slot for this sampled value.
 
@@ -983,7 +1036,22 @@ class SampledValueLogic(ProceduralLogicBase):
         :return: None
         """
         super().bind(problem)
-        output_var = _find_var_by_name(problem.sys_block, self.output_var_name)
+        if self.output_var_uid is None:
+            output_var: Var = _find_var_by_name(
+                problem.sys_block,
+                self.output_var_name,
+            )
+        else:
+            output_var_optional: Var | None = _find_var_by_uid_optional(
+                block=problem.sys_block,
+                var_uid=self.output_var_uid,
+            )
+            if output_var_optional is None:
+                raise KeyError(
+                    f"Procedural output UID '{self.output_var_uid}' was not found"
+                )
+            else:
+                output_var = output_var_optional
         self.output_idx = int(problem.uid2idx_event_params[output_var.uid])
         self._source_eval = self._build_numeric_evaluator(self.source_expr)
 
@@ -1013,6 +1081,10 @@ class SampledValueLogic(ProceduralLogicBase):
             output_var_name=name_mapping.get(self.output_var_name, self.output_var_name),
             source_expr=_subs_expr_like(self.source_expr, var_mapping),
             name=self.name,
+            output_var_uid=_remap_var_uid(
+                var_uid=self.output_var_uid,
+                var_mapping=var_mapping,
+            ),
         )
 
 
@@ -1038,11 +1110,11 @@ class HardSaturationLogic(ProceduralLogicBase):
         self.u_min_expr = u_min_expr
         self.u_max_expr = u_max_expr
         self.output_idx = -1
-        self._u_eval: Callable[[float, Vec, Vec], float] | None = None
-        self._u_min_eval: Callable[[float, Vec, Vec], float] | None = None
-        self._u_max_eval: Callable[[float, Vec, Vec], float] | None = None
+        self._u_eval: ProceduralNumericEvaluator | None = None
+        self._u_min_eval: ProceduralNumericEvaluator | None = None
+        self._u_max_eval: ProceduralNumericEvaluator | None = None
 
-    def bind(self, problem: EmtProblemTemplate) -> None:
+    def bind(self, problem: ProceduralProblem) -> None:
         super().bind(problem)
         output_var = _find_var_by_name(problem.sys_block, self.output_var_name)
         self.output_idx = int(problem.uid2idx_event_params[output_var.uid])
@@ -1103,7 +1175,7 @@ class TimeDelayLogic(ProceduralLogicBase):
         self.output_idx = -1
         self.history: List[Tuple[float, float]] = list()
 
-    def bind(self, problem: EmtProblemTemplate) -> None:
+    def bind(self, problem: ProceduralProblem) -> None:
         super().bind(problem)
         output_var = _find_var_by_name(problem.sys_block, self.output_var_name)
         self.output_idx = int(problem.uid2idx_event_params[output_var.uid])
@@ -1158,7 +1230,7 @@ class MovingAverageLogic(ProceduralLogicBase):
         self.output_idx = -1
         self.history: List[Tuple[float, float]] = list()
 
-    def bind(self, problem: EmtProblemTemplate) -> None:
+    def bind(self, problem: ProceduralProblem) -> None:
         super().bind(problem)
         output_var = _find_var_by_name(problem.sys_block, self.output_var_name)
         self.output_idx = int(problem.uid2idx_event_params[output_var.uid])
@@ -1223,7 +1295,7 @@ class GradientLimiterLogic(ProceduralLogicBase):
         self.held_value = 0.0
         self.initialized = False
 
-    def bind(self, problem: EmtProblemTemplate) -> None:
+    def bind(self, problem: ProceduralProblem) -> None:
         super().bind(problem)
         output_var = _find_var_by_name(problem.sys_block, self.output_var_name)
         self.output_idx = int(problem.uid2idx_event_params[output_var.uid])
@@ -1288,7 +1360,7 @@ class FlipFlopLogic(ProceduralLogicBase):
         self.state = 0.0
         self.initialized = False
 
-    def bind(self, problem: EmtProblemTemplate) -> None:
+    def bind(self, problem: ProceduralProblem) -> None:
         """
         Resolve the runtime output slot for the latch state.
 
@@ -1381,7 +1453,7 @@ class AnalogFlipFlopLogic(ProceduralLogicBase):
         self.initialized = False
         self.held_value = 0.0
 
-    def bind(self, problem: EmtProblemTemplate) -> None:
+    def bind(self, problem: ProceduralProblem) -> None:
         """
         Resolve the runtime output slot and reset the analog latch state.
 
@@ -1485,7 +1557,7 @@ class PickupDropoffLogic(ProceduralLogicBase):
         self.pending_pickup_time: Optional[float] = None
         self.pending_drop_time: Optional[float] = None
 
-    def bind(self, problem: EmtProblemTemplate) -> None:
+    def bind(self, problem: ProceduralProblem) -> None:
         """
         Resolve the runtime output slot and clear the relay timers.
 
@@ -1643,7 +1715,7 @@ class ResetOnRisingEdgeLogic(ProceduralLogicBase):
         self.initialized = False
         self.last_reset_high = False
 
-    def bind(self, problem: EmtProblemTemplate) -> None:
+    def bind(self, problem: ProceduralProblem) -> None:
         """
         Resolve whether the reset target is a state variable or a runtime parameter.
 
@@ -1753,10 +1825,12 @@ def sampled_value(output: Var | str, source: Expr | Comparison, name: str = "") 
     :return: Sampled-value procedural logic entry.
     """
     output_name = _coerce_var_name(output)
+    output_uid: int | None = output.uid if isinstance(output, Var) else None
     return SampledValueLogic(
         output_var_name=output_name,
         source_expr=source,
         name=output_name if name == "" else name,
+        output_var_uid=output_uid,
     )
 
 
@@ -2026,7 +2100,7 @@ def startup_handover(mode: Var | str, t_enable: Var | str, name: str = "") -> St
         name=mode_name if name == "" else name,
     )
 
-def _iter_block_vars(block: Block) -> List[Var]:
+def _iter_block_vars(block: ProceduralBlock) -> List[Var]:
     """
     Collect all variables reachable from one block tree.
 
@@ -2048,7 +2122,7 @@ def _iter_block_vars(block: Block) -> List[Var]:
     return vars_found
 
 
-def _find_var_by_name(block: Block, var_name: str) -> Var:
+def _find_var_by_name(block: ProceduralBlock, var_name: str) -> Var:
     """
     Find one symbolic variable by name inside a block tree.
 
@@ -2056,13 +2130,52 @@ def _find_var_by_name(block: Block, var_name: str) -> Var:
     :param var_name: Variable name to search.
     :return: Matching symbolic variable.
     """
+    matching_var: Var | None = None
+    var: Var
     for var in _iter_block_vars(block):
         if var.name == var_name:
+            if matching_var is None:
+                matching_var = var
+            else:
+                if matching_var.uid != var.uid:
+                    raise KeyError(
+                        f"Variable name '{var_name}' is ambiguous in block tree"
+                    )
+                else:
+                    pass
+        else:
+            pass
+
+    if matching_var is None:
+        raise KeyError(f"Variable '{var_name}' not found in block tree")
+    else:
+        return matching_var
+
+
+def _find_var_by_uid_optional(
+        block: ProceduralBlock,
+        var_uid: int,
+) -> Var | None:
+    """Return one exact variable by canonical UID.
+
+    :param block: Root block to inspect.
+    :param var_uid: Canonical symbolic variable UID.
+    :return: Matching variable or ``None``.
+    """
+    var: Var
+    for var in _iter_block_vars(block):
+        if var.uid == var_uid:
             return var
-    raise KeyError(f"Variable '{var_name}' not found in block tree")
+        else:
+            pass
+
+    return None
 
 
-def _find_var_by_name_optional(block: Block, var_name: str) -> Var | None:
+def _find_var_by_name_optional(
+        block: ProceduralBlock,
+        var_name: str,
+) -> Var | None:
     """
     Return one symbolic variable by name when it exists in the block tree.
 
@@ -2150,7 +2263,7 @@ class DelayedThresholdLatchLogic(ProceduralLogicBase):
         self.trace_latched: List[float] = list()
         self.trace_mode: List[float] = list()
 
-    def bind(self, problem: EmtProblemTemplate) -> None:
+    def bind(self, problem: ProceduralProblem) -> None:
         """
         Resolve the monitored state and runtime mode indices.
 
@@ -2350,7 +2463,7 @@ class StartupHandoverLogic(ProceduralLogicBase):
         self.mode_idx = -1
         self.enable_time_idx = -1
 
-    def bind(self, problem: EmtProblemTemplate) -> None:
+    def bind(self, problem: ProceduralProblem) -> None:
         """
         Resolve the retained mode and enable-time runtime indices.
 
@@ -2374,7 +2487,7 @@ class StartupHandoverLogic(ProceduralLogicBase):
         :param t_target: Nominal target time.
         :return: Exact handover time or ``None``.
         """
-        problem: EmtProblemTemplate
+        problem: ProceduralProblem
         enable_time: float
 
         super().get_next_forced_event_time(t_prev, t_target)
@@ -2494,7 +2607,7 @@ class ValveStateLogic(ProceduralLogicBase):
         self.valve_voltage_idx = -1
         self.valve_current_idx = -1
 
-    def bind(self, problem: EmtProblemTemplate) -> None:
+    def bind(self, problem: ProceduralProblem) -> None:
         """
         Resolve the runtime and algebraic indices required by the valve logic.
 
@@ -2910,7 +3023,7 @@ class ThreePhaseCarrierPwmLogic(ProceduralLogicBase):
         self.pending_transition_gate = np.zeros(3, dtype=float)
         self.current_gate = np.zeros(3, dtype=float)
 
-    def bind(self, problem: EmtProblemTemplate) -> None:
+    def bind(self, problem: ProceduralProblem) -> None:
         """
         Resolve the variable indices and initialize the first PWM interval.
 
@@ -3310,7 +3423,7 @@ class ThreePhaseCarrierSampledModulationLogic(ProceduralLogicBase):
         self.initialized = False
         self.interval_end_time = None
 
-    def bind(self, problem: EmtProblemTemplate) -> None:
+    def bind(self, problem: ProceduralProblem) -> None:
         """
         Resolve modulation, sampled-mode and carrier parameter indices.
 
@@ -3458,7 +3571,7 @@ class BlockProceduralLogicUpdater(BoundaryUpdateWrapper):
 
     __slots__ = ["problem", "logic_entries"]
 
-    def __init__(self, problem: EmtProblemTemplate, logic_entries: List[ProceduralLogicBase]) -> None:
+    def __init__(self, problem: ProceduralProblem, logic_entries: List[ProceduralLogicBase]) -> None:
         """
         Bind all procedural logic entries to one EMT problem.
 
@@ -3577,6 +3690,7 @@ def procedural_logic_entry_to_dict(entry: ProceduralLogicBase) -> ProceduralLogi
     elif isinstance(entry, SampledValueLogic):
         data.update({
             "output_var_name": entry.output_var_name,
+            "output_var_uid": entry.output_var_uid,
             "source_expr": _expr_like_to_dict(entry.source_expr),
         })
         return data
@@ -3757,10 +3871,23 @@ def _sampled_value_logic_from_dict(data: ProceduralLogicData) -> SampledValueLog
     :param data: Serialized logic dictionary.
     :return: Sampled-value procedural logic entry.
     """
+    output_var_uid_raw: object = data.get("output_var_uid", None)
+    if output_var_uid_raw is None:
+        output_var_uid: int | None = None
+    else:
+        if (
+                isinstance(output_var_uid_raw, int)
+                and not isinstance(output_var_uid_raw, bool)
+        ):
+            output_var_uid = output_var_uid_raw
+        else:
+            raise TypeError("Sampled-value output UID must be an integer")
+
     return SampledValueLogic(
         output_var_name=str(data["output_var_name"]),
         source_expr=_expr_like_from_dict(_get_expr_like_field(data, "source_expr")),
         name=str(data.get("name", "")),
+        output_var_uid=output_var_uid,
     )
 
 
@@ -3872,7 +3999,7 @@ def _delayed_threshold_latch_logic_from_dict(data: ProceduralLogicData) -> Delay
     :param data: Serialized logic dictionary.
     :return: Delayed-threshold-latch procedural logic entry.
     """
-    reset_delay_raw: Any = data.get("reset_delay", None)
+    reset_delay_raw: object = data.get("reset_delay", None)
     reset_delay_value: Optional[float] = None if reset_delay_raw is None else float(reset_delay_raw)
     threshold_value: float = float(data["threshold"])
     delay_value: float = float(data["delay"])
@@ -4018,7 +4145,9 @@ def procedural_logic_to_dict(entries: List[ProceduralLogicBase]) -> List[Procedu
     return [procedural_logic_entry_to_dict(entry) for entry in entries]
 
 
-def procedural_logic_from_dict(entries: List[ProceduralLogicData]) -> List[ProceduralLogicBase]:
+def procedural_logic_from_dict(
+        entries: List[ProceduralLogicData | ProceduralLogicBase],
+) -> List[ProceduralLogicBase]:
     """
     Deserialize a list of procedural logic entries.
 
@@ -4026,13 +4155,32 @@ def procedural_logic_from_dict(entries: List[ProceduralLogicData]) -> List[Proce
     :return: Procedural logic objects.
     """
     normalized_entries: List[ProceduralLogicBase] = list()
-    item: Any
+    item: object
+    raw_key: object
+    raw_value: object
 
     for item in entries:
         if isinstance(item, ProceduralLogicBase):
             normalized_entries.append(item)
         else:
-            normalized_entries.append(build_procedural_logic_entry(item))
+            if isinstance(item, dict):
+                normalized_data: ProceduralLogicData = dict()
+                for raw_key, raw_value in item.items():
+                    if isinstance(raw_key, str):
+                        normalized_data[raw_key] = raw_value
+                    else:
+                        raise TypeError(
+                            "Procedural logic keys must be strings"
+                        )
+                else:
+                    pass
+                normalized_entries.append(
+                    build_procedural_logic_entry(normalized_data)
+                )
+            else:
+                raise TypeError(
+                    "Procedural logic entries must be typed objects or mappings"
+                )
 
     return normalized_entries
 
@@ -4048,17 +4196,42 @@ def clone_procedural_logic_entries(entries: List[ProceduralLogicBase], var_mappi
     return [entry.remap(var_mapping) for entry in entries]
 
 
-def build_boundary_updater_from_block(problem: EmtProblemTemplate) -> Optional[BlockProceduralLogicUpdater]:
+class ProceduralLogicCodec(ProceduralLogicCodecContract[Expr]):
+    """Reconstruct procedural state machines at an explicit parse boundary."""
+
+    __slots__ = ()
+
+    def parse_entries(
+            self,
+            entries: Iterable[ProceduralLogicData],
+    ) -> Iterable[ProceduralLogicEntryContract[Expr]]:
+        """Build typed state machines from declarative entry data.
+
+        :param entries: Declarative procedural entries.
+        :return: Reconstructed procedural state machines.
+        """
+        entry_list: List[ProceduralLogicData] = list(entries)
+        return procedural_logic_from_dict(entry_list)
+
+
+def build_boundary_updater_from_block(problem: ProceduralProblem) -> Optional[BlockProceduralLogicUpdater]:
     """
     Build a boundary updater from the full procedural logic attached to ``problem.sys_block``.
 
     :param problem: EMT problem containing the root block.
     :return: Boundary updater or None.
     """
-    entries: List[Any] = list()
-    block: Block
+    entries: List[ProceduralLogicBase] = list()
+    block: ProceduralBlock
+    contract_entry: ProceduralLogicEntryContract[Expr]
     for block in problem.sys_block.get_all_blocks():
-        entries.extend(block.procedural_logic)
+        for contract_entry in block.procedural_logic:
+            if isinstance(contract_entry, ProceduralLogicBase):
+                entries.append(contract_entry)
+            else:
+                raise TypeError(
+                    "Block procedural entries must be concrete state machines"
+                )
 
     if len(entries) == 0:
         return None
