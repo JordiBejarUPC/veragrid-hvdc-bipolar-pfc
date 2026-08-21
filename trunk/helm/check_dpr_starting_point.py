@@ -121,7 +121,7 @@ def main() -> None:
                                     Yt=adm.Yt,
                                     Yshunt_bus=adm.Yshunt_bus,
                                     Yseries=adms.Yseries,
-                                    V0=V_grid,
+                                    V0=light.V,
                                     S0=S_full,
                                     Ysh0=adms.Yshunt,
                                     pq=indices.pq,
@@ -160,51 +160,56 @@ def main() -> None:
                                     verbose=0,
                                     logger=None)
 
-                path_voltage: np.ndarray = V_grid.copy()
+                path_voltage: np.ndarray | None = None
                 path_norm: float = np.inf
                 path_iterations: int = 0
                 path_stage: float = 0.0
                 path_converged: bool = False
                 path_alive: bool = True
 
-                # Staged DPRHEM: solve small target-power increments and pass
-                # each accepted voltage as the next germ.
-                load_factors: np.ndarray = np.r_[np.linspace(0.01, 0.09, 9), np.linspace(0.1, 1.0, 10)]
+                # Staged DPRHEM: solve local target-power increments and pass
+                # each accepted voltage as the next germ. Failed local jumps are
+                # retried with half the step because the DPR segment is local.
+                path_step: float = 0.05
+                path_attempts: int = 0
 
-                for load_factor in load_factors:
-                    if path_alive:
-                        path_result = helm_dpr(nc=island,
-                                               Ybus=adm.Ybus,
-                                               Yf=adm.Yf,
-                                               Yt=adm.Yt,
-                                               Yshunt_bus=adm.Yshunt_bus,
-                                               Yseries=adms.Yseries,
-                                               V0=path_voltage,
-                                               S0=load_factor * S_full,
-                                               Ysh0=adms.Yshunt,
-                                               pq=indices.pq,
-                                               pv=indices.pv,
-                                               vd=indices.vd,
-                                               no_slack=indices.no_slack,
-                                               tolerance=tolerance,
-                                               max_coefficients=max_coefficients,
-                                               use_pade=False,
-                                               restart_order=6,
-                                               max_restarts=20,
-                                               use_classical_germ=False,
-                                               verbose=0,
-                                               logger=None)
-                        path_iterations += path_result.iterations
-                        path_norm = path_result.norm_f
+                while path_alive and not path_converged and path_attempts < 100:
+                    load_factor: float = min(1.0, path_stage + path_step)
+                    path_attempts += 1
+                    path_result = helm_dpr(nc=island,
+                                           Ybus=adm.Ybus,
+                                           Yf=adm.Yf,
+                                           Yt=adm.Yt,
+                                           Yshunt_bus=adm.Yshunt_bus,
+                                           Yseries=adms.Yseries,
+                                           V0=path_voltage,
+                                           S0=load_factor * S_full,
+                                           Ysh0=adms.Yshunt,
+                                           pq=indices.pq,
+                                           pv=indices.pv,
+                                           vd=indices.vd,
+                                           no_slack=indices.no_slack,
+                                           tolerance=tolerance,
+                                           max_coefficients=max_coefficients,
+                                           use_pade=False,
+                                           restart_order=6,
+                                           max_restarts=20,
+                                           use_classical_germ=path_voltage is None,
+                                           verbose=0,
+                                           logger=None)
+                    path_iterations += path_result.iterations
+                    path_norm = path_result.norm_f
+
+                    if path_result.converged:
+                        path_voltage = path_result.V
                         path_stage = float(load_factor)
-
-                        if path_result.converged:
-                            path_voltage = path_result.V
-                            path_converged = bool(load_factor == 1.0)
-                        else:
-                            path_alive = False
+                        path_converged = bool(load_factor >= 1.0)
+                        path_step = min(0.1, path_step * 1.5)
                     else:
-                        path_alive = path_alive
+                        path_step *= 0.5
+                        if path_step < 1e-4:
+                            path_stage = float(load_factor)
+                            path_alive = False
 
                 flat_vs_warm_dv: float = float(np.max(np.abs(dpr_flat.V - dpr_warm.V)))
 
