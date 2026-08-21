@@ -491,7 +491,7 @@ def test_voltage_remote_control_with_generation() -> None:
 
     for control_remote_voltage in [True, False]:
         for solver_type in [SolverType.NR, SolverType.IWAMOTO, SolverType.LM,
-                            SolverType.FASTDECOUPLED, SolverType.PowellDogLeg]:
+                            SolverType.FASTDECOUPLED, SolverType.PowellDogLeg, SolverType.HELM]:
 
             options = PowerFlowOptions(solver_type=solver_type,
                                        verbose=0,

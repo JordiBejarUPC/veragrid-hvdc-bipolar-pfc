@@ -934,37 +934,38 @@ class DprAdmittanceControlView:
         self.Yshunt_bus: CxVec = Yshunt_bus
 
 
-def dpr_reduced_bus_indices(nbus: int, pq: IntVec, pv: IntVec, sl: IntVec) -> tuple[IntVec, IntVec, IntVec]:
+def dpr_reduced_bus_indices(no_slack: IntVec,
+                            pq: IntVec,
+                            pv: IntVec,
+                            pqv: IntVec,
+                            p: IntVec) -> tuple[IntVec, IntVec, IntVec, IntVec, IntVec]:
     """
     Convert original bus indices into the reduced no-slack indexing used by HELM.
 
-    :param nbus: Number of buses in the full island.
+    :param no_slack: Original non-slack bus indices.
     :param pq: Original PQ bus indices.
     :param pv: Original PV bus indices.
-    :param sl: Original slack bus indices.
-    :return: Reduced PQ indices, reduced PV indices and original sorted non-slack indices.
+    :param pqv: Original PQV bus indices.
+    :param p: Original P bus indices.
+    :return: Reduced PQ, PV, PQV and P indices, plus original sorted non-slack indices.
     """
 
-    nsl_counted: IntVec = np.zeros(nbus, dtype=int)
-    slack_count: int = 0
+    pqpv_original: IntVec = no_slack.copy()
+    pq_reduced: IntVec = np.searchsorted(pqpv_original, pq)
+    pv_reduced: IntVec = np.searchsorted(pqpv_original, pv)
+    pqv_reduced: IntVec = np.searchsorted(pqpv_original, pqv)
+    p_reduced: IntVec = np.searchsorted(pqpv_original, p)
 
-    # Removing slack buses shifts every following original index in the reduced matrix.
-    for bus_idx in range(nbus):
-        if bus_idx in sl:
-            slack_count += 1
-        else:
-            slack_count = slack_count
-
-        nsl_counted[bus_idx] = slack_count
-
-    pq_reduced: IntVec = pq - nsl_counted[pq]
-    pv_reduced: IntVec = pv - nsl_counted[pv]
-    pqpv_original: IntVec = np.sort(np.r_[pq, pv])
-
-    return pq_reduced, pv_reduced, pqpv_original
+    return pq_reduced, pv_reduced, pqv_reduced, p_reduced, pqpv_original
 
 
-def dpr_power_mismatch(Ybus: CscMat, V: CxVec, S0: CxVec, no_slack: IntVec, pq: IntVec) -> float:
+def dpr_power_mismatch(Ybus: CscMat,
+                       V: CxVec,
+                       S0: CxVec,
+                       no_slack: IntVec,
+                       pq: IntVec,
+                       pqv: IntVec,
+                       Vset: CxVec) -> float:
     """
     Compute the VeraGrid power-flow mismatch norm.
 
@@ -973,11 +974,18 @@ def dpr_power_mismatch(Ybus: CscMat, V: CxVec, S0: CxVec, no_slack: IntVec, pq: 
     :param S0: Specified complex bus powers.
     :param no_slack: Original non-slack bus indices.
     :param pq: Original PQ bus indices.
+    :param pqv: Original remote-voltage controlled bus indices.
+    :param Vset: Voltage set-point vector.
     :return: Power-flow mismatch norm.
     """
 
     Scalc: CxVec = cf.compute_power(Ybus, V)
-    fx: np.ndarray = cf.compute_fx(Scalc, S0, no_slack, pq)
+    q_idx: IntVec = np.r_[pq, pqv]
+    fx: np.ndarray = np.r_[
+        (Scalc - S0)[no_slack].real,
+        (Scalc - S0)[q_idx].imag,
+        np.abs(V[pqv]) - np.abs(Vset[pqv])
+    ]
     norm_f: float = float(cf.compute_fx_error(fx))
 
     return norm_f
@@ -1088,7 +1096,11 @@ def dpr_build_matrix(Yred: CscMat,
                      U0: CxVec,
                      Sini_rhs: CxVec,
                      pv: IntVec,
+                     pqv: IntVec,
+                     p: IntVec,
                      npv: int,
+                     npqv: int,
+                     np_control_q: int,
                      npqpv: int) -> CscMat:
     """
     Build the real sparse DPRHEM segment matrix.
@@ -1102,7 +1114,11 @@ def dpr_build_matrix(Yred: CscMat,
     :param U0: Segment voltage germ in reduced coordinates.
     :param Sini_rhs: Conjugated initial complex power in reduced coordinates.
     :param pv: Reduced PV bus indices.
+    :param pqv: Reduced PVQ bus indices.
+    :param p: Reduced P bus indices.
     :param npv: Number of PV buses.
+    :param npqv: Number of PVQ buses.
+    :param np_control_q: Number of controlled reactive power unknowns.
     :param npqpv: Number of non-slack buses.
     :return: Real sparse CSC matrix.
     """
@@ -1119,11 +1135,17 @@ def dpr_build_matrix(Yred: CscMat,
     lower_right: CscMat = network_matrix.real - gamma_re
 
     X0: CxVec = 1.0 / np.conj(U0)
-    XIM: CscMat = coo_matrix((-X0[pv].imag, (pv, np.arange(npv))), shape=(npqpv, npv)).tocsc()
-    XRE: CscMat = coo_matrix((X0[pv].real, (pv, np.arange(npv))), shape=(npqpv, npv)).tocsc()
-    VRE: CscMat = coo_matrix((2.0 * U0[pv].real, (np.arange(npv), pv)), shape=(npv, npqpv)).tocsc()
-    VIM: CscMat = coo_matrix((2.0 * U0[pv].imag, (np.arange(npv), pv)), shape=(npv, npqpv)).tocsc()
-    EMPTY: CscMat = csc_matrix((npv, npv))
+    q_rows: IntVec = np.r_[pv, p]
+    voltage_rows: IntVec = np.r_[pv, pqv]
+    XIM: CscMat = coo_matrix((-X0[q_rows].imag, (q_rows, np.arange(np_control_q))),
+                             shape=(npqpv, np_control_q)).tocsc()
+    XRE: CscMat = coo_matrix((X0[q_rows].real, (q_rows, np.arange(np_control_q))),
+                             shape=(npqpv, np_control_q)).tocsc()
+    VRE: CscMat = coo_matrix((2.0 * U0[voltage_rows].real, (np.arange(npv + npqv), voltage_rows)),
+                             shape=(npv + npqv, npqpv)).tocsc()
+    VIM: CscMat = coo_matrix((2.0 * U0[voltage_rows].imag, (np.arange(npv + npqv), voltage_rows)),
+                             shape=(npv + npqv, npqpv)).tocsc()
+    EMPTY: CscMat = csc_matrix((npv + npqv, np_control_q))
 
     MAT: CscMat = vs(
         (hs((upper_left, upper_right, XIM)),
@@ -1144,7 +1166,8 @@ def dpr_select_candidate(Ybus: CscMat,
                          no_slack: IntVec,
                          pqpv_original: IntVec,
                          S0: CxVec,
-                         pq: IntVec) -> tuple[CxVec, float, bool]:
+                         pq: IntVec,
+                         pqv: IntVec) -> tuple[CxVec, float, bool]:
     """
     Select the best valid truncated segment voltage.
 
@@ -1162,6 +1185,7 @@ def dpr_select_candidate(Ybus: CscMat,
     :param pqpv_original: Original sorted non-slack bus indices.
     :param S0: Specified power target.
     :param pq: Original PQ bus indices.
+    :param pqv: Original PVQ bus indices.
     :return: Candidate voltage, mismatch norm and validity flag.
     """
 
@@ -1190,7 +1214,13 @@ def dpr_select_candidate(Ybus: CscMat,
             Vscaled[sl] = Vset[sl]
             Vscaled[pqpv_original] = Ucandidate
 
-            scaled_norm: float = dpr_power_mismatch(Ybus, Vscaled, S0, no_slack, pq)
+            scaled_norm: float = dpr_power_mismatch(Ybus=Ybus,
+                                                    V=Vscaled,
+                                                    S0=S0,
+                                                    no_slack=no_slack,
+                                                    pq=pq,
+                                                    pqv=pqv,
+                                                    Vset=Vset)
             scaled_ok: bool = bool(np.isfinite(scaled_norm) and dpr_angle_guard(Vscaled, sl, no_slack))
 
             if scaled_ok and scaled_norm < candidate_norm:
@@ -1211,10 +1241,14 @@ def dpr_solve_segment(Ybus: CscMat,
                       Ysh0: CxVec,
                       pq: IntVec,
                       pv: IntVec,
+                      pqv: IntVec,
+                      p: IntVec,
                       sl: IntVec,
                       no_slack: IntVec,
                       pq_reduced: IntVec,
                       pv_reduced: IntVec,
+                      pqv_reduced: IntVec,
+                      p_reduced: IntVec,
                       pqpv_original: IntVec,
                       tolerance: float,
                       max_order: int,
@@ -1230,10 +1264,14 @@ def dpr_solve_segment(Ybus: CscMat,
     :param Ysh0: Bus shunt admittance vector.
     :param pq: Original PQ bus indices.
     :param pv: Original PV bus indices.
+    :param pqv: Original PVQ bus indices.
+    :param p: Original P bus indices.
     :param sl: Slack bus indices.
     :param no_slack: Original non-slack bus indices.
     :param pq_reduced: Reduced PQ bus indices.
     :param pv_reduced: Reduced PV bus indices.
+    :param pqv_reduced: Reduced PVQ bus indices.
+    :param p_reduced: Reduced P bus indices.
     :param pqpv_original: Original sorted non-slack bus indices.
     :param tolerance: Target mismatch tolerance.
     :param max_order: Maximum coefficient order for this segment.
@@ -1243,6 +1281,8 @@ def dpr_solve_segment(Ybus: CscMat,
 
     npqpv: int = len(pqpv_original)
     npv: int = len(pv_reduced)
+    npqv: int = len(pqv_reduced)
+    np_control_q: int = npv + len(p_reduced)
     Yred: CscMat = Yseries[np.ix_(pqpv_original, pqpv_original)]
     Ysh: CxVec = Ysh0[pqpv_original]
     U0: CxVec = Vgerm[pqpv_original].copy()
@@ -1257,7 +1297,9 @@ def dpr_solve_segment(Ybus: CscMat,
     Sini: CxVec = cf.compute_power(Ybus, Vgerm)
     Sini_rhs: CxVec = np.conj(Sini[pqpv_original])
     Sdir_pq_rhs: CxVec = np.conj(S0[pq] - Sini[pq])
+    Sdir_pqv_rhs: CxVec = np.conj(S0[pqv] - Sini[pqv])
     Pdir_pv: np.ndarray = S0.real[pv] - Sini.real[pv]
+    Pdir_p: np.ndarray = S0.real[p] - Sini.real[p]
     vec_W: np.ndarray = np.abs(Vset[pqpv_original]) * np.abs(Vset[pqpv_original])
 
     U: np.ndarray = np.zeros((max_order + 1, npqpv), dtype=complex)
@@ -1272,10 +1314,14 @@ def dpr_solve_segment(Ybus: CscMat,
                                                      U0=U0,
                                                      Sini_rhs=Sini_rhs,
                                                      pv=pv_reduced,
+                                                     pqv=pqv_reduced,
+                                                     p=p_reduced,
                                                      npv=npv,
+                                                     npqv=npqv,
+                                                     np_control_q=np_control_q,
                                                      npqpv=npqpv))
         factorized_ok: bool = True
-    except RuntimeError:
+    except (RuntimeError, ValueError):
         factorized_ok = False
 
     if factorized_ok:
@@ -1293,25 +1339,38 @@ def dpr_solve_segment(Ybus: CscMat,
 
         while order <= max_order and keep_solving:
             X_known: CxVec = dpr_known_inverse_voltage_coefficient(U, X, order)
+            dval[:] = 0.0 + 0.0j
 
             # Paper Eq. (14): PQ bus shifted-power recurrence.
             dval[pq_reduced] = (Sini_rhs[pq_reduced] * X_known[pq_reduced]
                                 + Sdir_pq_rhs * X[order - 1, pq_reduced])
+
+            # Remote controlled PVQ buses have fixed P, fixed Q and fixed voltage magnitude.
+            dval[pqv_reduced] = (Sini_rhs[pqv_reduced] * X_known[pqv_reduced]
+                                 + Sdir_pqv_rhs * X[order - 1, pqv_reduced])
 
             # Paper Eq. (17): PV bus active-power direction and unknown reactive-power recurrence.
             dval[pv_reduced] = (Sini_rhs[pv_reduced] * X_known[pv_reduced]
                                 + Pdir_pv * X[order - 1, pv_reduced]
                                 - 1j * conv2(X, Q, order, pv_reduced))
 
+            # Remote P buses use unknown reactive power to enforce their associated PVQ voltage constraints.
+            dval[p_reduced] = (Sini_rhs[p_reduced] * X_known[p_reduced]
+                               + Pdir_p * X[order - 1, p_reduced]
+                               - 1j * conv2(X, Q, order, p_reduced))
+
             if order == 1:
-                voltage_rhs: np.ndarray = vec_W[pv_reduced] - (np.abs(U[0, pv_reduced]) ** 2.0)
+                voltage_reduced: IntVec = np.r_[pv_reduced, pqv_reduced]
+                voltage_rhs: np.ndarray = vec_W[voltage_reduced] - (np.abs(U[0, voltage_reduced]) ** 2.0)
             else:
-                voltage_rhs = -conv3(U, U, order, pv_reduced).real
+                voltage_reduced = np.r_[pv_reduced, pqv_reduced]
+                voltage_rhs = -conv3(U, U, order, voltage_reduced).real
 
             RHS: np.ndarray = np.r_[dval.real, dval.imag, voltage_rhs]
             LHS: np.ndarray = mat_factorized(RHS)
             U[order, :] = LHS[:npqpv] + 1j * LHS[npqpv:2 * npqpv]
-            Q[order - 1, pv_reduced] = LHS[2 * npqpv:]
+            Q[order - 1, pv_reduced] = LHS[2 * npqpv:2 * npqpv + npv]
+            Q[order - 1, p_reduced] = LHS[2 * npqpv + npv:]
             X[order, :] = -conv1(U, X, order) / np.conj(U[0, :])
 
             Vcandidate, candidate_norm, candidate_ok = dpr_select_candidate(Ybus=Ybus,
@@ -1323,7 +1382,8 @@ def dpr_solve_segment(Ybus: CscMat,
                                                                             no_slack=no_slack,
                                                                             pqpv_original=pqpv_original,
                                                                             S0=S0,
-                                                                            pq=pq)
+                                                                            pq=pq,
+                                                                            pqv=pqv)
 
             if candidate_ok:
                 if candidate_norm < best_norm:
@@ -1389,7 +1449,7 @@ def dpr_solve_segment(Ybus: CscMat,
 
 
 def helm_coefficients_dpr(Ybus: CscMat, Yseries: CscMat, V0: CxVec | None, Vset: CxVec, S0: CxVec, Ysh0: CxVec,
-                          pq: IntVec, pv: IntVec, sl: IntVec, no_slack: IntVec,
+                          pq: IntVec, pv: IntVec, pqv: IntVec, p: IntVec, sl: IntVec, no_slack: IntVec,
                           tolerance: float = 1e-6, max_coeff: int = 30,
                           restart_order: int = 6, max_restarts: int = 20,
                           use_classical_germ: bool = False,
@@ -1405,6 +1465,8 @@ def helm_coefficients_dpr(Ybus: CscMat, Yseries: CscMat, V0: CxVec | None, Vset:
     :param Ysh0: Bus shunt admittance vector.
     :param pq: Original PQ bus indices.
     :param pv: Original PV bus indices.
+    :param pqv: Original PVQ bus indices.
+    :param p: Original P bus indices.
     :param sl: Slack bus indices.
     :param no_slack: Original non-slack bus indices.
     :param tolerance: Target mismatch tolerance.
@@ -1428,7 +1490,13 @@ def helm_coefficients_dpr(Ybus: CscMat, Yseries: CscMat, V0: CxVec | None, Vset:
         iterations: int = 0
         converged: bool = False
     else:
-        pq_reduced, pv_reduced, pqpv_original = dpr_reduced_bus_indices(nbus, pq, pv, sl)
+        pq_reduced, pv_reduced, pqv_reduced, p_reduced, pqpv_original = dpr_reduced_bus_indices(
+            no_slack=no_slack,
+            pq=pq,
+            pv=pv,
+            pqv=pqv,
+            p=p
+        )
 
         Vtarget: CxVec = Vset if V0 is None else V0
 
@@ -1438,7 +1506,13 @@ def helm_coefficients_dpr(Ybus: CscMat, Yseries: CscMat, V0: CxVec | None, Vset:
             Vbest = dpr_safe_voltage_germ(Vtarget, no_slack)
 
         Vbest[sl] = Vtarget[sl]
-        current_norm: float = dpr_power_mismatch(Ybus, Vbest, S0, no_slack, pq)
+        current_norm: float = dpr_power_mismatch(Ybus=Ybus,
+                                                 V=Vbest,
+                                                 S0=S0,
+                                                 no_slack=no_slack,
+                                                 pq=pq,
+                                                 pqv=pqv,
+                                                 Vset=Vset)
         converged = current_norm <= tolerance
         iterations = 0
         restart_count: int = 0
@@ -1458,10 +1532,14 @@ def helm_coefficients_dpr(Ybus: CscMat, Yseries: CscMat, V0: CxVec | None, Vset:
                                                               Ysh0=Ysh0,
                                                               pq=pq,
                                                               pv=pv,
+                                                              pqv=pqv,
+                                                              p=p,
                                                               sl=sl,
                                                               no_slack=no_slack,
                                                               pq_reduced=pq_reduced,
                                                               pv_reduced=pv_reduced,
+                                                              pqv_reduced=pqv_reduced,
+                                                              p_reduced=p_reduced,
                                                               pqpv_original=pqpv_original,
                                                               tolerance=tolerance,
                                                               max_order=segment_order,
@@ -1497,6 +1575,7 @@ def helm_dpr_fixed_model(nc: NumericalCircuit,
                          Ybus: CscMat, Yf: CscMat, Yt: CscMat, Yshunt_bus: CxVec,
                          Yseries: CscMat, V0: CxVec | None, S0: CxVec, Ysh0: CxVec,
                          pq: IntVec, pv: IntVec, vd: IntVec, no_slack: IntVec,
+                         pqv: IntVec | None = None, p: IntVec | None = None,
                          tolerance: float = 1e-6, max_coefficients: int = 30, use_pade: bool = True,
                          restart_order: int = 6, max_restarts: int = 20,
                          use_classical_germ: bool = False,
@@ -1517,6 +1596,8 @@ def helm_dpr_fixed_model(nc: NumericalCircuit,
     :param pv: PV bus indices.
     :param vd: Slack bus indices.
     :param no_slack: Sorted PQ/PV bus indices.
+    :param pqv: PVQ bus indices.
+    :param p: P bus indices.
     :param tolerance: Target mismatch tolerance.
     :param max_coefficients: Total coefficient budget.
     :param use_pade: Kept for interface compatibility; restarts use direct summation.
@@ -1530,6 +1611,8 @@ def helm_dpr_fixed_model(nc: NumericalCircuit,
 
     start_time: float = time.time()
     Vset: CxVec = nc.bus_data.Vbus
+    active_pqv: IntVec = np.zeros(0, dtype=int) if pqv is None else pqv
+    active_p: IntVec = np.zeros(0, dtype=int) if p is None else p
 
     if nc.bus_data.nbus < 2:
         results: NumericPowerFlowResults = NumericPowerFlowResults(
@@ -1575,6 +1658,8 @@ def helm_dpr_fixed_model(nc: NumericalCircuit,
                                                              Ysh0=Ysh0,
                                                              pq=pq,
                                                              pv=pv,
+                                                             pqv=active_pqv,
+                                                             p=active_p,
                                                              sl=vd,
                                                              no_slack=no_slack,
                                                              tolerance=tolerance,
@@ -1592,7 +1677,13 @@ def helm_dpr_fixed_model(nc: NumericalCircuit,
             use_pade = use_pade
 
         Scalc: CxVec = cf.compute_power(Ybus, V)
-        norm_f: float = float(cf.compute_fx_error(cf.compute_fx(Scalc, S0, no_slack, pq)))
+        norm_f: float = dpr_power_mismatch(Ybus=Ybus,
+                                           V=V,
+                                           S0=S0,
+                                           no_slack=no_slack,
+                                           pq=pq,
+                                           pqv=active_pqv,
+                                           Vset=Vset)
         converged = norm_f < tolerance
         elapsed: float = time.time() - start_time
 
@@ -1747,6 +1838,8 @@ def helm_dpr(nc: NumericalCircuit,
         pv=active_pv,
         vd=vd,
         no_slack=no_slack,
+        pqv=active_pqv,
+        p=active_p,
         tolerance=tolerance,
         max_coefficients=max_coefficients,
         use_pade=use_pade,
@@ -1836,6 +1929,8 @@ def helm_dpr(nc: NumericalCircuit,
                 pv=active_pv,
                 vd=vd,
                 no_slack=no_slack,
+                pqv=active_pqv,
+                p=active_p,
                 tolerance=tolerance,
                 max_coefficients=max_coefficients,
                 use_pade=use_pade,
