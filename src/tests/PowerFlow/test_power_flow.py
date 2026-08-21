@@ -192,14 +192,17 @@ def test_controllable_shunt() -> None:
 
     fname = os.path.join('data', 'grids', 'Controllable_shunt_example.gridcal')
     main_circuit = FileOpen(fname).open()
-    options = PowerFlowOptions(control_q=False)
-    power_flow = PowerFlowDriver(main_circuit, options)
-    power_flow.run()
+    for solver_type in [SolverType.NR, SolverType.HELM]:
+        options = PowerFlowOptions(solver_type=solver_type,
+                                   control_q=False,
+                                   retry_with_other_methods=False)
+        power_flow = PowerFlowDriver(main_circuit, options)
+        power_flow.run()
 
-    Vm = np.abs(power_flow.results.voltage)
-    Vm_test = np.array([[1., 1.0164564, 1.02]])
+        Vm = np.abs(power_flow.results.voltage)
+        Vm_test = np.array([[1., 1.0164564, 1.02]])
 
-    assert np.allclose(Vm_test, Vm, atol=1e-3)
+        assert np.allclose(Vm_test, Vm, atol=1e-3)
 
 
 def test_voltage_local_control_with_generation() -> None:
@@ -272,22 +275,23 @@ def test_qv_droop_control_mode() -> None:
     gen.Q = 0.0
     gen.Vset = gen.Vset + 0.01
 
-    options = PowerFlowOptions(solver_type=SolverType.NR,
-                               verbose=0,
-                               control_q=False,
-                               retry_with_other_methods=False)
+    for solver_type in [SolverType.NR, SolverType.HELM]:
+        options = PowerFlowOptions(solver_type=solver_type,
+                                   verbose=0,
+                                   control_q=False,
+                                   retry_with_other_methods=False)
 
-    results = gce.power_flow(grid, options)
-    vm: np.ndarray = np.abs(results.voltage)
-    delta_v: float = gen.Vset - vm[bus_i]
+        results = gce.power_flow(grid, options)
+        vm: np.ndarray = np.abs(results.voltage)
+        delta_v: float = gen.Vset - vm[bus_i]
 
-    # Reproduce the implemented droop equation in MVAr, including the reactive
-    # power clipping at the generator capability limits.
-    expected_q: float = delta_v * gen.k_droop * gen.Qmax
-    expected_q = float(np.clip(expected_q, gen.Qmin, gen.Qmax))
+        # Reproduce the implemented droop equation in MVAr, including the reactive
+        # power clipping at the generator capability limits.
+        expected_q: float = delta_v * gen.k_droop * gen.Qmax
+        expected_q = float(np.clip(expected_q, gen.Qmin, gen.Qmax))
 
-    assert results.converged
-    assert np.isclose(results.gen_q[gen_idx], expected_q, atol=1e-6, rtol=1e-6)
+        assert results.converged
+        assert np.isclose(results.gen_q[gen_idx], expected_q, atol=1e-6, rtol=1e-6)
 
 
 def test_reactive_split_removes_fixed_bus_q_before_voltage_control_share() -> None:

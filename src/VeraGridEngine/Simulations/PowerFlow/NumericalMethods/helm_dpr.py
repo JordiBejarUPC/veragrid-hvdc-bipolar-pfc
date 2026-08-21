@@ -19,6 +19,8 @@ from VeraGridEngine.DataStructures.numerical_circuit import NumericalCircuit
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results import NumericPowerFlowResults
 import VeraGridEngine.Simulations.PowerFlow.NumericalMethods.common_functions as cf
 from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.discrete_controls import (control_q_inside_method,
+                                                                                     DiscreteShuntControlState,
+                                                                                     QvDroopControlState,
                                                                                      compute_slack_distribution)
 from VeraGridEngine.basic_structures import Logger, CscMat, CxVec, IntVec, Vec
 
@@ -908,6 +910,30 @@ class DprSegmentResult:
         self.improved: bool = improved
 
 
+class DprAdmittanceControlView:
+    """
+    Hold the admittance references that discrete shunt control mutates.
+
+    The existing shunt-control wrapper only needs ``Ybus`` and ``Yshunt_bus``. DPRHEM receives those as raw
+    arguments, so this small view lets the control code update the active matrices without moving the outer control
+    loop back to the worker.
+    """
+    __slots__ = (
+        "Ybus",
+        "Yshunt_bus",
+    )
+
+    def __init__(self, Ybus: CscMat, Yshunt_bus: CxVec) -> None:
+        """
+        Build the admittance view.
+
+        :param Ybus: Active bus admittance matrix.
+        :param Yshunt_bus: Active bus shunt admittance vector.
+        """
+        self.Ybus: CscMat = Ybus
+        self.Yshunt_bus: CxVec = Yshunt_bus
+
+
 def dpr_reduced_bus_indices(nbus: int, pq: IntVec, pv: IntVec, sl: IntVec) -> tuple[IntVec, IntVec, IntVec]:
     """
     Convert original bus indices into the reduced no-slack indexing used by HELM.
@@ -1635,6 +1661,7 @@ def helm_dpr(nc: NumericalCircuit,
              use_classical_germ: bool = False,
              control_q: bool = False, pqv: IntVec | None = None, p: IntVec | None = None,
              Qmin: Vec | None = None, Qmax: Vec | None = None,
+             control_discrete_shunts: bool = False, control_qv_droop: bool = False,
              distributed_slack: bool = False, bus_installed_power: Vec | None = None,
              controls_tol: float = 1e-3, max_control_restarts: int = 3,
              verbose: int = 0, logger: Logger = None) -> NumericPowerFlowResults:
@@ -1665,6 +1692,8 @@ def helm_dpr(nc: NumericalCircuit,
     :param p: P bus indices used by the Q-limit control.
     :param Qmin: Minimum reactive power limits in p.u.
     :param Qmax: Maximum reactive power limits in p.u.
+    :param control_discrete_shunts: Apply discrete shunt controls at accepted DPR states.
+    :param control_qv_droop: Apply generator QV droop controls at accepted DPR states.
     :param distributed_slack: Apply one distributed slack correction at an accepted DPR state.
     :param bus_installed_power: Installed power per bus for distributed slack participation.
     :param controls_tol: Residual threshold below which discrete controls are trusted.
@@ -1676,6 +1705,11 @@ def helm_dpr(nc: NumericalCircuit,
 
     start_time: float = time.time()
     active_S0: CxVec = S0.copy()
+    active_Ybus: CscMat = Ybus.copy()
+    active_Yshunt_bus: CxVec = Yshunt_bus.copy()
+    active_Ysh0: CxVec = Ysh0.copy()
+    active_adm_view: DprAdmittanceControlView = DprAdmittanceControlView(Ybus=active_Ybus,
+                                                                         Yshunt_bus=active_Yshunt_bus)
     active_V0: CxVec | None = None if V0 is None else V0.copy()
     active_pq: IntVec = pq.copy()
     active_pv: IntVec = pv.copy()
@@ -1686,16 +1720,29 @@ def helm_dpr(nc: NumericalCircuit,
     total_iterations: int = 0
     controls_pending: bool = True
     slack_distributed: bool = False
+    discrete_shunt_control: DiscreteShuntControlState | None = None
+    qv_droop_control: QvDroopControlState | None = None
+
+    if control_discrete_shunts:
+        discrete_shunt_control = DiscreteShuntControlState(nc=nc)
+    else:
+        discrete_shunt_control = None
+
+    if control_qv_droop:
+        qv_droop_control = QvDroopControlState(S0=active_S0, nc=nc)
+    else:
+        qv_droop_control = None
+
     solution: NumericPowerFlowResults = helm_dpr_fixed_model(
         nc=nc,
-        Ybus=Ybus,
+        Ybus=active_Ybus,
         Yf=Yf,
         Yt=Yt,
-        Yshunt_bus=Yshunt_bus,
+        Yshunt_bus=active_Yshunt_bus,
         Yseries=Yseries,
         V0=active_V0,
         S0=active_S0,
-        Ysh0=Ysh0,
+        Ysh0=active_Ysh0,
         pq=active_pq,
         pv=active_pv,
         vd=vd,
@@ -1716,7 +1763,7 @@ def helm_dpr(nc: NumericalCircuit,
         # Controls use physical powers, so only trust them once DPR is close enough to the current fixed model.
         if solution.norm_f < controls_tol:
             if control_q and Qmin is not None and Qmax is not None and (len(active_pv) + len(active_p)) > 0:
-                Scalc_pu: CxVec = cf.compute_power(Ybus, solution.V)
+                Scalc_pu: CxVec = cf.compute_power(active_Ybus, solution.V)
                 changed, active_pv, active_pq, active_pqv, active_p = control_q_inside_method(
                     Scalc=Scalc_pu,
                     S0=active_S0,
@@ -1734,8 +1781,26 @@ def helm_dpr(nc: NumericalCircuit,
             else:
                 controls_pending = controls_pending
 
+            if discrete_shunt_control is not None:
+                if discrete_shunt_control.apply(Vm=np.abs(solution.V),
+                                                adm=active_adm_view,
+                                                yshunt_bus=active_Ysh0):
+                    controls_pending = True
+                else:
+                    controls_pending = controls_pending
+            else:
+                controls_pending = controls_pending
+
+            if qv_droop_control is not None:
+                if qv_droop_control.apply(S0=active_S0, Vm=np.abs(solution.V)):
+                    controls_pending = True
+                else:
+                    controls_pending = controls_pending
+            else:
+                controls_pending = controls_pending
+
             if distributed_slack and not slack_distributed and bus_installed_power is not None:
-                Scalc_pu = cf.compute_power(Ybus, solution.V)
+                Scalc_pu = cf.compute_power(active_Ybus, solution.V)
                 ok, delta = compute_slack_distribution(
                     Scalc=Scalc_pu,
                     vd=vd,
@@ -1759,14 +1824,14 @@ def helm_dpr(nc: NumericalCircuit,
             active_use_classical_germ = False
             solution = helm_dpr_fixed_model(
                 nc=nc,
-                Ybus=Ybus,
+                Ybus=active_Ybus,
                 Yf=Yf,
                 Yt=Yt,
-                Yshunt_bus=Yshunt_bus,
+                Yshunt_bus=active_Yshunt_bus,
                 Yseries=Yseries,
                 V0=active_V0,
                 S0=active_S0,
-                Ysh0=Ysh0,
+                Ysh0=active_Ysh0,
                 pq=active_pq,
                 pv=active_pv,
                 vd=vd,
