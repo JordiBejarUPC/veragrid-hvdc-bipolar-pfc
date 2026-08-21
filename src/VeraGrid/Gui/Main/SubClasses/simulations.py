@@ -3288,7 +3288,15 @@ class SimulationsMain(TimeEventsMain):
 
             self.sigma_dialogue = SigmaAnalysisGUI(parent=self,
                                                    results=sigma_driver.results,
-                                                   bus_names=bus_names)
+                                                   bus_names=bus_names,
+                                                   grid=self.circuit,
+                                                   options=options,
+                                                   classical_sigma=False,
+                                                   dpr_use_stored_guess=True,
+                                                   dpr_control_q=options.control_Q,
+                                                   dpr_control_discrete_shunts=True,
+                                                   dpr_control_qv_droop=True,
+                                                   dpr_distributed_slack=options.distributed_slack)
             self.sigma_dialogue.resize(int(1.61 * 600.0), 550)  # golden ratio
             self.sigma_dialogue.show()  # exec leaves the parent on hold
 

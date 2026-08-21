@@ -259,16 +259,28 @@ class SigmaAnalysisResults(ResultsTemplate):
 def multi_island_sigma(multi_circuit: MultiCircuit,
                        options: PowerFlowOptions,
                        logger: Logger = Logger(),
-                       classical_sigma: bool = False) -> SigmaAnalysisResults:
+                       classical_sigma: bool = False,
+                       dpr_use_stored_guess: bool = True,
+                       dpr_control_q: bool | None = None,
+                       dpr_control_discrete_shunts: bool = True,
+                       dpr_control_qv_droop: bool = True,
+                       dpr_distributed_slack: bool | None = None) -> SigmaAnalysisResults:
     """
     Multiple islands power flow (this is the most generic power flow function)
     :param multi_circuit: MultiCircuit instance
     :param options: PowerFlowOptions instance
     :param logger: list of events to add to
     :param classical_sigma: Use the original single-embedding HELM sigma instead of DPR path sigma.
+    :param dpr_use_stored_guess: Use stored voltages as DPR initial germ instead of the classical no-load germ.
+    :param dpr_control_q: Apply PV/P reactive limit control in DPR sigma. If None, use the power-flow option.
+    :param dpr_control_discrete_shunts: Apply discrete shunt controls in DPR sigma.
+    :param dpr_control_qv_droop: Apply generator QV droop controls in DPR sigma.
+    :param dpr_distributed_slack: Apply distributed slack in DPR sigma. If None, use the power-flow option.
     :return: PowerFlowResults instance
     """
     n = len(multi_circuit.buses)
+    active_control_q: bool = options.control_Q if dpr_control_q is None else dpr_control_q
+    active_distributed_slack: bool = options.distributed_slack if dpr_distributed_slack is None else dpr_distributed_slack
 
     results = SigmaAnalysisResults(n)
 
@@ -415,17 +427,17 @@ def multi_island_sigma(multi_circuit: MultiCircuit,
                         max_coefficients=options.max_iter,
                         restart_order=6,
                         max_restarts=20,
-                        use_classical_germ=False,
-                        control_q=options.control_Q,
+                        use_classical_germ=not dpr_use_stored_guess,
+                        control_q=active_control_q,
                         pqv=indices.pqv,
                         p=indices.p,
                         Qmin=Qmin,
                         Qmax=Qmax,
-                        control_discrete_shunts=np.any(
-                            island.shunt_data.control_mode_int == ShuntControlMode.Discrete.idx()),
-                        control_qv_droop=np.any(
-                            island.generator_data.control_mode_int == GeneratorControlMode.QVDroop.idx()),
-                        distributed_slack=options.distributed_slack,
+                        control_discrete_shunts=bool(dpr_control_discrete_shunts and np.any(
+                            island.shunt_data.control_mode_int == ShuntControlMode.Discrete.idx())),
+                        control_qv_droop=bool(dpr_control_qv_droop and np.any(
+                            island.generator_data.control_mode_int == GeneratorControlMode.QVDroop.idx())),
+                        distributed_slack=active_distributed_slack,
                         bus_installed_power=island.bus_data.installed_power,
                         controls_tol=options.controls_start_tolerance,
                         verbose=0,
@@ -523,24 +535,47 @@ class SigmaAnalysisDriver(DriverTemplate):
     __slots__ = (
         "options",
         "classical_sigma",
+        "dpr_use_stored_guess",
+        "dpr_control_q",
+        "dpr_control_discrete_shunts",
+        "dpr_control_qv_droop",
+        "dpr_distributed_slack",
         "convergence_reports",
     )
 
     name = 'Sigma Analysis'
     tpe = SimulationTypes.SigmaAnalysis_run
 
-    def __init__(self, grid: MultiCircuit, options: PowerFlowOptions, classical_sigma: bool = False):
+    def __init__(self,
+                 grid: MultiCircuit,
+                 options: PowerFlowOptions,
+                 classical_sigma: bool = False,
+                 dpr_use_stored_guess: bool = True,
+                 dpr_control_q: bool | None = None,
+                 dpr_control_discrete_shunts: bool = True,
+                 dpr_control_qv_droop: bool = True,
+                 dpr_distributed_slack: bool | None = None):
         """
         PowerFlowDriver class constructor
         :param grid: MultiCircuit instance
         :param options: PowerFlowOptions instance
         :param classical_sigma: Use the original single-embedding HELM sigma instead of DPR path sigma.
+        :param dpr_use_stored_guess: Use stored voltages as DPR initial germ instead of the classical no-load germ.
+        :param dpr_control_q: Apply PV/P reactive limit control in DPR sigma. If None, use the power-flow option.
+        :param dpr_control_discrete_shunts: Apply discrete shunt controls in DPR sigma.
+        :param dpr_control_qv_droop: Apply generator QV droop controls in DPR sigma.
+        :param dpr_distributed_slack: Apply distributed slack in DPR sigma. If None, use the power-flow option.
         """
         DriverTemplate.__init__(self, grid=grid)
 
         # Options to use
         self.options = options
         self.classical_sigma = classical_sigma
+        self.dpr_use_stored_guess = dpr_use_stored_guess
+        self.dpr_control_q = dpr_control_q
+        self.dpr_control_discrete_shunts = dpr_control_discrete_shunts
+        self.dpr_control_qv_droop = dpr_control_qv_droop
+        self.dpr_distributed_slack = dpr_distributed_slack
 
         self.results: Union[None, SigmaAnalysisResults] = None
 
@@ -566,7 +601,12 @@ class SigmaAnalysisDriver(DriverTemplate):
         self.results = multi_island_sigma(multi_circuit=self.grid,
                                           options=self.options,
                                           logger=self.logger,
-                                          classical_sigma=self.classical_sigma)
+                                          classical_sigma=self.classical_sigma,
+                                          dpr_use_stored_guess=self.dpr_use_stored_guess,
+                                          dpr_control_q=self.dpr_control_q,
+                                          dpr_control_discrete_shunts=self.dpr_control_discrete_shunts,
+                                          dpr_control_qv_droop=self.dpr_control_qv_droop,
+                                          dpr_distributed_slack=self.dpr_distributed_slack)
         self.toc()
 
     def cancel(self):
