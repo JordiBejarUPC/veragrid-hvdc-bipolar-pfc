@@ -37,6 +37,245 @@ class RmsTerminalSide(Enum):
     TO = "to"
 
 
+class RmsPhysicalMeterKind(Enum):
+    """Identify the physical quantity selected by one RMS meter."""
+
+    __slots__ = ()
+
+    VOLTAGE = "voltage"
+    CURRENT = "current"
+    POWER = "power"
+    PHASE_LOCKED_LOOP = "phase_locked_loop"
+
+
+class RmsPhysicalMeasurementPoint:
+    """Declare one physical RMS measurement selected by exact source FIDs.
+
+    The declaration contains identity and selection metadata only. Its solved
+    expressions and variables remain owned by the canonical meter ``Block``.
+    A global consumer can therefore index measurement blocks without retaining
+    DGS parser objects or constructing a second electrical graph.
+    """
+
+    __slots__ = (
+        "_source_fid",
+        "_target_fid",
+        "_terminal_side",
+        "_meter_kind",
+        "_output_signal_names",
+        "_output_var_uids",
+    )
+
+    def __init__(
+            self,
+            source_fid: str,
+            target_fid: str,
+            terminal_side: RmsTerminalSide,
+            meter_kind: RmsPhysicalMeterKind,
+            output_signal_names: Tuple[str, ...],
+            output_var_uids: Tuple[int, ...],
+    ) -> None:
+        """Create one immutable physical measurement declaration.
+
+        :param source_fid: Exact FID of the native meter or built-in slot.
+        :param target_fid: Exact FID of the measured bus or physical device.
+        :param terminal_side: Measured physical terminal of the target.
+        :param meter_kind: Physical quantity family produced by the meter.
+        :param output_signal_names: Exact selected output signal names.
+        :param output_var_uids: Canonical output-variable UIDs paired with names.
+        :return: None.
+        """
+        if source_fid.strip() == "":
+            raise ValueError("RMS physical meter source FID must not be empty")
+        else:
+            pass
+        if target_fid.strip() == "":
+            raise ValueError("RMS physical meter target FID must not be empty")
+        else:
+            pass
+        if isinstance(terminal_side, RmsTerminalSide):
+            pass
+        else:
+            raise TypeError("RMS physical meter terminal side is invalid")
+        if isinstance(meter_kind, RmsPhysicalMeterKind):
+            pass
+        else:
+            raise TypeError("RMS physical meter kind is invalid")
+        if (
+                meter_kind in (
+                    RmsPhysicalMeterKind.VOLTAGE,
+                    RmsPhysicalMeterKind.PHASE_LOCKED_LOOP,
+                )
+                and terminal_side is not RmsTerminalSide.BUS
+        ):
+            raise ValueError("Voltage and PLL meters must target a bus")
+        else:
+            pass
+        if (
+                len(output_signal_names) > 0
+                and all(name.strip() != "" for name in output_signal_names)
+                and len(set(output_signal_names)) == len(output_signal_names)
+        ):
+            pass
+        else:
+            raise ValueError(
+                "RMS physical meter outputs must be non-empty and unique"
+            )
+        if (
+                len(output_var_uids) == len(output_signal_names)
+                and len(set(output_var_uids)) == len(output_var_uids)
+                and all(
+                    isinstance(uid, int) and not isinstance(uid, bool)
+                    for uid in output_var_uids
+                )
+        ):
+            pass
+        else:
+            raise ValueError(
+                "RMS physical meter output names and UIDs must pair uniquely"
+            )
+
+        self._source_fid: str = source_fid
+        self._target_fid: str = target_fid
+        self._terminal_side: RmsTerminalSide = terminal_side
+        self._meter_kind: RmsPhysicalMeterKind = meter_kind
+        self._output_signal_names: Tuple[str, ...] = tuple(output_signal_names)
+        self._output_var_uids: Tuple[int, ...] = tuple(output_var_uids)
+
+    def get_source_fid(self) -> str:
+        """Return the exact native meter or built-in slot FID.
+
+        :return: Source FID.
+        """
+        return self._source_fid
+
+    def get_target_fid(self) -> str:
+        """Return the exact measured bus or device FID.
+
+        :return: Physical target FID.
+        """
+        return self._target_fid
+
+    def get_terminal_side(self) -> RmsTerminalSide:
+        """Return the measured physical terminal.
+
+        :return: Typed terminal side.
+        """
+        return self._terminal_side
+
+    def get_meter_kind(self) -> RmsPhysicalMeterKind:
+        """Return the physical quantity family.
+
+        :return: Typed meter kind.
+        """
+        return self._meter_kind
+
+    def get_output_signal_names(self) -> Tuple[str, ...]:
+        """Return the exact selected output signal names.
+
+        :return: Immutable ordered signal-name tuple.
+        """
+        return self._output_signal_names
+
+    def get_output_var_uids(self) -> Tuple[int, ...]:
+        """Return canonical output-variable UIDs paired with signal names.
+
+        :return: Immutable ordered output-UID tuple.
+        """
+        return self._output_var_uids
+
+    def to_data(self) -> Dict[str, object]:
+        """Serialize this measurement point as declarative data.
+
+        :return: Version-independent physical measurement record.
+        """
+        return {
+            "source_fid": self._source_fid,
+            "target_fid": self._target_fid,
+            "terminal_side": self._terminal_side.value,
+            "meter_kind": self._meter_kind.value,
+            "output_signal_names": list(self._output_signal_names),
+            "output_var_uids": list(self._output_var_uids),
+        }
+
+
+def rms_physical_measurement_point_from_data(
+        data: Dict[str, object],
+) -> RmsPhysicalMeasurementPoint:
+    """Reconstruct one physical RMS measurement declaration fail-closed.
+
+    :param data: Declarative physical measurement record.
+    :return: Validated typed measurement point.
+    """
+    expected_keys: set[str] = set((
+        "source_fid",
+        "target_fid",
+        "terminal_side",
+        "meter_kind",
+        "output_signal_names",
+        "output_var_uids",
+    ))
+    if set(data.keys()) == expected_keys:
+        pass
+    else:
+        raise ValueError("RMS physical measurement fields do not match")
+
+    source_fid_data: object = data["source_fid"]
+    target_fid_data: object = data["target_fid"]
+    terminal_side_data: object = data["terminal_side"]
+    meter_kind_data: object = data["meter_kind"]
+    output_names_data: object = data["output_signal_names"]
+    output_uids_data: object = data["output_var_uids"]
+    if isinstance(source_fid_data, str) and isinstance(target_fid_data, str):
+        pass
+    else:
+        raise TypeError("RMS physical measurement FIDs must be strings")
+    if isinstance(terminal_side_data, str):
+        terminal_side: RmsTerminalSide = RmsTerminalSide(terminal_side_data)
+    else:
+        raise TypeError("RMS physical measurement terminal side must be a string")
+    if isinstance(meter_kind_data, str):
+        meter_kind: RmsPhysicalMeterKind = RmsPhysicalMeterKind(meter_kind_data)
+    else:
+        raise TypeError("RMS physical measurement kind must be a string")
+    if isinstance(output_names_data, list):
+        output_signal_names: List[str] = list()
+        output_name_data: object
+        for output_name_data in output_names_data:
+            if isinstance(output_name_data, str):
+                output_signal_names.append(output_name_data)
+            else:
+                raise TypeError(
+                    "RMS physical measurement output names must be strings"
+                )
+        else:
+            pass
+    else:
+        raise TypeError("RMS physical measurement outputs must be a list")
+    if isinstance(output_uids_data, list):
+        output_var_uids: List[int] = list()
+        output_uid_data: object
+        for output_uid_data in output_uids_data:
+            if isinstance(output_uid_data, int) and not isinstance(output_uid_data, bool):
+                output_var_uids.append(output_uid_data)
+            else:
+                raise TypeError(
+                    "RMS physical measurement output UIDs must be integers"
+                )
+        else:
+            pass
+    else:
+        raise TypeError("RMS physical measurement output UIDs must be a list")
+    return RmsPhysicalMeasurementPoint(
+        source_fid=source_fid_data,
+        target_fid=target_fid_data,
+        terminal_side=terminal_side,
+        meter_kind=meter_kind,
+        output_signal_names=tuple(output_signal_names),
+        output_var_uids=tuple(output_var_uids),
+    )
+
+
 class RmsTerminalPowerContribution:
     """Declare one device power flow consumed by the RMS nodal assembler.
 
@@ -397,6 +636,7 @@ class DynamicModelContract:
         "rms_conduction_status_var_uid",
         "rms_topology_constraint_status_var_uid",
         "rms_terminal_power_contributions",
+        "rms_physical_measurement_point",
         "emt_terminal_current_contributions",
         "emt_internal_grounding_link",
         "rms_ideal_ac_connector",
@@ -449,6 +689,7 @@ class DynamicModelContract:
         self.rms_conduction_status_var_uid: int | None = None
         self.rms_topology_constraint_status_var_uid: int | None = None
         self.rms_terminal_power_contributions: List[RmsTerminalPowerContribution] = list()
+        self.rms_physical_measurement_point: RmsPhysicalMeasurementPoint | None = None
         self.emt_terminal_current_contributions: List[EmtTerminalCurrentContribution] = list()
         self.emt_internal_grounding_link: bool = False
         self.rms_ideal_ac_connector: bool = False
@@ -481,7 +722,7 @@ class DynamicModelContract:
         :return: Data-only contract suitable for canonical block persistence.
         """
         return {
-            "version": 4,
+            "version": 5,
             "dgs_elmsym_runtime_adapter": self.dgs_elmsym_runtime_adapter,
             "dgs_elmsym_runtime_adapter_pending": self.dgs_elmsym_runtime_adapter_pending,
             "dgs_elmsym_round_rotor": self.dgs_elmsym_round_rotor,
@@ -501,6 +742,11 @@ class DynamicModelContract:
             "rms_terminal_power_contributions": list(
                 contribution.to_data()
                 for contribution in self.rms_terminal_power_contributions
+            ),
+            "rms_physical_measurement_point": (
+                None
+                if self.rms_physical_measurement_point is None
+                else self.rms_physical_measurement_point.to_data()
             ),
             "emt_terminal_current_contributions": list(
                 contribution.to_data()
@@ -852,7 +1098,7 @@ def dynamic_model_contract_from_data(data: Dict[str, object]) -> DynamicModelCon
         version_number: int = version
     else:
         raise TypeError("Dynamic-model contract version must be an integer")
-    if version_number in (1, 2, 3, 4):
+    if version_number in (1, 2, 3, 4, 5):
         pass
     else:
         raise ValueError("Unsupported dynamic-model contract version")
@@ -869,6 +1115,10 @@ def dynamic_model_contract_from_data(data: Dict[str, object]) -> DynamicModelCon
         pass
     if version_number in (1, 2, 3):
         expected_keys.remove("emt_internal_grounding_link")
+    else:
+        pass
+    if version_number in (1, 2, 3, 4):
+        expected_keys.remove("rms_physical_measurement_point")
     else:
         pass
     actual_keys: set[str] = set(data.keys())
@@ -937,6 +1187,38 @@ def dynamic_model_contract_from_data(data: Dict[str, object]) -> DynamicModelCon
         result.rms_terminal_power_contributions = (
             _read_rms_terminal_power_contributions(data)
         )
+    if version_number in (1, 2, 3, 4):
+        result.rms_physical_measurement_point = None
+    else:
+        physical_measurement_data: object = _read_required_dynamic_contract_field(
+            data,
+            "rms_physical_measurement_point",
+        )
+        if physical_measurement_data is None:
+            result.rms_physical_measurement_point = None
+        else:
+            if isinstance(physical_measurement_data, dict):
+                normalized_measurement_data: Dict[str, object] = dict()
+                measurement_key: object
+                measurement_value: object
+                for measurement_key, measurement_value in physical_measurement_data.items():
+                    if isinstance(measurement_key, str):
+                        normalized_measurement_data[measurement_key] = measurement_value
+                    else:
+                        raise TypeError(
+                            "RMS physical measurement field names must be strings"
+                        )
+                else:
+                    pass
+                result.rms_physical_measurement_point = (
+                    rms_physical_measurement_point_from_data(
+                        data=normalized_measurement_data,
+                    )
+                )
+            else:
+                raise TypeError(
+                    "RMS physical measurement point must be a mapping or null"
+                )
     if version_number in (1, 2):
         result.emt_terminal_current_contributions = list()
     else:
@@ -1243,6 +1525,36 @@ def validate_dynamic_model_contract(block: "Block") -> None:
     contract: DynamicModelContract = block.dynamic_model_contract
     validate_rms_terminal_power_contributions(block=block)
     validate_emt_terminal_current_contributions(block=block)
+    if contract.rms_physical_measurement_point is None:
+        pass
+    else:
+        if isinstance(
+                contract.rms_physical_measurement_point,
+                RmsPhysicalMeasurementPoint,
+        ):
+            local_output_uids: set[int] = set()
+            local_output_var: Var
+            for local_output_var in block.out_vars:
+                local_output_uids.add(local_output_var.uid)
+            else:
+                pass
+            selected_output_uid: int
+            for selected_output_uid in (
+                    contract.rms_physical_measurement_point.get_output_var_uids()
+            ):
+                if selected_output_uid in local_output_uids:
+                    pass
+                else:
+                    raise KeyError(
+                        "RMS physical measurement UIDs must reference outputs "
+                        "owned by the declaring Block"
+                    )
+            else:
+                pass
+        else:
+            raise TypeError(
+                "Dynamic-model contract contains an invalid RMS measurement point"
+            )
 
     # One block represents one physical equipment adapter. Accepting two
     # adapter families would make runtime dispatch depend on incidental order.
@@ -1456,6 +1768,40 @@ def validate_dynamic_model_contract(block: "Block") -> None:
             raise KeyError(
                 f"Dynamic-model contract UID '{declared_uid}' is not reachable"
             )
+
+
+def collect_rms_physical_measurement_points(
+        block: "Block",
+) -> Dict[str, RmsPhysicalMeasurementPoint]:
+    """Index canonical RMS meter blocks by exact source FID.
+
+    The returned dictionary is a transient lookup over the existing block tree;
+    it neither owns measurement expressions nor persists a parallel topology.
+    Duplicate FIDs fail closed because a global consumer cannot select between
+    two physical points with the same authoritative identity.
+
+    :param block: Canonical local or global RMS block root to inspect.
+    :return: Exact source-FID lookup of typed physical measurement points.
+    """
+    result: Dict[str, RmsPhysicalMeasurementPoint] = dict()
+    candidate_block: Block
+    for candidate_block in block.get_all_blocks():
+        measurement_point: RmsPhysicalMeasurementPoint | None = (
+            candidate_block.dynamic_model_contract.rms_physical_measurement_point
+        )
+        if measurement_point is None:
+            pass
+        else:
+            source_fid: str = measurement_point.get_source_fid()
+            if source_fid in result:
+                raise ValueError(
+                    f"RMS physical measurement FID '{source_fid}' is duplicated"
+                )
+            else:
+                result[source_fid] = measurement_point
+    else:
+        pass
+    return result
 
 def normalize_dynamic_connection_intents(block: "Block") -> None:
     """

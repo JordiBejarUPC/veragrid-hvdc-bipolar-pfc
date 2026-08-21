@@ -18,6 +18,7 @@ from VeraGridEngine.Utils.Symbolic.symbolic import Var, Expr, Const, BinOp, UnOp
 from VeraGridEngine.Utils.Symbolic.block import (
     Block,
     DynamicModelContract,
+    RmsPhysicalMeasurementPoint,
     dynamic_model_contract_from_data,
     normalize_dynamic_connection_intents,
     validate_dynamic_model_contract,
@@ -2519,6 +2520,28 @@ def _duplicate_block(block: Block,
         source_uids=source_contract.runtime_equipment_shell_sync_var_uids,
         old_to_new_var=old_to_new_var,
     )
+    source_measurement_point: RmsPhysicalMeasurementPoint | None = (
+        source_contract.rms_physical_measurement_point
+    )
+    if source_measurement_point is None:
+        target_contract.rms_physical_measurement_point = None
+    else:
+        remapped_measurement_uids: List[int] = _remap_duplicate_uids(
+            source_uids=source_measurement_point.get_output_var_uids(),
+            old_to_new_var=old_to_new_var,
+        )
+        target_contract.rms_physical_measurement_point = (
+            RmsPhysicalMeasurementPoint(
+                source_fid=source_measurement_point.get_source_fid(),
+                target_fid=source_measurement_point.get_target_fid(),
+                terminal_side=source_measurement_point.get_terminal_side(),
+                meter_kind=source_measurement_point.get_meter_kind(),
+                output_signal_names=(
+                    source_measurement_point.get_output_signal_names()
+                ),
+                output_var_uids=tuple(remapped_measurement_uids),
+            )
+        )
     target_contract.explicit_init_override_init_exprs = dict(
         (
             variable_name,
@@ -2550,7 +2573,14 @@ def duplicate_block(block: Block, var_factory: VarFactory | None) -> Block:
     if var_factory is None:
         raise TypeError("duplicate_block: var_factory cannot be None")
     else:
-        validate_dynamic_model_contract(block)
+        # Every child owns an independent typed contract. Validate each local
+        # owner before cloning so an invalid descendant cannot be hidden by a
+        # structurally valid root contract.
+        source_block: Block
+        for source_block in block.get_all_blocks():
+            validate_dynamic_model_contract(source_block)
+        else:
+            pass
         duplicated_block: Block = _duplicate_block(
             block=block,
             var_factory=var_factory,
@@ -2558,7 +2588,13 @@ def duplicate_block(block: Block, var_factory: VarFactory | None) -> Block:
             old_to_new_const=dict(),
             old_to_new_block_uid=dict(),
         )
-        validate_dynamic_model_contract(duplicated_block)
+        # Remapped declarations must remain local to the duplicated owner;
+        # checking the root alone would not inspect meter children.
+        duplicated_candidate: Block
+        for duplicated_candidate in duplicated_block.get_all_blocks():
+            validate_dynamic_model_contract(duplicated_candidate)
+        else:
+            pass
         return duplicated_block
 
 

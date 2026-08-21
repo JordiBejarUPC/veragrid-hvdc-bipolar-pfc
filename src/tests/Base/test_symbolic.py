@@ -10,8 +10,11 @@ from VeraGridEngine.Utils.Symbolic.compiled_functions import SymbolicJacobian
 from VeraGridEngine.Utils.Symbolic.jit_compiler import SubexpressionAnalyzer
 from VeraGridEngine.Utils.Symbolic.block import (
     Block,
+    RmsPhysicalMeasurementPoint,
+    RmsPhysicalMeterKind,
     RmsTerminalPowerContribution,
     RmsTerminalSide,
+    collect_rms_physical_measurement_points,
 )
 from VeraGridEngine.Utils.Symbolic.symbolic_io import (duplicate_block, expr_to_dict, parse_expr,
                                                        BlockSaver, BlockParser)
@@ -801,6 +804,7 @@ def test_rms_terminal_power_contract_roundtrips_and_fails_closed() -> None:
     legacy_contract.pop("rms_terminal_power_contributions")
     legacy_contract.pop("emt_terminal_current_contributions")
     legacy_contract.pop("emt_internal_grounding_link")
+    legacy_contract.pop("rms_physical_measurement_point")
     legacy_restored: Block = Block.parse(data=legacy_data)
     assert (
         legacy_restored.dynamic_model_contract.rms_terminal_power_contributions
@@ -818,6 +822,7 @@ def test_rms_terminal_power_contract_roundtrips_and_fails_closed() -> None:
     version_two_contract["version"] = 2
     version_two_contract.pop("emt_terminal_current_contributions")
     version_two_contract.pop("emt_internal_grounding_link")
+    version_two_contract.pop("rms_physical_measurement_point")
     version_two_restored: Block = Block.parse(data=version_two_data)
     assert len(
         version_two_restored.dynamic_model_contract.rms_terminal_power_contributions
@@ -833,8 +838,18 @@ def test_rms_terminal_power_contract_roundtrips_and_fails_closed() -> None:
     assert isinstance(version_three_contract, dict)
     version_three_contract["version"] = 3
     version_three_contract.pop("emt_internal_grounding_link")
+    version_three_contract.pop("rms_physical_measurement_point")
     version_three_restored: Block = Block.parse(data=version_three_data)
     assert not version_three_restored.dynamic_model_contract.emt_internal_grounding_link
+
+    # Version 4 includes typed grounding but predates physical meter identity.
+    version_four_data: dict[str, object] = block.to_dict()
+    version_four_contract: object = version_four_data["dynamic_model_contract"]
+    assert isinstance(version_four_contract, dict)
+    version_four_contract["version"] = 4
+    version_four_contract.pop("rms_physical_measurement_point")
+    version_four_restored: Block = Block.parse(data=version_four_data)
+    assert version_four_restored.dynamic_model_contract.rms_physical_measurement_point is None
 
     malformed_data: dict[str, object] = block.to_dict()
     malformed_contract: object = malformed_data["dynamic_model_contract"]
@@ -848,6 +863,125 @@ def test_rms_terminal_power_contract_roundtrips_and_fails_closed() -> None:
     malformed_first["active_power_reference"] = VarPowerFlowReferenceType.Vm.value
     with pytest.raises(ValueError, match="from-terminal active power"):
         Block.parse(data=malformed_data)
+
+
+def test_rms_physical_measurement_point_roundtrips_and_indexes_by_fid() -> None:
+    """Persist selected meter signals and expose a transient global FID index.
+
+    :return: None.
+    """
+    active_power: sym.Var = sym.Var(name="p_meter")
+    reactive_power: sym.Var = sym.Var(name="q_meter")
+    internal_filter_state: sym.Var = sym.Var(name="meter_internal")
+    meter_block: Block = Block(
+        name="meter",
+        algebraic_vars=list((
+            active_power,
+            reactive_power,
+            internal_filter_state,
+        )),
+        algebraic_eqs=list((
+            active_power,
+            reactive_power,
+            internal_filter_state,
+        )),
+        out_vars=list((active_power, reactive_power)),
+    )
+    meter_block.dynamic_model_contract.rms_physical_measurement_point = (
+        RmsPhysicalMeasurementPoint(
+            source_fid="meter-fid",
+            target_fid="branch-fid",
+            terminal_side=RmsTerminalSide.TO,
+            meter_kind=RmsPhysicalMeterKind.POWER,
+            output_signal_names=tuple(("p", "q")),
+            output_var_uids=tuple((active_power.uid, reactive_power.uid)),
+        )
+    )
+    root_block: Block = Block(
+        name="global_measurement_root",
+        children=list((meter_block,)),
+    )
+    restored_root: Block = Block.parse(data=root_block.to_dict())
+    measurement_by_fid: dict[str, RmsPhysicalMeasurementPoint] = (
+        collect_rms_physical_measurement_points(block=restored_root)
+    )
+    restored_point: RmsPhysicalMeasurementPoint = measurement_by_fid["meter-fid"]
+
+    assert restored_point.get_target_fid() == "branch-fid"
+    assert restored_point.get_terminal_side() is RmsTerminalSide.TO
+    assert restored_point.get_meter_kind() is RmsPhysicalMeterKind.POWER
+    assert restored_point.get_output_signal_names() == tuple(("p", "q"))
+    assert len(restored_point.get_output_var_uids()) == 2
+
+    duplicated_root: Block = duplicate_block(root_block, VarFactory())
+    duplicated_point_by_fid: dict[str, RmsPhysicalMeasurementPoint] = (
+        collect_rms_physical_measurement_points(block=duplicated_root)
+    )
+    duplicated_point: RmsPhysicalMeasurementPoint = duplicated_point_by_fid[
+        "meter-fid"
+    ]
+    duplicated_meter: Block = duplicated_root.children[0]
+    duplicated_output_uids: tuple[int, ...] = tuple(
+        output_var.uid for output_var in duplicated_meter.out_vars
+    )
+    assert duplicated_point.get_output_var_uids() == duplicated_output_uids
+    assert duplicated_output_uids != tuple((active_power.uid, reactive_power.uid))
+
+    invalid_meter_child: Block = copy.deepcopy(meter_block)
+    invalid_internal_var: sym.Var = invalid_meter_child.algebraic_vars[2]
+    invalid_meter_child.dynamic_model_contract.rms_physical_measurement_point = (
+        RmsPhysicalMeasurementPoint(
+            source_fid="invalid-child-meter",
+            target_fid="branch-fid",
+            terminal_side=RmsTerminalSide.TO,
+            meter_kind=RmsPhysicalMeterKind.POWER,
+            output_signal_names=tuple(("internal",)),
+            output_var_uids=tuple((invalid_internal_var.uid,)),
+        )
+    )
+    invalid_child_root: Block = Block(children=list((invalid_meter_child,)))
+    with pytest.raises(KeyError, match="outputs owned by the declaring Block"):
+        duplicate_block(invalid_child_root, VarFactory())
+
+    duplicate_root: Block = Block(
+        children=list((meter_block, copy.deepcopy(meter_block))),
+    )
+    with pytest.raises(ValueError, match="meter-fid.*duplicated"):
+        collect_rms_physical_measurement_points(block=duplicate_root)
+
+    malformed_data: dict[str, object] = root_block.to_dict()
+    malformed_children: object = malformed_data["children"]
+    assert isinstance(malformed_children, list)
+    malformed_meter: object = malformed_children[0]
+    assert isinstance(malformed_meter, dict)
+    malformed_contract: object = malformed_meter["dynamic_model_contract"]
+    assert isinstance(malformed_contract, dict)
+    malformed_point: object = malformed_contract["rms_physical_measurement_point"]
+    assert isinstance(malformed_point, dict)
+    malformed_point["output_var_uids"] = list((
+        internal_filter_state.uid,
+        reactive_power.uid,
+    ))
+    with pytest.raises(KeyError, match="outputs owned by the declaring Block"):
+        Block.parse(data=malformed_data)
+
+    parent_owned_data: dict[str, object] = root_block.to_dict()
+    parent_contract: object = parent_owned_data["dynamic_model_contract"]
+    parent_children: object = parent_owned_data["children"]
+    assert isinstance(parent_contract, dict)
+    assert isinstance(parent_children, list)
+    parent_meter_data: object = parent_children[0]
+    assert isinstance(parent_meter_data, dict)
+    parent_meter_contract: object = parent_meter_data["dynamic_model_contract"]
+    assert isinstance(parent_meter_contract, dict)
+    child_point_data: object = parent_meter_contract[
+        "rms_physical_measurement_point"
+    ]
+    parent_contract["rms_physical_measurement_point"] = copy.deepcopy(
+        child_point_data
+    )
+    with pytest.raises(KeyError, match="outputs owned by the declaring Block"):
+        Block.parse(data=parent_owned_data)
 
 
 def test_dynamic_model_contract_rejects_incoherent_persistence_states() -> None:

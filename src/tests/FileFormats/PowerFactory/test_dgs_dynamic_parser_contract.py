@@ -96,8 +96,11 @@ from VeraGridEngine.IO.dynamic_model_import_types import (
 from VeraGridEngine.Utils.Symbolic.block import (
     Block,
     DynamicModelContract,
+    RmsPhysicalMeasurementPoint,
+    RmsPhysicalMeterKind,
     RmsTerminalPowerContribution,
     RmsTerminalSide,
+    collect_rms_physical_measurement_points,
 )
 from VeraGridEngine.Utils.Symbolic.bus_rms_template import (
     BusRmsTemplate,
@@ -784,6 +787,14 @@ def test_v3_dynamic_route_keeps_native_meters_as_connected_editor_blocks() -> No
     ))
     meter_block_by_name: dict[str, Block] = dict()
     owner_model_by_meter_name: dict[str, Block] = dict()
+    expected_physical_location_by_fid: dict[
+        str,
+        tuple[str, RmsTerminalSide],
+    ] = dict((
+        ("425", ("275", RmsTerminalSide.TO)),
+        ("457", ("265", RmsTerminalSide.BUS)),
+        ("472", ("265", RmsTerminalSide.BUS)),
+    ))
     candidate_device: object
 
     # Inspect only final device-owned RMS graphs. Registered templates are
@@ -819,6 +830,39 @@ def test_v3_dynamic_route_keeps_native_meters_as_connected_editor_blocks() -> No
     meter_block: Block
     for meter_name, meter_block in meter_block_by_name.items():
         owner_model: Block = owner_model_by_meter_name[meter_name]
+        measurement_point: RmsPhysicalMeasurementPoint | None = (
+            meter_block.dynamic_model_contract.rms_physical_measurement_point
+        )
+        assert measurement_point is not None
+        source_fid: str = meter_name.rsplit(" ", 1)[1]
+        assert measurement_point.get_source_fid() == source_fid
+        assert measurement_point.get_target_fid() != ""
+        expected_physical_location: tuple[str, RmsTerminalSide] | None = (
+            expected_physical_location_by_fid.get(source_fid, None)
+        )
+        if expected_physical_location is None:
+            pass
+        else:
+            assert measurement_point.get_target_fid() == expected_physical_location[0]
+            assert measurement_point.get_terminal_side() is expected_physical_location[1]
+        assert len(measurement_point.get_output_signal_names()) > 0
+        assert set(measurement_point.get_output_var_uids()).issubset(
+            set(output_var.uid for output_var in meter_block.out_vars)
+        )
+        global_measurement_by_fid: dict[str, RmsPhysicalMeasurementPoint] = (
+            collect_rms_physical_measurement_points(block=owner_model)
+        )
+        assert global_measurement_by_fid[source_fid] is measurement_point
+        if "StaImea" in meter_name:
+            assert measurement_point.get_meter_kind() is RmsPhysicalMeterKind.CURRENT
+        else:
+            if "StaVmea" in meter_name:
+                assert measurement_point.get_meter_kind() is RmsPhysicalMeterKind.VOLTAGE
+            else:
+                assert (
+                    measurement_point.get_meter_kind()
+                    is RmsPhysicalMeterKind.PHASE_LOCKED_LOOP
+                )
         meter_output_reference_uids: set[int] = set(
             output_var.shared_ref.uid
             for output_var in meter_block.out_vars
@@ -910,10 +954,44 @@ def test_v1_v2_dynamic_routes_keep_power_meters_as_editor_blocks(
             pass
 
     assert set(meter_block_by_name.keys()) == expected_meter_names, str(logger)
+    expected_physical_location_by_fid: dict[
+        str,
+        tuple[str, RmsTerminalSide],
+    ]
+    if file_name == "hvdc_vsc_v1_complete_static_dynamic.dgs":
+        expected_physical_location_by_fid = dict((
+            ("220", ("124", RmsTerminalSide.TO)),
+            ("221", ("125", RmsTerminalSide.TO)),
+        ))
+    else:
+        expected_physical_location_by_fid = dict((
+            ("228", ("125", RmsTerminalSide.FROM)),
+            ("229", ("126", RmsTerminalSide.FROM)),
+        ))
     meter_name: str
     meter_block: Block
     for meter_name, meter_block in meter_block_by_name.items():
         owner_model: Block = owner_model_by_meter_name[meter_name]
+        measurement_point: RmsPhysicalMeasurementPoint | None = (
+            meter_block.dynamic_model_contract.rms_physical_measurement_point
+        )
+        assert measurement_point is not None
+        source_fid: str = meter_name.rsplit(" ", 1)[1]
+        assert measurement_point.get_source_fid() == source_fid
+        assert measurement_point.get_meter_kind() is RmsPhysicalMeterKind.POWER
+        expected_physical_location: tuple[str, RmsTerminalSide] = (
+            expected_physical_location_by_fid[source_fid]
+        )
+        assert measurement_point.get_target_fid() == expected_physical_location[0]
+        assert measurement_point.get_terminal_side() is expected_physical_location[1]
+        assert len(measurement_point.get_output_signal_names()) > 0
+        assert set(measurement_point.get_output_var_uids()).issubset(
+            set(output_var.uid for output_var in meter_block.out_vars)
+        )
+        global_measurement_by_fid: dict[str, RmsPhysicalMeasurementPoint] = (
+            collect_rms_physical_measurement_points(block=owner_model)
+        )
+        assert global_measurement_by_fid[source_fid] is measurement_point
         meter_output_reference_uids: set[int] = set(
             output_var.shared_ref.uid
             for output_var in meter_block.out_vars

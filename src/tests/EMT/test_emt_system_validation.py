@@ -328,6 +328,7 @@ def _restore_version_three_grounding_block(
     assert isinstance(legacy_contract, dict)
     legacy_contract["version"] = 3
     legacy_contract.pop("emt_internal_grounding_link")
+    legacy_contract.pop("rms_physical_measurement_point")
     legacy_children_data: object = legacy_data["children"]
     assert isinstance(legacy_children_data, list)
     legacy_child_data: object
@@ -337,6 +338,7 @@ def _restore_version_three_grounding_block(
         assert isinstance(legacy_child_contract, dict)
         legacy_child_contract["version"] = 3
         legacy_child_contract.pop("emt_internal_grounding_link")
+        legacy_child_contract.pop("rms_physical_measurement_point")
     else:
         pass
     return Block.parse(data=legacy_data)

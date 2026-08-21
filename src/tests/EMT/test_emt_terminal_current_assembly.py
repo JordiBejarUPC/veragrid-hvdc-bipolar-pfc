@@ -39,6 +39,7 @@ def _serialize_grounding_contract_as_version_three(block: Block) -> dict[str, ob
     assert isinstance(legacy_contract, dict)
     legacy_contract["version"] = 3
     legacy_contract.pop("emt_internal_grounding_link")
+    legacy_contract.pop("rms_physical_measurement_point")
 
     # The child is parsed first, so its own contract must also match the legacy
     # schema before the parent migration inspects their shared symbolic UIDs.
@@ -51,6 +52,7 @@ def _serialize_grounding_contract_as_version_three(block: Block) -> dict[str, ob
         assert isinstance(legacy_child_contract, dict)
         legacy_child_contract["version"] = 3
         legacy_child_contract.pop("emt_internal_grounding_link")
+        legacy_child_contract.pop("rms_physical_measurement_point")
     else:
         pass
     return legacy_data

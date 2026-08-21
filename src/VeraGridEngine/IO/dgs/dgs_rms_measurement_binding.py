@@ -17,6 +17,7 @@ from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Devices.Injections.generator import Generator
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
+from VeraGridEngine.Devices.Parents.branch_parent import BranchParent
 from VeraGridEngine.Devices.Parents.dynamic_parent import DynamicDevice
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.IO.dgs.dgs_circuit import DgsCircuit
@@ -47,7 +48,13 @@ from VeraGridEngine.Templates.Rms.rms_meter_templates import (
     build_rms_voltage_meter_outputs_from_dc,
     build_rms_voltage_meter_outputs_from_polar,
 )
-from VeraGridEngine.Utils.Symbolic.block import Block, build_name_to_vars_lookup
+from VeraGridEngine.Utils.Symbolic.block import (
+    Block,
+    RmsPhysicalMeasurementPoint,
+    RmsPhysicalMeterKind,
+    RmsTerminalSide,
+    build_name_to_vars_lookup,
+)
 from VeraGridEngine.Utils.Symbolic.bus_rms_template import get_bus_rms_algebraic_vars
 from VeraGridEngine.Utils.Symbolic.symbolic import (
     BinOp,
@@ -411,6 +418,30 @@ def _resolve_cubicle_source(
         source_bus = None
         source_terminal_index = None
     return source_device, source_bus, source_terminal_index
+
+
+def _get_physical_meter_terminal_side(
+        source_device: DynamicDevice,
+        source_terminal_index: int,
+) -> RmsTerminalSide:
+    """Map one DGS cubicle ordinal to the canonical physical terminal side.
+
+    :param source_device: Exact measured VeraGrid device.
+    :param source_terminal_index: DGS terminal ordinal selected by the cubicle.
+    :return: Typed canonical terminal side.
+    """
+    if isinstance(source_device, VSC):
+        # ElmVsc cubicle zero is the AC terminal represented by VeraGrid's
+        # canonical ``to`` side.
+        return RmsTerminalSide.TO
+    else:
+        if isinstance(source_device, BranchParent):
+            if source_terminal_index == 0:
+                return RmsTerminalSide.FROM
+            else:
+                return RmsTerminalSide.TO
+        else:
+            return RmsTerminalSide.BUS
 
 
 def _resolve_logical_actuator_current_source(
@@ -1347,6 +1378,10 @@ def _connect_meter_aliases(
         targets_by_name: Dict[str, List[Var]],
         alias_expressions: Dict[str, Expr],
         meter_name: str,
+        meter_source_fid: str,
+        meter_target_fid: str,
+        meter_terminal_side: RmsTerminalSide,
+        meter_kind: RmsPhysicalMeterKind,
         var_factory: VarFactory,
         prepared_meter_block: Block | None,
 ) -> int:
@@ -1357,6 +1392,10 @@ def _connect_meter_aliases(
     :param targets_by_name: Stable pre-connection control interfaces by name.
     :param alias_expressions: Exported signal aliases and physical expressions.
     :param meter_name: Stable user-facing native measurement identity.
+    :param meter_source_fid: Exact native meter or built-in slot FID.
+    :param meter_target_fid: Exact measured bus or physical-device FID.
+    :param meter_terminal_side: Canonical physical terminal selected by the meter.
+    :param meter_kind: Typed physical quantity family.
     :param var_factory: Shared circuit variable factory that owns connections.
     :param prepared_meter_block: Optional stateful meter whose output variables
         already occur in ``alias_expressions``.
@@ -1412,6 +1451,32 @@ def _connect_meter_aliases(
             pass
         else:
             return 0
+
+    selected_output_uids: List[int] = list()
+    selected_alias_name: str
+    for selected_alias_name in connected_expressions.keys():
+        selected_output_var: Var | None = output_by_alias_name.get(
+            selected_alias_name,
+            None,
+        )
+        if selected_output_var is None:
+            return 0
+        else:
+            selected_output_uids.append(selected_output_var.uid)
+
+    # Persist only the outputs that have exact controller endpoints. The block
+    # owns their equations; this metadata exposes physical identity and signal
+    # selection to local logic and global readout without duplicating variables.
+    meter_block.dynamic_model_contract.rms_physical_measurement_point = (
+        RmsPhysicalMeasurementPoint(
+            source_fid=meter_source_fid,
+            target_fid=meter_target_fid,
+            terminal_side=meter_terminal_side,
+            meter_kind=meter_kind,
+            output_signal_names=tuple(connected_expressions.keys()),
+            output_var_uids=tuple(selected_output_uids),
+        )
+    )
 
     # The child is part of the one canonical RMS graph. The editor will expose
     # it as a separate node and infer each cable from the propagated Var UID.
@@ -2003,6 +2068,9 @@ def bind_dgs_rms_measurements(
                         pass
                     alias_expressions: Dict[str, Expr] = dict()
                     prepared_meter_block: Block | None = None
+                    meter_target_fid: str | None = None
+                    meter_terminal_side: RmsTerminalSide | None = None
+                    physical_meter_kind: RmsPhysicalMeterKind | None = None
 
                     if isinstance(meter_element, StaVmea):
                         terminal_id: str | None = _resolve_terminal_id(
@@ -2017,6 +2085,9 @@ def bind_dgs_rms_measurements(
                         if measured_bus is None:
                             pass
                         else:
+                            meter_target_fid = str(measured_bus.idtag)
+                            meter_terminal_side = RmsTerminalSide.BUS
+                            physical_meter_kind = RmsPhysicalMeterKind.VOLTAGE
                             alias_expressions = _build_voltage_alias_expressions(
                                 meter=meter_element,
                                 signal_names=signal_names,
@@ -2063,6 +2134,14 @@ def bind_dgs_rms_measurements(
                             ):
                                 pass
                             else:
+                                meter_target_fid = str(source_device.idtag)
+                                meter_terminal_side = (
+                                    _get_physical_meter_terminal_side(
+                                        source_device=source_device,
+                                        source_terminal_index=source_terminal_index,
+                                    )
+                                )
+                                physical_meter_kind = RmsPhysicalMeterKind.CURRENT
                                 alias_expressions = _build_current_alias_expressions(
                                     meter=meter_element,
                                     signal_names=signal_names,
@@ -2088,6 +2167,14 @@ def bind_dgs_rms_measurements(
                                 if power_device is None or power_terminal_index is None:
                                     pass
                                 else:
+                                    meter_target_fid = str(power_device.idtag)
+                                    meter_terminal_side = (
+                                        _get_physical_meter_terminal_side(
+                                            source_device=power_device,
+                                            source_terminal_index=power_terminal_index,
+                                        )
+                                    )
+                                    physical_meter_kind = RmsPhysicalMeterKind.POWER
                                     alias_expressions = _build_power_alias_expressions(
                                         meter=meter_element,
                                         signal_names=signal_names,
@@ -2153,6 +2240,11 @@ def bind_dgs_rms_measurements(
                                     if pll_source_bus is None:
                                         pass
                                     else:
+                                        meter_target_fid = str(pll_source_bus.idtag)
+                                        meter_terminal_side = RmsTerminalSide.BUS
+                                        physical_meter_kind = (
+                                            RmsPhysicalMeterKind.PHASE_LOCKED_LOOP
+                                        )
                                         # ElmPhi is a stateful equipment model,
                                         # irrespective of whether its measured
                                         # bus was declared on its own row or by
@@ -2243,7 +2335,12 @@ def bind_dgs_rms_measurements(
                         else:
                             # Live meters become solved physical equations and
                             # supersede any receiver-side fallback.
-                            if len(alias_expressions) == 0:
+                            if (
+                                    len(alias_expressions) == 0
+                                    or meter_target_fid is None
+                                    or meter_terminal_side is None
+                                    or physical_meter_kind is None
+                            ):
                                 report.record_failed_meter()
                                 logger.add_warning(
                                     msg="DGS native RMS meter could not be resolved",
@@ -2257,30 +2354,42 @@ def bind_dgs_rms_measurements(
                                     source_slot_id=entry.slot_id,
                                     child_block_by_slot_id=child_block_by_slot_id,
                                 )
-                                meter_source_id: str = (
-                                    entry.element_id
-                                    if entry.element_id is not None
-                                    else entry.slot_id
-                                )
-                                meter_kind: str
+                                if (
+                                        isinstance(
+                                            meter_element,
+                                            (StaVmea, StaImea, StaPqmea, ElmPhi),
+                                        )
+                                        and str(meter_element.ID).strip() != ""
+                                ):
+                                    meter_source_id: str = str(meter_element.ID)
+                                else:
+                                    if entry.element_id is not None:
+                                        meter_source_id = entry.element_id
+                                    else:
+                                        meter_source_id = entry.slot_id
+                                meter_display_kind: str
                                 if isinstance(meter_element, StaVmea):
-                                    meter_kind = "StaVmea"
+                                    meter_display_kind = "StaVmea"
                                 else:
                                     if isinstance(meter_element, StaImea):
-                                        meter_kind = "StaImea"
+                                        meter_display_kind = "StaImea"
                                     else:
                                         if isinstance(meter_element, StaPqmea):
-                                            meter_kind = "StaPqmea"
+                                            meter_display_kind = "StaPqmea"
                                         else:
-                                            meter_kind = "ElmPhi"
+                                            meter_display_kind = "ElmPhi"
                                 connected_count = _connect_meter_aliases(
                                     host_model=host_model,
                                     targets_by_name=host_targets_by_name,
                                     alias_expressions=alias_expressions,
                                     meter_name=(
-                                        f"PowerFactory {meter_kind} "
+                                        f"PowerFactory {meter_display_kind} "
                                         f"{meter_source_id}"
                                     ),
+                                    meter_source_fid=meter_source_id,
+                                    meter_target_fid=meter_target_fid,
+                                    meter_terminal_side=meter_terminal_side,
+                                    meter_kind=physical_meter_kind,
                                     var_factory=circuit.var_factory,
                                     prepared_meter_block=prepared_meter_block,
                                 )
