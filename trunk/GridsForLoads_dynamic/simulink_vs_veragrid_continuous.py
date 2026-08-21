@@ -14,83 +14,114 @@ EXPECTED_END_TIME_S: float = 3.0
 SIMULINK_P_REF_INITIAL_MW: float = 1.6
 SIMULINK_P_REF_FIRST_STEP_MW: float = 0.8
 SIMULINK_P_REF_SECOND_STEP_MW: float = 0.0
-# power reference change in the GFM controller
-# TEST_NAME: str = "p_ref_step_v3_2pref"
-# SIMULINK_CSV_NAME: str = "simulink_results_G4L_p_ref_2events.csv"
-# VERAGRID_CSV_NAME: str = "veragrid_G4L_p_gfm_v5_no_dc.csv"
-# EVENT_TIMES_S: list[float] = [1.0, 1.5]
-# EVENT_WINDOW_HALF_WIDTH_S: float = 0.025
-# STEADY_STATE_WINDOWS: list[tuple[str, float, float, str]] = [
-#     ("pre_event", 0.25, 0.30, "Before first event"),
-#     ("post_event_1", 1.25, 1.30, "After first event"),
-#     ("post_event_2", 1.75, 1.80, "After second event"),
-# ]
-# stairs
-# TEST_NAME: str = "p_ref_step_v3_stair"
-# SIMULINK_CSV_NAME: str = "simulink_results_G4L_p_ref_stair.csv"
-# VERAGRID_CSV_NAME: str = "veragrid_G4L_p_gfm_v5_no_dc.csv"
-# EVENT_TIMES_S: list[float] = [1.0, 1.5]
-# EVENT_WINDOW_HALF_WIDTH_S: float = 0.025
-# STEADY_STATE_WINDOWS: list[tuple[str, float, float, str]] = [
-#     ("pre_event", 0.25, 0.30, "Before first event"),
-#     ("post_event_1", 1.25, 1.30, "After first event"),
-#     ("post_event_2", 1.75, 1.80, "After second event"),
-# ]
-# TEST_NAME: str = "p_ref_step_v4_noVA"
-# SIMULINK_CSV_NAME: str = "simulink_results_G4L_p_ref_noVA.csv"
-# VERAGRID_CSV_NAME: str = "veragrid_G4L_p_gfm_noVA.csv"
-# EVENT_TIMES_S: list[float] = [1.0, 1.5]
-# EVENT_WINDOW_HALF_WIDTH_S: float = 0.025
-# STEADY_STATE_WINDOWS: list[tuple[str, float, float, str]] = [
-#     ("pre_event", 0.25, 0.30, "Before first event"),
-#     ("post_event_1", 1.25, 1.30, "After first event"),
-#     ("post_event_2", 1.75, 1.80, "After second event"),
-# ]
 
-TEST_NAME: str = "p_ref_step_v3_continuous_3s"
-SIMULINK_CSV_PATH: Path = Path(
-    r"C:\Users\maria\OneDrive\Documentos\Projects\grids4loads\sim_model\sim_model\simulink_results_G4L_p_ref_discrete.csv"
+TEST_NONE: str = "none"
+TEST_P_GFM: str = "p_gfm"
+TEST_ROCOF: str = "rocof"
+TEST_PHASE_JUMP: str = "phase_jump"
+TEST_VAC_STEP: str = "vac_step"
+TEST_VAC_SAG: str = "vac_sag"
+TEST_VQ_STEP: str = "vq_step"
+TEST_VD_STEP: str = "vd_step"
+TEST_CURRENT_LIMITER: str = "current_limiter"
+
+VALID_TESTS: set[str] = set(
+    (
+        TEST_NONE,
+        TEST_P_GFM,
+        TEST_ROCOF,
+        TEST_PHASE_JUMP,
+        TEST_VAC_STEP,
+        TEST_VAC_SAG,
+        TEST_VQ_STEP,
+        TEST_VD_STEP,
+        TEST_CURRENT_LIMITER,
+    )
 )
-VERAGRID_CSV_PATH: Path = Path(__file__).resolve().parent / "veragrid_G4L_p_gfm_v3_continuous.csv"
+
+# Select the same test used in GFM_Load_system_script_v3.py and parameter_script.m.
+# selected_test: str = TEST_NONE
+# selected_test: str = TEST_P_GFM
+# selected_test: str = TEST_ROCOF
+selected_test: str = TEST_PHASE_JUMP
+# selected_test: str = TEST_VAC_STEP
+# selected_test: str = TEST_VAC_SAG
+# selected_test: str = TEST_VQ_STEP
+# selected_test: str = TEST_VD_STEP
+# selected_test: str = TEST_CURRENT_LIMITER
+
+if selected_test not in VALID_TESTS:
+    valid_test_names: str = ", ".join(sorted(VALID_TESTS))
+    raise ValueError(f"Unknown selected_test '{selected_test}'. Valid options: {valid_test_names}")
+else:
+    pass
+
+SCRIPT_FOLDER: Path = Path(__file__).resolve().parent
+SIMULINK_RESULTS_FOLDER: Path = Path(
+    r"C:\Users\maria\OneDrive\Documentos\Projects\grids4loads\sim_model\sim_model"
+)
+TEST_NAME: str = f"{selected_test}_continuous_3s"
+
+# New exports use the selected-test name directly. The power-reference case
+# falls back to the existing historical export until it is regenerated with
+# the new Simulink CSV naming rule.
+simulink_csv_name: str = f"simulink_results_G4L_{selected_test}.csv"
+SIMULINK_CSV_PATH: Path = SIMULINK_RESULTS_FOLDER / simulink_csv_name
+legacy_p_gfm_path: Path = SIMULINK_RESULTS_FOLDER / "simulink_results_G4L_p_ref_discrete.csv"
+if selected_test == TEST_P_GFM and not SIMULINK_CSV_PATH.exists():
+    SIMULINK_CSV_PATH = legacy_p_gfm_path
+else:
+    pass
+
+VERAGRID_CSV_PATH: Path = SCRIPT_FOLDER / f"veragrid_G4L_{selected_test}_v3_continuous.csv"
 COMPARISON_WINDOW_S: Optional[tuple[float, float]] = None
 # COMPARISON_WINDOW_S = (0.0, 0.02)
-EVENT_TIMES_S: list[float] = [1.0, 2.0]
 EVENT_WINDOW_HALF_WIDTH_S: float = 0.25
-STEADY_STATE_WINDOWS: list[tuple[str, float, float, str]] = [
-    ("pre_event", 0.90, 0.98, "Before first event"),
-    ("post_event_1", 1.90, 1.98, "After first event"),
-    ("post_event_2", 2.90, 2.98, "After second event"),
-]
 
-
-# V2
-# TEST_NAME: str = "p_ref_step_v2"
-# SIMULINK_CSV_NAME: str = "simulink_results_G4L_p_ref.csv"
-# VERAGRID_CSV_NAME: str = "veragrid_G4L_p_gfm_v2.csv"
-# rocof
-# TEST_NAME: str = "rocof"
-# SIMULINK_CSV_NAME: str = "simulink_results_G4L_rocof.csv"
-# VERAGRID_CSV_NAME: str = "veragrid_G4L_rocof.csv"
-# phase jump
-# TEST_NAME: str = "phase_jump"
-# SIMULINK_CSV_NAME: str = "simulink_results_G4L_phase_jump.csv"
-# VERAGRID_CSV_NAME: str = "veragrid_G4L_phase_jump.csv"
-
-# TEST_NAME: str = "vac_step"
-# SIMULINK_CSV_NAME: str = "simulink_results_G4L_vac_jump.csv"
-# VERAGRID_CSV_NAME: str = "veragrid_G4L_vac_step.csv"
-
-# TEST_NAME: str = "vq_step"
-# SIMULINK_CSV_NAME: str = "simulink_results_G4L_vq_jump.csv"
-# VERAGRID_CSV_NAME: str = "veragrid_G4L_vq_step.csv"
-
-# TEST_NAME: str = "vd_step"
-# SIMULINK_CSV_NAME: str = "simulink_results_G4L_vd_jump.csv"
-# VERAGRID_CSV_NAME: str = "veragrid_G4L_vd_step.csv"
-
-# TEST_NAME: str = "p_ref_step_no_pll"
-# SIMULINK_CSV_NAME: str = "simulink_results_G4L_p_ref_no_pll.csv"
-# VERAGRID_CSV_NAME: str = "veragrid_G4L_p_gfm_no_pll.csv"
+if selected_test == TEST_NONE:
+    EVENT_TIMES_S: list[float] = list()
+    P_REF_EVENT_TIMES_S: list[float] = list()
+    STEADY_STATE_WINDOWS: list[tuple[str, float, float, str]] = list(
+        [("final", 2.90, 2.98, "Final operating point")]
+    )
+elif selected_test == TEST_P_GFM:
+    EVENT_TIMES_S = list([1.0, 2.0])
+    P_REF_EVENT_TIMES_S = list([1.0, 2.0])
+    STEADY_STATE_WINDOWS = list(
+        [
+            ("pre_event", 0.90, 0.98, "Before first power-reference step"),
+            ("post_event_1", 1.90, 1.98, "After first power-reference step"),
+            ("post_event_2", 2.90, 2.98, "After second power-reference step"),
+        ]
+    )
+elif selected_test == TEST_ROCOF:
+    EVENT_TIMES_S = list([1.0, 2.0])
+    P_REF_EVENT_TIMES_S = list()
+    STEADY_STATE_WINDOWS = list(
+        [
+            ("pre_event", 0.90, 0.98, "Before ROCOF ramp"),
+            ("post_event", 2.90, 2.98, "After ROCOF ramp"),
+        ]
+    )
+elif selected_test == TEST_VAC_SAG:
+    EVENT_TIMES_S = list([1.0, 1.15])
+    P_REF_EVENT_TIMES_S = list()
+    STEADY_STATE_WINDOWS = list(
+        [
+            ("pre_event", 0.90, 0.98, "Before voltage sag"),
+            ("during_event", 1.06, 1.14, "During voltage sag"),
+            ("post_event", 2.90, 2.98, "After voltage-sag clearing"),
+        ]
+    )
+else:
+    EVENT_TIMES_S = list([1.0])
+    P_REF_EVENT_TIMES_S = list()
+    STEADY_STATE_WINDOWS = list(
+        [
+            ("pre_event", 0.90, 0.98, "Before disturbance"),
+            ("post_event", 2.90, 2.98, "After disturbance"),
+        ]
+    )
 
 class TimeBase(Enum):
     """Time base selection for signal comparison.
@@ -399,19 +430,27 @@ def _constant_series_from_column(dataframe: pd.DataFrame, reference_column: str,
 
 
 def _p_ref_simulink_signal(dataframe: pd.DataFrame) -> pd.Series:
-    """Reconstruct the two-step Simulink active-power reference in MW.
+    """Reconstruct the configured Simulink active-power reference in MW.
 
     The exported Simulink snapshot contains the measured active power but not
-    the reference signal.  The reference is deterministic for this test:
-    1.6 MW initially, 0.8 MW from 1.0 s, and 0 MW from 2.0 s.
+    the reference signal.  ``P_REF_EVENT_TIMES_S`` is empty for disturbances
+    that leave active-power reference unchanged and contains its step times for
+    active-power tests.
 
     :param dataframe: Simulink result dataframe containing the time column.
     :return: Active-power reference series in MW.
     """
     time_values: pd.Series = pd.to_numeric(dataframe["time"], errors="coerce")
     reference_values: np.ndarray = np.full(time_values.shape, SIMULINK_P_REF_INITIAL_MW, dtype=float)
-    reference_values[time_values.to_numpy(dtype=float) >= EVENT_TIMES_S[0]] = SIMULINK_P_REF_FIRST_STEP_MW
-    reference_values[time_values.to_numpy(dtype=float) >= EVENT_TIMES_S[1]] = SIMULINK_P_REF_SECOND_STEP_MW
+    numeric_time: np.ndarray = time_values.to_numpy(dtype=float)
+    if len(P_REF_EVENT_TIMES_S) >= 1:
+        reference_values[numeric_time >= P_REF_EVENT_TIMES_S[0]] = SIMULINK_P_REF_FIRST_STEP_MW
+    else:
+        pass
+    if len(P_REF_EVENT_TIMES_S) >= 2:
+        reference_values[numeric_time >= P_REF_EVENT_TIMES_S[1]] = SIMULINK_P_REF_SECOND_STEP_MW
+    else:
+        pass
     return pd.Series(reference_values, index=time_values.index)
 
 

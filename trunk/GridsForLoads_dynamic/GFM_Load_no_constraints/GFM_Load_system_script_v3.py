@@ -456,8 +456,10 @@ TEST_P_GFM = "p_gfm"
 TEST_ROCOF = "rocof"
 TEST_PHASE_JUMP = "phase_jump"
 TEST_VAC_STEP = "vac_step"
+TEST_VAC_SAG = "vac_sag"
 TEST_VQ_STEP = "vq_step"
 TEST_VD_STEP = "vd_step"
+TEST_CURRENT_LIMITER = "current_limiter"
 
 TEST_CSV_SUFFIX = {
     TEST_NONE: "none",
@@ -465,8 +467,10 @@ TEST_CSV_SUFFIX = {
     TEST_ROCOF: "rocof",
     TEST_PHASE_JUMP: "phase_jump",
     TEST_VAC_STEP: "vac_step",
+    TEST_VAC_SAG: "vac_sag",
     TEST_VQ_STEP: "vq_step",
     TEST_VD_STEP: "vd_step",
+    TEST_CURRENT_LIMITER: "current_limiter",
 }
 
 VALID_TESTS = {
@@ -475,24 +479,30 @@ VALID_TESTS = {
     TEST_ROCOF,
     TEST_PHASE_JUMP,
     TEST_VAC_STEP,
+    TEST_VAC_SAG,
     TEST_VQ_STEP,
     TEST_VD_STEP,
+    TEST_CURRENT_LIMITER,
 }
 
 # Select a single EMT test here.
-selected_test = TEST_P_GFM
+# selected_test = TEST_P_GFM
 # selected_test = TEST_ROCOF
 # selected_test = TEST_PHASE_JUMP
 # selected_test = TEST_VAC_STEP
+# selected_test = TEST_VAC_SAG
 # selected_test = TEST_VQ_STEP
 # selected_test = TEST_VD_STEP
+selected_test = TEST_CURRENT_LIMITER
 # selected_test = TEST_NONE
 
 if selected_test not in VALID_TESTS:
     valid_tests_list = ", ".join(sorted(VALID_TESTS))
     raise ValueError(f"Unknown selected_test '{selected_test}'. Valid options: {valid_tests_list}")
 
+selected_test_suffix: str = TEST_CSV_SUFFIX[selected_test]
 print(f"Selected EMT test: {selected_test}")
+print(f"Result test tag: {selected_test_suffix}")
 
 ## Active power reference change (GFM controller)
 t_P_GFM = 1.0
@@ -518,6 +528,12 @@ d_phase = -10 * np.pi / 180
 t_Vac = 1.0
 d_Vac = -269.4438717061496
 
+## Temporary grid-voltage sag
+# Apply a 10% source-voltage reduction for 150 ms and then restore the source.
+t_Vac_sag_start = 1.0
+t_Vac_sag_end = 1.15
+Vac_sag_scale_pu = 0.90
+
 ## AC voltage reference change (q-axis)
 # Simulink defines the VA q-axis reference offset and step in volts. The event
 # target in VeraGrid is the final absolute p.u. reference, built from the
@@ -532,6 +548,13 @@ d_Vq = -269.4438717061496
 # reference plus this deviation.
 t_Vd = 1.0
 d_Vd = -269.4438717061496
+
+## Current-limiter activation test
+# A larger q-axis voltage-reference change is used to demand enough converter
+# current for the limiter to become active. The resulting limiter modes and
+# limited d/q currents must be checked in the exported results.
+t_current_limiter = 1.0
+current_limiter_vq_delta_pu = -0.10 * np.sqrt(2.0)
 
 # Simulink applies these voltage disturbances in volts. Convert them to the EMT
 # internal p.u. voltage base used by the Thevenin source and virtual admittance
@@ -592,7 +615,23 @@ elif selected_test == TEST_VAC_STEP:
     events_to_add = [
         EmtEvent(device=gen0, parameter=voltage_scale_param, time=t_Vac, value=voltage_scale_fault, group=events_group),
     ]
-
+elif selected_test == TEST_VAC_SAG:
+    events_to_add = [
+        EmtEvent(
+            device=gen0,
+            parameter=voltage_scale_param,
+            time=t_Vac_sag_start,
+            value=Vac_sag_scale_pu,
+            group=events_group,
+        ),
+        EmtEvent(
+            device=gen0,
+            parameter=voltage_scale_param,
+            time=t_Vac_sag_end,
+            value=VAC_SCALE0_PU,
+            group=events_group,
+        ),
+    ]
 elif selected_test == TEST_VQ_STEP:
     events_to_add = [
         EmtEvent(device=load, parameter=v_q_ref, time=t_Vq, value=V_Q_REF0_PU + DELTA_VQ_PU, group=events_group),
@@ -600,6 +639,16 @@ elif selected_test == TEST_VQ_STEP:
 elif selected_test == TEST_VD_STEP:
     events_to_add = [
         EmtEvent(device=load, parameter=v_d_ref, time=t_Vd, value=V_D_REF0_PU + DELTA_VD_PU, group=events_group),
+    ]
+elif selected_test == TEST_CURRENT_LIMITER:
+    events_to_add = [
+        EmtEvent(
+            device=load,
+            parameter=v_q_ref,
+            time=t_current_limiter,
+            value=V_Q_REF0_PU + current_limiter_vq_delta_pu,
+            group=events_group,
+        ),
     ]
 else:
     raise ValueError(f"Unknown selected_test: {selected_test}")
@@ -1071,6 +1120,32 @@ def ramp_series(t_arr: np.ndarray, start_time: float, end_time: float, start_val
     return result
 
 
+def pulse_series(
+    t_arr: np.ndarray,
+    start_time: float,
+    end_time: float,
+    normal_value: float,
+    disturbed_value: float,
+) -> np.ndarray:
+    """Build a finite-duration disturbance reference for exported diagnostics.
+
+    The reference stays at its normal value outside the event interval and at
+    its disturbed value from the start instant up to, but excluding, the end
+    instant. This mirrors the two absolute EMT events used for a temporary sag.
+
+    :param t_arr: Simulation time samples in seconds.
+    :param start_time: Disturbance start time in seconds.
+    :param end_time: Disturbance clearing time in seconds.
+    :param normal_value: Reference value before and after the disturbance.
+    :param disturbed_value: Reference value while the disturbance is active.
+    :return: Reference series evaluated at every simulation time sample.
+    """
+    result: np.ndarray = np.full_like(t_arr, normal_value, dtype=float)
+    active_mask: np.ndarray = (t_arr >= start_time) & (t_arr < end_time)
+    result[active_mask] = disturbed_value
+    return result
+
+
 def get_series_with_tracking(name: str):
     series = try_get_series(problem, y_arr, name)
     if series is None:
@@ -1089,13 +1164,23 @@ v_q_ref_initial_pu = np.sqrt(2.0)
 v_d_ref_initial_pu = 0.0
 vac_grid_initial_V = Vac_phase_peak
 vac_grid_fault_V = (VAC_SCALE0_PU + DELTA_VAC_PU) * Vac_phase_peak
+vac_grid_sag_V = Vac_sag_scale_pu * Vac_phase_peak
 v_q_ref_initial_V = v_q_ref_initial_pu * V_phase_rms_base
 v_q_ref_final_V = (V_Q_REF0_PU + DELTA_VQ_PU) * V_phase_rms_base
+v_q_ref_current_limiter_V = (V_Q_REF0_PU + current_limiter_vq_delta_pu) * V_phase_rms_base
 v_d_ref_initial_V = v_d_ref_initial_pu * V_phase_rms_base
 v_d_ref_final_V = (V_D_REF0_PU + DELTA_VD_PU) * V_phase_rms_base
 
 if selected_test == TEST_VAC_STEP:
     vac_grid_series_V = step_series(t_arr, t_Vac, vac_grid_initial_V, vac_grid_fault_V)
+elif selected_test == TEST_VAC_SAG:
+    vac_grid_series_V = pulse_series(
+        t_arr,
+        t_Vac_sag_start,
+        t_Vac_sag_end,
+        vac_grid_initial_V,
+        vac_grid_sag_V,
+    )
 else:
     vac_grid_series_V = np.full_like(t_arr, vac_grid_initial_V, dtype=float)
 
@@ -1127,6 +1212,13 @@ phase_c_grid_series = theta_grid_series + 2.0 * np.pi / 3.0
 
 if selected_test == TEST_VQ_STEP:
     v_q_ref_series_V = step_series(t_arr, t_Vq, v_q_ref_initial_V, v_q_ref_final_V)
+elif selected_test == TEST_CURRENT_LIMITER:
+    v_q_ref_series_V = step_series(
+        t_arr,
+        t_current_limiter,
+        v_q_ref_initial_V,
+        v_q_ref_current_limiter_V,
+    )
 else:
     v_q_ref_series_V = np.full_like(t_arr, v_q_ref_initial_V, dtype=float)
 
@@ -1491,7 +1583,7 @@ for ax in axes_si_currents:
 for ax in axes_si_pll:
     ax.set_xlabel("Time [s]")
 
-csv_suffix = TEST_CSV_SUFFIX.get(selected_test, selected_test)
+csv_suffix = selected_test_suffix
 # csv_path = os.path.join(REPO_ROOT, "trunk", "GridsForLoads_dynamic", f"veragrid_G4L_{csv_suffix}_v3.csv")
 csv_path = os.path.join(REPO_ROOT, "trunk", "GridsForLoads_dynamic", f"veragrid_G4L_{csv_suffix}_v3_continuous.csv")
 plot_output_folder = get_plot_output_folder(csv_suffix)
