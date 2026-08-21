@@ -262,10 +262,22 @@ def build_rms_phase_locked_loop_block(
     kp: Var = vf.add_var(f"Kp_{name}")
     ki: Var = vf.add_var(f"Ki_{name}")
     nominal_frequency: Var = vf.add_var(f"fn_{name}")
-    measured_frequency: Var = vf.add_var(f"Fmeas_{name}")
-    measured_frequency_pu: Var = vf.add_var(f"fmeas_{name}")
-    cosine: Var = vf.add_var(f"cosphi_{name}")
-    sine: Var = vf.add_var(f"sinphi_{name}")
+    measured_frequency: Var = vf.add_var(
+        f"Fmeas_{name}",
+        shared_reference=f"{name}:Fmeas",
+    )
+    measured_frequency_pu: Var = vf.add_var(
+        f"fmeas_{name}",
+        shared_reference=f"{name}:fmeas",
+    )
+    cosine: Var = vf.add_var(
+        f"cosphi_{name}",
+        shared_reference=f"{name}:cosphi",
+    )
+    sine: Var = vf.add_var(
+        f"sinphi_{name}",
+        shared_reference=f"{name}:sinphi",
+    )
 
     # The wrapped sine detector remains continuous when the bus angle crosses
     # +/-pi and matches the native small-signal phase detector near lock.
@@ -350,7 +362,10 @@ def build_rms_signal_meter_block(vf: VarFactory,
 
     # The explicit measurement block owns every PowerFactory signal as one algebraic output variable.
     for signal_name, signal_expr in signal_expressions.items():
-        output_var = vf.add_var(f"{signal_name}_{name}")
+        output_var = vf.add_var(
+            f"{signal_name}_{name}",
+            shared_reference=f"{name}:{signal_name}",
+        )
         algebraic_vars.append(output_var)
         algebraic_eqs.append(output_var - signal_expr)
         out_vars.append(output_var)
