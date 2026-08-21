@@ -64,6 +64,9 @@ from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import (
     EmtProblemTemplate,
     _collect_hierarchical_init_equations,
 )
+from VeraGridEngine.Simulations.EMT.problems.emt_terminal_current_assembly import (
+    assemble_emt_terminal_current_contributions,
+)
 # Previous mapper:
 # from VeraGridEngine.Devices.Dynamic.static_parameter_mapping import (
 #     abc_to_nabc,
@@ -4493,52 +4496,62 @@ class EmtProblemDae(EmtProblemTemplate):
         :param sbase: System base power.
         :return: None.
         """
-        side_bus_indices: List[int] = list([f, t])
-        side_buses: List[Any] = list([branch.bus_from, branch.bus_to])
-        side_current_keys: List[List[VarPowerFlowReferenceType]] = list([br_if_keys, br_it_keys])
-        side_idx: int = 0
+        if len(mdl.dynamic_model_contract.emt_terminal_current_contributions) > 0:
+            assemble_emt_terminal_current_contributions(
+                model=mdl,
+                current_balance=i_kcl,
+                bus_from_index=f,
+                bus_to_index=t,
+                bus_from_is_dc=branch.bus_from.is_dc,
+                bus_to_is_dc=branch.bus_to.is_dc,
+            )
+        else:
+            side_bus_indices: List[int] = list([f, t])
+            side_buses: List[Bus] = list([branch.bus_from, branch.bus_to])
+            side_current_keys: List[List[VarPowerFlowReferenceType]] = list([br_if_keys, br_it_keys])
+            side_idx: int = 0
 
-        while side_idx < 2:
-            side_bus_idx: int = side_bus_indices[side_idx]
-            side_bus: Any = side_buses[side_idx]
-            current_keys: List[VarPowerFlowReferenceType] = side_current_keys[side_idx]
+            while side_idx < 2:
+                side_bus_idx: int = side_bus_indices[side_idx]
+                side_bus: Bus = side_buses[side_idx]
+                current_keys: List[VarPowerFlowReferenceType] = side_current_keys[side_idx]
 
-            if side_bus.is_dc:
-                external_mapping_dc: Optional[Dict[Any, Var]] = _get_external_mapping(mdl)
-                dc_current_key: VarPowerFlowReferenceType = VarPowerFlowReferenceType.If_dc if side_idx == 0 else VarPowerFlowReferenceType.It_dc
-                side_dc_expr: Any | None = None
+                if side_bus.is_dc:
+                    external_mapping_dc: Optional[Dict[VarPowerFlowReferenceType, Var | None]] = _get_external_mapping(mdl)
+                    dc_current_key: VarPowerFlowReferenceType = VarPowerFlowReferenceType.If_dc if side_idx == 0 else VarPowerFlowReferenceType.It_dc
+                    side_dc_expr: Var | None = None
 
-                if external_mapping_dc is not None:
-                    side_dc_expr = external_mapping_dc.get(dc_current_key, None)
-                    if side_dc_expr is None:
-                        side_dc_expr = external_mapping_dc.get(VarPowerFlowReferenceType.Idc, None)
-                    else:
-                        pass
-                else:
-                    pass
-
-                if side_dc_expr is not None:
-                    i_kcl[side_bus_idx][0] = i_kcl[side_bus_idx][0] - side_dc_expr
-                else:
-                    pass
-            else:
-                ph: int = 0
-                while ph < 4:
-                    side_expr: Any | None
-
-                    if is_vsc:
-                        side_expr = _get_external_mapping_var_if_present(mdl=mdl, key=inj_i_keys[ph])
-                    else:
-                        side_expr = _get_external_mapping_var_if_present(mdl=mdl, key=current_keys[ph])
-
-                    if side_expr is not None:
-                        i_kcl[side_bus_idx][ph] = i_kcl[side_bus_idx][ph] - side_expr
+                    if external_mapping_dc is not None:
+                        side_dc_expr = external_mapping_dc.get(dc_current_key, None)
+                        if side_dc_expr is None:
+                            side_dc_expr = external_mapping_dc.get(VarPowerFlowReferenceType.Idc, None)
+                        else:
+                            pass
                     else:
                         pass
 
-                    ph += 1
+                    if side_dc_expr is not None:
+                        i_kcl[side_bus_idx][0] = i_kcl[side_bus_idx][0] - side_dc_expr
+                    else:
+                        pass
+                else:
+                    ph: int = 0
+                    while ph < 4:
+                        side_expr: Var | None
 
-            side_idx += 1
+                        if is_vsc:
+                            side_expr = _get_external_mapping_var_if_present(mdl=mdl, key=inj_i_keys[ph])
+                        else:
+                            side_expr = _get_external_mapping_var_if_present(mdl=mdl, key=current_keys[ph])
+
+                        if side_expr is not None:
+                            i_kcl[side_bus_idx][ph] = i_kcl[side_bus_idx][ph] - side_expr
+                        else:
+                            pass
+
+                        ph += 1
+
+                side_idx += 1
 
         self._connect_branch_terminal_voltages(
             branch=branch,
@@ -4704,16 +4717,25 @@ class EmtProblemDae(EmtProblemTemplate):
 
         b: int = bus_dict[injection.bus]
 
-        # accumulate injection currents
-        if injection.bus.is_dc:
-            i_dc_expr: Any | None = _get_external_mapping_var_if_present(mdl=mdl, key=VarPowerFlowReferenceType.Idc)
-            _accumulate_kcl_current(i_kcl=i_kcl, bus_index=b, phase_index=0, current_expression=i_dc_expr, sign=1.0)
+        # The explicit terminal contract owns KCL when present. Legacy models
+        # retain their established reference-based behavior for compatibility.
+        if len(mdl.dynamic_model_contract.emt_terminal_current_contributions) > 0:
+            assemble_emt_terminal_current_contributions(
+                model=mdl,
+                current_balance=i_kcl,
+                bus_index=b,
+                bus_is_dc=injection.bus.is_dc,
+            )
         else:
-            ph: int = 0
-            while ph < 4:
-                i_expr: Any | None = _get_external_mapping_var_if_present(mdl=mdl, key=inj_i_keys[ph])
-                _accumulate_kcl_current(i_kcl=i_kcl, bus_index=b, phase_index=ph, current_expression=i_expr, sign=1.0)
-                ph += 1
+            if injection.bus.is_dc:
+                i_dc_expr: Var | None = _get_external_mapping_var_if_present(mdl=mdl, key=VarPowerFlowReferenceType.Idc)
+                _accumulate_kcl_current(i_kcl=i_kcl, bus_index=b, phase_index=0, current_expression=i_dc_expr, sign=1.0)
+            else:
+                ph: int = 0
+                while ph < 4:
+                    i_expr: Var | None = _get_external_mapping_var_if_present(mdl=mdl, key=inj_i_keys[ph])
+                    _accumulate_kcl_current(i_kcl=i_kcl, bus_index=b, phase_index=ph, current_expression=i_expr, sign=1.0)
+                    ph += 1
 
         self._connect_injection_bus_voltages(
             injection=injection,

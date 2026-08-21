@@ -23,6 +23,9 @@ from VeraGridEngine.Utils.Symbolic.explicit_initialization_symbolic import (init
                                                                             build_rms_single_equation_compiler)
 from VeraGridEngine.Simulations.Rms.initialization import init_pseudo_transient
 from VeraGridEngine.Simulations.Rms.problems.rms_problem_template import RmsProblemTemplate
+from VeraGridEngine.Simulations.Rms.problems.rms_terminal_power_assembly import (
+    assemble_rms_terminal_power_contributions,
+)
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.Devices.Parents.injection_parent import InjectionParent
@@ -744,16 +747,31 @@ class RmsProblemDae(RmsProblemTemplate):
                 f = bus_dict[elm.bus_from]
                 t = bus_dict[elm.bus_to]
 
-                setP(P, P_used, f, -elm.rms_model.E(VarPowerFlowReferenceType.Pf))
-                setP(P, P_used, t, -elm.rms_model.E(VarPowerFlowReferenceType.Pt))
-                if not elm.bus_from.is_dc and VarPowerFlowReferenceType.Qf in elm.rms_model.external_mapping:
-                    setQ(Q, Q_used, f, -elm.rms_model.E(VarPowerFlowReferenceType.Qf))
+                if len(elm.rms_model.dynamic_model_contract.rms_terminal_power_contributions) > 0:
+                    assemble_rms_terminal_power_contributions(
+                        model=elm.rms_model,
+                        bus_from_index=f,
+                        bus_to_index=t,
+                        bus_from_is_dc=elm.bus_from.is_dc,
+                        bus_to_is_dc=elm.bus_to.is_dc,
+                        active_power_balance=P,
+                        active_power_balance_used=P_used,
+                        reactive_power_balance=Q,
+                        reactive_power_balance_used=Q_used,
+                    )
                 else:
-                    pass
-                if not elm.bus_to.is_dc and VarPowerFlowReferenceType.Qt in elm.rms_model.external_mapping:
-                    setQ(Q, Q_used, t, -elm.rms_model.E(VarPowerFlowReferenceType.Qt))
-                else:
-                    pass
+                    # Preserve unconverted native templates until each one
+                    # declares its hidden physical-terminal network contract.
+                    setP(P, P_used, f, -elm.rms_model.E(VarPowerFlowReferenceType.Pf))
+                    setP(P, P_used, t, -elm.rms_model.E(VarPowerFlowReferenceType.Pt))
+                    if not elm.bus_from.is_dc and VarPowerFlowReferenceType.Qf in elm.rms_model.external_mapping:
+                        setQ(Q, Q_used, f, -elm.rms_model.E(VarPowerFlowReferenceType.Qf))
+                    else:
+                        pass
+                    if not elm.bus_to.is_dc and VarPowerFlowReferenceType.Qt in elm.rms_model.external_mapping:
+                        setQ(Q, Q_used, t, -elm.rms_model.E(VarPowerFlowReferenceType.Qt))
+                    else:
+                        pass
         # Populating VSCs init guess
         for i, elm in enumerate(self.grid.get_vsc()):
             if elm.rms_model.empty():
@@ -796,12 +814,29 @@ class RmsProblemDae(RmsProblemTemplate):
                 else:
                     pass
 
-                setP(P, P_used, f, -mdl.E(VarPowerFlowReferenceType.Pf))
-                setP(P, P_used, t, -mdl.E(VarPowerFlowReferenceType.Pt))
-                if VarPowerFlowReferenceType.Qt in mdl.external_mapping and not elm.bus_to.is_dc:
-                    setQ(Q, Q_used, t, -mdl.E(VarPowerFlowReferenceType.Qt))
+                if len(mdl.dynamic_model_contract.rms_terminal_power_contributions) > 0:
+                    # New templates declare their physical terminal powers
+                    # independently from selectable signal ports.
+                    assemble_rms_terminal_power_contributions(
+                        model=mdl,
+                        bus_from_index=f,
+                        bus_to_index=t,
+                        bus_from_is_dc=elm.bus_from.is_dc,
+                        bus_to_is_dc=elm.bus_to.is_dc,
+                        active_power_balance=P,
+                        active_power_balance_used=P_used,
+                        reactive_power_balance=Q,
+                        reactive_power_balance_used=Q_used,
+                    )
                 else:
-                    pass
+                    # Version-one and custom legacy VSC models retain their
+                    # historical power-reference coupling during migration.
+                    setP(P, P_used, f, -mdl.E(VarPowerFlowReferenceType.Pf))
+                    setP(P, P_used, t, -mdl.E(VarPowerFlowReferenceType.Pt))
+                    if VarPowerFlowReferenceType.Qt in mdl.external_mapping and not elm.bus_to.is_dc:
+                        setQ(Q, Q_used, t, -mdl.E(VarPowerFlowReferenceType.Qt))
+                    else:
+                        pass
                 self.sys_block.add(mdl)
 
         # Populating HVDC init guess (similar to VSCs)
@@ -823,10 +858,23 @@ class RmsProblemDae(RmsProblemTemplate):
 
                 f = bus_dict[elm.bus_from]
                 t = bus_dict[elm.bus_to]
-                setP(P, P_used, f, -mdl.E(VarPowerFlowReferenceType.Pf))
-                setP(P, P_used, t, -mdl.E(VarPowerFlowReferenceType.Pt))
-                setQ(Q, Q_used, f, -mdl.E(VarPowerFlowReferenceType.Qf))
-                setQ(Q, Q_used, t, -mdl.E(VarPowerFlowReferenceType.Qt))
+                if len(mdl.dynamic_model_contract.rms_terminal_power_contributions) > 0:
+                    assemble_rms_terminal_power_contributions(
+                        model=mdl,
+                        bus_from_index=f,
+                        bus_to_index=t,
+                        bus_from_is_dc=elm.bus_from.is_dc,
+                        bus_to_is_dc=elm.bus_to.is_dc,
+                        active_power_balance=P,
+                        active_power_balance_used=P_used,
+                        reactive_power_balance=Q,
+                        reactive_power_balance_used=Q_used,
+                    )
+                else:
+                    setP(P, P_used, f, -mdl.E(VarPowerFlowReferenceType.Pf))
+                    setP(P, P_used, t, -mdl.E(VarPowerFlowReferenceType.Pt))
+                    setQ(Q, Q_used, f, -mdl.E(VarPowerFlowReferenceType.Qf))
+                    setQ(Q, Q_used, t, -mdl.E(VarPowerFlowReferenceType.Qt))
                 self.sys_block.add(mdl)
 
         # initialize injections
@@ -937,10 +985,29 @@ class RmsProblemDae(RmsProblemTemplate):
                                         Sdev.imag)
 
                 k = bus_dict[elm.bus]
-                if VarPowerFlowReferenceType.P in elm.rms_model.external_mapping:
-                    setP(P, P_used, k, elm.rms_model.E(VarPowerFlowReferenceType.P))
-                if VarPowerFlowReferenceType.Q in elm.rms_model.external_mapping:
-                    setQ(Q, Q_used, k, elm.rms_model.E(VarPowerFlowReferenceType.Q))
+                if len(elm.rms_model.dynamic_model_contract.rms_terminal_power_contributions) > 0:
+                    assemble_rms_terminal_power_contributions(
+                        model=elm.rms_model,
+                        bus_from_index=None,
+                        bus_to_index=None,
+                        bus_from_is_dc=None,
+                        bus_to_is_dc=None,
+                        active_power_balance=P,
+                        active_power_balance_used=P_used,
+                        reactive_power_balance=Q,
+                        reactive_power_balance_used=Q_used,
+                        bus_index=k,
+                        bus_is_dc=elm.bus.is_dc,
+                    )
+                else:
+                    if VarPowerFlowReferenceType.P in elm.rms_model.external_mapping:
+                        setP(P, P_used, k, elm.rms_model.E(VarPowerFlowReferenceType.P))
+                    else:
+                        pass
+                    if VarPowerFlowReferenceType.Q in elm.rms_model.external_mapping:
+                        setQ(Q, Q_used, k, elm.rms_model.E(VarPowerFlowReferenceType.Q))
+                    else:
+                        pass
 
                 if self.options.initialization_method == RmsInitializationMethod.Explicit:
 

@@ -793,16 +793,35 @@ def test_rms_terminal_power_contract_roundtrips_and_fails_closed() -> None:
         is VarPowerFlowReferenceType.Pt
     )
 
-    # Version 1 remains readable and explicitly means that no terminal
-    # contribution contract was declared.
+    # Version 1 predates both formulation-specific terminal contracts.
     legacy_data: dict[str, object] = block.to_dict()
     legacy_contract: object = legacy_data["dynamic_model_contract"]
     assert isinstance(legacy_contract, dict)
     legacy_contract["version"] = 1
     legacy_contract.pop("rms_terminal_power_contributions")
+    legacy_contract.pop("emt_terminal_current_contributions")
     legacy_restored: Block = Block.parse(data=legacy_data)
     assert (
         legacy_restored.dynamic_model_contract.rms_terminal_power_contributions
+        == list()
+    )
+    assert (
+        legacy_restored.dynamic_model_contract.emt_terminal_current_contributions
+        == list()
+    )
+
+    # Version 2 retains the RMS declaration and predates only the EMT field.
+    version_two_data: dict[str, object] = block.to_dict()
+    version_two_contract: object = version_two_data["dynamic_model_contract"]
+    assert isinstance(version_two_contract, dict)
+    version_two_contract["version"] = 2
+    version_two_contract.pop("emt_terminal_current_contributions")
+    version_two_restored: Block = Block.parse(data=version_two_data)
+    assert len(
+        version_two_restored.dynamic_model_contract.rms_terminal_power_contributions
+    ) == 2
+    assert (
+        version_two_restored.dynamic_model_contract.emt_terminal_current_contributions
         == list()
     )
 

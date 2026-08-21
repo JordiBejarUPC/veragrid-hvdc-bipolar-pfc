@@ -30,8 +30,9 @@ from VeraGridEngine.Utils.procedural_logic_contract import (
 
 
 class RmsTerminalSide(Enum):
-    """Identify the physical side of a two-terminal RMS device."""
+    """Identify one hidden physical network terminal of an RMS device."""
 
+    BUS = "bus"
     FROM = "from"
     TO = "to"
 
@@ -65,27 +66,37 @@ class RmsTerminalPowerContribution:
         :param reactive_power_reference: Reactive-power variable, or None for a DC terminal.
         :return: None.
         """
-        if terminal_side is RmsTerminalSide.FROM:
-            if active_power_reference is VarPowerFlowReferenceType.Pf:
+        if terminal_side is RmsTerminalSide.BUS:
+            if active_power_reference is VarPowerFlowReferenceType.P:
                 pass
             else:
-                raise ValueError("RMS from-terminal active power must use Pf")
-            if reactive_power_reference in (None, VarPowerFlowReferenceType.Qf):
+                raise ValueError("RMS bus-terminal active power must use P")
+            if reactive_power_reference in (None, VarPowerFlowReferenceType.Q):
                 pass
             else:
-                raise ValueError("RMS from-terminal reactive power must use Qf or null")
+                raise ValueError("RMS bus-terminal reactive power must use Q or null")
         else:
-            if terminal_side is RmsTerminalSide.TO:
-                if active_power_reference is VarPowerFlowReferenceType.Pt:
+            if terminal_side is RmsTerminalSide.FROM:
+                if active_power_reference is VarPowerFlowReferenceType.Pf:
                     pass
                 else:
-                    raise ValueError("RMS to-terminal active power must use Pt")
-                if reactive_power_reference in (None, VarPowerFlowReferenceType.Qt):
+                    raise ValueError("RMS from-terminal active power must use Pf")
+                if reactive_power_reference in (None, VarPowerFlowReferenceType.Qf):
                     pass
                 else:
-                    raise ValueError("RMS to-terminal reactive power must use Qt or null")
+                    raise ValueError("RMS from-terminal reactive power must use Qf or null")
             else:
-                raise TypeError("RMS terminal side must be a RmsTerminalSide")
+                if terminal_side is RmsTerminalSide.TO:
+                    if active_power_reference is VarPowerFlowReferenceType.Pt:
+                        pass
+                    else:
+                        raise ValueError("RMS to-terminal active power must use Pt")
+                    if reactive_power_reference in (None, VarPowerFlowReferenceType.Qt):
+                        pass
+                    else:
+                        raise ValueError("RMS to-terminal reactive power must use Qt or null")
+                else:
+                    raise TypeError("RMS terminal side must be a RmsTerminalSide")
 
         self._terminal_side: RmsTerminalSide = terminal_side
         self._active_power_reference: VarPowerFlowReferenceType = active_power_reference
@@ -181,6 +192,183 @@ def rms_terminal_power_contribution_from_data(
     )
 
 
+class EmtTerminalSide(Enum):
+    """Identify one hidden physical network terminal of an EMT device."""
+
+    BUS = "bus"
+    FROM = "from"
+    TO = "to"
+
+
+class EmtTerminalConductor(Enum):
+    """Identify one instantaneous EMT conductor current."""
+
+    DC = "dc"
+    NEUTRAL = "neutral"
+    PHASE_A = "phase_a"
+    PHASE_B = "phase_b"
+    PHASE_C = "phase_c"
+
+
+class EmtTerminalCurrentContribution:
+    """Declare one device current consumed by the EMT nodal assembler."""
+
+    __slots__ = (
+        "_terminal_side",
+        "_conductor",
+        "_current_reference",
+    )
+
+    def __init__(
+            self,
+            terminal_side: EmtTerminalSide,
+            conductor: EmtTerminalConductor,
+            current_reference: VarPowerFlowReferenceType,
+    ) -> None:
+        """Create one typed instantaneous-current declaration.
+
+        :param terminal_side: Physical device terminal resolved by topology.
+        :param conductor: DC or AC conductor carrying the current.
+        :param current_reference: Current variable in the owning block.
+        :return: None.
+        """
+        if isinstance(terminal_side, EmtTerminalSide):
+            pass
+        else:
+            raise TypeError("EMT terminal side must be an EmtTerminalSide")
+        if isinstance(conductor, EmtTerminalConductor):
+            pass
+        else:
+            raise TypeError("EMT conductor must be an EmtTerminalConductor")
+
+        allowed_references: set[VarPowerFlowReferenceType]
+        if conductor is EmtTerminalConductor.DC:
+            allowed_references = set((
+                VarPowerFlowReferenceType.Idc,
+                VarPowerFlowReferenceType.If_dc,
+                VarPowerFlowReferenceType.It_dc,
+            ))
+        else:
+            if conductor is EmtTerminalConductor.NEUTRAL:
+                allowed_references = set((
+                    VarPowerFlowReferenceType.i_N,
+                    VarPowerFlowReferenceType.if_N,
+                    VarPowerFlowReferenceType.it_N,
+                ))
+            else:
+                if conductor is EmtTerminalConductor.PHASE_A:
+                    allowed_references = set((
+                        VarPowerFlowReferenceType.i_A,
+                        VarPowerFlowReferenceType.if_A,
+                        VarPowerFlowReferenceType.it_A,
+                    ))
+                else:
+                    if conductor is EmtTerminalConductor.PHASE_B:
+                        allowed_references = set((
+                            VarPowerFlowReferenceType.i_B,
+                            VarPowerFlowReferenceType.if_B,
+                            VarPowerFlowReferenceType.it_B,
+                        ))
+                    else:
+                        if conductor is EmtTerminalConductor.PHASE_C:
+                            allowed_references = set((
+                                VarPowerFlowReferenceType.i_C,
+                                VarPowerFlowReferenceType.if_C,
+                                VarPowerFlowReferenceType.it_C,
+                            ))
+                        else:
+                            raise ValueError("Unsupported EMT terminal conductor")
+        if current_reference in allowed_references:
+            pass
+        else:
+            raise ValueError(
+                "EMT terminal current reference does not match its conductor"
+            )
+
+        self._terminal_side: EmtTerminalSide = terminal_side
+        self._conductor: EmtTerminalConductor = conductor
+        self._current_reference: VarPowerFlowReferenceType = current_reference
+
+    def get_terminal_side(self) -> EmtTerminalSide:
+        """Return the physical terminal selected by network topology.
+
+        :return: Declared terminal side.
+        """
+        return self._terminal_side
+
+    def get_conductor(self) -> EmtTerminalConductor:
+        """Return the instantaneous conductor represented by this current.
+
+        :return: Declared EMT conductor.
+        """
+        return self._conductor
+
+    def get_current_reference(self) -> VarPowerFlowReferenceType:
+        """Return the current reference owned by the symbolic block.
+
+        :return: Declared current reference.
+        """
+        return self._current_reference
+
+    def to_data(self) -> Dict[str, object]:
+        """Return a declarative representation without symbolic objects.
+
+        :return: Version-owned terminal current data.
+        """
+        return {
+            "terminal_side": self._terminal_side.value,
+            "conductor": self._conductor.value,
+            "current_reference": self._current_reference.value,
+        }
+
+
+def emt_terminal_current_contribution_from_data(
+        data: Dict[str, object],
+) -> EmtTerminalCurrentContribution:
+    """Reconstruct one fail-closed EMT terminal current declaration.
+
+    :param data: Declarative terminal current data.
+    :return: Reconstructed typed declaration.
+    """
+    expected_keys: set[str] = set((
+        "terminal_side",
+        "conductor",
+        "current_reference",
+    ))
+    actual_keys: set[str] = set(data.keys())
+    if actual_keys == expected_keys:
+        pass
+    else:
+        raise KeyError(
+            "EMT terminal current keys do not match the contract: "
+            f"missing={sorted(expected_keys - actual_keys)}, "
+            f"extra={sorted(actual_keys - expected_keys)}"
+        )
+
+    raw_terminal_side: object = data["terminal_side"]
+    raw_conductor: object = data["conductor"]
+    raw_current_reference: object = data["current_reference"]
+    if isinstance(raw_terminal_side, str):
+        terminal_side: EmtTerminalSide = EmtTerminalSide(raw_terminal_side)
+    else:
+        raise TypeError("EMT terminal side must be a string")
+    if isinstance(raw_conductor, str):
+        conductor: EmtTerminalConductor = EmtTerminalConductor(raw_conductor)
+    else:
+        raise TypeError("EMT terminal conductor must be a string")
+    if isinstance(raw_current_reference, str):
+        current_reference: VarPowerFlowReferenceType = VarPowerFlowReferenceType(
+            raw_current_reference
+        )
+    else:
+        raise TypeError("EMT terminal current reference must be a string")
+    return EmtTerminalCurrentContribution(
+        terminal_side=terminal_side,
+        conductor=conductor,
+        current_reference=current_reference,
+    )
+
+
 class DynamicModelContract:
     """
     Store typed dynamic-behavior declarations owned by one symbolic block.
@@ -209,6 +397,7 @@ class DynamicModelContract:
         "rms_conduction_status_var_uid",
         "rms_topology_constraint_status_var_uid",
         "rms_terminal_power_contributions",
+        "emt_terminal_current_contributions",
         "rms_ideal_ac_connector",
         "rms_ideal_transformer",
         "skip_device_local_explicit_init",
@@ -259,6 +448,7 @@ class DynamicModelContract:
         self.rms_conduction_status_var_uid: int | None = None
         self.rms_topology_constraint_status_var_uid: int | None = None
         self.rms_terminal_power_contributions: List[RmsTerminalPowerContribution] = list()
+        self.emt_terminal_current_contributions: List[EmtTerminalCurrentContribution] = list()
         self.rms_ideal_ac_connector: bool = False
         self.rms_ideal_transformer: bool = False
         self.skip_device_local_explicit_init: bool = False
@@ -289,7 +479,7 @@ class DynamicModelContract:
         :return: Data-only contract suitable for canonical block persistence.
         """
         return {
-            "version": 2,
+            "version": 3,
             "dgs_elmsym_runtime_adapter": self.dgs_elmsym_runtime_adapter,
             "dgs_elmsym_runtime_adapter_pending": self.dgs_elmsym_runtime_adapter_pending,
             "dgs_elmsym_round_rotor": self.dgs_elmsym_round_rotor,
@@ -309,6 +499,10 @@ class DynamicModelContract:
             "rms_terminal_power_contributions": list(
                 contribution.to_data()
                 for contribution in self.rms_terminal_power_contributions
+            ),
+            "emt_terminal_current_contributions": list(
+                contribution.to_data()
+                for contribution in self.emt_terminal_current_contributions
             ),
             "rms_ideal_ac_connector": self.rms_ideal_ac_connector,
             "rms_ideal_transformer": self.rms_ideal_transformer,
@@ -601,6 +795,49 @@ def _read_rms_terminal_power_contributions(
         )
 
 
+def _read_emt_terminal_current_contributions(
+        data: Dict[str, object],
+) -> List[EmtTerminalCurrentContribution]:
+    """Read the ordered terminal currents declared by one EMT model.
+
+    :param data: Versioned dynamic-model contract data.
+    :return: Validated terminal current declarations.
+    """
+    field_name: str = "emt_terminal_current_contributions"
+    value: object = _read_required_dynamic_contract_field(data, field_name)
+    if isinstance(value, list):
+        result: List[EmtTerminalCurrentContribution] = list()
+        item: object
+        for item in value:
+            if isinstance(item, dict):
+                normalized_item: Dict[str, object] = dict()
+                raw_key: object
+                raw_value: object
+                for raw_key, raw_value in item.items():
+                    if isinstance(raw_key, str):
+                        normalized_item[raw_key] = raw_value
+                    else:
+                        raise TypeError(
+                            "EMT terminal current field names must be strings"
+                        )
+                else:
+                    pass
+                result.append(
+                    emt_terminal_current_contribution_from_data(normalized_item)
+                )
+            else:
+                raise TypeError(
+                    "EMT terminal current contributions must be declarative mappings"
+                )
+        else:
+            pass
+        return result
+    else:
+        raise TypeError(
+            f"Dynamic-model contract field '{field_name}' must be a list"
+        )
+
+
 def dynamic_model_contract_from_data(data: Dict[str, object]) -> DynamicModelContract:
     """Reconstruct one fail-closed versioned dynamic-model contract.
 
@@ -612,7 +849,7 @@ def dynamic_model_contract_from_data(data: Dict[str, object]) -> DynamicModelCon
         version_number: int = version
     else:
         raise TypeError("Dynamic-model contract version must be an integer")
-    if version_number in (1, 2):
+    if version_number in (1, 2, 3):
         pass
     else:
         raise ValueError("Unsupported dynamic-model contract version")
@@ -621,6 +858,10 @@ def dynamic_model_contract_from_data(data: Dict[str, object]) -> DynamicModelCon
     expected_keys: set[str] = set(result.to_data().keys())
     if version_number == 1:
         expected_keys.remove("rms_terminal_power_contributions")
+    else:
+        pass
+    if version_number in (1, 2):
+        expected_keys.remove("emt_terminal_current_contributions")
     else:
         pass
     actual_keys: set[str] = set(data.keys())
@@ -688,6 +929,12 @@ def dynamic_model_contract_from_data(data: Dict[str, object]) -> DynamicModelCon
     else:
         result.rms_terminal_power_contributions = (
             _read_rms_terminal_power_contributions(data)
+        )
+    if version_number in (1, 2):
+        result.emt_terminal_current_contributions = list()
+    else:
+        result.emt_terminal_current_contributions = (
+            _read_emt_terminal_current_contributions(data)
         )
     result.rms_ideal_ac_connector = _read_required_dynamic_contract_boolean(
         data, "rms_ideal_ac_connector"
@@ -872,15 +1119,13 @@ def _collect_contract_reachable_uids(
     return result
 
 
-def validate_dynamic_model_contract(block: "Block") -> None:
-    """Reject incomplete or unreachable dynamic-model declarations.
+def validate_rms_terminal_power_contributions(block: "Block") -> None:
+    """Reject ambiguous or unresolved RMS terminal power declarations.
 
-    :param block: Block owning the reconstructed dynamic-model contract.
+    :param block: Canonical symbolic block owning the declarations.
     :return: None.
     """
-    reachable_uids: set[int] = _collect_contract_reachable_uids(block)
     contract: DynamicModelContract = block.dynamic_model_contract
-
     # Terminal declarations resolve semantic references through the owning
     # block. No copied Var is retained, and duplicate topology sides fail
     # before the network assembler can count one device twice.
@@ -931,6 +1176,60 @@ def validate_dynamic_model_contract(block: "Block") -> None:
                 )
             else:
                 pass
+
+
+def validate_emt_terminal_current_contributions(block: "Block") -> None:
+    """Reject duplicate or unresolved EMT terminal current declarations.
+
+    :param block: Canonical symbolic block owning the declarations.
+    :return: None.
+    """
+    contract: DynamicModelContract = block.dynamic_model_contract
+    terminal_conductors: set[Tuple[EmtTerminalSide, EmtTerminalConductor]] = set()
+    contribution: EmtTerminalCurrentContribution
+    for contribution in contract.emt_terminal_current_contributions:
+        if isinstance(contribution, EmtTerminalCurrentContribution):
+            pass
+        else:
+            raise TypeError(
+                "EMT terminal current contract contains an invalid declaration"
+            )
+        terminal_conductor: Tuple[EmtTerminalSide, EmtTerminalConductor] = (
+            contribution.get_terminal_side(),
+            contribution.get_conductor(),
+        )
+        if terminal_conductor in terminal_conductors:
+            raise ValueError(
+                "EMT terminal current contract duplicates one terminal conductor"
+            )
+        else:
+            terminal_conductors.add(terminal_conductor)
+
+        current_reference: VarPowerFlowReferenceType = (
+            contribution.get_current_reference()
+        )
+        current_variable: Var | None = block.external_mapping.get(
+            current_reference,
+            None,
+        )
+        if current_variable is None:
+            raise ValueError(
+                "EMT terminal current contract references an absent current variable"
+            )
+        else:
+            pass
+
+
+def validate_dynamic_model_contract(block: "Block") -> None:
+    """Reject incomplete or unreachable dynamic-model declarations.
+
+    :param block: Block owning the reconstructed dynamic-model contract.
+    :return: None.
+    """
+    reachable_uids: set[int] = _collect_contract_reachable_uids(block)
+    contract: DynamicModelContract = block.dynamic_model_contract
+    validate_rms_terminal_power_contributions(block=block)
+    validate_emt_terminal_current_contributions(block=block)
 
     # One block represents one physical equipment adapter. Accepting two
     # adapter families would make runtime dispatch depend on incidental order.
