@@ -580,6 +580,7 @@ def convert_dgs_to_bus(elmterm: ElmTerm,
     x, y = pos_by_objid.get(tid, (0.0, 0.0))
     bus = dev.Bus(
         name=elmterm.loc_name or f"Bus_{tid}",
+        idtag=tid,
         Vnom=float(elmterm.uknom),
         # Alex review required: preserve the native AC/DC domain used to resolve VSC terminals.
         is_dc=(int(elmterm.systype or 0) == 1),
@@ -2658,6 +2659,7 @@ def convert_dgs_to_line(
         ohl_template = tower_template
 
     applied_template = False
+    dynamic_parameters_complete: bool = False
     if len(owned_sections) > 0:
         section_r = 0.0
         section_x = 0.0
@@ -2667,6 +2669,7 @@ def convert_dgs_to_line(
         section_b0 = 0.0
         section_rate: float | None = None
         section_template_found = False
+        section_templates_complete: bool = True
         bus_vnom = line.get_max_bus_nominal_voltage()
 
         ordered_sections = sorted(owned_sections, key=_line_section_index_sort_key)
@@ -2696,6 +2699,10 @@ def convert_dgs_to_line(
                 else:
                     pass
                 section_template_found = True
+                if not ohl_section_template.has_sequence_data():
+                    section_templates_complete = False
+                else:
+                    pass
                 values = ohl_section_template.get_values(
                     Sbase=baseMVA,
                     length=float(section.dline),
@@ -2710,6 +2717,7 @@ def convert_dgs_to_line(
                 section_b0 += float(values[5])
                 current_rate = float(values[6])
             else:
+                section_templates_complete = False
                 current_rate = 0.0
                 logger.add_warning(
                     "Line section type not found.",
@@ -2739,23 +2747,57 @@ def convert_dgs_to_line(
             else:
                 pass
             applied_template = True
+            dynamic_parameters_complete = section_templates_complete
         else:
             applied_template = False
+            dynamic_parameters_complete = False
     elif seq_template is not None:
         line.apply_template(obj=seq_template, Sbase=baseMVA, freq=freq, logger=logger)
         applied_template = True
+        dynamic_parameters_complete = line.template is seq_template
     elif ohl_template is not None:
         # OverheadLineType uses a 1-based circuit index. Default to circuit 1 here.
         line.set_circuit_idx(val=1, obj=ohl_template)
         line.apply_template(obj=ohl_template, Sbase=baseMVA, freq=freq, logger=logger)
         applied_template = True
+        dynamic_parameters_complete = (
+            line.template is ohl_template
+            and ohl_template.has_sequence_data()
+        )
     else:
-        pass
+        dynamic_parameters_complete = False
 
     if applied_template:
         line.rate = float(line.rate) * float(lne.fline)
     else:
         pass
+
+    # Retain the two irreducible energy coefficients of a DGS DC cable on the
+    # final Line. The static per-unit reactance and susceptance already include
+    # angular frequency, while the RMS differential equations require seconds.
+    is_dc_cable: bool = line.bus_from.is_dc and line.bus_to.is_dc
+    if is_dc_cable and dynamic_parameters_complete:
+        angular_frequency: float = 2.0 * math.pi * float(freq)
+        has_valid_dynamic_parameters: bool = (
+            math.isfinite(angular_frequency)
+            and angular_frequency > 0.0
+            and math.isfinite(float(line.X))
+            and float(line.X) >= 0.0
+            and math.isfinite(float(line.B))
+            and float(line.B) >= 0.0
+        )
+        if has_valid_dynamic_parameters:
+            line.dc_series_inductance_pu_seconds = (
+                float(line.X) / angular_frequency
+            )
+            line.dc_shunt_capacitance_pu_seconds = (
+                float(line.B) / angular_frequency
+            )
+            line.dc_cable_dynamic_parameters_complete = True
+        else:
+            line.dc_cable_dynamic_parameters_complete = False
+    else:
+        line.dc_cable_dynamic_parameters_complete = False
 
     return line
 
@@ -5818,24 +5860,46 @@ def _add_elmbranch_groups(dgs_grid: DgsCircuit, grid: dev.MultiCircuit) -> Dict[
     return branch_group_by_id
 
 
-def _add_elmterm_buses(dgs_grid: DgsCircuit,
+def add_dgs_terminal_buses(dgs_grid: DgsCircuit,
                        grid: dev.MultiCircuit,
                        pos_by_objid: Dict[str, Tuple[float, float]]) -> Dict[str, dev.Bus]:
     """
-    Add elmterm buses.
+    Add buses only after every source terminal FID is proven unambiguous.
 
     :param dgs_grid: dgs_grid parameter.
     :param grid: grid parameter.
     :param pos_by_objid: pos_by_objid parameter.
-    :return: Function result.
+    :return: Added buses indexed by their exact normalized ``ElmTerm`` FID.
+    :raises ValueError: If any terminal FID is empty or duplicated.
     """
+    # Validate the complete source identity envelope before constructing or
+    # adding a bus. This prevents a late invalid row from leaving a partially
+    # mutated circuit and prevents duplicate FIDs from merging distinct nodes.
+    terminal_ids: List[str] = list("" for elmterm in dgs_grid.elmterms)
+    known_terminal_ids: Set[str] = set()
+    terminal_index: int
+    elmterm: ElmTerm
+    for terminal_index, elmterm in enumerate(dgs_grid.elmterms):
+        terminal_id: str | None = _ref_id(elmterm.ID)
+        if terminal_id is None or terminal_id == "":
+            raise ValueError("ElmTerm FID must not be empty")
+        else:
+            if terminal_id in known_terminal_ids:
+                raise ValueError(f"Duplicate ElmTerm FID: {terminal_id}")
+            else:
+                known_terminal_ids.add(terminal_id)
+                terminal_ids[terminal_index] = terminal_id
+
+    # The validated one-to-one source mapping can now be committed to the
+    # circuit without last-write-wins identity loss.
     bus_by_term_id: Dict[str, dev.Bus] = dict()
-    for elmterm in dgs_grid.elmterms:
-        bus = convert_dgs_to_bus(elmterm=elmterm, pos_by_objid=pos_by_objid)
+    for terminal_index, elmterm in enumerate(dgs_grid.elmterms):
+        bus: dev.Bus = convert_dgs_to_bus(
+            elmterm=elmterm,
+            pos_by_objid=pos_by_objid,
+        )
         grid.add_bus(obj=bus)
-        tid = _ref_id(elmterm.ID)
-        if tid is not None:
-            bus_by_term_id[tid] = bus
+        bus_by_term_id[terminal_ids[terminal_index]] = bus
     return bus_by_term_id
 
 
@@ -6422,7 +6486,11 @@ def dgs_to_circuit(path: str,
     area_by_id: Dict[str, dev.Area] = _add_elmarea_areas(dgs_grid=dgs_grid, grid=grid)
     zone_by_id: Dict[str, dev.Zone] = _add_elmzone_zones(dgs_grid=dgs_grid, grid=grid)
     branch_group_by_id: Dict[str, dev.BranchGroup] = _add_elmbranch_groups(dgs_grid=dgs_grid, grid=grid)
-    bus_by_term_id: Dict[str, dev.Bus] = _add_elmterm_buses(dgs_grid=dgs_grid, grid=grid, pos_by_objid=pos_by_objid)
+    bus_by_term_id: Dict[str, dev.Bus] = add_dgs_terminal_buses(
+        dgs_grid=dgs_grid,
+        grid=grid,
+        pos_by_objid=pos_by_objid,
+    )
     _assign_elmterm_area_references(dgs_grid=dgs_grid, bus_by_term_id=bus_by_term_id, area_by_id=area_by_id)
     _assign_elmterm_zone_references(dgs_grid=dgs_grid, bus_by_term_id=bus_by_term_id, zone_by_id=zone_by_id)
 
