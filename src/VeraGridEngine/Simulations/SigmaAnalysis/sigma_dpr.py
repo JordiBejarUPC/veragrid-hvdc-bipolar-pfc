@@ -462,29 +462,39 @@ def sigma_dpr(nc: NumericalCircuit,
             controls_pending = controls_pending
 
     total_iterations += path.iterations
+    pf_norm_f: float = norm_f
+    pf_converged: bool = converged
+
     # Sigma needs continuation coefficients, not the tiny correction coefficients produced by accepted DPR restarts.
     # Once controls have settled, compute one full non-restarting DPR embedding from the no-load germ to the final
     # controlled model and use those coefficients for the sigma Padé system.
-    sigma_coeff_path, norm_f, converged = sigma_dpr_fixed_model(Ybus=active_Ybus,
-                                                                Yseries=Yseries,
-                                                                V0=None,
-                                                                Vset=Vset,
-                                                                S0=active_S0,
-                                                                Ysh0=active_Ysh0,
-                                                                pq=active_pq,
-                                                                pv=active_pv,
-                                                                pqv=active_pqv,
-                                                                p=active_p,
-                                                                vd=vd,
-                                                                no_slack=no_slack,
-                                                                tolerance=tolerance,
-                                                                max_coefficients=max_coefficients,
-                                                                restart_order=max_coefficients,
-                                                                max_restarts=0,
-                                                                use_classical_germ=True,
-                                                                allow_dynamic_restart=False,
-                                                                verbose=verbose,
-                                                                logger=logger)
+    sigma_coeff_path, sigma_norm_f, sigma_converged = sigma_dpr_fixed_model(Ybus=active_Ybus,
+                                                                            Yseries=Yseries,
+                                                                            V0=None,
+                                                                            Vset=Vset,
+                                                                            S0=active_S0,
+                                                                            Ysh0=active_Ysh0,
+                                                                            pq=active_pq,
+                                                                            pv=active_pv,
+                                                                            pqv=active_pqv,
+                                                                            p=active_p,
+                                                                            vd=vd,
+                                                                            no_slack=no_slack,
+                                                                            tolerance=tolerance,
+                                                                            max_coefficients=max_coefficients,
+                                                                            restart_order=max_coefficients,
+                                                                            max_restarts=0,
+                                                                            use_classical_germ=True,
+                                                                            allow_dynamic_restart=False,
+                                                                            verbose=verbose,
+                                                                            logger=logger)
+    # Sigma coefficients are an analytic diagnostic. Their direct summed voltage may fail the PF tolerance even when
+    # the controlled DPR power-flow state has converged; report PF convergence and use the coefficients only for sigma.
+    if verbose and logger is not None:
+        logger.add_debug("DPR sigma coefficient norm", sigma_norm_f)
+        logger.add_debug("DPR sigma coefficient converged", sigma_converged)
+    else:
+        verbose = verbose
 
     sigma_path: DprSigmaPath = dpr_sigma_from_segments(segments=sigma_coeff_path.segments,
                                                        Vset=Vset,
@@ -493,8 +503,8 @@ def sigma_dpr(nc: NumericalCircuit,
                                                        nbus=nc.bus_data.nbus)
 
     return DprSigmaResult(V=path.V,
-                          norm_f=norm_f,
-                          converged=converged,
+                          norm_f=pf_norm_f,
+                          converged=pf_converged,
                           iterations=total_iterations,
                           control_restarts=control_restart,
                           elapsed=time.time() - start_time,

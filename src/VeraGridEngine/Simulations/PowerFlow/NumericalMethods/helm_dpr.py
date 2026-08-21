@@ -908,7 +908,7 @@ def helm_coefficients_dpr_path(Ybus: CscMat, Yseries: CscMat, V0: CxVec | None, 
     segments: list[DprSegmentResult] = list()
 
     if nbus < 2:
-        Vbest: CxVec = V0.copy()
+        Vbest: CxVec = Vset.copy() if V0 is None else V0.copy()
         iterations: int = 0
         converged: bool = False
     else:
