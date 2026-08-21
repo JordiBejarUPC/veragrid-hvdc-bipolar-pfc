@@ -27,6 +27,7 @@ from VeraGridEngine.IO.dgs.dgs_logical_actuator_binding import (
 )
 from VeraGridEngine.IO.dgs.dgs_rms_measurement_binding import (
     DgsRmsMeasurementBindingReport,
+    _get_physical_meter_terminal_side,
     bind_dgs_rms_measurements,
 )
 from VeraGridEngine.IO.dgs.dgs_rms_preparation import (
@@ -137,6 +138,42 @@ from VeraGridEngine.enumerations import (
     FileType,
     VarPowerFlowReferenceType,
 )
+
+
+def test_physical_meter_terminal_side_rejects_invalid_ordinals() -> None:
+    """Reject unsupported DGS cubicle ordinals before building meter equations.
+
+    :return: None.
+    """
+    from_bus: Bus = Bus(name="From bus", is_dc=True)
+    to_bus: Bus = Bus(name="To bus")
+    converter: VSC = VSC(bus_from=from_bus, bus_to=to_bus)
+    branch: Line = Line(bus_from=from_bus, bus_to=to_bus)
+    invalid_terminal_index: int
+
+    assert _get_physical_meter_terminal_side(
+        source_device=converter,
+        source_terminal_index=0,
+    ) is RmsTerminalSide.TO
+    assert _get_physical_meter_terminal_side(
+        source_device=branch,
+        source_terminal_index=0,
+    ) is RmsTerminalSide.FROM
+    assert _get_physical_meter_terminal_side(
+        source_device=branch,
+        source_terminal_index=1,
+    ) is RmsTerminalSide.TO
+    for invalid_terminal_index in (-1, 2):
+        assert _get_physical_meter_terminal_side(
+            source_device=converter,
+            source_terminal_index=invalid_terminal_index,
+        ) is None
+        assert _get_physical_meter_terminal_side(
+            source_device=branch,
+            source_terminal_index=invalid_terminal_index,
+        ) is None
+    else:
+        pass
 
 
 class DgsSwitchEventProblem(EmtProblemTemplate):

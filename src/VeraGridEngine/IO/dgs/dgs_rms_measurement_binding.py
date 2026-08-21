@@ -423,25 +423,35 @@ def _resolve_cubicle_source(
 def _get_physical_meter_terminal_side(
         source_device: DynamicDevice,
         source_terminal_index: int,
-) -> RmsTerminalSide:
+) -> RmsTerminalSide | None:
     """Map one DGS cubicle ordinal to the canonical physical terminal side.
 
     :param source_device: Exact measured VeraGrid device.
     :param source_terminal_index: DGS terminal ordinal selected by the cubicle.
-    :return: Typed canonical terminal side.
+    :return: Typed canonical terminal side, or ``None`` for an invalid ordinal.
     """
     if isinstance(source_device, VSC):
         # ElmVsc cubicle zero is the AC terminal represented by VeraGrid's
         # canonical ``to`` side.
-        return RmsTerminalSide.TO
+        if source_terminal_index == 0:
+            terminal_side: RmsTerminalSide | None = RmsTerminalSide.TO
+        else:
+            terminal_side = None
     else:
         if isinstance(source_device, BranchParent):
             if source_terminal_index == 0:
-                return RmsTerminalSide.FROM
+                terminal_side = RmsTerminalSide.FROM
             else:
-                return RmsTerminalSide.TO
+                if source_terminal_index == 1:
+                    terminal_side = RmsTerminalSide.TO
+                else:
+                    terminal_side = None
         else:
-            return RmsTerminalSide.BUS
+            if source_terminal_index == 0:
+                terminal_side = RmsTerminalSide.BUS
+            else:
+                terminal_side = None
+    return terminal_side
 
 
 def _resolve_logical_actuator_current_source(
@@ -2134,23 +2144,26 @@ def bind_dgs_rms_measurements(
                             ):
                                 pass
                             else:
-                                meter_target_fid = str(source_device.idtag)
                                 meter_terminal_side = (
                                     _get_physical_meter_terminal_side(
                                         source_device=source_device,
                                         source_terminal_index=source_terminal_index,
                                     )
                                 )
-                                physical_meter_kind = RmsPhysicalMeterKind.CURRENT
-                                alias_expressions = _build_current_alias_expressions(
-                                    meter=meter_element,
-                                    signal_names=signal_names,
-                                    measured_bus=source_bus,
-                                    source_device=source_device,
-                                    source_terminal_index=source_terminal_index,
-                                    system_base_mva=float(circuit.Sbase),
-                                    host_model=host_model,
-                                )
+                                if meter_terminal_side is None:
+                                    pass
+                                else:
+                                    meter_target_fid = str(source_device.idtag)
+                                    physical_meter_kind = RmsPhysicalMeterKind.CURRENT
+                                    alias_expressions = _build_current_alias_expressions(
+                                        meter=meter_element,
+                                        signal_names=signal_names,
+                                        measured_bus=source_bus,
+                                        source_device=source_device,
+                                        source_terminal_index=source_terminal_index,
+                                        system_base_mva=float(circuit.Sbase),
+                                        host_model=host_model,
+                                    )
                         else:
                             if isinstance(meter_element, StaPqmea):
                                 power_device: DynamicDevice | None
@@ -2167,21 +2180,24 @@ def bind_dgs_rms_measurements(
                                 if power_device is None or power_terminal_index is None:
                                     pass
                                 else:
-                                    meter_target_fid = str(power_device.idtag)
                                     meter_terminal_side = (
                                         _get_physical_meter_terminal_side(
                                             source_device=power_device,
                                             source_terminal_index=power_terminal_index,
                                         )
                                     )
-                                    physical_meter_kind = RmsPhysicalMeterKind.POWER
-                                    alias_expressions = _build_power_alias_expressions(
-                                        meter=meter_element,
-                                        signal_names=signal_names,
-                                        source_device=power_device,
-                                        source_terminal_index=power_terminal_index,
-                                        system_base_mva=float(circuit.Sbase),
-                                    )
+                                    if meter_terminal_side is None:
+                                        pass
+                                    else:
+                                        meter_target_fid = str(power_device.idtag)
+                                        physical_meter_kind = RmsPhysicalMeterKind.POWER
+                                        alias_expressions = _build_power_alias_expressions(
+                                            meter=meter_element,
+                                            signal_names=signal_names,
+                                            source_device=power_device,
+                                            source_terminal_index=power_terminal_index,
+                                            system_base_mva=float(circuit.Sbase),
+                                        )
                             else:
                                 if is_pll_slot:
                                     pll_source_meter: StaVmea | None
