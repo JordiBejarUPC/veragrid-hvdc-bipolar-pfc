@@ -496,7 +496,7 @@ Double-click a block to open **Block properties**. The main pages are:
 
 ![General options](figures/dynamics/block_properties_general_options.png)
 
-- **DAE model**: recursive Variables and Parameters tables, the equation owner selector, safe Python-like equation code, and LaTeX/PDF export.
+- **DAE model**: recursive Variables and Parameters tables, the equation owner selector, safe Python-like DAE code with mathematical algebraic equalities, copyable LaTeX source, and rendered PDF export.
 
 ![Block Properties](figures/dynamics/block_properties_DAE_model.png)
 
@@ -520,21 +520,21 @@ The Output checkbox exposes an existing variable as a port or result. It does no
 
 ### DAE code in the GUI
 
-The **Python code** page is a safe assignment-only editor, not a general Python console. The three variable declarations are projections of the Variables table and define equation ordering:
+The **Python code** page is a safe assignment-only DAE editor, not a general Python console. It extends the expression syntax with one mathematical `=` inside each algebraic equation. The three variable declarations are projections of the Variables table and define equation ordering:
 
 ```python
 state_vars = [x]
 algebraic_vars = [y]
 diff_vars = []
 
-state_eqs = [
-    # Right-hand side of dx/dt.
-    (u - x) / (T + eps),
-]
+state_eqs = {
+    # Associate every state explicitly with the right-hand side of its derivative.
+    x: (u - x) / (T + eps),
+}
 
 algebraic_eqs = [
-    # Residual equal to zero.
-    y - K * x,
+    # Complete equality; ``0 = y - K * x`` is also accepted.
+    y = K * x,
 ]
 
 init_eqs = {
@@ -545,7 +545,7 @@ init_eqs = {
 diff_init_eqs = {}
 ```
 
-Create or reclassify variables with the tables, not by inventing undeclared names in the code. Select the appropriate **Equation owner** when editing a composite model. **Validate all code** checks every recursive equation buffer and focuses the first inline error.
+Create or reclassify variables with the tables, not by inventing undeclared names in the code. Every key in `state_eqs` must occur exactly once in `state_vars`; the editor converts this explicit mapping to the Engine's positional equation list using `state_vars` order. Every `algebraic_eqs` entry must contain exactly one single equality sign (`=`, not `==`). The GUI accepts either `0 = residual` or a physical relation such as `y = K * x`, then converts it to the residual expression stored by the Engine. Select the appropriate **Equation owner** when editing a composite model. **Validate all code** checks every recursive equation buffer and focuses the first inline error.
 
 ### Runtime logic in the GUI
 

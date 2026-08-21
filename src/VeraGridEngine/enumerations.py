@@ -4534,13 +4534,6 @@ class EquationExportSection(Enum):
     DERIVATIVE_INITIALIZATION = "Derivative initialization equations"
 
 
-class EquationPdfStyle(Enum):
-    """Visual representation used for equations inside an exported PDF."""
-
-    LATEX_SOURCE = "LaTeX source"
-    RENDERED = "Rendered equations"
-
-
 class JMartiDataSourceMode(Enum):
     """Available sources for the offline JMarti frequency-domain fit."""
 
