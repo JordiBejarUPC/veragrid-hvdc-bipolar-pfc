@@ -476,6 +476,16 @@ class MIPFramework(Enum):
     OrTools = 'or-tools'
     PuLP = 'PuLP'
 
+
+class NtcSolutionState(Enum):
+    """
+    Quality of an NTC solution: strictly optimal, optimal but with relaxed (slacked)
+    limits, or not solved to optimality at all
+    """
+    Optimal = 'Optimal'
+    Relaxed = 'Optimal with relaxed limits'
+    NotOptimal = 'Not optimal'
+
     def __str__(self):
         return self.value
 

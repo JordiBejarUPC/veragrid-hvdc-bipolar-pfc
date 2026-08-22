@@ -589,6 +589,45 @@ def pmode3_formulation_impr(prob, t_idx, m, rate, P0, droop, theta_f, theta_t, b
     return flow
 
 
+def pmode3_formulation_relaxed(prob: LpModel,
+                               t_idx: int,
+                               m: int,
+                               rate: float,
+                               P0: float,
+                               droop: float,
+                               theta_f: LpVar,
+                               theta_t: LpVar,
+                               base_name: str = "vsc") -> Tuple[LpVar, LpVar, LpVar]:
+    """
+    Continuous relaxation of the three-region Pmode3 droop law, used by the region
+    fix-and-verify scheme instead of the big-M MIP
+
+        flow = P0 + k·(θf − θt) − s_up + s_dn,  |flow| <= rate,  s_up, s_dn >= 0
+
+    The slacks start open and are heavily penalized by the caller. This keeps the first
+    solve feasible even when the droop demand exceeds the saturation bounds.
+
+    :param prob: LP model
+    :param t_idx: time index
+    :param m: VSC index (for names)
+    :param rate: saturation rate (p.u.)
+    :param P0: droop base power (p.u.)
+    :param droop: droop constant (p.u./rad)
+    :param theta_f: reference (remote) bus angle variable
+    :param theta_t: local AC bus angle variable
+    :param base_name: name prefix
+    :return: flow variable, s_up slack, s_dn slack
+    """
+    flow: LpVar = prob.add_var(lb=-rate, ub=rate, name=join(f"{base_name}_flow_", [t_idx, m], "_"))
+    # First both slacks open
+    # Then the region loop closes the irrelevant one when pinning and reopens it
+    s_up: LpVar = prob.add_var(lb=0.0, ub=prob.INFINITY, name=join(f"{base_name}_p3up_", [t_idx, m], "_"))
+    s_dn: LpVar = prob.add_var(lb=0.0, ub=prob.INFINITY, name=join(f"{base_name}_p3dn_", [t_idx, m], "_"))
+    prob.add_cst(cst=flow == P0 + droop * (theta_f - theta_t) - s_up + s_dn,
+                 name=join(f"{base_name}_p3law_", [t_idx, m], "_"))
+    return flow, s_up, s_dn
+
+
 def pmode3_formulation_convex_hull(prob, t_idx, m, rate, P0, droop, theta_f, theta_t, f_obj,
                                    dtheta_max=1.57, base_name: str = "hvdc"):
     """
@@ -1209,6 +1248,12 @@ class VscNtcVars:
 
         self.inter_space_vsc: List[Tuple[int, float]] = list()  # index, sense
 
+        # (vsc index, s_up var, s_dn var, droop p.u./rad, P0 p.u., ctrl bus idx, ac bus idx, sat rate p.u.)
+        self.pmode3_data: List[Tuple[int, LpVar, LpVar, float, float, int, int, float]] = list()
+
+        # converged region pattern of the last solve (vsc index -> -1 / 0 / +1)
+        self.pmode3_final_pins: Dict[int, int] = dict()
+
     def get_values(self, Sbase: float, model: LpModel) -> "VscNtcVars":
         """
         Return an instance of this class where the arrays content are not LP vars but their value
@@ -1218,6 +1263,8 @@ class VscNtcVars:
         data = VscNtcVars(nt=nt, n_elm=n_elm)
         data.rates = self.rates
         data.inter_space_vsc = self.inter_space_vsc
+        data.pmode3_data = self.pmode3_data
+        data.pmode3_final_pins = self.pmode3_final_pins
 
         for t in range(nt):
             for i in range(n_elm):
@@ -1391,7 +1438,12 @@ def get_base_power(Sbase: float,
         new_diff = np.sum(base_power)
 
         if np.isclose(new_diff, 0, atol=1e-10):
-            logger.add_warning("The base circumstance had to be balanced", value=diff, expected_value=new_diff)
+            # only report imbalances that matter (> 1 MW)
+            if abs(diff) * Sbase > 1.0:
+                logger.add_warning("The base circumstance had to be balanced",
+                                   value=diff * Sbase, expected_value=0.0)
+            else:
+                pass
         else:
             raise ValueError("Cannot balance the circumstance")
 
@@ -1849,14 +1901,21 @@ def add_linear_branches_formulation(t_idx: int,
             if branch_vars.monitor_logic[t_idx, m]:
 
                 if abs(loading[m]) > 1.0:
-                    logger.add_error("Base overload on sensitive branch, rates extended",
+                    logger.add_error("Base overload on sensitive branch, limit relaxed with a penalized slack",
                                      device=f"{m}: {branch_data_t.names[m]}",
                                      value=f"{loading[m] * 100} %")
 
-                    # here flows is always a variable
-                    prob.set_var_bounds(branch_vars.flows[t_idx, m],
-                                        lb=-rate_pu * (abs(loading[m]) + 0.1),
-                                        ub=rate_pu * (abs(loading[m]) + 0.1))
+                    # The limit is relaxed with a heavily penalized slack
+                    pos_sl: LpVar = prob.add_var(0, 1e20, join("base_flow_pos_sl_", [t_idx, m], "_"))
+                    neg_sl: LpVar = prob.add_var(0, 1e20, join("base_flow_neg_sl_", [t_idx, m], "_"))
+                    branch_vars.flow_slacks_pos[t_idx, m] = pos_sl
+                    branch_vars.flow_slacks_neg[t_idx, m] = neg_sl
+                    prob.add_cst(cst=branch_vars.flows[t_idx, m] - pos_sl <= rate_pu,
+                                 name=join("base_flow_upper_lim_", [t_idx, m], "_"))
+                    prob.add_cst(cst=branch_vars.flows[t_idx, m] + neg_sl >= -rate_pu,
+                                 name=join("base_flow_lower_lim_", [t_idx, m], "_"))
+
+                    f_obj += 1e4 * (pos_sl + neg_sl)
                 else:
                     # here flows is always a variable
                     prob.set_var_bounds(branch_vars.flows[t_idx, m], lb=-rate_pu, ub=rate_pu)
@@ -2789,7 +2848,8 @@ def add_linear_vsc_formulation(t_idx: int,
                                prob: LpModel,
                                logger: Logger,
                                sat_rates: Vec,
-                               saturate: bool = True):
+                               saturate: bool = True,
+                               droop_mip: bool = False):
     """
 
     :param t_idx:
@@ -2802,6 +2862,7 @@ def add_linear_vsc_formulation(t_idx: int,
     :param logger:
     :param sat_rates: per VSC P-mode 3 saturation rates in MW
     :param saturate:
+    :param droop_mip:
     :return:
     """
 
@@ -2852,15 +2913,29 @@ def add_linear_vsc_formulation(t_idx: int,
 
                     # On the selection of the angles:
 
-                    vsc_vars.flows[t_idx, m] = pmode3_formulation_impr(prob=prob,
-                                                                       t_idx=t_idx,
-                                                                       m=m,
-                                                                       rate=sat_rates[m] / Sbase,
-                                                                       P0=P0,
-                                                                       droop=droop,
-                                                                       theta_f=bus_vars.Va[t_idx, control_bus_idx],
-                                                                       theta_t=bus_vars.Va[t_idx, to],
-                                                                       base_name="vsc")
+                    if droop_mip:
+                        # exact three-region big-M MIP
+                        vsc_vars.flows[t_idx, m] = pmode3_formulation_impr(prob=prob,
+                                                                           t_idx=t_idx,
+                                                                           m=m,
+                                                                           rate=sat_rates[m] / Sbase,
+                                                                           P0=P0,
+                                                                           droop=droop,
+                                                                           theta_f=bus_vars.Va[t_idx, control_bus_idx],
+                                                                           theta_t=bus_vars.Va[t_idx, to],
+                                                                           base_name="vsc")
+                    else:
+                        # continuous relaxation
+                        flow_var, s_up_var, s_dn_var = pmode3_formulation_relaxed(
+                            prob=prob, t_idx=t_idx, m=m,
+                            rate=sat_rates[m] / Sbase, P0=P0, droop=droop,
+                            theta_f=bus_vars.Va[t_idx, control_bus_idx],
+                            theta_t=bus_vars.Va[t_idx, to],
+                            base_name="vsc")
+                        vsc_vars.flows[t_idx, m] = flow_var
+                        vsc_vars.pmode3_data.append((m, s_up_var, s_dn_var, droop, P0,
+                                                     int(control_bus_idx), int(to),
+                                                     sat_rates[m] / Sbase))
 
                 else:
 
@@ -3066,6 +3141,8 @@ def run_linear_ntc_opf(grid: MultiCircuit,
                        monitor_only_sensitive_branches: bool = True,
                        monitor_only_ntc_load_rule_branches: bool = False,
                        ntc_load_rule: float = 0.7,  # 70%
+                       droop_mip: bool = False,
+                       initial_droop_pins: Union[Dict[int, int], None] = None,
                        logger: Logger = Logger(),
                        progress_text: Union[None, Callable[[str], None]] = None,
                        progress_func: Union[None, Callable[[float], None]] = None,
@@ -3090,6 +3167,11 @@ def run_linear_ntc_opf(grid: MultiCircuit,
     :param monitor_only_sensitive_branches
     :param monitor_only_ntc_load_rule_branches
     :param ntc_load_rule: Amount of exchange branches power that should be dedicated to exchange
+    :param droop_mip: formulate the Pmode3 droop with the exact big-M MIP instead of the
+                      relaxed scheme.
+    :param initial_droop_pins: optional warm start for the Pmode3 region loop:
+                      dict of VSC index -> -1 (pinned at -sat), 0 (free), +1 (pinned at
+                      +sat), 2 (strict droop law). 
     :param logger: logger instance
     :param progress_text: function to report text messages
     :param progress_func: function to report progress
@@ -3229,8 +3311,9 @@ def run_linear_ntc_opf(grid: MultiCircuit,
         logger=logger,
         sat_rates=compute_vsc_pmode3_saturation_rates(vsc_data_t=nc.vsc_data,
                                                       branch_data_t=nc.passive_branch_data,
-                                                      bus_data_t=nc.bus_data)
-    )
+                                                      bus_data_t=nc.bus_data),
+                                                      droop_mip=droop_mip
+                                                      )
 
     # lazy formulation state is filled when contingencies are on and there are groups
     lazy_mctg: Union[LinearMultiContingencies, None] = None
@@ -3356,10 +3439,176 @@ def run_linear_ntc_opf(grid: MultiCircuit,
     # solve the model
     status = lp_model.solve(robust=robust, show_logs=verbose > 0, progress_text=progress_text)
 
-    if lazy_mctg is not None and status == lp_model.OPTIMAL:
-        # Screen every not-yet-formulated group against the solved operating point, add only 
-        # the violated ones, re-solve, and repeat until a screening pass is clean. 
-        monitorable_lazy: BoolVec = get_contingency_monitorable_branches(
+    # Pmode3 fix-and-verify state.
+    # The droop law starts as a free relaxation (slacks open) so the first solve is
+    # always feasible, and successive runs pin the VSCs in either saturated or linear region.
+    droop_entries = mip_vars.vsc_vars.pmode3_data
+    droop_phase: int = 0
+    max_droop_phases: int = 3 + 2 * len(droop_entries)
+    max_recoveries: int = len(droop_entries) + 2
+    n_recoveries: int = 0
+    # vsc index -> -1 (pinned at -sat), 0 (free), +1 (pinned at +sat), 2 (strict law)
+    droop_pins: Dict[int, int] = dict()
+    last_sat_batch: List[int] = list()
+    sat_forbidden: set = set()
+
+    def apply_pin(m_: int, s_up_v_: LpVar, s_dn_v_: LpVar, sat_: float, pin_: int):
+        """
+        Apply the variable bounds of a Pmode3 region to the model.
+        """
+        flow_var_ = mip_vars.vsc_vars.flows[t_idx, m_]
+        if pin_ == 1:
+            lp_model.set_var_bounds(var=flow_var_, lb=sat_, ub=sat_)
+            lp_model.set_var_bounds(var=s_up_v_, lb=0.0, ub=lp_model.INFINITY)
+            lp_model.set_var_bounds(var=s_dn_v_, lb=0.0, ub=0.0)
+        elif pin_ == -1:
+            lp_model.set_var_bounds(var=flow_var_, lb=-sat_, ub=-sat_)
+            lp_model.set_var_bounds(var=s_up_v_, lb=0.0, ub=0.0)
+            lp_model.set_var_bounds(var=s_dn_v_, lb=0.0, ub=lp_model.INFINITY)
+        elif pin_ == 2:
+            lp_model.set_var_bounds(var=flow_var_, lb=-sat_, ub=sat_)
+            lp_model.set_var_bounds(var=s_up_v_, lb=0.0, ub=0.0)
+            lp_model.set_var_bounds(var=s_dn_v_, lb=0.0, ub=0.0)
+        else:
+            lp_model.set_var_bounds(var=flow_var_, lb=-sat_, ub=sat_)
+            lp_model.set_var_bounds(var=s_up_v_, lb=0.0, ub=lp_model.INFINITY)
+            lp_model.set_var_bounds(var=s_dn_v_, lb=0.0, ub=lp_model.INFINITY)
+
+    # apply warm-start pins before the first solve (the same bounds the region loop uses)
+    for (m_d0, s_up0, s_dn0, k_d0, p0_d0, cb_d0, ab_d0, sat_d0) in droop_entries:
+        pin0 = initial_droop_pins.get(m_d0, 0) if initial_droop_pins else 0
+        droop_pins[m_d0] = pin0
+        apply_pin(m_=m_d0, s_up_v_=s_up0, s_dn_v_=s_dn0, sat_=sat_d0, pin_=pin0)
+
+    # True once every droop converter is pinned in a self-consistent region
+    regions_stable: bool = len(droop_entries) == 0 or droop_mip
+    lazy_state_ready: bool = False
+    monitorable_lazy: Union[BoolVec, None] = None
+    con_rates_pu_lazy: Union[Vec, None] = None
+    admitted_rows: Dict[int, BoolVec] = dict()
+    vsc_delta_store: Dict[int, Dict[int, LpVar]] = dict()
+    hvdc_delta_store: Dict[int, Dict[int, LpVar]] = dict()
+    preservation_done: set = set()
+    n_rows_admitted: int = 0
+    max_lazy_rounds: int = 20
+
+    def mip_fallback() -> Tuple[NtcVars, LpModel]:
+        """
+        Rebuild and solve the whole problem with the exact big-M MIP droop formulation.
+        Used when the region iteration cannot reach a consistent fixed point.
+        """
+        logger.add_warning("Pmode3 region iteration did not stabilize, "
+                           "falling back to the MIP droop",
+                           value=f"phase={droop_phase}, status={lp_model.status2string(status)}")
+        return run_linear_ntc_opf(grid=grid, t=t, solver_type=solver_type,
+                                  zonal_grouping=zonal_grouping,
+                                  skip_generation_limits=skip_generation_limits,
+                                  consider_contingencies=consider_contingencies,
+                                  corrective_contingencies=corrective_contingencies,
+                                  contingency_groups_used=contingency_groups_used,
+                                  alpha_threshold=alpha_threshold,
+                                  lodf_threshold=lodf_threshold,
+                                  bus_a1_idx=bus_a1_idx, bus_a2_idx=bus_a2_idx,
+                                  transfer_method=transfer_method,
+                                  monitor_only_sensitive_branches=monitor_only_sensitive_branches,
+                                  monitor_only_ntc_load_rule_branches=monitor_only_ntc_load_rule_branches,
+                                  ntc_load_rule=ntc_load_rule,
+                                  droop_mip=True,
+                                  logger=logger,
+                                  progress_text=progress_text,
+                                  progress_func=progress_func,
+                                  verbose=verbose, robust=robust,
+                                  mip_framework=mip_framework)
+
+    while True:
+
+      if status != lp_model.OPTIMAL:
+        if droop_phase == 0 and all(p == 0 for p in droop_pins.values()):
+            # the fully relaxed first pass does not solve and nothing was pinned yet
+            break
+        if n_recoveries < max_recoveries:
+            strict_pinned = [m_r for m_r, p_r in droop_pins.items() if p_r == 2]
+            if len(strict_pinned) > 0:
+                # pinning strict laws over constrained the problem so release them to free
+                n_recoveries += 1
+                logger.add_info("Pmode3 strict pins released after an unsuccessful solve",
+                                value=f"{len(strict_pinned)} converters, recovery {n_recoveries}")
+                for (m_r, s_up_r, s_dn_r, k_r, p0_r, cb_r, ab_r, sat_r) in droop_entries:
+                    if droop_pins.get(m_r) == 2:
+                        droop_pins[m_r] = 0
+                        apply_pin(m_=m_r, s_up_v_=s_up_r, s_dn_v_=s_dn_r, sat_=sat_r, pin_=0)
+            elif len(last_sat_batch) > 0:
+                n_recoveries += 1
+                logger.add_info("Pmode3 saturation batch reverted after an unsuccessful solve",
+                                value=f"{len(last_sat_batch)} converters, recovery {n_recoveries}")
+                for (m_r, s_up_r, s_dn_r, k_r, p0_r, cb_r, ab_r, sat_r) in droop_entries:
+                    if m_r in last_sat_batch:
+                        droop_pins[m_r] = 0
+                        apply_pin(m_=m_r, s_up_v_=s_up_r, s_dn_v_=s_dn_r, sat_=sat_r, pin_=0)
+                sat_forbidden.update(last_sat_batch)
+                last_sat_batch.clear()
+            else:
+                return mip_fallback()
+            regions_stable = False
+            status = lp_model.solve(robust=robust, show_logs=verbose > 0, progress_text=progress_text)
+            continue
+        # recoveries exhausted so we fall back to the exact MIP formulation
+        return mip_fallback()
+
+      # Each pass decides every free converter's region from the solved angles
+      if not regions_stable:
+
+        va_num: Vec = np.array([lp_model.get_value(x) for x in mip_vars.bus_vars.Va[t_idx, :]])
+        n_changes: int = 0
+        slack_tol: float = 1e-6
+        last_sat_batch.clear()
+        for (m_d, s_up_v, s_dn_v, k_d, p0_d, cb_d, ab_d, sat_d) in droop_entries:
+            demand: float = p0_d + k_d * (float(va_num[cb_d]) - float(va_num[ab_d]))
+            flow_var_d = mip_vars.vsc_vars.flows[t_idx, m_d]
+            pin: int = droop_pins[m_d]
+            if pin == 0:
+                # free converter: classify its region from the solved angles
+                if m_d not in sat_forbidden and demand > sat_d + slack_tol:
+                    droop_pins[m_d] = 1
+                    last_sat_batch.append(m_d)
+                elif m_d not in sat_forbidden and demand < -sat_d - slack_tol:
+                    droop_pins[m_d] = -1
+                    last_sat_batch.append(m_d)
+                else:
+                    droop_pins[m_d] = 2  # inside limits
+                apply_pin(m_=m_d, s_up_v_=s_up_v, s_dn_v_=s_dn_v, sat_=sat_d,
+                          pin_=droop_pins[m_d])
+                n_changes += 1
+            elif pin == 2 and abs(float(lp_model.get_value(flow_var_d))) >= sat_d - slack_tol:
+                # the strict law drove the flow into the limit
+                direction: int = 1 if float(lp_model.get_value(flow_var_d)) > 0.0 else -1
+                droop_pins[m_d] = direction
+                apply_pin(m_=m_d, s_up_v_=s_up_v, s_dn_v_=s_dn_v, sat_=sat_d,
+                          pin_=direction)
+                n_changes += 1
+            else:
+                pass  # this converter's region is consistent
+
+        if n_changes == 0:
+            if droop_phase > 0:
+                logger.add_info("Pmode3 region iteration converged",
+                                value=f"{droop_phase} extra passes, "
+                                      f"pins={list(droop_pins.values())}")
+            regions_stable = True
+        else:
+            droop_phase += 1
+            if droop_phase > max_droop_phases:
+                # no fixed point within the iteration budget
+                return mip_fallback()
+            status = lp_model.solve(robust=robust, show_logs=verbose > 0, progress_text=progress_text)
+        continue
+
+      # lazy contingency screening only with stable regions
+      if lazy_mctg is None:
+        break  # stable regions and no contingencies to verify, so done
+
+      if not lazy_state_ready:
+        monitorable_lazy = get_contingency_monitorable_branches(
             branch_data_t=nc.passive_branch_data,
             branch_vars=mip_vars.branch_vars,
             t_idx=t_idx,
@@ -3376,116 +3625,136 @@ def run_linear_ntc_opf(grid: MultiCircuit,
             monitorable_lazy[lazy_branch_m] = True
         monitorable_lazy = monitorable_lazy | (nc.passive_branch_data.dc.astype(bool)
                                                & nc.passive_branch_data.monitor_loading.astype(bool))
-        con_rates_pu_lazy: Vec = nc.passive_branch_data.contingency_rates / nc.Sbase
-        admitted_rows: Dict[int, BoolVec] = dict()
-        vsc_delta_store: Dict[int, Dict[int, LpVar]] = dict()
-        hvdc_delta_store: Dict[int, Dict[int, LpVar]] = dict()
-        preservation_done: set = set()
-        n_rows_admitted: int = 0
-        lazy_round: int = 0
-        max_lazy_rounds: int = 20
+        con_rates_pu_lazy = nc.passive_branch_data.contingency_rates / nc.Sbase
+        lazy_state_ready = True
+      else:
+        pass  # lazy containers persist across the droop phases
 
-        while lazy_round < max_lazy_rounds and status == lp_model.OPTIMAL:
-            # numeric snapshot of the solved operating point
-            f0_num: Vec = np.array([lp_model.get_value(x) for x in mip_vars.branch_vars.flows[t_idx, :]])
-            hvdc0_num: Vec = np.array([lp_model.get_value(x) for x in mip_vars.hvdc_vars.flows[t_idx, :]])
-            vsc0_num: Vec = np.array([lp_model.get_value(x) for x in mip_vars.vsc_vars.flows[t_idx, :]])
-            inj0_num: Vec = np.array([lp_model.get_value(x) for x in mip_vars.bus_vars.Pinj[t_idx, :]])
+      lazy_round: int = 0
+      clean_pass: bool = False
+      admitted_this_session: bool = False
+      while lazy_round < max_lazy_rounds and status == lp_model.OPTIMAL:
+        # numeric snapshot of the solved operating point
+        f0_num: Vec = np.array([lp_model.get_value(x) for x in mip_vars.branch_vars.flows[t_idx, :]])
+        hvdc0_num: Vec = np.array([lp_model.get_value(x) for x in mip_vars.hvdc_vars.flows[t_idx, :]])
+        vsc0_num: Vec = np.array([lp_model.get_value(x) for x in mip_vars.vsc_vars.flows[t_idx, :]])
+        inj0_num: Vec = np.array([lp_model.get_value(x) for x in mip_vars.bus_vars.Pinj[t_idx, :]])
 
-            # numeric flow change of every admitted corrective group's solved Δ set-points
-            delta_addons: Dict[int, Vec] = dict()
-            for c_adm in admitted_rows.keys():
-                addon_c: Vec = np.zeros(nc.passive_branch_data.nelm)
-                ctg_adm = lazy_mctg.multi_contingencies[c_adm]
-                vsc_deltas_adm: Dict[int, LpVar] = vsc_delta_store.get(c_adm, dict())
-                if len(vsc_deltas_adm) > 0 and ctg_adm.compensated_vsc_df is not None:
-                    dv: Vec = np.zeros(nc.vsc_data.nelm)
-                    for d_adm, var_adm in vsc_deltas_adm.items():
-                        dv[d_adm] = lp_model.get_value(var_adm)
-                    addon_c += ctg_adm.compensated_vsc_df @ dv
-                else:
-                    pass  # this group moves no VSC correctively
-                hvdc_deltas_adm: Dict[int, LpVar] = hvdc_delta_store.get(c_adm, dict())
-                if len(hvdc_deltas_adm) > 0 and ctg_adm.compensated_hvdc_df is not None:
-                    dh: Vec = np.zeros(nc.hvdc_data.nelm)
-                    for d_adm, var_adm in hvdc_deltas_adm.items():
-                        dh[d_adm] = lp_model.get_value(var_adm)
-                    addon_c += ctg_adm.compensated_hvdc_df @ dh
-                else:
-                    pass  # this group moves no HVDC correctively
-                delta_addons[c_adm] = addon_c
-
-            admissions: List[Tuple[int, IntVec]] = screen_contingency_violations(
-                multi_contingencies=lazy_mctg.multi_contingencies,
-                admitted_rows=admitted_rows,
-                f0=f0_num, hvdc0=hvdc0_num, vsc0=vsc0_num, inj0=inj0_num,
-                monitorable=monitorable_lazy,
-                con_rates_pu=con_rates_pu_lazy,
-                con_loading=lazy_con_loading,
-                tol_pu=1e-4,
-                at_risk_fraction=0.9,
-                delta_flow_addons=delta_addons
-            )
-
-            if len(admissions) == 0:
-                # clean screening pass as the solution survives every contingency group
-                lazy_round = max_lazy_rounds
+        # numeric flow change of every admitted corrective group's solved Δ set-points
+        delta_addons: Dict[int, Vec] = dict()
+        for c_adm in admitted_rows.keys():
+            addon_c: Vec = np.zeros(nc.passive_branch_data.nelm)
+            ctg_adm = lazy_mctg.multi_contingencies[c_adm]
+            vsc_deltas_adm: Dict[int, LpVar] = vsc_delta_store.get(c_adm, dict())
+            if len(vsc_deltas_adm) > 0 and ctg_adm.compensated_vsc_df is not None:
+                dv: Vec = np.zeros(nc.vsc_data.nelm)
+                for d_adm, var_adm in vsc_deltas_adm.items():
+                    dv[d_adm] = lp_model.get_value(var_adm)
+                addon_c += ctg_adm.compensated_vsc_df @ dv
             else:
-                # per-group row lookup for the formulation call
-                group_rows_now: Dict[int, IntVec] = dict()
-                for c_new, rows_new in admissions:
-                    group_rows_now[int(c_new)] = rows_new
+                pass  # this group moves no VSC correctively
+            hvdc_deltas_adm: Dict[int, LpVar] = hvdc_delta_store.get(c_adm, dict())
+            if len(hvdc_deltas_adm) > 0 and ctg_adm.compensated_hvdc_df is not None:
+                dh: Vec = np.zeros(nc.hvdc_data.nelm)
+                for d_adm, var_adm in hvdc_deltas_adm.items():
+                    dh[d_adm] = lp_model.get_value(var_adm)
+                addon_c += ctg_adm.compensated_hvdc_df @ dh
+            else:
+                pass  # this group moves no HVDC correctively
+            delta_addons[c_adm] = addon_c
 
-                f_obj += add_linear_branches_contingencies_formulation(
-                    t_idx=t_idx,
-                    Sbase=nc.Sbase,
-                    branch_data_t=nc.passive_branch_data,
-                    branch_vars=mip_vars.branch_vars,
-                    bus_vars=mip_vars.bus_vars,
-                    hvdc_vars=mip_vars.hvdc_vars,
-                    vsc_vars=mip_vars.vsc_vars,
-                    prob=lp_model,
-                    linear_multi_contingencies=lazy_mctg,
-                    monitor_only_sensitive_branches=monitor_only_sensitive_branches,
-                    monitor_only_ntc_load_rule_branches=monitor_only_ntc_load_rule_branches,
-                    structural_ntc=float(mip_vars.structural_ntc[t_idx]),
-                    ntc_load_rule=ntc_load_rule,
-                    alpha_threshold=alpha_threshold,
-                    alpha_n1=lazy_alpha_n1,
-                    base_loading=np.abs(f0_num) / (nc.passive_branch_data.rates / nc.Sbase + 1e-20),
-                    con_loading=lazy_con_loading,
-                    logger=logger,
-                    corrective_contingencies=corrective_contingencies,
-                    vsc_active=nc.vsc_data.active,
-                    hvdc_active=nc.hvdc_data.active,
-                    group_indices=np.array([c_new for c_new, _ in admissions], dtype=int),
-                    group_rows=group_rows_now,
-                    vsc_delta_store=vsc_delta_store,
-                    hvdc_delta_store=hvdc_delta_store,
-                    preservation_done=preservation_done
-                )
+        admissions: List[Tuple[int, IntVec]] = screen_contingency_violations(
+            multi_contingencies=lazy_mctg.multi_contingencies,
+            admitted_rows=admitted_rows,
+            f0=f0_num, hvdc0=hvdc0_num, vsc0=vsc0_num, inj0=inj0_num,
+            monitorable=monitorable_lazy,
+            con_rates_pu=con_rates_pu_lazy,
+            con_loading=lazy_con_loading,
+            tol_pu=1e-4,
+            at_risk_fraction=0.9,
+            delta_flow_addons=delta_addons
+        )
 
-                # record the admitted rows so the screening skips them from now on
-                for c_new, rows_new in admissions:
-                    mask_prev: Union[BoolVec, None] = admitted_rows.get(int(c_new), None)
-                    if mask_prev is None:
-                        mask_prev = np.zeros(nc.passive_branch_data.nelm, dtype=bool)
-                        admitted_rows[int(c_new)] = mask_prev
-                    else:
-                        pass  # extending this group's existing admission
-                    mask_prev[rows_new] = True
-                    n_rows_admitted += len(rows_new)
+        if len(admissions) == 0:
+            # clean screening pass as the solution survives every contingency group
+            clean_pass = True
+            break
 
-                lp_model.minimize(f_obj)
-                status = lp_model.solve(robust=robust, show_logs=verbose > 0, progress_text=progress_text)
-                lazy_round += 1
+        # per-group row lookup for the formulation call
+        group_rows_now: Dict[int, IntVec] = dict()
+        for c_new, rows_new in admissions:
+            group_rows_now[int(c_new)] = rows_new
 
+        f_obj += add_linear_branches_contingencies_formulation(
+            t_idx=t_idx,
+            Sbase=nc.Sbase,
+            branch_data_t=nc.passive_branch_data,
+            branch_vars=mip_vars.branch_vars,
+            bus_vars=mip_vars.bus_vars,
+            hvdc_vars=mip_vars.hvdc_vars,
+            vsc_vars=mip_vars.vsc_vars,
+            prob=lp_model,
+            linear_multi_contingencies=lazy_mctg,
+            monitor_only_sensitive_branches=monitor_only_sensitive_branches,
+            monitor_only_ntc_load_rule_branches=monitor_only_ntc_load_rule_branches,
+            structural_ntc=float(mip_vars.structural_ntc[t_idx]),
+            ntc_load_rule=ntc_load_rule,
+            alpha_threshold=alpha_threshold,
+            alpha_n1=lazy_alpha_n1,
+            base_loading=np.abs(f0_num) / (nc.passive_branch_data.rates / nc.Sbase + 1e-20),
+            con_loading=lazy_con_loading,
+            logger=logger,
+            corrective_contingencies=corrective_contingencies,
+            vsc_active=nc.vsc_data.active,
+            hvdc_active=nc.hvdc_data.active,
+            group_indices=np.array([c_new for c_new, _ in admissions], dtype=int),
+            group_rows=group_rows_now,
+            vsc_delta_store=vsc_delta_store,
+            hvdc_delta_store=hvdc_delta_store,
+            preservation_done=preservation_done
+        )
+
+        # record the admitted rows so the screening skips them from now on
+        for c_new, rows_new in admissions:
+            mask_prev: Union[BoolVec, None] = admitted_rows.get(int(c_new), None)
+            if mask_prev is None:
+                mask_prev = np.zeros(nc.passive_branch_data.nelm, dtype=bool)
+                admitted_rows[int(c_new)] = mask_prev
+            else:
+                pass  # extending this group's existing admission
+            mask_prev[rows_new] = True
+            n_rows_admitted += len(rows_new)
+        admitted_this_session = True
+
+        lp_model.minimize(f_obj)
+        status = lp_model.solve(robust=robust, show_logs=verbose > 0, progress_text=progress_text)
+        lazy_round += 1
+
+      if status != lp_model.OPTIMAL:
+        continue
+
+      if not clean_pass:
+        logger.add_warning("Lazy contingency screening reached the round budget "
+                           "without a clean pass",
+                           value=f"{max_lazy_rounds} rounds, {n_rows_admitted} rows admitted")
+        break
+
+      if admitted_this_session and len(droop_entries) > 0 and not droop_mip:
+        # the admitted rows changed the operating point: re-check the region pattern
+        regions_stable = False
+        continue
+
+      break  # stable regions and a clean screening pass: final solution
+
+    if lazy_mctg is not None:
         logger.add_info("Lazy contingency formulation: groups/rows added",
                         value=f"{len(admitted_rows)} groups, {n_rows_admitted} rows "
                               f"of {len(lazy_mctg.multi_contingencies)} groups")
     else:
-        # full formulation, or the base problem did not solve
-        pass
+        pass  # no lazy formulation was used
+
+    # expose the converged region pattern so the time series driver can warm-start
+    mip_vars.vsc_vars.pmode3_final_pins = dict(droop_pins)
 
     # gather the results
     logger.add_info(msg="Status", value=lp_model.status2string(status))
@@ -3586,5 +3855,19 @@ def run_linear_ntc_opf(grid: MultiCircuit,
 
     logger.add_info("Structural inter-area rate", value=vars_v.structural_ntc[t_idx])
     logger.add_info("Inter-area NTC", value=vars_v.inter_area_flows[t_idx])
+
+    # summary of the limit-relaxation slacks
+    base_slack_mw: float = (float(np.sum(np.abs(vars_v.branch_vars.flow_slacks_pos[t_idx, :])))
+                            + float(np.sum(np.abs(vars_v.branch_vars.flow_slacks_neg[t_idx, :]))))
+    ctg_slack_mw: float = 0.0
+    for slack_item in vars_v.branch_vars.contingency_flow_data:
+        t_s, m_s, c_s, flow_s, neg_s, pos_s = slack_item
+        if isinstance(neg_s, float) and isinstance(pos_s, float):
+            ctg_slack_mw += abs(neg_s) + abs(pos_s)
+        else:
+            pass  # slack not evaluated to a number, nothing to add
+    logger.add_info("Total base overload slack (MW)", value=base_slack_mw)
+    logger.add_info("Total contingency relaxation slack (MW)", value=ctg_slack_mw)
+    logger.add_info("Total slack (MW)", value=base_slack_mw + ctg_slack_mw, expected_value=0.1)
 
     return vars_v, lp_model

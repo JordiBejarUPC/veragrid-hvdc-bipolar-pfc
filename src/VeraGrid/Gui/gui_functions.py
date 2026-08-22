@@ -164,18 +164,27 @@ class ComboDelegate(QtWidgets.QItemDelegate):
 
     def setEditorData(self, editor: QtWidgets.QComboBox, index: QtCore.QModelIndex):
         """
+        Open the editor at the cell's current value. The match is done on the actual
+        object (EditRole) first and only then on the display string, because for plain
+        (non str-mixin) enums str(value) legitimately differs from the display name.
 
-        :param editor:
-        :param index:
+        :param editor: combo editor
+        :param index: model index being edited
         """
         editor.blockSignals(True)
-        val = index.model().data(index, role=QtCore.Qt.ItemDataRole.DisplayRole)
-        try:
-            idx = self.object_names.index(val)
-            editor.setCurrentIndex(idx)
-            editor.blockSignals(False)
-        except ValueError:
-            pass
+
+        obj_val = index.model().data(index, role=QtCore.Qt.ItemDataRole.EditRole)
+        if obj_val in self.objects:
+            editor.setCurrentIndex(self.objects.index(obj_val))
+        else:
+            display_val = index.model().data(index, role=QtCore.Qt.ItemDataRole.DisplayRole)
+            if display_val in self.object_names:
+                editor.setCurrentIndex(self.object_names.index(display_val))
+            else:
+                # unknown current value so we keep the editor at its default position 
+                pass
+
+        editor.blockSignals(False)
 
     def setModelData(self,
                      editor: QtWidgets.QComboBox,
