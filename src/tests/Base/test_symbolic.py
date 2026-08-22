@@ -97,6 +97,33 @@ def test_safe_divide_derivative_matches_generated_expression() -> None:
     ) == expression.eval(numerator=12.0, denominator=0.0)
 
 
+def test_sqrt_derivative_uses_finite_zero_boundary_slope() -> None:
+    """Keep square-root Jacobians finite at a limited zero boundary.
+
+    :return: None.
+    """
+    argument: sym.Var = sym.Var("argument")
+    derivative: sym.Expr = sym.sqrt(argument).diff(argument)
+    compiler_names: Dict[int, str] = {argument.uid: "argument"}
+    generated_derivative: str = sym.expression2numba(
+        expr=derivative,
+        compiler_names_dict=compiler_names,
+    )
+
+    assert derivative.eval(argument=0.0) == 0.0
+    assert derivative.eval(argument=4.0) == pytest.approx(0.25)
+    assert eval(
+        generated_derivative,
+        sym.get_namespace(),
+        {"argument": 0.0},
+    ) == 0.0
+    assert eval(
+        generated_derivative,
+        sym.get_namespace(),
+        {"argument": 4.0},
+    ) == pytest.approx(0.25)
+
+
 def test_unary_neg_pow() -> None:
     x = sym.Var("x")
     expr = -(x ** 2)

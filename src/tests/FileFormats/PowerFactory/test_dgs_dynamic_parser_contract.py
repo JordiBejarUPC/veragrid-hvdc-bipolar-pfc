@@ -1970,7 +1970,9 @@ def test_graphical_parent_binds_exact_child_signals_and_keeps_live_gaps() -> Non
     )
     assert produced_output_uid in parent_dependency_uids
     assert disconnected_input_uid in parent_dependency_uids
-    assert "routed_internal" in parent_dependency_names
+    # Unresolved parent internals retain their lexically qualified runtime
+    # name so unrelated graphical blocks cannot merge variables by raw name.
+    assert "Graphical parent__routed_internal" in parent_dependency_names
 
 
 # Dynamic contract: a macro output without a producer does not retain a dead Var.

@@ -306,6 +306,77 @@ def build_legacy_vsc_dae_case(
     return grid, power_flow_results
 
 
+def build_legacy_vsc_current_seed_case() -> tuple[MultiCircuit, PowerFlowResults]:
+    """Build a VSC case whose RMS model exposes AC current magnitude.
+
+    :return: Grid and power-flow data with a non-unit VSC current seed.
+    """
+    grid: MultiCircuit
+    power_flow_results: PowerFlowResults
+    grid, power_flow_results = build_legacy_vsc_dae_case()
+    converter: VSC = grid.get_vsc()[0]
+    current_magnitude: Var = grid.var_factory.add_var(
+        name="Im",
+        reference=VarPowerFlowReferenceType.Im,
+    )
+    converter.rms_model.algebraic_vars.append(current_magnitude)
+    converter.rms_model.algebraic_eqs.append(current_magnitude)
+    converter.rms_model.external_mapping[
+        VarPowerFlowReferenceType.Im
+    ] = current_magnitude
+    power_flow_results.It_vsc[0] = complex(7.5, 0.0)
+    return grid, power_flow_results
+
+
+def test_dae_constructors_preserve_power_flow_vsc_current_base() -> None:
+    """Seed every power-balance DAE with the PF VSC current base unchanged.
+
+    :return: None.
+    """
+    grid: MultiCircuit
+    power_flow_results: PowerFlowResults
+    current_magnitude: Var
+    current_index: int
+
+    grid, power_flow_results = build_legacy_vsc_current_seed_case()
+    scalar_problem: RmsProblemDae = RmsProblemDae(
+        grid=grid,
+        options=RmsOptions(),
+        pf_results=power_flow_results,
+    )
+    current_magnitude = grid.get_vsc()[0].rms_model.E(
+        VarPowerFlowReferenceType.Im
+    )
+    current_index = scalar_problem._uid2idx_vars[current_magnitude.uid]
+    assert scalar_problem.get_x0()[current_index] == pytest.approx(7.5)
+
+    grid, power_flow_results = build_legacy_vsc_current_seed_case()
+    vectorized_problem: RmsProblemDaeVec = RmsProblemDaeVec(
+        grid=grid,
+        options=RmsOptions(),
+        pf_results=power_flow_results,
+    )
+    current_magnitude = grid.get_vsc()[0].rms_model.E(
+        VarPowerFlowReferenceType.Im
+    )
+    current_index = vectorized_problem._uid2idx_vars[current_magnitude.uid]
+    assert vectorized_problem.get_x0()[current_index] == pytest.approx(7.5)
+
+    grid, power_flow_results = build_legacy_vsc_current_seed_case()
+    full_vectorized_problem: RmsProblemDaeFullVec = RmsProblemDaeFullVec(
+        grid=grid,
+        options=RmsOptions(),
+        pf_results=power_flow_results,
+    )
+    current_magnitude = grid.get_vsc()[0].rms_model.E(
+        VarPowerFlowReferenceType.Im
+    )
+    current_index = full_vectorized_problem._uid2idx_vars[
+        current_magnitude.uid
+    ]
+    assert full_vectorized_problem.get_x0()[current_index] == pytest.approx(7.5)
+
+
 def test_dae_constructors_preserve_legacy_vsc_power_coupling() -> None:
     """Keep v1/custom VSC models runnable in all power-balance DAE paths.
 
@@ -460,7 +531,9 @@ def test_full_vectorized_capacitive_dc_nodal_layout_matches_jacobian() -> None:
         ) / (2.0 * perturbation)
         column_index += 1
 
-    assert residual[-2:].tolist() == pytest.approx((0.25, 0.19))
+    # A capacitive DC bus contributes its local P balance, while the physical
+    # AC terminal independently retains both reactive and active nodal rows.
+    assert residual[-3:].tolist() == pytest.approx((0.25, -0.03, 0.19))
     assert np.allclose(
         analytic_jacobian,
         finite_difference_jacobian,

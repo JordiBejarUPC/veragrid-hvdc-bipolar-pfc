@@ -30,7 +30,12 @@ from VeraGridEngine.Utils.procedural_logic_contract import (
 
 
 class RmsTerminalSide(Enum):
-    """Identify one hidden physical network terminal of an RMS device."""
+    """Identify one hidden physical network terminal of an RMS device.
+
+    ``BUS`` selects one-terminal topology. ``FROM`` and ``TO`` select the
+    corresponding ends of a branch. The side is resolved by ``MultiCircuit``
+    topology and is independent of visible symbolic signal ports.
+    """
 
     BUS = "bus"
     FROM = "from"
@@ -38,7 +43,11 @@ class RmsTerminalSide(Enum):
 
 
 class RmsPhysicalMeterKind(Enum):
-    """Identify the physical quantity selected by one RMS meter."""
+    """Identify the physical quantity selected by one RMS meter.
+
+    The kind constrains which physical target and terminal are valid while
+    leaving the meter block as the sole owner of its solved expressions.
+    """
 
     __slots__ = ()
 
@@ -279,11 +288,12 @@ def rms_physical_measurement_point_from_data(
 class RmsTerminalPowerContribution:
     """Declare one device power flow consumed by the RMS nodal assembler.
 
-    The referenced active and reactive powers use the branch convention: a
-    positive value flows from the connected bus into the device. The network
-    assembler therefore contributes the negative of that value to the bus
-    injection balance. The declaration stores semantic references only and
-    never retains a second symbolic variable graph.
+    ``FROM`` and ``TO`` references use the branch convention: a positive value
+    flows from the connected bus into the device, so the network assembler
+    contributes its negative to the bus injection. ``BUS`` references already
+    use the device-to-network injection convention and retain their sign. The
+    declaration stores semantic references only and never retains a second
+    symbolic variable graph.
     """
 
     __slots__ = (
@@ -432,7 +442,12 @@ def rms_terminal_power_contribution_from_data(
 
 
 class EmtTerminalSide(Enum):
-    """Identify one hidden physical network terminal of an EMT device."""
+    """Identify one hidden physical network terminal of an EMT device.
+
+    ``BUS`` selects one-terminal topology. ``FROM`` and ``TO`` select branch
+    ends. The assigned VeraGrid device, rather than diagram wiring, resolves
+    the side to the bus whose KCL receives the current.
+    """
 
     BUS = "bus"
     FROM = "from"
@@ -440,7 +455,12 @@ class EmtTerminalSide(Enum):
 
 
 class EmtTerminalConductor(Enum):
-    """Identify one instantaneous EMT conductor current."""
+    """Identify one instantaneous EMT conductor current.
+
+    ``DC`` addresses the scalar DC shell. The remaining values address the
+    neutral and three phases of an AC NABC shell. Assembly rejects a conductor
+    whose domain does not match the connected bus.
+    """
 
     DC = "dc"
     NEUTRAL = "neutral"
@@ -450,7 +470,12 @@ class EmtTerminalConductor(Enum):
 
 
 class EmtTerminalCurrentContribution:
-    """Declare one device current consumed by the EMT nodal assembler."""
+    """Declare one device current consumed by the EMT nodal assembler.
+
+    The declaration stores only a typed side, conductor, and semantic current
+    reference. The current variable remains in the canonical block, while the
+    physical bus is resolved later from ``MultiCircuit`` topology.
+    """
 
     __slots__ = (
         "_terminal_side",
@@ -609,13 +634,13 @@ def emt_terminal_current_contribution_from_data(
 
 
 class DynamicModelContract:
-    """
-    Store typed dynamic-behavior declarations owned by one symbolic block.
+    """Store typed dynamic-behavior declarations owned by one symbolic block.
 
     The contract contains semantic references, scalar flags and symbolic UIDs.
-    It therefore
-    preserves the canonical ``Block`` object graph instead of retaining import
-    parser objects or references to a second dynamic-model representation.
+    It therefore preserves the canonical ``Block`` object graph instead of
+    retaining import parser objects or references to a second dynamic-model
+    representation. Physical declarations state quantity ownership while
+    ``MultiCircuit`` remains the only source of bus topology.
     """
 
     __slots__ = (

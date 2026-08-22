@@ -3,6 +3,13 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 
+"""Assemble declared EMT device currents into topology-owned KCL balances.
+
+The assembler resolves typed device terminals and conductors through the
+assigned VeraGrid topology. Visible symbolic ports remain signal interfaces
+and never determine electrical ownership.
+"""
+
 from typing import Dict, List, Tuple
 
 from VeraGridEngine.Utils.Symbolic.block import (

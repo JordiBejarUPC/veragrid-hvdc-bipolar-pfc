@@ -2666,6 +2666,7 @@ def convert_dgs_to_line(
 
     applied_template = False
     dynamic_parameters_complete: bool = False
+    is_dc_cable: bool = line.bus_from.is_dc and line.bus_to.is_dc
     if len(owned_sections) > 0:
         section_r = 0.0
         section_x = 0.0
@@ -2758,10 +2759,7 @@ def convert_dgs_to_line(
             applied_template = False
             dynamic_parameters_complete = False
     elif seq_template is not None:
-        # DGS can contain electrically short links whose valid per-unit series
-        # impedance is below six decimal places. Preserve source precision so
-        # load flow does not erase resistance or distort reactance before the
-        # canonical Line becomes the sole topology owner.
+        # Preserve the declarative series values on the canonical Line for every simulation domain.
         line.apply_template(
             obj=seq_template,
             Sbase=baseMVA,
@@ -2788,10 +2786,20 @@ def convert_dgs_to_line(
     else:
         pass
 
+    # Alex review required: retain precise AC link data while preserving its historical topology reduction.
+    is_ac_topological_link: bool = (
+        not is_dc_cable
+        and np.round(float(line.R), decimals=6) == 0.0
+        and np.round(float(line.X), decimals=6) == 0.0
+    )
+    if is_ac_topological_link:
+        line.reducible = True
+    else:
+        pass
+
     # Retain the two irreducible energy coefficients of a DGS DC cable on the
     # final Line. The static per-unit reactance and susceptance already include
     # angular frequency, while the RMS differential equations require seconds.
-    is_dc_cable: bool = line.bus_from.is_dc and line.bus_to.is_dc
     if is_dc_cable and dynamic_parameters_complete:
         angular_frequency: float = 2.0 * math.pi * float(freq)
         has_valid_dynamic_parameters: bool = (

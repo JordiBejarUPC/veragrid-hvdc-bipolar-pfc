@@ -226,7 +226,13 @@ class RmsVectorizedTerminalBalanceLayout:
 
 
 class RmsVectorizedLegacyBalanceLayout:
-    """Build one explicit transient layout for a contract-free model class."""
+    """Build one explicit transient layout for a contract-free model class.
+
+    This compatibility object derives declarations only from established
+    version-1 external mappings. It exists for one compilation, is never
+    attached to the model or persisted, and cannot replace a partial explicit
+    physical contract.
+    """
 
     __slots__ = (
         "_terminal_sides",
@@ -408,7 +414,11 @@ class RmsVectorizedLegacyBalanceLayout:
 
 
 class RmsVectorizedNodalBalanceKind(Enum):
-    """Identify how one compiled nodal row is evaluated at runtime."""
+    """Identify how one compiled nodal row is evaluated at runtime.
+
+    The kind preserves the residual rule selected when a row is appended, so
+    runtime evaluation and Jacobian compilation use identical row ordering.
+    """
 
     ACTIVE_POWER = 1
     REACTIVE_POWER = 2
@@ -416,7 +426,12 @@ class RmsVectorizedNodalBalanceKind(Enum):
 
 
 class RmsVectorizedNodalBalanceLayout:
-    """Store the exact compiled nodal rows shared by RHS and Jacobians."""
+    """Store the exact compiled nodal rows shared by RHS and Jacobians.
+
+    Each entry records its physical bus and evaluation rule at equation-build
+    time. Capacitive DC rows additionally retain the UID of their bus-local
+    power variable; other row kinds must not own one.
+    """
 
     __slots__ = (
         "_kinds",
@@ -1242,12 +1257,23 @@ class RmsProblemDaeFullVec(RmsProblemTemplate):
                 pt_init = St_vsc[i].real
                 qt_init = St_vsc[i].imag
                 vm_t = np.abs(self.power_flow_results.voltage[t])
-                im_init = np.sqrt(pt_init * pt_init + qt_init * qt_init) / (vm_t + 1e-12)
+                im_init: float = float(
+                    np.sqrt(pt_init * pt_init + qt_init * qt_init)
+                    / (vm_t + 1e-12)
+                )
 
                 if i < len(self.power_flow_results.It_vsc):
-                    it_mag = np.abs(self.power_flow_results.It_vsc[i]) / self.grid.Sbase
+                    # Power-flow VSC currents already use the system per-unit
+                    # base expected by the RMS physical-terminal equations.
+                    it_mag: float = float(
+                        np.abs(self.power_flow_results.It_vsc[i])
+                    )
                     if np.isfinite(it_mag) and it_mag > 0.0:
                         im_init = it_mag
+                    else:
+                        pass
+                else:
+                    pass
 
                 self.set_init_guess(mdl, VarPowerFlowReferenceType.Pf, Sf_vsc)
                 self.set_init_guess(mdl, VarPowerFlowReferenceType.Pt, pt_init)
@@ -1267,7 +1293,6 @@ class RmsProblemDaeFullVec(RmsProblemTemplate):
                     dc_current_init,
                 )
                 if VarPowerFlowReferenceType.Im in mdl.external_mapping:
-                    im_init = float(np.abs(self.power_flow_results.It_vsc[i]) / self.grid.Sbase)
                     self.set_init_guess(mdl, VarPowerFlowReferenceType.Im, im_init)
                 else:
                     pass
@@ -2633,7 +2658,21 @@ class RmsProblemDaeFullVec(RmsProblemTemplate):
             self._procedural_logic_updater.update(t=t, x=x, params=params)
         self._variable_parameters_values[:] = params[: len(self._variable_parameters)]
 
-    def add_variables_to_compilation_dicts(self, elm: ALL_DEV_TYPES, mdl: Block):
+    def add_variables_to_compilation_dicts(
+            self,
+            elm: ALL_DEV_TYPES,
+            mdl: Block,
+    ) -> None:
+        """Register one block tree in the vectorized compilation mappings.
+
+        The physical network device remains constant while recursion visits
+        the root model and every symbolic child. This preserves the association
+        needed to project compiled variables back to the owning device.
+
+        :param elm: Physical VeraGrid device owning the complete model tree.
+        :param mdl: Current canonical block in the recursive traversal.
+        :return: None.
+        """
 
         self.add_block_variables_to_compilation_dicts(elm, mdl)
         for child in mdl.children:

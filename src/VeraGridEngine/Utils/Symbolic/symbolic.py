@@ -1484,7 +1484,23 @@ def sqrt(x: Expr) -> Expr:
 
 
 def sqrt_diff(u: Expr, du: Expr) -> Expr:
-    return du / (Const(2) * sqrt(u))
+    """Differentiate a square root with a finite boundary convention.
+
+    The analytical derivative is retained for strictly positive arguments.
+    At zero, where the derivative is not finite, the symbolic runtime uses a
+    zero slope. This is the deterministic boundary convention required by
+    limited expressions such as ``sqrt(max(x, 0))``.
+
+    :param u: Square-root argument.
+    :param du: Derivative of the argument.
+    :return: Symbolic derivative that remains finite at zero.
+    """
+    protected_derivative: Expr = safe_divide(
+        numerator=du,
+        denominator=Const(2) * sqrt(u),
+        zero_denominator_value=Const(1.0),
+    )
+    return protected_derivative * heaviside(u)
 
 
 def asin(x: Expr) -> Expr:

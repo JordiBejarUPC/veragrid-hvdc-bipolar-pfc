@@ -3,6 +3,13 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 
+"""Assemble declared RMS device powers into topology-owned bus balances.
+
+Signal wiring is intentionally absent from this module. Each declaration says
+which symbolic P/Q variable belongs to a physical terminal, and the assigned
+VeraGrid device supplies the bus that owns the resulting nodal injection.
+"""
+
 from VeraGridEngine.basic_structures import BoolVec, ObjVec
 from VeraGridEngine.enumerations import VarPowerFlowReferenceType
 from VeraGridEngine.Utils.Symbolic.block import (
