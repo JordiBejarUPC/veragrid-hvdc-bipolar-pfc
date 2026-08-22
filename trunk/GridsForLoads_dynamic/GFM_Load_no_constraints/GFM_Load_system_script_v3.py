@@ -366,7 +366,11 @@ Sb      = 2000000 / 1000000 # VA -> MVA
 omega   = 2 * np.pi * 50.0
 sample_time_s = 5.0e-6
 
-grid = gce.MultiCircuit(Sbase=Sb, fbase=50.0)
+grid = gce.MultiCircuit(name="GFM Load EMT validation system", Sbase=Sb, fbase=50.0)
+grid.comments = (
+    "Thevenin grid equivalent, grid-connection branch, grid-forming converter "
+    "with continuous DAE controllers, and controlled-current-source load."
+)
 
 # Buses
 bus0 = gce.Bus(name="Bus0", Vnom=U, is_slack=True)
@@ -417,6 +421,18 @@ gen0 = gce.Generator(name="Gen0", vset=1.0, Snom=grid.Sbase, freq = 50, r1=R_g_p
 grid.add_line(line0)
 grid.add_generator(bus=bus0, api_obj=gen0)
 grid.add_load(bus=bus1, api_obj=load)
+
+# Store a simple one-line layout with the circuit so that the GUI opens the
+# model with Bus0 and Bus1 already positioned instead of an empty schematic.
+bus0.x = 0.0
+bus0.y = 0.0
+bus1.x = 400.0
+bus1.y = 0.0
+schematic_diagram: gce.SchematicDiagram = gce.SchematicDiagram(name="GFM Load one-line diagram")
+schematic_diagram.update_graphic_location(api_object=bus0, x=0.0, y=0.0, w=80.0, h=20.0)
+schematic_diagram.update_graphic_location(api_object=bus1, x=400.0, y=0.0, w=80.0, h=20.0)
+schematic_diagram.update_graphic_location(api_object=line0)
+grid.add_diagram(schematic_diagram)
 
 
 for bus in grid.buses:
@@ -486,14 +502,14 @@ VALID_TESTS = {
 }
 
 # Select a single EMT test here.
-# selected_test = TEST_P_GFM
+selected_test = TEST_P_GFM
 # selected_test = TEST_ROCOF
 # selected_test = TEST_PHASE_JUMP
 # selected_test = TEST_VAC_STEP
 # selected_test = TEST_VAC_SAG
 # selected_test = TEST_VQ_STEP
 # selected_test = TEST_VD_STEP
-selected_test = TEST_CURRENT_LIMITER
+# selected_test = TEST_CURRENT_LIMITER
 # selected_test = TEST_NONE
 
 if selected_test not in VALID_TESTS:
@@ -501,6 +517,7 @@ if selected_test not in VALID_TESTS:
     raise ValueError(f"Unknown selected_test '{selected_test}'. Valid options: {valid_tests_list}")
 
 selected_test_suffix: str = TEST_CSV_SUFFIX[selected_test]
+save_veragrid_model: bool = True
 print(f"Selected EMT test: {selected_test}")
 print(f"Result test tag: {selected_test_suffix}")
 
@@ -657,6 +674,26 @@ for event in events_to_add:
     grid.add_emt_event(event)
 
 emt_events_group_names = np.array(0)
+
+######################################################################################################
+# Save the complete GUI-loadable model
+######################################################################################################
+# Save after attaching all EMT templates and the selected event, but before
+# running Power Flow or EMT. This archive contains the circuit, symbolic EMT
+# blocks, schematic layout, event group, and selected test event; simulation
+# result arrays remain in the separate CSV export.
+veragrid_model_path: Path = (
+    # Keep the generated GUI model separate from earlier validation archives.
+    # Windows can reject truncating a .veragrid file that is still open in the
+    # GUI, whereas this dedicated name can be created without touching it.
+    Path(__file__).resolve().parent / f"GFM_Load_system_v3_{selected_test_suffix}_gui.veragrid"
+)
+if save_veragrid_model:
+    gce.save_file(grid=grid, filename=str(veragrid_model_path))
+    print(f"GUI-loadable VeraGrid model saved to: {veragrid_model_path}")
+else:
+    pass
+
 ######################################################################################################
 # PowerFlow
 ######################################################################################################

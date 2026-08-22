@@ -3286,8 +3286,9 @@ class SimulationsMain(TimeEventsMain):
         """
         if self.circuit.valid_for_simulation():
             options = self.get_selected_power_flow_options()
+            t_idx = self.get_diagram_slider_index()
             bus_names = np.array([b.name for b in self.circuit.buses])
-            sigma_driver = sim.SigmaAnalysisDriver(grid=self.circuit, options=options)
+            sigma_driver = sim.SigmaAnalysisDriver(grid=self.circuit, options=options, t_idx=t_idx)
             sigma_driver.run()
 
             if not sigma_driver.results.converged:
@@ -3298,6 +3299,7 @@ class SimulationsMain(TimeEventsMain):
                                                    bus_names=bus_names,
                                                    grid=self.circuit,
                                                    options=options,
+                                                   t_idx=t_idx,
                                                    classical_sigma=False,
                                                    dpr_use_stored_guess=True,
                                                    dpr_control_q=options.control_Q,

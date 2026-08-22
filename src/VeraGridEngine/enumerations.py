@@ -3498,6 +3498,7 @@ class RmsInitializationMethod(Enum):
     Explicit = "Explicit"
     ReducedExplicit = "ReducedExplicit"
     PseudoTransient = "PseudoTransient"
+    Auto = "Auto"
     CustomValues = "CustomValues"
 
     def __str__(self) -> str:

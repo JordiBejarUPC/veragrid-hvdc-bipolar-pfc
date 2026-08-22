@@ -19,8 +19,8 @@ from PySide6.QtGui import (QAction, QBrush, QColor, QConicalGradient,
 from PySide6.QtWidgets import (QApplication, QCheckBox, QComboBox, QFrame,
     QHBoxLayout, QHeaderView, QLabel, QMainWindow,
     QMenu, QMenuBar, QPushButton, QSizePolicy,
-    QSpacerItem, QSplitter, QStatusBar, QTabWidget,
-    QTableView, QVBoxLayout, QWidget)
+    QSlider, QSpacerItem, QSplitter, QStatusBar,
+    QTabWidget, QTableView, QVBoxLayout, QWidget)
 
 from VeraGrid.Gui.Widgets.matplotlibwidget import MatplotlibWidget
 from VeraGrid.Gui.Icons.icons_rc import *
@@ -107,6 +107,17 @@ class Ui_MainWindow(object):
 
         self.verticalLayout_4.addItem(self.verticalSpacer)
 
+        self.timeLabel = QLabel(self.frame_8)
+        self.timeLabel.setObjectName(u"timeLabel")
+
+        self.verticalLayout_4.addWidget(self.timeLabel)
+
+        self.timeSlider = QSlider(self.frame_8)
+        self.timeSlider.setObjectName(u"timeSlider")
+        self.timeSlider.setOrientation(Qt.Orientation.Horizontal)
+
+        self.verticalLayout_4.addWidget(self.timeSlider)
+
         self.sigmaRerunButton = QPushButton(self.frame_8)
         self.sigmaRerunButton.setObjectName(u"sigmaRerunButton")
         self.sigmaRerunButton.setIcon(icon)
@@ -188,6 +199,7 @@ class Ui_MainWindow(object):
         self.sigmaDiscreteShuntsCheckBox.setText(QCoreApplication.translate("MainWindow", u"Discrete shunts", None))
         self.sigmaQvDroopCheckBox.setText(QCoreApplication.translate("MainWindow", u"QV droop", None))
         self.sigmaDistributedSlackCheckBox.setText(QCoreApplication.translate("MainWindow", u"Distributed slack", None))
+        self.timeLabel.setText(QCoreApplication.translate("MainWindow", u"...", None))
         self.sigmaRerunButton.setText(QCoreApplication.translate("MainWindow", u"Re-run", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab), QCoreApplication.translate("MainWindow", u"Plot", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_2), QCoreApplication.translate("MainWindow", u"Data", None))
