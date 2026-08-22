@@ -111,9 +111,6 @@ def run_case(grid_path: str,
     converged = int(np.sum(res.converged)) if res.converged is not None else 0
     exchange = res.inter_area_flows[:len(time_indices)]
 
-    per_step = np.array(drv.per_step_s) if drv.per_step_s else np.zeros(0)
-    slowest_idx = np.argsort(per_step)[::-1][:3] if len(per_step) else []
-
     out: Dict[str, Any] = {
         "label": label,
         "grid": os.path.basename(grid_path),
@@ -121,10 +118,6 @@ def run_case(grid_path: str,
         "open_s": round(t_open, 2),
         "run_s": round(t_run, 2),
         "s_per_step": round(t_run / max(len(time_indices), 1), 3),
-        "step_min_s": round(float(np.min(per_step)), 3) if len(per_step) else None,
-        "step_med_s": round(float(np.median(per_step)), 3) if len(per_step) else None,
-        "step_max_s": round(float(np.max(per_step)), 3) if len(per_step) else None,
-        "slowest_steps": {int(i): round(float(per_step[i]), 2) for i in sorted(slowest_idx)},
         "contingency_groups": n_ctg_groups,
         "consider_contingencies": consider_contingencies,
         "corrective_contingencies": corrective_contingencies,
@@ -161,7 +154,6 @@ def main():
                                 not args.no_contingencies, args.corrective, "Pmode3"))
 
     keys = ["label", "grid", "steps", "converged_steps", "open_s", "run_s", "s_per_step",
-            "step_min_s", "step_med_s", "step_max_s",
             "region_converged_msgs", "region_unstable_msgs", "lazy_groups_added_msgs",
             "errors", "contingency_groups",
             "exchange_min_MW", "exchange_max_MW", "exchange_mean_MW"]

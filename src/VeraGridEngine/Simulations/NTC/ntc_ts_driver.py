@@ -4,7 +4,6 @@
 # SPDX-License-Identifier: MPL-2.0
 
 import numpy as np
-import time
 from typing import Union
 
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
@@ -24,8 +23,6 @@ class OptimalNetTransferCapacityTimeSeriesDriver(TimeSeriesDriverTemplate):
         "unresolved_counter",
         "installed_alpha",
         "installed_alpha_n1",
-        "per_step_s",
-        "prev_pins",
     )
 
     tpe = SimulationTypes.OptimalNetTransferCapacityTimeSeries_run
@@ -58,13 +55,6 @@ class OptimalNetTransferCapacityTimeSeriesDriver(TimeSeriesDriverTemplate):
         self.installed_alpha = None
         self.installed_alpha_n1 = None
 
-        # per-step wall times in seconds (benchmark / diagnostics)
-        self.per_step_s: list[float] = []
-
-        # converged Pmode3 droop region pins of the previous step, used to warm-start the
-        # next one (the saturation pattern rarely changes between adjacent hours)
-        self.prev_pins: dict[int, int] = dict()
-
     def opf(self):
         """
         Run thread
@@ -86,8 +76,6 @@ class OptimalNetTransferCapacityTimeSeriesDriver(TimeSeriesDriverTemplate):
         self.results.strict_formulation = self.options.strict_formulation
 
         for t_idx, t in enumerate(self.time_indices):
-
-            t_step = time.time()
 
             if self.options.strict_formulation:
 
@@ -133,8 +121,6 @@ class OptimalNetTransferCapacityTimeSeriesDriver(TimeSeriesDriverTemplate):
                     monitor_only_sensitive_branches=self.options.use_branch_exchange_sensitivity,
                     monitor_only_ntc_load_rule_branches=self.options.monitor_only_ntc_load_rule_branches,
                     ntc_load_rule=self.options.branch_rating_contribution,
-                    droop_mip=False,
-                    initial_droop_pins=self.prev_pins if self.prev_pins else None,
                     logger=self.logger,
                     progress_text=None,
                     progress_func=None,
@@ -142,13 +128,6 @@ class OptimalNetTransferCapacityTimeSeriesDriver(TimeSeriesDriverTemplate):
                     robust=self.options.opf_options.robust,
                     mip_framework=self.options.opf_options.mip_framework
                 )
-
-            self.per_step_s.append(time.time() - t_step)
-
-            # carry the converged region pattern over to warm-start the next step
-            pins_now = getattr(opf_vars.vsc_vars, "pmode3_final_pins", None)
-            if pins_now:
-                self.prev_pins = dict(pins_now)
 
             if t_idx == 0:
                 # one time results

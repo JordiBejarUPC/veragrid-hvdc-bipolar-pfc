@@ -476,6 +476,24 @@ class MIPFramework(Enum):
     OrTools = 'or-tools'
     PuLP = 'PuLP'
 
+    def __str__(self):
+        return self.value
+
+    def __repr__(self):
+        return str(self)
+
+    @staticmethod
+    def argparse(s):
+        """
+
+        :param s:
+        :return:
+        """
+        try:
+            return MIPFramework[s]
+        except KeyError:
+            return MIPFramework.PuLP
+
 
 class NtcSolutionState(Enum):
     """
@@ -500,9 +518,9 @@ class NtcSolutionState(Enum):
         :return:
         """
         try:
-            return MIPFramework[s]
+            return NtcSolutionState[s]
         except KeyError:
-            return MIPFramework.PuLP
+            return NtcSolutionState.NotOptimal
 
 
 class TimeGrouping(Enum):
