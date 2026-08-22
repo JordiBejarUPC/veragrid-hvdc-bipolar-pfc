@@ -266,6 +266,60 @@ def _remove_connected_input_runtime_aliases(
                 runtime_dictionary.pop(dictionary_var, None)
 
 
+def _normalize_unowned_interface_initializers(block: Block) -> None:
+    """Normalize startup equations without a solved variable owner.
+
+    Imported ``inc()`` equations may initialize a held controller input that
+    has no algebraic, state or differential owner. Such an input belongs to the
+    runtime parameter store. A target absent from every interface is dead
+    import residue and must not enter the explicit initialization graph.
+
+    :param block: Adapted converter block hierarchy.
+    :return: None.
+    """
+    owned_var_uids: Set[int] = set()
+    candidate_block: Block
+    owned_var: Var
+
+    for candidate_block in block.get_all_blocks():
+        for owned_var in candidate_block.algebraic_vars:
+            owned_var_uids.add(owned_var.uid)
+        for owned_var in candidate_block.state_vars:
+            owned_var_uids.add(owned_var.uid)
+        for owned_var in candidate_block.diff_vars:
+            owned_var_uids.add(owned_var.uid)
+
+    initial_var: Var
+    initial_expr: Expr
+    interface_var: Var
+    for candidate_block in block.get_all_blocks():
+        initial_items: List[Tuple[Var, Expr]] = list(
+            candidate_block.init_eqs.items()
+        )
+        for initial_var, initial_expr in initial_items:
+            is_declared_interface: bool = False
+            interface_groups: List[List[Var]] = list([
+                candidate_block.in_vars,
+                candidate_block.out_vars,
+            ])
+            interface_group: List[Var]
+            for interface_group in interface_groups:
+                for interface_var in interface_group:
+                    if interface_var is initial_var:
+                        is_declared_interface = True
+                    else:
+                        pass
+            is_unowned: bool = initial_var.uid not in owned_var_uids
+            if is_unowned:
+                candidate_block.init_eqs.pop(initial_var, None)
+                if is_declared_interface:
+                    candidate_block.event_dict[initial_var] = initial_expr
+                else:
+                    pass
+            else:
+                pass
+
+
 def _get_dgs_terminal_signal_name(variable: Var) -> str:
     """
     Return the terminal DSL name without its humanized block prefix.
@@ -864,28 +918,11 @@ def build_dgs_elmvscmono_rms_runtime_template(
             (pmq_var, initialized_modulation_q),
             (current_d_var, initialized_current_d),
             (current_q_var, initialized_current_q),
-            (
-                ac_active_power,
-                -converter_active_power * converter_to_system_power_gain,
-            ),
-            (
-                ac_reactive_power,
-                -converter_reactive_power * converter_to_system_power_gain,
-            ),
-            (
-                ac_current_magnitude,
-                sym.sqrt(
-                    current_d_var * current_d_var
-                    + current_q_var * current_q_var
-                    + epsilon
-                ) * converter_to_system_power_gain,
-            ),
+            # Terminal P/Q/current and network-side DC power/current are loaded
+            # from the power-flow references before explicit initialization.
+            # Keeping a second initialization equation for those same owners
+            # would close an artificial Pac/Qac <-> id/iq dependency cycle.
             (dc_conversion_power, -ac_active_power + converter_loss),
-            (dc_power, -ac_active_power + converter_loss),
-            (
-                network_dc_current,
-                dc_power / (dc_voltage + epsilon),
-            ),
         ]),
     )
     # The converter declares which physical terminal owns each power flow.
@@ -902,6 +939,7 @@ def build_dgs_elmvscmono_rms_runtime_template(
             reactive_power_reference=VarPowerFlowReferenceType.Qt,
         ),
     ])
+    _normalize_unowned_interface_initializers(block=wrapper_block)
     result: RmsModelTemplate = RmsModelTemplate(name=control_template.name)
     result.name = control_template.name
     result.tpe = DeviceType.VscDevice
@@ -1473,6 +1511,7 @@ def build_dgs_elmvsc_rms_runtime_template(
         # Other ElmVsc controller families remain valid without this optional
         # native modulation-factor initialization contract.
         pass
+    _normalize_unowned_interface_initializers(block=wrapper_block)
     result: RmsModelTemplate = RmsModelTemplate(name=control_template.name)
     result.name = control_template.name
     result.tpe = DeviceType.VscDevice

@@ -15,12 +15,15 @@ from VeraGridEngine.Devices.Branches.vsc import VSC
 from VeraGridEngine.Devices.Branches.line import Line
 from VeraGridEngine.Devices.Branches.series_reactance import SeriesReactance
 from VeraGridEngine.Devices.Branches.transformer import Transformer2W
+from VeraGridEngine.Devices.Injections.generator import Generator
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Devices.Parents.dynamic_parent import DynamicDevice
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
+from VeraGridEngine.Compilers.circuit_to_data import compile_numerical_circuit_at
+from VeraGridEngine.DataStructures.numerical_circuit import NumericalCircuit
 from VeraGridEngine.IO.dgs.dgs_circuit import DgsCircuit
 from VeraGridEngine.IO.dgs.dgs_logical_actuator_binding import (
     prepare_dgs_logical_actuator_topology,
@@ -87,6 +90,7 @@ from VeraGridEngine.IO.dgs.dynamic_models.dynamic_model_import import (
     load_user_dynamic_template_json_payload,
 )
 from VeraGridEngine.IO.file_open import FileOpen, FileOpenOptions
+from VeraGridEngine.Topology.simulation_indices import SimulationIndices
 from VeraGridEngine.IO.dynamic_model_import_types import (
     DynamicModelImportBundle,
     DynamicModelImportEntry,
@@ -580,6 +584,105 @@ def test_hvdc_vsc_converter_controls_use_configuration_not_solved_outputs(
     assert second_converter.control2_val == pytest.approx(0.0)
 
 
+def test_v1_external_sources_retain_fids_and_compile_one_reference_per_ac_region() -> None:
+    """Keep source semantics and compile one angle reference per AC region.
+
+    :return: None.
+    """
+    dgs_path: Path = _get_complete_hvdc_vsc_dgs_path(
+        file_name="hvdc_vsc_v1_complete_static_dynamic.dgs",
+    )
+    circuit: MultiCircuit = dgs_to_circuit(path=str(dgs_path))
+    expected_source_ids: set[str] = {"128", "129"}
+    imported_source_ids: set[str] = set()
+    generator: Generator
+
+    # Resolve sources by immutable DGS FID; names remain presentation data.
+    for generator in circuit.generators:
+        if str(generator.idtag) in expected_source_ids:
+            imported_source_ids.add(str(generator.idtag))
+            assert generator.bus is not None
+            assert not generator.bus.is_slack
+            assert float(generator.R1) > 0.0
+            assert float(generator.X1) > 0.0
+        else:
+            pass
+
+    assert imported_source_ids == expected_source_ids
+
+    # Preserve the DGS PV declaration in MultiCircuit. Each disconnected AC
+    # phase region promotes its own numerical reference without rewriting imported
+    # source data or treating the VSC/DC corridor as an AC phase connection.
+    numerical_circuit: NumericalCircuit = compile_numerical_circuit_at(circuit)
+    simulation_indices: SimulationIndices = (
+        numerical_circuit.get_simulation_indices()
+    )
+    source_bus_indices: set[int] = set()
+    generator_index: int
+    for generator_index in range(len(numerical_circuit.generator_data.idtag)):
+        generator_idtag: str = str(
+            numerical_circuit.generator_data.idtag[generator_index]
+        )
+        if generator_idtag in expected_source_ids:
+            source_bus_indices.add(int(
+                numerical_circuit.generator_data.bus_idx[generator_index]
+            ))
+        else:
+            pass
+
+    reference_indices: set[int] = set(
+        int(reference_index) for reference_index in simulation_indices.vd
+    )
+    assert reference_indices == source_bus_indices
+    assert len(reference_indices) == 2
+    reference_index: int
+    for reference_index in reference_indices:
+        assert not bool(numerical_circuit.bus_data.is_p_controlled[reference_index])
+        assert not bool(numerical_circuit.bus_data.is_q_controlled[reference_index])
+        assert bool(numerical_circuit.bus_data.is_vm_controlled[reference_index])
+        assert bool(numerical_circuit.bus_data.is_va_controlled[reference_index])
+
+
+def test_v1_short_lines_keep_declared_series_precision() -> None:
+    """Preserve sub-micro-pu series impedance from declarative DGS data.
+
+    :return: None.
+    """
+    dgs_path: Path = _get_complete_hvdc_vsc_dgs_path(
+        file_name="hvdc_vsc_v1_complete_static_dynamic.dgs",
+    )
+    circuit: MultiCircuit = dgs_to_circuit(path=str(dgs_path))
+    master_short_line: Line | None = None
+    slave_short_line: Line | None = None
+    imported_line: Line
+
+    # Resolve the immutable source FIDs without relying on display names.
+    for imported_line in circuit.lines:
+        if imported_line.idtag == "104":
+            slave_short_line = imported_line
+        elif imported_line.idtag == "105":
+            master_short_line = imported_line
+        else:
+            pass
+
+    assert slave_short_line is not None
+    assert master_short_line is not None
+
+    # The source type declares R/X in ohm per km and each link is 0.01 km.
+    # Convert those values on the exact terminal voltage base retained by DGS.
+    slave_impedance_base_ohm: float = 415.0 * 415.0 / circuit.Sbase
+    master_impedance_base_ohm: float = 400.0 * 400.0 / circuit.Sbase
+    expected_slave_r_pu: float = 0.0178 * 0.01 / slave_impedance_base_ohm
+    expected_slave_x_pu: float = 0.278 * 0.01 / slave_impedance_base_ohm
+    expected_master_r_pu: float = 0.0178 * 0.01 / master_impedance_base_ohm
+    expected_master_x_pu: float = 0.278 * 0.01 / master_impedance_base_ohm
+
+    assert slave_short_line.R == pytest.approx(expected_slave_r_pu)
+    assert slave_short_line.X == pytest.approx(expected_slave_x_pu)
+    assert master_short_line.R == pytest.approx(expected_master_r_pu)
+    assert master_short_line.X == pytest.approx(expected_master_x_pu)
+
+
 @pytest.mark.parametrize(
     ("file_name", "equipment_class"),
     (
@@ -886,6 +989,16 @@ def test_v3_dynamic_route_keeps_native_meters_as_connected_editor_blocks() -> No
         assert set(measurement_point.get_output_var_uids()).issubset(
             set(output_var.uid for output_var in meter_block.out_vars)
         )
+        output_var_uid: int
+        for output_var_uid in measurement_point.get_output_var_uids():
+            algebraic_owners: list[tuple[Block, Var]] = list(
+                (owner_child, algebraic_var)
+                for owner_child in owner_model.get_all_blocks()
+                for algebraic_var in owner_child.algebraic_vars
+                if algebraic_var.uid == output_var_uid
+            )
+            assert len(algebraic_owners) == 1, meter_name
+            assert algebraic_owners[0][0] is meter_block
         global_measurement_by_fid: dict[str, RmsPhysicalMeasurementPoint] = (
             collect_rms_physical_measurement_points(block=owner_model)
         )
@@ -960,6 +1073,51 @@ def test_v1_v2_dynamic_routes_keep_power_meters_as_editor_blocks(
         dynamic_simulation_mode=DynamicSimulationMode.RMS,
         logger_=logger,
     )
+    dc_branch: DynamicDevice
+    for dc_branch in circuit.get_branches_iter(
+            add_vsc=False,
+            add_hvdc=False,
+            add_switch=True,
+    ):
+        if dc_branch.bus_from.is_dc and dc_branch.bus_to.is_dc:
+            from_bus_vdc: Var | None = dc_branch.bus_from.rms_model.external_mapping.get(
+                VarPowerFlowReferenceType.Vdc,
+                None,
+            )
+            to_bus_vdc: Var | None = dc_branch.bus_to.rms_model.external_mapping.get(
+                VarPowerFlowReferenceType.Vdc,
+                None,
+            )
+            branch_vdc_from: Var | None = dc_branch.rms_model.external_mapping.get(
+                VarPowerFlowReferenceType.Vmf,
+                None,
+            )
+            branch_vdc_to: Var | None = dc_branch.rms_model.external_mapping.get(
+                VarPowerFlowReferenceType.Vmt,
+                None,
+            )
+            assert from_bus_vdc is not None
+            assert to_bus_vdc is not None
+            assert branch_vdc_from is not None
+            assert branch_vdc_to is not None
+            assert branch_vdc_from.uid == from_bus_vdc.uid
+            assert branch_vdc_to.uid == to_bus_vdc.uid
+        else:
+            pass
+    dc_converter: VSC
+    for dc_converter in circuit.get_vsc():
+        converter_bus_vdc: Var | None = dc_converter.bus_from.rms_model.external_mapping.get(
+            VarPowerFlowReferenceType.Vdc,
+            None,
+        )
+        converter_vdc_from: Var | None = dc_converter.rms_model.external_mapping.get(
+            VarPowerFlowReferenceType.Vf_dc,
+            None,
+        )
+        assert dc_converter.bus_from.is_dc
+        assert converter_bus_vdc is not None
+        assert converter_vdc_from is not None
+        assert converter_vdc_from.uid == converter_bus_vdc.uid
     meter_block_by_name: dict[str, Block] = dict()
     owner_model_by_meter_name: dict[str, Block] = dict()
     candidate_device: object
@@ -1025,6 +1183,16 @@ def test_v1_v2_dynamic_routes_keep_power_meters_as_editor_blocks(
         assert set(measurement_point.get_output_var_uids()).issubset(
             set(output_var.uid for output_var in meter_block.out_vars)
         )
+        output_var_uid: int
+        for output_var_uid in measurement_point.get_output_var_uids():
+            algebraic_owners: list[tuple[Block, Var]] = list(
+                (owner_child, algebraic_var)
+                for owner_child in owner_model.get_all_blocks()
+                for algebraic_var in owner_child.algebraic_vars
+                if algebraic_var.uid == output_var_uid
+            )
+            assert len(algebraic_owners) == 1, meter_name
+            assert algebraic_owners[0][0] is meter_block
         global_measurement_by_fid: dict[str, RmsPhysicalMeasurementPoint] = (
             collect_rms_physical_measurement_points(block=owner_model)
         )

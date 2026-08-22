@@ -2758,7 +2758,17 @@ def convert_dgs_to_line(
             applied_template = False
             dynamic_parameters_complete = False
     elif seq_template is not None:
-        line.apply_template(obj=seq_template, Sbase=baseMVA, freq=freq, logger=logger)
+        # DGS can contain electrically short links whose valid per-unit series
+        # impedance is below six decimal places. Preserve source precision so
+        # load flow does not erase resistance or distort reactance before the
+        # canonical Line becomes the sole topology owner.
+        line.apply_template(
+            obj=seq_template,
+            Sbase=baseMVA,
+            freq=freq,
+            logger=logger,
+            decimals_rounding=16,
+        )
         applied_template = True
         dynamic_parameters_complete = line.template is seq_template
     elif ohl_template is not None:
@@ -3496,6 +3506,7 @@ def convert_dgs_external_grid_to_generator(elmxnet: ElmXnet,
 
     gen = dev.Generator(
         name=elmxnet.loc_name or f"Gen_{_ref_id(elmxnet.ID)}",
+        idtag=_ref_id(elmxnet.ID),
         active=not bool(elmxnet.outserv),
         r1=r1,
         x1=x1,

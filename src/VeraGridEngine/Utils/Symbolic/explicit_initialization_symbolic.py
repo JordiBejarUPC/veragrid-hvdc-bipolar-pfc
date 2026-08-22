@@ -666,7 +666,7 @@ def init_explicit_common(
         uid2idx_diff: Dict[int, int],
         uid2idx_params: Dict[int, int],
         uid2idx_event_params: Dict[int, int],
-        params_array: np.ndarray,
+        params_array: List[Const] | np.ndarray,
         compile_single_equation: Union[SymbolicVectorSingleEquationCompiler, RmsSingleEquationCompiler],
         verbose: bool = False,
 ) -> Tuple[Dict[int, float | int | complex | None], Dict[int, float | int | complex | None]]:
@@ -698,8 +698,8 @@ def init_explicit_common(
     :type uid2idx_params: Dict[int, int]
     :param uid2idx_event_params: Event parameter index map.
     :type uid2idx_event_params: Dict[int, int]
-    :param params_array: Constant parameter vector.
-    :type params_array: np.ndarray
+    :param params_array: Constant parameter vector in symbolic storage or numeric form.
+    :type params_array: List[Const] | np.ndarray
     :param compile_single_equation: Backend-specific single-equation compiler wrapper.
     :type compile_single_equation: Union[SymbolicVectorSingleEquationCompiler, RmsSingleEquationCompiler]
     :param verbose: Print initialization progress.
@@ -713,6 +713,24 @@ def init_explicit_common(
     x: np.ndarray = np.ones(len(sys_vars))
     dx: np.ndarray = np.zeros(len(sys_diff_vars))
     event_params_array: np.ndarray = np.ones(len(variable_parameters))
+
+    # RMS problem assembly retains Const wrappers so symbolic ownership is not
+    # lost before compilation. Explicit evaluation consumes only concrete
+    # scalars, therefore materialize a fixed-size numeric view at this boundary.
+    if isinstance(params_array, np.ndarray):
+        numeric_params_array: np.ndarray = np.asarray(params_array, dtype=float)
+    else:
+        numeric_params_array = np.zeros(len(params_array), dtype=float)
+        parameter_index: int
+        parameter_value: Const
+        for parameter_index, parameter_value in enumerate(params_array):
+            if parameter_value.value is None:
+                parameter_name: str = constant_parameters[parameter_index].name
+                raise ValueError(
+                    f"Constant parameter '{parameter_name}' has no explicit initialization value"
+                )
+            else:
+                numeric_params_array[parameter_index] = float(parameter_value.value)
 
     # Seed the working vectors with the guesses already assembled before the
     # explicit stage. The problem relies on those PF-driven values and on previously
@@ -736,7 +754,7 @@ def init_explicit_common(
                 eq=eq,
                 event_params_array=event_params_array,
                 x=x,
-                params_array=params_array,
+                params_array=numeric_params_array,
                 dx=dx,
                 uid2idx_event_params=uid2idx_event_params,
                 uid2idx_vars=uid2idx_vars,
@@ -763,7 +781,7 @@ def init_explicit_common(
                     eq=eq,
                     event_params_array=event_params_array,
                     x=x,
-                    params_array=params_array,
+                    params_array=numeric_params_array,
                     dx=dx,
                     uid2idx_event_params=uid2idx_event_params,
                     uid2idx_vars=uid2idx_vars,
@@ -796,7 +814,7 @@ def init_explicit_common(
                         target_idx=target_idx,
                         target_array=x,
                         event_params_array=event_params_array,
-                        params_array=params_array,
+                        params_array=numeric_params_array,
                     )
                     x[target_idx] = result
                     init_guess[var.uid] = result
@@ -809,7 +827,7 @@ def init_explicit_common(
                         target_idx=target_idx,
                         target_array=dx,
                         event_params_array=event_params_array,
-                        params_array=params_array,
+                        params_array=numeric_params_array,
                     )
                     dx[target_idx] = result
                     diff_init_guess[var.uid] = result

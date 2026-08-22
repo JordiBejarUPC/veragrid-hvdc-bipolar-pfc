@@ -1252,6 +1252,20 @@ class RmsProblemDaeFullVec(RmsProblemTemplate):
                 self.set_init_guess(mdl, VarPowerFlowReferenceType.Pf, Sf_vsc)
                 self.set_init_guess(mdl, VarPowerFlowReferenceType.Pt, pt_init)
                 self.set_init_guess(mdl, VarPowerFlowReferenceType.Qt, qt_init)
+                dc_voltage_init: float = float(
+                    np.abs(self.power_flow_results.voltage[f])
+                )
+                dc_current_init: float = float(self.power_flow_results.If_vsc[i])
+                self.set_init_guess(
+                    mdl,
+                    VarPowerFlowReferenceType.Vf_dc,
+                    dc_voltage_init,
+                )
+                self.set_init_guess(
+                    mdl,
+                    VarPowerFlowReferenceType.Idc,
+                    dc_current_init,
+                )
                 if VarPowerFlowReferenceType.Im in mdl.external_mapping:
                     im_init = float(np.abs(self.power_flow_results.It_vsc[i]) / self.grid.Sbase)
                     self.set_init_guess(mdl, VarPowerFlowReferenceType.Im, im_init)
@@ -1582,7 +1596,6 @@ class RmsProblemDaeFullVec(RmsProblemTemplate):
         self._finalize_legacy_balance_layouts()
 
         # add the nodal balance equations
-        ac_virtual_buses = [elm.bus_to.idtag for elm in grid.get_vsc()]
         for i, elm in enumerate(self.grid.buses):
             if not P_used[i] and not Q_used[i]:
                 raise ValueError("Isolated RMS bus has no nodal balance equation")
@@ -1618,15 +1631,9 @@ class RmsProblemDaeFullVec(RmsProblemTemplate):
                             bus_index=i,
                             local_power_variable_uid=None,
                         )
-                elif (elm.idtag in ac_virtual_buses):
-                    self._algebraic_eqs.append(P[i])
-                    self._balance_equations.append(P[i])
-                    self._nodal_balance_layout.add_row(
-                        kind=RmsVectorizedNodalBalanceKind.ACTIVE_POWER,
-                        bus_index=i,
-                        local_power_variable_uid=None,
-                    )
                 else:
+                    # Converter terminals remain physical AC buses in the
+                    # canonical topology, with both reactive and active rows.
                     self._algebraic_eqs.append(Q[i])
                     self._algebraic_eqs.append(P[i])
                     self._balance_equations.append(Q[i])

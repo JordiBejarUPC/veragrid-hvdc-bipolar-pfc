@@ -3154,22 +3154,42 @@ def assign_transformer2w_static_api_mapping(
         problem_mapping=problem_mapping,
         logger=logger,
     )
-    assign_api_mapping_value_if_present(
-        mdl=mdl,
-        key=ParamPowerFlowReferenceType.g,
-        value=float(transformer.R / (transformer.R ** 2 + transformer.X ** 2)),
-        logger=logger,
-        device_name=transformer.name,
-        problem_mapping=problem_mapping,
+    needs_series_admittance: bool = (
+        ParamPowerFlowReferenceType.g in mdl.api_obj_mapping
+        or ParamPowerFlowReferenceType.b in mdl.api_obj_mapping
     )
-    assign_api_mapping_value_if_present(
-        mdl=mdl,
-        key=ParamPowerFlowReferenceType.b,
-        value=float(-transformer.X / (transformer.R ** 2 + transformer.X ** 2)),
-        logger=logger,
-        device_name=transformer.name,
-        problem_mapping=problem_mapping,
-    )
+    if needs_series_admittance:
+        series_impedance_square: float = float(
+            transformer.R ** 2 + transformer.X ** 2
+        )
+        if series_impedance_square > 1.0e-24:
+            assign_api_mapping_value_if_present(
+                mdl=mdl,
+                key=ParamPowerFlowReferenceType.g,
+                value=float(transformer.R / series_impedance_square),
+                logger=logger,
+                device_name=transformer.name,
+                problem_mapping=problem_mapping,
+            )
+            assign_api_mapping_value_if_present(
+                mdl=mdl,
+                key=ParamPowerFlowReferenceType.b,
+                value=float(-transformer.X / series_impedance_square),
+                logger=logger,
+                device_name=transformer.name,
+                problem_mapping=problem_mapping,
+            )
+        else:
+            add_static_mapping_warning(
+                logger=logger,
+                device_name=str(transformer.name),
+                message="Transformer series admittance requires non-zero impedance.",
+                value=series_impedance_square,
+                expected_value="R squared plus X squared greater than 1e-24",
+                device_property="R/X",
+            )
+    else:
+        pass
     assign_api_mapping_value_if_present(
         mdl=mdl,
         key=ParamPowerFlowReferenceType.bsh,

@@ -1383,6 +1383,111 @@ def _resolve_native_pll_element(
         return None
 
 
+def _remove_meter_target_fallback_ownership(
+        host_model: Block,
+        target_var: Var,
+) -> None:
+    """Remove imported receiver ownership superseded by a native meter.
+
+    Graphical DGS inputs are exposed as algebraic variables on their root so
+    an unconnected input can retain its imported startup value. Once an exact
+    native meter is connected, that meter owns the only solved equation and
+    the receiver remains an input alias rather than a second algebraic owner.
+
+    :param host_model: Activated imported controller root.
+    :param target_var: Exact receiver input connected to the native meter.
+    :return: None.
+    """
+    target_block: Block
+    target_event_var: Var
+    target_initial_var: Var
+
+    # Remove runtime and startup fallbacks from whichever imported child
+    # declared them. The native meter owns both phases after connection.
+    for target_block in host_model.get_all_blocks():
+        target_event_vars: List[Var] = list(target_block.event_dict.keys())
+        for target_event_var in target_event_vars:
+            if target_event_var is target_var:
+                target_block.event_dict.pop(target_event_var, None)
+            else:
+                pass
+        target_initial_vars: List[Var] = list(target_block.init_eqs.keys())
+        for target_initial_var in target_initial_vars:
+            if target_initial_var is target_var:
+                target_block.init_eqs.pop(target_initial_var, None)
+            else:
+                pass
+
+    # Imported wrapper levels may re-expose the same unconnected graphical
+    # input as an algebraic unknown without an equation. The physical meter now
+    # supplies that equation, so the exact receiver object must no longer be
+    # registered as a solved variable at any wrapper level.
+    target_index: int
+    candidate_index: int
+    candidate_var: Var
+    mapped_var: Var | None
+    for target_block in host_model.get_all_blocks():
+        target_index = len(target_block.algebraic_vars)
+        for candidate_index, candidate_var in enumerate(target_block.algebraic_vars):
+            if candidate_var is target_var:
+                target_index = candidate_index
+            else:
+                pass
+        if target_index < len(target_block.algebraic_vars):
+            target_block.algebraic_vars.pop(target_index)
+        else:
+            pass
+        mapped_var = target_block.var_mapping.get(target_var.name, None)
+        if mapped_var is target_var:
+            target_block.var_mapping.pop(target_var.name, None)
+        else:
+            pass
+
+
+def _promote_meter_dependent_startup_inputs(
+        host_model: Block,
+        meter_output_var: Var,
+) -> None:
+    """Retain meter-derived startup-only inputs as event parameters.
+
+    A PowerFactory ``inc()`` assignment may initialize an otherwise unowned
+    controller input from a physical meter. Such an input is held after startup
+    and therefore belongs to the event-parameter store, not the solved DAE.
+
+    :param host_model: Activated imported controller root.
+    :param meter_output_var: Connected physical meter output.
+    :return: None.
+    """
+    candidate_block: Block
+    initial_var: Var
+    initial_expr: Expr
+    expression_var: Var
+    input_var: Var
+
+    for candidate_block in host_model.get_all_blocks():
+        initial_items: List[Tuple[Var, Expr]] = list(
+            candidate_block.init_eqs.items()
+        )
+        for initial_var, initial_expr in initial_items:
+            is_input: bool = False
+            for input_var in candidate_block.in_vars:
+                if input_var is initial_var:
+                    is_input = True
+                else:
+                    pass
+            depends_on_meter: bool = False
+            for expression_var in initial_expr.get_vars():
+                if expression_var.uid == meter_output_var.uid:
+                    depends_on_meter = True
+                else:
+                    pass
+            if is_input and depends_on_meter:
+                candidate_block.init_eqs.pop(initial_var, None)
+                candidate_block.event_dict[initial_var] = initial_expr
+            else:
+                pass
+
+
 def _connect_meter_aliases(
         host_model: Block,
         targets_by_name: Dict[str, List[Var]],
@@ -1499,21 +1604,10 @@ def _connect_meter_aliases(
         else:
             output_var = output_by_alias_name.get(alias_name, None)
             for target_var in target_vars:
-                target_block: Block
-                target_event_var: Var
-                for target_block in host_model.get_all_blocks():
-                    target_event_vars: List[Var] = list(
-                        target_block.event_dict.keys()
-                    )
-                    for target_event_var in target_event_vars:
-                        if target_event_var.uid == target_var.uid:
-                            # The imported input fallback is superseded by the
-                            # authoritative native meter equation. Keeping both
-                            # would classify one algebraic output as an event
-                            # parameter during explicit initialization.
-                            target_block.event_dict.pop(target_event_var, None)
-                        else:
-                            pass
+                _remove_meter_target_fallback_ownership(
+                    host_model=host_model,
+                    target_var=target_var,
+                )
                 if output_var is None:
                     pass
                 else:
@@ -1531,6 +1625,10 @@ def _connect_meter_aliases(
                         var_factory.add_connections(
                             vars_to_subs=list([target_var]),
                             incoming_vars=list([output_var]),
+                        )
+                        _promote_meter_dependent_startup_inputs(
+                            host_model=host_model,
+                            meter_output_var=output_var,
                         )
                         connected_count += 1
             if alias_name in connected_alias_names:

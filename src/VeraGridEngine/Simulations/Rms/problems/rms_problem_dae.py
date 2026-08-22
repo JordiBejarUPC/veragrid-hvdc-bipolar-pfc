@@ -808,6 +808,20 @@ class RmsProblemDae(RmsProblemTemplate):
                 self.set_init_guess(mdl, VarPowerFlowReferenceType.Pf, Sf_vsc)
                 self.set_init_guess(mdl, VarPowerFlowReferenceType.Pt, pt_init)
                 self.set_init_guess(mdl, VarPowerFlowReferenceType.Qt, qt_init)
+                dc_voltage_init: float = float(
+                    np.abs(self.power_flow_results.voltage[f])
+                )
+                dc_current_init: float = float(self.power_flow_results.If_vsc[i])
+                self.set_init_guess(
+                    mdl,
+                    VarPowerFlowReferenceType.Vf_dc,
+                    dc_voltage_init,
+                )
+                self.set_init_guess(
+                    mdl,
+                    VarPowerFlowReferenceType.Idc,
+                    dc_current_init,
+                )
                 if VarPowerFlowReferenceType.Im in mdl.external_mapping:
                     im_init = float(np.abs(self.power_flow_results.It_vsc[i]) / self.grid.Sbase)
                     self.set_init_guess(mdl, VarPowerFlowReferenceType.Im, im_init)
@@ -1143,11 +1157,6 @@ class RmsProblemDae(RmsProblemTemplate):
 
         # print("start creating balance equations")
         # add the nodal balance equations
-        ac_virtual_buses = [
-            elm.bus_to.idtag
-            for elm in grid.get_vsc()
-            if VarPowerFlowReferenceType.Qt in elm.rms_model.external_mapping
-        ]
         for i, elm in enumerate(self.grid.buses):
             if not P_used[i] and not Q_used[i]:
                 has_capacitive_dc_state: bool = (
@@ -1198,9 +1207,11 @@ class RmsProblemDae(RmsProblemTemplate):
                             nodal_power_balance=P[i],
                         )
                     )
-                elif (elm.idtag in ac_virtual_buses):
-                    self._algebraic_eqs.append(P[i])
                 else:
+                    # Every AC terminal in MultiCircuit is a physical bus. A
+                    # VSC voltage-control equation does not replace the bus's
+                    # reactive-power balance, so both nodal residuals remain
+                    # owned by the RMS assembler.
                     self._algebraic_eqs.append(Q[i])
 
                     # The active-power balance at the AC slack bus is the

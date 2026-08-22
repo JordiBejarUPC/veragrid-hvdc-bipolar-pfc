@@ -379,6 +379,20 @@ class RmsProblemPhasor(RmsProblemTemplate):
 
                 f = bus_dict[elm.bus_from]
                 t = bus_dict[elm.bus_to]
+                dc_voltage_init: float = float(
+                    np.abs(self.power_flow_results.voltage[f])
+                )
+                dc_current_init: float = float(self.power_flow_results.If_vsc[i])
+                self.set_init_guess(
+                    mdl,
+                    VarPowerFlowReferenceType.Vf_dc,
+                    dc_voltage_init,
+                )
+                self.set_init_guess(
+                    mdl,
+                    VarPowerFlowReferenceType.Idc,
+                    dc_current_init,
+                )
                 if len(mdl.dynamic_model_contract.rms_terminal_power_contributions) > 0:
                     # New templates declare their physical terminal powers
                     # independently from selectable signal ports.

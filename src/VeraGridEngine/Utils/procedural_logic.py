@@ -1657,6 +1657,7 @@ class PickupDropoffLogic(ProceduralLogicBase):
 
     __slots__ = [
         "output_var_name",
+        "output_var_uid",
         "bool_expr",
         "pickup_delay_expr",
         "drop_delay_expr",
@@ -1677,9 +1678,21 @@ class PickupDropoffLogic(ProceduralLogicBase):
         pickup_delay_expr: Expr | Comparison,
         drop_delay_expr: Expr | Comparison,
         name: str = "",
+        output_var_uid: int | None = None,
     ) -> None:
+        """Create one delayed pickup/dropoff relay state machine.
+
+        :param output_var_name: Persisted output name for legacy lookup.
+        :param bool_expr: Boolean pickup/dropoff driving expression.
+        :param pickup_delay_expr: Delay before the output changes to one.
+        :param drop_delay_expr: Delay before the output returns to zero.
+        :param name: Optional user-facing logic name.
+        :param output_var_uid: Exact canonical output UID when available.
+        :return: None.
+        """
         super().__init__(name=name)
         self.output_var_name = output_var_name
+        self.output_var_uid: int | None = output_var_uid
         self.bool_expr = bool_expr
         self.pickup_delay_expr = pickup_delay_expr
         self.drop_delay_expr = drop_delay_expr
@@ -1699,7 +1712,22 @@ class PickupDropoffLogic(ProceduralLogicBase):
         :return: None
         """
         super().bind(problem)
-        output_var = _find_var_by_name(problem.sys_block, self.output_var_name)
+        if self.output_var_uid is None:
+            output_var: Var = _find_var_by_name(
+                problem.sys_block,
+                self.output_var_name,
+            )
+        else:
+            output_var_optional: Var | None = _find_var_by_uid_optional(
+                block=problem.sys_block,
+                var_uid=self.output_var_uid,
+            )
+            if output_var_optional is None:
+                raise KeyError(
+                    f"Procedural output UID '{self.output_var_uid}' was not found"
+                )
+            else:
+                output_var = output_var_optional
         self.output_idx = int(problem.uid2idx_event_params[output_var.uid])
         self.state = 0.0
         self.initialized = False
@@ -1814,6 +1842,10 @@ class PickupDropoffLogic(ProceduralLogicBase):
             pickup_delay_expr=_subs_expr_like(self.pickup_delay_expr, var_mapping),
             drop_delay_expr=_subs_expr_like(self.drop_delay_expr, var_mapping),
             name=self.name,
+            output_var_uid=_remap_var_uid(
+                var_uid=self.output_var_uid,
+                var_mapping=var_mapping,
+            ),
         )
 
 
@@ -2149,12 +2181,14 @@ def pickup_dropoff(
     :return: Pickup/dropoff procedural logic entry.
     """
     output_name = _coerce_var_name(output)
+    output_uid: int | None = output.uid if isinstance(output, Var) else None
     return PickupDropoffLogic(
         output_var_name=output_name,
         bool_expr=boolexpr,
         pickup_delay_expr=Tpick,
         drop_delay_expr=Tdrop,
         name=output_name if name == "" else name,
+        output_var_uid=output_uid,
     )
 
 
@@ -3877,6 +3911,7 @@ def procedural_logic_entry_to_dict(entry: ProceduralLogicBase) -> ProceduralLogi
     elif isinstance(entry, PickupDropoffLogic):
         data.update({
             "output_var_name": entry.output_var_name,
+            "output_var_uid": entry.output_var_uid,
             "bool_expr": _expr_like_to_dict(entry.bool_expr),
             "pickup_delay_expr": _expr_like_to_dict(entry.pickup_delay_expr),
             "drop_delay_expr": _expr_like_to_dict(entry.drop_delay_expr),
@@ -4105,12 +4140,25 @@ def _pickup_dropoff_logic_from_dict(data: ProceduralLogicData) -> PickupDropoffL
     :param data: Serialized logic dictionary.
     :return: Pickup/dropoff procedural logic entry.
     """
+    output_var_uid_raw: object = data.get("output_var_uid", None)
+    if output_var_uid_raw is None:
+        output_var_uid: int | None = None
+    else:
+        if (
+                isinstance(output_var_uid_raw, int)
+                and not isinstance(output_var_uid_raw, bool)
+        ):
+            output_var_uid = output_var_uid_raw
+        else:
+            raise TypeError("Pickup/dropoff output UID must be an integer")
+
     return PickupDropoffLogic(
         output_var_name=str(data["output_var_name"]),
         bool_expr=_expr_like_from_dict(_get_expr_like_field(data, "bool_expr")),
         pickup_delay_expr=_expr_like_from_dict(_get_expr_like_field(data, "pickup_delay_expr")),
         drop_delay_expr=_expr_like_from_dict(_get_expr_like_field(data, "drop_delay_expr")),
         name=str(data.get("name", "")),
+        output_var_uid=output_var_uid,
     )
 
 

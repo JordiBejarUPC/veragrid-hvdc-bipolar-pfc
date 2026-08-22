@@ -1721,6 +1721,7 @@ class DgsExpressionParser(ast.NodeVisitor):
                 self._procedural_logic_entries.append(
                     SampledValueLogic(
                         output_var_name=selector.name,
+                        output_var_uid=selector.uid,
                         source_expr=condition_expr,
                         name=selector.name,
                     )
@@ -1868,6 +1869,7 @@ class DgsExpressionParser(ast.NodeVisitor):
             self._procedural_logic_entries.append(
                 PickupDropoffLogic(
                     output_var_name=latch.name,
+                    output_var_uid=latch.uid,
                     bool_expr=self._visit_boolean_expression(node.args[0]),
                     pickup_delay_expr=_require_dgs_numeric_expression(
                         obj=self.visit(node.args[1]),
@@ -1955,6 +1957,7 @@ class DgsExpressionParser(ast.NodeVisitor):
             self._procedural_logic_entries.append(
                 SampledValueLogic(
                     output_var_name=sampled.name,
+                    output_var_uid=sampled.uid,
                     source_expr=args[0],
                     name=sampled.name,
                 )
@@ -2997,12 +3000,25 @@ def _build_symbol_table(
     shared_signals: Dict[str, Var],
 ) -> Tuple[Dict[str, Var], List[Var], Dict[str, Var], Dict[str, Var], Dict[str, Var]]:
     symbol_table: Dict[str, Var] = dict()
-    shared_names: Set[str] = set(blkdef.inputs + blkdef.outputs + blkdef.internals)
+    shared_names: Set[str] = set(blkdef.inputs + blkdef.outputs)
 
+    # Only declared signal ports participate in the enclosing graphical
+    # interface. BlkDef internals are lexically local: sharing generic names
+    # such as ``o3`` or ``yi`` across unrelated controller definitions merges
+    # their algebraic columns while retaining both defining equations.
     for name in shared_names:
         if name not in shared_signals:
             shared_signals[name] = Var(name=name)
         symbol_table[name] = shared_signals[name]
+
+    internal_name: str
+    for internal_name in blkdef.internals:
+        if internal_name in symbol_table:
+            pass
+        else:
+            symbol_table[internal_name] = Var(
+                name=f"{blkdef.loc_name}__{internal_name}"
+            )
 
     state_vars: List[Var] = list()
     state_var_map: Dict[str, Var] = dict()
@@ -4228,6 +4244,15 @@ def build_direct_root_elmcomp_block(
     else:
         result.root_block.children = child_blocks
     root_block: Block = result.root_block
+
+    # The outer ElmComp frame is also a structural projection. Retain only
+    # internals reached by executable child semantics so graphical cable labels
+    # cannot create free solver columns after the direct children are attached.
+    root_block.algebraic_vars = (
+        _retain_referenced_structural_algebraic_vars(
+            parent_block=root_block,
+        )
+    )
     return DgsDirectRootBuildResult(
         root_block=root_block,
         child_block_by_slot_id=child_block_by_slot_id,
@@ -6936,6 +6961,35 @@ def extract_root_slot_block_internal_signal_tree(
     )
 
 
+def _retain_referenced_structural_algebraic_vars(
+        parent_block: Block,
+) -> List[Var]:
+    """Keep only parent algebraic variables used by executable semantics.
+
+    A graphical macro frame declares cable labels as DGS internals. Child
+    blocks own the equations and variables carried by those cables, while the
+    parent retains only initialization or external-interface dependencies.
+    Registering an unused cable label as a parent algebraic variable creates a
+    solver degree of freedom without a physical equation.
+
+    :param parent_block: Parsed graphical parent before its children are added.
+    :return: Parent algebraic variables referenced by executable semantics.
+    """
+    retained_vars: List[Var] = list()
+    candidate_var: Var
+
+    # Preserve initialization and external mappings owned by the parent, but
+    # discard labels whose producer-consumer edge already lives in the child
+    # graph and therefore needs no second algebraic owner in the frame.
+    for candidate_var in parent_block.algebraic_vars:
+        if parent_block.find_var_in_block(candidate_var):
+            retained_vars.append(candidate_var)
+        else:
+            pass
+
+    return retained_vars
+
+
 def extract_root_slot_block_graphical_tree(
     dgs_path: str,
     slot_name: str,
@@ -7439,7 +7493,9 @@ def extract_root_slot_graphical_tree_from_circuit(
         children=child_blocks,
         in_vars=selected_runtime_block.in_vars,
         out_vars=resolved_outputs,
-        algebraic_vars=selected_runtime_block.algebraic_vars,
+        algebraic_vars=_retain_referenced_structural_algebraic_vars(
+            parent_block=selected_runtime_block,
+        ),
         init_eqs=selected_runtime_block.init_eqs,
     )
 

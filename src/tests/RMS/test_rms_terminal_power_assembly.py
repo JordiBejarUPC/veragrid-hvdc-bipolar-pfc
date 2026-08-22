@@ -274,7 +274,6 @@ def build_legacy_vsc_dae_case(
             from_active_power,
             to_active_power,
             to_reactive_power,
-            to_reactive_power,
         )),
         external_mapping=dict((
             (VarPowerFlowReferenceType.Pf, from_active_power),
@@ -372,7 +371,6 @@ def test_dae_constructors_preserve_legacy_vsc_power_coupling() -> None:
         0.20,
         -0.19,
         0.03,
-        0.03,
         -0.20,
         0.19,
         -0.03,
@@ -387,10 +385,13 @@ def test_dae_constructors_preserve_legacy_vsc_power_coupling() -> None:
         h=1.0e-3,
     ).toarray()
 
-    assert residual[:4].tolist() == pytest.approx((0.20, -0.19, 0.03, 0.03))
+    assert residual[:3].tolist() == pytest.approx((0.20, -0.19, 0.03))
     assert full_vectorized_problem.Q_vec[1] == pytest.approx(-0.03)
-    assert residual[-2:].tolist() == pytest.approx((-0.20, 0.19))
-    assert jacobian[-2, from_active_index] == pytest.approx(-1.0)
+    # The physical AC converter bus retains both Q and P nodal rows; converter
+    # control equations do not replace either network balance.
+    assert residual[-3:].tolist() == pytest.approx((-0.20, -0.03, 0.19))
+    assert jacobian[-3, from_active_index] == pytest.approx(-1.0)
+    assert jacobian[-2, to_reactive_index] == pytest.approx(-1.0)
     assert jacobian[-1, to_active_index] == pytest.approx(-1.0)
 
 
