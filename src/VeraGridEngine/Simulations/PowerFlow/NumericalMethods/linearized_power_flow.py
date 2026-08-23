@@ -180,6 +180,9 @@ def acdc_lin_pf(nc: NumericalCircuit,
     A = sp.lil_matrix((n, n))
     Af = sp.lil_matrix((nc.nbr, n))
 
+    # per branch susceptance, kept to build the phase shift term of the flows later
+    ys_arr: Vec = np.zeros(nc.nbr, dtype=float)
+
     for k in range(nc.nbr):
         f = nc.passive_branch_data.F[k]
         t = nc.passive_branch_data.T[k]
@@ -196,6 +199,7 @@ def acdc_lin_pf(nc: NumericalCircuit,
             # this is an error
             raise AttributeError(f"The branch {k} is nether fully AC not fully DC :(")
 
+        ys_arr[k] = ys
         Af[k, f] = ys
         Af[k, t] = -ys
 
@@ -279,7 +283,9 @@ def acdc_lin_pf(nc: NumericalCircuit,
                                            elapsed=time.time() - start)
 
     x = np.r_[Va, Vm]
-    x[no_slack] += dx
+
+    # Assign because the reduced system already returns the absolute angles
+    x[no_slack] = dx
 
     # update angles for non-reference buses
     Va = x[0:n]
@@ -288,8 +294,8 @@ def acdc_lin_pf(nc: NumericalCircuit,
     # re assemble the voltage
     V = cf.polar_to_rect(Vm, Va)
 
-    # compute flows
-    Pf = (Af @ V) * nc.Sbase
+    # Compute the flows from angles instead of complex voltages
+    Pf = (Af @ Va - ys_arr * tau) * nc.Sbase
 
     # check for convergence
     norm_f = 0.0
