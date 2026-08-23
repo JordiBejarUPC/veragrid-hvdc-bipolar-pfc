@@ -637,37 +637,50 @@ class ProceduralLogicBase(ProceduralLogicEntryContract[Expr]):
         return expr
 
     def _build_expr_plan(self, expr_eval: Expr, problem: ProceduralProblem) -> List[Tuple[int, int, int]]:
+        """Resolve every expression variable to its procedural runtime source.
+
+        Time variables deliberately retain separate source kinds because the
+        accepted sample clock and the target solver boundary have different
+        semantics during an implicit step. All other variables resolve through
+        the typed state, runtime-parameter, or constant-parameter mappings.
+
+        :param expr_eval: Normalized symbolic expression to bind.
+        :param problem: Procedural runtime mapping provider.
+        :return: Unique ``(uid, source kind, source index)`` bindings.
+        """
         # Plan tuple layout: (uid, source_kind, source_idx)
         # source_kind: 0 -> x/state-algebraic vars, 1 -> runtime params,
         # 2 -> const params, 3 -> accepted sample time, 4 -> target global time
         refs_by_uid: Dict[int, Tuple[int, int, int]] = dict()
 
+        var: Var
         for var in expr_eval.get_vars():
             if var.name == "glob_time" or var.uid == problem.glob_time.uid:
                 refs_by_uid[var.uid] = (var.uid, 4, -1)
-                continue
             elif var.name == "time":
                 refs_by_uid[var.uid] = (var.uid, 3, -1)
-                continue
             else:
-                pass
-
-            idx_var = problem.uid2idx_vars.get(var.uid, None)
-            if idx_var is not None:
-                refs_by_uid[var.uid] = (var.uid, 0, int(idx_var))
-                continue
-
-            idx_runtime = problem.uid2idx_event_params.get(var.uid, None)
-            if idx_runtime is not None:
-                refs_by_uid[var.uid] = (var.uid, 1, int(idx_runtime))
-                continue
-
-            idx_const = problem.uid2idx_params.get(var.uid, None)
-            if idx_const is not None:
-                refs_by_uid[var.uid] = (var.uid, 2, int(idx_const))
-                continue
-
-            raise KeyError(f"Unknown procedural variable '{var.name}'")
+                idx_var: int | None = problem.uid2idx_vars.get(var.uid, None)
+                if idx_var is not None:
+                    refs_by_uid[var.uid] = (var.uid, 0, int(idx_var))
+                else:
+                    idx_runtime: int | None = problem.uid2idx_event_params.get(
+                        var.uid,
+                        None,
+                    )
+                    if idx_runtime is not None:
+                        refs_by_uid[var.uid] = (var.uid, 1, int(idx_runtime))
+                    else:
+                        idx_const: int | None = problem.uid2idx_params.get(
+                            var.uid,
+                            None,
+                        )
+                        if idx_const is not None:
+                            refs_by_uid[var.uid] = (var.uid, 2, int(idx_const))
+                        else:
+                            raise KeyError(
+                                f"Unknown procedural variable '{var.name}'"
+                            )
 
         return list(refs_by_uid.values())
 
