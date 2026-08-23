@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
 import numpy as np
-from PySide6 import QtWidgets
+from PySide6 import QtCore, QtGui, QtWidgets
 
 from VeraGrid.Gui.DynamicEventsDialog.dynamic_events_editor_support import collect_block_runtime_event_parameters
 from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI
@@ -544,6 +544,157 @@ def _build_gui_editor(qt_app: QtWidgets.QApplication,
     return editor
 
 
+def _get_connection_path_segments(
+        connection: graph.ConnectionItem,
+) -> List[tuple[float, float, float, float]]:
+    """Extract ordered line segments from one orthogonal graphics path.
+
+    :param connection: Rendered connection whose path is inspected.
+    :return: Ordered ``x1, y1, x2, y2`` segment coordinates.
+    """
+    path: QtGui.QPainterPath = connection.path()
+    segment_count: int = max(0, path.elementCount() - 1)
+    segments: List[tuple[float, float, float, float]] = [
+        (0.0, 0.0, 0.0, 0.0) for unused_index in range(segment_count)
+    ]
+    segment_index: int
+    first_element: QtGui.QPainterPath.Element
+    second_element: QtGui.QPainterPath.Element
+    for segment_index in range(segment_count):
+        first_element = path.elementAt(segment_index)
+        second_element = path.elementAt(segment_index + 1)
+        segments[segment_index] = (
+            first_element.x,
+            first_element.y,
+            second_element.x,
+            second_element.y,
+        )
+    return segments
+
+
+def _get_block_item_visual_rect(item: graph.BlockItem) -> QtCore.QRectF:
+    """Return one block rectangle including every visible child label.
+
+    :param item: Block or transient signal tag represented in the scene.
+    :return: Axis-aligned scene rectangle containing body and child labels.
+    """
+    local_visual_rect: QtCore.QRectF = item.boundingRect().united(
+        item.childrenBoundingRect()
+    )
+    mapped_visual_rect: QtCore.QRectF | QtGui.QPolygonF = item.mapRectToScene(
+        local_visual_rect
+    )
+    if isinstance(mapped_visual_rect, QtCore.QRectF):
+        return mapped_visual_rect
+    else:
+        return mapped_visual_rect.boundingRect()
+
+
+def _assert_block_items_do_not_overlap(items: List[graph.BlockItem]) -> None:
+    """Assert that block bodies and their labels occupy disjoint areas.
+
+    :param items: Complete collection of projected blocks and signal tags.
+    :return: None.
+    """
+    left_index: int
+    right_index: int
+    left_rect: QtCore.QRectF
+    right_rect: QtCore.QRectF
+    overlap_rect: QtCore.QRectF
+    for left_index in range(len(items)):
+        left_rect = _get_block_item_visual_rect(items[left_index])
+        for right_index in range(left_index + 1, len(items)):
+            right_rect = _get_block_item_visual_rect(items[right_index])
+            overlap_rect = left_rect.intersected(right_rect)
+            assert overlap_rect.width() <= 1e-6 or overlap_rect.height() <= 1e-6
+
+
+def _orthogonal_segments_collide(
+        left_segment: tuple[float, float, float, float],
+        right_segment: tuple[float, float, float, float],
+        tolerance: float = 1e-6,
+) -> bool:
+    """Return whether two orthogonal segments cross or overlap internally.
+
+    Endpoint-only contact is allowed because it represents one wire reaching
+    its own port. Interior crossings and positive-length collinear overlaps are
+    forbidden by the projected DGS canvas contract.
+
+    :param left_segment: First ``x1, y1, x2, y2`` segment.
+    :param right_segment: Second ``x1, y1, x2, y2`` segment.
+    :param tolerance: Coordinate comparison tolerance.
+    :return: ``True`` for an interior crossing or collinear overlap.
+    """
+    left_horizontal: bool = abs(left_segment[1] - left_segment[3]) <= tolerance
+    right_horizontal: bool = abs(right_segment[1] - right_segment[3]) <= tolerance
+    if left_horizontal and right_horizontal:
+        same_axis: bool = abs(left_segment[1] - right_segment[1]) <= tolerance
+        overlap_length: float = (
+                min(max(left_segment[0], left_segment[2]), max(right_segment[0], right_segment[2]))
+                - max(min(left_segment[0], left_segment[2]), min(right_segment[0], right_segment[2]))
+        )
+        return same_axis and overlap_length > tolerance
+    elif not left_horizontal and not right_horizontal:
+        same_axis = abs(left_segment[0] - right_segment[0]) <= tolerance
+        overlap_length = (
+                min(max(left_segment[1], left_segment[3]), max(right_segment[1], right_segment[3]))
+                - max(min(left_segment[1], left_segment[3]), min(right_segment[1], right_segment[3]))
+        )
+        return same_axis and overlap_length > tolerance
+    else:
+        pass
+
+    if left_horizontal:
+        horizontal_segment: tuple[float, float, float, float] = left_segment
+        vertical_segment: tuple[float, float, float, float] = right_segment
+    else:
+        horizontal_segment = right_segment
+        vertical_segment = left_segment
+
+    crossing_x: float = vertical_segment[0]
+    crossing_y: float = horizontal_segment[1]
+    inside_horizontal: bool = (
+            crossing_x > min(horizontal_segment[0], horizontal_segment[2]) + tolerance
+            and crossing_x < max(horizontal_segment[0], horizontal_segment[2]) - tolerance
+    )
+    inside_vertical: bool = (
+            crossing_y > min(vertical_segment[1], vertical_segment[3]) + tolerance
+            and crossing_y < max(vertical_segment[1], vertical_segment[3]) - tolerance
+    )
+    return inside_horizontal and inside_vertical
+
+
+def _assert_connection_paths_do_not_collide(
+        connections: List[graph.ConnectionItem],
+) -> None:
+    """Assert that independently rendered wires never cross or overlap.
+
+    :param connections: Complete transient connection collection.
+    :return: None.
+    """
+    left_index: int
+    right_index: int
+    left_segments: List[tuple[float, float, float, float]]
+    right_segments: List[tuple[float, float, float, float]]
+    left_segment: tuple[float, float, float, float]
+    right_segment: tuple[float, float, float, float]
+    for left_index in range(len(connections)):
+        left_segments = _get_connection_path_segments(connections[left_index])
+        for right_index in range(left_index + 1, len(connections)):
+            right_segments = _get_connection_path_segments(connections[right_index])
+            for left_segment in left_segments:
+                for right_segment in right_segments:
+                        assert not _orthogonal_segments_collide(
+                            left_segment=left_segment,
+                            right_segment=right_segment,
+                        ), (
+                            connections[left_index].source_port.subsystem.name,
+                            connections[left_index].target_port.subsystem.name,
+                            connections[right_index].source_port.subsystem.name,
+                            connections[right_index].target_port.subsystem.name,
+                        )
+
+
 def _assert_nuactis_vsc_projection(
         editor: DynamicBlockEditorGUI,
         expected_protected_count: int,
@@ -578,6 +729,19 @@ def _assert_nuactis_vsc_projection(
         scene_item for scene_item in editor.scene.items()
         if isinstance(scene_item, graph.ConnectionItem)
     )
+    paired_items: List[graph.PairedItem] = list(
+        scene_item for scene_item in editor.scene.items()
+        if isinstance(scene_item, graph.PairedItem)
+    )
+    direct_connections: List[graph.ConnectionItem] = list(
+        connection for connection in scene_connections
+        if not isinstance(connection.source_port.parentItem(), graph.PairedItem)
+        and not isinstance(connection.target_port.parentItem(), graph.PairedItem)
+    )
+    projected_block_items: List[graph.BlockItem] = list(
+        scene_item for scene_item in editor.scene.items()
+        if isinstance(scene_item, graph.BlockItem)
+    )
 
     assert len(physical_items) == 1
     assert len(measurement_items) == 3
@@ -590,6 +754,14 @@ def _assert_nuactis_vsc_projection(
 
     physical_item: graph.GenericBlockItem = physical_items[0]
     assert physical_item.name == "VeraGrid VSC physical template"
+    assert editor.resolve_block_for_properties(physical_item.subsys) is editor.main_block
+    assert len(physical_item.subsys.algebraic_eqs) == 0
+    assert len(editor.main_block.algebraic_eqs) == 9
+    assert len(editor.main_block.init_eqs) == 6
+    editor.request_open_block_properties(physical_item.subsys)
+    assert editor._block_properties_dialogue is not None
+    assert editor._block_properties_dialogue.is_dae_model_page_active()
+    editor.close_block_properties_dock()
     assert {port.base_var.name for port in physical_item.inputs}.issuperset(
         set(("Pmd", "Pmq"))
     )
@@ -613,6 +785,22 @@ def _assert_nuactis_vsc_projection(
         editor.colors_palet.DEVICE_TEMPLATE_BLOCK_FILL
     )
     assert len(scene_connections) > 0
+    assert len(direct_connections) > 0
+    assert all(
+        paired_item.paired_items is not None and len(paired_item.paired_items) > 0
+        for paired_item in paired_items
+    )
+    paired_item: graph.PairedItem
+    paired_port_collection: List[graph.PortItem]
+    paired_port: graph.PortItem
+    for paired_item in paired_items:
+        for paired_port_collection in (paired_item.inputs, paired_item.outputs):
+            for paired_port in paired_port_collection:
+                assert paired_port.connections is not None
+                assert len(paired_port.connections) > 0
+    assert len(paired_items) < 2 * len(scene_connections)
+    _assert_block_items_do_not_overlap(projected_block_items)
+    _assert_connection_paths_do_not_collide(scene_connections)
     assert len(editor.diagram.con_data) > 0
     assert len(scene_connections) > len(editor.diagram.con_data)
     assert all(connection.diagram is None for connection in scene_connections)

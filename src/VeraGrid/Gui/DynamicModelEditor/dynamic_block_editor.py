@@ -87,6 +87,8 @@ from VeraGridEngine.Utils.SugiyamaLayered import (
 from VeraGridEngine.Utils.SugiyamaLayered.engine import EngineResult
 from VeraGridEngine.Templates.template_definition import TemplateDefinition, TemplateProp
 from VeraGrid.Gui.DynamicModelEditor.RoutingQt import QtRoutingSession
+from VeraGrid.Gui.DynamicModelEditor.Routing.route_builder import OrthogonalVisibilityRouteBuilder
+from VeraGrid.Gui.DynamicModelEditor.Routing.routing_elements import RoutingPoint
 from VeraGridEngine.enumerations import BlockType, RoutingAxis
 from VeraGridEngine.Devices.Diagrams.block_diagram import (
     BlockDiagram, BlockDiagramConnection, BlockDiagramNode,
@@ -100,6 +102,44 @@ DynamicBlockGraphicsItem = Union[
         | graph.UnOpItem
         | graph.PairedItem
 ]
+
+
+def get_dgs_projection_edge_sort_key(
+        edge_entry: tuple[
+            DynamicBlockGraphicsItem,
+            DynamicBlockGraphicsItem,
+            Var,
+            Var,
+        ],
+) -> tuple[int, int, float, float, float, int, int]:
+    """Build the deterministic global-routing priority for one projected edge.
+
+    Short forward-stage edges are routed before feedback and long-span edges so
+    the most common signal flow receives the simplest available channels.
+
+    :param edge_entry: Source item, target item and canonical variable pair.
+    :return: Stable routing-priority tuple.
+    """
+    source_item: DynamicBlockGraphicsItem = edge_entry[0]
+    target_item: DynamicBlockGraphicsItem = edge_entry[1]
+    touches_physical_device: bool = (
+            isinstance(source_item, graph.GenericBlockItem)
+            and source_item.visual_role is graph.DynamicBlockVisualRole.DEVICE_TEMPLATE
+    ) or (
+            isinstance(target_item, graph.GenericBlockItem)
+            and target_item.visual_role is graph.DynamicBlockVisualRole.DEVICE_TEMPLATE
+    )
+    physical_priority: int = 0 if touches_physical_device else 1
+    is_feedback: int = 0 if target_item.scenePos().x() >= source_item.scenePos().x() else 1
+    return (
+        physical_priority,
+        is_feedback,
+        abs(target_item.scenePos().x() - source_item.scenePos().x()),
+        source_item.scenePos().y(),
+        target_item.scenePos().y(),
+        edge_entry[2].uid,
+        edge_entry[3].uid,
+    )
 
 
 class BlockClipboardEntry:
@@ -2015,11 +2055,35 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :return: None.
         """
         if block is self._dgs_physical_view_block:
-            pass
+            # The amber item is a transient view of the equation-owning root,
+            # so navigation must expose that canonical model instead of trying
+            # to enter an empty visual proxy.
+            self.request_open_block_properties(block)
         elif self._navigation_delegate is not None:
             self._navigation_delegate.navigate_to_block(block)
         else:
             pass
+
+    def resolve_block_for_properties(self, block: Block) -> Block | None:
+        """Resolve one graphics block to its editable symbolic owner.
+
+        The derived DGS physical-device item deliberately carries only visible
+        ports. Its equations remain on the canonical root block, which is the
+        object the properties editor must display. Root interface wrappers stay
+        non-editable because they are canvas infrastructure rather than models.
+
+        :param block: Block represented by the selected graphics item.
+        :return: Canonical editable block, or ``None`` for infrastructure.
+        """
+        if block is self._dgs_physical_view_block:
+            return self.main_block
+        elif is_root_interface_wrapper_block(
+                block_model=block,
+                diagram=self.diagram,
+        ):
+            return None
+        else:
+            return block
 
     def request_open_block_properties(self, block: Block) -> None:
         """
@@ -2031,17 +2095,17 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param block: Symbolic block represented by the double-clicked graphics item.
         :return: None.
         """
-        diagram_node: BlockDiagramNode | None = self.diagram.node_data.get(block.uid, None)
+        properties_block: Block | None = self.resolve_block_for_properties(block)
+        if properties_block is None:
+            return
+        else:
+            pass
+
+        diagram_node: BlockDiagramNode | None = self.diagram.node_data.get(properties_block.uid, None)
         block_type_name: str = "CUSTOM"
         structural_block_type: BlockType | None = None
         structural_builder: TemplateDefinition | None = None
-        can_open: bool = (
-                block is not self._dgs_physical_view_block
-                and not is_root_interface_wrapper_block(
-                    block_model=block,
-                    diagram=self.diagram,
-                )
-        )
+        can_open: bool = True
 
         if diagram_node is not None:
             block_type_name = diagram_node.tpe
@@ -2059,13 +2123,13 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 structural_builder = create_default_template_builder(
                     var_factory=self.var_factory,
                     block_type=candidate_block_type,
-                    item_name=block.name,
+                    item_name=properties_block.name,
                     api_object=self.api_object,
                 )
                 if structural_builder is not None:
                     initialize_template_builder_from_block(
                         builder=structural_builder,
-                        block=block,
+                        block=properties_block,
                         block_type=candidate_block_type,
                     )
                 else:
@@ -2076,11 +2140,11 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 minuend_property: TemplateProp | None = structural_builder.params_dict.get("minuend_inputs", None)
                 subtrahend_property: TemplateProp | None = structural_builder.params_dict.get("subtrahend_inputs", None)
                 if minuend_property is not None:
-                    minuend_property.value = count_variables_with_prefix(block.in_vars, "add_")
+                    minuend_property.value = count_variables_with_prefix(properties_block.in_vars, "add_")
                 else:
                     pass
                 if subtrahend_property is not None:
-                    subtrahend_property.value = count_variables_with_prefix(block.in_vars, "subtract_")
+                    subtrahend_property.value = count_variables_with_prefix(properties_block.in_vars, "subtract_")
                 else:
                     pass
             elif candidate_block_type == BlockType.PRODUCT:
@@ -2089,11 +2153,11 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 dividend_property: TemplateProp | None = structural_builder.params_dict.get("divident_inputs", None)
                 divisor_property: TemplateProp | None = structural_builder.params_dict.get("divisor_inputs", None)
                 if dividend_property is not None:
-                    dividend_property.value = count_variables_with_prefix(block.in_vars, "mul_")
+                    dividend_property.value = count_variables_with_prefix(properties_block.in_vars, "mul_")
                 else:
                     pass
                 if divisor_property is not None:
-                    divisor_property.value = count_variables_with_prefix(block.in_vars, "div_")
+                    divisor_property.value = count_variables_with_prefix(properties_block.in_vars, "div_")
                 else:
                     pass
             elif candidate_block_type == BlockType.GENERIC:
@@ -2103,15 +2167,15 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 generic_outputs: TemplateProp | None = structural_builder.params_dict.get("outputs", None)
                 generic_name: TemplateProp | None = structural_builder.params_dict.get("name", None)
                 if generic_inputs is not None:
-                    generic_inputs.value = len(block.in_vars)
+                    generic_inputs.value = len(properties_block.in_vars)
                 else:
                     pass
                 if generic_outputs is not None:
-                    generic_outputs.value = len(block.out_vars)
+                    generic_outputs.value = len(properties_block.out_vars)
                 else:
                     pass
                 if generic_name is not None:
-                    generic_name.value = block.name
+                    generic_name.value = properties_block.name
                 else:
                     pass
             elif candidate_block_type == BlockType.RLC_COMBO_EMT:
@@ -2119,7 +2183,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 structural_builder = RlcComboBlockTemplateDefinition(self.var_factory)
                 initialize_template_builder_from_block(
                     builder=structural_builder,
-                    block=block,
+                    block=properties_block,
                     block_type=candidate_block_type,
                 )
                 component_prefixes: tuple[tuple[str, str], ...] = (
@@ -2134,7 +2198,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                     component_present: bool = False
                     child_block: Block
                     event_var: Var
-                    for child_block in block.get_all_blocks():
+                    for child_block in properties_block.get_all_blocks():
                         for event_var in child_block.event_dict.keys():
                             if event_var.name.startswith(component_prefix):
                                 component_present = True
@@ -2152,13 +2216,19 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         if can_open:
             self.close_block_properties_dock()
             dialogue: DynamicBlockPropertiesDialog = DynamicBlockPropertiesDialog(
-                block=block,
+                block=properties_block,
                 block_type_name=block_type_name,
                 var_factory=self.var_factory,
                 parent=self,
                 structural_block_type=structural_block_type,
                 structural_builder=structural_builder,
             )
+            if block is self._dgs_physical_view_block:
+                # The amber proxy represents the canonical root DAE, so opening
+                # it must reveal those equations rather than the general page.
+                dialogue.show_dae_model_page()
+            else:
+                pass
             dialogue.setAttribute(QtCore.Qt.WidgetAttribute.WA_DeleteOnClose, True)
             dialogue.blockApplied.connect(self.on_block_properties_applied)
             dialogue.structuralRebuildRequested.connect(self.on_structural_rebuild_requested)
@@ -5997,6 +6067,916 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             else:
                 pass
 
+    def _set_dgs_projection_connection_route(
+            self,
+            connection: graph.ConnectionItem,
+            route_points: List[QtCore.QPointF],
+    ) -> None:
+        """Replace one transient connection path with an accepted global route.
+
+        Transient DGS projection connections are not persisted. Their routing
+        graph may therefore be replaced by the global obstacle-aware result
+        without changing the canonical model or its saved diagram.
+
+        :param connection: Transient connection whose visible path is replaced.
+        :param route_points: Ordered orthogonal points including both ports.
+        :return: None.
+        """
+        if len(route_points) < 2:
+            return
+        else:
+            pass
+
+        route_path: QtGui.QPainterPath = QtGui.QPainterPath(route_points[0])
+        route_point: QtCore.QPointF
+        for route_point in route_points[1:]:
+            route_path.lineTo(route_point)
+        connection.setPath(route_path)
+        connection._sync_elbow_items()
+
+    def _find_dgs_projection_global_route(
+            self,
+            source_position: QtCore.QPointF,
+            target_position: QtCore.QPointF,
+            obstacle_rects: List[QtCore.QRectF],
+            reserved_segments: List[tuple[QtCore.QPointF, QtCore.QPointF]],
+            channel_segments: List[tuple[QtCore.QPointF, QtCore.QPointF]],
+            source_stub_length: float,
+            target_stub_length: float,
+    ) -> List[QtCore.QPointF] | None:
+        """Adapt Qt scene geometry to the frontend-agnostic route builder.
+
+        :param source_position: Producer endpoint scene position.
+        :param target_position: Consumer endpoint scene position.
+        :param obstacle_rects: Expanded non-endpoint block rectangles.
+        :param reserved_segments: Accepted wires and protected port corridors.
+        :param channel_segments: Accepted cables that induce parallel lanes.
+        :param source_stub_length: Horizontal producer access length.
+        :param target_stub_length: Horizontal consumer access length.
+        :return: Accepted Qt point chain, or ``None`` when all channels fail.
+        """
+        routing_obstacles: List[tuple[float, float, float, float]] = list()
+        obstacle_rect: QtCore.QRectF
+        for obstacle_rect in obstacle_rects:
+            routing_obstacles.append(
+                (
+                    obstacle_rect.left(),
+                    obstacle_rect.top(),
+                    obstacle_rect.right(),
+                    obstacle_rect.bottom(),
+                )
+            )
+        routing_reserved_segments: List[tuple[RoutingPoint, RoutingPoint]] = list()
+        reserved_segment: tuple[QtCore.QPointF, QtCore.QPointF]
+        for reserved_segment in reserved_segments:
+            routing_reserved_segments.append(
+                (
+                    RoutingPoint(reserved_segment[0].x(), reserved_segment[0].y()),
+                    RoutingPoint(reserved_segment[1].x(), reserved_segment[1].y()),
+                )
+            )
+        routing_channel_segments: List[tuple[RoutingPoint, RoutingPoint]] = list()
+        channel_segment: tuple[QtCore.QPointF, QtCore.QPointF]
+        for channel_segment in channel_segments:
+            routing_channel_segments.append(
+                (
+                    RoutingPoint(channel_segment[0].x(), channel_segment[0].y()),
+                    RoutingPoint(channel_segment[1].x(), channel_segment[1].y()),
+                )
+            )
+        scene_bounds: QtCore.QRectF = self.scene.itemsBoundingRect().adjusted(
+            -80.0,
+            -80.0,
+            80.0,
+            80.0,
+        )
+        route_builder: OrthogonalVisibilityRouteBuilder = OrthogonalVisibilityRouteBuilder(
+            source_point=RoutingPoint(source_position.x(), source_position.y()),
+            target_point=RoutingPoint(target_position.x(), target_position.y()),
+            obstacle_rects=routing_obstacles,
+            reserved_segments=routing_reserved_segments,
+            channel_segments=routing_channel_segments,
+            scene_bounds=(
+                scene_bounds.left(),
+                scene_bounds.top(),
+                scene_bounds.right(),
+                scene_bounds.bottom(),
+            ),
+            source_stub_length=source_stub_length,
+            target_stub_length=target_stub_length,
+            channel_separation=10.0,
+            bend_penalty=36.0,
+            max_search_states=4096,
+        )
+        routing_points: List[RoutingPoint] | None = route_builder.build()
+        if routing_points is None:
+            return None
+        else:
+            pass
+        qt_points: List[QtCore.QPointF] = list()
+        routing_point: RoutingPoint
+        for routing_point in routing_points:
+            qt_points.append(
+                QtCore.QPointF(routing_point.get_x(), routing_point.get_y())
+            )
+        return qt_points
+
+    def _reserve_dgs_projection_route(
+            self,
+            route_points: List[QtCore.QPointF],
+            reserved_segments: List[tuple[QtCore.QPointF, QtCore.QPointF]],
+    ) -> None:
+        """Reserve every segment of one accepted route for later edges.
+
+        :param route_points: Accepted route point chain.
+        :param reserved_segments: Mutable global reservation collection.
+        :return: None.
+        """
+        point_index: int
+        for point_index in range(len(route_points) - 1):
+            reserved_segments.append(
+                (
+                    QtCore.QPointF(route_points[point_index]),
+                    QtCore.QPointF(route_points[point_index + 1]),
+                )
+            )
+
+    def _attach_dgs_projection_straight_connection(
+            self,
+            source_endpoint: graph.PortItem | graph.BranchingItem,
+            target_endpoint: graph.PortItem | graph.BranchingItem,
+            reserved_segments: List[tuple[QtCore.QPointF, QtCore.QPointF]],
+    ) -> graph.ConnectionItem:
+        """Attach and reserve one known-clear orthogonal tree segment.
+
+        This helper is limited to local fan-out trunks, adjacent junctions and
+        one-pixel tag attachments whose geometry is constructed explicitly.
+
+        :param source_endpoint: Segment producer endpoint.
+        :param target_endpoint: Segment consumer endpoint.
+        :param reserved_segments: Segments already accepted by the global pass.
+        :return: Created transient connection.
+        """
+        route_points: List[QtCore.QPointF] = list((
+            source_endpoint.scenePos(),
+            target_endpoint.scenePos(),
+        ))
+        connection: graph.ConnectionItem = graph.ConnectionItem(
+            source_port=source_endpoint,
+            target_port=target_endpoint,
+            diagram=None,
+            editor=self,
+        )
+        self._set_dgs_projection_connection_route(
+            connection=connection,
+            route_points=route_points,
+        )
+        connection.recolour()
+        self.scene.addItem(connection)
+        self._reserve_dgs_projection_route(
+            route_points=route_points,
+            reserved_segments=reserved_segments,
+        )
+        if (
+                isinstance(target_endpoint, graph.BranchingItem)
+                and target_endpoint.owner_connection is None
+        ):
+            target_endpoint.owner_connection = connection
+        else:
+            pass
+        return connection
+
+    def _attach_dgs_projection_routed_connection(
+            self,
+            source_item: DynamicBlockGraphicsItem,
+            target_item: DynamicBlockGraphicsItem,
+            source_var: Var,
+            target_var: Var,
+            reserved_segments: List[tuple[QtCore.QPointF, QtCore.QPointF]],
+    ) -> graph.ConnectionItem | None:
+        """Attach one globally routed transient connection between real ports.
+
+        Both ordinary projected edges and the short endpoint wires of a proven
+        fallback use this method. Consequently every visible cable participates
+        in the same obstacle and crossing constraints.
+
+        :param source_item: Visible signal producer.
+        :param target_item: Visible signal consumer.
+        :param source_var: Producer variable.
+        :param target_var: Consumer variable or canonical alias.
+        :param reserved_segments: Segments already accepted by the global pass.
+        :return: Created connection, or ``None`` when no route is available.
+        """
+        source_port: graph.PortItem | None = self._find_output_port_for_var(
+            item_source=source_item,
+            source_var=source_var,
+        )
+        target_port: graph.PortItem | None = self._find_input_port_for_var(
+            item_dest=target_item,
+            target_var=target_var,
+        )
+        if source_port is None or target_port is None:
+            return None
+        else:
+            pass
+
+        return self._attach_dgs_projection_routed_endpoints(
+            source_endpoint=source_port,
+            target_endpoint=target_port,
+            source_item=source_item,
+            target_item=target_item,
+            reserved_segments=reserved_segments,
+        )
+
+    def _attach_dgs_projection_routed_endpoints(
+            self,
+            source_endpoint: graph.PortItem | graph.BranchingItem,
+            target_endpoint: graph.PortItem | graph.BranchingItem,
+            source_item: DynamicBlockGraphicsItem,
+            target_item: DynamicBlockGraphicsItem,
+            reserved_segments: List[tuple[QtCore.QPointF, QtCore.QPointF]],
+    ) -> graph.ConnectionItem | None:
+        """Attach one globally routed cable between two visible endpoints.
+
+        :param source_endpoint: Producer port or real cable junction.
+        :param target_endpoint: Consumer port or real cable junction.
+        :param source_item: Block whose rectangle is excluded at the source.
+        :param target_item: Block whose rectangle is excluded at the target.
+        :param reserved_segments: Segments already accepted by the global pass.
+        :return: Created connection, or ``None`` when no route is available.
+        """
+
+        obstacle_rects: List[QtCore.QRectF] = list()
+        routing_reserved_segments: List[tuple[QtCore.QPointF, QtCore.QPointF]] = list(
+            reserved_segments
+        )
+        scene_item: QGraphicsItem
+        for scene_item in self.scene.items():
+            if scene_item is source_item or scene_item is target_item:
+                pass
+            elif isinstance(scene_item, (
+                    graph.BlockItem,
+                    graph.GenericBlockItem,
+                    graph.RoundBaseArithmeticOpItem,
+                    graph.RectBaseArithmeticOpItem,
+                    graph.UnOpItem,
+                    graph.PairedItem,
+                    graph.ProtectedConnectionBlockItem,
+            )):
+                obstacle_rects.append(
+                    scene_item.sceneBoundingRect().adjusted(
+                        -12.0,
+                        -12.0,
+                        12.0,
+                        12.0,
+                    )
+                )
+            else:
+                pass
+
+        # Every port keeps a short perpendicular access corridor. Endpoint
+        # blocks are excluded as rectangular obstacles, but their other ports
+        # still need protection from unrelated routes.
+        for scene_item in self.scene.items():
+            if (
+                    (scene_item is source_item or scene_item is target_item)
+                    and isinstance(scene_item, (
+                    graph.BlockItem,
+                    graph.GenericBlockItem,
+                    graph.RoundBaseArithmeticOpItem,
+                    graph.RectBaseArithmeticOpItem,
+                    graph.UnOpItem,
+                    graph.PairedItem,
+                    graph.ProtectedConnectionBlockItem,
+                    ))
+            ):
+                guarded_port: graph.PortItem
+                for guarded_port in scene_item.outputs:
+                    if guarded_port is source_endpoint:
+                        pass
+                    else:
+                        guarded_output_point: QtCore.QPointF = guarded_port.scenePos()
+                        routing_reserved_segments.append(
+                            (
+                                guarded_output_point,
+                                QtCore.QPointF(
+                                    guarded_output_point.x() + 24.0,
+                                    guarded_output_point.y(),
+                                ),
+                            )
+                        )
+                for guarded_port in scene_item.inputs:
+                    if guarded_port is target_endpoint:
+                        pass
+                    else:
+                        guarded_input_point: QtCore.QPointF = guarded_port.scenePos()
+                        routing_reserved_segments.append(
+                            (
+                                QtCore.QPointF(
+                                    guarded_input_point.x() - 24.0,
+                                    guarded_input_point.y(),
+                                ),
+                                guarded_input_point,
+                            )
+                        )
+            else:
+                pass
+
+        route_points: List[QtCore.QPointF] | None = self._find_dgs_projection_global_route(
+            source_position=source_endpoint.scenePos(),
+            target_position=target_endpoint.scenePos(),
+            obstacle_rects=obstacle_rects,
+            reserved_segments=routing_reserved_segments,
+            channel_segments=reserved_segments,
+            source_stub_length=(
+                0.0 if isinstance(source_endpoint, graph.BranchingItem) else 24.0
+            ),
+            target_stub_length=(
+                0.0 if isinstance(target_endpoint, graph.BranchingItem) else 24.0
+            ),
+        )
+        if route_points is None:
+            return None
+        else:
+            pass
+
+        connection: graph.ConnectionItem = graph.ConnectionItem(
+            source_port=source_endpoint,
+            target_port=target_endpoint,
+            diagram=None,
+            editor=self,
+        )
+        self._set_dgs_projection_connection_route(
+            connection=connection,
+            route_points=route_points,
+        )
+        connection.recolour()
+        self.scene.addItem(connection)
+        self._reserve_dgs_projection_route(
+            route_points=route_points,
+            reserved_segments=reserved_segments,
+        )
+        return connection
+
+    def _attach_dgs_projection_fanout_connections(
+            self,
+            fanout_edges: List[
+                tuple[
+                    DynamicBlockGraphicsItem,
+                    DynamicBlockGraphicsItem,
+                    Var,
+                    Var,
+                ]
+            ],
+            reserved_segments: List[tuple[QtCore.QPointF, QtCore.QPointF]],
+    ) -> List[
+        tuple[
+            DynamicBlockGraphicsItem,
+            DynamicBlockGraphicsItem,
+            Var,
+            Var,
+        ]
+    ]:
+        """Route one shared signal as a physical trunk, spine and real branches.
+
+        :param fanout_edges: Logical edges sharing one canonical producer signal.
+        :param reserved_segments: Segments already accepted by the global pass.
+        :return: Only branch edges that could not obtain a physical route.
+        """
+        failed_edges: List[
+            tuple[
+                DynamicBlockGraphicsItem,
+                DynamicBlockGraphicsItem,
+                Var,
+                Var,
+            ]
+        ] = list()
+        if len(fanout_edges) == 0:
+            return failed_edges
+        else:
+            pass
+
+        first_edge: tuple[
+            DynamicBlockGraphicsItem,
+            DynamicBlockGraphicsItem,
+            Var,
+            Var,
+        ] = fanout_edges[0]
+        source_item: DynamicBlockGraphicsItem = first_edge[0]
+        source_var: Var = first_edge[2]
+        source_port: graph.PortItem | None = self._find_output_port_for_var(
+            item_source=source_item,
+            source_var=source_var,
+        )
+        if source_port is None:
+            failed_edge: tuple[
+                DynamicBlockGraphicsItem,
+                DynamicBlockGraphicsItem,
+                Var,
+                Var,
+            ]
+            for failed_edge in fanout_edges:
+                failed_edges.append(failed_edge)
+            return failed_edges
+        else:
+            pass
+
+        target_entries: List[
+            tuple[
+                tuple[
+                    DynamicBlockGraphicsItem,
+                    DynamicBlockGraphicsItem,
+                    Var,
+                    Var,
+                ],
+                graph.PortItem,
+            ]
+        ] = list()
+        fanout_edge: tuple[
+            DynamicBlockGraphicsItem,
+            DynamicBlockGraphicsItem,
+            Var,
+            Var,
+        ]
+        for fanout_edge in fanout_edges:
+            target_port: graph.PortItem | None = self._find_input_port_for_var(
+                item_dest=fanout_edge[1],
+                target_var=fanout_edge[3],
+            )
+            if target_port is None:
+                failed_edges.append(fanout_edge)
+            else:
+                target_entries.append((fanout_edge, target_port))
+
+        if len(target_entries) == 0:
+            return failed_edges
+        else:
+            pass
+
+        junction_y_positions: Set[float] = set((source_port.scenePos().y(),))
+        target_entry: tuple[
+            tuple[
+                DynamicBlockGraphicsItem,
+                DynamicBlockGraphicsItem,
+                Var,
+                Var,
+            ],
+            graph.PortItem,
+        ]
+        for target_entry in target_entries:
+            junction_y_positions.add(target_entry[1].scenePos().y())
+        ordered_junction_y_positions: List[float] = sorted(junction_y_positions)
+        junctions_by_y: Dict[float, graph.BranchingItem] = dict()
+        junction_index: int
+        junction_y_position: float
+        for junction_index, junction_y_position in enumerate(ordered_junction_y_positions):
+            junction: graph.BranchingItem = graph.BranchingItem(
+                subsystem=source_item,
+                editor=self,
+                index=junction_index,
+            )
+            junction.base_var = source_var
+            junction.setPos(
+                QtCore.QPointF(
+                    source_port.scenePos().x() + 48.0,
+                    junction_y_position,
+                )
+            )
+            junction.recolour()
+            self.scene.addItem(junction)
+            junctions_by_y[junction_y_position] = junction
+
+        reserved_segment_count_before_tree: int = len(reserved_segments)
+        source_y_position: float = source_port.scenePos().y()
+        root_junction: graph.BranchingItem | None = junctions_by_y.get(
+            source_y_position,
+            None,
+        )
+        if root_junction is None:
+            failed_edges = list(fanout_edges)
+            return failed_edges
+        else:
+            pass
+        trunk_connection: graph.ConnectionItem | None = (
+            self._attach_dgs_projection_routed_endpoints(
+                source_endpoint=source_port,
+                target_endpoint=root_junction,
+                source_item=source_item,
+                target_item=source_item,
+                reserved_segments=reserved_segments,
+            )
+        )
+        if trunk_connection is None:
+            unused_junction: graph.BranchingItem
+            for unused_junction in junctions_by_y.values():
+                self.scene.removeItem(unused_junction)
+            failed_edges = list(fanout_edges)
+            return failed_edges
+        else:
+            pass
+
+        reachable_junction_y_positions: Set[float] = set((source_y_position,))
+        root_junction_index: int = ordered_junction_y_positions.index(source_y_position)
+        chain_index: int
+        for chain_index in range(root_junction_index, len(ordered_junction_y_positions) - 1):
+            lower_y_position: float = ordered_junction_y_positions[chain_index]
+            upper_y_position: float = ordered_junction_y_positions[chain_index + 1]
+            if lower_y_position in reachable_junction_y_positions:
+                lower_junction: graph.BranchingItem = junctions_by_y[lower_y_position]
+                upper_junction: graph.BranchingItem = junctions_by_y[upper_y_position]
+                upper_connection: graph.ConnectionItem | None = (
+                    self._attach_dgs_projection_routed_endpoints(
+                        source_endpoint=lower_junction,
+                        target_endpoint=upper_junction,
+                        source_item=source_item,
+                        target_item=source_item,
+                        reserved_segments=reserved_segments,
+                    )
+                )
+                if upper_connection is not None:
+                    reachable_junction_y_positions.add(upper_y_position)
+                else:
+                    pass
+            else:
+                pass
+        for chain_index in range(root_junction_index, 0, -1):
+            upper_y_position = ordered_junction_y_positions[chain_index]
+            lower_y_position = ordered_junction_y_positions[chain_index - 1]
+            if upper_y_position in reachable_junction_y_positions:
+                upper_junction = junctions_by_y[upper_y_position]
+                lower_junction = junctions_by_y[lower_y_position]
+                lower_connection: graph.ConnectionItem | None = (
+                    self._attach_dgs_projection_routed_endpoints(
+                        source_endpoint=upper_junction,
+                        target_endpoint=lower_junction,
+                        source_item=source_item,
+                        target_item=source_item,
+                        reserved_segments=reserved_segments,
+                    )
+                )
+                if lower_connection is not None:
+                    reachable_junction_y_positions.add(lower_y_position)
+                else:
+                    pass
+            else:
+                pass
+
+        for target_entry in target_entries:
+            target_edge: tuple[
+                DynamicBlockGraphicsItem,
+                DynamicBlockGraphicsItem,
+                Var,
+                Var,
+            ] = target_entry[0]
+            target_port: graph.PortItem = target_entry[1]
+            target_junction: graph.BranchingItem | None = junctions_by_y.get(
+                target_port.scenePos().y(),
+                None,
+            )
+            if (
+                    target_junction is not None
+                    and target_port.scenePos().y() in reachable_junction_y_positions
+            ):
+                branch_connection: graph.ConnectionItem | None = (
+                    self._attach_dgs_projection_routed_endpoints(
+                        source_endpoint=target_junction,
+                        target_endpoint=target_port,
+                        source_item=source_item,
+                        target_item=target_edge[1],
+                        reserved_segments=reserved_segments,
+                    )
+                )
+                if branch_connection is None:
+                    failed_edges.append(target_edge)
+                else:
+                    pass
+            else:
+                failed_edges.append(target_edge)
+
+        for junction_y_position, junction in junctions_by_y.items():
+            if junction_y_position in reachable_junction_y_positions:
+                pass
+            else:
+                self.scene.removeItem(junction)
+
+        # A saturated partial tree has no free direction for the source-side
+        # fallback tag. Keep the hyperedge atomic and revert only this signal.
+        if len(failed_edges) > 0:
+            tree_connections: Set[graph.ConnectionItem] = set()
+            for junction in junctions_by_y.values():
+                if junction.connections is not None:
+                    tree_connection: graph.ConnectionItem
+                    for tree_connection in junction.connections:
+                        tree_connections.add(tree_connection)
+                else:
+                    pass
+            for tree_connection in tree_connections:
+                self.remove_connection_item(tree_connection)
+            for junction in junctions_by_y.values():
+                self.scene.removeItem(junction)
+            del reserved_segments[reserved_segment_count_before_tree:]
+            failed_edges = list(fanout_edges)
+        else:
+            pass
+
+        return failed_edges
+
+    def _create_dgs_projection_signal_tag_item(
+            self,
+            signal_var: Var,
+            display_name: str,
+            consumes_signal: bool,
+            x_pos: float,
+            y_pos: float,
+    ) -> graph.PairedItem:
+        """Create one transient From/To tag for a collision-prone signal.
+
+        The tag reuses the canonical signal variable and is not registered in
+        either ``Block`` children or ``BlockDiagram`` persistence. It therefore
+        shortens only the visual route while preserving the imported model.
+
+        :param signal_var: Canonical variable represented by the tag.
+        :param display_name: Compact canvas label for the canonical signal.
+        :param consumes_signal: Whether this is the source-side From tag.
+        :param x_pos: Deterministic scene X coordinate.
+        :param y_pos: Deterministic scene Y coordinate.
+        :return: Added transient paired graphics item.
+        """
+        if consumes_signal:
+            tag_block: Block = Block(
+                name="From " + display_name,
+                in_vars=list((signal_var,)),
+            )
+        else:
+            tag_block = Block(
+                name="Goto " + display_name,
+                out_vars=list((signal_var,)),
+            )
+
+        tag_item: graph.PairedItem = graph.PairedItem(
+            editor=self,
+            var_factory=self.var_factory,
+            subsys=tag_block,
+            api_object=self.api_object,
+            mode=self.mode,
+            name=display_name,
+            position_changed_callback=None,
+        )
+        tag_item.setPos(QtCore.QPointF(x_pos, y_pos))
+        tag_item.recolour()
+        self.scene.addItem(tag_item)
+        return tag_item
+
+    def _attach_dgs_projection_signal_pair(
+            self,
+            source_item: DynamicBlockGraphicsItem,
+            target_item: DynamicBlockGraphicsItem,
+            source_var: Var,
+            target_var: Var,
+            source_tags: List[tuple[int, graph.PairedItem]],
+            reserved_segments: List[tuple[QtCore.QPointF, QtCore.QPointF]],
+    ) -> None:
+        """Replace one long or reverse visual wire with linked From/Goto tags.
+
+        One From tag is shared by every destination of the same canonical
+        source signal. Each destination receives its own Goto tag, leaving only
+        two short endpoint wires and no cross-canvas segment.
+
+        :param source_item: Visible producer of the canonical signal.
+        :param target_item: Visible consumer of the canonical signal.
+        :param source_var: Producer-side variable.
+        :param target_var: Consumer-side alias.
+        :param source_tags: Existing source-variable-to-From-tag associations.
+        :param reserved_segments: Segments already accepted by the global pass.
+        :return: None.
+        """
+        source_port: graph.PortItem | None = self._find_output_port_for_var(
+            item_source=source_item,
+            source_var=source_var,
+        )
+        target_port: graph.PortItem | None = self._find_input_port_for_var(
+            item_dest=target_item,
+            target_var=target_var,
+        )
+        if source_port is None or target_port is None:
+            return
+        else:
+            pass
+
+        # When physical fan-out already owns the producer port, a fallback tag
+        # must branch from its real junction. Reusing the producer port would
+        # draw a second coincident access stub over the accepted trunk.
+        source_attachment: graph.PortItem | graph.BranchingItem = source_port
+        source_port_connections: List[graph.ConnectionItem] = list()
+        if source_port.connections is not None:
+            source_port_connections = list(source_port.connections)
+        else:
+            pass
+        source_port_connection: graph.ConnectionItem
+        for source_port_connection in source_port_connections:
+            attachment_candidate: graph.BranchingItem | None = None
+            if (
+                    source_port_connection.source_port is source_port
+                    and isinstance(source_port_connection.target_port, graph.BranchingItem)
+            ):
+                attachment_candidate = source_port_connection.target_port
+            elif (
+                    source_port_connection.target_port is source_port
+                    and isinstance(source_port_connection.source_port, graph.BranchingItem)
+            ):
+                attachment_candidate = source_port_connection.source_port
+            else:
+                pass
+            if (
+                    attachment_candidate is not None
+                    and attachment_candidate.base_var is source_var
+            ):
+                source_attachment = attachment_candidate
+            else:
+                pass
+
+        # Measurement adapters prefix their canonical cable name and append
+        # the owning block name. Removing only that exact owner suffix retains
+        # an unambiguous signal label without exposing import-source metadata.
+        display_name: str = source_var.name
+        source_owner_suffix: str = "_" + source_item.subsys.name
+        if (
+                display_name.endswith(source_owner_suffix)
+                and len(display_name) > len(source_owner_suffix)
+        ):
+            display_name = display_name[:-len(source_owner_suffix)]
+        else:
+            pass
+
+        source_tag: graph.PairedItem | None = None
+        source_tag_entry: tuple[int, graph.PairedItem]
+        for source_tag_entry in source_tags:
+            if source_tag_entry[0] == source_var.uid:
+                source_tag = source_tag_entry[1]
+            else:
+                pass
+
+        if source_tag is None:
+            source_attachment_y_offset: float = 0.0
+            if isinstance(source_attachment, graph.BranchingItem):
+                source_attachment_y_offset = 40.0
+            else:
+                pass
+            source_tag_x: float = (
+                    source_attachment.scenePos().x()
+                    + 34.0
+                    + 82.0 * float(source_port.index % 2)
+            )
+            source_tag_y: float = (
+                    source_attachment.scenePos().y()
+                    + source_attachment_y_offset
+                    - 14.0
+            )
+            source_tag = self._create_dgs_projection_signal_tag_item(
+                signal_var=source_var,
+                display_name=display_name,
+                consumes_signal=True,
+                x_pos=source_tag_x,
+                y_pos=source_tag_y,
+            )
+            if len(source_tag.inputs) == 1:
+                source_tag.setY(
+                    source_tag.y()
+                    + source_attachment.scenePos().y()
+                    + source_attachment_y_offset
+                    - source_tag.inputs[0].scenePos().y()
+                )
+                source_tag.setX(
+                    source_tag.x()
+                    + source_attachment.scenePos().x()
+                    + 24.0
+                    - source_tag.inputs[0].scenePos().x()
+                )
+            else:
+                pass
+            source_tags.append((source_var.uid, source_tag))
+            source_connection: graph.ConnectionItem | None = None
+            if len(source_tag.inputs) == 1:
+                source_connection = self._attach_dgs_projection_routed_endpoints(
+                    source_endpoint=source_attachment,
+                    target_endpoint=source_tag.inputs[0],
+                    source_item=source_item,
+                    target_item=source_tag,
+                    reserved_segments=reserved_segments,
+                )
+            else:
+                pass
+            if source_connection is None and len(source_tag.inputs) == 1:
+                source_tag_input: graph.PortItem = source_tag.inputs[0]
+                emergency_attachment_offset: QtCore.QPointF
+                if isinstance(source_attachment, graph.BranchingItem):
+                    emergency_attachment_offset = QtCore.QPointF(0.0, 20.0)
+                else:
+                    emergency_attachment_offset = QtCore.QPointF(1.0, 0.0)
+                source_tag.setPos(
+                    source_tag.pos()
+                    + source_attachment.scenePos()
+                    + emergency_attachment_offset
+                    - source_tag_input.scenePos()
+                )
+                source_connection = graph.ConnectionItem(
+                    source_port=source_attachment,
+                    target_port=source_tag_input,
+                    diagram=None,
+                    editor=self,
+                )
+                source_route: List[QtCore.QPointF] = list((
+                    source_attachment.scenePos(),
+                    source_tag_input.scenePos(),
+                ))
+                self._set_dgs_projection_connection_route(
+                    connection=source_connection,
+                    route_points=source_route,
+                )
+                source_connection.recolour()
+                self.scene.addItem(source_connection)
+                self._reserve_dgs_projection_route(
+                    route_points=source_route,
+                    reserved_segments=reserved_segments,
+                )
+            elif source_connection is None:
+                pass
+            else:
+                pass
+        else:
+            pass
+
+        target_tag_x: float = (
+                target_port.scenePos().x()
+                - 104.0
+                - 82.0 * float(target_port.index % 2)
+        )
+        target_tag_y: float = target_port.scenePos().y() - 14.0
+        target_tag: graph.PairedItem = self._create_dgs_projection_signal_tag_item(
+            signal_var=source_var,
+            display_name=display_name,
+            consumes_signal=False,
+            x_pos=target_tag_x,
+            y_pos=target_tag_y,
+        )
+        if len(target_tag.outputs) == 1:
+            target_tag.setY(
+                target_tag.y()
+                + target_port.scenePos().y()
+                - target_tag.outputs[0].scenePos().y()
+            )
+            target_tag.setX(
+                target_tag.x()
+                + target_port.scenePos().x()
+                - 24.0
+                - target_tag.outputs[0].scenePos().x()
+            )
+        else:
+            pass
+        source_tag.set_paired_item(target_tag)
+        target_tag.set_paired_item(source_tag)
+        target_connection: graph.ConnectionItem | None = (
+            self._attach_dgs_projection_routed_connection(
+                source_item=target_tag,
+                target_item=target_item,
+                source_var=source_var,
+                target_var=target_var,
+                reserved_segments=reserved_segments,
+            )
+        )
+        if target_connection is None and len(target_tag.outputs) == 1:
+            target_tag_output: graph.PortItem = target_tag.outputs[0]
+            target_tag.setPos(
+                target_tag.pos()
+                + target_port.scenePos()
+                - QtCore.QPointF(1.0, 0.0)
+                - target_tag_output.scenePos()
+            )
+            target_connection = graph.ConnectionItem(
+                source_port=target_tag_output,
+                target_port=target_port,
+                diagram=None,
+                editor=self,
+            )
+            target_route: List[QtCore.QPointF] = list((
+                target_tag_output.scenePos(),
+                target_port.scenePos(),
+            ))
+            self._set_dgs_projection_connection_route(
+                connection=target_connection,
+                route_points=target_route,
+            )
+            target_connection.recolour()
+            self.scene.addItem(target_connection)
+            self._reserve_dgs_projection_route(
+                route_points=target_route,
+                reserved_segments=reserved_segments,
+            )
+        elif target_connection is None:
+            pass
+        else:
+            pass
+
     def _find_dgs_projection_variable_pairs(
             self,
             source_item: DynamicBlockGraphicsItem,
@@ -6124,7 +7104,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             interface_item: graph.ProtectedConnectionBlockItem = (
                 self._create_dgs_projection_interface_item(
                     block_model=interface_block,
-                    x_pos=-190.0,
+                    x_pos=-260.0,
                     y_pos=interface_y,
                 )
             )
@@ -6144,27 +7124,14 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             visible_items.append(measurement_item)
             measurement_y += float(measurement_item.boundingRect().height()) + block_spacing
 
-        controller_y: float = 0.0
+        # Derive controller stages from their symbolic dependency on the
+        # physical-input producer instead of stacking every block vertically.
         physical_y: float = 0.0
-        best_physical_input_match_count: int = -1
         physical_input_uids: Set[int] = set(
             physical_input.uid for physical_input in physical_inputs
         )
+        physical_producer_blocks: List[Block] = list()
         for block_model in controller_container.children:
-            controller_role: graph.DynamicBlockVisualRole = (
-                graph.get_dynamic_block_visual_role(
-                    block_model=block_model,
-                    diagram_node_type="",
-                )
-            )
-            controller_item: graph.GenericBlockItem = self._create_dgs_projection_block_item(
-                block_model=block_model,
-                visual_role=controller_role,
-                x_pos=280.0,
-                y_pos=controller_y,
-            )
-            visible_items.append(controller_item)
-
             matching_physical_input_count: int = 0
             output_var: Var
             for output_var in block_model.out_vars:
@@ -6172,24 +7139,99 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                     matching_physical_input_count += 1
                 else:
                     pass
-            if matching_physical_input_count > best_physical_input_match_count:
-                best_physical_input_match_count = matching_physical_input_count
-                physical_y = controller_y
+            if matching_physical_input_count > 0:
+                physical_producer_blocks.append(block_model)
             else:
                 pass
-            controller_y += float(controller_item.boundingRect().height()) + block_spacing
+
+        near_physical_blocks: List[Block] = list()
+        first_stage_blocks: List[Block] = list()
+        for block_model in controller_container.children:
+            is_physical_producer: bool = block_model in physical_producer_blocks
+            feeds_physical_producer: bool = False
+            if is_physical_producer:
+                pass
+            else:
+                producer_block: Block
+                producer_input_var: Var
+                for producer_block in physical_producer_blocks:
+                    for output_var in block_model.out_vars:
+                        for producer_input_var in producer_block.in_vars:
+                            if vars_match_for_visible_connection(
+                                    left_var=output_var,
+                                    right_var=producer_input_var,
+                            ):
+                                feeds_physical_producer = True
+                            else:
+                                pass
+
+            if is_physical_producer:
+                pass
+            elif feeds_physical_producer:
+                near_physical_blocks.append(block_model)
+            else:
+                first_stage_blocks.append(block_model)
+
+        controller_columns: List[tuple[List[Block], float, int]] = list((
+            (first_stage_blocks, 400.0, 1),
+            (near_physical_blocks, 800.0, 2),
+            (physical_producer_blocks, 1200.0, 3),
+        ))
+        controller_column: tuple[List[Block], float, int]
+        controller_column_blocks: List[Block]
+        controller_x: float
+        controller_column_index: int
+        controller_y: float
+        producer_item_found: bool = False
+        for controller_column in controller_columns:
+            controller_column_blocks = controller_column[0]
+            controller_x = controller_column[1]
+            controller_column_index = controller_column[2]
+            controller_y = 0.0
+            for block_model in controller_column_blocks:
+                controller_role: graph.DynamicBlockVisualRole = (
+                    graph.get_dynamic_block_visual_role(
+                        block_model=block_model,
+                        diagram_node_type="",
+                    )
+                )
+                controller_item: graph.GenericBlockItem = self._create_dgs_projection_block_item(
+                    block_model=block_model,
+                    visual_role=controller_role,
+                    x_pos=controller_x,
+                    y_pos=controller_y,
+                )
+                visible_items.append(controller_item)
+                if controller_column_index == 3 and not producer_item_found:
+                    physical_y = controller_y
+                    producer_item_found = True
+                else:
+                    pass
+                controller_y += float(controller_item.boundingRect().height()) + block_spacing
 
         physical_item: graph.GenericBlockItem = self._create_dgs_projection_block_item(
             block_model=self._dgs_physical_view_block,
             visual_role=graph.DynamicBlockVisualRole.DEVICE_TEMPLATE,
-            x_pos=570.0,
+            x_pos=1600.0,
             y_pos=physical_y,
         )
         visible_items.append(physical_item)
 
+        # Collect logical edges before routing so the global pass can prioritize
+        # short forward-stage connections. Those edges constrain later routes;
+        # feedback and long-span edges consequently use the remaining channels.
+        projection_edges: List[
+            tuple[
+                DynamicBlockGraphicsItem,
+                DynamicBlockGraphicsItem,
+                Var,
+                Var,
+            ]
+        ] = list()
         source_item: DynamicBlockGraphicsItem
         target_item: DynamicBlockGraphicsItem
         variable_pairs: List[tuple[Var, Var]]
+        variable_pair: tuple[Var, Var]
         for source_item in visible_items:
             for target_item in visible_items:
                 if source_item is target_item:
@@ -6199,11 +7241,138 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                         source_item=source_item,
                         target_item=target_item,
                     )
-                    self._attach_dgs_projection_connections(
+                    for variable_pair in variable_pairs:
+                        projection_edges.append(
+                            (
+                                source_item,
+                                target_item,
+                                variable_pair[0],
+                                variable_pair[1],
+                            )
+                        )
+
+        projection_edges.sort(key=get_dgs_projection_edge_sort_key)
+        source_edge_counts: Dict[int, int] = dict()
+        target_edge_counts: Dict[tuple[int, int], int] = dict()
+        counted_edge: tuple[
+            DynamicBlockGraphicsItem,
+            DynamicBlockGraphicsItem,
+            Var,
+            Var,
+        ]
+        for counted_edge in projection_edges:
+            source_key: int = counted_edge[2].uid
+            target_key: tuple[int, int] = (
+                counted_edge[1].subsys.uid,
+                counted_edge[3].uid,
+            )
+            source_count: int | None = source_edge_counts.get(source_key, None)
+            target_count: int | None = target_edge_counts.get(target_key, None)
+            source_edge_counts[source_key] = 1 if source_count is None else source_count + 1
+            target_edge_counts[target_key] = 1 if target_count is None else target_count + 1
+
+        reserved_segments: List[tuple[QtCore.QPointF, QtCore.QPointF]] = list()
+        fallback_edges: List[
+            tuple[
+                DynamicBlockGraphicsItem,
+                DynamicBlockGraphicsItem,
+                Var,
+                Var,
+            ]
+        ] = list()
+        projection_edge: tuple[
+            DynamicBlockGraphicsItem,
+            DynamicBlockGraphicsItem,
+            Var,
+            Var,
+        ]
+        routed_fanout_source_uids: Set[int] = set()
+        for projection_edge in projection_edges:
+            source_item = projection_edge[0]
+            target_item = projection_edge[1]
+            source_key = projection_edge[2].uid
+            target_key = (
+                projection_edge[1].subsys.uid,
+                projection_edge[3].uid,
+            )
+            source_count = source_edge_counts.get(source_key, None)
+            target_count = target_edge_counts.get(target_key, None)
+            has_fanout: bool = source_count is not None and source_count > 1
+            has_fanin: bool = target_count is not None and target_count > 1
+            if has_fanout:
+                if source_key in routed_fanout_source_uids:
+                    pass
+                else:
+                    routed_fanout_source_uids.add(source_key)
+                    fanout_edges: List[
+                        tuple[
+                            DynamicBlockGraphicsItem,
+                            DynamicBlockGraphicsItem,
+                            Var,
+                            Var,
+                        ]
+                    ] = list()
+                    fanout_candidate: tuple[
+                        DynamicBlockGraphicsItem,
+                        DynamicBlockGraphicsItem,
+                        Var,
+                        Var,
+                    ]
+                    for fanout_candidate in projection_edges:
+                        if fanout_candidate[2].uid == source_key:
+                            fanout_edges.append(fanout_candidate)
+                        else:
+                            pass
+                    failed_fanout_edges: List[
+                        tuple[
+                            DynamicBlockGraphicsItem,
+                            DynamicBlockGraphicsItem,
+                            Var,
+                            Var,
+                        ]
+                    ] = self._attach_dgs_projection_fanout_connections(
+                        fanout_edges=fanout_edges,
+                        reserved_segments=reserved_segments,
+                    )
+                    failed_fanout_edge: tuple[
+                        DynamicBlockGraphicsItem,
+                        DynamicBlockGraphicsItem,
+                        Var,
+                        Var,
+                    ]
+                    for failed_fanout_edge in failed_fanout_edges:
+                        fallback_edges.append(failed_fanout_edge)
+            elif has_fanin:
+                fallback_edges.append(projection_edge)
+            else:
+                direct_connection: graph.ConnectionItem | None = (
+                    self._attach_dgs_projection_routed_connection(
                         source_item=source_item,
                         target_item=target_item,
-                        variable_pairs=variable_pairs,
+                        source_var=projection_edge[2],
+                        target_var=projection_edge[3],
+                        reserved_segments=reserved_segments,
                     )
+                )
+                if direct_connection is None:
+                    fallback_edges.append(projection_edge)
+                else:
+                    pass
+
+        # A failed edge has demonstrated that no route exists in the global
+        # visibility grid under the already accepted no-crossing constraints.
+        # Only that edge receives a paired signal tag; successful edges remain
+        # ordinary inspectable cables between their real ports.
+        source_tags: List[tuple[int, graph.PairedItem]] = list()
+        for projection_edge in fallback_edges:
+            self._attach_dgs_projection_signal_pair(
+                source_item=projection_edge[0],
+                target_item=projection_edge[1],
+                source_var=projection_edge[2],
+                target_var=projection_edge[3],
+                source_tags=source_tags,
+                reserved_segments=reserved_segments,
+            )
 
         projection_rect: QtCore.QRectF = self.scene.itemsBoundingRect()
         if projection_rect.isNull():

@@ -4089,6 +4089,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         "_add_symbol_button",
         "_namespace",
         "_tabs",
+        "_dae_tab_index",
         "_equation_buffers",
         "_equation_owner_combo",
         "_active_equation_buffer_index",
@@ -4236,6 +4237,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         )
         self._namespace = self._runtime_logic_editor.build_validation_namespace(self._namespace)
         self._tabs: QtWidgets.QTabWidget = self.ui.tab_widget
+        self._dae_tab_index: int = -1
         self._equation_buffers: List[BlockCodeBuffer] = list()
         child_block: Block
         for child_block in block.get_all_blocks():
@@ -4390,6 +4392,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         runtime_page: QtWidgets.QWidget = self._runtime_logic_editor
         general_index: int = self._tabs.addTab(general_page, self.tr("General options"))
         dae_index: int = self._tabs.addTab(dae_page, self.tr("DAE model"))
+        self._dae_tab_index = dae_index
         runtime_index: int = self._tabs.addTab(runtime_page, self.tr("Runtime logic"))
         self._tabs.setTabIcon(general_index, QtGui.QIcon(":/Icons/icons/gear.png"))
         self._tabs.setTabIcon(dae_index, QtGui.QIcon(":/Icons/icons/edit.png"))
@@ -4400,6 +4403,28 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
             self._tabs.setTabIcon(special_index, QtGui.QIcon(":/Icons/icons/gear.png"))
         else:
             pass
+
+    def show_dae_model_page(self) -> None:
+        """Select the equation editor page when it has been constructed.
+
+        :return: None.
+        """
+        if self._dae_tab_index >= 0:
+            self._tabs.setCurrentIndex(self._dae_tab_index)
+        else:
+            pass
+
+    def is_dae_model_page_active(self) -> bool:
+        """Return whether the equation editor page is currently selected.
+
+        :return: DAE page selection state.
+        """
+        if self._dae_tab_index < 0:
+            return False
+        elif self._tabs.currentIndex() == self._dae_tab_index:
+            return True
+        else:
+            return False
 
     def _build_general_page(self) -> QtWidgets.QWidget:
         """
