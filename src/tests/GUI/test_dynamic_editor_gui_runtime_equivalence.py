@@ -305,18 +305,26 @@ def _load_nuactis_rms_grid(fixture_name: str) -> MultiCircuit:
     return imported_grid
 
 
-def _add_nuactis_q_reference_step(
+def _add_nuactis_parameter_event(
         grid: MultiCircuit,
         vsc: VSC,
-        runtime_parameter_name: str = "Q_ref",
-        event_value: float = 0.02,
+        event_group: RmsEventsGroup,
+        runtime_parameter_name: str,
+        event_value: float,
+        event_time: float,
+        event_idtag: str,
+        event_name: str,
 ) -> Var:
-    """Add one GUI-selectable controller-parameter step to Nuactis.
+    """Add one GUI-selectable controller-parameter event to Nuactis.
 
     :param grid: Canonical Nuactis circuit that owns the event.
-    :param vsc: Slave converter whose imported controller is perturbed.
+    :param vsc: Converter whose imported controller is perturbed.
+    :param event_group: Scenario group that owns the event.
     :param runtime_parameter_name: Exact imported runtime parameter name.
     :param event_value: Absolute parameter value applied at the event.
+    :param event_time: Simulation time at which the value is applied.
+    :param event_idtag: Stable identifier for the event.
+    :param event_name: Human-readable event name.
     :return: Exact typed runtime parameter targeted by the event.
     """
     vsc_model: Block | None = vsc.rms_model
@@ -342,23 +350,68 @@ def _add_nuactis_q_reference_step(
         parameter.name for parameter in runtime_parameters
     )
 
-    event_group: RmsEventsGroup = RmsEventsGroup(
-        idtag="nuactis-gui-script-controller-step-group",
-        active=True,
-        name="Nuactis GUI-script controller step",
-    )
     event: RmsEvent = RmsEvent(
-        idtag="nuactis-gui-script-controller-step",
-        name="Nuactis GUI-script controller step",
+        idtag=event_idtag,
+        name=event_name,
         device=vsc,
         parameter=selected_parameter,
-        time=0.003,
+        time=event_time,
         value=event_value,
         group=event_group,
     )
-    grid.add_rms_events_group(event_group)
     grid.add_rms_event(event)
     return selected_parameter
+
+
+def _collect_rms_variable_values(
+        problem: RmsProblemDae,
+        results: RmsResults,
+        variable_names: List[str],
+) -> np.ndarray:
+    """Collect named RMS variables without depending on solver column order.
+
+    :param problem: Compiled RMS problem that owns the variable indices.
+    :param results: RMS trajectory containing every compiled variable.
+    :param variable_names: Exact global symbolic names to collect.
+    :return: Values arranged as time, requested variable, and event scenario.
+    """
+    time_count: int = results.values.shape[0]
+    variable_count: int = len(variable_names)
+    scenario_count: int = results.values.shape[2]
+    selected_values: np.ndarray = np.empty(
+        (time_count, variable_count, scenario_count),
+        dtype=float,
+    )
+    requested_index: int
+
+    # Resolve names explicitly because GUI persistence may reorder otherwise
+    # equivalent symbolic blocks without changing their physical semantics.
+    for requested_index in range(variable_count):
+        variable_name: str = variable_names[requested_index]
+        variable_uid: int | None = problem.vars_glob_name2uid.get(
+            variable_name,
+            None,
+        )
+        if variable_uid is not None:
+            variable_result_index: int | None = problem.uid2idx_vars.get(
+                variable_uid,
+                None,
+            )
+            if variable_result_index is not None:
+                selected_values[:, requested_index, :] = results.values[
+                    :,
+                    variable_result_index,
+                    :,
+                ]
+            else:
+                raise AssertionError(
+                    f"RMS result index is missing for variable {variable_name}."
+                )
+        else:
+            raise AssertionError(
+                f"Compiled RMS variable is missing: {variable_name}."
+            )
+    return selected_values
 
 
 def _run_nuactis_short_rms(
@@ -380,7 +433,7 @@ def _run_nuactis_short_rms(
     rms_options: RmsOptions = RmsOptions(
         time_step=0.001,
         simulation_time=0.01,
-        tolerance=1e-6,
+        tolerance=1e-9,
         integration_method=DynamicIntegrationMethod.DaeBackEuler,
         initialization_method=RmsInitializationMethod.Explicit,
         use_init_values=False,
@@ -796,15 +849,71 @@ def test_nuactis_v1_gui_editor_matches_scripting_pf_and_rms(
             editor_to_close.deleteLater()
         qt_app.processEvents()
 
-    # Perturb the same controller reference through the parameter exposed by
-    # the GUI event editor so equality covers an actual dynamic response.
-    _add_nuactis_q_reference_step(
+    # Build one reference-step scenario and one independent current-limiter
+    # scenario so GUI persistence is exercised across different V1 dynamics.
+    script_reference_group: RmsEventsGroup = RmsEventsGroup(
+        idtag="nuactis-v1-q-reference-group",
+        active=True,
+        name="Nuactis V1 Q reference step",
+    )
+    gui_reference_group: RmsEventsGroup = RmsEventsGroup(
+        idtag="nuactis-v1-q-reference-group",
+        active=True,
+        name="Nuactis V1 Q reference step",
+    )
+    script_grid.add_rms_events_group(script_reference_group)
+    gui_grid.add_rms_events_group(gui_reference_group)
+    _add_nuactis_parameter_event(
         grid=script_grid,
         vsc=script_vsc_devices[1],
+        event_group=script_reference_group,
+        runtime_parameter_name="Q_ref",
+        event_value=0.02,
+        event_time=0.003,
+        event_idtag="nuactis-v1-q-reference-event",
+        event_name="Nuactis V1 Q reference step",
     )
-    _add_nuactis_q_reference_step(
+    _add_nuactis_parameter_event(
         grid=gui_grid,
         vsc=gui_vsc_devices[1],
+        event_group=gui_reference_group,
+        runtime_parameter_name="Q_ref",
+        event_value=0.02,
+        event_time=0.003,
+        event_idtag="nuactis-v1-q-reference-event",
+        event_name="Nuactis V1 Q reference step",
+    )
+    script_limit_group: RmsEventsGroup = RmsEventsGroup(
+        idtag="nuactis-v1-iq-limit-group",
+        active=True,
+        name="Nuactis V1 Iq limit reduction",
+    )
+    gui_limit_group: RmsEventsGroup = RmsEventsGroup(
+        idtag="nuactis-v1-iq-limit-group",
+        active=True,
+        name="Nuactis V1 Iq limit reduction",
+    )
+    script_grid.add_rms_events_group(script_limit_group)
+    gui_grid.add_rms_events_group(gui_limit_group)
+    _add_nuactis_parameter_event(
+        grid=script_grid,
+        vsc=script_vsc_devices[1],
+        event_group=script_limit_group,
+        runtime_parameter_name="Outer_Ctrl_Q__iq_lim_max",
+        event_value=0.1,
+        event_time=0.003,
+        event_idtag="nuactis-v1-iq-limit-event",
+        event_name="Nuactis V1 Iq limit reduction",
+    )
+    _add_nuactis_parameter_event(
+        grid=gui_grid,
+        vsc=gui_vsc_devices[1],
+        event_group=gui_limit_group,
+        runtime_parameter_name="Outer_Ctrl_Q__iq_lim_max",
+        event_value=0.1,
+        event_time=0.003,
+        event_idtag="nuactis-v1-iq-limit-event",
+        event_name="Nuactis V1 Iq limit reduction",
     )
 
     script_pf_results: PowerFlowResults
@@ -822,7 +931,7 @@ def test_nuactis_v1_gui_editor_matches_scripting_pf_and_rms(
     assert np.allclose(script_pf_results.Sbus, gui_pf_results.Sbus, rtol=1e-10, atol=1e-10)
     assert np.allclose(script_pf_results.gen_p, gui_pf_results.gen_p, rtol=1e-10, atol=1e-10)
     assert script_rms_results.values.shape[0] == 11
-    assert script_rms_results.values.shape[2] == 1
+    assert script_rms_results.values.shape[2] == 2
     assert script_rms_results.values.shape == gui_rms_results.values.shape
     assert list(script_rms_results.variable_array) == list(gui_rms_results.variable_array)
     assert np.array_equal(script_rms_results.has_event_group_results, gui_rms_results.has_event_group_results)
@@ -838,30 +947,128 @@ def test_nuactis_v1_gui_editor_matches_scripting_pf_and_rms(
         rtol=1e-10,
         atol=1e-10,
     )
-    slave_q_active_uid: int | None = script_problem.vars_glob_name2uid.get(
-        "Q_act_PowerFactory StaPqmea 221Slave_PWM_nl",
-        None,
+    assert not np.allclose(
+        script_rms_results.values[0, :, 1],
+        script_rms_results.values[-1, :, 1],
+        rtol=1e-10,
+        atol=1e-10,
     )
-    assert slave_q_active_uid is not None
-    slave_q_active_index: int = script_problem.uid2idx_vars[slave_q_active_uid]
-    slave_q_active_trace: np.ndarray = script_rms_results.values[
-        :,
-        slave_q_active_index,
-        0,
-    ]
-    # PowerFactory keeps the state unchanged on the event sample and applies
-    # the new Q reference while integrating the immediately following interval.
-    assert np.isclose(slave_q_active_trace[3], slave_q_active_trace[0])
-    assert not np.isclose(slave_q_active_trace[4], slave_q_active_trace[3])
-    # Isolated PowerFactory V1 gives Q_act=0.0044611085247 pu at 10 ms with
-    # the same 1 ms step. Backward-Euler discretization remains within 2%.
-    assert np.isclose(
-        slave_q_active_trace[10],
-        0.0044611085247,
-        rtol=2.0e-2,
-        atol=1.0e-6,
+    selected_variable_names: List[str] = list(
+        (
+            "VmSlave_AC",
+            "VdcSlave_DC",
+            "P_act_PowerFactory StaPqmea 221Slave_PWM_nl",
+            "Q_act_PowerFactory StaPqmea 221Slave_PWM_nl",
+            "iq_refSlave_PWM_nl",
+            "idSlave_PWM_nl",
+            "iqSlave_PWM_nl",
+            "PmdSlave_PWM_nl",
+            "PmqSlave_PWM_nl",
+        )
     )
-    assert np.allclose(script_rms_results.values, gui_rms_results.values, rtol=1e-8, atol=1e-8)
+    script_selected_values: np.ndarray = _collect_rms_variable_values(
+        problem=script_problem,
+        results=script_rms_results,
+        variable_names=selected_variable_names,
+    )
+    gui_selected_values: np.ndarray = _collect_rms_variable_values(
+        problem=gui_problem,
+        results=gui_rms_results,
+        variable_names=selected_variable_names,
+    )
+    assert np.max(np.abs(script_selected_values - gui_selected_values)) <= 1e-6
+
+    # PowerFactory uses Backward Euler with a fixed, synchronized 1 ms grid.
+    # Compare both V1 events through 5 ms and the active current-limit response
+    # through 10 ms, covering terminal voltages, P/Q measurements, current
+    # control, converter currents, and modulation without relative tolerance.
+    pf_reference_values: np.ndarray = np.empty((6, 9, 2), dtype=float)
+    pf_reference_values[:, :, 0] = np.array(
+        [
+            [1.0023478247697053, 0.9937002486245272, 0.714285714275504,
+             -1.4309751707384878e-09, 0.12593765839191523, 0.7013960786157394,
+             0.1259376583919189, 0.7957316913686865, 0.2617067119242375],
+            [1.0023478247699102, 0.9937002486245398, 0.71428571427566,
+             -1.4304782577515394e-09, 0.12593765839141713, 0.7013960786158381,
+             0.1259376583914241, 0.7957316913689262, 0.26170671192426614],
+            [1.0023478247701079, 0.9937002486245501, 0.714285714275808,
+             -1.430001341467297e-09, 0.1259376583909381, 0.7013960786159308,
+             0.1259376583909482, 0.7957316913691584, 0.2617067119242933],
+            [1.002347824770298, 0.993700248624559, 0.7142857142759483,
+             -1.4295434880295942e-09, 0.12593765839047738, 0.7013960786160179,
+             0.12593765839049037, 0.7957316913693828, 0.26170671192431855],
+            [1.002650267702457, 0.9936994963755358, 0.714362614597673,
+             0.0006988912092386101, 0.12516561403907972, 0.701393230391041,
+             0.12517086555674659, 0.7961144024829689, 0.2616789877555235],
+            [1.0029419056842648, 0.9936981567408387, 0.7144338388750483,
+             0.0013726260934877488, 0.12442051908303207, 0.7013876156998365,
+             0.12443073114458662, 0.796484201493644, 0.2616509606590823],
+        ],
+        dtype=float,
+    )
+    pf_reference_values[:, :, 1] = np.array(
+        [
+            [1.0023478247697053, 0.9937002486245272, 0.714285714275504,
+             -1.4309751707384878e-09, 0.12593765839191523, 0.7013960786157394,
+             0.1259376583919189, 0.7957316913686865, 0.2617067119242375],
+            [1.0023478247699102, 0.9937002486245398, 0.71428571427566,
+             -1.4304782577515394e-09, 0.12593765839141713, 0.7013960786158381,
+             0.1259376583914241, 0.7957316913689262, 0.26170671192426614],
+            [1.0023478247701079, 0.9937002486245501, 0.714285714275808,
+             -1.430001341467297e-09, 0.1259376583909381, 0.7013960786159308,
+             0.1259376583909482, 0.7957316913691584, 0.2617067119242933],
+            [1.002347824770298, 0.993700248624559, 0.7142857142759483,
+             -1.4295434880295942e-09, 0.12593765839047738, 0.7013960786160179,
+             0.12593765839049037, 0.7957316913693828, 0.26170671192431855],
+            [1.0125121409469484, 0.9936747117604987, 0.7168890945479252,
+             0.02374168111163032, 0.1, 0.7012996212797632,
+             0.10017643024153482, 0.8085897877071915, 0.26077495218625024],
+            [1.0125036393432534, 0.9936538923095954, 0.716786654434039,
+             0.02370060811701951, 0.1, 0.7012026451828423,
+             0.10017281312188854, 0.8086051807232046, 0.26073195116438524],
+        ],
+        dtype=float,
+    )
+    powerfactory_difference: np.ndarray = np.abs(
+        script_selected_values[:6, :, :] - pf_reference_values
+    )
+    assert np.max(powerfactory_difference) <= 1e-6, (
+        np.unravel_index(np.argmax(powerfactory_difference), powerfactory_difference.shape),
+        float(np.max(powerfactory_difference)),
+    )
+    pf_limit_tail: np.ndarray = np.array(
+        [
+            [1.012495498918238, 0.9936348802504396, 0.7166882368894633,
+             0.023661216336155713, 0.1, 0.7011094698068339,
+             0.10016927046778065, 0.8086191977806844, 0.2606903713181343],
+            [1.012487704870278, 0.9936170448338162, 0.716593684083269,
+             0.023623435299427058, 0.1, 0.7010199462188381,
+             0.10016580073416284, 0.8086323476667666, 0.2606503041219945],
+            [1.0124802429970157, 0.9936002299512899, 0.7165028443996087,
+             0.023587201471565466, 0.1, 0.7009339313224762,
+             0.10016240240851107, 0.8086447531450459, 0.26061171935984],
+            [1.012473099671013, 0.9935843789466962, 0.7164155721624649,
+             0.023552452522316563, 0.1, 0.7008512876290728,
+             0.10015907401012342, 0.8086564562362878, 0.2605745634940873],
+            [1.0124662618164164, 0.9935694565883787, 0.7163317274102283,
+             0.02351912862539791, 0.1, 0.7007718830378122,
+             0.1001558140894331, 0.8086674817041525, 0.2605387800356318],
+        ],
+        dtype=float,
+    )
+    pf_limit_reference_values: np.ndarray = np.vstack(
+        (pf_reference_values[:, :, 1], pf_limit_tail)
+    )
+    limit_powerfactory_difference: np.ndarray = np.abs(
+        script_selected_values[:, :, 1] - pf_limit_reference_values
+    )
+    assert np.max(limit_powerfactory_difference) <= 1e-6, (
+        np.unravel_index(
+            np.argmax(limit_powerfactory_difference),
+            limit_powerfactory_difference.shape,
+        ),
+        float(np.max(limit_powerfactory_difference)),
+    )
 
 
 def test_nuactis_v2_gui_editor_matches_scripting_pf_and_rms(
@@ -920,18 +1127,91 @@ def test_nuactis_v2_gui_editor_matches_scripting_pf_and_rms(
             editor_to_close.deleteLater()
         qt_app.processEvents()
 
-    # Apply the same GUI-selectable controller event to both canonical grids.
-    script_amplitude_parameter: Var = _add_nuactis_q_reference_step(
+    # Keep the original Q-amplitude routing scenario and add an independent
+    # active-power step that exercises both Amplitude and T_step parameters.
+    script_q_amplitude_group: RmsEventsGroup = RmsEventsGroup(
+        idtag="nuactis-v2-q-amplitude-group",
+        active=True,
+        name="Nuactis V2 Q amplitude routing",
+    )
+    gui_q_amplitude_group: RmsEventsGroup = RmsEventsGroup(
+        idtag="nuactis-v2-q-amplitude-group",
+        active=True,
+        name="Nuactis V2 Q amplitude routing",
+    )
+    script_grid.add_rms_events_group(script_q_amplitude_group)
+    gui_grid.add_rms_events_group(gui_q_amplitude_group)
+    _add_nuactis_parameter_event(
         grid=script_grid,
         vsc=script_vsc_devices[1],
+        event_group=script_q_amplitude_group,
         runtime_parameter_name="Outer_Ctrl_Q__Amplitude",
         event_value=0.01,
+        event_time=0.003,
+        event_idtag="nuactis-v2-q-amplitude-event",
+        event_name="Nuactis V2 Q amplitude routing",
     )
-    _add_nuactis_q_reference_step(
+    _add_nuactis_parameter_event(
         grid=gui_grid,
         vsc=gui_vsc_devices[1],
+        event_group=gui_q_amplitude_group,
         runtime_parameter_name="Outer_Ctrl_Q__Amplitude",
         event_value=0.01,
+        event_time=0.003,
+        event_idtag="nuactis-v2-q-amplitude-event",
+        event_name="Nuactis V2 Q amplitude routing",
+    )
+    script_active_power_group: RmsEventsGroup = RmsEventsGroup(
+        idtag="nuactis-v2-active-power-group",
+        active=True,
+        name="Nuactis V2 active-power internal step",
+    )
+    gui_active_power_group: RmsEventsGroup = RmsEventsGroup(
+        idtag="nuactis-v2-active-power-group",
+        active=True,
+        name="Nuactis V2 active-power internal step",
+    )
+    script_grid.add_rms_events_group(script_active_power_group)
+    gui_grid.add_rms_events_group(gui_active_power_group)
+    _add_nuactis_parameter_event(
+        grid=script_grid,
+        vsc=script_vsc_devices[1],
+        event_group=script_active_power_group,
+        runtime_parameter_name="Outer_Ctrl_P_wFFS__Amplitude",
+        event_value=0.02,
+        event_time=0.003,
+        event_idtag="nuactis-v2-active-power-amplitude-event",
+        event_name="Nuactis V2 active-power amplitude",
+    )
+    _add_nuactis_parameter_event(
+        grid=script_grid,
+        vsc=script_vsc_devices[1],
+        event_group=script_active_power_group,
+        runtime_parameter_name="Outer_Ctrl_P_wFFS__T_step",
+        event_value=0.003,
+        event_time=0.003,
+        event_idtag="nuactis-v2-active-power-time-event",
+        event_name="Nuactis V2 active-power step time",
+    )
+    _add_nuactis_parameter_event(
+        grid=gui_grid,
+        vsc=gui_vsc_devices[1],
+        event_group=gui_active_power_group,
+        runtime_parameter_name="Outer_Ctrl_P_wFFS__Amplitude",
+        event_value=0.02,
+        event_time=0.003,
+        event_idtag="nuactis-v2-active-power-amplitude-event",
+        event_name="Nuactis V2 active-power amplitude",
+    )
+    _add_nuactis_parameter_event(
+        grid=gui_grid,
+        vsc=gui_vsc_devices[1],
+        event_group=gui_active_power_group,
+        runtime_parameter_name="Outer_Ctrl_P_wFFS__T_step",
+        event_value=0.003,
+        event_time=0.003,
+        event_idtag="nuactis-v2-active-power-time-event",
+        event_name="Nuactis V2 active-power step time",
     )
 
     script_pf_results: PowerFlowResults
@@ -960,64 +1240,139 @@ def test_nuactis_v2_gui_editor_matches_scripting_pf_and_rms(
     assert np.all(script_rms_results.well_initialized)
     assert np.all(script_rms_results.converged)
     assert script_rms_results.time_array.equals(gui_rms_results.time_array)
+    assert script_rms_results.values.shape[2] == 2
     assert np.max(np.abs(script_rms_results.values - gui_rms_results.values)) <= 1e-6
-    # Compare the complete 1 ms trace exported by licensed PowerFactory after
-    # its normal ComInc initialization. The directed amplitude event is present
-    # in both runs at 3 ms; its internal T_step remains 2 s, so these first
-    # 10 ms validate initialization and time routing before the delayed step.
-    pf_reference_values: np.ndarray = np.array(
+    selected_variable_names: List[str] = list(
+        (
+            "VmSlave_AC",
+            "VdcSlave_DC",
+            "P_act_PowerFactory StaPqmea 229HVDC Slave_PWM",
+            "Q_act_PowerFactory StaPqmea 229HVDC Slave_PWM",
+            "id_refHVDC Slave_PWM",
+            "idHVDC Slave_PWM",
+            "iqHVDC Slave_PWM",
+            "PmdHVDC Slave_PWM",
+            "PmqHVDC Slave_PWM",
+        )
+    )
+    script_selected_values: np.ndarray = _collect_rms_variable_values(
+        problem=script_problem,
+        results=script_rms_results,
+        variable_names=selected_variable_names,
+    )
+    gui_selected_values: np.ndarray = _collect_rms_variable_values(
+        problem=gui_problem,
+        results=gui_rms_results,
+        variable_names=selected_variable_names,
+    )
+    assert np.max(np.abs(script_selected_values - gui_selected_values)) <= 1e-6
+
+    # Compare synchronized traces for a latent Q-amplitude routing event and a
+    # physically active P-controller step. The active response covers all 11
+    # samples through 10 ms for nine independent electrical, controller,
+    # current, and modulation quantities.
+    pf_reference_values: np.ndarray = np.empty((8, 9, 2), dtype=float)
+    pf_reference_values[:, :, 0] = np.array(
         [
-            [0.9843814973093796, 1.0061318797440864, 1.3500718003862338e-11],
-            [0.9843814973050085, 1.0061318797440393, 7.765907282321548e-12],
-            [0.9843814973050056, 1.0061318797440400, 7.760953784392250e-12],
-            [0.9843814973050028, 1.0061318797440406, 7.756020587683972e-12],
-            [0.9843814973049996, 1.0061318797440413, 7.751615222722258e-12],
-            [0.9843814973049967, 1.0061318797440420, 7.747209857760546e-12],
-            [0.9843814973049935, 1.0061318797440426, 7.742905998903942e-12],
-            [0.9843814973049914, 1.0061318797440433, 7.738622441268361e-12],
-            [0.9843814973049886, 1.0061318797440437, 7.734480992179929e-12],
-            [0.9843814973049857, 1.0061318797440442, 7.730501952859673e-12],
-            [0.9843814973049835, 1.0061318797440446, 7.726847733075763e-12],
+            [0.9843814973092572, 1.0061318797440824, -0.7142857142855416,
+             1.3395577980190865e-11, -0.7179655512943582, -0.7179655512943582,
+             0.13284415767260976, 0.4212023430543814, -0.19836651541059913],
+            [0.9843814973081907, 1.0061318797440797, -0.714285714285515,
+             1.3189175466063066e-11, -0.717965551294358, -0.7179655512943579,
+             0.13284415767283134, 0.4212023430543063, -0.19836651541059594],
+            [0.9843814973080749, 1.0061318797440746, -0.7142857142854899,
+             1.2990040789061043e-11, -0.7179655512943579, -0.7179655512943579,
+             0.1328441576730453, 0.4212023430542335, -0.19836651541059283],
+            [0.9843814973079628, 1.0061318797440688, -0.714285714285465,
+             1.2798072443079685e-11, -0.7179655512943579, -0.7179655512943577,
+             0.13284415767325136, 0.42120234305416343, -0.19836651541058975],
+            [0.9843814973078551, 1.0061318797440628, -0.7142857142854417,
+             1.2613026813466734e-11, -0.7179655512943579, -0.717965551294358,
+             0.1328441576734503, 0.42120234305409626, -0.19836651541058722],
+            [0.9843814973077509, 1.0061318797440564, -0.7142857142854195,
+             1.2434396369696645e-11, -0.717965551294358, -0.7179655512943585,
+             0.13284415767364235, 0.42120234305403165, -0.19836651541058492],
+            [0.9843814973076506, 1.0061318797440497, -0.7142857142853977,
+             1.2262282617874527e-11, -0.7179655512943582, -0.7179655512943586,
+             0.13284415767382737, 0.42120234305396953, -0.1983665154105827],
+            [0.984381497307554, 1.0061318797440426, -0.7142857142853768,
+             1.2096178027474837e-11, -0.7179655512943586, -0.7179655512943587,
+             0.1328441576740058, 0.42120234305390974, -0.19836651541058062],
         ],
         dtype=float,
     )
-    slave_ac_voltage_uid: int | None = script_problem.vars_glob_name2uid.get(
-        "VmSlave_AC",
-        None,
+    pf_reference_values[:, :, 1] = np.array(
+        [
+            [0.9843814973092572, 1.0061318797440824, -0.7142857142855416,
+             1.3395577980190865e-11, -0.7179655512943582, -0.7179655512943582,
+             0.13284415767260976, 0.4212023430543814, -0.19836651541059913],
+            [0.9843814973081907, 1.0061318797440797, -0.714285714285515,
+             1.3189175466063066e-11, -0.717965551294358, -0.7179655512943579,
+             0.13284415767283134, 0.4212023430543063, -0.19836651541059594],
+            [0.9843814973080749, 1.0061318797440746, -0.7142857142854899,
+             1.2990040789061043e-11, -0.7179655512943579, -0.7179655512943579,
+             0.1328441576730453, 0.4212023430542335, -0.19836651541059283],
+            [0.9843814973079628, 1.0061318797440688, -0.714285714285465,
+             1.2798072443079685e-11, -0.7179655512943579, -0.7179655512943577,
+             0.13284415767325136, 0.42120234305416343, -0.19836651541058975],
+            [0.9843719086934515, 1.0061312723588598, -0.7142072945517314,
+             -3.621440480498807e-05, -0.7178858649732928, -0.7178864068145794,
+             0.1328427324189044, 0.4212046412108688, -0.19833889372602098],
+            [0.9843631105458035, 1.0061301008704309, -0.7141293344071151,
+             -7.099539257930181e-05, -0.7178064904928061, -0.7178075607607995,
+             0.13283992486251384, 0.4212076547113653, -0.19831151486618126],
+            [0.9843550730036417, 1.0061284211118984, -0.7140518258773308,
+             -0.00010439464670751266, -0.7177274260464386, -0.7177290116219334,
+             0.13283578971530693, 0.42121134102194485, -0.19828436618506362],
+            [0.9843477672752907, 1.0061262975109728, -0.7139747612449869,
+             -0.00013646201462689435, -0.7176486698586004, -0.7176507579111814,
+             0.1328303797195585, 0.4212156547021974, -0.19825743339670046],
+        ],
+        dtype=float,
     )
-    slave_dc_voltage_uid: int | None = script_problem.vars_glob_name2uid.get(
-        "VdcSlave_DC",
-        None,
+    powerfactory_difference: np.ndarray = np.abs(
+        script_selected_values[:8, :, :] - pf_reference_values
     )
-    slave_q_active_uid: int | None = script_problem.vars_glob_name2uid.get(
-        "Q_act_PowerFactory StaPqmea 229HVDC Slave_PWM",
-        None,
+    assert np.max(powerfactory_difference) <= 1e-6, (
+        np.unravel_index(np.argmax(powerfactory_difference), powerfactory_difference.shape),
+        float(np.max(powerfactory_difference)),
     )
-    assert slave_ac_voltage_uid is not None
-    assert slave_dc_voltage_uid is not None
-    assert slave_q_active_uid is not None
-    veragrid_values: np.ndarray = np.column_stack(
-        (
-            script_rms_results.values[
-                :, script_problem.uid2idx_vars[slave_ac_voltage_uid], 0
-            ],
-            script_rms_results.values[
-                :, script_problem.uid2idx_vars[slave_dc_voltage_uid], 0
-            ],
-            script_rms_results.values[
-                :, script_problem.uid2idx_vars[slave_q_active_uid], 0
-            ],
-        )
+    pf_active_tail: np.ndarray = np.array(
+        [
+            [0.9843411656005945, 1.0061237991659089, -0.7138981330404819,
+             -0.00016724556140717693, -0.7175702201835803,
+             -0.7175727981652051, 0.13282374571889807,
+             0.42122054902237555, -0.1982307013475729],
+            [0.9843352412141125, 1.006120996174945, -0.7138219340332167,
+             -0.00019679163371802945, -0.7174920753045892,
+             -0.7174951309433166, 0.1328159367260879,
+             0.4212259774756424, -0.19820415473851105],
+            [0.9843299683096303, 1.006117956391999, -0.71374615722312,
+             -0.00022514492147426577, -0.7174142335328386,
+             -0.7174177548267039, 0.1328069999883731,
+             0.42123189511288467, -0.19817777876213108],
+        ],
+        dtype=float,
     )
-    assert np.max(np.abs(veragrid_values - pf_reference_values)) <= 1e-6
-    amplitude_parameter_index: int = script_problem._uid2idx_event_params[
-        script_amplitude_parameter.uid
-    ]
-    assert float(
-        script_problem._variable_parameters_values[amplitude_parameter_index]
-    ) == 0.01
-
-
+    pf_active_reference_values: np.ndarray = np.vstack(
+        (pf_reference_values[:, :, 1], pf_active_tail)
+    )
+    active_powerfactory_difference: np.ndarray = np.abs(
+        script_selected_values[:, :, 1] - pf_active_reference_values
+    )
+    assert np.max(active_powerfactory_difference) <= 1e-6, (
+        np.unravel_index(
+            np.argmax(active_powerfactory_difference),
+            active_powerfactory_difference.shape,
+        ),
+        float(np.max(active_powerfactory_difference)),
+    )
+    assert not np.allclose(
+        script_selected_values[0, :, 1],
+        script_selected_values[10, :, 1],
+        rtol=1e-10,
+        atol=1e-10,
+    )
 def test_rms_editor_open_materializes_connection_vars(qt_app: QtWidgets.QApplication) -> None:
     """
     Show every RMS root connection variable immediately when an editor opens.

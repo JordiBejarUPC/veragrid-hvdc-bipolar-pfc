@@ -35,6 +35,7 @@ class VSC(BranchParent):
         '_r_series',
         '_x_series',
         '_dc_voltage_base',
+        '_dc_link_capacitance_uf',
         '_mmc_arm_capacitance_uf',
         '_mmc_consider_arm_reactor_dc',
         '_control1',
@@ -111,7 +112,7 @@ class VSC(BranchParent):
             definition='Losses quadratic parameter (IEC 62751-2 loss Correction, resistive loss).',
             dyn_ref=ParamPowerFlowReferenceType.alpha3,
         ),
-        # Persist only the five irreducible dynamic inputs owned by the adapter.
+        # Persist only the six irreducible dynamic inputs owned by the adapter.
         GCProp(
             prop_name='r_series',
             units='p.u.',
@@ -129,6 +130,12 @@ class VSC(BranchParent):
             units='kV',
             tpe=float,
             definition='Native converter DC voltage base used by dynamic models.',
+        ),
+        GCProp(
+            prop_name='dc_link_capacitance_uf',
+            units='uF',
+            tpe=float,
+            definition='Equivalent capacitance directly across the DC terminals.',
         ),
         GCProp(
             prop_name='mmc_arm_capacitance_uf',
@@ -376,6 +383,7 @@ class VSC(BranchParent):
                  r_series: float = 0.0,
                  x_series: float = 0.0,
                  dc_voltage_base: float = 0.0,
+                 dc_link_capacitance_uf: float = 0.0,
                  mmc_arm_capacitance_uf: float = 0.0,
                  mmc_consider_arm_reactor_dc: bool = False,
                  mttf: float = 0.0,
@@ -434,6 +442,7 @@ class VSC(BranchParent):
         :param r_series: Converter series-reactor resistance in per unit.
         :param x_series: Converter series-reactor reactance in per unit.
         :param dc_voltage_base: Native DC voltage base in kV.
+        :param dc_link_capacitance_uf: Equivalent DC-terminal capacitance in microfarads.
         :param mmc_arm_capacitance_uf: Equivalent capacitance of one MMC arm in microfarads.
         :param mmc_consider_arm_reactor_dc: Whether the arm reactor is represented on the DC side.
         :param mttf:
@@ -545,6 +554,7 @@ class VSC(BranchParent):
         self.r_series = r_series
         self.x_series = x_series
         self.dc_voltage_base = dc_voltage_base
+        self.dc_link_capacitance_uf = dc_link_capacitance_uf
         self.mmc_arm_capacitance_uf = mmc_arm_capacitance_uf
         self.mmc_consider_arm_reactor_dc = mmc_consider_arm_reactor_dc
 
@@ -1496,6 +1506,23 @@ class VSC(BranchParent):
         :return: None.
         """
         self._dc_voltage_base = float(val)
+
+    @property
+    def dc_link_capacitance_uf(self) -> float:
+        """Get the capacitance represented directly across the DC terminals.
+
+        :return: DC-terminal capacitance in microfarads.
+        """
+        return self._dc_link_capacitance_uf
+
+    @dc_link_capacitance_uf.setter
+    def dc_link_capacitance_uf(self, val: float) -> None:
+        """Set the capacitance represented directly across the DC terminals.
+
+        :param val: DC-terminal capacitance in microfarads.
+        :return: None.
+        """
+        self._dc_link_capacitance_uf = float(val)
 
     @property
     def mmc_arm_capacitance_uf(self) -> float:

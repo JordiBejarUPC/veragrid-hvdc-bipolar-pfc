@@ -1598,10 +1598,16 @@ class DgsExpressionParser(ast.NodeVisitor):
     def __init__(self,
                  symbol_table: Dict[str, Var],
                  block_name: str = "",
-                 simulation_domain: DynamicSimulationMode = DynamicSimulationMode.RMS):
+                 simulation_domain: DynamicSimulationMode = DynamicSimulationMode.RMS,
+                 boundary_parameter_uids: Set[int] | None = None):
         self.symbol_table: Dict[str, Var] = symbol_table
         self.block_name: str = block_name
         self.simulation_domain: DynamicSimulationMode = simulation_domain
+        if boundary_parameter_uids is None:
+            self._boundary_parameter_uids: Set[int] = set()
+        else:
+            self._boundary_parameter_uids = set(boundary_parameter_uids)
+        self._boundary_expression_by_name: Dict[str, Expr] = dict()
         self._replacement_map: Dict[str, str] = dict()
         original_name: str
         for original_name in symbol_table.keys():
@@ -1610,6 +1616,46 @@ class DgsExpressionParser(ast.NodeVisitor):
         self._procedural_logic_entries: List[ProceduralLogicBase] = list()
         self._procedural_counter: int = 0
         self._time_var: Var | None = None
+
+    def register_algebraic_boundary_expression(
+            self,
+            lhs_name: str,
+            rhs_expr: Expr,
+    ) -> None:
+        """Register one algebraic expression safe for boundary evaluation.
+
+        PowerFactory evaluates a selector from values at the target boundary.
+        An algebraic helper made solely from time, parameters, and previously
+        registered boundary helpers can therefore be expanded safely before the
+        procedural selector samples it. Expressions that retain an ordinary
+        state or algebraic dependency deliberately keep accepted-state sampling.
+
+        :param lhs_name: DGS algebraic output receiving the expression.
+        :param rhs_expr: Parsed algebraic right-hand side.
+        :return: None.
+        """
+        expanded_rhs: Expr = rhs_expr.subs(self._boundary_expression_by_name)
+        expression_is_boundary_safe: bool = True
+        dependency_var: Var
+        for dependency_var in expanded_rhs.get_vars():
+            dependency_is_time: bool = (
+                self._time_var is not None
+                and dependency_var.uid == self._time_var.uid
+            )
+            dependency_is_parameter: bool = dependency_var.uid in self._boundary_parameter_uids
+            if dependency_is_time or dependency_is_parameter:
+                pass
+            else:
+                expression_is_boundary_safe = False
+
+        if expression_is_boundary_safe:
+            lhs_var: Var | None = self.symbol_table.get(lhs_name, None)
+            if lhs_var is not None:
+                self._boundary_expression_by_name[lhs_var.name] = expanded_rhs
+            else:
+                pass
+        else:
+            pass
 
     @property
     def procedural_mode_defaults(self) -> Dict[Var, Expr | Const]:
@@ -1982,6 +2028,9 @@ class DgsExpressionParser(ast.NodeVisitor):
             else:
                 result = alternate_expr
         else:
+            boundary_condition_expr: Expr = condition_expr.subs(
+                self._boundary_expression_by_name
+            )
             selector: Var = self._new_procedural_mode_var(name)
             if name in {'select', 'select_const', 'ifelse'}:
                 self._procedural_logic_entries.append(
@@ -1989,7 +2038,7 @@ class DgsExpressionParser(ast.NodeVisitor):
                         output_var_name=selector.name,
                         output_var_uid=selector.uid,
                         source_expr=Comparison(
-                            lhs=condition_expr,
+                            lhs=boundary_condition_expr,
                             op=CmpOp.GT,
                             rhs=Const(0.5),
                         ).to_expression(),
@@ -3325,7 +3374,20 @@ def _parse_blkdef(
     """
     symbol_table, state_vars, state_var_map, diff_var_map, _param_var_map = _build_symbol_table(blkdef, shared_signals)
     _predeclare_statement_lhs_symbols(blkdef, symbol_table)
-    parser = DgsExpressionParser(symbol_table, block_name=blkdef.loc_name, simulation_domain=simulation_domain)
+    boundary_parameter_uids: Set[int] = set()
+    parameter_name: str
+    for parameter_name in blkdef.params:
+        parameter_var: Var | None = symbol_table.get(parameter_name, None)
+        if parameter_var is not None:
+            boundary_parameter_uids.add(parameter_var.uid)
+        else:
+            pass
+    parser = DgsExpressionParser(
+        symbol_table,
+        block_name=blkdef.loc_name,
+        simulation_domain=simulation_domain,
+        boundary_parameter_uids=boundary_parameter_uids,
+    )
 
     state_rhs: Dict[str, Expr] = dict()
     algebraic_rhs: Dict[str, Expr] = dict()
@@ -3478,6 +3540,10 @@ def _parse_blkdef(
                     elif stmt_kind == 'algebraic':
                         assert lhs_name is not None
                         algebraic_rhs[lhs_name] = rhs_expr
+                        parser.register_algebraic_boundary_expression(
+                            lhs_name=lhs_name,
+                            rhs_expr=rhs_expr,
+                        )
                         signal_dependencies[lhs_name] = _build_expr_signal_name_set(rhs_expr)
                     else:
                         unsupported_lines.append(stmt)

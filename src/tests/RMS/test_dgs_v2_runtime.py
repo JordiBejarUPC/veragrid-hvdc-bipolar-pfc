@@ -8,6 +8,8 @@ from pathlib import Path
 import numpy as np
 
 import VeraGridEngine.api as gce
+from VeraGridEngine.Devices.Branches.line import Line
+from VeraGridEngine.Devices.Branches.vsc import VSC
 from VeraGridEngine.Devices.Events.rms_events_group import RmsEventsGroup
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.IO.file_open import FileOpen, FileOpenOptions
@@ -24,6 +26,7 @@ from VeraGridEngine.enumerations import (
     DynamicIntegrationMethod,
     DynamicSimulationMode,
     FileType,
+    ParamPowerFlowReferenceType,
     RmsInitializationMethod,
     SolverType,
 )
@@ -59,6 +62,11 @@ def test_dgs_v2_first_rms_step_is_finite_and_converged() -> None:
     assert file_open.logger.warning_count() == 4
     assert len(grid.buses) == 10
     assert len(grid.get_vsc()) == 2
+    vsc: VSC
+    for vsc in grid.get_vsc():
+        assert vsc.dc_link_capacitance_uf == 76.80000305175781
+    else:
+        pass
 
     # Reconstruct the exact imported operating point before RMS initialization.
     power_flow_options: PowerFlowOptions = PowerFlowOptions(
@@ -127,6 +135,17 @@ def test_dgs_v2_first_rms_step_is_finite_and_converged() -> None:
         options=rms_options,
         pf_results=power_flow_results,
     )
+    dc_cable: Line = next(
+        line
+        for line in grid.get_lines()
+        if line.bus_from.is_dc and line.bus_to.is_dc
+    )
+    inductance_parameter: Var = dc_cable.rms_model.api_obj_mapping[
+        ParamPowerFlowReferenceType.dc_line_l_pu_seconds
+    ]
+    assert problem._static_parameters_values_mapping[
+        inductance_parameter
+    ].value == dc_cable.dc_series_inductance_pu_seconds
     assert len(problem._external_time_uids) == 3
     problem.set_events_group(
         rms_events_group=RmsEventsGroup(name="Nuactis V2 directed step")

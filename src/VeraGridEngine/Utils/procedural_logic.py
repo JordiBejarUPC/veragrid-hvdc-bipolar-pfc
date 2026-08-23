@@ -638,13 +638,19 @@ class ProceduralLogicBase(ProceduralLogicEntryContract[Expr]):
 
     def _build_expr_plan(self, expr_eval: Expr, problem: ProceduralProblem) -> List[Tuple[int, int, int]]:
         # Plan tuple layout: (uid, source_kind, source_idx)
-        # source_kind: 0 -> x/state-algebraic vars, 1 -> runtime params, 2 -> const params, 3 -> time
+        # source_kind: 0 -> x/state-algebraic vars, 1 -> runtime params,
+        # 2 -> const params, 3 -> accepted sample time, 4 -> target global time
         refs_by_uid: Dict[int, Tuple[int, int, int]] = dict()
 
         for var in expr_eval.get_vars():
-            if var.name in {"time", "glob_time"} or var.uid == problem.glob_time.uid:
+            if var.name == "glob_time" or var.uid == problem.glob_time.uid:
+                refs_by_uid[var.uid] = (var.uid, 4, -1)
+                continue
+            elif var.name == "time":
                 refs_by_uid[var.uid] = (var.uid, 3, -1)
                 continue
+            else:
+                pass
 
             idx_var = problem.uid2idx_vars.get(var.uid, None)
             if idx_var is not None:
@@ -763,8 +769,16 @@ class ProceduralLogicBase(ProceduralLogicEntryContract[Expr]):
 
         if isinstance(expr_eval, Var):
             # Fast-path single variables because they dominate the procedural runtime workload.
-            if expr_eval.name in {"time", "glob_time"}:
+            if expr_eval.name == "glob_time":
+                # Global time belongs to the target boundary being evaluated.
+                # The accepted state may still come from the previous boundary,
+                # but delaying this clock would postpone time-driven selectors
+                # by one complete integration step.
+                return float(t)
+            elif expr_eval.name == "time":
                 return sample_time
+            else:
+                pass
 
             idx_var = problem.uid2idx_vars.get(expr_eval.uid, None)
             if idx_var is not None:
@@ -820,10 +834,14 @@ class ProceduralLogicBase(ProceduralLogicEntryContract[Expr]):
                             uid_bindings[uid] = float(
                                 const_values[source_idx].value
                             )
-                    else:
+                    elif source_kind == 3:
                         uid_bindings[uid] = sample_time
+                    else:
+                        uid_bindings[uid] = float(t)
 
-        uid_bindings[problem.glob_time.uid] = sample_time
+        # Declarative global time is the current solver boundary even though
+        # ordinary state variables are sampled from the accepted snapshot.
+        uid_bindings[problem.glob_time.uid] = float(t)
 
         return float(expr_eval.eval_uid(uid_bindings))
 

@@ -1323,6 +1323,7 @@ def resolve_direct_dyn_ref_value(
                                                     ParamPowerFlowReferenceType.vsc_kdp_pu,
                                                     ParamPowerFlowReferenceType.vsc_min_ac_voltage_pu,
                                                     ParamPowerFlowReferenceType.dc_line_r_pu,
+                                                    ParamPowerFlowReferenceType.dc_line_l_pu_seconds,
                                                     ParamPowerFlowReferenceType.dc_line_length_km,
                                                     ParamPowerFlowReferenceType.transformer_rated_power_mva,
                                                     ParamPowerFlowReferenceType.transformer_winding1_rated_voltage_ll_kv,

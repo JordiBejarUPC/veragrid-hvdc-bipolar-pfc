@@ -166,9 +166,9 @@ $$ElmTr2;FID(a:40);OP(a:1);loc_name(a:80);fold_id(p);typ_id(p);ntnum(i);outserv(
   125;C;2-W Tr_NL_Slave;111;251;1;0;0;0;0;1;0.99;1.01;0;0;999.999999986428;-1.03231627690548e-08;-999.999999986429;2.00096488356394e-06;;121;0;1;1;1;1.4e-09;1.4e-09;0
 
 
-$$ElmVscmono;FID(a:40);OP(a:1);loc_name(a:80);for_name(a:100);fold_id(p);outserv(i);Unom(r);usetp(r);psetp(r);qsetp(r);Pnold(r);P_max(r);i_acdc(i);c_pmod(p);m:P:busac(r);m:Q:busac(r);m:P:busdc(r);m:Q:busdc(r);Snom(r);Pcu(r);uk(r);swtLossFactor(r);resLossFactor(r);usetpdc(r);Unomdc(r);vsctype(i);Rarm(r);Larm(r);mmcCmod(r);iZarmDCside(i);NmmcSM(i)
-  126;C;Master_PWM_nl;;111;0;525;1;1;0;0;1400;3;87;-1021.08528227788;-5.68712721360498e-09;1013.49419601605;0;1400;14000;20;0;0;1;1050;0;0.006;60;10000;0;200
-  127;C;Slave_PWM_nl;;111;0;525;1;1000;0;0;1400;5;88;999.99999999748;-1.03231627690548e-08;-1007.10943453886;0;1400;14000;20;0;0;1;1050;0;0.006;60;10000;0;200
+$$ElmVscmono;FID(a:40);OP(a:1);loc_name(a:80);for_name(a:100);fold_id(p);outserv(i);Unom(r);usetp(r);psetp(r);qsetp(r);Pnold(r);P_max(r);i_acdc(i);c_pmod(p);m:P:busac(r);m:Q:busac(r);m:P:busdc(r);m:Q:busdc(r);Snom(r);Pcu(r);uk(r);swtLossFactor(r);resLossFactor(r);usetpdc(r);Unomdc(r);vsctype(i);Cdc(r);Rarm(r);Larm(r);mmcCmod(r);iZarmDCside(i);NmmcSM(i)
+  126;C;Master_PWM_nl;;111;0;525;1;1;0;0;1400;3;87;-1021.08528227788;-5.68712721360498e-09;1013.49419601605;0;1400;14000;20;0;0;1;1050;0;76.80000305175781;0.006;60;10000;0;200
+  127;C;Slave_PWM_nl;;111;0;525;1;1000;0;0;1400;5;88;999.99999999748;-1.03231627690548e-08;-1007.10943453886;0;1400;14000;20;0;0;1;1050;0;76.80000305175781;0.006;60;10000;0;200
 
 
 $$ElmXnet;FID(a:40);OP(a:1);loc_name(a:80);fold_id(p);snss(r);rntxn(r);z2tz1(r);snssmin(r);rntxnmin(r);z2tz1min(r);chr_name(a:40);bustp(a:2);pgini(r);qgini(r);phiini(r);usetp(r);outserv(i);Kpf(r);K(r);cmax(r);xd(r);xq(r)

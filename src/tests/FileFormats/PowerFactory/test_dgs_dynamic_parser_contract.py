@@ -78,6 +78,7 @@ from VeraGridEngine.IO.dgs.dgs_objects import (
     ElmSind,
     ElmTerm,
     ElmVscmono,
+    PowerFactoryVscType,
     StaCubic,
 )
 from VeraGridEngine.IO.dgs.dynamic_models.dynamic_model_import import (
@@ -445,12 +446,12 @@ def _build_nested_graphical_parent_fixture() -> tuple[
     (
         (
             "hvdc_vsc_v1_complete_static_dynamic.dgs",
-            "0065D822C38D57F51126D743CEB5BB5665CF0C0A88C65050B1BFC4F93D90E0F0",
+            "32D22863FD68D8B23BB2CAD0B7300F5B281ABD142D4F633AA87307014897D581",
             (0, 2, 2, 2, 12, 9, 10),
         ),
         (
             "hvdc_vsc_v2_complete_static_dynamic.dgs",
-            "D8D8341DD60632A6A01EE6516324336CC6CB50942BA58C1BC3A520252970D334",
+            "10171A7DD16F39ABB027EC8460AA10224072D76481436DBC4375167448B74C54",
             (0, 2, 2, 2, 11, 11, 10),
         ),
         (
@@ -490,6 +491,35 @@ def test_complete_hvdc_vsc_exports_preserve_static_and_dynamic_sections(
 
     assert source_sha256 == expected_sha256
     assert parsed_counts == expected_counts
+
+
+@pytest.mark.parametrize(
+    "file_name",
+    (
+        "hvdc_vsc_v1_complete_static_dynamic.dgs",
+        "hvdc_vsc_v2_complete_static_dynamic.dgs",
+    ),
+)
+def test_two_level_vsc_exports_retain_native_dc_link_capacitance(
+        file_name: str,
+) -> None:
+    """Retain the native two-level topology and DC-link capacitance.
+
+    :param file_name: Exact tracked V1 or V2 fixture name.
+    :return: None.
+    """
+    dgs_circuit: DgsCircuit = DgsCircuit()
+    dgs_circuit.parse_dgs(
+        path=str(_get_complete_hvdc_vsc_dgs_path(file_name=file_name))
+    )
+
+    assert len(dgs_circuit.elmvscmonos) == 2
+    converter: ElmVscmono
+    for converter in dgs_circuit.elmvscmonos:
+        assert converter.vsctype == PowerFactoryVscType.TwoLevel
+        assert converter.Cdc == 76.80000305175781
+    else:
+        pass
 
 
 @pytest.mark.parametrize(

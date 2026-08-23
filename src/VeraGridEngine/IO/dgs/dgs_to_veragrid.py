@@ -4748,6 +4748,39 @@ def _get_powerfactory_mmc_arm_capacitance_uf(
     return arm_capacitance_uf
 
 
+def _get_powerfactory_dc_link_capacitance_uf(
+        source: ElmVsc | ElmVscmono,
+) -> float:
+    """Return the capacitance owned directly by the native DC terminals.
+
+    A two-level converter uses ``Cdc``. MMC rows may still export a stale
+    ``Cdc`` value, so their arm capacitance remains owned by the separate MMC
+    field and is never interpreted as a terminal capacitor here.
+
+    :param source: Native PowerFactory converter row.
+    :return: Applicable two-level DC-link capacitance in microfarads.
+    """
+    source_type_value: int | None = source.vsctype
+    source_type: PowerFactoryVscType | None
+    if source_type_value == int(PowerFactoryVscType.TwoLevel):
+        source_type = PowerFactoryVscType.TwoLevel
+    elif source_type_value == int(PowerFactoryVscType.HalfBridgeMmc):
+        source_type = PowerFactoryVscType.HalfBridgeMmc
+    elif source_type_value == int(PowerFactoryVscType.FullBridgeMmc):
+        source_type = PowerFactoryVscType.FullBridgeMmc
+    else:
+        source_type = None
+
+    configured_capacitance_uf: float = (
+        0.0 if source.Cdc is None else max(float(source.Cdc), 0.0)
+    )
+    if source_type is PowerFactoryVscType.TwoLevel:
+        dc_link_capacitance_uf: float = configured_capacitance_uf
+    else:
+        dc_link_capacitance_uf = 0.0
+    return dc_link_capacitance_uf
+
+
 # Alex review required: map configured setpoints only; solved m:* values never control the VSC.
 def _get_native_vsc_controls(
         source: ElmVsc | ElmVscmono,
@@ -4957,6 +4990,9 @@ def convert_dgs_to_vsc(
             dc_voltage_base=(
                 0.0 if elmvsc.Unomdc is None else float(elmvsc.Unomdc)
             ),
+            dc_link_capacitance_uf=(
+                _get_powerfactory_dc_link_capacitance_uf(source=elmvsc)
+            ),
             mmc_arm_capacitance_uf=(
                 _get_powerfactory_mmc_arm_capacitance_uf(source=elmvsc)
             ),
@@ -5100,6 +5136,9 @@ def convert_dgs_to_monopolar_vsc(
             x_series=reactance_pu,
             dc_voltage_base=(
                 0.0 if source.Unomdc is None else float(source.Unomdc)
+            ),
+            dc_link_capacitance_uf=(
+                _get_powerfactory_dc_link_capacitance_uf(source=source)
             ),
             mmc_arm_capacitance_uf=(
                 _get_powerfactory_mmc_arm_capacitance_uf(source=source)

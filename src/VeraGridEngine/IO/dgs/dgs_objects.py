@@ -5,7 +5,20 @@
 from __future__ import annotations
 
 import csv
+from enum import IntEnum
 from typing import Dict, List
+
+
+class PowerFactoryVscType(IntEnum):
+    """Identify the native PowerFactory PWM-converter topology.
+
+    The numeric members are the declarative ``vsctype`` values exported by
+    ``ElmVsc`` and ``ElmVscmono``.
+    """
+
+    TwoLevel = 0
+    HalfBridgeMmc = 1
+    FullBridgeMmc = 2
 
 
 def _split_dgs_line(line: str) -> List[str]:
@@ -889,6 +902,8 @@ class ElmVsc(DGSElement):
         "resLossFactor",
         "usetpdc",
         "Unomdc",
+        "vsctype",
+        "Cdc",
         "i_acdc",
         "m_p_busac",
         "m_q_busac",
@@ -921,6 +936,8 @@ class ElmVsc(DGSElement):
         DgsProperty("resLossFactor", "r", "Resistive loss factor in ohm", py_name="resLossFactor", optional=True),
         DgsProperty("usetpdc", "r", "DC voltage setpoint in p.u.", py_name="usetpdc", optional=True),
         DgsProperty("Unomdc", "r", "Nominal DC voltage in kV", py_name="Unomdc", optional=True),
+        DgsProperty("vsctype", "i", "Native converter topology selector", py_name="vsctype", optional=True),
+        DgsProperty("Cdc", "r", "Two-level DC-link capacitance in uF", py_name="Cdc", optional=True),
         DgsProperty("i_acdc", "i", "Native AC/DC control-mode selector", py_name="i_acdc"),
         DgsProperty(
             "m:P:busac", "r", "Optional solved AC active-power evidence in MW",
@@ -962,6 +979,8 @@ class ElmVsc(DGSElement):
         self.resLossFactor: float | None = None
         self.usetpdc: float | None = None
         self.Unomdc: float | None = None
+        self.vsctype: int | None = None
+        self.Cdc: float | None = None
         self.i_acdc: int = 5
         self.m_p_busac: float | None = None
         self.m_q_busac: float | None = None
@@ -997,6 +1016,8 @@ class ElmVscmono(DGSElement):
         "resLossFactor",
         "usetpdc",
         "Unomdc",
+        "vsctype",
+        "Cdc",
         "i_acdc",
         "m_p_busac",
         "m_q_busac",
@@ -1031,6 +1052,8 @@ class ElmVscmono(DGSElement):
         DgsProperty("resLossFactor", "r", "Resistive loss factor in ohm", py_name="resLossFactor", optional=True),
         DgsProperty("usetpdc", "r", "DC voltage setpoint in p.u.", py_name="usetpdc", optional=True),
         DgsProperty("Unomdc", "r", "Nominal DC voltage in kV", py_name="Unomdc", optional=True),
+        DgsProperty("vsctype", "i", "Native converter topology selector", py_name="vsctype", optional=True),
+        DgsProperty("Cdc", "r", "Two-level DC-link capacitance in uF", py_name="Cdc", optional=True),
         DgsProperty("i_acdc", "i", "Native AC/DC control-mode selector", py_name="i_acdc"),
         DgsProperty(
             "m:P:busac", "r", "Optional solved AC active-power evidence in MW",
@@ -1080,6 +1103,8 @@ class ElmVscmono(DGSElement):
         self.resLossFactor: float | None = None
         self.usetpdc: float | None = None
         self.Unomdc: float | None = None
+        self.vsctype: int | None = None
+        self.Cdc: float | None = None
         self.i_acdc: int = 5
         self.m_p_busac: float | None = None
         self.m_q_busac: float | None = None

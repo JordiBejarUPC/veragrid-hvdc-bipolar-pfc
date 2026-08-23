@@ -1151,10 +1151,10 @@ def _get_monopolar_vsc_dc_capacitance_pu_seconds(
     """
     Return the native ``ElmVscmono`` DC-link energy coefficient.
 
-    PowerFactory's three-phase monopolar fundamental-frequency converter
-    refers the exported submodule banks to the DC terminal as
-    ``Ceq = 3 * Cmod / (2 * Nsm)``.  The returned coefficient converts that
-    physical capacitance to the bus RMS equation
+    PowerFactory two-level converters own ``Cdc`` directly. For legacy MMC
+    imports without a terminal coefficient, the three phase-leg submodule
+    banks retain their established ``Ceq = 3 * Cmod / (2 * Nsm)`` reduction.
+    The returned coefficient converts the selected physical capacitance to the bus RMS equation
     ``dVpu/dt = Ppu / (Cpu_seconds * Vpu)``.  Invalid or inapplicable device
     data produce zero so a partially exported DGS remains usable.
 
@@ -1168,23 +1168,22 @@ def _get_monopolar_vsc_dc_capacitance_pu_seconds(
         and converter.bus_from.is_dc
         and not converter.bus_from.is_grounded
     )
+    dc_link_capacitance_uf: float = float(converter.dc_link_capacitance_uf)
     arm_capacitance_uf: float = float(converter.mmc_arm_capacitance_uf)
     dc_bus_base_kv: float = float(converter.bus_from.Vnom)
     physical_data_ready: bool = (
         is_monopolar_dc_converter
-        and arm_capacitance_uf > 0.0
+        and (dc_link_capacitance_uf > 0.0 or arm_capacitance_uf > 0.0)
         and dc_bus_base_kv > 0.0
         and system_base_mva > 0.0
     )
     if physical_data_ready:
-        # The three phase-leg cell banks are referred to the single represented
-        # DC terminal.  Keeping the result physical makes this independent of
-        # controller names, event definitions and the validation case.
-        equivalent_capacitance_f: float = (
-            1.5
-            * arm_capacitance_uf
-            * 1.0e-6
-        )
+        # A two-level converter owns Cdc directly. Legacy MMC imports retain
+        # the existing arm-energy reduction when no terminal capacitor exists.
+        if dc_link_capacitance_uf > 0.0:
+            equivalent_capacitance_f: float = dc_link_capacitance_uf * 1.0e-6
+        else:
+            equivalent_capacitance_f = 1.5 * arm_capacitance_uf * 1.0e-6
         dc_bus_base_volts: float = dc_bus_base_kv * 1.0e3
         system_base_watts: float = system_base_mva * 1.0e6
         capacitance_pu_seconds: float = (
