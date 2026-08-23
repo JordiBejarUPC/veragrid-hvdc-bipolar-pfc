@@ -146,9 +146,33 @@ class DataBaseTableMain(DiagramsMain):
         Setup the database left tree object
         """
 
-        db_tree_model = gf.get_tree_model(d=self.circuit.get_template_objects_str_dict(),
-                                          top='Objects',
-                                          icons=device_type_icons)
+        db_tree_model: QtGui.QStandardItemModel = QtGui.QStandardItemModel()
+        db_tree_model.setHorizontalHeaderLabels([self.tr('Objects')])
+
+        root_item: QtGui.QStandardItem = db_tree_model.invisibleRootItem()
+        grouped_device_types: Dict[str, List[DeviceType]] = self.circuit.get_template_objects_type_dict()
+
+        for group_name, device_types in grouped_device_types.items():
+            # Category rows are only display nodes. Runtime selection is stored only on device leaves.
+            group_item: QtGui.QStandardItem = QtGui.QStandardItem(self.tr(str(group_name)))
+            group_item.setEditable(False)
+            root_item.appendRow(group_item)
+
+            for device_type in device_types:
+                # The displayed label can be translated while the enum payload remains stable.
+                device_item: QtGui.QStandardItem = QtGui.QStandardItem(self.tr(str(device_type.value)))
+                device_item.setEditable(False)
+                device_item.setData(device_type, QtCore.Qt.ItemDataRole.UserRole)
+
+                icon_path: str | None = device_type_icons.get(device_type.value, None)
+                if icon_path is not None:
+                    icon: QtGui.QIcon = QtGui.QIcon()
+                    icon.addPixmap(QtGui.QPixmap(icon_path))
+                    device_item.setIcon(icon)
+                else:
+                    pass
+
+                group_item.appendRow(device_item)
 
         self.ui.dataStructuresTreeView.setModel(db_tree_model)
         self.ui.dataStructuresTreeView.setRootIsDecorated(True)
@@ -195,15 +219,13 @@ class DataBaseTableMain(DiagramsMain):
         """
         if self.circuit.time_profile is not None:
 
-            dev_type_text = self.get_db_object_selected_type()
+            dev_type: DeviceType | None = self.get_db_object_selected_type()
 
-            if dev_type_text is not None:
+            if dev_type is not None:
 
-                magnitudes, mag_types = self.circuit.profile_magnitudes.get(dev_type_text, (list(), list()))
+                magnitudes, mag_types = self.circuit.profile_magnitudes.get(dev_type, (list(), list()))
 
                 if len(magnitudes) > 0:
-                    # get the enumeration unique association with the device text
-                    dev_type = self.circuit.device_type_name_dict[dev_type_text]
                     _, dictionary_of_lists = self.circuit.get_dictionary_of_lists(elm_type=dev_type)
 
                     idx = self.ui.device_type_magnitude_comboBox.currentIndex()
@@ -229,10 +251,10 @@ class DataBaseTableMain(DiagramsMain):
         :param proxy_mdl: ObjectModelFilterProxy used for the object's table
         :return:
         """
-        dev_type_text = self.get_db_object_selected_type()
+        dev_type: DeviceType | None = self.get_db_object_selected_type()
         association_property_name = self.ui.associationsComboBox.currentText()
 
-        if dev_type_text is not None and proxy_mdl is not None and association_property_name != "":
+        if dev_type is not None and proxy_mdl is not None and association_property_name != "":
 
             elements = proxy_mdl.objects
 
@@ -276,7 +298,7 @@ class DataBaseTableMain(DiagramsMain):
         else:
             warning_msg('There is no data displayed, please display one', 'Copy profile to clipboard')
 
-    def get_db_object_selected_type(self) -> Union[None, str]:
+    def get_db_object_selected_type(self) -> DeviceType | None:
         """
         Get the selected object type in the database tree view
         :return:
@@ -284,11 +306,15 @@ class DataBaseTableMain(DiagramsMain):
         indices = self.ui.dataStructuresTreeView.selectedIndexes()
 
         if len(indices) > 0:
-            return indices[0].data(role=QtCore.Qt.ItemDataRole.DisplayRole)
+            item_data: object = indices[0].data(role=QtCore.Qt.ItemDataRole.UserRole)
+            if isinstance(item_data, DeviceType):
+                return item_data
+            else:
+                return None
         else:
             return None
 
-    def get_selected_objects_model(self) -> Tuple[ObjectsModel | None, List[ALL_DEV_TYPES] | None, str | None]:
+    def get_selected_objects_model(self) -> Tuple[ObjectsModel | None, List[ALL_DEV_TYPES] | None, DeviceType | None]:
         """
         Get the selected objects' model
         :return: ObjectsModel, list of objects, object type name
@@ -299,13 +325,13 @@ class DataBaseTableMain(DiagramsMain):
         if self.ui.dataStructuresTreeView.selectedIndexes()[0].parent().row() > -1:
             # if the clicked element has a valid parent...
 
-            elm_type = self.get_db_object_selected_type()
+            elm_type: DeviceType | None = self.get_db_object_selected_type()
 
             if elm_type is not None:
 
-                elements = self.circuit.get_elements_by_type(device_type=DeviceType(elm_type))
+                elements = self.circuit.get_elements_by_type(device_type=elm_type)
 
-                objects_mdl = self.create_objects_model(elements=elements, elm_type=DeviceType(elm_type))
+                objects_mdl = self.create_objects_model(elements=elements, elm_type=elm_type)
 
                 return objects_mdl, elements, elm_type
             else:
@@ -763,105 +789,105 @@ class DataBaseTableMain(DiagramsMain):
         Add default objects objects
         """
         model = self.get_current_objects_model_view()
-        elm_type = self.get_db_object_selected_type()
+        elm_type: DeviceType | None = self.get_db_object_selected_type()
 
         if model is not None and elm_type is not None:
 
-            if elm_type == DeviceType.SubstationDevice.value:
+            if elm_type == DeviceType.SubstationDevice:
                 self.circuit.add_substation(dev.Substation(name=f'SE {self.circuit.get_substation_number() + 1}'))
                 self.update_from_to_list_views()
 
-            elif elm_type == DeviceType.VoltageLevelDevice.value:
+            elif elm_type == DeviceType.VoltageLevelDevice:
                 self.circuit.add_voltage_level(dev.VoltageLevel(
                     name=f'VL {self.circuit.get_voltage_levels_number() + 1}')
                 )
                 self.update_from_to_list_views()
 
-            elif elm_type == DeviceType.BusBarDevice.value:
+            elif elm_type == DeviceType.BusBarDevice:
                 self.circuit.add_bus_bar(dev.BusBar(name=f'BB {self.circuit.get_bus_bars_number() + 1}'))
                 self.update_from_to_list_views()
 
-            elif elm_type == DeviceType.ZoneDevice.value:
+            elif elm_type == DeviceType.ZoneDevice:
                 self.circuit.add_zone(dev.Zone(name=f'Zone {self.circuit.get_zone_number() + 1}'))
                 self.update_from_to_list_views()
 
-            elif elm_type == DeviceType.AreaDevice.value:
+            elif elm_type == DeviceType.AreaDevice:
                 self.circuit.add_area(dev.Area(name=f'Area {self.circuit.get_area_number() + 1}'))
                 self.update_from_to_list_views()
 
-            elif elm_type == DeviceType.CountryDevice.value:
+            elif elm_type == DeviceType.CountryDevice:
                 self.circuit.add_country(dev.Country(name=f'Country {self.circuit.get_country_number() + 1}'))
                 self.update_from_to_list_views()
 
-            elif elm_type == DeviceType.CommunityDevice.value:
+            elif elm_type == DeviceType.CommunityDevice:
                 self.circuit.add_community(dev.Community(
                     name=f'Community {self.circuit.get_communities_number() + 1}')
                 )
                 self.update_from_to_list_views()
 
-            elif elm_type == DeviceType.RegionDevice.value:
+            elif elm_type == DeviceType.RegionDevice:
                 self.circuit.add_region(dev.Region(name=f'Region {self.circuit.get_regions_number() + 1}'))
                 self.update_from_to_list_views()
 
-            elif elm_type == DeviceType.MunicipalityDevice.value:
+            elif elm_type == DeviceType.MunicipalityDevice:
                 self.circuit.add_municipality(dev.Municipality(
                     name=f'Municipalities {self.circuit.get_municipalities_number() + 1}')
                 )
                 self.update_from_to_list_views()
 
-            elif elm_type == DeviceType.BusDevice.value:
+            elif elm_type == DeviceType.BusDevice:
                 self.circuit.add_bus(dev.Bus(name=f'Bus {self.circuit.get_bus_number() + 1}'))
 
-            elif elm_type == DeviceType.ContingencyGroupDevice.value:
+            elif elm_type == DeviceType.ContingencyGroupDevice:
                 group = dev.ContingencyGroup(
                     name=f"Contingency group {self.circuit.get_contingency_groups_number() + 1}"
                 )
                 self.circuit.add_contingency_group(group)
 
-            elif elm_type == DeviceType.RemedialActionGroupDevice.value:
+            elif elm_type == DeviceType.RemedialActionGroupDevice:
                 group = dev.RemedialActionGroup(
                     name=f"Remedial actions group {self.circuit.get_remedial_action_groups_number() + 1}"
                 )
                 self.circuit.add_remedial_action_group(group)
 
-            elif elm_type == DeviceType.InvestmentsGroupDevice.value:
+            elif elm_type == DeviceType.InvestmentsGroupDevice:
                 group = dev.InvestmentsGroup(name=f"Investments group {len(self.circuit.investments_groups) + 1}")
                 self.circuit.add_investments_group(group)
 
-            elif elm_type == DeviceType.BranchGroupDevice.value:
+            elif elm_type == DeviceType.BranchGroupDevice:
                 group = dev.BranchGroup(name=f"Branch group {self.circuit.get_branch_groups_number() + 1}")
                 self.circuit.add_branch_group(group)
 
-            elif elm_type == DeviceType.Technology.value:
+            elif elm_type == DeviceType.Technology:
                 tech = dev.Technology(name=f"Technology {len(self.circuit.technologies) + 1}")
                 self.circuit.add_technology(tech)
 
-            elif elm_type == DeviceType.OverheadLineTypeDevice.value:
+            elif elm_type == DeviceType.OverheadLineTypeDevice:
 
                 obj = dev.OverheadLineType()
                 obj.frequency = self.circuit.fBase
                 obj.name = f'Tower {len(self.circuit.overhead_line_types) + 1}'
                 self.circuit.add_overhead_line(obj)
 
-            elif elm_type == DeviceType.UnderGroundLineDevice.value:
+            elif elm_type == DeviceType.UnderGroundLineDevice:
 
                 name = f'Cable {len(self.circuit.underground_cable_types) + 1}'
                 obj = dev.UndergroundLineType(name=name)
                 self.circuit.add_underground_line(obj)
 
-            elif elm_type == DeviceType.SequenceLineDevice.value:
+            elif elm_type == DeviceType.SequenceLineDevice:
 
                 name = f'Sequence line {len(self.circuit.sequence_line_types) + 1}'
                 obj = dev.SequenceLineType(name=name)
                 self.circuit.add_sequence_line(obj)
 
-            elif elm_type == DeviceType.WireDevice.value:
+            elif elm_type == DeviceType.WireDevice:
 
                 name = f'Wire {len(self.circuit.wire_types) + 1}'
                 obj = dev.Wire(name=name)
                 self.circuit.add_wire(obj)
 
-            elif elm_type == DeviceType.TransformerTypeDevice.value:
+            elif elm_type == DeviceType.TransformerTypeDevice:
 
                 name = f'Transformer type {len(self.circuit.transformer_types) + 1}'
                 obj = dev.TransformerType(hv_nominal_voltage=10, lv_nominal_voltage=0.4, nominal_power=2,
@@ -870,87 +896,87 @@ class DataBaseTableMain(DiagramsMain):
                                           gr_hv1=0.5, gx_hv1=0.5, name=name)
                 self.circuit.add_transformer_type(obj)
 
-            elif elm_type == DeviceType.FuelDevice.value:
+            elif elm_type == DeviceType.FuelDevice:
 
                 name = f'Fuel {len(self.circuit.fuels) + 1}'
                 obj = dev.Fuel(name=name)
                 self.circuit.add_fuel(obj)
 
-            elif elm_type == DeviceType.EmissionGasDevice.value:
+            elif elm_type == DeviceType.EmissionGasDevice:
 
                 name = f'Gas {len(self.circuit.emission_gases) + 1}'
                 obj = dev.EmissionGas(name=name)
                 self.circuit.add_emission_gas(obj)
 
-            elif elm_type == DeviceType.Owner.value:
+            elif elm_type == DeviceType.Owner:
 
                 name = f'Owner {len(self.circuit.owners) + 1}'
                 obj = dev.Owner(name=name)
                 self.circuit.add_owner(obj)
 
-            elif elm_type == DeviceType.ModellingAuthority.value:
+            elif elm_type == DeviceType.ModellingAuthority:
 
                 name = f'Modelling authority {self.circuit.get_modelling_authorities_number()}'
                 obj = dev.ModellingAuthority(name=name)
                 self.circuit.add_modelling_authority(obj)
 
-            elif elm_type == DeviceType.FacilityDevice.value:
+            elif elm_type == DeviceType.FacilityDevice:
 
                 name = f'Facility {self.circuit.get_facility_number()}'
                 obj = dev.Facility(name=name)
                 self.circuit.add_facility(obj)
 
-            elif elm_type == DeviceType.MarketUnitDevice.value:
+            elif elm_type == DeviceType.MarketUnitDevice:
 
                 name = f'Market unit {self.circuit.get_market_unit_number()}'
                 obj = dev.MarketUnit(name=name)
                 self.circuit.add_market_unit(obj)
 
-            # elif elm_type == DeviceType.DynamicModelHostDevice.value:
+            # elif elm_type == DeviceType.DynamicModelHostDevice:
             #
             #     name = f'RMS model {self.circuit.get_rms_models_number()}'
             #     obj = dev.DynamicModelHost(name=name)
             #     self.circuit.add_rms_model(obj)
 
-            elif elm_type == DeviceType.EmtModelTemplateDevice.value:
+            elif elm_type == DeviceType.EmtModelTemplateDevice:
 
                 name = f'EMT template {len(self.circuit.emt_models)}'
                 obj = dev.EmtModelTemplate(name=name)
                 self.circuit.add_emt_model(obj)
 
 
-            elif elm_type == DeviceType.RmsModelTemplateDevice.value:
+            elif elm_type == DeviceType.RmsModelTemplateDevice:
 
                 name = f'RMS event {len(self.circuit.rms_events)}'
                 obj = dev.RmsModelTemplate(name=name)
                 self.circuit.add_rms_model(obj)
 
-            elif elm_type == DeviceType.FmuTemplateDevice.value:
+            elif elm_type == DeviceType.FmuTemplateDevice:
 
                 name = f'FMU template {len(self.circuit.fmu_templates) + 1}'
                 obj = dev.FmuTemplate(name=name)
                 self.circuit.add_fmu_template(obj)
 
 
-            elif elm_type == DeviceType.RmsEventDevice.value:
+            elif elm_type == DeviceType.RmsEventDevice:
 
                 name = f'RMS event {len(self.circuit.rms_events)}'
                 obj = dev.RmsEvent(name=name)
                 self.circuit.add_rms_event(obj)
 
-            elif elm_type == DeviceType.RmsEventsGroupDevice.value:
+            elif elm_type == DeviceType.RmsEventsGroupDevice:
 
                 name = f'RMS event group {len(self.circuit.rms_events_groups)}'
                 obj = dev.RmsEventsGroup(name=name)
                 self.circuit.add_rms_events_group(obj)
 
-            elif elm_type == DeviceType.EmtEventDevice.value:
+            elif elm_type == DeviceType.EmtEventDevice:
 
                 name = f'EMT event {len(self.circuit.emt_events)}'
                 obj = dev.EmtEvent(name=name)
                 self.circuit.add_emt_event(obj)
 
-            elif elm_type == DeviceType.EmtEventsGroupDevice.value:
+            elif elm_type == DeviceType.EmtEventsGroupDevice:
 
                 name = f'EMT event group {len(self.circuit.emt_events_groups)}'
                 obj = dev.EmtEventsGroup(name=name)
@@ -1001,18 +1027,17 @@ class DataBaseTableMain(DiagramsMain):
 
             if len(self.ui.dataStructuresTreeView.selectedIndexes()) > 0:
 
-                sel_item = self.ui.dataStructuresTreeView.selectedIndexes()[0]
-                elm_type = sel_item.data(role=QtCore.Qt.ItemDataRole.DisplayRole)
+                elm_type: DeviceType | None = self.get_db_object_selected_type()
 
                 # get the selected index
                 idx_proxy: int = self.ui.dataStructureTableView.currentIndex().row()
 
-                if idx_proxy > -1:
+                if idx_proxy > -1 and elm_type is not None:
 
                     # get the object from the table itself
                     elm: ALL_DEV_TYPES = model.objects[idx_proxy]
 
-                    if elm_type == DeviceType.OverheadLineTypeDevice.value:
+                    if elm_type == DeviceType.OverheadLineTypeDevice:
 
                         # launch editor
                         self.tower_builder_window = TowerBuilderGUI(
@@ -1023,55 +1048,55 @@ class DataBaseTableMain(DiagramsMain):
                         self.tower_builder_window.resize(int(1.81 * 700.0), 700)
                         self.tower_builder_window.exec()
 
-                    elif elm_type == DeviceType.LineDevice.value or elm_type == DeviceType.DCLineDevice.value:
+                    elif elm_type == DeviceType.LineDevice or elm_type == DeviceType.DCLineDevice:
                         dlg = build_device_editor_dialog(api_object=elm, circuit=self.circuit)
                         if dlg.exec():
                             pass
 
-                    elif elm_type == DeviceType.VscDevice.value:
+                    elif elm_type == DeviceType.VscDevice:
                         dlg = VscDeviceEditorDialog(api_object=elm, circuit=self.circuit, main_gui=self)
                         if dlg.exec():
                             pass
 
-                    elif elm_type == DeviceType.Transformer2WDevice.value:
+                    elif elm_type == DeviceType.Transformer2WDevice:
                         dlg = TransformerDeviceEditorDialog(api_object=elm, circuit=self.circuit)
                         if dlg.exec():
                             pass
 
-                    elif elm_type == DeviceType.ControllableShuntDevice.value:
+                    elif elm_type == DeviceType.ControllableShuntDevice:
                         dlg = ControllableShuntDeviceEditorDialog(api_object=elm, circuit=self.circuit)
                         if dlg.exec():
                             pass
 
-                    elif elm_type == DeviceType.LoadDevice.value:
+                    elif elm_type == DeviceType.LoadDevice:
                         dlg = LoadDeviceEditorDialog(api_object=elm, circuit=self.circuit)
                         if dlg.exec():
                             pass
 
-                    elif elm_type == DeviceType.GeneratorDevice.value:
+                    elif elm_type == DeviceType.GeneratorDevice:
                         dlg = GeneratorEditorDialog(api_object=elm, circuit=self.circuit)
                         if dlg.exec():
                             pass
 
-                    elif elm_type == DeviceType.BatteryDevice.value:
+                    elif elm_type == DeviceType.BatteryDevice:
                         dlg = GeneratorEditorDialog(api_object=elm, circuit=self.circuit)
                         if dlg.exec():
                             pass
 
-                    elif elm_type == DeviceType.Transformer3WDevice.value:
+                    elif elm_type == DeviceType.Transformer3WDevice:
                         dlg = Transformer3WDeviceEditorDialog(api_object=elm, circuit=self.circuit)
                         if dlg.exec():
                             pass
 
-                    elif elm_type == DeviceType.RmsModelTemplateDevice.value:
+                    elif elm_type == DeviceType.RmsModelTemplateDevice:
                         self.open_dynamic_editor(api_object=elm, circuit=self.circuit,
                                                  preferred_mode=DynamicSimulationMode.RMS)
 
-                    elif elm_type == DeviceType.EmtModelTemplateDevice.value:
+                    elif elm_type == DeviceType.EmtModelTemplateDevice:
                         self.open_dynamic_editor(api_object=elm, circuit=self.circuit,
                                                  preferred_mode=DynamicSimulationMode.EMT)
 
-                    elif elm_type == DeviceType.FmuTemplateDevice.value:
+                    elif elm_type == DeviceType.FmuTemplateDevice:
                         dlg = FmuTemplateEditorDialog(
                             circuit=self.circuit,
                             template=elm,
@@ -1313,15 +1338,17 @@ class DataBaseTableMain(DiagramsMain):
         Histogram analysis
         :return:
         """
-        if len(self.ui.dataStructuresTreeView.selectedIndexes()) > 0:
-            elm_type = self.ui.dataStructuresTreeView.selectedIndexes()[0].data(role=QtCore.Qt.ItemDataRole.DisplayRole)
+        elm_type: DeviceType | None = self.get_db_object_selected_type()
 
-            if len(self.circuit.get_elements_by_type(device_type=DeviceType(elm_type))):
+        if elm_type is not None:
+            if len(self.circuit.get_elements_by_type(device_type=elm_type)):
                 object_histogram_analysis(circuit=self.circuit,
-                                          object_type=elm_type,
+                                          object_type=elm_type.value,
                                           t_idx=self.get_db_slider_index(),
                                           fig=None)
                 plt.show()
+            else:
+                pass
         else:
             info_msg('Select a data structure')
 
@@ -1472,8 +1499,7 @@ class DataBaseTableMain(DiagramsMain):
         :param pos: Relative click position
         """
         if len(self.ui.dataStructuresTreeView.selectedIndexes()) > 0:
-            sel_item = self.ui.dataStructuresTreeView.selectedIndexes()[0]
-            elm_type = sel_item.data(role=QtCore.Qt.ItemDataRole.DisplayRole)
+            elm_type: DeviceType | None = self.get_db_object_selected_type()
 
             context_menu = QtWidgets.QMenu(parent=self.ui.diagramsListView)
 
@@ -1532,11 +1558,13 @@ class DataBaseTableMain(DiagramsMain):
                               icon_path=":/Icons/icons/assign_to_profile.png",
                               function_ptr=self.assign_to_profile)
 
-            if elm_type == DeviceType.BranchGroupDevice.value:
+            if elm_type == DeviceType.BranchGroupDevice:
                 gf.add_menu_entry(menu=context_menu,
                                   text=self.tr("Colour branches like this"),
                                   icon_path=":/Icons/icons/assign_to_profile.png",
                                   function_ptr=self.colour_branches_like_group)
+            else:
+                pass
 
             context_menu.addSeparator()
 
