@@ -261,7 +261,7 @@ class DataBaseTableMain(DiagramsMain):
                     mtype = mag_types[idx]
 
                     mdl = ProfilesModel(time_array=self.circuit.get_time_array(),
-                                        elements=proxy_mdl.objects,
+                                        elements=proxy_mdl.get_objects_in_display_order(),
                                         device_type=dev_type,
                                         magnitude=magnitude,
                                         data_format=mtype,
@@ -284,7 +284,7 @@ class DataBaseTableMain(DiagramsMain):
 
         if dev_type is not None and proxy_mdl is not None and association_property_name != "":
 
-            elements = proxy_mdl.objects
+            elements = proxy_mdl.get_objects_in_display_order()
 
             if len(elements) > 0:
 
@@ -412,23 +412,15 @@ class DataBaseTableMain(DiagramsMain):
 
         if proxy_model is not None:
 
-            source_model = proxy_model.sourceModel()
-
             sel_idx = self.ui.dataStructureTableView.selectedIndexes()
-            if isinstance(source_model, ObjectsModel):
-                objects: List[ALL_DEV_TYPES] = source_model.objects
-            else:
-                objects = list()
+            objects: List[ALL_DEV_TYPES] = proxy_model.get_objects_in_display_order()
 
             if len(objects) > 0:
 
                 if len(sel_idx) > 0:
 
-                    unique = {proxy_model.mapToSource(idx).row() for idx in sel_idx}
-
-                    for idx in unique:
-                        sel_obj: ALL_DEV_TYPES = source_model.objects[idx]
-                        selected_objects.append(sel_obj)
+                    unique = {idx.row() for idx in sel_idx}
+                    selected_objects = proxy_model.get_objects_at_proxy_rows(proxy_rows=sorted(unique))
 
                     buses = self.circuit.get_buses_from_objects(elements=selected_objects,
                                                                 dtype=objects[0].device_type)
@@ -1031,9 +1023,9 @@ class DataBaseTableMain(DiagramsMain):
 
                 for i in rows:
 
-                    elm: dev.BranchGroup = model.objects[i]
+                    elm: ALL_DEV_TYPES | None = model.get_object_at_proxy_row(proxy_row=int(i))
 
-                    if elm.device_type == DeviceType.BranchGroupDevice:
+                    if elm is not None and elm.device_type == DeviceType.BranchGroupDevice:
 
                         for br in self.circuit.get_branches_iter(add_vsc=True,
                                                                  add_hvdc=True,
@@ -1063,9 +1055,12 @@ class DataBaseTableMain(DiagramsMain):
                 if idx_proxy > -1 and elm_type is not None:
 
                     # get the object from the table itself
-                    elm: ALL_DEV_TYPES = model.objects[idx_proxy]
+                    elm: ALL_DEV_TYPES | None = model.get_object_at_proxy_row(proxy_row=idx_proxy)
 
-                    if elm_type == DeviceType.OverheadLineTypeDevice:
+                    if elm is None:
+                        info_msg('Choose an element from the table')
+
+                    elif elm_type == DeviceType.OverheadLineTypeDevice:
 
                         # launch editor
                         self.tower_builder_window = TowerBuilderGUI(
@@ -1180,7 +1175,7 @@ class DataBaseTableMain(DiagramsMain):
         if model is not None:
 
             sel_idx = self.ui.dataStructureTableView.selectedIndexes()
-            objects = model.objects
+            objects = model.get_objects_in_display_order()
 
             if len(objects) > 0:
 
@@ -1189,9 +1184,7 @@ class DataBaseTableMain(DiagramsMain):
                     unique = set()
                     for idx in sel_idx:
                         unique.add(idx.row())
-                    sel_obj = list()
-                    for idx in unique:
-                        sel_obj.append(objects[idx])
+                    sel_obj = model.get_objects_at_proxy_rows(proxy_rows=sorted(unique))
 
                     elm = objects[0]
 
@@ -1247,12 +1240,17 @@ class DataBaseTableMain(DiagramsMain):
             model: ObjectModelFilterProxy | None = self.get_current_objects_model_view()
 
             if model is not None:
-                objects = model.objects
+                objects: List[ALL_DEV_TYPES] = model.get_objects_in_display_order()
                 t_idx = self.get_objects_time_index()
 
-                if len(objects) > 0:
+                if model.rowCount() > 0:
                     col_indices = list({index.column() for index in indices})
-                    elm = objects[0]
+                    elm = model.get_object_at_proxy_row(proxy_row=0)
+                    if elm is None:
+                        info_msg("No object found :(", "Highlight based on property")
+                        return
+                    else:
+                        pass
                     attr = model.attributes[col_indices[0]]
                     gc_prop = elm.registered_properties[attr]
                     if gc_prop is None:
@@ -1341,16 +1339,19 @@ class DataBaseTableMain(DiagramsMain):
                 for index in indices:
                     i = index.row()
                     p_idx = index.column()
-                    elm = model.objects[i]
-                    attr = model.attributes[p_idx]
-                    gc_prop = elm.registered_properties[attr]
-                    attr_list.append(attr)
-                    if gc_prop.has_profile():
-                        val = elm.get_value(prop=gc_prop, t_idx=t_idx)
-                        profile = elm.get_profile_by_prop(prop=gc_prop)
-                        profile.fill(val)
+                    elm = model.get_object_at_proxy_row(proxy_row=i)
+                    if elm is not None:
+                        attr = model.attributes[p_idx]
+                        gc_prop = elm.registered_properties[attr]
+                        attr_list.append(attr)
+                        if gc_prop.has_profile():
+                            val = elm.get_value(prop=gc_prop, t_idx=t_idx)
+                            profile = elm.get_profile_by_prop(prop=gc_prop)
+                            profile.fill(val)
+                        else:
+                            logger.add_error("No profile found for " + attr, device=elm.name)
                     else:
-                        logger.add_error("No profile found for " + attr, device=elm.name)
+                        logger.add_error("No object found for selected row", device=str(i))
 
                 if logger.size():
                     logs_window = LogsDialogue("Assign to profile", logger=logger)
@@ -1390,7 +1391,7 @@ class DataBaseTableMain(DiagramsMain):
         proxy_mdl: ObjectModelFilterProxy | None = self.get_current_objects_model_view()
 
         if proxy_mdl is not None:
-            if len(proxy_mdl.all_objects) > 0:
+            if len(proxy_mdl.get_objects_in_db_order()) > 0:
 
                 has_err, err_txt = proxy_mdl.setExpression(self.ui.smart_search_lineEdit.text())
 

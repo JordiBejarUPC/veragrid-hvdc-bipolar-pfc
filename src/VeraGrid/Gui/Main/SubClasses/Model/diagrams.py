@@ -420,7 +420,7 @@ class DiagramsMain(CompiledArraysMain):
                 for idx in sel_idx:
                     unique.add(idx.row())
 
-                return [model.objects[i] for i in unique]
+                return model.get_objects_at_proxy_rows(proxy_rows=sorted(unique))
             else:
                 info_msg('Select some cells')
                 return list()

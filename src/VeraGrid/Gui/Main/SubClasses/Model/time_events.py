@@ -456,7 +456,7 @@ class TimeEventsMain(DataBaseTableMain):
             # NOTE: we use the (filtered or not) objects table model
             #       to get the objects for the (filtered or not) time series
             proxy_model: ObjectModelFilterProxy = self.ui.dataStructureTableView.model()
-            objects = proxy_model.objects
+            objects = proxy_model.get_objects_in_display_order()
 
             t = self.circuit.time_profile
 
