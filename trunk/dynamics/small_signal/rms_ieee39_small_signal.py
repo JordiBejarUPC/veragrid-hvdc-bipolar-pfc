@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import time
 from typing import List
 
 import andes
@@ -29,6 +30,10 @@ from trunk.dynamics.small_signal.rms_kundur_small_signal import plot_participati
 from trunk.dynamics.small_signal.rms_kundur_small_signal import plot_s_domain_eigenvalues
 from trunk.dynamics.small_signal.ieee39_network_config import configure_ieee39_static_network
 from trunk.dynamics.small_signal.ieee39_rms_model_config import get_ieee39_genrou_rms_template
+from trunk.dynamics.small_signal.veragrid_small_signal_benchmark_timing import benchmark_veragrid_isolated_numerical_phases
+from trunk.dynamics.small_signal.small_signal_benchmark_timing import elapsed_seconds
+from trunk.dynamics.small_signal.small_signal_benchmark_timing import finalize_normal_workflow_timings
+from trunk.dynamics.small_signal.small_signal_benchmark_timing import save_benchmark_timings
 
 
 def _get_base_grid_path() -> Path:
@@ -38,14 +43,6 @@ def _get_base_grid_path() -> Path:
     """
     grid_path: Path = Path(andes.get_case("ieee39/ieee39.raw"))
     return grid_path.resolve()
-
-
-def _get_output_grid_path() -> Path:
-    """Return the RMS-ready IEEE39 output path.
-
-    :return: Output path.
-    """
-    return Path(__file__).resolve().parent / "ieee39_rms_sss.veragrid"
 
 
 def _get_results_dir() -> Path:
@@ -195,8 +192,6 @@ def build_ieee39_rms_benchmark_grid() -> gce.MultiCircuit:
     grid: gce.MultiCircuit = gce.open_file(str(grid_path))
     configure_ieee39_static_network(grid)
     _assign_ieee39_rms_models(grid)
-    output_path: Path = _get_output_grid_path()
-    gce.save_file(grid=grid, filename=str(output_path))
     return grid
 
 
@@ -206,27 +201,65 @@ def run_ieee39_small_signal(show_figures: bool = True) -> None:
     :param show_figures: Display the interactive plots after saving all data.
     :return: None.
     """
+    total_start: float = time.perf_counter()
+    timings: dict[str, float] = dict()
+    model_start: float = time.perf_counter()
     grid: gce.MultiCircuit = build_ieee39_rms_benchmark_grid()
+    timings["case_and_model_build"] = elapsed_seconds(model_start)
     pf_options: PowerFlowOptions = _build_power_flow_options()
     power_flow: PowerFlowDriver = PowerFlowDriver(grid, pf_options)
+    power_flow_start: float = time.perf_counter()
     power_flow.run()
+    timings["power_flow"] = elapsed_seconds(power_flow_start)
     pf_results: PowerFlowResults = power_flow.results
 
     rms_options: RmsOptions = _build_rms_options()
     ss_options: RmsSmallSignalStabilityOptions = RmsSmallSignalStabilityOptions(ss_assessment_time=0.0)
+    compilation_start: float = time.perf_counter()
     driver: SmallSignalStabilityRmsDriver = SmallSignalStabilityRmsDriver(
         grid=grid,
         rms_options=rms_options,
         sss_options=ss_options,
         pf_results=pf_results,
     )
+    timings["rms_problem_build_initialization_symbolic_to_numeric"] = elapsed_seconds(compilation_start)
+    small_signal_start: float = time.perf_counter()
     driver.run()
+    timings["small_signal_total"] = elapsed_seconds(small_signal_start)
+    timings.update(benchmark_veragrid_isolated_numerical_phases(driver))
 
     # Persist the numerical benchmark before opening interactive figures so a
     # PyCharm plot window can remain open without delaying result generation.
     results_dir: Path = _get_results_dir()
     results_dir.mkdir(parents=True, exist_ok=True)
+    export_start: float = time.perf_counter()
     save_small_signal_results_to_csv(driver.results, pf_results, results_dir)
+    timings["result_export"] = elapsed_seconds(export_start)
+    normal_component_names: tuple[str, ...] = (
+        "case_and_model_build",
+        "power_flow",
+        "rms_problem_build_initialization_symbolic_to_numeric",
+        "small_signal_total",
+        "result_export",
+    )
+    diagnostic_names: tuple[str, ...] = (
+        "diagnostic_state_matrix_warm_repeat",
+        "diagnostic_eigenanalysis_pf_warm_repeat",
+    )
+    finalize_normal_workflow_timings(
+        timings=timings,
+        total_start=total_start,
+        normal_component_names=normal_component_names,
+        diagnostic_names=diagnostic_names,
+    )
+    save_benchmark_timings(
+        output_directory=results_dir,
+        engine_label="VeraGrid",
+        case_label="IEEE39",
+        timings=timings,
+        state_count=int(driver.results.state_matrix.shape[0]),
+        mode_count=int(driver.results.eigenvalues.size),
+    )
 
     print("\nEigenvalues:")
     print(driver.results.eigenvalues)

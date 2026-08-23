@@ -12,6 +12,7 @@ from PySide6 import QtGui, QtCore
 from matplotlib.colors import LinearSegmentedColormap
 
 import VeraGrid.Gui.gui_functions as gf
+from VeraGrid.Gui.i18n import translate_tree_label
 from VeraGrid.Gui.general_dialogues import LogsDialogue
 from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import SchematicWidget
 from VeraGrid.Gui.Diagrams.MapWidget.grid_map_widget import MapWidget
@@ -21,6 +22,7 @@ from VeraGrid.Gui.SigmaAnalysis.sigma_analysis_dialogue import SigmaAnalysisGUI
 from VeraGrid.Gui.ProceduralGrid.procedural_grid import ProceduralGridWindow
 from VeraGrid.Gui.ProceduralGrid.map_warning import MapWarningDialog
 from VeraGrid.Gui.CandidateInvestments.candidate_investments import CandidateInvestmentsWindow
+from VeraGrid.Session.session import GcThread
 from VeraGrid.Session.server_driver import RemoteJobDriver
 from VeraGrid.Gui.DynamicEventsDialog.dynamic_events_editor_support import create_dynamic_events_group_with_dialog
 
@@ -39,6 +41,7 @@ from VeraGridEngine.basic_structures import CxVec, IntVec, Vec
 from VeraGridEngine.enumerations import (DeviceType, AvailableTransferMode, SolverType, MIPSolvers, TimeGrouping,
                                          ZonalGrouping, ContingencyMethod, InvestmentEvaluationMethod, EngineType,
                                          BranchImpedanceMode, ResultTypes, SimulationTypes, NodalCapacityMethod,
+                                         SolutionState,
                                          ContingencyFilteringMethods, InvestmentsEvaluationObjectives,
                                          ReliabilityMode, OpfDispatchMode, DynamicIntegrationMethod,
                                          RmsInitializationMethod, EmtInitializationMethod, EmtSolverTypes,
@@ -332,7 +335,7 @@ class SimulationsMain(TimeEventsMain):
         )
 
         # dictionaries for available results
-        self.available_results_dict: Union[Dict[str, Dict[str, ResultTypes]], None] = dict()
+        self.available_results_dict: Union[Dict[SimulationTypes, Dict[ResultTypes, ResultTypes]], None] = dict()
 
         self.buses_for_storage: List[dev.Bus] = list()
 
@@ -868,15 +871,20 @@ class SimulationsMain(TimeEventsMain):
 
         :return:
         """
-        current_study_name = self.ui.available_results_to_color_comboBox.currentData()
-        drv_dict = {driver.tpe.value: driver for driver in self.get_available_drivers()}
-        drv = drv_dict.get(current_study_name, None)
+        current_study = self.ui.available_results_to_color_comboBox.currentData()
+        drv_dict: Dict[SimulationTypes, DRIVER_OBJECTS] = {driver.tpe: driver for driver in self.get_available_drivers()}
+        if isinstance(current_study, SimulationTypes):
+            drv = drv_dict.get(current_study, None)
+        else:
+            drv = None
         if drv is not None:
             if drv.results is not None:
-                if drv.results.time_array is not None:
-                    if len(drv.results.time_array):
-                        self.ui.diagram_step_slider.setRange(0, len(drv.results.time_array) - 1)
-                        self.ui.diagram_step_slider.setValue(0)
+                if drv.results.time_indices is not None:
+                    if len(drv.results.time_indices):
+                        a = drv.results.time_indices[0]
+                        b = drv.results.time_indices[-1]
+                        self.ui.diagram_step_slider.setRange(a, b)
+                        self.ui.diagram_step_slider.setValue(a)
                     else:
                         self.setup_time_sliders()
                 else:
@@ -887,6 +895,70 @@ class SimulationsMain(TimeEventsMain):
             self.setup_time_sliders()
 
         self.fill_combinations_tree(drv=drv)
+
+    def build_results_tree_model(self, available_results: List[DRIVER_OBJECTS]) -> QtGui.QStandardItemModel:
+        """
+        Build the results tree with translated labels and enum payloads.
+
+        :param available_results: Simulation drivers with result objects.
+        :return: Tree model for the results view.
+        """
+        model: QtGui.QStandardItemModel = QtGui.QStandardItemModel()
+        model.setHorizontalHeaderLabels([translate_tree_label('Results')])
+        root_item: QtGui.QStandardItem = model.invisibleRootItem()
+        icons: Dict[SimulationTypes, str] = gf.get_simulation_tree_icons()
+
+        for driver in available_results:
+            # Study rows carry the simulation enum. The label can be translated independently.
+            study_item: QtGui.QStandardItem = QtGui.QStandardItem(translate_tree_label(str(driver.tpe.value)))
+            study_item.setEditable(False)
+            study_item.setData(driver.tpe, QtCore.Qt.ItemDataRole.UserRole)
+
+            icon_path: str | None = icons.get(driver.tpe, None)
+            if icon_path is not None:
+                icon: QtGui.QIcon = QtGui.QIcon()
+                icon.addPixmap(QtGui.QPixmap(icon_path))
+                study_item.setIcon(icon)
+            else:
+                pass
+
+            root_item.appendRow(study_item)
+            self.fill_results_tree_model_item(parent_item=study_item,
+                                              results_tree=driver.results.get_results_type_tree())
+
+        return model
+
+    def fill_results_tree_model_item(self,
+                                     parent_item: QtGui.QStandardItem,
+                                     results_tree: object) -> None:
+        """
+        Add result tree entries below one parent item.
+
+        :param parent_item: Parent tree item.
+        :param results_tree: Result tree as dictionaries or lists of result enums.
+        :return: None.
+        """
+        if isinstance(results_tree, dict):
+            for key, value in results_tree.items():
+                # Group nodes are navigation labels. Leaf result nodes below them carry ResultTypes.
+                source_text: str = str(key.value) if isinstance(key, ResultTypes) else str(key)
+                group_item: QtGui.QStandardItem = QtGui.QStandardItem(translate_tree_label(source_text))
+                group_item.setEditable(False)
+                parent_item.appendRow(group_item)
+                self.fill_results_tree_model_item(parent_item=group_item, results_tree=value)
+        elif isinstance(results_tree, list):
+            for result_type in results_tree:
+                if isinstance(result_type, ResultTypes):
+                    result_item: QtGui.QStandardItem = QtGui.QStandardItem(
+                        translate_tree_label(str(result_type.value))
+                    )
+                    result_item.setEditable(False)
+                    result_item.setData(result_type, QtCore.Qt.ItemDataRole.UserRole)
+                    parent_item.appendRow(result_item)
+                else:
+                    pass
+        else:
+            pass
 
     def update_available_results(self) -> None:
         """
@@ -901,23 +973,18 @@ class SimulationsMain(TimeEventsMain):
 
         available_results = self.get_available_drivers()
         max_steps = 0
-        d = dict()
-        lst = [SimulationTypes.DesignView.value]
+        lst: List[SimulationTypes] = [SimulationTypes.DesignView]
         for driver in available_results:
-            name: str = str(driver.tpe.value)
-            lst.append(name)
-            d[name] = driver.results.get_name_tree()
-            self.available_results_dict[name] = driver.results.get_name_to_results_type_dict()
+            lst.append(driver.tpe)
+            self.available_results_dict[driver.tpe] = driver.results.get_results_type_dict()
             steps = driver.get_steps()
-            self.available_results_steps_dict[name] = steps
+            self.available_results_steps_dict[driver.tpe] = steps
             if len(steps) > max_steps:
                 max_steps = len(steps)
 
-        icons = gf.get_simulation_tree_icons()
-
-        self.ui.results_treeView.setModel(gf.get_tree_model(d, 'Results', icons=icons))
+        self.ui.results_treeView.setModel(self.build_results_tree_model(available_results=available_results))
         lst.reverse()  # this is to show the latest simulation first
-        mdl = gf.ComboModel(text_items=[(name, name) for name in lst])
+        mdl = gf.ComboModel(enum_values=lst, translate=translate_tree_label)
         self.ui.available_results_to_color_comboBox.setModel(mdl)
         self.ui.resultsTableView.setModel(None)
         self.ui.resultsLogsTreeView.setModel(None)
@@ -3040,11 +3107,17 @@ class SimulationsMain(TimeEventsMain):
             self.update_available_results()
             self.colour_diagrams()
 
-            if results.converged:
+            # three possible solutions: optimal, optimal-but-relaxed, or not optimal.
+            solution_state = results.get_solution_state(slack_tol_mw=0.1)
+            total_slack_mw = results.get_total_slack_mw()
+            if solution_state == SolutionState.Optimal:
                 if drv.logger.error_count() == 0:
                     self.show_info_toast("Optimal result")
                 else:
-                    self.show_warning_toast("Optimal result with errors :/")
+                    self.show_warning_toast("Optimal result, but check the logs")
+            elif solution_state == SolutionState.Relaxed:
+                self.show_warning_toast(f"Feasible only with relaxed limits: "
+                                        f"{total_slack_mw:.1f} MW of slack (see the overloads results)")
             else:
                 self.show_warning_toast("Not optimal result :/")
 
@@ -3278,8 +3351,9 @@ class SimulationsMain(TimeEventsMain):
         """
         if self.circuit.valid_for_simulation():
             options = self.get_selected_power_flow_options()
+            t_idx = self.get_diagram_slider_index()
             bus_names = np.array([b.name for b in self.circuit.buses])
-            sigma_driver = sim.SigmaAnalysisDriver(grid=self.circuit, options=options)
+            sigma_driver = sim.SigmaAnalysisDriver(grid=self.circuit, options=options, t_idx=t_idx)
             sigma_driver.run()
 
             if not sigma_driver.results.converged:
@@ -3287,7 +3361,16 @@ class SimulationsMain(TimeEventsMain):
 
             self.sigma_dialogue = SigmaAnalysisGUI(parent=self,
                                                    results=sigma_driver.results,
-                                                   bus_names=bus_names)
+                                                   bus_names=bus_names,
+                                                   grid=self.circuit,
+                                                   options=options,
+                                                   t_idx=t_idx,
+                                                   classical_sigma=False,
+                                                   dpr_use_stored_guess=True,
+                                                   dpr_control_q=options.control_Q,
+                                                   dpr_control_discrete_shunts=True,
+                                                   dpr_control_qv_droop=True,
+                                                   dpr_distributed_slack=options.distributed_slack)
             self.sigma_dialogue.resize(int(1.61 * 600.0), 550)  # golden ratio
             self.sigma_dialogue.show()  # exec leaves the parent on hold
 
@@ -4201,16 +4284,23 @@ class SimulationsMain(TimeEventsMain):
         :return:
         """
         _, results = self.session.small_signal_stability_simulation
+        rms_thread: GcThread | None = self.session.threads.get(SimulationTypes.RmsSmallSignal_run, None)
 
-        if results is not None:
+        # The simulation is no longer part of the active-run list whether it
+        # succeeded or failed.  Leaving it there makes subsequent runs appear
+        # duplicated in the GUI state.
+        self.remove_simulation(SimulationTypes.RmsSmallSignal_run)
+        self.update_available_results()
 
-            # delete from the current simulations
-            self.remove_simulation(SimulationTypes.RmsSmallSignal_run)
-            self.update_available_results()
-
+        if results is not None and (rms_thread is None or not rms_thread.has_failed()):
             self.show_info_toast("Small-signal stability analysis RMS has finished correctly!")
 
         else:
+            if rms_thread is not None and rms_thread.logger.has_logs():
+                self.show_logs(logger=rms_thread.logger, name="RMS small-signal simulation error")
+            else:
+                pass
+
             warning_msg('There are no Small-Signal Stability analysis RMS results.',
                         'Small-Signal Stability analysis RMS')
 

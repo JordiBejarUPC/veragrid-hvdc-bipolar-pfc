@@ -291,8 +291,8 @@ options = EmtOptions(time_step = 5e-6,
                      simulation_time =  0.01, # s
                      tolerance = 1e-6,
                      solver_type = SOLVER_TYPE_MAP[CHOSEN_SOLVER],
-                     # initialization_method = EmtInitializationMethod.Explicit,
-                     initialization_method = EmtInitializationMethod.PseudoTransient,
+                     initialization_method = EmtInitializationMethod.Explicit,
+                     # initialization_method = EmtInitializationMethod.PseudoTransient,
                      integration_method = DynamicIntegrationMethod.DaeTrapezoidal,
                      verbose = 1)
 

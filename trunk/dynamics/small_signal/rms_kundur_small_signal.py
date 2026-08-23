@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import cProfile as profile
+import time
 
 import numpy as np
 
@@ -35,25 +35,37 @@ from VeraGridEngine.Simulations.SmallSignalStabilityRms.small_signal_driver impo
 from VeraGridEngine.Simulations.SmallSignalStabilityRms.small_signal_options import RmsSmallSignalStabilityOptions
 
 from VeraGridEngine.Utils.Symbolic import Block
+from VeraGridEngine.Utils.Symbolic.symbolic import Var
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowOptions
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowDriver
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results import PowerFlowResults
 import VeraGridEngine.api as gce
+from trunk.dynamics.small_signal.veragrid_small_signal_benchmark_timing import benchmark_veragrid_isolated_numerical_phases
+from trunk.dynamics.small_signal.small_signal_benchmark_timing import elapsed_seconds
+from trunk.dynamics.small_signal.small_signal_benchmark_timing import finalize_normal_workflow_timings
+from trunk.dynamics.small_signal.small_signal_benchmark_timing import save_benchmark_timings
 from VeraGridEngine.Utils.Symbolic.symbolic_io import block_deep_copy
 
-pr = profile.Profile()
-pr.disable()
+def find_name_in_block(name: str, block: Block) -> Var | None:
+    """Find one named symbolic variable recursively in a block hierarchy.
 
-
-def find_name_in_block(name: str, block: Block):
+    :param name: Variable name to find.
+    :param block: Root symbolic block.
+    :return: Matching variable or ``None``.
+    """
     for var in block.algebraic_vars + block.state_vars + list(block.event_dict.keys()):
         if name == var.name:
             return var
+        else:
+            pass
 
     for mdl in block.children:
         res = find_name_in_block(name, mdl)
         if res is not None:
             return res
+        else:
+            pass
+    return None
 
 
 def plot_s_domain_eigenvalues(eigenvalues: np.ndarray) -> None:
@@ -147,11 +159,15 @@ def _get_state_matrix_labels(results: Any) -> list[str]:
 
     if len(state_labels) == n_rows:
         return state_labels
+    else:
+        pass
 
     combined = state_labels + algebraic_labels
 
     if len(combined) == n_rows:
         return combined
+    else:
+        pass
 
     return [f"Variable {idx + 1}" for idx in range(n_rows)]
 
@@ -181,11 +197,15 @@ def _get_participation_row_labels(results: Any) -> list[str]:
 
     if len(state_labels) == n_rows:
         return state_labels
+    else:
+        pass
 
     combined = state_labels + algebraic_labels
 
     if len(combined) == n_rows:
         return combined
+    else:
+        pass
 
     return [f"State {idx + 1}" for idx in range(n_rows)]
 
@@ -193,6 +213,7 @@ def save_small_signal_results_to_csv(
     results: SmallSignalStabilityRmsResults,
     pf_results: PowerFlowResults,
     output_dir: Path,
+    benchmark_state_labels: list[str] | None = None,
 ) -> None:
     """
     Save the power-flow and RMS small-signal results to CSV files.
@@ -207,6 +228,8 @@ def save_small_signal_results_to_csv(
     :param results: Small-signal RMS results object.
     :param pf_results: Power-flow results object.
     :param output_dir: Destination directory.
+    :param benchmark_state_labels: Optional physical labels shared with the
+                                   external benchmark model.
     :return: None.
     """
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -245,7 +268,17 @@ def save_small_signal_results_to_csv(
     )
 
     participation = np.asarray(results.participation_factors, dtype=float)
-    participation_labels = _get_participation_row_labels(results)
+    if benchmark_state_labels is None:
+        participation_labels: list[str] = _get_participation_row_labels(results)
+    else:
+        participation_labels = list(benchmark_state_labels)
+        if len(participation_labels) == participation.shape[0]:
+            pass
+        else:
+            raise ValueError(
+                f"Received {len(participation_labels)} benchmark labels for "
+                f"{participation.shape[0]} participation-factor rows."
+            )
     mode_labels = [f"Mode {idx + 1}" for idx in range(participation.shape[1])]
 
     with (output_dir / "participation_factors.csv").open(
@@ -259,7 +292,17 @@ def save_small_signal_results_to_csv(
             csv_file.write(f"{row_label},{row_values}\n")
 
     state_matrix = np.asarray(results.state_matrix)
-    state_matrix_labels = _get_state_matrix_labels(results)
+    if benchmark_state_labels is None:
+        state_matrix_labels: list[str] = _get_state_matrix_labels(results)
+    else:
+        state_matrix_labels = list(benchmark_state_labels)
+        if len(state_matrix_labels) == state_matrix.shape[0]:
+            pass
+        else:
+            raise ValueError(
+                f"Received {len(state_matrix_labels)} benchmark labels for "
+                f"a {state_matrix.shape[0]}-row state matrix."
+            )
 
     with (output_dir / "state_matrix.csv").open(
         "w",
@@ -286,7 +329,11 @@ def save_small_signal_results_to_csv(
     ):
         print(f"  - {filename}")
 
-def rms_kundur_small_signal():
+def build_kundur_rms_benchmark_grid() -> gce.MultiCircuit:
+    """Build the Kundur RMS-ready benchmark grid.
+
+    :return: RMS-ready Kundur grid.
+    """
     ###########################################################################################################################
     # Build VeraGrid object
     ###########################################################################################################################
@@ -691,8 +738,21 @@ def rms_kundur_small_signal():
     grid.add_generator(bus=bus3, api_obj=gen3)
     grid.add_generator(bus=bus4, api_obj=gen4)
 
+    return grid
 
 
+def rms_kundur_small_signal() -> None:
+    """Build and run the VeraGrid Kundur RMS small-signal benchmark.
+
+    :return: None.
+    """
+    total_start: float = time.perf_counter()
+    model_start: float = time.perf_counter()
+    timings: dict[str, float] = dict()
+    grid: gce.MultiCircuit = build_kundur_rms_benchmark_grid()
+
+
+    timings["case_and_model_build"] = elapsed_seconds(model_start)
     pf_options = PowerFlowOptions(
         solver_type=gce.SolverType.NR,
         retry_with_other_methods=False,
@@ -716,10 +776,10 @@ def rms_kundur_small_signal():
         generate_report=False,
     )
     power_flow = PowerFlowDriver(grid, pf_options)
+    power_flow_start: float = time.perf_counter()
     power_flow.run()
+    timings["power_flow"] = elapsed_seconds(power_flow_start)
     res = power_flow.results
-
-    pr.enable()
 
     rms_options = RmsOptions(time_step=0.001,
                              simulation_time=10,
@@ -730,21 +790,21 @@ def rms_kundur_small_signal():
                              max_iter=1000,
                              verbose=0)
 
-    problem = RmsProblemDae(grid=grid,
-                            options=rms_options,
-                            pf_results=res)
-
     sss_options = RmsSmallSignalStabilityOptions(k=0,
                                                 ss_assessment_time=0,
                                                 verbose=1)
 
 
+    compilation_start: float = time.perf_counter()
     small_signal_driver = SmallSignalStabilityRmsDriver(grid=grid,
                                                         rms_options=rms_options,
                                                         sss_options=sss_options,
                                                         pf_results=res)
-
+    timings["rms_problem_build_initialization_symbolic_to_numeric"] = elapsed_seconds(compilation_start)
+    small_signal_start: float = time.perf_counter()
     small_signal_driver.run()
+    timings["small_signal_total"] = elapsed_seconds(small_signal_start)
+    timings.update(benchmark_veragrid_isolated_numerical_phases(small_signal_driver))
 
     eigenvalues = small_signal_driver.results.eigenvalues
     PFactors = small_signal_driver.results.participation_factors
@@ -754,10 +814,38 @@ def rms_kundur_small_signal():
     print(f"PFactors = {PFactors}")
     print(f"damping_ratios = {damping_ratios}")
 
+    results_directory: Path = Path(__file__).resolve().parent / "kundur_small_signal_rms_results_VeraGrid"
+    export_start: float = time.perf_counter()
     save_small_signal_results_to_csv(
         results=small_signal_driver.results,
         pf_results=res,
-        output_dir=Path(__file__).resolve().parent / "kundur_small_signal_rms_results_VeraGrid",
+        output_dir=results_directory,
+    )
+    timings["result_export"] = elapsed_seconds(export_start)
+    normal_component_names: tuple[str, ...] = (
+        "case_and_model_build",
+        "power_flow",
+        "rms_problem_build_initialization_symbolic_to_numeric",
+        "small_signal_total",
+        "result_export",
+    )
+    diagnostic_names: tuple[str, ...] = (
+        "diagnostic_state_matrix_warm_repeat",
+        "diagnostic_eigenanalysis_pf_warm_repeat",
+    )
+    finalize_normal_workflow_timings(
+        timings=timings,
+        total_start=total_start,
+        normal_component_names=normal_component_names,
+        diagnostic_names=diagnostic_names,
+    )
+    save_benchmark_timings(
+        output_directory=results_directory,
+        engine_label="VeraGrid",
+        case_label="KUNDUR_no_shunt",
+        timings=timings,
+        state_count=int(small_signal_driver.results.state_matrix.shape[0]),
+        mode_count=int(small_signal_driver.results.eigenvalues.size),
     )
 
     plot_s_domain_eigenvalues(eigenvalues=eigenvalues)
@@ -768,3 +856,5 @@ def rms_kundur_small_signal():
 
 if __name__ == '__main__':
     rms_kundur_small_signal()
+else:
+    pass
