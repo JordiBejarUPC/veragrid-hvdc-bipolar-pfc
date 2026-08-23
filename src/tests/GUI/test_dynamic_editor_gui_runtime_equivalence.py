@@ -544,6 +544,110 @@ def _build_gui_editor(qt_app: QtWidgets.QApplication,
     return editor
 
 
+def _assert_nuactis_vsc_projection(
+        editor: DynamicBlockEditorGUI,
+        expected_protected_count: int,
+) -> None:
+    """Validate the semantic VeraGrid projection of one imported VSC model.
+
+    :param editor: Live root editor showing the converter model.
+    :param expected_protected_count: Connected external interface ovals expected.
+    :return: None.
+    """
+    generic_items: List[graph.GenericBlockItem] = list(
+        scene_item for scene_item in editor.scene.items()
+        if isinstance(scene_item, graph.GenericBlockItem)
+    )
+    physical_items: List[graph.GenericBlockItem] = list(
+        item for item in generic_items
+        if item.visual_role is graph.DynamicBlockVisualRole.DEVICE_TEMPLATE
+    )
+    measurement_items: List[graph.GenericBlockItem] = list(
+        item for item in generic_items
+        if item.visual_role is graph.DynamicBlockVisualRole.MEASUREMENT
+    )
+    control_items: List[graph.GenericBlockItem] = list(
+        item for item in generic_items
+        if item.visual_role is graph.DynamicBlockVisualRole.CONTROL
+    )
+    protected_items: List[graph.ProtectedConnectionBlockItem] = list(
+        scene_item for scene_item in editor.scene.items()
+        if isinstance(scene_item, graph.ProtectedConnectionBlockItem)
+    )
+    scene_connections: List[graph.ConnectionItem] = list(
+        scene_item for scene_item in editor.scene.items()
+        if isinstance(scene_item, graph.ConnectionItem)
+    )
+
+    assert len(physical_items) == 1
+    assert len(measurement_items) == 3
+    assert len(control_items) > 0
+    assert len(protected_items) == expected_protected_count
+    assert all(
+        item.subsys is not editor._dgs_physical_root_control_container
+        for item in generic_items
+    )
+
+    physical_item: graph.GenericBlockItem = physical_items[0]
+    assert physical_item.name == "VeraGrid VSC physical template"
+    assert {port.base_var.name for port in physical_item.inputs}.issuperset(
+        set(("Pmd", "Pmq"))
+    )
+    assert {port.base_var.name for port in physical_item.outputs} == set(
+        ("id", "iq", "uDC")
+    )
+    assert all(
+        port.connections is not None and len(port.connections) > 0
+        for port in physical_item.inputs
+    )
+    assert all(
+        port.connections is not None and len(port.connections) > 0
+        for port in physical_item.outputs
+    )
+
+    assert measurement_items[0].brush().color() == (
+        editor.colors_palet.MEASUREMENT_BLOCK_FILL
+    )
+    assert control_items[0].brush().color() == editor.colors_palet.BLOCK_FILL
+    assert physical_item.brush().color() == (
+        editor.colors_palet.DEVICE_TEMPLATE_BLOCK_FILL
+    )
+    assert len(scene_connections) > 0
+    assert len(editor.diagram.con_data) > 0
+    assert len(scene_connections) > len(editor.diagram.con_data)
+    assert all(connection.diagram is None for connection in scene_connections)
+    assert all(not connection.path().isEmpty() for connection in scene_connections)
+    assert all(
+        abs(connection.path().elementAt(0).x - connection.source_port.scenePos().x()) <= 1e-6
+        and abs(connection.path().elementAt(0).y - connection.source_port.scenePos().y()) <= 1e-6
+        and abs(
+            connection.path().elementAt(connection.path().elementCount() - 1).x
+            - connection.target_port.scenePos().x()
+        ) <= 1e-6
+        and abs(
+            connection.path().elementAt(connection.path().elementCount() - 1).y
+            - connection.target_port.scenePos().y()
+        ) <= 1e-6
+        for connection in scene_connections
+    )
+    assert all(
+        connection.from_uid in editor.diagram.node_data
+        and connection.to_uid in editor.diagram.node_data
+        for connection in editor.diagram.con_data.values()
+    )
+    assert all(
+        any(
+            port.connections is not None and len(port.connections) > 0
+            for port in protected_item.inputs
+        )
+        or any(
+            port.connections is not None and len(port.connections) > 0
+            for port in protected_item.outputs
+        )
+        for protected_item in protected_items
+    )
+
+
 def _run_balanced_pf(grid: MultiCircuit) -> Any:
     power_flow: PowerFlowDriver = PowerFlowDriver(grid, _build_pf_options())
     power_flow.run()
@@ -832,22 +936,9 @@ def test_nuactis_v1_gui_editor_matches_scripting_pf_and_rms(
                 root_block=gui_vsc.rms_model,
             )
             open_editors.append(editor)
-            scene_connections: List[graph.ConnectionItem] = [
-                scene_item for scene_item in editor.scene.items()
-                if isinstance(scene_item, graph.ConnectionItem)
-            ]
-            protected_items: List[graph.ProtectedConnectionBlockItem] = [
-                scene_item for scene_item in editor.scene.items()
-                if isinstance(scene_item, graph.ProtectedConnectionBlockItem)
-            ]
-            assert len(scene_connections) > 0
-            assert len(protected_items) == 0
-            assert len(editor.diagram.con_data) == len(scene_connections)
-            assert all(not connection.path().isEmpty() for connection in scene_connections)
-            assert all(
-                connection.from_uid in editor.diagram.node_data
-                and connection.to_uid in editor.diagram.node_data
-                for connection in editor.diagram.con_data.values()
+            _assert_nuactis_vsc_projection(
+                editor=editor,
+                expected_protected_count=0,
             )
             editor.apply_changes()
             qt_app.processEvents()
@@ -1127,34 +1218,10 @@ def test_nuactis_v2_gui_editor_matches_scripting_pf_and_rms(
                 root_block=gui_vsc.rms_model,
             )
             open_editors.append(editor)
-            scene_connections: List[graph.ConnectionItem] = [
-                scene_item for scene_item in editor.scene.items()
-                if isinstance(scene_item, graph.ConnectionItem)
-            ]
-            protected_items: List[graph.ProtectedConnectionBlockItem] = [
-                scene_item for scene_item in editor.scene.items()
-                if isinstance(scene_item, graph.ProtectedConnectionBlockItem)
-            ]
-            assert len(scene_connections) > 0
             expected_protected_count: int = 1 if converter_index == 0 else 0
-            assert len(protected_items) == expected_protected_count
-            assert all(
-                any(
-                    port.connections is not None and len(port.connections) > 0
-                    for port in protected_item.inputs
-                )
-                or any(
-                    port.connections is not None and len(port.connections) > 0
-                    for port in protected_item.outputs
-                )
-                for protected_item in protected_items
-            )
-            assert len(editor.diagram.con_data) == len(scene_connections)
-            assert all(not connection.path().isEmpty() for connection in scene_connections)
-            assert all(
-                connection.from_uid in editor.diagram.node_data
-                and connection.to_uid in editor.diagram.node_data
-                for connection in editor.diagram.con_data.values()
+            _assert_nuactis_vsc_projection(
+                editor=editor,
+                expected_protected_count=expected_protected_count,
             )
             editor.apply_changes()
             qt_app.processEvents()

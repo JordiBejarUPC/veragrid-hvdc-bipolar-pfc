@@ -156,6 +156,48 @@ def block_has_internal_equation_content(block: Block) -> bool:
     return result
 
 
+def find_dgs_physical_root_control_container(root_block: Block) -> Block | None:
+    """Find the transparent controller boundary inside a physical DGS root.
+
+    A directly adapted physical device owns terminal power equations at its
+    root and one child that is only a composite boundary around equation-owning
+    controller blocks. Imported measurement blocks are leaf siblings. This
+    typed structure is sufficient to build a clearer GUI projection without
+    changing or duplicating the canonical equation hierarchy.
+
+    :param root_block: Assigned canonical dynamic model root.
+    :return: Unique boundary-only controller container, or ``None``.
+    """
+    if (
+            len(
+                root_block.dynamic_model_contract.rms_terminal_power_contributions
+            ) == 0
+            or len(
+                root_block.dynamic_model_contract.runtime_measurement_shell_sync_names
+            ) == 0
+            or len(root_block.algebraic_eqs) == 0
+    ):
+        return None
+    else:
+        pass
+
+    candidates: List[Block] = list()
+    child_block: Block
+    for child_block in root_block.children:
+        if (
+                len(child_block.children) > 0
+                and not block_has_internal_equation_content(block=child_block)
+        ):
+            candidates.append(child_block)
+        else:
+            pass
+
+    if len(candidates) == 1:
+        return candidates[0]
+    else:
+        return None
+
+
 def get_structural_port_key(variable: Var) -> tuple[str, str]:
     """Return a stable semantic key for one generated block port.
 
@@ -1611,6 +1653,14 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         self.root_block: Block = root_block if root_block is not None else Block()
         self.main_block: Block = current_block if current_block is not None else Block()
+        self._initializing_scene: bool = True
+        if self.is_root_editor and self.mode == DynamicSimulationMode.RMS:
+            self._dgs_physical_root_control_container: Block | None = (
+                find_dgs_physical_root_control_container(root_block=self.main_block)
+            )
+        else:
+            self._dgs_physical_root_control_container = None
+        self._dgs_physical_view_block: Block | None = None
 
         self.blocktype2templatebuilder = get_blocktype2template_builder_dict()
 
@@ -1912,6 +1962,11 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             pass
 
+        self._initializing_scene = False
+        if self._dgs_physical_root_control_container is not None:
+            self._materialize_dgs_physical_root_projection()
+        else:
+            pass
         self._initial_scene_fit_pending = True
 
     def showEvent(self, event: QtGui.QShowEvent) -> None:
@@ -1959,7 +2014,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param block: Child block to navigate into.
         :return: None.
         """
-        if self._navigation_delegate is not None:
+        if block is self._dgs_physical_view_block:
+            pass
+        elif self._navigation_delegate is not None:
             self._navigation_delegate.navigate_to_block(block)
         else:
             pass
@@ -1978,8 +2035,13 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         block_type_name: str = "CUSTOM"
         structural_block_type: BlockType | None = None
         structural_builder: TemplateDefinition | None = None
-        can_open: bool = not is_root_interface_wrapper_block(block_model=block,
-                                                             diagram=self.diagram)
+        can_open: bool = (
+                block is not self._dgs_physical_view_block
+                and not is_root_interface_wrapper_block(
+                    block_model=block,
+                    diagram=self.diagram,
+                )
+        )
 
         if diagram_node is not None:
             block_type_name = diagram_node.tpe
@@ -2961,6 +3023,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         else:
 
+            visual_role: graph.DynamicBlockVisualRole = graph.get_dynamic_block_visual_role(
+                block_model=block_model,
+                diagram_node_type="",
+            )
             item = graph.GenericBlockItem(
                 editor=self,
                 var_factory=self.var_factory,
@@ -2968,7 +3034,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 api_object=self.api_object,
                 mode=self.mode,
                 name=item_name,
-                position_changed_callback=self.build_position_changed_callback(block_model.uid)
+                position_changed_callback=self.build_position_changed_callback(block_model.uid),
+                visual_role=visual_role,
             )
             self.diagram.add_node(
                 name=item_name,
@@ -3405,7 +3472,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             api_object=self.api_object,
             mode=self.mode,
             name=item_name,
-            position_changed_callback=self.build_position_changed_callback(block_model.uid)
+            position_changed_callback=self.build_position_changed_callback(block_model.uid),
+            visual_role=graph.DynamicBlockVisualRole.DEVICE_TEMPLATE,
         )
 
         if item_name:
@@ -5771,6 +5839,378 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                                -graph.EditorGraphicsCommonFeatures.LAYOUT_MARGIN,
                                graph.EditorGraphicsCommonFeatures.LAYOUT_MARGIN,
                                graph.EditorGraphicsCommonFeatures.LAYOUT_MARGIN)
+
+    def _get_dgs_physical_projection_ports(
+            self,
+            controller_container: Block,
+    ) -> Tuple[List[Var], List[Var]]:
+        """Derive controller-facing physical ports from the canonical equations.
+
+        Root algebraic equations identify the physical plant. A descendant
+        output used by those equations is an input to the plant; a root-owned
+        algebraic variable consumed by a descendant is a plant output. The
+        derivation therefore follows symbolic ownership rather than source or
+        display names.
+
+        :param controller_container: Transparent imported controller boundary.
+        :return: Ordered physical input and output variables.
+        """
+        physical_equation_var_uids: Set[int] = set()
+        equation: Expr
+        equation_var: Var
+        for equation in self.main_block.algebraic_eqs:
+            for equation_var in equation.get_vars():
+                physical_equation_var_uids.add(equation_var.uid)
+
+        root_owned_var_uids: Set[int] = set(
+            algebraic_var.uid for algebraic_var in self.main_block.algebraic_vars
+        )
+        projected_blocks: List[Block] = list(controller_container.children)
+        sibling_block: Block
+        for sibling_block in self.main_block.children:
+            if sibling_block is controller_container:
+                pass
+            else:
+                projected_blocks.append(sibling_block)
+
+        physical_inputs: List[Var] = list()
+        physical_input_uids: Set[int] = set()
+        physical_outputs: List[Var] = list()
+        consumer_var_uids: Set[int] = set()
+        projected_block: Block
+        projected_var: Var
+
+        # Preserve child output order so native modulation and angle signals
+        # appear in the same order as their producing blocks.
+        for projected_block in projected_blocks:
+            for projected_var in projected_block.out_vars:
+                if (
+                        projected_var.uid in physical_equation_var_uids
+                        and projected_var.uid not in root_owned_var_uids
+                        and projected_var.uid not in physical_input_uids
+                ):
+                    physical_inputs.append(projected_var)
+                    physical_input_uids.add(projected_var.uid)
+                else:
+                    pass
+            for projected_var in projected_block.in_vars:
+                consumer_var_uids.add(projected_var.uid)
+
+        # Root algebraic ownership excludes terminal P/Q observers that never
+        # enter the controller and retains only the feedback signals it consumes.
+        for projected_var in self.main_block.algebraic_vars:
+            if projected_var.uid in consumer_var_uids:
+                physical_outputs.append(projected_var)
+            else:
+                pass
+
+        # The adapted root owns the solved plant variables, while the imported
+        # controller boundary retains its original cable identities. Present
+        # the exact boundary representative carrying each physical port label
+        # so the visual wire reaches every direct controller consumer. The
+        # model itself keeps the separate plant owner and its equations intact.
+        visible_physical_outputs: List[Var] = list()
+        physical_output: Var
+        controller_boundary_var: Var
+        matching_boundary_vars: List[Var]
+        for physical_output in physical_outputs:
+            matching_boundary_vars = list()
+            for controller_boundary_var in controller_container.in_vars:
+                if controller_boundary_var.name == physical_output.name:
+                    matching_boundary_vars.append(controller_boundary_var)
+                else:
+                    pass
+            if len(matching_boundary_vars) == 1:
+                visible_physical_outputs.append(matching_boundary_vars[0])
+            else:
+                visible_physical_outputs.append(physical_output)
+        return physical_inputs, visible_physical_outputs
+
+    def _create_dgs_projection_block_item(
+            self,
+            block_model: Block,
+            visual_role: graph.DynamicBlockVisualRole,
+            x_pos: float,
+            y_pos: float,
+    ) -> graph.GenericBlockItem:
+        """Create one transient item for the derived physical-root view.
+
+        :param block_model: Canonical descendant or minimal physical view block.
+        :param visual_role: Semantic palette role for the item.
+        :param x_pos: Deterministic scene X coordinate.
+        :param y_pos: Deterministic scene Y coordinate.
+        :return: Added full-size block item.
+        """
+        item: graph.GenericBlockItem = graph.GenericBlockItem(
+            editor=self,
+            var_factory=self.var_factory,
+            subsys=block_model,
+            api_object=self.api_object,
+            mode=self.mode,
+            name=block_model.name,
+            position_changed_callback=None,
+            visual_role=visual_role,
+        )
+        item.setPos(QtCore.QPointF(x_pos, y_pos))
+        item.recolour()
+        self.scene.addItem(item)
+        return item
+
+    def _attach_dgs_projection_connections(
+            self,
+            source_item: DynamicBlockGraphicsItem,
+            target_item: DynamicBlockGraphicsItem,
+            variable_pairs: List[tuple[Var, Var]],
+    ) -> None:
+        """Draw non-persistent wires for a derived physical-root view.
+
+        :param source_item: Visible source block.
+        :param target_item: Visible destination block.
+        :param variable_pairs: Canonical symbolic source-target pairs.
+        :return: None.
+        """
+        source_var: Var
+        target_var: Var
+        source_port: graph.PortItem | None
+        target_port: graph.PortItem | None
+        for source_var, target_var in variable_pairs:
+            source_port = self._find_output_port_for_var(
+                item_source=source_item,
+                source_var=source_var,
+            )
+            target_port = self._find_input_port_for_var(
+                item_dest=target_item,
+                target_var=target_var,
+            )
+            if source_port is not None and target_port is not None:
+                if self._connection_exists_between_ports(source_port, target_port):
+                    pass
+                else:
+                    connection: graph.ConnectionItem = graph.ConnectionItem(
+                        source_port=source_port,
+                        target_port=target_port,
+                        diagram=None,
+                        editor=self,
+                    )
+                    connection.recolour()
+                    self.scene.addItem(connection)
+            else:
+                pass
+
+    def _find_dgs_projection_variable_pairs(
+            self,
+            source_item: DynamicBlockGraphicsItem,
+            target_item: DynamicBlockGraphicsItem,
+    ) -> List[tuple[Var, Var]]:
+        """Find exact symbolic aliases between two projected blocks.
+
+        The canonical adapted hierarchy consolidates connected cables onto one
+        variable identity. The ordinary persisted-diagram finder intentionally
+        requires legacy shared or network references, so the derived view uses
+        the editor's stronger identity matcher without mutating either block.
+
+        :param source_item: Candidate visible producer.
+        :param target_item: Candidate visible consumer.
+        :return: Ordered source-target variable pairs.
+        """
+        variable_pairs: List[tuple[Var, Var]] = list()
+        source_var: Var
+        target_var: Var
+        for source_var in source_item.subsys.out_vars:
+            for target_var in target_item.subsys.in_vars:
+                if vars_match_for_visible_connection(source_var, target_var):
+                    variable_pairs.append((source_var, target_var))
+                else:
+                    pass
+        return variable_pairs
+
+    def _create_dgs_projection_interface_item(
+            self,
+            block_model: Block,
+            x_pos: float,
+            y_pos: float,
+    ) -> graph.ProtectedConnectionBlockItem:
+        """Create one connected root-interface item in the derived view.
+
+        :param block_model: Canonical root-interface wrapper block.
+        :param x_pos: Deterministic scene X coordinate.
+        :param y_pos: Deterministic scene Y coordinate.
+        :return: Added protected root-interface item.
+        """
+        item: graph.ProtectedConnectionBlockItem = graph.ProtectedConnectionBlockItem(
+            editor=self,
+            var_factory=self.var_factory,
+            name=block_model.name,
+            mode=self.mode,
+            api_object=self.api_object,
+        )
+        item.set_subsystem(block_model)
+        item.build_item()
+        item.setPos(QtCore.QPointF(x_pos, y_pos))
+        item.recolour()
+        self.scene.addItem(item)
+        return item
+
+    def _materialize_dgs_physical_root_projection(self) -> None:
+        """Render a compact physical-device view without changing the model.
+
+        The assigned root keeps its original equations, initialization order,
+        hierarchy and persisted diagram. The canvas replaces only their visual
+        projection: measurement siblings occupy the left column, equation-owning
+        controller descendants the centre, and one minimal physical-device proxy
+        the right. Every proxy port reuses the canonical ``Var`` object.
+
+        :return: None.
+        """
+        controller_container: Block | None = self._dgs_physical_root_control_container
+        if controller_container is None:
+            return
+        else:
+            pass
+
+        physical_inputs: List[Var]
+        physical_outputs: List[Var]
+        physical_inputs, physical_outputs = self._get_dgs_physical_projection_ports(
+            controller_container=controller_container,
+        )
+        if len(physical_inputs) == 0 or len(physical_outputs) == 0:
+            return
+        else:
+            pass
+
+        # Retain only external interface wrappers that already participate in
+        # the canonical diagram. This keeps the V2 angle feed visible while
+        # excluding unconnected runtime shells from the derived canvas.
+        connected_interface_blocks: List[Block] = list()
+        scene_item: QGraphicsItem
+        for scene_item in self.scene.items():
+            if isinstance(scene_item, graph.ProtectedConnectionBlockItem):
+                protected_block: Block | None = scene_item.subsys
+                has_connection: bool = any(
+                    port.connections is not None and len(port.connections) > 0
+                    for port in list(scene_item.inputs) + list(scene_item.outputs)
+                )
+                if protected_block is not None and has_connection:
+                    connected_interface_blocks.append(protected_block)
+                else:
+                    pass
+            else:
+                pass
+
+        self.scene.clear()
+        self._dgs_physical_view_block = Block(
+            name="VeraGrid VSC physical template",
+            in_vars=physical_inputs,
+            out_vars=physical_outputs,
+        )
+
+        measurement_blocks: List[Block] = list()
+        sibling_block: Block
+        for sibling_block in self.main_block.children:
+            if sibling_block is controller_container:
+                pass
+            elif (
+                    sibling_block.dynamic_model_contract.rms_physical_measurement_point
+                    is not None
+            ):
+                measurement_blocks.append(sibling_block)
+            else:
+                pass
+
+        visible_items: List[DynamicBlockGraphicsItem] = list()
+        interface_y: float = 0.0
+        interface_block: Block
+        for interface_block in connected_interface_blocks:
+            interface_item: graph.ProtectedConnectionBlockItem = (
+                self._create_dgs_projection_interface_item(
+                    block_model=interface_block,
+                    x_pos=-190.0,
+                    y_pos=interface_y,
+                )
+            )
+            visible_items.append(interface_item)
+            interface_y += float(interface_item.boundingRect().height()) + 24.0
+
+        measurement_y: float = 0.0
+        block_spacing: float = 46.0
+        block_model: Block
+        for block_model in measurement_blocks:
+            measurement_item: graph.GenericBlockItem = self._create_dgs_projection_block_item(
+                block_model=block_model,
+                visual_role=graph.DynamicBlockVisualRole.MEASUREMENT,
+                x_pos=0.0,
+                y_pos=measurement_y,
+            )
+            visible_items.append(measurement_item)
+            measurement_y += float(measurement_item.boundingRect().height()) + block_spacing
+
+        controller_y: float = 0.0
+        physical_y: float = 0.0
+        best_physical_input_match_count: int = -1
+        physical_input_uids: Set[int] = set(
+            physical_input.uid for physical_input in physical_inputs
+        )
+        for block_model in controller_container.children:
+            controller_role: graph.DynamicBlockVisualRole = (
+                graph.get_dynamic_block_visual_role(
+                    block_model=block_model,
+                    diagram_node_type="",
+                )
+            )
+            controller_item: graph.GenericBlockItem = self._create_dgs_projection_block_item(
+                block_model=block_model,
+                visual_role=controller_role,
+                x_pos=280.0,
+                y_pos=controller_y,
+            )
+            visible_items.append(controller_item)
+
+            matching_physical_input_count: int = 0
+            output_var: Var
+            for output_var in block_model.out_vars:
+                if output_var.uid in physical_input_uids:
+                    matching_physical_input_count += 1
+                else:
+                    pass
+            if matching_physical_input_count > best_physical_input_match_count:
+                best_physical_input_match_count = matching_physical_input_count
+                physical_y = controller_y
+            else:
+                pass
+            controller_y += float(controller_item.boundingRect().height()) + block_spacing
+
+        physical_item: graph.GenericBlockItem = self._create_dgs_projection_block_item(
+            block_model=self._dgs_physical_view_block,
+            visual_role=graph.DynamicBlockVisualRole.DEVICE_TEMPLATE,
+            x_pos=570.0,
+            y_pos=physical_y,
+        )
+        visible_items.append(physical_item)
+
+        source_item: DynamicBlockGraphicsItem
+        target_item: DynamicBlockGraphicsItem
+        variable_pairs: List[tuple[Var, Var]]
+        for source_item in visible_items:
+            for target_item in visible_items:
+                if source_item is target_item:
+                    pass
+                else:
+                    variable_pairs = self._find_dgs_projection_variable_pairs(
+                        source_item=source_item,
+                        target_item=target_item,
+                    )
+                    self._attach_dgs_projection_connections(
+                        source_item=source_item,
+                        target_item=target_item,
+                        variable_pairs=variable_pairs,
+                    )
+
+        projection_rect: QtCore.QRectF = self.scene.itemsBoundingRect()
+        if projection_rect.isNull():
+            pass
+        else:
+            projection_rect = projection_rect.adjusted(-45.0, -45.0, 45.0, 45.0)
+            self.scene.setSceneRect(projection_rect)
 
     def _root_interface_layout_uses_bootstrap_positions(self) -> bool:
         """
@@ -10739,6 +11179,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 else:
                     pass
             else:
+                visual_role: graph.DynamicBlockVisualRole = graph.get_dynamic_block_visual_role(
+                    block_model=block_model,
+                    diagram_node_type=node.tpe,
+                )
                 item = graph.GenericBlockItem(
                     editor=self,
                     var_factory=self.var_factory,
@@ -10747,6 +11191,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                     mode=self.mode,
                     name=block_model.name,
                     position_changed_callback=self.build_position_changed_callback(block_model.uid),
+                    visual_role=visual_role,
                 )
                 item.recolour()
 
@@ -10837,6 +11282,13 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         # When one persisted diagram exists, the saved branch list is the authoritative
         # source of visible wires. Rebuilding interface graphics from symbolic references
         # here would recreate connections that the user did not save explicitly.
+        if (
+                not self._initializing_scene
+                and self._dgs_physical_root_control_container is not None
+        ):
+            self._materialize_dgs_physical_root_projection()
+        else:
+            pass
 
     def mark_unapplied_changes(self) -> None:
         """

@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import math
 import uuid
+from enum import Enum
 from typing import Dict, List, Optional, Tuple
 
 from PySide6 import QtCore, QtGui, QtWidgets
@@ -23,7 +24,7 @@ from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Devices.Diagrams.block_diagram import BlockDiagram
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.enumerations import BlockType
-from VeraGridEngine.Utils.Symbolic.block import Block
+from VeraGridEngine.Utils.Symbolic.block import Block, DynamicModelContract
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Expr, BinOp, UnOp
 from VeraGridEngine.enumerations import DynamicSimulationMode
 
@@ -423,6 +424,12 @@ class EditorGraphicsDefaultsDark:
     BLOCK_TITLE: QColor = QColor("#e1f7ff")
     WIRE_COLOR: QColor = QColor("#e1f7ff")
     BLOCK_FILL: QColor = QColor("#022633")
+    MEASUREMENT_BLOCK_BORDER: QColor = QColor("#d7b5f7")
+    MEASUREMENT_BLOCK_TITLE: QColor = QColor("#d7b5f7")
+    MEASUREMENT_BLOCK_FILL: QColor = QColor("#3a244a")
+    DEVICE_TEMPLATE_BLOCK_BORDER: QColor = QColor("#f2c66d")
+    DEVICE_TEMPLATE_BLOCK_TITLE: QColor = QColor("#f2c66d")
+    DEVICE_TEMPLATE_BLOCK_FILL: QColor = QColor("#3a2a12")
     PORT_LABEL_COLOR: QColor = QColor("#173042")
     WIRE_ELBOW_OFFSET: float = 36.0
     WIRE_TERMINAL_STUB_LENGTH: float = 18.0
@@ -449,6 +456,12 @@ class EditorGraphicsDefaultsLight:
     BLOCK_TITLE: QColor = QColor("#03384f")
     WIRE_COLOR: QColor = QColor("#03384f")
     BLOCK_FILL: QColor = QColor("#f5fdff")
+    MEASUREMENT_BLOCK_BORDER: QColor = QColor("#6b2e90")
+    MEASUREMENT_BLOCK_TITLE: QColor = QColor("#6b2e90")
+    MEASUREMENT_BLOCK_FILL: QColor = QColor("#f4eafe")
+    DEVICE_TEMPLATE_BLOCK_BORDER: QColor = QColor("#8a5a00")
+    DEVICE_TEMPLATE_BLOCK_TITLE: QColor = QColor("#8a5a00")
+    DEVICE_TEMPLATE_BLOCK_FILL: QColor = QColor("#fff1d6")
     PORT_LABEL_COLOR: QColor = QColor("#173042")
     WIRE_ELBOW_OFFSET: float = 36.0
     WIRE_TERMINAL_STUB_LENGTH: float = 18.0
@@ -498,6 +511,43 @@ class EditorGraphicsCommonFeatures:
     BLOCK_SEARCH_ROLE: int = int(QtCore.Qt.ItemDataRole.UserRole) + 503
     MODAL_TEMPLATE_KIND_ATTR: str = "_modal_template_kind"
     MODAL_TEMPLATE_CONFIG_ATTR: str = "_modal_template_config"
+
+
+class DynamicBlockVisualRole(Enum):
+    """Semantic presentation role of one full-size dynamic-model block."""
+
+    CONTROL = 0
+    MEASUREMENT = 1
+    DEVICE_TEMPLATE = 2
+
+
+def get_dynamic_block_visual_role(
+        block_model: Block,
+        diagram_node_type: str,
+) -> DynamicBlockVisualRole:
+    """Resolve a block colour role from canonical model and diagram metadata.
+
+    Measurement identity comes from the typed physical measurement contract.
+    Device-template identity comes either from the durable template-node marker
+    or from the equipment-owned signal contract used by imported physical
+    wrappers. Display names never participate in this classification.
+
+    :param block_model: Canonical symbolic block represented by the item.
+    :param diagram_node_type: Persisted diagram node type, if one exists.
+    :return: Semantic visual role used by the active palette.
+    """
+    contract: DynamicModelContract = block_model.dynamic_model_contract
+    if (
+            diagram_node_type == EditorGraphicsCommonFeatures.TEMPLATE_NODE_TYPE
+            or len(contract.dgs_equipment_owned_signal_names) > 0
+    ):
+        result: DynamicBlockVisualRole = DynamicBlockVisualRole.DEVICE_TEMPLATE
+    else:
+        if contract.rms_physical_measurement_point is not None:
+            result = DynamicBlockVisualRole.MEASUREMENT
+        else:
+            result = DynamicBlockVisualRole.CONTROL
+    return result
 
 
 class BlockPositionChangedCallback:
@@ -1523,7 +1573,8 @@ class GenericBlockItem(QGraphicsRectItem):
                  api_object: ALL_DEV_TYPES,
                  mode: DynamicSimulationMode,
                  name: str,
-                 position_changed_callback: BlockPositionChangedCallback | None = None) -> None:
+                 position_changed_callback: BlockPositionChangedCallback | None = None,
+                 visual_role: DynamicBlockVisualRole | None = None) -> None:
         """
         Create one resizable graphics item for a symbolic block.
 
@@ -1534,6 +1585,7 @@ class GenericBlockItem(QGraphicsRectItem):
         :param mode: RMS or EMT editing mode used to configure the item.
         :param name: Display name written below the block.
         :param position_changed_callback: Optional callback used to persist position changes.
+        :param visual_role: Optional semantic colour role; inferred when omitted.
         :return: None.
         """
         super().__init__(0, 0, 100, 60)
@@ -1545,6 +1597,13 @@ class GenericBlockItem(QGraphicsRectItem):
         self.name: str = name
         self.api_object = api_object
         self.position_changed_callback = position_changed_callback
+        if visual_role is None:
+            self.visual_role: DynamicBlockVisualRole = get_dynamic_block_visual_role(
+                block_model=subsys,
+                diagram_node_type="",
+            )
+        else:
+            self.visual_role = visual_role
         self.name_item = QGraphicsTextItem(self.name, self)
 
         self.update_name_position()
@@ -1590,13 +1649,30 @@ class GenericBlockItem(QGraphicsRectItem):
 
         :return: None.
         """
-        self.name_item.setDefaultTextColor(self.editor.colors_palet.BLOCK_TITLE)
-        self.setBrush(QBrush(self.editor.colors_palet.BLOCK_FILL))
-        self.setPen(QPen(self.editor.colors_palet.BLOCK_BORDER, 1))
+        block_title: QColor
+        block_fill: QColor
+        block_border: QColor
+        if self.visual_role is DynamicBlockVisualRole.MEASUREMENT:
+            block_title = self.editor.colors_palet.MEASUREMENT_BLOCK_TITLE
+            block_fill = self.editor.colors_palet.MEASUREMENT_BLOCK_FILL
+            block_border = self.editor.colors_palet.MEASUREMENT_BLOCK_BORDER
+        else:
+            if self.visual_role is DynamicBlockVisualRole.DEVICE_TEMPLATE:
+                block_title = self.editor.colors_palet.DEVICE_TEMPLATE_BLOCK_TITLE
+                block_fill = self.editor.colors_palet.DEVICE_TEMPLATE_BLOCK_FILL
+                block_border = self.editor.colors_palet.DEVICE_TEMPLATE_BLOCK_BORDER
+            else:
+                block_title = self.editor.colors_palet.BLOCK_TITLE
+                block_fill = self.editor.colors_palet.BLOCK_FILL
+                block_border = self.editor.colors_palet.BLOCK_BORDER
+
+        self.name_item.setDefaultTextColor(block_title)
+        self.setBrush(QBrush(block_fill))
+        self.setPen(QPen(block_border, 1))
         for input_label_item in self.input_labels:
-            input_label_item.setDefaultTextColor(self.editor.colors_palet.BLOCK_TITLE)
+            input_label_item.setDefaultTextColor(block_title)
         for output_label_item in self.output_labels:
-            output_label_item.setDefaultTextColor(self.editor.colors_palet.BLOCK_TITLE)
+            output_label_item.setDefaultTextColor(block_title)
 
     def recolour(self, use_custom_color: bool = False) -> None:
         """Refresh this graphics item unless a custom colour must be preserved.
