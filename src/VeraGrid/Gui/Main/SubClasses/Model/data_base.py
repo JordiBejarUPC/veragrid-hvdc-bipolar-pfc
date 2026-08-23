@@ -19,7 +19,7 @@ import VeraGridEngine.basic_structures as bs
 import VeraGridEngine.Devices as dev
 import VeraGrid.Gui.gui_functions as gf
 from VeraGrid.Gui.object_model import ObjectsModel
-from VeraGrid.Gui.object_column_filter_dialog import ObjectColumnFilterDialog
+from VeraGrid.Gui.object_column_filter_dialog import ObjectColumnFilterDialog, set_line_edit_clear_action
 from VeraGrid.Gui.object_proxy_model import ObjectModelFilterProxy
 from VeraGrid.Gui.profiles_model import ProfilesModel
 from VeraGridEngine.enumerations import DeviceType, DynamicSimulationMode, TimeSeriesSearchPoint, PrpCat
@@ -130,7 +130,7 @@ class DataBaseTableMain(DiagramsMain):
         # tree click
         self.ui.dataStructuresTreeView.clicked.connect(self.view_objects_data)
         self.ui.device_tree_search_lineEdit.textChanged.connect(self.on_device_tree_search_text_changed)
-        self.ui.device_tree_search_lineEdit.setClearButtonEnabled(True)
+        set_line_edit_clear_action(line_edit=self.ui.device_tree_search_lineEdit)
 
         # line edit enter
         self.ui.smart_search_lineEdit.returnPressed.connect(self.objects_smart_search)

@@ -4,7 +4,7 @@ from typing import List
 from PySide6 import QtCore, QtGui, QtWidgets
 
 from VeraGrid.Gui.object_model import ObjectsModel
-from VeraGrid.Gui.object_column_filter_dialog import ObjectColumnFilterDialog
+from VeraGrid.Gui.object_column_filter_dialog import ObjectColumnFilterDialog, set_line_edit_clear_action
 from VeraGrid.Gui.object_proxy_model import ObjectModelFilterProxy
 from VeraGrid.Gui.table_view_header_wrap import HeaderViewWithWordWrap
 from VeraGridEngine.Devices.Substation.bus import Bus
@@ -156,6 +156,32 @@ def test_column_filter_dialog_uses_icon_only_buttons() -> None:
     for button in buttons:
         assert button.text() == ""
         assert button.icon().isNull() is False
+
+
+def test_line_edit_clear_action_uses_filter_popup_icon() -> None:
+    """
+    Check that line edits use the same clear icon as the filter popup.
+    """
+    get_qt_app()
+
+    line_edit: QtWidgets.QLineEdit = QtWidgets.QLineEdit()
+    action: QtGui.QAction = set_line_edit_clear_action(line_edit=line_edit)
+    same_action: QtGui.QAction = set_line_edit_clear_action(line_edit=line_edit)
+
+    assert action.isVisible() is False
+
+    line_edit.setText("abc")
+
+    assert action.isVisible() is True
+
+    action.trigger()
+
+    assert action is same_action
+    assert action.objectName() == "veragrid_clear_line_edit_action"
+    assert action.data() == ":/Icons/icons/line_edit_clear_gray.png"
+    assert action.icon().isNull() is False
+    assert action.isVisible() is False
+    assert line_edit.text() == ""
 
 
 def test_column_filter_dialog_cancel_clears_filter() -> None:

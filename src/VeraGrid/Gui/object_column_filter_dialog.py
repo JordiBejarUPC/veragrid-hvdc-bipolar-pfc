@@ -3,6 +3,7 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 
+from functools import partial
 from typing import List, Set
 
 from PySide6 import QtCore, QtGui, QtWidgets
@@ -27,6 +28,47 @@ def make_icon_button(icon_path: str, tooltip: str, parent: QtWidgets.QWidget) ->
     button.setIconSize(QtCore.QSize(18, 18))
     button.setFixedSize(26, 26)
     return button
+
+
+def set_clear_action_visibility(action: QtGui.QAction, text: str) -> None:
+    """
+    Show the clear action only while the line edit has text.
+
+    :param action: Clear action.
+    :param text: Current line edit text.
+    :return: None.
+    """
+    action.setVisible(len(text) > 0)
+
+
+def set_line_edit_clear_action(line_edit: QtWidgets.QLineEdit) -> QtGui.QAction:
+    """
+    Add the VeraGrid clear action to one line edit.
+
+    :param line_edit: Line edit to clear.
+    :return: Clear action.
+    """
+    action: QtGui.QAction
+    for action in line_edit.actions():
+        if action.objectName() == "veragrid_clear_line_edit_action":
+            action.setVisible(len(line_edit.text()) > 0)
+            return action
+        else:
+            pass
+
+    line_edit.setClearButtonEnabled(False)
+    icon_path: str = ":/Icons/icons/line_edit_clear_gray.png"
+    clear_action: QtGui.QAction = line_edit.addAction(
+        QtGui.QIcon(icon_path),
+        QtWidgets.QLineEdit.ActionPosition.TrailingPosition,
+    )
+    clear_action.setObjectName("veragrid_clear_line_edit_action")
+    clear_action.setData(icon_path)
+    clear_action.setToolTip(line_edit.tr("Clear"))
+    clear_action.setVisible(len(line_edit.text()) > 0)
+    clear_action.triggered.connect(line_edit.clear)
+    line_edit.textChanged.connect(partial(set_clear_action_visibility, clear_action))
+    return clear_action
 
 
 class ObjectColumnFilterDialog(QtWidgets.QDialog):
@@ -77,7 +119,7 @@ class ObjectColumnFilterDialog(QtWidgets.QDialog):
 
         self.search_line_edit: QtWidgets.QLineEdit = QtWidgets.QLineEdit(self)
         self.search_line_edit.setPlaceholderText(self.tr("Search"))
-        self.search_line_edit.setClearButtonEnabled(True)
+        set_line_edit_clear_action(line_edit=self.search_line_edit)
         self.search_line_edit.textChanged.connect(self.set_search_text)
         filter_layout.addWidget(self.search_line_edit, 1)
 
