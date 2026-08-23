@@ -1,27 +1,34 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
 import numpy as np
 from PySide6 import QtWidgets
 
+from VeraGrid.Gui.DynamicEventsDialog.dynamic_events_editor_support import collect_block_runtime_event_parameters
 from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI
 from VeraGrid.Gui.DynamicModelEditor.dynamic_block_preparation import prepare_block_for_editing
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_utilities import create_generic_block
 import VeraGrid.Gui.DynamicModelEditor.dynamic_editor_graphics as graph
+from VeraGridEngine.Devices.Events.rms_event import RmsEvent
+from VeraGridEngine.Devices.Events.rms_events_group import RmsEventsGroup
 from VeraGridEngine.Devices.Branches.line import Line
 from VeraGridEngine.Devices.Branches.overhead_line_type import OverheadLineType
 from VeraGridEngine.Devices.Branches.wire import Wire
 from VeraGridEngine.Devices.Injections.generator import Generator
 from VeraGridEngine.Devices.Injections.load import Load
+from VeraGridEngine.Devices.Branches.vsc import VSC
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
+from VeraGridEngine.IO.file_open import FileOpen, FileOpenOptions
 from VeraGridEngine.Simulations.EMT.emt_driver import EmtSimulationDriver
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.Simulations.EMT.emt_results import EmtResults
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_dae import EmtProblemDae
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowDriver
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowOptions
+from VeraGridEngine.Simulations.PowerFlow.power_flow_results import PowerFlowResults
 from VeraGridEngine.Simulations.PowerFlow3ph.power_flow_driver_3ph import PowerFlowDriver3Ph
 from VeraGridEngine.Simulations.Rms.problems.rms_problem_dae import RmsProblemDae
 from VeraGridEngine.Simulations.Rms.rms_driver import RmsSimulationDriver
@@ -35,11 +42,11 @@ from VeraGridEngine.Templates.Rms.genrow_rms_template import get_genrow_rms_temp
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.Templates.Rms.load_rms_template import get_load_rms_template
 from VeraGridEngine.Utils.Symbolic.block import Block
-from VeraGridEngine.Utils.Symbolic.symbolic import symbolic_to_string
+from VeraGridEngine.Utils.Symbolic.symbolic import Var, symbolic_to_string
 from VeraGridEngine.Utils.Symbolic.bus_emt_template import get_bus_emt_template
 from VeraGridEngine.Utils.Symbolic.bus_rms_template import initialize_bus_rms
 from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_emt_model, set_rms_model
-from VeraGridEngine.enumerations import BlockType, BranchImpedanceMode, DynamicIntegrationMethod, DynamicSimulationMode, DynEditorGraphicsModes, EmtInitializationMethod, EmtSolverTypes, RmsInitializationMethod, ShuntConnectionType, SolverType, VarPowerFlowReferenceType
+from VeraGridEngine.enumerations import BlockType, BranchImpedanceMode, DynamicIntegrationMethod, DynamicSimulationMode, DynEditorGraphicsModes, EmtInitializationMethod, EmtSolverTypes, FileType, RmsInitializationMethod, ShuntConnectionType, SolverType, VarPowerFlowReferenceType
 
 
 def _collect_block_signature(block: Block) -> Dict[str, Any]:
@@ -225,6 +232,170 @@ def _build_two_bus_rms_grid() -> Tuple[MultiCircuit, Generator, Any, Load]:
     grid.add_generator(bus=bus0, api_obj=gen0)
 
     return grid, gen0, line0, load
+
+
+def _add_rms_load_step_event(grid: MultiCircuit, load: Load) -> None:
+    """Add one GUI-selectable active-power step to an RMS test grid.
+
+    :param grid: Canonical circuit that owns the event collection.
+    :param load: Load whose assigned model exposes the runtime parameter.
+    :return: None.
+    """
+    load_model: Block | None = load.rms_model
+    assert isinstance(load_model, Block)
+    runtime_parameters: List[Var]
+    mode_parameter_uids: set[int]
+    runtime_parameters, mode_parameter_uids = collect_block_runtime_event_parameters(block=load_model)
+    active_power_parameter: Var | None = None
+    runtime_parameter: Var
+
+    # Select exactly what the live GUI event editor offers, rather than
+    # reaching into an implementation-only parameter collection.
+    for runtime_parameter in runtime_parameters:
+        if runtime_parameter.name == "Pl0":
+            assert active_power_parameter is None
+            assert runtime_parameter.uid not in mode_parameter_uids
+            active_power_parameter = runtime_parameter
+        else:
+            pass
+    assert active_power_parameter is not None
+
+    event_group: RmsEventsGroup = RmsEventsGroup(
+        idtag="real-gui-script-rms-event-group",
+        active=True,
+        name="Real GUI-script RMS load step",
+    )
+    event: RmsEvent = RmsEvent(
+        idtag="real-gui-script-rms-load-step",
+        name="Real GUI-script RMS load step",
+        device=load,
+        parameter=active_power_parameter,
+        time=0.01,
+        value=-0.095,
+        group=event_group,
+    )
+    grid.add_rms_events_group(event_group)
+    grid.add_rms_event(event)
+
+
+def _load_nuactis_rms_grid(fixture_name: str) -> MultiCircuit:
+    """Load a tracked Nuactis DGS through the production import path.
+
+    :param fixture_name: File name of the tracked DGS fixture.
+    :return: Canonical circuit with imported RMS templates assigned by FID.
+    """
+    fixture_path: Path = (
+        Path(__file__).resolve().parents[1]
+        / "data"
+        / "grids"
+        / "DGS"
+        / fixture_name
+    )
+    file_open: FileOpen = FileOpen(
+        file_name=str(fixture_path),
+        options=FileOpenOptions(
+            file_type=FileType.DGS,
+            dgs_use_dynamic_information=True,
+            dgs_dynamic_simulation_mode=DynamicSimulationMode.RMS,
+        ),
+    )
+    imported_grid: MultiCircuit | None = file_open.open()
+    assert imported_grid is not None
+    assert file_open.logger.error_count() == 0
+    return imported_grid
+
+
+def _add_nuactis_q_reference_step(
+        grid: MultiCircuit,
+        vsc: VSC,
+        runtime_parameter_name: str = "Q_ref",
+        event_value: float = 0.02,
+) -> Var:
+    """Add one GUI-selectable controller-parameter step to Nuactis.
+
+    :param grid: Canonical Nuactis circuit that owns the event.
+    :param vsc: Slave converter whose imported controller is perturbed.
+    :param runtime_parameter_name: Exact imported runtime parameter name.
+    :param event_value: Absolute parameter value applied at the event.
+    :return: Exact typed runtime parameter targeted by the event.
+    """
+    vsc_model: Block | None = vsc.rms_model
+    assert isinstance(vsc_model, Block)
+    runtime_parameters: List[Var]
+    mode_parameter_uids: set[int]
+    runtime_parameters, mode_parameter_uids = collect_block_runtime_event_parameters(
+        block=vsc_model,
+    )
+    selected_parameter: Var | None = None
+    runtime_parameter: Var
+
+    # Select the same typed parameter exposed in the GUI event editor rather
+    # than addressing a hidden solver coordinate or matching a display label.
+    for runtime_parameter in runtime_parameters:
+        if runtime_parameter.name == runtime_parameter_name:
+            assert selected_parameter is None
+            assert runtime_parameter.uid not in mode_parameter_uids
+            selected_parameter = runtime_parameter
+        else:
+            pass
+    assert selected_parameter is not None, "\n".join(
+        parameter.name for parameter in runtime_parameters
+    )
+
+    event_group: RmsEventsGroup = RmsEventsGroup(
+        idtag="nuactis-gui-script-controller-step-group",
+        active=True,
+        name="Nuactis GUI-script controller step",
+    )
+    event: RmsEvent = RmsEvent(
+        idtag="nuactis-gui-script-controller-step",
+        name="Nuactis GUI-script controller step",
+        device=vsc,
+        parameter=selected_parameter,
+        time=0.003,
+        value=event_value,
+        group=event_group,
+    )
+    grid.add_rms_events_group(event_group)
+    grid.add_rms_event(event)
+    return selected_parameter
+
+
+def _run_nuactis_short_rms(
+        grid: MultiCircuit,
+) -> Tuple[PowerFlowResults, RmsResults, RmsProblemDae]:
+    """Run PF and a short RMS trajectory for one Nuactis circuit.
+
+    :param grid: Imported circuit to initialize and integrate.
+    :return: Converged power-flow results, RMS results, and compiled problem.
+    """
+    power_flow_driver: PowerFlowDriver = PowerFlowDriver(
+        grid=grid,
+        options=_build_pf_options(),
+    )
+    power_flow_driver.run()
+    power_flow_results: PowerFlowResults = power_flow_driver.results
+    assert power_flow_results.converged
+
+    rms_options: RmsOptions = RmsOptions(
+        time_step=0.001,
+        simulation_time=0.01,
+        tolerance=1e-6,
+        integration_method=DynamicIntegrationMethod.DaeBackEuler,
+        initialization_method=RmsInitializationMethod.Explicit,
+        use_init_values=False,
+        max_iter=100,
+        verbose=0,
+    )
+    rms_driver: RmsSimulationDriver = RmsSimulationDriver(
+        grid=grid,
+        options=rms_options,
+        pf_results=power_flow_results,
+    )
+    rms_driver.run()
+    assert rms_driver.results is not None
+    assert rms_driver.problem is not None
+    return power_flow_results, rms_driver.results, rms_driver.problem
 
 
 def _run_emt_power_flow(grid: MultiCircuit) -> Any:
@@ -534,6 +705,11 @@ def test_gui_editor_apply_changes_matches_scripting_for_rms(qt_app: QtWidgets.QA
     assert _collect_block_semantic_signature(gui_line.rms_model) == _collect_block_semantic_signature(script_line.rms_model)
     assert _collect_block_semantic_signature(gui_load.rms_model) == _collect_block_semantic_signature(script_load.rms_model)
 
+    # Make both drivers integrate the same non-trivial trajectory after the
+    # real GUI editor has rebuilt and persisted each dynamic block.
+    _add_rms_load_step_event(grid=script_grid, load=script_load)
+    _add_rms_load_step_event(grid=gui_grid, load=gui_load)
+
     script_results: RmsResults
     gui_results: RmsResults
     script_problem: RmsProblemDae
@@ -544,7 +720,302 @@ def test_gui_editor_apply_changes_matches_scripting_for_rms(qt_app: QtWidgets.QA
     assert script_problem.get_states_number() == gui_problem.get_states_number()
     assert script_problem.get_algebraic_var_number() == gui_problem.get_algebraic_var_number()
     assert list(script_results.variable_array) == list(gui_results.variable_array)
+    assert script_results.values.shape[2] == 1
+    assert script_results.values.shape == gui_results.values.shape
+    assert np.array_equal(script_results.rms_events_group_names, gui_results.rms_events_group_names)
+    assert np.array_equal(script_results.rms_events_group_idtags, gui_results.rms_events_group_idtags)
+    assert np.array_equal(script_results.has_event_group_results, gui_results.has_event_group_results)
+    assert np.all(script_results.has_event_group_results)
+    assert np.array_equal(script_results.well_initialized, gui_results.well_initialized)
+    assert np.array_equal(script_results.converged, gui_results.converged)
+    assert np.all(script_results.well_initialized)
+    assert np.all(script_results.converged)
+    assert script_results.time_array.equals(gui_results.time_array)
+    assert not np.allclose(
+        script_results.values[0, :, 0],
+        script_results.values[-1, :, 0],
+        rtol=1e-10,
+        atol=1e-10,
+    )
     assert np.allclose(script_results.values, gui_results.values, rtol=1e-8, atol=1e-8)
+
+
+def test_nuactis_v1_gui_editor_matches_scripting_pf_and_rms(
+        qt_app: QtWidgets.QApplication,
+) -> None:
+    """Keep Nuactis V1 invariant after opening and saving its VSCs in the GUI.
+
+    :param qt_app: Shared Qt application fixture.
+    :return: None.
+    """
+    script_grid: MultiCircuit = _load_nuactis_rms_grid(
+        fixture_name="hvdc_vsc_v1_complete_static_dynamic.dgs",
+    )
+    gui_grid: MultiCircuit = _load_nuactis_rms_grid(
+        fixture_name="hvdc_vsc_v1_complete_static_dynamic.dgs",
+    )
+    script_vsc_devices: List[VSC] = script_grid.get_vsc()
+    gui_vsc_devices: List[VSC] = gui_grid.get_vsc()
+    assert len(script_vsc_devices) == 2
+    assert len(gui_vsc_devices) == len(script_vsc_devices)
+
+    open_editors: List[DynamicBlockEditorGUI] = list()
+    converter_index: int
+    try:
+        # Exercise the actual editor reconstruction and persistence path for
+        # each imported converter while the scripting copy stays untouched.
+        for converter_index in range(len(gui_vsc_devices)):
+            script_vsc: VSC = script_vsc_devices[converter_index]
+            gui_vsc: VSC = gui_vsc_devices[converter_index]
+            assert gui_vsc.idtag == script_vsc.idtag
+            assert isinstance(gui_vsc.rms_model, Block)
+            assert isinstance(script_vsc.rms_model, Block)
+
+            editor: DynamicBlockEditorGUI = _build_gui_editor(
+                qt_app=qt_app,
+                grid=gui_grid,
+                api_object=gui_vsc,
+                mode=DynamicSimulationMode.RMS,
+                root_block=gui_vsc.rms_model,
+            )
+            open_editors.append(editor)
+            editor.apply_changes()
+            qt_app.processEvents()
+
+            assert _collect_block_semantic_signature(gui_vsc.rms_model) == (
+                _collect_block_semantic_signature(script_vsc.rms_model)
+            )
+            assert gui_vsc.rms_model.dynamic_model_contract.to_data() == (
+                script_vsc.rms_model.dynamic_model_contract.to_data()
+            )
+    finally:
+        editor_to_close: DynamicBlockEditorGUI
+        for editor_to_close in open_editors:
+            editor_to_close.prepare_to_delete()
+            editor_to_close.close()
+            editor_to_close.deleteLater()
+        qt_app.processEvents()
+
+    # Perturb the same controller reference through the parameter exposed by
+    # the GUI event editor so equality covers an actual dynamic response.
+    _add_nuactis_q_reference_step(
+        grid=script_grid,
+        vsc=script_vsc_devices[1],
+    )
+    _add_nuactis_q_reference_step(
+        grid=gui_grid,
+        vsc=gui_vsc_devices[1],
+    )
+
+    script_pf_results: PowerFlowResults
+    script_rms_results: RmsResults
+    script_problem: RmsProblemDae
+    script_pf_results, script_rms_results, script_problem = _run_nuactis_short_rms(grid=script_grid)
+    gui_pf_results: PowerFlowResults
+    gui_rms_results: RmsResults
+    gui_problem: RmsProblemDae
+    gui_pf_results, gui_rms_results, gui_problem = _run_nuactis_short_rms(grid=gui_grid)
+
+    assert script_problem.get_states_number() == gui_problem.get_states_number()
+    assert script_problem.get_algebraic_var_number() == gui_problem.get_algebraic_var_number()
+    assert np.allclose(script_pf_results.voltage, gui_pf_results.voltage, rtol=1e-10, atol=1e-10)
+    assert np.allclose(script_pf_results.Sbus, gui_pf_results.Sbus, rtol=1e-10, atol=1e-10)
+    assert np.allclose(script_pf_results.gen_p, gui_pf_results.gen_p, rtol=1e-10, atol=1e-10)
+    assert script_rms_results.values.shape[0] == 11
+    assert script_rms_results.values.shape[2] == 1
+    assert script_rms_results.values.shape == gui_rms_results.values.shape
+    assert list(script_rms_results.variable_array) == list(gui_rms_results.variable_array)
+    assert np.array_equal(script_rms_results.has_event_group_results, gui_rms_results.has_event_group_results)
+    assert np.array_equal(script_rms_results.well_initialized, gui_rms_results.well_initialized)
+    assert np.array_equal(script_rms_results.converged, gui_rms_results.converged)
+    assert np.all(script_rms_results.has_event_group_results)
+    assert np.all(script_rms_results.well_initialized)
+    assert np.all(script_rms_results.converged)
+    assert script_rms_results.time_array.equals(gui_rms_results.time_array)
+    assert not np.allclose(
+        script_rms_results.values[0, :, 0],
+        script_rms_results.values[-1, :, 0],
+        rtol=1e-10,
+        atol=1e-10,
+    )
+    slave_q_active_uid: int | None = script_problem.vars_glob_name2uid.get(
+        "Q_act_PowerFactory StaPqmea 221Slave_PWM_nl",
+        None,
+    )
+    assert slave_q_active_uid is not None
+    slave_q_active_index: int = script_problem.uid2idx_vars[slave_q_active_uid]
+    slave_q_active_trace: np.ndarray = script_rms_results.values[
+        :,
+        slave_q_active_index,
+        0,
+    ]
+    # PowerFactory keeps the state unchanged on the event sample and applies
+    # the new Q reference while integrating the immediately following interval.
+    assert np.isclose(slave_q_active_trace[3], slave_q_active_trace[0])
+    assert not np.isclose(slave_q_active_trace[4], slave_q_active_trace[3])
+    # Isolated PowerFactory V1 gives Q_act=0.0044611085247 pu at 10 ms with
+    # the same 1 ms step. Backward-Euler discretization remains within 2%.
+    assert np.isclose(
+        slave_q_active_trace[10],
+        0.0044611085247,
+        rtol=2.0e-2,
+        atol=1.0e-6,
+    )
+    assert np.allclose(script_rms_results.values, gui_rms_results.values, rtol=1e-8, atol=1e-8)
+
+
+def test_nuactis_v2_gui_editor_matches_scripting_pf_and_rms(
+        qt_app: QtWidgets.QApplication,
+) -> None:
+    """Keep Nuactis V2 invariant after saving both VSC models in the GUI.
+
+    :param qt_app: Shared Qt application fixture.
+    :return: None.
+    """
+    script_grid: MultiCircuit = _load_nuactis_rms_grid(
+        fixture_name="hvdc_vsc_v2_complete_static_dynamic.dgs",
+    )
+    gui_grid: MultiCircuit = _load_nuactis_rms_grid(
+        fixture_name="hvdc_vsc_v2_complete_static_dynamic.dgs",
+    )
+    script_vsc_devices: List[VSC] = script_grid.get_vsc()
+    gui_vsc_devices: List[VSC] = gui_grid.get_vsc()
+    assert len(script_vsc_devices) == 2
+    assert len(gui_vsc_devices) == len(script_vsc_devices)
+
+    open_editors: List[DynamicBlockEditorGUI] = list()
+    converter_index: int
+    try:
+        # Persist each imported V2 model through the same editor path used by
+        # an interactive GUI session, while retaining an untouched script copy.
+        for converter_index in range(len(gui_vsc_devices)):
+            script_vsc: VSC = script_vsc_devices[converter_index]
+            gui_vsc: VSC = gui_vsc_devices[converter_index]
+            assert gui_vsc.idtag == script_vsc.idtag
+            assert isinstance(gui_vsc.rms_model, Block)
+            assert isinstance(script_vsc.rms_model, Block)
+
+            editor: DynamicBlockEditorGUI = _build_gui_editor(
+                qt_app=qt_app,
+                grid=gui_grid,
+                api_object=gui_vsc,
+                mode=DynamicSimulationMode.RMS,
+                root_block=gui_vsc.rms_model,
+            )
+            open_editors.append(editor)
+            editor.apply_changes()
+            qt_app.processEvents()
+
+            assert _collect_block_semantic_signature(gui_vsc.rms_model) == (
+                _collect_block_semantic_signature(script_vsc.rms_model)
+            )
+            assert gui_vsc.rms_model.dynamic_model_contract.to_data() == (
+                script_vsc.rms_model.dynamic_model_contract.to_data()
+            )
+    finally:
+        editor_to_close: DynamicBlockEditorGUI
+        for editor_to_close in open_editors:
+            editor_to_close.prepare_to_delete()
+            editor_to_close.close()
+            editor_to_close.deleteLater()
+        qt_app.processEvents()
+
+    # Apply the same GUI-selectable controller event to both canonical grids.
+    script_amplitude_parameter: Var = _add_nuactis_q_reference_step(
+        grid=script_grid,
+        vsc=script_vsc_devices[1],
+        runtime_parameter_name="Outer_Ctrl_Q__Amplitude",
+        event_value=0.01,
+    )
+    _add_nuactis_q_reference_step(
+        grid=gui_grid,
+        vsc=gui_vsc_devices[1],
+        runtime_parameter_name="Outer_Ctrl_Q__Amplitude",
+        event_value=0.01,
+    )
+
+    script_pf_results: PowerFlowResults
+    script_rms_results: RmsResults
+    script_problem: RmsProblemDae
+    script_pf_results, script_rms_results, script_problem = _run_nuactis_short_rms(
+        grid=script_grid,
+    )
+    gui_pf_results: PowerFlowResults
+    gui_rms_results: RmsResults
+    gui_problem: RmsProblemDae
+    gui_pf_results, gui_rms_results, gui_problem = _run_nuactis_short_rms(
+        grid=gui_grid,
+    )
+
+    assert script_problem.get_states_number() == gui_problem.get_states_number()
+    assert script_problem.get_algebraic_var_number() == gui_problem.get_algebraic_var_number()
+    assert np.allclose(script_pf_results.voltage, gui_pf_results.voltage, rtol=0.0, atol=1e-10)
+    assert np.allclose(script_pf_results.Sbus, gui_pf_results.Sbus, rtol=0.0, atol=1e-10)
+    assert script_rms_results.values.shape == gui_rms_results.values.shape
+    assert list(script_rms_results.variable_array) == list(gui_rms_results.variable_array)
+    assert np.array_equal(script_rms_results.has_event_group_results, gui_rms_results.has_event_group_results)
+    assert np.array_equal(script_rms_results.well_initialized, gui_rms_results.well_initialized)
+    assert np.array_equal(script_rms_results.converged, gui_rms_results.converged)
+    assert np.all(script_rms_results.has_event_group_results)
+    assert np.all(script_rms_results.well_initialized)
+    assert np.all(script_rms_results.converged)
+    assert script_rms_results.time_array.equals(gui_rms_results.time_array)
+    assert np.max(np.abs(script_rms_results.values - gui_rms_results.values)) <= 1e-6
+    # Compare the complete 1 ms trace exported by licensed PowerFactory after
+    # its normal ComInc initialization. The directed amplitude event is present
+    # in both runs at 3 ms; its internal T_step remains 2 s, so these first
+    # 10 ms validate initialization and time routing before the delayed step.
+    pf_reference_values: np.ndarray = np.array(
+        [
+            [0.9843814973093796, 1.0061318797440864, 1.3500718003862338e-11],
+            [0.9843814973050085, 1.0061318797440393, 7.765907282321548e-12],
+            [0.9843814973050056, 1.0061318797440400, 7.760953784392250e-12],
+            [0.9843814973050028, 1.0061318797440406, 7.756020587683972e-12],
+            [0.9843814973049996, 1.0061318797440413, 7.751615222722258e-12],
+            [0.9843814973049967, 1.0061318797440420, 7.747209857760546e-12],
+            [0.9843814973049935, 1.0061318797440426, 7.742905998903942e-12],
+            [0.9843814973049914, 1.0061318797440433, 7.738622441268361e-12],
+            [0.9843814973049886, 1.0061318797440437, 7.734480992179929e-12],
+            [0.9843814973049857, 1.0061318797440442, 7.730501952859673e-12],
+            [0.9843814973049835, 1.0061318797440446, 7.726847733075763e-12],
+        ],
+        dtype=float,
+    )
+    slave_ac_voltage_uid: int | None = script_problem.vars_glob_name2uid.get(
+        "VmSlave_AC",
+        None,
+    )
+    slave_dc_voltage_uid: int | None = script_problem.vars_glob_name2uid.get(
+        "VdcSlave_DC",
+        None,
+    )
+    slave_q_active_uid: int | None = script_problem.vars_glob_name2uid.get(
+        "Q_act_PowerFactory StaPqmea 229HVDC Slave_PWM",
+        None,
+    )
+    assert slave_ac_voltage_uid is not None
+    assert slave_dc_voltage_uid is not None
+    assert slave_q_active_uid is not None
+    veragrid_values: np.ndarray = np.column_stack(
+        (
+            script_rms_results.values[
+                :, script_problem.uid2idx_vars[slave_ac_voltage_uid], 0
+            ],
+            script_rms_results.values[
+                :, script_problem.uid2idx_vars[slave_dc_voltage_uid], 0
+            ],
+            script_rms_results.values[
+                :, script_problem.uid2idx_vars[slave_q_active_uid], 0
+            ],
+        )
+    )
+    assert np.max(np.abs(veragrid_values - pf_reference_values)) <= 1e-6
+    amplitude_parameter_index: int = script_problem._uid2idx_event_params[
+        script_amplitude_parameter.uid
+    ]
+    assert float(
+        script_problem._variable_parameters_values[amplitude_parameter_index]
+    ) == 0.01
 
 
 def test_rms_editor_open_materializes_connection_vars(qt_app: QtWidgets.QApplication) -> None:

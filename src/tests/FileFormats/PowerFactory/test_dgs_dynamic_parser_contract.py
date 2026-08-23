@@ -46,6 +46,7 @@ from VeraGridEngine.IO.dgs.dgs_to_blocks import (
     DgsGraphicTreeResult,
     DgsGraphicalIndexes,
     DgsGraphicalConnectorKind,
+    DgsSlotSignalDirection,
     DgsRootBlockResult,
     ElmCompInstanceEntry,
     ParsedDgsBlockDefinition,
@@ -547,12 +548,83 @@ def test_complete_hvdc_vsc_exports_declare_directional_equipment_slots(
             )
 
 
+def test_v2_direct_root_connects_ffs_by_slot_fid_and_connector_ordinal() -> None:
+    """Bind the V2 FFS output despite its private producer port name.
+
+    :return: None.
+    """
+    dgs_circuit: DgsCircuit = DgsCircuit()
+    dgs_circuit.parse_dgs(
+        path=str(_get_complete_hvdc_vsc_dgs_path(
+            file_name="hvdc_vsc_v2_complete_static_dynamic.dgs",
+        ))
+    )
+    parsed_blocks: dict[str, ParsedDgsBlockDefinition] = (
+        parse_dgs_block_definitions_from_circuit(circuit=dgs_circuit)
+    )
+    root_result: DgsRootBlockResult = build_dgs_root_block_from_circuit(
+        circuit=dgs_circuit,
+        parsed_blocks=parsed_blocks,
+        root_name="SlavePWM_Model",
+    )
+    direct_result: DgsDirectRootBuildResult = build_direct_root_elmcomp_block(
+        circuit=dgs_circuit,
+        result=root_result,
+        graphical_indexes=build_dgs_graphical_indexes(circuit=dgs_circuit),
+    )
+    ffs_entry: ElmCompInstanceEntry | None = None
+    active_controller_entry: ElmCompInstanceEntry | None = None
+    direct_entry: ElmCompInstanceEntry
+    for direct_entry in direct_result.direct_entries:
+        if direct_entry.slot_name == "FFS":
+            ffs_entry = direct_entry
+        elif direct_entry.slot_name == "Outer_ctrl_P_wffs":
+            active_controller_entry = direct_entry
+        else:
+            pass
+
+    assert ffs_entry is not None
+    assert active_controller_entry is not None
+    assert ffs_entry.slot_id is not None
+    assert active_controller_entry.slot_id is not None
+    assert active_controller_entry.get_slot_signal_components(
+        direction=DgsSlotSignalDirection.Input,
+    ) == ["id_limit", "P_act", "uDC", "id", "dP_FFS"]
+
+    ffs_block: Block = direct_result.child_block_by_slot_id[ffs_entry.slot_id]
+    active_controller_block: Block = direct_result.child_block_by_slot_id[
+        active_controller_entry.slot_id
+    ]
+    assert len(ffs_block.out_vars) == 1
+    ffs_output: Var = ffs_block.out_vars[0]
+    disconnected_input: Var | None = None
+    controller_input: Var
+    for controller_input in active_controller_block.in_vars:
+        if controller_input.name == "dP_FFS":
+            disconnected_input = controller_input
+        else:
+            pass
+    assert disconnected_input is not None
+    assert any(
+        controller_equation.contains_var(ffs_output)
+        for controller_equation in active_controller_block.algebraic_eqs
+    )
+    assert not any(
+        controller_equation.contains_var(disconnected_input)
+        for controller_equation in active_controller_block.algebraic_eqs
+    )
+    assert not any(
+        root_variable.uid == disconnected_input.uid
+        for root_variable in direct_result.root_block.algebraic_vars
+    )
+
+
 @pytest.mark.parametrize(
     ("file_name", "second_active_power_setpoint"),
     (
-        ("hvdc_vsc_v1_complete_static_dynamic.dgs", 1000.0),
-        ("hvdc_vsc_v2_complete_static_dynamic.dgs", 1000.0),
-        ("hvdc_vsc_v3_complete_static_dynamic.dgs", -1000.0),
+        ("hvdc_vsc_v1_complete_static_dynamic.dgs", -1000.0),
+        ("hvdc_vsc_v2_complete_static_dynamic.dgs", -1000.0),
+        ("hvdc_vsc_v3_complete_static_dynamic.dgs", 1000.0),
     ),
 )
 # Alex review required: converter controls use configured setpoints, never solved m:* columns.
@@ -1120,6 +1192,7 @@ def test_v1_v2_dynamic_routes_keep_power_meters_as_editor_blocks(
         assert converter_vdc_from.uid == converter_bus_vdc.uid
     meter_block_by_name: dict[str, Block] = dict()
     owner_model_by_meter_name: dict[str, Block] = dict()
+    owner_device_by_meter_name: dict[str, DynamicDevice] = dict()
     candidate_device: object
 
     for candidate_device in circuit.get_injection_devices():
@@ -1129,6 +1202,7 @@ def test_v1_v2_dynamic_routes_keep_power_meters_as_editor_blocks(
                 if candidate_block.name in expected_meter_names:
                     meter_block_by_name[candidate_block.name] = candidate_block
                     owner_model_by_meter_name[candidate_block.name] = candidate_device.rms_model
+                    owner_device_by_meter_name[candidate_block.name] = candidate_device
                 else:
                     pass
         else:
@@ -1143,6 +1217,7 @@ def test_v1_v2_dynamic_routes_keep_power_meters_as_editor_blocks(
                 if candidate_block.name in expected_meter_names:
                     meter_block_by_name[candidate_block.name] = candidate_block
                     owner_model_by_meter_name[candidate_block.name] = candidate_device.rms_model
+                    owner_device_by_meter_name[candidate_block.name] = candidate_device
                 else:
                     pass
         else:
@@ -1167,6 +1242,7 @@ def test_v1_v2_dynamic_routes_keep_power_meters_as_editor_blocks(
     meter_block: Block
     for meter_name, meter_block in meter_block_by_name.items():
         owner_model: Block = owner_model_by_meter_name[meter_name]
+        owner_device: DynamicDevice = owner_device_by_meter_name[meter_name]
         measurement_point: RmsPhysicalMeasurementPoint | None = (
             meter_block.dynamic_model_contract.rms_physical_measurement_point
         )
@@ -1197,6 +1273,31 @@ def test_v1_v2_dynamic_routes_keep_power_meters_as_editor_blocks(
             collect_rms_physical_measurement_points(block=owner_model)
         )
         assert global_measurement_by_fid[source_fid] is measurement_point
+        if file_name == "hvdc_vsc_v1_complete_static_dynamic.dgs":
+            # The V1 meters sit behind zero-impedance transformers. Topology
+            # reduction removes those internal branch flows, so initialization
+            # must relay the unique owner VSC terminal power while preserving
+            # the transformer's FID and terminal-side measurement contract.
+            assert isinstance(owner_device, VSC)
+            owner_active_power: Var | None = owner_device.rms_model.external_mapping.get(
+                VarPowerFlowReferenceType.Pt,
+                None,
+            )
+            owner_reactive_power: Var | None = owner_device.rms_model.external_mapping.get(
+                VarPowerFlowReferenceType.Qt,
+                None,
+            )
+            assert owner_active_power is not None
+            assert owner_reactive_power is not None
+            initialization_dependency_uids: set[int] = set(
+                dependency_var.uid
+                for init_expression in meter_block.init_eqs.values()
+                for dependency_var in init_expression.get_vars()
+            )
+            assert owner_active_power.uid in initialization_dependency_uids
+            assert owner_reactive_power.uid in initialization_dependency_uids
+        else:
+            pass
         meter_output_reference_uids: set[int] = set(
             output_var.shared_ref.uid
             for output_var in meter_block.out_vars
@@ -3641,6 +3742,33 @@ def test_dgs_boolean_helpers_accept_comparisons_only_as_conditions() -> None:
     assert parsed.unsupported_lines == []
     assert len(block.algebraic_eqs) == 3
     assert len(block.procedural_logic) == 5
+
+
+def test_dgs_selector_uses_powerfactory_half_threshold() -> None:
+    """Select argument two only above PowerFactory's 0.5 threshold.
+
+    :return: None.
+    """
+    definition: BlkDef = BlkDef()
+    definition.ID = "POWERFACTORY_SELECTOR_HALF_THRESHOLD"
+    definition.loc_name = "PowerFactory selector half threshold"
+    definition.outputs = ["below_threshold", "above_threshold"]
+    definition.equations_raw = [
+        "below_threshold=select(0.25,11,22)",
+        "above_threshold=select(0.75,11,22)",
+    ]
+    circuit: DgsCircuit = DgsCircuit()
+    circuit.blkdefs.append(definition)
+
+    parsed: ParsedDgsBlockDefinition = (
+        parse_dgs_block_definitions_from_circuit(circuit=circuit)[definition.ID]
+    )
+
+    assert parsed.unsupported_lines == []
+    assert isinstance(parsed.algebraic_rhs["below_threshold"], Const)
+    assert isinstance(parsed.algebraic_rhs["above_threshold"], Const)
+    assert parsed.algebraic_rhs["below_threshold"].value == 22.0
+    assert parsed.algebraic_rhs["above_threshold"].value == 11.0
 
 
 def test_dgs_numeric_helper_rejects_a_comparison_argument() -> None:

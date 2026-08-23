@@ -584,6 +584,17 @@ def convert_dgs_to_bus(elmterm: ElmTerm,
     """
     tid = _ref_id(elmterm.ID)
     x, y = pos_by_objid.get(tid, (0.0, 0.0))
+    # Preserve a solved DGS snapshot as a numerical seed while keeping the
+    # configured voltage target independent from optional measured results.
+    measured_voltage_magnitude: float = float(elmterm.m_u)
+    measured_voltage_angle_radians: float = math.radians(float(elmterm.m_phiu))
+    if measured_voltage_magnitude > 0.0 and math.isfinite(measured_voltage_magnitude):
+        initial_voltage_magnitude: float = measured_voltage_magnitude
+        initial_voltage_angle: float = measured_voltage_angle_radians
+    else:
+        initial_voltage_magnitude = 1.0
+        initial_voltage_angle = 0.0
+
     bus = dev.Bus(
         name=elmterm.loc_name or f"Bus_{tid}",
         idtag=tid,
@@ -595,6 +606,8 @@ def convert_dgs_to_bus(elmterm: ElmTerm,
         xpos=float(x) * 5,
         ypos=float(-y) * 5,
         active=(int(elmterm.outserv or 0) == 0),
+        Vm0=initial_voltage_magnitude,
+        Va0=initial_voltage_angle,
         graphic_type=(
             BusGraphicType.BusBar
             if int(elmterm.iUsage or 0) == 0
@@ -602,7 +615,9 @@ def convert_dgs_to_bus(elmterm: ElmTerm,
         ),
     )
 
-    if float(elmterm.vtarget) > 0.0:
+    if measured_voltage_magnitude > 0.0 and math.isfinite(measured_voltage_magnitude):
+        pass
+    elif float(elmterm.vtarget) > 0.0:
         bus.Vm0 = float(elmterm.vtarget)
     else:
         pass
@@ -2823,6 +2838,16 @@ def convert_dgs_to_line(
     else:
         line.dc_cable_dynamic_parameters_complete = False
 
+    if is_dc_cable:
+        # The exported cable reactance and susceptance encode stored energy for
+        # RMS. A stationary DC network has neither phasor reactance nor shunt
+        # susceptance, so keep those coefficients only in the typed dynamic
+        # fields materialized above.
+        line.X = 0.0
+        line.B = 0.0
+    else:
+        pass
+
     return line
 
 
@@ -4738,8 +4763,11 @@ def _get_native_vsc_controls(
     :return: Two control modes, their configured targets and exactness flag.
     """
     mode: int = int(source.i_acdc)
-    active_power_target: float = float(source.psetp)
-    reactive_power_target: float = float(source.qsetp)
+    # PowerFactory equipment setpoints are positive when injected into the AC
+    # bus. VeraGrid VSC terminal powers are positive from the bus into the
+    # converter, so configured AC power targets cross the boundary negated.
+    active_power_target: float = -float(source.psetp)
+    reactive_power_target: float = -float(source.qsetp)
     if source.usetpdc is None:
         dc_voltage_target: float = float(source.usetp)
     else:

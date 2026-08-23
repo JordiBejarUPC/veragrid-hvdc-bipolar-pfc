@@ -20,9 +20,13 @@ from VeraGridEngine.basic_structures import Vec, ObjVec, BoolVec, Logger
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowResults
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
 from VeraGridEngine.Utils.Symbolic.explicit_initialization_symbolic import (init_explicit_common,
+                                                                            build_explicit_external_uid_values,
                                                                             build_rms_single_equation_compiler)
 from VeraGridEngine.Simulations.Rms.initialization import init_pseudo_transient
-from VeraGridEngine.Simulations.Rms.problems.rms_problem_template import RmsProblemTemplate
+from VeraGridEngine.Simulations.Rms.problems.rms_problem_template import (
+    RmsProblemTemplate,
+    rectangular_current_from_power,
+)
 from VeraGridEngine.Simulations.Rms.problems.rms_terminal_power_assembly import (
     assemble_rms_terminal_power_contributions,
 )
@@ -495,6 +499,8 @@ class RmsProblemDaeVec(RmsProblemTemplate):
         self._glob_time: Var = Var(self.TIME_NAME)
         self._compiler_names_dict[self._glob_time.uid] = self.TIME_NAME
         self._uid2idx_t[self._glob_time.uid] = 0
+        self._external_time_parameter: Var = Var("rms_external_time")
+        self._external_time_uids: Set[int] = set()
 
         # Dictionary of state and algebraic vars
         self.sys_vars: Dict[int, Var] = dict()
@@ -570,8 +576,6 @@ class RmsProblemDaeVec(RmsProblemTemplate):
                                                             problem_mapping=self._static_parameters_values_mapping,
                                                             logger=None)
 
-                _, Vmf, Vaf = get_bus_rms_algebraic_vars(elm.bus_from.rms_model)
-
                 self.add_variables_to_compilation_dicts(elm, elm.rms_model)
                 register_rms_fmu_cs_device(self, elm, elm.rms_model)
                 register_rms_fmu_me_device(self, elm, elm.rms_model)
@@ -582,22 +586,21 @@ class RmsProblemDaeVec(RmsProblemTemplate):
                 self.set_init_guess(elm.rms_model, VarPowerFlowReferenceType.Pt, self.St[branch_num].real)
                 self.set_init_guess(elm.rms_model, VarPowerFlowReferenceType.Qt, self.St[branch_num].imag)
 
-                if VarPowerFlowReferenceType.If_dc in elm.rms_model.external_mapping and Vmf is not None:
-                    if Vmf.uid in self.uid2idx_vars:
-                        vmf_idx = self.uid2idx_vars[Vmf.uid]
-                        if vmf_idx in self.init_guess:
-                            vmf0: float = self.init_guess[vmf_idx]
-
-                            if abs(vmf0) > 1e-9:
-                                self.set_init_guess(
-                                    elm.rms_model,
-                                    VarPowerFlowReferenceType.If_dc,
-                                    self.Sf[branch_num].real / vmf0,
-                                )
-                        else:
-                            pass
+                if VarPowerFlowReferenceType.If_dc in elm.rms_model.external_mapping:
+                    dc_from_bus_index: int = bus_dict[elm.bus_from]
+                    dc_voltage_from: float = float(
+                        np.abs(self.power_flow_results.voltage[dc_from_bus_index])
+                    )
+                    if dc_voltage_from > 1e-9:
+                        self.set_init_guess(
+                            elm.rms_model,
+                            VarPowerFlowReferenceType.If_dc,
+                            self.Sf[branch_num].real / dc_voltage_from,
+                        )
                     else:
                         pass
+                else:
+                    pass
 
                 # Run explicit initialization for branches to solve algebraic equations
                 if isinstance(elm, Transformer2W):
@@ -630,8 +633,11 @@ class RmsProblemDaeVec(RmsProblemTemplate):
                             uid2idx_params=self._uid2idx_params,
                             uid2idx_event_params=self._uid2idx_event_params,
                             params_array=self._parameters_values,
-                            compile_single_equation=compile_single_equation,
-                            verbose=bool(self.options.verbose > 0),
+                        compile_single_equation=compile_single_equation,
+                        external_uid_values=self._get_explicit_external_uid_values(
+                            mdl=elm.rms_model,
+                        ),
+                        verbose=bool(self.options.verbose > 0),
                         )
                     elif self.options.initialization_method == RmsInitializationMethod.PseudoTransient:
                         self.init_guess = init_pseudo_transient(
@@ -866,6 +872,9 @@ class RmsProblemDaeVec(RmsProblemTemplate):
                         uid2idx_event_params=self._uid2idx_event_params,
                         params_array=self._parameters_values,
                         compile_single_equation=compile_single_equation,
+                        external_uid_values=self._get_explicit_external_uid_values(
+                            mdl=elm.rms_model,
+                        ),
                         verbose=bool(self.options.verbose > 0),
                     )
 
@@ -924,6 +933,36 @@ class RmsProblemDaeVec(RmsProblemTemplate):
                     self.set_init_guess(elm.rms_model, VarPowerFlowReferenceType.Q,
                                         Sdev.imag)
 
+                    # Keep power and current coordinates on the identical
+                    # converged operating point before explicit initialization.
+                    has_current_real: bool = (
+                        VarPowerFlowReferenceType.Ir
+                        in elm.rms_model.external_mapping
+                    )
+                    has_current_imaginary: bool = (
+                        VarPowerFlowReferenceType.Ii
+                        in elm.rms_model.external_mapping
+                    )
+                    if has_current_real and has_current_imaginary:
+                        current_real: float
+                        current_imaginary: float
+                        current_real, current_imaginary = rectangular_current_from_power(
+                            power=complex(Sdev),
+                            voltage=complex(self.power_flow_results.voltage[bus_index]),
+                        )
+                        self.set_init_guess(
+                            elm.rms_model,
+                            VarPowerFlowReferenceType.Ir,
+                            current_real,
+                        )
+                        self.set_init_guess(
+                            elm.rms_model,
+                            VarPowerFlowReferenceType.Ii,
+                            current_imaginary,
+                        )
+                    else:
+                        pass
+
                 k = bus_dict[elm.bus]
                 if len(elm.rms_model.dynamic_model_contract.rms_terminal_power_contributions) > 0:
                     assemble_rms_terminal_power_contributions(
@@ -981,6 +1020,9 @@ class RmsProblemDaeVec(RmsProblemTemplate):
                         uid2idx_event_params=self._uid2idx_event_params,
                         params_array=self._parameters_values,
                         compile_single_equation=compile_single_equation,
+                        external_uid_values=self._get_explicit_external_uid_values(
+                            mdl=elm.rms_model,
+                        ),
                         verbose=bool(self.options.verbose > 0),
                     )
                     # initialize variables with no init equation assigned
@@ -1092,6 +1134,24 @@ class RmsProblemDaeVec(RmsProblemTemplate):
                     self._balance_equations.append(Q[i])
                     self._balance_equations.append(P[i])
 
+        # Imported time inputs retain their source UIDs but share one typed
+        # runtime value slot. Register it before dt/delta so the established
+        # final-two integration-parameter layout remains unchanged.
+        self._variable_parameters.append(self._external_time_parameter)
+        self._event_parameters_eqs0.append(Const(0.0))
+        self._runtime_all_parameters_source.append(self._external_time_parameter)
+        self._runtime_all_eqs_source.append(Const(0.0))
+        self._compiler_names_dict[self._external_time_parameter.uid] = (
+            f"{self.VARIABLE_PARAMS_NAME}[{self._n_event_params}]"
+        )
+        self._alias_names_dict[self._external_time_parameter.uid] = (
+            f"{self.VARIABLE_PARAMS_NAME}_{self._n_event_params}"
+        )
+        self._uid2idx_event_params[self._external_time_parameter.uid] = (
+            self._n_event_params
+        )
+        self._n_event_params += 1
+
         # We define the parameter dt and delta
         self._dt = Var(name='dt')
         self._delta = Var(name='delta')
@@ -1154,10 +1214,62 @@ class RmsProblemDaeVec(RmsProblemTemplate):
         self._compiler_names_dict[self._glob_time.uid] = self.TIME_NAME
         self._alias_names_dict[self._glob_time.uid] = self.TIME_NAME
         self._uid2idx_t[self._glob_time.uid] = 0
+        self._bind_external_time_compiler_names()
 
         for it, eq in enumerate(self._event_parameters_eqs0):
             if isinstance(eq, Const) and eq.value is None:
                 raise Exception(f' Event parameter {self._variable_parameters[it]} has None Value')
+
+    def _get_explicit_external_uid_values(self, mdl: Block) -> Dict[int, float]:
+        """Bind imported explicit inputs and retain exact time-source UIDs.
+
+        :param mdl: Symbolic model whose explicit equations can consume time.
+        :return: Startup input values keyed by exact imported variable UIDs.
+        """
+        external_uid_values: Dict[int, float] = build_explicit_external_uid_values(
+            mdl=mdl,
+            external_name_values=dict(((self.TIME_NAME, 0.0),)),
+        )
+        external_time_uid: int
+        for external_time_uid in external_uid_values:
+            self._external_time_uids.add(external_time_uid)
+        return external_uid_values
+
+    def _bind_external_time_compiler_names(self) -> None:
+        """Route imported time UIDs through the typed runtime parameter slot.
+
+        :return: None.
+        """
+        external_time_index: int | None = self._uid2idx_event_params.get(
+            self._external_time_parameter.uid,
+            None,
+        )
+        if external_time_index is None:
+            pass
+        else:
+            external_time_uid: int
+            for external_time_uid in self._external_time_uids:
+                self._compiler_names_dict[external_time_uid] = (
+                    f"{self.VARIABLE_PARAMS_NAME}[{external_time_index}]"
+                )
+                self._alias_names_dict[external_time_uid] = (
+                    f"{self.VARIABLE_PARAMS_NAME}_{external_time_index}"
+                )
+
+    def _set_external_time_value(self, time_value: float) -> None:
+        """Store the current solver time in the typed runtime parameter slot.
+
+        :param time_value: Current local RMS solver time in seconds.
+        :return: None.
+        """
+        external_time_index: int | None = self._uid2idx_event_params.get(
+            self._external_time_parameter.uid,
+            None,
+        )
+        if external_time_index is None or self._variable_parameters_values is None:
+            pass
+        else:
+            self._variable_parameters_values[external_time_index] = float(time_value)
 
     def set_events_group(self, rms_events_group: RmsEventsGroup):
         """
@@ -1335,6 +1447,7 @@ class RmsProblemDaeVec(RmsProblemTemplate):
         self._event_parameters_eqs = list(active_runtime_eqs)
 
         self._rebuild_runtime_parameter_partition()
+        self._bind_external_time_compiler_names()
         self._initialize_mode_event_state()
         self._initialize_procedural_logic_updater()
 
@@ -1840,7 +1953,10 @@ class RmsProblemDaeVec(RmsProblemTemplate):
                 return float(expression.value)
 
         if isinstance(expression, Var):
-            if expression.uid == self._glob_time.uid or expression.name == self.TIME_NAME:
+            if (
+                    expression.uid == self._glob_time.uid
+                    or expression.uid in self._external_time_uids
+            ):
                 return float(t)
 
             if expression.uid in self._uid2idx_event_params:
@@ -1878,6 +1994,9 @@ class RmsProblemDaeVec(RmsProblemTemplate):
             uid_bindings[uid] = float(x[idx])
 
         uid_bindings[self._glob_time.uid] = float(t)
+        external_time_uid: int
+        for external_time_uid in self._external_time_uids:
+            uid_bindings[external_time_uid] = float(t)
 
         try:
             return float(expression.eval_uid(uid_bindings))
@@ -1931,6 +2050,9 @@ class RmsProblemDaeVec(RmsProblemTemplate):
 
         if self.get_all_vars_number() > 0 and self.get_variable_parameter_number() > 0:
             self._initialize_latched_mode_defaults(t=float(t0), x=self.get_x0())
+        else:
+            pass
+        self._set_external_time_value(time_value=float(t0))
 
     def def_event_params_fn(self, ev_param: Vec, t: float) -> Vec:
         """
@@ -2015,6 +2137,7 @@ class RmsProblemDaeVec(RmsProblemTemplate):
 
         self._variable_parameters_values = self.def_event_params_fn(self._variable_parameters_values, t)
         self._apply_scheduled_mode_events(scheduled_time, self._variable_parameters_values)
+        self._set_external_time_value(time_value=float(t))
 
         if self._block_boundary_updater is not None and x_snapshot is not None:
             if self._constant_params is None:

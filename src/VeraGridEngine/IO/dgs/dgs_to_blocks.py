@@ -1246,6 +1246,35 @@ class ElmCompInstanceEntry:
         :param direction: Exact declared input or output side to normalize.
         :return: Ordered non-empty component names.
         """
+        components: List[str] = list()
+        signal_groups: List[List[str]] = self.get_slot_signal_groups(
+            direction=direction,
+        )
+        signal_group: List[str]
+        signal_component: str
+        for signal_group in signal_groups:
+            for signal_component in signal_group:
+                components.append(signal_component)
+            else:
+                pass
+        else:
+            pass
+        return components
+
+    def get_slot_signal_groups(
+            self,
+            direction: DgsSlotSignalDirection,
+    ) -> List[List[str]]:
+        """Normalize ordered DGS connector groups without losing vector width.
+
+        Commas delimit graphical connector ordinals, while semicolons delimit
+        the scalar components carried by one vector connector. Retaining both
+        levels is required to translate ``BlkSig`` ordinals without confusing
+        a vector group with several independent graphical pins.
+
+        :param direction: Exact declared input or output side to normalize.
+        :return: Ordered connector groups containing ordered scalar names.
+        """
         if direction == DgsSlotSignalDirection.Input:
             raw_signals: List[str] = self.slot_inputs
         else:
@@ -1253,22 +1282,259 @@ class ElmCompInstanceEntry:
                 raw_signals = self.slot_outputs
             else:
                 raw_signals = list()
-        components: List[str] = list()
+        signal_groups: List[List[str]] = list()
         raw_signal: str
+        raw_group: str
         raw_component: str
         normalized_component: str
         for raw_signal in raw_signals:
-            for raw_component in raw_signal.split(";"):
-                normalized_component = raw_component.strip()
-                if normalized_component == "":
+            for raw_group in raw_signal.split(","):
+                group_components: List[str] = list()
+                for raw_component in raw_group.split(";"):
+                    normalized_component = raw_component.strip()
+                    if normalized_component == "":
+                        pass
+                    else:
+                        group_components.append(normalized_component)
+                else:
+                    pass
+                if len(group_components) == 0:
                     pass
                 else:
-                    components.append(normalized_component)
+                    signal_groups.append(group_components)
             else:
                 pass
         else:
             pass
-        return components
+        return signal_groups
+
+
+def _resolve_direct_slot_runtime_input_indices(
+        entry: ElmCompInstanceEntry,
+        child_block: Block,
+        graphical_input_index: int,
+) -> List[int]:
+    """Resolve one direct ``BlkSig`` input ordinal through its slot contract.
+
+    A ``BlkSlot`` can expose only a subset of the instantiated ``BlkDef`` input
+    vector and can order that subset differently. The cable ordinal therefore
+    addresses the ordered slot contract first; the exact declared signal then
+    identifies the unique runtime input variable.
+
+    :param entry: Direct root relation owning the typed slot interface.
+    :param child_block: Materialized dynamic block behind that slot.
+    :param graphical_input_index: Raw ``BlkSig.inodto`` input ordinal.
+    :return: Ordered runtime input indices, or an empty collection when the
+        ordinal is outside the declared slot contract.
+    """
+    slot_input_groups: List[List[str]] = entry.get_slot_signal_groups(
+        direction=DgsSlotSignalDirection.Input,
+    )
+    resolved_indices: List[int] = list()
+    if 0 <= graphical_input_index < len(slot_input_groups):
+        selected_input_names: List[str] = slot_input_groups[graphical_input_index]
+        all_inputs_resolved: bool = True
+        selected_input_name: str
+        for selected_input_name in selected_input_names:
+            if all_inputs_resolved:
+                matching_runtime_indices: List[int] = list()
+                runtime_input_index: int
+                runtime_input_var: Var
+                for runtime_input_index, runtime_input_var in enumerate(child_block.in_vars):
+                    if runtime_input_var.name == selected_input_name:
+                        matching_runtime_indices.append(runtime_input_index)
+                    else:
+                        pass
+                else:
+                    pass
+                if len(matching_runtime_indices) == 1:
+                    resolved_indices.append(matching_runtime_indices[0])
+                elif len(matching_runtime_indices) == 0:
+                    # Some native frames expose graphical-only vector members
+                    # that the executable BlkDef intentionally omits. Existing
+                    # name-based wiring remains authoritative for that cable.
+                    resolved_indices = list()
+                    all_inputs_resolved = False
+                else:
+                    raise ValueError(
+                        "Direct BlkSig slot input is ambiguous in its dynamic "
+                        f"BlkDef: {selected_input_name}"
+                    )
+            else:
+                pass
+        else:
+            pass
+    else:
+        pass
+    return resolved_indices
+
+
+def _resolve_direct_slot_runtime_output_indices(
+        entry: ElmCompInstanceEntry,
+        child_block: Block,
+        graphical_output_index: int,
+) -> List[int]:
+    """Resolve one direct output connector ordinal to scalar runtime indices.
+
+    The instantiated block keeps the slot output order even when its private
+    variable names differ from the public slot names. Connector group widths
+    therefore provide the exact positional translation required for V2 FFS.
+
+    :param entry: Direct root relation owning the typed slot interface.
+    :param child_block: Materialized dynamic block behind that slot.
+    :param graphical_output_index: Raw ``BlkSig.inodfrom`` output ordinal.
+    :return: Ordered scalar output indices for the selected connector group.
+    """
+    slot_output_groups: List[List[str]] = entry.get_slot_signal_groups(
+        direction=DgsSlotSignalDirection.Output,
+    )
+    resolved_indices: List[int] = list()
+    if 0 <= graphical_output_index < len(slot_output_groups):
+        scalar_offset: int = 0
+        preceding_group_index: int
+        for preceding_group_index in range(graphical_output_index):
+            scalar_offset += len(slot_output_groups[preceding_group_index])
+        else:
+            pass
+        selected_width: int = len(slot_output_groups[graphical_output_index])
+        if scalar_offset + selected_width <= len(child_block.out_vars):
+            scalar_index: int
+            for scalar_index in range(scalar_offset, scalar_offset + selected_width):
+                resolved_indices.append(scalar_index)
+            else:
+                pass
+        else:
+            # Graphical-only slot members can be absent from the executable
+            # block. In that case the established name wiring remains active.
+            pass
+    else:
+        pass
+    return resolved_indices
+
+
+def _connect_direct_root_graphical_signals(
+        circuit: DgsCircuit,
+        direct_entries: List[ElmCompInstanceEntry],
+        child_block_by_slot_id: Dict[str, Block],
+) -> None:
+    """Connect exact ``BlkSig`` cables between direct dynamic root children.
+
+    Direct ``pblk``/``pelm`` materialization establishes child ownership, while
+    ``BlkSig`` remains authoritative for cross-child wiring. Connecting by the
+    two slot FIDs and exported connector ordinals preserves cables whose label
+    differs from the producer's private output name.
+
+    :param circuit: Parsed DGS circuit containing the graphical cables.
+    :param direct_entries: Unique direct slot relations of the selected root.
+    :param child_block_by_slot_id: Materialized dynamic children by exact slot FID.
+    :return: None.
+    """
+    entry_by_slot_id: Dict[str, ElmCompInstanceEntry] = dict()
+    entry: ElmCompInstanceEntry
+    for entry in direct_entries:
+        if entry.slot_id is None:
+            pass
+        else:
+            entry_by_slot_id[entry.slot_id] = entry
+
+    graphical_signal: BlkSig
+    for graphical_signal in circuit.blksigs:
+        source_slot_id: str = _normalize_dgs_pointer_id(
+            graphical_signal.pnodfrom
+        )
+        consumer_slot_id: str = _normalize_dgs_pointer_id(
+            graphical_signal.pnodto
+        )
+        source_block: Block | None = child_block_by_slot_id.get(
+            source_slot_id,
+            None,
+        )
+        consumer_block: Block | None = child_block_by_slot_id.get(
+            consumer_slot_id,
+            None,
+        )
+        consumer_entry: ElmCompInstanceEntry | None = entry_by_slot_id.get(
+            consumer_slot_id,
+            None,
+        )
+        source_entry: ElmCompInstanceEntry | None = entry_by_slot_id.get(
+            source_slot_id,
+            None,
+        )
+        if (
+                source_block is None
+                or consumer_block is None
+                or consumer_entry is None
+                or source_entry is None
+        ):
+            pass
+        else:
+            source_kind: DgsGraphicalConnectorKind | None = (
+                _parse_dgs_graphical_connector_kind(
+                    connector_code=int(graphical_signal.iconfrom),
+                )
+            )
+            consumer_kind: DgsGraphicalConnectorKind | None = (
+                _parse_dgs_graphical_connector_kind(
+                    connector_code=int(graphical_signal.iconto),
+                )
+            )
+            if (
+                    source_kind != DgsGraphicalConnectorKind.Output
+                    or consumer_kind != DgsGraphicalConnectorKind.Input
+            ):
+                # Non-signal graphical relations are retained by the DGS
+                # parser but do not describe executable scalar data flow.
+                pass
+            else:
+                source_output_indices: List[int] = (
+                    _resolve_direct_slot_runtime_output_indices(
+                        entry=source_entry,
+                        child_block=source_block,
+                        graphical_output_index=int(graphical_signal.inodfrom),
+                    )
+                )
+                consumer_input_indices: List[int] = (
+                    _resolve_direct_slot_runtime_input_indices(
+                        entry=consumer_entry,
+                        child_block=consumer_block,
+                        graphical_input_index=int(graphical_signal.inodto),
+                    )
+                )
+                if (
+                        len(source_output_indices) == 0
+                        or len(consumer_input_indices) == 0
+                        or len(source_output_indices) != len(consumer_input_indices)
+                ):
+                    pass
+                else:
+                    connection_count: int = len(consumer_input_indices)
+                    vars_to_subs: List[Var] = (
+                        [consumer_block.in_vars[0]] * connection_count
+                    )
+                    incoming_vars: List[Var] = (
+                        [source_block.out_vars[0]] * connection_count
+                    )
+                    connection_index: int
+                    for connection_index in range(connection_count):
+                        consumer_input_index: int = (
+                            consumer_input_indices[connection_index]
+                        )
+                        source_output_index: int = (
+                            source_output_indices[connection_index]
+                        )
+                        vars_to_subs[connection_index] = (
+                            consumer_block.in_vars[consumer_input_index]
+                        )
+                        incoming_vars[connection_index] = (
+                            source_block.out_vars[source_output_index]
+                        )
+                    else:
+                        pass
+                    consumer_block.connect(
+                        vars_to_subs=vars_to_subs,
+                        incoming_vars=incoming_vars,
+                    )
 
 
 class DgsBlockInstanceSelection:
@@ -1704,9 +1970,9 @@ class DgsExpressionParser(ast.NodeVisitor):
         """Build one sampled or fixed PowerFactory selector expression.
 
         :param name: Exact selector helper name.
-        :param condition_expr: Boolean-valued selector condition.
-        :param selected_expr: Expression returned for a true condition.
-        :param alternate_expr: Expression returned for a false condition.
+        :param condition_expr: Numeric PowerFactory selector condition.
+        :param selected_expr: Expression returned above the 0.5 selector threshold.
+        :param alternate_expr: Expression returned at or below the threshold.
         :return: Canonical symbolic selector expression.
         """
         if isinstance(condition_expr, Const) and condition_expr.value is not None:
@@ -1722,7 +1988,11 @@ class DgsExpressionParser(ast.NodeVisitor):
                     SampledValueLogic(
                         output_var_name=selector.name,
                         output_var_uid=selector.uid,
-                        source_expr=condition_expr,
+                        source_expr=Comparison(
+                            lhs=condition_expr,
+                            op=CmpOp.GT,
+                            rhs=Const(0.5),
+                        ).to_expression(),
                         name=selector.name,
                     )
                 )
@@ -3591,6 +3861,27 @@ def _build_block_from_parsed(
         str,
         float | int | bool | str | complex | None,
     ] = dict(parameter_values or {})
+    # PowerFactory accepts an inactive scripted step with both zero amplitude
+    # and zero duration. Preserve its identically zero output while providing
+    # a finite denominator to the numerical expression backend.
+    amplitude_value: float | int | bool | str | complex | None = (
+        resolved_parameter_values.get("Amplitude", None)
+    )
+    step_duration_value: float | int | bool | str | complex | None = (
+        resolved_parameter_values.get("T_step", None)
+    )
+    inactive_zero_duration_step: bool = bool(
+        isinstance(amplitude_value, (float, int))
+        and not isinstance(amplitude_value, bool)
+        and isinstance(step_duration_value, (float, int))
+        and not isinstance(step_duration_value, bool)
+        and float(amplitude_value) == 0.0
+        and float(step_duration_value) == 0.0
+    )
+    if inactive_zero_duration_step:
+        resolved_parameter_values["T_step"] = 1.0
+    else:
+        pass
     event_dict: Dict[Var, Const] = dict()
     param_name: str
     param_var: Var
@@ -4237,6 +4528,16 @@ def build_direct_root_elmcomp_block(
                     pass
                 else:
                     child_block_by_slot_id[entry.slot_id] = child_block
+
+    # Formula children can use private port labels that differ from the cable
+    # label exposed by their slots. Reproduce the authoritative direct wiring
+    # before pruning structural root labels, so connected aliases do not become
+    # independent solver variables.
+    _connect_direct_root_graphical_signals(
+        circuit=circuit,
+        direct_entries=direct_entries,
+        child_block_by_slot_id=child_block_by_slot_id,
+    )
 
     # The importer completes the sole root Block without cloning its Var objects.
     if len(result.root_block.children) > 0:

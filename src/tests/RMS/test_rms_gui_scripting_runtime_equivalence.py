@@ -6,6 +6,9 @@ import numpy as np
 
 import VeraGridEngine.api as gce
 from VeraGrid.Session.dynamic_editor_entries import build_dynamic_editor_entry, get_templates_for_entry
+from VeraGrid.Gui.DynamicEventsDialog.dynamic_events_editor_support import collect_block_runtime_event_parameters
+from VeraGridEngine.Devices.Events.rms_event import RmsEvent
+from VeraGridEngine.Devices.Events.rms_events_group import RmsEventsGroup
 from VeraGridEngine.Devices.Injections.generator import Generator
 from VeraGridEngine.Devices.Injections.load import Load
 from VeraGridEngine.Devices.Substation.bus import Bus
@@ -19,6 +22,7 @@ from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complet
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.Templates.Rms.load_rms_template import get_load_rms_template
 from VeraGridEngine.Utils.Symbolic.block import Block
+from VeraGridEngine.Utils.Symbolic.symbolic import Var
 from VeraGridEngine.Utils.Symbolic.bus_rms_template import initialize_bus_rms
 from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_rms_model
 from VeraGridEngine.enumerations import BranchImpedanceMode, DynamicIntegrationMethod, DynamicSimulationMode, RmsInitializationMethod, SolverType
@@ -197,6 +201,67 @@ def _find_template_by_name(templates: list[Any], expected_name: str) -> Any:
     raise AssertionError(f"Template {expected_name} was not exposed by the dynamic editor library.")
 
 
+def _find_runtime_event_parameter_by_name(block: Block, expected_name: str) -> Var:
+    """Find one uniquely named event parameter exposed by the GUI workflow.
+
+    :param block: Root block whose declared parameters must be inspected.
+    :param expected_name: Exact parameter name selected by the RMS event.
+    :return: Unique parameter owned by the canonical block tree.
+    """
+    matching_parameter: Var | None = None
+    runtime_parameters: list[Var]
+    mode_parameter_uids: set[int]
+    parameter_var: Var
+
+    # Use the same typed discovery routine as the event editor so the test
+    # validates the actual GUI-selectable parameter contract.
+    runtime_parameters, mode_parameter_uids = collect_block_runtime_event_parameters(block=block)
+    for parameter_var in runtime_parameters:
+        if parameter_var.name == expected_name:
+            assert matching_parameter is None
+            assert parameter_var.uid not in mode_parameter_uids
+            matching_parameter = parameter_var
+        else:
+            pass
+
+    assert matching_parameter is not None
+    return matching_parameter
+
+
+def _add_load_step_event(grid: MultiCircuit, load: Load) -> None:
+    """Add the same active load step to one GUI or scripting grid.
+
+    :param grid: Canonical network that owns the RMS event collection.
+    :param load: Load whose assigned RMS model supplies the event parameter.
+    :return: None.
+    """
+    load_model: Block | None = load.rms_model
+    assert isinstance(load_model, Block)
+    active_power_parameter: Var = _find_runtime_event_parameter_by_name(
+        block=load_model,
+        expected_name="Pl0",
+    )
+
+    # Stable identities ensure the independently built GUI and scripting
+    # circuits expose exactly the same event-group layout to the driver.
+    event_group: RmsEventsGroup = RmsEventsGroup(
+        idtag="gui-script-rms-event-group",
+        active=True,
+        name="GUI-script RMS load step",
+    )
+    event: RmsEvent = RmsEvent(
+        idtag="gui-script-rms-load-step",
+        name="GUI-script RMS load step",
+        device=load,
+        parameter=active_power_parameter,
+        time=0.01,
+        value=-0.095,
+        group=event_group,
+    )
+    grid.add_rms_events_group(event_group)
+    grid.add_rms_event(event)
+
+
 def test_rms_gui_and_scripting_follow_same_runtime_workflow() -> None:
     """
     Compare RMS GUI assignment against RMS scripting assembly end to end.
@@ -252,6 +317,12 @@ def test_rms_gui_and_scripting_follow_same_runtime_workflow() -> None:
     gui_line.rms_template = gui_line_template
     gui_load.rms_template = gui_load_template
 
+    # Exercise one real event group in both paths. Without an active group the
+    # driver allocates an empty third result dimension and numerical equality
+    # can pass without integrating a single RMS trajectory.
+    _add_load_step_event(grid=script_grid, load=script_load)
+    _add_load_step_event(grid=gui_grid, load=gui_load)
+
     assert _collect_block_signature(gui_gen.rms_model) == _collect_block_signature(script_gen.rms_model)
     assert _collect_block_signature(gui_line.rms_model) == _collect_block_signature(script_line.rms_model)
     assert _collect_block_signature(gui_load.rms_model) == _collect_block_signature(script_load.rms_model)
@@ -269,5 +340,22 @@ def test_rms_gui_and_scripting_follow_same_runtime_workflow() -> None:
     assert len(script_problem._variable_parameters) == len(gui_problem._variable_parameters)
     assert len(script_results.variables) == len(gui_results.variables)
     assert list(script_results.variable_array) == list(gui_results.variable_array)
+    assert script_results.values.shape[2] == 1
+    assert script_results.values.shape == gui_results.values.shape
+    assert script_results.rms_events_group_names.tolist() == ["GUI-script RMS load step"]
+    assert np.array_equal(script_results.rms_events_group_names, gui_results.rms_events_group_names)
+    assert np.array_equal(script_results.rms_events_group_idtags, gui_results.rms_events_group_idtags)
     assert np.array_equal(script_results.has_event_group_results, gui_results.has_event_group_results)
+    assert np.all(script_results.has_event_group_results)
+    assert np.array_equal(script_results.well_initialized, gui_results.well_initialized)
+    assert np.array_equal(script_results.converged, gui_results.converged)
+    assert np.all(script_results.well_initialized)
+    assert np.all(script_results.converged)
+    assert script_results.time_array.equals(gui_results.time_array)
+    assert not np.allclose(
+        script_results.values[0, :, 0],
+        script_results.values[-1, :, 0],
+        rtol=1e-10,
+        atol=1e-10,
+    )
     assert np.allclose(script_results.values, gui_results.values, rtol=1e-8, atol=1e-8)

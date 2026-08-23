@@ -5,6 +5,8 @@
 
 from __future__ import annotations
 
+import cmath
+import math
 import re
 from typing import Dict, List, Set, Tuple
 
@@ -538,6 +540,126 @@ def _get_device_pq_expressions(
         else:
             pass
     return active_power, reactive_power
+
+
+def _get_ideal_transformer_relay_pq_expressions(
+        circuit: MultiCircuit,
+        source_device: DynamicDevice,
+        source_terminal_index: int,
+        host_device: DynamicDevice,
+) -> Tuple[Expr | None, Expr | None]:
+    """Relay ideal-transformer terminal power from one unique adjacent VSC.
+
+    Topology reduction merges the buses of a zero-impedance transformer, so a
+    static power-flow result cannot retain that transformer's internal branch
+    flow. When an equipment controller owns the only VSC on the opposite side,
+    lossless terminal balance makes the VSC AC power the exact physical signal
+    measured at the remote transformer terminal. The meter identity and
+    terminal declaration remain attached to the transformer.
+
+    :param circuit: Canonical circuit used to validate unique adjacency.
+    :param source_device: Physical device selected by the native meter.
+    :param source_terminal_index: Measured transformer terminal ordinal.
+    :param host_device: Dynamic equipment root that consumes the meter signal.
+    :return: Relayed active/reactive expressions, or two ``None`` values.
+    """
+    if (
+            isinstance(source_device, Transformer2W)
+            and isinstance(host_device, VSC)
+            and source_device.rms_model.dynamic_model_contract.rms_ideal_transformer
+            and source_terminal_index in (0, 1)
+    ):
+        pass
+    else:
+        return None, None
+
+    host_ac_bus: Bus | None
+    if host_device.bus_to is not None and not host_device.bus_to.is_dc:
+        host_ac_bus = host_device.bus_to
+    else:
+        if host_device.bus_from is not None and not host_device.bus_from.is_dc:
+            host_ac_bus = host_device.bus_from
+        else:
+            host_ac_bus = None
+
+    if host_ac_bus is None:
+        return None, None
+    else:
+        pass
+
+    transformer_from_is_host: bool = source_device.bus_from is host_ac_bus
+    transformer_to_is_host: bool = source_device.bus_to is host_ac_bus
+    if transformer_from_is_host or transformer_to_is_host:
+        pass
+    else:
+        return None, None
+
+    # The relay is valid only for a two-device junction. Any additional active
+    # branch or injection would contribute power that the VSC terminal alone
+    # cannot represent.
+    connected_devices_are_exact: bool = True
+    connected_device_count: int = 0
+    candidate_branch: object
+    for candidate_branch in circuit.get_branches_iter(
+            add_vsc=True,
+            add_hvdc=True,
+            add_switch=True,
+    ):
+        if isinstance(candidate_branch, BranchParent) and candidate_branch.active:
+            candidate_is_connected: bool = (
+                candidate_branch.bus_from is host_ac_bus
+                or candidate_branch.bus_to is host_ac_bus
+            )
+            if candidate_is_connected:
+                connected_device_count += 1
+                if candidate_branch is source_device or candidate_branch is host_device:
+                    pass
+                else:
+                    connected_devices_are_exact = False
+            else:
+                pass
+        else:
+            pass
+
+    candidate_injection: object
+    for candidate_injection in circuit.get_injection_devices_iter():
+        if isinstance(candidate_injection, DynamicDevice) and candidate_injection.active:
+            if candidate_injection.bus is host_ac_bus:
+                connected_devices_are_exact = False
+            else:
+                pass
+        else:
+            pass
+
+    if connected_devices_are_exact and connected_device_count == 2:
+        pass
+    else:
+        return None, None
+
+    host_mapping: Dict[VarPowerFlowReferenceType, Var] = (
+        host_device.rms_model.external_mapping
+    )
+    host_active_power: Expr | None = host_mapping.get(
+        VarPowerFlowReferenceType.Pt,
+        None,
+    )
+    host_reactive_power: Expr | None = host_mapping.get(
+        VarPowerFlowReferenceType.Qt,
+        None,
+    )
+    if host_active_power is None or host_reactive_power is None:
+        return None, None
+    else:
+        pass
+
+    measured_terminal_is_host: bool = (
+        (source_terminal_index == 0 and transformer_from_is_host)
+        or (source_terminal_index == 1 and transformer_to_is_host)
+    )
+    if measured_terminal_is_host:
+        return Const(-1.0) * host_active_power, Const(-1.0) * host_reactive_power
+    else:
+        return host_active_power, host_reactive_power
 
 
 def _get_dc_branch_current_expression(
@@ -1220,6 +1342,8 @@ def _build_power_alias_expressions(
         source_device: DynamicDevice,
         source_terminal_index: int,
         system_base_mva: float,
+        circuit: MultiCircuit,
+        host_device: DynamicDevice,
 ) -> Dict[str, Expr]:
     """
     Map exported P/Q-slot aliases to physical terminal power expressions.
@@ -1229,6 +1353,8 @@ def _build_power_alias_expressions(
     :param source_device: Exact measured physical device.
     :param source_terminal_index: Measured DGS terminal ordinal.
     :param system_base_mva: VeraGrid circuit power base in MVA.
+    :param circuit: Canonical circuit used for exact topology validation.
+    :param host_device: Dynamic equipment root consuming the measurement.
     :return: Alias-to-expression mapping.
     """
     if meter.outserv != 0:
@@ -1238,10 +1364,19 @@ def _build_power_alias_expressions(
 
     active_power: Expr | None
     reactive_power: Expr | None
-    active_power, reactive_power = _get_device_pq_expressions(
+    active_power, reactive_power = _get_ideal_transformer_relay_pq_expressions(
+        circuit=circuit,
         source_device=source_device,
         source_terminal_index=source_terminal_index,
+        host_device=host_device,
     )
+    if active_power is None or reactive_power is None:
+        active_power, reactive_power = _get_device_pq_expressions(
+            source_device=source_device,
+            source_terminal_index=source_terminal_index,
+        )
+    else:
+        pass
     if active_power is None or reactive_power is None:
         return dict()
     else:
@@ -1275,6 +1410,175 @@ def _build_power_alias_expressions(
         else:
             alias_expressions[signal_name] = native_outputs["p"]
     return alias_expressions
+
+
+def _refer_vsc_pq_controls_through_measured_transformer(
+        circuit: MultiCircuit,
+        host_device: DynamicDevice | None,
+        source_device: DynamicDevice,
+        source_terminal_index: int,
+) -> bool:
+    """Refer a configured remote P/Q pair to the VSC electrical terminal.
+
+    A finite-impedance step-up transformer can be the declared P/Q measurement
+    point of a native VSC composite. VeraGrid's static VSC formulation owns its
+    controls at the converter terminal, so the configured remote target must be
+    transported through the canonical transformer two-port at the imported
+    voltage snapshot. This keeps the configured setpoint authoritative while
+    accounting for the transformer's reactive consumption.
+
+    :param circuit: Canonical circuit that owns the system power base.
+    :param host_device: Dynamic root consuming the native power measurement.
+    :param source_device: Physical device selected by the measured cubicle.
+    :param source_terminal_index: Measured transformer terminal ordinal.
+    :return: ``True`` when both VSC controls were referred successfully.
+    """
+    if (
+            isinstance(host_device, VSC)
+            and isinstance(source_device, Transformer2W)
+            and not source_device.rms_model.dynamic_model_contract.rms_ideal_transformer
+            and circuit.Sbase > 0.0
+    ):
+        pass
+    else:
+        return False
+
+    control1: ConverterControlType = host_device.control1
+    control2: ConverterControlType = host_device.control2
+    if control1 is ConverterControlType.Pac and control2 is ConverterControlType.Qac:
+        configured_remote_power: complex = complex(
+            -float(host_device.control1_val),
+            -float(host_device.control2_val),
+        )
+    elif control1 is ConverterControlType.Qac and control2 is ConverterControlType.Pac:
+        configured_remote_power = complex(
+            -float(host_device.control2_val),
+            -float(host_device.control1_val),
+        )
+    else:
+        return False
+
+    host_ac_bus: Bus | None
+    if host_device.bus_to is not None and not host_device.bus_to.is_dc:
+        host_ac_bus = host_device.bus_to
+    else:
+        if host_device.bus_from is not None and not host_device.bus_from.is_dc:
+            host_ac_bus = host_device.bus_from
+        else:
+            host_ac_bus = None
+
+    measured_bus: Bus | None
+    opposite_bus: Bus | None
+    measured_is_from: bool
+    if source_terminal_index == 0 and source_device.bus_to is host_ac_bus:
+        measured_bus = source_device.bus_from
+        opposite_bus = source_device.bus_to
+        measured_is_from = True
+    elif source_terminal_index == 1 and source_device.bus_from is host_ac_bus:
+        measured_bus = source_device.bus_to
+        opposite_bus = source_device.bus_from
+        measured_is_from = False
+    else:
+        return False
+
+    if measured_bus is None or opposite_bus is None:
+        return False
+    else:
+        pass
+
+    measured_voltage: complex = complex(
+        float(measured_bus.Vm0)
+        * cmath.exp(1.0j * float(measured_bus.Va0))
+    )
+    series_impedance: complex = complex(
+        float(source_device.R),
+        float(source_device.X),
+    )
+    if (
+            abs(measured_voltage) > 1.0e-12
+            and abs(series_impedance) > 1.0e-12
+            and math.isfinite(measured_voltage.real)
+            and math.isfinite(measured_voltage.imag)
+    ):
+        pass
+    else:
+        return False
+
+    virtual_tap_from: float
+    virtual_tap_to: float
+    virtual_tap_from, virtual_tap_to = source_device.get_virtual_taps()
+    tap_module: float = float(source_device.tap_module)
+    tap_phase: float = float(source_device.tap_phase)
+    series_admittance: complex = 1.0 / series_impedance
+    half_shunt_admittance: complex = complex(
+        float(source_device.G),
+        float(source_device.B),
+    ) / 2.0
+    y_from_from: complex = (
+        (series_admittance + half_shunt_admittance)
+        / (tap_module * tap_module * virtual_tap_from * virtual_tap_from)
+    )
+    y_from_to: complex = (
+        -series_admittance
+        / (
+            tap_module
+            * cmath.exp(-1.0j * tap_phase)
+            * virtual_tap_from
+            * virtual_tap_to
+        )
+    )
+    y_to_from: complex = (
+        -series_admittance
+        / (
+            tap_module
+            * cmath.exp(1.0j * tap_phase)
+            * virtual_tap_to
+            * virtual_tap_from
+        )
+    )
+    y_to_to: complex = (
+        (series_admittance + half_shunt_admittance)
+        / (virtual_tap_to * virtual_tap_to)
+    )
+    measured_power_pu: complex = configured_remote_power / float(circuit.Sbase)
+    measured_current: complex = (measured_power_pu / measured_voltage).conjugate()
+
+    # Solve the two-port relation from the configured measured-terminal power,
+    # then use the opposite terminal flow as the converter's local target.
+    if measured_is_from and abs(y_from_to) > 1.0e-12:
+        opposite_voltage: complex = (
+            measured_current - y_from_from * measured_voltage
+        ) / y_from_to
+        opposite_current: complex = (
+            y_to_from * measured_voltage + y_to_to * opposite_voltage
+        )
+    elif not measured_is_from and abs(y_to_from) > 1.0e-12:
+        opposite_voltage = (
+            measured_current - y_to_to * measured_voltage
+        ) / y_to_from
+        opposite_current = (
+            y_from_from * opposite_voltage + y_from_to * measured_voltage
+        )
+    else:
+        return False
+
+    local_vsc_power: complex = (
+        -opposite_voltage * opposite_current.conjugate() * float(circuit.Sbase)
+    )
+    local_target_is_finite: bool = bool(
+        math.isfinite(local_vsc_power.real)
+        and math.isfinite(local_vsc_power.imag)
+    )
+    if local_target_is_finite:
+        if control1 is ConverterControlType.Pac:
+            host_device.control1_val = float(local_vsc_power.real)
+            host_device.control2_val = float(local_vsc_power.imag)
+        else:
+            host_device.control1_val = float(local_vsc_power.imag)
+            host_device.control2_val = float(local_vsc_power.real)
+        return True
+    else:
+        return False
 
 
 def _resolve_virtual_pll_voltage_source(
@@ -2287,6 +2591,12 @@ def bind_dgs_rms_measurements(
                                     if meter_terminal_side is None:
                                         pass
                                     else:
+                                        _refer_vsc_pq_controls_through_measured_transformer(
+                                            circuit=circuit,
+                                            host_device=host_device,
+                                            source_device=power_device,
+                                            source_terminal_index=power_terminal_index,
+                                        )
                                         meter_target_fid = str(power_device.idtag)
                                         physical_meter_kind = RmsPhysicalMeterKind.POWER
                                         alias_expressions = _build_power_alias_expressions(
@@ -2295,6 +2605,8 @@ def bind_dgs_rms_measurements(
                                             source_device=power_device,
                                             source_terminal_index=power_terminal_index,
                                             system_base_mva=float(circuit.Sbase),
+                                            circuit=circuit,
+                                            host_device=host_device,
                                         )
                             else:
                                 if is_pll_slot:
