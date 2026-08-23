@@ -1897,6 +1897,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             )
         else:
             pass
+        self._remove_unconnected_runtime_measurement_interface_items()
         if self.is_root_editor and self.mode == DynamicSimulationMode.EMT:
             if isinstance(self.api_object, BranchParent) and self.api_object.emt_template is not None:
                 self._repair_saved_branch_template_root_wires()
@@ -6429,6 +6430,56 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         return wrapper_removed
 
+    def _remove_unconnected_runtime_measurement_interface_items(self) -> None:
+        """
+        Hide unused physical-interface wrappers from measurement-shell diagrams.
+
+        Imported measurement shells receive physical terminal values through the
+        runtime contract rather than through symbolic signal ports. Keeping an
+        unconnected protected wrapper for those values suggests a missing signal
+        wire even though the canonical root mapping remains complete. Connected
+        wrappers remain visible and the root variables themselves are untouched.
+
+        :return: None.
+        """
+        runtime_sync_names: List[str] = self.main_block.dynamic_model_contract.runtime_measurement_shell_sync_names
+        if (not self.is_root_editor
+                or self.mode != DynamicSimulationMode.RMS
+                or len(runtime_sync_names) == 0):
+            return
+        else:
+            pass
+
+        wrapper_uids_to_remove: List[int] = list()
+        scene_item: QGraphicsItem
+        port_item: graph.PortItem
+        has_connections: bool
+
+        for scene_item in self.scene.items():
+            if isinstance(scene_item, graph.ProtectedConnectionBlockItem) and scene_item.subsys is not None:
+                has_connections = False
+                for port_item in scene_item.inputs:
+                    if port_item.connections is not None and len(port_item.connections) > 0:
+                        has_connections = True
+                    else:
+                        pass
+                for port_item in scene_item.outputs:
+                    if port_item.connections is not None and len(port_item.connections) > 0:
+                        has_connections = True
+                    else:
+                        pass
+
+                if not has_connections:
+                    wrapper_uids_to_remove.append(scene_item.subsys.uid)
+                else:
+                    pass
+            else:
+                pass
+
+        wrapper_uid: int
+        for wrapper_uid in wrapper_uids_to_remove:
+            self._remove_root_interface_wrapper_by_uid(wrapper_uid=wrapper_uid)
+
     def _get_semantic_root_interface_reference(
             self,
             wrapper_block: Block,
@@ -8008,6 +8059,20 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                     return interface_inputs_by_ref.get(VarPowerFlowReferenceType.vf_C, None)
                 else:
                     return interface_inputs_by_ref.get(VarPowerFlowReferenceType.vf_C, None)
+            elif model_ref == VarPowerFlowReferenceType.Vm:
+                if ac_side_is_to:
+                    return interface_inputs_by_ref.get(VarPowerFlowReferenceType.Vmt, None)
+                elif ac_side_is_from:
+                    return interface_inputs_by_ref.get(VarPowerFlowReferenceType.Vmf, None)
+                else:
+                    return interface_inputs_by_ref.get(VarPowerFlowReferenceType.Vm, None)
+            elif model_ref == VarPowerFlowReferenceType.Va:
+                if ac_side_is_to:
+                    return interface_inputs_by_ref.get(VarPowerFlowReferenceType.Vat, None)
+                elif ac_side_is_from:
+                    return interface_inputs_by_ref.get(VarPowerFlowReferenceType.Vaf, None)
+                else:
+                    return interface_inputs_by_ref.get(VarPowerFlowReferenceType.Va, None)
             elif model_ref == VarPowerFlowReferenceType.Vdc:
                 if self.api_object.bus_from.is_dc:
                     return interface_inputs_by_ref.get(VarPowerFlowReferenceType.Vf_dc, None)
@@ -10719,6 +10784,25 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                     con.to_uid = repaired_to_uid
                 else:
                     pass
+            else:
+                pass
+
+        # Initial automatic layout can transiently materialize interface shells
+        # that are removed during root-interface canonicalization. Their saved
+        # branches no longer describe a renderable or editable connection, so
+        # discard them after every legacy endpoint has had a chance to rebind.
+        unresolved_connection_uids: List[int] = list()
+        connection_uid: int
+        for connection_uid, con in self.diagram.con_data.items():
+            if con.from_uid not in uid_to_blockitem or con.to_uid not in uid_to_blockitem:
+                unresolved_connection_uids.append(connection_uid)
+            else:
+                pass
+
+        for connection_uid in unresolved_connection_uids:
+            del self.diagram.con_data[connection_uid]
+            if self._qt_routing_session is not None:
+                self._qt_routing_session.remove_connection(connection_uid)
             else:
                 pass
 

@@ -832,6 +832,23 @@ def test_nuactis_v1_gui_editor_matches_scripting_pf_and_rms(
                 root_block=gui_vsc.rms_model,
             )
             open_editors.append(editor)
+            scene_connections: List[graph.ConnectionItem] = [
+                scene_item for scene_item in editor.scene.items()
+                if isinstance(scene_item, graph.ConnectionItem)
+            ]
+            protected_items: List[graph.ProtectedConnectionBlockItem] = [
+                scene_item for scene_item in editor.scene.items()
+                if isinstance(scene_item, graph.ProtectedConnectionBlockItem)
+            ]
+            assert len(scene_connections) > 0
+            assert len(protected_items) == 0
+            assert len(editor.diagram.con_data) == len(scene_connections)
+            assert all(not connection.path().isEmpty() for connection in scene_connections)
+            assert all(
+                connection.from_uid in editor.diagram.node_data
+                and connection.to_uid in editor.diagram.node_data
+                for connection in editor.diagram.con_data.values()
+            )
             editor.apply_changes()
             qt_app.processEvents()
 
@@ -1110,6 +1127,35 @@ def test_nuactis_v2_gui_editor_matches_scripting_pf_and_rms(
                 root_block=gui_vsc.rms_model,
             )
             open_editors.append(editor)
+            scene_connections: List[graph.ConnectionItem] = [
+                scene_item for scene_item in editor.scene.items()
+                if isinstance(scene_item, graph.ConnectionItem)
+            ]
+            protected_items: List[graph.ProtectedConnectionBlockItem] = [
+                scene_item for scene_item in editor.scene.items()
+                if isinstance(scene_item, graph.ProtectedConnectionBlockItem)
+            ]
+            assert len(scene_connections) > 0
+            expected_protected_count: int = 1 if converter_index == 0 else 0
+            assert len(protected_items) == expected_protected_count
+            assert all(
+                any(
+                    port.connections is not None and len(port.connections) > 0
+                    for port in protected_item.inputs
+                )
+                or any(
+                    port.connections is not None and len(port.connections) > 0
+                    for port in protected_item.outputs
+                )
+                for protected_item in protected_items
+            )
+            assert len(editor.diagram.con_data) == len(scene_connections)
+            assert all(not connection.path().isEmpty() for connection in scene_connections)
+            assert all(
+                connection.from_uid in editor.diagram.node_data
+                and connection.to_uid in editor.diagram.node_data
+                for connection in editor.diagram.con_data.values()
+            )
             editor.apply_changes()
             qt_app.processEvents()
 
