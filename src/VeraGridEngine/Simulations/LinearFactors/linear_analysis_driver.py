@@ -126,7 +126,8 @@ class LinearAnalysisDriver(DriverTemplate):
 
             Shvdc, Losses_hvdc, Pf_hvdc, Pt_hvdc, loading_hvdc, n_free = nc.hvdc_data.get_power(Sbase=nc.Sbase,
                                                                                                 theta=np.zeros(nbus))
-            Sbus = nc.get_power_injections().real
+            # the linear injections compute the ZIP load components at 1.0 p.u. 
+            Sbus = nc.get_linear_power_injections().real
             # The sign is not changed internally and both VSCs and HVDCs are treated as branches
             # So we modify the sign here
             self.results.Sf = analysis.get_flows(Sbus=Sbus, P_hvdc=-Pf_hvdc * nc.Sbase)

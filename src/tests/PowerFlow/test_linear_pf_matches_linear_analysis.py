@@ -30,8 +30,14 @@ def test_linear_pf_matches_linear_analysis_with_tap_control() -> None:
     pf_res = multi_island_pf_nc(nc=nc, options=gce.PowerFlowOptions(solver_type=gce.SolverType.Linear))
 
     lin = LinearAnalysis(nc=nc, distributed_slack=False, correct_values=False, logger=Logger())
-    injections = nc.get_power_injections().real
-    lin_flows = lin.get_flows(injections)
+
+    # feed the linear analysis exactly what its driver feeds it
+    s_hvdc, losses_hvdc, pf_hvdc, pt_hvdc, load_hvdc, n_free = nc.hvdc_data.get_power(
+        Sbase=nc.Sbase,
+        theta=np.zeros(nc.nbus)
+    )
+    injections = nc.get_linear_power_injections().real
+    lin_flows = lin.get_flows(Sbus=injections, P_hvdc=-pf_hvdc * nc.Sbase)
 
     # the two models differ only by the fake converter admittances of the PTDF network,
     # which is just a few MW

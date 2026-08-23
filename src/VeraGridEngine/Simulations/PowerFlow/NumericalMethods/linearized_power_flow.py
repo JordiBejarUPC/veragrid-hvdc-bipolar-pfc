@@ -53,8 +53,10 @@ def linear_pf(nc: NumericalCircuit,
         # initialize result vector
         Va = np.empty(len(V0))
 
-        # compute the power injection
-        Sbus = cf.compute_zip_power(S0, I0, Y0, Vm)
+        # Compute the power injection at the flat voltage this model assumes. 
+        # Evaluating the ZIP at the seeded voltages would mix unused input data with a
+        # model that treats every magnitude as 1 p.u. everywhere else.
+        Sbus = cf.compute_zip_power(S0, I0, Y0, np.ones_like(Vm))
 
         # compose the reduced power injections (Pinj)
         # Since we have removed the slack nodes, we must account their influence as Injections Bref * Va_ref
@@ -226,10 +228,9 @@ def acdc_lin_pf(nc: NumericalCircuit,
 
     Ared = A[no_slack, :][:, no_slack]
 
-    # compute the power injection
-    Sbus = cf.compute_zip_power(S0, I0, Y0, Vm)
-    # compute the power injection
-    Sbus = cf.compute_zip_power(S0, I0, Y0, Vm)
+    # Compute the power injection at the flat voltage this model assumes, for the same
+    # reason as in linear_pf
+    Sbus = cf.compute_zip_power(S0, I0, Y0, np.ones_like(Vm))
 
     # compose the reduced power injections (Pinj)
     # Since we have removed the slack nodes, we must account their influence as Injections Bref * Va_ref
