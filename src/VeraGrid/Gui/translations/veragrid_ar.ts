@@ -149,7 +149,7 @@ li.checked::marker { content: &quot;\2612&quot;; }&lt;/style&gt;&lt;/head&gt;&lt
     <message>
         <location filename="../DeviceEditors/AdmittanceMatrixEditor/admittance_matrix_editor_gui.ui" line="130"/>
         <source>Accept</source>
-        <translation type="unfinished">يقبل</translation>
+        <translation>يقبل</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/AdmittanceMatrixEditor/admittance_matrix_editor_gui.ui" line="148"/>
@@ -1417,7 +1417,7 @@ li.checked::marker { content: &quot;\2612&quot;; }&lt;/style&gt;&lt;/head&gt;&lt
     <message>
         <location filename="../FileDialogues/CoordinatesInput/coordinates_input_gui.ui" line="108"/>
         <source>Target</source>
-        <translation type="unfinished">هدف</translation>
+        <translation>هدف</translation>
     </message>
     <message>
         <location filename="../FileDialogues/CoordinatesInput/coordinates_input_gui.ui" line="141"/>
@@ -2436,7 +2436,7 @@ Cancel and retry?</source>
     <message>
         <location filename="../DeviceEditors/LineLocationsEditor/line_locations_editor_gui.ui" line="19"/>
         <source>Add point</source>
-        <translation type="unfinished">أضف نقطة</translation>
+        <translation>أضف نقطة</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/LineLocationsEditor/line_locations_editor_gui.ui" line="33"/>
@@ -2456,7 +2456,7 @@ Cancel and retry?</source>
     <message>
         <location filename="../DeviceEditors/LineLocationsEditor/line_locations_editor_gui.ui" line="75"/>
         <source>Copy</source>
-        <translation type="unfinished">ينسخ</translation>
+        <translation>ينسخ</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/LineLocationsEditor/line_locations_editor_gui.ui" line="89"/>
@@ -3073,7 +3073,7 @@ Cancel and retry?</source>
     <message>
         <location filename="../SigmaAnalysis/sigma_analysis_gui.ui" line="41"/>
         <source>Method</source>
-        <translation type="unfinished">طريقة</translation>
+        <translation>طريقة</translation>
     </message>
     <message>
         <location filename="../SigmaAnalysis/sigma_analysis_gui.ui" line="49"/>
@@ -3118,12 +3118,12 @@ Cancel and retry?</source>
     <message>
         <location filename="../SigmaAnalysis/sigma_analysis_gui.ui" line="110"/>
         <source>Distributed slack</source>
-        <translation type="unfinished">الركود الموزع</translation>
+        <translation>الركود الموزع</translation>
     </message>
     <message>
         <location filename="../SigmaAnalysis/sigma_analysis_gui.ui" line="130"/>
         <source>...</source>
-        <translation type="unfinished">...</translation>
+        <translation>...</translation>
     </message>
     <message>
         <location filename="../SigmaAnalysis/sigma_analysis_gui.ui" line="144"/>
@@ -3133,7 +3133,7 @@ Cancel and retry?</source>
     <message>
         <location filename="../SigmaAnalysis/sigma_analysis_gui.ui" line="179"/>
         <source>Data</source>
-        <translation type="unfinished">بيانات</translation>
+        <translation>بيانات</translation>
     </message>
 </context>
 <context>
@@ -3828,7 +3828,7 @@ Monte Carlo power flow results:</source>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="189"/>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="206"/>
         <source>-</source>
-        <translation type="unfinished">-</translation>
+        <translation>-</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="114"/>
@@ -3863,7 +3863,7 @@ Monte Carlo power flow results:</source>
     <message>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="219"/>
         <source>Actions</source>
-        <translation type="unfinished">الإجراءات</translation>
+        <translation>الإجراءات</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="225"/>
@@ -3873,7 +3873,7 @@ Monte Carlo power flow results:</source>
     <message>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="246"/>
         <source>Refresh</source>
-        <translation type="unfinished">ينعش</translation>
+        <translation>ينعش</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="249"/>
@@ -4573,6 +4573,2205 @@ Monte Carlo power flow results:</source>
     <message>
         <source>No effect, select diagrams or database</source>
         <translation type="vanished">لا يوجد تأثير، حدد الرسوم البيانية أو قاعدة البيانات</translation>
+    </message>
+</context>
+<context>
+    <name>VeraGridTreeLabels</name>
+    <message>
+        <source>ATC Report</source>
+        <translation>تقرير ATC</translation>
+    </message>
+    <message>
+        <source>Active power flow per area</source>
+        <translation>تدفق القدرة الفعالة لكل منطقة</translation>
+    </message>
+    <message>
+        <source>Any line template</source>
+        <translation>قالب أي خط</translation>
+    </message>
+    <message>
+        <source>Area</source>
+        <translation>المنطقة</translation>
+    </message>
+    <message>
+        <source>Area analysis</source>
+        <translation>تحليل المنطقة</translation>
+    </message>
+    <message>
+        <source>Area balance analysis</source>
+        <translation>تحليل توازن المنطقة</translation>
+    </message>
+    <message>
+        <source>Area generation analysis</source>
+        <translation>تحليل توليد المنطقة</translation>
+    </message>
+    <message>
+        <source>Area load analysis</source>
+        <translation>تحليل حمل المنطقة</translation>
+    </message>
+    <message>
+        <source>Associations</source>
+        <translation>الجمعيات</translation>
+    </message>
+    <message>
+        <source>Available transfer capacity</source>
+        <translation>سعة النقل المتاحة</translation>
+    </message>
+    <message>
+        <source>Available transfer capacity (N)</source>
+        <translation>سعة النقل المتاحة (N)</translation>
+    </message>
+    <message>
+        <source>Available transfer capacity (final)</source>
+        <translation>سعة النقل المتاحة (نهائي)</translation>
+    </message>
+    <message>
+        <source>Available transfer capacity time series</source>
+        <translation>السلسلة الزمنية لسعة النقل المتاحة</translation>
+    </message>
+    <message>
+        <source>AvailableTransferCapacity</source>
+        <translation>السعة المتاحة للنقل</translation>
+    </message>
+    <message>
+        <source>AvailableTransferCapacityTimeSeries</source>
+        <translation>السلسلة الزمنية للسعة المتاحة للنقل</translation>
+    </message>
+    <message>
+        <source>Balance plot</source>
+        <translation>مخطط التوازن</translation>
+    </message>
+    <message>
+        <source>Base flow report</source>
+        <translation>تقرير التدفق الأساسي</translation>
+    </message>
+    <message>
+        <source>Batteries</source>
+        <translation>البطاريات</translation>
+    </message>
+    <message>
+        <source>Battery</source>
+        <translation>بطارية</translation>
+    </message>
+    <message>
+        <source>Battery energy</source>
+        <translation>طاقة البطارية</translation>
+    </message>
+    <message>
+        <source>Battery invested</source>
+        <translation>استثمار البطارية</translation>
+    </message>
+    <message>
+        <source>Battery power</source>
+        <translation>قدرة البطارية</translation>
+    </message>
+    <message>
+        <source>Battery reactive power</source>
+        <translation>القدرة التفاعلية للبطارية</translation>
+    </message>
+    <message>
+        <source>Battery reactive power A</source>
+        <translation>القدرة التفاعلية للبطارية A</translation>
+    </message>
+    <message>
+        <source>Battery reactive power B</source>
+        <translation>القدرة التفاعلية للبطارية B</translation>
+    </message>
+    <message>
+        <source>Battery reactive power C</source>
+        <translation>القدرة التفاعلية للبطارية C</translation>
+    </message>
+    <message>
+        <source>Beq: Equivalent susceptance</source>
+        <translation>Beq: القابلة المكافئة</translation>
+    </message>
+    <message>
+        <source>Branch</source>
+        <translation>الفرع</translation>
+    </message>
+    <message>
+        <source>Branch Loading</source>
+        <translation>تحميل الفرع</translation>
+    </message>
+    <message>
+        <source>Branch Loading A</source>
+        <translation>تحميل الفرع A</translation>
+    </message>
+    <message>
+        <source>Branch Loading B</source>
+        <translation>تحميل الفرع B</translation>
+    </message>
+    <message>
+        <source>Branch Loading C</source>
+        <translation>تحميل الفرع C</translation>
+    </message>
+    <message>
+        <source>Branch active current &quot;from&quot; (0)</source>
+        <translation>التيار الفعال للفرع &quot;من&quot; (0)</translation>
+    </message>
+    <message>
+        <source>Branch active current &quot;from&quot; (1)</source>
+        <translation>التيار الفعال للفرع &quot;من&quot; (1)</translation>
+    </message>
+    <message>
+        <source>Branch active current &quot;from&quot; (2)</source>
+        <translation>التيار الفعال للفرع &quot;من&quot; (2)</translation>
+    </message>
+    <message>
+        <source>Branch active losses (0)</source>
+        <translation>خسائر الفرع الفعالة (0)</translation>
+    </message>
+    <message>
+        <source>Branch active losses (1)</source>
+        <translation>خسائر الفرع الفعالة (1)</translation>
+    </message>
+    <message>
+        <source>Branch active losses (2)</source>
+        <translation>خسائر الفرع الفعالة (2)</translation>
+    </message>
+    <message>
+        <source>Branch active power &quot;from&quot; (0)</source>
+        <translation>القدرة الفعالة للفرع &quot;من&quot; (0)</translation>
+    </message>
+    <message>
+        <source>Branch active power &quot;from&quot; (1)</source>
+        <translation>القدرة الفعالة للفرع &quot;من&quot; (1)</translation>
+    </message>
+    <message>
+        <source>Branch active power &quot;from&quot; (2)</source>
+        <translation>القدرة الفعالة للفرع &quot;من&quot; (2)</translation>
+    </message>
+    <message>
+        <source>Branch group</source>
+        <translation>مجموعة الفرع</translation>
+    </message>
+    <message>
+        <source>Branch loading (0)</source>
+        <translation>تحميل الفرع (0)</translation>
+    </message>
+    <message>
+        <source>Branch loading (1)</source>
+        <translation>تحميل الفرع (1)</translation>
+    </message>
+    <message>
+        <source>Branch loading (2)</source>
+        <translation>تحميل الفرع (2)</translation>
+    </message>
+    <message>
+        <source>Branch losses</source>
+        <translation>خسائر الفرع</translation>
+    </message>
+    <message>
+        <source>Branch monitoring logic</source>
+        <translation>منطق مراقبة الفرع</translation>
+    </message>
+    <message>
+        <source>Branch overloads</source>
+        <translation>الحمل الزائد للفرع</translation>
+    </message>
+    <message>
+        <source>Branch overloads cost</source>
+        <translation>تكلفة التحميل الزائد للفرع</translation>
+    </message>
+    <message>
+        <source>Branch power CDF</source>
+        <translation>دالة التوزيع التراكمي لقدرة الفرع</translation>
+    </message>
+    <message>
+        <source>Branch power avg</source>
+        <translation>متوسط قدرة الفرع</translation>
+    </message>
+    <message>
+        <source>Branch power std</source>
+        <translation>الانحراف المعياري لقدرة الفرع</translation>
+    </message>
+    <message>
+        <source>Branch reactive current &quot;from&quot; (0)</source>
+        <translation>التيار التفاعلي للفرع &quot;من&quot; (0)</translation>
+    </message>
+    <message>
+        <source>Branch reactive current &quot;from&quot; (1)</source>
+        <translation>Branch reactive current &quot;from&quot; (1)</translation>
+    </message>
+    <message>
+        <source>Branch reactive current &quot;from&quot; (2)</source>
+        <translation>Branch reactive current &quot;from&quot; (2)</translation>
+    </message>
+    <message>
+        <source>Branch reactive losses (0)</source>
+        <translation>Branch reactive losses (0)</translation>
+    </message>
+    <message>
+        <source>Branch reactive losses (1)</source>
+        <translation>Branch reactive losses (1)</translation>
+    </message>
+    <message>
+        <source>Branch reactive losses (2)</source>
+        <translation>Branch reactive losses (2)</translation>
+    </message>
+    <message>
+        <source>Branch reactive power &quot;from&quot; (0)</source>
+        <translation>Branch reactive power &quot;from&quot; (0)</translation>
+    </message>
+    <message>
+        <source>Branch reactive power &quot;from&quot; (1)</source>
+        <translation>Branch reactive power &quot;from&quot; (1)</translation>
+    </message>
+    <message>
+        <source>Branch reactive power &quot;from&quot; (2)</source>
+        <translation>Branch reactive power &quot;from&quot; (2)</translation>
+    </message>
+    <message>
+        <source>Branch template</source>
+        <translation>قالب الفرع</translation>
+    </message>
+    <message>
+        <source>Branches</source>
+        <translation>الفروع</translation>
+    </message>
+    <message>
+        <source>Bus</source>
+        <translation>قضيب</translation>
+    </message>
+    <message>
+        <source>Bus nodal capacity</source>
+        <translation>سعة العقدة</translation>
+    </message>
+    <message>
+        <source>Bus power</source>
+        <translation>قدرة العقدة</translation>
+    </message>
+    <message>
+        <source>Bus power CDF</source>
+        <translation>دالة التوزيع التراكمي لقدرة العقدة (CDF)</translation>
+    </message>
+    <message>
+        <source>Bus voltage CDF</source>
+        <translation>دالة التوزيع التراكمي لجهد العقدة</translation>
+    </message>
+    <message>
+        <source>Bus voltage avg</source>
+        <translation>متوسط جهد العقدة</translation>
+    </message>
+    <message>
+        <source>Bus voltage sensitivity</source>
+        <translation>حساسية جهد العقدة</translation>
+    </message>
+    <message>
+        <source>Bus voltage std</source>
+        <translation>الانحراف المعياري لجهد العقدة (std)</translation>
+    </message>
+    <message>
+        <source>BusBar</source>
+        <translation>قضيب العقدة (BusBar)</translation>
+    </message>
+    <message>
+        <source>BusOrBranch</source>
+        <translation>العقدة أو الفرع</translation>
+    </message>
+    <message>
+        <source>CAIDI</source>
+        <translation>CAIDI</translation>
+    </message>
+    <message>
+        <source>Cascade</source>
+        <translation>التتابع</translation>
+    </message>
+    <message>
+        <source>Catalogue</source>
+        <translation>كتالوج</translation>
+    </message>
+    <message>
+        <source>Catalogue optimization</source>
+        <translation>تحسين الكتالوج</translation>
+    </message>
+    <message>
+        <source>Circuit</source>
+        <translation>الدائرة</translation>
+    </message>
+    <message>
+        <source>Clean room</source>
+        <translation>غرفة نظيفة</translation>
+    </message>
+    <message>
+        <source>Clustering</source>
+        <translation>التجميع</translation>
+    </message>
+    <message>
+        <source>Clustering Analysis</source>
+        <translation>تحليل التجميع</translation>
+    </message>
+    <message>
+        <source>Clustering time series report</source>
+        <translation>تقرير تحليل السلاسل الزمنية للتجميع</translation>
+    </message>
+    <message>
+        <source>Combinations</source>
+        <translation>التوليفات</translation>
+    </message>
+    <message>
+        <source>Community</source>
+        <translation>المجتمع</translation>
+    </message>
+    <message>
+        <source>Community analysis</source>
+        <translation>تحليل المجتمع</translation>
+    </message>
+    <message>
+        <source>Community balance analysis</source>
+        <translation>تحليل توازن المجتمع</translation>
+    </message>
+    <message>
+        <source>Community generation analysis</source>
+        <translation>تحليل توليد المجتمع</translation>
+    </message>
+    <message>
+        <source>Community load analysis</source>
+        <translation>تحليل حمل المجتمع</translation>
+    </message>
+    <message>
+        <source>Contingencies</source>
+        <translation>الطوارئ</translation>
+    </message>
+    <message>
+        <source>Contingencies report</source>
+        <translation>تقرير الأعطال</translation>
+    </message>
+    <message>
+        <source>Contingencies statistical report</source>
+        <translation>التقرير الإحصائي للأعطال</translation>
+    </message>
+    <message>
+        <source>Contingency</source>
+        <translation>العطل</translation>
+    </message>
+    <message>
+        <source>Contingency Group</source>
+        <translation>مجموعة العطل</translation>
+    </message>
+    <message>
+        <source>Contingency analysis</source>
+        <translation>تحليل الطوارئ</translation>
+    </message>
+    <message>
+        <source>Contingency analysis time series</source>
+        <translation>سلسلة زمنية لتحليل الطوارئ</translation>
+    </message>
+    <message>
+        <source>Contingency flow</source>
+        <translation>تدفق العطل</translation>
+    </message>
+    <message>
+        <source>Contingency flow report</source>
+        <translation>تقرير تدفق العطل</translation>
+    </message>
+    <message>
+        <source>Contingency frequency</source>
+        <translation>تردد العطل</translation>
+    </message>
+    <message>
+        <source>Contingency loading</source>
+        <translation>تحميل العطل</translation>
+    </message>
+    <message>
+        <source>Contingency overload sum</source>
+        <translation>مجموع التحميل الزائد للعطل</translation>
+    </message>
+    <message>
+        <source>Contingency relative frequency</source>
+        <translation>التردد النسبي للعطل</translation>
+    </message>
+    <message>
+        <source>ContingencyAnalysis</source>
+        <translation>تحليل العطل</translation>
+    </message>
+    <message>
+        <source>ContingencyAnalysisTimeSeries</source>
+        <translation>تحليل العطل للسلاسل الزمنية</translation>
+    </message>
+    <message>
+        <source>ContinuationPowerFlow</source>
+        <translation>تدفق القدرة المستمر</translation>
+    </message>
+    <message>
+        <source>Controllable shunt</source>
+        <translation>Shunt قابل للتحكم</translation>
+    </message>
+    <message>
+        <source>Country</source>
+        <translation>الدولة</translation>
+    </message>
+    <message>
+        <source>Country analysis</source>
+        <translation>تحليل الدولة</translation>
+    </message>
+    <message>
+        <source>Country balance analysis</source>
+        <translation>تحليل توازن الدولة</translation>
+    </message>
+    <message>
+        <source>Country generation analysis</source>
+        <translation>تحليل توليد الدولة</translation>
+    </message>
+    <message>
+        <source>Country load analysis</source>
+        <translation>تحليل حمل الدولة</translation>
+    </message>
+    <message>
+        <source>Current injection</source>
+        <translation>حقن التيار</translation>
+    </message>
+    <message>
+        <source>DC line</source>
+        <translation>خط تيار مستمر</translation>
+    </message>
+    <message>
+        <source>Delete and reduce</source>
+        <translation>حذف وتقليل</translation>
+    </message>
+    <message>
+        <source>Design View</source>
+        <translation>عرض التصميم</translation>
+    </message>
+    <message>
+        <source>Diagram</source>
+        <translation>رسم بياني</translation>
+    </message>
+    <message>
+        <source>Dispatch</source>
+        <translation>التوزيع</translation>
+    </message>
+    <message>
+        <source>Dynamic</source>
+        <translation>ديناميكي</translation>
+    </message>
+    <message>
+        <source>Dynamic Model Host</source>
+        <translation>مضيف النموذج الديناميكي</translation>
+    </message>
+    <message>
+        <source>EMT Dynamic</source>
+        <translation>ديناميكي EMT</translation>
+    </message>
+    <message>
+        <source>EMT Small Signal stability</source>
+        <translation>استقرار الإشارة الصغيرة EMT</translation>
+    </message>
+    <message>
+        <source>EMT template</source>
+        <translation>قالب EMT</translation>
+    </message>
+    <message>
+        <source>ENS</source>
+        <translation>ENS</translation>
+    </message>
+    <message>
+        <source>Emission</source>
+        <translation>الانبعاث</translation>
+    </message>
+    <message>
+        <source>Emt Event</source>
+        <translation>حدث EMT</translation>
+    </message>
+    <message>
+        <source>Emt Events Group</source>
+        <translation>مجموعة أحداث EMT</translation>
+    </message>
+    <message>
+        <source>EmtSimulation</source>
+        <translation>محاكاة EMT</translation>
+    </message>
+    <message>
+        <source>Error</source>
+        <translation>خطأ</translation>
+    </message>
+    <message>
+        <source>Evaluation report</source>
+        <translation>تقرير التقييم</translation>
+    </message>
+    <message>
+        <source>Exciter</source>
+        <translation>المُثير</translation>
+    </message>
+    <message>
+        <source>External grid</source>
+        <translation>شبكة خارجية</translation>
+    </message>
+    <message>
+        <source>FMU template</source>
+        <translation>قالب FMU</translation>
+    </message>
+    <message>
+        <source>Facility</source>
+        <translation>المنشأة</translation>
+    </message>
+    <message>
+        <source>Flow Reports</source>
+        <translation>تقارير التدفق</translation>
+    </message>
+    <message>
+        <source>Flow circulating in the device</source>
+        <translation>التدفق المتداول في الجهاز</translation>
+    </message>
+    <message>
+        <source>Flow entering the node</source>
+        <translation>التدفق الداخل إلى العقدة</translation>
+    </message>
+    <message>
+        <source>Flow exiting the node</source>
+        <translation>التدفق الخارج من العقدة</translation>
+    </message>
+    <message>
+        <source>Flow from the P2X</source>
+        <translation>التدفق من P2X</translation>
+    </message>
+    <message>
+        <source>Flow in the river</source>
+        <translation>التدفق في النهر</translation>
+    </message>
+    <message>
+        <source>Fluid</source>
+        <translation>المائع</translation>
+    </message>
+    <message>
+        <source>Fluid Injection</source>
+        <translation>حقن المائع</translation>
+    </message>
+    <message>
+        <source>Fluid P2X</source>
+        <translation>المائع P2X</translation>
+    </message>
+    <message>
+        <source>Fluid P2Xs</source>
+        <translation>الموائع P2X</translation>
+    </message>
+    <message>
+        <source>Fluid Pump</source>
+        <translation>مضخة المائع</translation>
+    </message>
+    <message>
+        <source>Fluid Turbine</source>
+        <translation>توربينة المائع</translation>
+    </message>
+    <message>
+        <source>Fluid injections</source>
+        <translation>حقن الموائع</translation>
+    </message>
+    <message>
+        <source>Fluid node</source>
+        <translation>عقدة السوائل</translation>
+    </message>
+    <message>
+        <source>Fluid nodes</source>
+        <translation>عُقد المائع</translation>
+    </message>
+    <message>
+        <source>Fluid path</source>
+        <translation>مسار المائع</translation>
+    </message>
+    <message>
+        <source>Fluid paths</source>
+        <translation>مسارات الموائع</translation>
+    </message>
+    <message>
+        <source>Fluid pumps</source>
+        <translation>مضخات المائع</translation>
+    </message>
+    <message>
+        <source>Fluid turbines</source>
+        <translation>توربينات المائع</translation>
+    </message>
+    <message>
+        <source>Frequency</source>
+        <translation>تكرار</translation>
+    </message>
+    <message>
+        <source>Fuel</source>
+        <translation>الوقود</translation>
+    </message>
+    <message>
+        <source>Generation delta slacks</source>
+        <translation>دلتا التوليد المتبقية</translation>
+    </message>
+    <message>
+        <source>Generation deltas</source>
+        <translation>دلتا التوليد</translation>
+    </message>
+    <message>
+        <source>Generator</source>
+        <translation>مولد</translation>
+    </message>
+    <message>
+        <source>Generator Emission</source>
+        <translation>انبعاث المولد</translation>
+    </message>
+    <message>
+        <source>Generator Fuel</source>
+        <translation>وقود المولد</translation>
+    </message>
+    <message>
+        <source>Generator Technology</source>
+        <translation>تكنولوجيا المولد</translation>
+    </message>
+    <message>
+        <source>Generator cost</source>
+        <translation>تكلفة المولد</translation>
+    </message>
+    <message>
+        <source>Generator emissions</source>
+        <translation>انبعاثات المولد</translation>
+    </message>
+    <message>
+        <source>Generator fuels</source>
+        <translation>وقود المولدات</translation>
+    </message>
+    <message>
+        <source>Generator invested</source>
+        <translation>استثمار المولد</translation>
+    </message>
+    <message>
+        <source>Generator power</source>
+        <translation>طاقة المولد</translation>
+    </message>
+    <message>
+        <source>Generator producing</source>
+        <translation>التوليد من قبل المولد</translation>
+    </message>
+    <message>
+        <source>Generator reactive power</source>
+        <translation>القدرة التفاعلية للمولد</translation>
+    </message>
+    <message>
+        <source>Generator reactive power A</source>
+        <translation>القدرة التفاعلية للمولد A</translation>
+    </message>
+    <message>
+        <source>Generator reactive power B</source>
+        <translation>الطاقة التفاعلية للمولد B</translation>
+    </message>
+    <message>
+        <source>Generator reactive power C</source>
+        <translation>الطاقة التفاعلية للمولد C</translation>
+    </message>
+    <message>
+        <source>Generator reserve</source>
+        <translation>احتياطي المولد</translation>
+    </message>
+    <message>
+        <source>Generator shedding</source>
+        <translation>تفريغ المولد</translation>
+    </message>
+    <message>
+        <source>Generator shutting down</source>
+        <translation>إيقاف تشغيل المولد</translation>
+    </message>
+    <message>
+        <source>Generator starting up</source>
+        <translation>بدء تشغيل المولد</translation>
+    </message>
+    <message>
+        <source>Generators</source>
+        <translation>المولدات</translation>
+    </message>
+    <message>
+        <source>Generic Area</source>
+        <translation>المنطقة العامة</translation>
+    </message>
+    <message>
+        <source>Governor</source>
+        <translation>الحاكم</translation>
+    </message>
+    <message>
+        <source>Groups</source>
+        <translation>المجموعات</translation>
+    </message>
+    <message>
+        <source>HVDC Line</source>
+        <translation>خط HVDC</translation>
+    </message>
+    <message>
+        <source>HVDC ODF</source>
+        <translation>ODF الخاص بـ HVDC</translation>
+    </message>
+    <message>
+        <source>HVDC PTDF</source>
+        <translation>PTDF الخاص بـ HVDC</translation>
+    </message>
+    <message>
+        <source>HVDC loading</source>
+        <translation>تحميل HVDC</translation>
+    </message>
+    <message>
+        <source>HVDC losses</source>
+        <translation>خسائر HVDC</translation>
+    </message>
+    <message>
+        <source>HVDC overloads</source>
+        <translation>التحميل الزائد لـ HVDC</translation>
+    </message>
+    <message>
+        <source>HVDC power &quot;from&quot;</source>
+        <translation>طاقة HVDC &quot;من&quot;</translation>
+    </message>
+    <message>
+        <source>HVDC power &quot;from&quot; A</source>
+        <translation>طاقة HVDC &quot;من&quot; A</translation>
+    </message>
+    <message>
+        <source>HVDC power &quot;from&quot; B</source>
+        <translation>طاقة HVDC &quot;من&quot; B</translation>
+    </message>
+    <message>
+        <source>HVDC power &quot;from&quot; C</source>
+        <translation>طاقة HVDC &quot;من&quot; C</translation>
+    </message>
+    <message>
+        <source>HVDC power &quot;to&quot;</source>
+        <translation>طاقة HVDC &quot;إلى&quot;</translation>
+    </message>
+    <message>
+        <source>HVDC power &quot;to&quot; A</source>
+        <translation>طاقة HVDC &quot;إلى&quot; A</translation>
+    </message>
+    <message>
+        <source>HVDC power &quot;to&quot; B</source>
+        <translation>طاقة HVDC &quot;إلى&quot; B</translation>
+    </message>
+    <message>
+        <source>HVDC power &quot;to&quot; C</source>
+        <translation>طاقة HVDC &quot;إلى&quot; C</translation>
+    </message>
+    <message>
+        <source>Hvdc</source>
+        <translation>Hvdc</translation>
+    </message>
+    <message>
+        <source>If Measurement</source>
+        <translation>قياس Iif</translation>
+    </message>
+    <message>
+        <source>Iif: Reactive current &quot;from&quot;</source>
+        <translation>Iif: التيار التفاعلي &quot;من&quot;</translation>
+    </message>
+    <message>
+        <source>Iif: Reactive current &quot;from&quot; A</source>
+        <translation>Iif: التيار التفاعلي &quot;من&quot; A</translation>
+    </message>
+    <message>
+        <source>Iif: Reactive current &quot;from&quot; B</source>
+        <translation>Iif: التيار التفاعلي &quot;من&quot; B</translation>
+    </message>
+    <message>
+        <source>Iif: Reactive current &quot;from&quot; C</source>
+        <translation>Iif: التيار التفاعلي &quot;من&quot; C</translation>
+    </message>
+    <message>
+        <source>Iit: Reactive current &quot;to&quot;</source>
+        <translation>Iit: التيار التفاعلي &quot;إلى&quot;</translation>
+    </message>
+    <message>
+        <source>Iit: Reactive current &quot;to&quot; A</source>
+        <translation>Iit: التيار التفاعلي &quot;إلى&quot; A</translation>
+    </message>
+    <message>
+        <source>Iit: Reactive current &quot;to&quot; B</source>
+        <translation>Iit: التيار التفاعلي &quot;إلى&quot; B</translation>
+    </message>
+    <message>
+        <source>Iit: Reactive current &quot;to&quot; C</source>
+        <translation>Iit: التيار التفاعلي &quot;إلى&quot; C</translation>
+    </message>
+    <message>
+        <source>Information</source>
+        <translation>معلومة</translation>
+    </message>
+    <message>
+        <source>Injections</source>
+        <translation>الحقن</translation>
+    </message>
+    <message>
+        <source>Inputs Analysis</source>
+        <translation>تحليل المدخلات</translation>
+    </message>
+    <message>
+        <source>InputsAnalysis</source>
+        <translation>تحليل المدخلات</translation>
+    </message>
+    <message>
+        <source>Inter-Area exchange</source>
+        <translation>التبادل بين المناطق</translation>
+    </message>
+    <message>
+        <source>Inter-space branch loading</source>
+        <translation>تحميل الفرع بين المساحات</translation>
+    </message>
+    <message>
+        <source>Inter-space branch power</source>
+        <translation>طاقة الفرع بين المساحات</translation>
+    </message>
+    <message>
+        <source>InterAggregationInfo</source>
+        <translation>معلومات التجميع البيني</translation>
+    </message>
+    <message>
+        <source>Investment</source>
+        <translation>الاستثمار</translation>
+    </message>
+    <message>
+        <source>InvestmentEvaluations</source>
+        <translation>تقييمات الاستثمار</translation>
+    </message>
+    <message>
+        <source>Investments</source>
+        <translation>الاستثمارات</translation>
+    </message>
+    <message>
+        <source>Investments Group</source>
+        <translation>مجموعة الاستثمارات</translation>
+    </message>
+    <message>
+        <source>Investments evaluation</source>
+        <translation>تقييم الاستثمارات</translation>
+    </message>
+    <message>
+        <source>Irf: Active current &quot;from&quot;</source>
+        <translation>Irf: التيار النشط &quot;من&quot;</translation>
+    </message>
+    <message>
+        <source>Irf: Active current &quot;from&quot; A</source>
+        <translation>Irf: التيار النشط &quot;من&quot; A</translation>
+    </message>
+    <message>
+        <source>Irf: Active current &quot;from&quot; B</source>
+        <translation>Irf: التيار النشط &quot;من&quot; B</translation>
+    </message>
+    <message>
+        <source>Irf: Active current &quot;from&quot; C</source>
+        <translation>Irf: التيار النشط &quot;من&quot; C</translation>
+    </message>
+    <message>
+        <source>Irt: Active current &quot;to&quot;</source>
+        <translation>Irt: التيار النشط &quot;إلى&quot;</translation>
+    </message>
+    <message>
+        <source>Irt: Active current &quot;to&quot; A</source>
+        <translation>Irt: التيار النشط إلى A</translation>
+    </message>
+    <message>
+        <source>Irt: Active current &quot;to&quot; B</source>
+        <translation>Irt: التيار النشط إلى B</translation>
+    </message>
+    <message>
+        <source>Irt: Active current &quot;to&quot; C</source>
+        <translation>Irt: التيار النشط إلى C</translation>
+    </message>
+    <message>
+        <source>It Measurement</source>
+        <translation>قياسات التيار</translation>
+    </message>
+    <message>
+        <source>Iterations plot</source>
+        <translation>مخطط التكرارات</translation>
+    </message>
+    <message>
+        <source>LODF</source>
+        <translation>LODF</translation>
+    </message>
+    <message>
+        <source>LOLE</source>
+        <translation>LOLE</translation>
+    </message>
+    <message>
+        <source>LOLET</source>
+        <translation>LOLET</translation>
+    </message>
+    <message>
+        <source>LOLF</source>
+        <translation>LOLF</translation>
+    </message>
+    <message>
+        <source>LOLFT</source>
+        <translation>LOLFT</translation>
+    </message>
+    <message>
+        <source>Latin Hypercube</source>
+        <translation>المكعب الفائق اللاتيني</translation>
+    </message>
+    <message>
+        <source>Line</source>
+        <translation>خط</translation>
+    </message>
+    <message>
+        <source>Line Location</source>
+        <translation>موقع الخط</translation>
+    </message>
+    <message>
+        <source>Line Locations</source>
+        <translation>مواقع الخطوط</translation>
+    </message>
+    <message>
+        <source>Line Template</source>
+        <translation>قالب الخط</translation>
+    </message>
+    <message>
+        <source>Linear analysis</source>
+        <translation>التحليل الخطي</translation>
+    </message>
+    <message>
+        <source>Linear analysis time series</source>
+        <translation>سلسلة زمنية للتحليل الخطي</translation>
+    </message>
+    <message>
+        <source>LinearAnalysis</source>
+        <translation>التحليل الخطي</translation>
+    </message>
+    <message>
+        <source>LinearAnalysisTimeSeries</source>
+        <translation>سلسلة زمنية للتحليل الخطي</translation>
+    </message>
+    <message>
+        <source>Load</source>
+        <translation>حمولة</translation>
+    </message>
+    <message>
+        <source>Load like</source>
+        <translation>مثل الحمل</translation>
+    </message>
+    <message>
+        <source>Load neutral voltage</source>
+        <translation>جهد الحيادي للحمل</translation>
+    </message>
+    <message>
+        <source>Load power</source>
+        <translation>طاقة الحمل</translation>
+    </message>
+    <message>
+        <source>Load shedding</source>
+        <translation>تخفيف الحمل</translation>
+    </message>
+    <message>
+        <source>Load shedding cost</source>
+        <translation>تكلفة تخفيف الحمل</translation>
+    </message>
+    <message>
+        <source>Loading CDF</source>
+        <translation>التوزيع التراكمي لتحميل الحمل</translation>
+    </message>
+    <message>
+        <source>Loading from the base situation ($\lambda$)</source>
+        <translation>التحميل من الوضع الأساسي ($\lambda$)</translation>
+    </message>
+    <message>
+        <source>Loading std</source>
+        <translation>الانحراف المعياري للتحميل</translation>
+    </message>
+    <message>
+        <source>Loads</source>
+        <translation>الأحمال</translation>
+    </message>
+    <message>
+        <source>Losses % per area</source>
+        <translation>الخسائر % لكل منطقة</translation>
+    </message>
+    <message>
+        <source>Losses CDF</source>
+        <translation>التوزيع التراكمي للخسائر</translation>
+    </message>
+    <message>
+        <source>Losses avg</source>
+        <translation>متوسط الخسائر</translation>
+    </message>
+    <message>
+        <source>Losses per area</source>
+        <translation>الخسائر لكل منطقة</translation>
+    </message>
+    <message>
+        <source>Losses per generation unit in area</source>
+        <translation>الخسائر لكل وحدة توليد في المنطقة</translation>
+    </message>
+    <message>
+        <source>Losses std</source>
+        <translation>الانحراف المعياري للخسائر</translation>
+    </message>
+    <message>
+        <source>Market</source>
+        <translation>السوق</translation>
+    </message>
+    <message>
+        <source>Market unit</source>
+        <translation>وحدة السوق</translation>
+    </message>
+    <message>
+        <source>Max contingency flow</source>
+        <translation>أقصى تدفق طارئ</translation>
+    </message>
+    <message>
+        <source>Max contingency loading</source>
+        <translation>أقصى تحميل طارئ</translation>
+    </message>
+    <message>
+        <source>Maximum contingency flow</source>
+        <translation>أقصى تدفق طارئ</translation>
+    </message>
+    <message>
+        <source>Mean contingency overloading</source>
+        <translation>متوسط التحميل الزائد الطارئ</translation>
+    </message>
+    <message>
+        <source>Measurements</source>
+        <translation>القياسات</translation>
+    </message>
+    <message>
+        <source>Modelling Authority</source>
+        <translation>سلطة النمذجة</translation>
+    </message>
+    <message>
+        <source>Modes</source>
+        <translation>وسائط</translation>
+    </message>
+    <message>
+        <source>Monte Carlo</source>
+        <translation>مونت كارلو</translation>
+    </message>
+    <message>
+        <source>Municipality</source>
+        <translation>البلدية</translation>
+    </message>
+    <message>
+        <source>Municipality analysis</source>
+        <translation>تحليل البلدية</translation>
+    </message>
+    <message>
+        <source>Municipality balance analysis</source>
+        <translation>تحليل توازن البلدية</translation>
+    </message>
+    <message>
+        <source>Municipality generation analysis</source>
+        <translation>تحليل توليد البلدية</translation>
+    </message>
+    <message>
+        <source>Municipality load analysis</source>
+        <translation>تحليل حمل البلدية</translation>
+    </message>
+    <message>
+        <source>NTC</source>
+        <translation>NTC</translation>
+    </message>
+    <message>
+        <source>Net transfer capacity</source>
+        <translation>صافي القدرة على النقل</translation>
+    </message>
+    <message>
+        <source>NetTransferCapacity</source>
+        <translation>القدرة الصافية للنقل</translation>
+    </message>
+    <message>
+        <source>NetTransferCapacityTimeSeries</source>
+        <translation>سلسلة زمنية للقدرة الصافية للنقل</translation>
+    </message>
+    <message>
+        <source>No simulation</source>
+        <translation>لا محاكاة</translation>
+    </message>
+    <message>
+        <source>NoDevice</source>
+        <translation>لا جهاز</translation>
+    </message>
+    <message>
+        <source>Nodal capacity</source>
+        <translation>السعة العقدية</translation>
+    </message>
+    <message>
+        <source>Nodal capacity time series</source>
+        <translation>السلسلة الزمنية للسعة العقدية</translation>
+    </message>
+    <message>
+        <source>Nodal shadow prices</source>
+        <translation>أسعار الظل العقدية</translation>
+    </message>
+    <message>
+        <source>Nodal slacks</source>
+        <translation>الفراغات العقدية</translation>
+    </message>
+    <message>
+        <source>Node groups</source>
+        <translation>مجموعات العقد</translation>
+    </message>
+    <message>
+        <source>NodeGroups</source>
+        <translation>مجموعات العقد</translation>
+    </message>
+    <message>
+        <source>Nonlinear analysis</source>
+        <translation>التحليل غير الخطي</translation>
+    </message>
+    <message>
+        <source>Nonlinear analysis time series</source>
+        <translation>السلسلة الزمنية للتحليل غير الخطي</translation>
+    </message>
+    <message>
+        <source>Ntc: Base flow report</source>
+        <translation>Ntc: تقرير التدفق الأساسي</translation>
+    </message>
+    <message>
+        <source>Ntc: Contingency flow report</source>
+        <translation>Ntc: تقرير تدفق الطوارئ</translation>
+    </message>
+    <message>
+        <source>Ntc: Contingency flow report. (Branch)</source>
+        <translation>Ntc: تقرير تدفق الطوارئ. (الفرع)</translation>
+    </message>
+    <message>
+        <source>Ntc: Contingency flow report. (Generation)</source>
+        <translation>Ntc: تقرير تدفق الطوارئ. (التوليد)</translation>
+    </message>
+    <message>
+        <source>Ntc: Contingency flow report. (Hvdc)</source>
+        <translation>Ntc: تقرير تدفق الطوارئ. (Hvdc)</translation>
+    </message>
+    <message>
+        <source>Objectives</source>
+        <translation>الأهداف</translation>
+    </message>
+    <message>
+        <source>Objects</source>
+        <translation>أشياء</translation>
+    </message>
+    <message>
+        <source>Optimal net transfer capacity</source>
+        <translation>قدرة النقل الصافية المثلى</translation>
+    </message>
+    <message>
+        <source>Optimal net transfer capacity time series</source>
+        <translation>السلسلة الزمنية لسعة النقل الصافية المثلى</translation>
+    </message>
+    <message>
+        <source>Optimal power flow</source>
+        <translation>تدفق الطاقة الأمثل</translation>
+    </message>
+    <message>
+        <source>Optimal power flow time series</source>
+        <translation>السلسلة الزمنية لتدفق الطاقة الأمثل</translation>
+    </message>
+    <message>
+        <source>Owner</source>
+        <translation>المالك</translation>
+    </message>
+    <message>
+        <source>P: Active power</source>
+        <translation>P: القدرة النشطة</translation>
+    </message>
+    <message>
+        <source>PA: Active power A</source>
+        <translation>PA: القدرة النشطة A</translation>
+    </message>
+    <message>
+        <source>PB: Active power B</source>
+        <translation>PB: القدرة النشطة B</translation>
+    </message>
+    <message>
+        <source>PC: Active power C</source>
+        <translation>PC: القدرة النشطة C</translation>
+    </message>
+    <message>
+        <source>PTDF</source>
+        <translation>PTDF</translation>
+    </message>
+    <message>
+        <source>Pareto</source>
+        <translation>باريتو</translation>
+    </message>
+    <message>
+        <source>Pareto combinations</source>
+        <translation>تركيبات باريتو</translation>
+    </message>
+    <message>
+        <source>Pareto evaluation report</source>
+        <translation>تقرير تقييم باريتو</translation>
+    </message>
+    <message>
+        <source>Pareto frequency</source>
+        <translation>تردد باريتو</translation>
+    </message>
+    <message>
+        <source>Pareto objectives</source>
+        <translation>أهداف باريتو</translation>
+    </message>
+    <message>
+        <source>Pareto plot NSGA2</source>
+        <translation>رسم باريتو NSGA2</translation>
+    </message>
+    <message>
+        <source>Pareto plots</source>
+        <translation>رسوم باريتو</translation>
+    </message>
+    <message>
+        <source>Participation Factors</source>
+        <translation>عوامل المشاركة</translation>
+    </message>
+    <message>
+        <source>Pf Measurement</source>
+        <translation>قياس Pf</translation>
+    </message>
+    <message>
+        <source>Pf: Active power &quot;from&quot;</source>
+        <translation>Pf: القدرة النشطة &quot;من&quot;</translation>
+    </message>
+    <message>
+        <source>Pf: Active power &quot;from&quot; base case</source>
+        <translation>Pf: القدرة النشطة &quot;من&quot; الحالة الأساسية</translation>
+    </message>
+    <message>
+        <source>PfA: Active power &quot;from&quot; A</source>
+        <translation>PfA: القدرة النشطة &quot;من&quot; A</translation>
+    </message>
+    <message>
+        <source>PfB: Active power &quot;from&quot; B</source>
+        <translation>PfB: القدرة النشطة &quot;من&quot; B</translation>
+    </message>
+    <message>
+        <source>PfC: Active power &quot;from&quot; C</source>
+        <translation>PfC: القدرة النشطة &quot;من&quot; C</translation>
+    </message>
+    <message>
+        <source>Pg Measurement</source>
+        <translation>قياس Pg</translation>
+    </message>
+    <message>
+        <source>Pi Measurement</source>
+        <translation>قياس Pi</translation>
+    </message>
+    <message>
+        <source>Pl: Active losses</source>
+        <translation>Pl: الخسائر النشطة</translation>
+    </message>
+    <message>
+        <source>Pl: Active losses (%)</source>
+        <translation>Pl: الخسائر النشطة (%)</translation>
+    </message>
+    <message>
+        <source>Pl: Active losses (%) A</source>
+        <translation>Pl: الخسائر النشطة (%) A</translation>
+    </message>
+    <message>
+        <source>Pl: Active losses (%) B</source>
+        <translation>Pl: الخسائر النشطة (%) B</translation>
+    </message>
+    <message>
+        <source>Pl: Active losses (%) C</source>
+        <translation>Pl: الخسائر النشطة (%) C</translation>
+    </message>
+    <message>
+        <source>Pl: Active losses A</source>
+        <translation>Pl: الخسائر النشطة A</translation>
+    </message>
+    <message>
+        <source>Pl: Active losses B</source>
+        <translation>Pl: الخسائر النشطة B</translation>
+    </message>
+    <message>
+        <source>Pl: Active losses C</source>
+        <translation>Pl: الخسائر النشطة C</translation>
+    </message>
+    <message>
+        <source>Plot Event</source>
+        <translation>حدث الرسم</translation>
+    </message>
+    <message>
+        <source>Plot Group</source>
+        <translation>مجموعة الرسم</translation>
+    </message>
+    <message>
+        <source>Power by technology</source>
+        <translation>الطاقة حسب التكنولوجيا</translation>
+    </message>
+    <message>
+        <source>Power flow</source>
+        <translation>تدفق الطاقة</translation>
+    </message>
+    <message>
+        <source>Power flow 3ph</source>
+        <translation>تدفق الطاقة 3أطوار</translation>
+    </message>
+    <message>
+        <source>Power flow time series</source>
+        <translation>سلسلة زمنية لتدفق الطاقة</translation>
+    </message>
+    <message>
+        <source>Power flow time series 3ph</source>
+        <translation>سلسلة زمنية لتدفق الطاقة 3 أطوار</translation>
+    </message>
+    <message>
+        <source>PowerFlow</source>
+        <translation>تدفق الطاقة</translation>
+    </message>
+    <message>
+        <source>PowerFlowTimeSeries</source>
+        <translation>السلسلة الزمنية لتدفق الطاقة</translation>
+    </message>
+    <message>
+        <source>Pt Measurement</source>
+        <translation>قياس القدرة النشطة (P_t)</translation>
+    </message>
+    <message>
+        <source>Pt: Active power &quot;to&quot;</source>
+        <translation>القدرة النشطة (P_t): &quot;إلى&quot;</translation>
+    </message>
+    <message>
+        <source>Pt: Active power &quot;to&quot; A</source>
+        <translation>القدرة النشطة (P_t): &quot;إلى&quot; A</translation>
+    </message>
+    <message>
+        <source>Pt: Active power &quot;to&quot; B</source>
+        <translation>القدرة النشطة (P_t): &quot;إلى&quot; B</translation>
+    </message>
+    <message>
+        <source>Pt: Active power &quot;to&quot; C</source>
+        <translation>القدرة النشطة (P_t): &quot;إلى&quot; C</translation>
+    </message>
+    <message>
+        <source>Q: Reactive power</source>
+        <translation>القدرة التفاعلية (Q)</translation>
+    </message>
+    <message>
+        <source>QA: Reactive power A</source>
+        <translation>القدرة التفاعلية (Q_A): A</translation>
+    </message>
+    <message>
+        <source>QB: Reactive power B</source>
+        <translation>القدرة التفاعلية (Q_B): B</translation>
+    </message>
+    <message>
+        <source>QC: Reactive power C</source>
+        <translation>القدرة التفاعلية (Q_C): C</translation>
+    </message>
+    <message>
+        <source>Qf Measurement</source>
+        <translation>قياس القدرة التفاعلية (Q_f)</translation>
+    </message>
+    <message>
+        <source>Qf: Reactive power &quot;from&quot;</source>
+        <translation>القدرة التفاعلية (Q_f): &quot;من&quot;</translation>
+    </message>
+    <message>
+        <source>QfA: Reactive power &quot;from&quot; A</source>
+        <translation>القدرة التفاعلية (Q_f_A): &quot;من&quot; A</translation>
+    </message>
+    <message>
+        <source>QfB: Reactive power &quot;from&quot; B</source>
+        <translation>القدرة التفاعلية (Q_f_B): &quot;من&quot; B</translation>
+    </message>
+    <message>
+        <source>QfC: Reactive power &quot;from&quot; C</source>
+        <translation>القدرة التفاعلية (Q_f_C): &quot;من&quot; C</translation>
+    </message>
+    <message>
+        <source>Qg Measurement</source>
+        <translation>قياس القدرة التفاعلية (Q_g)</translation>
+    </message>
+    <message>
+        <source>Qi Measurement</source>
+        <translation>قياس التيار التفاعلي (Q_i)</translation>
+    </message>
+    <message>
+        <source>Ql: Reactive losses</source>
+        <translation>الفقد التفاعلي (Q_l)</translation>
+    </message>
+    <message>
+        <source>Ql: Reactive losses A</source>
+        <translation>الفقد التفاعلي (Q_l): A</translation>
+    </message>
+    <message>
+        <source>Ql: Reactive losses B</source>
+        <translation>الفقد التفاعلي (Q_l): B</translation>
+    </message>
+    <message>
+        <source>Ql: Reactive losses C</source>
+        <translation>الفقد التفاعلي (Q_l): C</translation>
+    </message>
+    <message>
+        <source>Qt Measurement</source>
+        <translation>قياس القدرة التفاعلية (Q_t)</translation>
+    </message>
+    <message>
+        <source>Qt: Reactive power &quot;to&quot;</source>
+        <translation>القدرة التفاعلية (Q_t): &quot;إلى&quot;</translation>
+    </message>
+    <message>
+        <source>Qt: Reactive power &quot;to&quot; A</source>
+        <translation>القدرة التفاعلية (Q_t): &quot;إلى&quot; A</translation>
+    </message>
+    <message>
+        <source>Qt: Reactive power &quot;to&quot; B</source>
+        <translation>القدرة التفاعلية (Q_t): &quot;إلى&quot; B</translation>
+    </message>
+    <message>
+        <source>Qt: Reactive power &quot;to&quot; C</source>
+        <translation>القدرة التفاعلية (Q_t): &quot;إلى&quot; C</translation>
+    </message>
+    <message>
+        <source>RMS Dynamic</source>
+        <translation>الديناميكي RMS</translation>
+    </message>
+    <message>
+        <source>RMS Small Signal stability</source>
+        <translation>استقرار الإشارة الصغيرة RMS</translation>
+    </message>
+    <message>
+        <source>RMS template</source>
+        <translation>قالب RMS</translation>
+    </message>
+    <message>
+        <source>Region</source>
+        <translation>المنطقة</translation>
+    </message>
+    <message>
+        <source>Region analysis</source>
+        <translation>تحليل المنطقة</translation>
+    </message>
+    <message>
+        <source>Region balance analysis</source>
+        <translation>تحليل توازن المنطقة</translation>
+    </message>
+    <message>
+        <source>Region generation analysis</source>
+        <translation>تحليل توليد المنطقة</translation>
+    </message>
+    <message>
+        <source>Region load analysis</source>
+        <translation>تحليل حمل المنطقة</translation>
+    </message>
+    <message>
+        <source>Regions</source>
+        <translation>المناطق</translation>
+    </message>
+    <message>
+        <source>Reliability</source>
+        <translation>مصداقية</translation>
+    </message>
+    <message>
+        <source>Remedial action</source>
+        <translation>الإجراء التصحيحي</translation>
+    </message>
+    <message>
+        <source>Remedial action Group</source>
+        <translation>مجموعة الإجراءات التصحيحية</translation>
+    </message>
+    <message>
+        <source>Reports</source>
+        <translation>التقارير</translation>
+    </message>
+    <message>
+        <source>Reservoir fluid level</source>
+        <translation>مستوى السائل في الخزان</translation>
+    </message>
+    <message>
+        <source>Results</source>
+        <translation>نتائج</translation>
+    </message>
+    <message>
+        <source>Right Eigenvectors</source>
+        <translation>المتجهات الذاتية اليمنى</translation>
+    </message>
+    <message>
+        <source>Rms Event</source>
+        <translation>حدث RMS</translation>
+    </message>
+    <message>
+        <source>Rms Events Group</source>
+        <translation>مجموعة أحداث RMS</translation>
+    </message>
+    <message>
+        <source>Rms Generator results</source>
+        <translation>نتائج المولدات RMS</translation>
+    </message>
+    <message>
+        <source>Rms Genqec delta results</source>
+        <translation>نتائج دلتا التردد للمولدات RMS</translation>
+    </message>
+    <message>
+        <source>Rms Genqec omega results</source>
+        <translation>نتائج أوميغا التردد للمولدات RMS</translation>
+    </message>
+    <message>
+        <source>Rms Line results</source>
+        <translation>نتائج الخطوط RMS</translation>
+    </message>
+    <message>
+        <source>Rms Load P results</source>
+        <translation>نتائج حمل القدرة P RMS</translation>
+    </message>
+    <message>
+        <source>Rms Load Q results</source>
+        <translation>نتائج حمل القدرة Q RMS</translation>
+    </message>
+    <message>
+        <source>Rms Simple Line P results</source>
+        <translation>نتائج P لخط بسيط RMS</translation>
+    </message>
+    <message>
+        <source>Rms Simple Line Q results</source>
+        <translation>نتائج Q لخط بسيط RMS</translation>
+    </message>
+    <message>
+        <source>Rms load results</source>
+        <translation>نتائج الحمل RMS</translation>
+    </message>
+    <message>
+        <source>Rms plot results</source>
+        <translation>نتائج رسم RMS</translation>
+    </message>
+    <message>
+        <source>Rms time series report</source>
+        <translation>تقرير السلسلة الزمنية RMS</translation>
+    </message>
+    <message>
+        <source>RmsSimulation</source>
+        <translation>محاكاة RMS</translation>
+    </message>
+    <message>
+        <source>S-Domain Plot</source>
+        <translation>رسم نطاق S</translation>
+    </message>
+    <message>
+        <source>S-Domain Plot in Hz</source>
+        <translation>رسم نطاق S بالهرتز</translation>
+    </message>
+    <message>
+        <source>SAIDI</source>
+        <translation>SAIDI</translation>
+    </message>
+    <message>
+        <source>SAIFI</source>
+        <translation>SAIFI</translation>
+    </message>
+    <message>
+        <source>Sensibilities</source>
+        <translation>الحساسيات</translation>
+    </message>
+    <message>
+        <source>Sensitivity to the exchange</source>
+        <translation>الحساسية للتبادل</translation>
+    </message>
+    <message>
+        <source>Sensitivity to the exchange (N-1)</source>
+        <translation>الحساسية للتبادل (N-1)</translation>
+    </message>
+    <message>
+        <source>Sequence line</source>
+        <translation>خط التسلسل</translation>
+    </message>
+    <message>
+        <source>Series</source>
+        <translation>التوالي</translation>
+    </message>
+    <message>
+        <source>Series reactance</source>
+        <translation>مفاعلة السلسلة</translation>
+    </message>
+    <message>
+        <source>Short circuit</source>
+        <translation>قصر الدائرة</translation>
+    </message>
+    <message>
+        <source>Short circuit active current</source>
+        <translation>التيار الفعال لقصر الدائرة</translation>
+    </message>
+    <message>
+        <source>Short circuit active current A</source>
+        <translation>التيار الفعال لقصر الدائرة A</translation>
+    </message>
+    <message>
+        <source>Short circuit active current B</source>
+        <translation>التيار الفعال لقصر الدائرة B</translation>
+    </message>
+    <message>
+        <source>Short circuit active current C</source>
+        <translation>التيار الفعال لقصر الدائرة C</translation>
+    </message>
+    <message>
+        <source>Short circuit active power</source>
+        <translation>القدرة الفعالة لقصر الدائرة</translation>
+    </message>
+    <message>
+        <source>Short circuit active power A</source>
+        <translation>القدرة الفعالة لقصر الدائرة A</translation>
+    </message>
+    <message>
+        <source>Short circuit active power B</source>
+        <translation>القدرة الفعالة لقصر الدائرة B</translation>
+    </message>
+    <message>
+        <source>Short circuit active power C</source>
+        <translation>القدرة الفعالة لقصر الدائرة C</translation>
+    </message>
+    <message>
+        <source>Short circuit event</source>
+        <translation>حدث قصر الدائرة</translation>
+    </message>
+    <message>
+        <source>Short circuit reactive current</source>
+        <translation>التيار التفاعلي لقصر الدائرة</translation>
+    </message>
+    <message>
+        <source>Short circuit reactive current A</source>
+        <translation>التيار التفاعلي لقصر الدائرة A</translation>
+    </message>
+    <message>
+        <source>Short circuit reactive current B</source>
+        <translation>التيار التفاعلي لقصر الدائرة B</translation>
+    </message>
+    <message>
+        <source>Short circuit reactive current C</source>
+        <translation>التيار التفاعلي لقصر الدائرة C</translation>
+    </message>
+    <message>
+        <source>Short circuit reactive power</source>
+        <translation>القدرة التفاعلية لقصر الدائرة</translation>
+    </message>
+    <message>
+        <source>Short circuit reactive power A</source>
+        <translation>القدرة التفاعلية لقصر الدائرة A</translation>
+    </message>
+    <message>
+        <source>Short circuit reactive power B</source>
+        <translation>القدرة التفاعلية لقصر الدائرة B</translation>
+    </message>
+    <message>
+        <source>Short circuit reactive power C</source>
+        <translation>القدرة التفاعلية لقصر الدائرة C</translation>
+    </message>
+    <message>
+        <source>Short-circuit information</source>
+        <translation>معلومات قصر الدائرة</translation>
+    </message>
+    <message>
+        <source>ShortCircuit</source>
+        <translation>قصر الدائرة</translation>
+    </message>
+    <message>
+        <source>Shunt</source>
+        <translation>Shunt</translation>
+    </message>
+    <message>
+        <source>Shunt like devices</source>
+        <translation>الأجهزة الشبيهة بالوصلة الفرعية</translation>
+    </message>
+    <message>
+        <source>Shunt neutral voltage</source>
+        <translation>جهد التعادل الفرعي</translation>
+    </message>
+    <message>
+        <source>Shunt reactive power</source>
+        <translation>القدرة التفاعلية الفرعية</translation>
+    </message>
+    <message>
+        <source>Shunt reactive power A</source>
+        <translation>القدرة التفاعلية الفرعية A</translation>
+    </message>
+    <message>
+        <source>Shunt reactive power B</source>
+        <translation>القدرة التفاعلية الفرعية B</translation>
+    </message>
+    <message>
+        <source>Shunt reactive power C</source>
+        <translation>القدرة التفاعلية الفرعية C</translation>
+    </message>
+    <message>
+        <source>Sigma + distances</source>
+        <translation>مسافات سيجما +</translation>
+    </message>
+    <message>
+        <source>Sigma Analysis</source>
+        <translation>تحليل سيجما</translation>
+    </message>
+    <message>
+        <source>Sigma distances</source>
+        <translation>مسافات سيجما</translation>
+    </message>
+    <message>
+        <source>Sigma imaginary</source>
+        <translation>سيجما التخيلي</translation>
+    </message>
+    <message>
+        <source>Sigma real</source>
+        <translation>سيجما الحقيقي</translation>
+    </message>
+    <message>
+        <source>SigmaAnalysis</source>
+        <translation>تحليل سيجما</translation>
+    </message>
+    <message>
+        <source>SimulationOptionsDevice</source>
+        <translation>خيارات المحاكاة للجهاز</translation>
+    </message>
+    <message>
+        <source>Slacks</source>
+        <translation>الأحمال المرجعية</translation>
+    </message>
+    <message>
+        <source>SmallSignalStability</source>
+        <translation>استقرار الإشارة الصغيرة</translation>
+    </message>
+    <message>
+        <source>Snapshot</source>
+        <translation>لقطة</translation>
+    </message>
+    <message>
+        <source>Special plots</source>
+        <translation>الرسوم البيانية الخاصة</translation>
+    </message>
+    <message>
+        <source>Spillage flow leaving</source>
+        <translation>تدفق التبديد المتبقي</translation>
+    </message>
+    <message>
+        <source>Srap used power</source>
+        <translation>الطاقة المستخدمة لـ Srap</translation>
+    </message>
+    <message>
+        <source>Stabilizer</source>
+        <translation>المثبت</translation>
+    </message>
+    <message>
+        <source>State Matrix</source>
+        <translation>مصفوفة الحالة</translation>
+    </message>
+    <message>
+        <source>State estimation</source>
+        <translation>تقدير الدولة</translation>
+    </message>
+    <message>
+        <source>StateEstimation</source>
+        <translation>تقدير الحالة</translation>
+    </message>
+    <message>
+        <source>Static Generator</source>
+        <translation>المولد الثابت</translation>
+    </message>
+    <message>
+        <source>Statistics</source>
+        <translation>الإحصائيات</translation>
+    </message>
+    <message>
+        <source>Std-dev contingency overloading</source>
+        <translation>الانحراف المعياري للحمل الزائد في حالة الطوارئ</translation>
+    </message>
+    <message>
+        <source>Stochastic Power Flow</source>
+        <translation>تدفق الطاقة العشوائي</translation>
+    </message>
+    <message>
+        <source>StochasticPowerFlow</source>
+        <translation>تدفق_الطاقة_العشوائي</translation>
+    </message>
+    <message>
+        <source>Substation</source>
+        <translation>محطة فرعية</translation>
+    </message>
+    <message>
+        <source>Substation analysis</source>
+        <translation>تحليل المحطة الفرعية</translation>
+    </message>
+    <message>
+        <source>Substation balance analysis</source>
+        <translation>تحليل توازن المحطة الفرعية</translation>
+    </message>
+    <message>
+        <source>Substation generation analysis</source>
+        <translation>تحليل توليد المحطة الفرعية</translation>
+    </message>
+    <message>
+        <source>Substation load analysis</source>
+        <translation>تحليل حمل المحطة الفرعية</translation>
+    </message>
+    <message>
+        <source>Switch</source>
+        <translation>مفتاح</translation>
+    </message>
+    <message>
+        <source>System</source>
+        <translation>النظام</translation>
+    </message>
+    <message>
+        <source>System emissions</source>
+        <translation>انبعاثات النظام</translation>
+    </message>
+    <message>
+        <source>System energy cost</source>
+        <translation>تكلفة طاقة النظام</translation>
+    </message>
+    <message>
+        <source>System energy total cost</source>
+        <translation>إجمالي تكلفة طاقة النظام</translation>
+    </message>
+    <message>
+        <source>System fuel consumption</source>
+        <translation>استهلاك وقود النظام</translation>
+    </message>
+    <message>
+        <source>Technology</source>
+        <translation>التكنولوجيا</translation>
+    </message>
+    <message>
+        <source>Technology Category</source>
+        <translation>فئة التكنولوجيا</translation>
+    </message>
+    <message>
+        <source>Technology Group</source>
+        <translation>مجموعة التكنولوجيا</translation>
+    </message>
+    <message>
+        <source>Technology plot</source>
+        <translation>رسم بياني للتكنولوجيا</translation>
+    </message>
+    <message>
+        <source>Template</source>
+        <translation>نموذج</translation>
+    </message>
+    <message>
+        <source>Templates</source>
+        <translation>القوالب</translation>
+    </message>
+    <message>
+        <source>Time</source>
+        <translation>الوقت</translation>
+    </message>
+    <message>
+        <source>Time series Contingency flow report (Branches)</source>
+        <translation>تقرير تدفق الطوارئ لسلسلة زمنية (الفروع)</translation>
+    </message>
+    <message>
+        <source>Time series base flow report</source>
+        <translation>تقرير التدفق الأساسي لسلسلة زمنية</translation>
+    </message>
+    <message>
+        <source>Time series branch monitoring logic report</source>
+        <translation>تقرير منطق مراقبة الفروع لسلسلة زمنية</translation>
+    </message>
+    <message>
+        <source>Time series contingency Branches report</source>
+        <translation>تقرير فروع الطوارئ لسلسلة زمنية</translation>
+    </message>
+    <message>
+        <source>Time series contingency flow report</source>
+        <translation>تقرير تدفق الطوارئ لسلسلة زمنية</translation>
+    </message>
+    <message>
+        <source>Time series contingency flow report. (Generation)</source>
+        <translation>تقرير تدفق الطوارئ لسلسلة زمنية. (التوليد)</translation>
+    </message>
+    <message>
+        <source>Time series contingency flow report. (Hvdc)</source>
+        <translation>تقرير تدفق الطوارئ لسلسلة زمنية. (HVDC)</translation>
+    </message>
+    <message>
+        <source>Time series critical Branches report</source>
+        <translation>تقرير الفروع الحرجة لسلسلة زمنية</translation>
+    </message>
+    <message>
+        <source>Time series generation delta power report</source>
+        <translation>تقرير طاقة التوليد دلتا لسلسلة زمنية</translation>
+    </message>
+    <message>
+        <source>Time series generation power report</source>
+        <translation>تقرير طاقة التوليد لسلسلة زمنية</translation>
+    </message>
+    <message>
+        <source>Time series sensitivity to the exchange report</source>
+        <translation>تقرير الحساسية للتبادل لسلسلة زمنية</translation>
+    </message>
+    <message>
+        <source>Time series worst sensitivity to the exchange report (N-1)</source>
+        <translation>تقرير أسوأ حساسية للتبادل لسلسلة زمنية (N-1)</translation>
+    </message>
+    <message>
+        <source>Topology Processor</source>
+        <translation>معالج الطوبولوجيا</translation>
+    </message>
+    <message>
+        <source>Topology reduction</source>
+        <translation>تقليل الطوبولوجيا</translation>
+    </message>
+    <message>
+        <source>Tower</source>
+        <translation>برج</translation>
+    </message>
+    <message>
+        <source>Transformer</source>
+        <translation>محول</translation>
+    </message>
+    <message>
+        <source>Transformer type</source>
+        <translation>نوع المحول</translation>
+    </message>
+    <message>
+        <source>Transformer3W</source>
+        <translation>المحول 3W</translation>
+    </message>
+    <message>
+        <source>TransformerNw</source>
+        <translation>المحول Nw</translation>
+    </message>
+    <message>
+        <source>Transient stability</source>
+        <translation>الاستقرار العابر</translation>
+    </message>
+    <message>
+        <source>UPFC</source>
+        <translation>UPFC</translation>
+    </message>
+    <message>
+        <source>Underground line</source>
+        <translation>الخط تحت الأرض</translation>
+    </message>
+    <message>
+        <source>V: Voltage module</source>
+        <translation>V: وحدة الجهد</translation>
+    </message>
+    <message>
+        <source>VA: Voltage module A</source>
+        <translation>VA: وحدة الجهد A</translation>
+    </message>
+    <message>
+        <source>VB: Voltage module B</source>
+        <translation>VB: وحدة الجهد B</translation>
+    </message>
+    <message>
+        <source>VC: Voltage module C</source>
+        <translation>VC: وحدة الجهد C</translation>
+    </message>
+    <message>
+        <source>VSC</source>
+        <translation>VSC</translation>
+    </message>
+    <message>
+        <source>Va Measurement</source>
+        <translation>قياس Va</translation>
+    </message>
+    <message>
+        <source>Var Factory</source>
+        <translation>مصنع المتغيرات</translation>
+    </message>
+    <message>
+        <source>Vm Measurement</source>
+        <translation>قياس الجهد</translation>
+    </message>
+    <message>
+        <source>Voltage angle (0)</source>
+        <translation>زاوية الجهد (0)</translation>
+    </message>
+    <message>
+        <source>Voltage angle (1)</source>
+        <translation>زاوية الجهد (1)</translation>
+    </message>
+    <message>
+        <source>Voltage angle (2)</source>
+        <translation>زاوية الجهد (2)</translation>
+    </message>
+    <message>
+        <source>Voltage collapse</source>
+        <translation>انهيار الجهد</translation>
+    </message>
+    <message>
+        <source>Voltage level</source>
+        <translation>مستوى الجهد</translation>
+    </message>
+    <message>
+        <source>Voltage level analysis</source>
+        <translation>تحليل مستوى الجهد</translation>
+    </message>
+    <message>
+        <source>Voltage level balance analysis</source>
+        <translation>تحليل توازن مستوى الجهد</translation>
+    </message>
+    <message>
+        <source>Voltage level generation analysis</source>
+        <translation>تحليل توليد مستوى الجهد</translation>
+    </message>
+    <message>
+        <source>Voltage level load analysis</source>
+        <translation>تحليل حمل مستوى الجهد</translation>
+    </message>
+    <message>
+        <source>Voltage level template</source>
+        <translation>قالب مستوى الجهد</translation>
+    </message>
+    <message>
+        <source>Voltage module (0)</source>
+        <translation>وحدة الجهد (0)</translation>
+    </message>
+    <message>
+        <source>Voltage module (1)</source>
+        <translation>وحدة الجهد (1)</translation>
+    </message>
+    <message>
+        <source>Voltage module (2)</source>
+        <translation>وحدة الجهد (2)</translation>
+    </message>
+    <message>
+        <source>Voltage plot</source>
+        <translation>رسم الجهد</translation>
+    </message>
+    <message>
+        <source>Vsc</source>
+        <translation>Vsc</translation>
+    </message>
+    <message>
+        <source>Vsc ODF</source>
+        <translation>Vsc ODF</translation>
+    </message>
+    <message>
+        <source>Vsc PTDF</source>
+        <translation>Vsc PTDF</translation>
+    </message>
+    <message>
+        <source>Vsc Pdc</source>
+        <translation>Vsc Pdc</translation>
+    </message>
+    <message>
+        <source>Vsc Vdc</source>
+        <translation>Vsc Vdc</translation>
+    </message>
+    <message>
+        <source>Vsc loading</source>
+        <translation>تحميل Vsc</translation>
+    </message>
+    <message>
+        <source>Vsc losses</source>
+        <translation>خسائر Vsc</translation>
+    </message>
+    <message>
+        <source>Vsc power &quot;from&quot; negative pole</source>
+        <translation>طاقة Vsc &quot;من&quot; القطب السالب</translation>
+    </message>
+    <message>
+        <source>Vsc power &quot;from&quot; positive pole</source>
+        <translation>طاقة Vsc &quot;من&quot; القطب الموجب</translation>
+    </message>
+    <message>
+        <source>Vsc power &quot;to&quot;</source>
+        <translation>طاقة Vsc &quot;إلى&quot;</translation>
+    </message>
+    <message>
+        <source>Vsc power &quot;to&quot; A</source>
+        <translation>طاقة Vsc &quot;إلى&quot; A</translation>
+    </message>
+    <message>
+        <source>Vsc power &quot;to&quot; B</source>
+        <translation>طاقة Vsc &quot;إلى&quot; B</translation>
+    </message>
+    <message>
+        <source>Vsc power &quot;to&quot; C</source>
+        <translation>طاقة Vsc &quot;إلى&quot; C</translation>
+    </message>
+    <message>
+        <source>When to make them plot</source>
+        <translation>متى يتم رسمها</translation>
+    </message>
+    <message>
+        <source>Winding</source>
+        <translation>ملف</translation>
+    </message>
+    <message>
+        <source>Wire</source>
+        <translation>السلك</translation>
+    </message>
+    <message>
+        <source>Zone</source>
+        <translation>المنطقة</translation>
+    </message>
+    <message>
+        <source>Zone analysis</source>
+        <translation>تحليل المنطقة</translation>
+    </message>
+    <message>
+        <source>Zone balance analysis</source>
+        <translation>تحليل توازن المنطقة</translation>
+    </message>
+    <message>
+        <source>Zone generation analysis</source>
+        <translation>تحليل توليد المنطقة</translation>
+    </message>
+    <message>
+        <source>Zone load analysis</source>
+        <translation>تحليل حمل المنطقة</translation>
+    </message>
+    <message>
+        <source>export all</source>
+        <translation>تصدير الكل</translation>
+    </message>
+    <message>
+        <source>file open</source>
+        <translation>فتح الملف</translation>
+    </message>
+    <message>
+        <source>file save</source>
+        <translation>حفظ الملف</translation>
+    </message>
+    <message>
+        <source>loading avg</source>
+        <translation>متوسط التحميل</translation>
+    </message>
+    <message>
+        <source>m: Tap module</source>
+        <translation>m: وحدة التوصيل</translation>
+    </message>
+    <message>
+        <source>ΔP: Active power increment</source>
+        <translation>ΔP: زيادة الطاقة الفعالة</translation>
+    </message>
+    <message>
+        <source>ΔV: Voltage modules drop</source>
+        <translation>ΔV: انخفاض وحدات الجهد</translation>
+    </message>
+    <message>
+        <source>ΔV: Voltage modules drop A</source>
+        <translation>ΔV: انخفاض وحدات الجهد A</translation>
+    </message>
+    <message>
+        <source>ΔV: Voltage modules drop B</source>
+        <translation>ΔV: انخفاض وحدات الجهد B</translation>
+    </message>
+    <message>
+        <source>ΔV: Voltage modules drop C</source>
+        <translation>ΔV: انخفاض وحدات الجهد C</translation>
+    </message>
+    <message>
+        <source>Δθ: Voltage angles drop</source>
+        <translation>Δθ: انخفاض زوايا الجهد</translation>
+    </message>
+    <message>
+        <source>Δθ: Voltage angles drop A</source>
+        <translation>Δθ: انخفاض زوايا الجهد A</translation>
+    </message>
+    <message>
+        <source>Δθ: Voltage angles drop B</source>
+        <translation>Δθ: انخفاض زوايا الجهد B</translation>
+    </message>
+    <message>
+        <source>Δθ: Voltage angles drop C</source>
+        <translation>Δθ: انخفاض زوايا الجهد C</translation>
+    </message>
+    <message>
+        <source>θ: Voltage angle</source>
+        <translation>θ: زاوية الجهد</translation>
+    </message>
+    <message>
+        <source>θA: Voltage angle A</source>
+        <translation>θA: زاوية الجهد A</translation>
+    </message>
+    <message>
+        <source>θB: Voltage angle B</source>
+        <translation>θB: زاوية الجهد B</translation>
+    </message>
+    <message>
+        <source>θC: Voltage angle C</source>
+        <translation>θC: زاوية الجهد C</translation>
+    </message>
+    <message>
+        <source>𝜏: Tap angle</source>
+        <translation>𝜏: Tap angle</translation>
     </message>
 </context>
 <context>
@@ -7986,2205 +10185,6 @@ Monte Carlo power flow results:</source>
     <message>
         <source>Question</source>
         <translation>سؤال</translation>
-    </message>
-</context>
-<context>
-    <name>VeraGridTreeLabels</name>
-    <message>
-        <source>ATC Report</source>
-        <translation>تقرير ATC</translation>
-    </message>
-    <message>
-        <source>Active power flow per area</source>
-        <translation>تدفق القدرة الفعالة لكل منطقة</translation>
-    </message>
-    <message>
-        <source>Any line template</source>
-        <translation>قالب أي خط</translation>
-    </message>
-    <message>
-        <source>Area</source>
-        <translation>المنطقة</translation>
-    </message>
-    <message>
-        <source>Area analysis</source>
-        <translation>تحليل المنطقة</translation>
-    </message>
-    <message>
-        <source>Area balance analysis</source>
-        <translation>تحليل توازن المنطقة</translation>
-    </message>
-    <message>
-        <source>Area generation analysis</source>
-        <translation>تحليل توليد المنطقة</translation>
-    </message>
-    <message>
-        <source>Area load analysis</source>
-        <translation>تحليل حمل المنطقة</translation>
-    </message>
-    <message>
-        <source>Associations</source>
-        <translation>الجمعيات</translation>
-    </message>
-    <message>
-        <source>Available transfer capacity</source>
-        <translation>سعة النقل المتاحة</translation>
-    </message>
-    <message>
-        <source>Available transfer capacity (N)</source>
-        <translation>سعة النقل المتاحة (N)</translation>
-    </message>
-    <message>
-        <source>Available transfer capacity (final)</source>
-        <translation>سعة النقل المتاحة (نهائي)</translation>
-    </message>
-    <message>
-        <source>Available transfer capacity time series</source>
-        <translation>السلسلة الزمنية لسعة النقل المتاحة</translation>
-    </message>
-    <message>
-        <source>AvailableTransferCapacity</source>
-        <translation>السعة المتاحة للنقل</translation>
-    </message>
-    <message>
-        <source>AvailableTransferCapacityTimeSeries</source>
-        <translation>السلسلة الزمنية للسعة المتاحة للنقل</translation>
-    </message>
-    <message>
-        <source>Balance plot</source>
-        <translation>مخطط التوازن</translation>
-    </message>
-    <message>
-        <source>Base flow report</source>
-        <translation>تقرير التدفق الأساسي</translation>
-    </message>
-    <message>
-        <source>Batteries</source>
-        <translation>البطاريات</translation>
-    </message>
-    <message>
-        <source>Battery</source>
-        <translation>بطارية</translation>
-    </message>
-    <message>
-        <source>Battery energy</source>
-        <translation>طاقة البطارية</translation>
-    </message>
-    <message>
-        <source>Battery invested</source>
-        <translation>استثمار البطارية</translation>
-    </message>
-    <message>
-        <source>Battery power</source>
-        <translation>قدرة البطارية</translation>
-    </message>
-    <message>
-        <source>Battery reactive power</source>
-        <translation>القدرة التفاعلية للبطارية</translation>
-    </message>
-    <message>
-        <source>Battery reactive power A</source>
-        <translation>القدرة التفاعلية للبطارية A</translation>
-    </message>
-    <message>
-        <source>Battery reactive power B</source>
-        <translation>القدرة التفاعلية للبطارية B</translation>
-    </message>
-    <message>
-        <source>Battery reactive power C</source>
-        <translation>القدرة التفاعلية للبطارية C</translation>
-    </message>
-    <message>
-        <source>Beq: Equivalent susceptance</source>
-        <translation>Beq: القابلة المكافئة</translation>
-    </message>
-    <message>
-        <source>Branch</source>
-        <translation>الفرع</translation>
-    </message>
-    <message>
-        <source>Branch Loading</source>
-        <translation>تحميل الفرع</translation>
-    </message>
-    <message>
-        <source>Branch Loading A</source>
-        <translation>تحميل الفرع A</translation>
-    </message>
-    <message>
-        <source>Branch Loading B</source>
-        <translation>تحميل الفرع B</translation>
-    </message>
-    <message>
-        <source>Branch Loading C</source>
-        <translation>تحميل الفرع C</translation>
-    </message>
-    <message>
-        <source>Branch active current "from" (0)</source>
-        <translation>التيار الفعال للفرع "من" (0)</translation>
-    </message>
-    <message>
-        <source>Branch active current "from" (1)</source>
-        <translation>التيار الفعال للفرع "من" (1)</translation>
-    </message>
-    <message>
-        <source>Branch active current "from" (2)</source>
-        <translation>التيار الفعال للفرع "من" (2)</translation>
-    </message>
-    <message>
-        <source>Branch active losses (0)</source>
-        <translation>خسائر الفرع الفعالة (0)</translation>
-    </message>
-    <message>
-        <source>Branch active losses (1)</source>
-        <translation>خسائر الفرع الفعالة (1)</translation>
-    </message>
-    <message>
-        <source>Branch active losses (2)</source>
-        <translation>خسائر الفرع الفعالة (2)</translation>
-    </message>
-    <message>
-        <source>Branch active power "from" (0)</source>
-        <translation>القدرة الفعالة للفرع "من" (0)</translation>
-    </message>
-    <message>
-        <source>Branch active power "from" (1)</source>
-        <translation>القدرة الفعالة للفرع "من" (1)</translation>
-    </message>
-    <message>
-        <source>Branch active power "from" (2)</source>
-        <translation>القدرة الفعالة للفرع "من" (2)</translation>
-    </message>
-    <message>
-        <source>Branch group</source>
-        <translation>مجموعة الفرع</translation>
-    </message>
-    <message>
-        <source>Branch loading (0)</source>
-        <translation>تحميل الفرع (0)</translation>
-    </message>
-    <message>
-        <source>Branch loading (1)</source>
-        <translation>تحميل الفرع (1)</translation>
-    </message>
-    <message>
-        <source>Branch loading (2)</source>
-        <translation>تحميل الفرع (2)</translation>
-    </message>
-    <message>
-        <source>Branch losses</source>
-        <translation>خسائر الفرع</translation>
-    </message>
-    <message>
-        <source>Branch monitoring logic</source>
-        <translation>منطق مراقبة الفرع</translation>
-    </message>
-    <message>
-        <source>Branch overloads</source>
-        <translation>الحمل الزائد للفرع</translation>
-    </message>
-    <message>
-        <source>Branch overloads cost</source>
-        <translation>تكلفة التحميل الزائد للفرع</translation>
-    </message>
-    <message>
-        <source>Branch power CDF</source>
-        <translation>دالة التوزيع التراكمي لقدرة الفرع</translation>
-    </message>
-    <message>
-        <source>Branch power avg</source>
-        <translation>متوسط قدرة الفرع</translation>
-    </message>
-    <message>
-        <source>Branch power std</source>
-        <translation>الانحراف المعياري لقدرة الفرع</translation>
-    </message>
-    <message>
-        <source>Branch reactive current "from" (0)</source>
-        <translation>التيار التفاعلي للفرع "من" (0)</translation>
-    </message>
-    <message>
-        <source>Branch reactive current "from" (1)</source>
-        <translation>Branch reactive current "from" (1)</translation>
-    </message>
-    <message>
-        <source>Branch reactive current "from" (2)</source>
-        <translation>Branch reactive current "from" (2)</translation>
-    </message>
-    <message>
-        <source>Branch reactive losses (0)</source>
-        <translation>Branch reactive losses (0)</translation>
-    </message>
-    <message>
-        <source>Branch reactive losses (1)</source>
-        <translation>Branch reactive losses (1)</translation>
-    </message>
-    <message>
-        <source>Branch reactive losses (2)</source>
-        <translation>Branch reactive losses (2)</translation>
-    </message>
-    <message>
-        <source>Branch reactive power "from" (0)</source>
-        <translation>Branch reactive power "from" (0)</translation>
-    </message>
-    <message>
-        <source>Branch reactive power "from" (1)</source>
-        <translation>Branch reactive power "from" (1)</translation>
-    </message>
-    <message>
-        <source>Branch reactive power "from" (2)</source>
-        <translation>Branch reactive power "from" (2)</translation>
-    </message>
-    <message>
-        <source>Branch template</source>
-        <translation>قالب الفرع</translation>
-    </message>
-    <message>
-        <source>Branches</source>
-        <translation>الفروع</translation>
-    </message>
-    <message>
-        <source>Bus</source>
-        <translation>قضيب</translation>
-    </message>
-    <message>
-        <source>Bus nodal capacity</source>
-        <translation>سعة العقدة</translation>
-    </message>
-    <message>
-        <source>Bus power</source>
-        <translation>قدرة العقدة</translation>
-    </message>
-    <message>
-        <source>Bus power CDF</source>
-        <translation>دالة التوزيع التراكمي لقدرة العقدة (CDF)</translation>
-    </message>
-    <message>
-        <source>Bus voltage CDF</source>
-        <translation>دالة التوزيع التراكمي لجهد العقدة</translation>
-    </message>
-    <message>
-        <source>Bus voltage avg</source>
-        <translation>متوسط جهد العقدة</translation>
-    </message>
-    <message>
-        <source>Bus voltage sensitivity</source>
-        <translation>حساسية جهد العقدة</translation>
-    </message>
-    <message>
-        <source>Bus voltage std</source>
-        <translation>الانحراف المعياري لجهد العقدة (std)</translation>
-    </message>
-    <message>
-        <source>BusBar</source>
-        <translation>قضيب العقدة (BusBar)</translation>
-    </message>
-    <message>
-        <source>BusOrBranch</source>
-        <translation>العقدة أو الفرع</translation>
-    </message>
-    <message>
-        <source>CAIDI</source>
-        <translation>CAIDI</translation>
-    </message>
-    <message>
-        <source>Cascade</source>
-        <translation>التتابع</translation>
-    </message>
-    <message>
-        <source>Catalogue</source>
-        <translation>كتالوج</translation>
-    </message>
-    <message>
-        <source>Catalogue optimization</source>
-        <translation>تحسين الكتالوج</translation>
-    </message>
-    <message>
-        <source>Circuit</source>
-        <translation>الدائرة</translation>
-    </message>
-    <message>
-        <source>Clean room</source>
-        <translation>غرفة نظيفة</translation>
-    </message>
-    <message>
-        <source>Clustering</source>
-        <translation>التجميع</translation>
-    </message>
-    <message>
-        <source>Clustering Analysis</source>
-        <translation>تحليل التجميع</translation>
-    </message>
-    <message>
-        <source>Clustering time series report</source>
-        <translation>تقرير تحليل السلاسل الزمنية للتجميع</translation>
-    </message>
-    <message>
-        <source>Combinations</source>
-        <translation>التوليفات</translation>
-    </message>
-    <message>
-        <source>Community</source>
-        <translation>المجتمع</translation>
-    </message>
-    <message>
-        <source>Community analysis</source>
-        <translation>تحليل المجتمع</translation>
-    </message>
-    <message>
-        <source>Community balance analysis</source>
-        <translation>تحليل توازن المجتمع</translation>
-    </message>
-    <message>
-        <source>Community generation analysis</source>
-        <translation>تحليل توليد المجتمع</translation>
-    </message>
-    <message>
-        <source>Community load analysis</source>
-        <translation>تحليل حمل المجتمع</translation>
-    </message>
-    <message>
-        <source>Contingencies</source>
-        <translation>الطوارئ</translation>
-    </message>
-    <message>
-        <source>Contingencies report</source>
-        <translation>تقرير الأعطال</translation>
-    </message>
-    <message>
-        <source>Contingencies statistical report</source>
-        <translation>التقرير الإحصائي للأعطال</translation>
-    </message>
-    <message>
-        <source>Contingency</source>
-        <translation>العطل</translation>
-    </message>
-    <message>
-        <source>Contingency Group</source>
-        <translation>مجموعة العطل</translation>
-    </message>
-    <message>
-        <source>Contingency analysis</source>
-        <translation>تحليل الطوارئ</translation>
-    </message>
-    <message>
-        <source>Contingency analysis time series</source>
-        <translation>سلسلة زمنية لتحليل الطوارئ</translation>
-    </message>
-    <message>
-        <source>Contingency flow</source>
-        <translation>تدفق العطل</translation>
-    </message>
-    <message>
-        <source>Contingency flow report</source>
-        <translation>تقرير تدفق العطل</translation>
-    </message>
-    <message>
-        <source>Contingency frequency</source>
-        <translation>تردد العطل</translation>
-    </message>
-    <message>
-        <source>Contingency loading</source>
-        <translation>تحميل العطل</translation>
-    </message>
-    <message>
-        <source>Contingency overload sum</source>
-        <translation>مجموع التحميل الزائد للعطل</translation>
-    </message>
-    <message>
-        <source>Contingency relative frequency</source>
-        <translation>التردد النسبي للعطل</translation>
-    </message>
-    <message>
-        <source>ContingencyAnalysis</source>
-        <translation>تحليل العطل</translation>
-    </message>
-    <message>
-        <source>ContingencyAnalysisTimeSeries</source>
-        <translation>تحليل العطل للسلاسل الزمنية</translation>
-    </message>
-    <message>
-        <source>ContinuationPowerFlow</source>
-        <translation>تدفق القدرة المستمر</translation>
-    </message>
-    <message>
-        <source>Controllable shunt</source>
-        <translation>Shunt قابل للتحكم</translation>
-    </message>
-    <message>
-        <source>Country</source>
-        <translation>الدولة</translation>
-    </message>
-    <message>
-        <source>Country analysis</source>
-        <translation>تحليل الدولة</translation>
-    </message>
-    <message>
-        <source>Country balance analysis</source>
-        <translation>تحليل توازن الدولة</translation>
-    </message>
-    <message>
-        <source>Country generation analysis</source>
-        <translation>تحليل توليد الدولة</translation>
-    </message>
-    <message>
-        <source>Country load analysis</source>
-        <translation>تحليل حمل الدولة</translation>
-    </message>
-    <message>
-        <source>Current injection</source>
-        <translation>حقن التيار</translation>
-    </message>
-    <message>
-        <source>DC line</source>
-        <translation>خط تيار مستمر</translation>
-    </message>
-    <message>
-        <source>Delete and reduce</source>
-        <translation>حذف وتقليل</translation>
-    </message>
-    <message>
-        <source>Design View</source>
-        <translation>عرض التصميم</translation>
-    </message>
-    <message>
-        <source>Diagram</source>
-        <translation>رسم بياني</translation>
-    </message>
-    <message>
-        <source>Dispatch</source>
-        <translation>التوزيع</translation>
-    </message>
-    <message>
-        <source>Dynamic</source>
-        <translation>ديناميكي</translation>
-    </message>
-    <message>
-        <source>Dynamic Model Host</source>
-        <translation>مضيف النموذج الديناميكي</translation>
-    </message>
-    <message>
-        <source>EMT Dynamic</source>
-        <translation>ديناميكي EMT</translation>
-    </message>
-    <message>
-        <source>EMT Small Signal stability</source>
-        <translation>استقرار الإشارة الصغيرة EMT</translation>
-    </message>
-    <message>
-        <source>EMT template</source>
-        <translation>قالب EMT</translation>
-    </message>
-    <message>
-        <source>ENS</source>
-        <translation>ENS</translation>
-    </message>
-    <message>
-        <source>Emission</source>
-        <translation>الانبعاث</translation>
-    </message>
-    <message>
-        <source>Emt Event</source>
-        <translation>حدث EMT</translation>
-    </message>
-    <message>
-        <source>Emt Events Group</source>
-        <translation>مجموعة أحداث EMT</translation>
-    </message>
-    <message>
-        <source>EmtSimulation</source>
-        <translation>محاكاة EMT</translation>
-    </message>
-    <message>
-        <source>Error</source>
-        <translation>خطأ</translation>
-    </message>
-    <message>
-        <source>Evaluation report</source>
-        <translation>تقرير التقييم</translation>
-    </message>
-    <message>
-        <source>Exciter</source>
-        <translation>المُثير</translation>
-    </message>
-    <message>
-        <source>External grid</source>
-        <translation>شبكة خارجية</translation>
-    </message>
-    <message>
-        <source>FMU template</source>
-        <translation>قالب FMU</translation>
-    </message>
-    <message>
-        <source>Facility</source>
-        <translation>المنشأة</translation>
-    </message>
-    <message>
-        <source>Flow Reports</source>
-        <translation>تقارير التدفق</translation>
-    </message>
-    <message>
-        <source>Flow circulating in the device</source>
-        <translation>التدفق المتداول في الجهاز</translation>
-    </message>
-    <message>
-        <source>Flow entering the node</source>
-        <translation>التدفق الداخل إلى العقدة</translation>
-    </message>
-    <message>
-        <source>Flow exiting the node</source>
-        <translation>التدفق الخارج من العقدة</translation>
-    </message>
-    <message>
-        <source>Flow from the P2X</source>
-        <translation>التدفق من P2X</translation>
-    </message>
-    <message>
-        <source>Flow in the river</source>
-        <translation>التدفق في النهر</translation>
-    </message>
-    <message>
-        <source>Fluid</source>
-        <translation>المائع</translation>
-    </message>
-    <message>
-        <source>Fluid Injection</source>
-        <translation>حقن المائع</translation>
-    </message>
-    <message>
-        <source>Fluid P2X</source>
-        <translation>المائع P2X</translation>
-    </message>
-    <message>
-        <source>Fluid P2Xs</source>
-        <translation>الموائع P2X</translation>
-    </message>
-    <message>
-        <source>Fluid Pump</source>
-        <translation>مضخة المائع</translation>
-    </message>
-    <message>
-        <source>Fluid Turbine</source>
-        <translation>توربينة المائع</translation>
-    </message>
-    <message>
-        <source>Fluid injections</source>
-        <translation>حقن الموائع</translation>
-    </message>
-    <message>
-        <source>Fluid node</source>
-        <translation>عقدة السوائل</translation>
-    </message>
-    <message>
-        <source>Fluid nodes</source>
-        <translation>عُقد المائع</translation>
-    </message>
-    <message>
-        <source>Fluid path</source>
-        <translation>مسار المائع</translation>
-    </message>
-    <message>
-        <source>Fluid paths</source>
-        <translation>مسارات الموائع</translation>
-    </message>
-    <message>
-        <source>Fluid pumps</source>
-        <translation>مضخات المائع</translation>
-    </message>
-    <message>
-        <source>Fluid turbines</source>
-        <translation>توربينات المائع</translation>
-    </message>
-    <message>
-        <source>Frequency</source>
-        <translation>تكرار</translation>
-    </message>
-    <message>
-        <source>Fuel</source>
-        <translation>الوقود</translation>
-    </message>
-    <message>
-        <source>Generation delta slacks</source>
-        <translation>دلتا التوليد المتبقية</translation>
-    </message>
-    <message>
-        <source>Generation deltas</source>
-        <translation>دلتا التوليد</translation>
-    </message>
-    <message>
-        <source>Generator</source>
-        <translation>مولد</translation>
-    </message>
-    <message>
-        <source>Generator Emission</source>
-        <translation>انبعاث المولد</translation>
-    </message>
-    <message>
-        <source>Generator Fuel</source>
-        <translation>وقود المولد</translation>
-    </message>
-    <message>
-        <source>Generator Technology</source>
-        <translation>تكنولوجيا المولد</translation>
-    </message>
-    <message>
-        <source>Generator cost</source>
-        <translation>تكلفة المولد</translation>
-    </message>
-    <message>
-        <source>Generator emissions</source>
-        <translation>انبعاثات المولد</translation>
-    </message>
-    <message>
-        <source>Generator fuels</source>
-        <translation>وقود المولدات</translation>
-    </message>
-    <message>
-        <source>Generator invested</source>
-        <translation>استثمار المولد</translation>
-    </message>
-    <message>
-        <source>Generator power</source>
-        <translation>طاقة المولد</translation>
-    </message>
-    <message>
-        <source>Generator producing</source>
-        <translation>التوليد من قبل المولد</translation>
-    </message>
-    <message>
-        <source>Generator reactive power</source>
-        <translation>القدرة التفاعلية للمولد</translation>
-    </message>
-    <message>
-        <source>Generator reactive power A</source>
-        <translation>القدرة التفاعلية للمولد A</translation>
-    </message>
-    <message>
-        <source>Generator reactive power B</source>
-        <translation>الطاقة التفاعلية للمولد B</translation>
-    </message>
-    <message>
-        <source>Generator reactive power C</source>
-        <translation>الطاقة التفاعلية للمولد C</translation>
-    </message>
-    <message>
-        <source>Generator reserve</source>
-        <translation>احتياطي المولد</translation>
-    </message>
-    <message>
-        <source>Generator shedding</source>
-        <translation>تفريغ المولد</translation>
-    </message>
-    <message>
-        <source>Generator shutting down</source>
-        <translation>إيقاف تشغيل المولد</translation>
-    </message>
-    <message>
-        <source>Generator starting up</source>
-        <translation>بدء تشغيل المولد</translation>
-    </message>
-    <message>
-        <source>Generators</source>
-        <translation>المولدات</translation>
-    </message>
-    <message>
-        <source>Generic Area</source>
-        <translation>المنطقة العامة</translation>
-    </message>
-    <message>
-        <source>Governor</source>
-        <translation>الحاكم</translation>
-    </message>
-    <message>
-        <source>Groups</source>
-        <translation>المجموعات</translation>
-    </message>
-    <message>
-        <source>HVDC Line</source>
-        <translation>خط HVDC</translation>
-    </message>
-    <message>
-        <source>HVDC ODF</source>
-        <translation>ODF الخاص بـ HVDC</translation>
-    </message>
-    <message>
-        <source>HVDC PTDF</source>
-        <translation>PTDF الخاص بـ HVDC</translation>
-    </message>
-    <message>
-        <source>HVDC loading</source>
-        <translation>تحميل HVDC</translation>
-    </message>
-    <message>
-        <source>HVDC losses</source>
-        <translation>خسائر HVDC</translation>
-    </message>
-    <message>
-        <source>HVDC overloads</source>
-        <translation>التحميل الزائد لـ HVDC</translation>
-    </message>
-    <message>
-        <source>HVDC power "from"</source>
-        <translation>طاقة HVDC "من"</translation>
-    </message>
-    <message>
-        <source>HVDC power "from" A</source>
-        <translation>طاقة HVDC "من" A</translation>
-    </message>
-    <message>
-        <source>HVDC power "from" B</source>
-        <translation>طاقة HVDC "من" B</translation>
-    </message>
-    <message>
-        <source>HVDC power "from" C</source>
-        <translation>طاقة HVDC "من" C</translation>
-    </message>
-    <message>
-        <source>HVDC power "to"</source>
-        <translation>طاقة HVDC "إلى"</translation>
-    </message>
-    <message>
-        <source>HVDC power "to" A</source>
-        <translation>طاقة HVDC "إلى" A</translation>
-    </message>
-    <message>
-        <source>HVDC power "to" B</source>
-        <translation>طاقة HVDC "إلى" B</translation>
-    </message>
-    <message>
-        <source>HVDC power "to" C</source>
-        <translation>طاقة HVDC "إلى" C</translation>
-    </message>
-    <message>
-        <source>Hvdc</source>
-        <translation>Hvdc</translation>
-    </message>
-    <message>
-        <source>If Measurement</source>
-        <translation>قياس Iif</translation>
-    </message>
-    <message>
-        <source>Iif: Reactive current "from"</source>
-        <translation>Iif: التيار التفاعلي "من"</translation>
-    </message>
-    <message>
-        <source>Iif: Reactive current "from" A</source>
-        <translation>Iif: التيار التفاعلي "من" A</translation>
-    </message>
-    <message>
-        <source>Iif: Reactive current "from" B</source>
-        <translation>Iif: التيار التفاعلي "من" B</translation>
-    </message>
-    <message>
-        <source>Iif: Reactive current "from" C</source>
-        <translation>Iif: التيار التفاعلي "من" C</translation>
-    </message>
-    <message>
-        <source>Iit: Reactive current "to"</source>
-        <translation>Iit: التيار التفاعلي "إلى"</translation>
-    </message>
-    <message>
-        <source>Iit: Reactive current "to" A</source>
-        <translation>Iit: التيار التفاعلي "إلى" A</translation>
-    </message>
-    <message>
-        <source>Iit: Reactive current "to" B</source>
-        <translation>Iit: التيار التفاعلي "إلى" B</translation>
-    </message>
-    <message>
-        <source>Iit: Reactive current "to" C</source>
-        <translation>Iit: التيار التفاعلي "إلى" C</translation>
-    </message>
-    <message>
-        <source>Information</source>
-        <translation>معلومة</translation>
-    </message>
-    <message>
-        <source>Injections</source>
-        <translation>الحقن</translation>
-    </message>
-    <message>
-        <source>Inputs Analysis</source>
-        <translation>تحليل المدخلات</translation>
-    </message>
-    <message>
-        <source>InputsAnalysis</source>
-        <translation>تحليل المدخلات</translation>
-    </message>
-    <message>
-        <source>Inter-Area exchange</source>
-        <translation>التبادل بين المناطق</translation>
-    </message>
-    <message>
-        <source>Inter-space branch loading</source>
-        <translation>تحميل الفرع بين المساحات</translation>
-    </message>
-    <message>
-        <source>Inter-space branch power</source>
-        <translation>طاقة الفرع بين المساحات</translation>
-    </message>
-    <message>
-        <source>InterAggregationInfo</source>
-        <translation>معلومات التجميع البيني</translation>
-    </message>
-    <message>
-        <source>Investment</source>
-        <translation>الاستثمار</translation>
-    </message>
-    <message>
-        <source>InvestmentEvaluations</source>
-        <translation>تقييمات الاستثمار</translation>
-    </message>
-    <message>
-        <source>Investments</source>
-        <translation>الاستثمارات</translation>
-    </message>
-    <message>
-        <source>Investments Group</source>
-        <translation>مجموعة الاستثمارات</translation>
-    </message>
-    <message>
-        <source>Investments evaluation</source>
-        <translation>تقييم الاستثمارات</translation>
-    </message>
-    <message>
-        <source>Irf: Active current "from"</source>
-        <translation>Irf: التيار النشط "من"</translation>
-    </message>
-    <message>
-        <source>Irf: Active current "from" A</source>
-        <translation>Irf: التيار النشط "من" A</translation>
-    </message>
-    <message>
-        <source>Irf: Active current "from" B</source>
-        <translation>Irf: التيار النشط "من" B</translation>
-    </message>
-    <message>
-        <source>Irf: Active current "from" C</source>
-        <translation>Irf: التيار النشط "من" C</translation>
-    </message>
-    <message>
-        <source>Irt: Active current "to"</source>
-        <translation>Irt: التيار النشط "إلى"</translation>
-    </message>
-    <message>
-        <source>Irt: Active current "to" A</source>
-        <translation>Irt: التيار النشط إلى A</translation>
-    </message>
-    <message>
-        <source>Irt: Active current "to" B</source>
-        <translation>Irt: التيار النشط إلى B</translation>
-    </message>
-    <message>
-        <source>Irt: Active current "to" C</source>
-        <translation>Irt: التيار النشط إلى C</translation>
-    </message>
-    <message>
-        <source>It Measurement</source>
-        <translation>قياسات التيار</translation>
-    </message>
-    <message>
-        <source>Iterations plot</source>
-        <translation>مخطط التكرارات</translation>
-    </message>
-    <message>
-        <source>LODF</source>
-        <translation>LODF</translation>
-    </message>
-    <message>
-        <source>LOLE</source>
-        <translation>LOLE</translation>
-    </message>
-    <message>
-        <source>LOLET</source>
-        <translation>LOLET</translation>
-    </message>
-    <message>
-        <source>LOLF</source>
-        <translation>LOLF</translation>
-    </message>
-    <message>
-        <source>LOLFT</source>
-        <translation>LOLFT</translation>
-    </message>
-    <message>
-        <source>Latin Hypercube</source>
-        <translation>المكعب الفائق اللاتيني</translation>
-    </message>
-    <message>
-        <source>Line</source>
-        <translation>خط</translation>
-    </message>
-    <message>
-        <source>Line Location</source>
-        <translation>موقع الخط</translation>
-    </message>
-    <message>
-        <source>Line Locations</source>
-        <translation>مواقع الخطوط</translation>
-    </message>
-    <message>
-        <source>Line Template</source>
-        <translation>قالب الخط</translation>
-    </message>
-    <message>
-        <source>Linear analysis</source>
-        <translation>التحليل الخطي</translation>
-    </message>
-    <message>
-        <source>Linear analysis time series</source>
-        <translation>سلسلة زمنية للتحليل الخطي</translation>
-    </message>
-    <message>
-        <source>LinearAnalysis</source>
-        <translation>التحليل الخطي</translation>
-    </message>
-    <message>
-        <source>LinearAnalysisTimeSeries</source>
-        <translation>سلسلة زمنية للتحليل الخطي</translation>
-    </message>
-    <message>
-        <source>Load</source>
-        <translation>حمولة</translation>
-    </message>
-    <message>
-        <source>Load like</source>
-        <translation>مثل الحمل</translation>
-    </message>
-    <message>
-        <source>Load neutral voltage</source>
-        <translation>جهد الحيادي للحمل</translation>
-    </message>
-    <message>
-        <source>Load power</source>
-        <translation>طاقة الحمل</translation>
-    </message>
-    <message>
-        <source>Load shedding</source>
-        <translation>تخفيف الحمل</translation>
-    </message>
-    <message>
-        <source>Load shedding cost</source>
-        <translation>تكلفة تخفيف الحمل</translation>
-    </message>
-    <message>
-        <source>Loading CDF</source>
-        <translation>التوزيع التراكمي لتحميل الحمل</translation>
-    </message>
-    <message>
-        <source>Loading from the base situation ($\lambda$)</source>
-        <translation>التحميل من الوضع الأساسي ($\lambda$)</translation>
-    </message>
-    <message>
-        <source>Loading std</source>
-        <translation>الانحراف المعياري للتحميل</translation>
-    </message>
-    <message>
-        <source>Loads</source>
-        <translation>الأحمال</translation>
-    </message>
-    <message>
-        <source>Losses % per area</source>
-        <translation>الخسائر % لكل منطقة</translation>
-    </message>
-    <message>
-        <source>Losses CDF</source>
-        <translation>التوزيع التراكمي للخسائر</translation>
-    </message>
-    <message>
-        <source>Losses avg</source>
-        <translation>متوسط الخسائر</translation>
-    </message>
-    <message>
-        <source>Losses per area</source>
-        <translation>الخسائر لكل منطقة</translation>
-    </message>
-    <message>
-        <source>Losses per generation unit in area</source>
-        <translation>الخسائر لكل وحدة توليد في المنطقة</translation>
-    </message>
-    <message>
-        <source>Losses std</source>
-        <translation>الانحراف المعياري للخسائر</translation>
-    </message>
-    <message>
-        <source>Market</source>
-        <translation>السوق</translation>
-    </message>
-    <message>
-        <source>Market unit</source>
-        <translation>وحدة السوق</translation>
-    </message>
-    <message>
-        <source>Max contingency flow</source>
-        <translation>أقصى تدفق طارئ</translation>
-    </message>
-    <message>
-        <source>Max contingency loading</source>
-        <translation>أقصى تحميل طارئ</translation>
-    </message>
-    <message>
-        <source>Maximum contingency flow</source>
-        <translation>أقصى تدفق طارئ</translation>
-    </message>
-    <message>
-        <source>Mean contingency overloading</source>
-        <translation>متوسط التحميل الزائد الطارئ</translation>
-    </message>
-    <message>
-        <source>Measurements</source>
-        <translation>القياسات</translation>
-    </message>
-    <message>
-        <source>Modelling Authority</source>
-        <translation>سلطة النمذجة</translation>
-    </message>
-    <message>
-        <source>Modes</source>
-        <translation>وسائط</translation>
-    </message>
-    <message>
-        <source>Monte Carlo</source>
-        <translation>مونت كارلو</translation>
-    </message>
-    <message>
-        <source>Municipality</source>
-        <translation>البلدية</translation>
-    </message>
-    <message>
-        <source>Municipality analysis</source>
-        <translation>تحليل البلدية</translation>
-    </message>
-    <message>
-        <source>Municipality balance analysis</source>
-        <translation>تحليل توازن البلدية</translation>
-    </message>
-    <message>
-        <source>Municipality generation analysis</source>
-        <translation>تحليل توليد البلدية</translation>
-    </message>
-    <message>
-        <source>Municipality load analysis</source>
-        <translation>تحليل حمل البلدية</translation>
-    </message>
-    <message>
-        <source>NTC</source>
-        <translation>NTC</translation>
-    </message>
-    <message>
-        <source>Net transfer capacity</source>
-        <translation>صافي القدرة على النقل</translation>
-    </message>
-    <message>
-        <source>NetTransferCapacity</source>
-        <translation>القدرة الصافية للنقل</translation>
-    </message>
-    <message>
-        <source>NetTransferCapacityTimeSeries</source>
-        <translation>سلسلة زمنية للقدرة الصافية للنقل</translation>
-    </message>
-    <message>
-        <source>No simulation</source>
-        <translation>لا محاكاة</translation>
-    </message>
-    <message>
-        <source>NoDevice</source>
-        <translation>لا جهاز</translation>
-    </message>
-    <message>
-        <source>Nodal capacity</source>
-        <translation>السعة العقدية</translation>
-    </message>
-    <message>
-        <source>Nodal capacity time series</source>
-        <translation>السلسلة الزمنية للسعة العقدية</translation>
-    </message>
-    <message>
-        <source>Nodal shadow prices</source>
-        <translation>أسعار الظل العقدية</translation>
-    </message>
-    <message>
-        <source>Nodal slacks</source>
-        <translation>الفراغات العقدية</translation>
-    </message>
-    <message>
-        <source>Node groups</source>
-        <translation>مجموعات العقد</translation>
-    </message>
-    <message>
-        <source>NodeGroups</source>
-        <translation>مجموعات العقد</translation>
-    </message>
-    <message>
-        <source>Nonlinear analysis</source>
-        <translation>التحليل غير الخطي</translation>
-    </message>
-    <message>
-        <source>Nonlinear analysis time series</source>
-        <translation>السلسلة الزمنية للتحليل غير الخطي</translation>
-    </message>
-    <message>
-        <source>Ntc: Base flow report</source>
-        <translation>Ntc: تقرير التدفق الأساسي</translation>
-    </message>
-    <message>
-        <source>Ntc: Contingency flow report</source>
-        <translation>Ntc: تقرير تدفق الطوارئ</translation>
-    </message>
-    <message>
-        <source>Ntc: Contingency flow report. (Branch)</source>
-        <translation>Ntc: تقرير تدفق الطوارئ. (الفرع)</translation>
-    </message>
-    <message>
-        <source>Ntc: Contingency flow report. (Generation)</source>
-        <translation>Ntc: تقرير تدفق الطوارئ. (التوليد)</translation>
-    </message>
-    <message>
-        <source>Ntc: Contingency flow report. (Hvdc)</source>
-        <translation>Ntc: تقرير تدفق الطوارئ. (Hvdc)</translation>
-    </message>
-    <message>
-        <source>Objectives</source>
-        <translation>الأهداف</translation>
-    </message>
-    <message>
-        <source>Objects</source>
-        <translation>أشياء</translation>
-    </message>
-    <message>
-        <source>Optimal net transfer capacity</source>
-        <translation>قدرة النقل الصافية المثلى</translation>
-    </message>
-    <message>
-        <source>Optimal net transfer capacity time series</source>
-        <translation>السلسلة الزمنية لسعة النقل الصافية المثلى</translation>
-    </message>
-    <message>
-        <source>Optimal power flow</source>
-        <translation>تدفق الطاقة الأمثل</translation>
-    </message>
-    <message>
-        <source>Optimal power flow time series</source>
-        <translation>السلسلة الزمنية لتدفق الطاقة الأمثل</translation>
-    </message>
-    <message>
-        <source>Owner</source>
-        <translation>المالك</translation>
-    </message>
-    <message>
-        <source>P: Active power</source>
-        <translation>P: القدرة النشطة</translation>
-    </message>
-    <message>
-        <source>PA: Active power A</source>
-        <translation>PA: القدرة النشطة A</translation>
-    </message>
-    <message>
-        <source>PB: Active power B</source>
-        <translation>PB: القدرة النشطة B</translation>
-    </message>
-    <message>
-        <source>PC: Active power C</source>
-        <translation>PC: القدرة النشطة C</translation>
-    </message>
-    <message>
-        <source>PTDF</source>
-        <translation>PTDF</translation>
-    </message>
-    <message>
-        <source>Pareto</source>
-        <translation>باريتو</translation>
-    </message>
-    <message>
-        <source>Pareto combinations</source>
-        <translation>تركيبات باريتو</translation>
-    </message>
-    <message>
-        <source>Pareto evaluation report</source>
-        <translation>تقرير تقييم باريتو</translation>
-    </message>
-    <message>
-        <source>Pareto frequency</source>
-        <translation>تردد باريتو</translation>
-    </message>
-    <message>
-        <source>Pareto objectives</source>
-        <translation>أهداف باريتو</translation>
-    </message>
-    <message>
-        <source>Pareto plot NSGA2</source>
-        <translation>رسم باريتو NSGA2</translation>
-    </message>
-    <message>
-        <source>Pareto plots</source>
-        <translation>رسوم باريتو</translation>
-    </message>
-    <message>
-        <source>Participation Factors</source>
-        <translation>عوامل المشاركة</translation>
-    </message>
-    <message>
-        <source>Pf Measurement</source>
-        <translation>قياس Pf</translation>
-    </message>
-    <message>
-        <source>Pf: Active power "from"</source>
-        <translation>Pf: القدرة النشطة "من"</translation>
-    </message>
-    <message>
-        <source>Pf: Active power "from" base case</source>
-        <translation>Pf: القدرة النشطة "من" الحالة الأساسية</translation>
-    </message>
-    <message>
-        <source>PfA: Active power "from" A</source>
-        <translation>PfA: القدرة النشطة "من" A</translation>
-    </message>
-    <message>
-        <source>PfB: Active power "from" B</source>
-        <translation>PfB: القدرة النشطة "من" B</translation>
-    </message>
-    <message>
-        <source>PfC: Active power "from" C</source>
-        <translation>PfC: القدرة النشطة "من" C</translation>
-    </message>
-    <message>
-        <source>Pg Measurement</source>
-        <translation>قياس Pg</translation>
-    </message>
-    <message>
-        <source>Pi Measurement</source>
-        <translation>قياس Pi</translation>
-    </message>
-    <message>
-        <source>Pl: Active losses</source>
-        <translation>Pl: الخسائر النشطة</translation>
-    </message>
-    <message>
-        <source>Pl: Active losses (%)</source>
-        <translation>Pl: الخسائر النشطة (%)</translation>
-    </message>
-    <message>
-        <source>Pl: Active losses (%) A</source>
-        <translation>Pl: الخسائر النشطة (%) A</translation>
-    </message>
-    <message>
-        <source>Pl: Active losses (%) B</source>
-        <translation>Pl: الخسائر النشطة (%) B</translation>
-    </message>
-    <message>
-        <source>Pl: Active losses (%) C</source>
-        <translation>Pl: الخسائر النشطة (%) C</translation>
-    </message>
-    <message>
-        <source>Pl: Active losses A</source>
-        <translation>Pl: الخسائر النشطة A</translation>
-    </message>
-    <message>
-        <source>Pl: Active losses B</source>
-        <translation>Pl: الخسائر النشطة B</translation>
-    </message>
-    <message>
-        <source>Pl: Active losses C</source>
-        <translation>Pl: الخسائر النشطة C</translation>
-    </message>
-    <message>
-        <source>Plot Event</source>
-        <translation>حدث الرسم</translation>
-    </message>
-    <message>
-        <source>Plot Group</source>
-        <translation>مجموعة الرسم</translation>
-    </message>
-    <message>
-        <source>Power by technology</source>
-        <translation>الطاقة حسب التكنولوجيا</translation>
-    </message>
-    <message>
-        <source>Power flow</source>
-        <translation>تدفق الطاقة</translation>
-    </message>
-    <message>
-        <source>Power flow 3ph</source>
-        <translation>تدفق الطاقة 3أطوار</translation>
-    </message>
-    <message>
-        <source>Power flow time series</source>
-        <translation>سلسلة زمنية لتدفق الطاقة</translation>
-    </message>
-    <message>
-        <source>Power flow time series 3ph</source>
-        <translation>سلسلة زمنية لتدفق الطاقة 3 أطوار</translation>
-    </message>
-    <message>
-        <source>PowerFlow</source>
-        <translation>تدفق الطاقة</translation>
-    </message>
-    <message>
-        <source>PowerFlowTimeSeries</source>
-        <translation>السلسلة الزمنية لتدفق الطاقة</translation>
-    </message>
-    <message>
-        <source>Pt Measurement</source>
-        <translation>قياس القدرة النشطة (P_t)</translation>
-    </message>
-    <message>
-        <source>Pt: Active power "to"</source>
-        <translation>القدرة النشطة (P_t): "إلى"</translation>
-    </message>
-    <message>
-        <source>Pt: Active power "to" A</source>
-        <translation>القدرة النشطة (P_t): "إلى" A</translation>
-    </message>
-    <message>
-        <source>Pt: Active power "to" B</source>
-        <translation>القدرة النشطة (P_t): "إلى" B</translation>
-    </message>
-    <message>
-        <source>Pt: Active power "to" C</source>
-        <translation>القدرة النشطة (P_t): "إلى" C</translation>
-    </message>
-    <message>
-        <source>Q: Reactive power</source>
-        <translation>القدرة التفاعلية (Q)</translation>
-    </message>
-    <message>
-        <source>QA: Reactive power A</source>
-        <translation>القدرة التفاعلية (Q_A): A</translation>
-    </message>
-    <message>
-        <source>QB: Reactive power B</source>
-        <translation>القدرة التفاعلية (Q_B): B</translation>
-    </message>
-    <message>
-        <source>QC: Reactive power C</source>
-        <translation>القدرة التفاعلية (Q_C): C</translation>
-    </message>
-    <message>
-        <source>Qf Measurement</source>
-        <translation>قياس القدرة التفاعلية (Q_f)</translation>
-    </message>
-    <message>
-        <source>Qf: Reactive power "from"</source>
-        <translation>القدرة التفاعلية (Q_f): "من"</translation>
-    </message>
-    <message>
-        <source>QfA: Reactive power "from" A</source>
-        <translation>القدرة التفاعلية (Q_f_A): "من" A</translation>
-    </message>
-    <message>
-        <source>QfB: Reactive power "from" B</source>
-        <translation>القدرة التفاعلية (Q_f_B): "من" B</translation>
-    </message>
-    <message>
-        <source>QfC: Reactive power "from" C</source>
-        <translation>القدرة التفاعلية (Q_f_C): "من" C</translation>
-    </message>
-    <message>
-        <source>Qg Measurement</source>
-        <translation>قياس القدرة التفاعلية (Q_g)</translation>
-    </message>
-    <message>
-        <source>Qi Measurement</source>
-        <translation>قياس التيار التفاعلي (Q_i)</translation>
-    </message>
-    <message>
-        <source>Ql: Reactive losses</source>
-        <translation>الفقد التفاعلي (Q_l)</translation>
-    </message>
-    <message>
-        <source>Ql: Reactive losses A</source>
-        <translation>الفقد التفاعلي (Q_l): A</translation>
-    </message>
-    <message>
-        <source>Ql: Reactive losses B</source>
-        <translation>الفقد التفاعلي (Q_l): B</translation>
-    </message>
-    <message>
-        <source>Ql: Reactive losses C</source>
-        <translation>الفقد التفاعلي (Q_l): C</translation>
-    </message>
-    <message>
-        <source>Qt Measurement</source>
-        <translation>قياس القدرة التفاعلية (Q_t)</translation>
-    </message>
-    <message>
-        <source>Qt: Reactive power "to"</source>
-        <translation>القدرة التفاعلية (Q_t): "إلى"</translation>
-    </message>
-    <message>
-        <source>Qt: Reactive power "to" A</source>
-        <translation>القدرة التفاعلية (Q_t): "إلى" A</translation>
-    </message>
-    <message>
-        <source>Qt: Reactive power "to" B</source>
-        <translation>القدرة التفاعلية (Q_t): "إلى" B</translation>
-    </message>
-    <message>
-        <source>Qt: Reactive power "to" C</source>
-        <translation>القدرة التفاعلية (Q_t): "إلى" C</translation>
-    </message>
-    <message>
-        <source>RMS Dynamic</source>
-        <translation>الديناميكي RMS</translation>
-    </message>
-    <message>
-        <source>RMS Small Signal stability</source>
-        <translation>استقرار الإشارة الصغيرة RMS</translation>
-    </message>
-    <message>
-        <source>RMS template</source>
-        <translation>قالب RMS</translation>
-    </message>
-    <message>
-        <source>Region</source>
-        <translation>المنطقة</translation>
-    </message>
-    <message>
-        <source>Region analysis</source>
-        <translation>تحليل المنطقة</translation>
-    </message>
-    <message>
-        <source>Region balance analysis</source>
-        <translation>تحليل توازن المنطقة</translation>
-    </message>
-    <message>
-        <source>Region generation analysis</source>
-        <translation>تحليل توليد المنطقة</translation>
-    </message>
-    <message>
-        <source>Region load analysis</source>
-        <translation>تحليل حمل المنطقة</translation>
-    </message>
-    <message>
-        <source>Regions</source>
-        <translation>المناطق</translation>
-    </message>
-    <message>
-        <source>Reliability</source>
-        <translation>مصداقية</translation>
-    </message>
-    <message>
-        <source>Remedial action</source>
-        <translation>الإجراء التصحيحي</translation>
-    </message>
-    <message>
-        <source>Remedial action Group</source>
-        <translation>مجموعة الإجراءات التصحيحية</translation>
-    </message>
-    <message>
-        <source>Reports</source>
-        <translation>التقارير</translation>
-    </message>
-    <message>
-        <source>Reservoir fluid level</source>
-        <translation>مستوى السائل في الخزان</translation>
-    </message>
-    <message>
-        <source>Results</source>
-        <translation>نتائج</translation>
-    </message>
-    <message>
-        <source>Right Eigenvectors</source>
-        <translation>المتجهات الذاتية اليمنى</translation>
-    </message>
-    <message>
-        <source>Rms Event</source>
-        <translation>حدث RMS</translation>
-    </message>
-    <message>
-        <source>Rms Events Group</source>
-        <translation>مجموعة أحداث RMS</translation>
-    </message>
-    <message>
-        <source>Rms Generator results</source>
-        <translation>نتائج المولدات RMS</translation>
-    </message>
-    <message>
-        <source>Rms Genqec delta results</source>
-        <translation>نتائج دلتا التردد للمولدات RMS</translation>
-    </message>
-    <message>
-        <source>Rms Genqec omega results</source>
-        <translation>نتائج أوميغا التردد للمولدات RMS</translation>
-    </message>
-    <message>
-        <source>Rms Line results</source>
-        <translation>نتائج الخطوط RMS</translation>
-    </message>
-    <message>
-        <source>Rms Load P results</source>
-        <translation>نتائج حمل القدرة P RMS</translation>
-    </message>
-    <message>
-        <source>Rms Load Q results</source>
-        <translation>نتائج حمل القدرة Q RMS</translation>
-    </message>
-    <message>
-        <source>Rms Simple Line P results</source>
-        <translation>نتائج P لخط بسيط RMS</translation>
-    </message>
-    <message>
-        <source>Rms Simple Line Q results</source>
-        <translation>نتائج Q لخط بسيط RMS</translation>
-    </message>
-    <message>
-        <source>Rms load results</source>
-        <translation>نتائج الحمل RMS</translation>
-    </message>
-    <message>
-        <source>Rms plot results</source>
-        <translation>نتائج رسم RMS</translation>
-    </message>
-    <message>
-        <source>Rms time series report</source>
-        <translation>تقرير السلسلة الزمنية RMS</translation>
-    </message>
-    <message>
-        <source>RmsSimulation</source>
-        <translation>محاكاة RMS</translation>
-    </message>
-    <message>
-        <source>S-Domain Plot</source>
-        <translation>رسم نطاق S</translation>
-    </message>
-    <message>
-        <source>S-Domain Plot in Hz</source>
-        <translation>رسم نطاق S بالهرتز</translation>
-    </message>
-    <message>
-        <source>SAIDI</source>
-        <translation>SAIDI</translation>
-    </message>
-    <message>
-        <source>SAIFI</source>
-        <translation>SAIFI</translation>
-    </message>
-    <message>
-        <source>Sensibilities</source>
-        <translation>الحساسيات</translation>
-    </message>
-    <message>
-        <source>Sensitivity to the exchange</source>
-        <translation>الحساسية للتبادل</translation>
-    </message>
-    <message>
-        <source>Sensitivity to the exchange (N-1)</source>
-        <translation>الحساسية للتبادل (N-1)</translation>
-    </message>
-    <message>
-        <source>Sequence line</source>
-        <translation>خط التسلسل</translation>
-    </message>
-    <message>
-        <source>Series</source>
-        <translation>التوالي</translation>
-    </message>
-    <message>
-        <source>Series reactance</source>
-        <translation>مفاعلة السلسلة</translation>
-    </message>
-    <message>
-        <source>Short circuit</source>
-        <translation>قصر الدائرة</translation>
-    </message>
-    <message>
-        <source>Short circuit active current</source>
-        <translation>التيار الفعال لقصر الدائرة</translation>
-    </message>
-    <message>
-        <source>Short circuit active current A</source>
-        <translation>التيار الفعال لقصر الدائرة A</translation>
-    </message>
-    <message>
-        <source>Short circuit active current B</source>
-        <translation>التيار الفعال لقصر الدائرة B</translation>
-    </message>
-    <message>
-        <source>Short circuit active current C</source>
-        <translation>التيار الفعال لقصر الدائرة C</translation>
-    </message>
-    <message>
-        <source>Short circuit active power</source>
-        <translation>القدرة الفعالة لقصر الدائرة</translation>
-    </message>
-    <message>
-        <source>Short circuit active power A</source>
-        <translation>القدرة الفعالة لقصر الدائرة A</translation>
-    </message>
-    <message>
-        <source>Short circuit active power B</source>
-        <translation>القدرة الفعالة لقصر الدائرة B</translation>
-    </message>
-    <message>
-        <source>Short circuit active power C</source>
-        <translation>القدرة الفعالة لقصر الدائرة C</translation>
-    </message>
-    <message>
-        <source>Short circuit event</source>
-        <translation>حدث قصر الدائرة</translation>
-    </message>
-    <message>
-        <source>Short circuit reactive current</source>
-        <translation>التيار التفاعلي لقصر الدائرة</translation>
-    </message>
-    <message>
-        <source>Short circuit reactive current A</source>
-        <translation>التيار التفاعلي لقصر الدائرة A</translation>
-    </message>
-    <message>
-        <source>Short circuit reactive current B</source>
-        <translation>التيار التفاعلي لقصر الدائرة B</translation>
-    </message>
-    <message>
-        <source>Short circuit reactive current C</source>
-        <translation>التيار التفاعلي لقصر الدائرة C</translation>
-    </message>
-    <message>
-        <source>Short circuit reactive power</source>
-        <translation>القدرة التفاعلية لقصر الدائرة</translation>
-    </message>
-    <message>
-        <source>Short circuit reactive power A</source>
-        <translation>القدرة التفاعلية لقصر الدائرة A</translation>
-    </message>
-    <message>
-        <source>Short circuit reactive power B</source>
-        <translation>القدرة التفاعلية لقصر الدائرة B</translation>
-    </message>
-    <message>
-        <source>Short circuit reactive power C</source>
-        <translation>القدرة التفاعلية لقصر الدائرة C</translation>
-    </message>
-    <message>
-        <source>Short-circuit information</source>
-        <translation>معلومات قصر الدائرة</translation>
-    </message>
-    <message>
-        <source>ShortCircuit</source>
-        <translation>قصر الدائرة</translation>
-    </message>
-    <message>
-        <source>Shunt</source>
-        <translation>Shunt</translation>
-    </message>
-    <message>
-        <source>Shunt like devices</source>
-        <translation>الأجهزة الشبيهة بالوصلة الفرعية</translation>
-    </message>
-    <message>
-        <source>Shunt neutral voltage</source>
-        <translation>جهد التعادل الفرعي</translation>
-    </message>
-    <message>
-        <source>Shunt reactive power</source>
-        <translation>القدرة التفاعلية الفرعية</translation>
-    </message>
-    <message>
-        <source>Shunt reactive power A</source>
-        <translation>القدرة التفاعلية الفرعية A</translation>
-    </message>
-    <message>
-        <source>Shunt reactive power B</source>
-        <translation>القدرة التفاعلية الفرعية B</translation>
-    </message>
-    <message>
-        <source>Shunt reactive power C</source>
-        <translation>القدرة التفاعلية الفرعية C</translation>
-    </message>
-    <message>
-        <source>Sigma + distances</source>
-        <translation>مسافات سيجما +</translation>
-    </message>
-    <message>
-        <source>Sigma Analysis</source>
-        <translation>تحليل سيجما</translation>
-    </message>
-    <message>
-        <source>Sigma distances</source>
-        <translation>مسافات سيجما</translation>
-    </message>
-    <message>
-        <source>Sigma imaginary</source>
-        <translation>سيجما التخيلي</translation>
-    </message>
-    <message>
-        <source>Sigma real</source>
-        <translation>سيجما الحقيقي</translation>
-    </message>
-    <message>
-        <source>SigmaAnalysis</source>
-        <translation>تحليل سيجما</translation>
-    </message>
-    <message>
-        <source>SimulationOptionsDevice</source>
-        <translation>خيارات المحاكاة للجهاز</translation>
-    </message>
-    <message>
-        <source>Slacks</source>
-        <translation>الأحمال المرجعية</translation>
-    </message>
-    <message>
-        <source>SmallSignalStability</source>
-        <translation>استقرار الإشارة الصغيرة</translation>
-    </message>
-    <message>
-        <source>Snapshot</source>
-        <translation>لقطة</translation>
-    </message>
-    <message>
-        <source>Special plots</source>
-        <translation>الرسوم البيانية الخاصة</translation>
-    </message>
-    <message>
-        <source>Spillage flow leaving</source>
-        <translation>تدفق التبديد المتبقي</translation>
-    </message>
-    <message>
-        <source>Srap used power</source>
-        <translation>الطاقة المستخدمة لـ Srap</translation>
-    </message>
-    <message>
-        <source>Stabilizer</source>
-        <translation>المثبت</translation>
-    </message>
-    <message>
-        <source>State Matrix</source>
-        <translation>مصفوفة الحالة</translation>
-    </message>
-    <message>
-        <source>State estimation</source>
-        <translation>تقدير الدولة</translation>
-    </message>
-    <message>
-        <source>StateEstimation</source>
-        <translation>تقدير الحالة</translation>
-    </message>
-    <message>
-        <source>Static Generator</source>
-        <translation>المولد الثابت</translation>
-    </message>
-    <message>
-        <source>Statistics</source>
-        <translation>الإحصائيات</translation>
-    </message>
-    <message>
-        <source>Std-dev contingency overloading</source>
-        <translation>الانحراف المعياري للحمل الزائد في حالة الطوارئ</translation>
-    </message>
-    <message>
-        <source>Stochastic Power Flow</source>
-        <translation>تدفق الطاقة العشوائي</translation>
-    </message>
-    <message>
-        <source>StochasticPowerFlow</source>
-        <translation>تدفق_الطاقة_العشوائي</translation>
-    </message>
-    <message>
-        <source>Substation</source>
-        <translation>محطة فرعية</translation>
-    </message>
-    <message>
-        <source>Substation analysis</source>
-        <translation>تحليل المحطة الفرعية</translation>
-    </message>
-    <message>
-        <source>Substation balance analysis</source>
-        <translation>تحليل توازن المحطة الفرعية</translation>
-    </message>
-    <message>
-        <source>Substation generation analysis</source>
-        <translation>تحليل توليد المحطة الفرعية</translation>
-    </message>
-    <message>
-        <source>Substation load analysis</source>
-        <translation>تحليل حمل المحطة الفرعية</translation>
-    </message>
-    <message>
-        <source>Switch</source>
-        <translation>مفتاح</translation>
-    </message>
-    <message>
-        <source>System</source>
-        <translation>النظام</translation>
-    </message>
-    <message>
-        <source>System emissions</source>
-        <translation>انبعاثات النظام</translation>
-    </message>
-    <message>
-        <source>System energy cost</source>
-        <translation>تكلفة طاقة النظام</translation>
-    </message>
-    <message>
-        <source>System energy total cost</source>
-        <translation>إجمالي تكلفة طاقة النظام</translation>
-    </message>
-    <message>
-        <source>System fuel consumption</source>
-        <translation>استهلاك وقود النظام</translation>
-    </message>
-    <message>
-        <source>Technology</source>
-        <translation>التكنولوجيا</translation>
-    </message>
-    <message>
-        <source>Technology Category</source>
-        <translation>فئة التكنولوجيا</translation>
-    </message>
-    <message>
-        <source>Technology Group</source>
-        <translation>مجموعة التكنولوجيا</translation>
-    </message>
-    <message>
-        <source>Technology plot</source>
-        <translation>رسم بياني للتكنولوجيا</translation>
-    </message>
-    <message>
-        <source>Template</source>
-        <translation>نموذج</translation>
-    </message>
-    <message>
-        <source>Templates</source>
-        <translation>القوالب</translation>
-    </message>
-    <message>
-        <source>Time</source>
-        <translation>الوقت</translation>
-    </message>
-    <message>
-        <source>Time series Contingency flow report (Branches)</source>
-        <translation>تقرير تدفق الطوارئ لسلسلة زمنية (الفروع)</translation>
-    </message>
-    <message>
-        <source>Time series base flow report</source>
-        <translation>تقرير التدفق الأساسي لسلسلة زمنية</translation>
-    </message>
-    <message>
-        <source>Time series branch monitoring logic report</source>
-        <translation>تقرير منطق مراقبة الفروع لسلسلة زمنية</translation>
-    </message>
-    <message>
-        <source>Time series contingency Branches report</source>
-        <translation>تقرير فروع الطوارئ لسلسلة زمنية</translation>
-    </message>
-    <message>
-        <source>Time series contingency flow report</source>
-        <translation>تقرير تدفق الطوارئ لسلسلة زمنية</translation>
-    </message>
-    <message>
-        <source>Time series contingency flow report. (Generation)</source>
-        <translation>تقرير تدفق الطوارئ لسلسلة زمنية. (التوليد)</translation>
-    </message>
-    <message>
-        <source>Time series contingency flow report. (Hvdc)</source>
-        <translation>تقرير تدفق الطوارئ لسلسلة زمنية. (HVDC)</translation>
-    </message>
-    <message>
-        <source>Time series critical Branches report</source>
-        <translation>تقرير الفروع الحرجة لسلسلة زمنية</translation>
-    </message>
-    <message>
-        <source>Time series generation delta power report</source>
-        <translation>تقرير طاقة التوليد دلتا لسلسلة زمنية</translation>
-    </message>
-    <message>
-        <source>Time series generation power report</source>
-        <translation>تقرير طاقة التوليد لسلسلة زمنية</translation>
-    </message>
-    <message>
-        <source>Time series sensitivity to the exchange report</source>
-        <translation>تقرير الحساسية للتبادل لسلسلة زمنية</translation>
-    </message>
-    <message>
-        <source>Time series worst sensitivity to the exchange report (N-1)</source>
-        <translation>تقرير أسوأ حساسية للتبادل لسلسلة زمنية (N-1)</translation>
-    </message>
-    <message>
-        <source>Topology Processor</source>
-        <translation>معالج الطوبولوجيا</translation>
-    </message>
-    <message>
-        <source>Topology reduction</source>
-        <translation>تقليل الطوبولوجيا</translation>
-    </message>
-    <message>
-        <source>Tower</source>
-        <translation>برج</translation>
-    </message>
-    <message>
-        <source>Transformer</source>
-        <translation>محول</translation>
-    </message>
-    <message>
-        <source>Transformer type</source>
-        <translation>نوع المحول</translation>
-    </message>
-    <message>
-        <source>Transformer3W</source>
-        <translation>المحول 3W</translation>
-    </message>
-    <message>
-        <source>TransformerNw</source>
-        <translation>المحول Nw</translation>
-    </message>
-    <message>
-        <source>Transient stability</source>
-        <translation>الاستقرار العابر</translation>
-    </message>
-    <message>
-        <source>UPFC</source>
-        <translation>UPFC</translation>
-    </message>
-    <message>
-        <source>Underground line</source>
-        <translation>الخط تحت الأرض</translation>
-    </message>
-    <message>
-        <source>V: Voltage module</source>
-        <translation>V: وحدة الجهد</translation>
-    </message>
-    <message>
-        <source>VA: Voltage module A</source>
-        <translation>VA: وحدة الجهد A</translation>
-    </message>
-    <message>
-        <source>VB: Voltage module B</source>
-        <translation>VB: وحدة الجهد B</translation>
-    </message>
-    <message>
-        <source>VC: Voltage module C</source>
-        <translation>VC: وحدة الجهد C</translation>
-    </message>
-    <message>
-        <source>VSC</source>
-        <translation>VSC</translation>
-    </message>
-    <message>
-        <source>Va Measurement</source>
-        <translation>قياس Va</translation>
-    </message>
-    <message>
-        <source>Var Factory</source>
-        <translation>مصنع المتغيرات</translation>
-    </message>
-    <message>
-        <source>Vm Measurement</source>
-        <translation>قياس الجهد</translation>
-    </message>
-    <message>
-        <source>Voltage angle (0)</source>
-        <translation>زاوية الجهد (0)</translation>
-    </message>
-    <message>
-        <source>Voltage angle (1)</source>
-        <translation>زاوية الجهد (1)</translation>
-    </message>
-    <message>
-        <source>Voltage angle (2)</source>
-        <translation>زاوية الجهد (2)</translation>
-    </message>
-    <message>
-        <source>Voltage collapse</source>
-        <translation>انهيار الجهد</translation>
-    </message>
-    <message>
-        <source>Voltage level</source>
-        <translation>مستوى الجهد</translation>
-    </message>
-    <message>
-        <source>Voltage level analysis</source>
-        <translation>تحليل مستوى الجهد</translation>
-    </message>
-    <message>
-        <source>Voltage level balance analysis</source>
-        <translation>تحليل توازن مستوى الجهد</translation>
-    </message>
-    <message>
-        <source>Voltage level generation analysis</source>
-        <translation>تحليل توليد مستوى الجهد</translation>
-    </message>
-    <message>
-        <source>Voltage level load analysis</source>
-        <translation>تحليل حمل مستوى الجهد</translation>
-    </message>
-    <message>
-        <source>Voltage level template</source>
-        <translation>قالب مستوى الجهد</translation>
-    </message>
-    <message>
-        <source>Voltage module (0)</source>
-        <translation>وحدة الجهد (0)</translation>
-    </message>
-    <message>
-        <source>Voltage module (1)</source>
-        <translation>وحدة الجهد (1)</translation>
-    </message>
-    <message>
-        <source>Voltage module (2)</source>
-        <translation>وحدة الجهد (2)</translation>
-    </message>
-    <message>
-        <source>Voltage plot</source>
-        <translation>رسم الجهد</translation>
-    </message>
-    <message>
-        <source>Vsc</source>
-        <translation>Vsc</translation>
-    </message>
-    <message>
-        <source>Vsc ODF</source>
-        <translation>Vsc ODF</translation>
-    </message>
-    <message>
-        <source>Vsc PTDF</source>
-        <translation>Vsc PTDF</translation>
-    </message>
-    <message>
-        <source>Vsc Pdc</source>
-        <translation>Vsc Pdc</translation>
-    </message>
-    <message>
-        <source>Vsc Vdc</source>
-        <translation>Vsc Vdc</translation>
-    </message>
-    <message>
-        <source>Vsc loading</source>
-        <translation>تحميل Vsc</translation>
-    </message>
-    <message>
-        <source>Vsc losses</source>
-        <translation>خسائر Vsc</translation>
-    </message>
-    <message>
-        <source>Vsc power "from" negative pole</source>
-        <translation>طاقة Vsc "من" القطب السالب</translation>
-    </message>
-    <message>
-        <source>Vsc power "from" positive pole</source>
-        <translation>طاقة Vsc "من" القطب الموجب</translation>
-    </message>
-    <message>
-        <source>Vsc power "to"</source>
-        <translation>طاقة Vsc "إلى"</translation>
-    </message>
-    <message>
-        <source>Vsc power "to" A</source>
-        <translation>طاقة Vsc "إلى" A</translation>
-    </message>
-    <message>
-        <source>Vsc power "to" B</source>
-        <translation>طاقة Vsc "إلى" B</translation>
-    </message>
-    <message>
-        <source>Vsc power "to" C</source>
-        <translation>طاقة Vsc "إلى" C</translation>
-    </message>
-    <message>
-        <source>When to make them plot</source>
-        <translation>متى يتم رسمها</translation>
-    </message>
-    <message>
-        <source>Winding</source>
-        <translation>ملف</translation>
-    </message>
-    <message>
-        <source>Wire</source>
-        <translation>السلك</translation>
-    </message>
-    <message>
-        <source>Zone</source>
-        <translation>المنطقة</translation>
-    </message>
-    <message>
-        <source>Zone analysis</source>
-        <translation>تحليل المنطقة</translation>
-    </message>
-    <message>
-        <source>Zone balance analysis</source>
-        <translation>تحليل توازن المنطقة</translation>
-    </message>
-    <message>
-        <source>Zone generation analysis</source>
-        <translation>تحليل توليد المنطقة</translation>
-    </message>
-    <message>
-        <source>Zone load analysis</source>
-        <translation>تحليل حمل المنطقة</translation>
-    </message>
-    <message>
-        <source>export all</source>
-        <translation>تصدير الكل</translation>
-    </message>
-    <message>
-        <source>file open</source>
-        <translation>فتح الملف</translation>
-    </message>
-    <message>
-        <source>file save</source>
-        <translation>حفظ الملف</translation>
-    </message>
-    <message>
-        <source>loading avg</source>
-        <translation>متوسط التحميل</translation>
-    </message>
-    <message>
-        <source>m: Tap module</source>
-        <translation>m: وحدة التوصيل</translation>
-    </message>
-    <message>
-        <source>ΔP: Active power increment</source>
-        <translation>ΔP: زيادة الطاقة الفعالة</translation>
-    </message>
-    <message>
-        <source>ΔV: Voltage modules drop</source>
-        <translation>ΔV: انخفاض وحدات الجهد</translation>
-    </message>
-    <message>
-        <source>ΔV: Voltage modules drop A</source>
-        <translation>ΔV: انخفاض وحدات الجهد A</translation>
-    </message>
-    <message>
-        <source>ΔV: Voltage modules drop B</source>
-        <translation>ΔV: انخفاض وحدات الجهد B</translation>
-    </message>
-    <message>
-        <source>ΔV: Voltage modules drop C</source>
-        <translation>ΔV: انخفاض وحدات الجهد C</translation>
-    </message>
-    <message>
-        <source>Δθ: Voltage angles drop</source>
-        <translation>Δθ: انخفاض زوايا الجهد</translation>
-    </message>
-    <message>
-        <source>Δθ: Voltage angles drop A</source>
-        <translation>Δθ: انخفاض زوايا الجهد A</translation>
-    </message>
-    <message>
-        <source>Δθ: Voltage angles drop B</source>
-        <translation>Δθ: انخفاض زوايا الجهد B</translation>
-    </message>
-    <message>
-        <source>Δθ: Voltage angles drop C</source>
-        <translation>Δθ: انخفاض زوايا الجهد C</translation>
-    </message>
-    <message>
-        <source>θ: Voltage angle</source>
-        <translation>θ: زاوية الجهد</translation>
-    </message>
-    <message>
-        <source>θA: Voltage angle A</source>
-        <translation>θA: زاوية الجهد A</translation>
-    </message>
-    <message>
-        <source>θB: Voltage angle B</source>
-        <translation>θB: زاوية الجهد B</translation>
-    </message>
-    <message>
-        <source>θC: Voltage angle C</source>
-        <translation>θC: زاوية الجهد C</translation>
-    </message>
-    <message>
-        <source>𝜏: Tap angle</source>
-        <translation>𝜏: Tap angle</translation>
     </message>
 </context>
 </TS>

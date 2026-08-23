@@ -149,7 +149,7 @@ li.checked::マーカー { content: &quot;\2612&quot;; }&lt;/style&gt;&lt;/head&
     <message>
         <location filename="../DeviceEditors/AdmittanceMatrixEditor/admittance_matrix_editor_gui.ui" line="130"/>
         <source>Accept</source>
-        <translation type="unfinished">受け入れる</translation>
+        <translation>受け入れる</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/AdmittanceMatrixEditor/admittance_matrix_editor_gui.ui" line="148"/>
@@ -1417,7 +1417,7 @@ li.checked::マーカー { content: &quot;\2612&quot;; }&lt;/style&gt;&lt;/head&
     <message>
         <location filename="../FileDialogues/CoordinatesInput/coordinates_input_gui.ui" line="108"/>
         <source>Target</source>
-        <translation type="unfinished">ターゲット</translation>
+        <translation>ターゲット</translation>
     </message>
     <message>
         <location filename="../FileDialogues/CoordinatesInput/coordinates_input_gui.ui" line="141"/>
@@ -2436,7 +2436,7 @@ Cancel and retry?</source>
     <message>
         <location filename="../DeviceEditors/LineLocationsEditor/line_locations_editor_gui.ui" line="19"/>
         <source>Add point</source>
-        <translation type="unfinished">ポイントを追加</translation>
+        <translation>ポイントを追加</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/LineLocationsEditor/line_locations_editor_gui.ui" line="33"/>
@@ -2456,7 +2456,7 @@ Cancel and retry?</source>
     <message>
         <location filename="../DeviceEditors/LineLocationsEditor/line_locations_editor_gui.ui" line="75"/>
         <source>Copy</source>
-        <translation type="unfinished">コピー</translation>
+        <translation>コピー</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/LineLocationsEditor/line_locations_editor_gui.ui" line="89"/>
@@ -3073,7 +3073,7 @@ Cancel and retry?</source>
     <message>
         <location filename="../SigmaAnalysis/sigma_analysis_gui.ui" line="41"/>
         <source>Method</source>
-        <translation type="unfinished">方法</translation>
+        <translation>方法</translation>
     </message>
     <message>
         <location filename="../SigmaAnalysis/sigma_analysis_gui.ui" line="49"/>
@@ -3118,12 +3118,12 @@ Cancel and retry?</source>
     <message>
         <location filename="../SigmaAnalysis/sigma_analysis_gui.ui" line="110"/>
         <source>Distributed slack</source>
-        <translation type="unfinished">分散スラック</translation>
+        <translation>分散スラック</translation>
     </message>
     <message>
         <location filename="../SigmaAnalysis/sigma_analysis_gui.ui" line="130"/>
         <source>...</source>
-        <translation type="unfinished">...</translation>
+        <translation>...</translation>
     </message>
     <message>
         <location filename="../SigmaAnalysis/sigma_analysis_gui.ui" line="144"/>
@@ -3133,7 +3133,7 @@ Cancel and retry?</source>
     <message>
         <location filename="../SigmaAnalysis/sigma_analysis_gui.ui" line="179"/>
         <source>Data</source>
-        <translation type="unfinished">データ</translation>
+        <translation>データ</translation>
     </message>
 </context>
 <context>
@@ -3828,7 +3828,7 @@ Monte Carlo power flow results:</source>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="189"/>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="206"/>
         <source>-</source>
-        <translation type="unfinished">-</translation>
+        <translation>-</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="114"/>
@@ -3863,7 +3863,7 @@ Monte Carlo power flow results:</source>
     <message>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="219"/>
         <source>Actions</source>
-        <translation type="unfinished">アクション</translation>
+        <translation>アクション</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="225"/>
@@ -3873,7 +3873,7 @@ Monte Carlo power flow results:</source>
     <message>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="246"/>
         <source>Refresh</source>
-        <translation type="unfinished">リフレッシュ</translation>
+        <translation>リフレッシュ</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="249"/>
@@ -4573,6 +4573,2205 @@ Monte Carlo power flow results:</source>
     <message>
         <source>No effect, select diagrams or database</source>
         <translation type="vanished">影響はありません。図またはデータベースを選択してください</translation>
+    </message>
+</context>
+<context>
+    <name>VeraGridTreeLabels</name>
+    <message>
+        <source>ATC Report</source>
+        <translation>ATCレポート</translation>
+    </message>
+    <message>
+        <source>Active power flow per area</source>
+        <translation>エリアごとの有効電力潮流</translation>
+    </message>
+    <message>
+        <source>Any line template</source>
+        <translation>任意の線テンプレート</translation>
+    </message>
+    <message>
+        <source>Area</source>
+        <translation>エリア</translation>
+    </message>
+    <message>
+        <source>Area analysis</source>
+        <translation>エリア解析</translation>
+    </message>
+    <message>
+        <source>Area balance analysis</source>
+        <translation>エリアバランス解析</translation>
+    </message>
+    <message>
+        <source>Area generation analysis</source>
+        <translation>エリア発電解析</translation>
+    </message>
+    <message>
+        <source>Area load analysis</source>
+        <translation>エリア負荷解析</translation>
+    </message>
+    <message>
+        <source>Associations</source>
+        <translation>協会</translation>
+    </message>
+    <message>
+        <source>Available transfer capacity</source>
+        <translation>利用可能な転送容量</translation>
+    </message>
+    <message>
+        <source>Available transfer capacity (N)</source>
+        <translation>利用可能送電容量 (N)</translation>
+    </message>
+    <message>
+        <source>Available transfer capacity (final)</source>
+        <translation>利用可能送電容量 (最終)</translation>
+    </message>
+    <message>
+        <source>Available transfer capacity time series</source>
+        <translation>利用可能送電容量時系列</translation>
+    </message>
+    <message>
+        <source>AvailableTransferCapacity</source>
+        <translation>利用可能送電容量</translation>
+    </message>
+    <message>
+        <source>AvailableTransferCapacityTimeSeries</source>
+        <translation>利用可能送電容量時系列</translation>
+    </message>
+    <message>
+        <source>Balance plot</source>
+        <translation>バランスプロット</translation>
+    </message>
+    <message>
+        <source>Base flow report</source>
+        <translation>ベース潮流レポート</translation>
+    </message>
+    <message>
+        <source>Batteries</source>
+        <translation>バッテリー</translation>
+    </message>
+    <message>
+        <source>Battery</source>
+        <translation>バッテリー</translation>
+    </message>
+    <message>
+        <source>Battery energy</source>
+        <translation>バッテリーエネルギー</translation>
+    </message>
+    <message>
+        <source>Battery invested</source>
+        <translation>バッテリー設備投資</translation>
+    </message>
+    <message>
+        <source>Battery power</source>
+        <translation>バッテリー出力</translation>
+    </message>
+    <message>
+        <source>Battery reactive power</source>
+        <translation>バッテリー無効電力</translation>
+    </message>
+    <message>
+        <source>Battery reactive power A</source>
+        <translation>バッテリー無効電力 A</translation>
+    </message>
+    <message>
+        <source>Battery reactive power B</source>
+        <translation>バッテリー無効電力 B</translation>
+    </message>
+    <message>
+        <source>Battery reactive power C</source>
+        <translation>バッテリー無効電力 C</translation>
+    </message>
+    <message>
+        <source>Beq: Equivalent susceptance</source>
+        <translation>Beq: 等価サセプタンス</translation>
+    </message>
+    <message>
+        <source>Branch</source>
+        <translation>枝</translation>
+    </message>
+    <message>
+        <source>Branch Loading</source>
+        <translation>枝負荷</translation>
+    </message>
+    <message>
+        <source>Branch Loading A</source>
+        <translation>枝負荷 A</translation>
+    </message>
+    <message>
+        <source>Branch Loading B</source>
+        <translation>枝負荷 B</translation>
+    </message>
+    <message>
+        <source>Branch Loading C</source>
+        <translation>枝負荷 C</translation>
+    </message>
+    <message>
+        <source>Branch active current &quot;from&quot; (0)</source>
+        <translation>枝有効電流「from」 (0)</translation>
+    </message>
+    <message>
+        <source>Branch active current &quot;from&quot; (1)</source>
+        <translation>枝有効電流「from」 (1)</translation>
+    </message>
+    <message>
+        <source>Branch active current &quot;from&quot; (2)</source>
+        <translation>枝有効電流「from」 (2)</translation>
+    </message>
+    <message>
+        <source>Branch active losses (0)</source>
+        <translation>枝有効損失 (0)</translation>
+    </message>
+    <message>
+        <source>Branch active losses (1)</source>
+        <translation>枝有効損失 (1)</translation>
+    </message>
+    <message>
+        <source>Branch active losses (2)</source>
+        <translation>枝有効損失 (2)</translation>
+    </message>
+    <message>
+        <source>Branch active power &quot;from&quot; (0)</source>
+        <translation>枝有効電力「from」 (0)</translation>
+    </message>
+    <message>
+        <source>Branch active power &quot;from&quot; (1)</source>
+        <translation>枝有効電力「from」 (1)</translation>
+    </message>
+    <message>
+        <source>Branch active power &quot;from&quot; (2)</source>
+        <translation>枝有効電力「from」 (2)</translation>
+    </message>
+    <message>
+        <source>Branch group</source>
+        <translation>枝グループ</translation>
+    </message>
+    <message>
+        <source>Branch loading (0)</source>
+        <translation>枝負荷 (0)</translation>
+    </message>
+    <message>
+        <source>Branch loading (1)</source>
+        <translation>枝負荷 (1)</translation>
+    </message>
+    <message>
+        <source>Branch loading (2)</source>
+        <translation>枝負荷 (2)</translation>
+    </message>
+    <message>
+        <source>Branch losses</source>
+        <translation>枝損失</translation>
+    </message>
+    <message>
+        <source>Branch monitoring logic</source>
+        <translation>枝監視ロジック</translation>
+    </message>
+    <message>
+        <source>Branch overloads</source>
+        <translation>枝過負荷</translation>
+    </message>
+    <message>
+        <source>Branch overloads cost</source>
+        <translation>枝過負荷コスト</translation>
+    </message>
+    <message>
+        <source>Branch power CDF</source>
+        <translation>枝電力 CDF</translation>
+    </message>
+    <message>
+        <source>Branch power avg</source>
+        <translation>枝電力平均</translation>
+    </message>
+    <message>
+        <source>Branch power std</source>
+        <translation>枝電力標準偏差</translation>
+    </message>
+    <message>
+        <source>Branch reactive current &quot;from&quot; (0)</source>
+        <translation>枝無効電流「from」 (0)</translation>
+    </message>
+    <message>
+        <source>Branch reactive current &quot;from&quot; (1)</source>
+        <translation>枝の無効電流「から」 (1)</translation>
+    </message>
+    <message>
+        <source>Branch reactive current &quot;from&quot; (2)</source>
+        <translation>枝の無効電流「から」 (2)</translation>
+    </message>
+    <message>
+        <source>Branch reactive losses (0)</source>
+        <translation>枝の無効損失 (0)</translation>
+    </message>
+    <message>
+        <source>Branch reactive losses (1)</source>
+        <translation>枝の無効電力損失 (1)</translation>
+    </message>
+    <message>
+        <source>Branch reactive losses (2)</source>
+        <translation>枝の無効電力損失 (2)</translation>
+    </message>
+    <message>
+        <source>Branch reactive power &quot;from&quot; (0)</source>
+        <translation>枝の無効電力「から」 (0)</translation>
+    </message>
+    <message>
+        <source>Branch reactive power &quot;from&quot; (1)</source>
+        <translation>Branch reactive power &quot;from&quot; (1)</translation>
+    </message>
+    <message>
+        <source>Branch reactive power &quot;from&quot; (2)</source>
+        <translation>Branch reactive power &quot;from&quot; (2)</translation>
+    </message>
+    <message>
+        <source>Branch template</source>
+        <translation>Branch template</translation>
+    </message>
+    <message>
+        <source>Branches</source>
+        <translation>Branches</translation>
+    </message>
+    <message>
+        <source>Bus</source>
+        <translation>母線</translation>
+    </message>
+    <message>
+        <source>Bus nodal capacity</source>
+        <translation>Bus nodal capacity</translation>
+    </message>
+    <message>
+        <source>Bus power</source>
+        <translation>Bus power</translation>
+    </message>
+    <message>
+        <source>Bus power CDF</source>
+        <translation>バス電力累積分布関数</translation>
+    </message>
+    <message>
+        <source>Bus voltage CDF</source>
+        <translation>バス電圧累積分布関数</translation>
+    </message>
+    <message>
+        <source>Bus voltage avg</source>
+        <translation>バス電圧平均</translation>
+    </message>
+    <message>
+        <source>Bus voltage sensitivity</source>
+        <translation>バス電圧感度</translation>
+    </message>
+    <message>
+        <source>Bus voltage std</source>
+        <translation>バス電圧標準偏差</translation>
+    </message>
+    <message>
+        <source>BusBar</source>
+        <translation>バスバー</translation>
+    </message>
+    <message>
+        <source>BusOrBranch</source>
+        <translation>バスまたは分岐</translation>
+    </message>
+    <message>
+        <source>CAIDI</source>
+        <translation>CAIDI</translation>
+    </message>
+    <message>
+        <source>Cascade</source>
+        <translation>カスケード</translation>
+    </message>
+    <message>
+        <source>Catalogue</source>
+        <translation>カタログ</translation>
+    </message>
+    <message>
+        <source>Catalogue optimization</source>
+        <translation>カタログ最適化</translation>
+    </message>
+    <message>
+        <source>Circuit</source>
+        <translation>回路</translation>
+    </message>
+    <message>
+        <source>Clean room</source>
+        <translation>クリーンルーム</translation>
+    </message>
+    <message>
+        <source>Clustering</source>
+        <translation>クラスタリング</translation>
+    </message>
+    <message>
+        <source>Clustering Analysis</source>
+        <translation>クラスタリング分析</translation>
+    </message>
+    <message>
+        <source>Clustering time series report</source>
+        <translation>クラスター時系列レポート</translation>
+    </message>
+    <message>
+        <source>Combinations</source>
+        <translation>組み合わせ</translation>
+    </message>
+    <message>
+        <source>Community</source>
+        <translation>コミュニティ</translation>
+    </message>
+    <message>
+        <source>Community analysis</source>
+        <translation>コミュニティ分析</translation>
+    </message>
+    <message>
+        <source>Community balance analysis</source>
+        <translation>コミュニティバランス分析</translation>
+    </message>
+    <message>
+        <source>Community generation analysis</source>
+        <translation>コミュニティ発電分析</translation>
+    </message>
+    <message>
+        <source>Community load analysis</source>
+        <translation>コミュニティ負荷分析</translation>
+    </message>
+    <message>
+        <source>Contingencies</source>
+        <translation>不測の事態</translation>
+    </message>
+    <message>
+        <source>Contingencies report</source>
+        <translation>事故レポート</translation>
+    </message>
+    <message>
+        <source>Contingencies statistical report</source>
+        <translation>事故統計レポート</translation>
+    </message>
+    <message>
+        <source>Contingency</source>
+        <translation>事故</translation>
+    </message>
+    <message>
+        <source>Contingency Group</source>
+        <translation>事故グループ</translation>
+    </message>
+    <message>
+        <source>Contingency analysis</source>
+        <translation>不測の事態の分析</translation>
+    </message>
+    <message>
+        <source>Contingency analysis time series</source>
+        <translation>不測の事態分析の時系列</translation>
+    </message>
+    <message>
+        <source>Contingency flow</source>
+        <translation>事故潮流</translation>
+    </message>
+    <message>
+        <source>Contingency flow report</source>
+        <translation>事故潮流レポート</translation>
+    </message>
+    <message>
+        <source>Contingency frequency</source>
+        <translation>事故頻度</translation>
+    </message>
+    <message>
+        <source>Contingency loading</source>
+        <translation>事故負荷</translation>
+    </message>
+    <message>
+        <source>Contingency overload sum</source>
+        <translation>事故過負荷合計</translation>
+    </message>
+    <message>
+        <source>Contingency relative frequency</source>
+        <translation>事故相対頻度</translation>
+    </message>
+    <message>
+        <source>ContingencyAnalysis</source>
+        <translation>事故分析</translation>
+    </message>
+    <message>
+        <source>ContingencyAnalysisTimeSeries</source>
+        <translation>事故分析時系列</translation>
+    </message>
+    <message>
+        <source>ContinuationPowerFlow</source>
+        <translation>継続潮流計算</translation>
+    </message>
+    <message>
+        <source>Controllable shunt</source>
+        <translation>制御可能なシャント</translation>
+    </message>
+    <message>
+        <source>Country</source>
+        <translation>国</translation>
+    </message>
+    <message>
+        <source>Country analysis</source>
+        <translation>国分析</translation>
+    </message>
+    <message>
+        <source>Country balance analysis</source>
+        <translation>国バランス分析</translation>
+    </message>
+    <message>
+        <source>Country generation analysis</source>
+        <translation>国発電分析</translation>
+    </message>
+    <message>
+        <source>Country load analysis</source>
+        <translation>国負荷分析</translation>
+    </message>
+    <message>
+        <source>Current injection</source>
+        <translation>電流注入</translation>
+    </message>
+    <message>
+        <source>DC line</source>
+        <translation>DC回線</translation>
+    </message>
+    <message>
+        <source>Delete and reduce</source>
+        <translation>削除と削減</translation>
+    </message>
+    <message>
+        <source>Design View</source>
+        <translation>設計ビュー</translation>
+    </message>
+    <message>
+        <source>Diagram</source>
+        <translation>ダイアグラム</translation>
+    </message>
+    <message>
+        <source>Dispatch</source>
+        <translation>ディスパッチ</translation>
+    </message>
+    <message>
+        <source>Dynamic</source>
+        <translation>動的</translation>
+    </message>
+    <message>
+        <source>Dynamic Model Host</source>
+        <translation>動的モデルホスト</translation>
+    </message>
+    <message>
+        <source>EMT Dynamic</source>
+        <translation>EMT動的</translation>
+    </message>
+    <message>
+        <source>EMT Small Signal stability</source>
+        <translation>EMT小信号安定度</translation>
+    </message>
+    <message>
+        <source>EMT template</source>
+        <translation>EMTテンプレート</translation>
+    </message>
+    <message>
+        <source>ENS</source>
+        <translation>ENS</translation>
+    </message>
+    <message>
+        <source>Emission</source>
+        <translation>排出量</translation>
+    </message>
+    <message>
+        <source>Emt Event</source>
+        <translation>EMTイベント</translation>
+    </message>
+    <message>
+        <source>Emt Events Group</source>
+        <translation>EMTイベントグループ</translation>
+    </message>
+    <message>
+        <source>EmtSimulation</source>
+        <translation>EMTシミュレーション</translation>
+    </message>
+    <message>
+        <source>Error</source>
+        <translation>エラー</translation>
+    </message>
+    <message>
+        <source>Evaluation report</source>
+        <translation>評価レポート</translation>
+    </message>
+    <message>
+        <source>Exciter</source>
+        <translation>エキサイタ</translation>
+    </message>
+    <message>
+        <source>External grid</source>
+        <translation>外部系統</translation>
+    </message>
+    <message>
+        <source>FMU template</source>
+        <translation>FMUテンプレート</translation>
+    </message>
+    <message>
+        <source>Facility</source>
+        <translation>設備</translation>
+    </message>
+    <message>
+        <source>Flow Reports</source>
+        <translation>フローレポート</translation>
+    </message>
+    <message>
+        <source>Flow circulating in the device</source>
+        <translation>機器内を循環する流れ</translation>
+    </message>
+    <message>
+        <source>Flow entering the node</source>
+        <translation>ノードに入る流れ</translation>
+    </message>
+    <message>
+        <source>Flow exiting the node</source>
+        <translation>ノードから出る流れ</translation>
+    </message>
+    <message>
+        <source>Flow from the P2X</source>
+        <translation>P2Xからの流れ</translation>
+    </message>
+    <message>
+        <source>Flow in the river</source>
+        <translation>河川内の流れ</translation>
+    </message>
+    <message>
+        <source>Fluid</source>
+        <translation>流体</translation>
+    </message>
+    <message>
+        <source>Fluid Injection</source>
+        <translation>流体注入</translation>
+    </message>
+    <message>
+        <source>Fluid P2X</source>
+        <translation>P2X流体</translation>
+    </message>
+    <message>
+        <source>Fluid P2Xs</source>
+        <translation>P2X流体群</translation>
+    </message>
+    <message>
+        <source>Fluid Pump</source>
+        <translation>流体ポンプ</translation>
+    </message>
+    <message>
+        <source>Fluid Turbine</source>
+        <translation>流体タービン</translation>
+    </message>
+    <message>
+        <source>Fluid injections</source>
+        <translation>流体注入</translation>
+    </message>
+    <message>
+        <source>Fluid node</source>
+        <translation>流体ノード</translation>
+    </message>
+    <message>
+        <source>Fluid nodes</source>
+        <translation>流体ノード</translation>
+    </message>
+    <message>
+        <source>Fluid path</source>
+        <translation>流体経路</translation>
+    </message>
+    <message>
+        <source>Fluid paths</source>
+        <translation>流体経路群</translation>
+    </message>
+    <message>
+        <source>Fluid pumps</source>
+        <translation>流体ポンプ</translation>
+    </message>
+    <message>
+        <source>Fluid turbines</source>
+        <translation>流体タービン</translation>
+    </message>
+    <message>
+        <source>Frequency</source>
+        <translation>頻度</translation>
+    </message>
+    <message>
+        <source>Fuel</source>
+        <translation>燃料</translation>
+    </message>
+    <message>
+        <source>Generation delta slacks</source>
+        <translation>発電デルタスラック</translation>
+    </message>
+    <message>
+        <source>Generation deltas</source>
+        <translation>発電デルタ</translation>
+    </message>
+    <message>
+        <source>Generator</source>
+        <translation>ジェネレータ</translation>
+    </message>
+    <message>
+        <source>Generator Emission</source>
+        <translation>発電機排出量</translation>
+    </message>
+    <message>
+        <source>Generator Fuel</source>
+        <translation>発電機燃料</translation>
+    </message>
+    <message>
+        <source>Generator Technology</source>
+        <translation>発電機技術</translation>
+    </message>
+    <message>
+        <source>Generator cost</source>
+        <translation>発電機コスト</translation>
+    </message>
+    <message>
+        <source>Generator emissions</source>
+        <translation>発電機排出量</translation>
+    </message>
+    <message>
+        <source>Generator fuels</source>
+        <translation>発電機燃料</translation>
+    </message>
+    <message>
+        <source>Generator invested</source>
+        <translation>発電機投資額</translation>
+    </message>
+    <message>
+        <source>Generator power</source>
+        <translation>発電機出力</translation>
+    </message>
+    <message>
+        <source>Generator producing</source>
+        <translation>発電中</translation>
+    </message>
+    <message>
+        <source>Generator reactive power</source>
+        <translation>発電機無効電力</translation>
+    </message>
+    <message>
+        <source>Generator reactive power A</source>
+        <translation>発電機無効電力 A</translation>
+    </message>
+    <message>
+        <source>Generator reactive power B</source>
+        <translation>発電機無効電力 B</translation>
+    </message>
+    <message>
+        <source>Generator reactive power C</source>
+        <translation>発電機無効電力 C</translation>
+    </message>
+    <message>
+        <source>Generator reserve</source>
+        <translation>発電機予備力</translation>
+    </message>
+    <message>
+        <source>Generator shedding</source>
+        <translation>発電機脱落</translation>
+    </message>
+    <message>
+        <source>Generator shutting down</source>
+        <translation>発電機停止中</translation>
+    </message>
+    <message>
+        <source>Generator starting up</source>
+        <translation>発電機起動中</translation>
+    </message>
+    <message>
+        <source>Generators</source>
+        <translation>発電機</translation>
+    </message>
+    <message>
+        <source>Generic Area</source>
+        <translation>一般エリア</translation>
+    </message>
+    <message>
+        <source>Governor</source>
+        <translation>調速機</translation>
+    </message>
+    <message>
+        <source>Groups</source>
+        <translation>グループ</translation>
+    </message>
+    <message>
+        <source>HVDC Line</source>
+        <translation>HVDC回線</translation>
+    </message>
+    <message>
+        <source>HVDC ODF</source>
+        <translation>HVDC ODF</translation>
+    </message>
+    <message>
+        <source>HVDC PTDF</source>
+        <translation>HVDC PTDF</translation>
+    </message>
+    <message>
+        <source>HVDC loading</source>
+        <translation>HVDC負荷</translation>
+    </message>
+    <message>
+        <source>HVDC losses</source>
+        <translation>HVDC損失</translation>
+    </message>
+    <message>
+        <source>HVDC overloads</source>
+        <translation>HVDC過負荷</translation>
+    </message>
+    <message>
+        <source>HVDC power &quot;from&quot;</source>
+        <translation>HVDC電力「から」</translation>
+    </message>
+    <message>
+        <source>HVDC power &quot;from&quot; A</source>
+        <translation>HVDC電力「から」A</translation>
+    </message>
+    <message>
+        <source>HVDC power &quot;from&quot; B</source>
+        <translation>HVDC電力「から」B</translation>
+    </message>
+    <message>
+        <source>HVDC power &quot;from&quot; C</source>
+        <translation>HVDC電力「から」C</translation>
+    </message>
+    <message>
+        <source>HVDC power &quot;to&quot;</source>
+        <translation>HVDC電力「へ」</translation>
+    </message>
+    <message>
+        <source>HVDC power &quot;to&quot; A</source>
+        <translation>HVDC電力「へ」A</translation>
+    </message>
+    <message>
+        <source>HVDC power &quot;to&quot; B</source>
+        <translation>HVDC電力「へ」B</translation>
+    </message>
+    <message>
+        <source>HVDC power &quot;to&quot; C</source>
+        <translation>HVDC電力「へ」C</translation>
+    </message>
+    <message>
+        <source>Hvdc</source>
+        <translation>Hvdc</translation>
+    </message>
+    <message>
+        <source>If Measurement</source>
+        <translation>電流測定</translation>
+    </message>
+    <message>
+        <source>Iif: Reactive current &quot;from&quot;</source>
+        <translation>Iif: 無効電流「から」</translation>
+    </message>
+    <message>
+        <source>Iif: Reactive current &quot;from&quot; A</source>
+        <translation>Iif: 無効電流「から」A</translation>
+    </message>
+    <message>
+        <source>Iif: Reactive current &quot;from&quot; B</source>
+        <translation>Iif: 無効電流「から」B</translation>
+    </message>
+    <message>
+        <source>Iif: Reactive current &quot;from&quot; C</source>
+        <translation>Iif: 無効電流「から」C</translation>
+    </message>
+    <message>
+        <source>Iit: Reactive current &quot;to&quot;</source>
+        <translation>Iit: 無効電流「へ」</translation>
+    </message>
+    <message>
+        <source>Iit: Reactive current &quot;to&quot; A</source>
+        <translation>Iit: 無効電流「へ」A</translation>
+    </message>
+    <message>
+        <source>Iit: Reactive current &quot;to&quot; B</source>
+        <translation>Iit: 無効電流「へ」B</translation>
+    </message>
+    <message>
+        <source>Iit: Reactive current &quot;to&quot; C</source>
+        <translation>Iit: 無効電流「へ」C</translation>
+    </message>
+    <message>
+        <source>Information</source>
+        <translation>情報</translation>
+    </message>
+    <message>
+        <source>Injections</source>
+        <translation>注入</translation>
+    </message>
+    <message>
+        <source>Inputs Analysis</source>
+        <translation>入力解析</translation>
+    </message>
+    <message>
+        <source>InputsAnalysis</source>
+        <translation>入力解析</translation>
+    </message>
+    <message>
+        <source>Inter-Area exchange</source>
+        <translation>エリア間交換</translation>
+    </message>
+    <message>
+        <source>Inter-space branch loading</source>
+        <translation>エリア間枝負荷</translation>
+    </message>
+    <message>
+        <source>Inter-space branch power</source>
+        <translation>エリア間枝電力</translation>
+    </message>
+    <message>
+        <source>InterAggregationInfo</source>
+        <translation>エリア間集約情報</translation>
+    </message>
+    <message>
+        <source>Investment</source>
+        <translation>投資</translation>
+    </message>
+    <message>
+        <source>InvestmentEvaluations</source>
+        <translation>投資評価</translation>
+    </message>
+    <message>
+        <source>Investments</source>
+        <translation>投資</translation>
+    </message>
+    <message>
+        <source>Investments Group</source>
+        <translation>投資グループ</translation>
+    </message>
+    <message>
+        <source>Investments evaluation</source>
+        <translation>投資評価</translation>
+    </message>
+    <message>
+        <source>Irf: Active current &quot;from&quot;</source>
+        <translation>Irf: 有効電流「から」</translation>
+    </message>
+    <message>
+        <source>Irf: Active current &quot;from&quot; A</source>
+        <translation>Irf: 有効電流「から」A</translation>
+    </message>
+    <message>
+        <source>Irf: Active current &quot;from&quot; B</source>
+        <translation>Irf: 有効電流「から」B</translation>
+    </message>
+    <message>
+        <source>Irf: Active current &quot;from&quot; C</source>
+        <translation>Irf: 有効電流「から」C</translation>
+    </message>
+    <message>
+        <source>Irt: Active current &quot;to&quot;</source>
+        <translation>Irt: 有効電流「へ」</translation>
+    </message>
+    <message>
+        <source>Irt: Active current &quot;to&quot; A</source>
+        <translation>Irt: A相への有効電流</translation>
+    </message>
+    <message>
+        <source>Irt: Active current &quot;to&quot; B</source>
+        <translation>Irt: B相への有効電流</translation>
+    </message>
+    <message>
+        <source>Irt: Active current &quot;to&quot; C</source>
+        <translation>Irt: C相への有効電流</translation>
+    </message>
+    <message>
+        <source>It Measurement</source>
+        <translation>It測定</translation>
+    </message>
+    <message>
+        <source>Iterations plot</source>
+        <translation>反復回数プロット</translation>
+    </message>
+    <message>
+        <source>LODF</source>
+        <translation>LODF</translation>
+    </message>
+    <message>
+        <source>LOLE</source>
+        <translation>LOLE</translation>
+    </message>
+    <message>
+        <source>LOLET</source>
+        <translation>LOLET</translation>
+    </message>
+    <message>
+        <source>LOLF</source>
+        <translation>LOLF</translation>
+    </message>
+    <message>
+        <source>LOLFT</source>
+        <translation>LOLFT</translation>
+    </message>
+    <message>
+        <source>Latin Hypercube</source>
+        <translation>ラテン超立方体</translation>
+    </message>
+    <message>
+        <source>Line</source>
+        <translation>ライン</translation>
+    </message>
+    <message>
+        <source>Line Location</source>
+        <translation>送電線配置</translation>
+    </message>
+    <message>
+        <source>Line Locations</source>
+        <translation>送電線配置群</translation>
+    </message>
+    <message>
+        <source>Line Template</source>
+        <translation>送電線テンプレート</translation>
+    </message>
+    <message>
+        <source>Linear analysis</source>
+        <translation>線形解析</translation>
+    </message>
+    <message>
+        <source>Linear analysis time series</source>
+        <translation>線形解析時系列</translation>
+    </message>
+    <message>
+        <source>LinearAnalysis</source>
+        <translation>線形解析</translation>
+    </message>
+    <message>
+        <source>LinearAnalysisTimeSeries</source>
+        <translation>線形解析時系列</translation>
+    </message>
+    <message>
+        <source>Load</source>
+        <translation>負荷</translation>
+    </message>
+    <message>
+        <source>Load like</source>
+        <translation>負荷類似</translation>
+    </message>
+    <message>
+        <source>Load neutral voltage</source>
+        <translation>負荷中性点電圧</translation>
+    </message>
+    <message>
+        <source>Load power</source>
+        <translation>負荷電力</translation>
+    </message>
+    <message>
+        <source>Load shedding</source>
+        <translation>負荷遮断</translation>
+    </message>
+    <message>
+        <source>Load shedding cost</source>
+        <translation>負荷遮断コスト</translation>
+    </message>
+    <message>
+        <source>Loading CDF</source>
+        <translation>負荷分布累積分布関数 (CDF)</translation>
+    </message>
+    <message>
+        <source>Loading from the base situation ($\lambda$)</source>
+        <translation>ベース状況からの負荷（$\lambda$）</translation>
+    </message>
+    <message>
+        <source>Loading std</source>
+        <translation>負荷標準偏差</translation>
+    </message>
+    <message>
+        <source>Loads</source>
+        <translation>負荷</translation>
+    </message>
+    <message>
+        <source>Losses % per area</source>
+        <translation>領域あたりの損失（%）</translation>
+    </message>
+    <message>
+        <source>Losses CDF</source>
+        <translation>損失累積分布関数 (CDF)</translation>
+    </message>
+    <message>
+        <source>Losses avg</source>
+        <translation>損失平均</translation>
+    </message>
+    <message>
+        <source>Losses per area</source>
+        <translation>領域あたりの損失</translation>
+    </message>
+    <message>
+        <source>Losses per generation unit in area</source>
+        <translation>領域内の発電ユニットあたりの損失</translation>
+    </message>
+    <message>
+        <source>Losses std</source>
+        <translation>損失標準偏差</translation>
+    </message>
+    <message>
+        <source>Market</source>
+        <translation>市場</translation>
+    </message>
+    <message>
+        <source>Market unit</source>
+        <translation>市場単位</translation>
+    </message>
+    <message>
+        <source>Max contingency flow</source>
+        <translation>最大偶発事象潮流</translation>
+    </message>
+    <message>
+        <source>Max contingency loading</source>
+        <translation>最大偶発事象負荷</translation>
+    </message>
+    <message>
+        <source>Maximum contingency flow</source>
+        <translation>最大偶発事象潮流</translation>
+    </message>
+    <message>
+        <source>Mean contingency overloading</source>
+        <translation>平均偶発事象過負荷</translation>
+    </message>
+    <message>
+        <source>Measurements</source>
+        <translation>計測データ</translation>
+    </message>
+    <message>
+        <source>Modelling Authority</source>
+        <translation>モデリング権限</translation>
+    </message>
+    <message>
+        <source>Modes</source>
+        <translation>モード</translation>
+    </message>
+    <message>
+        <source>Monte Carlo</source>
+        <translation>モンテカルロ</translation>
+    </message>
+    <message>
+        <source>Municipality</source>
+        <translation>市町村</translation>
+    </message>
+    <message>
+        <source>Municipality analysis</source>
+        <translation>市町村分析</translation>
+    </message>
+    <message>
+        <source>Municipality balance analysis</source>
+        <translation>市町村バランス分析</translation>
+    </message>
+    <message>
+        <source>Municipality generation analysis</source>
+        <translation>市町村発電分析</translation>
+    </message>
+    <message>
+        <source>Municipality load analysis</source>
+        <translation>市町村負荷分析</translation>
+    </message>
+    <message>
+        <source>NTC</source>
+        <translation>NTC</translation>
+    </message>
+    <message>
+        <source>Net transfer capacity</source>
+        <translation>正味転送容量</translation>
+    </message>
+    <message>
+        <source>NetTransferCapacity</source>
+        <translation>純送電容量</translation>
+    </message>
+    <message>
+        <source>NetTransferCapacityTimeSeries</source>
+        <translation>純送電容量時系列</translation>
+    </message>
+    <message>
+        <source>No simulation</source>
+        <translation>シミュレーションなし</translation>
+    </message>
+    <message>
+        <source>NoDevice</source>
+        <translation>デバイスなし</translation>
+    </message>
+    <message>
+        <source>Nodal capacity</source>
+        <translation>ノード容量</translation>
+    </message>
+    <message>
+        <source>Nodal capacity time series</source>
+        <translation>ノード容量時系列</translation>
+    </message>
+    <message>
+        <source>Nodal shadow prices</source>
+        <translation>ノードシャドウプライス</translation>
+    </message>
+    <message>
+        <source>Nodal slacks</source>
+        <translation>ノードスラック</translation>
+    </message>
+    <message>
+        <source>Node groups</source>
+        <translation>ノードグループ</translation>
+    </message>
+    <message>
+        <source>NodeGroups</source>
+        <translation>ノードグループ</translation>
+    </message>
+    <message>
+        <source>Nonlinear analysis</source>
+        <translation>非線形解析</translation>
+    </message>
+    <message>
+        <source>Nonlinear analysis time series</source>
+        <translation>非線形解析時系列</translation>
+    </message>
+    <message>
+        <source>Ntc: Base flow report</source>
+        <translation>Ntc: ベースフローレポート</translation>
+    </message>
+    <message>
+        <source>Ntc: Contingency flow report</source>
+        <translation>Ntc: コンティンジェンシーフローレポート</translation>
+    </message>
+    <message>
+        <source>Ntc: Contingency flow report. (Branch)</source>
+        <translation>Ntc: コンティンジェンシーフローレポート。(系統)</translation>
+    </message>
+    <message>
+        <source>Ntc: Contingency flow report. (Generation)</source>
+        <translation>Ntc: コンティンジェンシーフローレポート。(発電)</translation>
+    </message>
+    <message>
+        <source>Ntc: Contingency flow report. (Hvdc)</source>
+        <translation>Ntc: コンティンジェンシーフローレポート。(HVDC)</translation>
+    </message>
+    <message>
+        <source>Objectives</source>
+        <translation>目的</translation>
+    </message>
+    <message>
+        <source>Objects</source>
+        <translation>オブジェクト</translation>
+    </message>
+    <message>
+        <source>Optimal net transfer capacity</source>
+        <translation>最適な正味転送容量</translation>
+    </message>
+    <message>
+        <source>Optimal net transfer capacity time series</source>
+        <translation>最適純送電容量時系列</translation>
+    </message>
+    <message>
+        <source>Optimal power flow</source>
+        <translation>最適なパワーフロー</translation>
+    </message>
+    <message>
+        <source>Optimal power flow time series</source>
+        <translation>最適な電力潮流時系列</translation>
+    </message>
+    <message>
+        <source>Owner</source>
+        <translation>所有者</translation>
+    </message>
+    <message>
+        <source>P: Active power</source>
+        <translation>P: 有効電力</translation>
+    </message>
+    <message>
+        <source>PA: Active power A</source>
+        <translation>PA: 有効電力 A</translation>
+    </message>
+    <message>
+        <source>PB: Active power B</source>
+        <translation>PB: 有効電力 B</translation>
+    </message>
+    <message>
+        <source>PC: Active power C</source>
+        <translation>PC: 有効電力 C</translation>
+    </message>
+    <message>
+        <source>PTDF</source>
+        <translation>PTDF</translation>
+    </message>
+    <message>
+        <source>Pareto</source>
+        <translation>パレート</translation>
+    </message>
+    <message>
+        <source>Pareto combinations</source>
+        <translation>パレート組み合わせ</translation>
+    </message>
+    <message>
+        <source>Pareto evaluation report</source>
+        <translation>パレート評価レポート</translation>
+    </message>
+    <message>
+        <source>Pareto frequency</source>
+        <translation>パレート周波数</translation>
+    </message>
+    <message>
+        <source>Pareto objectives</source>
+        <translation>パレート目的</translation>
+    </message>
+    <message>
+        <source>Pareto plot NSGA2</source>
+        <translation>パレートプロット NSGA2</translation>
+    </message>
+    <message>
+        <source>Pareto plots</source>
+        <translation>パレートプロット</translation>
+    </message>
+    <message>
+        <source>Participation Factors</source>
+        <translation>参加係数</translation>
+    </message>
+    <message>
+        <source>Pf Measurement</source>
+        <translation>Pf測定</translation>
+    </message>
+    <message>
+        <source>Pf: Active power &quot;from&quot;</source>
+        <translation>Pf: 有効電力 &quot;from&quot;</translation>
+    </message>
+    <message>
+        <source>Pf: Active power &quot;from&quot; base case</source>
+        <translation>Pf: 有効電力 &quot;from&quot; ベースケース</translation>
+    </message>
+    <message>
+        <source>PfA: Active power &quot;from&quot; A</source>
+        <translation>PfA: 有効電力 &quot;from&quot; A</translation>
+    </message>
+    <message>
+        <source>PfB: Active power &quot;from&quot; B</source>
+        <translation>PfB: 有効電力 &quot;from&quot; B</translation>
+    </message>
+    <message>
+        <source>PfC: Active power &quot;from&quot; C</source>
+        <translation>PfC: 有効電力 &quot;from&quot; C</translation>
+    </message>
+    <message>
+        <source>Pg Measurement</source>
+        <translation>Pg測定</translation>
+    </message>
+    <message>
+        <source>Pi Measurement</source>
+        <translation>Pi測定</translation>
+    </message>
+    <message>
+        <source>Pl: Active losses</source>
+        <translation>Pl: 有効損失</translation>
+    </message>
+    <message>
+        <source>Pl: Active losses (%)</source>
+        <translation>Pl: 有効損失 (%)</translation>
+    </message>
+    <message>
+        <source>Pl: Active losses (%) A</source>
+        <translation>Pl: 有効損失 (%) A</translation>
+    </message>
+    <message>
+        <source>Pl: Active losses (%) B</source>
+        <translation>Pl: 有効損失 (%) B</translation>
+    </message>
+    <message>
+        <source>Pl: Active losses (%) C</source>
+        <translation>Pl: 有効損失 (%) C</translation>
+    </message>
+    <message>
+        <source>Pl: Active losses A</source>
+        <translation>Pl: 有効損失 A</translation>
+    </message>
+    <message>
+        <source>Pl: Active losses B</source>
+        <translation>Pl: 有効損失 B</translation>
+    </message>
+    <message>
+        <source>Pl: Active losses C</source>
+        <translation>Pl: 有効損失 C</translation>
+    </message>
+    <message>
+        <source>Plot Event</source>
+        <translation>プロットイベント</translation>
+    </message>
+    <message>
+        <source>Plot Group</source>
+        <translation>プロットグループ</translation>
+    </message>
+    <message>
+        <source>Power by technology</source>
+        <translation>技術別電力</translation>
+    </message>
+    <message>
+        <source>Power flow</source>
+        <translation>パワーフロー</translation>
+    </message>
+    <message>
+        <source>Power flow 3ph</source>
+        <translation>3相潮流</translation>
+    </message>
+    <message>
+        <source>Power flow time series</source>
+        <translation>電力潮流時系列</translation>
+    </message>
+    <message>
+        <source>Power flow time series 3ph</source>
+        <translation>潮流時系列 (3相)</translation>
+    </message>
+    <message>
+        <source>PowerFlow</source>
+        <translation>PowerFlow</translation>
+    </message>
+    <message>
+        <source>PowerFlowTimeSeries</source>
+        <translation>潮流時系列</translation>
+    </message>
+    <message>
+        <source>Pt Measurement</source>
+        <translation>Pt測定</translation>
+    </message>
+    <message>
+        <source>Pt: Active power &quot;to&quot;</source>
+        <translation>Pt: 送電電力</translation>
+    </message>
+    <message>
+        <source>Pt: Active power &quot;to&quot; A</source>
+        <translation>Pt: 送電電力 A</translation>
+    </message>
+    <message>
+        <source>Pt: Active power &quot;to&quot; B</source>
+        <translation>Pt: 送電電力 B</translation>
+    </message>
+    <message>
+        <source>Pt: Active power &quot;to&quot; C</source>
+        <translation>Pt: 送電電力 C</translation>
+    </message>
+    <message>
+        <source>Q: Reactive power</source>
+        <translation>無効電力</translation>
+    </message>
+    <message>
+        <source>QA: Reactive power A</source>
+        <translation>QA: 無効電力 A</translation>
+    </message>
+    <message>
+        <source>QB: Reactive power B</source>
+        <translation>QB: 無効電力 B</translation>
+    </message>
+    <message>
+        <source>QC: Reactive power C</source>
+        <translation>QC: 無効電力 C</translation>
+    </message>
+    <message>
+        <source>Qf Measurement</source>
+        <translation>Qf測定</translation>
+    </message>
+    <message>
+        <source>Qf: Reactive power &quot;from&quot;</source>
+        <translation>Qf: 受電無効電力</translation>
+    </message>
+    <message>
+        <source>QfA: Reactive power &quot;from&quot; A</source>
+        <translation>QfA: 受電無効電力 A</translation>
+    </message>
+    <message>
+        <source>QfB: Reactive power &quot;from&quot; B</source>
+        <translation>QfB: 受電無効電力 B</translation>
+    </message>
+    <message>
+        <source>QfC: Reactive power &quot;from&quot; C</source>
+        <translation>QfC: 受電無効電力 C</translation>
+    </message>
+    <message>
+        <source>Qg Measurement</source>
+        <translation>Qg測定</translation>
+    </message>
+    <message>
+        <source>Qi Measurement</source>
+        <translation>Qi測定</translation>
+    </message>
+    <message>
+        <source>Ql: Reactive losses</source>
+        <translation>無効損失</translation>
+    </message>
+    <message>
+        <source>Ql: Reactive losses A</source>
+        <translation>無効損失 A</translation>
+    </message>
+    <message>
+        <source>Ql: Reactive losses B</source>
+        <translation>無効損失 B</translation>
+    </message>
+    <message>
+        <source>Ql: Reactive losses C</source>
+        <translation>無効損失 C</translation>
+    </message>
+    <message>
+        <source>Qt Measurement</source>
+        <translation>Qt測定</translation>
+    </message>
+    <message>
+        <source>Qt: Reactive power &quot;to&quot;</source>
+        <translation>Qt: 送電無効電力</translation>
+    </message>
+    <message>
+        <source>Qt: Reactive power &quot;to&quot; A</source>
+        <translation>Qt: 送電無効電力 A</translation>
+    </message>
+    <message>
+        <source>Qt: Reactive power &quot;to&quot; B</source>
+        <translation>Qt: 送電無効電力 B</translation>
+    </message>
+    <message>
+        <source>Qt: Reactive power &quot;to&quot; C</source>
+        <translation>Qt: 送電無効電力 C</translation>
+    </message>
+    <message>
+        <source>RMS Dynamic</source>
+        <translation>RMS動特性</translation>
+    </message>
+    <message>
+        <source>RMS Small Signal stability</source>
+        <translation>RMS小信号安定度</translation>
+    </message>
+    <message>
+        <source>RMS template</source>
+        <translation>RMSテンプレート</translation>
+    </message>
+    <message>
+        <source>Region</source>
+        <translation>地域</translation>
+    </message>
+    <message>
+        <source>Region analysis</source>
+        <translation>地域解析</translation>
+    </message>
+    <message>
+        <source>Region balance analysis</source>
+        <translation>地域バランス解析</translation>
+    </message>
+    <message>
+        <source>Region generation analysis</source>
+        <translation>地域発電解析</translation>
+    </message>
+    <message>
+        <source>Region load analysis</source>
+        <translation>地域負荷解析</translation>
+    </message>
+    <message>
+        <source>Regions</source>
+        <translation>地域</translation>
+    </message>
+    <message>
+        <source>Reliability</source>
+        <translation>信頼性</translation>
+    </message>
+    <message>
+        <source>Remedial action</source>
+        <translation>対策</translation>
+    </message>
+    <message>
+        <source>Remedial action Group</source>
+        <translation>対策グループ</translation>
+    </message>
+    <message>
+        <source>Reports</source>
+        <translation>レポート</translation>
+    </message>
+    <message>
+        <source>Reservoir fluid level</source>
+        <translation>貯水槽流体レベル</translation>
+    </message>
+    <message>
+        <source>Results</source>
+        <translation>結果</translation>
+    </message>
+    <message>
+        <source>Right Eigenvectors</source>
+        <translation>右固有ベクトル</translation>
+    </message>
+    <message>
+        <source>Rms Event</source>
+        <translation>Rms事象</translation>
+    </message>
+    <message>
+        <source>Rms Events Group</source>
+        <translation>Rms事象グループ</translation>
+    </message>
+    <message>
+        <source>Rms Generator results</source>
+        <translation>Rms発電機結果</translation>
+    </message>
+    <message>
+        <source>Rms Genqec delta results</source>
+        <translation>Rms Genqec delta結果</translation>
+    </message>
+    <message>
+        <source>Rms Genqec omega results</source>
+        <translation>Rms Genqec omega結果</translation>
+    </message>
+    <message>
+        <source>Rms Line results</source>
+        <translation>Rms送電線結果</translation>
+    </message>
+    <message>
+        <source>Rms Load P results</source>
+        <translation>Rms負荷P結果</translation>
+    </message>
+    <message>
+        <source>Rms Load Q results</source>
+        <translation>Rms負荷Q結果</translation>
+    </message>
+    <message>
+        <source>Rms Simple Line P results</source>
+        <translation>Rms 単線 P 結果</translation>
+    </message>
+    <message>
+        <source>Rms Simple Line Q results</source>
+        <translation>Rms 単線 Q 結果</translation>
+    </message>
+    <message>
+        <source>Rms load results</source>
+        <translation>Rms 負荷結果</translation>
+    </message>
+    <message>
+        <source>Rms plot results</source>
+        <translation>Rms プロット結果</translation>
+    </message>
+    <message>
+        <source>Rms time series report</source>
+        <translation>Rms 時系列レポート</translation>
+    </message>
+    <message>
+        <source>RmsSimulation</source>
+        <translation>Rmsシミュレーション</translation>
+    </message>
+    <message>
+        <source>S-Domain Plot</source>
+        <translation>Sドメインプロット</translation>
+    </message>
+    <message>
+        <source>S-Domain Plot in Hz</source>
+        <translation>HzにおけるSドメインプロット</translation>
+    </message>
+    <message>
+        <source>SAIDI</source>
+        <translation>SAIDI</translation>
+    </message>
+    <message>
+        <source>SAIFI</source>
+        <translation>SAIFI</translation>
+    </message>
+    <message>
+        <source>Sensibilities</source>
+        <translation>感度</translation>
+    </message>
+    <message>
+        <source>Sensitivity to the exchange</source>
+        <translation>交換に対する感度</translation>
+    </message>
+    <message>
+        <source>Sensitivity to the exchange (N-1)</source>
+        <translation>交換に対する感度 (N-1)</translation>
+    </message>
+    <message>
+        <source>Sequence line</source>
+        <translation>直列線</translation>
+    </message>
+    <message>
+        <source>Series</source>
+        <translation>直列</translation>
+    </message>
+    <message>
+        <source>Series reactance</source>
+        <translation>直列リアクタンス</translation>
+    </message>
+    <message>
+        <source>Short circuit</source>
+        <translation>短絡</translation>
+    </message>
+    <message>
+        <source>Short circuit active current</source>
+        <translation>短絡有効電流</translation>
+    </message>
+    <message>
+        <source>Short circuit active current A</source>
+        <translation>短絡有効電流 A</translation>
+    </message>
+    <message>
+        <source>Short circuit active current B</source>
+        <translation>短絡有効電流 B</translation>
+    </message>
+    <message>
+        <source>Short circuit active current C</source>
+        <translation>短絡有効電流 C</translation>
+    </message>
+    <message>
+        <source>Short circuit active power</source>
+        <translation>短絡有効電力</translation>
+    </message>
+    <message>
+        <source>Short circuit active power A</source>
+        <translation>短絡有効電力 A</translation>
+    </message>
+    <message>
+        <source>Short circuit active power B</source>
+        <translation>短絡有効電力 B</translation>
+    </message>
+    <message>
+        <source>Short circuit active power C</source>
+        <translation>短絡有効電力 C</translation>
+    </message>
+    <message>
+        <source>Short circuit event</source>
+        <translation>短絡事象</translation>
+    </message>
+    <message>
+        <source>Short circuit reactive current</source>
+        <translation>短絡無効電流</translation>
+    </message>
+    <message>
+        <source>Short circuit reactive current A</source>
+        <translation>短絡無効電流 A</translation>
+    </message>
+    <message>
+        <source>Short circuit reactive current B</source>
+        <translation>短絡無効電流 B</translation>
+    </message>
+    <message>
+        <source>Short circuit reactive current C</source>
+        <translation>短絡無効電流 C</translation>
+    </message>
+    <message>
+        <source>Short circuit reactive power</source>
+        <translation>短絡無効電力</translation>
+    </message>
+    <message>
+        <source>Short circuit reactive power A</source>
+        <translation>短絡無効電力 A</translation>
+    </message>
+    <message>
+        <source>Short circuit reactive power B</source>
+        <translation>短絡無効電力 B</translation>
+    </message>
+    <message>
+        <source>Short circuit reactive power C</source>
+        <translation>短絡無効電力 C</translation>
+    </message>
+    <message>
+        <source>Short-circuit information</source>
+        <translation>短絡情報</translation>
+    </message>
+    <message>
+        <source>ShortCircuit</source>
+        <translation>短絡回路</translation>
+    </message>
+    <message>
+        <source>Shunt</source>
+        <translation>シャント</translation>
+    </message>
+    <message>
+        <source>Shunt like devices</source>
+        <translation>並列接続機器</translation>
+    </message>
+    <message>
+        <source>Shunt neutral voltage</source>
+        <translation>並列中性点電圧</translation>
+    </message>
+    <message>
+        <source>Shunt reactive power</source>
+        <translation>並列無効電力</translation>
+    </message>
+    <message>
+        <source>Shunt reactive power A</source>
+        <translation>並列無効電力 A</translation>
+    </message>
+    <message>
+        <source>Shunt reactive power B</source>
+        <translation>並列無効電力 B</translation>
+    </message>
+    <message>
+        <source>Shunt reactive power C</source>
+        <translation>並列無効電力 C</translation>
+    </message>
+    <message>
+        <source>Sigma + distances</source>
+        <translation>Σ + 距離</translation>
+    </message>
+    <message>
+        <source>Sigma Analysis</source>
+        <translation>Σ解析</translation>
+    </message>
+    <message>
+        <source>Sigma distances</source>
+        <translation>Σ距離</translation>
+    </message>
+    <message>
+        <source>Sigma imaginary</source>
+        <translation>Σ虚部</translation>
+    </message>
+    <message>
+        <source>Sigma real</source>
+        <translation>Σ実部</translation>
+    </message>
+    <message>
+        <source>SigmaAnalysis</source>
+        <translation>Σ解析</translation>
+    </message>
+    <message>
+        <source>SimulationOptionsDevice</source>
+        <translation>シミュレーションオプションデバイス</translation>
+    </message>
+    <message>
+        <source>Slacks</source>
+        <translation>スラック</translation>
+    </message>
+    <message>
+        <source>SmallSignalStability</source>
+        <translation>小信号安定度</translation>
+    </message>
+    <message>
+        <source>Snapshot</source>
+        <translation>スナップショット</translation>
+    </message>
+    <message>
+        <source>Special plots</source>
+        <translation>特殊プロット</translation>
+    </message>
+    <message>
+        <source>Spillage flow leaving</source>
+        <translation>逸散潮流</translation>
+    </message>
+    <message>
+        <source>Srap used power</source>
+        <translation>Srap使用電力</translation>
+    </message>
+    <message>
+        <source>Stabilizer</source>
+        <translation>安定器</translation>
+    </message>
+    <message>
+        <source>State Matrix</source>
+        <translation>状態行列</translation>
+    </message>
+    <message>
+        <source>State estimation</source>
+        <translation>状態推定</translation>
+    </message>
+    <message>
+        <source>StateEstimation</source>
+        <translation>状態推定</translation>
+    </message>
+    <message>
+        <source>Static Generator</source>
+        <translation>静止発電機</translation>
+    </message>
+    <message>
+        <source>Statistics</source>
+        <translation>統計</translation>
+    </message>
+    <message>
+        <source>Std-dev contingency overloading</source>
+        <translation>標準偏差によるコンティンジェンシー過負荷</translation>
+    </message>
+    <message>
+        <source>Stochastic Power Flow</source>
+        <translation>確率的潮流計算</translation>
+    </message>
+    <message>
+        <source>StochasticPowerFlow</source>
+        <translation>確率的潮流計算</translation>
+    </message>
+    <message>
+        <source>Substation</source>
+        <translation>変電所</translation>
+    </message>
+    <message>
+        <source>Substation analysis</source>
+        <translation>変電所解析</translation>
+    </message>
+    <message>
+        <source>Substation balance analysis</source>
+        <translation>変電所バランス解析</translation>
+    </message>
+    <message>
+        <source>Substation generation analysis</source>
+        <translation>変電所発電解析</translation>
+    </message>
+    <message>
+        <source>Substation load analysis</source>
+        <translation>変電所負荷解析</translation>
+    </message>
+    <message>
+        <source>Switch</source>
+        <translation>開閉器</translation>
+    </message>
+    <message>
+        <source>System</source>
+        <translation>システム</translation>
+    </message>
+    <message>
+        <source>System emissions</source>
+        <translation>システム排出量</translation>
+    </message>
+    <message>
+        <source>System energy cost</source>
+        <translation>システムエネルギーコスト</translation>
+    </message>
+    <message>
+        <source>System energy total cost</source>
+        <translation>システム総エネルギーコスト</translation>
+    </message>
+    <message>
+        <source>System fuel consumption</source>
+        <translation>システム燃料消費量</translation>
+    </message>
+    <message>
+        <source>Technology</source>
+        <translation>技術</translation>
+    </message>
+    <message>
+        <source>Technology Category</source>
+        <translation>技術カテゴリ</translation>
+    </message>
+    <message>
+        <source>Technology Group</source>
+        <translation>技術グループ</translation>
+    </message>
+    <message>
+        <source>Technology plot</source>
+        <translation>技術プロット</translation>
+    </message>
+    <message>
+        <source>Template</source>
+        <translation>テンプレート</translation>
+    </message>
+    <message>
+        <source>Templates</source>
+        <translation>テンプレート</translation>
+    </message>
+    <message>
+        <source>Time</source>
+        <translation>時間</translation>
+    </message>
+    <message>
+        <source>Time series Contingency flow report (Branches)</source>
+        <translation>時系列コンティンジェンシー潮流レポート (分岐)</translation>
+    </message>
+    <message>
+        <source>Time series base flow report</source>
+        <translation>時系列ベース潮流レポート</translation>
+    </message>
+    <message>
+        <source>Time series branch monitoring logic report</source>
+        <translation>時系列分岐監視ロジックレポート</translation>
+    </message>
+    <message>
+        <source>Time series contingency Branches report</source>
+        <translation>時系列コンティンジェンシー分岐レポート</translation>
+    </message>
+    <message>
+        <source>Time series contingency flow report</source>
+        <translation>時系列コンティンジェンシー潮流レポート</translation>
+    </message>
+    <message>
+        <source>Time series contingency flow report. (Generation)</source>
+        <translation>時系列コンティンジェンシー潮流レポート。(発電)</translation>
+    </message>
+    <message>
+        <source>Time series contingency flow report. (Hvdc)</source>
+        <translation>時系列コンティンジェンシー潮流レポート。(HVDC)</translation>
+    </message>
+    <message>
+        <source>Time series critical Branches report</source>
+        <translation>時系列重要分岐レポート</translation>
+    </message>
+    <message>
+        <source>Time series generation delta power report</source>
+        <translation>時系列発電デルタ電力レポート</translation>
+    </message>
+    <message>
+        <source>Time series generation power report</source>
+        <translation>時系列発電電力レポート</translation>
+    </message>
+    <message>
+        <source>Time series sensitivity to the exchange report</source>
+        <translation>時系列交換に対する感度レポート</translation>
+    </message>
+    <message>
+        <source>Time series worst sensitivity to the exchange report (N-1)</source>
+        <translation>時系列交換に対する最悪感度レポート (N-1)</translation>
+    </message>
+    <message>
+        <source>Topology Processor</source>
+        <translation>トポロジープロセッサ</translation>
+    </message>
+    <message>
+        <source>Topology reduction</source>
+        <translation>トポロジー削減</translation>
+    </message>
+    <message>
+        <source>Tower</source>
+        <translation>タワー</translation>
+    </message>
+    <message>
+        <source>Transformer</source>
+        <translation>トランス</translation>
+    </message>
+    <message>
+        <source>Transformer type</source>
+        <translation>変圧器タイプ</translation>
+    </message>
+    <message>
+        <source>Transformer3W</source>
+        <translation>Transformer3W</translation>
+    </message>
+    <message>
+        <source>TransformerNw</source>
+        <translation>TransformerNw</translation>
+    </message>
+    <message>
+        <source>Transient stability</source>
+        <translation>過渡安定度</translation>
+    </message>
+    <message>
+        <source>UPFC</source>
+        <translation>UPFC</translation>
+    </message>
+    <message>
+        <source>Underground line</source>
+        <translation>地中線</translation>
+    </message>
+    <message>
+        <source>V: Voltage module</source>
+        <translation>V: 電圧モジュール</translation>
+    </message>
+    <message>
+        <source>VA: Voltage module A</source>
+        <translation>VA: 電圧モジュール A</translation>
+    </message>
+    <message>
+        <source>VB: Voltage module B</source>
+        <translation>VB: 電圧モジュール B</translation>
+    </message>
+    <message>
+        <source>VC: Voltage module C</source>
+        <translation>VC: 電圧モジュール C</translation>
+    </message>
+    <message>
+        <source>VSC</source>
+        <translation>VSC</translation>
+    </message>
+    <message>
+        <source>Va Measurement</source>
+        <translation>Va測定</translation>
+    </message>
+    <message>
+        <source>Var Factory</source>
+        <translation>変数ファクトリ</translation>
+    </message>
+    <message>
+        <source>Vm Measurement</source>
+        <translation>Vm測定</translation>
+    </message>
+    <message>
+        <source>Voltage angle (0)</source>
+        <translation>電圧角 (0)</translation>
+    </message>
+    <message>
+        <source>Voltage angle (1)</source>
+        <translation>電圧角 (1)</translation>
+    </message>
+    <message>
+        <source>Voltage angle (2)</source>
+        <translation>電圧角 (2)</translation>
+    </message>
+    <message>
+        <source>Voltage collapse</source>
+        <translation>電圧崩壊</translation>
+    </message>
+    <message>
+        <source>Voltage level</source>
+        <translation>電圧レベル</translation>
+    </message>
+    <message>
+        <source>Voltage level analysis</source>
+        <translation>電圧レベル解析</translation>
+    </message>
+    <message>
+        <source>Voltage level balance analysis</source>
+        <translation>電圧レベルバランス解析</translation>
+    </message>
+    <message>
+        <source>Voltage level generation analysis</source>
+        <translation>電圧レベル発電解析</translation>
+    </message>
+    <message>
+        <source>Voltage level load analysis</source>
+        <translation>電圧レベル負荷解析</translation>
+    </message>
+    <message>
+        <source>Voltage level template</source>
+        <translation>電圧レベルテンプレート</translation>
+    </message>
+    <message>
+        <source>Voltage module (0)</source>
+        <translation>電圧モジュール (0)</translation>
+    </message>
+    <message>
+        <source>Voltage module (1)</source>
+        <translation>電圧モジュール (1)</translation>
+    </message>
+    <message>
+        <source>Voltage module (2)</source>
+        <translation>電圧モジュール (2)</translation>
+    </message>
+    <message>
+        <source>Voltage plot</source>
+        <translation>電圧プロット</translation>
+    </message>
+    <message>
+        <source>Vsc</source>
+        <translation>Vsc</translation>
+    </message>
+    <message>
+        <source>Vsc ODF</source>
+        <translation>Vsc ODF</translation>
+    </message>
+    <message>
+        <source>Vsc PTDF</source>
+        <translation>Vsc PTDF</translation>
+    </message>
+    <message>
+        <source>Vsc Pdc</source>
+        <translation>Vsc Pdc</translation>
+    </message>
+    <message>
+        <source>Vsc Vdc</source>
+        <translation>Vsc Vdc</translation>
+    </message>
+    <message>
+        <source>Vsc loading</source>
+        <translation>Vsc負荷</translation>
+    </message>
+    <message>
+        <source>Vsc losses</source>
+        <translation>Vsc損失</translation>
+    </message>
+    <message>
+        <source>Vsc power &quot;from&quot; negative pole</source>
+        <translation>Vsc power &quot;from&quot; negative pole</translation>
+    </message>
+    <message>
+        <source>Vsc power &quot;from&quot; positive pole</source>
+        <translation>Vsc power &quot;from&quot; positive pole</translation>
+    </message>
+    <message>
+        <source>Vsc power &quot;to&quot;</source>
+        <translation>Vsc power &quot;to&quot;</translation>
+    </message>
+    <message>
+        <source>Vsc power &quot;to&quot; A</source>
+        <translation>Vsc power &quot;to&quot; A</translation>
+    </message>
+    <message>
+        <source>Vsc power &quot;to&quot; B</source>
+        <translation>Vsc power &quot;to&quot; B</translation>
+    </message>
+    <message>
+        <source>Vsc power &quot;to&quot; C</source>
+        <translation>Vsc power &quot;to&quot; C</translation>
+    </message>
+    <message>
+        <source>When to make them plot</source>
+        <translation>プロットするタイミング</translation>
+    </message>
+    <message>
+        <source>Winding</source>
+        <translation>巻線</translation>
+    </message>
+    <message>
+        <source>Wire</source>
+        <translation>配線</translation>
+    </message>
+    <message>
+        <source>Zone</source>
+        <translation>ゾーン</translation>
+    </message>
+    <message>
+        <source>Zone analysis</source>
+        <translation>ゾーン解析</translation>
+    </message>
+    <message>
+        <source>Zone balance analysis</source>
+        <translation>ゾーンバランス解析</translation>
+    </message>
+    <message>
+        <source>Zone generation analysis</source>
+        <translation>ゾーン発電解析</translation>
+    </message>
+    <message>
+        <source>Zone load analysis</source>
+        <translation>ゾーン負荷解析</translation>
+    </message>
+    <message>
+        <source>export all</source>
+        <translation>すべてエクスポート</translation>
+    </message>
+    <message>
+        <source>file open</source>
+        <translation>ファイルを開く</translation>
+    </message>
+    <message>
+        <source>file save</source>
+        <translation>ファイルを保存</translation>
+    </message>
+    <message>
+        <source>loading avg</source>
+        <translation>平均負荷</translation>
+    </message>
+    <message>
+        <source>m: Tap module</source>
+        <translation>m: タップモジュール</translation>
+    </message>
+    <message>
+        <source>ΔP: Active power increment</source>
+        <translation>ΔP: 有効電力増分</translation>
+    </message>
+    <message>
+        <source>ΔV: Voltage modules drop</source>
+        <translation>ΔV: 電圧モジュール降下</translation>
+    </message>
+    <message>
+        <source>ΔV: Voltage modules drop A</source>
+        <translation>ΔV: 電圧モジュール降下 A</translation>
+    </message>
+    <message>
+        <source>ΔV: Voltage modules drop B</source>
+        <translation>ΔV: 電圧モジュール降下 B</translation>
+    </message>
+    <message>
+        <source>ΔV: Voltage modules drop C</source>
+        <translation>ΔV: 電圧モジュール降下 C</translation>
+    </message>
+    <message>
+        <source>Δθ: Voltage angles drop</source>
+        <translation>Δθ: 電圧角降下</translation>
+    </message>
+    <message>
+        <source>Δθ: Voltage angles drop A</source>
+        <translation>Δθ: 電圧角降下 A</translation>
+    </message>
+    <message>
+        <source>Δθ: Voltage angles drop B</source>
+        <translation>Δθ: 電圧角降下 B</translation>
+    </message>
+    <message>
+        <source>Δθ: Voltage angles drop C</source>
+        <translation>Δθ: 電圧角降下 C</translation>
+    </message>
+    <message>
+        <source>θ: Voltage angle</source>
+        <translation>θ: 電圧角</translation>
+    </message>
+    <message>
+        <source>θA: Voltage angle A</source>
+        <translation>θA: 電圧角 A</translation>
+    </message>
+    <message>
+        <source>θB: Voltage angle B</source>
+        <translation>θB: 電圧角 B</translation>
+    </message>
+    <message>
+        <source>θC: Voltage angle C</source>
+        <translation>θC: 電圧角 C</translation>
+    </message>
+    <message>
+        <source>𝜏: Tap angle</source>
+        <translation>𝜏: Tap angle</translation>
     </message>
 </context>
 <context>
@@ -7986,2205 +10185,6 @@ Monte Carlo power flow results:</source>
     <message>
         <source>Question</source>
         <translation>質問</translation>
-    </message>
-</context>
-<context>
-    <name>VeraGridTreeLabels</name>
-    <message>
-        <source>ATC Report</source>
-        <translation>ATCレポート</translation>
-    </message>
-    <message>
-        <source>Active power flow per area</source>
-        <translation>エリアごとの有効電力潮流</translation>
-    </message>
-    <message>
-        <source>Any line template</source>
-        <translation>任意の線テンプレート</translation>
-    </message>
-    <message>
-        <source>Area</source>
-        <translation>エリア</translation>
-    </message>
-    <message>
-        <source>Area analysis</source>
-        <translation>エリア解析</translation>
-    </message>
-    <message>
-        <source>Area balance analysis</source>
-        <translation>エリアバランス解析</translation>
-    </message>
-    <message>
-        <source>Area generation analysis</source>
-        <translation>エリア発電解析</translation>
-    </message>
-    <message>
-        <source>Area load analysis</source>
-        <translation>エリア負荷解析</translation>
-    </message>
-    <message>
-        <source>Associations</source>
-        <translation>協会</translation>
-    </message>
-    <message>
-        <source>Available transfer capacity</source>
-        <translation>利用可能な転送容量</translation>
-    </message>
-    <message>
-        <source>Available transfer capacity (N)</source>
-        <translation>利用可能送電容量 (N)</translation>
-    </message>
-    <message>
-        <source>Available transfer capacity (final)</source>
-        <translation>利用可能送電容量 (最終)</translation>
-    </message>
-    <message>
-        <source>Available transfer capacity time series</source>
-        <translation>利用可能送電容量時系列</translation>
-    </message>
-    <message>
-        <source>AvailableTransferCapacity</source>
-        <translation>利用可能送電容量</translation>
-    </message>
-    <message>
-        <source>AvailableTransferCapacityTimeSeries</source>
-        <translation>利用可能送電容量時系列</translation>
-    </message>
-    <message>
-        <source>Balance plot</source>
-        <translation>バランスプロット</translation>
-    </message>
-    <message>
-        <source>Base flow report</source>
-        <translation>ベース潮流レポート</translation>
-    </message>
-    <message>
-        <source>Batteries</source>
-        <translation>バッテリー</translation>
-    </message>
-    <message>
-        <source>Battery</source>
-        <translation>バッテリー</translation>
-    </message>
-    <message>
-        <source>Battery energy</source>
-        <translation>バッテリーエネルギー</translation>
-    </message>
-    <message>
-        <source>Battery invested</source>
-        <translation>バッテリー設備投資</translation>
-    </message>
-    <message>
-        <source>Battery power</source>
-        <translation>バッテリー出力</translation>
-    </message>
-    <message>
-        <source>Battery reactive power</source>
-        <translation>バッテリー無効電力</translation>
-    </message>
-    <message>
-        <source>Battery reactive power A</source>
-        <translation>バッテリー無効電力 A</translation>
-    </message>
-    <message>
-        <source>Battery reactive power B</source>
-        <translation>バッテリー無効電力 B</translation>
-    </message>
-    <message>
-        <source>Battery reactive power C</source>
-        <translation>バッテリー無効電力 C</translation>
-    </message>
-    <message>
-        <source>Beq: Equivalent susceptance</source>
-        <translation>Beq: 等価サセプタンス</translation>
-    </message>
-    <message>
-        <source>Branch</source>
-        <translation>枝</translation>
-    </message>
-    <message>
-        <source>Branch Loading</source>
-        <translation>枝負荷</translation>
-    </message>
-    <message>
-        <source>Branch Loading A</source>
-        <translation>枝負荷 A</translation>
-    </message>
-    <message>
-        <source>Branch Loading B</source>
-        <translation>枝負荷 B</translation>
-    </message>
-    <message>
-        <source>Branch Loading C</source>
-        <translation>枝負荷 C</translation>
-    </message>
-    <message>
-        <source>Branch active current "from" (0)</source>
-        <translation>枝有効電流「from」 (0)</translation>
-    </message>
-    <message>
-        <source>Branch active current "from" (1)</source>
-        <translation>枝有効電流「from」 (1)</translation>
-    </message>
-    <message>
-        <source>Branch active current "from" (2)</source>
-        <translation>枝有効電流「from」 (2)</translation>
-    </message>
-    <message>
-        <source>Branch active losses (0)</source>
-        <translation>枝有効損失 (0)</translation>
-    </message>
-    <message>
-        <source>Branch active losses (1)</source>
-        <translation>枝有効損失 (1)</translation>
-    </message>
-    <message>
-        <source>Branch active losses (2)</source>
-        <translation>枝有効損失 (2)</translation>
-    </message>
-    <message>
-        <source>Branch active power "from" (0)</source>
-        <translation>枝有効電力「from」 (0)</translation>
-    </message>
-    <message>
-        <source>Branch active power "from" (1)</source>
-        <translation>枝有効電力「from」 (1)</translation>
-    </message>
-    <message>
-        <source>Branch active power "from" (2)</source>
-        <translation>枝有効電力「from」 (2)</translation>
-    </message>
-    <message>
-        <source>Branch group</source>
-        <translation>枝グループ</translation>
-    </message>
-    <message>
-        <source>Branch loading (0)</source>
-        <translation>枝負荷 (0)</translation>
-    </message>
-    <message>
-        <source>Branch loading (1)</source>
-        <translation>枝負荷 (1)</translation>
-    </message>
-    <message>
-        <source>Branch loading (2)</source>
-        <translation>枝負荷 (2)</translation>
-    </message>
-    <message>
-        <source>Branch losses</source>
-        <translation>枝損失</translation>
-    </message>
-    <message>
-        <source>Branch monitoring logic</source>
-        <translation>枝監視ロジック</translation>
-    </message>
-    <message>
-        <source>Branch overloads</source>
-        <translation>枝過負荷</translation>
-    </message>
-    <message>
-        <source>Branch overloads cost</source>
-        <translation>枝過負荷コスト</translation>
-    </message>
-    <message>
-        <source>Branch power CDF</source>
-        <translation>枝電力 CDF</translation>
-    </message>
-    <message>
-        <source>Branch power avg</source>
-        <translation>枝電力平均</translation>
-    </message>
-    <message>
-        <source>Branch power std</source>
-        <translation>枝電力標準偏差</translation>
-    </message>
-    <message>
-        <source>Branch reactive current "from" (0)</source>
-        <translation>枝無効電流「from」 (0)</translation>
-    </message>
-    <message>
-        <source>Branch reactive current "from" (1)</source>
-        <translation>枝の無効電流「から」 (1)</translation>
-    </message>
-    <message>
-        <source>Branch reactive current "from" (2)</source>
-        <translation>枝の無効電流「から」 (2)</translation>
-    </message>
-    <message>
-        <source>Branch reactive losses (0)</source>
-        <translation>枝の無効損失 (0)</translation>
-    </message>
-    <message>
-        <source>Branch reactive losses (1)</source>
-        <translation>枝の無効電力損失 (1)</translation>
-    </message>
-    <message>
-        <source>Branch reactive losses (2)</source>
-        <translation>枝の無効電力損失 (2)</translation>
-    </message>
-    <message>
-        <source>Branch reactive power "from" (0)</source>
-        <translation>枝の無効電力「から」 (0)</translation>
-    </message>
-    <message>
-        <source>Branch reactive power "from" (1)</source>
-        <translation>Branch reactive power "from" (1)</translation>
-    </message>
-    <message>
-        <source>Branch reactive power "from" (2)</source>
-        <translation>Branch reactive power "from" (2)</translation>
-    </message>
-    <message>
-        <source>Branch template</source>
-        <translation>Branch template</translation>
-    </message>
-    <message>
-        <source>Branches</source>
-        <translation>Branches</translation>
-    </message>
-    <message>
-        <source>Bus</source>
-        <translation>母線</translation>
-    </message>
-    <message>
-        <source>Bus nodal capacity</source>
-        <translation>Bus nodal capacity</translation>
-    </message>
-    <message>
-        <source>Bus power</source>
-        <translation>Bus power</translation>
-    </message>
-    <message>
-        <source>Bus power CDF</source>
-        <translation>バス電力累積分布関数</translation>
-    </message>
-    <message>
-        <source>Bus voltage CDF</source>
-        <translation>バス電圧累積分布関数</translation>
-    </message>
-    <message>
-        <source>Bus voltage avg</source>
-        <translation>バス電圧平均</translation>
-    </message>
-    <message>
-        <source>Bus voltage sensitivity</source>
-        <translation>バス電圧感度</translation>
-    </message>
-    <message>
-        <source>Bus voltage std</source>
-        <translation>バス電圧標準偏差</translation>
-    </message>
-    <message>
-        <source>BusBar</source>
-        <translation>バスバー</translation>
-    </message>
-    <message>
-        <source>BusOrBranch</source>
-        <translation>バスまたは分岐</translation>
-    </message>
-    <message>
-        <source>CAIDI</source>
-        <translation>CAIDI</translation>
-    </message>
-    <message>
-        <source>Cascade</source>
-        <translation>カスケード</translation>
-    </message>
-    <message>
-        <source>Catalogue</source>
-        <translation>カタログ</translation>
-    </message>
-    <message>
-        <source>Catalogue optimization</source>
-        <translation>カタログ最適化</translation>
-    </message>
-    <message>
-        <source>Circuit</source>
-        <translation>回路</translation>
-    </message>
-    <message>
-        <source>Clean room</source>
-        <translation>クリーンルーム</translation>
-    </message>
-    <message>
-        <source>Clustering</source>
-        <translation>クラスタリング</translation>
-    </message>
-    <message>
-        <source>Clustering Analysis</source>
-        <translation>クラスタリング分析</translation>
-    </message>
-    <message>
-        <source>Clustering time series report</source>
-        <translation>クラスター時系列レポート</translation>
-    </message>
-    <message>
-        <source>Combinations</source>
-        <translation>組み合わせ</translation>
-    </message>
-    <message>
-        <source>Community</source>
-        <translation>コミュニティ</translation>
-    </message>
-    <message>
-        <source>Community analysis</source>
-        <translation>コミュニティ分析</translation>
-    </message>
-    <message>
-        <source>Community balance analysis</source>
-        <translation>コミュニティバランス分析</translation>
-    </message>
-    <message>
-        <source>Community generation analysis</source>
-        <translation>コミュニティ発電分析</translation>
-    </message>
-    <message>
-        <source>Community load analysis</source>
-        <translation>コミュニティ負荷分析</translation>
-    </message>
-    <message>
-        <source>Contingencies</source>
-        <translation>不測の事態</translation>
-    </message>
-    <message>
-        <source>Contingencies report</source>
-        <translation>事故レポート</translation>
-    </message>
-    <message>
-        <source>Contingencies statistical report</source>
-        <translation>事故統計レポート</translation>
-    </message>
-    <message>
-        <source>Contingency</source>
-        <translation>事故</translation>
-    </message>
-    <message>
-        <source>Contingency Group</source>
-        <translation>事故グループ</translation>
-    </message>
-    <message>
-        <source>Contingency analysis</source>
-        <translation>不測の事態の分析</translation>
-    </message>
-    <message>
-        <source>Contingency analysis time series</source>
-        <translation>不測の事態分析の時系列</translation>
-    </message>
-    <message>
-        <source>Contingency flow</source>
-        <translation>事故潮流</translation>
-    </message>
-    <message>
-        <source>Contingency flow report</source>
-        <translation>事故潮流レポート</translation>
-    </message>
-    <message>
-        <source>Contingency frequency</source>
-        <translation>事故頻度</translation>
-    </message>
-    <message>
-        <source>Contingency loading</source>
-        <translation>事故負荷</translation>
-    </message>
-    <message>
-        <source>Contingency overload sum</source>
-        <translation>事故過負荷合計</translation>
-    </message>
-    <message>
-        <source>Contingency relative frequency</source>
-        <translation>事故相対頻度</translation>
-    </message>
-    <message>
-        <source>ContingencyAnalysis</source>
-        <translation>事故分析</translation>
-    </message>
-    <message>
-        <source>ContingencyAnalysisTimeSeries</source>
-        <translation>事故分析時系列</translation>
-    </message>
-    <message>
-        <source>ContinuationPowerFlow</source>
-        <translation>継続潮流計算</translation>
-    </message>
-    <message>
-        <source>Controllable shunt</source>
-        <translation>制御可能なシャント</translation>
-    </message>
-    <message>
-        <source>Country</source>
-        <translation>国</translation>
-    </message>
-    <message>
-        <source>Country analysis</source>
-        <translation>国分析</translation>
-    </message>
-    <message>
-        <source>Country balance analysis</source>
-        <translation>国バランス分析</translation>
-    </message>
-    <message>
-        <source>Country generation analysis</source>
-        <translation>国発電分析</translation>
-    </message>
-    <message>
-        <source>Country load analysis</source>
-        <translation>国負荷分析</translation>
-    </message>
-    <message>
-        <source>Current injection</source>
-        <translation>電流注入</translation>
-    </message>
-    <message>
-        <source>DC line</source>
-        <translation>DC回線</translation>
-    </message>
-    <message>
-        <source>Delete and reduce</source>
-        <translation>削除と削減</translation>
-    </message>
-    <message>
-        <source>Design View</source>
-        <translation>設計ビュー</translation>
-    </message>
-    <message>
-        <source>Diagram</source>
-        <translation>ダイアグラム</translation>
-    </message>
-    <message>
-        <source>Dispatch</source>
-        <translation>ディスパッチ</translation>
-    </message>
-    <message>
-        <source>Dynamic</source>
-        <translation>動的</translation>
-    </message>
-    <message>
-        <source>Dynamic Model Host</source>
-        <translation>動的モデルホスト</translation>
-    </message>
-    <message>
-        <source>EMT Dynamic</source>
-        <translation>EMT動的</translation>
-    </message>
-    <message>
-        <source>EMT Small Signal stability</source>
-        <translation>EMT小信号安定度</translation>
-    </message>
-    <message>
-        <source>EMT template</source>
-        <translation>EMTテンプレート</translation>
-    </message>
-    <message>
-        <source>ENS</source>
-        <translation>ENS</translation>
-    </message>
-    <message>
-        <source>Emission</source>
-        <translation>排出量</translation>
-    </message>
-    <message>
-        <source>Emt Event</source>
-        <translation>EMTイベント</translation>
-    </message>
-    <message>
-        <source>Emt Events Group</source>
-        <translation>EMTイベントグループ</translation>
-    </message>
-    <message>
-        <source>EmtSimulation</source>
-        <translation>EMTシミュレーション</translation>
-    </message>
-    <message>
-        <source>Error</source>
-        <translation>エラー</translation>
-    </message>
-    <message>
-        <source>Evaluation report</source>
-        <translation>評価レポート</translation>
-    </message>
-    <message>
-        <source>Exciter</source>
-        <translation>エキサイタ</translation>
-    </message>
-    <message>
-        <source>External grid</source>
-        <translation>外部系統</translation>
-    </message>
-    <message>
-        <source>FMU template</source>
-        <translation>FMUテンプレート</translation>
-    </message>
-    <message>
-        <source>Facility</source>
-        <translation>設備</translation>
-    </message>
-    <message>
-        <source>Flow Reports</source>
-        <translation>フローレポート</translation>
-    </message>
-    <message>
-        <source>Flow circulating in the device</source>
-        <translation>機器内を循環する流れ</translation>
-    </message>
-    <message>
-        <source>Flow entering the node</source>
-        <translation>ノードに入る流れ</translation>
-    </message>
-    <message>
-        <source>Flow exiting the node</source>
-        <translation>ノードから出る流れ</translation>
-    </message>
-    <message>
-        <source>Flow from the P2X</source>
-        <translation>P2Xからの流れ</translation>
-    </message>
-    <message>
-        <source>Flow in the river</source>
-        <translation>河川内の流れ</translation>
-    </message>
-    <message>
-        <source>Fluid</source>
-        <translation>流体</translation>
-    </message>
-    <message>
-        <source>Fluid Injection</source>
-        <translation>流体注入</translation>
-    </message>
-    <message>
-        <source>Fluid P2X</source>
-        <translation>P2X流体</translation>
-    </message>
-    <message>
-        <source>Fluid P2Xs</source>
-        <translation>P2X流体群</translation>
-    </message>
-    <message>
-        <source>Fluid Pump</source>
-        <translation>流体ポンプ</translation>
-    </message>
-    <message>
-        <source>Fluid Turbine</source>
-        <translation>流体タービン</translation>
-    </message>
-    <message>
-        <source>Fluid injections</source>
-        <translation>流体注入</translation>
-    </message>
-    <message>
-        <source>Fluid node</source>
-        <translation>流体ノード</translation>
-    </message>
-    <message>
-        <source>Fluid nodes</source>
-        <translation>流体ノード</translation>
-    </message>
-    <message>
-        <source>Fluid path</source>
-        <translation>流体経路</translation>
-    </message>
-    <message>
-        <source>Fluid paths</source>
-        <translation>流体経路群</translation>
-    </message>
-    <message>
-        <source>Fluid pumps</source>
-        <translation>流体ポンプ</translation>
-    </message>
-    <message>
-        <source>Fluid turbines</source>
-        <translation>流体タービン</translation>
-    </message>
-    <message>
-        <source>Frequency</source>
-        <translation>頻度</translation>
-    </message>
-    <message>
-        <source>Fuel</source>
-        <translation>燃料</translation>
-    </message>
-    <message>
-        <source>Generation delta slacks</source>
-        <translation>発電デルタスラック</translation>
-    </message>
-    <message>
-        <source>Generation deltas</source>
-        <translation>発電デルタ</translation>
-    </message>
-    <message>
-        <source>Generator</source>
-        <translation>ジェネレータ</translation>
-    </message>
-    <message>
-        <source>Generator Emission</source>
-        <translation>発電機排出量</translation>
-    </message>
-    <message>
-        <source>Generator Fuel</source>
-        <translation>発電機燃料</translation>
-    </message>
-    <message>
-        <source>Generator Technology</source>
-        <translation>発電機技術</translation>
-    </message>
-    <message>
-        <source>Generator cost</source>
-        <translation>発電機コスト</translation>
-    </message>
-    <message>
-        <source>Generator emissions</source>
-        <translation>発電機排出量</translation>
-    </message>
-    <message>
-        <source>Generator fuels</source>
-        <translation>発電機燃料</translation>
-    </message>
-    <message>
-        <source>Generator invested</source>
-        <translation>発電機投資額</translation>
-    </message>
-    <message>
-        <source>Generator power</source>
-        <translation>発電機出力</translation>
-    </message>
-    <message>
-        <source>Generator producing</source>
-        <translation>発電中</translation>
-    </message>
-    <message>
-        <source>Generator reactive power</source>
-        <translation>発電機無効電力</translation>
-    </message>
-    <message>
-        <source>Generator reactive power A</source>
-        <translation>発電機無効電力 A</translation>
-    </message>
-    <message>
-        <source>Generator reactive power B</source>
-        <translation>発電機無効電力 B</translation>
-    </message>
-    <message>
-        <source>Generator reactive power C</source>
-        <translation>発電機無効電力 C</translation>
-    </message>
-    <message>
-        <source>Generator reserve</source>
-        <translation>発電機予備力</translation>
-    </message>
-    <message>
-        <source>Generator shedding</source>
-        <translation>発電機脱落</translation>
-    </message>
-    <message>
-        <source>Generator shutting down</source>
-        <translation>発電機停止中</translation>
-    </message>
-    <message>
-        <source>Generator starting up</source>
-        <translation>発電機起動中</translation>
-    </message>
-    <message>
-        <source>Generators</source>
-        <translation>発電機</translation>
-    </message>
-    <message>
-        <source>Generic Area</source>
-        <translation>一般エリア</translation>
-    </message>
-    <message>
-        <source>Governor</source>
-        <translation>調速機</translation>
-    </message>
-    <message>
-        <source>Groups</source>
-        <translation>グループ</translation>
-    </message>
-    <message>
-        <source>HVDC Line</source>
-        <translation>HVDC回線</translation>
-    </message>
-    <message>
-        <source>HVDC ODF</source>
-        <translation>HVDC ODF</translation>
-    </message>
-    <message>
-        <source>HVDC PTDF</source>
-        <translation>HVDC PTDF</translation>
-    </message>
-    <message>
-        <source>HVDC loading</source>
-        <translation>HVDC負荷</translation>
-    </message>
-    <message>
-        <source>HVDC losses</source>
-        <translation>HVDC損失</translation>
-    </message>
-    <message>
-        <source>HVDC overloads</source>
-        <translation>HVDC過負荷</translation>
-    </message>
-    <message>
-        <source>HVDC power "from"</source>
-        <translation>HVDC電力「から」</translation>
-    </message>
-    <message>
-        <source>HVDC power "from" A</source>
-        <translation>HVDC電力「から」A</translation>
-    </message>
-    <message>
-        <source>HVDC power "from" B</source>
-        <translation>HVDC電力「から」B</translation>
-    </message>
-    <message>
-        <source>HVDC power "from" C</source>
-        <translation>HVDC電力「から」C</translation>
-    </message>
-    <message>
-        <source>HVDC power "to"</source>
-        <translation>HVDC電力「へ」</translation>
-    </message>
-    <message>
-        <source>HVDC power "to" A</source>
-        <translation>HVDC電力「へ」A</translation>
-    </message>
-    <message>
-        <source>HVDC power "to" B</source>
-        <translation>HVDC電力「へ」B</translation>
-    </message>
-    <message>
-        <source>HVDC power "to" C</source>
-        <translation>HVDC電力「へ」C</translation>
-    </message>
-    <message>
-        <source>Hvdc</source>
-        <translation>Hvdc</translation>
-    </message>
-    <message>
-        <source>If Measurement</source>
-        <translation>電流測定</translation>
-    </message>
-    <message>
-        <source>Iif: Reactive current "from"</source>
-        <translation>Iif: 無効電流「から」</translation>
-    </message>
-    <message>
-        <source>Iif: Reactive current "from" A</source>
-        <translation>Iif: 無効電流「から」A</translation>
-    </message>
-    <message>
-        <source>Iif: Reactive current "from" B</source>
-        <translation>Iif: 無効電流「から」B</translation>
-    </message>
-    <message>
-        <source>Iif: Reactive current "from" C</source>
-        <translation>Iif: 無効電流「から」C</translation>
-    </message>
-    <message>
-        <source>Iit: Reactive current "to"</source>
-        <translation>Iit: 無効電流「へ」</translation>
-    </message>
-    <message>
-        <source>Iit: Reactive current "to" A</source>
-        <translation>Iit: 無効電流「へ」A</translation>
-    </message>
-    <message>
-        <source>Iit: Reactive current "to" B</source>
-        <translation>Iit: 無効電流「へ」B</translation>
-    </message>
-    <message>
-        <source>Iit: Reactive current "to" C</source>
-        <translation>Iit: 無効電流「へ」C</translation>
-    </message>
-    <message>
-        <source>Information</source>
-        <translation>情報</translation>
-    </message>
-    <message>
-        <source>Injections</source>
-        <translation>注入</translation>
-    </message>
-    <message>
-        <source>Inputs Analysis</source>
-        <translation>入力解析</translation>
-    </message>
-    <message>
-        <source>InputsAnalysis</source>
-        <translation>入力解析</translation>
-    </message>
-    <message>
-        <source>Inter-Area exchange</source>
-        <translation>エリア間交換</translation>
-    </message>
-    <message>
-        <source>Inter-space branch loading</source>
-        <translation>エリア間枝負荷</translation>
-    </message>
-    <message>
-        <source>Inter-space branch power</source>
-        <translation>エリア間枝電力</translation>
-    </message>
-    <message>
-        <source>InterAggregationInfo</source>
-        <translation>エリア間集約情報</translation>
-    </message>
-    <message>
-        <source>Investment</source>
-        <translation>投資</translation>
-    </message>
-    <message>
-        <source>InvestmentEvaluations</source>
-        <translation>投資評価</translation>
-    </message>
-    <message>
-        <source>Investments</source>
-        <translation>投資</translation>
-    </message>
-    <message>
-        <source>Investments Group</source>
-        <translation>投資グループ</translation>
-    </message>
-    <message>
-        <source>Investments evaluation</source>
-        <translation>投資評価</translation>
-    </message>
-    <message>
-        <source>Irf: Active current "from"</source>
-        <translation>Irf: 有効電流「から」</translation>
-    </message>
-    <message>
-        <source>Irf: Active current "from" A</source>
-        <translation>Irf: 有効電流「から」A</translation>
-    </message>
-    <message>
-        <source>Irf: Active current "from" B</source>
-        <translation>Irf: 有効電流「から」B</translation>
-    </message>
-    <message>
-        <source>Irf: Active current "from" C</source>
-        <translation>Irf: 有効電流「から」C</translation>
-    </message>
-    <message>
-        <source>Irt: Active current "to"</source>
-        <translation>Irt: 有効電流「へ」</translation>
-    </message>
-    <message>
-        <source>Irt: Active current "to" A</source>
-        <translation>Irt: A相への有効電流</translation>
-    </message>
-    <message>
-        <source>Irt: Active current "to" B</source>
-        <translation>Irt: B相への有効電流</translation>
-    </message>
-    <message>
-        <source>Irt: Active current "to" C</source>
-        <translation>Irt: C相への有効電流</translation>
-    </message>
-    <message>
-        <source>It Measurement</source>
-        <translation>It測定</translation>
-    </message>
-    <message>
-        <source>Iterations plot</source>
-        <translation>反復回数プロット</translation>
-    </message>
-    <message>
-        <source>LODF</source>
-        <translation>LODF</translation>
-    </message>
-    <message>
-        <source>LOLE</source>
-        <translation>LOLE</translation>
-    </message>
-    <message>
-        <source>LOLET</source>
-        <translation>LOLET</translation>
-    </message>
-    <message>
-        <source>LOLF</source>
-        <translation>LOLF</translation>
-    </message>
-    <message>
-        <source>LOLFT</source>
-        <translation>LOLFT</translation>
-    </message>
-    <message>
-        <source>Latin Hypercube</source>
-        <translation>ラテン超立方体</translation>
-    </message>
-    <message>
-        <source>Line</source>
-        <translation>ライン</translation>
-    </message>
-    <message>
-        <source>Line Location</source>
-        <translation>送電線配置</translation>
-    </message>
-    <message>
-        <source>Line Locations</source>
-        <translation>送電線配置群</translation>
-    </message>
-    <message>
-        <source>Line Template</source>
-        <translation>送電線テンプレート</translation>
-    </message>
-    <message>
-        <source>Linear analysis</source>
-        <translation>線形解析</translation>
-    </message>
-    <message>
-        <source>Linear analysis time series</source>
-        <translation>線形解析時系列</translation>
-    </message>
-    <message>
-        <source>LinearAnalysis</source>
-        <translation>線形解析</translation>
-    </message>
-    <message>
-        <source>LinearAnalysisTimeSeries</source>
-        <translation>線形解析時系列</translation>
-    </message>
-    <message>
-        <source>Load</source>
-        <translation>負荷</translation>
-    </message>
-    <message>
-        <source>Load like</source>
-        <translation>負荷類似</translation>
-    </message>
-    <message>
-        <source>Load neutral voltage</source>
-        <translation>負荷中性点電圧</translation>
-    </message>
-    <message>
-        <source>Load power</source>
-        <translation>負荷電力</translation>
-    </message>
-    <message>
-        <source>Load shedding</source>
-        <translation>負荷遮断</translation>
-    </message>
-    <message>
-        <source>Load shedding cost</source>
-        <translation>負荷遮断コスト</translation>
-    </message>
-    <message>
-        <source>Loading CDF</source>
-        <translation>負荷分布累積分布関数 (CDF)</translation>
-    </message>
-    <message>
-        <source>Loading from the base situation ($\lambda$)</source>
-        <translation>ベース状況からの負荷（$\lambda$）</translation>
-    </message>
-    <message>
-        <source>Loading std</source>
-        <translation>負荷標準偏差</translation>
-    </message>
-    <message>
-        <source>Loads</source>
-        <translation>負荷</translation>
-    </message>
-    <message>
-        <source>Losses % per area</source>
-        <translation>領域あたりの損失（%）</translation>
-    </message>
-    <message>
-        <source>Losses CDF</source>
-        <translation>損失累積分布関数 (CDF)</translation>
-    </message>
-    <message>
-        <source>Losses avg</source>
-        <translation>損失平均</translation>
-    </message>
-    <message>
-        <source>Losses per area</source>
-        <translation>領域あたりの損失</translation>
-    </message>
-    <message>
-        <source>Losses per generation unit in area</source>
-        <translation>領域内の発電ユニットあたりの損失</translation>
-    </message>
-    <message>
-        <source>Losses std</source>
-        <translation>損失標準偏差</translation>
-    </message>
-    <message>
-        <source>Market</source>
-        <translation>市場</translation>
-    </message>
-    <message>
-        <source>Market unit</source>
-        <translation>市場単位</translation>
-    </message>
-    <message>
-        <source>Max contingency flow</source>
-        <translation>最大偶発事象潮流</translation>
-    </message>
-    <message>
-        <source>Max contingency loading</source>
-        <translation>最大偶発事象負荷</translation>
-    </message>
-    <message>
-        <source>Maximum contingency flow</source>
-        <translation>最大偶発事象潮流</translation>
-    </message>
-    <message>
-        <source>Mean contingency overloading</source>
-        <translation>平均偶発事象過負荷</translation>
-    </message>
-    <message>
-        <source>Measurements</source>
-        <translation>計測データ</translation>
-    </message>
-    <message>
-        <source>Modelling Authority</source>
-        <translation>モデリング権限</translation>
-    </message>
-    <message>
-        <source>Modes</source>
-        <translation>モード</translation>
-    </message>
-    <message>
-        <source>Monte Carlo</source>
-        <translation>モンテカルロ</translation>
-    </message>
-    <message>
-        <source>Municipality</source>
-        <translation>市町村</translation>
-    </message>
-    <message>
-        <source>Municipality analysis</source>
-        <translation>市町村分析</translation>
-    </message>
-    <message>
-        <source>Municipality balance analysis</source>
-        <translation>市町村バランス分析</translation>
-    </message>
-    <message>
-        <source>Municipality generation analysis</source>
-        <translation>市町村発電分析</translation>
-    </message>
-    <message>
-        <source>Municipality load analysis</source>
-        <translation>市町村負荷分析</translation>
-    </message>
-    <message>
-        <source>NTC</source>
-        <translation>NTC</translation>
-    </message>
-    <message>
-        <source>Net transfer capacity</source>
-        <translation>正味転送容量</translation>
-    </message>
-    <message>
-        <source>NetTransferCapacity</source>
-        <translation>純送電容量</translation>
-    </message>
-    <message>
-        <source>NetTransferCapacityTimeSeries</source>
-        <translation>純送電容量時系列</translation>
-    </message>
-    <message>
-        <source>No simulation</source>
-        <translation>シミュレーションなし</translation>
-    </message>
-    <message>
-        <source>NoDevice</source>
-        <translation>デバイスなし</translation>
-    </message>
-    <message>
-        <source>Nodal capacity</source>
-        <translation>ノード容量</translation>
-    </message>
-    <message>
-        <source>Nodal capacity time series</source>
-        <translation>ノード容量時系列</translation>
-    </message>
-    <message>
-        <source>Nodal shadow prices</source>
-        <translation>ノードシャドウプライス</translation>
-    </message>
-    <message>
-        <source>Nodal slacks</source>
-        <translation>ノードスラック</translation>
-    </message>
-    <message>
-        <source>Node groups</source>
-        <translation>ノードグループ</translation>
-    </message>
-    <message>
-        <source>NodeGroups</source>
-        <translation>ノードグループ</translation>
-    </message>
-    <message>
-        <source>Nonlinear analysis</source>
-        <translation>非線形解析</translation>
-    </message>
-    <message>
-        <source>Nonlinear analysis time series</source>
-        <translation>非線形解析時系列</translation>
-    </message>
-    <message>
-        <source>Ntc: Base flow report</source>
-        <translation>Ntc: ベースフローレポート</translation>
-    </message>
-    <message>
-        <source>Ntc: Contingency flow report</source>
-        <translation>Ntc: コンティンジェンシーフローレポート</translation>
-    </message>
-    <message>
-        <source>Ntc: Contingency flow report. (Branch)</source>
-        <translation>Ntc: コンティンジェンシーフローレポート。(系統)</translation>
-    </message>
-    <message>
-        <source>Ntc: Contingency flow report. (Generation)</source>
-        <translation>Ntc: コンティンジェンシーフローレポート。(発電)</translation>
-    </message>
-    <message>
-        <source>Ntc: Contingency flow report. (Hvdc)</source>
-        <translation>Ntc: コンティンジェンシーフローレポート。(HVDC)</translation>
-    </message>
-    <message>
-        <source>Objectives</source>
-        <translation>目的</translation>
-    </message>
-    <message>
-        <source>Objects</source>
-        <translation>オブジェクト</translation>
-    </message>
-    <message>
-        <source>Optimal net transfer capacity</source>
-        <translation>最適な正味転送容量</translation>
-    </message>
-    <message>
-        <source>Optimal net transfer capacity time series</source>
-        <translation>最適純送電容量時系列</translation>
-    </message>
-    <message>
-        <source>Optimal power flow</source>
-        <translation>最適なパワーフロー</translation>
-    </message>
-    <message>
-        <source>Optimal power flow time series</source>
-        <translation>最適な電力潮流時系列</translation>
-    </message>
-    <message>
-        <source>Owner</source>
-        <translation>所有者</translation>
-    </message>
-    <message>
-        <source>P: Active power</source>
-        <translation>P: 有効電力</translation>
-    </message>
-    <message>
-        <source>PA: Active power A</source>
-        <translation>PA: 有効電力 A</translation>
-    </message>
-    <message>
-        <source>PB: Active power B</source>
-        <translation>PB: 有効電力 B</translation>
-    </message>
-    <message>
-        <source>PC: Active power C</source>
-        <translation>PC: 有効電力 C</translation>
-    </message>
-    <message>
-        <source>PTDF</source>
-        <translation>PTDF</translation>
-    </message>
-    <message>
-        <source>Pareto</source>
-        <translation>パレート</translation>
-    </message>
-    <message>
-        <source>Pareto combinations</source>
-        <translation>パレート組み合わせ</translation>
-    </message>
-    <message>
-        <source>Pareto evaluation report</source>
-        <translation>パレート評価レポート</translation>
-    </message>
-    <message>
-        <source>Pareto frequency</source>
-        <translation>パレート周波数</translation>
-    </message>
-    <message>
-        <source>Pareto objectives</source>
-        <translation>パレート目的</translation>
-    </message>
-    <message>
-        <source>Pareto plot NSGA2</source>
-        <translation>パレートプロット NSGA2</translation>
-    </message>
-    <message>
-        <source>Pareto plots</source>
-        <translation>パレートプロット</translation>
-    </message>
-    <message>
-        <source>Participation Factors</source>
-        <translation>参加係数</translation>
-    </message>
-    <message>
-        <source>Pf Measurement</source>
-        <translation>Pf測定</translation>
-    </message>
-    <message>
-        <source>Pf: Active power "from"</source>
-        <translation>Pf: 有効電力 "from"</translation>
-    </message>
-    <message>
-        <source>Pf: Active power "from" base case</source>
-        <translation>Pf: 有効電力 "from" ベースケース</translation>
-    </message>
-    <message>
-        <source>PfA: Active power "from" A</source>
-        <translation>PfA: 有効電力 "from" A</translation>
-    </message>
-    <message>
-        <source>PfB: Active power "from" B</source>
-        <translation>PfB: 有効電力 "from" B</translation>
-    </message>
-    <message>
-        <source>PfC: Active power "from" C</source>
-        <translation>PfC: 有効電力 "from" C</translation>
-    </message>
-    <message>
-        <source>Pg Measurement</source>
-        <translation>Pg測定</translation>
-    </message>
-    <message>
-        <source>Pi Measurement</source>
-        <translation>Pi測定</translation>
-    </message>
-    <message>
-        <source>Pl: Active losses</source>
-        <translation>Pl: 有効損失</translation>
-    </message>
-    <message>
-        <source>Pl: Active losses (%)</source>
-        <translation>Pl: 有効損失 (%)</translation>
-    </message>
-    <message>
-        <source>Pl: Active losses (%) A</source>
-        <translation>Pl: 有効損失 (%) A</translation>
-    </message>
-    <message>
-        <source>Pl: Active losses (%) B</source>
-        <translation>Pl: 有効損失 (%) B</translation>
-    </message>
-    <message>
-        <source>Pl: Active losses (%) C</source>
-        <translation>Pl: 有効損失 (%) C</translation>
-    </message>
-    <message>
-        <source>Pl: Active losses A</source>
-        <translation>Pl: 有効損失 A</translation>
-    </message>
-    <message>
-        <source>Pl: Active losses B</source>
-        <translation>Pl: 有効損失 B</translation>
-    </message>
-    <message>
-        <source>Pl: Active losses C</source>
-        <translation>Pl: 有効損失 C</translation>
-    </message>
-    <message>
-        <source>Plot Event</source>
-        <translation>プロットイベント</translation>
-    </message>
-    <message>
-        <source>Plot Group</source>
-        <translation>プロットグループ</translation>
-    </message>
-    <message>
-        <source>Power by technology</source>
-        <translation>技術別電力</translation>
-    </message>
-    <message>
-        <source>Power flow</source>
-        <translation>パワーフロー</translation>
-    </message>
-    <message>
-        <source>Power flow 3ph</source>
-        <translation>3相潮流</translation>
-    </message>
-    <message>
-        <source>Power flow time series</source>
-        <translation>電力潮流時系列</translation>
-    </message>
-    <message>
-        <source>Power flow time series 3ph</source>
-        <translation>潮流時系列 (3相)</translation>
-    </message>
-    <message>
-        <source>PowerFlow</source>
-        <translation>PowerFlow</translation>
-    </message>
-    <message>
-        <source>PowerFlowTimeSeries</source>
-        <translation>潮流時系列</translation>
-    </message>
-    <message>
-        <source>Pt Measurement</source>
-        <translation>Pt測定</translation>
-    </message>
-    <message>
-        <source>Pt: Active power "to"</source>
-        <translation>Pt: 送電電力</translation>
-    </message>
-    <message>
-        <source>Pt: Active power "to" A</source>
-        <translation>Pt: 送電電力 A</translation>
-    </message>
-    <message>
-        <source>Pt: Active power "to" B</source>
-        <translation>Pt: 送電電力 B</translation>
-    </message>
-    <message>
-        <source>Pt: Active power "to" C</source>
-        <translation>Pt: 送電電力 C</translation>
-    </message>
-    <message>
-        <source>Q: Reactive power</source>
-        <translation>無効電力</translation>
-    </message>
-    <message>
-        <source>QA: Reactive power A</source>
-        <translation>QA: 無効電力 A</translation>
-    </message>
-    <message>
-        <source>QB: Reactive power B</source>
-        <translation>QB: 無効電力 B</translation>
-    </message>
-    <message>
-        <source>QC: Reactive power C</source>
-        <translation>QC: 無効電力 C</translation>
-    </message>
-    <message>
-        <source>Qf Measurement</source>
-        <translation>Qf測定</translation>
-    </message>
-    <message>
-        <source>Qf: Reactive power "from"</source>
-        <translation>Qf: 受電無効電力</translation>
-    </message>
-    <message>
-        <source>QfA: Reactive power "from" A</source>
-        <translation>QfA: 受電無効電力 A</translation>
-    </message>
-    <message>
-        <source>QfB: Reactive power "from" B</source>
-        <translation>QfB: 受電無効電力 B</translation>
-    </message>
-    <message>
-        <source>QfC: Reactive power "from" C</source>
-        <translation>QfC: 受電無効電力 C</translation>
-    </message>
-    <message>
-        <source>Qg Measurement</source>
-        <translation>Qg測定</translation>
-    </message>
-    <message>
-        <source>Qi Measurement</source>
-        <translation>Qi測定</translation>
-    </message>
-    <message>
-        <source>Ql: Reactive losses</source>
-        <translation>無効損失</translation>
-    </message>
-    <message>
-        <source>Ql: Reactive losses A</source>
-        <translation>無効損失 A</translation>
-    </message>
-    <message>
-        <source>Ql: Reactive losses B</source>
-        <translation>無効損失 B</translation>
-    </message>
-    <message>
-        <source>Ql: Reactive losses C</source>
-        <translation>無効損失 C</translation>
-    </message>
-    <message>
-        <source>Qt Measurement</source>
-        <translation>Qt測定</translation>
-    </message>
-    <message>
-        <source>Qt: Reactive power "to"</source>
-        <translation>Qt: 送電無効電力</translation>
-    </message>
-    <message>
-        <source>Qt: Reactive power "to" A</source>
-        <translation>Qt: 送電無効電力 A</translation>
-    </message>
-    <message>
-        <source>Qt: Reactive power "to" B</source>
-        <translation>Qt: 送電無効電力 B</translation>
-    </message>
-    <message>
-        <source>Qt: Reactive power "to" C</source>
-        <translation>Qt: 送電無効電力 C</translation>
-    </message>
-    <message>
-        <source>RMS Dynamic</source>
-        <translation>RMS動特性</translation>
-    </message>
-    <message>
-        <source>RMS Small Signal stability</source>
-        <translation>RMS小信号安定度</translation>
-    </message>
-    <message>
-        <source>RMS template</source>
-        <translation>RMSテンプレート</translation>
-    </message>
-    <message>
-        <source>Region</source>
-        <translation>地域</translation>
-    </message>
-    <message>
-        <source>Region analysis</source>
-        <translation>地域解析</translation>
-    </message>
-    <message>
-        <source>Region balance analysis</source>
-        <translation>地域バランス解析</translation>
-    </message>
-    <message>
-        <source>Region generation analysis</source>
-        <translation>地域発電解析</translation>
-    </message>
-    <message>
-        <source>Region load analysis</source>
-        <translation>地域負荷解析</translation>
-    </message>
-    <message>
-        <source>Regions</source>
-        <translation>地域</translation>
-    </message>
-    <message>
-        <source>Reliability</source>
-        <translation>信頼性</translation>
-    </message>
-    <message>
-        <source>Remedial action</source>
-        <translation>対策</translation>
-    </message>
-    <message>
-        <source>Remedial action Group</source>
-        <translation>対策グループ</translation>
-    </message>
-    <message>
-        <source>Reports</source>
-        <translation>レポート</translation>
-    </message>
-    <message>
-        <source>Reservoir fluid level</source>
-        <translation>貯水槽流体レベル</translation>
-    </message>
-    <message>
-        <source>Results</source>
-        <translation>結果</translation>
-    </message>
-    <message>
-        <source>Right Eigenvectors</source>
-        <translation>右固有ベクトル</translation>
-    </message>
-    <message>
-        <source>Rms Event</source>
-        <translation>Rms事象</translation>
-    </message>
-    <message>
-        <source>Rms Events Group</source>
-        <translation>Rms事象グループ</translation>
-    </message>
-    <message>
-        <source>Rms Generator results</source>
-        <translation>Rms発電機結果</translation>
-    </message>
-    <message>
-        <source>Rms Genqec delta results</source>
-        <translation>Rms Genqec delta結果</translation>
-    </message>
-    <message>
-        <source>Rms Genqec omega results</source>
-        <translation>Rms Genqec omega結果</translation>
-    </message>
-    <message>
-        <source>Rms Line results</source>
-        <translation>Rms送電線結果</translation>
-    </message>
-    <message>
-        <source>Rms Load P results</source>
-        <translation>Rms負荷P結果</translation>
-    </message>
-    <message>
-        <source>Rms Load Q results</source>
-        <translation>Rms負荷Q結果</translation>
-    </message>
-    <message>
-        <source>Rms Simple Line P results</source>
-        <translation>Rms 単線 P 結果</translation>
-    </message>
-    <message>
-        <source>Rms Simple Line Q results</source>
-        <translation>Rms 単線 Q 結果</translation>
-    </message>
-    <message>
-        <source>Rms load results</source>
-        <translation>Rms 負荷結果</translation>
-    </message>
-    <message>
-        <source>Rms plot results</source>
-        <translation>Rms プロット結果</translation>
-    </message>
-    <message>
-        <source>Rms time series report</source>
-        <translation>Rms 時系列レポート</translation>
-    </message>
-    <message>
-        <source>RmsSimulation</source>
-        <translation>Rmsシミュレーション</translation>
-    </message>
-    <message>
-        <source>S-Domain Plot</source>
-        <translation>Sドメインプロット</translation>
-    </message>
-    <message>
-        <source>S-Domain Plot in Hz</source>
-        <translation>HzにおけるSドメインプロット</translation>
-    </message>
-    <message>
-        <source>SAIDI</source>
-        <translation>SAIDI</translation>
-    </message>
-    <message>
-        <source>SAIFI</source>
-        <translation>SAIFI</translation>
-    </message>
-    <message>
-        <source>Sensibilities</source>
-        <translation>感度</translation>
-    </message>
-    <message>
-        <source>Sensitivity to the exchange</source>
-        <translation>交換に対する感度</translation>
-    </message>
-    <message>
-        <source>Sensitivity to the exchange (N-1)</source>
-        <translation>交換に対する感度 (N-1)</translation>
-    </message>
-    <message>
-        <source>Sequence line</source>
-        <translation>直列線</translation>
-    </message>
-    <message>
-        <source>Series</source>
-        <translation>直列</translation>
-    </message>
-    <message>
-        <source>Series reactance</source>
-        <translation>直列リアクタンス</translation>
-    </message>
-    <message>
-        <source>Short circuit</source>
-        <translation>短絡</translation>
-    </message>
-    <message>
-        <source>Short circuit active current</source>
-        <translation>短絡有効電流</translation>
-    </message>
-    <message>
-        <source>Short circuit active current A</source>
-        <translation>短絡有効電流 A</translation>
-    </message>
-    <message>
-        <source>Short circuit active current B</source>
-        <translation>短絡有効電流 B</translation>
-    </message>
-    <message>
-        <source>Short circuit active current C</source>
-        <translation>短絡有効電流 C</translation>
-    </message>
-    <message>
-        <source>Short circuit active power</source>
-        <translation>短絡有効電力</translation>
-    </message>
-    <message>
-        <source>Short circuit active power A</source>
-        <translation>短絡有効電力 A</translation>
-    </message>
-    <message>
-        <source>Short circuit active power B</source>
-        <translation>短絡有効電力 B</translation>
-    </message>
-    <message>
-        <source>Short circuit active power C</source>
-        <translation>短絡有効電力 C</translation>
-    </message>
-    <message>
-        <source>Short circuit event</source>
-        <translation>短絡事象</translation>
-    </message>
-    <message>
-        <source>Short circuit reactive current</source>
-        <translation>短絡無効電流</translation>
-    </message>
-    <message>
-        <source>Short circuit reactive current A</source>
-        <translation>短絡無効電流 A</translation>
-    </message>
-    <message>
-        <source>Short circuit reactive current B</source>
-        <translation>短絡無効電流 B</translation>
-    </message>
-    <message>
-        <source>Short circuit reactive current C</source>
-        <translation>短絡無効電流 C</translation>
-    </message>
-    <message>
-        <source>Short circuit reactive power</source>
-        <translation>短絡無効電力</translation>
-    </message>
-    <message>
-        <source>Short circuit reactive power A</source>
-        <translation>短絡無効電力 A</translation>
-    </message>
-    <message>
-        <source>Short circuit reactive power B</source>
-        <translation>短絡無効電力 B</translation>
-    </message>
-    <message>
-        <source>Short circuit reactive power C</source>
-        <translation>短絡無効電力 C</translation>
-    </message>
-    <message>
-        <source>Short-circuit information</source>
-        <translation>短絡情報</translation>
-    </message>
-    <message>
-        <source>ShortCircuit</source>
-        <translation>短絡回路</translation>
-    </message>
-    <message>
-        <source>Shunt</source>
-        <translation>シャント</translation>
-    </message>
-    <message>
-        <source>Shunt like devices</source>
-        <translation>並列接続機器</translation>
-    </message>
-    <message>
-        <source>Shunt neutral voltage</source>
-        <translation>並列中性点電圧</translation>
-    </message>
-    <message>
-        <source>Shunt reactive power</source>
-        <translation>並列無効電力</translation>
-    </message>
-    <message>
-        <source>Shunt reactive power A</source>
-        <translation>並列無効電力 A</translation>
-    </message>
-    <message>
-        <source>Shunt reactive power B</source>
-        <translation>並列無効電力 B</translation>
-    </message>
-    <message>
-        <source>Shunt reactive power C</source>
-        <translation>並列無効電力 C</translation>
-    </message>
-    <message>
-        <source>Sigma + distances</source>
-        <translation>Σ + 距離</translation>
-    </message>
-    <message>
-        <source>Sigma Analysis</source>
-        <translation>Σ解析</translation>
-    </message>
-    <message>
-        <source>Sigma distances</source>
-        <translation>Σ距離</translation>
-    </message>
-    <message>
-        <source>Sigma imaginary</source>
-        <translation>Σ虚部</translation>
-    </message>
-    <message>
-        <source>Sigma real</source>
-        <translation>Σ実部</translation>
-    </message>
-    <message>
-        <source>SigmaAnalysis</source>
-        <translation>Σ解析</translation>
-    </message>
-    <message>
-        <source>SimulationOptionsDevice</source>
-        <translation>シミュレーションオプションデバイス</translation>
-    </message>
-    <message>
-        <source>Slacks</source>
-        <translation>スラック</translation>
-    </message>
-    <message>
-        <source>SmallSignalStability</source>
-        <translation>小信号安定度</translation>
-    </message>
-    <message>
-        <source>Snapshot</source>
-        <translation>スナップショット</translation>
-    </message>
-    <message>
-        <source>Special plots</source>
-        <translation>特殊プロット</translation>
-    </message>
-    <message>
-        <source>Spillage flow leaving</source>
-        <translation>逸散潮流</translation>
-    </message>
-    <message>
-        <source>Srap used power</source>
-        <translation>Srap使用電力</translation>
-    </message>
-    <message>
-        <source>Stabilizer</source>
-        <translation>安定器</translation>
-    </message>
-    <message>
-        <source>State Matrix</source>
-        <translation>状態行列</translation>
-    </message>
-    <message>
-        <source>State estimation</source>
-        <translation>状態推定</translation>
-    </message>
-    <message>
-        <source>StateEstimation</source>
-        <translation>状態推定</translation>
-    </message>
-    <message>
-        <source>Static Generator</source>
-        <translation>静止発電機</translation>
-    </message>
-    <message>
-        <source>Statistics</source>
-        <translation>統計</translation>
-    </message>
-    <message>
-        <source>Std-dev contingency overloading</source>
-        <translation>標準偏差によるコンティンジェンシー過負荷</translation>
-    </message>
-    <message>
-        <source>Stochastic Power Flow</source>
-        <translation>確率的潮流計算</translation>
-    </message>
-    <message>
-        <source>StochasticPowerFlow</source>
-        <translation>確率的潮流計算</translation>
-    </message>
-    <message>
-        <source>Substation</source>
-        <translation>変電所</translation>
-    </message>
-    <message>
-        <source>Substation analysis</source>
-        <translation>変電所解析</translation>
-    </message>
-    <message>
-        <source>Substation balance analysis</source>
-        <translation>変電所バランス解析</translation>
-    </message>
-    <message>
-        <source>Substation generation analysis</source>
-        <translation>変電所発電解析</translation>
-    </message>
-    <message>
-        <source>Substation load analysis</source>
-        <translation>変電所負荷解析</translation>
-    </message>
-    <message>
-        <source>Switch</source>
-        <translation>開閉器</translation>
-    </message>
-    <message>
-        <source>System</source>
-        <translation>システム</translation>
-    </message>
-    <message>
-        <source>System emissions</source>
-        <translation>システム排出量</translation>
-    </message>
-    <message>
-        <source>System energy cost</source>
-        <translation>システムエネルギーコスト</translation>
-    </message>
-    <message>
-        <source>System energy total cost</source>
-        <translation>システム総エネルギーコスト</translation>
-    </message>
-    <message>
-        <source>System fuel consumption</source>
-        <translation>システム燃料消費量</translation>
-    </message>
-    <message>
-        <source>Technology</source>
-        <translation>技術</translation>
-    </message>
-    <message>
-        <source>Technology Category</source>
-        <translation>技術カテゴリ</translation>
-    </message>
-    <message>
-        <source>Technology Group</source>
-        <translation>技術グループ</translation>
-    </message>
-    <message>
-        <source>Technology plot</source>
-        <translation>技術プロット</translation>
-    </message>
-    <message>
-        <source>Template</source>
-        <translation>テンプレート</translation>
-    </message>
-    <message>
-        <source>Templates</source>
-        <translation>テンプレート</translation>
-    </message>
-    <message>
-        <source>Time</source>
-        <translation>時間</translation>
-    </message>
-    <message>
-        <source>Time series Contingency flow report (Branches)</source>
-        <translation>時系列コンティンジェンシー潮流レポート (分岐)</translation>
-    </message>
-    <message>
-        <source>Time series base flow report</source>
-        <translation>時系列ベース潮流レポート</translation>
-    </message>
-    <message>
-        <source>Time series branch monitoring logic report</source>
-        <translation>時系列分岐監視ロジックレポート</translation>
-    </message>
-    <message>
-        <source>Time series contingency Branches report</source>
-        <translation>時系列コンティンジェンシー分岐レポート</translation>
-    </message>
-    <message>
-        <source>Time series contingency flow report</source>
-        <translation>時系列コンティンジェンシー潮流レポート</translation>
-    </message>
-    <message>
-        <source>Time series contingency flow report. (Generation)</source>
-        <translation>時系列コンティンジェンシー潮流レポート。(発電)</translation>
-    </message>
-    <message>
-        <source>Time series contingency flow report. (Hvdc)</source>
-        <translation>時系列コンティンジェンシー潮流レポート。(HVDC)</translation>
-    </message>
-    <message>
-        <source>Time series critical Branches report</source>
-        <translation>時系列重要分岐レポート</translation>
-    </message>
-    <message>
-        <source>Time series generation delta power report</source>
-        <translation>時系列発電デルタ電力レポート</translation>
-    </message>
-    <message>
-        <source>Time series generation power report</source>
-        <translation>時系列発電電力レポート</translation>
-    </message>
-    <message>
-        <source>Time series sensitivity to the exchange report</source>
-        <translation>時系列交換に対する感度レポート</translation>
-    </message>
-    <message>
-        <source>Time series worst sensitivity to the exchange report (N-1)</source>
-        <translation>時系列交換に対する最悪感度レポート (N-1)</translation>
-    </message>
-    <message>
-        <source>Topology Processor</source>
-        <translation>トポロジープロセッサ</translation>
-    </message>
-    <message>
-        <source>Topology reduction</source>
-        <translation>トポロジー削減</translation>
-    </message>
-    <message>
-        <source>Tower</source>
-        <translation>タワー</translation>
-    </message>
-    <message>
-        <source>Transformer</source>
-        <translation>トランス</translation>
-    </message>
-    <message>
-        <source>Transformer type</source>
-        <translation>変圧器タイプ</translation>
-    </message>
-    <message>
-        <source>Transformer3W</source>
-        <translation>Transformer3W</translation>
-    </message>
-    <message>
-        <source>TransformerNw</source>
-        <translation>TransformerNw</translation>
-    </message>
-    <message>
-        <source>Transient stability</source>
-        <translation>過渡安定度</translation>
-    </message>
-    <message>
-        <source>UPFC</source>
-        <translation>UPFC</translation>
-    </message>
-    <message>
-        <source>Underground line</source>
-        <translation>地中線</translation>
-    </message>
-    <message>
-        <source>V: Voltage module</source>
-        <translation>V: 電圧モジュール</translation>
-    </message>
-    <message>
-        <source>VA: Voltage module A</source>
-        <translation>VA: 電圧モジュール A</translation>
-    </message>
-    <message>
-        <source>VB: Voltage module B</source>
-        <translation>VB: 電圧モジュール B</translation>
-    </message>
-    <message>
-        <source>VC: Voltage module C</source>
-        <translation>VC: 電圧モジュール C</translation>
-    </message>
-    <message>
-        <source>VSC</source>
-        <translation>VSC</translation>
-    </message>
-    <message>
-        <source>Va Measurement</source>
-        <translation>Va測定</translation>
-    </message>
-    <message>
-        <source>Var Factory</source>
-        <translation>変数ファクトリ</translation>
-    </message>
-    <message>
-        <source>Vm Measurement</source>
-        <translation>Vm測定</translation>
-    </message>
-    <message>
-        <source>Voltage angle (0)</source>
-        <translation>電圧角 (0)</translation>
-    </message>
-    <message>
-        <source>Voltage angle (1)</source>
-        <translation>電圧角 (1)</translation>
-    </message>
-    <message>
-        <source>Voltage angle (2)</source>
-        <translation>電圧角 (2)</translation>
-    </message>
-    <message>
-        <source>Voltage collapse</source>
-        <translation>電圧崩壊</translation>
-    </message>
-    <message>
-        <source>Voltage level</source>
-        <translation>電圧レベル</translation>
-    </message>
-    <message>
-        <source>Voltage level analysis</source>
-        <translation>電圧レベル解析</translation>
-    </message>
-    <message>
-        <source>Voltage level balance analysis</source>
-        <translation>電圧レベルバランス解析</translation>
-    </message>
-    <message>
-        <source>Voltage level generation analysis</source>
-        <translation>電圧レベル発電解析</translation>
-    </message>
-    <message>
-        <source>Voltage level load analysis</source>
-        <translation>電圧レベル負荷解析</translation>
-    </message>
-    <message>
-        <source>Voltage level template</source>
-        <translation>電圧レベルテンプレート</translation>
-    </message>
-    <message>
-        <source>Voltage module (0)</source>
-        <translation>電圧モジュール (0)</translation>
-    </message>
-    <message>
-        <source>Voltage module (1)</source>
-        <translation>電圧モジュール (1)</translation>
-    </message>
-    <message>
-        <source>Voltage module (2)</source>
-        <translation>電圧モジュール (2)</translation>
-    </message>
-    <message>
-        <source>Voltage plot</source>
-        <translation>電圧プロット</translation>
-    </message>
-    <message>
-        <source>Vsc</source>
-        <translation>Vsc</translation>
-    </message>
-    <message>
-        <source>Vsc ODF</source>
-        <translation>Vsc ODF</translation>
-    </message>
-    <message>
-        <source>Vsc PTDF</source>
-        <translation>Vsc PTDF</translation>
-    </message>
-    <message>
-        <source>Vsc Pdc</source>
-        <translation>Vsc Pdc</translation>
-    </message>
-    <message>
-        <source>Vsc Vdc</source>
-        <translation>Vsc Vdc</translation>
-    </message>
-    <message>
-        <source>Vsc loading</source>
-        <translation>Vsc負荷</translation>
-    </message>
-    <message>
-        <source>Vsc losses</source>
-        <translation>Vsc損失</translation>
-    </message>
-    <message>
-        <source>Vsc power "from" negative pole</source>
-        <translation>Vsc power "from" negative pole</translation>
-    </message>
-    <message>
-        <source>Vsc power "from" positive pole</source>
-        <translation>Vsc power "from" positive pole</translation>
-    </message>
-    <message>
-        <source>Vsc power "to"</source>
-        <translation>Vsc power "to"</translation>
-    </message>
-    <message>
-        <source>Vsc power "to" A</source>
-        <translation>Vsc power "to" A</translation>
-    </message>
-    <message>
-        <source>Vsc power "to" B</source>
-        <translation>Vsc power "to" B</translation>
-    </message>
-    <message>
-        <source>Vsc power "to" C</source>
-        <translation>Vsc power "to" C</translation>
-    </message>
-    <message>
-        <source>When to make them plot</source>
-        <translation>プロットするタイミング</translation>
-    </message>
-    <message>
-        <source>Winding</source>
-        <translation>巻線</translation>
-    </message>
-    <message>
-        <source>Wire</source>
-        <translation>配線</translation>
-    </message>
-    <message>
-        <source>Zone</source>
-        <translation>ゾーン</translation>
-    </message>
-    <message>
-        <source>Zone analysis</source>
-        <translation>ゾーン解析</translation>
-    </message>
-    <message>
-        <source>Zone balance analysis</source>
-        <translation>ゾーンバランス解析</translation>
-    </message>
-    <message>
-        <source>Zone generation analysis</source>
-        <translation>ゾーン発電解析</translation>
-    </message>
-    <message>
-        <source>Zone load analysis</source>
-        <translation>ゾーン負荷解析</translation>
-    </message>
-    <message>
-        <source>export all</source>
-        <translation>すべてエクスポート</translation>
-    </message>
-    <message>
-        <source>file open</source>
-        <translation>ファイルを開く</translation>
-    </message>
-    <message>
-        <source>file save</source>
-        <translation>ファイルを保存</translation>
-    </message>
-    <message>
-        <source>loading avg</source>
-        <translation>平均負荷</translation>
-    </message>
-    <message>
-        <source>m: Tap module</source>
-        <translation>m: タップモジュール</translation>
-    </message>
-    <message>
-        <source>ΔP: Active power increment</source>
-        <translation>ΔP: 有効電力増分</translation>
-    </message>
-    <message>
-        <source>ΔV: Voltage modules drop</source>
-        <translation>ΔV: 電圧モジュール降下</translation>
-    </message>
-    <message>
-        <source>ΔV: Voltage modules drop A</source>
-        <translation>ΔV: 電圧モジュール降下 A</translation>
-    </message>
-    <message>
-        <source>ΔV: Voltage modules drop B</source>
-        <translation>ΔV: 電圧モジュール降下 B</translation>
-    </message>
-    <message>
-        <source>ΔV: Voltage modules drop C</source>
-        <translation>ΔV: 電圧モジュール降下 C</translation>
-    </message>
-    <message>
-        <source>Δθ: Voltage angles drop</source>
-        <translation>Δθ: 電圧角降下</translation>
-    </message>
-    <message>
-        <source>Δθ: Voltage angles drop A</source>
-        <translation>Δθ: 電圧角降下 A</translation>
-    </message>
-    <message>
-        <source>Δθ: Voltage angles drop B</source>
-        <translation>Δθ: 電圧角降下 B</translation>
-    </message>
-    <message>
-        <source>Δθ: Voltage angles drop C</source>
-        <translation>Δθ: 電圧角降下 C</translation>
-    </message>
-    <message>
-        <source>θ: Voltage angle</source>
-        <translation>θ: 電圧角</translation>
-    </message>
-    <message>
-        <source>θA: Voltage angle A</source>
-        <translation>θA: 電圧角 A</translation>
-    </message>
-    <message>
-        <source>θB: Voltage angle B</source>
-        <translation>θB: 電圧角 B</translation>
-    </message>
-    <message>
-        <source>θC: Voltage angle C</source>
-        <translation>θC: 電圧角 C</translation>
-    </message>
-    <message>
-        <source>𝜏: Tap angle</source>
-        <translation>𝜏: Tap angle</translation>
     </message>
 </context>
 </TS>

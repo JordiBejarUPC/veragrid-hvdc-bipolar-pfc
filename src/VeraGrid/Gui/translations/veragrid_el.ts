@@ -149,7 +149,7 @@ li.checked::marker { content: &quot;\2612&quot;; }&lt;/style&gt;&lt;/head&gt;&lt
     <message>
         <location filename="../DeviceEditors/AdmittanceMatrixEditor/admittance_matrix_editor_gui.ui" line="130"/>
         <source>Accept</source>
-        <translation type="unfinished">Αποδέχομαι</translation>
+        <translation>Αποδέχομαι</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/AdmittanceMatrixEditor/admittance_matrix_editor_gui.ui" line="148"/>
@@ -1417,7 +1417,7 @@ li.checked::marker { content: &quot;\2612&quot;; }&lt;/style&gt;&lt;/head&gt;&lt
     <message>
         <location filename="../FileDialogues/CoordinatesInput/coordinates_input_gui.ui" line="108"/>
         <source>Target</source>
-        <translation type="unfinished">Στόχος</translation>
+        <translation>Στόχος</translation>
     </message>
     <message>
         <location filename="../FileDialogues/CoordinatesInput/coordinates_input_gui.ui" line="141"/>
@@ -2436,7 +2436,7 @@ Cancel and retry?</source>
     <message>
         <location filename="../DeviceEditors/LineLocationsEditor/line_locations_editor_gui.ui" line="19"/>
         <source>Add point</source>
-        <translation type="unfinished">Προσθήκη σημείου</translation>
+        <translation>Προσθήκη σημείου</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/LineLocationsEditor/line_locations_editor_gui.ui" line="33"/>
@@ -2456,7 +2456,7 @@ Cancel and retry?</source>
     <message>
         <location filename="../DeviceEditors/LineLocationsEditor/line_locations_editor_gui.ui" line="75"/>
         <source>Copy</source>
-        <translation type="unfinished">Αντίγραφο</translation>
+        <translation>Αντίγραφο</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/LineLocationsEditor/line_locations_editor_gui.ui" line="89"/>
@@ -3073,7 +3073,7 @@ Cancel and retry?</source>
     <message>
         <location filename="../SigmaAnalysis/sigma_analysis_gui.ui" line="41"/>
         <source>Method</source>
-        <translation type="unfinished">Μέθοδος</translation>
+        <translation>Μέθοδος</translation>
     </message>
     <message>
         <location filename="../SigmaAnalysis/sigma_analysis_gui.ui" line="49"/>
@@ -3118,12 +3118,12 @@ Cancel and retry?</source>
     <message>
         <location filename="../SigmaAnalysis/sigma_analysis_gui.ui" line="110"/>
         <source>Distributed slack</source>
-        <translation type="unfinished">Κατανεμημένη χαλαρότητα</translation>
+        <translation>Κατανεμημένη χαλαρότητα</translation>
     </message>
     <message>
         <location filename="../SigmaAnalysis/sigma_analysis_gui.ui" line="130"/>
         <source>...</source>
-        <translation type="unfinished">...</translation>
+        <translation>...</translation>
     </message>
     <message>
         <location filename="../SigmaAnalysis/sigma_analysis_gui.ui" line="144"/>
@@ -3133,7 +3133,7 @@ Cancel and retry?</source>
     <message>
         <location filename="../SigmaAnalysis/sigma_analysis_gui.ui" line="179"/>
         <source>Data</source>
-        <translation type="unfinished">Δεδομένα</translation>
+        <translation>Δεδομένα</translation>
     </message>
 </context>
 <context>
@@ -3828,7 +3828,7 @@ Monte Carlo power flow results:</source>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="189"/>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="206"/>
         <source>-</source>
-        <translation type="unfinished">-</translation>
+        <translation>-</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="114"/>
@@ -3863,7 +3863,7 @@ Monte Carlo power flow results:</source>
     <message>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="219"/>
         <source>Actions</source>
-        <translation type="unfinished">Δράσεις</translation>
+        <translation>Δράσεις</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="225"/>
@@ -3873,7 +3873,7 @@ Monte Carlo power flow results:</source>
     <message>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="246"/>
         <source>Refresh</source>
-        <translation type="unfinished">Φρεσκάρω</translation>
+        <translation>Φρεσκάρω</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="249"/>
@@ -4573,6 +4573,2205 @@ Monte Carlo power flow results:</source>
     <message>
         <source>No effect, select diagrams or database</source>
         <translation type="vanished">Χωρίς εφέ, επιλέξτε διαγράμματα ή βάση δεδομένων</translation>
+    </message>
+</context>
+<context>
+    <name>VeraGridTreeLabels</name>
+    <message>
+        <source>ATC Report</source>
+        <translation>Αναφορά ATC</translation>
+    </message>
+    <message>
+        <source>Active power flow per area</source>
+        <translation>Ροή ενεργούς ισχύος ανά περιοχή</translation>
+    </message>
+    <message>
+        <source>Any line template</source>
+        <translation>Πρότυπο οποιασδήποτε γραμμής</translation>
+    </message>
+    <message>
+        <source>Area</source>
+        <translation>Περιοχή</translation>
+    </message>
+    <message>
+        <source>Area analysis</source>
+        <translation>Ανάλυση περιοχής</translation>
+    </message>
+    <message>
+        <source>Area balance analysis</source>
+        <translation>Ανάλυση ισορροπίας περιοχής</translation>
+    </message>
+    <message>
+        <source>Area generation analysis</source>
+        <translation>Ανάλυση παραγωγής περιοχής</translation>
+    </message>
+    <message>
+        <source>Area load analysis</source>
+        <translation>Ανάλυση φορτίου περιοχής</translation>
+    </message>
+    <message>
+        <source>Associations</source>
+        <translation>Σωματεία</translation>
+    </message>
+    <message>
+        <source>Available transfer capacity</source>
+        <translation>Διαθέσιμη χωρητικότητα μεταφοράς</translation>
+    </message>
+    <message>
+        <source>Available transfer capacity (N)</source>
+        <translation>Διαθέσιμη μεταβατική χωρητικότητα (N)</translation>
+    </message>
+    <message>
+        <source>Available transfer capacity (final)</source>
+        <translation>Διαθέσιμη μεταβατική χωρητικότητα (τελική)</translation>
+    </message>
+    <message>
+        <source>Available transfer capacity time series</source>
+        <translation>Χρονοσειρά διαθέσιμης μεταβατικής χωρητικότητας</translation>
+    </message>
+    <message>
+        <source>AvailableTransferCapacity</source>
+        <translation>Διαθέσιμη Μεταβατική Χωρητικότητα</translation>
+    </message>
+    <message>
+        <source>AvailableTransferCapacityTimeSeries</source>
+        <translation>Χρονοσειρά Διαθέσιμης Μεταβατικής Χωρητικότητας</translation>
+    </message>
+    <message>
+        <source>Balance plot</source>
+        <translation>Γραφή ισορροπίας</translation>
+    </message>
+    <message>
+        <source>Base flow report</source>
+        <translation>Αναφορά βασικής ροής</translation>
+    </message>
+    <message>
+        <source>Batteries</source>
+        <translation>Μπαταρίες</translation>
+    </message>
+    <message>
+        <source>Battery</source>
+        <translation>Μπαταρία</translation>
+    </message>
+    <message>
+        <source>Battery energy</source>
+        <translation>Ενέργεια μπαταρίας</translation>
+    </message>
+    <message>
+        <source>Battery invested</source>
+        <translation>Επενδυμένη μπαταρίας</translation>
+    </message>
+    <message>
+        <source>Battery power</source>
+        <translation>Ισχύς μπαταρίας</translation>
+    </message>
+    <message>
+        <source>Battery reactive power</source>
+        <translation>Αντιδραστική ισχύς μπαταρίας</translation>
+    </message>
+    <message>
+        <source>Battery reactive power A</source>
+        <translation>Αντιδραστική ισχύς μπαταρίας A</translation>
+    </message>
+    <message>
+        <source>Battery reactive power B</source>
+        <translation>Αντιδραστική ισχύς μπαταρίας B</translation>
+    </message>
+    <message>
+        <source>Battery reactive power C</source>
+        <translation>Αντιδραστική ισχύς μπαταρίας C</translation>
+    </message>
+    <message>
+        <source>Beq: Equivalent susceptance</source>
+        <translation>Beq: Ισοδύναμη ευαισθησία</translation>
+    </message>
+    <message>
+        <source>Branch</source>
+        <translation>Κλάδος</translation>
+    </message>
+    <message>
+        <source>Branch Loading</source>
+        <translation>Φορτίο κλάδου</translation>
+    </message>
+    <message>
+        <source>Branch Loading A</source>
+        <translation>Φορτίο κλάδου A</translation>
+    </message>
+    <message>
+        <source>Branch Loading B</source>
+        <translation>Φορτίο κλάδου B</translation>
+    </message>
+    <message>
+        <source>Branch Loading C</source>
+        <translation>Φορτίο κλάδου C</translation>
+    </message>
+    <message>
+        <source>Branch active current &quot;from&quot; (0)</source>
+        <translation>Ενεργός ρεύμα κλάδου &quot;από&quot; (0)</translation>
+    </message>
+    <message>
+        <source>Branch active current &quot;from&quot; (1)</source>
+        <translation>Ενεργός ρεύμα κλάδου &quot;από&quot; (1)</translation>
+    </message>
+    <message>
+        <source>Branch active current &quot;from&quot; (2)</source>
+        <translation>Ενεργός ρεύμα κλάδου &quot;από&quot; (2)</translation>
+    </message>
+    <message>
+        <source>Branch active losses (0)</source>
+        <translation>Ενεργές απώλειες κλάδου (0)</translation>
+    </message>
+    <message>
+        <source>Branch active losses (1)</source>
+        <translation>Ενεργές απώλειες κλάδου (1)</translation>
+    </message>
+    <message>
+        <source>Branch active losses (2)</source>
+        <translation>Ενεργές απώλειες κλάδου (2)</translation>
+    </message>
+    <message>
+        <source>Branch active power &quot;from&quot; (0)</source>
+        <translation>Ενεργός ισχύς κλάδου &quot;από&quot; (0)</translation>
+    </message>
+    <message>
+        <source>Branch active power &quot;from&quot; (1)</source>
+        <translation>Ενεργός ισχύς κλάδου &quot;από&quot; (1)</translation>
+    </message>
+    <message>
+        <source>Branch active power &quot;from&quot; (2)</source>
+        <translation>Ενεργός ισχύς κλάδου &quot;από&quot; (2)</translation>
+    </message>
+    <message>
+        <source>Branch group</source>
+        <translation>Ομάδα κλάδων</translation>
+    </message>
+    <message>
+        <source>Branch loading (0)</source>
+        <translation>Φορτίο κλάδου (0)</translation>
+    </message>
+    <message>
+        <source>Branch loading (1)</source>
+        <translation>Φορτίο κλάδου (1)</translation>
+    </message>
+    <message>
+        <source>Branch loading (2)</source>
+        <translation>Φορτίο κλάδου (2)</translation>
+    </message>
+    <message>
+        <source>Branch losses</source>
+        <translation>Απώλειες κλάδου</translation>
+    </message>
+    <message>
+        <source>Branch monitoring logic</source>
+        <translation>Λογική παρακολούθησης κλάδου</translation>
+    </message>
+    <message>
+        <source>Branch overloads</source>
+        <translation>Υπερφόρτιση κλάδου</translation>
+    </message>
+    <message>
+        <source>Branch overloads cost</source>
+        <translation>Κόστος υπερφόρτισης κλάδου</translation>
+    </message>
+    <message>
+        <source>Branch power CDF</source>
+        <translation>CDF Ισχύος κλάδου</translation>
+    </message>
+    <message>
+        <source>Branch power avg</source>
+        <translation>Μέση ισχύς κλάδου</translation>
+    </message>
+    <message>
+        <source>Branch power std</source>
+        <translation>Τυπική απόκλιση ισχύος κλάδου</translation>
+    </message>
+    <message>
+        <source>Branch reactive current &quot;from&quot; (0)</source>
+        <translation>Αντιδραστικό ρεύμα κλάδου &quot;από&quot; (0)</translation>
+    </message>
+    <message>
+        <source>Branch reactive current &quot;from&quot; (1)</source>
+        <translation>Branch reactive current &quot;from&quot; (1)</translation>
+    </message>
+    <message>
+        <source>Branch reactive current &quot;from&quot; (2)</source>
+        <translation>Branch reactive current &quot;from&quot; (2)</translation>
+    </message>
+    <message>
+        <source>Branch reactive losses (0)</source>
+        <translation>Branch reactive losses (0)</translation>
+    </message>
+    <message>
+        <source>Branch reactive losses (1)</source>
+        <translation>Branch reactive losses (1)</translation>
+    </message>
+    <message>
+        <source>Branch reactive losses (2)</source>
+        <translation>Branch reactive losses (2)</translation>
+    </message>
+    <message>
+        <source>Branch reactive power &quot;from&quot; (0)</source>
+        <translation>Branch reactive power &quot;from&quot; (0)</translation>
+    </message>
+    <message>
+        <source>Branch reactive power &quot;from&quot; (1)</source>
+        <translation>Branch reactive power &quot;from&quot; (1)</translation>
+    </message>
+    <message>
+        <source>Branch reactive power &quot;from&quot; (2)</source>
+        <translation>Branch reactive power &quot;from&quot; (2)</translation>
+    </message>
+    <message>
+        <source>Branch template</source>
+        <translation>Branch template</translation>
+    </message>
+    <message>
+        <source>Branches</source>
+        <translation>Branches</translation>
+    </message>
+    <message>
+        <source>Bus</source>
+        <translation>Ζυγός</translation>
+    </message>
+    <message>
+        <source>Bus nodal capacity</source>
+        <translation>Bus nodal capacity</translation>
+    </message>
+    <message>
+        <source>Bus power</source>
+        <translation>Bus power</translation>
+    </message>
+    <message>
+        <source>Bus power CDF</source>
+        <translation>Bus power CDF</translation>
+    </message>
+    <message>
+        <source>Bus voltage CDF</source>
+        <translation>Bus voltage CDF</translation>
+    </message>
+    <message>
+        <source>Bus voltage avg</source>
+        <translation>Bus voltage avg</translation>
+    </message>
+    <message>
+        <source>Bus voltage sensitivity</source>
+        <translation>Bus voltage sensitivity</translation>
+    </message>
+    <message>
+        <source>Bus voltage std</source>
+        <translation>Bus voltage std</translation>
+    </message>
+    <message>
+        <source>BusBar</source>
+        <translation>BusBar</translation>
+    </message>
+    <message>
+        <source>BusOrBranch</source>
+        <translation>BusOrBranch</translation>
+    </message>
+    <message>
+        <source>CAIDI</source>
+        <translation>CAIDI</translation>
+    </message>
+    <message>
+        <source>Cascade</source>
+        <translation>Cascade</translation>
+    </message>
+    <message>
+        <source>Catalogue</source>
+        <translation>Κατάλογος</translation>
+    </message>
+    <message>
+        <source>Catalogue optimization</source>
+        <translation>Catalogue optimization</translation>
+    </message>
+    <message>
+        <source>Circuit</source>
+        <translation>Circuit</translation>
+    </message>
+    <message>
+        <source>Clean room</source>
+        <translation>Clean room</translation>
+    </message>
+    <message>
+        <source>Clustering</source>
+        <translation>Ομαδοποίηση</translation>
+    </message>
+    <message>
+        <source>Clustering Analysis</source>
+        <translation>Clustering Analysis</translation>
+    </message>
+    <message>
+        <source>Clustering time series report</source>
+        <translation>Αναφορά χρονοσειρών βλοκάρισμα</translation>
+    </message>
+    <message>
+        <source>Combinations</source>
+        <translation>Συνδυασμοί</translation>
+    </message>
+    <message>
+        <source>Community</source>
+        <translation>Κοινότητα</translation>
+    </message>
+    <message>
+        <source>Community analysis</source>
+        <translation>Ανάλυση Κοινότητας</translation>
+    </message>
+    <message>
+        <source>Community balance analysis</source>
+        <translation>Ανάλυση Ισορροπίας Κοινότητας</translation>
+    </message>
+    <message>
+        <source>Community generation analysis</source>
+        <translation>Ανάλυση Παραγωγής Κοινότητας</translation>
+    </message>
+    <message>
+        <source>Community load analysis</source>
+        <translation>Ανάλυση Φορτίου Κοινότητας</translation>
+    </message>
+    <message>
+        <source>Contingencies</source>
+        <translation>Απρόβλεπτα</translation>
+    </message>
+    <message>
+        <source>Contingencies report</source>
+        <translation>Αναφορά Αποτυχιών</translation>
+    </message>
+    <message>
+        <source>Contingencies statistical report</source>
+        <translation>Στατιστική Αναφορά Αποτυχιών</translation>
+    </message>
+    <message>
+        <source>Contingency</source>
+        <translation>Αποτυχία</translation>
+    </message>
+    <message>
+        <source>Contingency Group</source>
+        <translation>Ομάδα Αποτυχίας</translation>
+    </message>
+    <message>
+        <source>Contingency analysis</source>
+        <translation>Ανάλυση έκτακτης ανάγκης</translation>
+    </message>
+    <message>
+        <source>Contingency analysis time series</source>
+        <translation>Χρονοσειρές ανάλυσης έκτακτης ανάγκης</translation>
+    </message>
+    <message>
+        <source>Contingency flow</source>
+        <translation>Ροή Αποτυχίας</translation>
+    </message>
+    <message>
+        <source>Contingency flow report</source>
+        <translation>Αναφορά Ροής Αποτυχίας</translation>
+    </message>
+    <message>
+        <source>Contingency frequency</source>
+        <translation>Συχνότητα Αποτυχίας</translation>
+    </message>
+    <message>
+        <source>Contingency loading</source>
+        <translation>Φορτίο Αποτυχίας</translation>
+    </message>
+    <message>
+        <source>Contingency overload sum</source>
+        <translation>Άθροισμα Υπερφόρτισης Αποτυχίας</translation>
+    </message>
+    <message>
+        <source>Contingency relative frequency</source>
+        <translation>Σχετική Συχνότητα Αποτυχίας</translation>
+    </message>
+    <message>
+        <source>ContingencyAnalysis</source>
+        <translation>Ανάλυση Αποτυχίας</translation>
+    </message>
+    <message>
+        <source>ContingencyAnalysisTimeSeries</source>
+        <translation>Χρονοσειρά Ανάλυσης Αποτυχίας</translation>
+    </message>
+    <message>
+        <source>ContinuationPowerFlow</source>
+        <translation>Ροή Ισχύος Συνεχούς Λειτουργίας</translation>
+    </message>
+    <message>
+        <source>Controllable shunt</source>
+        <translation>Ελεγχόμενο Shunt</translation>
+    </message>
+    <message>
+        <source>Country</source>
+        <translation>Χώρα</translation>
+    </message>
+    <message>
+        <source>Country analysis</source>
+        <translation>Ανάλυση Χώρας</translation>
+    </message>
+    <message>
+        <source>Country balance analysis</source>
+        <translation>Ανάλυση Ισορροπίας Χώρας</translation>
+    </message>
+    <message>
+        <source>Country generation analysis</source>
+        <translation>Ανάλυση Παραγωγής Χώρας</translation>
+    </message>
+    <message>
+        <source>Country load analysis</source>
+        <translation>Ανάλυση Φορτίου Χώρας</translation>
+    </message>
+    <message>
+        <source>Current injection</source>
+        <translation>Έγχυση ρεύματος</translation>
+    </message>
+    <message>
+        <source>DC line</source>
+        <translation>Γραμμή DC</translation>
+    </message>
+    <message>
+        <source>Delete and reduce</source>
+        <translation>Διαγραφή και μείωση</translation>
+    </message>
+    <message>
+        <source>Design View</source>
+        <translation>Προβολή Σχεδιασμού</translation>
+    </message>
+    <message>
+        <source>Diagram</source>
+        <translation>Διάγραμμα</translation>
+    </message>
+    <message>
+        <source>Dispatch</source>
+        <translation>Διαχείριση</translation>
+    </message>
+    <message>
+        <source>Dynamic</source>
+        <translation>Δυναμικό</translation>
+    </message>
+    <message>
+        <source>Dynamic Model Host</source>
+        <translation>Καταλύτης Δυναμικού Μοντέλου</translation>
+    </message>
+    <message>
+        <source>EMT Dynamic</source>
+        <translation>Δυναμικό EMT</translation>
+    </message>
+    <message>
+        <source>EMT Small Signal stability</source>
+        <translation>Σταθερότητα Μικρού Σήματος EMT</translation>
+    </message>
+    <message>
+        <source>EMT template</source>
+        <translation>Πρότυπο EMT</translation>
+    </message>
+    <message>
+        <source>ENS</source>
+        <translation>ENS</translation>
+    </message>
+    <message>
+        <source>Emission</source>
+        <translation>Εκπομπή</translation>
+    </message>
+    <message>
+        <source>Emt Event</source>
+        <translation>Συμβάν EMT</translation>
+    </message>
+    <message>
+        <source>Emt Events Group</source>
+        <translation>Ομάδα Συμβάντων EMT</translation>
+    </message>
+    <message>
+        <source>EmtSimulation</source>
+        <translation>Σύ뮬레이션 EMT</translation>
+    </message>
+    <message>
+        <source>Error</source>
+        <translation>Σφάλμα</translation>
+    </message>
+    <message>
+        <source>Evaluation report</source>
+        <translation>Ανα báo cáo αξιολόγησης</translation>
+    </message>
+    <message>
+        <source>Exciter</source>
+        <translation>Εκκινητής</translation>
+    </message>
+    <message>
+        <source>External grid</source>
+        <translation>Εξωτερικό δίκτυο</translation>
+    </message>
+    <message>
+        <source>FMU template</source>
+        <translation>Πρότυπο FMU</translation>
+    </message>
+    <message>
+        <source>Facility</source>
+        <translation>Υποδομή</translation>
+    </message>
+    <message>
+        <source>Flow Reports</source>
+        <translation>Ανα báo cáo Ροής</translation>
+    </message>
+    <message>
+        <source>Flow circulating in the device</source>
+        <translation>Ροή κυκλοφορίας στη συσκευή</translation>
+    </message>
+    <message>
+        <source>Flow entering the node</source>
+        <translation>Ροή εισόδου στον κόμβο</translation>
+    </message>
+    <message>
+        <source>Flow exiting the node</source>
+        <translation>Ροή εξόδου από τον κόμβο</translation>
+    </message>
+    <message>
+        <source>Flow from the P2X</source>
+        <translation>Ροή από το P2X</translation>
+    </message>
+    <message>
+        <source>Flow in the river</source>
+        <translation>Ροή στο ποτάμι</translation>
+    </message>
+    <message>
+        <source>Fluid</source>
+        <translation>Υγρά</translation>
+    </message>
+    <message>
+        <source>Fluid Injection</source>
+        <translation>Εγχύση Υγρών</translation>
+    </message>
+    <message>
+        <source>Fluid P2X</source>
+        <translation>Υγρά P2X</translation>
+    </message>
+    <message>
+        <source>Fluid P2Xs</source>
+        <translation>Υγρά P2Xs</translation>
+    </message>
+    <message>
+        <source>Fluid Pump</source>
+        <translation>Υγρά المضخة</translation>
+    </message>
+    <message>
+        <source>Fluid Turbine</source>
+        <translation>Υγρά Τύρβινο</translation>
+    </message>
+    <message>
+        <source>Fluid injections</source>
+        <translation>Εγχύσεις Υγρών</translation>
+    </message>
+    <message>
+        <source>Fluid node</source>
+        <translation>Ρευστός κόμβος</translation>
+    </message>
+    <message>
+        <source>Fluid nodes</source>
+        <translation>Κόμβοι Υγρών</translation>
+    </message>
+    <message>
+        <source>Fluid path</source>
+        <translation>Υδροδρομική διαδρομή</translation>
+    </message>
+    <message>
+        <source>Fluid paths</source>
+        <translation>Υδροδρομικές διαδρομές</translation>
+    </message>
+    <message>
+        <source>Fluid pumps</source>
+        <translation>Υγρά المضخές</translation>
+    </message>
+    <message>
+        <source>Fluid turbines</source>
+        <translation>Υγρά Τύρβινοι</translation>
+    </message>
+    <message>
+        <source>Frequency</source>
+        <translation>Συχνότητα</translation>
+    </message>
+    <message>
+        <source>Fuel</source>
+        <translation>Καύσιμο</translation>
+    </message>
+    <message>
+        <source>Generation delta slacks</source>
+        <translation>Διαφορικό δέλεχος παραγωγής</translation>
+    </message>
+    <message>
+        <source>Generation deltas</source>
+        <translation>Διαφορικό παραγωγής</translation>
+    </message>
+    <message>
+        <source>Generator</source>
+        <translation>Γεννήτρια</translation>
+    </message>
+    <message>
+        <source>Generator Emission</source>
+        <translation>Εκπομπή Γεννήτριας</translation>
+    </message>
+    <message>
+        <source>Generator Fuel</source>
+        <translation>Καύσιμο Γεννήτριας</translation>
+    </message>
+    <message>
+        <source>Generator Technology</source>
+        <translation>Τεχνολογία Γεννήτριας</translation>
+    </message>
+    <message>
+        <source>Generator cost</source>
+        <translation>Κόστος Γεννήτριας</translation>
+    </message>
+    <message>
+        <source>Generator emissions</source>
+        <translation>Εκπομπές Γεννήτριας</translation>
+    </message>
+    <message>
+        <source>Generator fuels</source>
+        <translation>Καύσιμα Γεννήτριας</translation>
+    </message>
+    <message>
+        <source>Generator invested</source>
+        <translation>Επενδυμένο Γεννήτριας</translation>
+    </message>
+    <message>
+        <source>Generator power</source>
+        <translation>Ισχύς Γεννήτριας</translation>
+    </message>
+    <message>
+        <source>Generator producing</source>
+        <translation>Παραγωγώντας Γεννήτρια</translation>
+    </message>
+    <message>
+        <source>Generator reactive power</source>
+        <translation>Αντίστατα Ισχύς Γεννήτριας</translation>
+    </message>
+    <message>
+        <source>Generator reactive power A</source>
+        <translation>Αντίστατα Ισχύς Γεννήτριας A</translation>
+    </message>
+    <message>
+        <source>Generator reactive power B</source>
+        <translation>Δραχτική ισχύς Γεννήτριας B</translation>
+    </message>
+    <message>
+        <source>Generator reactive power C</source>
+        <translation>Δραχτική ισχύς Γεννήτριας C</translation>
+    </message>
+    <message>
+        <source>Generator reserve</source>
+        <translation>Ανταρτοχή Γεννήτριας</translation>
+    </message>
+    <message>
+        <source>Generator shedding</source>
+        <translation>Αποσύνδεση Γεννήτριας</translation>
+    </message>
+    <message>
+        <source>Generator shutting down</source>
+        <translation>Σβήσιμο Γεννήτριας</translation>
+    </message>
+    <message>
+        <source>Generator starting up</source>
+        <translation>Εκκίνηση Γεννήτριας</translation>
+    </message>
+    <message>
+        <source>Generators</source>
+        <translation>Γεννήτριες</translation>
+    </message>
+    <message>
+        <source>Generic Area</source>
+        <translation>Γενική Περιοχή</translation>
+    </message>
+    <message>
+        <source>Governor</source>
+        <translation>Διαχειριστής</translation>
+    </message>
+    <message>
+        <source>Groups</source>
+        <translation>Ομάδες</translation>
+    </message>
+    <message>
+        <source>HVDC Line</source>
+        <translation>Γραμμή HVDC</translation>
+    </message>
+    <message>
+        <source>HVDC ODF</source>
+        <translation>HVDC ODF</translation>
+    </message>
+    <message>
+        <source>HVDC PTDF</source>
+        <translation>HVDC PTDF</translation>
+    </message>
+    <message>
+        <source>HVDC loading</source>
+        <translation>Φορτίο HVDC</translation>
+    </message>
+    <message>
+        <source>HVDC losses</source>
+        <translation>Απώλειες HVDC</translation>
+    </message>
+    <message>
+        <source>HVDC overloads</source>
+        <translation>Υπερφόρτιση HVDC</translation>
+    </message>
+    <message>
+        <source>HVDC power &quot;from&quot;</source>
+        <translation>Ισχύς HVDC «από»</translation>
+    </message>
+    <message>
+        <source>HVDC power &quot;from&quot; A</source>
+        <translation>Ισχύς HVDC «από» A</translation>
+    </message>
+    <message>
+        <source>HVDC power &quot;from&quot; B</source>
+        <translation>Ισχύς HVDC «από» B</translation>
+    </message>
+    <message>
+        <source>HVDC power &quot;from&quot; C</source>
+        <translation>Ισχύς HVDC «από» C</translation>
+    </message>
+    <message>
+        <source>HVDC power &quot;to&quot;</source>
+        <translation>Ισχύς HVDC «προς»</translation>
+    </message>
+    <message>
+        <source>HVDC power &quot;to&quot; A</source>
+        <translation>Ισχύς HVDC «προς» A</translation>
+    </message>
+    <message>
+        <source>HVDC power &quot;to&quot; B</source>
+        <translation>Ισχύς HVDC «προς» B</translation>
+    </message>
+    <message>
+        <source>HVDC power &quot;to&quot; C</source>
+        <translation>Ισχύς HVDC «προς» C</translation>
+    </message>
+    <message>
+        <source>Hvdc</source>
+        <translation>Hvdc</translation>
+    </message>
+    <message>
+        <source>If Measurement</source>
+        <translation>Μέτρηση If</translation>
+    </message>
+    <message>
+        <source>Iif: Reactive current &quot;from&quot;</source>
+        <translation>Iif: Δραχτικός ρεύμα «από»</translation>
+    </message>
+    <message>
+        <source>Iif: Reactive current &quot;from&quot; A</source>
+        <translation>Iif: Δραχτικός ρεύμα «από» A</translation>
+    </message>
+    <message>
+        <source>Iif: Reactive current &quot;from&quot; B</source>
+        <translation>Iif: Δραχτικός ρεύμα «από» B</translation>
+    </message>
+    <message>
+        <source>Iif: Reactive current &quot;from&quot; C</source>
+        <translation>Iif: Δραχτικός ρεύμα «από» C</translation>
+    </message>
+    <message>
+        <source>Iit: Reactive current &quot;to&quot;</source>
+        <translation>Iit: Δραχτικός ρεύμα «προς»</translation>
+    </message>
+    <message>
+        <source>Iit: Reactive current &quot;to&quot; A</source>
+        <translation>Iit: Δραχτικός ρεύμα «προς» A</translation>
+    </message>
+    <message>
+        <source>Iit: Reactive current &quot;to&quot; B</source>
+        <translation>Iit: Δραχτικός ρεύμα «προς» B</translation>
+    </message>
+    <message>
+        <source>Iit: Reactive current &quot;to&quot; C</source>
+        <translation>Iit: Δραχτικός ρεύμα «προς» C</translation>
+    </message>
+    <message>
+        <source>Information</source>
+        <translation>Πληροφορίες</translation>
+    </message>
+    <message>
+        <source>Injections</source>
+        <translation>Εγχύσεις</translation>
+    </message>
+    <message>
+        <source>Inputs Analysis</source>
+        <translation>Ανάλυση Ενходов</translation>
+    </message>
+    <message>
+        <source>InputsAnalysis</source>
+        <translation>Ανάλυση Ενходов</translation>
+    </message>
+    <message>
+        <source>Inter-Area exchange</source>
+        <translation>Εναλλαγή Μεταξύ Περιοχών</translation>
+    </message>
+    <message>
+        <source>Inter-space branch loading</source>
+        <translation>Φορτίο Κλαδιού Εντός Χώρου</translation>
+    </message>
+    <message>
+        <source>Inter-space branch power</source>
+        <translation>Ισχύς Κλαδιού Εντός Χώρου</translation>
+    </message>
+    <message>
+        <source>InterAggregationInfo</source>
+        <translation>Πληροφορίες Μετα-Συγκέντρωσης</translation>
+    </message>
+    <message>
+        <source>Investment</source>
+        <translation>Επένδυση</translation>
+    </message>
+    <message>
+        <source>InvestmentEvaluations</source>
+        <translation>Αξιολογήσεις Επενδύσεων</translation>
+    </message>
+    <message>
+        <source>Investments</source>
+        <translation>Επενδύσεις</translation>
+    </message>
+    <message>
+        <source>Investments Group</source>
+        <translation>Ομάδα Επενδύσεων</translation>
+    </message>
+    <message>
+        <source>Investments evaluation</source>
+        <translation>Αξιολόγηση επενδύσεων</translation>
+    </message>
+    <message>
+        <source>Irf: Active current &quot;from&quot;</source>
+        <translation>Irf: Активный ρεύμα «από»</translation>
+    </message>
+    <message>
+        <source>Irf: Active current &quot;from&quot; A</source>
+        <translation>Irf: Активный ρεύμα «από» A</translation>
+    </message>
+    <message>
+        <source>Irf: Active current &quot;from&quot; B</source>
+        <translation>Irf: Активный ρεύμα «από» B</translation>
+    </message>
+    <message>
+        <source>Irf: Active current &quot;from&quot; C</source>
+        <translation>Irf: Активный ρεύμα «από» C</translation>
+    </message>
+    <message>
+        <source>Irt: Active current &quot;to&quot;</source>
+        <translation>Irt: Активный ρεύμα «προς»</translation>
+    </message>
+    <message>
+        <source>Irt: Active current &quot;to&quot; A</source>
+        <translation>Irt: Τροφοδοτικό ρεύμα &quot;σε&quot; A</translation>
+    </message>
+    <message>
+        <source>Irt: Active current &quot;to&quot; B</source>
+        <translation>Irt: Τροφοδοτικό ρεύμα &quot;σε&quot; B</translation>
+    </message>
+    <message>
+        <source>Irt: Active current &quot;to&quot; C</source>
+        <translation>Irt: Τροφοδοτικό ρεύμα &quot;σε&quot; C</translation>
+    </message>
+    <message>
+        <source>It Measurement</source>
+        <translation>Μέτρηση It</translation>
+    </message>
+    <message>
+        <source>Iterations plot</source>
+        <translation>Γραφή επαναλήψεων</translation>
+    </message>
+    <message>
+        <source>LODF</source>
+        <translation>LODF</translation>
+    </message>
+    <message>
+        <source>LOLE</source>
+        <translation>LOLE</translation>
+    </message>
+    <message>
+        <source>LOLET</source>
+        <translation>LOLET</translation>
+    </message>
+    <message>
+        <source>LOLF</source>
+        <translation>LOLF</translation>
+    </message>
+    <message>
+        <source>LOLFT</source>
+        <translation>LOLFT</translation>
+    </message>
+    <message>
+        <source>Latin Hypercube</source>
+        <translation>Λατινικό Υπερκύβο</translation>
+    </message>
+    <message>
+        <source>Line</source>
+        <translation>Γραμμή</translation>
+    </message>
+    <message>
+        <source>Line Location</source>
+        <translation>Τοποθεσία Γραμμής</translation>
+    </message>
+    <message>
+        <source>Line Locations</source>
+        <translation>Τοποθεσίες Γραμμών</translation>
+    </message>
+    <message>
+        <source>Line Template</source>
+        <translation>Πρότυπο Γραμμής</translation>
+    </message>
+    <message>
+        <source>Linear analysis</source>
+        <translation>Γραμμική ανάλυση</translation>
+    </message>
+    <message>
+        <source>Linear analysis time series</source>
+        <translation>Χρονοσειρά γραμμικής ανάλυσης</translation>
+    </message>
+    <message>
+        <source>LinearAnalysis</source>
+        <translation>Γραμμική Ανάλυση</translation>
+    </message>
+    <message>
+        <source>LinearAnalysisTimeSeries</source>
+        <translation>Χρονοσειρά Γραμμικής Ανάλυσης</translation>
+    </message>
+    <message>
+        <source>Load</source>
+        <translation>Φορτίο</translation>
+    </message>
+    <message>
+        <source>Load like</source>
+        <translation>Φόρτιση τύπου</translation>
+    </message>
+    <message>
+        <source>Load neutral voltage</source>
+        <translation>Τάση ουδέτερου σημείου φόρτισης</translation>
+    </message>
+    <message>
+        <source>Load power</source>
+        <translation>Ισχύς φόρτισης</translation>
+    </message>
+    <message>
+        <source>Load shedding</source>
+        <translation>Αποσύνδεση φόρτισης</translation>
+    </message>
+    <message>
+        <source>Load shedding cost</source>
+        <translation>Κόστος αποσύνδεσης φόρτισης</translation>
+    </message>
+    <message>
+        <source>Loading CDF</source>
+        <translation>Συγκεντρωτική Κατανομή Φόρτισης</translation>
+    </message>
+    <message>
+        <source>Loading from the base situation ($\lambda$)</source>
+        <translation>Φόρτιση από την βασική κατάσταση ($\lambda$)</translation>
+    </message>
+    <message>
+        <source>Loading std</source>
+        <translation>Τυπική Απόκλιση Φόρτισης</translation>
+    </message>
+    <message>
+        <source>Loads</source>
+        <translation>Φόρτιση</translation>
+    </message>
+    <message>
+        <source>Losses % per area</source>
+        <translation>Χαρίτες % ανά περιοχή</translation>
+    </message>
+    <message>
+        <source>Losses CDF</source>
+        <translation>Συγκεντρωτική Κατανομή Χαριών</translation>
+    </message>
+    <message>
+        <source>Losses avg</source>
+        <translation>Μέση Χαρίτα</translation>
+    </message>
+    <message>
+        <source>Losses per area</source>
+        <translation>Χαρίτες ανά περιοχή</translation>
+    </message>
+    <message>
+        <source>Losses per generation unit in area</source>
+        <translation>Χαρίτες ανά μονάδα παραγωγής στην περιοχή</translation>
+    </message>
+    <message>
+        <source>Losses std</source>
+        <translation>Τυπική Απόκλιση Χαριών</translation>
+    </message>
+    <message>
+        <source>Market</source>
+        <translation>Αγορά</translation>
+    </message>
+    <message>
+        <source>Market unit</source>
+        <translation>Μονάδα Αγοράς</translation>
+    </message>
+    <message>
+        <source>Max contingency flow</source>
+        <translation>Μέγιστο ρεύμα αντιμετώπισης</translation>
+    </message>
+    <message>
+        <source>Max contingency loading</source>
+        <translation>Μέγιστη φόρτιση αντιμετώπισης</translation>
+    </message>
+    <message>
+        <source>Maximum contingency flow</source>
+        <translation>Μέγιστο ρεύμα αντιμετώπισης</translation>
+    </message>
+    <message>
+        <source>Mean contingency overloading</source>
+        <translation>Μέση υπερφόρτιση αντιμετώπισης</translation>
+    </message>
+    <message>
+        <source>Measurements</source>
+        <translation>Μετρήσεις</translation>
+    </message>
+    <message>
+        <source>Modelling Authority</source>
+        <translation>Αρχή Μοντελοποίησης</translation>
+    </message>
+    <message>
+        <source>Modes</source>
+        <translation>Λειτουργίες</translation>
+    </message>
+    <message>
+        <source>Monte Carlo</source>
+        <translation>Monte Carlo</translation>
+    </message>
+    <message>
+        <source>Municipality</source>
+        <translation>Δήμος</translation>
+    </message>
+    <message>
+        <source>Municipality analysis</source>
+        <translation>Ανάλυση Δήμου</translation>
+    </message>
+    <message>
+        <source>Municipality balance analysis</source>
+        <translation>Ανάλυση ισορροπίας Δήμου</translation>
+    </message>
+    <message>
+        <source>Municipality generation analysis</source>
+        <translation>Ανάλυση παραγωγής Δήμου</translation>
+    </message>
+    <message>
+        <source>Municipality load analysis</source>
+        <translation>Ανάλυση φόρτισης Δήμου</translation>
+    </message>
+    <message>
+        <source>NTC</source>
+        <translation>NTC</translation>
+    </message>
+    <message>
+        <source>Net transfer capacity</source>
+        <translation>Καθαρή ικανότητα μεταφοράς</translation>
+    </message>
+    <message>
+        <source>NetTransferCapacity</source>
+        <translation>Καθαρή Ικανότητα Μεταφοράς</translation>
+    </message>
+    <message>
+        <source>NetTransferCapacityTimeSeries</source>
+        <translation>Χρονοσειρά Καθαρή Ικανότητα Μεταφοράς</translation>
+    </message>
+    <message>
+        <source>No simulation</source>
+        <translation>Καμία προσομοίωση</translation>
+    </message>
+    <message>
+        <source>NoDevice</source>
+        <translation>Καμία Συσκευή</translation>
+    </message>
+    <message>
+        <source>Nodal capacity</source>
+        <translation>Συνολική Ικανότητα Κόμβου</translation>
+    </message>
+    <message>
+        <source>Nodal capacity time series</source>
+        <translation>Χρονοσειρά Συνολικής Ικανότητας Κόμβου</translation>
+    </message>
+    <message>
+        <source>Nodal shadow prices</source>
+        <translation>Σκιώδη Τιμές Κόμβου</translation>
+    </message>
+    <message>
+        <source>Nodal slacks</source>
+        <translation>Κόμβοι Slacks</translation>
+    </message>
+    <message>
+        <source>Node groups</source>
+        <translation>Ομαδικές Συνδέσεις Κόμβων</translation>
+    </message>
+    <message>
+        <source>NodeGroups</source>
+        <translation>Ομαδικές Συνδέσεις Κόμβων</translation>
+    </message>
+    <message>
+        <source>Nonlinear analysis</source>
+        <translation>Μη Γραμμική Ανάλυση</translation>
+    </message>
+    <message>
+        <source>Nonlinear analysis time series</source>
+        <translation>Χρονοσειρά Μη Γραμμικής Ανάλυσης</translation>
+    </message>
+    <message>
+        <source>Ntc: Base flow report</source>
+        <translation>Ntc: Αναφορά Βασικής Ροής</translation>
+    </message>
+    <message>
+        <source>Ntc: Contingency flow report</source>
+        <translation>Ntc: Αναφορά Ροής Έκτακτης Ανάγκης</translation>
+    </message>
+    <message>
+        <source>Ntc: Contingency flow report. (Branch)</source>
+        <translation>Ntc: Αναφορά Ροής Έκτακτης Ανάγκης. (Κλάδος)</translation>
+    </message>
+    <message>
+        <source>Ntc: Contingency flow report. (Generation)</source>
+        <translation>Ntc: Αναφορά Ροής Έκτακτης Ανάγκης. (Παραγωγή)</translation>
+    </message>
+    <message>
+        <source>Ntc: Contingency flow report. (Hvdc)</source>
+        <translation>Ntc: Αναφορά Ροής Έκτακτης Ανάγκης. (Hvdc)</translation>
+    </message>
+    <message>
+        <source>Objectives</source>
+        <translation>Στόχοι</translation>
+    </message>
+    <message>
+        <source>Objects</source>
+        <translation>Αντικείμενα</translation>
+    </message>
+    <message>
+        <source>Optimal net transfer capacity</source>
+        <translation>Βέλτιστη καθαρή ικανότητα μεταφοράς</translation>
+    </message>
+    <message>
+        <source>Optimal net transfer capacity time series</source>
+        <translation>Χρονοσειρά Βέλτιστης Κατανεμητικής Ικανότητας Μεταφοράς</translation>
+    </message>
+    <message>
+        <source>Optimal power flow</source>
+        <translation>Βέλτιστη ροή ισχύος</translation>
+    </message>
+    <message>
+        <source>Optimal power flow time series</source>
+        <translation>Βέλτιστη χρονική σειρά ροής ισχύος</translation>
+    </message>
+    <message>
+        <source>Owner</source>
+        <translation>Ιδιοκτήτης</translation>
+    </message>
+    <message>
+        <source>P: Active power</source>
+        <translation>P: Ενεργός Ισχύς</translation>
+    </message>
+    <message>
+        <source>PA: Active power A</source>
+        <translation>PA: Ενεργός Ισχύς A</translation>
+    </message>
+    <message>
+        <source>PB: Active power B</source>
+        <translation>PB: Ενεργός Ισχύς B</translation>
+    </message>
+    <message>
+        <source>PC: Active power C</source>
+        <translation>PC: Ενεργός Ισχύς C</translation>
+    </message>
+    <message>
+        <source>PTDF</source>
+        <translation>PTDF</translation>
+    </message>
+    <message>
+        <source>Pareto</source>
+        <translation>Παρέτο</translation>
+    </message>
+    <message>
+        <source>Pareto combinations</source>
+        <translation>Συνδυασμοί Παρέτο</translation>
+    </message>
+    <message>
+        <source>Pareto evaluation report</source>
+        <translation>Αναφορά Αξιολόγησης Παρέτο</translation>
+    </message>
+    <message>
+        <source>Pareto frequency</source>
+        <translation>Συχνότητα Παρέτο</translation>
+    </message>
+    <message>
+        <source>Pareto objectives</source>
+        <translation>Στόχοι Παρέτο</translation>
+    </message>
+    <message>
+        <source>Pareto plot NSGA2</source>
+        <translation>Γραφή Παρέτο NSGA2</translation>
+    </message>
+    <message>
+        <source>Pareto plots</source>
+        <translation>Γραφές Παρέτο</translation>
+    </message>
+    <message>
+        <source>Participation Factors</source>
+        <translation>Παράγοντες Συμμετοχής</translation>
+    </message>
+    <message>
+        <source>Pf Measurement</source>
+        <translation>Μέτρηση Pf</translation>
+    </message>
+    <message>
+        <source>Pf: Active power &quot;from&quot;</source>
+        <translation>Pf: Ενεργός Ισχύς &quot;από&quot;</translation>
+    </message>
+    <message>
+        <source>Pf: Active power &quot;from&quot; base case</source>
+        <translation>Pf: Ενεργός Ισχύς &quot;από&quot; βασική περίπτωση</translation>
+    </message>
+    <message>
+        <source>PfA: Active power &quot;from&quot; A</source>
+        <translation>PfA: Ενεργός Ισχύς &quot;από&quot; A</translation>
+    </message>
+    <message>
+        <source>PfB: Active power &quot;from&quot; B</source>
+        <translation>PfB: Ενεργός Ισχύς &quot;από&quot; B</translation>
+    </message>
+    <message>
+        <source>PfC: Active power &quot;from&quot; C</source>
+        <translation>PfC: Ενεργός Ισχύς &quot;από&quot; C</translation>
+    </message>
+    <message>
+        <source>Pg Measurement</source>
+        <translation>Μέτρηση Pg</translation>
+    </message>
+    <message>
+        <source>Pi Measurement</source>
+        <translation>Μέτρηση Pi</translation>
+    </message>
+    <message>
+        <source>Pl: Active losses</source>
+        <translation>Pl: Ενεργές Απώλειες</translation>
+    </message>
+    <message>
+        <source>Pl: Active losses (%)</source>
+        <translation>Pl: Ενεργές Απώλειες (%)</translation>
+    </message>
+    <message>
+        <source>Pl: Active losses (%) A</source>
+        <translation>Pl: Ενεργές Απώλειες (%) A</translation>
+    </message>
+    <message>
+        <source>Pl: Active losses (%) B</source>
+        <translation>Pl: Ενεργές Απώλειες (%) B</translation>
+    </message>
+    <message>
+        <source>Pl: Active losses (%) C</source>
+        <translation>Pl: Ενεργές Απώλειες (%) C</translation>
+    </message>
+    <message>
+        <source>Pl: Active losses A</source>
+        <translation>Pl: Ενεργές Απώλειες A</translation>
+    </message>
+    <message>
+        <source>Pl: Active losses B</source>
+        <translation>Pl: Ενεργές Απώλειες B</translation>
+    </message>
+    <message>
+        <source>Pl: Active losses C</source>
+        <translation>Pl: Ενεργές Απώλειες C</translation>
+    </message>
+    <message>
+        <source>Plot Event</source>
+        <translation>Γεγονός Σχεδίασης</translation>
+    </message>
+    <message>
+        <source>Plot Group</source>
+        <translation>Ομάδα Σχεδίασης</translation>
+    </message>
+    <message>
+        <source>Power by technology</source>
+        <translation>Ισχύς ανά Τεχνολογία</translation>
+    </message>
+    <message>
+        <source>Power flow</source>
+        <translation>Ροή ισχύος</translation>
+    </message>
+    <message>
+        <source>Power flow 3ph</source>
+        <translation>Ροή Ισχύος 3φ</translation>
+    </message>
+    <message>
+        <source>Power flow time series</source>
+        <translation>Χρονική σειρά ροής ισχύος</translation>
+    </message>
+    <message>
+        <source>Power flow time series 3ph</source>
+        <translation>Χρονοσειρές ροής ισχύος 3 φάσεων</translation>
+    </message>
+    <message>
+        <source>PowerFlow</source>
+        <translation>PowerFlow</translation>
+    </message>
+    <message>
+        <source>PowerFlowTimeSeries</source>
+        <translation>PowerFlowTimeSeries</translation>
+    </message>
+    <message>
+        <source>Pt Measurement</source>
+        <translation>Μέτρηση Ισχύος (P_t)</translation>
+    </message>
+    <message>
+        <source>Pt: Active power &quot;to&quot;</source>
+        <translation>P_t: Активная ισχύς &quot;σε&quot;</translation>
+    </message>
+    <message>
+        <source>Pt: Active power &quot;to&quot; A</source>
+        <translation>P_t: Активная ισχύς &quot;σε&quot; A</translation>
+    </message>
+    <message>
+        <source>Pt: Active power &quot;to&quot; B</source>
+        <translation>P_t: Активная ισχύς &quot;σε&quot; B</translation>
+    </message>
+    <message>
+        <source>Pt: Active power &quot;to&quot; C</source>
+        <translation>P_t: Активная ισχύς &quot;σε&quot; C</translation>
+    </message>
+    <message>
+        <source>Q: Reactive power</source>
+        <translation>Ισχύς αντίδρασης (Q)</translation>
+    </message>
+    <message>
+        <source>QA: Reactive power A</source>
+        <translation>Ισχύς αντίδρασης A (Q_A)</translation>
+    </message>
+    <message>
+        <source>QB: Reactive power B</source>
+        <translation>Ισχύς αντίδρασης B (Q_B)</translation>
+    </message>
+    <message>
+        <source>QC: Reactive power C</source>
+        <translation>Ισχύς αντίδρασης C (Q_C)</translation>
+    </message>
+    <message>
+        <source>Qf Measurement</source>
+        <translation>Μέτρηση Ισχύος Αντίδρασης (Q_f)</translation>
+    </message>
+    <message>
+        <source>Qf: Reactive power &quot;from&quot;</source>
+        <translation>Q_f: Ισχύς αντίδρασης &quot;από&quot;</translation>
+    </message>
+    <message>
+        <source>QfA: Reactive power &quot;from&quot; A</source>
+        <translation>Q_fA: Ισχύς αντίδρασης &quot;από&quot; A</translation>
+    </message>
+    <message>
+        <source>QfB: Reactive power &quot;from&quot; B</source>
+        <translation>Q_fB: Ισχύς αντίδρασης &quot;από&quot; B</translation>
+    </message>
+    <message>
+        <source>QfC: Reactive power &quot;from&quot; C</source>
+        <translation>Q_fC: Ισχύς αντίδρασης &quot;από&quot; C</translation>
+    </message>
+    <message>
+        <source>Qg Measurement</source>
+        <translation>Μέτρηση Ισχύος Αντίδρασης (Q_g)</translation>
+    </message>
+    <message>
+        <source>Qi Measurement</source>
+        <translation>Μέτρηση Ρεύματος Αντίδρασης (I_q)</translation>
+    </message>
+    <message>
+        <source>Ql: Reactive losses</source>
+        <translation>Αντίδραστικές απώλειες (Q_l)</translation>
+    </message>
+    <message>
+        <source>Ql: Reactive losses A</source>
+        <translation>Q_l: Αντίδραστικές απώλειες A</translation>
+    </message>
+    <message>
+        <source>Ql: Reactive losses B</source>
+        <translation>Q_l: Αντίδραστικές απώλειες B</translation>
+    </message>
+    <message>
+        <source>Ql: Reactive losses C</source>
+        <translation>Q_l: Αντίδραστικές απώλειες C</translation>
+    </message>
+    <message>
+        <source>Qt Measurement</source>
+        <translation>Μέτρηση Ισχύος Αντίδρασης (Q_t)</translation>
+    </message>
+    <message>
+        <source>Qt: Reactive power &quot;to&quot;</source>
+        <translation>Q_t: Ισχύς αντίδρασης &quot;σε&quot;</translation>
+    </message>
+    <message>
+        <source>Qt: Reactive power &quot;to&quot; A</source>
+        <translation>Q_t: Ισχύς αντίδρασης &quot;σε&quot; A</translation>
+    </message>
+    <message>
+        <source>Qt: Reactive power &quot;to&quot; B</source>
+        <translation>Q_t: Ισχύς αντίδρασης &quot;σε&quot; B</translation>
+    </message>
+    <message>
+        <source>Qt: Reactive power &quot;to&quot; C</source>
+        <translation>Q_t: Ισχύς αντίδρασης &quot;σε&quot; C</translation>
+    </message>
+    <message>
+        <source>RMS Dynamic</source>
+        <translation>RMS Δυναμική</translation>
+    </message>
+    <message>
+        <source>RMS Small Signal stability</source>
+        <translation>Σταθερότητα Μικρού Σήματος RMS</translation>
+    </message>
+    <message>
+        <source>RMS template</source>
+        <translation>Πρότυπο RMS</translation>
+    </message>
+    <message>
+        <source>Region</source>
+        <translation>Περιοχή</translation>
+    </message>
+    <message>
+        <source>Region analysis</source>
+        <translation>Ανάλυση Περιοχής</translation>
+    </message>
+    <message>
+        <source>Region balance analysis</source>
+        <translation>Ανάλυση Ισορροπίας Περιοχής</translation>
+    </message>
+    <message>
+        <source>Region generation analysis</source>
+        <translation>Ανάλυση Παραγωγής Περιοχής</translation>
+    </message>
+    <message>
+        <source>Region load analysis</source>
+        <translation>Ανάλυση Φορτίου Περιοχής</translation>
+    </message>
+    <message>
+        <source>Regions</source>
+        <translation>Περιοχές</translation>
+    </message>
+    <message>
+        <source>Reliability</source>
+        <translation>Αξιοπιστία</translation>
+    </message>
+    <message>
+        <source>Remedial action</source>
+        <translation>Διόρθωση</translation>
+    </message>
+    <message>
+        <source>Remedial action Group</source>
+        <translation>Ομάδα Διόρθωσης</translation>
+    </message>
+    <message>
+        <source>Reports</source>
+        <translation>Αναφορές</translation>
+    </message>
+    <message>
+        <source>Reservoir fluid level</source>
+        <translation>Επίπεδο Υγρού Αποθετήρισης</translation>
+    </message>
+    <message>
+        <source>Results</source>
+        <translation>Αποτελέσματα</translation>
+    </message>
+    <message>
+        <source>Right Eigenvectors</source>
+        <translation>Δεξιές Ιδιοκτινότητες</translation>
+    </message>
+    <message>
+        <source>Rms Event</source>
+        <translation>Συμβάν RMS</translation>
+    </message>
+    <message>
+        <source>Rms Events Group</source>
+        <translation>Ομάδα Συμβάντων RMS</translation>
+    </message>
+    <message>
+        <source>Rms Generator results</source>
+        <translation>Αποτελέσματα Γεννήτριας RMS</translation>
+    </message>
+    <message>
+        <source>Rms Genqec delta results</source>
+        <translation>Αποτελέσματα Δelta Genqec RMS</translation>
+    </message>
+    <message>
+        <source>Rms Genqec omega results</source>
+        <translation>Αποτελέσματα Omega Genqec RMS</translation>
+    </message>
+    <message>
+        <source>Rms Line results</source>
+        <translation>Αποτελέσματα Γραμμής RMS</translation>
+    </message>
+    <message>
+        <source>Rms Load P results</source>
+        <translation>Αποτελέσματα Ισχύος Φορτίου P RMS</translation>
+    </message>
+    <message>
+        <source>Rms Load Q results</source>
+        <translation>Αποτελέσματα Ισχύος Φορτίου Q RMS</translation>
+    </message>
+    <message>
+        <source>Rms Simple Line P results</source>
+        <translation>Αποτελέσματα P Γραμμής RMS</translation>
+    </message>
+    <message>
+        <source>Rms Simple Line Q results</source>
+        <translation>Αποτελέσματα Q Γραμμής RMS</translation>
+    </message>
+    <message>
+        <source>Rms load results</source>
+        <translation>Αποτελέσματα Φορτίου RMS</translation>
+    </message>
+    <message>
+        <source>Rms plot results</source>
+        <translation>Αποτελέσματα Γραφής RMS</translation>
+    </message>
+    <message>
+        <source>Rms time series report</source>
+        <translation>Αναφορά Χρονοσειράς RMS</translation>
+    </message>
+    <message>
+        <source>RmsSimulation</source>
+        <translation>Μοделирование RMS</translation>
+    </message>
+    <message>
+        <source>S-Domain Plot</source>
+        <translation>Γραφή Τομέα S</translation>
+    </message>
+    <message>
+        <source>S-Domain Plot in Hz</source>
+        <translation>Γραφή Τομέα S σε Hz</translation>
+    </message>
+    <message>
+        <source>SAIDI</source>
+        <translation>SAIDI</translation>
+    </message>
+    <message>
+        <source>SAIFI</source>
+        <translation>SAIFI</translation>
+    </message>
+    <message>
+        <source>Sensibilities</source>
+        <translation>Ευαισθησත්වότητες</translation>
+    </message>
+    <message>
+        <source>Sensitivity to the exchange</source>
+        <translation>Ευαισθησία στην ανταλλαγή</translation>
+    </message>
+    <message>
+        <source>Sensitivity to the exchange (N-1)</source>
+        <translation>Ευαισθησία στην ανταλλαγή (N-1)</translation>
+    </message>
+    <message>
+        <source>Sequence line</source>
+        <translation>Γραμμή Σει퀀ς</translation>
+    </message>
+    <message>
+        <source>Series</source>
+        <translation>Σειρά</translation>
+    </message>
+    <message>
+        <source>Series reactance</source>
+        <translation>Αντίδραση σειράς</translation>
+    </message>
+    <message>
+        <source>Short circuit</source>
+        <translation>Βραχυκύκλωμα</translation>
+    </message>
+    <message>
+        <source>Short circuit active current</source>
+        <translation>Ενεργικό Ρεύμα Βραχυκυκλώματος</translation>
+    </message>
+    <message>
+        <source>Short circuit active current A</source>
+        <translation>Ενεργικό Ρεύμα Βραχυκυκλώματος A</translation>
+    </message>
+    <message>
+        <source>Short circuit active current B</source>
+        <translation>Ενεργικό Ρεύμα Βραχυκυκλώματος B</translation>
+    </message>
+    <message>
+        <source>Short circuit active current C</source>
+        <translation>Ενεργικό Ρεύμα Βραχυκυκλώματος C</translation>
+    </message>
+    <message>
+        <source>Short circuit active power</source>
+        <translation>Ενεργική Ισχύς Βραχυκυκλώματος</translation>
+    </message>
+    <message>
+        <source>Short circuit active power A</source>
+        <translation>Ενεργική Ισχύς Βραχυκυκλώματος A</translation>
+    </message>
+    <message>
+        <source>Short circuit active power B</source>
+        <translation>Ενεργική Ισχύς Βραχυκυκλώματος B</translation>
+    </message>
+    <message>
+        <source>Short circuit active power C</source>
+        <translation>Ενεργική Ισχύς Βραχυκυκλώματος C</translation>
+    </message>
+    <message>
+        <source>Short circuit event</source>
+        <translation>Εκδήλωση Βραχυκυκλώματος</translation>
+    </message>
+    <message>
+        <source>Short circuit reactive current</source>
+        <translation>Διαناطίσθητο Ρεύμα Βραχυκυκλώματος</translation>
+    </message>
+    <message>
+        <source>Short circuit reactive current A</source>
+        <translation>Διαناطίσθητο Ρεύμα Βραχυκυκλώματος A</translation>
+    </message>
+    <message>
+        <source>Short circuit reactive current B</source>
+        <translation>Διαناطίσθητο Ρεύμα Βραχυκυκλώματος B</translation>
+    </message>
+    <message>
+        <source>Short circuit reactive current C</source>
+        <translation>Διαناطίσθητο Ρεύμα Βραχυκυκλώματος C</translation>
+    </message>
+    <message>
+        <source>Short circuit reactive power</source>
+        <translation>Διαناطίσθητική Ισχύς Βραχυκυκλώματος</translation>
+    </message>
+    <message>
+        <source>Short circuit reactive power A</source>
+        <translation>Διαناطίσθητική Ισχύς Βραχυκυκλώματος A</translation>
+    </message>
+    <message>
+        <source>Short circuit reactive power B</source>
+        <translation>Διαناطίσθητική Ισχύς Βραχυκυκλώματος B</translation>
+    </message>
+    <message>
+        <source>Short circuit reactive power C</source>
+        <translation>Διαناطίσθητική Ισχύς Βραχυκυκλώματος C</translation>
+    </message>
+    <message>
+        <source>Short-circuit information</source>
+        <translation>Πληροφορίες Βραχυκυκλώματος</translation>
+    </message>
+    <message>
+        <source>ShortCircuit</source>
+        <translation>Βραχυκύκλωμα</translation>
+    </message>
+    <message>
+        <source>Shunt</source>
+        <translation>Shunt</translation>
+    </message>
+    <message>
+        <source>Shunt like devices</source>
+        <translation>Συσκευές τύπου Shunt</translation>
+    </message>
+    <message>
+        <source>Shunt neutral voltage</source>
+        <translation>Τάσηの中νευρικού Shunt</translation>
+    </message>
+    <message>
+        <source>Shunt reactive power</source>
+        <translation>Διαناطίσθητική Ισχύς Shunt</translation>
+    </message>
+    <message>
+        <source>Shunt reactive power A</source>
+        <translation>Διαناطίσθητική Ισχύς Shunt A</translation>
+    </message>
+    <message>
+        <source>Shunt reactive power B</source>
+        <translation>Διαناطίσθητική Ισχύς Shunt B</translation>
+    </message>
+    <message>
+        <source>Shunt reactive power C</source>
+        <translation>Διαناطίσθητική Ισχύς Shunt C</translation>
+    </message>
+    <message>
+        <source>Sigma + distances</source>
+        <translation>Αποστάσεις Σίγμα +</translation>
+    </message>
+    <message>
+        <source>Sigma Analysis</source>
+        <translation>Ανάλυση Σίγμα</translation>
+    </message>
+    <message>
+        <source>Sigma distances</source>
+        <translation>Αποστάσεις Σίγμα</translation>
+    </message>
+    <message>
+        <source>Sigma imaginary</source>
+        <translation>Μαυγαζί Σίγμα</translation>
+    </message>
+    <message>
+        <source>Sigma real</source>
+        <translation>Πραγματικό Σίγμα</translation>
+    </message>
+    <message>
+        <source>SigmaAnalysis</source>
+        <translation>Ανάλυση Σίγμα</translation>
+    </message>
+    <message>
+        <source>SimulationOptionsDevice</source>
+        <translation>Επιλογές Μοделирования Συσκευής</translation>
+    </message>
+    <message>
+        <source>Slacks</source>
+        <translation>Slacks</translation>
+    </message>
+    <message>
+        <source>SmallSignalStability</source>
+        <translation>Σταθερότητα Μικρού Σήματος</translation>
+    </message>
+    <message>
+        <source>Snapshot</source>
+        <translation>Στιγμιότυπο</translation>
+    </message>
+    <message>
+        <source>Special plots</source>
+        <translation>Ειδικά γραφήματα</translation>
+    </message>
+    <message>
+        <source>Spillage flow leaving</source>
+        <translation>Ροή διαρροής εξόδου</translation>
+    </message>
+    <message>
+        <source>Srap used power</source>
+        <translation>Χρησιμοποιούμενη ισχύ Srap</translation>
+    </message>
+    <message>
+        <source>Stabilizer</source>
+        <translation>Σταθεροποιητής</translation>
+    </message>
+    <message>
+        <source>State Matrix</source>
+        <translation>Μήτ[][]α Κατάστασης</translation>
+    </message>
+    <message>
+        <source>State estimation</source>
+        <translation>Εκτίμηση του κράτους</translation>
+    </message>
+    <message>
+        <source>StateEstimation</source>
+        <translation>Εκτίμηση Κατάστασης</translation>
+    </message>
+    <message>
+        <source>Static Generator</source>
+        <translation>Στατικός Γεννήτριας</translation>
+    </message>
+    <message>
+        <source>Statistics</source>
+        <translation>Στατιστικά</translation>
+    </message>
+    <message>
+        <source>Std-dev contingency overloading</source>
+        <translation>Τυπική απόκλιση υπερφόρτωσης σε περίπτωση έκτακτου γεγονότος</translation>
+    </message>
+    <message>
+        <source>Stochastic Power Flow</source>
+        <translation>Στοχαστικό Ροή Ισχύος</translation>
+    </message>
+    <message>
+        <source>StochasticPowerFlow</source>
+        <translation>Στοχαστικό Ροή Ισχύος</translation>
+    </message>
+    <message>
+        <source>Substation</source>
+        <translation>Μικρός σταθμός</translation>
+    </message>
+    <message>
+        <source>Substation analysis</source>
+        <translation>Ανάλυση Υποσταθμού</translation>
+    </message>
+    <message>
+        <source>Substation balance analysis</source>
+        <translation>Ανάλυση Ισορροπίας Υποσταθμού</translation>
+    </message>
+    <message>
+        <source>Substation generation analysis</source>
+        <translation>Ανάλυση Παραγωγής Υποσταθμού</translation>
+    </message>
+    <message>
+        <source>Substation load analysis</source>
+        <translation>Ανάλυση Φορτίου Υποσταθμού</translation>
+    </message>
+    <message>
+        <source>Switch</source>
+        <translation>Διακόπτης</translation>
+    </message>
+    <message>
+        <source>System</source>
+        <translation>Σύστημα</translation>
+    </message>
+    <message>
+        <source>System emissions</source>
+        <translation>Εκπομπές Συστήματος</translation>
+    </message>
+    <message>
+        <source>System energy cost</source>
+        <translation>Κόστος Ενέργειας Συστήματος</translation>
+    </message>
+    <message>
+        <source>System energy total cost</source>
+        <translation>Συνολικό Κόστος Ενέργειας Συστήματος</translation>
+    </message>
+    <message>
+        <source>System fuel consumption</source>
+        <translation>Κατανάλωση Καυσίμου Συστήματος</translation>
+    </message>
+    <message>
+        <source>Technology</source>
+        <translation>Τεχνολογία</translation>
+    </message>
+    <message>
+        <source>Technology Category</source>
+        <translation>Κατηγορία Τεχνολογίας</translation>
+    </message>
+    <message>
+        <source>Technology Group</source>
+        <translation>Ομάδα Τεχνολογίας</translation>
+    </message>
+    <message>
+        <source>Technology plot</source>
+        <translation>Γράφημα Τεχνολογίας</translation>
+    </message>
+    <message>
+        <source>Template</source>
+        <translation>Περίγραμμα</translation>
+    </message>
+    <message>
+        <source>Templates</source>
+        <translation>Πρότυπα</translation>
+    </message>
+    <message>
+        <source>Time</source>
+        <translation>Χρόνος</translation>
+    </message>
+    <message>
+        <source>Time series Contingency flow report (Branches)</source>
+        <translation>Αναφορά Ροής Έκτακτου Γεγονότος (Κλαδιά) (Σειρά Χρόνου)</translation>
+    </message>
+    <message>
+        <source>Time series base flow report</source>
+        <translation>Αναφορά Βασικής Ροής (Σειρά Χρόνου)</translation>
+    </message>
+    <message>
+        <source>Time series branch monitoring logic report</source>
+        <translation>Αναφορά Λογικής Παρακολούθησης Κλαδιών (Σειρά Χρόνου)</translation>
+    </message>
+    <message>
+        <source>Time series contingency Branches report</source>
+        <translation>Αναφορά Κλαδιών Έκτακτου Γεγονότος (Σειρά Χρόνου)</translation>
+    </message>
+    <message>
+        <source>Time series contingency flow report</source>
+        <translation>Αναφορά Ροής Έκτακτου Γεγονότος (Σειρά Χρόνου)</translation>
+    </message>
+    <message>
+        <source>Time series contingency flow report. (Generation)</source>
+        <translation>Αναφορά Ροής Έκτακτου Γεγονότος. (Παραγωγή) (Σειρά Χρόνου)</translation>
+    </message>
+    <message>
+        <source>Time series contingency flow report. (Hvdc)</source>
+        <translation>Αναφορά Ροής Έκτακτου Γεγονότος. (HVDC) (Σειρά Χρόνου)</translation>
+    </message>
+    <message>
+        <source>Time series critical Branches report</source>
+        <translation>Αναφορά Κρίσιμων Κλαδιών (Σειρά Χρόνου)</translation>
+    </message>
+    <message>
+        <source>Time series generation delta power report</source>
+        <translation>Αναφορά ΔΙσχύος Παραγωγής (Σειρά Χρόνου)</translation>
+    </message>
+    <message>
+        <source>Time series generation power report</source>
+        <translation>Αναφορά Ισχύος Παραγωγής (Σειρά Χρόνου)</translation>
+    </message>
+    <message>
+        <source>Time series sensitivity to the exchange report</source>
+        <translation>Αναφορά Ευαισθησίας στην Ανταλλαγή (Σειρά Χρόνου)</translation>
+    </message>
+    <message>
+        <source>Time series worst sensitivity to the exchange report (N-1)</source>
+        <translation>Αναφορά Πιο Χειρότερης Ευαισθησίας στην Ανταλλαγή (N-1) (Σειρά Χρόνου)</translation>
+    </message>
+    <message>
+        <source>Topology Processor</source>
+        <translation>Επεξεργαστής Τοπολογίας</translation>
+    </message>
+    <message>
+        <source>Topology reduction</source>
+        <translation>Μείωση Τοπολογίας</translation>
+    </message>
+    <message>
+        <source>Tower</source>
+        <translation>Πύργος</translation>
+    </message>
+    <message>
+        <source>Transformer</source>
+        <translation>Μετασχηματιστής</translation>
+    </message>
+    <message>
+        <source>Transformer type</source>
+        <translation>Τύπος Μετασχητικού</translation>
+    </message>
+    <message>
+        <source>Transformer3W</source>
+        <translation>Transformer3W</translation>
+    </message>
+    <message>
+        <source>TransformerNw</source>
+        <translation>TransformerNw</translation>
+    </message>
+    <message>
+        <source>Transient stability</source>
+        <translation>Μεταβατική Σταθερότητα</translation>
+    </message>
+    <message>
+        <source>UPFC</source>
+        <translation>UPFC</translation>
+    </message>
+    <message>
+        <source>Underground line</source>
+        <translation>Υπογείωση Γραμμής</translation>
+    </message>
+    <message>
+        <source>V: Voltage module</source>
+        <translation>V: Μονάδα Τάσης</translation>
+    </message>
+    <message>
+        <source>VA: Voltage module A</source>
+        <translation>VA: Μονάδα Τάσης A</translation>
+    </message>
+    <message>
+        <source>VB: Voltage module B</source>
+        <translation>VB: Μονάδα Τάσης B</translation>
+    </message>
+    <message>
+        <source>VC: Voltage module C</source>
+        <translation>VC: Μονάδα Τάσης C</translation>
+    </message>
+    <message>
+        <source>VSC</source>
+        <translation>VSC</translation>
+    </message>
+    <message>
+        <source>Va Measurement</source>
+        <translation>Μέτρηση Va</translation>
+    </message>
+    <message>
+        <source>Var Factory</source>
+        <translation>Παραγωγή Var</translation>
+    </message>
+    <message>
+        <source>Vm Measurement</source>
+        <translation>Μέτρηση Vm</translation>
+    </message>
+    <message>
+        <source>Voltage angle (0)</source>
+        <translation>Γωνία τάσης (0)</translation>
+    </message>
+    <message>
+        <source>Voltage angle (1)</source>
+        <translation>Γωνία τάσης (1)</translation>
+    </message>
+    <message>
+        <source>Voltage angle (2)</source>
+        <translation>Γωνία τάσης (2)</translation>
+    </message>
+    <message>
+        <source>Voltage collapse</source>
+        <translation>Κατάρρευση τάσης</translation>
+    </message>
+    <message>
+        <source>Voltage level</source>
+        <translation>Επίπεδο τάσης</translation>
+    </message>
+    <message>
+        <source>Voltage level analysis</source>
+        <translation>Ανάλυση επιπέδου τάσης</translation>
+    </message>
+    <message>
+        <source>Voltage level balance analysis</source>
+        <translation>Ανάλυση ισορροπίας επιπέδου τάσης</translation>
+    </message>
+    <message>
+        <source>Voltage level generation analysis</source>
+        <translation>Ανάλυση παραγωγής επιπέδου τάσης</translation>
+    </message>
+    <message>
+        <source>Voltage level load analysis</source>
+        <translation>Ανάλυση φόρτου επιπέδου τάσης</translation>
+    </message>
+    <message>
+        <source>Voltage level template</source>
+        <translation>Πρότυπο επιπέδου τάσης</translation>
+    </message>
+    <message>
+        <source>Voltage module (0)</source>
+        <translation>Μονάδα τάσης (0)</translation>
+    </message>
+    <message>
+        <source>Voltage module (1)</source>
+        <translation>Μονάδα τάσης (1)</translation>
+    </message>
+    <message>
+        <source>Voltage module (2)</source>
+        <translation>Μονάδα τάσης (2)</translation>
+    </message>
+    <message>
+        <source>Voltage plot</source>
+        <translation>Γραφή τάσης</translation>
+    </message>
+    <message>
+        <source>Vsc</source>
+        <translation>Vsc</translation>
+    </message>
+    <message>
+        <source>Vsc ODF</source>
+        <translation>Vsc ODF</translation>
+    </message>
+    <message>
+        <source>Vsc PTDF</source>
+        <translation>Vsc PTDF</translation>
+    </message>
+    <message>
+        <source>Vsc Pdc</source>
+        <translation>Vsc Pdc</translation>
+    </message>
+    <message>
+        <source>Vsc Vdc</source>
+        <translation>Vsc Vdc</translation>
+    </message>
+    <message>
+        <source>Vsc loading</source>
+        <translation>Φόρτιση Vsc</translation>
+    </message>
+    <message>
+        <source>Vsc losses</source>
+        <translation>Χαρίτες Vsc</translation>
+    </message>
+    <message>
+        <source>Vsc power &quot;from&quot; negative pole</source>
+        <translation>Ισχύς Vsc «από» αρνητικό πόλο</translation>
+    </message>
+    <message>
+        <source>Vsc power &quot;from&quot; positive pole</source>
+        <translation>Ισχύς Vsc «από» θετικό πόλο</translation>
+    </message>
+    <message>
+        <source>Vsc power &quot;to&quot;</source>
+        <translation>Ισχύς Vsc «προς»</translation>
+    </message>
+    <message>
+        <source>Vsc power &quot;to&quot; A</source>
+        <translation>Ισχύς Vsc «προς» A</translation>
+    </message>
+    <message>
+        <source>Vsc power &quot;to&quot; B</source>
+        <translation>Ισχύς Vsc «προς» B</translation>
+    </message>
+    <message>
+        <source>Vsc power &quot;to&quot; C</source>
+        <translation>Ισχύς Vsc «προς» C</translation>
+    </message>
+    <message>
+        <source>When to make them plot</source>
+        <translation>Πότε να τα σχεδιάσετε</translation>
+    </message>
+    <message>
+        <source>Winding</source>
+        <translation>Τύλιγμα</translation>
+    </message>
+    <message>
+        <source>Wire</source>
+        <translation>Γραμμή</translation>
+    </message>
+    <message>
+        <source>Zone</source>
+        <translation>Ζώνη</translation>
+    </message>
+    <message>
+        <source>Zone analysis</source>
+        <translation>Ανάλυση ζώνης</translation>
+    </message>
+    <message>
+        <source>Zone balance analysis</source>
+        <translation>Ανάλυση ισορροπίας ζώνης</translation>
+    </message>
+    <message>
+        <source>Zone generation analysis</source>
+        <translation>Ανάλυση παραγωγής ζώνης</translation>
+    </message>
+    <message>
+        <source>Zone load analysis</source>
+        <translation>Ανάλυση φόρτου ζώνης</translation>
+    </message>
+    <message>
+        <source>export all</source>
+        <translation>Εξαγωγή όλων</translation>
+    </message>
+    <message>
+        <source>file open</source>
+        <translation>Άνοιγμα αρχείου</translation>
+    </message>
+    <message>
+        <source>file save</source>
+        <translation>Αποθήκευση αρχείου</translation>
+    </message>
+    <message>
+        <source>loading avg</source>
+        <translation>Μέση φόρτιση</translation>
+    </message>
+    <message>
+        <source>m: Tap module</source>
+        <translation>m: Μονάδα Tap</translation>
+    </message>
+    <message>
+        <source>ΔP: Active power increment</source>
+        <translation>ΔP: Πρόσθετο φυσίμερης ισχύος</translation>
+    </message>
+    <message>
+        <source>ΔV: Voltage modules drop</source>
+        <translation>ΔV: Πτώση μονάδων τάσης</translation>
+    </message>
+    <message>
+        <source>ΔV: Voltage modules drop A</source>
+        <translation>ΔV: Πτώση μονάδων τάσης A</translation>
+    </message>
+    <message>
+        <source>ΔV: Voltage modules drop B</source>
+        <translation>ΔV: Πτώση μονάδων τάσης B</translation>
+    </message>
+    <message>
+        <source>ΔV: Voltage modules drop C</source>
+        <translation>ΔV: Πτώση μονάδων τάσης C</translation>
+    </message>
+    <message>
+        <source>Δθ: Voltage angles drop</source>
+        <translation>Δθ: Πτώση γωνιών τάσης</translation>
+    </message>
+    <message>
+        <source>Δθ: Voltage angles drop A</source>
+        <translation>Δθ: Πτώση γωνιών τάσης A</translation>
+    </message>
+    <message>
+        <source>Δθ: Voltage angles drop B</source>
+        <translation>Δθ: Πτώση γωνιών τάσης B</translation>
+    </message>
+    <message>
+        <source>Δθ: Voltage angles drop C</source>
+        <translation>Δθ: Πτώση γωνιών τάσης C</translation>
+    </message>
+    <message>
+        <source>θ: Voltage angle</source>
+        <translation>θ: Ηλεκ زاویه τάσης</translation>
+    </message>
+    <message>
+        <source>θA: Voltage angle A</source>
+        <translation>θA: Ηλεκ زاویه τάσης A</translation>
+    </message>
+    <message>
+        <source>θB: Voltage angle B</source>
+        <translation>θB: Ηλεκ زاویه τάσης B</translation>
+    </message>
+    <message>
+        <source>θC: Voltage angle C</source>
+        <translation>θC: Ηλεκ زاویه τάσης C</translation>
+    </message>
+    <message>
+        <source>𝜏: Tap angle</source>
+        <translation>𝜏: Tap angle</translation>
     </message>
 </context>
 <context>
@@ -7986,2205 +10185,6 @@ Monte Carlo power flow results:</source>
     <message>
         <source>Question</source>
         <translation>Ερώτηση</translation>
-    </message>
-</context>
-<context>
-    <name>VeraGridTreeLabels</name>
-    <message>
-        <source>ATC Report</source>
-        <translation>Αναφορά ATC</translation>
-    </message>
-    <message>
-        <source>Active power flow per area</source>
-        <translation>Ροή ενεργούς ισχύος ανά περιοχή</translation>
-    </message>
-    <message>
-        <source>Any line template</source>
-        <translation>Πρότυπο οποιασδήποτε γραμμής</translation>
-    </message>
-    <message>
-        <source>Area</source>
-        <translation>Περιοχή</translation>
-    </message>
-    <message>
-        <source>Area analysis</source>
-        <translation>Ανάλυση περιοχής</translation>
-    </message>
-    <message>
-        <source>Area balance analysis</source>
-        <translation>Ανάλυση ισορροπίας περιοχής</translation>
-    </message>
-    <message>
-        <source>Area generation analysis</source>
-        <translation>Ανάλυση παραγωγής περιοχής</translation>
-    </message>
-    <message>
-        <source>Area load analysis</source>
-        <translation>Ανάλυση φορτίου περιοχής</translation>
-    </message>
-    <message>
-        <source>Associations</source>
-        <translation>Σωματεία</translation>
-    </message>
-    <message>
-        <source>Available transfer capacity</source>
-        <translation>Διαθέσιμη χωρητικότητα μεταφοράς</translation>
-    </message>
-    <message>
-        <source>Available transfer capacity (N)</source>
-        <translation>Διαθέσιμη μεταβατική χωρητικότητα (N)</translation>
-    </message>
-    <message>
-        <source>Available transfer capacity (final)</source>
-        <translation>Διαθέσιμη μεταβατική χωρητικότητα (τελική)</translation>
-    </message>
-    <message>
-        <source>Available transfer capacity time series</source>
-        <translation>Χρονοσειρά διαθέσιμης μεταβατικής χωρητικότητας</translation>
-    </message>
-    <message>
-        <source>AvailableTransferCapacity</source>
-        <translation>Διαθέσιμη Μεταβατική Χωρητικότητα</translation>
-    </message>
-    <message>
-        <source>AvailableTransferCapacityTimeSeries</source>
-        <translation>Χρονοσειρά Διαθέσιμης Μεταβατικής Χωρητικότητας</translation>
-    </message>
-    <message>
-        <source>Balance plot</source>
-        <translation>Γραφή ισορροπίας</translation>
-    </message>
-    <message>
-        <source>Base flow report</source>
-        <translation>Αναφορά βασικής ροής</translation>
-    </message>
-    <message>
-        <source>Batteries</source>
-        <translation>Μπαταρίες</translation>
-    </message>
-    <message>
-        <source>Battery</source>
-        <translation>Μπαταρία</translation>
-    </message>
-    <message>
-        <source>Battery energy</source>
-        <translation>Ενέργεια μπαταρίας</translation>
-    </message>
-    <message>
-        <source>Battery invested</source>
-        <translation>Επενδυμένη μπαταρίας</translation>
-    </message>
-    <message>
-        <source>Battery power</source>
-        <translation>Ισχύς μπαταρίας</translation>
-    </message>
-    <message>
-        <source>Battery reactive power</source>
-        <translation>Αντιδραστική ισχύς μπαταρίας</translation>
-    </message>
-    <message>
-        <source>Battery reactive power A</source>
-        <translation>Αντιδραστική ισχύς μπαταρίας A</translation>
-    </message>
-    <message>
-        <source>Battery reactive power B</source>
-        <translation>Αντιδραστική ισχύς μπαταρίας B</translation>
-    </message>
-    <message>
-        <source>Battery reactive power C</source>
-        <translation>Αντιδραστική ισχύς μπαταρίας C</translation>
-    </message>
-    <message>
-        <source>Beq: Equivalent susceptance</source>
-        <translation>Beq: Ισοδύναμη ευαισθησία</translation>
-    </message>
-    <message>
-        <source>Branch</source>
-        <translation>Κλάδος</translation>
-    </message>
-    <message>
-        <source>Branch Loading</source>
-        <translation>Φορτίο κλάδου</translation>
-    </message>
-    <message>
-        <source>Branch Loading A</source>
-        <translation>Φορτίο κλάδου A</translation>
-    </message>
-    <message>
-        <source>Branch Loading B</source>
-        <translation>Φορτίο κλάδου B</translation>
-    </message>
-    <message>
-        <source>Branch Loading C</source>
-        <translation>Φορτίο κλάδου C</translation>
-    </message>
-    <message>
-        <source>Branch active current "from" (0)</source>
-        <translation>Ενεργός ρεύμα κλάδου "από" (0)</translation>
-    </message>
-    <message>
-        <source>Branch active current "from" (1)</source>
-        <translation>Ενεργός ρεύμα κλάδου "από" (1)</translation>
-    </message>
-    <message>
-        <source>Branch active current "from" (2)</source>
-        <translation>Ενεργός ρεύμα κλάδου "από" (2)</translation>
-    </message>
-    <message>
-        <source>Branch active losses (0)</source>
-        <translation>Ενεργές απώλειες κλάδου (0)</translation>
-    </message>
-    <message>
-        <source>Branch active losses (1)</source>
-        <translation>Ενεργές απώλειες κλάδου (1)</translation>
-    </message>
-    <message>
-        <source>Branch active losses (2)</source>
-        <translation>Ενεργές απώλειες κλάδου (2)</translation>
-    </message>
-    <message>
-        <source>Branch active power "from" (0)</source>
-        <translation>Ενεργός ισχύς κλάδου "από" (0)</translation>
-    </message>
-    <message>
-        <source>Branch active power "from" (1)</source>
-        <translation>Ενεργός ισχύς κλάδου "από" (1)</translation>
-    </message>
-    <message>
-        <source>Branch active power "from" (2)</source>
-        <translation>Ενεργός ισχύς κλάδου "από" (2)</translation>
-    </message>
-    <message>
-        <source>Branch group</source>
-        <translation>Ομάδα κλάδων</translation>
-    </message>
-    <message>
-        <source>Branch loading (0)</source>
-        <translation>Φορτίο κλάδου (0)</translation>
-    </message>
-    <message>
-        <source>Branch loading (1)</source>
-        <translation>Φορτίο κλάδου (1)</translation>
-    </message>
-    <message>
-        <source>Branch loading (2)</source>
-        <translation>Φορτίο κλάδου (2)</translation>
-    </message>
-    <message>
-        <source>Branch losses</source>
-        <translation>Απώλειες κλάδου</translation>
-    </message>
-    <message>
-        <source>Branch monitoring logic</source>
-        <translation>Λογική παρακολούθησης κλάδου</translation>
-    </message>
-    <message>
-        <source>Branch overloads</source>
-        <translation>Υπερφόρτιση κλάδου</translation>
-    </message>
-    <message>
-        <source>Branch overloads cost</source>
-        <translation>Κόστος υπερφόρτισης κλάδου</translation>
-    </message>
-    <message>
-        <source>Branch power CDF</source>
-        <translation>CDF Ισχύος κλάδου</translation>
-    </message>
-    <message>
-        <source>Branch power avg</source>
-        <translation>Μέση ισχύς κλάδου</translation>
-    </message>
-    <message>
-        <source>Branch power std</source>
-        <translation>Τυπική απόκλιση ισχύος κλάδου</translation>
-    </message>
-    <message>
-        <source>Branch reactive current "from" (0)</source>
-        <translation>Αντιδραστικό ρεύμα κλάδου "από" (0)</translation>
-    </message>
-    <message>
-        <source>Branch reactive current "from" (1)</source>
-        <translation>Branch reactive current "from" (1)</translation>
-    </message>
-    <message>
-        <source>Branch reactive current "from" (2)</source>
-        <translation>Branch reactive current "from" (2)</translation>
-    </message>
-    <message>
-        <source>Branch reactive losses (0)</source>
-        <translation>Branch reactive losses (0)</translation>
-    </message>
-    <message>
-        <source>Branch reactive losses (1)</source>
-        <translation>Branch reactive losses (1)</translation>
-    </message>
-    <message>
-        <source>Branch reactive losses (2)</source>
-        <translation>Branch reactive losses (2)</translation>
-    </message>
-    <message>
-        <source>Branch reactive power "from" (0)</source>
-        <translation>Branch reactive power "from" (0)</translation>
-    </message>
-    <message>
-        <source>Branch reactive power "from" (1)</source>
-        <translation>Branch reactive power "from" (1)</translation>
-    </message>
-    <message>
-        <source>Branch reactive power "from" (2)</source>
-        <translation>Branch reactive power "from" (2)</translation>
-    </message>
-    <message>
-        <source>Branch template</source>
-        <translation>Branch template</translation>
-    </message>
-    <message>
-        <source>Branches</source>
-        <translation>Branches</translation>
-    </message>
-    <message>
-        <source>Bus</source>
-        <translation>Ζυγός</translation>
-    </message>
-    <message>
-        <source>Bus nodal capacity</source>
-        <translation>Bus nodal capacity</translation>
-    </message>
-    <message>
-        <source>Bus power</source>
-        <translation>Bus power</translation>
-    </message>
-    <message>
-        <source>Bus power CDF</source>
-        <translation>Bus power CDF</translation>
-    </message>
-    <message>
-        <source>Bus voltage CDF</source>
-        <translation>Bus voltage CDF</translation>
-    </message>
-    <message>
-        <source>Bus voltage avg</source>
-        <translation>Bus voltage avg</translation>
-    </message>
-    <message>
-        <source>Bus voltage sensitivity</source>
-        <translation>Bus voltage sensitivity</translation>
-    </message>
-    <message>
-        <source>Bus voltage std</source>
-        <translation>Bus voltage std</translation>
-    </message>
-    <message>
-        <source>BusBar</source>
-        <translation>BusBar</translation>
-    </message>
-    <message>
-        <source>BusOrBranch</source>
-        <translation>BusOrBranch</translation>
-    </message>
-    <message>
-        <source>CAIDI</source>
-        <translation>CAIDI</translation>
-    </message>
-    <message>
-        <source>Cascade</source>
-        <translation>Cascade</translation>
-    </message>
-    <message>
-        <source>Catalogue</source>
-        <translation>Κατάλογος</translation>
-    </message>
-    <message>
-        <source>Catalogue optimization</source>
-        <translation>Catalogue optimization</translation>
-    </message>
-    <message>
-        <source>Circuit</source>
-        <translation>Circuit</translation>
-    </message>
-    <message>
-        <source>Clean room</source>
-        <translation>Clean room</translation>
-    </message>
-    <message>
-        <source>Clustering</source>
-        <translation>Ομαδοποίηση</translation>
-    </message>
-    <message>
-        <source>Clustering Analysis</source>
-        <translation>Clustering Analysis</translation>
-    </message>
-    <message>
-        <source>Clustering time series report</source>
-        <translation>Αναφορά χρονοσειρών βλοκάρισμα</translation>
-    </message>
-    <message>
-        <source>Combinations</source>
-        <translation>Συνδυασμοί</translation>
-    </message>
-    <message>
-        <source>Community</source>
-        <translation>Κοινότητα</translation>
-    </message>
-    <message>
-        <source>Community analysis</source>
-        <translation>Ανάλυση Κοινότητας</translation>
-    </message>
-    <message>
-        <source>Community balance analysis</source>
-        <translation>Ανάλυση Ισορροπίας Κοινότητας</translation>
-    </message>
-    <message>
-        <source>Community generation analysis</source>
-        <translation>Ανάλυση Παραγωγής Κοινότητας</translation>
-    </message>
-    <message>
-        <source>Community load analysis</source>
-        <translation>Ανάλυση Φορτίου Κοινότητας</translation>
-    </message>
-    <message>
-        <source>Contingencies</source>
-        <translation>Απρόβλεπτα</translation>
-    </message>
-    <message>
-        <source>Contingencies report</source>
-        <translation>Αναφορά Αποτυχιών</translation>
-    </message>
-    <message>
-        <source>Contingencies statistical report</source>
-        <translation>Στατιστική Αναφορά Αποτυχιών</translation>
-    </message>
-    <message>
-        <source>Contingency</source>
-        <translation>Αποτυχία</translation>
-    </message>
-    <message>
-        <source>Contingency Group</source>
-        <translation>Ομάδα Αποτυχίας</translation>
-    </message>
-    <message>
-        <source>Contingency analysis</source>
-        <translation>Ανάλυση έκτακτης ανάγκης</translation>
-    </message>
-    <message>
-        <source>Contingency analysis time series</source>
-        <translation>Χρονοσειρές ανάλυσης έκτακτης ανάγκης</translation>
-    </message>
-    <message>
-        <source>Contingency flow</source>
-        <translation>Ροή Αποτυχίας</translation>
-    </message>
-    <message>
-        <source>Contingency flow report</source>
-        <translation>Αναφορά Ροής Αποτυχίας</translation>
-    </message>
-    <message>
-        <source>Contingency frequency</source>
-        <translation>Συχνότητα Αποτυχίας</translation>
-    </message>
-    <message>
-        <source>Contingency loading</source>
-        <translation>Φορτίο Αποτυχίας</translation>
-    </message>
-    <message>
-        <source>Contingency overload sum</source>
-        <translation>Άθροισμα Υπερφόρτισης Αποτυχίας</translation>
-    </message>
-    <message>
-        <source>Contingency relative frequency</source>
-        <translation>Σχετική Συχνότητα Αποτυχίας</translation>
-    </message>
-    <message>
-        <source>ContingencyAnalysis</source>
-        <translation>Ανάλυση Αποτυχίας</translation>
-    </message>
-    <message>
-        <source>ContingencyAnalysisTimeSeries</source>
-        <translation>Χρονοσειρά Ανάλυσης Αποτυχίας</translation>
-    </message>
-    <message>
-        <source>ContinuationPowerFlow</source>
-        <translation>Ροή Ισχύος Συνεχούς Λειτουργίας</translation>
-    </message>
-    <message>
-        <source>Controllable shunt</source>
-        <translation>Ελεγχόμενο Shunt</translation>
-    </message>
-    <message>
-        <source>Country</source>
-        <translation>Χώρα</translation>
-    </message>
-    <message>
-        <source>Country analysis</source>
-        <translation>Ανάλυση Χώρας</translation>
-    </message>
-    <message>
-        <source>Country balance analysis</source>
-        <translation>Ανάλυση Ισορροπίας Χώρας</translation>
-    </message>
-    <message>
-        <source>Country generation analysis</source>
-        <translation>Ανάλυση Παραγωγής Χώρας</translation>
-    </message>
-    <message>
-        <source>Country load analysis</source>
-        <translation>Ανάλυση Φορτίου Χώρας</translation>
-    </message>
-    <message>
-        <source>Current injection</source>
-        <translation>Έγχυση ρεύματος</translation>
-    </message>
-    <message>
-        <source>DC line</source>
-        <translation>Γραμμή DC</translation>
-    </message>
-    <message>
-        <source>Delete and reduce</source>
-        <translation>Διαγραφή και μείωση</translation>
-    </message>
-    <message>
-        <source>Design View</source>
-        <translation>Προβολή Σχεδιασμού</translation>
-    </message>
-    <message>
-        <source>Diagram</source>
-        <translation>Διάγραμμα</translation>
-    </message>
-    <message>
-        <source>Dispatch</source>
-        <translation>Διαχείριση</translation>
-    </message>
-    <message>
-        <source>Dynamic</source>
-        <translation>Δυναμικό</translation>
-    </message>
-    <message>
-        <source>Dynamic Model Host</source>
-        <translation>Καταλύτης Δυναμικού Μοντέλου</translation>
-    </message>
-    <message>
-        <source>EMT Dynamic</source>
-        <translation>Δυναμικό EMT</translation>
-    </message>
-    <message>
-        <source>EMT Small Signal stability</source>
-        <translation>Σταθερότητα Μικρού Σήματος EMT</translation>
-    </message>
-    <message>
-        <source>EMT template</source>
-        <translation>Πρότυπο EMT</translation>
-    </message>
-    <message>
-        <source>ENS</source>
-        <translation>ENS</translation>
-    </message>
-    <message>
-        <source>Emission</source>
-        <translation>Εκπομπή</translation>
-    </message>
-    <message>
-        <source>Emt Event</source>
-        <translation>Συμβάν EMT</translation>
-    </message>
-    <message>
-        <source>Emt Events Group</source>
-        <translation>Ομάδα Συμβάντων EMT</translation>
-    </message>
-    <message>
-        <source>EmtSimulation</source>
-        <translation>Σύ뮬레이션 EMT</translation>
-    </message>
-    <message>
-        <source>Error</source>
-        <translation>Σφάλμα</translation>
-    </message>
-    <message>
-        <source>Evaluation report</source>
-        <translation>Ανα báo cáo αξιολόγησης</translation>
-    </message>
-    <message>
-        <source>Exciter</source>
-        <translation>Εκκινητής</translation>
-    </message>
-    <message>
-        <source>External grid</source>
-        <translation>Εξωτερικό δίκτυο</translation>
-    </message>
-    <message>
-        <source>FMU template</source>
-        <translation>Πρότυπο FMU</translation>
-    </message>
-    <message>
-        <source>Facility</source>
-        <translation>Υποδομή</translation>
-    </message>
-    <message>
-        <source>Flow Reports</source>
-        <translation>Ανα báo cáo Ροής</translation>
-    </message>
-    <message>
-        <source>Flow circulating in the device</source>
-        <translation>Ροή κυκλοφορίας στη συσκευή</translation>
-    </message>
-    <message>
-        <source>Flow entering the node</source>
-        <translation>Ροή εισόδου στον κόμβο</translation>
-    </message>
-    <message>
-        <source>Flow exiting the node</source>
-        <translation>Ροή εξόδου από τον κόμβο</translation>
-    </message>
-    <message>
-        <source>Flow from the P2X</source>
-        <translation>Ροή από το P2X</translation>
-    </message>
-    <message>
-        <source>Flow in the river</source>
-        <translation>Ροή στο ποτάμι</translation>
-    </message>
-    <message>
-        <source>Fluid</source>
-        <translation>Υγρά</translation>
-    </message>
-    <message>
-        <source>Fluid Injection</source>
-        <translation>Εγχύση Υγρών</translation>
-    </message>
-    <message>
-        <source>Fluid P2X</source>
-        <translation>Υγρά P2X</translation>
-    </message>
-    <message>
-        <source>Fluid P2Xs</source>
-        <translation>Υγρά P2Xs</translation>
-    </message>
-    <message>
-        <source>Fluid Pump</source>
-        <translation>Υγρά المضخة</translation>
-    </message>
-    <message>
-        <source>Fluid Turbine</source>
-        <translation>Υγρά Τύρβινο</translation>
-    </message>
-    <message>
-        <source>Fluid injections</source>
-        <translation>Εγχύσεις Υγρών</translation>
-    </message>
-    <message>
-        <source>Fluid node</source>
-        <translation>Ρευστός κόμβος</translation>
-    </message>
-    <message>
-        <source>Fluid nodes</source>
-        <translation>Κόμβοι Υγρών</translation>
-    </message>
-    <message>
-        <source>Fluid path</source>
-        <translation>Υδροδρομική διαδρομή</translation>
-    </message>
-    <message>
-        <source>Fluid paths</source>
-        <translation>Υδροδρομικές διαδρομές</translation>
-    </message>
-    <message>
-        <source>Fluid pumps</source>
-        <translation>Υγρά المضخές</translation>
-    </message>
-    <message>
-        <source>Fluid turbines</source>
-        <translation>Υγρά Τύρβινοι</translation>
-    </message>
-    <message>
-        <source>Frequency</source>
-        <translation>Συχνότητα</translation>
-    </message>
-    <message>
-        <source>Fuel</source>
-        <translation>Καύσιμο</translation>
-    </message>
-    <message>
-        <source>Generation delta slacks</source>
-        <translation>Διαφορικό δέλεχος παραγωγής</translation>
-    </message>
-    <message>
-        <source>Generation deltas</source>
-        <translation>Διαφορικό παραγωγής</translation>
-    </message>
-    <message>
-        <source>Generator</source>
-        <translation>Γεννήτρια</translation>
-    </message>
-    <message>
-        <source>Generator Emission</source>
-        <translation>Εκπομπή Γεννήτριας</translation>
-    </message>
-    <message>
-        <source>Generator Fuel</source>
-        <translation>Καύσιμο Γεννήτριας</translation>
-    </message>
-    <message>
-        <source>Generator Technology</source>
-        <translation>Τεχνολογία Γεννήτριας</translation>
-    </message>
-    <message>
-        <source>Generator cost</source>
-        <translation>Κόστος Γεννήτριας</translation>
-    </message>
-    <message>
-        <source>Generator emissions</source>
-        <translation>Εκπομπές Γεννήτριας</translation>
-    </message>
-    <message>
-        <source>Generator fuels</source>
-        <translation>Καύσιμα Γεννήτριας</translation>
-    </message>
-    <message>
-        <source>Generator invested</source>
-        <translation>Επενδυμένο Γεννήτριας</translation>
-    </message>
-    <message>
-        <source>Generator power</source>
-        <translation>Ισχύς Γεννήτριας</translation>
-    </message>
-    <message>
-        <source>Generator producing</source>
-        <translation>Παραγωγώντας Γεννήτρια</translation>
-    </message>
-    <message>
-        <source>Generator reactive power</source>
-        <translation>Αντίστατα Ισχύς Γεννήτριας</translation>
-    </message>
-    <message>
-        <source>Generator reactive power A</source>
-        <translation>Αντίστατα Ισχύς Γεννήτριας A</translation>
-    </message>
-    <message>
-        <source>Generator reactive power B</source>
-        <translation>Δραχτική ισχύς Γεννήτριας B</translation>
-    </message>
-    <message>
-        <source>Generator reactive power C</source>
-        <translation>Δραχτική ισχύς Γεννήτριας C</translation>
-    </message>
-    <message>
-        <source>Generator reserve</source>
-        <translation>Ανταρτοχή Γεννήτριας</translation>
-    </message>
-    <message>
-        <source>Generator shedding</source>
-        <translation>Αποσύνδεση Γεννήτριας</translation>
-    </message>
-    <message>
-        <source>Generator shutting down</source>
-        <translation>Σβήσιμο Γεννήτριας</translation>
-    </message>
-    <message>
-        <source>Generator starting up</source>
-        <translation>Εκκίνηση Γεννήτριας</translation>
-    </message>
-    <message>
-        <source>Generators</source>
-        <translation>Γεννήτριες</translation>
-    </message>
-    <message>
-        <source>Generic Area</source>
-        <translation>Γενική Περιοχή</translation>
-    </message>
-    <message>
-        <source>Governor</source>
-        <translation>Διαχειριστής</translation>
-    </message>
-    <message>
-        <source>Groups</source>
-        <translation>Ομάδες</translation>
-    </message>
-    <message>
-        <source>HVDC Line</source>
-        <translation>Γραμμή HVDC</translation>
-    </message>
-    <message>
-        <source>HVDC ODF</source>
-        <translation>HVDC ODF</translation>
-    </message>
-    <message>
-        <source>HVDC PTDF</source>
-        <translation>HVDC PTDF</translation>
-    </message>
-    <message>
-        <source>HVDC loading</source>
-        <translation>Φορτίο HVDC</translation>
-    </message>
-    <message>
-        <source>HVDC losses</source>
-        <translation>Απώλειες HVDC</translation>
-    </message>
-    <message>
-        <source>HVDC overloads</source>
-        <translation>Υπερφόρτιση HVDC</translation>
-    </message>
-    <message>
-        <source>HVDC power "from"</source>
-        <translation>Ισχύς HVDC «από»</translation>
-    </message>
-    <message>
-        <source>HVDC power "from" A</source>
-        <translation>Ισχύς HVDC «από» A</translation>
-    </message>
-    <message>
-        <source>HVDC power "from" B</source>
-        <translation>Ισχύς HVDC «από» B</translation>
-    </message>
-    <message>
-        <source>HVDC power "from" C</source>
-        <translation>Ισχύς HVDC «από» C</translation>
-    </message>
-    <message>
-        <source>HVDC power "to"</source>
-        <translation>Ισχύς HVDC «προς»</translation>
-    </message>
-    <message>
-        <source>HVDC power "to" A</source>
-        <translation>Ισχύς HVDC «προς» A</translation>
-    </message>
-    <message>
-        <source>HVDC power "to" B</source>
-        <translation>Ισχύς HVDC «προς» B</translation>
-    </message>
-    <message>
-        <source>HVDC power "to" C</source>
-        <translation>Ισχύς HVDC «προς» C</translation>
-    </message>
-    <message>
-        <source>Hvdc</source>
-        <translation>Hvdc</translation>
-    </message>
-    <message>
-        <source>If Measurement</source>
-        <translation>Μέτρηση If</translation>
-    </message>
-    <message>
-        <source>Iif: Reactive current "from"</source>
-        <translation>Iif: Δραχτικός ρεύμα «από»</translation>
-    </message>
-    <message>
-        <source>Iif: Reactive current "from" A</source>
-        <translation>Iif: Δραχτικός ρεύμα «από» A</translation>
-    </message>
-    <message>
-        <source>Iif: Reactive current "from" B</source>
-        <translation>Iif: Δραχτικός ρεύμα «από» B</translation>
-    </message>
-    <message>
-        <source>Iif: Reactive current "from" C</source>
-        <translation>Iif: Δραχτικός ρεύμα «από» C</translation>
-    </message>
-    <message>
-        <source>Iit: Reactive current "to"</source>
-        <translation>Iit: Δραχτικός ρεύμα «προς»</translation>
-    </message>
-    <message>
-        <source>Iit: Reactive current "to" A</source>
-        <translation>Iit: Δραχτικός ρεύμα «προς» A</translation>
-    </message>
-    <message>
-        <source>Iit: Reactive current "to" B</source>
-        <translation>Iit: Δραχτικός ρεύμα «προς» B</translation>
-    </message>
-    <message>
-        <source>Iit: Reactive current "to" C</source>
-        <translation>Iit: Δραχτικός ρεύμα «προς» C</translation>
-    </message>
-    <message>
-        <source>Information</source>
-        <translation>Πληροφορίες</translation>
-    </message>
-    <message>
-        <source>Injections</source>
-        <translation>Εγχύσεις</translation>
-    </message>
-    <message>
-        <source>Inputs Analysis</source>
-        <translation>Ανάλυση Ενходов</translation>
-    </message>
-    <message>
-        <source>InputsAnalysis</source>
-        <translation>Ανάλυση Ενходов</translation>
-    </message>
-    <message>
-        <source>Inter-Area exchange</source>
-        <translation>Εναλλαγή Μεταξύ Περιοχών</translation>
-    </message>
-    <message>
-        <source>Inter-space branch loading</source>
-        <translation>Φορτίο Κλαδιού Εντός Χώρου</translation>
-    </message>
-    <message>
-        <source>Inter-space branch power</source>
-        <translation>Ισχύς Κλαδιού Εντός Χώρου</translation>
-    </message>
-    <message>
-        <source>InterAggregationInfo</source>
-        <translation>Πληροφορίες Μετα-Συγκέντρωσης</translation>
-    </message>
-    <message>
-        <source>Investment</source>
-        <translation>Επένδυση</translation>
-    </message>
-    <message>
-        <source>InvestmentEvaluations</source>
-        <translation>Αξιολογήσεις Επενδύσεων</translation>
-    </message>
-    <message>
-        <source>Investments</source>
-        <translation>Επενδύσεις</translation>
-    </message>
-    <message>
-        <source>Investments Group</source>
-        <translation>Ομάδα Επενδύσεων</translation>
-    </message>
-    <message>
-        <source>Investments evaluation</source>
-        <translation>Αξιολόγηση επενδύσεων</translation>
-    </message>
-    <message>
-        <source>Irf: Active current "from"</source>
-        <translation>Irf: Активный ρεύμα «από»</translation>
-    </message>
-    <message>
-        <source>Irf: Active current "from" A</source>
-        <translation>Irf: Активный ρεύμα «από» A</translation>
-    </message>
-    <message>
-        <source>Irf: Active current "from" B</source>
-        <translation>Irf: Активный ρεύμα «από» B</translation>
-    </message>
-    <message>
-        <source>Irf: Active current "from" C</source>
-        <translation>Irf: Активный ρεύμα «από» C</translation>
-    </message>
-    <message>
-        <source>Irt: Active current "to"</source>
-        <translation>Irt: Активный ρεύμα «προς»</translation>
-    </message>
-    <message>
-        <source>Irt: Active current "to" A</source>
-        <translation>Irt: Τροφοδοτικό ρεύμα "σε" A</translation>
-    </message>
-    <message>
-        <source>Irt: Active current "to" B</source>
-        <translation>Irt: Τροφοδοτικό ρεύμα "σε" B</translation>
-    </message>
-    <message>
-        <source>Irt: Active current "to" C</source>
-        <translation>Irt: Τροφοδοτικό ρεύμα "σε" C</translation>
-    </message>
-    <message>
-        <source>It Measurement</source>
-        <translation>Μέτρηση It</translation>
-    </message>
-    <message>
-        <source>Iterations plot</source>
-        <translation>Γραφή επαναλήψεων</translation>
-    </message>
-    <message>
-        <source>LODF</source>
-        <translation>LODF</translation>
-    </message>
-    <message>
-        <source>LOLE</source>
-        <translation>LOLE</translation>
-    </message>
-    <message>
-        <source>LOLET</source>
-        <translation>LOLET</translation>
-    </message>
-    <message>
-        <source>LOLF</source>
-        <translation>LOLF</translation>
-    </message>
-    <message>
-        <source>LOLFT</source>
-        <translation>LOLFT</translation>
-    </message>
-    <message>
-        <source>Latin Hypercube</source>
-        <translation>Λατινικό Υπερκύβο</translation>
-    </message>
-    <message>
-        <source>Line</source>
-        <translation>Γραμμή</translation>
-    </message>
-    <message>
-        <source>Line Location</source>
-        <translation>Τοποθεσία Γραμμής</translation>
-    </message>
-    <message>
-        <source>Line Locations</source>
-        <translation>Τοποθεσίες Γραμμών</translation>
-    </message>
-    <message>
-        <source>Line Template</source>
-        <translation>Πρότυπο Γραμμής</translation>
-    </message>
-    <message>
-        <source>Linear analysis</source>
-        <translation>Γραμμική ανάλυση</translation>
-    </message>
-    <message>
-        <source>Linear analysis time series</source>
-        <translation>Χρονοσειρά γραμμικής ανάλυσης</translation>
-    </message>
-    <message>
-        <source>LinearAnalysis</source>
-        <translation>Γραμμική Ανάλυση</translation>
-    </message>
-    <message>
-        <source>LinearAnalysisTimeSeries</source>
-        <translation>Χρονοσειρά Γραμμικής Ανάλυσης</translation>
-    </message>
-    <message>
-        <source>Load</source>
-        <translation>Φορτίο</translation>
-    </message>
-    <message>
-        <source>Load like</source>
-        <translation>Φόρτιση τύπου</translation>
-    </message>
-    <message>
-        <source>Load neutral voltage</source>
-        <translation>Τάση ουδέτερου σημείου φόρτισης</translation>
-    </message>
-    <message>
-        <source>Load power</source>
-        <translation>Ισχύς φόρτισης</translation>
-    </message>
-    <message>
-        <source>Load shedding</source>
-        <translation>Αποσύνδεση φόρτισης</translation>
-    </message>
-    <message>
-        <source>Load shedding cost</source>
-        <translation>Κόστος αποσύνδεσης φόρτισης</translation>
-    </message>
-    <message>
-        <source>Loading CDF</source>
-        <translation>Συγκεντρωτική Κατανομή Φόρτισης</translation>
-    </message>
-    <message>
-        <source>Loading from the base situation ($\lambda$)</source>
-        <translation>Φόρτιση από την βασική κατάσταση ($\lambda$)</translation>
-    </message>
-    <message>
-        <source>Loading std</source>
-        <translation>Τυπική Απόκλιση Φόρτισης</translation>
-    </message>
-    <message>
-        <source>Loads</source>
-        <translation>Φόρτιση</translation>
-    </message>
-    <message>
-        <source>Losses % per area</source>
-        <translation>Χαρίτες % ανά περιοχή</translation>
-    </message>
-    <message>
-        <source>Losses CDF</source>
-        <translation>Συγκεντρωτική Κατανομή Χαριών</translation>
-    </message>
-    <message>
-        <source>Losses avg</source>
-        <translation>Μέση Χαρίτα</translation>
-    </message>
-    <message>
-        <source>Losses per area</source>
-        <translation>Χαρίτες ανά περιοχή</translation>
-    </message>
-    <message>
-        <source>Losses per generation unit in area</source>
-        <translation>Χαρίτες ανά μονάδα παραγωγής στην περιοχή</translation>
-    </message>
-    <message>
-        <source>Losses std</source>
-        <translation>Τυπική Απόκλιση Χαριών</translation>
-    </message>
-    <message>
-        <source>Market</source>
-        <translation>Αγορά</translation>
-    </message>
-    <message>
-        <source>Market unit</source>
-        <translation>Μονάδα Αγοράς</translation>
-    </message>
-    <message>
-        <source>Max contingency flow</source>
-        <translation>Μέγιστο ρεύμα αντιμετώπισης</translation>
-    </message>
-    <message>
-        <source>Max contingency loading</source>
-        <translation>Μέγιστη φόρτιση αντιμετώπισης</translation>
-    </message>
-    <message>
-        <source>Maximum contingency flow</source>
-        <translation>Μέγιστο ρεύμα αντιμετώπισης</translation>
-    </message>
-    <message>
-        <source>Mean contingency overloading</source>
-        <translation>Μέση υπερφόρτιση αντιμετώπισης</translation>
-    </message>
-    <message>
-        <source>Measurements</source>
-        <translation>Μετρήσεις</translation>
-    </message>
-    <message>
-        <source>Modelling Authority</source>
-        <translation>Αρχή Μοντελοποίησης</translation>
-    </message>
-    <message>
-        <source>Modes</source>
-        <translation>Λειτουργίες</translation>
-    </message>
-    <message>
-        <source>Monte Carlo</source>
-        <translation>Monte Carlo</translation>
-    </message>
-    <message>
-        <source>Municipality</source>
-        <translation>Δήμος</translation>
-    </message>
-    <message>
-        <source>Municipality analysis</source>
-        <translation>Ανάλυση Δήμου</translation>
-    </message>
-    <message>
-        <source>Municipality balance analysis</source>
-        <translation>Ανάλυση ισορροπίας Δήμου</translation>
-    </message>
-    <message>
-        <source>Municipality generation analysis</source>
-        <translation>Ανάλυση παραγωγής Δήμου</translation>
-    </message>
-    <message>
-        <source>Municipality load analysis</source>
-        <translation>Ανάλυση φόρτισης Δήμου</translation>
-    </message>
-    <message>
-        <source>NTC</source>
-        <translation>NTC</translation>
-    </message>
-    <message>
-        <source>Net transfer capacity</source>
-        <translation>Καθαρή ικανότητα μεταφοράς</translation>
-    </message>
-    <message>
-        <source>NetTransferCapacity</source>
-        <translation>Καθαρή Ικανότητα Μεταφοράς</translation>
-    </message>
-    <message>
-        <source>NetTransferCapacityTimeSeries</source>
-        <translation>Χρονοσειρά Καθαρή Ικανότητα Μεταφοράς</translation>
-    </message>
-    <message>
-        <source>No simulation</source>
-        <translation>Καμία προσομοίωση</translation>
-    </message>
-    <message>
-        <source>NoDevice</source>
-        <translation>Καμία Συσκευή</translation>
-    </message>
-    <message>
-        <source>Nodal capacity</source>
-        <translation>Συνολική Ικανότητα Κόμβου</translation>
-    </message>
-    <message>
-        <source>Nodal capacity time series</source>
-        <translation>Χρονοσειρά Συνολικής Ικανότητας Κόμβου</translation>
-    </message>
-    <message>
-        <source>Nodal shadow prices</source>
-        <translation>Σκιώδη Τιμές Κόμβου</translation>
-    </message>
-    <message>
-        <source>Nodal slacks</source>
-        <translation>Κόμβοι Slacks</translation>
-    </message>
-    <message>
-        <source>Node groups</source>
-        <translation>Ομαδικές Συνδέσεις Κόμβων</translation>
-    </message>
-    <message>
-        <source>NodeGroups</source>
-        <translation>Ομαδικές Συνδέσεις Κόμβων</translation>
-    </message>
-    <message>
-        <source>Nonlinear analysis</source>
-        <translation>Μη Γραμμική Ανάλυση</translation>
-    </message>
-    <message>
-        <source>Nonlinear analysis time series</source>
-        <translation>Χρονοσειρά Μη Γραμμικής Ανάλυσης</translation>
-    </message>
-    <message>
-        <source>Ntc: Base flow report</source>
-        <translation>Ntc: Αναφορά Βασικής Ροής</translation>
-    </message>
-    <message>
-        <source>Ntc: Contingency flow report</source>
-        <translation>Ntc: Αναφορά Ροής Έκτακτης Ανάγκης</translation>
-    </message>
-    <message>
-        <source>Ntc: Contingency flow report. (Branch)</source>
-        <translation>Ntc: Αναφορά Ροής Έκτακτης Ανάγκης. (Κλάδος)</translation>
-    </message>
-    <message>
-        <source>Ntc: Contingency flow report. (Generation)</source>
-        <translation>Ntc: Αναφορά Ροής Έκτακτης Ανάγκης. (Παραγωγή)</translation>
-    </message>
-    <message>
-        <source>Ntc: Contingency flow report. (Hvdc)</source>
-        <translation>Ntc: Αναφορά Ροής Έκτακτης Ανάγκης. (Hvdc)</translation>
-    </message>
-    <message>
-        <source>Objectives</source>
-        <translation>Στόχοι</translation>
-    </message>
-    <message>
-        <source>Objects</source>
-        <translation>Αντικείμενα</translation>
-    </message>
-    <message>
-        <source>Optimal net transfer capacity</source>
-        <translation>Βέλτιστη καθαρή ικανότητα μεταφοράς</translation>
-    </message>
-    <message>
-        <source>Optimal net transfer capacity time series</source>
-        <translation>Χρονοσειρά Βέλτιστης Κατανεμητικής Ικανότητας Μεταφοράς</translation>
-    </message>
-    <message>
-        <source>Optimal power flow</source>
-        <translation>Βέλτιστη ροή ισχύος</translation>
-    </message>
-    <message>
-        <source>Optimal power flow time series</source>
-        <translation>Βέλτιστη χρονική σειρά ροής ισχύος</translation>
-    </message>
-    <message>
-        <source>Owner</source>
-        <translation>Ιδιοκτήτης</translation>
-    </message>
-    <message>
-        <source>P: Active power</source>
-        <translation>P: Ενεργός Ισχύς</translation>
-    </message>
-    <message>
-        <source>PA: Active power A</source>
-        <translation>PA: Ενεργός Ισχύς A</translation>
-    </message>
-    <message>
-        <source>PB: Active power B</source>
-        <translation>PB: Ενεργός Ισχύς B</translation>
-    </message>
-    <message>
-        <source>PC: Active power C</source>
-        <translation>PC: Ενεργός Ισχύς C</translation>
-    </message>
-    <message>
-        <source>PTDF</source>
-        <translation>PTDF</translation>
-    </message>
-    <message>
-        <source>Pareto</source>
-        <translation>Παρέτο</translation>
-    </message>
-    <message>
-        <source>Pareto combinations</source>
-        <translation>Συνδυασμοί Παρέτο</translation>
-    </message>
-    <message>
-        <source>Pareto evaluation report</source>
-        <translation>Αναφορά Αξιολόγησης Παρέτο</translation>
-    </message>
-    <message>
-        <source>Pareto frequency</source>
-        <translation>Συχνότητα Παρέτο</translation>
-    </message>
-    <message>
-        <source>Pareto objectives</source>
-        <translation>Στόχοι Παρέτο</translation>
-    </message>
-    <message>
-        <source>Pareto plot NSGA2</source>
-        <translation>Γραφή Παρέτο NSGA2</translation>
-    </message>
-    <message>
-        <source>Pareto plots</source>
-        <translation>Γραφές Παρέτο</translation>
-    </message>
-    <message>
-        <source>Participation Factors</source>
-        <translation>Παράγοντες Συμμετοχής</translation>
-    </message>
-    <message>
-        <source>Pf Measurement</source>
-        <translation>Μέτρηση Pf</translation>
-    </message>
-    <message>
-        <source>Pf: Active power "from"</source>
-        <translation>Pf: Ενεργός Ισχύς "από"</translation>
-    </message>
-    <message>
-        <source>Pf: Active power "from" base case</source>
-        <translation>Pf: Ενεργός Ισχύς "από" βασική περίπτωση</translation>
-    </message>
-    <message>
-        <source>PfA: Active power "from" A</source>
-        <translation>PfA: Ενεργός Ισχύς "από" A</translation>
-    </message>
-    <message>
-        <source>PfB: Active power "from" B</source>
-        <translation>PfB: Ενεργός Ισχύς "από" B</translation>
-    </message>
-    <message>
-        <source>PfC: Active power "from" C</source>
-        <translation>PfC: Ενεργός Ισχύς "από" C</translation>
-    </message>
-    <message>
-        <source>Pg Measurement</source>
-        <translation>Μέτρηση Pg</translation>
-    </message>
-    <message>
-        <source>Pi Measurement</source>
-        <translation>Μέτρηση Pi</translation>
-    </message>
-    <message>
-        <source>Pl: Active losses</source>
-        <translation>Pl: Ενεργές Απώλειες</translation>
-    </message>
-    <message>
-        <source>Pl: Active losses (%)</source>
-        <translation>Pl: Ενεργές Απώλειες (%)</translation>
-    </message>
-    <message>
-        <source>Pl: Active losses (%) A</source>
-        <translation>Pl: Ενεργές Απώλειες (%) A</translation>
-    </message>
-    <message>
-        <source>Pl: Active losses (%) B</source>
-        <translation>Pl: Ενεργές Απώλειες (%) B</translation>
-    </message>
-    <message>
-        <source>Pl: Active losses (%) C</source>
-        <translation>Pl: Ενεργές Απώλειες (%) C</translation>
-    </message>
-    <message>
-        <source>Pl: Active losses A</source>
-        <translation>Pl: Ενεργές Απώλειες A</translation>
-    </message>
-    <message>
-        <source>Pl: Active losses B</source>
-        <translation>Pl: Ενεργές Απώλειες B</translation>
-    </message>
-    <message>
-        <source>Pl: Active losses C</source>
-        <translation>Pl: Ενεργές Απώλειες C</translation>
-    </message>
-    <message>
-        <source>Plot Event</source>
-        <translation>Γεγονός Σχεδίασης</translation>
-    </message>
-    <message>
-        <source>Plot Group</source>
-        <translation>Ομάδα Σχεδίασης</translation>
-    </message>
-    <message>
-        <source>Power by technology</source>
-        <translation>Ισχύς ανά Τεχνολογία</translation>
-    </message>
-    <message>
-        <source>Power flow</source>
-        <translation>Ροή ισχύος</translation>
-    </message>
-    <message>
-        <source>Power flow 3ph</source>
-        <translation>Ροή Ισχύος 3φ</translation>
-    </message>
-    <message>
-        <source>Power flow time series</source>
-        <translation>Χρονική σειρά ροής ισχύος</translation>
-    </message>
-    <message>
-        <source>Power flow time series 3ph</source>
-        <translation>Χρονοσειρές ροής ισχύος 3 φάσεων</translation>
-    </message>
-    <message>
-        <source>PowerFlow</source>
-        <translation>PowerFlow</translation>
-    </message>
-    <message>
-        <source>PowerFlowTimeSeries</source>
-        <translation>PowerFlowTimeSeries</translation>
-    </message>
-    <message>
-        <source>Pt Measurement</source>
-        <translation>Μέτρηση Ισχύος (P_t)</translation>
-    </message>
-    <message>
-        <source>Pt: Active power "to"</source>
-        <translation>P_t: Активная ισχύς "σε"</translation>
-    </message>
-    <message>
-        <source>Pt: Active power "to" A</source>
-        <translation>P_t: Активная ισχύς "σε" A</translation>
-    </message>
-    <message>
-        <source>Pt: Active power "to" B</source>
-        <translation>P_t: Активная ισχύς "σε" B</translation>
-    </message>
-    <message>
-        <source>Pt: Active power "to" C</source>
-        <translation>P_t: Активная ισχύς "σε" C</translation>
-    </message>
-    <message>
-        <source>Q: Reactive power</source>
-        <translation>Ισχύς αντίδρασης (Q)</translation>
-    </message>
-    <message>
-        <source>QA: Reactive power A</source>
-        <translation>Ισχύς αντίδρασης A (Q_A)</translation>
-    </message>
-    <message>
-        <source>QB: Reactive power B</source>
-        <translation>Ισχύς αντίδρασης B (Q_B)</translation>
-    </message>
-    <message>
-        <source>QC: Reactive power C</source>
-        <translation>Ισχύς αντίδρασης C (Q_C)</translation>
-    </message>
-    <message>
-        <source>Qf Measurement</source>
-        <translation>Μέτρηση Ισχύος Αντίδρασης (Q_f)</translation>
-    </message>
-    <message>
-        <source>Qf: Reactive power "from"</source>
-        <translation>Q_f: Ισχύς αντίδρασης "από"</translation>
-    </message>
-    <message>
-        <source>QfA: Reactive power "from" A</source>
-        <translation>Q_fA: Ισχύς αντίδρασης "από" A</translation>
-    </message>
-    <message>
-        <source>QfB: Reactive power "from" B</source>
-        <translation>Q_fB: Ισχύς αντίδρασης "από" B</translation>
-    </message>
-    <message>
-        <source>QfC: Reactive power "from" C</source>
-        <translation>Q_fC: Ισχύς αντίδρασης "από" C</translation>
-    </message>
-    <message>
-        <source>Qg Measurement</source>
-        <translation>Μέτρηση Ισχύος Αντίδρασης (Q_g)</translation>
-    </message>
-    <message>
-        <source>Qi Measurement</source>
-        <translation>Μέτρηση Ρεύματος Αντίδρασης (I_q)</translation>
-    </message>
-    <message>
-        <source>Ql: Reactive losses</source>
-        <translation>Αντίδραστικές απώλειες (Q_l)</translation>
-    </message>
-    <message>
-        <source>Ql: Reactive losses A</source>
-        <translation>Q_l: Αντίδραστικές απώλειες A</translation>
-    </message>
-    <message>
-        <source>Ql: Reactive losses B</source>
-        <translation>Q_l: Αντίδραστικές απώλειες B</translation>
-    </message>
-    <message>
-        <source>Ql: Reactive losses C</source>
-        <translation>Q_l: Αντίδραστικές απώλειες C</translation>
-    </message>
-    <message>
-        <source>Qt Measurement</source>
-        <translation>Μέτρηση Ισχύος Αντίδρασης (Q_t)</translation>
-    </message>
-    <message>
-        <source>Qt: Reactive power "to"</source>
-        <translation>Q_t: Ισχύς αντίδρασης "σε"</translation>
-    </message>
-    <message>
-        <source>Qt: Reactive power "to" A</source>
-        <translation>Q_t: Ισχύς αντίδρασης "σε" A</translation>
-    </message>
-    <message>
-        <source>Qt: Reactive power "to" B</source>
-        <translation>Q_t: Ισχύς αντίδρασης "σε" B</translation>
-    </message>
-    <message>
-        <source>Qt: Reactive power "to" C</source>
-        <translation>Q_t: Ισχύς αντίδρασης "σε" C</translation>
-    </message>
-    <message>
-        <source>RMS Dynamic</source>
-        <translation>RMS Δυναμική</translation>
-    </message>
-    <message>
-        <source>RMS Small Signal stability</source>
-        <translation>Σταθερότητα Μικρού Σήματος RMS</translation>
-    </message>
-    <message>
-        <source>RMS template</source>
-        <translation>Πρότυπο RMS</translation>
-    </message>
-    <message>
-        <source>Region</source>
-        <translation>Περιοχή</translation>
-    </message>
-    <message>
-        <source>Region analysis</source>
-        <translation>Ανάλυση Περιοχής</translation>
-    </message>
-    <message>
-        <source>Region balance analysis</source>
-        <translation>Ανάλυση Ισορροπίας Περιοχής</translation>
-    </message>
-    <message>
-        <source>Region generation analysis</source>
-        <translation>Ανάλυση Παραγωγής Περιοχής</translation>
-    </message>
-    <message>
-        <source>Region load analysis</source>
-        <translation>Ανάλυση Φορτίου Περιοχής</translation>
-    </message>
-    <message>
-        <source>Regions</source>
-        <translation>Περιοχές</translation>
-    </message>
-    <message>
-        <source>Reliability</source>
-        <translation>Αξιοπιστία</translation>
-    </message>
-    <message>
-        <source>Remedial action</source>
-        <translation>Διόρθωση</translation>
-    </message>
-    <message>
-        <source>Remedial action Group</source>
-        <translation>Ομάδα Διόρθωσης</translation>
-    </message>
-    <message>
-        <source>Reports</source>
-        <translation>Αναφορές</translation>
-    </message>
-    <message>
-        <source>Reservoir fluid level</source>
-        <translation>Επίπεδο Υγρού Αποθετήρισης</translation>
-    </message>
-    <message>
-        <source>Results</source>
-        <translation>Αποτελέσματα</translation>
-    </message>
-    <message>
-        <source>Right Eigenvectors</source>
-        <translation>Δεξιές Ιδιοκτινότητες</translation>
-    </message>
-    <message>
-        <source>Rms Event</source>
-        <translation>Συμβάν RMS</translation>
-    </message>
-    <message>
-        <source>Rms Events Group</source>
-        <translation>Ομάδα Συμβάντων RMS</translation>
-    </message>
-    <message>
-        <source>Rms Generator results</source>
-        <translation>Αποτελέσματα Γεννήτριας RMS</translation>
-    </message>
-    <message>
-        <source>Rms Genqec delta results</source>
-        <translation>Αποτελέσματα Δelta Genqec RMS</translation>
-    </message>
-    <message>
-        <source>Rms Genqec omega results</source>
-        <translation>Αποτελέσματα Omega Genqec RMS</translation>
-    </message>
-    <message>
-        <source>Rms Line results</source>
-        <translation>Αποτελέσματα Γραμμής RMS</translation>
-    </message>
-    <message>
-        <source>Rms Load P results</source>
-        <translation>Αποτελέσματα Ισχύος Φορτίου P RMS</translation>
-    </message>
-    <message>
-        <source>Rms Load Q results</source>
-        <translation>Αποτελέσματα Ισχύος Φορτίου Q RMS</translation>
-    </message>
-    <message>
-        <source>Rms Simple Line P results</source>
-        <translation>Αποτελέσματα P Γραμμής RMS</translation>
-    </message>
-    <message>
-        <source>Rms Simple Line Q results</source>
-        <translation>Αποτελέσματα Q Γραμμής RMS</translation>
-    </message>
-    <message>
-        <source>Rms load results</source>
-        <translation>Αποτελέσματα Φορτίου RMS</translation>
-    </message>
-    <message>
-        <source>Rms plot results</source>
-        <translation>Αποτελέσματα Γραφής RMS</translation>
-    </message>
-    <message>
-        <source>Rms time series report</source>
-        <translation>Αναφορά Χρονοσειράς RMS</translation>
-    </message>
-    <message>
-        <source>RmsSimulation</source>
-        <translation>Μοделирование RMS</translation>
-    </message>
-    <message>
-        <source>S-Domain Plot</source>
-        <translation>Γραφή Τομέα S</translation>
-    </message>
-    <message>
-        <source>S-Domain Plot in Hz</source>
-        <translation>Γραφή Τομέα S σε Hz</translation>
-    </message>
-    <message>
-        <source>SAIDI</source>
-        <translation>SAIDI</translation>
-    </message>
-    <message>
-        <source>SAIFI</source>
-        <translation>SAIFI</translation>
-    </message>
-    <message>
-        <source>Sensibilities</source>
-        <translation>Ευαισθησත්වότητες</translation>
-    </message>
-    <message>
-        <source>Sensitivity to the exchange</source>
-        <translation>Ευαισθησία στην ανταλλαγή</translation>
-    </message>
-    <message>
-        <source>Sensitivity to the exchange (N-1)</source>
-        <translation>Ευαισθησία στην ανταλλαγή (N-1)</translation>
-    </message>
-    <message>
-        <source>Sequence line</source>
-        <translation>Γραμμή Σει퀀ς</translation>
-    </message>
-    <message>
-        <source>Series</source>
-        <translation>Σειρά</translation>
-    </message>
-    <message>
-        <source>Series reactance</source>
-        <translation>Αντίδραση σειράς</translation>
-    </message>
-    <message>
-        <source>Short circuit</source>
-        <translation>Βραχυκύκλωμα</translation>
-    </message>
-    <message>
-        <source>Short circuit active current</source>
-        <translation>Ενεργικό Ρεύμα Βραχυκυκλώματος</translation>
-    </message>
-    <message>
-        <source>Short circuit active current A</source>
-        <translation>Ενεργικό Ρεύμα Βραχυκυκλώματος A</translation>
-    </message>
-    <message>
-        <source>Short circuit active current B</source>
-        <translation>Ενεργικό Ρεύμα Βραχυκυκλώματος B</translation>
-    </message>
-    <message>
-        <source>Short circuit active current C</source>
-        <translation>Ενεργικό Ρεύμα Βραχυκυκλώματος C</translation>
-    </message>
-    <message>
-        <source>Short circuit active power</source>
-        <translation>Ενεργική Ισχύς Βραχυκυκλώματος</translation>
-    </message>
-    <message>
-        <source>Short circuit active power A</source>
-        <translation>Ενεργική Ισχύς Βραχυκυκλώματος A</translation>
-    </message>
-    <message>
-        <source>Short circuit active power B</source>
-        <translation>Ενεργική Ισχύς Βραχυκυκλώματος B</translation>
-    </message>
-    <message>
-        <source>Short circuit active power C</source>
-        <translation>Ενεργική Ισχύς Βραχυκυκλώματος C</translation>
-    </message>
-    <message>
-        <source>Short circuit event</source>
-        <translation>Εκδήλωση Βραχυκυκλώματος</translation>
-    </message>
-    <message>
-        <source>Short circuit reactive current</source>
-        <translation>Διαناطίσθητο Ρεύμα Βραχυκυκλώματος</translation>
-    </message>
-    <message>
-        <source>Short circuit reactive current A</source>
-        <translation>Διαناطίσθητο Ρεύμα Βραχυκυκλώματος A</translation>
-    </message>
-    <message>
-        <source>Short circuit reactive current B</source>
-        <translation>Διαناطίσθητο Ρεύμα Βραχυκυκλώματος B</translation>
-    </message>
-    <message>
-        <source>Short circuit reactive current C</source>
-        <translation>Διαناطίσθητο Ρεύμα Βραχυκυκλώματος C</translation>
-    </message>
-    <message>
-        <source>Short circuit reactive power</source>
-        <translation>Διαناطίσθητική Ισχύς Βραχυκυκλώματος</translation>
-    </message>
-    <message>
-        <source>Short circuit reactive power A</source>
-        <translation>Διαناطίσθητική Ισχύς Βραχυκυκλώματος A</translation>
-    </message>
-    <message>
-        <source>Short circuit reactive power B</source>
-        <translation>Διαناطίσθητική Ισχύς Βραχυκυκλώματος B</translation>
-    </message>
-    <message>
-        <source>Short circuit reactive power C</source>
-        <translation>Διαناطίσθητική Ισχύς Βραχυκυκλώματος C</translation>
-    </message>
-    <message>
-        <source>Short-circuit information</source>
-        <translation>Πληροφορίες Βραχυκυκλώματος</translation>
-    </message>
-    <message>
-        <source>ShortCircuit</source>
-        <translation>Βραχυκύκλωμα</translation>
-    </message>
-    <message>
-        <source>Shunt</source>
-        <translation>Shunt</translation>
-    </message>
-    <message>
-        <source>Shunt like devices</source>
-        <translation>Συσκευές τύπου Shunt</translation>
-    </message>
-    <message>
-        <source>Shunt neutral voltage</source>
-        <translation>Τάσηの中νευρικού Shunt</translation>
-    </message>
-    <message>
-        <source>Shunt reactive power</source>
-        <translation>Διαناطίσθητική Ισχύς Shunt</translation>
-    </message>
-    <message>
-        <source>Shunt reactive power A</source>
-        <translation>Διαناطίσθητική Ισχύς Shunt A</translation>
-    </message>
-    <message>
-        <source>Shunt reactive power B</source>
-        <translation>Διαناطίσθητική Ισχύς Shunt B</translation>
-    </message>
-    <message>
-        <source>Shunt reactive power C</source>
-        <translation>Διαناطίσθητική Ισχύς Shunt C</translation>
-    </message>
-    <message>
-        <source>Sigma + distances</source>
-        <translation>Αποστάσεις Σίγμα +</translation>
-    </message>
-    <message>
-        <source>Sigma Analysis</source>
-        <translation>Ανάλυση Σίγμα</translation>
-    </message>
-    <message>
-        <source>Sigma distances</source>
-        <translation>Αποστάσεις Σίγμα</translation>
-    </message>
-    <message>
-        <source>Sigma imaginary</source>
-        <translation>Μαυγαζί Σίγμα</translation>
-    </message>
-    <message>
-        <source>Sigma real</source>
-        <translation>Πραγματικό Σίγμα</translation>
-    </message>
-    <message>
-        <source>SigmaAnalysis</source>
-        <translation>Ανάλυση Σίγμα</translation>
-    </message>
-    <message>
-        <source>SimulationOptionsDevice</source>
-        <translation>Επιλογές Μοделирования Συσκευής</translation>
-    </message>
-    <message>
-        <source>Slacks</source>
-        <translation>Slacks</translation>
-    </message>
-    <message>
-        <source>SmallSignalStability</source>
-        <translation>Σταθερότητα Μικρού Σήματος</translation>
-    </message>
-    <message>
-        <source>Snapshot</source>
-        <translation>Στιγμιότυπο</translation>
-    </message>
-    <message>
-        <source>Special plots</source>
-        <translation>Ειδικά γραφήματα</translation>
-    </message>
-    <message>
-        <source>Spillage flow leaving</source>
-        <translation>Ροή διαρροής εξόδου</translation>
-    </message>
-    <message>
-        <source>Srap used power</source>
-        <translation>Χρησιμοποιούμενη ισχύ Srap</translation>
-    </message>
-    <message>
-        <source>Stabilizer</source>
-        <translation>Σταθεροποιητής</translation>
-    </message>
-    <message>
-        <source>State Matrix</source>
-        <translation>Μήτ[][]α Κατάστασης</translation>
-    </message>
-    <message>
-        <source>State estimation</source>
-        <translation>Εκτίμηση του κράτους</translation>
-    </message>
-    <message>
-        <source>StateEstimation</source>
-        <translation>Εκτίμηση Κατάστασης</translation>
-    </message>
-    <message>
-        <source>Static Generator</source>
-        <translation>Στατικός Γεννήτριας</translation>
-    </message>
-    <message>
-        <source>Statistics</source>
-        <translation>Στατιστικά</translation>
-    </message>
-    <message>
-        <source>Std-dev contingency overloading</source>
-        <translation>Τυπική απόκλιση υπερφόρτωσης σε περίπτωση έκτακτου γεγονότος</translation>
-    </message>
-    <message>
-        <source>Stochastic Power Flow</source>
-        <translation>Στοχαστικό Ροή Ισχύος</translation>
-    </message>
-    <message>
-        <source>StochasticPowerFlow</source>
-        <translation>Στοχαστικό Ροή Ισχύος</translation>
-    </message>
-    <message>
-        <source>Substation</source>
-        <translation>Μικρός σταθμός</translation>
-    </message>
-    <message>
-        <source>Substation analysis</source>
-        <translation>Ανάλυση Υποσταθμού</translation>
-    </message>
-    <message>
-        <source>Substation balance analysis</source>
-        <translation>Ανάλυση Ισορροπίας Υποσταθμού</translation>
-    </message>
-    <message>
-        <source>Substation generation analysis</source>
-        <translation>Ανάλυση Παραγωγής Υποσταθμού</translation>
-    </message>
-    <message>
-        <source>Substation load analysis</source>
-        <translation>Ανάλυση Φορτίου Υποσταθμού</translation>
-    </message>
-    <message>
-        <source>Switch</source>
-        <translation>Διακόπτης</translation>
-    </message>
-    <message>
-        <source>System</source>
-        <translation>Σύστημα</translation>
-    </message>
-    <message>
-        <source>System emissions</source>
-        <translation>Εκπομπές Συστήματος</translation>
-    </message>
-    <message>
-        <source>System energy cost</source>
-        <translation>Κόστος Ενέργειας Συστήματος</translation>
-    </message>
-    <message>
-        <source>System energy total cost</source>
-        <translation>Συνολικό Κόστος Ενέργειας Συστήματος</translation>
-    </message>
-    <message>
-        <source>System fuel consumption</source>
-        <translation>Κατανάλωση Καυσίμου Συστήματος</translation>
-    </message>
-    <message>
-        <source>Technology</source>
-        <translation>Τεχνολογία</translation>
-    </message>
-    <message>
-        <source>Technology Category</source>
-        <translation>Κατηγορία Τεχνολογίας</translation>
-    </message>
-    <message>
-        <source>Technology Group</source>
-        <translation>Ομάδα Τεχνολογίας</translation>
-    </message>
-    <message>
-        <source>Technology plot</source>
-        <translation>Γράφημα Τεχνολογίας</translation>
-    </message>
-    <message>
-        <source>Template</source>
-        <translation>Περίγραμμα</translation>
-    </message>
-    <message>
-        <source>Templates</source>
-        <translation>Πρότυπα</translation>
-    </message>
-    <message>
-        <source>Time</source>
-        <translation>Χρόνος</translation>
-    </message>
-    <message>
-        <source>Time series Contingency flow report (Branches)</source>
-        <translation>Αναφορά Ροής Έκτακτου Γεγονότος (Κλαδιά) (Σειρά Χρόνου)</translation>
-    </message>
-    <message>
-        <source>Time series base flow report</source>
-        <translation>Αναφορά Βασικής Ροής (Σειρά Χρόνου)</translation>
-    </message>
-    <message>
-        <source>Time series branch monitoring logic report</source>
-        <translation>Αναφορά Λογικής Παρακολούθησης Κλαδιών (Σειρά Χρόνου)</translation>
-    </message>
-    <message>
-        <source>Time series contingency Branches report</source>
-        <translation>Αναφορά Κλαδιών Έκτακτου Γεγονότος (Σειρά Χρόνου)</translation>
-    </message>
-    <message>
-        <source>Time series contingency flow report</source>
-        <translation>Αναφορά Ροής Έκτακτου Γεγονότος (Σειρά Χρόνου)</translation>
-    </message>
-    <message>
-        <source>Time series contingency flow report. (Generation)</source>
-        <translation>Αναφορά Ροής Έκτακτου Γεγονότος. (Παραγωγή) (Σειρά Χρόνου)</translation>
-    </message>
-    <message>
-        <source>Time series contingency flow report. (Hvdc)</source>
-        <translation>Αναφορά Ροής Έκτακτου Γεγονότος. (HVDC) (Σειρά Χρόνου)</translation>
-    </message>
-    <message>
-        <source>Time series critical Branches report</source>
-        <translation>Αναφορά Κρίσιμων Κλαδιών (Σειρά Χρόνου)</translation>
-    </message>
-    <message>
-        <source>Time series generation delta power report</source>
-        <translation>Αναφορά ΔΙσχύος Παραγωγής (Σειρά Χρόνου)</translation>
-    </message>
-    <message>
-        <source>Time series generation power report</source>
-        <translation>Αναφορά Ισχύος Παραγωγής (Σειρά Χρόνου)</translation>
-    </message>
-    <message>
-        <source>Time series sensitivity to the exchange report</source>
-        <translation>Αναφορά Ευαισθησίας στην Ανταλλαγή (Σειρά Χρόνου)</translation>
-    </message>
-    <message>
-        <source>Time series worst sensitivity to the exchange report (N-1)</source>
-        <translation>Αναφορά Πιο Χειρότερης Ευαισθησίας στην Ανταλλαγή (N-1) (Σειρά Χρόνου)</translation>
-    </message>
-    <message>
-        <source>Topology Processor</source>
-        <translation>Επεξεργαστής Τοπολογίας</translation>
-    </message>
-    <message>
-        <source>Topology reduction</source>
-        <translation>Μείωση Τοπολογίας</translation>
-    </message>
-    <message>
-        <source>Tower</source>
-        <translation>Πύργος</translation>
-    </message>
-    <message>
-        <source>Transformer</source>
-        <translation>Μετασχηματιστής</translation>
-    </message>
-    <message>
-        <source>Transformer type</source>
-        <translation>Τύπος Μετασχητικού</translation>
-    </message>
-    <message>
-        <source>Transformer3W</source>
-        <translation>Transformer3W</translation>
-    </message>
-    <message>
-        <source>TransformerNw</source>
-        <translation>TransformerNw</translation>
-    </message>
-    <message>
-        <source>Transient stability</source>
-        <translation>Μεταβατική Σταθερότητα</translation>
-    </message>
-    <message>
-        <source>UPFC</source>
-        <translation>UPFC</translation>
-    </message>
-    <message>
-        <source>Underground line</source>
-        <translation>Υπογείωση Γραμμής</translation>
-    </message>
-    <message>
-        <source>V: Voltage module</source>
-        <translation>V: Μονάδα Τάσης</translation>
-    </message>
-    <message>
-        <source>VA: Voltage module A</source>
-        <translation>VA: Μονάδα Τάσης A</translation>
-    </message>
-    <message>
-        <source>VB: Voltage module B</source>
-        <translation>VB: Μονάδα Τάσης B</translation>
-    </message>
-    <message>
-        <source>VC: Voltage module C</source>
-        <translation>VC: Μονάδα Τάσης C</translation>
-    </message>
-    <message>
-        <source>VSC</source>
-        <translation>VSC</translation>
-    </message>
-    <message>
-        <source>Va Measurement</source>
-        <translation>Μέτρηση Va</translation>
-    </message>
-    <message>
-        <source>Var Factory</source>
-        <translation>Παραγωγή Var</translation>
-    </message>
-    <message>
-        <source>Vm Measurement</source>
-        <translation>Μέτρηση Vm</translation>
-    </message>
-    <message>
-        <source>Voltage angle (0)</source>
-        <translation>Γωνία τάσης (0)</translation>
-    </message>
-    <message>
-        <source>Voltage angle (1)</source>
-        <translation>Γωνία τάσης (1)</translation>
-    </message>
-    <message>
-        <source>Voltage angle (2)</source>
-        <translation>Γωνία τάσης (2)</translation>
-    </message>
-    <message>
-        <source>Voltage collapse</source>
-        <translation>Κατάρρευση τάσης</translation>
-    </message>
-    <message>
-        <source>Voltage level</source>
-        <translation>Επίπεδο τάσης</translation>
-    </message>
-    <message>
-        <source>Voltage level analysis</source>
-        <translation>Ανάλυση επιπέδου τάσης</translation>
-    </message>
-    <message>
-        <source>Voltage level balance analysis</source>
-        <translation>Ανάλυση ισορροπίας επιπέδου τάσης</translation>
-    </message>
-    <message>
-        <source>Voltage level generation analysis</source>
-        <translation>Ανάλυση παραγωγής επιπέδου τάσης</translation>
-    </message>
-    <message>
-        <source>Voltage level load analysis</source>
-        <translation>Ανάλυση φόρτου επιπέδου τάσης</translation>
-    </message>
-    <message>
-        <source>Voltage level template</source>
-        <translation>Πρότυπο επιπέδου τάσης</translation>
-    </message>
-    <message>
-        <source>Voltage module (0)</source>
-        <translation>Μονάδα τάσης (0)</translation>
-    </message>
-    <message>
-        <source>Voltage module (1)</source>
-        <translation>Μονάδα τάσης (1)</translation>
-    </message>
-    <message>
-        <source>Voltage module (2)</source>
-        <translation>Μονάδα τάσης (2)</translation>
-    </message>
-    <message>
-        <source>Voltage plot</source>
-        <translation>Γραφή τάσης</translation>
-    </message>
-    <message>
-        <source>Vsc</source>
-        <translation>Vsc</translation>
-    </message>
-    <message>
-        <source>Vsc ODF</source>
-        <translation>Vsc ODF</translation>
-    </message>
-    <message>
-        <source>Vsc PTDF</source>
-        <translation>Vsc PTDF</translation>
-    </message>
-    <message>
-        <source>Vsc Pdc</source>
-        <translation>Vsc Pdc</translation>
-    </message>
-    <message>
-        <source>Vsc Vdc</source>
-        <translation>Vsc Vdc</translation>
-    </message>
-    <message>
-        <source>Vsc loading</source>
-        <translation>Φόρτιση Vsc</translation>
-    </message>
-    <message>
-        <source>Vsc losses</source>
-        <translation>Χαρίτες Vsc</translation>
-    </message>
-    <message>
-        <source>Vsc power "from" negative pole</source>
-        <translation>Ισχύς Vsc «από» αρνητικό πόλο</translation>
-    </message>
-    <message>
-        <source>Vsc power "from" positive pole</source>
-        <translation>Ισχύς Vsc «από» θετικό πόλο</translation>
-    </message>
-    <message>
-        <source>Vsc power "to"</source>
-        <translation>Ισχύς Vsc «προς»</translation>
-    </message>
-    <message>
-        <source>Vsc power "to" A</source>
-        <translation>Ισχύς Vsc «προς» A</translation>
-    </message>
-    <message>
-        <source>Vsc power "to" B</source>
-        <translation>Ισχύς Vsc «προς» B</translation>
-    </message>
-    <message>
-        <source>Vsc power "to" C</source>
-        <translation>Ισχύς Vsc «προς» C</translation>
-    </message>
-    <message>
-        <source>When to make them plot</source>
-        <translation>Πότε να τα σχεδιάσετε</translation>
-    </message>
-    <message>
-        <source>Winding</source>
-        <translation>Τύλιγμα</translation>
-    </message>
-    <message>
-        <source>Wire</source>
-        <translation>Γραμμή</translation>
-    </message>
-    <message>
-        <source>Zone</source>
-        <translation>Ζώνη</translation>
-    </message>
-    <message>
-        <source>Zone analysis</source>
-        <translation>Ανάλυση ζώνης</translation>
-    </message>
-    <message>
-        <source>Zone balance analysis</source>
-        <translation>Ανάλυση ισορροπίας ζώνης</translation>
-    </message>
-    <message>
-        <source>Zone generation analysis</source>
-        <translation>Ανάλυση παραγωγής ζώνης</translation>
-    </message>
-    <message>
-        <source>Zone load analysis</source>
-        <translation>Ανάλυση φόρτου ζώνης</translation>
-    </message>
-    <message>
-        <source>export all</source>
-        <translation>Εξαγωγή όλων</translation>
-    </message>
-    <message>
-        <source>file open</source>
-        <translation>Άνοιγμα αρχείου</translation>
-    </message>
-    <message>
-        <source>file save</source>
-        <translation>Αποθήκευση αρχείου</translation>
-    </message>
-    <message>
-        <source>loading avg</source>
-        <translation>Μέση φόρτιση</translation>
-    </message>
-    <message>
-        <source>m: Tap module</source>
-        <translation>m: Μονάδα Tap</translation>
-    </message>
-    <message>
-        <source>ΔP: Active power increment</source>
-        <translation>ΔP: Πρόσθετο φυσίμερης ισχύος</translation>
-    </message>
-    <message>
-        <source>ΔV: Voltage modules drop</source>
-        <translation>ΔV: Πτώση μονάδων τάσης</translation>
-    </message>
-    <message>
-        <source>ΔV: Voltage modules drop A</source>
-        <translation>ΔV: Πτώση μονάδων τάσης A</translation>
-    </message>
-    <message>
-        <source>ΔV: Voltage modules drop B</source>
-        <translation>ΔV: Πτώση μονάδων τάσης B</translation>
-    </message>
-    <message>
-        <source>ΔV: Voltage modules drop C</source>
-        <translation>ΔV: Πτώση μονάδων τάσης C</translation>
-    </message>
-    <message>
-        <source>Δθ: Voltage angles drop</source>
-        <translation>Δθ: Πτώση γωνιών τάσης</translation>
-    </message>
-    <message>
-        <source>Δθ: Voltage angles drop A</source>
-        <translation>Δθ: Πτώση γωνιών τάσης A</translation>
-    </message>
-    <message>
-        <source>Δθ: Voltage angles drop B</source>
-        <translation>Δθ: Πτώση γωνιών τάσης B</translation>
-    </message>
-    <message>
-        <source>Δθ: Voltage angles drop C</source>
-        <translation>Δθ: Πτώση γωνιών τάσης C</translation>
-    </message>
-    <message>
-        <source>θ: Voltage angle</source>
-        <translation>θ: Ηλεκ زاویه τάσης</translation>
-    </message>
-    <message>
-        <source>θA: Voltage angle A</source>
-        <translation>θA: Ηλεκ زاویه τάσης A</translation>
-    </message>
-    <message>
-        <source>θB: Voltage angle B</source>
-        <translation>θB: Ηλεκ زاویه τάσης B</translation>
-    </message>
-    <message>
-        <source>θC: Voltage angle C</source>
-        <translation>θC: Ηλεκ زاویه τάσης C</translation>
-    </message>
-    <message>
-        <source>𝜏: Tap angle</source>
-        <translation>𝜏: Tap angle</translation>
     </message>
 </context>
 </TS>

@@ -153,57 +153,57 @@ li.checked::marker { content: &quot;\2612&quot;; }
     <message>
         <location filename="../DeviceEditors/AdmittanceMatrixEditor/admittance_matrix_editor_gui.ui" line="19"/>
         <source>Phases:</source>
-        <translation type="unfinished">चरण:</translation>
+        <translation>चरण:</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/AdmittanceMatrixEditor/admittance_matrix_editor_gui.ui" line="26"/>
         <source>N</source>
-        <translation type="unfinished">N</translation>
+        <translation>N</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/AdmittanceMatrixEditor/admittance_matrix_editor_gui.ui" line="33"/>
         <source>A</source>
-        <translation type="unfinished">A</translation>
+        <translation>A</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/AdmittanceMatrixEditor/admittance_matrix_editor_gui.ui" line="40"/>
         <source>B</source>
-        <translation type="unfinished">B</translation>
+        <translation>B</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/AdmittanceMatrixEditor/admittance_matrix_editor_gui.ui" line="47"/>
         <source>C</source>
-        <translation type="unfinished">C</translation>
+        <translation>C</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/AdmittanceMatrixEditor/admittance_matrix_editor_gui.ui" line="103"/>
         <source>Compute from sequence values</source>
-        <translation type="unfinished">अनुक्रम मानों से गणना करें</translation>
+        <translation>अनुक्रम मानों से गणना करें</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/AdmittanceMatrixEditor/admittance_matrix_editor_gui.ui" line="130"/>
         <source>Accept</source>
-        <translation type="unfinished">स्वीकार करें</translation>
+        <translation>स्वीकार करें</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/AdmittanceMatrixEditor/admittance_matrix_editor_gui.ui" line="148"/>
         <source>Admittance matrix</source>
-        <translation type="unfinished">प्रवेश मैट्रिक्स</translation>
+        <translation>प्रवेश मैट्रिक्स</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/AdmittanceMatrixEditor/admittance_matrix_editor_gui.ui" line="158"/>
         <source>Dense complex admittance matrix.</source>
-        <translation type="unfinished">घनत्व वाला जटिल प्रवेश मैट्रिक्स।</translation>
+        <translation>घनत्व वाला जटिल प्रवेश मैट्रिक्स।</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/AdmittanceMatrixEditor/admittance_matrix_editor_gui.ui" line="173"/>
         <source>Shunt admittance</source>
-        <translation type="unfinished">शंट प्रवेश</translation>
+        <translation>शंट प्रवेश</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/AdmittanceMatrixEditor/admittance_matrix_editor_gui.ui" line="185"/>
         <source>Series admittance</source>
-        <translation type="unfinished">श्रृंखला प्रवेश</translation>
+        <translation>श्रृंखला प्रवेश</translation>
     </message>
 </context>
 <context>
@@ -789,7 +789,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
     <message>
         <location filename="../FileDialogues/CoordinatesInput/coordinates_input_gui.ui" line="108"/>
         <source>Target</source>
-        <translation type="unfinished">लक्ष्य</translation>
+        <translation>लक्ष्य</translation>
     </message>
     <message>
         <location filename="../FileDialogues/CoordinatesInput/coordinates_input_gui.ui" line="141"/>
@@ -1226,32 +1226,32 @@ li.checked::marker { content: &quot;\2612&quot;; }
     <message>
         <location filename="../DynamicEventsDialog/dynamic_events_editor_dialog.ui" line="14"/>
         <source>Dynamic Event Editor</source>
-        <translation type="unfinished">डायनामिक इवेंट एडिटर</translation>
+        <translation>डायनामिक इवेंट एडिटर</translation>
     </message>
     <message>
         <location filename="../DynamicEventsDialog/dynamic_events_editor_dialog.ui" line="20"/>
         <source>&lt;b&gt;Target device:&lt;/b&gt;</source>
-        <translation type="unfinished">&lt;b&gt;टार्गेट डिवाइस:&lt;/b&gt;</translation>
+        <translation>&lt;b&gt;टार्गेट डिवाइस:&lt;/b&gt;</translation>
     </message>
     <message>
         <location filename="../DynamicEventsDialog/dynamic_events_editor_dialog.ui" line="58"/>
         <source>➕ New Event Group</source>
-        <translation type="unfinished">➕ नई इवेंट समूह</translation>
+        <translation>➕ नई इवेंट समूह</translation>
     </message>
     <message>
         <location filename="../DynamicEventsDialog/dynamic_events_editor_dialog.ui" line="69"/>
         <source>➕ Add New Event</source>
-        <translation type="unfinished">➕ नई इवेंट जोड़ें</translation>
+        <translation>➕ नई इवेंट जोड़ें</translation>
     </message>
     <message>
         <location filename="../DynamicEventsDialog/dynamic_events_editor_dialog.ui" line="76"/>
         <source>❌ Remove Selected Rows</source>
-        <translation type="unfinished">❌ चयनित पंक्तियाँ हटाएं</translation>
+        <translation>❌ चयनित पंक्तियाँ हटाएं</translation>
     </message>
     <message>
         <location filename="../DynamicEventsDialog/dynamic_events_editor_dialog.ui" line="85"/>
         <source>Switch Sequence Wizard</source>
-        <translation type="unfinished">स्विच सीक्वेंस विज़ार्ड</translation>
+        <translation>स्विच सीक्वेंस विज़ार्ड</translation>
     </message>
 </context>
 <context>
@@ -1364,32 +1364,32 @@ li.checked::marker { content: &quot;\2612&quot;; }
     <message>
         <location filename="../DeviceEditors/LineLocationsEditor/line_locations_editor_gui.ui" line="19"/>
         <source>Add point</source>
-        <translation type="unfinished">बिंदु जोड़ें</translation>
+        <translation>बिंदु जोड़ें</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/LineLocationsEditor/line_locations_editor_gui.ui" line="33"/>
         <source>Remove selected</source>
-        <translation type="unfinished">चयनित को हटाएं</translation>
+        <translation>चयनित को हटाएं</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/LineLocationsEditor/line_locations_editor_gui.ui" line="47"/>
         <source>Import CSV</source>
-        <translation type="unfinished">CSV आयात करें</translation>
+        <translation>CSV आयात करें</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/LineLocationsEditor/line_locations_editor_gui.ui" line="61"/>
         <source>Export CSV</source>
-        <translation type="unfinished">CSV निर्यात करें</translation>
+        <translation>CSV निर्यात करें</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/LineLocationsEditor/line_locations_editor_gui.ui" line="75"/>
         <source>Copy</source>
-        <translation type="unfinished">कॉपी करें</translation>
+        <translation>कॉपी करें</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/LineLocationsEditor/line_locations_editor_gui.ui" line="89"/>
         <source>Paste</source>
-        <translation type="unfinished">पेस्ट करें</translation>
+        <translation>पेस्ट करें</translation>
     </message>
 </context>
 <context>
@@ -2073,7 +2073,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
     <message>
         <location filename="../SigmaAnalysis/sigma_analysis_gui.ui" line="41"/>
         <source>Method</source>
-        <translation type="unfinished">विधि</translation>
+        <translation>विधि</translation>
     </message>
     <message>
         <location filename="../SigmaAnalysis/sigma_analysis_gui.ui" line="49"/>
@@ -2118,12 +2118,12 @@ li.checked::marker { content: &quot;\2612&quot;; }
     <message>
         <location filename="../SigmaAnalysis/sigma_analysis_gui.ui" line="110"/>
         <source>Distributed slack</source>
-        <translation type="unfinished">स्लैक वितरित किया गया</translation>
+        <translation>स्लैक वितरित किया गया</translation>
     </message>
     <message>
         <location filename="../SigmaAnalysis/sigma_analysis_gui.ui" line="130"/>
         <source>...</source>
-        <translation type="unfinished">...</translation>
+        <translation>...</translation>
     </message>
     <message>
         <location filename="../SigmaAnalysis/sigma_analysis_gui.ui" line="144"/>
@@ -2133,7 +2133,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
     <message>
         <location filename="../SigmaAnalysis/sigma_analysis_gui.ui" line="179"/>
         <source>Data</source>
-        <translation type="unfinished">डेटा</translation>
+        <translation>डेटा</translation>
     </message>
 </context>
 <context>
@@ -2352,17 +2352,17 @@ li.checked::marker { content: &quot;\2612&quot;; }
     <message>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="14"/>
         <source>Server Files</source>
-        <translation type="unfinished">सर्वर फ़ाइलें</translation>
+        <translation>सर्वर फ़ाइलें</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="91"/>
         <source>Selection</source>
-        <translation type="unfinished">चयन</translation>
+        <translation>चयन</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="97"/>
         <source>Type</source>
-        <translation type="unfinished">प्रकार</translation>
+        <translation>प्रकार</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="104"/>
@@ -2373,107 +2373,107 @@ li.checked::marker { content: &quot;\2612&quot;; }
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="189"/>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="206"/>
         <source>-</source>
-        <translation type="unfinished">-</translation>
+        <translation>-</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="114"/>
         <source>File name</source>
-        <translation type="unfinished">फ़ाइल का नाम</translation>
+        <translation>फ़ाइल का नाम</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="131"/>
         <source>File idtag</source>
-        <translation type="unfinished">फ़ाइल आईडीटैग</translation>
+        <translation>फ़ाइल आईडीटैग</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="148"/>
         <source>Model name</source>
-        <translation type="unfinished">मॉडल का नाम</translation>
+        <translation>मॉडल का नाम</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="165"/>
         <source>Model idtag</source>
-        <translation type="unfinished">मॉडल आईडीटैग</translation>
+        <translation>मॉडल आईडीटैग</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="182"/>
         <source>Owner user</source>
-        <translation type="unfinished">मालिक उपयोगकर्ता</translation>
+        <translation>मालिक उपयोगकर्ता</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="199"/>
         <source>Created at</source>
-        <translation type="unfinished">बनाया गया</translation>
+        <translation>बनाया गया</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="219"/>
         <source>Actions</source>
-        <translation type="unfinished">क्रियाएँ</translation>
+        <translation>क्रियाएँ</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="225"/>
         <source>Delete removes the selected file or the selected model branch from the server database after confirmation.</source>
-        <translation type="unfinished">पुष्टि के बाद चयनित फ़ाइल या चयनित मॉडल शाखा को सर्वर डेटाबेस से हटा देता है।</translation>
+        <translation>पुष्टि के बाद चयनित फ़ाइल या चयनित मॉडल शाखा को सर्वर डेटाबेस से हटा देता है।</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="246"/>
         <source>Refresh</source>
-        <translation type="unfinished">ताज़ा करें</translation>
+        <translation>ताज़ा करें</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="249"/>
         <source>Reload the server file tree</source>
-        <translation type="unfinished">सर्वर फ़ाइल पेड़ को पुनः लोड करें</translation>
+        <translation>सर्वर फ़ाइल पेड़ को पुनः लोड करें</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="258"/>
         <source>Load File</source>
-        <translation type="unfinished">फ़ाइल लोड करें</translation>
+        <translation>फ़ाइल लोड करें</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="261"/>
         <source>Load the full selected multiverse</source>
-        <translation type="unfinished">पूर्ण चयनित मल्टीवर्स लोड करें</translation>
+        <translation>पूर्ण चयनित मल्टीवर्स लोड करें</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="270"/>
         <source>Load Base Model</source>
-        <translation type="unfinished">बेस मॉडल लोड करें</translation>
+        <translation>बेस मॉडल लोड करें</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="273"/>
         <source>Load only the selected file base model</source>
-        <translation type="unfinished">केवल चयनित फ़ाइल बेस मॉडल लोड करें</translation>
+        <translation>केवल चयनित फ़ाइल बेस मॉडल लोड करें</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="282"/>
         <source>Load Selected Model</source>
-        <translation type="unfinished">चयनित मॉडल लोड करें</translation>
+        <translation>चयनित मॉडल लोड करें</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="285"/>
         <source>Load the selected scenario branch as one flat circuit</source>
-        <translation type="unfinished">चयनित स्थिति शाखा को एक समतल सर्किट के रूप में लोड करें</translation>
+        <translation>चयनित स्थिति शाखा को एक समतल सर्किट के रूप में लोड करें</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="294"/>
         <source>Save Current Project</source>
-        <translation type="unfinished">वर्तमान प्रोजेक्ट सहेजें</translation>
+        <translation>वर्तमान प्रोजेक्ट सहेजें</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="297"/>
         <source>Upload the current project into the selected server file or model</source>
-        <translation type="unfinished">वर्तमान प्रोजेक्ट को चयनित सर्वर फ़ाइल या मॉडल में अपलोड करें</translation>
+        <translation>वर्तमान प्रोजेक्ट को चयनित सर्वर फ़ाइल या मॉडल में अपलोड करें</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="306"/>
         <source>Delete Selected</source>
-        <translation type="unfinished">चयनित को हटाएं</translation>
+        <translation>चयनित को हटाएं</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="309"/>
         <source>Delete the selected file or model from the server database</source>
-        <translation type="unfinished">सर्वर डेटाबेस से चयनित फ़ाइल या मॉडल को हटाएं</translation>
+        <translation>सर्वर डेटाबेस से चयनित फ़ाइल या मॉडल को हटाएं</translation>
     </message>
 </context>
 <context>
@@ -2909,6 +2909,2205 @@ li.checked::marker { content: &quot;\2612&quot;; }
         <location filename="../FileDialogues/UcteDialogue/ucte_export_gui.ui" line="72"/>
         <source>Export</source>
         <translation>निर्यात</translation>
+    </message>
+</context>
+<context>
+    <name>VeraGridTreeLabels</name>
+    <message>
+        <source>ATC Report</source>
+        <translation>एटीसी रिपोर्ट</translation>
+    </message>
+    <message>
+        <source>Active power flow per area</source>
+        <translation>क्षेत्र के अनुसार सक्रिय शक्ति प्रवाह</translation>
+    </message>
+    <message>
+        <source>Any line template</source>
+        <translation>कोई भी लाइन टेम्पलेट</translation>
+    </message>
+    <message>
+        <source>Area</source>
+        <translation>क्षेत्र</translation>
+    </message>
+    <message>
+        <source>Area analysis</source>
+        <translation>क्षेत्र विश्लेषण</translation>
+    </message>
+    <message>
+        <source>Area balance analysis</source>
+        <translation>क्षेत्र संतुलन विश्लेषण</translation>
+    </message>
+    <message>
+        <source>Area generation analysis</source>
+        <translation>क्षेत्र उत्पादन विश्लेषण</translation>
+    </message>
+    <message>
+        <source>Area load analysis</source>
+        <translation>क्षेत्र भार विश्लेषण</translation>
+    </message>
+    <message>
+        <source>Associations</source>
+        <translation>संबद्धताएँ</translation>
+    </message>
+    <message>
+        <source>Available transfer capacity</source>
+        <translation>उपलब्ध स्थानांतरण क्षमता</translation>
+    </message>
+    <message>
+        <source>Available transfer capacity (N)</source>
+        <translation>उपलब्ध हस्तांतरण क्षमता (N)</translation>
+    </message>
+    <message>
+        <source>Available transfer capacity (final)</source>
+        <translation>उपलब्ध हस्तांतरण क्षमता (अंतिम)</translation>
+    </message>
+    <message>
+        <source>Available transfer capacity time series</source>
+        <translation>उपलब्ध हस्तांतरण क्षमता समय श्रृंखला</translation>
+    </message>
+    <message>
+        <source>AvailableTransferCapacity</source>
+        <translation>उपलब्ध हस्तांतरण क्षमता</translation>
+    </message>
+    <message>
+        <source>AvailableTransferCapacityTimeSeries</source>
+        <translation>उपलब्ध हस्तांतरण क्षमता समय श्रृंखला</translation>
+    </message>
+    <message>
+        <source>Balance plot</source>
+        <translation>संतुलन प्लॉट</translation>
+    </message>
+    <message>
+        <source>Base flow report</source>
+        <translation>आधार प्रवाह रिपोर्ट</translation>
+    </message>
+    <message>
+        <source>Batteries</source>
+        <translation>बैटरीज़</translation>
+    </message>
+    <message>
+        <source>Battery</source>
+        <translation>बैटरी</translation>
+    </message>
+    <message>
+        <source>Battery energy</source>
+        <translation>बैटरी ऊर्जा</translation>
+    </message>
+    <message>
+        <source>Battery invested</source>
+        <translation>बैटरी निवेश</translation>
+    </message>
+    <message>
+        <source>Battery power</source>
+        <translation>बैटरी शक्ति</translation>
+    </message>
+    <message>
+        <source>Battery reactive power</source>
+        <translation>बैटरी प्रतिक्रियाशील शक्ति</translation>
+    </message>
+    <message>
+        <source>Battery reactive power A</source>
+        <translation>बैटरी प्रतिक्रियाशील शक्ति A</translation>
+    </message>
+    <message>
+        <source>Battery reactive power B</source>
+        <translation>बैटरी प्रतिक्रियाशील शक्ति B</translation>
+    </message>
+    <message>
+        <source>Battery reactive power C</source>
+        <translation>बैटरी प्रतिक्रियाशील शक्ति C</translation>
+    </message>
+    <message>
+        <source>Beq: Equivalent susceptance</source>
+        <translation>Beq: समतुल्य संवेदनशीलता</translation>
+    </message>
+    <message>
+        <source>Branch</source>
+        <translation>शाखा</translation>
+    </message>
+    <message>
+        <source>Branch Loading</source>
+        <translation>शाखा भारण</translation>
+    </message>
+    <message>
+        <source>Branch Loading A</source>
+        <translation>शाखा भारण A</translation>
+    </message>
+    <message>
+        <source>Branch Loading B</source>
+        <translation>शाखा भारण B</translation>
+    </message>
+    <message>
+        <source>Branch Loading C</source>
+        <translation>शाखा भारण C</translation>
+    </message>
+    <message>
+        <source>Branch active current &quot;from&quot; (0)</source>
+        <translation>शाखा सक्रिय धारा &quot;से&quot; (0)</translation>
+    </message>
+    <message>
+        <source>Branch active current &quot;from&quot; (1)</source>
+        <translation>शाखा सक्रिय धारा &quot;से&quot; (1)</translation>
+    </message>
+    <message>
+        <source>Branch active current &quot;from&quot; (2)</source>
+        <translation>शाखा सक्रिय धारा &quot;से&quot; (2)</translation>
+    </message>
+    <message>
+        <source>Branch active losses (0)</source>
+        <translation>शाखा सक्रिय हानि (0)</translation>
+    </message>
+    <message>
+        <source>Branch active losses (1)</source>
+        <translation>शाखा सक्रिय हानि (1)</translation>
+    </message>
+    <message>
+        <source>Branch active losses (2)</source>
+        <translation>शाखा सक्रिय हानि (2)</translation>
+    </message>
+    <message>
+        <source>Branch active power &quot;from&quot; (0)</source>
+        <translation>शाखा सक्रिय शक्ति &quot;से&quot; (0)</translation>
+    </message>
+    <message>
+        <source>Branch active power &quot;from&quot; (1)</source>
+        <translation>शाखा सक्रिय शक्ति &quot;से&quot; (1)</translation>
+    </message>
+    <message>
+        <source>Branch active power &quot;from&quot; (2)</source>
+        <translation>शाखा सक्रिय शक्ति &quot;से&quot; (2)</translation>
+    </message>
+    <message>
+        <source>Branch group</source>
+        <translation>शाखा समूह</translation>
+    </message>
+    <message>
+        <source>Branch loading (0)</source>
+        <translation>शाखा भारण (0)</translation>
+    </message>
+    <message>
+        <source>Branch loading (1)</source>
+        <translation>शाखा भारण (1)</translation>
+    </message>
+    <message>
+        <source>Branch loading (2)</source>
+        <translation>शाखा भारण (2)</translation>
+    </message>
+    <message>
+        <source>Branch losses</source>
+        <translation>शाखा हानि</translation>
+    </message>
+    <message>
+        <source>Branch monitoring logic</source>
+        <translation>शाखा निगरानी तर्क</translation>
+    </message>
+    <message>
+        <source>Branch overloads</source>
+        <translation>शाखा अधिभार</translation>
+    </message>
+    <message>
+        <source>Branch overloads cost</source>
+        <translation>शाखा अधिभार लागत</translation>
+    </message>
+    <message>
+        <source>Branch power CDF</source>
+        <translation>शाखा शक्ति CDF</translation>
+    </message>
+    <message>
+        <source>Branch power avg</source>
+        <translation>शाखा शक्ति औसत</translation>
+    </message>
+    <message>
+        <source>Branch power std</source>
+        <translation>शाखा शक्ति मानक विचलन</translation>
+    </message>
+    <message>
+        <source>Branch reactive current &quot;from&quot; (0)</source>
+        <translation>शाखा प्रतिक्रियाशील धारा &quot;से&quot; (0)</translation>
+    </message>
+    <message>
+        <source>Branch reactive current &quot;from&quot; (1)</source>
+        <translation>शाखा प्रतिक्रियाशील धारा &quot;से&quot; (1)</translation>
+    </message>
+    <message>
+        <source>Branch reactive current &quot;from&quot; (2)</source>
+        <translation>शाखा प्रतिक्रियाशील धारा &quot;से&quot; (2)</translation>
+    </message>
+    <message>
+        <source>Branch reactive losses (0)</source>
+        <translation>शाखा प्रतिक्रियाशील हानि (0)</translation>
+    </message>
+    <message>
+        <source>Branch reactive losses (1)</source>
+        <translation>शाखा प्रतिक्रियाशील हानि (1)</translation>
+    </message>
+    <message>
+        <source>Branch reactive losses (2)</source>
+        <translation>शाखा प्रतिक्रियाशील हानि (2)</translation>
+    </message>
+    <message>
+        <source>Branch reactive power &quot;from&quot; (0)</source>
+        <translation>शाखा प्रतिक्रियाशील शक्ति &quot;से&quot; (0)</translation>
+    </message>
+    <message>
+        <source>Branch reactive power &quot;from&quot; (1)</source>
+        <translation>शाखा प्रतिक्रियाशील शक्ति &quot;से&quot; (1)</translation>
+    </message>
+    <message>
+        <source>Branch reactive power &quot;from&quot; (2)</source>
+        <translation>शाखा प्रतिक्रियाशील शक्ति &quot;से&quot; (2)</translation>
+    </message>
+    <message>
+        <source>Branch template</source>
+        <translation>शाखा टेम्पलेट</translation>
+    </message>
+    <message>
+        <source>Branches</source>
+        <translation>शाखाएँ</translation>
+    </message>
+    <message>
+        <source>Bus</source>
+        <translation>बस</translation>
+    </message>
+    <message>
+        <source>Bus nodal capacity</source>
+        <translation>बस नोडल क्षमता</translation>
+    </message>
+    <message>
+        <source>Bus power</source>
+        <translation>बस शक्ति</translation>
+    </message>
+    <message>
+        <source>Bus power CDF</source>
+        <translation>बस शक्ति CDF</translation>
+    </message>
+    <message>
+        <source>Bus voltage CDF</source>
+        <translation>बस वोल्टेज CDF</translation>
+    </message>
+    <message>
+        <source>Bus voltage avg</source>
+        <translation>बस वोल्टेज औसत</translation>
+    </message>
+    <message>
+        <source>Bus voltage sensitivity</source>
+        <translation>बस वोल्टेज संवेदनशीलता</translation>
+    </message>
+    <message>
+        <source>Bus voltage std</source>
+        <translation>बस वोल्टेज मानक विचलन</translation>
+    </message>
+    <message>
+        <source>BusBar</source>
+        <translation>बसबार</translation>
+    </message>
+    <message>
+        <source>BusOrBranch</source>
+        <translation>बस या शाखा</translation>
+    </message>
+    <message>
+        <source>CAIDI</source>
+        <translation>CAIDI</translation>
+    </message>
+    <message>
+        <source>Cascade</source>
+        <translation>कैस्केड</translation>
+    </message>
+    <message>
+        <source>Catalogue</source>
+        <translation>कैटलॉग</translation>
+    </message>
+    <message>
+        <source>Catalogue optimization</source>
+        <translation>कैटलॉग अनुकूलन</translation>
+    </message>
+    <message>
+        <source>Circuit</source>
+        <translation>सर्किट</translation>
+    </message>
+    <message>
+        <source>Clean room</source>
+        <translation>स्वच्छ कक्ष</translation>
+    </message>
+    <message>
+        <source>Clustering</source>
+        <translation>क्लस्टरिंग</translation>
+    </message>
+    <message>
+        <source>Clustering Analysis</source>
+        <translation>क्लस्टरिंग विश्लेषण</translation>
+    </message>
+    <message>
+        <source>Clustering time series report</source>
+        <translation>क्लस्टरिंग टाइम सीरीज़ रिपोर्ट</translation>
+    </message>
+    <message>
+        <source>Combinations</source>
+        <translation>संयोजन</translation>
+    </message>
+    <message>
+        <source>Community</source>
+        <translation>समुदाय</translation>
+    </message>
+    <message>
+        <source>Community analysis</source>
+        <translation>समुदाय विश्लेषण</translation>
+    </message>
+    <message>
+        <source>Community balance analysis</source>
+        <translation>समुदाय संतुलन विश्लेषण</translation>
+    </message>
+    <message>
+        <source>Community generation analysis</source>
+        <translation>समुदाय उत्पादन विश्लेषण</translation>
+    </message>
+    <message>
+        <source>Community load analysis</source>
+        <translation>समुदाय भार विश्लेषण</translation>
+    </message>
+    <message>
+        <source>Contingencies</source>
+        <translation>आकस्मिकताएँ</translation>
+    </message>
+    <message>
+        <source>Contingencies report</source>
+        <translation>आकस्मिकता रिपोर्ट</translation>
+    </message>
+    <message>
+        <source>Contingencies statistical report</source>
+        <translation>आकस्मिकता सांख्यिकीय रिपोर्ट</translation>
+    </message>
+    <message>
+        <source>Contingency</source>
+        <translation>आकस्मिकता</translation>
+    </message>
+    <message>
+        <source>Contingency Group</source>
+        <translation>आकस्मिकता समूह</translation>
+    </message>
+    <message>
+        <source>Contingency analysis</source>
+        <translation>आकस्मिकता विश्लेषण</translation>
+    </message>
+    <message>
+        <source>Contingency analysis time series</source>
+        <translation>आकस्मिकता विश्लेषण समय श्रृंखला</translation>
+    </message>
+    <message>
+        <source>Contingency flow</source>
+        <translation>आकस्मिकता प्रवाह</translation>
+    </message>
+    <message>
+        <source>Contingency flow report</source>
+        <translation>आकस्मिकता प्रवाह रिपोर्ट</translation>
+    </message>
+    <message>
+        <source>Contingency frequency</source>
+        <translation>आकस्मिकता आवृत्ति</translation>
+    </message>
+    <message>
+        <source>Contingency loading</source>
+        <translation>आकस्मिकता भारण</translation>
+    </message>
+    <message>
+        <source>Contingency overload sum</source>
+        <translation>आकस्मिकता अधिभार योग</translation>
+    </message>
+    <message>
+        <source>Contingency relative frequency</source>
+        <translation>आकस्मिकता सापेक्ष आवृत्ति</translation>
+    </message>
+    <message>
+        <source>ContingencyAnalysis</source>
+        <translation>आकस्मिकता विश्लेषण</translation>
+    </message>
+    <message>
+        <source>ContingencyAnalysisTimeSeries</source>
+        <translation>आकस्मिकता विश्लेषण टाइम सीरीज़</translation>
+    </message>
+    <message>
+        <source>ContinuationPowerFlow</source>
+        <translation>निरंतर शक्ति प्रवाह</translation>
+    </message>
+    <message>
+        <source>Controllable shunt</source>
+        <translation>नियंत्रणीय शंट</translation>
+    </message>
+    <message>
+        <source>Country</source>
+        <translation>देश</translation>
+    </message>
+    <message>
+        <source>Country analysis</source>
+        <translation>देश विश्लेषण</translation>
+    </message>
+    <message>
+        <source>Country balance analysis</source>
+        <translation>देश संतुलन विश्लेषण</translation>
+    </message>
+    <message>
+        <source>Country generation analysis</source>
+        <translation>देश जनरेशन विश्लेषण</translation>
+    </message>
+    <message>
+        <source>Country load analysis</source>
+        <translation>देश लोड विश्लेषण</translation>
+    </message>
+    <message>
+        <source>Current injection</source>
+        <translation>करंट इंजेक्शन</translation>
+    </message>
+    <message>
+        <source>DC line</source>
+        <translation>डीसी लाइन</translation>
+    </message>
+    <message>
+        <source>Delete and reduce</source>
+        <translation>हटाएँ और कम करें</translation>
+    </message>
+    <message>
+        <source>Design View</source>
+        <translation>डिज़ाइन दृश्य</translation>
+    </message>
+    <message>
+        <source>Diagram</source>
+        <translation>आरेख</translation>
+    </message>
+    <message>
+        <source>Dispatch</source>
+        <translation>डिस्पैच</translation>
+    </message>
+    <message>
+        <source>Dynamic</source>
+        <translation>डायनेमिक</translation>
+    </message>
+    <message>
+        <source>Dynamic Model Host</source>
+        <translation>डायनेमिक मॉडल होस्ट</translation>
+    </message>
+    <message>
+        <source>EMT Dynamic</source>
+        <translation>EMT डायनेमिक</translation>
+    </message>
+    <message>
+        <source>EMT Small Signal stability</source>
+        <translation>EMT स्मॉल सिग्नल स्थिरता</translation>
+    </message>
+    <message>
+        <source>EMT template</source>
+        <translation>EMT टेम्पलेट</translation>
+    </message>
+    <message>
+        <source>ENS</source>
+        <translation>ENS</translation>
+    </message>
+    <message>
+        <source>Emission</source>
+        <translation>उत्सर्जन</translation>
+    </message>
+    <message>
+        <source>Emt Event</source>
+        <translation>EMT इवेंट</translation>
+    </message>
+    <message>
+        <source>Emt Events Group</source>
+        <translation>EMT इवेंट्स समूह</translation>
+    </message>
+    <message>
+        <source>EmtSimulation</source>
+        <translation>EMT सिमुलेशन</translation>
+    </message>
+    <message>
+        <source>Error</source>
+        <translation>त्रुटि</translation>
+    </message>
+    <message>
+        <source>Evaluation report</source>
+        <translation>मूल्यांकन रिपोर्ट</translation>
+    </message>
+    <message>
+        <source>Exciter</source>
+        <translation>एक्साइटर</translation>
+    </message>
+    <message>
+        <source>External grid</source>
+        <translation>बाहरी ग्रिड</translation>
+    </message>
+    <message>
+        <source>FMU template</source>
+        <translation>FMU टेम्पलेट</translation>
+    </message>
+    <message>
+        <source>Facility</source>
+        <translation>सुविधा</translation>
+    </message>
+    <message>
+        <source>Flow Reports</source>
+        <translation>प्रवाह रिपोर्ट</translation>
+    </message>
+    <message>
+        <source>Flow circulating in the device</source>
+        <translation>उपकरण में परिसंचारी प्रवाह</translation>
+    </message>
+    <message>
+        <source>Flow entering the node</source>
+        <translation>नोड में प्रवेश करने वाला प्रवाह</translation>
+    </message>
+    <message>
+        <source>Flow exiting the node</source>
+        <translation>नोड से बाहर निकलने वाला प्रवाह</translation>
+    </message>
+    <message>
+        <source>Flow from the P2X</source>
+        <translation>P2X से प्रवाह</translation>
+    </message>
+    <message>
+        <source>Flow in the river</source>
+        <translation>नदी में प्रवाह</translation>
+    </message>
+    <message>
+        <source>Fluid</source>
+        <translation>द्रव</translation>
+    </message>
+    <message>
+        <source>Fluid Injection</source>
+        <translation>द्रव इंजेक्शन</translation>
+    </message>
+    <message>
+        <source>Fluid P2X</source>
+        <translation>द्रव P2X</translation>
+    </message>
+    <message>
+        <source>Fluid P2Xs</source>
+        <translation>द्रव P2Xs</translation>
+    </message>
+    <message>
+        <source>Fluid Pump</source>
+        <translation>द्रव पंप</translation>
+    </message>
+    <message>
+        <source>Fluid Turbine</source>
+        <translation>द्रव टरबाइन</translation>
+    </message>
+    <message>
+        <source>Fluid injections</source>
+        <translation>द्रव इंजेक्शन</translation>
+    </message>
+    <message>
+        <source>Fluid node</source>
+        <translation>द्रव नोड</translation>
+    </message>
+    <message>
+        <source>Fluid nodes</source>
+        <translation>द्रव नोड्स</translation>
+    </message>
+    <message>
+        <source>Fluid path</source>
+        <translation>द्रव पथ</translation>
+    </message>
+    <message>
+        <source>Fluid paths</source>
+        <translation>द्रव पथ</translation>
+    </message>
+    <message>
+        <source>Fluid pumps</source>
+        <translation>द्रव पंप</translation>
+    </message>
+    <message>
+        <source>Fluid turbines</source>
+        <translation>द्रव टरबाइन</translation>
+    </message>
+    <message>
+        <source>Frequency</source>
+        <translation>आवृत्ति</translation>
+    </message>
+    <message>
+        <source>Fuel</source>
+        <translation>ईंधन</translation>
+    </message>
+    <message>
+        <source>Generation delta slacks</source>
+        <translation>जनरेशन डेल्टा स्लैक</translation>
+    </message>
+    <message>
+        <source>Generation deltas</source>
+        <translation>जनरेशन डेल्टा</translation>
+    </message>
+    <message>
+        <source>Generator</source>
+        <translation>जेनरेटर</translation>
+    </message>
+    <message>
+        <source>Generator Emission</source>
+        <translation>जनरेटर उत्सर्जन</translation>
+    </message>
+    <message>
+        <source>Generator Fuel</source>
+        <translation>जनरेटर ईंधन</translation>
+    </message>
+    <message>
+        <source>Generator Technology</source>
+        <translation>जनरेटर प्रौद्योगिकी</translation>
+    </message>
+    <message>
+        <source>Generator cost</source>
+        <translation>जनरेटर लागत</translation>
+    </message>
+    <message>
+        <source>Generator emissions</source>
+        <translation>जनरेटर उत्सर्जन</translation>
+    </message>
+    <message>
+        <source>Generator fuels</source>
+        <translation>जनरेटर ईंधन</translation>
+    </message>
+    <message>
+        <source>Generator invested</source>
+        <translation>जनरेटर निवेशित</translation>
+    </message>
+    <message>
+        <source>Generator power</source>
+        <translation>जनरेटर शक्ति</translation>
+    </message>
+    <message>
+        <source>Generator producing</source>
+        <translation>जनरेटर उत्पादन</translation>
+    </message>
+    <message>
+        <source>Generator reactive power</source>
+        <translation>जनरेटर प्रतिक्रियाशील शक्ति</translation>
+    </message>
+    <message>
+        <source>Generator reactive power A</source>
+        <translation>जनरेटर प्रतिक्रियाशील शक्ति A</translation>
+    </message>
+    <message>
+        <source>Generator reactive power B</source>
+        <translation>जनरेटर प्रतिक्रियाशील शक्ति B</translation>
+    </message>
+    <message>
+        <source>Generator reactive power C</source>
+        <translation>जनरेटर प्रतिक्रियाशील शक्ति C</translation>
+    </message>
+    <message>
+        <source>Generator reserve</source>
+        <translation>जनरेटर आरक्षित क्षमता</translation>
+    </message>
+    <message>
+        <source>Generator shedding</source>
+        <translation>जनरेटर शेडिंग</translation>
+    </message>
+    <message>
+        <source>Generator shutting down</source>
+        <translation>जनरेटर बंद हो रहा है</translation>
+    </message>
+    <message>
+        <source>Generator starting up</source>
+        <translation>जनरेटर शुरू हो रहा है</translation>
+    </message>
+    <message>
+        <source>Generators</source>
+        <translation>जनरेटर</translation>
+    </message>
+    <message>
+        <source>Generic Area</source>
+        <translation>सामान्य क्षेत्र</translation>
+    </message>
+    <message>
+        <source>Governor</source>
+        <translation>गवर्नर</translation>
+    </message>
+    <message>
+        <source>Groups</source>
+        <translation>समूह</translation>
+    </message>
+    <message>
+        <source>HVDC Line</source>
+        <translation>HVDC लाइन</translation>
+    </message>
+    <message>
+        <source>HVDC ODF</source>
+        <translation>HVDC ODF</translation>
+    </message>
+    <message>
+        <source>HVDC PTDF</source>
+        <translation>HVDC PTDF</translation>
+    </message>
+    <message>
+        <source>HVDC loading</source>
+        <translation>HVDC लोडिंग</translation>
+    </message>
+    <message>
+        <source>HVDC losses</source>
+        <translation>HVDC हानि</translation>
+    </message>
+    <message>
+        <source>HVDC overloads</source>
+        <translation>HVDC ओवरलोड</translation>
+    </message>
+    <message>
+        <source>HVDC power &quot;from&quot;</source>
+        <translation>HVDC शक्ति &quot;से&quot;</translation>
+    </message>
+    <message>
+        <source>HVDC power &quot;from&quot; A</source>
+        <translation>HVDC शक्ति &quot;से&quot; A</translation>
+    </message>
+    <message>
+        <source>HVDC power &quot;from&quot; B</source>
+        <translation>HVDC शक्ति &quot;से&quot; B</translation>
+    </message>
+    <message>
+        <source>HVDC power &quot;from&quot; C</source>
+        <translation>HVDC शक्ति &quot;से&quot; C</translation>
+    </message>
+    <message>
+        <source>HVDC power &quot;to&quot;</source>
+        <translation>HVDC शक्ति &quot;को&quot;</translation>
+    </message>
+    <message>
+        <source>HVDC power &quot;to&quot; A</source>
+        <translation>HVDC शक्ति &quot;को&quot; A</translation>
+    </message>
+    <message>
+        <source>HVDC power &quot;to&quot; B</source>
+        <translation>HVDC शक्ति &quot;को&quot; B</translation>
+    </message>
+    <message>
+        <source>HVDC power &quot;to&quot; C</source>
+        <translation>HVDC शक्ति &quot;को&quot; C</translation>
+    </message>
+    <message>
+        <source>Hvdc</source>
+        <translation>Hvdc</translation>
+    </message>
+    <message>
+        <source>If Measurement</source>
+        <translation>If माप</translation>
+    </message>
+    <message>
+        <source>Iif: Reactive current &quot;from&quot;</source>
+        <translation>Iif: प्रतिक्रियाशील धारा &quot;से&quot;</translation>
+    </message>
+    <message>
+        <source>Iif: Reactive current &quot;from&quot; A</source>
+        <translation>Iif: प्रतिक्रियाशील धारा &quot;से&quot; A</translation>
+    </message>
+    <message>
+        <source>Iif: Reactive current &quot;from&quot; B</source>
+        <translation>Iif: प्रतिक्रियाशील धारा &quot;से&quot; B</translation>
+    </message>
+    <message>
+        <source>Iif: Reactive current &quot;from&quot; C</source>
+        <translation>Iif: प्रतिक्रियाशील धारा &quot;से&quot; C</translation>
+    </message>
+    <message>
+        <source>Iit: Reactive current &quot;to&quot;</source>
+        <translation>Iit: प्रतिक्रियाशील धारा &quot;को&quot;</translation>
+    </message>
+    <message>
+        <source>Iit: Reactive current &quot;to&quot; A</source>
+        <translation>Iit: प्रतिक्रियाशील धारा &quot;को&quot; A</translation>
+    </message>
+    <message>
+        <source>Iit: Reactive current &quot;to&quot; B</source>
+        <translation>Iit: प्रतिक्रियाशील धारा &quot;को&quot; B</translation>
+    </message>
+    <message>
+        <source>Iit: Reactive current &quot;to&quot; C</source>
+        <translation>Iit: प्रतिक्रियाशील धारा &quot;को&quot; C</translation>
+    </message>
+    <message>
+        <source>Information</source>
+        <translation>जानकारी</translation>
+    </message>
+    <message>
+        <source>Injections</source>
+        <translation>इंजेक्शन</translation>
+    </message>
+    <message>
+        <source>Inputs Analysis</source>
+        <translation>इनपुट विश्लेषण</translation>
+    </message>
+    <message>
+        <source>InputsAnalysis</source>
+        <translation>इनपुटएनालिसिस</translation>
+    </message>
+    <message>
+        <source>Inter-Area exchange</source>
+        <translation>अंतर-क्षेत्र विनिमय</translation>
+    </message>
+    <message>
+        <source>Inter-space branch loading</source>
+        <translation>अंतर-स्थान शाखा लोडिंग</translation>
+    </message>
+    <message>
+        <source>Inter-space branch power</source>
+        <translation>अंतर-स्थान शाखा शक्ति</translation>
+    </message>
+    <message>
+        <source>InterAggregationInfo</source>
+        <translation>इंटरएग्रीगेशनइन्फो</translation>
+    </message>
+    <message>
+        <source>Investment</source>
+        <translation>निवेश</translation>
+    </message>
+    <message>
+        <source>InvestmentEvaluations</source>
+        <translation>निवेश मूल्यांकन</translation>
+    </message>
+    <message>
+        <source>Investments</source>
+        <translation>निवेश</translation>
+    </message>
+    <message>
+        <source>Investments Group</source>
+        <translation>निवेश समूह</translation>
+    </message>
+    <message>
+        <source>Investments evaluation</source>
+        <translation>निवेश मूल्यांकन</translation>
+    </message>
+    <message>
+        <source>Irf: Active current &quot;from&quot;</source>
+        <translation>Irf: सक्रिय धारा &quot;से&quot;</translation>
+    </message>
+    <message>
+        <source>Irf: Active current &quot;from&quot; A</source>
+        <translation>Irf: सक्रिय धारा &quot;से&quot; A</translation>
+    </message>
+    <message>
+        <source>Irf: Active current &quot;from&quot; B</source>
+        <translation>Irf: सक्रिय धारा &quot;से&quot; B</translation>
+    </message>
+    <message>
+        <source>Irf: Active current &quot;from&quot; C</source>
+        <translation>Irf: सक्रिय धारा &quot;से&quot; C</translation>
+    </message>
+    <message>
+        <source>Irt: Active current &quot;to&quot;</source>
+        <translation>Irt: सक्रिय धारा &quot;को&quot;</translation>
+    </message>
+    <message>
+        <source>Irt: Active current &quot;to&quot; A</source>
+        <translation>Irt: सक्रिय धारा &quot;को&quot; A</translation>
+    </message>
+    <message>
+        <source>Irt: Active current &quot;to&quot; B</source>
+        <translation>Irt: सक्रिय धारा &quot;को&quot; B</translation>
+    </message>
+    <message>
+        <source>Irt: Active current &quot;to&quot; C</source>
+        <translation>Irt: सक्रिय धारा &quot;को&quot; C</translation>
+    </message>
+    <message>
+        <source>It Measurement</source>
+        <translation>It माप</translation>
+    </message>
+    <message>
+        <source>Iterations plot</source>
+        <translation>पुनरावृत्ति प्लॉट</translation>
+    </message>
+    <message>
+        <source>LODF</source>
+        <translation>LODF</translation>
+    </message>
+    <message>
+        <source>LOLE</source>
+        <translation>LOLE</translation>
+    </message>
+    <message>
+        <source>LOLET</source>
+        <translation>LOLET</translation>
+    </message>
+    <message>
+        <source>LOLF</source>
+        <translation>LOLF</translation>
+    </message>
+    <message>
+        <source>LOLFT</source>
+        <translation>LOLFT</translation>
+    </message>
+    <message>
+        <source>Latin Hypercube</source>
+        <translation>लैटिन हाइपरक्यूब</translation>
+    </message>
+    <message>
+        <source>Line</source>
+        <translation>रेखा</translation>
+    </message>
+    <message>
+        <source>Line Location</source>
+        <translation>लाइन स्थान</translation>
+    </message>
+    <message>
+        <source>Line Locations</source>
+        <translation>लाइन स्थान</translation>
+    </message>
+    <message>
+        <source>Line Template</source>
+        <translation>लाइन टेम्पलेट</translation>
+    </message>
+    <message>
+        <source>Linear analysis</source>
+        <translation>रेखीय विश्लेषण</translation>
+    </message>
+    <message>
+        <source>Linear analysis time series</source>
+        <translation>रैखिक विश्लेषण समय श्रृंखला</translation>
+    </message>
+    <message>
+        <source>LinearAnalysis</source>
+        <translation>रैखिक विश्लेषण</translation>
+    </message>
+    <message>
+        <source>LinearAnalysisTimeSeries</source>
+        <translation>रैखिक विश्लेषण समय श्रृंखला</translation>
+    </message>
+    <message>
+        <source>Load</source>
+        <translation>भार</translation>
+    </message>
+    <message>
+        <source>Load like</source>
+        <translation>भार जैसा</translation>
+    </message>
+    <message>
+        <source>Load neutral voltage</source>
+        <translation>भार न्यूट्रल वोल्टेज</translation>
+    </message>
+    <message>
+        <source>Load power</source>
+        <translation>भार शक्ति</translation>
+    </message>
+    <message>
+        <source>Load shedding</source>
+        <translation>भार शमन</translation>
+    </message>
+    <message>
+        <source>Load shedding cost</source>
+        <translation>भार शमन लागत</translation>
+    </message>
+    <message>
+        <source>Loading CDF</source>
+        <translation>लोडिंग CDF</translation>
+    </message>
+    <message>
+        <source>Loading from the base situation ($\lambda$)</source>
+        <translation>आधार स्थिति से लोडिंग ($\lambda$)</translation>
+    </message>
+    <message>
+        <source>Loading std</source>
+        <translation>लोडिंग मानक विचलन</translation>
+    </message>
+    <message>
+        <source>Loads</source>
+        <translation>भार</translation>
+    </message>
+    <message>
+        <source>Losses % per area</source>
+        <translation>क्षेत्र के प्रति हानि %</translation>
+    </message>
+    <message>
+        <source>Losses CDF</source>
+        <translation>हानि CDF</translation>
+    </message>
+    <message>
+        <source>Losses avg</source>
+        <translation>हानि औसत</translation>
+    </message>
+    <message>
+        <source>Losses per area</source>
+        <translation>क्षेत्र के प्रति हानि</translation>
+    </message>
+    <message>
+        <source>Losses per generation unit in area</source>
+        <translation>क्षेत्र में प्रति जनरेशन इकाई हानि</translation>
+    </message>
+    <message>
+        <source>Losses std</source>
+        <translation>हानि मानक विचलन</translation>
+    </message>
+    <message>
+        <source>Market</source>
+        <translation>बाज़ार</translation>
+    </message>
+    <message>
+        <source>Market unit</source>
+        <translation>बाज़ार इकाई</translation>
+    </message>
+    <message>
+        <source>Max contingency flow</source>
+        <translation>अधिकतम आकस्मिक प्रवाह</translation>
+    </message>
+    <message>
+        <source>Max contingency loading</source>
+        <translation>अधिकतम आकस्मिक लोडिंग</translation>
+    </message>
+    <message>
+        <source>Maximum contingency flow</source>
+        <translation>अधिकतम आकस्मिक प्रवाह</translation>
+    </message>
+    <message>
+        <source>Mean contingency overloading</source>
+        <translation>औसत आकस्मिक अधिभार</translation>
+    </message>
+    <message>
+        <source>Measurements</source>
+        <translation>माप</translation>
+    </message>
+    <message>
+        <source>Modelling Authority</source>
+        <translation>मॉडलिंग प्राधिकरण</translation>
+    </message>
+    <message>
+        <source>Modes</source>
+        <translation>मोड</translation>
+    </message>
+    <message>
+        <source>Monte Carlo</source>
+        <translation>मोंटे कार्लो</translation>
+    </message>
+    <message>
+        <source>Municipality</source>
+        <translation>नगरपालिका</translation>
+    </message>
+    <message>
+        <source>Municipality analysis</source>
+        <translation>नगरपालिका विश्लेषण</translation>
+    </message>
+    <message>
+        <source>Municipality balance analysis</source>
+        <translation>नगरपालिका संतुलन विश्लेषण</translation>
+    </message>
+    <message>
+        <source>Municipality generation analysis</source>
+        <translation>नगरपालिका उत्पादन विश्लेषण</translation>
+    </message>
+    <message>
+        <source>Municipality load analysis</source>
+        <translation>नगरपालिका भार विश्लेषण</translation>
+    </message>
+    <message>
+        <source>NTC</source>
+        <translation>NTC</translation>
+    </message>
+    <message>
+        <source>Net transfer capacity</source>
+        <translation>शुद्ध अंतरण क्षमता</translation>
+    </message>
+    <message>
+        <source>NetTransferCapacity</source>
+        <translation>शुद्ध हस्तांतरण क्षमता</translation>
+    </message>
+    <message>
+        <source>NetTransferCapacityTimeSeries</source>
+        <translation>शुद्ध हस्तांतरण क्षमता समय श्रृंखला</translation>
+    </message>
+    <message>
+        <source>No simulation</source>
+        <translation>कोई सिमुलेशन नहीं</translation>
+    </message>
+    <message>
+        <source>NoDevice</source>
+        <translation>कोई उपकरण नहीं</translation>
+    </message>
+    <message>
+        <source>Nodal capacity</source>
+        <translation>नोडल क्षमता</translation>
+    </message>
+    <message>
+        <source>Nodal capacity time series</source>
+        <translation>नोडल क्षमता समय श्रृंखला</translation>
+    </message>
+    <message>
+        <source>Nodal shadow prices</source>
+        <translation>नोडल छाया मूल्य</translation>
+    </message>
+    <message>
+        <source>Nodal slacks</source>
+        <translation>नोडल स्लैक</translation>
+    </message>
+    <message>
+        <source>Node groups</source>
+        <translation>नोड समूह</translation>
+    </message>
+    <message>
+        <source>NodeGroups</source>
+        <translation>नोड समूह</translation>
+    </message>
+    <message>
+        <source>Nonlinear analysis</source>
+        <translation>गैर-रेखीय विश्लेषण</translation>
+    </message>
+    <message>
+        <source>Nonlinear analysis time series</source>
+        <translation>गैर-रेखीय विश्लेषण समय श्रृंखला</translation>
+    </message>
+    <message>
+        <source>Ntc: Base flow report</source>
+        <translation>Ntc: बेस फ्लो रिपोर्ट</translation>
+    </message>
+    <message>
+        <source>Ntc: Contingency flow report</source>
+        <translation>Ntc: आकस्मिक प्रवाह रिपोर्ट</translation>
+    </message>
+    <message>
+        <source>Ntc: Contingency flow report. (Branch)</source>
+        <translation>Ntc: आकस्मिक प्रवाह रिपोर्ट। (शाखा)</translation>
+    </message>
+    <message>
+        <source>Ntc: Contingency flow report. (Generation)</source>
+        <translation>Ntc: आकस्मिक प्रवाह रिपोर्ट। (उत्पादन)</translation>
+    </message>
+    <message>
+        <source>Ntc: Contingency flow report. (Hvdc)</source>
+        <translation>Ntc: आकस्मिक प्रवाह रिपोर्ट। (HVDC)</translation>
+    </message>
+    <message>
+        <source>Objectives</source>
+        <translation>उद्देश्य</translation>
+    </message>
+    <message>
+        <source>Objects</source>
+        <translation>वस्तुएँ</translation>
+    </message>
+    <message>
+        <source>Optimal net transfer capacity</source>
+        <translation>इष्टतम शुद्ध अंतरण क्षमता</translation>
+    </message>
+    <message>
+        <source>Optimal net transfer capacity time series</source>
+        <translation>इष्टतम शुद्ध हस्तांतरण क्षमता समय श्रृंखला</translation>
+    </message>
+    <message>
+        <source>Optimal power flow</source>
+        <translation>इष्टतम विद्युत प्रवाह</translation>
+    </message>
+    <message>
+        <source>Optimal power flow time series</source>
+        <translation>इष्टतम विद्युत प्रवाह समय श्रृंखला</translation>
+    </message>
+    <message>
+        <source>Owner</source>
+        <translation>मालिक</translation>
+    </message>
+    <message>
+        <source>P: Active power</source>
+        <translation>P: सक्रिय शक्ति</translation>
+    </message>
+    <message>
+        <source>PA: Active power A</source>
+        <translation>PA: सक्रिय शक्ति A</translation>
+    </message>
+    <message>
+        <source>PB: Active power B</source>
+        <translation>PB: सक्रिय शक्ति B</translation>
+    </message>
+    <message>
+        <source>PC: Active power C</source>
+        <translation>PC: सक्रिय शक्ति C</translation>
+    </message>
+    <message>
+        <source>PTDF</source>
+        <translation>PTDF</translation>
+    </message>
+    <message>
+        <source>Pareto</source>
+        <translation>पैरेटो</translation>
+    </message>
+    <message>
+        <source>Pareto combinations</source>
+        <translation>पैरेटो संयोजन</translation>
+    </message>
+    <message>
+        <source>Pareto evaluation report</source>
+        <translation>पैरेटो मूल्यांकन रिपोर्ट</translation>
+    </message>
+    <message>
+        <source>Pareto frequency</source>
+        <translation>पैरेटो आवृत्ति</translation>
+    </message>
+    <message>
+        <source>Pareto objectives</source>
+        <translation>पैरेटो उद्देश्य</translation>
+    </message>
+    <message>
+        <source>Pareto plot NSGA2</source>
+        <translation>पैरेटो प्लॉट NSGA2</translation>
+    </message>
+    <message>
+        <source>Pareto plots</source>
+        <translation>पैरेटो प्लॉट</translation>
+    </message>
+    <message>
+        <source>Participation Factors</source>
+        <translation>भागीदारी कारक</translation>
+    </message>
+    <message>
+        <source>Pf Measurement</source>
+        <translation>Pf माप</translation>
+    </message>
+    <message>
+        <source>Pf: Active power &quot;from&quot;</source>
+        <translation>Pf: सक्रिय शक्ति &quot;से&quot;</translation>
+    </message>
+    <message>
+        <source>Pf: Active power &quot;from&quot; base case</source>
+        <translation>Pf: सक्रिय शक्ति &quot;से&quot; बेस केस</translation>
+    </message>
+    <message>
+        <source>PfA: Active power &quot;from&quot; A</source>
+        <translation>PfA: सक्रिय शक्ति &quot;से&quot; A</translation>
+    </message>
+    <message>
+        <source>PfB: Active power &quot;from&quot; B</source>
+        <translation>PfB: सक्रिय शक्ति &quot;से&quot; B</translation>
+    </message>
+    <message>
+        <source>PfC: Active power &quot;from&quot; C</source>
+        <translation>PfC: सक्रिय शक्ति &quot;से&quot; C</translation>
+    </message>
+    <message>
+        <source>Pg Measurement</source>
+        <translation>Pg माप</translation>
+    </message>
+    <message>
+        <source>Pi Measurement</source>
+        <translation>Pi माप</translation>
+    </message>
+    <message>
+        <source>Pl: Active losses</source>
+        <translation>Pl: सक्रिय हानि</translation>
+    </message>
+    <message>
+        <source>Pl: Active losses (%)</source>
+        <translation>Pl: सक्रिय हानि (%)</translation>
+    </message>
+    <message>
+        <source>Pl: Active losses (%) A</source>
+        <translation>Pl: सक्रिय हानि (%) A</translation>
+    </message>
+    <message>
+        <source>Pl: Active losses (%) B</source>
+        <translation>Pl: सक्रिय हानि (%) B</translation>
+    </message>
+    <message>
+        <source>Pl: Active losses (%) C</source>
+        <translation>Pl: सक्रिय हानि (%) C</translation>
+    </message>
+    <message>
+        <source>Pl: Active losses A</source>
+        <translation>Pl: सक्रिय हानि A</translation>
+    </message>
+    <message>
+        <source>Pl: Active losses B</source>
+        <translation>Pl: सक्रिय हानि B</translation>
+    </message>
+    <message>
+        <source>Pl: Active losses C</source>
+        <translation>Pl: सक्रिय हानि C</translation>
+    </message>
+    <message>
+        <source>Plot Event</source>
+        <translation>प्लॉट घटना</translation>
+    </message>
+    <message>
+        <source>Plot Group</source>
+        <translation>प्लॉट समूह</translation>
+    </message>
+    <message>
+        <source>Power by technology</source>
+        <translation>प्रौद्योगिकी द्वारा शक्ति</translation>
+    </message>
+    <message>
+        <source>Power flow</source>
+        <translation>शक्ति प्रवाह</translation>
+    </message>
+    <message>
+        <source>Power flow 3ph</source>
+        <translation>3ph शक्ति प्रवाह</translation>
+    </message>
+    <message>
+        <source>Power flow time series</source>
+        <translation>विद्युत प्रवाह समय श्रृंखला</translation>
+    </message>
+    <message>
+        <source>Power flow time series 3ph</source>
+        <translation>3ph शक्ति प्रवाह समय श्रृंखला</translation>
+    </message>
+    <message>
+        <source>PowerFlow</source>
+        <translation>पावरफ्लो</translation>
+    </message>
+    <message>
+        <source>PowerFlowTimeSeries</source>
+        <translation>पावरफ्लो समय श्रृंखला</translation>
+    </message>
+    <message>
+        <source>Pt Measurement</source>
+        <translation>Pt माप</translation>
+    </message>
+    <message>
+        <source>Pt: Active power &quot;to&quot;</source>
+        <translation>Pt: सक्रिय शक्ति &quot;को&quot;</translation>
+    </message>
+    <message>
+        <source>Pt: Active power &quot;to&quot; A</source>
+        <translation>Pt: सक्रिय शक्ति &quot;को&quot; A</translation>
+    </message>
+    <message>
+        <source>Pt: Active power &quot;to&quot; B</source>
+        <translation>Pt: सक्रिय शक्ति &quot;को&quot; B</translation>
+    </message>
+    <message>
+        <source>Pt: Active power &quot;to&quot; C</source>
+        <translation>Pt: सक्रिय शक्ति &quot;को&quot; C</translation>
+    </message>
+    <message>
+        <source>Q: Reactive power</source>
+        <translation>Q: प्रतिक्रियाशील शक्ति</translation>
+    </message>
+    <message>
+        <source>QA: Reactive power A</source>
+        <translation>QA: प्रतिक्रियाशील शक्ति A</translation>
+    </message>
+    <message>
+        <source>QB: Reactive power B</source>
+        <translation>QB: प्रतिक्रियाशील शक्ति B</translation>
+    </message>
+    <message>
+        <source>QC: Reactive power C</source>
+        <translation>QC: प्रतिक्रियाशील शक्ति C</translation>
+    </message>
+    <message>
+        <source>Qf Measurement</source>
+        <translation>Qf माप</translation>
+    </message>
+    <message>
+        <source>Qf: Reactive power &quot;from&quot;</source>
+        <translation>Qf: प्रतिक्रियाशील शक्ति &quot;से&quot;</translation>
+    </message>
+    <message>
+        <source>QfA: Reactive power &quot;from&quot; A</source>
+        <translation>QfA: प्रतिक्रियाशील शक्ति &quot;से&quot; A</translation>
+    </message>
+    <message>
+        <source>QfB: Reactive power &quot;from&quot; B</source>
+        <translation>QfB: प्रतिक्रियाशील शक्ति &quot;से&quot; B</translation>
+    </message>
+    <message>
+        <source>QfC: Reactive power &quot;from&quot; C</source>
+        <translation>QfC: प्रतिक्रियाशील शक्ति &quot;से&quot; C</translation>
+    </message>
+    <message>
+        <source>Qg Measurement</source>
+        <translation>Qg माप</translation>
+    </message>
+    <message>
+        <source>Qi Measurement</source>
+        <translation>Qi माप</translation>
+    </message>
+    <message>
+        <source>Ql: Reactive losses</source>
+        <translation>Ql: प्रतिक्रियाशील हानि</translation>
+    </message>
+    <message>
+        <source>Ql: Reactive losses A</source>
+        <translation>Ql: प्रतिक्रियाशील हानि A</translation>
+    </message>
+    <message>
+        <source>Ql: Reactive losses B</source>
+        <translation>Ql: प्रतिक्रियाशील हानि B</translation>
+    </message>
+    <message>
+        <source>Ql: Reactive losses C</source>
+        <translation>Ql: प्रतिक्रियाशील हानि C</translation>
+    </message>
+    <message>
+        <source>Qt Measurement</source>
+        <translation>Qt माप</translation>
+    </message>
+    <message>
+        <source>Qt: Reactive power &quot;to&quot;</source>
+        <translation>Qt: प्रतिक्रियाशील शक्ति &quot;को&quot;</translation>
+    </message>
+    <message>
+        <source>Qt: Reactive power &quot;to&quot; A</source>
+        <translation>Qt: प्रतिक्रियाशील शक्ति &quot;को&quot; A</translation>
+    </message>
+    <message>
+        <source>Qt: Reactive power &quot;to&quot; B</source>
+        <translation>Qt: प्रतिक्रियाशील शक्ति &quot;को&quot; B</translation>
+    </message>
+    <message>
+        <source>Qt: Reactive power &quot;to&quot; C</source>
+        <translation>Qt: प्रतिक्रियाशील शक्ति &quot;को&quot; C</translation>
+    </message>
+    <message>
+        <source>RMS Dynamic</source>
+        <translation>RMS डायनेमिक</translation>
+    </message>
+    <message>
+        <source>RMS Small Signal stability</source>
+        <translation>RMS छोटे सिग्नल स्थिरता</translation>
+    </message>
+    <message>
+        <source>RMS template</source>
+        <translation>RMS टेम्पलेट</translation>
+    </message>
+    <message>
+        <source>Region</source>
+        <translation>क्षेत्र</translation>
+    </message>
+    <message>
+        <source>Region analysis</source>
+        <translation>क्षेत्र विश्लेषण</translation>
+    </message>
+    <message>
+        <source>Region balance analysis</source>
+        <translation>क्षेत्र संतुलन विश्लेषण</translation>
+    </message>
+    <message>
+        <source>Region generation analysis</source>
+        <translation>क्षेत्र उत्पादन विश्लेषण</translation>
+    </message>
+    <message>
+        <source>Region load analysis</source>
+        <translation>क्षेत्र भार विश्लेषण</translation>
+    </message>
+    <message>
+        <source>Regions</source>
+        <translation>क्षेत्र</translation>
+    </message>
+    <message>
+        <source>Reliability</source>
+        <translation>विश्वसनीयता</translation>
+    </message>
+    <message>
+        <source>Remedial action</source>
+        <translation>उपचारात्मक कार्रवाई</translation>
+    </message>
+    <message>
+        <source>Remedial action Group</source>
+        <translation>उपचारात्मक कार्रवाई समूह</translation>
+    </message>
+    <message>
+        <source>Reports</source>
+        <translation>रिपोर्ट</translation>
+    </message>
+    <message>
+        <source>Reservoir fluid level</source>
+        <translation>जलाशय द्रव स्तर</translation>
+    </message>
+    <message>
+        <source>Results</source>
+        <translation>परिणाम</translation>
+    </message>
+    <message>
+        <source>Right Eigenvectors</source>
+        <translation>दाएँ आइगेनवेक्टर</translation>
+    </message>
+    <message>
+        <source>Rms Event</source>
+        <translation>Rms घटना</translation>
+    </message>
+    <message>
+        <source>Rms Events Group</source>
+        <translation>Rms घटना समूह</translation>
+    </message>
+    <message>
+        <source>Rms Generator results</source>
+        <translation>RMS जनरेटर परिणाम</translation>
+    </message>
+    <message>
+        <source>Rms Genqec delta results</source>
+        <translation>RMS जनरेटर डेल्टा परिणाम</translation>
+    </message>
+    <message>
+        <source>Rms Genqec omega results</source>
+        <translation>RMS जनरेटर ओमेगा परिणाम</translation>
+    </message>
+    <message>
+        <source>Rms Line results</source>
+        <translation>RMS लाइन परिणाम</translation>
+    </message>
+    <message>
+        <source>Rms Load P results</source>
+        <translation>RMS लोड P परिणाम</translation>
+    </message>
+    <message>
+        <source>Rms Load Q results</source>
+        <translation>RMS लोड Q परिणाम</translation>
+    </message>
+    <message>
+        <source>Rms Simple Line P results</source>
+        <translation>RMS सरल लाइन P परिणाम</translation>
+    </message>
+    <message>
+        <source>Rms Simple Line Q results</source>
+        <translation>RMS सरल लाइन Q परिणाम</translation>
+    </message>
+    <message>
+        <source>Rms load results</source>
+        <translation>RMS लोड परिणाम</translation>
+    </message>
+    <message>
+        <source>Rms plot results</source>
+        <translation>RMS प्लॉट परिणाम</translation>
+    </message>
+    <message>
+        <source>Rms time series report</source>
+        <translation>RMS समय श्रृंखला रिपोर्ट</translation>
+    </message>
+    <message>
+        <source>RmsSimulation</source>
+        <translation>RMS सिमुलेशन</translation>
+    </message>
+    <message>
+        <source>S-Domain Plot</source>
+        <translation>S-डोमेन प्लॉट</translation>
+    </message>
+    <message>
+        <source>S-Domain Plot in Hz</source>
+        <translation>Hz में S-डोमेन प्लॉट</translation>
+    </message>
+    <message>
+        <source>SAIDI</source>
+        <translation>SAIDI</translation>
+    </message>
+    <message>
+        <source>SAIFI</source>
+        <translation>SAIFI</translation>
+    </message>
+    <message>
+        <source>Sensibilities</source>
+        <translation>संवेदनशीलताएँ</translation>
+    </message>
+    <message>
+        <source>Sensitivity to the exchange</source>
+        <translation>विनिमय के प्रति संवेदनशीलता</translation>
+    </message>
+    <message>
+        <source>Sensitivity to the exchange (N-1)</source>
+        <translation>विनिमय के प्रति संवेदनशीलता (N-1)</translation>
+    </message>
+    <message>
+        <source>Sequence line</source>
+        <translation>अनुक्रम लाइन</translation>
+    </message>
+    <message>
+        <source>Series</source>
+        <translation>श्रृंखला</translation>
+    </message>
+    <message>
+        <source>Series reactance</source>
+        <translation>श्रृंखला प्रतिघात</translation>
+    </message>
+    <message>
+        <source>Short circuit</source>
+        <translation>शॉर्ट सर्किट</translation>
+    </message>
+    <message>
+        <source>Short circuit active current</source>
+        <translation>शॉर्ट सर्किट सक्रिय धारा</translation>
+    </message>
+    <message>
+        <source>Short circuit active current A</source>
+        <translation>शॉर्ट सर्किट सक्रिय धारा A</translation>
+    </message>
+    <message>
+        <source>Short circuit active current B</source>
+        <translation>शॉर्ट सर्किट सक्रिय धारा B</translation>
+    </message>
+    <message>
+        <source>Short circuit active current C</source>
+        <translation>शॉर्ट सर्किट सक्रिय धारा C</translation>
+    </message>
+    <message>
+        <source>Short circuit active power</source>
+        <translation>शॉर्ट सर्किट सक्रिय शक्ति</translation>
+    </message>
+    <message>
+        <source>Short circuit active power A</source>
+        <translation>शॉर्ट सर्किट सक्रिय शक्ति A</translation>
+    </message>
+    <message>
+        <source>Short circuit active power B</source>
+        <translation>शॉर्ट सर्किट सक्रिय शक्ति B</translation>
+    </message>
+    <message>
+        <source>Short circuit active power C</source>
+        <translation>शॉर्ट सर्किट सक्रिय शक्ति C</translation>
+    </message>
+    <message>
+        <source>Short circuit event</source>
+        <translation>शॉर्ट सर्किट घटना</translation>
+    </message>
+    <message>
+        <source>Short circuit reactive current</source>
+        <translation>शॉर्ट सर्किट प्रतिक्रियाशील धारा</translation>
+    </message>
+    <message>
+        <source>Short circuit reactive current A</source>
+        <translation>शॉर्ट सर्किट प्रतिक्रियाशील धारा A</translation>
+    </message>
+    <message>
+        <source>Short circuit reactive current B</source>
+        <translation>शॉर्ट सर्किट प्रतिक्रियाशील धारा B</translation>
+    </message>
+    <message>
+        <source>Short circuit reactive current C</source>
+        <translation>शॉर्ट सर्किट प्रतिक्रियाशील धारा C</translation>
+    </message>
+    <message>
+        <source>Short circuit reactive power</source>
+        <translation>शॉर्ट सर्किट प्रतिक्रियाशील शक्ति</translation>
+    </message>
+    <message>
+        <source>Short circuit reactive power A</source>
+        <translation>शॉर्ट सर्किट प्रतिक्रियाशील शक्ति A</translation>
+    </message>
+    <message>
+        <source>Short circuit reactive power B</source>
+        <translation>शॉर्ट सर्किट प्रतिक्रियाशील शक्ति B</translation>
+    </message>
+    <message>
+        <source>Short circuit reactive power C</source>
+        <translation>शॉर्ट सर्किट प्रतिक्रियाशील शक्ति C</translation>
+    </message>
+    <message>
+        <source>Short-circuit information</source>
+        <translation>शॉर्ट-सर्किट जानकारी</translation>
+    </message>
+    <message>
+        <source>ShortCircuit</source>
+        <translation>शॉर्ट सर्किट</translation>
+    </message>
+    <message>
+        <source>Shunt</source>
+        <translation>शंट</translation>
+    </message>
+    <message>
+        <source>Shunt like devices</source>
+        <translation>शंट जैसे उपकरण</translation>
+    </message>
+    <message>
+        <source>Shunt neutral voltage</source>
+        <translation>शंट न्यूट्रल वोल्टेज</translation>
+    </message>
+    <message>
+        <source>Shunt reactive power</source>
+        <translation>शंट प्रतिक्रियाशील शक्ति</translation>
+    </message>
+    <message>
+        <source>Shunt reactive power A</source>
+        <translation>शंट प्रतिक्रियाशील शक्ति A</translation>
+    </message>
+    <message>
+        <source>Shunt reactive power B</source>
+        <translation>शंट प्रतिक्रियाशील शक्ति B</translation>
+    </message>
+    <message>
+        <source>Shunt reactive power C</source>
+        <translation>शंट प्रतिक्रियाशील शक्ति C</translation>
+    </message>
+    <message>
+        <source>Sigma + distances</source>
+        <translation>सिग्मा + दूरियाँ</translation>
+    </message>
+    <message>
+        <source>Sigma Analysis</source>
+        <translation>सिग्मा विश्लेषण</translation>
+    </message>
+    <message>
+        <source>Sigma distances</source>
+        <translation>सिग्मा दूरियाँ</translation>
+    </message>
+    <message>
+        <source>Sigma imaginary</source>
+        <translation>सिग्मा काल्पनिक</translation>
+    </message>
+    <message>
+        <source>Sigma real</source>
+        <translation>सिग्मा वास्तविक</translation>
+    </message>
+    <message>
+        <source>SigmaAnalysis</source>
+        <translation>सिग्मा विश्लेषण</translation>
+    </message>
+    <message>
+        <source>SimulationOptionsDevice</source>
+        <translation>सिमुलेशन विकल्प उपकरण</translation>
+    </message>
+    <message>
+        <source>Slacks</source>
+        <translation>स्लैक</translation>
+    </message>
+    <message>
+        <source>SmallSignalStability</source>
+        <translation>लघु संकेत स्थिरता</translation>
+    </message>
+    <message>
+        <source>Snapshot</source>
+        <translation>स्नैपशॉट</translation>
+    </message>
+    <message>
+        <source>Special plots</source>
+        <translation>विशेष प्लॉट</translation>
+    </message>
+    <message>
+        <source>Spillage flow leaving</source>
+        <translation>छोड़ा गया प्रवाह</translation>
+    </message>
+    <message>
+        <source>Srap used power</source>
+        <translation>उपयोग की गई Srap शक्ति</translation>
+    </message>
+    <message>
+        <source>Stabilizer</source>
+        <translation>स्टेबलाइज़र</translation>
+    </message>
+    <message>
+        <source>State Matrix</source>
+        <translation>अवस्था मैट्रिक्स</translation>
+    </message>
+    <message>
+        <source>State estimation</source>
+        <translation>राज्य का अनुमान</translation>
+    </message>
+    <message>
+        <source>StateEstimation</source>
+        <translation>अवस्था अनुमान</translation>
+    </message>
+    <message>
+        <source>Static Generator</source>
+        <translation>स्थिर जनरेटर</translation>
+    </message>
+    <message>
+        <source>Statistics</source>
+        <translation>सांख्यिकी</translation>
+    </message>
+    <message>
+        <source>Std-dev contingency overloading</source>
+        <translation>मानक विचलन आकस्मिक अधिभारण</translation>
+    </message>
+    <message>
+        <source>Stochastic Power Flow</source>
+        <translation>स्टोकेस्टिक पावर फ्लो</translation>
+    </message>
+    <message>
+        <source>StochasticPowerFlow</source>
+        <translation>स्टोकेस्टिक पावर फ्लो</translation>
+    </message>
+    <message>
+        <source>Substation</source>
+        <translation>सबस्टेशन</translation>
+    </message>
+    <message>
+        <source>Substation analysis</source>
+        <translation>उप-स्टेशन विश्लेषण</translation>
+    </message>
+    <message>
+        <source>Substation balance analysis</source>
+        <translation>उप-स्टेशन संतुलन विश्लेषण</translation>
+    </message>
+    <message>
+        <source>Substation generation analysis</source>
+        <translation>उप-स्टेशन उत्पादन विश्लेषण</translation>
+    </message>
+    <message>
+        <source>Substation load analysis</source>
+        <translation>उप-स्टेशन भार विश्लेषण</translation>
+    </message>
+    <message>
+        <source>Switch</source>
+        <translation>स्विच</translation>
+    </message>
+    <message>
+        <source>System</source>
+        <translation>प्रणाली</translation>
+    </message>
+    <message>
+        <source>System emissions</source>
+        <translation>प्रणाली उत्सर्जन</translation>
+    </message>
+    <message>
+        <source>System energy cost</source>
+        <translation>प्रणाली ऊर्जा लागत</translation>
+    </message>
+    <message>
+        <source>System energy total cost</source>
+        <translation>प्रणाली कुल ऊर्जा लागत</translation>
+    </message>
+    <message>
+        <source>System fuel consumption</source>
+        <translation>प्रणाली ईंधन खपत</translation>
+    </message>
+    <message>
+        <source>Technology</source>
+        <translation>प्रौद्योगिकी</translation>
+    </message>
+    <message>
+        <source>Technology Category</source>
+        <translation>प्रौद्योगिकी श्रेणी</translation>
+    </message>
+    <message>
+        <source>Technology Group</source>
+        <translation>प्रौद्योगिकी समूह</translation>
+    </message>
+    <message>
+        <source>Technology plot</source>
+        <translation>प्रौद्योगिकी प्लॉट</translation>
+    </message>
+    <message>
+        <source>Template</source>
+        <translation>टेम्पलेट</translation>
+    </message>
+    <message>
+        <source>Templates</source>
+        <translation>टेम्पलेट</translation>
+    </message>
+    <message>
+        <source>Time</source>
+        <translation>समय</translation>
+    </message>
+    <message>
+        <source>Time series Contingency flow report (Branches)</source>
+        <translation>समय श्रृंखला आकस्मिक प्रवाह रिपोर्ट (शाखाएँ)</translation>
+    </message>
+    <message>
+        <source>Time series base flow report</source>
+        <translation>समय श्रृंखला आधार प्रवाह रिपोर्ट</translation>
+    </message>
+    <message>
+        <source>Time series branch monitoring logic report</source>
+        <translation>समय श्रृंखला शाखा निगरानी तर्क रिपोर्ट</translation>
+    </message>
+    <message>
+        <source>Time series contingency Branches report</source>
+        <translation>समय श्रृंखला आकस्मिक शाखाएँ रिपोर्ट</translation>
+    </message>
+    <message>
+        <source>Time series contingency flow report</source>
+        <translation>समय श्रृंखला आकस्मिक प्रवाह रिपोर्ट</translation>
+    </message>
+    <message>
+        <source>Time series contingency flow report. (Generation)</source>
+        <translation>समय श्रृंखला आकस्मिक प्रवाह रिपोर्ट। (उत्पादन)</translation>
+    </message>
+    <message>
+        <source>Time series contingency flow report. (Hvdc)</source>
+        <translation>समय श्रृंखला आकस्मिक प्रवाह रिपोर्ट। (HVDC)</translation>
+    </message>
+    <message>
+        <source>Time series critical Branches report</source>
+        <translation>समय श्रृंखला महत्वपूर्ण शाखाएँ रिपोर्ट</translation>
+    </message>
+    <message>
+        <source>Time series generation delta power report</source>
+        <translation>समय श्रृंखला उत्पादन डेल्टा शक्ति रिपोर्ट</translation>
+    </message>
+    <message>
+        <source>Time series generation power report</source>
+        <translation>समय श्रृंखला उत्पादन शक्ति रिपोर्ट</translation>
+    </message>
+    <message>
+        <source>Time series sensitivity to the exchange report</source>
+        <translation>समय श्रृंखला विनिमय के प्रति संवेदनशीलता रिपोर्ट</translation>
+    </message>
+    <message>
+        <source>Time series worst sensitivity to the exchange report (N-1)</source>
+        <translation>समय श्रृंखला विनिमय के प्रति सबसे खराब संवेदनशीलता रिपोर्ट (N-1)</translation>
+    </message>
+    <message>
+        <source>Topology Processor</source>
+        <translation>टोपोलॉजी प्रोसेसर</translation>
+    </message>
+    <message>
+        <source>Topology reduction</source>
+        <translation>टोपोलॉजी न्यूनीकरण</translation>
+    </message>
+    <message>
+        <source>Tower</source>
+        <translation>टावर</translation>
+    </message>
+    <message>
+        <source>Transformer</source>
+        <translation>ट्रांसफार्मर</translation>
+    </message>
+    <message>
+        <source>Transformer type</source>
+        <translation>ट्रांसफार्मर प्रकार</translation>
+    </message>
+    <message>
+        <source>Transformer3W</source>
+        <translation>ट्रांसफार्मर3W</translation>
+    </message>
+    <message>
+        <source>TransformerNw</source>
+        <translation>ट्रांसफार्मरNw</translation>
+    </message>
+    <message>
+        <source>Transient stability</source>
+        <translation>क्षणिक स्थिरता</translation>
+    </message>
+    <message>
+        <source>UPFC</source>
+        <translation>UPFC</translation>
+    </message>
+    <message>
+        <source>Underground line</source>
+        <translation>भूमिगत लाइन</translation>
+    </message>
+    <message>
+        <source>V: Voltage module</source>
+        <translation>V: वोल्टेज मॉड्यूल</translation>
+    </message>
+    <message>
+        <source>VA: Voltage module A</source>
+        <translation>VA: वोल्टेज मॉड्यूल A</translation>
+    </message>
+    <message>
+        <source>VB: Voltage module B</source>
+        <translation>VB: वोल्टेज मॉड्यूल B</translation>
+    </message>
+    <message>
+        <source>VC: Voltage module C</source>
+        <translation>VC: वोल्टेज मॉड्यूल C</translation>
+    </message>
+    <message>
+        <source>VSC</source>
+        <translation>VSC</translation>
+    </message>
+    <message>
+        <source>Va Measurement</source>
+        <translation>Va माप</translation>
+    </message>
+    <message>
+        <source>Var Factory</source>
+        <translation>Var फ़ैक्टरी</translation>
+    </message>
+    <message>
+        <source>Vm Measurement</source>
+        <translation>Vm माप</translation>
+    </message>
+    <message>
+        <source>Voltage angle (0)</source>
+        <translation>वोल्टेज कोण (0)</translation>
+    </message>
+    <message>
+        <source>Voltage angle (1)</source>
+        <translation>वोल्टेज कोण (1)</translation>
+    </message>
+    <message>
+        <source>Voltage angle (2)</source>
+        <translation>वोल्टेज कोण (2)</translation>
+    </message>
+    <message>
+        <source>Voltage collapse</source>
+        <translation>वोल्टेज पतन</translation>
+    </message>
+    <message>
+        <source>Voltage level</source>
+        <translation>वोल्टेज स्तर</translation>
+    </message>
+    <message>
+        <source>Voltage level analysis</source>
+        <translation>वोल्टेज स्तर विश्लेषण</translation>
+    </message>
+    <message>
+        <source>Voltage level balance analysis</source>
+        <translation>वोल्टेज स्तर संतुलन विश्लेषण</translation>
+    </message>
+    <message>
+        <source>Voltage level generation analysis</source>
+        <translation>वोल्टेज स्तर उत्पादन विश्लेषण</translation>
+    </message>
+    <message>
+        <source>Voltage level load analysis</source>
+        <translation>वोल्टेज स्तर भार विश्लेषण</translation>
+    </message>
+    <message>
+        <source>Voltage level template</source>
+        <translation>वोल्टेज स्तर टेम्पलेट</translation>
+    </message>
+    <message>
+        <source>Voltage module (0)</source>
+        <translation>वोल्टेज मॉड्यूल (0)</translation>
+    </message>
+    <message>
+        <source>Voltage module (1)</source>
+        <translation>वोल्टेज मॉड्यूल (1)</translation>
+    </message>
+    <message>
+        <source>Voltage module (2)</source>
+        <translation>वोल्टेज मॉड्यूल (2)</translation>
+    </message>
+    <message>
+        <source>Voltage plot</source>
+        <translation>वोल्टेज प्लॉट</translation>
+    </message>
+    <message>
+        <source>Vsc</source>
+        <translation>Vsc</translation>
+    </message>
+    <message>
+        <source>Vsc ODF</source>
+        <translation>Vsc ODF</translation>
+    </message>
+    <message>
+        <source>Vsc PTDF</source>
+        <translation>Vsc PTDF</translation>
+    </message>
+    <message>
+        <source>Vsc Pdc</source>
+        <translation>Vsc Pdc</translation>
+    </message>
+    <message>
+        <source>Vsc Vdc</source>
+        <translation>Vsc Vdc</translation>
+    </message>
+    <message>
+        <source>Vsc loading</source>
+        <translation>Vsc लोडिंग</translation>
+    </message>
+    <message>
+        <source>Vsc losses</source>
+        <translation>Vsc नुकसान</translation>
+    </message>
+    <message>
+        <source>Vsc power &quot;from&quot; negative pole</source>
+        <translation>Vsc शक्ति &quot;ऋणात्मक ध्रुव से&quot;</translation>
+    </message>
+    <message>
+        <source>Vsc power &quot;from&quot; positive pole</source>
+        <translation>Vsc शक्ति &quot;धनात्मक ध्रुव से&quot;</translation>
+    </message>
+    <message>
+        <source>Vsc power &quot;to&quot;</source>
+        <translation>Vsc शक्ति &quot;को&quot;</translation>
+    </message>
+    <message>
+        <source>Vsc power &quot;to&quot; A</source>
+        <translation>Vsc शक्ति &quot;को A&quot;</translation>
+    </message>
+    <message>
+        <source>Vsc power &quot;to&quot; B</source>
+        <translation>Vsc शक्ति &quot;को B&quot;</translation>
+    </message>
+    <message>
+        <source>Vsc power &quot;to&quot; C</source>
+        <translation>Vsc शक्ति &quot;को C&quot;</translation>
+    </message>
+    <message>
+        <source>When to make them plot</source>
+        <translation>उन्हें कब प्लॉट करें</translation>
+    </message>
+    <message>
+        <source>Winding</source>
+        <translation>वाइंडिंग</translation>
+    </message>
+    <message>
+        <source>Wire</source>
+        <translation>तार</translation>
+    </message>
+    <message>
+        <source>Zone</source>
+        <translation>क्षेत्र</translation>
+    </message>
+    <message>
+        <source>Zone analysis</source>
+        <translation>क्षेत्र विश्लेषण</translation>
+    </message>
+    <message>
+        <source>Zone balance analysis</source>
+        <translation>क्षेत्र संतुलन विश्लेषण</translation>
+    </message>
+    <message>
+        <source>Zone generation analysis</source>
+        <translation>क्षेत्र उत्पादन विश्लेषण</translation>
+    </message>
+    <message>
+        <source>Zone load analysis</source>
+        <translation>क्षेत्र भार विश्लेषण</translation>
+    </message>
+    <message>
+        <source>export all</source>
+        <translation>सभी निर्यात करें</translation>
+    </message>
+    <message>
+        <source>file open</source>
+        <translation>फ़ाइल खोलें</translation>
+    </message>
+    <message>
+        <source>file save</source>
+        <translation>फ़ाइल सहेजें</translation>
+    </message>
+    <message>
+        <source>loading avg</source>
+        <translation>औसत लोडिंग</translation>
+    </message>
+    <message>
+        <source>m: Tap module</source>
+        <translation>m: टैप मॉड्यूल</translation>
+    </message>
+    <message>
+        <source>ΔP: Active power increment</source>
+        <translation>ΔP: सक्रिय शक्ति वृद्धि</translation>
+    </message>
+    <message>
+        <source>ΔV: Voltage modules drop</source>
+        <translation>ΔV: वोल्टेज मॉड्यूल ड्रॉप</translation>
+    </message>
+    <message>
+        <source>ΔV: Voltage modules drop A</source>
+        <translation>ΔV: वोल्टेज मॉड्यूल ड्रॉप A</translation>
+    </message>
+    <message>
+        <source>ΔV: Voltage modules drop B</source>
+        <translation>ΔV: वोल्टेज मॉड्यूल ड्रॉप B</translation>
+    </message>
+    <message>
+        <source>ΔV: Voltage modules drop C</source>
+        <translation>ΔV: वोल्टेज मॉड्यूल ड्रॉप C</translation>
+    </message>
+    <message>
+        <source>Δθ: Voltage angles drop</source>
+        <translation>Δθ: वोल्टेज कोण ड्रॉप</translation>
+    </message>
+    <message>
+        <source>Δθ: Voltage angles drop A</source>
+        <translation>Δθ: वोल्टेज कोण ड्रॉप A</translation>
+    </message>
+    <message>
+        <source>Δθ: Voltage angles drop B</source>
+        <translation>Δθ: वोल्टेज कोण ड्रॉप B</translation>
+    </message>
+    <message>
+        <source>Δθ: Voltage angles drop C</source>
+        <translation>Δθ: वोल्टेज कोण ड्रॉप C</translation>
+    </message>
+    <message>
+        <source>θ: Voltage angle</source>
+        <translation>θ: वोल्टेज कोण</translation>
+    </message>
+    <message>
+        <source>θA: Voltage angle A</source>
+        <translation>θA: वोल्टेज कोण A</translation>
+    </message>
+    <message>
+        <source>θB: Voltage angle B</source>
+        <translation>θB: वोल्टेज कोण B</translation>
+    </message>
+    <message>
+        <source>θC: Voltage angle C</source>
+        <translation>θC: वोल्टेज कोण C</translation>
+    </message>
+    <message>
+        <source>𝜏: Tap angle</source>
+        <translation>𝜏: Tap angle</translation>
     </message>
 </context>
 <context>
@@ -4786,19 +6985,19 @@ li.checked::marker { content: &quot;\2612&quot;; }
         <location filename="../Main/MainWindow.ui" line="7967"/>
         <location filename="../Main/MainWindow.ui" line="8762"/>
         <source>standard</source>
-        <translation type="unfinished">मानक</translation>
+        <translation>मानक</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="7972"/>
         <location filename="../Main/MainWindow.ui" line="8767"/>
         <source>vectorized</source>
-        <translation type="unfinished">वेक्टराइज्ड</translation>
+        <translation>वेक्टराइज्ड</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="8177"/>
         <location filename="../Main/MainWindow.ui" line="8526"/>
         <source>Problem</source>
-        <translation type="unfinished">समस्या</translation>
+        <translation>समस्या</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="8364"/>
@@ -4808,28 +7007,28 @@ li.checked::marker { content: &quot;\2612&quot;; }
     <message>
         <location filename="../Main/MainWindow.ui" line="8417"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Subspace build type. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation type="unfinished">&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;सबस्पेस बिल्ड प्रकार। &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;सबस्पेस बिल्ड प्रकार। &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="8420"/>
         <location filename="../Main/MainWindow.ui" line="8424"/>
         <source>Arnoldi</source>
-        <translation type="unfinished">अर्नोल्डी</translation>
+        <translation>अर्नोल्डी</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="8429"/>
         <source>Hybrid Arnoldi</source>
-        <translation type="unfinished">हाइब्रिड अर्नोल्डी</translation>
+        <translation>हाइब्रिड अर्नोल्डी</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="8487"/>
         <source>Build type</source>
-        <translation type="unfinished">बिल्ड प्रकार</translation>
+        <translation>बिल्ड प्रकार</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="8579"/>
         <source>Target period</source>
-        <translation type="unfinished">लक्ष्य अवधि</translation>
+        <translation>लक्ष्य अवधि</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="8720"/>
@@ -4839,12 +7038,12 @@ li.checked::marker { content: &quot;\2612&quot;; }
     <message>
         <location filename="../Main/MainWindow.ui" line="8775"/>
         <source>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Period of the periodic orbit. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
-        <translation type="unfinished">&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;आवर्ती कक्ष की अवधि। &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+        <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;आवर्ती कक्ष की अवधि। &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="8778"/>
         <source>Hz</source>
-        <translation type="unfinished">Hz</translation>
+        <translation>Hz</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="8859"/>
@@ -6318,2205 +8517,6 @@ li.checked::marker { content: &quot;\2612&quot;; }
     <message>
         <source>Question</source>
         <translation>प्रश्न</translation>
-    </message>
-</context>
-<context>
-    <name>VeraGridTreeLabels</name>
-    <message>
-        <source>ATC Report</source>
-        <translation>एटीसी रिपोर्ट</translation>
-    </message>
-    <message>
-        <source>Active power flow per area</source>
-        <translation>क्षेत्र के अनुसार सक्रिय शक्ति प्रवाह</translation>
-    </message>
-    <message>
-        <source>Any line template</source>
-        <translation>कोई भी लाइन टेम्पलेट</translation>
-    </message>
-    <message>
-        <source>Area</source>
-        <translation>क्षेत्र</translation>
-    </message>
-    <message>
-        <source>Area analysis</source>
-        <translation>क्षेत्र विश्लेषण</translation>
-    </message>
-    <message>
-        <source>Area balance analysis</source>
-        <translation>क्षेत्र संतुलन विश्लेषण</translation>
-    </message>
-    <message>
-        <source>Area generation analysis</source>
-        <translation>क्षेत्र उत्पादन विश्लेषण</translation>
-    </message>
-    <message>
-        <source>Area load analysis</source>
-        <translation>क्षेत्र भार विश्लेषण</translation>
-    </message>
-    <message>
-        <source>Associations</source>
-        <translation>संबद्धताएँ</translation>
-    </message>
-    <message>
-        <source>Available transfer capacity</source>
-        <translation>उपलब्ध स्थानांतरण क्षमता</translation>
-    </message>
-    <message>
-        <source>Available transfer capacity (N)</source>
-        <translation>उपलब्ध हस्तांतरण क्षमता (N)</translation>
-    </message>
-    <message>
-        <source>Available transfer capacity (final)</source>
-        <translation>उपलब्ध हस्तांतरण क्षमता (अंतिम)</translation>
-    </message>
-    <message>
-        <source>Available transfer capacity time series</source>
-        <translation>उपलब्ध हस्तांतरण क्षमता समय श्रृंखला</translation>
-    </message>
-    <message>
-        <source>AvailableTransferCapacity</source>
-        <translation>उपलब्ध हस्तांतरण क्षमता</translation>
-    </message>
-    <message>
-        <source>AvailableTransferCapacityTimeSeries</source>
-        <translation>उपलब्ध हस्तांतरण क्षमता समय श्रृंखला</translation>
-    </message>
-    <message>
-        <source>Balance plot</source>
-        <translation>संतुलन प्लॉट</translation>
-    </message>
-    <message>
-        <source>Base flow report</source>
-        <translation>आधार प्रवाह रिपोर्ट</translation>
-    </message>
-    <message>
-        <source>Batteries</source>
-        <translation>बैटरीज़</translation>
-    </message>
-    <message>
-        <source>Battery</source>
-        <translation>बैटरी</translation>
-    </message>
-    <message>
-        <source>Battery energy</source>
-        <translation>बैटरी ऊर्जा</translation>
-    </message>
-    <message>
-        <source>Battery invested</source>
-        <translation>बैटरी निवेश</translation>
-    </message>
-    <message>
-        <source>Battery power</source>
-        <translation>बैटरी शक्ति</translation>
-    </message>
-    <message>
-        <source>Battery reactive power</source>
-        <translation>बैटरी प्रतिक्रियाशील शक्ति</translation>
-    </message>
-    <message>
-        <source>Battery reactive power A</source>
-        <translation>बैटरी प्रतिक्रियाशील शक्ति A</translation>
-    </message>
-    <message>
-        <source>Battery reactive power B</source>
-        <translation>बैटरी प्रतिक्रियाशील शक्ति B</translation>
-    </message>
-    <message>
-        <source>Battery reactive power C</source>
-        <translation>बैटरी प्रतिक्रियाशील शक्ति C</translation>
-    </message>
-    <message>
-        <source>Beq: Equivalent susceptance</source>
-        <translation>Beq: समतुल्य संवेदनशीलता</translation>
-    </message>
-    <message>
-        <source>Branch</source>
-        <translation>शाखा</translation>
-    </message>
-    <message>
-        <source>Branch Loading</source>
-        <translation>शाखा भारण</translation>
-    </message>
-    <message>
-        <source>Branch Loading A</source>
-        <translation>शाखा भारण A</translation>
-    </message>
-    <message>
-        <source>Branch Loading B</source>
-        <translation>शाखा भारण B</translation>
-    </message>
-    <message>
-        <source>Branch Loading C</source>
-        <translation>शाखा भारण C</translation>
-    </message>
-    <message>
-        <source>Branch active current "from" (0)</source>
-        <translation>शाखा सक्रिय धारा "से" (0)</translation>
-    </message>
-    <message>
-        <source>Branch active current "from" (1)</source>
-        <translation>शाखा सक्रिय धारा "से" (1)</translation>
-    </message>
-    <message>
-        <source>Branch active current "from" (2)</source>
-        <translation>शाखा सक्रिय धारा "से" (2)</translation>
-    </message>
-    <message>
-        <source>Branch active losses (0)</source>
-        <translation>शाखा सक्रिय हानि (0)</translation>
-    </message>
-    <message>
-        <source>Branch active losses (1)</source>
-        <translation>शाखा सक्रिय हानि (1)</translation>
-    </message>
-    <message>
-        <source>Branch active losses (2)</source>
-        <translation>शाखा सक्रिय हानि (2)</translation>
-    </message>
-    <message>
-        <source>Branch active power "from" (0)</source>
-        <translation>शाखा सक्रिय शक्ति "से" (0)</translation>
-    </message>
-    <message>
-        <source>Branch active power "from" (1)</source>
-        <translation>शाखा सक्रिय शक्ति "से" (1)</translation>
-    </message>
-    <message>
-        <source>Branch active power "from" (2)</source>
-        <translation>शाखा सक्रिय शक्ति "से" (2)</translation>
-    </message>
-    <message>
-        <source>Branch group</source>
-        <translation>शाखा समूह</translation>
-    </message>
-    <message>
-        <source>Branch loading (0)</source>
-        <translation>शाखा भारण (0)</translation>
-    </message>
-    <message>
-        <source>Branch loading (1)</source>
-        <translation>शाखा भारण (1)</translation>
-    </message>
-    <message>
-        <source>Branch loading (2)</source>
-        <translation>शाखा भारण (2)</translation>
-    </message>
-    <message>
-        <source>Branch losses</source>
-        <translation>शाखा हानि</translation>
-    </message>
-    <message>
-        <source>Branch monitoring logic</source>
-        <translation>शाखा निगरानी तर्क</translation>
-    </message>
-    <message>
-        <source>Branch overloads</source>
-        <translation>शाखा अधिभार</translation>
-    </message>
-    <message>
-        <source>Branch overloads cost</source>
-        <translation>शाखा अधिभार लागत</translation>
-    </message>
-    <message>
-        <source>Branch power CDF</source>
-        <translation>शाखा शक्ति CDF</translation>
-    </message>
-    <message>
-        <source>Branch power avg</source>
-        <translation>शाखा शक्ति औसत</translation>
-    </message>
-    <message>
-        <source>Branch power std</source>
-        <translation>शाखा शक्ति मानक विचलन</translation>
-    </message>
-    <message>
-        <source>Branch reactive current "from" (0)</source>
-        <translation>शाखा प्रतिक्रियाशील धारा "से" (0)</translation>
-    </message>
-    <message>
-        <source>Branch reactive current "from" (1)</source>
-        <translation>शाखा प्रतिक्रियाशील धारा "से" (1)</translation>
-    </message>
-    <message>
-        <source>Branch reactive current "from" (2)</source>
-        <translation>शाखा प्रतिक्रियाशील धारा "से" (2)</translation>
-    </message>
-    <message>
-        <source>Branch reactive losses (0)</source>
-        <translation>शाखा प्रतिक्रियाशील हानि (0)</translation>
-    </message>
-    <message>
-        <source>Branch reactive losses (1)</source>
-        <translation>शाखा प्रतिक्रियाशील हानि (1)</translation>
-    </message>
-    <message>
-        <source>Branch reactive losses (2)</source>
-        <translation>शाखा प्रतिक्रियाशील हानि (2)</translation>
-    </message>
-    <message>
-        <source>Branch reactive power "from" (0)</source>
-        <translation>शाखा प्रतिक्रियाशील शक्ति "से" (0)</translation>
-    </message>
-    <message>
-        <source>Branch reactive power "from" (1)</source>
-        <translation>शाखा प्रतिक्रियाशील शक्ति "से" (1)</translation>
-    </message>
-    <message>
-        <source>Branch reactive power "from" (2)</source>
-        <translation>शाखा प्रतिक्रियाशील शक्ति "से" (2)</translation>
-    </message>
-    <message>
-        <source>Branch template</source>
-        <translation>शाखा टेम्पलेट</translation>
-    </message>
-    <message>
-        <source>Branches</source>
-        <translation>शाखाएँ</translation>
-    </message>
-    <message>
-        <source>Bus</source>
-        <translation>बस</translation>
-    </message>
-    <message>
-        <source>Bus nodal capacity</source>
-        <translation>बस नोडल क्षमता</translation>
-    </message>
-    <message>
-        <source>Bus power</source>
-        <translation>बस शक्ति</translation>
-    </message>
-    <message>
-        <source>Bus power CDF</source>
-        <translation>बस शक्ति CDF</translation>
-    </message>
-    <message>
-        <source>Bus voltage CDF</source>
-        <translation>बस वोल्टेज CDF</translation>
-    </message>
-    <message>
-        <source>Bus voltage avg</source>
-        <translation>बस वोल्टेज औसत</translation>
-    </message>
-    <message>
-        <source>Bus voltage sensitivity</source>
-        <translation>बस वोल्टेज संवेदनशीलता</translation>
-    </message>
-    <message>
-        <source>Bus voltage std</source>
-        <translation>बस वोल्टेज मानक विचलन</translation>
-    </message>
-    <message>
-        <source>BusBar</source>
-        <translation>बसबार</translation>
-    </message>
-    <message>
-        <source>BusOrBranch</source>
-        <translation>बस या शाखा</translation>
-    </message>
-    <message>
-        <source>CAIDI</source>
-        <translation>CAIDI</translation>
-    </message>
-    <message>
-        <source>Cascade</source>
-        <translation>कैस्केड</translation>
-    </message>
-    <message>
-        <source>Catalogue</source>
-        <translation>कैटलॉग</translation>
-    </message>
-    <message>
-        <source>Catalogue optimization</source>
-        <translation>कैटलॉग अनुकूलन</translation>
-    </message>
-    <message>
-        <source>Circuit</source>
-        <translation>सर्किट</translation>
-    </message>
-    <message>
-        <source>Clean room</source>
-        <translation>स्वच्छ कक्ष</translation>
-    </message>
-    <message>
-        <source>Clustering</source>
-        <translation>क्लस्टरिंग</translation>
-    </message>
-    <message>
-        <source>Clustering Analysis</source>
-        <translation>क्लस्टरिंग विश्लेषण</translation>
-    </message>
-    <message>
-        <source>Clustering time series report</source>
-        <translation>क्लस्टरिंग टाइम सीरीज़ रिपोर्ट</translation>
-    </message>
-    <message>
-        <source>Combinations</source>
-        <translation>संयोजन</translation>
-    </message>
-    <message>
-        <source>Community</source>
-        <translation>समुदाय</translation>
-    </message>
-    <message>
-        <source>Community analysis</source>
-        <translation>समुदाय विश्लेषण</translation>
-    </message>
-    <message>
-        <source>Community balance analysis</source>
-        <translation>समुदाय संतुलन विश्लेषण</translation>
-    </message>
-    <message>
-        <source>Community generation analysis</source>
-        <translation>समुदाय उत्पादन विश्लेषण</translation>
-    </message>
-    <message>
-        <source>Community load analysis</source>
-        <translation>समुदाय भार विश्लेषण</translation>
-    </message>
-    <message>
-        <source>Contingencies</source>
-        <translation>आकस्मिकताएँ</translation>
-    </message>
-    <message>
-        <source>Contingencies report</source>
-        <translation>आकस्मिकता रिपोर्ट</translation>
-    </message>
-    <message>
-        <source>Contingencies statistical report</source>
-        <translation>आकस्मिकता सांख्यिकीय रिपोर्ट</translation>
-    </message>
-    <message>
-        <source>Contingency</source>
-        <translation>आकस्मिकता</translation>
-    </message>
-    <message>
-        <source>Contingency Group</source>
-        <translation>आकस्मिकता समूह</translation>
-    </message>
-    <message>
-        <source>Contingency analysis</source>
-        <translation>आकस्मिकता विश्लेषण</translation>
-    </message>
-    <message>
-        <source>Contingency analysis time series</source>
-        <translation>आकस्मिकता विश्लेषण समय श्रृंखला</translation>
-    </message>
-    <message>
-        <source>Contingency flow</source>
-        <translation>आकस्मिकता प्रवाह</translation>
-    </message>
-    <message>
-        <source>Contingency flow report</source>
-        <translation>आकस्मिकता प्रवाह रिपोर्ट</translation>
-    </message>
-    <message>
-        <source>Contingency frequency</source>
-        <translation>आकस्मिकता आवृत्ति</translation>
-    </message>
-    <message>
-        <source>Contingency loading</source>
-        <translation>आकस्मिकता भारण</translation>
-    </message>
-    <message>
-        <source>Contingency overload sum</source>
-        <translation>आकस्मिकता अधिभार योग</translation>
-    </message>
-    <message>
-        <source>Contingency relative frequency</source>
-        <translation>आकस्मिकता सापेक्ष आवृत्ति</translation>
-    </message>
-    <message>
-        <source>ContingencyAnalysis</source>
-        <translation>आकस्मिकता विश्लेषण</translation>
-    </message>
-    <message>
-        <source>ContingencyAnalysisTimeSeries</source>
-        <translation>आकस्मिकता विश्लेषण टाइम सीरीज़</translation>
-    </message>
-    <message>
-        <source>ContinuationPowerFlow</source>
-        <translation>निरंतर शक्ति प्रवाह</translation>
-    </message>
-    <message>
-        <source>Controllable shunt</source>
-        <translation>नियंत्रणीय शंट</translation>
-    </message>
-    <message>
-        <source>Country</source>
-        <translation>देश</translation>
-    </message>
-    <message>
-        <source>Country analysis</source>
-        <translation>देश विश्लेषण</translation>
-    </message>
-    <message>
-        <source>Country balance analysis</source>
-        <translation>देश संतुलन विश्लेषण</translation>
-    </message>
-    <message>
-        <source>Country generation analysis</source>
-        <translation>देश जनरेशन विश्लेषण</translation>
-    </message>
-    <message>
-        <source>Country load analysis</source>
-        <translation>देश लोड विश्लेषण</translation>
-    </message>
-    <message>
-        <source>Current injection</source>
-        <translation>करंट इंजेक्शन</translation>
-    </message>
-    <message>
-        <source>DC line</source>
-        <translation>डीसी लाइन</translation>
-    </message>
-    <message>
-        <source>Delete and reduce</source>
-        <translation>हटाएँ और कम करें</translation>
-    </message>
-    <message>
-        <source>Design View</source>
-        <translation>डिज़ाइन दृश्य</translation>
-    </message>
-    <message>
-        <source>Diagram</source>
-        <translation>आरेख</translation>
-    </message>
-    <message>
-        <source>Dispatch</source>
-        <translation>डिस्पैच</translation>
-    </message>
-    <message>
-        <source>Dynamic</source>
-        <translation>डायनेमिक</translation>
-    </message>
-    <message>
-        <source>Dynamic Model Host</source>
-        <translation>डायनेमिक मॉडल होस्ट</translation>
-    </message>
-    <message>
-        <source>EMT Dynamic</source>
-        <translation>EMT डायनेमिक</translation>
-    </message>
-    <message>
-        <source>EMT Small Signal stability</source>
-        <translation>EMT स्मॉल सिग्नल स्थिरता</translation>
-    </message>
-    <message>
-        <source>EMT template</source>
-        <translation>EMT टेम्पलेट</translation>
-    </message>
-    <message>
-        <source>ENS</source>
-        <translation>ENS</translation>
-    </message>
-    <message>
-        <source>Emission</source>
-        <translation>उत्सर्जन</translation>
-    </message>
-    <message>
-        <source>Emt Event</source>
-        <translation>EMT इवेंट</translation>
-    </message>
-    <message>
-        <source>Emt Events Group</source>
-        <translation>EMT इवेंट्स समूह</translation>
-    </message>
-    <message>
-        <source>EmtSimulation</source>
-        <translation>EMT सिमुलेशन</translation>
-    </message>
-    <message>
-        <source>Error</source>
-        <translation>त्रुटि</translation>
-    </message>
-    <message>
-        <source>Evaluation report</source>
-        <translation>मूल्यांकन रिपोर्ट</translation>
-    </message>
-    <message>
-        <source>Exciter</source>
-        <translation>एक्साइटर</translation>
-    </message>
-    <message>
-        <source>External grid</source>
-        <translation>बाहरी ग्रिड</translation>
-    </message>
-    <message>
-        <source>FMU template</source>
-        <translation>FMU टेम्पलेट</translation>
-    </message>
-    <message>
-        <source>Facility</source>
-        <translation>सुविधा</translation>
-    </message>
-    <message>
-        <source>Flow Reports</source>
-        <translation>प्रवाह रिपोर्ट</translation>
-    </message>
-    <message>
-        <source>Flow circulating in the device</source>
-        <translation>उपकरण में परिसंचारी प्रवाह</translation>
-    </message>
-    <message>
-        <source>Flow entering the node</source>
-        <translation>नोड में प्रवेश करने वाला प्रवाह</translation>
-    </message>
-    <message>
-        <source>Flow exiting the node</source>
-        <translation>नोड से बाहर निकलने वाला प्रवाह</translation>
-    </message>
-    <message>
-        <source>Flow from the P2X</source>
-        <translation>P2X से प्रवाह</translation>
-    </message>
-    <message>
-        <source>Flow in the river</source>
-        <translation>नदी में प्रवाह</translation>
-    </message>
-    <message>
-        <source>Fluid</source>
-        <translation>द्रव</translation>
-    </message>
-    <message>
-        <source>Fluid Injection</source>
-        <translation>द्रव इंजेक्शन</translation>
-    </message>
-    <message>
-        <source>Fluid P2X</source>
-        <translation>द्रव P2X</translation>
-    </message>
-    <message>
-        <source>Fluid P2Xs</source>
-        <translation>द्रव P2Xs</translation>
-    </message>
-    <message>
-        <source>Fluid Pump</source>
-        <translation>द्रव पंप</translation>
-    </message>
-    <message>
-        <source>Fluid Turbine</source>
-        <translation>द्रव टरबाइन</translation>
-    </message>
-    <message>
-        <source>Fluid injections</source>
-        <translation>द्रव इंजेक्शन</translation>
-    </message>
-    <message>
-        <source>Fluid node</source>
-        <translation>द्रव नोड</translation>
-    </message>
-    <message>
-        <source>Fluid nodes</source>
-        <translation>द्रव नोड्स</translation>
-    </message>
-    <message>
-        <source>Fluid path</source>
-        <translation>द्रव पथ</translation>
-    </message>
-    <message>
-        <source>Fluid paths</source>
-        <translation>द्रव पथ</translation>
-    </message>
-    <message>
-        <source>Fluid pumps</source>
-        <translation>द्रव पंप</translation>
-    </message>
-    <message>
-        <source>Fluid turbines</source>
-        <translation>द्रव टरबाइन</translation>
-    </message>
-    <message>
-        <source>Frequency</source>
-        <translation>आवृत्ति</translation>
-    </message>
-    <message>
-        <source>Fuel</source>
-        <translation>ईंधन</translation>
-    </message>
-    <message>
-        <source>Generation delta slacks</source>
-        <translation>जनरेशन डेल्टा स्लैक</translation>
-    </message>
-    <message>
-        <source>Generation deltas</source>
-        <translation>जनरेशन डेल्टा</translation>
-    </message>
-    <message>
-        <source>Generator</source>
-        <translation>जेनरेटर</translation>
-    </message>
-    <message>
-        <source>Generator Emission</source>
-        <translation>जनरेटर उत्सर्जन</translation>
-    </message>
-    <message>
-        <source>Generator Fuel</source>
-        <translation>जनरेटर ईंधन</translation>
-    </message>
-    <message>
-        <source>Generator Technology</source>
-        <translation>जनरेटर प्रौद्योगिकी</translation>
-    </message>
-    <message>
-        <source>Generator cost</source>
-        <translation>जनरेटर लागत</translation>
-    </message>
-    <message>
-        <source>Generator emissions</source>
-        <translation>जनरेटर उत्सर्जन</translation>
-    </message>
-    <message>
-        <source>Generator fuels</source>
-        <translation>जनरेटर ईंधन</translation>
-    </message>
-    <message>
-        <source>Generator invested</source>
-        <translation>जनरेटर निवेशित</translation>
-    </message>
-    <message>
-        <source>Generator power</source>
-        <translation>जनरेटर शक्ति</translation>
-    </message>
-    <message>
-        <source>Generator producing</source>
-        <translation>जनरेटर उत्पादन</translation>
-    </message>
-    <message>
-        <source>Generator reactive power</source>
-        <translation>जनरेटर प्रतिक्रियाशील शक्ति</translation>
-    </message>
-    <message>
-        <source>Generator reactive power A</source>
-        <translation>जनरेटर प्रतिक्रियाशील शक्ति A</translation>
-    </message>
-    <message>
-        <source>Generator reactive power B</source>
-        <translation>जनरेटर प्रतिक्रियाशील शक्ति B</translation>
-    </message>
-    <message>
-        <source>Generator reactive power C</source>
-        <translation>जनरेटर प्रतिक्रियाशील शक्ति C</translation>
-    </message>
-    <message>
-        <source>Generator reserve</source>
-        <translation>जनरेटर आरक्षित क्षमता</translation>
-    </message>
-    <message>
-        <source>Generator shedding</source>
-        <translation>जनरेटर शेडिंग</translation>
-    </message>
-    <message>
-        <source>Generator shutting down</source>
-        <translation>जनरेटर बंद हो रहा है</translation>
-    </message>
-    <message>
-        <source>Generator starting up</source>
-        <translation>जनरेटर शुरू हो रहा है</translation>
-    </message>
-    <message>
-        <source>Generators</source>
-        <translation>जनरेटर</translation>
-    </message>
-    <message>
-        <source>Generic Area</source>
-        <translation>सामान्य क्षेत्र</translation>
-    </message>
-    <message>
-        <source>Governor</source>
-        <translation>गवर्नर</translation>
-    </message>
-    <message>
-        <source>Groups</source>
-        <translation>समूह</translation>
-    </message>
-    <message>
-        <source>HVDC Line</source>
-        <translation>HVDC लाइन</translation>
-    </message>
-    <message>
-        <source>HVDC ODF</source>
-        <translation>HVDC ODF</translation>
-    </message>
-    <message>
-        <source>HVDC PTDF</source>
-        <translation>HVDC PTDF</translation>
-    </message>
-    <message>
-        <source>HVDC loading</source>
-        <translation>HVDC लोडिंग</translation>
-    </message>
-    <message>
-        <source>HVDC losses</source>
-        <translation>HVDC हानि</translation>
-    </message>
-    <message>
-        <source>HVDC overloads</source>
-        <translation>HVDC ओवरलोड</translation>
-    </message>
-    <message>
-        <source>HVDC power "from"</source>
-        <translation>HVDC शक्ति "से"</translation>
-    </message>
-    <message>
-        <source>HVDC power "from" A</source>
-        <translation>HVDC शक्ति "से" A</translation>
-    </message>
-    <message>
-        <source>HVDC power "from" B</source>
-        <translation>HVDC शक्ति "से" B</translation>
-    </message>
-    <message>
-        <source>HVDC power "from" C</source>
-        <translation>HVDC शक्ति "से" C</translation>
-    </message>
-    <message>
-        <source>HVDC power "to"</source>
-        <translation>HVDC शक्ति "को"</translation>
-    </message>
-    <message>
-        <source>HVDC power "to" A</source>
-        <translation>HVDC शक्ति "को" A</translation>
-    </message>
-    <message>
-        <source>HVDC power "to" B</source>
-        <translation>HVDC शक्ति "को" B</translation>
-    </message>
-    <message>
-        <source>HVDC power "to" C</source>
-        <translation>HVDC शक्ति "को" C</translation>
-    </message>
-    <message>
-        <source>Hvdc</source>
-        <translation>Hvdc</translation>
-    </message>
-    <message>
-        <source>If Measurement</source>
-        <translation>If माप</translation>
-    </message>
-    <message>
-        <source>Iif: Reactive current "from"</source>
-        <translation>Iif: प्रतिक्रियाशील धारा "से"</translation>
-    </message>
-    <message>
-        <source>Iif: Reactive current "from" A</source>
-        <translation>Iif: प्रतिक्रियाशील धारा "से" A</translation>
-    </message>
-    <message>
-        <source>Iif: Reactive current "from" B</source>
-        <translation>Iif: प्रतिक्रियाशील धारा "से" B</translation>
-    </message>
-    <message>
-        <source>Iif: Reactive current "from" C</source>
-        <translation>Iif: प्रतिक्रियाशील धारा "से" C</translation>
-    </message>
-    <message>
-        <source>Iit: Reactive current "to"</source>
-        <translation>Iit: प्रतिक्रियाशील धारा "को"</translation>
-    </message>
-    <message>
-        <source>Iit: Reactive current "to" A</source>
-        <translation>Iit: प्रतिक्रियाशील धारा "को" A</translation>
-    </message>
-    <message>
-        <source>Iit: Reactive current "to" B</source>
-        <translation>Iit: प्रतिक्रियाशील धारा "को" B</translation>
-    </message>
-    <message>
-        <source>Iit: Reactive current "to" C</source>
-        <translation>Iit: प्रतिक्रियाशील धारा "को" C</translation>
-    </message>
-    <message>
-        <source>Information</source>
-        <translation>जानकारी</translation>
-    </message>
-    <message>
-        <source>Injections</source>
-        <translation>इंजेक्शन</translation>
-    </message>
-    <message>
-        <source>Inputs Analysis</source>
-        <translation>इनपुट विश्लेषण</translation>
-    </message>
-    <message>
-        <source>InputsAnalysis</source>
-        <translation>इनपुटएनालिसिस</translation>
-    </message>
-    <message>
-        <source>Inter-Area exchange</source>
-        <translation>अंतर-क्षेत्र विनिमय</translation>
-    </message>
-    <message>
-        <source>Inter-space branch loading</source>
-        <translation>अंतर-स्थान शाखा लोडिंग</translation>
-    </message>
-    <message>
-        <source>Inter-space branch power</source>
-        <translation>अंतर-स्थान शाखा शक्ति</translation>
-    </message>
-    <message>
-        <source>InterAggregationInfo</source>
-        <translation>इंटरएग्रीगेशनइन्फो</translation>
-    </message>
-    <message>
-        <source>Investment</source>
-        <translation>निवेश</translation>
-    </message>
-    <message>
-        <source>InvestmentEvaluations</source>
-        <translation>निवेश मूल्यांकन</translation>
-    </message>
-    <message>
-        <source>Investments</source>
-        <translation>निवेश</translation>
-    </message>
-    <message>
-        <source>Investments Group</source>
-        <translation>निवेश समूह</translation>
-    </message>
-    <message>
-        <source>Investments evaluation</source>
-        <translation>निवेश मूल्यांकन</translation>
-    </message>
-    <message>
-        <source>Irf: Active current "from"</source>
-        <translation>Irf: सक्रिय धारा "से"</translation>
-    </message>
-    <message>
-        <source>Irf: Active current "from" A</source>
-        <translation>Irf: सक्रिय धारा "से" A</translation>
-    </message>
-    <message>
-        <source>Irf: Active current "from" B</source>
-        <translation>Irf: सक्रिय धारा "से" B</translation>
-    </message>
-    <message>
-        <source>Irf: Active current "from" C</source>
-        <translation>Irf: सक्रिय धारा "से" C</translation>
-    </message>
-    <message>
-        <source>Irt: Active current "to"</source>
-        <translation>Irt: सक्रिय धारा "को"</translation>
-    </message>
-    <message>
-        <source>Irt: Active current "to" A</source>
-        <translation>Irt: सक्रिय धारा "को" A</translation>
-    </message>
-    <message>
-        <source>Irt: Active current "to" B</source>
-        <translation>Irt: सक्रिय धारा "को" B</translation>
-    </message>
-    <message>
-        <source>Irt: Active current "to" C</source>
-        <translation>Irt: सक्रिय धारा "को" C</translation>
-    </message>
-    <message>
-        <source>It Measurement</source>
-        <translation>It माप</translation>
-    </message>
-    <message>
-        <source>Iterations plot</source>
-        <translation>पुनरावृत्ति प्लॉट</translation>
-    </message>
-    <message>
-        <source>LODF</source>
-        <translation>LODF</translation>
-    </message>
-    <message>
-        <source>LOLE</source>
-        <translation>LOLE</translation>
-    </message>
-    <message>
-        <source>LOLET</source>
-        <translation>LOLET</translation>
-    </message>
-    <message>
-        <source>LOLF</source>
-        <translation>LOLF</translation>
-    </message>
-    <message>
-        <source>LOLFT</source>
-        <translation>LOLFT</translation>
-    </message>
-    <message>
-        <source>Latin Hypercube</source>
-        <translation>लैटिन हाइपरक्यूब</translation>
-    </message>
-    <message>
-        <source>Line</source>
-        <translation>रेखा</translation>
-    </message>
-    <message>
-        <source>Line Location</source>
-        <translation>लाइन स्थान</translation>
-    </message>
-    <message>
-        <source>Line Locations</source>
-        <translation>लाइन स्थान</translation>
-    </message>
-    <message>
-        <source>Line Template</source>
-        <translation>लाइन टेम्पलेट</translation>
-    </message>
-    <message>
-        <source>Linear analysis</source>
-        <translation>रेखीय विश्लेषण</translation>
-    </message>
-    <message>
-        <source>Linear analysis time series</source>
-        <translation>रैखिक विश्लेषण समय श्रृंखला</translation>
-    </message>
-    <message>
-        <source>LinearAnalysis</source>
-        <translation>रैखिक विश्लेषण</translation>
-    </message>
-    <message>
-        <source>LinearAnalysisTimeSeries</source>
-        <translation>रैखिक विश्लेषण समय श्रृंखला</translation>
-    </message>
-    <message>
-        <source>Load</source>
-        <translation>भार</translation>
-    </message>
-    <message>
-        <source>Load like</source>
-        <translation>भार जैसा</translation>
-    </message>
-    <message>
-        <source>Load neutral voltage</source>
-        <translation>भार न्यूट्रल वोल्टेज</translation>
-    </message>
-    <message>
-        <source>Load power</source>
-        <translation>भार शक्ति</translation>
-    </message>
-    <message>
-        <source>Load shedding</source>
-        <translation>भार शमन</translation>
-    </message>
-    <message>
-        <source>Load shedding cost</source>
-        <translation>भार शमन लागत</translation>
-    </message>
-    <message>
-        <source>Loading CDF</source>
-        <translation>लोडिंग CDF</translation>
-    </message>
-    <message>
-        <source>Loading from the base situation ($\lambda$)</source>
-        <translation>आधार स्थिति से लोडिंग ($\lambda$)</translation>
-    </message>
-    <message>
-        <source>Loading std</source>
-        <translation>लोडिंग मानक विचलन</translation>
-    </message>
-    <message>
-        <source>Loads</source>
-        <translation>भार</translation>
-    </message>
-    <message>
-        <source>Losses % per area</source>
-        <translation>क्षेत्र के प्रति हानि %</translation>
-    </message>
-    <message>
-        <source>Losses CDF</source>
-        <translation>हानि CDF</translation>
-    </message>
-    <message>
-        <source>Losses avg</source>
-        <translation>हानि औसत</translation>
-    </message>
-    <message>
-        <source>Losses per area</source>
-        <translation>क्षेत्र के प्रति हानि</translation>
-    </message>
-    <message>
-        <source>Losses per generation unit in area</source>
-        <translation>क्षेत्र में प्रति जनरेशन इकाई हानि</translation>
-    </message>
-    <message>
-        <source>Losses std</source>
-        <translation>हानि मानक विचलन</translation>
-    </message>
-    <message>
-        <source>Market</source>
-        <translation>बाज़ार</translation>
-    </message>
-    <message>
-        <source>Market unit</source>
-        <translation>बाज़ार इकाई</translation>
-    </message>
-    <message>
-        <source>Max contingency flow</source>
-        <translation>अधिकतम आकस्मिक प्रवाह</translation>
-    </message>
-    <message>
-        <source>Max contingency loading</source>
-        <translation>अधिकतम आकस्मिक लोडिंग</translation>
-    </message>
-    <message>
-        <source>Maximum contingency flow</source>
-        <translation>अधिकतम आकस्मिक प्रवाह</translation>
-    </message>
-    <message>
-        <source>Mean contingency overloading</source>
-        <translation>औसत आकस्मिक अधिभार</translation>
-    </message>
-    <message>
-        <source>Measurements</source>
-        <translation>माप</translation>
-    </message>
-    <message>
-        <source>Modelling Authority</source>
-        <translation>मॉडलिंग प्राधिकरण</translation>
-    </message>
-    <message>
-        <source>Modes</source>
-        <translation>मोड</translation>
-    </message>
-    <message>
-        <source>Monte Carlo</source>
-        <translation>मोंटे कार्लो</translation>
-    </message>
-    <message>
-        <source>Municipality</source>
-        <translation>नगरपालिका</translation>
-    </message>
-    <message>
-        <source>Municipality analysis</source>
-        <translation>नगरपालिका विश्लेषण</translation>
-    </message>
-    <message>
-        <source>Municipality balance analysis</source>
-        <translation>नगरपालिका संतुलन विश्लेषण</translation>
-    </message>
-    <message>
-        <source>Municipality generation analysis</source>
-        <translation>नगरपालिका उत्पादन विश्लेषण</translation>
-    </message>
-    <message>
-        <source>Municipality load analysis</source>
-        <translation>नगरपालिका भार विश्लेषण</translation>
-    </message>
-    <message>
-        <source>NTC</source>
-        <translation>NTC</translation>
-    </message>
-    <message>
-        <source>Net transfer capacity</source>
-        <translation>शुद्ध अंतरण क्षमता</translation>
-    </message>
-    <message>
-        <source>NetTransferCapacity</source>
-        <translation>शुद्ध हस्तांतरण क्षमता</translation>
-    </message>
-    <message>
-        <source>NetTransferCapacityTimeSeries</source>
-        <translation>शुद्ध हस्तांतरण क्षमता समय श्रृंखला</translation>
-    </message>
-    <message>
-        <source>No simulation</source>
-        <translation>कोई सिमुलेशन नहीं</translation>
-    </message>
-    <message>
-        <source>NoDevice</source>
-        <translation>कोई उपकरण नहीं</translation>
-    </message>
-    <message>
-        <source>Nodal capacity</source>
-        <translation>नोडल क्षमता</translation>
-    </message>
-    <message>
-        <source>Nodal capacity time series</source>
-        <translation>नोडल क्षमता समय श्रृंखला</translation>
-    </message>
-    <message>
-        <source>Nodal shadow prices</source>
-        <translation>नोडल छाया मूल्य</translation>
-    </message>
-    <message>
-        <source>Nodal slacks</source>
-        <translation>नोडल स्लैक</translation>
-    </message>
-    <message>
-        <source>Node groups</source>
-        <translation>नोड समूह</translation>
-    </message>
-    <message>
-        <source>NodeGroups</source>
-        <translation>नोड समूह</translation>
-    </message>
-    <message>
-        <source>Nonlinear analysis</source>
-        <translation>गैर-रेखीय विश्लेषण</translation>
-    </message>
-    <message>
-        <source>Nonlinear analysis time series</source>
-        <translation>गैर-रेखीय विश्लेषण समय श्रृंखला</translation>
-    </message>
-    <message>
-        <source>Ntc: Base flow report</source>
-        <translation>Ntc: बेस फ्लो रिपोर्ट</translation>
-    </message>
-    <message>
-        <source>Ntc: Contingency flow report</source>
-        <translation>Ntc: आकस्मिक प्रवाह रिपोर्ट</translation>
-    </message>
-    <message>
-        <source>Ntc: Contingency flow report. (Branch)</source>
-        <translation>Ntc: आकस्मिक प्रवाह रिपोर्ट। (शाखा)</translation>
-    </message>
-    <message>
-        <source>Ntc: Contingency flow report. (Generation)</source>
-        <translation>Ntc: आकस्मिक प्रवाह रिपोर्ट। (उत्पादन)</translation>
-    </message>
-    <message>
-        <source>Ntc: Contingency flow report. (Hvdc)</source>
-        <translation>Ntc: आकस्मिक प्रवाह रिपोर्ट। (HVDC)</translation>
-    </message>
-    <message>
-        <source>Objectives</source>
-        <translation>उद्देश्य</translation>
-    </message>
-    <message>
-        <source>Objects</source>
-        <translation>वस्तुएँ</translation>
-    </message>
-    <message>
-        <source>Optimal net transfer capacity</source>
-        <translation>इष्टतम शुद्ध अंतरण क्षमता</translation>
-    </message>
-    <message>
-        <source>Optimal net transfer capacity time series</source>
-        <translation>इष्टतम शुद्ध हस्तांतरण क्षमता समय श्रृंखला</translation>
-    </message>
-    <message>
-        <source>Optimal power flow</source>
-        <translation>इष्टतम विद्युत प्रवाह</translation>
-    </message>
-    <message>
-        <source>Optimal power flow time series</source>
-        <translation>इष्टतम विद्युत प्रवाह समय श्रृंखला</translation>
-    </message>
-    <message>
-        <source>Owner</source>
-        <translation>मालिक</translation>
-    </message>
-    <message>
-        <source>P: Active power</source>
-        <translation>P: सक्रिय शक्ति</translation>
-    </message>
-    <message>
-        <source>PA: Active power A</source>
-        <translation>PA: सक्रिय शक्ति A</translation>
-    </message>
-    <message>
-        <source>PB: Active power B</source>
-        <translation>PB: सक्रिय शक्ति B</translation>
-    </message>
-    <message>
-        <source>PC: Active power C</source>
-        <translation>PC: सक्रिय शक्ति C</translation>
-    </message>
-    <message>
-        <source>PTDF</source>
-        <translation>PTDF</translation>
-    </message>
-    <message>
-        <source>Pareto</source>
-        <translation>पैरेटो</translation>
-    </message>
-    <message>
-        <source>Pareto combinations</source>
-        <translation>पैरेटो संयोजन</translation>
-    </message>
-    <message>
-        <source>Pareto evaluation report</source>
-        <translation>पैरेटो मूल्यांकन रिपोर्ट</translation>
-    </message>
-    <message>
-        <source>Pareto frequency</source>
-        <translation>पैरेटो आवृत्ति</translation>
-    </message>
-    <message>
-        <source>Pareto objectives</source>
-        <translation>पैरेटो उद्देश्य</translation>
-    </message>
-    <message>
-        <source>Pareto plot NSGA2</source>
-        <translation>पैरेटो प्लॉट NSGA2</translation>
-    </message>
-    <message>
-        <source>Pareto plots</source>
-        <translation>पैरेटो प्लॉट</translation>
-    </message>
-    <message>
-        <source>Participation Factors</source>
-        <translation>भागीदारी कारक</translation>
-    </message>
-    <message>
-        <source>Pf Measurement</source>
-        <translation>Pf माप</translation>
-    </message>
-    <message>
-        <source>Pf: Active power "from"</source>
-        <translation>Pf: सक्रिय शक्ति "से"</translation>
-    </message>
-    <message>
-        <source>Pf: Active power "from" base case</source>
-        <translation>Pf: सक्रिय शक्ति "से" बेस केस</translation>
-    </message>
-    <message>
-        <source>PfA: Active power "from" A</source>
-        <translation>PfA: सक्रिय शक्ति "से" A</translation>
-    </message>
-    <message>
-        <source>PfB: Active power "from" B</source>
-        <translation>PfB: सक्रिय शक्ति "से" B</translation>
-    </message>
-    <message>
-        <source>PfC: Active power "from" C</source>
-        <translation>PfC: सक्रिय शक्ति "से" C</translation>
-    </message>
-    <message>
-        <source>Pg Measurement</source>
-        <translation>Pg माप</translation>
-    </message>
-    <message>
-        <source>Pi Measurement</source>
-        <translation>Pi माप</translation>
-    </message>
-    <message>
-        <source>Pl: Active losses</source>
-        <translation>Pl: सक्रिय हानि</translation>
-    </message>
-    <message>
-        <source>Pl: Active losses (%)</source>
-        <translation>Pl: सक्रिय हानि (%)</translation>
-    </message>
-    <message>
-        <source>Pl: Active losses (%) A</source>
-        <translation>Pl: सक्रिय हानि (%) A</translation>
-    </message>
-    <message>
-        <source>Pl: Active losses (%) B</source>
-        <translation>Pl: सक्रिय हानि (%) B</translation>
-    </message>
-    <message>
-        <source>Pl: Active losses (%) C</source>
-        <translation>Pl: सक्रिय हानि (%) C</translation>
-    </message>
-    <message>
-        <source>Pl: Active losses A</source>
-        <translation>Pl: सक्रिय हानि A</translation>
-    </message>
-    <message>
-        <source>Pl: Active losses B</source>
-        <translation>Pl: सक्रिय हानि B</translation>
-    </message>
-    <message>
-        <source>Pl: Active losses C</source>
-        <translation>Pl: सक्रिय हानि C</translation>
-    </message>
-    <message>
-        <source>Plot Event</source>
-        <translation>प्लॉट घटना</translation>
-    </message>
-    <message>
-        <source>Plot Group</source>
-        <translation>प्लॉट समूह</translation>
-    </message>
-    <message>
-        <source>Power by technology</source>
-        <translation>प्रौद्योगिकी द्वारा शक्ति</translation>
-    </message>
-    <message>
-        <source>Power flow</source>
-        <translation>शक्ति प्रवाह</translation>
-    </message>
-    <message>
-        <source>Power flow 3ph</source>
-        <translation>3ph शक्ति प्रवाह</translation>
-    </message>
-    <message>
-        <source>Power flow time series</source>
-        <translation>विद्युत प्रवाह समय श्रृंखला</translation>
-    </message>
-    <message>
-        <source>Power flow time series 3ph</source>
-        <translation>3ph शक्ति प्रवाह समय श्रृंखला</translation>
-    </message>
-    <message>
-        <source>PowerFlow</source>
-        <translation>पावरफ्लो</translation>
-    </message>
-    <message>
-        <source>PowerFlowTimeSeries</source>
-        <translation>पावरफ्लो समय श्रृंखला</translation>
-    </message>
-    <message>
-        <source>Pt Measurement</source>
-        <translation>Pt माप</translation>
-    </message>
-    <message>
-        <source>Pt: Active power "to"</source>
-        <translation>Pt: सक्रिय शक्ति "को"</translation>
-    </message>
-    <message>
-        <source>Pt: Active power "to" A</source>
-        <translation>Pt: सक्रिय शक्ति "को" A</translation>
-    </message>
-    <message>
-        <source>Pt: Active power "to" B</source>
-        <translation>Pt: सक्रिय शक्ति "को" B</translation>
-    </message>
-    <message>
-        <source>Pt: Active power "to" C</source>
-        <translation>Pt: सक्रिय शक्ति "को" C</translation>
-    </message>
-    <message>
-        <source>Q: Reactive power</source>
-        <translation>Q: प्रतिक्रियाशील शक्ति</translation>
-    </message>
-    <message>
-        <source>QA: Reactive power A</source>
-        <translation>QA: प्रतिक्रियाशील शक्ति A</translation>
-    </message>
-    <message>
-        <source>QB: Reactive power B</source>
-        <translation>QB: प्रतिक्रियाशील शक्ति B</translation>
-    </message>
-    <message>
-        <source>QC: Reactive power C</source>
-        <translation>QC: प्रतिक्रियाशील शक्ति C</translation>
-    </message>
-    <message>
-        <source>Qf Measurement</source>
-        <translation>Qf माप</translation>
-    </message>
-    <message>
-        <source>Qf: Reactive power "from"</source>
-        <translation>Qf: प्रतिक्रियाशील शक्ति "से"</translation>
-    </message>
-    <message>
-        <source>QfA: Reactive power "from" A</source>
-        <translation>QfA: प्रतिक्रियाशील शक्ति "से" A</translation>
-    </message>
-    <message>
-        <source>QfB: Reactive power "from" B</source>
-        <translation>QfB: प्रतिक्रियाशील शक्ति "से" B</translation>
-    </message>
-    <message>
-        <source>QfC: Reactive power "from" C</source>
-        <translation>QfC: प्रतिक्रियाशील शक्ति "से" C</translation>
-    </message>
-    <message>
-        <source>Qg Measurement</source>
-        <translation>Qg माप</translation>
-    </message>
-    <message>
-        <source>Qi Measurement</source>
-        <translation>Qi माप</translation>
-    </message>
-    <message>
-        <source>Ql: Reactive losses</source>
-        <translation>Ql: प्रतिक्रियाशील हानि</translation>
-    </message>
-    <message>
-        <source>Ql: Reactive losses A</source>
-        <translation>Ql: प्रतिक्रियाशील हानि A</translation>
-    </message>
-    <message>
-        <source>Ql: Reactive losses B</source>
-        <translation>Ql: प्रतिक्रियाशील हानि B</translation>
-    </message>
-    <message>
-        <source>Ql: Reactive losses C</source>
-        <translation>Ql: प्रतिक्रियाशील हानि C</translation>
-    </message>
-    <message>
-        <source>Qt Measurement</source>
-        <translation>Qt माप</translation>
-    </message>
-    <message>
-        <source>Qt: Reactive power "to"</source>
-        <translation>Qt: प्रतिक्रियाशील शक्ति "को"</translation>
-    </message>
-    <message>
-        <source>Qt: Reactive power "to" A</source>
-        <translation>Qt: प्रतिक्रियाशील शक्ति "को" A</translation>
-    </message>
-    <message>
-        <source>Qt: Reactive power "to" B</source>
-        <translation>Qt: प्रतिक्रियाशील शक्ति "को" B</translation>
-    </message>
-    <message>
-        <source>Qt: Reactive power "to" C</source>
-        <translation>Qt: प्रतिक्रियाशील शक्ति "को" C</translation>
-    </message>
-    <message>
-        <source>RMS Dynamic</source>
-        <translation>RMS डायनेमिक</translation>
-    </message>
-    <message>
-        <source>RMS Small Signal stability</source>
-        <translation>RMS छोटे सिग्नल स्थिरता</translation>
-    </message>
-    <message>
-        <source>RMS template</source>
-        <translation>RMS टेम्पलेट</translation>
-    </message>
-    <message>
-        <source>Region</source>
-        <translation>क्षेत्र</translation>
-    </message>
-    <message>
-        <source>Region analysis</source>
-        <translation>क्षेत्र विश्लेषण</translation>
-    </message>
-    <message>
-        <source>Region balance analysis</source>
-        <translation>क्षेत्र संतुलन विश्लेषण</translation>
-    </message>
-    <message>
-        <source>Region generation analysis</source>
-        <translation>क्षेत्र उत्पादन विश्लेषण</translation>
-    </message>
-    <message>
-        <source>Region load analysis</source>
-        <translation>क्षेत्र भार विश्लेषण</translation>
-    </message>
-    <message>
-        <source>Regions</source>
-        <translation>क्षेत्र</translation>
-    </message>
-    <message>
-        <source>Reliability</source>
-        <translation>विश्वसनीयता</translation>
-    </message>
-    <message>
-        <source>Remedial action</source>
-        <translation>उपचारात्मक कार्रवाई</translation>
-    </message>
-    <message>
-        <source>Remedial action Group</source>
-        <translation>उपचारात्मक कार्रवाई समूह</translation>
-    </message>
-    <message>
-        <source>Reports</source>
-        <translation>रिपोर्ट</translation>
-    </message>
-    <message>
-        <source>Reservoir fluid level</source>
-        <translation>जलाशय द्रव स्तर</translation>
-    </message>
-    <message>
-        <source>Results</source>
-        <translation>परिणाम</translation>
-    </message>
-    <message>
-        <source>Right Eigenvectors</source>
-        <translation>दाएँ आइगेनवेक्टर</translation>
-    </message>
-    <message>
-        <source>Rms Event</source>
-        <translation>Rms घटना</translation>
-    </message>
-    <message>
-        <source>Rms Events Group</source>
-        <translation>Rms घटना समूह</translation>
-    </message>
-    <message>
-        <source>Rms Generator results</source>
-        <translation>RMS जनरेटर परिणाम</translation>
-    </message>
-    <message>
-        <source>Rms Genqec delta results</source>
-        <translation>RMS जनरेटर डेल्टा परिणाम</translation>
-    </message>
-    <message>
-        <source>Rms Genqec omega results</source>
-        <translation>RMS जनरेटर ओमेगा परिणाम</translation>
-    </message>
-    <message>
-        <source>Rms Line results</source>
-        <translation>RMS लाइन परिणाम</translation>
-    </message>
-    <message>
-        <source>Rms Load P results</source>
-        <translation>RMS लोड P परिणाम</translation>
-    </message>
-    <message>
-        <source>Rms Load Q results</source>
-        <translation>RMS लोड Q परिणाम</translation>
-    </message>
-    <message>
-        <source>Rms Simple Line P results</source>
-        <translation>RMS सरल लाइन P परिणाम</translation>
-    </message>
-    <message>
-        <source>Rms Simple Line Q results</source>
-        <translation>RMS सरल लाइन Q परिणाम</translation>
-    </message>
-    <message>
-        <source>Rms load results</source>
-        <translation>RMS लोड परिणाम</translation>
-    </message>
-    <message>
-        <source>Rms plot results</source>
-        <translation>RMS प्लॉट परिणाम</translation>
-    </message>
-    <message>
-        <source>Rms time series report</source>
-        <translation>RMS समय श्रृंखला रिपोर्ट</translation>
-    </message>
-    <message>
-        <source>RmsSimulation</source>
-        <translation>RMS सिमुलेशन</translation>
-    </message>
-    <message>
-        <source>S-Domain Plot</source>
-        <translation>S-डोमेन प्लॉट</translation>
-    </message>
-    <message>
-        <source>S-Domain Plot in Hz</source>
-        <translation>Hz में S-डोमेन प्लॉट</translation>
-    </message>
-    <message>
-        <source>SAIDI</source>
-        <translation>SAIDI</translation>
-    </message>
-    <message>
-        <source>SAIFI</source>
-        <translation>SAIFI</translation>
-    </message>
-    <message>
-        <source>Sensibilities</source>
-        <translation>संवेदनशीलताएँ</translation>
-    </message>
-    <message>
-        <source>Sensitivity to the exchange</source>
-        <translation>विनिमय के प्रति संवेदनशीलता</translation>
-    </message>
-    <message>
-        <source>Sensitivity to the exchange (N-1)</source>
-        <translation>विनिमय के प्रति संवेदनशीलता (N-1)</translation>
-    </message>
-    <message>
-        <source>Sequence line</source>
-        <translation>अनुक्रम लाइन</translation>
-    </message>
-    <message>
-        <source>Series</source>
-        <translation>श्रृंखला</translation>
-    </message>
-    <message>
-        <source>Series reactance</source>
-        <translation>श्रृंखला प्रतिघात</translation>
-    </message>
-    <message>
-        <source>Short circuit</source>
-        <translation>शॉर्ट सर्किट</translation>
-    </message>
-    <message>
-        <source>Short circuit active current</source>
-        <translation>शॉर्ट सर्किट सक्रिय धारा</translation>
-    </message>
-    <message>
-        <source>Short circuit active current A</source>
-        <translation>शॉर्ट सर्किट सक्रिय धारा A</translation>
-    </message>
-    <message>
-        <source>Short circuit active current B</source>
-        <translation>शॉर्ट सर्किट सक्रिय धारा B</translation>
-    </message>
-    <message>
-        <source>Short circuit active current C</source>
-        <translation>शॉर्ट सर्किट सक्रिय धारा C</translation>
-    </message>
-    <message>
-        <source>Short circuit active power</source>
-        <translation>शॉर्ट सर्किट सक्रिय शक्ति</translation>
-    </message>
-    <message>
-        <source>Short circuit active power A</source>
-        <translation>शॉर्ट सर्किट सक्रिय शक्ति A</translation>
-    </message>
-    <message>
-        <source>Short circuit active power B</source>
-        <translation>शॉर्ट सर्किट सक्रिय शक्ति B</translation>
-    </message>
-    <message>
-        <source>Short circuit active power C</source>
-        <translation>शॉर्ट सर्किट सक्रिय शक्ति C</translation>
-    </message>
-    <message>
-        <source>Short circuit event</source>
-        <translation>शॉर्ट सर्किट घटना</translation>
-    </message>
-    <message>
-        <source>Short circuit reactive current</source>
-        <translation>शॉर्ट सर्किट प्रतिक्रियाशील धारा</translation>
-    </message>
-    <message>
-        <source>Short circuit reactive current A</source>
-        <translation>शॉर्ट सर्किट प्रतिक्रियाशील धारा A</translation>
-    </message>
-    <message>
-        <source>Short circuit reactive current B</source>
-        <translation>शॉर्ट सर्किट प्रतिक्रियाशील धारा B</translation>
-    </message>
-    <message>
-        <source>Short circuit reactive current C</source>
-        <translation>शॉर्ट सर्किट प्रतिक्रियाशील धारा C</translation>
-    </message>
-    <message>
-        <source>Short circuit reactive power</source>
-        <translation>शॉर्ट सर्किट प्रतिक्रियाशील शक्ति</translation>
-    </message>
-    <message>
-        <source>Short circuit reactive power A</source>
-        <translation>शॉर्ट सर्किट प्रतिक्रियाशील शक्ति A</translation>
-    </message>
-    <message>
-        <source>Short circuit reactive power B</source>
-        <translation>शॉर्ट सर्किट प्रतिक्रियाशील शक्ति B</translation>
-    </message>
-    <message>
-        <source>Short circuit reactive power C</source>
-        <translation>शॉर्ट सर्किट प्रतिक्रियाशील शक्ति C</translation>
-    </message>
-    <message>
-        <source>Short-circuit information</source>
-        <translation>शॉर्ट-सर्किट जानकारी</translation>
-    </message>
-    <message>
-        <source>ShortCircuit</source>
-        <translation>शॉर्ट सर्किट</translation>
-    </message>
-    <message>
-        <source>Shunt</source>
-        <translation>शंट</translation>
-    </message>
-    <message>
-        <source>Shunt like devices</source>
-        <translation>शंट जैसे उपकरण</translation>
-    </message>
-    <message>
-        <source>Shunt neutral voltage</source>
-        <translation>शंट न्यूट्रल वोल्टेज</translation>
-    </message>
-    <message>
-        <source>Shunt reactive power</source>
-        <translation>शंट प्रतिक्रियाशील शक्ति</translation>
-    </message>
-    <message>
-        <source>Shunt reactive power A</source>
-        <translation>शंट प्रतिक्रियाशील शक्ति A</translation>
-    </message>
-    <message>
-        <source>Shunt reactive power B</source>
-        <translation>शंट प्रतिक्रियाशील शक्ति B</translation>
-    </message>
-    <message>
-        <source>Shunt reactive power C</source>
-        <translation>शंट प्रतिक्रियाशील शक्ति C</translation>
-    </message>
-    <message>
-        <source>Sigma + distances</source>
-        <translation>सिग्मा + दूरियाँ</translation>
-    </message>
-    <message>
-        <source>Sigma Analysis</source>
-        <translation>सिग्मा विश्लेषण</translation>
-    </message>
-    <message>
-        <source>Sigma distances</source>
-        <translation>सिग्मा दूरियाँ</translation>
-    </message>
-    <message>
-        <source>Sigma imaginary</source>
-        <translation>सिग्मा काल्पनिक</translation>
-    </message>
-    <message>
-        <source>Sigma real</source>
-        <translation>सिग्मा वास्तविक</translation>
-    </message>
-    <message>
-        <source>SigmaAnalysis</source>
-        <translation>सिग्मा विश्लेषण</translation>
-    </message>
-    <message>
-        <source>SimulationOptionsDevice</source>
-        <translation>सिमुलेशन विकल्प उपकरण</translation>
-    </message>
-    <message>
-        <source>Slacks</source>
-        <translation>स्लैक</translation>
-    </message>
-    <message>
-        <source>SmallSignalStability</source>
-        <translation>लघु संकेत स्थिरता</translation>
-    </message>
-    <message>
-        <source>Snapshot</source>
-        <translation>स्नैपशॉट</translation>
-    </message>
-    <message>
-        <source>Special plots</source>
-        <translation>विशेष प्लॉट</translation>
-    </message>
-    <message>
-        <source>Spillage flow leaving</source>
-        <translation>छोड़ा गया प्रवाह</translation>
-    </message>
-    <message>
-        <source>Srap used power</source>
-        <translation>उपयोग की गई Srap शक्ति</translation>
-    </message>
-    <message>
-        <source>Stabilizer</source>
-        <translation>स्टेबलाइज़र</translation>
-    </message>
-    <message>
-        <source>State Matrix</source>
-        <translation>अवस्था मैट्रिक्स</translation>
-    </message>
-    <message>
-        <source>State estimation</source>
-        <translation>राज्य का अनुमान</translation>
-    </message>
-    <message>
-        <source>StateEstimation</source>
-        <translation>अवस्था अनुमान</translation>
-    </message>
-    <message>
-        <source>Static Generator</source>
-        <translation>स्थिर जनरेटर</translation>
-    </message>
-    <message>
-        <source>Statistics</source>
-        <translation>सांख्यिकी</translation>
-    </message>
-    <message>
-        <source>Std-dev contingency overloading</source>
-        <translation>मानक विचलन आकस्मिक अधिभारण</translation>
-    </message>
-    <message>
-        <source>Stochastic Power Flow</source>
-        <translation>स्टोकेस्टिक पावर फ्लो</translation>
-    </message>
-    <message>
-        <source>StochasticPowerFlow</source>
-        <translation>स्टोकेस्टिक पावर फ्लो</translation>
-    </message>
-    <message>
-        <source>Substation</source>
-        <translation>सबस्टेशन</translation>
-    </message>
-    <message>
-        <source>Substation analysis</source>
-        <translation>उप-स्टेशन विश्लेषण</translation>
-    </message>
-    <message>
-        <source>Substation balance analysis</source>
-        <translation>उप-स्टेशन संतुलन विश्लेषण</translation>
-    </message>
-    <message>
-        <source>Substation generation analysis</source>
-        <translation>उप-स्टेशन उत्पादन विश्लेषण</translation>
-    </message>
-    <message>
-        <source>Substation load analysis</source>
-        <translation>उप-स्टेशन भार विश्लेषण</translation>
-    </message>
-    <message>
-        <source>Switch</source>
-        <translation>स्विच</translation>
-    </message>
-    <message>
-        <source>System</source>
-        <translation>प्रणाली</translation>
-    </message>
-    <message>
-        <source>System emissions</source>
-        <translation>प्रणाली उत्सर्जन</translation>
-    </message>
-    <message>
-        <source>System energy cost</source>
-        <translation>प्रणाली ऊर्जा लागत</translation>
-    </message>
-    <message>
-        <source>System energy total cost</source>
-        <translation>प्रणाली कुल ऊर्जा लागत</translation>
-    </message>
-    <message>
-        <source>System fuel consumption</source>
-        <translation>प्रणाली ईंधन खपत</translation>
-    </message>
-    <message>
-        <source>Technology</source>
-        <translation>प्रौद्योगिकी</translation>
-    </message>
-    <message>
-        <source>Technology Category</source>
-        <translation>प्रौद्योगिकी श्रेणी</translation>
-    </message>
-    <message>
-        <source>Technology Group</source>
-        <translation>प्रौद्योगिकी समूह</translation>
-    </message>
-    <message>
-        <source>Technology plot</source>
-        <translation>प्रौद्योगिकी प्लॉट</translation>
-    </message>
-    <message>
-        <source>Template</source>
-        <translation>टेम्पलेट</translation>
-    </message>
-    <message>
-        <source>Templates</source>
-        <translation>टेम्पलेट</translation>
-    </message>
-    <message>
-        <source>Time</source>
-        <translation>समय</translation>
-    </message>
-    <message>
-        <source>Time series Contingency flow report (Branches)</source>
-        <translation>समय श्रृंखला आकस्मिक प्रवाह रिपोर्ट (शाखाएँ)</translation>
-    </message>
-    <message>
-        <source>Time series base flow report</source>
-        <translation>समय श्रृंखला आधार प्रवाह रिपोर्ट</translation>
-    </message>
-    <message>
-        <source>Time series branch monitoring logic report</source>
-        <translation>समय श्रृंखला शाखा निगरानी तर्क रिपोर्ट</translation>
-    </message>
-    <message>
-        <source>Time series contingency Branches report</source>
-        <translation>समय श्रृंखला आकस्मिक शाखाएँ रिपोर्ट</translation>
-    </message>
-    <message>
-        <source>Time series contingency flow report</source>
-        <translation>समय श्रृंखला आकस्मिक प्रवाह रिपोर्ट</translation>
-    </message>
-    <message>
-        <source>Time series contingency flow report. (Generation)</source>
-        <translation>समय श्रृंखला आकस्मिक प्रवाह रिपोर्ट। (उत्पादन)</translation>
-    </message>
-    <message>
-        <source>Time series contingency flow report. (Hvdc)</source>
-        <translation>समय श्रृंखला आकस्मिक प्रवाह रिपोर्ट। (HVDC)</translation>
-    </message>
-    <message>
-        <source>Time series critical Branches report</source>
-        <translation>समय श्रृंखला महत्वपूर्ण शाखाएँ रिपोर्ट</translation>
-    </message>
-    <message>
-        <source>Time series generation delta power report</source>
-        <translation>समय श्रृंखला उत्पादन डेल्टा शक्ति रिपोर्ट</translation>
-    </message>
-    <message>
-        <source>Time series generation power report</source>
-        <translation>समय श्रृंखला उत्पादन शक्ति रिपोर्ट</translation>
-    </message>
-    <message>
-        <source>Time series sensitivity to the exchange report</source>
-        <translation>समय श्रृंखला विनिमय के प्रति संवेदनशीलता रिपोर्ट</translation>
-    </message>
-    <message>
-        <source>Time series worst sensitivity to the exchange report (N-1)</source>
-        <translation>समय श्रृंखला विनिमय के प्रति सबसे खराब संवेदनशीलता रिपोर्ट (N-1)</translation>
-    </message>
-    <message>
-        <source>Topology Processor</source>
-        <translation>टोपोलॉजी प्रोसेसर</translation>
-    </message>
-    <message>
-        <source>Topology reduction</source>
-        <translation>टोपोलॉजी न्यूनीकरण</translation>
-    </message>
-    <message>
-        <source>Tower</source>
-        <translation>टावर</translation>
-    </message>
-    <message>
-        <source>Transformer</source>
-        <translation>ट्रांसफार्मर</translation>
-    </message>
-    <message>
-        <source>Transformer type</source>
-        <translation>ट्रांसफार्मर प्रकार</translation>
-    </message>
-    <message>
-        <source>Transformer3W</source>
-        <translation>ट्रांसफार्मर3W</translation>
-    </message>
-    <message>
-        <source>TransformerNw</source>
-        <translation>ट्रांसफार्मरNw</translation>
-    </message>
-    <message>
-        <source>Transient stability</source>
-        <translation>क्षणिक स्थिरता</translation>
-    </message>
-    <message>
-        <source>UPFC</source>
-        <translation>UPFC</translation>
-    </message>
-    <message>
-        <source>Underground line</source>
-        <translation>भूमिगत लाइन</translation>
-    </message>
-    <message>
-        <source>V: Voltage module</source>
-        <translation>V: वोल्टेज मॉड्यूल</translation>
-    </message>
-    <message>
-        <source>VA: Voltage module A</source>
-        <translation>VA: वोल्टेज मॉड्यूल A</translation>
-    </message>
-    <message>
-        <source>VB: Voltage module B</source>
-        <translation>VB: वोल्टेज मॉड्यूल B</translation>
-    </message>
-    <message>
-        <source>VC: Voltage module C</source>
-        <translation>VC: वोल्टेज मॉड्यूल C</translation>
-    </message>
-    <message>
-        <source>VSC</source>
-        <translation>VSC</translation>
-    </message>
-    <message>
-        <source>Va Measurement</source>
-        <translation>Va माप</translation>
-    </message>
-    <message>
-        <source>Var Factory</source>
-        <translation>Var फ़ैक्टरी</translation>
-    </message>
-    <message>
-        <source>Vm Measurement</source>
-        <translation>Vm माप</translation>
-    </message>
-    <message>
-        <source>Voltage angle (0)</source>
-        <translation>वोल्टेज कोण (0)</translation>
-    </message>
-    <message>
-        <source>Voltage angle (1)</source>
-        <translation>वोल्टेज कोण (1)</translation>
-    </message>
-    <message>
-        <source>Voltage angle (2)</source>
-        <translation>वोल्टेज कोण (2)</translation>
-    </message>
-    <message>
-        <source>Voltage collapse</source>
-        <translation>वोल्टेज पतन</translation>
-    </message>
-    <message>
-        <source>Voltage level</source>
-        <translation>वोल्टेज स्तर</translation>
-    </message>
-    <message>
-        <source>Voltage level analysis</source>
-        <translation>वोल्टेज स्तर विश्लेषण</translation>
-    </message>
-    <message>
-        <source>Voltage level balance analysis</source>
-        <translation>वोल्टेज स्तर संतुलन विश्लेषण</translation>
-    </message>
-    <message>
-        <source>Voltage level generation analysis</source>
-        <translation>वोल्टेज स्तर उत्पादन विश्लेषण</translation>
-    </message>
-    <message>
-        <source>Voltage level load analysis</source>
-        <translation>वोल्टेज स्तर भार विश्लेषण</translation>
-    </message>
-    <message>
-        <source>Voltage level template</source>
-        <translation>वोल्टेज स्तर टेम्पलेट</translation>
-    </message>
-    <message>
-        <source>Voltage module (0)</source>
-        <translation>वोल्टेज मॉड्यूल (0)</translation>
-    </message>
-    <message>
-        <source>Voltage module (1)</source>
-        <translation>वोल्टेज मॉड्यूल (1)</translation>
-    </message>
-    <message>
-        <source>Voltage module (2)</source>
-        <translation>वोल्टेज मॉड्यूल (2)</translation>
-    </message>
-    <message>
-        <source>Voltage plot</source>
-        <translation>वोल्टेज प्लॉट</translation>
-    </message>
-    <message>
-        <source>Vsc</source>
-        <translation>Vsc</translation>
-    </message>
-    <message>
-        <source>Vsc ODF</source>
-        <translation>Vsc ODF</translation>
-    </message>
-    <message>
-        <source>Vsc PTDF</source>
-        <translation>Vsc PTDF</translation>
-    </message>
-    <message>
-        <source>Vsc Pdc</source>
-        <translation>Vsc Pdc</translation>
-    </message>
-    <message>
-        <source>Vsc Vdc</source>
-        <translation>Vsc Vdc</translation>
-    </message>
-    <message>
-        <source>Vsc loading</source>
-        <translation>Vsc लोडिंग</translation>
-    </message>
-    <message>
-        <source>Vsc losses</source>
-        <translation>Vsc नुकसान</translation>
-    </message>
-    <message>
-        <source>Vsc power "from" negative pole</source>
-        <translation>Vsc शक्ति "ऋणात्मक ध्रुव से"</translation>
-    </message>
-    <message>
-        <source>Vsc power "from" positive pole</source>
-        <translation>Vsc शक्ति "धनात्मक ध्रुव से"</translation>
-    </message>
-    <message>
-        <source>Vsc power "to"</source>
-        <translation>Vsc शक्ति "को"</translation>
-    </message>
-    <message>
-        <source>Vsc power "to" A</source>
-        <translation>Vsc शक्ति "को A"</translation>
-    </message>
-    <message>
-        <source>Vsc power "to" B</source>
-        <translation>Vsc शक्ति "को B"</translation>
-    </message>
-    <message>
-        <source>Vsc power "to" C</source>
-        <translation>Vsc शक्ति "को C"</translation>
-    </message>
-    <message>
-        <source>When to make them plot</source>
-        <translation>उन्हें कब प्लॉट करें</translation>
-    </message>
-    <message>
-        <source>Winding</source>
-        <translation>वाइंडिंग</translation>
-    </message>
-    <message>
-        <source>Wire</source>
-        <translation>तार</translation>
-    </message>
-    <message>
-        <source>Zone</source>
-        <translation>क्षेत्र</translation>
-    </message>
-    <message>
-        <source>Zone analysis</source>
-        <translation>क्षेत्र विश्लेषण</translation>
-    </message>
-    <message>
-        <source>Zone balance analysis</source>
-        <translation>क्षेत्र संतुलन विश्लेषण</translation>
-    </message>
-    <message>
-        <source>Zone generation analysis</source>
-        <translation>क्षेत्र उत्पादन विश्लेषण</translation>
-    </message>
-    <message>
-        <source>Zone load analysis</source>
-        <translation>क्षेत्र भार विश्लेषण</translation>
-    </message>
-    <message>
-        <source>export all</source>
-        <translation>सभी निर्यात करें</translation>
-    </message>
-    <message>
-        <source>file open</source>
-        <translation>फ़ाइल खोलें</translation>
-    </message>
-    <message>
-        <source>file save</source>
-        <translation>फ़ाइल सहेजें</translation>
-    </message>
-    <message>
-        <source>loading avg</source>
-        <translation>औसत लोडिंग</translation>
-    </message>
-    <message>
-        <source>m: Tap module</source>
-        <translation>m: टैप मॉड्यूल</translation>
-    </message>
-    <message>
-        <source>ΔP: Active power increment</source>
-        <translation>ΔP: सक्रिय शक्ति वृद्धि</translation>
-    </message>
-    <message>
-        <source>ΔV: Voltage modules drop</source>
-        <translation>ΔV: वोल्टेज मॉड्यूल ड्रॉप</translation>
-    </message>
-    <message>
-        <source>ΔV: Voltage modules drop A</source>
-        <translation>ΔV: वोल्टेज मॉड्यूल ड्रॉप A</translation>
-    </message>
-    <message>
-        <source>ΔV: Voltage modules drop B</source>
-        <translation>ΔV: वोल्टेज मॉड्यूल ड्रॉप B</translation>
-    </message>
-    <message>
-        <source>ΔV: Voltage modules drop C</source>
-        <translation>ΔV: वोल्टेज मॉड्यूल ड्रॉप C</translation>
-    </message>
-    <message>
-        <source>Δθ: Voltage angles drop</source>
-        <translation>Δθ: वोल्टेज कोण ड्रॉप</translation>
-    </message>
-    <message>
-        <source>Δθ: Voltage angles drop A</source>
-        <translation>Δθ: वोल्टेज कोण ड्रॉप A</translation>
-    </message>
-    <message>
-        <source>Δθ: Voltage angles drop B</source>
-        <translation>Δθ: वोल्टेज कोण ड्रॉप B</translation>
-    </message>
-    <message>
-        <source>Δθ: Voltage angles drop C</source>
-        <translation>Δθ: वोल्टेज कोण ड्रॉप C</translation>
-    </message>
-    <message>
-        <source>θ: Voltage angle</source>
-        <translation>θ: वोल्टेज कोण</translation>
-    </message>
-    <message>
-        <source>θA: Voltage angle A</source>
-        <translation>θA: वोल्टेज कोण A</translation>
-    </message>
-    <message>
-        <source>θB: Voltage angle B</source>
-        <translation>θB: वोल्टेज कोण B</translation>
-    </message>
-    <message>
-        <source>θC: Voltage angle C</source>
-        <translation>θC: वोल्टेज कोण C</translation>
-    </message>
-    <message>
-        <source>𝜏: Tap angle</source>
-        <translation>𝜏: Tap angle</translation>
     </message>
 </context>
 </TS>

@@ -22,6 +22,12 @@ from VeraGrid.Gui.i18n import (
     restore_action_shortcut_states,
     translate_tree_label,
 )
+from VeraGrid.Gui.update_translations import (
+    _collect_empty_unfinished_sources,
+    _collect_finished_translation_memory,
+    _finish_non_empty_unfinished_translations,
+    _replace_empty_unfinished_translations,
+)
 from VeraGrid.Gui.Icons.icons_rc import *
 from VeraGridEngine.enumerations import FaultType, MethodShortCircuit, PhasesShortCircuit
 
@@ -526,3 +532,104 @@ def test_language_selector_names_start_with_capitals(
     translator.set_language(active_language)
 
     assert get_language_display_text(selector_language, lambda text: QtCore.QCoreApplication.translate("ConfigurationMain", text)) == selector_text
+
+
+def test_translation_updater_collects_missing_sources(tmp_path: Path) -> None:
+    """
+    The updater should detect only empty unfinished translations.
+    """
+    ts_file: Path = tmp_path / "veragrid_es.ts"
+    ts_file.write_text(
+        """<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE TS>
+<TS version="2.1" language="es">
+<context>
+    <name>Example</name>
+    <message>
+        <source>Bus</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Power flow</source>
+        <translation>Flujo de potencia</translation>
+    </message>
+    <message>
+        <source>Already proposed</source>
+        <translation type="unfinished">Ya propuesto</translation>
+    </message>
+</context>
+</TS>
+""",
+        encoding="utf-8",
+    )
+
+    assert _collect_empty_unfinished_sources(ts_file) == ["Bus"]
+
+
+def test_translation_updater_reuses_finished_memory(tmp_path: Path) -> None:
+    """
+    The updater should replace repeated empty entries from finished translations in the same catalog.
+    """
+    ts_file: Path = tmp_path / "veragrid_es.ts"
+    ts_file.write_text(
+        """<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE TS>
+<TS version="2.1" language="es">
+<context>
+    <name>First</name>
+    <message>
+        <source>Search</source>
+        <translation>Buscar</translation>
+    </message>
+</context>
+<context>
+    <name>Second</name>
+    <message>
+        <source>Search</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+</TS>
+""",
+        encoding="utf-8",
+    )
+
+    memory: dict[str, str] = _collect_finished_translation_memory(ts_file)
+    replaced_count: int = _replace_empty_unfinished_translations(ts_file, memory)
+
+    assert memory["Search"] == "Buscar"
+    assert replaced_count == 1
+    assert "<translation>Buscar</translation>" in ts_file.read_text(encoding="utf-8")
+
+
+def test_translation_updater_finishes_non_empty_unfinished_entries(tmp_path: Path) -> None:
+    """
+    The updater should clear the unfinished marker once translated text exists.
+    """
+    ts_file: Path = tmp_path / "veragrid_es.ts"
+    ts_file.write_text(
+        """<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE TS>
+<TS version="2.1" language="es">
+<context>
+    <name>Example</name>
+    <message>
+        <source>Accept</source>
+        <translation type="unfinished">Aceptar</translation>
+    </message>
+    <message>
+        <source>Still empty</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+</TS>
+""",
+        encoding="utf-8",
+    )
+
+    replaced_count: int = _finish_non_empty_unfinished_translations(ts_file)
+    contents: str = ts_file.read_text(encoding="utf-8")
+
+    assert replaced_count == 1
+    assert "<translation>Aceptar</translation>" in contents
+    assert '<translation type="unfinished"></translation>' in contents

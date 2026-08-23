@@ -151,7 +151,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
     <message>
         <location filename="../DeviceEditors/AdmittanceMatrixEditor/admittance_matrix_editor_gui.ui" line="130"/>
         <source>Accept</source>
-        <translation type="unfinished">Akzeptiere</translation>
+        <translation>Akzeptiere</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/AdmittanceMatrixEditor/admittance_matrix_editor_gui.ui" line="148"/>
@@ -1419,7 +1419,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
     <message>
         <location filename="../FileDialogues/CoordinatesInput/coordinates_input_gui.ui" line="108"/>
         <source>Target</source>
-        <translation type="unfinished">Ziel</translation>
+        <translation>Ziel</translation>
     </message>
     <message>
         <location filename="../FileDialogues/CoordinatesInput/coordinates_input_gui.ui" line="141"/>
@@ -2438,7 +2438,7 @@ Abbrechen und erneut versuchen?</translation>
     <message>
         <location filename="../DeviceEditors/LineLocationsEditor/line_locations_editor_gui.ui" line="19"/>
         <source>Add point</source>
-        <translation type="unfinished">Punkt hinzufügen</translation>
+        <translation>Punkt hinzufügen</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/LineLocationsEditor/line_locations_editor_gui.ui" line="33"/>
@@ -2458,7 +2458,7 @@ Abbrechen und erneut versuchen?</translation>
     <message>
         <location filename="../DeviceEditors/LineLocationsEditor/line_locations_editor_gui.ui" line="75"/>
         <source>Copy</source>
-        <translation type="unfinished">Kopie</translation>
+        <translation>Kopie</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/LineLocationsEditor/line_locations_editor_gui.ui" line="89"/>
@@ -3075,7 +3075,7 @@ Abbrechen und erneut versuchen?</translation>
     <message>
         <location filename="../SigmaAnalysis/sigma_analysis_gui.ui" line="41"/>
         <source>Method</source>
-        <translation type="unfinished">Methode</translation>
+        <translation>Methode</translation>
     </message>
     <message>
         <location filename="../SigmaAnalysis/sigma_analysis_gui.ui" line="49"/>
@@ -3120,12 +3120,12 @@ Abbrechen und erneut versuchen?</translation>
     <message>
         <location filename="../SigmaAnalysis/sigma_analysis_gui.ui" line="110"/>
         <source>Distributed slack</source>
-        <translation type="unfinished">Verteilter Durchhang</translation>
+        <translation>Verteilter Durchhang</translation>
     </message>
     <message>
         <location filename="../SigmaAnalysis/sigma_analysis_gui.ui" line="130"/>
         <source>...</source>
-        <translation type="unfinished">...</translation>
+        <translation>...</translation>
     </message>
     <message>
         <location filename="../SigmaAnalysis/sigma_analysis_gui.ui" line="144"/>
@@ -3135,7 +3135,7 @@ Abbrechen und erneut versuchen?</translation>
     <message>
         <location filename="../SigmaAnalysis/sigma_analysis_gui.ui" line="179"/>
         <source>Data</source>
-        <translation type="unfinished">Daten</translation>
+        <translation>Daten</translation>
     </message>
 </context>
 <context>
@@ -3849,7 +3849,7 @@ Monte-Carlo-Leistungsflussergebnisse:</translation>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="189"/>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="206"/>
         <source>-</source>
-        <translation type="unfinished">-</translation>
+        <translation>-</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="114"/>
@@ -3884,7 +3884,7 @@ Monte-Carlo-Leistungsflussergebnisse:</translation>
     <message>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="219"/>
         <source>Actions</source>
-        <translation type="unfinished">Aktionen</translation>
+        <translation>Aktionen</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="225"/>
@@ -3894,7 +3894,7 @@ Monte-Carlo-Leistungsflussergebnisse:</translation>
     <message>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="246"/>
         <source>Refresh</source>
-        <translation type="unfinished">Aktualisieren</translation>
+        <translation>Aktualisieren</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="249"/>
@@ -4594,6 +4594,2205 @@ Monte-Carlo-Leistungsflussergebnisse:</translation>
     <message>
         <source>No effect, select diagrams or database</source>
         <translation type="vanished">Keine Auswirkung, Diagramme oder Datenbank auswählen</translation>
+    </message>
+</context>
+<context>
+    <name>VeraGridTreeLabels</name>
+    <message>
+        <source>ATC Report</source>
+        <translation>ATC-Bericht</translation>
+    </message>
+    <message>
+        <source>Active power flow per area</source>
+        <translation>Wirkleistungslaststrom pro Gebiet</translation>
+    </message>
+    <message>
+        <source>Any line template</source>
+        <translation>Jede Leitungs-Vorlage</translation>
+    </message>
+    <message>
+        <source>Area</source>
+        <translation>Gebiet</translation>
+    </message>
+    <message>
+        <source>Area analysis</source>
+        <translation>Gebietsanalyse</translation>
+    </message>
+    <message>
+        <source>Area balance analysis</source>
+        <translation>Gebietsbilanzanalyse</translation>
+    </message>
+    <message>
+        <source>Area generation analysis</source>
+        <translation>Analyse der Gebietserzeugung</translation>
+    </message>
+    <message>
+        <source>Area load analysis</source>
+        <translation>Analyse der Gebietslast</translation>
+    </message>
+    <message>
+        <source>Associations</source>
+        <translation>Verbände</translation>
+    </message>
+    <message>
+        <source>Available transfer capacity</source>
+        <translation>Verfügbare Übertragungskapazität</translation>
+    </message>
+    <message>
+        <source>Available transfer capacity (N)</source>
+        <translation>Verfügbare Übertragungskapazität (N)</translation>
+    </message>
+    <message>
+        <source>Available transfer capacity (final)</source>
+        <translation>Verfügbare Übertragungskapazität (final)</translation>
+    </message>
+    <message>
+        <source>Available transfer capacity time series</source>
+        <translation>Zeitreihe der verfügbaren Übertragungskapazität</translation>
+    </message>
+    <message>
+        <source>AvailableTransferCapacity</source>
+        <translation>VerfügbareÜbertragungskapazität</translation>
+    </message>
+    <message>
+        <source>AvailableTransferCapacityTimeSeries</source>
+        <translation>ZeitreiheVerfügbareÜbertragungskapazität</translation>
+    </message>
+    <message>
+        <source>Balance plot</source>
+        <translation>Bilanzdiagramm</translation>
+    </message>
+    <message>
+        <source>Base flow report</source>
+        <translation>Basisstrom-Bericht</translation>
+    </message>
+    <message>
+        <source>Batteries</source>
+        <translation>Batterien</translation>
+    </message>
+    <message>
+        <source>Battery</source>
+        <translation>Batterie</translation>
+    </message>
+    <message>
+        <source>Battery energy</source>
+        <translation>Batterieenergie</translation>
+    </message>
+    <message>
+        <source>Battery invested</source>
+        <translation>Investierte Batteriekapazität</translation>
+    </message>
+    <message>
+        <source>Battery power</source>
+        <translation>Batterieleistung</translation>
+    </message>
+    <message>
+        <source>Battery reactive power</source>
+        <translation>Batterie-Blindleistung</translation>
+    </message>
+    <message>
+        <source>Battery reactive power A</source>
+        <translation>Batterie-Blindleistung A</translation>
+    </message>
+    <message>
+        <source>Battery reactive power B</source>
+        <translation>Batterie-Blindleistung B</translation>
+    </message>
+    <message>
+        <source>Battery reactive power C</source>
+        <translation>Batterie-Blindleistung C</translation>
+    </message>
+    <message>
+        <source>Beq: Equivalent susceptance</source>
+        <translation>Beq: Äquivalente Suszeptanz</translation>
+    </message>
+    <message>
+        <source>Branch</source>
+        <translation>Zweig</translation>
+    </message>
+    <message>
+        <source>Branch Loading</source>
+        <translation>Zweigbelastung</translation>
+    </message>
+    <message>
+        <source>Branch Loading A</source>
+        <translation>Zweigbelastung A</translation>
+    </message>
+    <message>
+        <source>Branch Loading B</source>
+        <translation>Zweigbelastung B</translation>
+    </message>
+    <message>
+        <source>Branch Loading C</source>
+        <translation>Zweigbelastung C</translation>
+    </message>
+    <message>
+        <source>Branch active current &quot;from&quot; (0)</source>
+        <translation>Wirkstrom des Zweiges „von“ (0)</translation>
+    </message>
+    <message>
+        <source>Branch active current &quot;from&quot; (1)</source>
+        <translation>Wirkstrom des Zweiges „von“ (1)</translation>
+    </message>
+    <message>
+        <source>Branch active current &quot;from&quot; (2)</source>
+        <translation>Wirkstrom des Zweiges „von“ (2)</translation>
+    </message>
+    <message>
+        <source>Branch active losses (0)</source>
+        <translation>Wirkverluste des Zweiges (0)</translation>
+    </message>
+    <message>
+        <source>Branch active losses (1)</source>
+        <translation>Wirkverluste des Zweiges (1)</translation>
+    </message>
+    <message>
+        <source>Branch active losses (2)</source>
+        <translation>Wirkverluste des Zweiges (2)</translation>
+    </message>
+    <message>
+        <source>Branch active power &quot;from&quot; (0)</source>
+        <translation>Wirkleistung des Zweiges „von“ (0)</translation>
+    </message>
+    <message>
+        <source>Branch active power &quot;from&quot; (1)</source>
+        <translation>Wirkleistung des Zweiges „von“ (1)</translation>
+    </message>
+    <message>
+        <source>Branch active power &quot;from&quot; (2)</source>
+        <translation>Wirkleistung des Zweiges „von“ (2)</translation>
+    </message>
+    <message>
+        <source>Branch group</source>
+        <translation>Zweiggruppe</translation>
+    </message>
+    <message>
+        <source>Branch loading (0)</source>
+        <translation>Zweigbelastung (0)</translation>
+    </message>
+    <message>
+        <source>Branch loading (1)</source>
+        <translation>Zweigbelastung (1)</translation>
+    </message>
+    <message>
+        <source>Branch loading (2)</source>
+        <translation>Zweigbelastung (2)</translation>
+    </message>
+    <message>
+        <source>Branch losses</source>
+        <translation>Zweigverluste</translation>
+    </message>
+    <message>
+        <source>Branch monitoring logic</source>
+        <translation>Überwachungslogik des Zweiges</translation>
+    </message>
+    <message>
+        <source>Branch overloads</source>
+        <translation>Zweigüberlastungen</translation>
+    </message>
+    <message>
+        <source>Branch overloads cost</source>
+        <translation>Kosten der Zweigüberlastungen</translation>
+    </message>
+    <message>
+        <source>Branch power CDF</source>
+        <translation>CDF der Zweigleistung</translation>
+    </message>
+    <message>
+        <source>Branch power avg</source>
+        <translation>Durchschnitt der Zweigleistung</translation>
+    </message>
+    <message>
+        <source>Branch power std</source>
+        <translation>Standardabweichung der Zweigleistung</translation>
+    </message>
+    <message>
+        <source>Branch reactive current &quot;from&quot; (0)</source>
+        <translation>Blindleistung des Zweiges „von“ (0)</translation>
+    </message>
+    <message>
+        <source>Branch reactive current &quot;from&quot; (1)</source>
+        <translation>Reaktiver Strom des Zweiges „von“ (1)</translation>
+    </message>
+    <message>
+        <source>Branch reactive current &quot;from&quot; (2)</source>
+        <translation>Reaktiver Strom des Zweiges „von“ (2)</translation>
+    </message>
+    <message>
+        <source>Branch reactive losses (0)</source>
+        <translation>Reaktive Verluste des Zweiges (0)</translation>
+    </message>
+    <message>
+        <source>Branch reactive losses (1)</source>
+        <translation>Reaktive Verluste des Zweiges (1)</translation>
+    </message>
+    <message>
+        <source>Branch reactive losses (2)</source>
+        <translation>Reaktive Verluste des Zweiges (2)</translation>
+    </message>
+    <message>
+        <source>Branch reactive power &quot;from&quot; (0)</source>
+        <translation>Reaktive Leistung des Zweiges „von“ (0)</translation>
+    </message>
+    <message>
+        <source>Branch reactive power &quot;from&quot; (1)</source>
+        <translation>Reaktive Leistung des Zweiges „von“ (1)</translation>
+    </message>
+    <message>
+        <source>Branch reactive power &quot;from&quot; (2)</source>
+        <translation>Reaktive Leistung des Zweiges „von“ (2)</translation>
+    </message>
+    <message>
+        <source>Branch template</source>
+        <translation>Zweigvorlage</translation>
+    </message>
+    <message>
+        <source>Branches</source>
+        <translation>Zweige</translation>
+    </message>
+    <message>
+        <source>Bus</source>
+        <translation>Bus</translation>
+    </message>
+    <message>
+        <source>Bus nodal capacity</source>
+        <translation>Knotenpunkt-Kapazität</translation>
+    </message>
+    <message>
+        <source>Bus power</source>
+        <translation>Knotenpunktleistung</translation>
+    </message>
+    <message>
+        <source>Bus power CDF</source>
+        <translation>Knotenpunktleistung CDF</translation>
+    </message>
+    <message>
+        <source>Bus voltage CDF</source>
+        <translation>Knotenpunktspannung CDF</translation>
+    </message>
+    <message>
+        <source>Bus voltage avg</source>
+        <translation>Durchschnittsspannung des Knotenpunkts</translation>
+    </message>
+    <message>
+        <source>Bus voltage sensitivity</source>
+        <translation>Spannungsabhängigkeit des Knotenpunkts</translation>
+    </message>
+    <message>
+        <source>Bus voltage std</source>
+        <translation>Standardabweichung der Knotenpunktspannung</translation>
+    </message>
+    <message>
+        <source>BusBar</source>
+        <translation>Knotenpunkt</translation>
+    </message>
+    <message>
+        <source>BusOrBranch</source>
+        <translation>Knotenpunkt oder Zweig</translation>
+    </message>
+    <message>
+        <source>CAIDI</source>
+        <translation>CAIDI</translation>
+    </message>
+    <message>
+        <source>Cascade</source>
+        <translation>Kaskade</translation>
+    </message>
+    <message>
+        <source>Catalogue</source>
+        <translation>Katalog</translation>
+    </message>
+    <message>
+        <source>Catalogue optimization</source>
+        <translation>Katalogoptimierung</translation>
+    </message>
+    <message>
+        <source>Circuit</source>
+        <translation>Stromkreis</translation>
+    </message>
+    <message>
+        <source>Clean room</source>
+        <translation>Reinraum</translation>
+    </message>
+    <message>
+        <source>Clustering</source>
+        <translation>Clustering</translation>
+    </message>
+    <message>
+        <source>Clustering Analysis</source>
+        <translation>Clusteranalyse</translation>
+    </message>
+    <message>
+        <source>Clustering time series report</source>
+        <translation>Bericht zur Zeitreihen-Clusteranalyse</translation>
+    </message>
+    <message>
+        <source>Combinations</source>
+        <translation>Kombinationen</translation>
+    </message>
+    <message>
+        <source>Community</source>
+        <translation>Gemeinschaft</translation>
+    </message>
+    <message>
+        <source>Community analysis</source>
+        <translation>Gemeinschaftsanalyse</translation>
+    </message>
+    <message>
+        <source>Community balance analysis</source>
+        <translation>Gemeinschaftsgleichgewichtsanalyse</translation>
+    </message>
+    <message>
+        <source>Community generation analysis</source>
+        <translation>Gemeinschaftsgenerierungsanalyse</translation>
+    </message>
+    <message>
+        <source>Community load analysis</source>
+        <translation>Gemeinschaftslastanalyse</translation>
+    </message>
+    <message>
+        <source>Contingencies</source>
+        <translation>Eventualverbindlichkeiten</translation>
+    </message>
+    <message>
+        <source>Contingencies report</source>
+        <translation>Bericht über Störungen</translation>
+    </message>
+    <message>
+        <source>Contingencies statistical report</source>
+        <translation>Statistischer Bericht über Störungen</translation>
+    </message>
+    <message>
+        <source>Contingency</source>
+        <translation>Störung</translation>
+    </message>
+    <message>
+        <source>Contingency Group</source>
+        <translation>Störgruppe</translation>
+    </message>
+    <message>
+        <source>Contingency analysis</source>
+        <translation>Notfallanalyse</translation>
+    </message>
+    <message>
+        <source>Contingency analysis time series</source>
+        <translation>Zeitreihen zur Kontingenzanalyse</translation>
+    </message>
+    <message>
+        <source>Contingency flow</source>
+        <translation>Störstromfluss</translation>
+    </message>
+    <message>
+        <source>Contingency flow report</source>
+        <translation>Bericht über Störstromfluss</translation>
+    </message>
+    <message>
+        <source>Contingency frequency</source>
+        <translation>Störhäufigkeit</translation>
+    </message>
+    <message>
+        <source>Contingency loading</source>
+        <translation>Störbelastung</translation>
+    </message>
+    <message>
+        <source>Contingency overload sum</source>
+        <translation>Summe der Stüberlasten</translation>
+    </message>
+    <message>
+        <source>Contingency relative frequency</source>
+        <translation>Relative Störhäufigkeit</translation>
+    </message>
+    <message>
+        <source>ContingencyAnalysis</source>
+        <translation>Störanalyse</translation>
+    </message>
+    <message>
+        <source>ContingencyAnalysisTimeSeries</source>
+        <translation>Störanalyse Zeitreihe</translation>
+    </message>
+    <message>
+        <source>ContinuationPowerFlow</source>
+        <translation>Fortlaufender Leistungsfluss</translation>
+    </message>
+    <message>
+        <source>Controllable shunt</source>
+        <translation>Steuerbarer Shunt</translation>
+    </message>
+    <message>
+        <source>Country</source>
+        <translation>Land</translation>
+    </message>
+    <message>
+        <source>Country analysis</source>
+        <translation>Länderanalyse</translation>
+    </message>
+    <message>
+        <source>Country balance analysis</source>
+        <translation>Ländergleichgewichtsanalyse</translation>
+    </message>
+    <message>
+        <source>Country generation analysis</source>
+        <translation>Ländergenerierungsanalyse</translation>
+    </message>
+    <message>
+        <source>Country load analysis</source>
+        <translation>Länderlastanalyse</translation>
+    </message>
+    <message>
+        <source>Current injection</source>
+        <translation>Stromeinspeisung</translation>
+    </message>
+    <message>
+        <source>DC line</source>
+        <translation>DC-Leitung</translation>
+    </message>
+    <message>
+        <source>Delete and reduce</source>
+        <translation>Löschen und reduzieren</translation>
+    </message>
+    <message>
+        <source>Design View</source>
+        <translation>Entwurfsansicht</translation>
+    </message>
+    <message>
+        <source>Diagram</source>
+        <translation>Diagramm</translation>
+    </message>
+    <message>
+        <source>Dispatch</source>
+        <translation>Disposition</translation>
+    </message>
+    <message>
+        <source>Dynamic</source>
+        <translation>Dynamisch</translation>
+    </message>
+    <message>
+        <source>Dynamic Model Host</source>
+        <translation>Dynamisches Modell-Host</translation>
+    </message>
+    <message>
+        <source>EMT Dynamic</source>
+        <translation>EMT Dynamisch</translation>
+    </message>
+    <message>
+        <source>EMT Small Signal stability</source>
+        <translation>EMT Kleinsignalstabilität</translation>
+    </message>
+    <message>
+        <source>EMT template</source>
+        <translation>EMT Vorlage</translation>
+    </message>
+    <message>
+        <source>ENS</source>
+        <translation>ENS</translation>
+    </message>
+    <message>
+        <source>Emission</source>
+        <translation>Emission</translation>
+    </message>
+    <message>
+        <source>Emt Event</source>
+        <translation>EMT Ereignis</translation>
+    </message>
+    <message>
+        <source>Emt Events Group</source>
+        <translation>EMT Ereignisgruppe</translation>
+    </message>
+    <message>
+        <source>EmtSimulation</source>
+        <translation>EMT Simulation</translation>
+    </message>
+    <message>
+        <source>Error</source>
+        <translation>Fehler</translation>
+    </message>
+    <message>
+        <source>Evaluation report</source>
+        <translation>Evaluationsbericht</translation>
+    </message>
+    <message>
+        <source>Exciter</source>
+        <translation>Erregung</translation>
+    </message>
+    <message>
+        <source>External grid</source>
+        <translation>Externes Netz</translation>
+    </message>
+    <message>
+        <source>FMU template</source>
+        <translation>FMU Vorlage</translation>
+    </message>
+    <message>
+        <source>Facility</source>
+        <translation>Anlage</translation>
+    </message>
+    <message>
+        <source>Flow Reports</source>
+        <translation>Flussberichte</translation>
+    </message>
+    <message>
+        <source>Flow circulating in the device</source>
+        <translation>Fluss im Gerät</translation>
+    </message>
+    <message>
+        <source>Flow entering the node</source>
+        <translation>Fluss, der in den Knoten eintritt</translation>
+    </message>
+    <message>
+        <source>Flow exiting the node</source>
+        <translation>Fluss, der den Knoten verlässt</translation>
+    </message>
+    <message>
+        <source>Flow from the P2X</source>
+        <translation>Fluss vom P2X</translation>
+    </message>
+    <message>
+        <source>Flow in the river</source>
+        <translation>Fluss im Gewässer</translation>
+    </message>
+    <message>
+        <source>Fluid</source>
+        <translation>Fluid</translation>
+    </message>
+    <message>
+        <source>Fluid Injection</source>
+        <translation>Fluid-Injektion</translation>
+    </message>
+    <message>
+        <source>Fluid P2X</source>
+        <translation>Fluid P2X</translation>
+    </message>
+    <message>
+        <source>Fluid P2Xs</source>
+        <translation>Fluid P2Xs</translation>
+    </message>
+    <message>
+        <source>Fluid Pump</source>
+        <translation>Fluidpumpe</translation>
+    </message>
+    <message>
+        <source>Fluid Turbine</source>
+        <translation>Fluidturbine</translation>
+    </message>
+    <message>
+        <source>Fluid injections</source>
+        <translation>Fluid-Injektionen</translation>
+    </message>
+    <message>
+        <source>Fluid node</source>
+        <translation>Flüssigkeitsknoten</translation>
+    </message>
+    <message>
+        <source>Fluid nodes</source>
+        <translation>Fluidknoten</translation>
+    </message>
+    <message>
+        <source>Fluid path</source>
+        <translation>Fluidpfad</translation>
+    </message>
+    <message>
+        <source>Fluid paths</source>
+        <translation>Fluidpfade</translation>
+    </message>
+    <message>
+        <source>Fluid pumps</source>
+        <translation>Fluidpumpen</translation>
+    </message>
+    <message>
+        <source>Fluid turbines</source>
+        <translation>Fluidturbinen</translation>
+    </message>
+    <message>
+        <source>Frequency</source>
+        <translation>Häufigkeit</translation>
+    </message>
+    <message>
+        <source>Fuel</source>
+        <translation>Brennstoff</translation>
+    </message>
+    <message>
+        <source>Generation delta slacks</source>
+        <translation>Erzeugungs-Delta-Slack</translation>
+    </message>
+    <message>
+        <source>Generation deltas</source>
+        <translation>Erzeugungs-Deltas</translation>
+    </message>
+    <message>
+        <source>Generator</source>
+        <translation>Generator</translation>
+    </message>
+    <message>
+        <source>Generator Emission</source>
+        <translation>Generator-Emission</translation>
+    </message>
+    <message>
+        <source>Generator Fuel</source>
+        <translation>Generator-Brennstoff</translation>
+    </message>
+    <message>
+        <source>Generator Technology</source>
+        <translation>Generator-Technologie</translation>
+    </message>
+    <message>
+        <source>Generator cost</source>
+        <translation>Generator-Kosten</translation>
+    </message>
+    <message>
+        <source>Generator emissions</source>
+        <translation>Generator-Emissionen</translation>
+    </message>
+    <message>
+        <source>Generator fuels</source>
+        <translation>Generator-Brennstoffe</translation>
+    </message>
+    <message>
+        <source>Generator invested</source>
+        <translation>Generator-Investition</translation>
+    </message>
+    <message>
+        <source>Generator power</source>
+        <translation>Generator-Leistung</translation>
+    </message>
+    <message>
+        <source>Generator producing</source>
+        <translation>Erzeugender Generator</translation>
+    </message>
+    <message>
+        <source>Generator reactive power</source>
+        <translation>Generator-Blindleistung</translation>
+    </message>
+    <message>
+        <source>Generator reactive power A</source>
+        <translation>Generator-Blindleistung A</translation>
+    </message>
+    <message>
+        <source>Generator reactive power B</source>
+        <translation>Generator reaktive Leistung B</translation>
+    </message>
+    <message>
+        <source>Generator reactive power C</source>
+        <translation>Generator reaktive Leistung C</translation>
+    </message>
+    <message>
+        <source>Generator reserve</source>
+        <translation>Generator-Reserve</translation>
+    </message>
+    <message>
+        <source>Generator shedding</source>
+        <translation>Generator-Abschaltung</translation>
+    </message>
+    <message>
+        <source>Generator shutting down</source>
+        <translation>Generator-Stilllegung</translation>
+    </message>
+    <message>
+        <source>Generator starting up</source>
+        <translation>Generator-Hochfahren</translation>
+    </message>
+    <message>
+        <source>Generators</source>
+        <translation>Generatoren</translation>
+    </message>
+    <message>
+        <source>Generic Area</source>
+        <translation>Generisches Gebiet</translation>
+    </message>
+    <message>
+        <source>Governor</source>
+        <translation>Governor</translation>
+    </message>
+    <message>
+        <source>Groups</source>
+        <translation>Gruppen</translation>
+    </message>
+    <message>
+        <source>HVDC Line</source>
+        <translation>HVDC-Leitung</translation>
+    </message>
+    <message>
+        <source>HVDC ODF</source>
+        <translation>HVDC ODF</translation>
+    </message>
+    <message>
+        <source>HVDC PTDF</source>
+        <translation>HVDC PTDF</translation>
+    </message>
+    <message>
+        <source>HVDC loading</source>
+        <translation>HVDC-Belastung</translation>
+    </message>
+    <message>
+        <source>HVDC losses</source>
+        <translation>HVDC-Verluste</translation>
+    </message>
+    <message>
+        <source>HVDC overloads</source>
+        <translation>HVDC-Überlastungen</translation>
+    </message>
+    <message>
+        <source>HVDC power &quot;from&quot;</source>
+        <translation>HVDC-Leistung &quot;von&quot;</translation>
+    </message>
+    <message>
+        <source>HVDC power &quot;from&quot; A</source>
+        <translation>HVDC-Leistung &quot;von&quot; A</translation>
+    </message>
+    <message>
+        <source>HVDC power &quot;from&quot; B</source>
+        <translation>HVDC-Leistung &quot;von&quot; B</translation>
+    </message>
+    <message>
+        <source>HVDC power &quot;from&quot; C</source>
+        <translation>HVDC-Leistung &quot;von&quot; C</translation>
+    </message>
+    <message>
+        <source>HVDC power &quot;to&quot;</source>
+        <translation>HVDC-Leistung &quot;zu&quot;</translation>
+    </message>
+    <message>
+        <source>HVDC power &quot;to&quot; A</source>
+        <translation>HVDC-Leistung &quot;zu&quot; A</translation>
+    </message>
+    <message>
+        <source>HVDC power &quot;to&quot; B</source>
+        <translation>HVDC-Leistung &quot;zu&quot; B</translation>
+    </message>
+    <message>
+        <source>HVDC power &quot;to&quot; C</source>
+        <translation>HVDC-Leistung &quot;zu&quot; C</translation>
+    </message>
+    <message>
+        <source>Hvdc</source>
+        <translation>Hvdc</translation>
+    </message>
+    <message>
+        <source>If Measurement</source>
+        <translation>If-Messung</translation>
+    </message>
+    <message>
+        <source>Iif: Reactive current &quot;from&quot;</source>
+        <translation>Iif: Reaktiver Strom &quot;von&quot;</translation>
+    </message>
+    <message>
+        <source>Iif: Reactive current &quot;from&quot; A</source>
+        <translation>Iif: Reaktiver Strom &quot;von&quot; A</translation>
+    </message>
+    <message>
+        <source>Iif: Reactive current &quot;from&quot; B</source>
+        <translation>Iif: Reaktiver Strom &quot;von&quot; B</translation>
+    </message>
+    <message>
+        <source>Iif: Reactive current &quot;from&quot; C</source>
+        <translation>Iif: Reaktiver Strom &quot;von&quot; C</translation>
+    </message>
+    <message>
+        <source>Iit: Reactive current &quot;to&quot;</source>
+        <translation>Iit: Reaktiver Strom &quot;zu&quot;</translation>
+    </message>
+    <message>
+        <source>Iit: Reactive current &quot;to&quot; A</source>
+        <translation>Iit: Reaktiver Strom &quot;zu&quot; A</translation>
+    </message>
+    <message>
+        <source>Iit: Reactive current &quot;to&quot; B</source>
+        <translation>Iit: Reaktiver Strom &quot;zu&quot; B</translation>
+    </message>
+    <message>
+        <source>Iit: Reactive current &quot;to&quot; C</source>
+        <translation>Iit: Reaktiver Strom &quot;zu&quot; C</translation>
+    </message>
+    <message>
+        <source>Information</source>
+        <translation>Information</translation>
+    </message>
+    <message>
+        <source>Injections</source>
+        <translation>Einspeisungen</translation>
+    </message>
+    <message>
+        <source>Inputs Analysis</source>
+        <translation>Eingangs-Analyse</translation>
+    </message>
+    <message>
+        <source>InputsAnalysis</source>
+        <translation>Eingangs-Analyse</translation>
+    </message>
+    <message>
+        <source>Inter-Area exchange</source>
+        <translation>Übertrag zwischen Gebieten</translation>
+    </message>
+    <message>
+        <source>Inter-space branch loading</source>
+        <translation>Belastung der Überraum-Verzweigung</translation>
+    </message>
+    <message>
+        <source>Inter-space branch power</source>
+        <translation>Leistung der Überraum-Verzweigung</translation>
+    </message>
+    <message>
+        <source>InterAggregationInfo</source>
+        <translation>Inter-Aggregation-Info</translation>
+    </message>
+    <message>
+        <source>Investment</source>
+        <translation>Investition</translation>
+    </message>
+    <message>
+        <source>InvestmentEvaluations</source>
+        <translation>Investitionsbewertungen</translation>
+    </message>
+    <message>
+        <source>Investments</source>
+        <translation>Investitionen</translation>
+    </message>
+    <message>
+        <source>Investments Group</source>
+        <translation>Investitionen Gruppe</translation>
+    </message>
+    <message>
+        <source>Investments evaluation</source>
+        <translation>Bewertung der Investitionen</translation>
+    </message>
+    <message>
+        <source>Irf: Active current &quot;from&quot;</source>
+        <translation>Irf: Aktiver Strom &quot;von&quot;</translation>
+    </message>
+    <message>
+        <source>Irf: Active current &quot;from&quot; A</source>
+        <translation>Irf: Aktiver Strom &quot;von&quot; A</translation>
+    </message>
+    <message>
+        <source>Irf: Active current &quot;from&quot; B</source>
+        <translation>Irf: Aktiver Strom &quot;von&quot; B</translation>
+    </message>
+    <message>
+        <source>Irf: Active current &quot;from&quot; C</source>
+        <translation>Irf: Aktiver Strom &quot;von&quot; C</translation>
+    </message>
+    <message>
+        <source>Irt: Active current &quot;to&quot;</source>
+        <translation>Irt: Aktiver Strom &quot;zu&quot;</translation>
+    </message>
+    <message>
+        <source>Irt: Active current &quot;to&quot; A</source>
+        <translation>Irt: Aktueller Strom &quot;zu&quot; A</translation>
+    </message>
+    <message>
+        <source>Irt: Active current &quot;to&quot; B</source>
+        <translation>Irt: Aktueller Strom &quot;zu&quot; B</translation>
+    </message>
+    <message>
+        <source>Irt: Active current &quot;to&quot; C</source>
+        <translation>Irt: Aktueller Strom &quot;zu&quot; C</translation>
+    </message>
+    <message>
+        <source>It Measurement</source>
+        <translation>It Messung</translation>
+    </message>
+    <message>
+        <source>Iterations plot</source>
+        <translation>Iterations-Diagramm</translation>
+    </message>
+    <message>
+        <source>LODF</source>
+        <translation>LODF</translation>
+    </message>
+    <message>
+        <source>LOLE</source>
+        <translation>LOLE</translation>
+    </message>
+    <message>
+        <source>LOLET</source>
+        <translation>LOLET</translation>
+    </message>
+    <message>
+        <source>LOLF</source>
+        <translation>LOLF</translation>
+    </message>
+    <message>
+        <source>LOLFT</source>
+        <translation>LOLFT</translation>
+    </message>
+    <message>
+        <source>Latin Hypercube</source>
+        <translation>Latein-Hyperwürfel</translation>
+    </message>
+    <message>
+        <source>Line</source>
+        <translation>Linie</translation>
+    </message>
+    <message>
+        <source>Line Location</source>
+        <translation>Linienstandort</translation>
+    </message>
+    <message>
+        <source>Line Locations</source>
+        <translation>Linienstandorte</translation>
+    </message>
+    <message>
+        <source>Line Template</source>
+        <translation>Linienvorlage</translation>
+    </message>
+    <message>
+        <source>Linear analysis</source>
+        <translation>Lineare Analyse</translation>
+    </message>
+    <message>
+        <source>Linear analysis time series</source>
+        <translation>Zeitreihe der linearen Analyse</translation>
+    </message>
+    <message>
+        <source>LinearAnalysis</source>
+        <translation>Lineare Analyse</translation>
+    </message>
+    <message>
+        <source>LinearAnalysisTimeSeries</source>
+        <translation>Zeitreihe der linearen Analyse</translation>
+    </message>
+    <message>
+        <source>Load</source>
+        <translation>Laden</translation>
+    </message>
+    <message>
+        <source>Load like</source>
+        <translation>Lastähnlich</translation>
+    </message>
+    <message>
+        <source>Load neutral voltage</source>
+        <translation>Neutralspannung der Last</translation>
+    </message>
+    <message>
+        <source>Load power</source>
+        <translation>Lastleistung</translation>
+    </message>
+    <message>
+        <source>Load shedding</source>
+        <translation>Lastabschaltung</translation>
+    </message>
+    <message>
+        <source>Load shedding cost</source>
+        <translation>Kosten der Lastabschaltung</translation>
+    </message>
+    <message>
+        <source>Loading CDF</source>
+        <translation>Last-CDF</translation>
+    </message>
+    <message>
+        <source>Loading from the base situation ($\lambda$)</source>
+        <translation>Lastabdeckung von der Basis-Situation ($\lambda$)</translation>
+    </message>
+    <message>
+        <source>Loading std</source>
+        <translation>Last-Standardabweichung</translation>
+    </message>
+    <message>
+        <source>Loads</source>
+        <translation>Lasten</translation>
+    </message>
+    <message>
+        <source>Losses % per area</source>
+        <translation>Verluste % pro Gebiet</translation>
+    </message>
+    <message>
+        <source>Losses CDF</source>
+        <translation>Verluste CDF</translation>
+    </message>
+    <message>
+        <source>Losses avg</source>
+        <translation>Durchschnittliche Verluste</translation>
+    </message>
+    <message>
+        <source>Losses per area</source>
+        <translation>Verluste pro Gebiet</translation>
+    </message>
+    <message>
+        <source>Losses per generation unit in area</source>
+        <translation>Verluste pro Erzeugereinheit in einem Gebiet</translation>
+    </message>
+    <message>
+        <source>Losses std</source>
+        <translation>Verluste-Standardabweichung</translation>
+    </message>
+    <message>
+        <source>Market</source>
+        <translation>Markt</translation>
+    </message>
+    <message>
+        <source>Market unit</source>
+        <translation>Markteinheit</translation>
+    </message>
+    <message>
+        <source>Max contingency flow</source>
+        <translation>Maximaler Notfallstrom</translation>
+    </message>
+    <message>
+        <source>Max contingency loading</source>
+        <translation>Maximale Notfalllast</translation>
+    </message>
+    <message>
+        <source>Maximum contingency flow</source>
+        <translation>Maximaler Notfallstrom</translation>
+    </message>
+    <message>
+        <source>Mean contingency overloading</source>
+        <translation>Mittlere Notfallüberlastung</translation>
+    </message>
+    <message>
+        <source>Measurements</source>
+        <translation>Messungen</translation>
+    </message>
+    <message>
+        <source>Modelling Authority</source>
+        <translation>Modellierungsbehörde</translation>
+    </message>
+    <message>
+        <source>Modes</source>
+        <translation>Modi</translation>
+    </message>
+    <message>
+        <source>Monte Carlo</source>
+        <translation>Monte-Carlo</translation>
+    </message>
+    <message>
+        <source>Municipality</source>
+        <translation>Gemeinde</translation>
+    </message>
+    <message>
+        <source>Municipality analysis</source>
+        <translation>Gemeindeanalyse</translation>
+    </message>
+    <message>
+        <source>Municipality balance analysis</source>
+        <translation>Gemeindegleichgewichtsanalyse</translation>
+    </message>
+    <message>
+        <source>Municipality generation analysis</source>
+        <translation>Gemeindeeerzeugungsanalyse</translation>
+    </message>
+    <message>
+        <source>Municipality load analysis</source>
+        <translation>Gemeindelastanalyse</translation>
+    </message>
+    <message>
+        <source>NTC</source>
+        <translation>NTC</translation>
+    </message>
+    <message>
+        <source>Net transfer capacity</source>
+        <translation>Nettoübertragungskapazität</translation>
+    </message>
+    <message>
+        <source>NetTransferCapacity</source>
+        <translation>Nettoübertragungskapazität</translation>
+    </message>
+    <message>
+        <source>NetTransferCapacityTimeSeries</source>
+        <translation>Zeitreihe der Nettoübertragungskapazität</translation>
+    </message>
+    <message>
+        <source>No simulation</source>
+        <translation>Keine Simulation</translation>
+    </message>
+    <message>
+        <source>NoDevice</source>
+        <translation>Kein Gerät</translation>
+    </message>
+    <message>
+        <source>Nodal capacity</source>
+        <translation>Knotenkapazität</translation>
+    </message>
+    <message>
+        <source>Nodal capacity time series</source>
+        <translation>Knotenkapazität Zeitreihe</translation>
+    </message>
+    <message>
+        <source>Nodal shadow prices</source>
+        <translation>Knoten-Schattenpreise</translation>
+    </message>
+    <message>
+        <source>Nodal slacks</source>
+        <translation>Knoten-Slack-Werte</translation>
+    </message>
+    <message>
+        <source>Node groups</source>
+        <translation>Knotengruppen</translation>
+    </message>
+    <message>
+        <source>NodeGroups</source>
+        <translation>Knotengruppen</translation>
+    </message>
+    <message>
+        <source>Nonlinear analysis</source>
+        <translation>Nichtlineare Analyse</translation>
+    </message>
+    <message>
+        <source>Nonlinear analysis time series</source>
+        <translation>Nichtlineare Analyse Zeitreihe</translation>
+    </message>
+    <message>
+        <source>Ntc: Base flow report</source>
+        <translation>Ntc: Basisflussbericht</translation>
+    </message>
+    <message>
+        <source>Ntc: Contingency flow report</source>
+        <translation>Ntc: Störfallflussbericht</translation>
+    </message>
+    <message>
+        <source>Ntc: Contingency flow report. (Branch)</source>
+        <translation>Ntc: Störfallflussbericht. (Verzweigung)</translation>
+    </message>
+    <message>
+        <source>Ntc: Contingency flow report. (Generation)</source>
+        <translation>Ntc: Störfallflussbericht. (Erzeugung)</translation>
+    </message>
+    <message>
+        <source>Ntc: Contingency flow report. (Hvdc)</source>
+        <translation>Ntc: Störfallflussbericht. (HVDC)</translation>
+    </message>
+    <message>
+        <source>Objectives</source>
+        <translation>Ziele</translation>
+    </message>
+    <message>
+        <source>Objects</source>
+        <translation>Objekte</translation>
+    </message>
+    <message>
+        <source>Optimal net transfer capacity</source>
+        <translation>Optimale Nettoübertragungskapazität</translation>
+    </message>
+    <message>
+        <source>Optimal net transfer capacity time series</source>
+        <translation>Optimale Nettoübertragungskapazität Zeitreihe</translation>
+    </message>
+    <message>
+        <source>Optimal power flow</source>
+        <translation>Optimaler Kraftfluss</translation>
+    </message>
+    <message>
+        <source>Optimal power flow time series</source>
+        <translation>Zeitreihe des optimalen Leistungsflusses</translation>
+    </message>
+    <message>
+        <source>Owner</source>
+        <translation>Eigentümer</translation>
+    </message>
+    <message>
+        <source>P: Active power</source>
+        <translation>P: Wirkleistung</translation>
+    </message>
+    <message>
+        <source>PA: Active power A</source>
+        <translation>PA: Wirkleistung A</translation>
+    </message>
+    <message>
+        <source>PB: Active power B</source>
+        <translation>PB: Wirkleistung B</translation>
+    </message>
+    <message>
+        <source>PC: Active power C</source>
+        <translation>PC: Wirkleistung C</translation>
+    </message>
+    <message>
+        <source>PTDF</source>
+        <translation>PTDF</translation>
+    </message>
+    <message>
+        <source>Pareto</source>
+        <translation>Pareto</translation>
+    </message>
+    <message>
+        <source>Pareto combinations</source>
+        <translation>Pareto-Kombinationen</translation>
+    </message>
+    <message>
+        <source>Pareto evaluation report</source>
+        <translation>Pareto-Bewertungsbericht</translation>
+    </message>
+    <message>
+        <source>Pareto frequency</source>
+        <translation>Pareto-Frequenz</translation>
+    </message>
+    <message>
+        <source>Pareto objectives</source>
+        <translation>Pareto-Ziele</translation>
+    </message>
+    <message>
+        <source>Pareto plot NSGA2</source>
+        <translation>Pareto-Plot NSGA2</translation>
+    </message>
+    <message>
+        <source>Pareto plots</source>
+        <translation>Pareto-Plots</translation>
+    </message>
+    <message>
+        <source>Participation Factors</source>
+        <translation>Beteiligungsfaktoren</translation>
+    </message>
+    <message>
+        <source>Pf Measurement</source>
+        <translation>Pf Messung</translation>
+    </message>
+    <message>
+        <source>Pf: Active power &quot;from&quot;</source>
+        <translation>Pf: Wirkleistung &quot;von&quot;</translation>
+    </message>
+    <message>
+        <source>Pf: Active power &quot;from&quot; base case</source>
+        <translation>Pf: Wirkleistung &quot;von&quot; Basisfall</translation>
+    </message>
+    <message>
+        <source>PfA: Active power &quot;from&quot; A</source>
+        <translation>PfA: Wirkleistung &quot;von&quot; A</translation>
+    </message>
+    <message>
+        <source>PfB: Active power &quot;from&quot; B</source>
+        <translation>PfB: Wirkleistung &quot;von&quot; B</translation>
+    </message>
+    <message>
+        <source>PfC: Active power &quot;from&quot; C</source>
+        <translation>PfC: Wirkleistung &quot;von&quot; C</translation>
+    </message>
+    <message>
+        <source>Pg Measurement</source>
+        <translation>Pg Messung</translation>
+    </message>
+    <message>
+        <source>Pi Measurement</source>
+        <translation>Pi Messung</translation>
+    </message>
+    <message>
+        <source>Pl: Active losses</source>
+        <translation>Pl: Wirkverluste</translation>
+    </message>
+    <message>
+        <source>Pl: Active losses (%)</source>
+        <translation>Pl: Wirkverluste (%)</translation>
+    </message>
+    <message>
+        <source>Pl: Active losses (%) A</source>
+        <translation>Pl: Wirkverluste (%) A</translation>
+    </message>
+    <message>
+        <source>Pl: Active losses (%) B</source>
+        <translation>Pl: Wirkverluste (%) B</translation>
+    </message>
+    <message>
+        <source>Pl: Active losses (%) C</source>
+        <translation>Pl: Wirkverluste (%) C</translation>
+    </message>
+    <message>
+        <source>Pl: Active losses A</source>
+        <translation>Pl: Wirkverluste A</translation>
+    </message>
+    <message>
+        <source>Pl: Active losses B</source>
+        <translation>Pl: Wirkverluste B</translation>
+    </message>
+    <message>
+        <source>Pl: Active losses C</source>
+        <translation>Pl: Wirkverluste C</translation>
+    </message>
+    <message>
+        <source>Plot Event</source>
+        <translation>Plot Ereignis</translation>
+    </message>
+    <message>
+        <source>Plot Group</source>
+        <translation>Plot Gruppe</translation>
+    </message>
+    <message>
+        <source>Power by technology</source>
+        <translation>Leistung nach Technologie</translation>
+    </message>
+    <message>
+        <source>Power flow</source>
+        <translation>Kraftfluss</translation>
+    </message>
+    <message>
+        <source>Power flow 3ph</source>
+        <translation>Leistungsausfluss 3-phasig</translation>
+    </message>
+    <message>
+        <source>Power flow time series</source>
+        <translation>Kraftfluss-Zeitreihen</translation>
+    </message>
+    <message>
+        <source>Power flow time series 3ph</source>
+        <translation>Leistungsprofil-Zeitreihe 3Ph</translation>
+    </message>
+    <message>
+        <source>PowerFlow</source>
+        <translation>Leistungsfluss</translation>
+    </message>
+    <message>
+        <source>PowerFlowTimeSeries</source>
+        <translation>Leistungsfluss-Zeitreihe</translation>
+    </message>
+    <message>
+        <source>Pt Measurement</source>
+        <translation>Pt Messung</translation>
+    </message>
+    <message>
+        <source>Pt: Active power &quot;to&quot;</source>
+        <translation>Pt: Wirkleistung &quot;zu&quot;</translation>
+    </message>
+    <message>
+        <source>Pt: Active power &quot;to&quot; A</source>
+        <translation>Pt: Wirkleistung &quot;zu&quot; A</translation>
+    </message>
+    <message>
+        <source>Pt: Active power &quot;to&quot; B</source>
+        <translation>Pt: Wirkleistung &quot;zu&quot; B</translation>
+    </message>
+    <message>
+        <source>Pt: Active power &quot;to&quot; C</source>
+        <translation>Pt: Wirkleistung &quot;zu&quot; C</translation>
+    </message>
+    <message>
+        <source>Q: Reactive power</source>
+        <translation>Q: Blindleistung</translation>
+    </message>
+    <message>
+        <source>QA: Reactive power A</source>
+        <translation>QA: Blindleistung A</translation>
+    </message>
+    <message>
+        <source>QB: Reactive power B</source>
+        <translation>QB: Blindleistung B</translation>
+    </message>
+    <message>
+        <source>QC: Reactive power C</source>
+        <translation>QC: Blindleistung C</translation>
+    </message>
+    <message>
+        <source>Qf Measurement</source>
+        <translation>Qf Messung</translation>
+    </message>
+    <message>
+        <source>Qf: Reactive power &quot;from&quot;</source>
+        <translation>Qf: Blindleistung &quot;von&quot;</translation>
+    </message>
+    <message>
+        <source>QfA: Reactive power &quot;from&quot; A</source>
+        <translation>QfA: Blindleistung &quot;von&quot; A</translation>
+    </message>
+    <message>
+        <source>QfB: Reactive power &quot;from&quot; B</source>
+        <translation>QfB: Blindleistung &quot;von&quot; B</translation>
+    </message>
+    <message>
+        <source>QfC: Reactive power &quot;from&quot; C</source>
+        <translation>QfC: Blindleistung &quot;von&quot; C</translation>
+    </message>
+    <message>
+        <source>Qg Measurement</source>
+        <translation>Qg Messung</translation>
+    </message>
+    <message>
+        <source>Qi Measurement</source>
+        <translation>Qi Messung</translation>
+    </message>
+    <message>
+        <source>Ql: Reactive losses</source>
+        <translation>Ql: Blindleistungsverluste</translation>
+    </message>
+    <message>
+        <source>Ql: Reactive losses A</source>
+        <translation>Ql: Blindleistungsverluste A</translation>
+    </message>
+    <message>
+        <source>Ql: Reactive losses B</source>
+        <translation>Ql: Blindleistungsverluste B</translation>
+    </message>
+    <message>
+        <source>Ql: Reactive losses C</source>
+        <translation>Ql: Blindleistungsverluste C</translation>
+    </message>
+    <message>
+        <source>Qt Measurement</source>
+        <translation>Qt Messung</translation>
+    </message>
+    <message>
+        <source>Qt: Reactive power &quot;to&quot;</source>
+        <translation>Qt: Blindleistung &quot;zu&quot;</translation>
+    </message>
+    <message>
+        <source>Qt: Reactive power &quot;to&quot; A</source>
+        <translation>Qt: Blindleistung &quot;zu&quot; A</translation>
+    </message>
+    <message>
+        <source>Qt: Reactive power &quot;to&quot; B</source>
+        <translation>Qt: Blindleistung &quot;zu&quot; B</translation>
+    </message>
+    <message>
+        <source>Qt: Reactive power &quot;to&quot; C</source>
+        <translation>Qt: Blindleistung &quot;zu&quot; C</translation>
+    </message>
+    <message>
+        <source>RMS Dynamic</source>
+        <translation>RMS Dynamisch</translation>
+    </message>
+    <message>
+        <source>RMS Small Signal stability</source>
+        <translation>RMS Kleinsignalstabilität</translation>
+    </message>
+    <message>
+        <source>RMS template</source>
+        <translation>RMS Vorlage</translation>
+    </message>
+    <message>
+        <source>Region</source>
+        <translation>Region</translation>
+    </message>
+    <message>
+        <source>Region analysis</source>
+        <translation>Regionsanalyse</translation>
+    </message>
+    <message>
+        <source>Region balance analysis</source>
+        <translation>Regionsbilanzanalyse</translation>
+    </message>
+    <message>
+        <source>Region generation analysis</source>
+        <translation>Regionserzeugungsanalyse</translation>
+    </message>
+    <message>
+        <source>Region load analysis</source>
+        <translation>Regionslastanalyse</translation>
+    </message>
+    <message>
+        <source>Regions</source>
+        <translation>Regionen</translation>
+    </message>
+    <message>
+        <source>Reliability</source>
+        <translation>Zuverlässigkeit</translation>
+    </message>
+    <message>
+        <source>Remedial action</source>
+        <translation>Wiederherrschraftmaßnahme</translation>
+    </message>
+    <message>
+        <source>Remedial action Group</source>
+        <translation>Gruppe von Wiederherrschraftmaßnahmen</translation>
+    </message>
+    <message>
+        <source>Reports</source>
+        <translation>Berichte</translation>
+    </message>
+    <message>
+        <source>Reservoir fluid level</source>
+        <translation>Flüssigkeitsstand des Speichers</translation>
+    </message>
+    <message>
+        <source>Results</source>
+        <translation>Ergebnisse</translation>
+    </message>
+    <message>
+        <source>Right Eigenvectors</source>
+        <translation>Rechte Eigenvektoren</translation>
+    </message>
+    <message>
+        <source>Rms Event</source>
+        <translation>Rms Ereignis</translation>
+    </message>
+    <message>
+        <source>Rms Events Group</source>
+        <translation>Gruppe von Rms Ereignissen</translation>
+    </message>
+    <message>
+        <source>Rms Generator results</source>
+        <translation>Rms Generator-Ergebnisse</translation>
+    </message>
+    <message>
+        <source>Rms Genqec delta results</source>
+        <translation>Rms Genqec Delta-Ergebnisse</translation>
+    </message>
+    <message>
+        <source>Rms Genqec omega results</source>
+        <translation>Rms Genqec Omega-Ergebnisse</translation>
+    </message>
+    <message>
+        <source>Rms Line results</source>
+        <translation>Rms Leitungs-Ergebnisse</translation>
+    </message>
+    <message>
+        <source>Rms Load P results</source>
+        <translation>Rms Last P-Ergebnisse</translation>
+    </message>
+    <message>
+        <source>Rms Load Q results</source>
+        <translation>Rms Last Q-Ergebnisse</translation>
+    </message>
+    <message>
+        <source>Rms Simple Line P results</source>
+        <translation>Ergebnisse P einfache Leitung (RMS)</translation>
+    </message>
+    <message>
+        <source>Rms Simple Line Q results</source>
+        <translation>Ergebnisse Q einfache Leitung (RMS)</translation>
+    </message>
+    <message>
+        <source>Rms load results</source>
+        <translation>Lastergebnisse (RMS)</translation>
+    </message>
+    <message>
+        <source>Rms plot results</source>
+        <translation>Diagrammergebnisse (RMS)</translation>
+    </message>
+    <message>
+        <source>Rms time series report</source>
+        <translation>Zeitreihenbericht (RMS)</translation>
+    </message>
+    <message>
+        <source>RmsSimulation</source>
+        <translation>RMS-Simulation</translation>
+    </message>
+    <message>
+        <source>S-Domain Plot</source>
+        <translation>S-Domänen-Diagramm</translation>
+    </message>
+    <message>
+        <source>S-Domain Plot in Hz</source>
+        <translation>S-Domänen-Diagramm in Hz</translation>
+    </message>
+    <message>
+        <source>SAIDI</source>
+        <translation>SAIDI</translation>
+    </message>
+    <message>
+        <source>SAIFI</source>
+        <translation>SAIFI</translation>
+    </message>
+    <message>
+        <source>Sensibilities</source>
+        <translation>Sensitivitäten</translation>
+    </message>
+    <message>
+        <source>Sensitivity to the exchange</source>
+        <translation>Empfindlichkeit gegenüber dem Austausch</translation>
+    </message>
+    <message>
+        <source>Sensitivity to the exchange (N-1)</source>
+        <translation>Empfindlichkeit gegenüber dem Austausch (N-1)</translation>
+    </message>
+    <message>
+        <source>Sequence line</source>
+        <translation>Sequenzleitung</translation>
+    </message>
+    <message>
+        <source>Series</source>
+        <translation>Serie</translation>
+    </message>
+    <message>
+        <source>Series reactance</source>
+        <translation>Serienreaktanz</translation>
+    </message>
+    <message>
+        <source>Short circuit</source>
+        <translation>Kurzschluss</translation>
+    </message>
+    <message>
+        <source>Short circuit active current</source>
+        <translation>Aktueller Kurzschlussstrom</translation>
+    </message>
+    <message>
+        <source>Short circuit active current A</source>
+        <translation>Aktueller Kurzschlussstrom A</translation>
+    </message>
+    <message>
+        <source>Short circuit active current B</source>
+        <translation>Aktueller Kurzschlussstrom B</translation>
+    </message>
+    <message>
+        <source>Short circuit active current C</source>
+        <translation>Aktueller Kurzschlussstrom C</translation>
+    </message>
+    <message>
+        <source>Short circuit active power</source>
+        <translation>Aktive Kurzschlussleistung</translation>
+    </message>
+    <message>
+        <source>Short circuit active power A</source>
+        <translation>Aktive Kurzschlussleistung A</translation>
+    </message>
+    <message>
+        <source>Short circuit active power B</source>
+        <translation>Aktive Kurzschlussleistung B</translation>
+    </message>
+    <message>
+        <source>Short circuit active power C</source>
+        <translation>Aktive Kurzschlussleistung C</translation>
+    </message>
+    <message>
+        <source>Short circuit event</source>
+        <translation>Kurzschlussereignis</translation>
+    </message>
+    <message>
+        <source>Short circuit reactive current</source>
+        <translation>Reaktiver Kurzschlussstrom</translation>
+    </message>
+    <message>
+        <source>Short circuit reactive current A</source>
+        <translation>Reaktiver Kurzschlussstrom A</translation>
+    </message>
+    <message>
+        <source>Short circuit reactive current B</source>
+        <translation>Reaktiver Kurzschlussstrom B</translation>
+    </message>
+    <message>
+        <source>Short circuit reactive current C</source>
+        <translation>Reaktiver Kurzschlussstrom C</translation>
+    </message>
+    <message>
+        <source>Short circuit reactive power</source>
+        <translation>Reaktive Kurzschlussleistung</translation>
+    </message>
+    <message>
+        <source>Short circuit reactive power A</source>
+        <translation>Reaktive Kurzschlussleistung A</translation>
+    </message>
+    <message>
+        <source>Short circuit reactive power B</source>
+        <translation>Reaktive Kurzschlussleistung B</translation>
+    </message>
+    <message>
+        <source>Short circuit reactive power C</source>
+        <translation>Reaktive Kurzschlussleistung C</translation>
+    </message>
+    <message>
+        <source>Short-circuit information</source>
+        <translation>Kurzschlussinformation</translation>
+    </message>
+    <message>
+        <source>ShortCircuit</source>
+        <translation>Kurzschluss</translation>
+    </message>
+    <message>
+        <source>Shunt</source>
+        <translation>Shunt</translation>
+    </message>
+    <message>
+        <source>Shunt like devices</source>
+        <translation>Schunt-ähnliche Geräte</translation>
+    </message>
+    <message>
+        <source>Shunt neutral voltage</source>
+        <translation>Schunt-Neutralspannung</translation>
+    </message>
+    <message>
+        <source>Shunt reactive power</source>
+        <translation>Reaktive Schuntleistung</translation>
+    </message>
+    <message>
+        <source>Shunt reactive power A</source>
+        <translation>Reaktive Schuntleistung A</translation>
+    </message>
+    <message>
+        <source>Shunt reactive power B</source>
+        <translation>Reaktive Schuntleistung B</translation>
+    </message>
+    <message>
+        <source>Shunt reactive power C</source>
+        <translation>Reaktive Schuntleistung C</translation>
+    </message>
+    <message>
+        <source>Sigma + distances</source>
+        <translation>Sigma + Distanzen</translation>
+    </message>
+    <message>
+        <source>Sigma Analysis</source>
+        <translation>Sigma-Analyse</translation>
+    </message>
+    <message>
+        <source>Sigma distances</source>
+        <translation>Sigma-Distanzen</translation>
+    </message>
+    <message>
+        <source>Sigma imaginary</source>
+        <translation>Imaginäre Sigma</translation>
+    </message>
+    <message>
+        <source>Sigma real</source>
+        <translation>Reale Sigma</translation>
+    </message>
+    <message>
+        <source>SigmaAnalysis</source>
+        <translation>Sigma-Analyse</translation>
+    </message>
+    <message>
+        <source>SimulationOptionsDevice</source>
+        <translation>Geräte-Optionen-Simulation</translation>
+    </message>
+    <message>
+        <source>Slacks</source>
+        <translation>Slacks</translation>
+    </message>
+    <message>
+        <source>SmallSignalStability</source>
+        <translation>Kleinsignalstabilität</translation>
+    </message>
+    <message>
+        <source>Snapshot</source>
+        <translation>Schnappschuss</translation>
+    </message>
+    <message>
+        <source>Special plots</source>
+        <translation>Sonderplots</translation>
+    </message>
+    <message>
+        <source>Spillage flow leaving</source>
+        <translation>Abgeführter Fluss</translation>
+    </message>
+    <message>
+        <source>Srap used power</source>
+        <translation>Srap verwendete Leistung</translation>
+    </message>
+    <message>
+        <source>Stabilizer</source>
+        <translation>Stabilisator</translation>
+    </message>
+    <message>
+        <source>State Matrix</source>
+        <translation>Zustandsmatrix</translation>
+    </message>
+    <message>
+        <source>State estimation</source>
+        <translation>Zustandsschätzung</translation>
+    </message>
+    <message>
+        <source>StateEstimation</source>
+        <translation>Zustandsabschätzung</translation>
+    </message>
+    <message>
+        <source>Static Generator</source>
+        <translation>Statischer Generator</translation>
+    </message>
+    <message>
+        <source>Statistics</source>
+        <translation>Statistiken</translation>
+    </message>
+    <message>
+        <source>Std-dev contingency overloading</source>
+        <translation>Std-Abweichung bei Überlastung durch Störfall</translation>
+    </message>
+    <message>
+        <source>Stochastic Power Flow</source>
+        <translation>Stochastischer Stromfluss</translation>
+    </message>
+    <message>
+        <source>StochasticPowerFlow</source>
+        <translation>Stochastischer Stromfluss</translation>
+    </message>
+    <message>
+        <source>Substation</source>
+        <translation>Umspannwerk</translation>
+    </message>
+    <message>
+        <source>Substation analysis</source>
+        <translation>Umspannwerk-Analyse</translation>
+    </message>
+    <message>
+        <source>Substation balance analysis</source>
+        <translation>Umspannwerk-Ausgleichsanalyse</translation>
+    </message>
+    <message>
+        <source>Substation generation analysis</source>
+        <translation>Umspannwerk-Erzeugungsanalyse</translation>
+    </message>
+    <message>
+        <source>Substation load analysis</source>
+        <translation>Umspannwerk-Lastanalyse</translation>
+    </message>
+    <message>
+        <source>Switch</source>
+        <translation>Schalter</translation>
+    </message>
+    <message>
+        <source>System</source>
+        <translation>System</translation>
+    </message>
+    <message>
+        <source>System emissions</source>
+        <translation>Systememissionen</translation>
+    </message>
+    <message>
+        <source>System energy cost</source>
+        <translation>Systemenergiekosten</translation>
+    </message>
+    <message>
+        <source>System energy total cost</source>
+        <translation>Systemgesamtenergiekosten</translation>
+    </message>
+    <message>
+        <source>System fuel consumption</source>
+        <translation>Systemkraftstoffverbrauch</translation>
+    </message>
+    <message>
+        <source>Technology</source>
+        <translation>Technologie</translation>
+    </message>
+    <message>
+        <source>Technology Category</source>
+        <translation>Technologiekategorie</translation>
+    </message>
+    <message>
+        <source>Technology Group</source>
+        <translation>Technologiegruppe</translation>
+    </message>
+    <message>
+        <source>Technology plot</source>
+        <translation>Technologie-Diagramm</translation>
+    </message>
+    <message>
+        <source>Template</source>
+        <translation>Vorlage</translation>
+    </message>
+    <message>
+        <source>Templates</source>
+        <translation>Vorlagen</translation>
+    </message>
+    <message>
+        <source>Time</source>
+        <translation>Zeit</translation>
+    </message>
+    <message>
+        <source>Time series Contingency flow report (Branches)</source>
+        <translation>Zeitreihenbericht über Störfallfluss (Verzweigungen)</translation>
+    </message>
+    <message>
+        <source>Time series base flow report</source>
+        <translation>Zeitreihenbericht über Basisfluss</translation>
+    </message>
+    <message>
+        <source>Time series branch monitoring logic report</source>
+        <translation>Zeitreihenbericht über Verzweigungsüberwachungslogik</translation>
+    </message>
+    <message>
+        <source>Time series contingency Branches report</source>
+        <translation>Zeitreihenbericht über Störfall-Verzweigungen</translation>
+    </message>
+    <message>
+        <source>Time series contingency flow report</source>
+        <translation>Zeitreihenbericht über Störfallfluss</translation>
+    </message>
+    <message>
+        <source>Time series contingency flow report. (Generation)</source>
+        <translation>Zeitreihenbericht über Störfallfluss. (Erzeugung)</translation>
+    </message>
+    <message>
+        <source>Time series contingency flow report. (Hvdc)</source>
+        <translation>Zeitreihenbericht über Störfallfluss. (HVDC)</translation>
+    </message>
+    <message>
+        <source>Time series critical Branches report</source>
+        <translation>Zeitreihenbericht über kritische Verzweigungen</translation>
+    </message>
+    <message>
+        <source>Time series generation delta power report</source>
+        <translation>Zeitreihenbericht über Erzeugungsdelta-Leistung</translation>
+    </message>
+    <message>
+        <source>Time series generation power report</source>
+        <translation>Zeitreihenbericht über Erzeugungsleistung</translation>
+    </message>
+    <message>
+        <source>Time series sensitivity to the exchange report</source>
+        <translation>Zeitreihenbericht über Sensitivität gegenüber dem Austausch</translation>
+    </message>
+    <message>
+        <source>Time series worst sensitivity to the exchange report (N-1)</source>
+        <translation>Zeitreihenbericht über größte Sensitivität gegenüber dem Austausch (N-1)</translation>
+    </message>
+    <message>
+        <source>Topology Processor</source>
+        <translation>Topologie-Prozessor</translation>
+    </message>
+    <message>
+        <source>Topology reduction</source>
+        <translation>Topologie-Reduktion</translation>
+    </message>
+    <message>
+        <source>Tower</source>
+        <translation>Turm</translation>
+    </message>
+    <message>
+        <source>Transformer</source>
+        <translation>Transformator</translation>
+    </message>
+    <message>
+        <source>Transformer type</source>
+        <translation>Transformatortyp</translation>
+    </message>
+    <message>
+        <source>Transformer3W</source>
+        <translation>Transformer3W</translation>
+    </message>
+    <message>
+        <source>TransformerNw</source>
+        <translation>TransformerNw</translation>
+    </message>
+    <message>
+        <source>Transient stability</source>
+        <translation>Transiente Stabilität</translation>
+    </message>
+    <message>
+        <source>UPFC</source>
+        <translation>UPFC</translation>
+    </message>
+    <message>
+        <source>Underground line</source>
+        <translation>Unterirdische Leitung</translation>
+    </message>
+    <message>
+        <source>V: Voltage module</source>
+        <translation>V: Spannungsmodul</translation>
+    </message>
+    <message>
+        <source>VA: Voltage module A</source>
+        <translation>VA: Spannungsmodul A</translation>
+    </message>
+    <message>
+        <source>VB: Voltage module B</source>
+        <translation>VB: Spannungsmodul B</translation>
+    </message>
+    <message>
+        <source>VC: Voltage module C</source>
+        <translation>VC: Spannungsmodul C</translation>
+    </message>
+    <message>
+        <source>VSC</source>
+        <translation>VSC</translation>
+    </message>
+    <message>
+        <source>Va Measurement</source>
+        <translation>Va Messung</translation>
+    </message>
+    <message>
+        <source>Var Factory</source>
+        <translation>Var-Quelle</translation>
+    </message>
+    <message>
+        <source>Vm Measurement</source>
+        <translation>Vm Messung</translation>
+    </message>
+    <message>
+        <source>Voltage angle (0)</source>
+        <translation>Spannwinkel (0)</translation>
+    </message>
+    <message>
+        <source>Voltage angle (1)</source>
+        <translation>Spannwinkel (1)</translation>
+    </message>
+    <message>
+        <source>Voltage angle (2)</source>
+        <translation>Spannwinkel (2)</translation>
+    </message>
+    <message>
+        <source>Voltage collapse</source>
+        <translation>Spannungskollaps</translation>
+    </message>
+    <message>
+        <source>Voltage level</source>
+        <translation>Spannungsniveau</translation>
+    </message>
+    <message>
+        <source>Voltage level analysis</source>
+        <translation>Spannungsniveau-Analyse</translation>
+    </message>
+    <message>
+        <source>Voltage level balance analysis</source>
+        <translation>Spannungsniveau-Gleichgewichts-Analyse</translation>
+    </message>
+    <message>
+        <source>Voltage level generation analysis</source>
+        <translation>Spannungsniveau-Erzeugungsanalyse</translation>
+    </message>
+    <message>
+        <source>Voltage level load analysis</source>
+        <translation>Spannungsniveau-Lastanalyse</translation>
+    </message>
+    <message>
+        <source>Voltage level template</source>
+        <translation>Spannungsniveau-Vorlage</translation>
+    </message>
+    <message>
+        <source>Voltage module (0)</source>
+        <translation>Spannungsmodul (0)</translation>
+    </message>
+    <message>
+        <source>Voltage module (1)</source>
+        <translation>Spannungsmodul (1)</translation>
+    </message>
+    <message>
+        <source>Voltage module (2)</source>
+        <translation>Spannungsmodul (2)</translation>
+    </message>
+    <message>
+        <source>Voltage plot</source>
+        <translation>Spannungsdiagramm</translation>
+    </message>
+    <message>
+        <source>Vsc</source>
+        <translation>VSC</translation>
+    </message>
+    <message>
+        <source>Vsc ODF</source>
+        <translation>VSC ODF</translation>
+    </message>
+    <message>
+        <source>Vsc PTDF</source>
+        <translation>VSC PTDF</translation>
+    </message>
+    <message>
+        <source>Vsc Pdc</source>
+        <translation>VSC Pdc</translation>
+    </message>
+    <message>
+        <source>Vsc Vdc</source>
+        <translation>VSC Vdc</translation>
+    </message>
+    <message>
+        <source>Vsc loading</source>
+        <translation>VSC Belastung</translation>
+    </message>
+    <message>
+        <source>Vsc losses</source>
+        <translation>VSC Verluste</translation>
+    </message>
+    <message>
+        <source>Vsc power &quot;from&quot; negative pole</source>
+        <translation>VSC Leistung &quot;von&quot; negativem Pol</translation>
+    </message>
+    <message>
+        <source>Vsc power &quot;from&quot; positive pole</source>
+        <translation>VSC Leistung &quot;von&quot; positivem Pol</translation>
+    </message>
+    <message>
+        <source>Vsc power &quot;to&quot;</source>
+        <translation>VSC Leistung &quot;zu&quot;</translation>
+    </message>
+    <message>
+        <source>Vsc power &quot;to&quot; A</source>
+        <translation>VSC Leistung &quot;zu&quot; A</translation>
+    </message>
+    <message>
+        <source>Vsc power &quot;to&quot; B</source>
+        <translation>VSC Leistung &quot;zu&quot; B</translation>
+    </message>
+    <message>
+        <source>Vsc power &quot;to&quot; C</source>
+        <translation>VSC Leistung &quot;zu&quot; C</translation>
+    </message>
+    <message>
+        <source>When to make them plot</source>
+        <translation>Wann sie geplottet werden sollen</translation>
+    </message>
+    <message>
+        <source>Winding</source>
+        <translation>Wicklung</translation>
+    </message>
+    <message>
+        <source>Wire</source>
+        <translation>Leitung</translation>
+    </message>
+    <message>
+        <source>Zone</source>
+        <translation>Zone</translation>
+    </message>
+    <message>
+        <source>Zone analysis</source>
+        <translation>Zonenanalyse</translation>
+    </message>
+    <message>
+        <source>Zone balance analysis</source>
+        <translation>Zonen-Gleichgewichts-Analyse</translation>
+    </message>
+    <message>
+        <source>Zone generation analysis</source>
+        <translation>Zonen-Erzeugungsanalyse</translation>
+    </message>
+    <message>
+        <source>Zone load analysis</source>
+        <translation>Zonen-Lastanalyse</translation>
+    </message>
+    <message>
+        <source>export all</source>
+        <translation>Alle exportieren</translation>
+    </message>
+    <message>
+        <source>file open</source>
+        <translation>Datei öffnen</translation>
+    </message>
+    <message>
+        <source>file save</source>
+        <translation>Datei speichern</translation>
+    </message>
+    <message>
+        <source>loading avg</source>
+        <translation>Durchschnittliche Belastung</translation>
+    </message>
+    <message>
+        <source>m: Tap module</source>
+        <translation>m: Trafomodule</translation>
+    </message>
+    <message>
+        <source>ΔP: Active power increment</source>
+        <translation>ΔP: Wirkleistungsinkrement</translation>
+    </message>
+    <message>
+        <source>ΔV: Voltage modules drop</source>
+        <translation>ΔV: Spannungsmodulabfall</translation>
+    </message>
+    <message>
+        <source>ΔV: Voltage modules drop A</source>
+        <translation>ΔV: Spannungsmodulabfall A</translation>
+    </message>
+    <message>
+        <source>ΔV: Voltage modules drop B</source>
+        <translation>ΔV: Spannungsmodulabfall B</translation>
+    </message>
+    <message>
+        <source>ΔV: Voltage modules drop C</source>
+        <translation>ΔV: Spannungsmodulabfall C</translation>
+    </message>
+    <message>
+        <source>Δθ: Voltage angles drop</source>
+        <translation>Δθ: Spannwinkelabfall</translation>
+    </message>
+    <message>
+        <source>Δθ: Voltage angles drop A</source>
+        <translation>Δθ: Spannwinkelabfall A</translation>
+    </message>
+    <message>
+        <source>Δθ: Voltage angles drop B</source>
+        <translation>Δθ: Spannwinkelabfall B</translation>
+    </message>
+    <message>
+        <source>Δθ: Voltage angles drop C</source>
+        <translation>Δθ: Spannwinkelabfall C</translation>
+    </message>
+    <message>
+        <source>θ: Voltage angle</source>
+        <translation>θ: Spannungswinkel</translation>
+    </message>
+    <message>
+        <source>θA: Voltage angle A</source>
+        <translation>θA: Spannungswinkel A</translation>
+    </message>
+    <message>
+        <source>θB: Voltage angle B</source>
+        <translation>θB: Spannungswinkel B</translation>
+    </message>
+    <message>
+        <source>θC: Voltage angle C</source>
+        <translation>θC: Spannungswinkel C</translation>
+    </message>
+    <message>
+        <source>𝜏: Tap angle</source>
+        <translation>𝜏: Tap angle</translation>
     </message>
 </context>
 <context>
@@ -8007,2205 +10206,6 @@ Monte-Carlo-Leistungsflussergebnisse:</translation>
     <message>
         <source>Question</source>
         <translation>Frage</translation>
-    </message>
-</context>
-<context>
-    <name>VeraGridTreeLabels</name>
-    <message>
-        <source>ATC Report</source>
-        <translation>ATC-Bericht</translation>
-    </message>
-    <message>
-        <source>Active power flow per area</source>
-        <translation>Wirkleistungslaststrom pro Gebiet</translation>
-    </message>
-    <message>
-        <source>Any line template</source>
-        <translation>Jede Leitungs-Vorlage</translation>
-    </message>
-    <message>
-        <source>Area</source>
-        <translation>Gebiet</translation>
-    </message>
-    <message>
-        <source>Area analysis</source>
-        <translation>Gebietsanalyse</translation>
-    </message>
-    <message>
-        <source>Area balance analysis</source>
-        <translation>Gebietsbilanzanalyse</translation>
-    </message>
-    <message>
-        <source>Area generation analysis</source>
-        <translation>Analyse der Gebietserzeugung</translation>
-    </message>
-    <message>
-        <source>Area load analysis</source>
-        <translation>Analyse der Gebietslast</translation>
-    </message>
-    <message>
-        <source>Associations</source>
-        <translation>Verbände</translation>
-    </message>
-    <message>
-        <source>Available transfer capacity</source>
-        <translation>Verfügbare Übertragungskapazität</translation>
-    </message>
-    <message>
-        <source>Available transfer capacity (N)</source>
-        <translation>Verfügbare Übertragungskapazität (N)</translation>
-    </message>
-    <message>
-        <source>Available transfer capacity (final)</source>
-        <translation>Verfügbare Übertragungskapazität (final)</translation>
-    </message>
-    <message>
-        <source>Available transfer capacity time series</source>
-        <translation>Zeitreihe der verfügbaren Übertragungskapazität</translation>
-    </message>
-    <message>
-        <source>AvailableTransferCapacity</source>
-        <translation>VerfügbareÜbertragungskapazität</translation>
-    </message>
-    <message>
-        <source>AvailableTransferCapacityTimeSeries</source>
-        <translation>ZeitreiheVerfügbareÜbertragungskapazität</translation>
-    </message>
-    <message>
-        <source>Balance plot</source>
-        <translation>Bilanzdiagramm</translation>
-    </message>
-    <message>
-        <source>Base flow report</source>
-        <translation>Basisstrom-Bericht</translation>
-    </message>
-    <message>
-        <source>Batteries</source>
-        <translation>Batterien</translation>
-    </message>
-    <message>
-        <source>Battery</source>
-        <translation>Batterie</translation>
-    </message>
-    <message>
-        <source>Battery energy</source>
-        <translation>Batterieenergie</translation>
-    </message>
-    <message>
-        <source>Battery invested</source>
-        <translation>Investierte Batteriekapazität</translation>
-    </message>
-    <message>
-        <source>Battery power</source>
-        <translation>Batterieleistung</translation>
-    </message>
-    <message>
-        <source>Battery reactive power</source>
-        <translation>Batterie-Blindleistung</translation>
-    </message>
-    <message>
-        <source>Battery reactive power A</source>
-        <translation>Batterie-Blindleistung A</translation>
-    </message>
-    <message>
-        <source>Battery reactive power B</source>
-        <translation>Batterie-Blindleistung B</translation>
-    </message>
-    <message>
-        <source>Battery reactive power C</source>
-        <translation>Batterie-Blindleistung C</translation>
-    </message>
-    <message>
-        <source>Beq: Equivalent susceptance</source>
-        <translation>Beq: Äquivalente Suszeptanz</translation>
-    </message>
-    <message>
-        <source>Branch</source>
-        <translation>Zweig</translation>
-    </message>
-    <message>
-        <source>Branch Loading</source>
-        <translation>Zweigbelastung</translation>
-    </message>
-    <message>
-        <source>Branch Loading A</source>
-        <translation>Zweigbelastung A</translation>
-    </message>
-    <message>
-        <source>Branch Loading B</source>
-        <translation>Zweigbelastung B</translation>
-    </message>
-    <message>
-        <source>Branch Loading C</source>
-        <translation>Zweigbelastung C</translation>
-    </message>
-    <message>
-        <source>Branch active current "from" (0)</source>
-        <translation>Wirkstrom des Zweiges „von“ (0)</translation>
-    </message>
-    <message>
-        <source>Branch active current "from" (1)</source>
-        <translation>Wirkstrom des Zweiges „von“ (1)</translation>
-    </message>
-    <message>
-        <source>Branch active current "from" (2)</source>
-        <translation>Wirkstrom des Zweiges „von“ (2)</translation>
-    </message>
-    <message>
-        <source>Branch active losses (0)</source>
-        <translation>Wirkverluste des Zweiges (0)</translation>
-    </message>
-    <message>
-        <source>Branch active losses (1)</source>
-        <translation>Wirkverluste des Zweiges (1)</translation>
-    </message>
-    <message>
-        <source>Branch active losses (2)</source>
-        <translation>Wirkverluste des Zweiges (2)</translation>
-    </message>
-    <message>
-        <source>Branch active power "from" (0)</source>
-        <translation>Wirkleistung des Zweiges „von“ (0)</translation>
-    </message>
-    <message>
-        <source>Branch active power "from" (1)</source>
-        <translation>Wirkleistung des Zweiges „von“ (1)</translation>
-    </message>
-    <message>
-        <source>Branch active power "from" (2)</source>
-        <translation>Wirkleistung des Zweiges „von“ (2)</translation>
-    </message>
-    <message>
-        <source>Branch group</source>
-        <translation>Zweiggruppe</translation>
-    </message>
-    <message>
-        <source>Branch loading (0)</source>
-        <translation>Zweigbelastung (0)</translation>
-    </message>
-    <message>
-        <source>Branch loading (1)</source>
-        <translation>Zweigbelastung (1)</translation>
-    </message>
-    <message>
-        <source>Branch loading (2)</source>
-        <translation>Zweigbelastung (2)</translation>
-    </message>
-    <message>
-        <source>Branch losses</source>
-        <translation>Zweigverluste</translation>
-    </message>
-    <message>
-        <source>Branch monitoring logic</source>
-        <translation>Überwachungslogik des Zweiges</translation>
-    </message>
-    <message>
-        <source>Branch overloads</source>
-        <translation>Zweigüberlastungen</translation>
-    </message>
-    <message>
-        <source>Branch overloads cost</source>
-        <translation>Kosten der Zweigüberlastungen</translation>
-    </message>
-    <message>
-        <source>Branch power CDF</source>
-        <translation>CDF der Zweigleistung</translation>
-    </message>
-    <message>
-        <source>Branch power avg</source>
-        <translation>Durchschnitt der Zweigleistung</translation>
-    </message>
-    <message>
-        <source>Branch power std</source>
-        <translation>Standardabweichung der Zweigleistung</translation>
-    </message>
-    <message>
-        <source>Branch reactive current "from" (0)</source>
-        <translation>Blindleistung des Zweiges „von“ (0)</translation>
-    </message>
-    <message>
-        <source>Branch reactive current "from" (1)</source>
-        <translation>Reaktiver Strom des Zweiges „von“ (1)</translation>
-    </message>
-    <message>
-        <source>Branch reactive current "from" (2)</source>
-        <translation>Reaktiver Strom des Zweiges „von“ (2)</translation>
-    </message>
-    <message>
-        <source>Branch reactive losses (0)</source>
-        <translation>Reaktive Verluste des Zweiges (0)</translation>
-    </message>
-    <message>
-        <source>Branch reactive losses (1)</source>
-        <translation>Reaktive Verluste des Zweiges (1)</translation>
-    </message>
-    <message>
-        <source>Branch reactive losses (2)</source>
-        <translation>Reaktive Verluste des Zweiges (2)</translation>
-    </message>
-    <message>
-        <source>Branch reactive power "from" (0)</source>
-        <translation>Reaktive Leistung des Zweiges „von“ (0)</translation>
-    </message>
-    <message>
-        <source>Branch reactive power "from" (1)</source>
-        <translation>Reaktive Leistung des Zweiges „von“ (1)</translation>
-    </message>
-    <message>
-        <source>Branch reactive power "from" (2)</source>
-        <translation>Reaktive Leistung des Zweiges „von“ (2)</translation>
-    </message>
-    <message>
-        <source>Branch template</source>
-        <translation>Zweigvorlage</translation>
-    </message>
-    <message>
-        <source>Branches</source>
-        <translation>Zweige</translation>
-    </message>
-    <message>
-        <source>Bus</source>
-        <translation>Bus</translation>
-    </message>
-    <message>
-        <source>Bus nodal capacity</source>
-        <translation>Knotenpunkt-Kapazität</translation>
-    </message>
-    <message>
-        <source>Bus power</source>
-        <translation>Knotenpunktleistung</translation>
-    </message>
-    <message>
-        <source>Bus power CDF</source>
-        <translation>Knotenpunktleistung CDF</translation>
-    </message>
-    <message>
-        <source>Bus voltage CDF</source>
-        <translation>Knotenpunktspannung CDF</translation>
-    </message>
-    <message>
-        <source>Bus voltage avg</source>
-        <translation>Durchschnittsspannung des Knotenpunkts</translation>
-    </message>
-    <message>
-        <source>Bus voltage sensitivity</source>
-        <translation>Spannungsabhängigkeit des Knotenpunkts</translation>
-    </message>
-    <message>
-        <source>Bus voltage std</source>
-        <translation>Standardabweichung der Knotenpunktspannung</translation>
-    </message>
-    <message>
-        <source>BusBar</source>
-        <translation>Knotenpunkt</translation>
-    </message>
-    <message>
-        <source>BusOrBranch</source>
-        <translation>Knotenpunkt oder Zweig</translation>
-    </message>
-    <message>
-        <source>CAIDI</source>
-        <translation>CAIDI</translation>
-    </message>
-    <message>
-        <source>Cascade</source>
-        <translation>Kaskade</translation>
-    </message>
-    <message>
-        <source>Catalogue</source>
-        <translation>Katalog</translation>
-    </message>
-    <message>
-        <source>Catalogue optimization</source>
-        <translation>Katalogoptimierung</translation>
-    </message>
-    <message>
-        <source>Circuit</source>
-        <translation>Stromkreis</translation>
-    </message>
-    <message>
-        <source>Clean room</source>
-        <translation>Reinraum</translation>
-    </message>
-    <message>
-        <source>Clustering</source>
-        <translation>Clustering</translation>
-    </message>
-    <message>
-        <source>Clustering Analysis</source>
-        <translation>Clusteranalyse</translation>
-    </message>
-    <message>
-        <source>Clustering time series report</source>
-        <translation>Bericht zur Zeitreihen-Clusteranalyse</translation>
-    </message>
-    <message>
-        <source>Combinations</source>
-        <translation>Kombinationen</translation>
-    </message>
-    <message>
-        <source>Community</source>
-        <translation>Gemeinschaft</translation>
-    </message>
-    <message>
-        <source>Community analysis</source>
-        <translation>Gemeinschaftsanalyse</translation>
-    </message>
-    <message>
-        <source>Community balance analysis</source>
-        <translation>Gemeinschaftsgleichgewichtsanalyse</translation>
-    </message>
-    <message>
-        <source>Community generation analysis</source>
-        <translation>Gemeinschaftsgenerierungsanalyse</translation>
-    </message>
-    <message>
-        <source>Community load analysis</source>
-        <translation>Gemeinschaftslastanalyse</translation>
-    </message>
-    <message>
-        <source>Contingencies</source>
-        <translation>Eventualverbindlichkeiten</translation>
-    </message>
-    <message>
-        <source>Contingencies report</source>
-        <translation>Bericht über Störungen</translation>
-    </message>
-    <message>
-        <source>Contingencies statistical report</source>
-        <translation>Statistischer Bericht über Störungen</translation>
-    </message>
-    <message>
-        <source>Contingency</source>
-        <translation>Störung</translation>
-    </message>
-    <message>
-        <source>Contingency Group</source>
-        <translation>Störgruppe</translation>
-    </message>
-    <message>
-        <source>Contingency analysis</source>
-        <translation>Notfallanalyse</translation>
-    </message>
-    <message>
-        <source>Contingency analysis time series</source>
-        <translation>Zeitreihen zur Kontingenzanalyse</translation>
-    </message>
-    <message>
-        <source>Contingency flow</source>
-        <translation>Störstromfluss</translation>
-    </message>
-    <message>
-        <source>Contingency flow report</source>
-        <translation>Bericht über Störstromfluss</translation>
-    </message>
-    <message>
-        <source>Contingency frequency</source>
-        <translation>Störhäufigkeit</translation>
-    </message>
-    <message>
-        <source>Contingency loading</source>
-        <translation>Störbelastung</translation>
-    </message>
-    <message>
-        <source>Contingency overload sum</source>
-        <translation>Summe der Stüberlasten</translation>
-    </message>
-    <message>
-        <source>Contingency relative frequency</source>
-        <translation>Relative Störhäufigkeit</translation>
-    </message>
-    <message>
-        <source>ContingencyAnalysis</source>
-        <translation>Störanalyse</translation>
-    </message>
-    <message>
-        <source>ContingencyAnalysisTimeSeries</source>
-        <translation>Störanalyse Zeitreihe</translation>
-    </message>
-    <message>
-        <source>ContinuationPowerFlow</source>
-        <translation>Fortlaufender Leistungsfluss</translation>
-    </message>
-    <message>
-        <source>Controllable shunt</source>
-        <translation>Steuerbarer Shunt</translation>
-    </message>
-    <message>
-        <source>Country</source>
-        <translation>Land</translation>
-    </message>
-    <message>
-        <source>Country analysis</source>
-        <translation>Länderanalyse</translation>
-    </message>
-    <message>
-        <source>Country balance analysis</source>
-        <translation>Ländergleichgewichtsanalyse</translation>
-    </message>
-    <message>
-        <source>Country generation analysis</source>
-        <translation>Ländergenerierungsanalyse</translation>
-    </message>
-    <message>
-        <source>Country load analysis</source>
-        <translation>Länderlastanalyse</translation>
-    </message>
-    <message>
-        <source>Current injection</source>
-        <translation>Stromeinspeisung</translation>
-    </message>
-    <message>
-        <source>DC line</source>
-        <translation>DC-Leitung</translation>
-    </message>
-    <message>
-        <source>Delete and reduce</source>
-        <translation>Löschen und reduzieren</translation>
-    </message>
-    <message>
-        <source>Design View</source>
-        <translation>Entwurfsansicht</translation>
-    </message>
-    <message>
-        <source>Diagram</source>
-        <translation>Diagramm</translation>
-    </message>
-    <message>
-        <source>Dispatch</source>
-        <translation>Disposition</translation>
-    </message>
-    <message>
-        <source>Dynamic</source>
-        <translation>Dynamisch</translation>
-    </message>
-    <message>
-        <source>Dynamic Model Host</source>
-        <translation>Dynamisches Modell-Host</translation>
-    </message>
-    <message>
-        <source>EMT Dynamic</source>
-        <translation>EMT Dynamisch</translation>
-    </message>
-    <message>
-        <source>EMT Small Signal stability</source>
-        <translation>EMT Kleinsignalstabilität</translation>
-    </message>
-    <message>
-        <source>EMT template</source>
-        <translation>EMT Vorlage</translation>
-    </message>
-    <message>
-        <source>ENS</source>
-        <translation>ENS</translation>
-    </message>
-    <message>
-        <source>Emission</source>
-        <translation>Emission</translation>
-    </message>
-    <message>
-        <source>Emt Event</source>
-        <translation>EMT Ereignis</translation>
-    </message>
-    <message>
-        <source>Emt Events Group</source>
-        <translation>EMT Ereignisgruppe</translation>
-    </message>
-    <message>
-        <source>EmtSimulation</source>
-        <translation>EMT Simulation</translation>
-    </message>
-    <message>
-        <source>Error</source>
-        <translation>Fehler</translation>
-    </message>
-    <message>
-        <source>Evaluation report</source>
-        <translation>Evaluationsbericht</translation>
-    </message>
-    <message>
-        <source>Exciter</source>
-        <translation>Erregung</translation>
-    </message>
-    <message>
-        <source>External grid</source>
-        <translation>Externes Netz</translation>
-    </message>
-    <message>
-        <source>FMU template</source>
-        <translation>FMU Vorlage</translation>
-    </message>
-    <message>
-        <source>Facility</source>
-        <translation>Anlage</translation>
-    </message>
-    <message>
-        <source>Flow Reports</source>
-        <translation>Flussberichte</translation>
-    </message>
-    <message>
-        <source>Flow circulating in the device</source>
-        <translation>Fluss im Gerät</translation>
-    </message>
-    <message>
-        <source>Flow entering the node</source>
-        <translation>Fluss, der in den Knoten eintritt</translation>
-    </message>
-    <message>
-        <source>Flow exiting the node</source>
-        <translation>Fluss, der den Knoten verlässt</translation>
-    </message>
-    <message>
-        <source>Flow from the P2X</source>
-        <translation>Fluss vom P2X</translation>
-    </message>
-    <message>
-        <source>Flow in the river</source>
-        <translation>Fluss im Gewässer</translation>
-    </message>
-    <message>
-        <source>Fluid</source>
-        <translation>Fluid</translation>
-    </message>
-    <message>
-        <source>Fluid Injection</source>
-        <translation>Fluid-Injektion</translation>
-    </message>
-    <message>
-        <source>Fluid P2X</source>
-        <translation>Fluid P2X</translation>
-    </message>
-    <message>
-        <source>Fluid P2Xs</source>
-        <translation>Fluid P2Xs</translation>
-    </message>
-    <message>
-        <source>Fluid Pump</source>
-        <translation>Fluidpumpe</translation>
-    </message>
-    <message>
-        <source>Fluid Turbine</source>
-        <translation>Fluidturbine</translation>
-    </message>
-    <message>
-        <source>Fluid injections</source>
-        <translation>Fluid-Injektionen</translation>
-    </message>
-    <message>
-        <source>Fluid node</source>
-        <translation>Flüssigkeitsknoten</translation>
-    </message>
-    <message>
-        <source>Fluid nodes</source>
-        <translation>Fluidknoten</translation>
-    </message>
-    <message>
-        <source>Fluid path</source>
-        <translation>Fluidpfad</translation>
-    </message>
-    <message>
-        <source>Fluid paths</source>
-        <translation>Fluidpfade</translation>
-    </message>
-    <message>
-        <source>Fluid pumps</source>
-        <translation>Fluidpumpen</translation>
-    </message>
-    <message>
-        <source>Fluid turbines</source>
-        <translation>Fluidturbinen</translation>
-    </message>
-    <message>
-        <source>Frequency</source>
-        <translation>Häufigkeit</translation>
-    </message>
-    <message>
-        <source>Fuel</source>
-        <translation>Brennstoff</translation>
-    </message>
-    <message>
-        <source>Generation delta slacks</source>
-        <translation>Erzeugungs-Delta-Slack</translation>
-    </message>
-    <message>
-        <source>Generation deltas</source>
-        <translation>Erzeugungs-Deltas</translation>
-    </message>
-    <message>
-        <source>Generator</source>
-        <translation>Generator</translation>
-    </message>
-    <message>
-        <source>Generator Emission</source>
-        <translation>Generator-Emission</translation>
-    </message>
-    <message>
-        <source>Generator Fuel</source>
-        <translation>Generator-Brennstoff</translation>
-    </message>
-    <message>
-        <source>Generator Technology</source>
-        <translation>Generator-Technologie</translation>
-    </message>
-    <message>
-        <source>Generator cost</source>
-        <translation>Generator-Kosten</translation>
-    </message>
-    <message>
-        <source>Generator emissions</source>
-        <translation>Generator-Emissionen</translation>
-    </message>
-    <message>
-        <source>Generator fuels</source>
-        <translation>Generator-Brennstoffe</translation>
-    </message>
-    <message>
-        <source>Generator invested</source>
-        <translation>Generator-Investition</translation>
-    </message>
-    <message>
-        <source>Generator power</source>
-        <translation>Generator-Leistung</translation>
-    </message>
-    <message>
-        <source>Generator producing</source>
-        <translation>Erzeugender Generator</translation>
-    </message>
-    <message>
-        <source>Generator reactive power</source>
-        <translation>Generator-Blindleistung</translation>
-    </message>
-    <message>
-        <source>Generator reactive power A</source>
-        <translation>Generator-Blindleistung A</translation>
-    </message>
-    <message>
-        <source>Generator reactive power B</source>
-        <translation>Generator reaktive Leistung B</translation>
-    </message>
-    <message>
-        <source>Generator reactive power C</source>
-        <translation>Generator reaktive Leistung C</translation>
-    </message>
-    <message>
-        <source>Generator reserve</source>
-        <translation>Generator-Reserve</translation>
-    </message>
-    <message>
-        <source>Generator shedding</source>
-        <translation>Generator-Abschaltung</translation>
-    </message>
-    <message>
-        <source>Generator shutting down</source>
-        <translation>Generator-Stilllegung</translation>
-    </message>
-    <message>
-        <source>Generator starting up</source>
-        <translation>Generator-Hochfahren</translation>
-    </message>
-    <message>
-        <source>Generators</source>
-        <translation>Generatoren</translation>
-    </message>
-    <message>
-        <source>Generic Area</source>
-        <translation>Generisches Gebiet</translation>
-    </message>
-    <message>
-        <source>Governor</source>
-        <translation>Governor</translation>
-    </message>
-    <message>
-        <source>Groups</source>
-        <translation>Gruppen</translation>
-    </message>
-    <message>
-        <source>HVDC Line</source>
-        <translation>HVDC-Leitung</translation>
-    </message>
-    <message>
-        <source>HVDC ODF</source>
-        <translation>HVDC ODF</translation>
-    </message>
-    <message>
-        <source>HVDC PTDF</source>
-        <translation>HVDC PTDF</translation>
-    </message>
-    <message>
-        <source>HVDC loading</source>
-        <translation>HVDC-Belastung</translation>
-    </message>
-    <message>
-        <source>HVDC losses</source>
-        <translation>HVDC-Verluste</translation>
-    </message>
-    <message>
-        <source>HVDC overloads</source>
-        <translation>HVDC-Überlastungen</translation>
-    </message>
-    <message>
-        <source>HVDC power "from"</source>
-        <translation>HVDC-Leistung "von"</translation>
-    </message>
-    <message>
-        <source>HVDC power "from" A</source>
-        <translation>HVDC-Leistung "von" A</translation>
-    </message>
-    <message>
-        <source>HVDC power "from" B</source>
-        <translation>HVDC-Leistung "von" B</translation>
-    </message>
-    <message>
-        <source>HVDC power "from" C</source>
-        <translation>HVDC-Leistung "von" C</translation>
-    </message>
-    <message>
-        <source>HVDC power "to"</source>
-        <translation>HVDC-Leistung "zu"</translation>
-    </message>
-    <message>
-        <source>HVDC power "to" A</source>
-        <translation>HVDC-Leistung "zu" A</translation>
-    </message>
-    <message>
-        <source>HVDC power "to" B</source>
-        <translation>HVDC-Leistung "zu" B</translation>
-    </message>
-    <message>
-        <source>HVDC power "to" C</source>
-        <translation>HVDC-Leistung "zu" C</translation>
-    </message>
-    <message>
-        <source>Hvdc</source>
-        <translation>Hvdc</translation>
-    </message>
-    <message>
-        <source>If Measurement</source>
-        <translation>If-Messung</translation>
-    </message>
-    <message>
-        <source>Iif: Reactive current "from"</source>
-        <translation>Iif: Reaktiver Strom "von"</translation>
-    </message>
-    <message>
-        <source>Iif: Reactive current "from" A</source>
-        <translation>Iif: Reaktiver Strom "von" A</translation>
-    </message>
-    <message>
-        <source>Iif: Reactive current "from" B</source>
-        <translation>Iif: Reaktiver Strom "von" B</translation>
-    </message>
-    <message>
-        <source>Iif: Reactive current "from" C</source>
-        <translation>Iif: Reaktiver Strom "von" C</translation>
-    </message>
-    <message>
-        <source>Iit: Reactive current "to"</source>
-        <translation>Iit: Reaktiver Strom "zu"</translation>
-    </message>
-    <message>
-        <source>Iit: Reactive current "to" A</source>
-        <translation>Iit: Reaktiver Strom "zu" A</translation>
-    </message>
-    <message>
-        <source>Iit: Reactive current "to" B</source>
-        <translation>Iit: Reaktiver Strom "zu" B</translation>
-    </message>
-    <message>
-        <source>Iit: Reactive current "to" C</source>
-        <translation>Iit: Reaktiver Strom "zu" C</translation>
-    </message>
-    <message>
-        <source>Information</source>
-        <translation>Information</translation>
-    </message>
-    <message>
-        <source>Injections</source>
-        <translation>Einspeisungen</translation>
-    </message>
-    <message>
-        <source>Inputs Analysis</source>
-        <translation>Eingangs-Analyse</translation>
-    </message>
-    <message>
-        <source>InputsAnalysis</source>
-        <translation>Eingangs-Analyse</translation>
-    </message>
-    <message>
-        <source>Inter-Area exchange</source>
-        <translation>Übertrag zwischen Gebieten</translation>
-    </message>
-    <message>
-        <source>Inter-space branch loading</source>
-        <translation>Belastung der Überraum-Verzweigung</translation>
-    </message>
-    <message>
-        <source>Inter-space branch power</source>
-        <translation>Leistung der Überraum-Verzweigung</translation>
-    </message>
-    <message>
-        <source>InterAggregationInfo</source>
-        <translation>Inter-Aggregation-Info</translation>
-    </message>
-    <message>
-        <source>Investment</source>
-        <translation>Investition</translation>
-    </message>
-    <message>
-        <source>InvestmentEvaluations</source>
-        <translation>Investitionsbewertungen</translation>
-    </message>
-    <message>
-        <source>Investments</source>
-        <translation>Investitionen</translation>
-    </message>
-    <message>
-        <source>Investments Group</source>
-        <translation>Investitionen Gruppe</translation>
-    </message>
-    <message>
-        <source>Investments evaluation</source>
-        <translation>Bewertung der Investitionen</translation>
-    </message>
-    <message>
-        <source>Irf: Active current "from"</source>
-        <translation>Irf: Aktiver Strom "von"</translation>
-    </message>
-    <message>
-        <source>Irf: Active current "from" A</source>
-        <translation>Irf: Aktiver Strom "von" A</translation>
-    </message>
-    <message>
-        <source>Irf: Active current "from" B</source>
-        <translation>Irf: Aktiver Strom "von" B</translation>
-    </message>
-    <message>
-        <source>Irf: Active current "from" C</source>
-        <translation>Irf: Aktiver Strom "von" C</translation>
-    </message>
-    <message>
-        <source>Irt: Active current "to"</source>
-        <translation>Irt: Aktiver Strom "zu"</translation>
-    </message>
-    <message>
-        <source>Irt: Active current "to" A</source>
-        <translation>Irt: Aktueller Strom "zu" A</translation>
-    </message>
-    <message>
-        <source>Irt: Active current "to" B</source>
-        <translation>Irt: Aktueller Strom "zu" B</translation>
-    </message>
-    <message>
-        <source>Irt: Active current "to" C</source>
-        <translation>Irt: Aktueller Strom "zu" C</translation>
-    </message>
-    <message>
-        <source>It Measurement</source>
-        <translation>It Messung</translation>
-    </message>
-    <message>
-        <source>Iterations plot</source>
-        <translation>Iterations-Diagramm</translation>
-    </message>
-    <message>
-        <source>LODF</source>
-        <translation>LODF</translation>
-    </message>
-    <message>
-        <source>LOLE</source>
-        <translation>LOLE</translation>
-    </message>
-    <message>
-        <source>LOLET</source>
-        <translation>LOLET</translation>
-    </message>
-    <message>
-        <source>LOLF</source>
-        <translation>LOLF</translation>
-    </message>
-    <message>
-        <source>LOLFT</source>
-        <translation>LOLFT</translation>
-    </message>
-    <message>
-        <source>Latin Hypercube</source>
-        <translation>Latein-Hyperwürfel</translation>
-    </message>
-    <message>
-        <source>Line</source>
-        <translation>Linie</translation>
-    </message>
-    <message>
-        <source>Line Location</source>
-        <translation>Linienstandort</translation>
-    </message>
-    <message>
-        <source>Line Locations</source>
-        <translation>Linienstandorte</translation>
-    </message>
-    <message>
-        <source>Line Template</source>
-        <translation>Linienvorlage</translation>
-    </message>
-    <message>
-        <source>Linear analysis</source>
-        <translation>Lineare Analyse</translation>
-    </message>
-    <message>
-        <source>Linear analysis time series</source>
-        <translation>Zeitreihe der linearen Analyse</translation>
-    </message>
-    <message>
-        <source>LinearAnalysis</source>
-        <translation>Lineare Analyse</translation>
-    </message>
-    <message>
-        <source>LinearAnalysisTimeSeries</source>
-        <translation>Zeitreihe der linearen Analyse</translation>
-    </message>
-    <message>
-        <source>Load</source>
-        <translation>Laden</translation>
-    </message>
-    <message>
-        <source>Load like</source>
-        <translation>Lastähnlich</translation>
-    </message>
-    <message>
-        <source>Load neutral voltage</source>
-        <translation>Neutralspannung der Last</translation>
-    </message>
-    <message>
-        <source>Load power</source>
-        <translation>Lastleistung</translation>
-    </message>
-    <message>
-        <source>Load shedding</source>
-        <translation>Lastabschaltung</translation>
-    </message>
-    <message>
-        <source>Load shedding cost</source>
-        <translation>Kosten der Lastabschaltung</translation>
-    </message>
-    <message>
-        <source>Loading CDF</source>
-        <translation>Last-CDF</translation>
-    </message>
-    <message>
-        <source>Loading from the base situation ($\lambda$)</source>
-        <translation>Lastabdeckung von der Basis-Situation ($\lambda$)</translation>
-    </message>
-    <message>
-        <source>Loading std</source>
-        <translation>Last-Standardabweichung</translation>
-    </message>
-    <message>
-        <source>Loads</source>
-        <translation>Lasten</translation>
-    </message>
-    <message>
-        <source>Losses % per area</source>
-        <translation>Verluste % pro Gebiet</translation>
-    </message>
-    <message>
-        <source>Losses CDF</source>
-        <translation>Verluste CDF</translation>
-    </message>
-    <message>
-        <source>Losses avg</source>
-        <translation>Durchschnittliche Verluste</translation>
-    </message>
-    <message>
-        <source>Losses per area</source>
-        <translation>Verluste pro Gebiet</translation>
-    </message>
-    <message>
-        <source>Losses per generation unit in area</source>
-        <translation>Verluste pro Erzeugereinheit in einem Gebiet</translation>
-    </message>
-    <message>
-        <source>Losses std</source>
-        <translation>Verluste-Standardabweichung</translation>
-    </message>
-    <message>
-        <source>Market</source>
-        <translation>Markt</translation>
-    </message>
-    <message>
-        <source>Market unit</source>
-        <translation>Markteinheit</translation>
-    </message>
-    <message>
-        <source>Max contingency flow</source>
-        <translation>Maximaler Notfallstrom</translation>
-    </message>
-    <message>
-        <source>Max contingency loading</source>
-        <translation>Maximale Notfalllast</translation>
-    </message>
-    <message>
-        <source>Maximum contingency flow</source>
-        <translation>Maximaler Notfallstrom</translation>
-    </message>
-    <message>
-        <source>Mean contingency overloading</source>
-        <translation>Mittlere Notfallüberlastung</translation>
-    </message>
-    <message>
-        <source>Measurements</source>
-        <translation>Messungen</translation>
-    </message>
-    <message>
-        <source>Modelling Authority</source>
-        <translation>Modellierungsbehörde</translation>
-    </message>
-    <message>
-        <source>Modes</source>
-        <translation>Modi</translation>
-    </message>
-    <message>
-        <source>Monte Carlo</source>
-        <translation>Monte-Carlo</translation>
-    </message>
-    <message>
-        <source>Municipality</source>
-        <translation>Gemeinde</translation>
-    </message>
-    <message>
-        <source>Municipality analysis</source>
-        <translation>Gemeindeanalyse</translation>
-    </message>
-    <message>
-        <source>Municipality balance analysis</source>
-        <translation>Gemeindegleichgewichtsanalyse</translation>
-    </message>
-    <message>
-        <source>Municipality generation analysis</source>
-        <translation>Gemeindeeerzeugungsanalyse</translation>
-    </message>
-    <message>
-        <source>Municipality load analysis</source>
-        <translation>Gemeindelastanalyse</translation>
-    </message>
-    <message>
-        <source>NTC</source>
-        <translation>NTC</translation>
-    </message>
-    <message>
-        <source>Net transfer capacity</source>
-        <translation>Nettoübertragungskapazität</translation>
-    </message>
-    <message>
-        <source>NetTransferCapacity</source>
-        <translation>Nettoübertragungskapazität</translation>
-    </message>
-    <message>
-        <source>NetTransferCapacityTimeSeries</source>
-        <translation>Zeitreihe der Nettoübertragungskapazität</translation>
-    </message>
-    <message>
-        <source>No simulation</source>
-        <translation>Keine Simulation</translation>
-    </message>
-    <message>
-        <source>NoDevice</source>
-        <translation>Kein Gerät</translation>
-    </message>
-    <message>
-        <source>Nodal capacity</source>
-        <translation>Knotenkapazität</translation>
-    </message>
-    <message>
-        <source>Nodal capacity time series</source>
-        <translation>Knotenkapazität Zeitreihe</translation>
-    </message>
-    <message>
-        <source>Nodal shadow prices</source>
-        <translation>Knoten-Schattenpreise</translation>
-    </message>
-    <message>
-        <source>Nodal slacks</source>
-        <translation>Knoten-Slack-Werte</translation>
-    </message>
-    <message>
-        <source>Node groups</source>
-        <translation>Knotengruppen</translation>
-    </message>
-    <message>
-        <source>NodeGroups</source>
-        <translation>Knotengruppen</translation>
-    </message>
-    <message>
-        <source>Nonlinear analysis</source>
-        <translation>Nichtlineare Analyse</translation>
-    </message>
-    <message>
-        <source>Nonlinear analysis time series</source>
-        <translation>Nichtlineare Analyse Zeitreihe</translation>
-    </message>
-    <message>
-        <source>Ntc: Base flow report</source>
-        <translation>Ntc: Basisflussbericht</translation>
-    </message>
-    <message>
-        <source>Ntc: Contingency flow report</source>
-        <translation>Ntc: Störfallflussbericht</translation>
-    </message>
-    <message>
-        <source>Ntc: Contingency flow report. (Branch)</source>
-        <translation>Ntc: Störfallflussbericht. (Verzweigung)</translation>
-    </message>
-    <message>
-        <source>Ntc: Contingency flow report. (Generation)</source>
-        <translation>Ntc: Störfallflussbericht. (Erzeugung)</translation>
-    </message>
-    <message>
-        <source>Ntc: Contingency flow report. (Hvdc)</source>
-        <translation>Ntc: Störfallflussbericht. (HVDC)</translation>
-    </message>
-    <message>
-        <source>Objectives</source>
-        <translation>Ziele</translation>
-    </message>
-    <message>
-        <source>Objects</source>
-        <translation>Objekte</translation>
-    </message>
-    <message>
-        <source>Optimal net transfer capacity</source>
-        <translation>Optimale Nettoübertragungskapazität</translation>
-    </message>
-    <message>
-        <source>Optimal net transfer capacity time series</source>
-        <translation>Optimale Nettoübertragungskapazität Zeitreihe</translation>
-    </message>
-    <message>
-        <source>Optimal power flow</source>
-        <translation>Optimaler Kraftfluss</translation>
-    </message>
-    <message>
-        <source>Optimal power flow time series</source>
-        <translation>Zeitreihe des optimalen Leistungsflusses</translation>
-    </message>
-    <message>
-        <source>Owner</source>
-        <translation>Eigentümer</translation>
-    </message>
-    <message>
-        <source>P: Active power</source>
-        <translation>P: Wirkleistung</translation>
-    </message>
-    <message>
-        <source>PA: Active power A</source>
-        <translation>PA: Wirkleistung A</translation>
-    </message>
-    <message>
-        <source>PB: Active power B</source>
-        <translation>PB: Wirkleistung B</translation>
-    </message>
-    <message>
-        <source>PC: Active power C</source>
-        <translation>PC: Wirkleistung C</translation>
-    </message>
-    <message>
-        <source>PTDF</source>
-        <translation>PTDF</translation>
-    </message>
-    <message>
-        <source>Pareto</source>
-        <translation>Pareto</translation>
-    </message>
-    <message>
-        <source>Pareto combinations</source>
-        <translation>Pareto-Kombinationen</translation>
-    </message>
-    <message>
-        <source>Pareto evaluation report</source>
-        <translation>Pareto-Bewertungsbericht</translation>
-    </message>
-    <message>
-        <source>Pareto frequency</source>
-        <translation>Pareto-Frequenz</translation>
-    </message>
-    <message>
-        <source>Pareto objectives</source>
-        <translation>Pareto-Ziele</translation>
-    </message>
-    <message>
-        <source>Pareto plot NSGA2</source>
-        <translation>Pareto-Plot NSGA2</translation>
-    </message>
-    <message>
-        <source>Pareto plots</source>
-        <translation>Pareto-Plots</translation>
-    </message>
-    <message>
-        <source>Participation Factors</source>
-        <translation>Beteiligungsfaktoren</translation>
-    </message>
-    <message>
-        <source>Pf Measurement</source>
-        <translation>Pf Messung</translation>
-    </message>
-    <message>
-        <source>Pf: Active power "from"</source>
-        <translation>Pf: Wirkleistung "von"</translation>
-    </message>
-    <message>
-        <source>Pf: Active power "from" base case</source>
-        <translation>Pf: Wirkleistung "von" Basisfall</translation>
-    </message>
-    <message>
-        <source>PfA: Active power "from" A</source>
-        <translation>PfA: Wirkleistung "von" A</translation>
-    </message>
-    <message>
-        <source>PfB: Active power "from" B</source>
-        <translation>PfB: Wirkleistung "von" B</translation>
-    </message>
-    <message>
-        <source>PfC: Active power "from" C</source>
-        <translation>PfC: Wirkleistung "von" C</translation>
-    </message>
-    <message>
-        <source>Pg Measurement</source>
-        <translation>Pg Messung</translation>
-    </message>
-    <message>
-        <source>Pi Measurement</source>
-        <translation>Pi Messung</translation>
-    </message>
-    <message>
-        <source>Pl: Active losses</source>
-        <translation>Pl: Wirkverluste</translation>
-    </message>
-    <message>
-        <source>Pl: Active losses (%)</source>
-        <translation>Pl: Wirkverluste (%)</translation>
-    </message>
-    <message>
-        <source>Pl: Active losses (%) A</source>
-        <translation>Pl: Wirkverluste (%) A</translation>
-    </message>
-    <message>
-        <source>Pl: Active losses (%) B</source>
-        <translation>Pl: Wirkverluste (%) B</translation>
-    </message>
-    <message>
-        <source>Pl: Active losses (%) C</source>
-        <translation>Pl: Wirkverluste (%) C</translation>
-    </message>
-    <message>
-        <source>Pl: Active losses A</source>
-        <translation>Pl: Wirkverluste A</translation>
-    </message>
-    <message>
-        <source>Pl: Active losses B</source>
-        <translation>Pl: Wirkverluste B</translation>
-    </message>
-    <message>
-        <source>Pl: Active losses C</source>
-        <translation>Pl: Wirkverluste C</translation>
-    </message>
-    <message>
-        <source>Plot Event</source>
-        <translation>Plot Ereignis</translation>
-    </message>
-    <message>
-        <source>Plot Group</source>
-        <translation>Plot Gruppe</translation>
-    </message>
-    <message>
-        <source>Power by technology</source>
-        <translation>Leistung nach Technologie</translation>
-    </message>
-    <message>
-        <source>Power flow</source>
-        <translation>Kraftfluss</translation>
-    </message>
-    <message>
-        <source>Power flow 3ph</source>
-        <translation>Leistungsausfluss 3-phasig</translation>
-    </message>
-    <message>
-        <source>Power flow time series</source>
-        <translation>Kraftfluss-Zeitreihen</translation>
-    </message>
-    <message>
-        <source>Power flow time series 3ph</source>
-        <translation>Leistungsprofil-Zeitreihe 3Ph</translation>
-    </message>
-    <message>
-        <source>PowerFlow</source>
-        <translation>Leistungsfluss</translation>
-    </message>
-    <message>
-        <source>PowerFlowTimeSeries</source>
-        <translation>Leistungsfluss-Zeitreihe</translation>
-    </message>
-    <message>
-        <source>Pt Measurement</source>
-        <translation>Pt Messung</translation>
-    </message>
-    <message>
-        <source>Pt: Active power "to"</source>
-        <translation>Pt: Wirkleistung "zu"</translation>
-    </message>
-    <message>
-        <source>Pt: Active power "to" A</source>
-        <translation>Pt: Wirkleistung "zu" A</translation>
-    </message>
-    <message>
-        <source>Pt: Active power "to" B</source>
-        <translation>Pt: Wirkleistung "zu" B</translation>
-    </message>
-    <message>
-        <source>Pt: Active power "to" C</source>
-        <translation>Pt: Wirkleistung "zu" C</translation>
-    </message>
-    <message>
-        <source>Q: Reactive power</source>
-        <translation>Q: Blindleistung</translation>
-    </message>
-    <message>
-        <source>QA: Reactive power A</source>
-        <translation>QA: Blindleistung A</translation>
-    </message>
-    <message>
-        <source>QB: Reactive power B</source>
-        <translation>QB: Blindleistung B</translation>
-    </message>
-    <message>
-        <source>QC: Reactive power C</source>
-        <translation>QC: Blindleistung C</translation>
-    </message>
-    <message>
-        <source>Qf Measurement</source>
-        <translation>Qf Messung</translation>
-    </message>
-    <message>
-        <source>Qf: Reactive power "from"</source>
-        <translation>Qf: Blindleistung "von"</translation>
-    </message>
-    <message>
-        <source>QfA: Reactive power "from" A</source>
-        <translation>QfA: Blindleistung "von" A</translation>
-    </message>
-    <message>
-        <source>QfB: Reactive power "from" B</source>
-        <translation>QfB: Blindleistung "von" B</translation>
-    </message>
-    <message>
-        <source>QfC: Reactive power "from" C</source>
-        <translation>QfC: Blindleistung "von" C</translation>
-    </message>
-    <message>
-        <source>Qg Measurement</source>
-        <translation>Qg Messung</translation>
-    </message>
-    <message>
-        <source>Qi Measurement</source>
-        <translation>Qi Messung</translation>
-    </message>
-    <message>
-        <source>Ql: Reactive losses</source>
-        <translation>Ql: Blindleistungsverluste</translation>
-    </message>
-    <message>
-        <source>Ql: Reactive losses A</source>
-        <translation>Ql: Blindleistungsverluste A</translation>
-    </message>
-    <message>
-        <source>Ql: Reactive losses B</source>
-        <translation>Ql: Blindleistungsverluste B</translation>
-    </message>
-    <message>
-        <source>Ql: Reactive losses C</source>
-        <translation>Ql: Blindleistungsverluste C</translation>
-    </message>
-    <message>
-        <source>Qt Measurement</source>
-        <translation>Qt Messung</translation>
-    </message>
-    <message>
-        <source>Qt: Reactive power "to"</source>
-        <translation>Qt: Blindleistung "zu"</translation>
-    </message>
-    <message>
-        <source>Qt: Reactive power "to" A</source>
-        <translation>Qt: Blindleistung "zu" A</translation>
-    </message>
-    <message>
-        <source>Qt: Reactive power "to" B</source>
-        <translation>Qt: Blindleistung "zu" B</translation>
-    </message>
-    <message>
-        <source>Qt: Reactive power "to" C</source>
-        <translation>Qt: Blindleistung "zu" C</translation>
-    </message>
-    <message>
-        <source>RMS Dynamic</source>
-        <translation>RMS Dynamisch</translation>
-    </message>
-    <message>
-        <source>RMS Small Signal stability</source>
-        <translation>RMS Kleinsignalstabilität</translation>
-    </message>
-    <message>
-        <source>RMS template</source>
-        <translation>RMS Vorlage</translation>
-    </message>
-    <message>
-        <source>Region</source>
-        <translation>Region</translation>
-    </message>
-    <message>
-        <source>Region analysis</source>
-        <translation>Regionsanalyse</translation>
-    </message>
-    <message>
-        <source>Region balance analysis</source>
-        <translation>Regionsbilanzanalyse</translation>
-    </message>
-    <message>
-        <source>Region generation analysis</source>
-        <translation>Regionserzeugungsanalyse</translation>
-    </message>
-    <message>
-        <source>Region load analysis</source>
-        <translation>Regionslastanalyse</translation>
-    </message>
-    <message>
-        <source>Regions</source>
-        <translation>Regionen</translation>
-    </message>
-    <message>
-        <source>Reliability</source>
-        <translation>Zuverlässigkeit</translation>
-    </message>
-    <message>
-        <source>Remedial action</source>
-        <translation>Wiederherrschraftmaßnahme</translation>
-    </message>
-    <message>
-        <source>Remedial action Group</source>
-        <translation>Gruppe von Wiederherrschraftmaßnahmen</translation>
-    </message>
-    <message>
-        <source>Reports</source>
-        <translation>Berichte</translation>
-    </message>
-    <message>
-        <source>Reservoir fluid level</source>
-        <translation>Flüssigkeitsstand des Speichers</translation>
-    </message>
-    <message>
-        <source>Results</source>
-        <translation>Ergebnisse</translation>
-    </message>
-    <message>
-        <source>Right Eigenvectors</source>
-        <translation>Rechte Eigenvektoren</translation>
-    </message>
-    <message>
-        <source>Rms Event</source>
-        <translation>Rms Ereignis</translation>
-    </message>
-    <message>
-        <source>Rms Events Group</source>
-        <translation>Gruppe von Rms Ereignissen</translation>
-    </message>
-    <message>
-        <source>Rms Generator results</source>
-        <translation>Rms Generator-Ergebnisse</translation>
-    </message>
-    <message>
-        <source>Rms Genqec delta results</source>
-        <translation>Rms Genqec Delta-Ergebnisse</translation>
-    </message>
-    <message>
-        <source>Rms Genqec omega results</source>
-        <translation>Rms Genqec Omega-Ergebnisse</translation>
-    </message>
-    <message>
-        <source>Rms Line results</source>
-        <translation>Rms Leitungs-Ergebnisse</translation>
-    </message>
-    <message>
-        <source>Rms Load P results</source>
-        <translation>Rms Last P-Ergebnisse</translation>
-    </message>
-    <message>
-        <source>Rms Load Q results</source>
-        <translation>Rms Last Q-Ergebnisse</translation>
-    </message>
-    <message>
-        <source>Rms Simple Line P results</source>
-        <translation>Ergebnisse P einfache Leitung (RMS)</translation>
-    </message>
-    <message>
-        <source>Rms Simple Line Q results</source>
-        <translation>Ergebnisse Q einfache Leitung (RMS)</translation>
-    </message>
-    <message>
-        <source>Rms load results</source>
-        <translation>Lastergebnisse (RMS)</translation>
-    </message>
-    <message>
-        <source>Rms plot results</source>
-        <translation>Diagrammergebnisse (RMS)</translation>
-    </message>
-    <message>
-        <source>Rms time series report</source>
-        <translation>Zeitreihenbericht (RMS)</translation>
-    </message>
-    <message>
-        <source>RmsSimulation</source>
-        <translation>RMS-Simulation</translation>
-    </message>
-    <message>
-        <source>S-Domain Plot</source>
-        <translation>S-Domänen-Diagramm</translation>
-    </message>
-    <message>
-        <source>S-Domain Plot in Hz</source>
-        <translation>S-Domänen-Diagramm in Hz</translation>
-    </message>
-    <message>
-        <source>SAIDI</source>
-        <translation>SAIDI</translation>
-    </message>
-    <message>
-        <source>SAIFI</source>
-        <translation>SAIFI</translation>
-    </message>
-    <message>
-        <source>Sensibilities</source>
-        <translation>Sensitivitäten</translation>
-    </message>
-    <message>
-        <source>Sensitivity to the exchange</source>
-        <translation>Empfindlichkeit gegenüber dem Austausch</translation>
-    </message>
-    <message>
-        <source>Sensitivity to the exchange (N-1)</source>
-        <translation>Empfindlichkeit gegenüber dem Austausch (N-1)</translation>
-    </message>
-    <message>
-        <source>Sequence line</source>
-        <translation>Sequenzleitung</translation>
-    </message>
-    <message>
-        <source>Series</source>
-        <translation>Serie</translation>
-    </message>
-    <message>
-        <source>Series reactance</source>
-        <translation>Serienreaktanz</translation>
-    </message>
-    <message>
-        <source>Short circuit</source>
-        <translation>Kurzschluss</translation>
-    </message>
-    <message>
-        <source>Short circuit active current</source>
-        <translation>Aktueller Kurzschlussstrom</translation>
-    </message>
-    <message>
-        <source>Short circuit active current A</source>
-        <translation>Aktueller Kurzschlussstrom A</translation>
-    </message>
-    <message>
-        <source>Short circuit active current B</source>
-        <translation>Aktueller Kurzschlussstrom B</translation>
-    </message>
-    <message>
-        <source>Short circuit active current C</source>
-        <translation>Aktueller Kurzschlussstrom C</translation>
-    </message>
-    <message>
-        <source>Short circuit active power</source>
-        <translation>Aktive Kurzschlussleistung</translation>
-    </message>
-    <message>
-        <source>Short circuit active power A</source>
-        <translation>Aktive Kurzschlussleistung A</translation>
-    </message>
-    <message>
-        <source>Short circuit active power B</source>
-        <translation>Aktive Kurzschlussleistung B</translation>
-    </message>
-    <message>
-        <source>Short circuit active power C</source>
-        <translation>Aktive Kurzschlussleistung C</translation>
-    </message>
-    <message>
-        <source>Short circuit event</source>
-        <translation>Kurzschlussereignis</translation>
-    </message>
-    <message>
-        <source>Short circuit reactive current</source>
-        <translation>Reaktiver Kurzschlussstrom</translation>
-    </message>
-    <message>
-        <source>Short circuit reactive current A</source>
-        <translation>Reaktiver Kurzschlussstrom A</translation>
-    </message>
-    <message>
-        <source>Short circuit reactive current B</source>
-        <translation>Reaktiver Kurzschlussstrom B</translation>
-    </message>
-    <message>
-        <source>Short circuit reactive current C</source>
-        <translation>Reaktiver Kurzschlussstrom C</translation>
-    </message>
-    <message>
-        <source>Short circuit reactive power</source>
-        <translation>Reaktive Kurzschlussleistung</translation>
-    </message>
-    <message>
-        <source>Short circuit reactive power A</source>
-        <translation>Reaktive Kurzschlussleistung A</translation>
-    </message>
-    <message>
-        <source>Short circuit reactive power B</source>
-        <translation>Reaktive Kurzschlussleistung B</translation>
-    </message>
-    <message>
-        <source>Short circuit reactive power C</source>
-        <translation>Reaktive Kurzschlussleistung C</translation>
-    </message>
-    <message>
-        <source>Short-circuit information</source>
-        <translation>Kurzschlussinformation</translation>
-    </message>
-    <message>
-        <source>ShortCircuit</source>
-        <translation>Kurzschluss</translation>
-    </message>
-    <message>
-        <source>Shunt</source>
-        <translation>Shunt</translation>
-    </message>
-    <message>
-        <source>Shunt like devices</source>
-        <translation>Schunt-ähnliche Geräte</translation>
-    </message>
-    <message>
-        <source>Shunt neutral voltage</source>
-        <translation>Schunt-Neutralspannung</translation>
-    </message>
-    <message>
-        <source>Shunt reactive power</source>
-        <translation>Reaktive Schuntleistung</translation>
-    </message>
-    <message>
-        <source>Shunt reactive power A</source>
-        <translation>Reaktive Schuntleistung A</translation>
-    </message>
-    <message>
-        <source>Shunt reactive power B</source>
-        <translation>Reaktive Schuntleistung B</translation>
-    </message>
-    <message>
-        <source>Shunt reactive power C</source>
-        <translation>Reaktive Schuntleistung C</translation>
-    </message>
-    <message>
-        <source>Sigma + distances</source>
-        <translation>Sigma + Distanzen</translation>
-    </message>
-    <message>
-        <source>Sigma Analysis</source>
-        <translation>Sigma-Analyse</translation>
-    </message>
-    <message>
-        <source>Sigma distances</source>
-        <translation>Sigma-Distanzen</translation>
-    </message>
-    <message>
-        <source>Sigma imaginary</source>
-        <translation>Imaginäre Sigma</translation>
-    </message>
-    <message>
-        <source>Sigma real</source>
-        <translation>Reale Sigma</translation>
-    </message>
-    <message>
-        <source>SigmaAnalysis</source>
-        <translation>Sigma-Analyse</translation>
-    </message>
-    <message>
-        <source>SimulationOptionsDevice</source>
-        <translation>Geräte-Optionen-Simulation</translation>
-    </message>
-    <message>
-        <source>Slacks</source>
-        <translation>Slacks</translation>
-    </message>
-    <message>
-        <source>SmallSignalStability</source>
-        <translation>Kleinsignalstabilität</translation>
-    </message>
-    <message>
-        <source>Snapshot</source>
-        <translation>Schnappschuss</translation>
-    </message>
-    <message>
-        <source>Special plots</source>
-        <translation>Sonderplots</translation>
-    </message>
-    <message>
-        <source>Spillage flow leaving</source>
-        <translation>Abgeführter Fluss</translation>
-    </message>
-    <message>
-        <source>Srap used power</source>
-        <translation>Srap verwendete Leistung</translation>
-    </message>
-    <message>
-        <source>Stabilizer</source>
-        <translation>Stabilisator</translation>
-    </message>
-    <message>
-        <source>State Matrix</source>
-        <translation>Zustandsmatrix</translation>
-    </message>
-    <message>
-        <source>State estimation</source>
-        <translation>Zustandsschätzung</translation>
-    </message>
-    <message>
-        <source>StateEstimation</source>
-        <translation>Zustandsabschätzung</translation>
-    </message>
-    <message>
-        <source>Static Generator</source>
-        <translation>Statischer Generator</translation>
-    </message>
-    <message>
-        <source>Statistics</source>
-        <translation>Statistiken</translation>
-    </message>
-    <message>
-        <source>Std-dev contingency overloading</source>
-        <translation>Std-Abweichung bei Überlastung durch Störfall</translation>
-    </message>
-    <message>
-        <source>Stochastic Power Flow</source>
-        <translation>Stochastischer Stromfluss</translation>
-    </message>
-    <message>
-        <source>StochasticPowerFlow</source>
-        <translation>Stochastischer Stromfluss</translation>
-    </message>
-    <message>
-        <source>Substation</source>
-        <translation>Umspannwerk</translation>
-    </message>
-    <message>
-        <source>Substation analysis</source>
-        <translation>Umspannwerk-Analyse</translation>
-    </message>
-    <message>
-        <source>Substation balance analysis</source>
-        <translation>Umspannwerk-Ausgleichsanalyse</translation>
-    </message>
-    <message>
-        <source>Substation generation analysis</source>
-        <translation>Umspannwerk-Erzeugungsanalyse</translation>
-    </message>
-    <message>
-        <source>Substation load analysis</source>
-        <translation>Umspannwerk-Lastanalyse</translation>
-    </message>
-    <message>
-        <source>Switch</source>
-        <translation>Schalter</translation>
-    </message>
-    <message>
-        <source>System</source>
-        <translation>System</translation>
-    </message>
-    <message>
-        <source>System emissions</source>
-        <translation>Systememissionen</translation>
-    </message>
-    <message>
-        <source>System energy cost</source>
-        <translation>Systemenergiekosten</translation>
-    </message>
-    <message>
-        <source>System energy total cost</source>
-        <translation>Systemgesamtenergiekosten</translation>
-    </message>
-    <message>
-        <source>System fuel consumption</source>
-        <translation>Systemkraftstoffverbrauch</translation>
-    </message>
-    <message>
-        <source>Technology</source>
-        <translation>Technologie</translation>
-    </message>
-    <message>
-        <source>Technology Category</source>
-        <translation>Technologiekategorie</translation>
-    </message>
-    <message>
-        <source>Technology Group</source>
-        <translation>Technologiegruppe</translation>
-    </message>
-    <message>
-        <source>Technology plot</source>
-        <translation>Technologie-Diagramm</translation>
-    </message>
-    <message>
-        <source>Template</source>
-        <translation>Vorlage</translation>
-    </message>
-    <message>
-        <source>Templates</source>
-        <translation>Vorlagen</translation>
-    </message>
-    <message>
-        <source>Time</source>
-        <translation>Zeit</translation>
-    </message>
-    <message>
-        <source>Time series Contingency flow report (Branches)</source>
-        <translation>Zeitreihenbericht über Störfallfluss (Verzweigungen)</translation>
-    </message>
-    <message>
-        <source>Time series base flow report</source>
-        <translation>Zeitreihenbericht über Basisfluss</translation>
-    </message>
-    <message>
-        <source>Time series branch monitoring logic report</source>
-        <translation>Zeitreihenbericht über Verzweigungsüberwachungslogik</translation>
-    </message>
-    <message>
-        <source>Time series contingency Branches report</source>
-        <translation>Zeitreihenbericht über Störfall-Verzweigungen</translation>
-    </message>
-    <message>
-        <source>Time series contingency flow report</source>
-        <translation>Zeitreihenbericht über Störfallfluss</translation>
-    </message>
-    <message>
-        <source>Time series contingency flow report. (Generation)</source>
-        <translation>Zeitreihenbericht über Störfallfluss. (Erzeugung)</translation>
-    </message>
-    <message>
-        <source>Time series contingency flow report. (Hvdc)</source>
-        <translation>Zeitreihenbericht über Störfallfluss. (HVDC)</translation>
-    </message>
-    <message>
-        <source>Time series critical Branches report</source>
-        <translation>Zeitreihenbericht über kritische Verzweigungen</translation>
-    </message>
-    <message>
-        <source>Time series generation delta power report</source>
-        <translation>Zeitreihenbericht über Erzeugungsdelta-Leistung</translation>
-    </message>
-    <message>
-        <source>Time series generation power report</source>
-        <translation>Zeitreihenbericht über Erzeugungsleistung</translation>
-    </message>
-    <message>
-        <source>Time series sensitivity to the exchange report</source>
-        <translation>Zeitreihenbericht über Sensitivität gegenüber dem Austausch</translation>
-    </message>
-    <message>
-        <source>Time series worst sensitivity to the exchange report (N-1)</source>
-        <translation>Zeitreihenbericht über größte Sensitivität gegenüber dem Austausch (N-1)</translation>
-    </message>
-    <message>
-        <source>Topology Processor</source>
-        <translation>Topologie-Prozessor</translation>
-    </message>
-    <message>
-        <source>Topology reduction</source>
-        <translation>Topologie-Reduktion</translation>
-    </message>
-    <message>
-        <source>Tower</source>
-        <translation>Turm</translation>
-    </message>
-    <message>
-        <source>Transformer</source>
-        <translation>Transformator</translation>
-    </message>
-    <message>
-        <source>Transformer type</source>
-        <translation>Transformatortyp</translation>
-    </message>
-    <message>
-        <source>Transformer3W</source>
-        <translation>Transformer3W</translation>
-    </message>
-    <message>
-        <source>TransformerNw</source>
-        <translation>TransformerNw</translation>
-    </message>
-    <message>
-        <source>Transient stability</source>
-        <translation>Transiente Stabilität</translation>
-    </message>
-    <message>
-        <source>UPFC</source>
-        <translation>UPFC</translation>
-    </message>
-    <message>
-        <source>Underground line</source>
-        <translation>Unterirdische Leitung</translation>
-    </message>
-    <message>
-        <source>V: Voltage module</source>
-        <translation>V: Spannungsmodul</translation>
-    </message>
-    <message>
-        <source>VA: Voltage module A</source>
-        <translation>VA: Spannungsmodul A</translation>
-    </message>
-    <message>
-        <source>VB: Voltage module B</source>
-        <translation>VB: Spannungsmodul B</translation>
-    </message>
-    <message>
-        <source>VC: Voltage module C</source>
-        <translation>VC: Spannungsmodul C</translation>
-    </message>
-    <message>
-        <source>VSC</source>
-        <translation>VSC</translation>
-    </message>
-    <message>
-        <source>Va Measurement</source>
-        <translation>Va Messung</translation>
-    </message>
-    <message>
-        <source>Var Factory</source>
-        <translation>Var-Quelle</translation>
-    </message>
-    <message>
-        <source>Vm Measurement</source>
-        <translation>Vm Messung</translation>
-    </message>
-    <message>
-        <source>Voltage angle (0)</source>
-        <translation>Spannwinkel (0)</translation>
-    </message>
-    <message>
-        <source>Voltage angle (1)</source>
-        <translation>Spannwinkel (1)</translation>
-    </message>
-    <message>
-        <source>Voltage angle (2)</source>
-        <translation>Spannwinkel (2)</translation>
-    </message>
-    <message>
-        <source>Voltage collapse</source>
-        <translation>Spannungskollaps</translation>
-    </message>
-    <message>
-        <source>Voltage level</source>
-        <translation>Spannungsniveau</translation>
-    </message>
-    <message>
-        <source>Voltage level analysis</source>
-        <translation>Spannungsniveau-Analyse</translation>
-    </message>
-    <message>
-        <source>Voltage level balance analysis</source>
-        <translation>Spannungsniveau-Gleichgewichts-Analyse</translation>
-    </message>
-    <message>
-        <source>Voltage level generation analysis</source>
-        <translation>Spannungsniveau-Erzeugungsanalyse</translation>
-    </message>
-    <message>
-        <source>Voltage level load analysis</source>
-        <translation>Spannungsniveau-Lastanalyse</translation>
-    </message>
-    <message>
-        <source>Voltage level template</source>
-        <translation>Spannungsniveau-Vorlage</translation>
-    </message>
-    <message>
-        <source>Voltage module (0)</source>
-        <translation>Spannungsmodul (0)</translation>
-    </message>
-    <message>
-        <source>Voltage module (1)</source>
-        <translation>Spannungsmodul (1)</translation>
-    </message>
-    <message>
-        <source>Voltage module (2)</source>
-        <translation>Spannungsmodul (2)</translation>
-    </message>
-    <message>
-        <source>Voltage plot</source>
-        <translation>Spannungsdiagramm</translation>
-    </message>
-    <message>
-        <source>Vsc</source>
-        <translation>VSC</translation>
-    </message>
-    <message>
-        <source>Vsc ODF</source>
-        <translation>VSC ODF</translation>
-    </message>
-    <message>
-        <source>Vsc PTDF</source>
-        <translation>VSC PTDF</translation>
-    </message>
-    <message>
-        <source>Vsc Pdc</source>
-        <translation>VSC Pdc</translation>
-    </message>
-    <message>
-        <source>Vsc Vdc</source>
-        <translation>VSC Vdc</translation>
-    </message>
-    <message>
-        <source>Vsc loading</source>
-        <translation>VSC Belastung</translation>
-    </message>
-    <message>
-        <source>Vsc losses</source>
-        <translation>VSC Verluste</translation>
-    </message>
-    <message>
-        <source>Vsc power "from" negative pole</source>
-        <translation>VSC Leistung "von" negativem Pol</translation>
-    </message>
-    <message>
-        <source>Vsc power "from" positive pole</source>
-        <translation>VSC Leistung "von" positivem Pol</translation>
-    </message>
-    <message>
-        <source>Vsc power "to"</source>
-        <translation>VSC Leistung "zu"</translation>
-    </message>
-    <message>
-        <source>Vsc power "to" A</source>
-        <translation>VSC Leistung "zu" A</translation>
-    </message>
-    <message>
-        <source>Vsc power "to" B</source>
-        <translation>VSC Leistung "zu" B</translation>
-    </message>
-    <message>
-        <source>Vsc power "to" C</source>
-        <translation>VSC Leistung "zu" C</translation>
-    </message>
-    <message>
-        <source>When to make them plot</source>
-        <translation>Wann sie geplottet werden sollen</translation>
-    </message>
-    <message>
-        <source>Winding</source>
-        <translation>Wicklung</translation>
-    </message>
-    <message>
-        <source>Wire</source>
-        <translation>Leitung</translation>
-    </message>
-    <message>
-        <source>Zone</source>
-        <translation>Zone</translation>
-    </message>
-    <message>
-        <source>Zone analysis</source>
-        <translation>Zonenanalyse</translation>
-    </message>
-    <message>
-        <source>Zone balance analysis</source>
-        <translation>Zonen-Gleichgewichts-Analyse</translation>
-    </message>
-    <message>
-        <source>Zone generation analysis</source>
-        <translation>Zonen-Erzeugungsanalyse</translation>
-    </message>
-    <message>
-        <source>Zone load analysis</source>
-        <translation>Zonen-Lastanalyse</translation>
-    </message>
-    <message>
-        <source>export all</source>
-        <translation>Alle exportieren</translation>
-    </message>
-    <message>
-        <source>file open</source>
-        <translation>Datei öffnen</translation>
-    </message>
-    <message>
-        <source>file save</source>
-        <translation>Datei speichern</translation>
-    </message>
-    <message>
-        <source>loading avg</source>
-        <translation>Durchschnittliche Belastung</translation>
-    </message>
-    <message>
-        <source>m: Tap module</source>
-        <translation>m: Trafomodule</translation>
-    </message>
-    <message>
-        <source>ΔP: Active power increment</source>
-        <translation>ΔP: Wirkleistungsinkrement</translation>
-    </message>
-    <message>
-        <source>ΔV: Voltage modules drop</source>
-        <translation>ΔV: Spannungsmodulabfall</translation>
-    </message>
-    <message>
-        <source>ΔV: Voltage modules drop A</source>
-        <translation>ΔV: Spannungsmodulabfall A</translation>
-    </message>
-    <message>
-        <source>ΔV: Voltage modules drop B</source>
-        <translation>ΔV: Spannungsmodulabfall B</translation>
-    </message>
-    <message>
-        <source>ΔV: Voltage modules drop C</source>
-        <translation>ΔV: Spannungsmodulabfall C</translation>
-    </message>
-    <message>
-        <source>Δθ: Voltage angles drop</source>
-        <translation>Δθ: Spannwinkelabfall</translation>
-    </message>
-    <message>
-        <source>Δθ: Voltage angles drop A</source>
-        <translation>Δθ: Spannwinkelabfall A</translation>
-    </message>
-    <message>
-        <source>Δθ: Voltage angles drop B</source>
-        <translation>Δθ: Spannwinkelabfall B</translation>
-    </message>
-    <message>
-        <source>Δθ: Voltage angles drop C</source>
-        <translation>Δθ: Spannwinkelabfall C</translation>
-    </message>
-    <message>
-        <source>θ: Voltage angle</source>
-        <translation>θ: Spannungswinkel</translation>
-    </message>
-    <message>
-        <source>θA: Voltage angle A</source>
-        <translation>θA: Spannungswinkel A</translation>
-    </message>
-    <message>
-        <source>θB: Voltage angle B</source>
-        <translation>θB: Spannungswinkel B</translation>
-    </message>
-    <message>
-        <source>θC: Voltage angle C</source>
-        <translation>θC: Spannungswinkel C</translation>
-    </message>
-    <message>
-        <source>𝜏: Tap angle</source>
-        <translation>𝜏: Tap angle</translation>
     </message>
 </context>
 </TS>

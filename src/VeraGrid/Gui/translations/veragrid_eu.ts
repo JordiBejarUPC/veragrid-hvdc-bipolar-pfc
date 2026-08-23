@@ -151,7 +151,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
     <message>
         <location filename="../DeviceEditors/AdmittanceMatrixEditor/admittance_matrix_editor_gui.ui" line="130"/>
         <source>Accept</source>
-        <translation type="unfinished">Onartu</translation>
+        <translation>Onartu</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/AdmittanceMatrixEditor/admittance_matrix_editor_gui.ui" line="148"/>
@@ -1419,7 +1419,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
     <message>
         <location filename="../FileDialogues/CoordinatesInput/coordinates_input_gui.ui" line="108"/>
         <source>Target</source>
-        <translation type="unfinished">Helburua</translation>
+        <translation>Helburua</translation>
     </message>
     <message>
         <location filename="../FileDialogues/CoordinatesInput/coordinates_input_gui.ui" line="141"/>
@@ -2438,7 +2438,7 @@ Utzi eta berriro saiatu?</translation>
     <message>
         <location filename="../DeviceEditors/LineLocationsEditor/line_locations_editor_gui.ui" line="19"/>
         <source>Add point</source>
-        <translation type="unfinished">Gehitu puntua</translation>
+        <translation>Gehitu puntua</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/LineLocationsEditor/line_locations_editor_gui.ui" line="33"/>
@@ -2458,7 +2458,7 @@ Utzi eta berriro saiatu?</translation>
     <message>
         <location filename="../DeviceEditors/LineLocationsEditor/line_locations_editor_gui.ui" line="75"/>
         <source>Copy</source>
-        <translation type="unfinished">Kopiatu</translation>
+        <translation>Kopiatu</translation>
     </message>
     <message>
         <location filename="../DeviceEditors/LineLocationsEditor/line_locations_editor_gui.ui" line="89"/>
@@ -3075,7 +3075,7 @@ Utzi eta berriro saiatu?</translation>
     <message>
         <location filename="../SigmaAnalysis/sigma_analysis_gui.ui" line="41"/>
         <source>Method</source>
-        <translation type="unfinished">Metodoa</translation>
+        <translation>Metodoa</translation>
     </message>
     <message>
         <location filename="../SigmaAnalysis/sigma_analysis_gui.ui" line="49"/>
@@ -3120,12 +3120,12 @@ Utzi eta berriro saiatu?</translation>
     <message>
         <location filename="../SigmaAnalysis/sigma_analysis_gui.ui" line="110"/>
         <source>Distributed slack</source>
-        <translation type="unfinished">Banatutako slack</translation>
+        <translation>Banatutako slack</translation>
     </message>
     <message>
         <location filename="../SigmaAnalysis/sigma_analysis_gui.ui" line="130"/>
         <source>...</source>
-        <translation type="unfinished">...</translation>
+        <translation>...</translation>
     </message>
     <message>
         <location filename="../SigmaAnalysis/sigma_analysis_gui.ui" line="144"/>
@@ -3135,7 +3135,7 @@ Utzi eta berriro saiatu?</translation>
     <message>
         <location filename="../SigmaAnalysis/sigma_analysis_gui.ui" line="179"/>
         <source>Data</source>
-        <translation type="unfinished">Datuak</translation>
+        <translation>Datuak</translation>
     </message>
 </context>
 <context>
@@ -3849,7 +3849,7 @@ Monte Carloko potentzia-fluxuaren emaitzak:</translation>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="189"/>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="206"/>
         <source>-</source>
-        <translation type="unfinished">-</translation>
+        <translation>-</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="114"/>
@@ -3884,7 +3884,7 @@ Monte Carloko potentzia-fluxuaren emaitzak:</translation>
     <message>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="219"/>
         <source>Actions</source>
-        <translation type="unfinished">Ekintzak</translation>
+        <translation>Ekintzak</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="225"/>
@@ -3894,7 +3894,7 @@ Monte Carloko potentzia-fluxuaren emaitzak:</translation>
     <message>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="246"/>
         <source>Refresh</source>
-        <translation type="unfinished">Freskatu</translation>
+        <translation>Freskatu</translation>
     </message>
     <message>
         <location filename="../FileDialogues/ServerFileDialog/server_file_dialogue.ui" line="249"/>
@@ -4594,6 +4594,2205 @@ Monte Carloko potentzia-fluxuaren emaitzak:</translation>
     <message>
         <source>No effect, select diagrams or database</source>
         <translation type="vanished">Ez dago eraginik, hautatu diagramak edo datu-baseak</translation>
+    </message>
+</context>
+<context>
+    <name>VeraGridTreeLabels</name>
+    <message>
+        <source>ATC Report</source>
+        <translation>ATC Raportua</translation>
+    </message>
+    <message>
+        <source>Active power flow per area</source>
+        <translation>Ingener potentziaren sirkulazioa area per area</translation>
+    </message>
+    <message>
+        <source>Any line template</source>
+        <translation>Liniak edozein plantilla</translation>
+    </message>
+    <message>
+        <source>Area</source>
+        <translation>Area</translation>
+    </message>
+    <message>
+        <source>Area analysis</source>
+        <translation>Area analizatzea</translation>
+    </message>
+    <message>
+        <source>Area balance analysis</source>
+        <translation>Area balanse analizatzea</translation>
+    </message>
+    <message>
+        <source>Area generation analysis</source>
+        <translation>Area sortzaile analizatzea</translation>
+    </message>
+    <message>
+        <source>Area load analysis</source>
+        <translation>Area karga analizatzea</translation>
+    </message>
+    <message>
+        <source>Associations</source>
+        <translation>Elkarteak</translation>
+    </message>
+    <message>
+        <source>Available transfer capacity</source>
+        <translation>Eskuragarri dagoen transferentzia-ahalmena</translation>
+    </message>
+    <message>
+        <source>Available transfer capacity (N)</source>
+        <translation>Transferentzia kapasitatea eskuragarria (N)</translation>
+    </message>
+    <message>
+        <source>Available transfer capacity (final)</source>
+        <translation>Transferentzia kapasitatea eskuragarria (azadi)</translation>
+    </message>
+    <message>
+        <source>Available transfer capacity time series</source>
+        <translation>Transferentzia kapasitatea eskuragarria tempordion</translation>
+    </message>
+    <message>
+        <source>AvailableTransferCapacity</source>
+        <translation>AvailableTransferCapacity</translation>
+    </message>
+    <message>
+        <source>AvailableTransferCapacityTimeSeries</source>
+        <translation>AvailableTransferCapacityTimeSeries</translation>
+    </message>
+    <message>
+        <source>Balance plot</source>
+        <translation>Balanse plota</translation>
+    </message>
+    <message>
+        <source>Base flow report</source>
+        <translation>Sirkulazio mota-bateko raportua</translation>
+    </message>
+    <message>
+        <source>Batteries</source>
+        <translation>Bateriak</translation>
+    </message>
+    <message>
+        <source>Battery</source>
+        <translation>Bateria</translation>
+    </message>
+    <message>
+        <source>Battery energy</source>
+        <translation>Bateria energia</translation>
+    </message>
+    <message>
+        <source>Battery invested</source>
+        <translation>Bateria investitu</translation>
+    </message>
+    <message>
+        <source>Battery power</source>
+        <translation>Bateria potentzia</translation>
+    </message>
+    <message>
+        <source>Battery reactive power</source>
+        <translation>Bateria potentzia reaktiboa</translation>
+    </message>
+    <message>
+        <source>Battery reactive power A</source>
+        <translation>Bateria potentzia reaktiboa A</translation>
+    </message>
+    <message>
+        <source>Battery reactive power B</source>
+        <translation>Bateria potentzia reaktiboa B</translation>
+    </message>
+    <message>
+        <source>Battery reactive power C</source>
+        <translation>Bateria potentzia reaktiboa C</translation>
+    </message>
+    <message>
+        <source>Beq: Equivalent susceptance</source>
+        <translation>Beq: Suszeptantzia ekibalentzia</translation>
+    </message>
+    <message>
+        <source>Branch</source>
+        <translation>Zuzpona</translation>
+    </message>
+    <message>
+        <source>Branch Loading</source>
+        <translation>Zuzponaren Karga</translation>
+    </message>
+    <message>
+        <source>Branch Loading A</source>
+        <translation>Zuzponaren Karga A</translation>
+    </message>
+    <message>
+        <source>Branch Loading B</source>
+        <translation>Zuzponaren Karga B</translation>
+    </message>
+    <message>
+        <source>Branch Loading C</source>
+        <translation>Zuzponaren Karga C</translation>
+    </message>
+    <message>
+        <source>Branch active current &quot;from&quot; (0)</source>
+        <translation>Zuzponaren orrattu indutzia &quot;etik&quot; (0)</translation>
+    </message>
+    <message>
+        <source>Branch active current &quot;from&quot; (1)</source>
+        <translation>Zuzponaren orrattu indutzia &quot;etik&quot; (1)</translation>
+    </message>
+    <message>
+        <source>Branch active current &quot;from&quot; (2)</source>
+        <translation>Zuzponaren orrattu indutzia &quot;etik&quot; (2)</translation>
+    </message>
+    <message>
+        <source>Branch active losses (0)</source>
+        <translation>Zuzponaren orrattu galdera (0)</translation>
+    </message>
+    <message>
+        <source>Branch active losses (1)</source>
+        <translation>Zuzponaren orrattu galdera (1)</translation>
+    </message>
+    <message>
+        <source>Branch active losses (2)</source>
+        <translation>Zuzponaren orrattu galdera (2)</translation>
+    </message>
+    <message>
+        <source>Branch active power &quot;from&quot; (0)</source>
+        <translation>Zuzponaren orrattu potentzia &quot;etik&quot; (0)</translation>
+    </message>
+    <message>
+        <source>Branch active power &quot;from&quot; (1)</source>
+        <translation>Zuzponaren orrattu potentzia &quot;etik&quot; (1)</translation>
+    </message>
+    <message>
+        <source>Branch active power &quot;from&quot; (2)</source>
+        <translation>Zuzponaren orrattu potentzia &quot;etik&quot; (2)</translation>
+    </message>
+    <message>
+        <source>Branch group</source>
+        <translation>Zuzponen grupoa</translation>
+    </message>
+    <message>
+        <source>Branch loading (0)</source>
+        <translation>Zuzponaren karga (0)</translation>
+    </message>
+    <message>
+        <source>Branch loading (1)</source>
+        <translation>Zuzponaren karga (1)</translation>
+    </message>
+    <message>
+        <source>Branch loading (2)</source>
+        <translation>Zuzponaren karga (2)</translation>
+    </message>
+    <message>
+        <source>Branch losses</source>
+        <translation>Zuzponaren galdera</translation>
+    </message>
+    <message>
+        <source>Branch monitoring logic</source>
+        <translation>Zuzponaren itxiko logika</translation>
+    </message>
+    <message>
+        <source>Branch overloads</source>
+        <translation>Zuzponaren sobrekargaak</translation>
+    </message>
+    <message>
+        <source>Branch overloads cost</source>
+        <translation>Zuzponaren sobrekarga kostua</translation>
+    </message>
+    <message>
+        <source>Branch power CDF</source>
+        <translation>Zuzponaren potentzia CDF</translation>
+    </message>
+    <message>
+        <source>Branch power avg</source>
+        <translation>Zuzponaren potentzia batez</translation>
+    </message>
+    <message>
+        <source>Branch power std</source>
+        <translation>Zuzponaren potentzia desia</translation>
+    </message>
+    <message>
+        <source>Branch reactive current &quot;from&quot; (0)</source>
+        <translation>Zuzponaren potentzia reaktiboa &quot;etik&quot; (0)</translation>
+    </message>
+    <message>
+        <source>Branch reactive current &quot;from&quot; (1)</source>
+        <translation>Branch reactive current &quot;from&quot; (1)</translation>
+    </message>
+    <message>
+        <source>Branch reactive current &quot;from&quot; (2)</source>
+        <translation>Branch reactive current &quot;from&quot; (2)</translation>
+    </message>
+    <message>
+        <source>Branch reactive losses (0)</source>
+        <translation>Branch reactive losses (0)</translation>
+    </message>
+    <message>
+        <source>Branch reactive losses (1)</source>
+        <translation>Branch reactive losses (1)</translation>
+    </message>
+    <message>
+        <source>Branch reactive losses (2)</source>
+        <translation>Branch reactive losses (2)</translation>
+    </message>
+    <message>
+        <source>Branch reactive power &quot;from&quot; (0)</source>
+        <translation>Branch reactive power &quot;from&quot; (0)</translation>
+    </message>
+    <message>
+        <source>Branch reactive power &quot;from&quot; (1)</source>
+        <translation>Branch reactive power &quot;from&quot; (1)</translation>
+    </message>
+    <message>
+        <source>Branch reactive power &quot;from&quot; (2)</source>
+        <translation>Branch reactive power &quot;from&quot; (2)</translation>
+    </message>
+    <message>
+        <source>Branch template</source>
+        <translation>Zuzponaren plantilla</translation>
+    </message>
+    <message>
+        <source>Branches</source>
+        <translation>Zuzponak</translation>
+    </message>
+    <message>
+        <source>Bus</source>
+        <translation>Bus</translation>
+    </message>
+    <message>
+        <source>Bus nodal capacity</source>
+        <translation>Bus-ko nodoaren kapasitatea</translation>
+    </message>
+    <message>
+        <source>Bus power</source>
+        <translation>Bus-ko indutzia</translation>
+    </message>
+    <message>
+        <source>Bus power CDF</source>
+        <translation>Bus-ko indutziaren CDF</translation>
+    </message>
+    <message>
+        <source>Bus voltage CDF</source>
+        <translation>Bus-ko taltiindar indutziaren CDF</translation>
+    </message>
+    <message>
+        <source>Bus voltage avg</source>
+        <translation>Bus-ko taltiindar indutziaren media</translation>
+    </message>
+    <message>
+        <source>Bus voltage sensitivity</source>
+        <translation>Bus-ko taltiindar indutziaren txartarratutasuna</translation>
+    </message>
+    <message>
+        <source>Bus voltage std</source>
+        <translation>Bus-ko taltiindar indutziaren desiaun standartoa</translation>
+    </message>
+    <message>
+        <source>BusBar</source>
+        <translation>BusBar</translation>
+    </message>
+    <message>
+        <source>BusOrBranch</source>
+        <translation>Bus edo Zuzpona</translation>
+    </message>
+    <message>
+        <source>CAIDI</source>
+        <translation>CAIDI</translation>
+    </message>
+    <message>
+        <source>Cascade</source>
+        <translation>Kaskada</translation>
+    </message>
+    <message>
+        <source>Catalogue</source>
+        <translation>Katalogoa</translation>
+    </message>
+    <message>
+        <source>Catalogue optimization</source>
+        <translation>Katalogoaren optimizazioa</translation>
+    </message>
+    <message>
+        <source>Circuit</source>
+        <translation>Zirkuitua</translation>
+    </message>
+    <message>
+        <source>Clean room</source>
+        <translation>Ezagun egoera</translation>
+    </message>
+    <message>
+        <source>Clustering</source>
+        <translation>Clustering</translation>
+    </message>
+    <message>
+        <source>Clustering Analysis</source>
+        <translation>Klastering Analisia</translation>
+    </message>
+    <message>
+        <source>Clustering time series report</source>
+        <translation>Klastering lan-serieko raporta</translation>
+    </message>
+    <message>
+        <source>Combinations</source>
+        <translation>Kombinazioak</translation>
+    </message>
+    <message>
+        <source>Community</source>
+        <translation>Komunitatea</translation>
+    </message>
+    <message>
+        <source>Community analysis</source>
+        <translation>Komunitatearen analiza</translation>
+    </message>
+    <message>
+        <source>Community balance analysis</source>
+        <translation>Komunitatearen balanse-analisia</translation>
+    </message>
+    <message>
+        <source>Community generation analysis</source>
+        <translation>Komunitatearen indutzia-analisia</translation>
+    </message>
+    <message>
+        <source>Community load analysis</source>
+        <translation>Komunitatearen karga-analisia</translation>
+    </message>
+    <message>
+        <source>Contingencies</source>
+        <translation>Kontingentziak</translation>
+    </message>
+    <message>
+        <source>Contingencies report</source>
+        <translation>Kontingentziaren raportua</translation>
+    </message>
+    <message>
+        <source>Contingencies statistical report</source>
+        <translation>Kontingentziaren statistiko-raportua</translation>
+    </message>
+    <message>
+        <source>Contingency</source>
+        <translation>Kontingentzia</translation>
+    </message>
+    <message>
+        <source>Contingency Group</source>
+        <translation>Kontingentzia-grupoa</translation>
+    </message>
+    <message>
+        <source>Contingency analysis</source>
+        <translation>Kontingentzia-analisia</translation>
+    </message>
+    <message>
+        <source>Contingency analysis time series</source>
+        <translation>Kontingentzia-analisiaren denbora-seriea</translation>
+    </message>
+    <message>
+        <source>Contingency flow</source>
+        <translation>Kontingentziaren urzioa</translation>
+    </message>
+    <message>
+        <source>Contingency flow report</source>
+        <translation>Kontingentziaren urzio-raportua</translation>
+    </message>
+    <message>
+        <source>Contingency frequency</source>
+        <translation>Kontingentziaren maiztasuna</translation>
+    </message>
+    <message>
+        <source>Contingency loading</source>
+        <translation>Kontingentziaren karga-zioa</translation>
+    </message>
+    <message>
+        <source>Contingency overload sum</source>
+        <translation>Kontingentziaren sobrekarga-suma</translation>
+    </message>
+    <message>
+        <source>Contingency relative frequency</source>
+        <translation>Kontingentziaren maiztasun-relatiboa</translation>
+    </message>
+    <message>
+        <source>ContingencyAnalysis</source>
+        <translation>Kontingentzia-analisia</translation>
+    </message>
+    <message>
+        <source>ContingencyAnalysisTimeSeries</source>
+        <translation>Kontingentzia-analisia lan-serieko</translation>
+    </message>
+    <message>
+        <source>ContinuationPowerFlow</source>
+        <translation>Indutzia-urzioaren jarraipena</translation>
+    </message>
+    <message>
+        <source>Controllable shunt</source>
+        <translation>Shunt kontrolagarria</translation>
+    </message>
+    <message>
+        <source>Country</source>
+        <translation>Herria</translation>
+    </message>
+    <message>
+        <source>Country analysis</source>
+        <translation>Herri-analisia</translation>
+    </message>
+    <message>
+        <source>Country balance analysis</source>
+        <translation>Herri-balanse-analisia</translation>
+    </message>
+    <message>
+        <source>Country generation analysis</source>
+        <translation>Herri-indutzia-analisia</translation>
+    </message>
+    <message>
+        <source>Country load analysis</source>
+        <translation>Herri-karga-analisia</translation>
+    </message>
+    <message>
+        <source>Current injection</source>
+        <translation>Uneko injekzioa</translation>
+    </message>
+    <message>
+        <source>DC line</source>
+        <translation>DC lineta</translation>
+    </message>
+    <message>
+        <source>Delete and reduce</source>
+        <translation>Zigiltu eta kudeaketa</translation>
+    </message>
+    <message>
+        <source>Design View</source>
+        <translation>Diseinu Isei</translation>
+    </message>
+    <message>
+        <source>Diagram</source>
+        <translation>Diagrama</translation>
+    </message>
+    <message>
+        <source>Dispatch</source>
+        <translation>Dispatcheak</translation>
+    </message>
+    <message>
+        <source>Dynamic</source>
+        <translation>Dinamikoa</translation>
+    </message>
+    <message>
+        <source>Dynamic Model Host</source>
+        <translation>Dinamiko Modelo Hosta</translation>
+    </message>
+    <message>
+        <source>EMT Dynamic</source>
+        <translation>EMT Dinamikoa</translation>
+    </message>
+    <message>
+        <source>EMT Small Signal stability</source>
+        <translation>EMT Ziginale Txikilerako Erresiarritasuna</translation>
+    </message>
+    <message>
+        <source>EMT template</source>
+        <translation>EMT plantilla</translation>
+    </message>
+    <message>
+        <source>ENS</source>
+        <translation>ENS</translation>
+    </message>
+    <message>
+        <source>Emission</source>
+        <translation>Emisioa</translation>
+    </message>
+    <message>
+        <source>Emt Event</source>
+        <translation>EMT Gandurua</translation>
+    </message>
+    <message>
+        <source>Emt Events Group</source>
+        <translation>EMT Ganduruak Taldea</translation>
+    </message>
+    <message>
+        <source>EmtSimulation</source>
+        <translation>EMT Simulazioa</translation>
+    </message>
+    <message>
+        <source>Error</source>
+        <translation>Errorea</translation>
+    </message>
+    <message>
+        <source>Evaluation report</source>
+        <translation>Ingurumen Raportua</translation>
+    </message>
+    <message>
+        <source>Exciter</source>
+        <translation>Excitera</translation>
+    </message>
+    <message>
+        <source>External grid</source>
+        <translation>Kanpoko sarea</translation>
+    </message>
+    <message>
+        <source>FMU template</source>
+        <translation>FMU plantilla</translation>
+    </message>
+    <message>
+        <source>Facility</source>
+        <translation>Instalazioa</translation>
+    </message>
+    <message>
+        <source>Flow Reports</source>
+        <translation>Fluxo Raportuak</translation>
+    </message>
+    <message>
+        <source>Flow circulating in the device</source>
+        <translation>Laguntza/Fluxo azpian zirkulatzen dena</translation>
+    </message>
+    <message>
+        <source>Flow entering the node</source>
+        <translation>Nodoan sartzen den fluxoa</translation>
+    </message>
+    <message>
+        <source>Flow exiting the node</source>
+        <translation>Nodoatik ateratzen den fluxoa</translation>
+    </message>
+    <message>
+        <source>Flow from the P2X</source>
+        <translation>P2X-etik sartzen den fluxoa</translation>
+    </message>
+    <message>
+        <source>Flow in the river</source>
+        <translation>Urriotan dagoen fluxoa</translation>
+    </message>
+    <message>
+        <source>Fluid</source>
+        <translation>Fluidoa</translation>
+    </message>
+    <message>
+        <source>Fluid Injection</source>
+        <translation>Fluido Injekzioa</translation>
+    </message>
+    <message>
+        <source>Fluid P2X</source>
+        <translation>Fluido P2X</translation>
+    </message>
+    <message>
+        <source>Fluid P2Xs</source>
+        <translation>Fluido P2Xs</translation>
+    </message>
+    <message>
+        <source>Fluid Pump</source>
+        <translation>Fluido Bomba</translation>
+    </message>
+    <message>
+        <source>Fluid Turbine</source>
+        <translation>Fluido Turbina</translation>
+    </message>
+    <message>
+        <source>Fluid injections</source>
+        <translation>Fluido Injekzioak</translation>
+    </message>
+    <message>
+        <source>Fluid node</source>
+        <translation>Fluido nodoa</translation>
+    </message>
+    <message>
+        <source>Fluid nodes</source>
+        <translation>Fluido Nodoak</translation>
+    </message>
+    <message>
+        <source>Fluid path</source>
+        <translation>Fluido Bidea</translation>
+    </message>
+    <message>
+        <source>Fluid paths</source>
+        <translation>Fluido Bideak</translation>
+    </message>
+    <message>
+        <source>Fluid pumps</source>
+        <translation>Fluido Bombak</translation>
+    </message>
+    <message>
+        <source>Fluid turbines</source>
+        <translation>Fluido Turbinak</translation>
+    </message>
+    <message>
+        <source>Frequency</source>
+        <translation>Maiztasuna</translation>
+    </message>
+    <message>
+        <source>Fuel</source>
+        <translation>Combustibilea</translation>
+    </message>
+    <message>
+        <source>Generation delta slacks</source>
+        <translation>Generazio delta slacks</translation>
+    </message>
+    <message>
+        <source>Generation deltas</source>
+        <translation>Generazio delta</translation>
+    </message>
+    <message>
+        <source>Generator</source>
+        <translation>Sorgailua</translation>
+    </message>
+    <message>
+        <source>Generator Emission</source>
+        <translation>Generadore Emisioa</translation>
+    </message>
+    <message>
+        <source>Generator Fuel</source>
+        <translation>Generadore Combustibilea</translation>
+    </message>
+    <message>
+        <source>Generator Technology</source>
+        <translation>Generadore Teknologia</translation>
+    </message>
+    <message>
+        <source>Generator cost</source>
+        <translation>Generadore kostua</translation>
+    </message>
+    <message>
+        <source>Generator emissions</source>
+        <translation>Generadore emisioak</translation>
+    </message>
+    <message>
+        <source>Generator fuels</source>
+        <translation>Generadore combustibileak</translation>
+    </message>
+    <message>
+        <source>Generator invested</source>
+        <translation>Generadorein zainugu</translation>
+    </message>
+    <message>
+        <source>Generator power</source>
+        <translation>Generadore potentzia</translation>
+    </message>
+    <message>
+        <source>Generator producing</source>
+        <translation>Generadoreak sortzen</translation>
+    </message>
+    <message>
+        <source>Generator reactive power</source>
+        <translation>Generadore potentzia reaktiboa</translation>
+    </message>
+    <message>
+        <source>Generator reactive power A</source>
+        <translation>Generadore potentzia reaktiboa A</translation>
+    </message>
+    <message>
+        <source>Generator reactive power B</source>
+        <translation>Generadorearen indutiboa B</translation>
+    </message>
+    <message>
+        <source>Generator reactive power C</source>
+        <translation>Generadorearen indutiboa C</translation>
+    </message>
+    <message>
+        <source>Generator reserve</source>
+        <translation>Generadorearen reserba</translation>
+    </message>
+    <message>
+        <source>Generator shedding</source>
+        <translation>Generadoreak babestakoak</translation>
+    </message>
+    <message>
+        <source>Generator shutting down</source>
+        <translation>Generadoreak itxierrean</translation>
+    </message>
+    <message>
+        <source>Generator starting up</source>
+        <translation>Generadoreak hasieran</translation>
+    </message>
+    <message>
+        <source>Generators</source>
+        <translation>Generadoreak</translation>
+    </message>
+    <message>
+        <source>Generic Area</source>
+        <translation>Area Orokorra</translation>
+    </message>
+    <message>
+        <source>Governor</source>
+        <translation>Gobernatzailea</translation>
+    </message>
+    <message>
+        <source>Groups</source>
+        <translation>Txangurrak</translation>
+    </message>
+    <message>
+        <source>HVDC Line</source>
+        <translation>HVDC Linea</translation>
+    </message>
+    <message>
+        <source>HVDC ODF</source>
+        <translation>HVDC ODF</translation>
+    </message>
+    <message>
+        <source>HVDC PTDF</source>
+        <translation>HVDC PTDF</translation>
+    </message>
+    <message>
+        <source>HVDC loading</source>
+        <translation>HVDC karga</translation>
+    </message>
+    <message>
+        <source>HVDC losses</source>
+        <translation>HVDC galdera</translation>
+    </message>
+    <message>
+        <source>HVDC overloads</source>
+        <translation>HVDC karga gehiak</translation>
+    </message>
+    <message>
+        <source>HVDC power &quot;from&quot;</source>
+        <translation>HVDC indutiboa &quot;etik&quot;</translation>
+    </message>
+    <message>
+        <source>HVDC power &quot;from&quot; A</source>
+        <translation>HVDC indutiboa &quot;etik&quot; A</translation>
+    </message>
+    <message>
+        <source>HVDC power &quot;from&quot; B</source>
+        <translation>HVDC indutiboa &quot;etik&quot; B</translation>
+    </message>
+    <message>
+        <source>HVDC power &quot;from&quot; C</source>
+        <translation>HVDC indutiboa &quot;etik&quot; C</translation>
+    </message>
+    <message>
+        <source>HVDC power &quot;to&quot;</source>
+        <translation>HVDC indutiboa &quot;aterako&quot;</translation>
+    </message>
+    <message>
+        <source>HVDC power &quot;to&quot; A</source>
+        <translation>HVDC indutiboa &quot;aterako&quot; A</translation>
+    </message>
+    <message>
+        <source>HVDC power &quot;to&quot; B</source>
+        <translation>HVDC indutiboa &quot;aterako&quot; B</translation>
+    </message>
+    <message>
+        <source>HVDC power &quot;to&quot; C</source>
+        <translation>HVDC indutiboa &quot;aterako&quot; C</translation>
+    </message>
+    <message>
+        <source>Hvdc</source>
+        <translation>Hvdc</translation>
+    </message>
+    <message>
+        <source>If Measurement</source>
+        <translation>If Neurritura</translation>
+    </message>
+    <message>
+        <source>Iif: Reactive current &quot;from&quot;</source>
+        <translation>Iif: Indutiboa korrientea &quot;etik&quot;</translation>
+    </message>
+    <message>
+        <source>Iif: Reactive current &quot;from&quot; A</source>
+        <translation>Iif: Indutiboa korrientea &quot;etik&quot; A</translation>
+    </message>
+    <message>
+        <source>Iif: Reactive current &quot;from&quot; B</source>
+        <translation>Iif: Indutiboa korrientea &quot;etik&quot; B</translation>
+    </message>
+    <message>
+        <source>Iif: Reactive current &quot;from&quot; C</source>
+        <translation>Iif: Indutiboa korrientea &quot;etik&quot; C</translation>
+    </message>
+    <message>
+        <source>Iit: Reactive current &quot;to&quot;</source>
+        <translation>Iit: Indutiboa korrientea &quot;aterako&quot;</translation>
+    </message>
+    <message>
+        <source>Iit: Reactive current &quot;to&quot; A</source>
+        <translation>Iit: Indutiboa korrientea &quot;aterako&quot; A</translation>
+    </message>
+    <message>
+        <source>Iit: Reactive current &quot;to&quot; B</source>
+        <translation>Iit: Indutiboa korrientea &quot;aterako&quot; B</translation>
+    </message>
+    <message>
+        <source>Iit: Reactive current &quot;to&quot; C</source>
+        <translation>Iit: Indutiboa korrientea &quot;aterako&quot; C</translation>
+    </message>
+    <message>
+        <source>Information</source>
+        <translation>Informazioa</translation>
+    </message>
+    <message>
+        <source>Injections</source>
+        <translation>Injekzioak</translation>
+    </message>
+    <message>
+        <source>Inputs Analysis</source>
+        <translation>Ingizko Analisia</translation>
+    </message>
+    <message>
+        <source>InputsAnalysis</source>
+        <translation>Ingizko Analisia</translation>
+    </message>
+    <message>
+        <source>Inter-Area exchange</source>
+        <translation>Areaak arteko alola</translation>
+    </message>
+    <message>
+        <source>Inter-space branch loading</source>
+        <translation>Espazioak arteko zutabearen karga</translation>
+    </message>
+    <message>
+        <source>Inter-space branch power</source>
+        <translation>Espazioak arteko zutabearen indutiboa</translation>
+    </message>
+    <message>
+        <source>InterAggregationInfo</source>
+        <translation>InterAgregazio Informazioa</translation>
+    </message>
+    <message>
+        <source>Investment</source>
+        <translation>Inbertsioa</translation>
+    </message>
+    <message>
+        <source>InvestmentEvaluations</source>
+        <translation>Inbertsioaren Irakaskuntza</translation>
+    </message>
+    <message>
+        <source>Investments</source>
+        <translation>Inbertsioak</translation>
+    </message>
+    <message>
+        <source>Investments Group</source>
+        <translation>Inbertsioak Txangurrak</translation>
+    </message>
+    <message>
+        <source>Investments evaluation</source>
+        <translation>Inbertsioen ebaluazioa</translation>
+    </message>
+    <message>
+        <source>Irf: Active current &quot;from&quot;</source>
+        <translation>Irf: Korriente aktiboa &quot;etik&quot;</translation>
+    </message>
+    <message>
+        <source>Irf: Active current &quot;from&quot; A</source>
+        <translation>Irf: Korriente aktiboa &quot;etik&quot; A</translation>
+    </message>
+    <message>
+        <source>Irf: Active current &quot;from&quot; B</source>
+        <translation>Irf: Korriente aktiboa &quot;etik&quot; B</translation>
+    </message>
+    <message>
+        <source>Irf: Active current &quot;from&quot; C</source>
+        <translation>Irf: Korriente aktiboa &quot;etik&quot; C</translation>
+    </message>
+    <message>
+        <source>Irt: Active current &quot;to&quot;</source>
+        <translation>Irt: Korriente aktiboa &quot;aterako&quot;</translation>
+    </message>
+    <message>
+        <source>Irt: Active current &quot;to&quot; A</source>
+        <translation>Irt: Corriente activa &quot;ere&quot; A</translation>
+    </message>
+    <message>
+        <source>Irt: Active current &quot;to&quot; B</source>
+        <translation>Irt: Corriente activa &quot;ere&quot; B</translation>
+    </message>
+    <message>
+        <source>Irt: Active current &quot;to&quot; C</source>
+        <translation>Irt: Corriente activa &quot;ere&quot; C</translation>
+    </message>
+    <message>
+        <source>It Measurement</source>
+        <translation>It Neureringa</translation>
+    </message>
+    <message>
+        <source>Iterations plot</source>
+        <translation>Iterazioen plotea</translation>
+    </message>
+    <message>
+        <source>LODF</source>
+        <translation>LODF</translation>
+    </message>
+    <message>
+        <source>LOLE</source>
+        <translation>LOLE</translation>
+    </message>
+    <message>
+        <source>LOLET</source>
+        <translation>LOLET</translation>
+    </message>
+    <message>
+        <source>LOLF</source>
+        <translation>LOLF</translation>
+    </message>
+    <message>
+        <source>LOLFT</source>
+        <translation>LOLFT</translation>
+    </message>
+    <message>
+        <source>Latin Hypercube</source>
+        <translation>Latin Hypercube</translation>
+    </message>
+    <message>
+        <source>Line</source>
+        <translation>Lerroa</translation>
+    </message>
+    <message>
+        <source>Line Location</source>
+        <translation>Liniako Konpozitzioa</translation>
+    </message>
+    <message>
+        <source>Line Locations</source>
+        <translation>Liniako Konpozitzioak</translation>
+    </message>
+    <message>
+        <source>Line Template</source>
+        <translation>Liniako Txartelak</translation>
+    </message>
+    <message>
+        <source>Linear analysis</source>
+        <translation>Analisi lineala</translation>
+    </message>
+    <message>
+        <source>Linear analysis time series</source>
+        <translation>Analisi lineako ardurako seriea</translation>
+    </message>
+    <message>
+        <source>LinearAnalysis</source>
+        <translation>Analisi Lineakoa</translation>
+    </message>
+    <message>
+        <source>LinearAnalysisTimeSeries</source>
+        <translation>Analisi Lineako Ardurako Seriea</translation>
+    </message>
+    <message>
+        <source>Load</source>
+        <translation>Kargatu</translation>
+    </message>
+    <message>
+        <source>Load like</source>
+        <translation>Karga bezalakoa</translation>
+    </message>
+    <message>
+        <source>Load neutral voltage</source>
+        <translation>Karga neutrala altzaria</translation>
+    </message>
+    <message>
+        <source>Load power</source>
+        <translation>Karga indarra</translation>
+    </message>
+    <message>
+        <source>Load shedding</source>
+        <translation>Karga taldeak</translation>
+    </message>
+    <message>
+        <source>Load shedding cost</source>
+        <translation>Karga taldeak kostua</translation>
+    </message>
+    <message>
+        <source>Loading CDF</source>
+        <translation>Kargaak CDF</translation>
+    </message>
+    <message>
+        <source>Loading from the base situation ($\lambda$)</source>
+        <translation>Kargaak oinarrizko egoeraetik ($\lambda$)</translation>
+    </message>
+    <message>
+        <source>Loading std</source>
+        <translation>Kargaak std</translation>
+    </message>
+    <message>
+        <source>Loads</source>
+        <translation>Kargaak</translation>
+    </message>
+    <message>
+        <source>Losses % per area</source>
+        <translation>Harrera % per area</translation>
+    </message>
+    <message>
+        <source>Losses CDF</source>
+        <translation>Harreraak CDF</translation>
+    </message>
+    <message>
+        <source>Losses avg</source>
+        <translation>Harreraak ardurakoa</translation>
+    </message>
+    <message>
+        <source>Losses per area</source>
+        <translation>Harreraak per area</translation>
+    </message>
+    <message>
+        <source>Losses per generation unit in area</source>
+        <translation>Harreraak per areako sortu-unitatean</translation>
+    </message>
+    <message>
+        <source>Losses std</source>
+        <translation>Harreraak std</translation>
+    </message>
+    <message>
+        <source>Market</source>
+        <translation>Merkatua</translation>
+    </message>
+    <message>
+        <source>Market unit</source>
+        <translation>Merkatu unitatea</translation>
+    </message>
+    <message>
+        <source>Max contingency flow</source>
+        <translation>Fluxu kontingentzia handiena</translation>
+    </message>
+    <message>
+        <source>Max contingency loading</source>
+        <translation>Karga kontingentzia handiena</translation>
+    </message>
+    <message>
+        <source>Maximum contingency flow</source>
+        <translation>Fluxu kontingentzia handena</translation>
+    </message>
+    <message>
+        <source>Mean contingency overloading</source>
+        <translation>Kontingentziak karga-izartzea ardurakoa</translation>
+    </message>
+    <message>
+        <source>Measurements</source>
+        <translation>Neureringak</translation>
+    </message>
+    <message>
+        <source>Modelling Authority</source>
+        <translation>Modelatzeko Aldizkarria</translation>
+    </message>
+    <message>
+        <source>Modes</source>
+        <translation>Moduak</translation>
+    </message>
+    <message>
+        <source>Monte Carlo</source>
+        <translation>Monte Carlo</translation>
+    </message>
+    <message>
+        <source>Municipality</source>
+        <translation>Udala</translation>
+    </message>
+    <message>
+        <source>Municipality analysis</source>
+        <translation>Udala analizak</translation>
+    </message>
+    <message>
+        <source>Municipality balance analysis</source>
+        <translation>Udala balanse analizak</translation>
+    </message>
+    <message>
+        <source>Municipality generation analysis</source>
+        <translation>Udala sortu analizak</translation>
+    </message>
+    <message>
+        <source>Municipality load analysis</source>
+        <translation>Udala karga analizak</translation>
+    </message>
+    <message>
+        <source>NTC</source>
+        <translation>NTC</translation>
+    </message>
+    <message>
+        <source>Net transfer capacity</source>
+        <translation>Transferentzia ahalmen garbia</translation>
+    </message>
+    <message>
+        <source>NetTransferCapacity</source>
+        <translation>Kapazitate NetTransfer</translation>
+    </message>
+    <message>
+        <source>NetTransferCapacityTimeSeries</source>
+        <translation>Kapazitate NetTransfer Ardurako Seriea</translation>
+    </message>
+    <message>
+        <source>No simulation</source>
+        <translation>Simulazioa ez</translation>
+    </message>
+    <message>
+        <source>NoDevice</source>
+        <translation>Ez-devizai</translation>
+    </message>
+    <message>
+        <source>Nodal capacity</source>
+        <translation>Kapazitatea Nodal</translation>
+    </message>
+    <message>
+        <source>Nodal capacity time series</source>
+        <translation>Kapazitatea Nodalaren datu-seria</translation>
+    </message>
+    <message>
+        <source>Nodal shadow prices</source>
+        <translation>Prezio-ombra Nodalak</translation>
+    </message>
+    <message>
+        <source>Nodal slacks</source>
+        <translation>Slack Nodalak</translation>
+    </message>
+    <message>
+        <source>Node groups</source>
+        <translation>Txoko-grupoak</translation>
+    </message>
+    <message>
+        <source>NodeGroups</source>
+        <translation>Txoko-grupoak</translation>
+    </message>
+    <message>
+        <source>Nonlinear analysis</source>
+        <translation>Ebaluazio nonlinearra</translation>
+    </message>
+    <message>
+        <source>Nonlinear analysis time series</source>
+        <translation>Ebaluazio nonlinearraren datu-seria</translation>
+    </message>
+    <message>
+        <source>Ntc: Base flow report</source>
+        <translation>Ntc: Flujo Baterako Raportua</translation>
+    </message>
+    <message>
+        <source>Ntc: Contingency flow report</source>
+        <translation>Ntc: Flujo Kontingentziako Raportua</translation>
+    </message>
+    <message>
+        <source>Ntc: Contingency flow report. (Branch)</source>
+        <translation>Ntc: Flujo Kontingentziako Raportua. (Zuzpita)</translation>
+    </message>
+    <message>
+        <source>Ntc: Contingency flow report. (Generation)</source>
+        <translation>Ntc: Flujo Kontingentziako Raportua. (Generazioa)</translation>
+    </message>
+    <message>
+        <source>Ntc: Contingency flow report. (Hvdc)</source>
+        <translation>Ntc: Flujo Kontingentziako Raportua. (Hvdc)</translation>
+    </message>
+    <message>
+        <source>Objectives</source>
+        <translation>Obektiboak</translation>
+    </message>
+    <message>
+        <source>Objects</source>
+        <translation>Objects</translation>
+    </message>
+    <message>
+        <source>Optimal net transfer capacity</source>
+        <translation>Transferentzia garbiaren ahalmen optimoa</translation>
+    </message>
+    <message>
+        <source>Optimal net transfer capacity time series</source>
+        <translation>Kapazitatea netoa transferitzeko optimalaren datu-seria</translation>
+    </message>
+    <message>
+        <source>Optimal power flow</source>
+        <translation>Potentzia-fluxu optimoa</translation>
+    </message>
+    <message>
+        <source>Optimal power flow time series</source>
+        <translation>Potentzia-fluxuaren denbora-serie optimoa</translation>
+    </message>
+    <message>
+        <source>Owner</source>
+        <translation>Jarduera-lehiak</translation>
+    </message>
+    <message>
+        <source>P: Active power</source>
+        <translation>P: Indar aktiboa</translation>
+    </message>
+    <message>
+        <source>PA: Active power A</source>
+        <translation>PA: Indar aktiboa A</translation>
+    </message>
+    <message>
+        <source>PB: Active power B</source>
+        <translation>PB: Indar aktiboa B</translation>
+    </message>
+    <message>
+        <source>PC: Active power C</source>
+        <translation>PC: Indar aktiboa C</translation>
+    </message>
+    <message>
+        <source>PTDF</source>
+        <translation>PTDF</translation>
+    </message>
+    <message>
+        <source>Pareto</source>
+        <translation>Pareto</translation>
+    </message>
+    <message>
+        <source>Pareto combinations</source>
+        <translation>Pareto konbinazioak</translation>
+    </message>
+    <message>
+        <source>Pareto evaluation report</source>
+        <translation>Pareto ebaluazio-raportua</translation>
+    </message>
+    <message>
+        <source>Pareto frequency</source>
+        <translation>Pareto-frekuentzia</translation>
+    </message>
+    <message>
+        <source>Pareto objectives</source>
+        <translation>Pareto-obektiboak</translation>
+    </message>
+    <message>
+        <source>Pareto plot NSGA2</source>
+        <translation>Pareto-plano NSGA2</translation>
+    </message>
+    <message>
+        <source>Pareto plots</source>
+        <translation>Pareto-planoak</translation>
+    </message>
+    <message>
+        <source>Participation Factors</source>
+        <translation>Parte-hartzeko Faktoreak</translation>
+    </message>
+    <message>
+        <source>Pf Measurement</source>
+        <translation>Pf Neurritura</translation>
+    </message>
+    <message>
+        <source>Pf: Active power &quot;from&quot;</source>
+        <translation>Pf: Indar aktiboa &quot;etik&quot;</translation>
+    </message>
+    <message>
+        <source>Pf: Active power &quot;from&quot; base case</source>
+        <translation>Pf: Indar aktiboa &quot;etik&quot; bazen kasuan</translation>
+    </message>
+    <message>
+        <source>PfA: Active power &quot;from&quot; A</source>
+        <translation>PfA: Indar aktiboa &quot;etik&quot; A</translation>
+    </message>
+    <message>
+        <source>PfB: Active power &quot;from&quot; B</source>
+        <translation>PfB: Indar aktiboa &quot;etik&quot; B</translation>
+    </message>
+    <message>
+        <source>PfC: Active power &quot;from&quot; C</source>
+        <translation>PfC: Indar aktiboa &quot;etik&quot; C</translation>
+    </message>
+    <message>
+        <source>Pg Measurement</source>
+        <translation>Pg Neurritura</translation>
+    </message>
+    <message>
+        <source>Pi Measurement</source>
+        <translation>Pi Neurritura</translation>
+    </message>
+    <message>
+        <source>Pl: Active losses</source>
+        <translation>Pl: Indar aktiboak galdera</translation>
+    </message>
+    <message>
+        <source>Pl: Active losses (%)</source>
+        <translation>Pl: Indar aktiboak galdera (%)</translation>
+    </message>
+    <message>
+        <source>Pl: Active losses (%) A</source>
+        <translation>Pl: Indar aktiboak galdera (%) A</translation>
+    </message>
+    <message>
+        <source>Pl: Active losses (%) B</source>
+        <translation>Pl: Indar aktiboak galdera (%) B</translation>
+    </message>
+    <message>
+        <source>Pl: Active losses (%) C</source>
+        <translation>Pl: Indar aktiboak galdera (%) C</translation>
+    </message>
+    <message>
+        <source>Pl: Active losses A</source>
+        <translation>Pl: Indar aktiboak galdera A</translation>
+    </message>
+    <message>
+        <source>Pl: Active losses B</source>
+        <translation>Pl: Indar aktiboak galdera B</translation>
+    </message>
+    <message>
+        <source>Pl: Active losses C</source>
+        <translation>Pl: Indar aktiboak galdera C</translation>
+    </message>
+    <message>
+        <source>Plot Event</source>
+        <translation>Plano-ekitalea</translation>
+    </message>
+    <message>
+        <source>Plot Group</source>
+        <translation>Plano-txokoa</translation>
+    </message>
+    <message>
+        <source>Power by technology</source>
+        <translation>Indarra teknologiaren arabera</translation>
+    </message>
+    <message>
+        <source>Power flow</source>
+        <translation>Potentzia-fluxua</translation>
+    </message>
+    <message>
+        <source>Power flow 3ph</source>
+        <translation>Flujo indarra 3ph</translation>
+    </message>
+    <message>
+        <source>Power flow time series</source>
+        <translation>Potentzia-fluxuaren denbora-seriea</translation>
+    </message>
+    <message>
+        <source>Power flow time series 3ph</source>
+        <translation>Eroszio-sirkuituaren eboluzioa 3 fazako</translation>
+    </message>
+    <message>
+        <source>PowerFlow</source>
+        <translation>Eroszio-sirkuituaren irizpideak</translation>
+    </message>
+    <message>
+        <source>PowerFlowTimeSeries</source>
+        <translation>Eroszio-sirkuituaren irizpide-eboluzioa</translation>
+    </message>
+    <message>
+        <source>Pt Measurement</source>
+        <translation>Pt Neurriktura</translation>
+    </message>
+    <message>
+        <source>Pt: Active power &quot;to&quot;</source>
+        <translation>Pt: Indar-potentzia &quot;era&quot;</translation>
+    </message>
+    <message>
+        <source>Pt: Active power &quot;to&quot; A</source>
+        <translation>Pt: Indar-potentzia &quot;era&quot; A</translation>
+    </message>
+    <message>
+        <source>Pt: Active power &quot;to&quot; B</source>
+        <translation>Pt: Indar-potentzia &quot;era&quot; B</translation>
+    </message>
+    <message>
+        <source>Pt: Active power &quot;to&quot; C</source>
+        <translation>Pt: Indar-potentzia &quot;era&quot; C</translation>
+    </message>
+    <message>
+        <source>Q: Reactive power</source>
+        <translation>Q: Reaktibo-potentzia</translation>
+    </message>
+    <message>
+        <source>QA: Reactive power A</source>
+        <translation>QA: Reaktibo-potentzia A</translation>
+    </message>
+    <message>
+        <source>QB: Reactive power B</source>
+        <translation>QB: Reaktibo-potentzia B</translation>
+    </message>
+    <message>
+        <source>QC: Reactive power C</source>
+        <translation>QC: Reaktibo-potentzia C</translation>
+    </message>
+    <message>
+        <source>Qf Measurement</source>
+        <translation>Qf Neurriktura</translation>
+    </message>
+    <message>
+        <source>Qf: Reactive power &quot;from&quot;</source>
+        <translation>Qf: Reaktibo-potentzia &quot;etik&quot;</translation>
+    </message>
+    <message>
+        <source>QfA: Reactive power &quot;from&quot; A</source>
+        <translation>QfA: Reaktibo-potentzia &quot;etik&quot; A</translation>
+    </message>
+    <message>
+        <source>QfB: Reactive power &quot;from&quot; B</source>
+        <translation>QfB: Reaktibo-potentzia &quot;etik&quot; B</translation>
+    </message>
+    <message>
+        <source>QfC: Reactive power &quot;from&quot; C</source>
+        <translation>QfC: Reaktibo-potentzia &quot;etik&quot; C</translation>
+    </message>
+    <message>
+        <source>Qg Measurement</source>
+        <translation>Qg Neurriktura</translation>
+    </message>
+    <message>
+        <source>Qi Measurement</source>
+        <translation>Qi Neurriktura</translation>
+    </message>
+    <message>
+        <source>Ql: Reactive losses</source>
+        <translation>Ql: Reaktibo-hara</translation>
+    </message>
+    <message>
+        <source>Ql: Reactive losses A</source>
+        <translation>Ql: Reaktibo-hara A</translation>
+    </message>
+    <message>
+        <source>Ql: Reactive losses B</source>
+        <translation>Ql: Reaktibo-hara B</translation>
+    </message>
+    <message>
+        <source>Ql: Reactive losses C</source>
+        <translation>Ql: Reaktibo-hara C</translation>
+    </message>
+    <message>
+        <source>Qt Measurement</source>
+        <translation>Qt Neurriktura</translation>
+    </message>
+    <message>
+        <source>Qt: Reactive power &quot;to&quot;</source>
+        <translation>Qt: Reaktibo-potentzia &quot;era&quot;</translation>
+    </message>
+    <message>
+        <source>Qt: Reactive power &quot;to&quot; A</source>
+        <translation>Qt: Reaktibo-potentzia &quot;era&quot; A</translation>
+    </message>
+    <message>
+        <source>Qt: Reactive power &quot;to&quot; B</source>
+        <translation>Qt: Reaktibo-potentzia &quot;era&quot; B</translation>
+    </message>
+    <message>
+        <source>Qt: Reactive power &quot;to&quot; C</source>
+        <translation>Qt: Reaktibo-potentzia &quot;era&quot; C</translation>
+    </message>
+    <message>
+        <source>RMS Dynamic</source>
+        <translation>RMS Dinamika</translation>
+    </message>
+    <message>
+        <source>RMS Small Signal stability</source>
+        <translation>RMS Txik-sinalea babarrria</translation>
+    </message>
+    <message>
+        <source>RMS template</source>
+        <translation>RMS plantilla</translation>
+    </message>
+    <message>
+        <source>Region</source>
+        <translation>Regio</translation>
+    </message>
+    <message>
+        <source>Region analysis</source>
+        <translation>Regio-analisia</translation>
+    </message>
+    <message>
+        <source>Region balance analysis</source>
+        <translation>Regio-balantza-analisia</translation>
+    </message>
+    <message>
+        <source>Region generation analysis</source>
+        <translation>Regio-generazio-analisia</translation>
+    </message>
+    <message>
+        <source>Region load analysis</source>
+        <translation>Regio-karga-analisia</translation>
+    </message>
+    <message>
+        <source>Regions</source>
+        <translation>Regioak</translation>
+    </message>
+    <message>
+        <source>Reliability</source>
+        <translation>Fidagarritasuna</translation>
+    </message>
+    <message>
+        <source>Remedial action</source>
+        <translation>Harekuntza-korretak</translation>
+    </message>
+    <message>
+        <source>Remedial action Group</source>
+        <translation>Harekuntza-korretak Taldea</translation>
+    </message>
+    <message>
+        <source>Reports</source>
+        <translation>Raportuak</translation>
+    </message>
+    <message>
+        <source>Reservoir fluid level</source>
+        <translation>Reservorioaren fluide-antasioa</translation>
+    </message>
+    <message>
+        <source>Results</source>
+        <translation>Emaitzak</translation>
+    </message>
+    <message>
+        <source>Right Eigenvectors</source>
+        <translation>Eigenvektoreak Jaugarriak</translation>
+    </message>
+    <message>
+        <source>Rms Event</source>
+        <translation>Rms Ganderea</translation>
+    </message>
+    <message>
+        <source>Rms Events Group</source>
+        <translation>Rms Ganderiak Taldea</translation>
+    </message>
+    <message>
+        <source>Rms Generator results</source>
+        <translation>Rms Generadorearen emaitzak</translation>
+    </message>
+    <message>
+        <source>Rms Genqec delta results</source>
+        <translation>Rms Genqec delta emaitzak</translation>
+    </message>
+    <message>
+        <source>Rms Genqec omega results</source>
+        <translation>Rms Genqec omega emaitzak</translation>
+    </message>
+    <message>
+        <source>Rms Line results</source>
+        <translation>Rms Liniak emaitzak</translation>
+    </message>
+    <message>
+        <source>Rms Load P results</source>
+        <translation>Rms Karga P emaitzak</translation>
+    </message>
+    <message>
+        <source>Rms Load Q results</source>
+        <translation>Rms Karga Q emaitzak</translation>
+    </message>
+    <message>
+        <source>Rms Simple Line P results</source>
+        <translation>Rms Simple Line P emaitzak</translation>
+    </message>
+    <message>
+        <source>Rms Simple Line Q results</source>
+        <translation>Rms Simple Line Q emaitzak</translation>
+    </message>
+    <message>
+        <source>Rms load results</source>
+        <translation>Rms karga emaitzak</translation>
+    </message>
+    <message>
+        <source>Rms plot results</source>
+        <translation>Rms plot emaitzak</translation>
+    </message>
+    <message>
+        <source>Rms time series report</source>
+        <translation>Rms ardura-serieko raportua</translation>
+    </message>
+    <message>
+        <source>RmsSimulation</source>
+        <translation>Rms Simulazioa</translation>
+    </message>
+    <message>
+        <source>S-Domain Plot</source>
+        <translation>S-Domain Plot</translation>
+    </message>
+    <message>
+        <source>S-Domain Plot in Hz</source>
+        <translation>S-Domain Plot Hz-an</translation>
+    </message>
+    <message>
+        <source>SAIDI</source>
+        <translation>SAIDI</translation>
+    </message>
+    <message>
+        <source>SAIFI</source>
+        <translation>SAIFI</translation>
+    </message>
+    <message>
+        <source>Sensibilities</source>
+        <translation>Sensibilidades</translation>
+    </message>
+    <message>
+        <source>Sensitivity to the exchange</source>
+        <translation>El alkaera edonko sensitibitatea</translation>
+    </message>
+    <message>
+        <source>Sensitivity to the exchange (N-1)</source>
+        <translation>El alkaera edonko sensitibitatea (N-1)</translation>
+    </message>
+    <message>
+        <source>Sequence line</source>
+        <translation>Sekuentziako linia</translation>
+    </message>
+    <message>
+        <source>Series</source>
+        <translation>Serieak</translation>
+    </message>
+    <message>
+        <source>Series reactance</source>
+        <translation>Serie erreaktantzia</translation>
+    </message>
+    <message>
+        <source>Short circuit</source>
+        <translation>Kirol-kizketa</translation>
+    </message>
+    <message>
+        <source>Short circuit active current</source>
+        <translation>Kirol-kizketa aktibo korrientea</translation>
+    </message>
+    <message>
+        <source>Short circuit active current A</source>
+        <translation>Kirol-kizketa aktibo korrientea A</translation>
+    </message>
+    <message>
+        <source>Short circuit active current B</source>
+        <translation>Kirol-kizketa aktibo korrientea B</translation>
+    </message>
+    <message>
+        <source>Short circuit active current C</source>
+        <translation>Kirol-kizketa aktibo korrientea C</translation>
+    </message>
+    <message>
+        <source>Short circuit active power</source>
+        <translation>Kirol-kizketa aktibo indarreak</translation>
+    </message>
+    <message>
+        <source>Short circuit active power A</source>
+        <translation>Kirol-kizketa aktibo indarreak A</translation>
+    </message>
+    <message>
+        <source>Short circuit active power B</source>
+        <translation>Kirol-kizketa aktibo indarreak B</translation>
+    </message>
+    <message>
+        <source>Short circuit active power C</source>
+        <translation>Kirol-kizketa aktibo indarreak C</translation>
+    </message>
+    <message>
+        <source>Short circuit event</source>
+        <translation>Kirol-kizketa gertakuntza</translation>
+    </message>
+    <message>
+        <source>Short circuit reactive current</source>
+        <translation>Kirol-kizketa reaktibo korrientea</translation>
+    </message>
+    <message>
+        <source>Short circuit reactive current A</source>
+        <translation>Kirol-kizketa reaktibo korrientea A</translation>
+    </message>
+    <message>
+        <source>Short circuit reactive current B</source>
+        <translation>Kirol-kizketa reaktibo korrientea B</translation>
+    </message>
+    <message>
+        <source>Short circuit reactive current C</source>
+        <translation>Kirol-kizketa reaktibo korrientea C</translation>
+    </message>
+    <message>
+        <source>Short circuit reactive power</source>
+        <translation>Kirol-kizketa reaktibo indarreak</translation>
+    </message>
+    <message>
+        <source>Short circuit reactive power A</source>
+        <translation>Kirol-kizketa reaktibo indarreak A</translation>
+    </message>
+    <message>
+        <source>Short circuit reactive power B</source>
+        <translation>Kirol-kizketa reaktibo indarreak B</translation>
+    </message>
+    <message>
+        <source>Short circuit reactive power C</source>
+        <translation>Kirol-kizketa reaktibo indarreak C</translation>
+    </message>
+    <message>
+        <source>Short-circuit information</source>
+        <translation>Kirol-kizketa informazioa</translation>
+    </message>
+    <message>
+        <source>ShortCircuit</source>
+        <translation>Kirol-kizketa</translation>
+    </message>
+    <message>
+        <source>Shunt</source>
+        <translation>Shunt</translation>
+    </message>
+    <message>
+        <source>Shunt like devices</source>
+        <translation>Shunt-etik milakar egitureak</translation>
+    </message>
+    <message>
+        <source>Shunt neutral voltage</source>
+        <translation>Shunt neutral indarreako potentziala</translation>
+    </message>
+    <message>
+        <source>Shunt reactive power</source>
+        <translation>Shunt reaktibo indarreak</translation>
+    </message>
+    <message>
+        <source>Shunt reactive power A</source>
+        <translation>Shunt reaktibo indarreak A</translation>
+    </message>
+    <message>
+        <source>Shunt reactive power B</source>
+        <translation>Shunt reaktibo indarreak B</translation>
+    </message>
+    <message>
+        <source>Shunt reactive power C</source>
+        <translation>Shunt reaktibo indarreak C</translation>
+    </message>
+    <message>
+        <source>Sigma + distances</source>
+        <translation>Sigma + distancias</translation>
+    </message>
+    <message>
+        <source>Sigma Analysis</source>
+        <translation>Sigma Analisia</translation>
+    </message>
+    <message>
+        <source>Sigma distances</source>
+        <translation>Sigma distancias</translation>
+    </message>
+    <message>
+        <source>Sigma imaginary</source>
+        <translation>Sigma iagarkakoa</translation>
+    </message>
+    <message>
+        <source>Sigma real</source>
+        <translation>Sigma nahikoa</translation>
+    </message>
+    <message>
+        <source>SigmaAnalysis</source>
+        <translation>Sigma Analisia</translation>
+    </message>
+    <message>
+        <source>SimulationOptionsDevice</source>
+        <translation>Simulazio Opzioak/Egitureak</translation>
+    </message>
+    <message>
+        <source>Slacks</source>
+        <translation>Slacks</translation>
+    </message>
+    <message>
+        <source>SmallSignalStability</source>
+        <translation>Gutxi-Signalaren Estabilitatea</translation>
+    </message>
+    <message>
+        <source>Snapshot</source>
+        <translation>Argazkia</translation>
+    </message>
+    <message>
+        <source>Special plots</source>
+        <translation>Ploteak zehatzak</translation>
+    </message>
+    <message>
+        <source>Spillage flow leaving</source>
+        <translation>Buxatutako siriak kanstaltzenak</translation>
+    </message>
+    <message>
+        <source>Srap used power</source>
+        <translation>Srap erabiliko potentzia</translation>
+    </message>
+    <message>
+        <source>Stabilizer</source>
+        <translation>Stabilizatzailea</translation>
+    </message>
+    <message>
+        <source>State Matrix</source>
+        <translation>Estatus Matrixa</translation>
+    </message>
+    <message>
+        <source>State estimation</source>
+        <translation>Estatuaren estimazioa</translation>
+    </message>
+    <message>
+        <source>StateEstimation</source>
+        <translation>Estatus Estimazioa</translation>
+    </message>
+    <message>
+        <source>Static Generator</source>
+        <translation>Generatzaile Statiku</translation>
+    </message>
+    <message>
+        <source>Statistics</source>
+        <translation>Statistikak</translation>
+    </message>
+    <message>
+        <source>Std-dev contingency overloading</source>
+        <translation>Std-dev kontingentziaren sobrecarga</translation>
+    </message>
+    <message>
+        <source>Stochastic Power Flow</source>
+        <translation>Potentzia Surostikoa</translation>
+    </message>
+    <message>
+        <source>StochasticPowerFlow</source>
+        <translation>Potentzia Surostikoa</translation>
+    </message>
+    <message>
+        <source>Substation</source>
+        <translation>Azpiestazioa</translation>
+    </message>
+    <message>
+        <source>Substation analysis</source>
+        <translation>Subestazio analizak</translation>
+    </message>
+    <message>
+        <source>Substation balance analysis</source>
+        <translation>Subestazio balanse analizak</translation>
+    </message>
+    <message>
+        <source>Substation generation analysis</source>
+        <translation>Subestazio genero analizak</translation>
+    </message>
+    <message>
+        <source>Substation load analysis</source>
+        <translation>Subestazio karga analizak</translation>
+    </message>
+    <message>
+        <source>Switch</source>
+        <translation>Etengailua</translation>
+    </message>
+    <message>
+        <source>System</source>
+        <translation>Sistema</translation>
+    </message>
+    <message>
+        <source>System emissions</source>
+        <translation>Sistema emisioak</translation>
+    </message>
+    <message>
+        <source>System energy cost</source>
+        <translation>Sistema energia kostua</translation>
+    </message>
+    <message>
+        <source>System energy total cost</source>
+        <translation>Sistema energia kostu guztia</translation>
+    </message>
+    <message>
+        <source>System fuel consumption</source>
+        <translation>Sistema solarka kontsumoa</translation>
+    </message>
+    <message>
+        <source>Technology</source>
+        <translation>Teknologia</translation>
+    </message>
+    <message>
+        <source>Technology Category</source>
+        <translation>Teknologia Kategoria</translation>
+    </message>
+    <message>
+        <source>Technology Group</source>
+        <translation>Teknologia Grupoa</translation>
+    </message>
+    <message>
+        <source>Technology plot</source>
+        <translation>Teknologia plotea</translation>
+    </message>
+    <message>
+        <source>Template</source>
+        <translation>Txantiloia</translation>
+    </message>
+    <message>
+        <source>Templates</source>
+        <translation>Plantillak</translation>
+    </message>
+    <message>
+        <source>Time</source>
+        <translation>Egutegia</translation>
+    </message>
+    <message>
+        <source>Time series Contingency flow report (Branches)</source>
+        <translation>Egutegiko kontingentzia siriak raporea (Siriak)</translation>
+    </message>
+    <message>
+        <source>Time series base flow report</source>
+        <translation>Egutegiko oinarrizko siriak raporea</translation>
+    </message>
+    <message>
+        <source>Time series branch monitoring logic report</source>
+        <translation>Egutegiko siriak itxurtiak bugatseko logika raporea</translation>
+    </message>
+    <message>
+        <source>Time series contingency Branches report</source>
+        <translation>Egutegiko kontingentzia siriak raporea</translation>
+    </message>
+    <message>
+        <source>Time series contingency flow report</source>
+        <translation>Egutegiko kontingentzia siriak raporea</translation>
+    </message>
+    <message>
+        <source>Time series contingency flow report. (Generation)</source>
+        <translation>Egutegiko kontingentzia siriak raporea. (Genero)</translation>
+    </message>
+    <message>
+        <source>Time series contingency flow report. (Hvdc)</source>
+        <translation>Egutegiko kontingentzia siriak raporea. (Hvdc)</translation>
+    </message>
+    <message>
+        <source>Time series critical Branches report</source>
+        <translation>Egutegiko siriak kritikoak raporea</translation>
+    </message>
+    <message>
+        <source>Time series generation delta power report</source>
+        <translation>Egutegiko genero delta potentzia raporea</translation>
+    </message>
+    <message>
+        <source>Time series generation power report</source>
+        <translation>Egutegiko genero potentzia raporea</translation>
+    </message>
+    <message>
+        <source>Time series sensitivity to the exchange report</source>
+        <translation>Egutegiko elkarbestearako sensitibitatea raporea</translation>
+    </message>
+    <message>
+        <source>Time series worst sensitivity to the exchange report (N-1)</source>
+        <translation>Egutegiko elkarbestearako urratsko sensitibitatea raporea (N-1)</translation>
+    </message>
+    <message>
+        <source>Topology Processor</source>
+        <translation>Topologia Prozesadorea</translation>
+    </message>
+    <message>
+        <source>Topology reduction</source>
+        <translation>Topologia murrizketa</translation>
+    </message>
+    <message>
+        <source>Tower</source>
+        <translation>Dorrea</translation>
+    </message>
+    <message>
+        <source>Transformer</source>
+        <translation>Transformadorea</translation>
+    </message>
+    <message>
+        <source>Transformer type</source>
+        <translation>Transformadore mota</translation>
+    </message>
+    <message>
+        <source>Transformer3W</source>
+        <translation>Transformer3W</translation>
+    </message>
+    <message>
+        <source>TransformerNw</source>
+        <translation>TransformerNw</translation>
+    </message>
+    <message>
+        <source>Transient stability</source>
+        <translation>Estabilitate transientea</translation>
+    </message>
+    <message>
+        <source>UPFC</source>
+        <translation>UPFC</translation>
+    </message>
+    <message>
+        <source>Underground line</source>
+        <translation>Liniak harremaneko</translation>
+    </message>
+    <message>
+        <source>V: Voltage module</source>
+        <translation>V: Voltaje modulua</translation>
+    </message>
+    <message>
+        <source>VA: Voltage module A</source>
+        <translation>VA: Voltaje modulua A</translation>
+    </message>
+    <message>
+        <source>VB: Voltage module B</source>
+        <translation>VB: Voltaje modulua B</translation>
+    </message>
+    <message>
+        <source>VC: Voltage module C</source>
+        <translation>VC: Voltaje modulua C</translation>
+    </message>
+    <message>
+        <source>VSC</source>
+        <translation>VSC</translation>
+    </message>
+    <message>
+        <source>Va Measurement</source>
+        <translation>Va Neuratamena</translation>
+    </message>
+    <message>
+        <source>Var Factory</source>
+        <translation>Var Factory</translation>
+    </message>
+    <message>
+        <source>Vm Measurement</source>
+        <translation>Vm Iragarkia</translation>
+    </message>
+    <message>
+        <source>Voltage angle (0)</source>
+        <translation>Tentsionko zenituak (0)</translation>
+    </message>
+    <message>
+        <source>Voltage angle (1)</source>
+        <translation>Tentsionko zenituak (1)</translation>
+    </message>
+    <message>
+        <source>Voltage angle (2)</source>
+        <translation>Tentsionko zenituak (2)</translation>
+    </message>
+    <message>
+        <source>Voltage collapse</source>
+        <translation>Tentsionaren sinplapena</translation>
+    </message>
+    <message>
+        <source>Voltage level</source>
+        <translation>Tentsiontasuneak</translation>
+    </message>
+    <message>
+        <source>Voltage level analysis</source>
+        <translation>Tentsiontasuneak aztertzea</translation>
+    </message>
+    <message>
+        <source>Voltage level balance analysis</source>
+        <translation>Tentsiontasuneak balanseaz aztertzea</translation>
+    </message>
+    <message>
+        <source>Voltage level generation analysis</source>
+        <translation>Tentsiontasuneak sortzaileaz aztertzea</translation>
+    </message>
+    <message>
+        <source>Voltage level load analysis</source>
+        <translation>Tentsiontasuneak kargaaz aztertzea</translation>
+    </message>
+    <message>
+        <source>Voltage level template</source>
+        <translation>Tentsiontasuneak plantillaa</translation>
+    </message>
+    <message>
+        <source>Voltage module (0)</source>
+        <translation>Tentsiontasun moduluak (0)</translation>
+    </message>
+    <message>
+        <source>Voltage module (1)</source>
+        <translation>Tentsiontasun moduluak (1)</translation>
+    </message>
+    <message>
+        <source>Voltage module (2)</source>
+        <translation>Tentsiontasun moduluak (2)</translation>
+    </message>
+    <message>
+        <source>Voltage plot</source>
+        <translation>Tentsionko diagrama</translation>
+    </message>
+    <message>
+        <source>Vsc</source>
+        <translation>VSC</translation>
+    </message>
+    <message>
+        <source>Vsc ODF</source>
+        <translation>VSC ODF</translation>
+    </message>
+    <message>
+        <source>Vsc PTDF</source>
+        <translation>VSC PTDF</translation>
+    </message>
+    <message>
+        <source>Vsc Pdc</source>
+        <translation>VSC Pdc</translation>
+    </message>
+    <message>
+        <source>Vsc Vdc</source>
+        <translation>VSC Vdc</translation>
+    </message>
+    <message>
+        <source>Vsc loading</source>
+        <translation>VSC karga</translation>
+    </message>
+    <message>
+        <source>Vsc losses</source>
+        <translation>VSC galdera</translation>
+    </message>
+    <message>
+        <source>Vsc power &quot;from&quot; negative pole</source>
+        <translation>VSC potentzia &quot;negatiboa&quot; poleetik</translation>
+    </message>
+    <message>
+        <source>Vsc power &quot;from&quot; positive pole</source>
+        <translation>VSC potentzia &quot;positiboa&quot; poleetik</translation>
+    </message>
+    <message>
+        <source>Vsc power &quot;to&quot;</source>
+        <translation>VSC potentzia &quot;ering&quot;</translation>
+    </message>
+    <message>
+        <source>Vsc power &quot;to&quot; A</source>
+        <translation>VSC potentzia &quot;ering&quot; A</translation>
+    </message>
+    <message>
+        <source>Vsc power &quot;to&quot; B</source>
+        <translation>VSC potentzia &quot;ering&quot; B</translation>
+    </message>
+    <message>
+        <source>Vsc power &quot;to&quot; C</source>
+        <translation>VSC potentzia &quot;ering&quot; C</translation>
+    </message>
+    <message>
+        <source>When to make them plot</source>
+        <translation>Nezero egin diagrama</translation>
+    </message>
+    <message>
+        <source>Winding</source>
+        <translation>Harilkadura</translation>
+    </message>
+    <message>
+        <source>Wire</source>
+        <translation>Kordila</translation>
+    </message>
+    <message>
+        <source>Zone</source>
+        <translation>Zona</translation>
+    </message>
+    <message>
+        <source>Zone analysis</source>
+        <translation>Zonak aztertzea</translation>
+    </message>
+    <message>
+        <source>Zone balance analysis</source>
+        <translation>Zona balanseaz aztertzea</translation>
+    </message>
+    <message>
+        <source>Zone generation analysis</source>
+        <translation>Zona sortzaileaz aztertzea</translation>
+    </message>
+    <message>
+        <source>Zone load analysis</source>
+        <translation>Zona kargaaz aztertzea</translation>
+    </message>
+    <message>
+        <source>export all</source>
+        <translation>exportatu guztia</translation>
+    </message>
+    <message>
+        <source>file open</source>
+        <translation>faila irekitz</translation>
+    </message>
+    <message>
+        <source>file save</source>
+        <translation>faila taldeatu</translation>
+    </message>
+    <message>
+        <source>loading avg</source>
+        <translation>kargaaren ardurrendura</translation>
+    </message>
+    <message>
+        <source>m: Tap module</source>
+        <translation>m: Tap moduluak</translation>
+    </message>
+    <message>
+        <source>ΔP: Active power increment</source>
+        <translation>ΔP: Aktiboa potentziaaren erebe</translation>
+    </message>
+    <message>
+        <source>ΔV: Voltage modules drop</source>
+        <translation>ΔV: Tentsiontasun moduluak kaskatzea</translation>
+    </message>
+    <message>
+        <source>ΔV: Voltage modules drop A</source>
+        <translation>ΔV: Tentsiontasun moduluak kaskatzea A</translation>
+    </message>
+    <message>
+        <source>ΔV: Voltage modules drop B</source>
+        <translation>ΔV: Tentsiontasun moduluak kaskatzea B</translation>
+    </message>
+    <message>
+        <source>ΔV: Voltage modules drop C</source>
+        <translation>ΔV: Tentsiontasun moduluak kaskatzea C</translation>
+    </message>
+    <message>
+        <source>Δθ: Voltage angles drop</source>
+        <translation>Δθ: Tentsionko zenituak kaskatzea</translation>
+    </message>
+    <message>
+        <source>Δθ: Voltage angles drop A</source>
+        <translation>Δθ: Tentsionko zenituak kaskatzea A</translation>
+    </message>
+    <message>
+        <source>Δθ: Voltage angles drop B</source>
+        <translation>Δθ: Tentsionko zenituak kaskatzea B</translation>
+    </message>
+    <message>
+        <source>Δθ: Voltage angles drop C</source>
+        <translation>Δθ: Tentsionko zenituak kaskatzea C</translation>
+    </message>
+    <message>
+        <source>θ: Voltage angle</source>
+        <translation>θ: Toldo-angle</translation>
+    </message>
+    <message>
+        <source>θA: Voltage angle A</source>
+        <translation>θA: Toldo-angle A</translation>
+    </message>
+    <message>
+        <source>θB: Voltage angle B</source>
+        <translation>θB: Toldo-angle B</translation>
+    </message>
+    <message>
+        <source>θC: Voltage angle C</source>
+        <translation>θC: Toldo-angle C</translation>
+    </message>
+    <message>
+        <source>𝜏: Tap angle</source>
+        <translation>𝜏: Tap angle</translation>
     </message>
 </context>
 <context>
@@ -8007,2205 +10206,6 @@ Monte Carloko potentzia-fluxuaren emaitzak:</translation>
     <message>
         <source>Question</source>
         <translation>Galdera</translation>
-    </message>
-</context>
-<context>
-    <name>VeraGridTreeLabels</name>
-    <message>
-        <source>ATC Report</source>
-        <translation>ATC Raportua</translation>
-    </message>
-    <message>
-        <source>Active power flow per area</source>
-        <translation>Ingener potentziaren sirkulazioa area per area</translation>
-    </message>
-    <message>
-        <source>Any line template</source>
-        <translation>Liniak edozein plantilla</translation>
-    </message>
-    <message>
-        <source>Area</source>
-        <translation>Area</translation>
-    </message>
-    <message>
-        <source>Area analysis</source>
-        <translation>Area analizatzea</translation>
-    </message>
-    <message>
-        <source>Area balance analysis</source>
-        <translation>Area balanse analizatzea</translation>
-    </message>
-    <message>
-        <source>Area generation analysis</source>
-        <translation>Area sortzaile analizatzea</translation>
-    </message>
-    <message>
-        <source>Area load analysis</source>
-        <translation>Area karga analizatzea</translation>
-    </message>
-    <message>
-        <source>Associations</source>
-        <translation>Elkarteak</translation>
-    </message>
-    <message>
-        <source>Available transfer capacity</source>
-        <translation>Eskuragarri dagoen transferentzia-ahalmena</translation>
-    </message>
-    <message>
-        <source>Available transfer capacity (N)</source>
-        <translation>Transferentzia kapasitatea eskuragarria (N)</translation>
-    </message>
-    <message>
-        <source>Available transfer capacity (final)</source>
-        <translation>Transferentzia kapasitatea eskuragarria (azadi)</translation>
-    </message>
-    <message>
-        <source>Available transfer capacity time series</source>
-        <translation>Transferentzia kapasitatea eskuragarria tempordion</translation>
-    </message>
-    <message>
-        <source>AvailableTransferCapacity</source>
-        <translation>AvailableTransferCapacity</translation>
-    </message>
-    <message>
-        <source>AvailableTransferCapacityTimeSeries</source>
-        <translation>AvailableTransferCapacityTimeSeries</translation>
-    </message>
-    <message>
-        <source>Balance plot</source>
-        <translation>Balanse plota</translation>
-    </message>
-    <message>
-        <source>Base flow report</source>
-        <translation>Sirkulazio mota-bateko raportua</translation>
-    </message>
-    <message>
-        <source>Batteries</source>
-        <translation>Bateriak</translation>
-    </message>
-    <message>
-        <source>Battery</source>
-        <translation>Bateria</translation>
-    </message>
-    <message>
-        <source>Battery energy</source>
-        <translation>Bateria energia</translation>
-    </message>
-    <message>
-        <source>Battery invested</source>
-        <translation>Bateria investitu</translation>
-    </message>
-    <message>
-        <source>Battery power</source>
-        <translation>Bateria potentzia</translation>
-    </message>
-    <message>
-        <source>Battery reactive power</source>
-        <translation>Bateria potentzia reaktiboa</translation>
-    </message>
-    <message>
-        <source>Battery reactive power A</source>
-        <translation>Bateria potentzia reaktiboa A</translation>
-    </message>
-    <message>
-        <source>Battery reactive power B</source>
-        <translation>Bateria potentzia reaktiboa B</translation>
-    </message>
-    <message>
-        <source>Battery reactive power C</source>
-        <translation>Bateria potentzia reaktiboa C</translation>
-    </message>
-    <message>
-        <source>Beq: Equivalent susceptance</source>
-        <translation>Beq: Suszeptantzia ekibalentzia</translation>
-    </message>
-    <message>
-        <source>Branch</source>
-        <translation>Zuzpona</translation>
-    </message>
-    <message>
-        <source>Branch Loading</source>
-        <translation>Zuzponaren Karga</translation>
-    </message>
-    <message>
-        <source>Branch Loading A</source>
-        <translation>Zuzponaren Karga A</translation>
-    </message>
-    <message>
-        <source>Branch Loading B</source>
-        <translation>Zuzponaren Karga B</translation>
-    </message>
-    <message>
-        <source>Branch Loading C</source>
-        <translation>Zuzponaren Karga C</translation>
-    </message>
-    <message>
-        <source>Branch active current "from" (0)</source>
-        <translation>Zuzponaren orrattu indutzia "etik" (0)</translation>
-    </message>
-    <message>
-        <source>Branch active current "from" (1)</source>
-        <translation>Zuzponaren orrattu indutzia "etik" (1)</translation>
-    </message>
-    <message>
-        <source>Branch active current "from" (2)</source>
-        <translation>Zuzponaren orrattu indutzia "etik" (2)</translation>
-    </message>
-    <message>
-        <source>Branch active losses (0)</source>
-        <translation>Zuzponaren orrattu galdera (0)</translation>
-    </message>
-    <message>
-        <source>Branch active losses (1)</source>
-        <translation>Zuzponaren orrattu galdera (1)</translation>
-    </message>
-    <message>
-        <source>Branch active losses (2)</source>
-        <translation>Zuzponaren orrattu galdera (2)</translation>
-    </message>
-    <message>
-        <source>Branch active power "from" (0)</source>
-        <translation>Zuzponaren orrattu potentzia "etik" (0)</translation>
-    </message>
-    <message>
-        <source>Branch active power "from" (1)</source>
-        <translation>Zuzponaren orrattu potentzia "etik" (1)</translation>
-    </message>
-    <message>
-        <source>Branch active power "from" (2)</source>
-        <translation>Zuzponaren orrattu potentzia "etik" (2)</translation>
-    </message>
-    <message>
-        <source>Branch group</source>
-        <translation>Zuzponen grupoa</translation>
-    </message>
-    <message>
-        <source>Branch loading (0)</source>
-        <translation>Zuzponaren karga (0)</translation>
-    </message>
-    <message>
-        <source>Branch loading (1)</source>
-        <translation>Zuzponaren karga (1)</translation>
-    </message>
-    <message>
-        <source>Branch loading (2)</source>
-        <translation>Zuzponaren karga (2)</translation>
-    </message>
-    <message>
-        <source>Branch losses</source>
-        <translation>Zuzponaren galdera</translation>
-    </message>
-    <message>
-        <source>Branch monitoring logic</source>
-        <translation>Zuzponaren itxiko logika</translation>
-    </message>
-    <message>
-        <source>Branch overloads</source>
-        <translation>Zuzponaren sobrekargaak</translation>
-    </message>
-    <message>
-        <source>Branch overloads cost</source>
-        <translation>Zuzponaren sobrekarga kostua</translation>
-    </message>
-    <message>
-        <source>Branch power CDF</source>
-        <translation>Zuzponaren potentzia CDF</translation>
-    </message>
-    <message>
-        <source>Branch power avg</source>
-        <translation>Zuzponaren potentzia batez</translation>
-    </message>
-    <message>
-        <source>Branch power std</source>
-        <translation>Zuzponaren potentzia desia</translation>
-    </message>
-    <message>
-        <source>Branch reactive current "from" (0)</source>
-        <translation>Zuzponaren potentzia reaktiboa "etik" (0)</translation>
-    </message>
-    <message>
-        <source>Branch reactive current "from" (1)</source>
-        <translation>Branch reactive current "from" (1)</translation>
-    </message>
-    <message>
-        <source>Branch reactive current "from" (2)</source>
-        <translation>Branch reactive current "from" (2)</translation>
-    </message>
-    <message>
-        <source>Branch reactive losses (0)</source>
-        <translation>Branch reactive losses (0)</translation>
-    </message>
-    <message>
-        <source>Branch reactive losses (1)</source>
-        <translation>Branch reactive losses (1)</translation>
-    </message>
-    <message>
-        <source>Branch reactive losses (2)</source>
-        <translation>Branch reactive losses (2)</translation>
-    </message>
-    <message>
-        <source>Branch reactive power "from" (0)</source>
-        <translation>Branch reactive power "from" (0)</translation>
-    </message>
-    <message>
-        <source>Branch reactive power "from" (1)</source>
-        <translation>Branch reactive power "from" (1)</translation>
-    </message>
-    <message>
-        <source>Branch reactive power "from" (2)</source>
-        <translation>Branch reactive power "from" (2)</translation>
-    </message>
-    <message>
-        <source>Branch template</source>
-        <translation>Zuzponaren plantilla</translation>
-    </message>
-    <message>
-        <source>Branches</source>
-        <translation>Zuzponak</translation>
-    </message>
-    <message>
-        <source>Bus</source>
-        <translation>Bus</translation>
-    </message>
-    <message>
-        <source>Bus nodal capacity</source>
-        <translation>Bus-ko nodoaren kapasitatea</translation>
-    </message>
-    <message>
-        <source>Bus power</source>
-        <translation>Bus-ko indutzia</translation>
-    </message>
-    <message>
-        <source>Bus power CDF</source>
-        <translation>Bus-ko indutziaren CDF</translation>
-    </message>
-    <message>
-        <source>Bus voltage CDF</source>
-        <translation>Bus-ko taltiindar indutziaren CDF</translation>
-    </message>
-    <message>
-        <source>Bus voltage avg</source>
-        <translation>Bus-ko taltiindar indutziaren media</translation>
-    </message>
-    <message>
-        <source>Bus voltage sensitivity</source>
-        <translation>Bus-ko taltiindar indutziaren txartarratutasuna</translation>
-    </message>
-    <message>
-        <source>Bus voltage std</source>
-        <translation>Bus-ko taltiindar indutziaren desiaun standartoa</translation>
-    </message>
-    <message>
-        <source>BusBar</source>
-        <translation>BusBar</translation>
-    </message>
-    <message>
-        <source>BusOrBranch</source>
-        <translation>Bus edo Zuzpona</translation>
-    </message>
-    <message>
-        <source>CAIDI</source>
-        <translation>CAIDI</translation>
-    </message>
-    <message>
-        <source>Cascade</source>
-        <translation>Kaskada</translation>
-    </message>
-    <message>
-        <source>Catalogue</source>
-        <translation>Katalogoa</translation>
-    </message>
-    <message>
-        <source>Catalogue optimization</source>
-        <translation>Katalogoaren optimizazioa</translation>
-    </message>
-    <message>
-        <source>Circuit</source>
-        <translation>Zirkuitua</translation>
-    </message>
-    <message>
-        <source>Clean room</source>
-        <translation>Ezagun egoera</translation>
-    </message>
-    <message>
-        <source>Clustering</source>
-        <translation>Clustering</translation>
-    </message>
-    <message>
-        <source>Clustering Analysis</source>
-        <translation>Klastering Analisia</translation>
-    </message>
-    <message>
-        <source>Clustering time series report</source>
-        <translation>Klastering lan-serieko raporta</translation>
-    </message>
-    <message>
-        <source>Combinations</source>
-        <translation>Kombinazioak</translation>
-    </message>
-    <message>
-        <source>Community</source>
-        <translation>Komunitatea</translation>
-    </message>
-    <message>
-        <source>Community analysis</source>
-        <translation>Komunitatearen analiza</translation>
-    </message>
-    <message>
-        <source>Community balance analysis</source>
-        <translation>Komunitatearen balanse-analisia</translation>
-    </message>
-    <message>
-        <source>Community generation analysis</source>
-        <translation>Komunitatearen indutzia-analisia</translation>
-    </message>
-    <message>
-        <source>Community load analysis</source>
-        <translation>Komunitatearen karga-analisia</translation>
-    </message>
-    <message>
-        <source>Contingencies</source>
-        <translation>Kontingentziak</translation>
-    </message>
-    <message>
-        <source>Contingencies report</source>
-        <translation>Kontingentziaren raportua</translation>
-    </message>
-    <message>
-        <source>Contingencies statistical report</source>
-        <translation>Kontingentziaren statistiko-raportua</translation>
-    </message>
-    <message>
-        <source>Contingency</source>
-        <translation>Kontingentzia</translation>
-    </message>
-    <message>
-        <source>Contingency Group</source>
-        <translation>Kontingentzia-grupoa</translation>
-    </message>
-    <message>
-        <source>Contingency analysis</source>
-        <translation>Kontingentzia-analisia</translation>
-    </message>
-    <message>
-        <source>Contingency analysis time series</source>
-        <translation>Kontingentzia-analisiaren denbora-seriea</translation>
-    </message>
-    <message>
-        <source>Contingency flow</source>
-        <translation>Kontingentziaren urzioa</translation>
-    </message>
-    <message>
-        <source>Contingency flow report</source>
-        <translation>Kontingentziaren urzio-raportua</translation>
-    </message>
-    <message>
-        <source>Contingency frequency</source>
-        <translation>Kontingentziaren maiztasuna</translation>
-    </message>
-    <message>
-        <source>Contingency loading</source>
-        <translation>Kontingentziaren karga-zioa</translation>
-    </message>
-    <message>
-        <source>Contingency overload sum</source>
-        <translation>Kontingentziaren sobrekarga-suma</translation>
-    </message>
-    <message>
-        <source>Contingency relative frequency</source>
-        <translation>Kontingentziaren maiztasun-relatiboa</translation>
-    </message>
-    <message>
-        <source>ContingencyAnalysis</source>
-        <translation>Kontingentzia-analisia</translation>
-    </message>
-    <message>
-        <source>ContingencyAnalysisTimeSeries</source>
-        <translation>Kontingentzia-analisia lan-serieko</translation>
-    </message>
-    <message>
-        <source>ContinuationPowerFlow</source>
-        <translation>Indutzia-urzioaren jarraipena</translation>
-    </message>
-    <message>
-        <source>Controllable shunt</source>
-        <translation>Shunt kontrolagarria</translation>
-    </message>
-    <message>
-        <source>Country</source>
-        <translation>Herria</translation>
-    </message>
-    <message>
-        <source>Country analysis</source>
-        <translation>Herri-analisia</translation>
-    </message>
-    <message>
-        <source>Country balance analysis</source>
-        <translation>Herri-balanse-analisia</translation>
-    </message>
-    <message>
-        <source>Country generation analysis</source>
-        <translation>Herri-indutzia-analisia</translation>
-    </message>
-    <message>
-        <source>Country load analysis</source>
-        <translation>Herri-karga-analisia</translation>
-    </message>
-    <message>
-        <source>Current injection</source>
-        <translation>Uneko injekzioa</translation>
-    </message>
-    <message>
-        <source>DC line</source>
-        <translation>DC lineta</translation>
-    </message>
-    <message>
-        <source>Delete and reduce</source>
-        <translation>Zigiltu eta kudeaketa</translation>
-    </message>
-    <message>
-        <source>Design View</source>
-        <translation>Diseinu Isei</translation>
-    </message>
-    <message>
-        <source>Diagram</source>
-        <translation>Diagrama</translation>
-    </message>
-    <message>
-        <source>Dispatch</source>
-        <translation>Dispatcheak</translation>
-    </message>
-    <message>
-        <source>Dynamic</source>
-        <translation>Dinamikoa</translation>
-    </message>
-    <message>
-        <source>Dynamic Model Host</source>
-        <translation>Dinamiko Modelo Hosta</translation>
-    </message>
-    <message>
-        <source>EMT Dynamic</source>
-        <translation>EMT Dinamikoa</translation>
-    </message>
-    <message>
-        <source>EMT Small Signal stability</source>
-        <translation>EMT Ziginale Txikilerako Erresiarritasuna</translation>
-    </message>
-    <message>
-        <source>EMT template</source>
-        <translation>EMT plantilla</translation>
-    </message>
-    <message>
-        <source>ENS</source>
-        <translation>ENS</translation>
-    </message>
-    <message>
-        <source>Emission</source>
-        <translation>Emisioa</translation>
-    </message>
-    <message>
-        <source>Emt Event</source>
-        <translation>EMT Gandurua</translation>
-    </message>
-    <message>
-        <source>Emt Events Group</source>
-        <translation>EMT Ganduruak Taldea</translation>
-    </message>
-    <message>
-        <source>EmtSimulation</source>
-        <translation>EMT Simulazioa</translation>
-    </message>
-    <message>
-        <source>Error</source>
-        <translation>Errorea</translation>
-    </message>
-    <message>
-        <source>Evaluation report</source>
-        <translation>Ingurumen Raportua</translation>
-    </message>
-    <message>
-        <source>Exciter</source>
-        <translation>Excitera</translation>
-    </message>
-    <message>
-        <source>External grid</source>
-        <translation>Kanpoko sarea</translation>
-    </message>
-    <message>
-        <source>FMU template</source>
-        <translation>FMU plantilla</translation>
-    </message>
-    <message>
-        <source>Facility</source>
-        <translation>Instalazioa</translation>
-    </message>
-    <message>
-        <source>Flow Reports</source>
-        <translation>Fluxo Raportuak</translation>
-    </message>
-    <message>
-        <source>Flow circulating in the device</source>
-        <translation>Laguntza/Fluxo azpian zirkulatzen dena</translation>
-    </message>
-    <message>
-        <source>Flow entering the node</source>
-        <translation>Nodoan sartzen den fluxoa</translation>
-    </message>
-    <message>
-        <source>Flow exiting the node</source>
-        <translation>Nodoatik ateratzen den fluxoa</translation>
-    </message>
-    <message>
-        <source>Flow from the P2X</source>
-        <translation>P2X-etik sartzen den fluxoa</translation>
-    </message>
-    <message>
-        <source>Flow in the river</source>
-        <translation>Urriotan dagoen fluxoa</translation>
-    </message>
-    <message>
-        <source>Fluid</source>
-        <translation>Fluidoa</translation>
-    </message>
-    <message>
-        <source>Fluid Injection</source>
-        <translation>Fluido Injekzioa</translation>
-    </message>
-    <message>
-        <source>Fluid P2X</source>
-        <translation>Fluido P2X</translation>
-    </message>
-    <message>
-        <source>Fluid P2Xs</source>
-        <translation>Fluido P2Xs</translation>
-    </message>
-    <message>
-        <source>Fluid Pump</source>
-        <translation>Fluido Bomba</translation>
-    </message>
-    <message>
-        <source>Fluid Turbine</source>
-        <translation>Fluido Turbina</translation>
-    </message>
-    <message>
-        <source>Fluid injections</source>
-        <translation>Fluido Injekzioak</translation>
-    </message>
-    <message>
-        <source>Fluid node</source>
-        <translation>Fluido nodoa</translation>
-    </message>
-    <message>
-        <source>Fluid nodes</source>
-        <translation>Fluido Nodoak</translation>
-    </message>
-    <message>
-        <source>Fluid path</source>
-        <translation>Fluido Bidea</translation>
-    </message>
-    <message>
-        <source>Fluid paths</source>
-        <translation>Fluido Bideak</translation>
-    </message>
-    <message>
-        <source>Fluid pumps</source>
-        <translation>Fluido Bombak</translation>
-    </message>
-    <message>
-        <source>Fluid turbines</source>
-        <translation>Fluido Turbinak</translation>
-    </message>
-    <message>
-        <source>Frequency</source>
-        <translation>Maiztasuna</translation>
-    </message>
-    <message>
-        <source>Fuel</source>
-        <translation>Combustibilea</translation>
-    </message>
-    <message>
-        <source>Generation delta slacks</source>
-        <translation>Generazio delta slacks</translation>
-    </message>
-    <message>
-        <source>Generation deltas</source>
-        <translation>Generazio delta</translation>
-    </message>
-    <message>
-        <source>Generator</source>
-        <translation>Sorgailua</translation>
-    </message>
-    <message>
-        <source>Generator Emission</source>
-        <translation>Generadore Emisioa</translation>
-    </message>
-    <message>
-        <source>Generator Fuel</source>
-        <translation>Generadore Combustibilea</translation>
-    </message>
-    <message>
-        <source>Generator Technology</source>
-        <translation>Generadore Teknologia</translation>
-    </message>
-    <message>
-        <source>Generator cost</source>
-        <translation>Generadore kostua</translation>
-    </message>
-    <message>
-        <source>Generator emissions</source>
-        <translation>Generadore emisioak</translation>
-    </message>
-    <message>
-        <source>Generator fuels</source>
-        <translation>Generadore combustibileak</translation>
-    </message>
-    <message>
-        <source>Generator invested</source>
-        <translation>Generadorein zainugu</translation>
-    </message>
-    <message>
-        <source>Generator power</source>
-        <translation>Generadore potentzia</translation>
-    </message>
-    <message>
-        <source>Generator producing</source>
-        <translation>Generadoreak sortzen</translation>
-    </message>
-    <message>
-        <source>Generator reactive power</source>
-        <translation>Generadore potentzia reaktiboa</translation>
-    </message>
-    <message>
-        <source>Generator reactive power A</source>
-        <translation>Generadore potentzia reaktiboa A</translation>
-    </message>
-    <message>
-        <source>Generator reactive power B</source>
-        <translation>Generadorearen indutiboa B</translation>
-    </message>
-    <message>
-        <source>Generator reactive power C</source>
-        <translation>Generadorearen indutiboa C</translation>
-    </message>
-    <message>
-        <source>Generator reserve</source>
-        <translation>Generadorearen reserba</translation>
-    </message>
-    <message>
-        <source>Generator shedding</source>
-        <translation>Generadoreak babestakoak</translation>
-    </message>
-    <message>
-        <source>Generator shutting down</source>
-        <translation>Generadoreak itxierrean</translation>
-    </message>
-    <message>
-        <source>Generator starting up</source>
-        <translation>Generadoreak hasieran</translation>
-    </message>
-    <message>
-        <source>Generators</source>
-        <translation>Generadoreak</translation>
-    </message>
-    <message>
-        <source>Generic Area</source>
-        <translation>Area Orokorra</translation>
-    </message>
-    <message>
-        <source>Governor</source>
-        <translation>Gobernatzailea</translation>
-    </message>
-    <message>
-        <source>Groups</source>
-        <translation>Txangurrak</translation>
-    </message>
-    <message>
-        <source>HVDC Line</source>
-        <translation>HVDC Linea</translation>
-    </message>
-    <message>
-        <source>HVDC ODF</source>
-        <translation>HVDC ODF</translation>
-    </message>
-    <message>
-        <source>HVDC PTDF</source>
-        <translation>HVDC PTDF</translation>
-    </message>
-    <message>
-        <source>HVDC loading</source>
-        <translation>HVDC karga</translation>
-    </message>
-    <message>
-        <source>HVDC losses</source>
-        <translation>HVDC galdera</translation>
-    </message>
-    <message>
-        <source>HVDC overloads</source>
-        <translation>HVDC karga gehiak</translation>
-    </message>
-    <message>
-        <source>HVDC power "from"</source>
-        <translation>HVDC indutiboa "etik"</translation>
-    </message>
-    <message>
-        <source>HVDC power "from" A</source>
-        <translation>HVDC indutiboa "etik" A</translation>
-    </message>
-    <message>
-        <source>HVDC power "from" B</source>
-        <translation>HVDC indutiboa "etik" B</translation>
-    </message>
-    <message>
-        <source>HVDC power "from" C</source>
-        <translation>HVDC indutiboa "etik" C</translation>
-    </message>
-    <message>
-        <source>HVDC power "to"</source>
-        <translation>HVDC indutiboa "aterako"</translation>
-    </message>
-    <message>
-        <source>HVDC power "to" A</source>
-        <translation>HVDC indutiboa "aterako" A</translation>
-    </message>
-    <message>
-        <source>HVDC power "to" B</source>
-        <translation>HVDC indutiboa "aterako" B</translation>
-    </message>
-    <message>
-        <source>HVDC power "to" C</source>
-        <translation>HVDC indutiboa "aterako" C</translation>
-    </message>
-    <message>
-        <source>Hvdc</source>
-        <translation>Hvdc</translation>
-    </message>
-    <message>
-        <source>If Measurement</source>
-        <translation>If Neurritura</translation>
-    </message>
-    <message>
-        <source>Iif: Reactive current "from"</source>
-        <translation>Iif: Indutiboa korrientea "etik"</translation>
-    </message>
-    <message>
-        <source>Iif: Reactive current "from" A</source>
-        <translation>Iif: Indutiboa korrientea "etik" A</translation>
-    </message>
-    <message>
-        <source>Iif: Reactive current "from" B</source>
-        <translation>Iif: Indutiboa korrientea "etik" B</translation>
-    </message>
-    <message>
-        <source>Iif: Reactive current "from" C</source>
-        <translation>Iif: Indutiboa korrientea "etik" C</translation>
-    </message>
-    <message>
-        <source>Iit: Reactive current "to"</source>
-        <translation>Iit: Indutiboa korrientea "aterako"</translation>
-    </message>
-    <message>
-        <source>Iit: Reactive current "to" A</source>
-        <translation>Iit: Indutiboa korrientea "aterako" A</translation>
-    </message>
-    <message>
-        <source>Iit: Reactive current "to" B</source>
-        <translation>Iit: Indutiboa korrientea "aterako" B</translation>
-    </message>
-    <message>
-        <source>Iit: Reactive current "to" C</source>
-        <translation>Iit: Indutiboa korrientea "aterako" C</translation>
-    </message>
-    <message>
-        <source>Information</source>
-        <translation>Informazioa</translation>
-    </message>
-    <message>
-        <source>Injections</source>
-        <translation>Injekzioak</translation>
-    </message>
-    <message>
-        <source>Inputs Analysis</source>
-        <translation>Ingizko Analisia</translation>
-    </message>
-    <message>
-        <source>InputsAnalysis</source>
-        <translation>Ingizko Analisia</translation>
-    </message>
-    <message>
-        <source>Inter-Area exchange</source>
-        <translation>Areaak arteko alola</translation>
-    </message>
-    <message>
-        <source>Inter-space branch loading</source>
-        <translation>Espazioak arteko zutabearen karga</translation>
-    </message>
-    <message>
-        <source>Inter-space branch power</source>
-        <translation>Espazioak arteko zutabearen indutiboa</translation>
-    </message>
-    <message>
-        <source>InterAggregationInfo</source>
-        <translation>InterAgregazio Informazioa</translation>
-    </message>
-    <message>
-        <source>Investment</source>
-        <translation>Inbertsioa</translation>
-    </message>
-    <message>
-        <source>InvestmentEvaluations</source>
-        <translation>Inbertsioaren Irakaskuntza</translation>
-    </message>
-    <message>
-        <source>Investments</source>
-        <translation>Inbertsioak</translation>
-    </message>
-    <message>
-        <source>Investments Group</source>
-        <translation>Inbertsioak Txangurrak</translation>
-    </message>
-    <message>
-        <source>Investments evaluation</source>
-        <translation>Inbertsioen ebaluazioa</translation>
-    </message>
-    <message>
-        <source>Irf: Active current "from"</source>
-        <translation>Irf: Korriente aktiboa "etik"</translation>
-    </message>
-    <message>
-        <source>Irf: Active current "from" A</source>
-        <translation>Irf: Korriente aktiboa "etik" A</translation>
-    </message>
-    <message>
-        <source>Irf: Active current "from" B</source>
-        <translation>Irf: Korriente aktiboa "etik" B</translation>
-    </message>
-    <message>
-        <source>Irf: Active current "from" C</source>
-        <translation>Irf: Korriente aktiboa "etik" C</translation>
-    </message>
-    <message>
-        <source>Irt: Active current "to"</source>
-        <translation>Irt: Korriente aktiboa "aterako"</translation>
-    </message>
-    <message>
-        <source>Irt: Active current "to" A</source>
-        <translation>Irt: Corriente activa "ere" A</translation>
-    </message>
-    <message>
-        <source>Irt: Active current "to" B</source>
-        <translation>Irt: Corriente activa "ere" B</translation>
-    </message>
-    <message>
-        <source>Irt: Active current "to" C</source>
-        <translation>Irt: Corriente activa "ere" C</translation>
-    </message>
-    <message>
-        <source>It Measurement</source>
-        <translation>It Neureringa</translation>
-    </message>
-    <message>
-        <source>Iterations plot</source>
-        <translation>Iterazioen plotea</translation>
-    </message>
-    <message>
-        <source>LODF</source>
-        <translation>LODF</translation>
-    </message>
-    <message>
-        <source>LOLE</source>
-        <translation>LOLE</translation>
-    </message>
-    <message>
-        <source>LOLET</source>
-        <translation>LOLET</translation>
-    </message>
-    <message>
-        <source>LOLF</source>
-        <translation>LOLF</translation>
-    </message>
-    <message>
-        <source>LOLFT</source>
-        <translation>LOLFT</translation>
-    </message>
-    <message>
-        <source>Latin Hypercube</source>
-        <translation>Latin Hypercube</translation>
-    </message>
-    <message>
-        <source>Line</source>
-        <translation>Lerroa</translation>
-    </message>
-    <message>
-        <source>Line Location</source>
-        <translation>Liniako Konpozitzioa</translation>
-    </message>
-    <message>
-        <source>Line Locations</source>
-        <translation>Liniako Konpozitzioak</translation>
-    </message>
-    <message>
-        <source>Line Template</source>
-        <translation>Liniako Txartelak</translation>
-    </message>
-    <message>
-        <source>Linear analysis</source>
-        <translation>Analisi lineala</translation>
-    </message>
-    <message>
-        <source>Linear analysis time series</source>
-        <translation>Analisi lineako ardurako seriea</translation>
-    </message>
-    <message>
-        <source>LinearAnalysis</source>
-        <translation>Analisi Lineakoa</translation>
-    </message>
-    <message>
-        <source>LinearAnalysisTimeSeries</source>
-        <translation>Analisi Lineako Ardurako Seriea</translation>
-    </message>
-    <message>
-        <source>Load</source>
-        <translation>Kargatu</translation>
-    </message>
-    <message>
-        <source>Load like</source>
-        <translation>Karga bezalakoa</translation>
-    </message>
-    <message>
-        <source>Load neutral voltage</source>
-        <translation>Karga neutrala altzaria</translation>
-    </message>
-    <message>
-        <source>Load power</source>
-        <translation>Karga indarra</translation>
-    </message>
-    <message>
-        <source>Load shedding</source>
-        <translation>Karga taldeak</translation>
-    </message>
-    <message>
-        <source>Load shedding cost</source>
-        <translation>Karga taldeak kostua</translation>
-    </message>
-    <message>
-        <source>Loading CDF</source>
-        <translation>Kargaak CDF</translation>
-    </message>
-    <message>
-        <source>Loading from the base situation ($\lambda$)</source>
-        <translation>Kargaak oinarrizko egoeraetik ($\lambda$)</translation>
-    </message>
-    <message>
-        <source>Loading std</source>
-        <translation>Kargaak std</translation>
-    </message>
-    <message>
-        <source>Loads</source>
-        <translation>Kargaak</translation>
-    </message>
-    <message>
-        <source>Losses % per area</source>
-        <translation>Harrera % per area</translation>
-    </message>
-    <message>
-        <source>Losses CDF</source>
-        <translation>Harreraak CDF</translation>
-    </message>
-    <message>
-        <source>Losses avg</source>
-        <translation>Harreraak ardurakoa</translation>
-    </message>
-    <message>
-        <source>Losses per area</source>
-        <translation>Harreraak per area</translation>
-    </message>
-    <message>
-        <source>Losses per generation unit in area</source>
-        <translation>Harreraak per areako sortu-unitatean</translation>
-    </message>
-    <message>
-        <source>Losses std</source>
-        <translation>Harreraak std</translation>
-    </message>
-    <message>
-        <source>Market</source>
-        <translation>Merkatua</translation>
-    </message>
-    <message>
-        <source>Market unit</source>
-        <translation>Merkatu unitatea</translation>
-    </message>
-    <message>
-        <source>Max contingency flow</source>
-        <translation>Fluxu kontingentzia handiena</translation>
-    </message>
-    <message>
-        <source>Max contingency loading</source>
-        <translation>Karga kontingentzia handiena</translation>
-    </message>
-    <message>
-        <source>Maximum contingency flow</source>
-        <translation>Fluxu kontingentzia handena</translation>
-    </message>
-    <message>
-        <source>Mean contingency overloading</source>
-        <translation>Kontingentziak karga-izartzea ardurakoa</translation>
-    </message>
-    <message>
-        <source>Measurements</source>
-        <translation>Neureringak</translation>
-    </message>
-    <message>
-        <source>Modelling Authority</source>
-        <translation>Modelatzeko Aldizkarria</translation>
-    </message>
-    <message>
-        <source>Modes</source>
-        <translation>Moduak</translation>
-    </message>
-    <message>
-        <source>Monte Carlo</source>
-        <translation>Monte Carlo</translation>
-    </message>
-    <message>
-        <source>Municipality</source>
-        <translation>Udala</translation>
-    </message>
-    <message>
-        <source>Municipality analysis</source>
-        <translation>Udala analizak</translation>
-    </message>
-    <message>
-        <source>Municipality balance analysis</source>
-        <translation>Udala balanse analizak</translation>
-    </message>
-    <message>
-        <source>Municipality generation analysis</source>
-        <translation>Udala sortu analizak</translation>
-    </message>
-    <message>
-        <source>Municipality load analysis</source>
-        <translation>Udala karga analizak</translation>
-    </message>
-    <message>
-        <source>NTC</source>
-        <translation>NTC</translation>
-    </message>
-    <message>
-        <source>Net transfer capacity</source>
-        <translation>Transferentzia ahalmen garbia</translation>
-    </message>
-    <message>
-        <source>NetTransferCapacity</source>
-        <translation>Kapazitate NetTransfer</translation>
-    </message>
-    <message>
-        <source>NetTransferCapacityTimeSeries</source>
-        <translation>Kapazitate NetTransfer Ardurako Seriea</translation>
-    </message>
-    <message>
-        <source>No simulation</source>
-        <translation>Simulazioa ez</translation>
-    </message>
-    <message>
-        <source>NoDevice</source>
-        <translation>Ez-devizai</translation>
-    </message>
-    <message>
-        <source>Nodal capacity</source>
-        <translation>Kapazitatea Nodal</translation>
-    </message>
-    <message>
-        <source>Nodal capacity time series</source>
-        <translation>Kapazitatea Nodalaren datu-seria</translation>
-    </message>
-    <message>
-        <source>Nodal shadow prices</source>
-        <translation>Prezio-ombra Nodalak</translation>
-    </message>
-    <message>
-        <source>Nodal slacks</source>
-        <translation>Slack Nodalak</translation>
-    </message>
-    <message>
-        <source>Node groups</source>
-        <translation>Txoko-grupoak</translation>
-    </message>
-    <message>
-        <source>NodeGroups</source>
-        <translation>Txoko-grupoak</translation>
-    </message>
-    <message>
-        <source>Nonlinear analysis</source>
-        <translation>Ebaluazio nonlinearra</translation>
-    </message>
-    <message>
-        <source>Nonlinear analysis time series</source>
-        <translation>Ebaluazio nonlinearraren datu-seria</translation>
-    </message>
-    <message>
-        <source>Ntc: Base flow report</source>
-        <translation>Ntc: Flujo Baterako Raportua</translation>
-    </message>
-    <message>
-        <source>Ntc: Contingency flow report</source>
-        <translation>Ntc: Flujo Kontingentziako Raportua</translation>
-    </message>
-    <message>
-        <source>Ntc: Contingency flow report. (Branch)</source>
-        <translation>Ntc: Flujo Kontingentziako Raportua. (Zuzpita)</translation>
-    </message>
-    <message>
-        <source>Ntc: Contingency flow report. (Generation)</source>
-        <translation>Ntc: Flujo Kontingentziako Raportua. (Generazioa)</translation>
-    </message>
-    <message>
-        <source>Ntc: Contingency flow report. (Hvdc)</source>
-        <translation>Ntc: Flujo Kontingentziako Raportua. (Hvdc)</translation>
-    </message>
-    <message>
-        <source>Objectives</source>
-        <translation>Obektiboak</translation>
-    </message>
-    <message>
-        <source>Objects</source>
-        <translation>Objects</translation>
-    </message>
-    <message>
-        <source>Optimal net transfer capacity</source>
-        <translation>Transferentzia garbiaren ahalmen optimoa</translation>
-    </message>
-    <message>
-        <source>Optimal net transfer capacity time series</source>
-        <translation>Kapazitatea netoa transferitzeko optimalaren datu-seria</translation>
-    </message>
-    <message>
-        <source>Optimal power flow</source>
-        <translation>Potentzia-fluxu optimoa</translation>
-    </message>
-    <message>
-        <source>Optimal power flow time series</source>
-        <translation>Potentzia-fluxuaren denbora-serie optimoa</translation>
-    </message>
-    <message>
-        <source>Owner</source>
-        <translation>Jarduera-lehiak</translation>
-    </message>
-    <message>
-        <source>P: Active power</source>
-        <translation>P: Indar aktiboa</translation>
-    </message>
-    <message>
-        <source>PA: Active power A</source>
-        <translation>PA: Indar aktiboa A</translation>
-    </message>
-    <message>
-        <source>PB: Active power B</source>
-        <translation>PB: Indar aktiboa B</translation>
-    </message>
-    <message>
-        <source>PC: Active power C</source>
-        <translation>PC: Indar aktiboa C</translation>
-    </message>
-    <message>
-        <source>PTDF</source>
-        <translation>PTDF</translation>
-    </message>
-    <message>
-        <source>Pareto</source>
-        <translation>Pareto</translation>
-    </message>
-    <message>
-        <source>Pareto combinations</source>
-        <translation>Pareto konbinazioak</translation>
-    </message>
-    <message>
-        <source>Pareto evaluation report</source>
-        <translation>Pareto ebaluazio-raportua</translation>
-    </message>
-    <message>
-        <source>Pareto frequency</source>
-        <translation>Pareto-frekuentzia</translation>
-    </message>
-    <message>
-        <source>Pareto objectives</source>
-        <translation>Pareto-obektiboak</translation>
-    </message>
-    <message>
-        <source>Pareto plot NSGA2</source>
-        <translation>Pareto-plano NSGA2</translation>
-    </message>
-    <message>
-        <source>Pareto plots</source>
-        <translation>Pareto-planoak</translation>
-    </message>
-    <message>
-        <source>Participation Factors</source>
-        <translation>Parte-hartzeko Faktoreak</translation>
-    </message>
-    <message>
-        <source>Pf Measurement</source>
-        <translation>Pf Neurritura</translation>
-    </message>
-    <message>
-        <source>Pf: Active power "from"</source>
-        <translation>Pf: Indar aktiboa "etik"</translation>
-    </message>
-    <message>
-        <source>Pf: Active power "from" base case</source>
-        <translation>Pf: Indar aktiboa "etik" bazen kasuan</translation>
-    </message>
-    <message>
-        <source>PfA: Active power "from" A</source>
-        <translation>PfA: Indar aktiboa "etik" A</translation>
-    </message>
-    <message>
-        <source>PfB: Active power "from" B</source>
-        <translation>PfB: Indar aktiboa "etik" B</translation>
-    </message>
-    <message>
-        <source>PfC: Active power "from" C</source>
-        <translation>PfC: Indar aktiboa "etik" C</translation>
-    </message>
-    <message>
-        <source>Pg Measurement</source>
-        <translation>Pg Neurritura</translation>
-    </message>
-    <message>
-        <source>Pi Measurement</source>
-        <translation>Pi Neurritura</translation>
-    </message>
-    <message>
-        <source>Pl: Active losses</source>
-        <translation>Pl: Indar aktiboak galdera</translation>
-    </message>
-    <message>
-        <source>Pl: Active losses (%)</source>
-        <translation>Pl: Indar aktiboak galdera (%)</translation>
-    </message>
-    <message>
-        <source>Pl: Active losses (%) A</source>
-        <translation>Pl: Indar aktiboak galdera (%) A</translation>
-    </message>
-    <message>
-        <source>Pl: Active losses (%) B</source>
-        <translation>Pl: Indar aktiboak galdera (%) B</translation>
-    </message>
-    <message>
-        <source>Pl: Active losses (%) C</source>
-        <translation>Pl: Indar aktiboak galdera (%) C</translation>
-    </message>
-    <message>
-        <source>Pl: Active losses A</source>
-        <translation>Pl: Indar aktiboak galdera A</translation>
-    </message>
-    <message>
-        <source>Pl: Active losses B</source>
-        <translation>Pl: Indar aktiboak galdera B</translation>
-    </message>
-    <message>
-        <source>Pl: Active losses C</source>
-        <translation>Pl: Indar aktiboak galdera C</translation>
-    </message>
-    <message>
-        <source>Plot Event</source>
-        <translation>Plano-ekitalea</translation>
-    </message>
-    <message>
-        <source>Plot Group</source>
-        <translation>Plano-txokoa</translation>
-    </message>
-    <message>
-        <source>Power by technology</source>
-        <translation>Indarra teknologiaren arabera</translation>
-    </message>
-    <message>
-        <source>Power flow</source>
-        <translation>Potentzia-fluxua</translation>
-    </message>
-    <message>
-        <source>Power flow 3ph</source>
-        <translation>Flujo indarra 3ph</translation>
-    </message>
-    <message>
-        <source>Power flow time series</source>
-        <translation>Potentzia-fluxuaren denbora-seriea</translation>
-    </message>
-    <message>
-        <source>Power flow time series 3ph</source>
-        <translation>Eroszio-sirkuituaren eboluzioa 3 fazako</translation>
-    </message>
-    <message>
-        <source>PowerFlow</source>
-        <translation>Eroszio-sirkuituaren irizpideak</translation>
-    </message>
-    <message>
-        <source>PowerFlowTimeSeries</source>
-        <translation>Eroszio-sirkuituaren irizpide-eboluzioa</translation>
-    </message>
-    <message>
-        <source>Pt Measurement</source>
-        <translation>Pt Neurriktura</translation>
-    </message>
-    <message>
-        <source>Pt: Active power "to"</source>
-        <translation>Pt: Indar-potentzia "era"</translation>
-    </message>
-    <message>
-        <source>Pt: Active power "to" A</source>
-        <translation>Pt: Indar-potentzia "era" A</translation>
-    </message>
-    <message>
-        <source>Pt: Active power "to" B</source>
-        <translation>Pt: Indar-potentzia "era" B</translation>
-    </message>
-    <message>
-        <source>Pt: Active power "to" C</source>
-        <translation>Pt: Indar-potentzia "era" C</translation>
-    </message>
-    <message>
-        <source>Q: Reactive power</source>
-        <translation>Q: Reaktibo-potentzia</translation>
-    </message>
-    <message>
-        <source>QA: Reactive power A</source>
-        <translation>QA: Reaktibo-potentzia A</translation>
-    </message>
-    <message>
-        <source>QB: Reactive power B</source>
-        <translation>QB: Reaktibo-potentzia B</translation>
-    </message>
-    <message>
-        <source>QC: Reactive power C</source>
-        <translation>QC: Reaktibo-potentzia C</translation>
-    </message>
-    <message>
-        <source>Qf Measurement</source>
-        <translation>Qf Neurriktura</translation>
-    </message>
-    <message>
-        <source>Qf: Reactive power "from"</source>
-        <translation>Qf: Reaktibo-potentzia "etik"</translation>
-    </message>
-    <message>
-        <source>QfA: Reactive power "from" A</source>
-        <translation>QfA: Reaktibo-potentzia "etik" A</translation>
-    </message>
-    <message>
-        <source>QfB: Reactive power "from" B</source>
-        <translation>QfB: Reaktibo-potentzia "etik" B</translation>
-    </message>
-    <message>
-        <source>QfC: Reactive power "from" C</source>
-        <translation>QfC: Reaktibo-potentzia "etik" C</translation>
-    </message>
-    <message>
-        <source>Qg Measurement</source>
-        <translation>Qg Neurriktura</translation>
-    </message>
-    <message>
-        <source>Qi Measurement</source>
-        <translation>Qi Neurriktura</translation>
-    </message>
-    <message>
-        <source>Ql: Reactive losses</source>
-        <translation>Ql: Reaktibo-hara</translation>
-    </message>
-    <message>
-        <source>Ql: Reactive losses A</source>
-        <translation>Ql: Reaktibo-hara A</translation>
-    </message>
-    <message>
-        <source>Ql: Reactive losses B</source>
-        <translation>Ql: Reaktibo-hara B</translation>
-    </message>
-    <message>
-        <source>Ql: Reactive losses C</source>
-        <translation>Ql: Reaktibo-hara C</translation>
-    </message>
-    <message>
-        <source>Qt Measurement</source>
-        <translation>Qt Neurriktura</translation>
-    </message>
-    <message>
-        <source>Qt: Reactive power "to"</source>
-        <translation>Qt: Reaktibo-potentzia "era"</translation>
-    </message>
-    <message>
-        <source>Qt: Reactive power "to" A</source>
-        <translation>Qt: Reaktibo-potentzia "era" A</translation>
-    </message>
-    <message>
-        <source>Qt: Reactive power "to" B</source>
-        <translation>Qt: Reaktibo-potentzia "era" B</translation>
-    </message>
-    <message>
-        <source>Qt: Reactive power "to" C</source>
-        <translation>Qt: Reaktibo-potentzia "era" C</translation>
-    </message>
-    <message>
-        <source>RMS Dynamic</source>
-        <translation>RMS Dinamika</translation>
-    </message>
-    <message>
-        <source>RMS Small Signal stability</source>
-        <translation>RMS Txik-sinalea babarrria</translation>
-    </message>
-    <message>
-        <source>RMS template</source>
-        <translation>RMS plantilla</translation>
-    </message>
-    <message>
-        <source>Region</source>
-        <translation>Regio</translation>
-    </message>
-    <message>
-        <source>Region analysis</source>
-        <translation>Regio-analisia</translation>
-    </message>
-    <message>
-        <source>Region balance analysis</source>
-        <translation>Regio-balantza-analisia</translation>
-    </message>
-    <message>
-        <source>Region generation analysis</source>
-        <translation>Regio-generazio-analisia</translation>
-    </message>
-    <message>
-        <source>Region load analysis</source>
-        <translation>Regio-karga-analisia</translation>
-    </message>
-    <message>
-        <source>Regions</source>
-        <translation>Regioak</translation>
-    </message>
-    <message>
-        <source>Reliability</source>
-        <translation>Fidagarritasuna</translation>
-    </message>
-    <message>
-        <source>Remedial action</source>
-        <translation>Harekuntza-korretak</translation>
-    </message>
-    <message>
-        <source>Remedial action Group</source>
-        <translation>Harekuntza-korretak Taldea</translation>
-    </message>
-    <message>
-        <source>Reports</source>
-        <translation>Raportuak</translation>
-    </message>
-    <message>
-        <source>Reservoir fluid level</source>
-        <translation>Reservorioaren fluide-antasioa</translation>
-    </message>
-    <message>
-        <source>Results</source>
-        <translation>Emaitzak</translation>
-    </message>
-    <message>
-        <source>Right Eigenvectors</source>
-        <translation>Eigenvektoreak Jaugarriak</translation>
-    </message>
-    <message>
-        <source>Rms Event</source>
-        <translation>Rms Ganderea</translation>
-    </message>
-    <message>
-        <source>Rms Events Group</source>
-        <translation>Rms Ganderiak Taldea</translation>
-    </message>
-    <message>
-        <source>Rms Generator results</source>
-        <translation>Rms Generadorearen emaitzak</translation>
-    </message>
-    <message>
-        <source>Rms Genqec delta results</source>
-        <translation>Rms Genqec delta emaitzak</translation>
-    </message>
-    <message>
-        <source>Rms Genqec omega results</source>
-        <translation>Rms Genqec omega emaitzak</translation>
-    </message>
-    <message>
-        <source>Rms Line results</source>
-        <translation>Rms Liniak emaitzak</translation>
-    </message>
-    <message>
-        <source>Rms Load P results</source>
-        <translation>Rms Karga P emaitzak</translation>
-    </message>
-    <message>
-        <source>Rms Load Q results</source>
-        <translation>Rms Karga Q emaitzak</translation>
-    </message>
-    <message>
-        <source>Rms Simple Line P results</source>
-        <translation>Rms Simple Line P emaitzak</translation>
-    </message>
-    <message>
-        <source>Rms Simple Line Q results</source>
-        <translation>Rms Simple Line Q emaitzak</translation>
-    </message>
-    <message>
-        <source>Rms load results</source>
-        <translation>Rms karga emaitzak</translation>
-    </message>
-    <message>
-        <source>Rms plot results</source>
-        <translation>Rms plot emaitzak</translation>
-    </message>
-    <message>
-        <source>Rms time series report</source>
-        <translation>Rms ardura-serieko raportua</translation>
-    </message>
-    <message>
-        <source>RmsSimulation</source>
-        <translation>Rms Simulazioa</translation>
-    </message>
-    <message>
-        <source>S-Domain Plot</source>
-        <translation>S-Domain Plot</translation>
-    </message>
-    <message>
-        <source>S-Domain Plot in Hz</source>
-        <translation>S-Domain Plot Hz-an</translation>
-    </message>
-    <message>
-        <source>SAIDI</source>
-        <translation>SAIDI</translation>
-    </message>
-    <message>
-        <source>SAIFI</source>
-        <translation>SAIFI</translation>
-    </message>
-    <message>
-        <source>Sensibilities</source>
-        <translation>Sensibilidades</translation>
-    </message>
-    <message>
-        <source>Sensitivity to the exchange</source>
-        <translation>El alkaera edonko sensitibitatea</translation>
-    </message>
-    <message>
-        <source>Sensitivity to the exchange (N-1)</source>
-        <translation>El alkaera edonko sensitibitatea (N-1)</translation>
-    </message>
-    <message>
-        <source>Sequence line</source>
-        <translation>Sekuentziako linia</translation>
-    </message>
-    <message>
-        <source>Series</source>
-        <translation>Serieak</translation>
-    </message>
-    <message>
-        <source>Series reactance</source>
-        <translation>Serie erreaktantzia</translation>
-    </message>
-    <message>
-        <source>Short circuit</source>
-        <translation>Kirol-kizketa</translation>
-    </message>
-    <message>
-        <source>Short circuit active current</source>
-        <translation>Kirol-kizketa aktibo korrientea</translation>
-    </message>
-    <message>
-        <source>Short circuit active current A</source>
-        <translation>Kirol-kizketa aktibo korrientea A</translation>
-    </message>
-    <message>
-        <source>Short circuit active current B</source>
-        <translation>Kirol-kizketa aktibo korrientea B</translation>
-    </message>
-    <message>
-        <source>Short circuit active current C</source>
-        <translation>Kirol-kizketa aktibo korrientea C</translation>
-    </message>
-    <message>
-        <source>Short circuit active power</source>
-        <translation>Kirol-kizketa aktibo indarreak</translation>
-    </message>
-    <message>
-        <source>Short circuit active power A</source>
-        <translation>Kirol-kizketa aktibo indarreak A</translation>
-    </message>
-    <message>
-        <source>Short circuit active power B</source>
-        <translation>Kirol-kizketa aktibo indarreak B</translation>
-    </message>
-    <message>
-        <source>Short circuit active power C</source>
-        <translation>Kirol-kizketa aktibo indarreak C</translation>
-    </message>
-    <message>
-        <source>Short circuit event</source>
-        <translation>Kirol-kizketa gertakuntza</translation>
-    </message>
-    <message>
-        <source>Short circuit reactive current</source>
-        <translation>Kirol-kizketa reaktibo korrientea</translation>
-    </message>
-    <message>
-        <source>Short circuit reactive current A</source>
-        <translation>Kirol-kizketa reaktibo korrientea A</translation>
-    </message>
-    <message>
-        <source>Short circuit reactive current B</source>
-        <translation>Kirol-kizketa reaktibo korrientea B</translation>
-    </message>
-    <message>
-        <source>Short circuit reactive current C</source>
-        <translation>Kirol-kizketa reaktibo korrientea C</translation>
-    </message>
-    <message>
-        <source>Short circuit reactive power</source>
-        <translation>Kirol-kizketa reaktibo indarreak</translation>
-    </message>
-    <message>
-        <source>Short circuit reactive power A</source>
-        <translation>Kirol-kizketa reaktibo indarreak A</translation>
-    </message>
-    <message>
-        <source>Short circuit reactive power B</source>
-        <translation>Kirol-kizketa reaktibo indarreak B</translation>
-    </message>
-    <message>
-        <source>Short circuit reactive power C</source>
-        <translation>Kirol-kizketa reaktibo indarreak C</translation>
-    </message>
-    <message>
-        <source>Short-circuit information</source>
-        <translation>Kirol-kizketa informazioa</translation>
-    </message>
-    <message>
-        <source>ShortCircuit</source>
-        <translation>Kirol-kizketa</translation>
-    </message>
-    <message>
-        <source>Shunt</source>
-        <translation>Shunt</translation>
-    </message>
-    <message>
-        <source>Shunt like devices</source>
-        <translation>Shunt-etik milakar egitureak</translation>
-    </message>
-    <message>
-        <source>Shunt neutral voltage</source>
-        <translation>Shunt neutral indarreako potentziala</translation>
-    </message>
-    <message>
-        <source>Shunt reactive power</source>
-        <translation>Shunt reaktibo indarreak</translation>
-    </message>
-    <message>
-        <source>Shunt reactive power A</source>
-        <translation>Shunt reaktibo indarreak A</translation>
-    </message>
-    <message>
-        <source>Shunt reactive power B</source>
-        <translation>Shunt reaktibo indarreak B</translation>
-    </message>
-    <message>
-        <source>Shunt reactive power C</source>
-        <translation>Shunt reaktibo indarreak C</translation>
-    </message>
-    <message>
-        <source>Sigma + distances</source>
-        <translation>Sigma + distancias</translation>
-    </message>
-    <message>
-        <source>Sigma Analysis</source>
-        <translation>Sigma Analisia</translation>
-    </message>
-    <message>
-        <source>Sigma distances</source>
-        <translation>Sigma distancias</translation>
-    </message>
-    <message>
-        <source>Sigma imaginary</source>
-        <translation>Sigma iagarkakoa</translation>
-    </message>
-    <message>
-        <source>Sigma real</source>
-        <translation>Sigma nahikoa</translation>
-    </message>
-    <message>
-        <source>SigmaAnalysis</source>
-        <translation>Sigma Analisia</translation>
-    </message>
-    <message>
-        <source>SimulationOptionsDevice</source>
-        <translation>Simulazio Opzioak/Egitureak</translation>
-    </message>
-    <message>
-        <source>Slacks</source>
-        <translation>Slacks</translation>
-    </message>
-    <message>
-        <source>SmallSignalStability</source>
-        <translation>Gutxi-Signalaren Estabilitatea</translation>
-    </message>
-    <message>
-        <source>Snapshot</source>
-        <translation>Argazkia</translation>
-    </message>
-    <message>
-        <source>Special plots</source>
-        <translation>Ploteak zehatzak</translation>
-    </message>
-    <message>
-        <source>Spillage flow leaving</source>
-        <translation>Buxatutako siriak kanstaltzenak</translation>
-    </message>
-    <message>
-        <source>Srap used power</source>
-        <translation>Srap erabiliko potentzia</translation>
-    </message>
-    <message>
-        <source>Stabilizer</source>
-        <translation>Stabilizatzailea</translation>
-    </message>
-    <message>
-        <source>State Matrix</source>
-        <translation>Estatus Matrixa</translation>
-    </message>
-    <message>
-        <source>State estimation</source>
-        <translation>Estatuaren estimazioa</translation>
-    </message>
-    <message>
-        <source>StateEstimation</source>
-        <translation>Estatus Estimazioa</translation>
-    </message>
-    <message>
-        <source>Static Generator</source>
-        <translation>Generatzaile Statiku</translation>
-    </message>
-    <message>
-        <source>Statistics</source>
-        <translation>Statistikak</translation>
-    </message>
-    <message>
-        <source>Std-dev contingency overloading</source>
-        <translation>Std-dev kontingentziaren sobrecarga</translation>
-    </message>
-    <message>
-        <source>Stochastic Power Flow</source>
-        <translation>Potentzia Surostikoa</translation>
-    </message>
-    <message>
-        <source>StochasticPowerFlow</source>
-        <translation>Potentzia Surostikoa</translation>
-    </message>
-    <message>
-        <source>Substation</source>
-        <translation>Azpiestazioa</translation>
-    </message>
-    <message>
-        <source>Substation analysis</source>
-        <translation>Subestazio analizak</translation>
-    </message>
-    <message>
-        <source>Substation balance analysis</source>
-        <translation>Subestazio balanse analizak</translation>
-    </message>
-    <message>
-        <source>Substation generation analysis</source>
-        <translation>Subestazio genero analizak</translation>
-    </message>
-    <message>
-        <source>Substation load analysis</source>
-        <translation>Subestazio karga analizak</translation>
-    </message>
-    <message>
-        <source>Switch</source>
-        <translation>Etengailua</translation>
-    </message>
-    <message>
-        <source>System</source>
-        <translation>Sistema</translation>
-    </message>
-    <message>
-        <source>System emissions</source>
-        <translation>Sistema emisioak</translation>
-    </message>
-    <message>
-        <source>System energy cost</source>
-        <translation>Sistema energia kostua</translation>
-    </message>
-    <message>
-        <source>System energy total cost</source>
-        <translation>Sistema energia kostu guztia</translation>
-    </message>
-    <message>
-        <source>System fuel consumption</source>
-        <translation>Sistema solarka kontsumoa</translation>
-    </message>
-    <message>
-        <source>Technology</source>
-        <translation>Teknologia</translation>
-    </message>
-    <message>
-        <source>Technology Category</source>
-        <translation>Teknologia Kategoria</translation>
-    </message>
-    <message>
-        <source>Technology Group</source>
-        <translation>Teknologia Grupoa</translation>
-    </message>
-    <message>
-        <source>Technology plot</source>
-        <translation>Teknologia plotea</translation>
-    </message>
-    <message>
-        <source>Template</source>
-        <translation>Txantiloia</translation>
-    </message>
-    <message>
-        <source>Templates</source>
-        <translation>Plantillak</translation>
-    </message>
-    <message>
-        <source>Time</source>
-        <translation>Egutegia</translation>
-    </message>
-    <message>
-        <source>Time series Contingency flow report (Branches)</source>
-        <translation>Egutegiko kontingentzia siriak raporea (Siriak)</translation>
-    </message>
-    <message>
-        <source>Time series base flow report</source>
-        <translation>Egutegiko oinarrizko siriak raporea</translation>
-    </message>
-    <message>
-        <source>Time series branch monitoring logic report</source>
-        <translation>Egutegiko siriak itxurtiak bugatseko logika raporea</translation>
-    </message>
-    <message>
-        <source>Time series contingency Branches report</source>
-        <translation>Egutegiko kontingentzia siriak raporea</translation>
-    </message>
-    <message>
-        <source>Time series contingency flow report</source>
-        <translation>Egutegiko kontingentzia siriak raporea</translation>
-    </message>
-    <message>
-        <source>Time series contingency flow report. (Generation)</source>
-        <translation>Egutegiko kontingentzia siriak raporea. (Genero)</translation>
-    </message>
-    <message>
-        <source>Time series contingency flow report. (Hvdc)</source>
-        <translation>Egutegiko kontingentzia siriak raporea. (Hvdc)</translation>
-    </message>
-    <message>
-        <source>Time series critical Branches report</source>
-        <translation>Egutegiko siriak kritikoak raporea</translation>
-    </message>
-    <message>
-        <source>Time series generation delta power report</source>
-        <translation>Egutegiko genero delta potentzia raporea</translation>
-    </message>
-    <message>
-        <source>Time series generation power report</source>
-        <translation>Egutegiko genero potentzia raporea</translation>
-    </message>
-    <message>
-        <source>Time series sensitivity to the exchange report</source>
-        <translation>Egutegiko elkarbestearako sensitibitatea raporea</translation>
-    </message>
-    <message>
-        <source>Time series worst sensitivity to the exchange report (N-1)</source>
-        <translation>Egutegiko elkarbestearako urratsko sensitibitatea raporea (N-1)</translation>
-    </message>
-    <message>
-        <source>Topology Processor</source>
-        <translation>Topologia Prozesadorea</translation>
-    </message>
-    <message>
-        <source>Topology reduction</source>
-        <translation>Topologia murrizketa</translation>
-    </message>
-    <message>
-        <source>Tower</source>
-        <translation>Dorrea</translation>
-    </message>
-    <message>
-        <source>Transformer</source>
-        <translation>Transformadorea</translation>
-    </message>
-    <message>
-        <source>Transformer type</source>
-        <translation>Transformadore mota</translation>
-    </message>
-    <message>
-        <source>Transformer3W</source>
-        <translation>Transformer3W</translation>
-    </message>
-    <message>
-        <source>TransformerNw</source>
-        <translation>TransformerNw</translation>
-    </message>
-    <message>
-        <source>Transient stability</source>
-        <translation>Estabilitate transientea</translation>
-    </message>
-    <message>
-        <source>UPFC</source>
-        <translation>UPFC</translation>
-    </message>
-    <message>
-        <source>Underground line</source>
-        <translation>Liniak harremaneko</translation>
-    </message>
-    <message>
-        <source>V: Voltage module</source>
-        <translation>V: Voltaje modulua</translation>
-    </message>
-    <message>
-        <source>VA: Voltage module A</source>
-        <translation>VA: Voltaje modulua A</translation>
-    </message>
-    <message>
-        <source>VB: Voltage module B</source>
-        <translation>VB: Voltaje modulua B</translation>
-    </message>
-    <message>
-        <source>VC: Voltage module C</source>
-        <translation>VC: Voltaje modulua C</translation>
-    </message>
-    <message>
-        <source>VSC</source>
-        <translation>VSC</translation>
-    </message>
-    <message>
-        <source>Va Measurement</source>
-        <translation>Va Neuratamena</translation>
-    </message>
-    <message>
-        <source>Var Factory</source>
-        <translation>Var Factory</translation>
-    </message>
-    <message>
-        <source>Vm Measurement</source>
-        <translation>Vm Iragarkia</translation>
-    </message>
-    <message>
-        <source>Voltage angle (0)</source>
-        <translation>Tentsionko zenituak (0)</translation>
-    </message>
-    <message>
-        <source>Voltage angle (1)</source>
-        <translation>Tentsionko zenituak (1)</translation>
-    </message>
-    <message>
-        <source>Voltage angle (2)</source>
-        <translation>Tentsionko zenituak (2)</translation>
-    </message>
-    <message>
-        <source>Voltage collapse</source>
-        <translation>Tentsionaren sinplapena</translation>
-    </message>
-    <message>
-        <source>Voltage level</source>
-        <translation>Tentsiontasuneak</translation>
-    </message>
-    <message>
-        <source>Voltage level analysis</source>
-        <translation>Tentsiontasuneak aztertzea</translation>
-    </message>
-    <message>
-        <source>Voltage level balance analysis</source>
-        <translation>Tentsiontasuneak balanseaz aztertzea</translation>
-    </message>
-    <message>
-        <source>Voltage level generation analysis</source>
-        <translation>Tentsiontasuneak sortzaileaz aztertzea</translation>
-    </message>
-    <message>
-        <source>Voltage level load analysis</source>
-        <translation>Tentsiontasuneak kargaaz aztertzea</translation>
-    </message>
-    <message>
-        <source>Voltage level template</source>
-        <translation>Tentsiontasuneak plantillaa</translation>
-    </message>
-    <message>
-        <source>Voltage module (0)</source>
-        <translation>Tentsiontasun moduluak (0)</translation>
-    </message>
-    <message>
-        <source>Voltage module (1)</source>
-        <translation>Tentsiontasun moduluak (1)</translation>
-    </message>
-    <message>
-        <source>Voltage module (2)</source>
-        <translation>Tentsiontasun moduluak (2)</translation>
-    </message>
-    <message>
-        <source>Voltage plot</source>
-        <translation>Tentsionko diagrama</translation>
-    </message>
-    <message>
-        <source>Vsc</source>
-        <translation>VSC</translation>
-    </message>
-    <message>
-        <source>Vsc ODF</source>
-        <translation>VSC ODF</translation>
-    </message>
-    <message>
-        <source>Vsc PTDF</source>
-        <translation>VSC PTDF</translation>
-    </message>
-    <message>
-        <source>Vsc Pdc</source>
-        <translation>VSC Pdc</translation>
-    </message>
-    <message>
-        <source>Vsc Vdc</source>
-        <translation>VSC Vdc</translation>
-    </message>
-    <message>
-        <source>Vsc loading</source>
-        <translation>VSC karga</translation>
-    </message>
-    <message>
-        <source>Vsc losses</source>
-        <translation>VSC galdera</translation>
-    </message>
-    <message>
-        <source>Vsc power "from" negative pole</source>
-        <translation>VSC potentzia "negatiboa" poleetik</translation>
-    </message>
-    <message>
-        <source>Vsc power "from" positive pole</source>
-        <translation>VSC potentzia "positiboa" poleetik</translation>
-    </message>
-    <message>
-        <source>Vsc power "to"</source>
-        <translation>VSC potentzia "ering"</translation>
-    </message>
-    <message>
-        <source>Vsc power "to" A</source>
-        <translation>VSC potentzia "ering" A</translation>
-    </message>
-    <message>
-        <source>Vsc power "to" B</source>
-        <translation>VSC potentzia "ering" B</translation>
-    </message>
-    <message>
-        <source>Vsc power "to" C</source>
-        <translation>VSC potentzia "ering" C</translation>
-    </message>
-    <message>
-        <source>When to make them plot</source>
-        <translation>Nezero egin diagrama</translation>
-    </message>
-    <message>
-        <source>Winding</source>
-        <translation>Harilkadura</translation>
-    </message>
-    <message>
-        <source>Wire</source>
-        <translation>Kordila</translation>
-    </message>
-    <message>
-        <source>Zone</source>
-        <translation>Zona</translation>
-    </message>
-    <message>
-        <source>Zone analysis</source>
-        <translation>Zonak aztertzea</translation>
-    </message>
-    <message>
-        <source>Zone balance analysis</source>
-        <translation>Zona balanseaz aztertzea</translation>
-    </message>
-    <message>
-        <source>Zone generation analysis</source>
-        <translation>Zona sortzaileaz aztertzea</translation>
-    </message>
-    <message>
-        <source>Zone load analysis</source>
-        <translation>Zona kargaaz aztertzea</translation>
-    </message>
-    <message>
-        <source>export all</source>
-        <translation>exportatu guztia</translation>
-    </message>
-    <message>
-        <source>file open</source>
-        <translation>faila irekitz</translation>
-    </message>
-    <message>
-        <source>file save</source>
-        <translation>faila taldeatu</translation>
-    </message>
-    <message>
-        <source>loading avg</source>
-        <translation>kargaaren ardurrendura</translation>
-    </message>
-    <message>
-        <source>m: Tap module</source>
-        <translation>m: Tap moduluak</translation>
-    </message>
-    <message>
-        <source>ΔP: Active power increment</source>
-        <translation>ΔP: Aktiboa potentziaaren erebe</translation>
-    </message>
-    <message>
-        <source>ΔV: Voltage modules drop</source>
-        <translation>ΔV: Tentsiontasun moduluak kaskatzea</translation>
-    </message>
-    <message>
-        <source>ΔV: Voltage modules drop A</source>
-        <translation>ΔV: Tentsiontasun moduluak kaskatzea A</translation>
-    </message>
-    <message>
-        <source>ΔV: Voltage modules drop B</source>
-        <translation>ΔV: Tentsiontasun moduluak kaskatzea B</translation>
-    </message>
-    <message>
-        <source>ΔV: Voltage modules drop C</source>
-        <translation>ΔV: Tentsiontasun moduluak kaskatzea C</translation>
-    </message>
-    <message>
-        <source>Δθ: Voltage angles drop</source>
-        <translation>Δθ: Tentsionko zenituak kaskatzea</translation>
-    </message>
-    <message>
-        <source>Δθ: Voltage angles drop A</source>
-        <translation>Δθ: Tentsionko zenituak kaskatzea A</translation>
-    </message>
-    <message>
-        <source>Δθ: Voltage angles drop B</source>
-        <translation>Δθ: Tentsionko zenituak kaskatzea B</translation>
-    </message>
-    <message>
-        <source>Δθ: Voltage angles drop C</source>
-        <translation>Δθ: Tentsionko zenituak kaskatzea C</translation>
-    </message>
-    <message>
-        <source>θ: Voltage angle</source>
-        <translation>θ: Toldo-angle</translation>
-    </message>
-    <message>
-        <source>θA: Voltage angle A</source>
-        <translation>θA: Toldo-angle A</translation>
-    </message>
-    <message>
-        <source>θB: Voltage angle B</source>
-        <translation>θB: Toldo-angle B</translation>
-    </message>
-    <message>
-        <source>θC: Voltage angle C</source>
-        <translation>θC: Toldo-angle C</translation>
-    </message>
-    <message>
-        <source>𝜏: Tap angle</source>
-        <translation>𝜏: Tap angle</translation>
     </message>
 </context>
 </TS>
