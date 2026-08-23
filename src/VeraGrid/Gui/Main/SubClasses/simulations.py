@@ -903,7 +903,7 @@ class SimulationsMain(TimeEventsMain):
         model: QtGui.QStandardItemModel = QtGui.QStandardItemModel()
         model.setHorizontalHeaderLabels([self.tr('Results')])
         root_item: QtGui.QStandardItem = model.invisibleRootItem()
-        icons: Dict[str, str] = gf.get_simulation_tree_icons()
+        icons: Dict[SimulationTypes, str] = gf.get_simulation_tree_icons()
 
         for driver in available_results:
             # Study rows carry the simulation enum. The label can be translated independently.
@@ -911,7 +911,7 @@ class SimulationsMain(TimeEventsMain):
             study_item.setEditable(False)
             study_item.setData(driver.tpe, QtCore.Qt.ItemDataRole.UserRole)
 
-            icon_path: str | None = icons.get(driver.tpe.value, None)
+            icon_path: str | None = icons.get(driver.tpe, None)
             if icon_path is not None:
                 icon: QtGui.QIcon = QtGui.QIcon()
                 icon.addPixmap(QtGui.QPixmap(icon_path))

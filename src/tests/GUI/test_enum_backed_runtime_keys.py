@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+from PySide6 import QtCore, QtGui
+
+import VeraGrid.Gui.gui_functions as gf
+from VeraGrid.Gui.Main.SubClasses.io import get_session_tree_icon_map
 from VeraGrid.Session.session import SimulationSession
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Simulations.driver_template import DriverTemplate
@@ -83,3 +87,56 @@ def test_session_keeps_typed_driver_lookup_and_legacy_name_lookup() -> None:
 
     assert session.get_driver(driver_type=SimulationTypes.PowerFlow_run) is driver
     assert session.get_driver_by_name(study_name=SimulationTypes.PowerFlow_run.value) is driver
+
+
+def test_tree_items_can_translate_labels_without_losing_enum_payloads() -> None:
+    """
+    Verify tree labels are independent from runtime enum payloads.
+
+    :return: None.
+    """
+    device_item: QtGui.QStandardItem = QtGui.QStandardItem("translated bus label")
+    result_item: QtGui.QStandardItem = QtGui.QStandardItem("translated voltage label")
+    study_item: QtGui.QStandardItem = QtGui.QStandardItem("translated power-flow label")
+
+    device_item.setData(DeviceType.BusDevice, QtCore.Qt.ItemDataRole.UserRole)
+    result_item.setData(ResultTypes.BusVoltageModule, QtCore.Qt.ItemDataRole.UserRole)
+    study_item.setData(SimulationTypes.PowerFlow_run, QtCore.Qt.ItemDataRole.UserRole)
+
+    assert device_item.text() != DeviceType.BusDevice.value
+    assert result_item.text() != ResultTypes.BusVoltageModule.value
+    assert study_item.text() != SimulationTypes.PowerFlow_run.value
+    assert device_item.data(QtCore.Qt.ItemDataRole.UserRole) is DeviceType.BusDevice
+    assert result_item.data(QtCore.Qt.ItemDataRole.UserRole) is ResultTypes.BusVoltageModule
+    assert study_item.data(QtCore.Qt.ItemDataRole.UserRole) is SimulationTypes.PowerFlow_run
+
+
+def test_simulation_tree_icons_support_enum_keys_for_translated_result_tree() -> None:
+    """
+    Verify live results tree icon lookup does not require display strings.
+
+    :return: None.
+    """
+    icons: dict[SimulationTypes, str] = gf.get_simulation_tree_icons()
+
+    assert icons.get(SimulationTypes.PowerFlow_run, None) == ':/Icons/icons/pf'
+    assert SimulationTypes.PowerFlow_run.value not in icons
+
+
+def test_persisted_session_tree_icon_map_converts_string_study_names() -> None:
+    """
+    Verify disk session strings are converted at the GUI boundary for icon lookup.
+
+    :return: None.
+    """
+    session_data_dict: dict[str, dict[str, list[str]]] = {
+        "Session": {
+            SimulationTypes.PowerFlow_run.value: ["Bus voltage"],
+            "unknown study": ["ignored"],
+        }
+    }
+
+    icon_map: dict[str, str] = get_session_tree_icon_map(session_data_dict=session_data_dict)
+
+    assert icon_map[SimulationTypes.PowerFlow_run.value] == ':/Icons/icons/pf'
+    assert "unknown study" not in icon_map
