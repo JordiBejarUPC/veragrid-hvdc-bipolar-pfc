@@ -8,7 +8,7 @@ import pandas as pd
 from VeraGridEngine.Simulations.results_table import ResultsTable
 from VeraGridEngine.Simulations.results_template import ResultsTemplate, ResultsProperty
 from VeraGridEngine.basic_structures import IntVec, Vec, StrVec, CxVec, ObjVec
-from VeraGridEngine.enumerations import StudyResultsType, ResultTypes, DeviceType, NtcSolutionState
+from VeraGridEngine.enumerations import StudyResultsType, ResultTypes, DeviceType, SolutionState
 
 
 class OptimalNetTransferCapacityResults(ResultsTemplate):
@@ -228,7 +228,7 @@ class OptimalNetTransferCapacityResults(ResultsTemplate):
                 pass  # slack not evaluated to a number, nothing to add
         return total
 
-    def get_solution_state(self, slack_tol_mw: float = 0.1) -> NtcSolutionState:
+    def get_solution_state(self, slack_tol_mw: float = 0.1) -> SolutionState:
         """
         Classify the solution: 
         - Optimal (solved and every limit held within tolerance),
@@ -240,11 +240,11 @@ class OptimalNetTransferCapacityResults(ResultsTemplate):
         """
         if bool(np.all(self.converged)):
             if self.get_total_slack_mw() <= slack_tol_mw:
-                return NtcSolutionState.Optimal
+                return SolutionState.Optimal
             else:
-                return NtcSolutionState.Relaxed
+                return SolutionState.Relaxed
         else:
-            return NtcSolutionState.NotOptimal
+            return SolutionState.NotOptimal
 
     def get_bus_df(self) -> pd.DataFrame:
         """

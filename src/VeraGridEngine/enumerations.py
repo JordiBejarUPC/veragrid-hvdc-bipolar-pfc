@@ -495,7 +495,7 @@ class MIPFramework(Enum):
             return MIPFramework.PuLP
 
 
-class NtcSolutionState(Enum):
+class SolutionState(Enum):
     """
     Quality of an NTC solution: strictly optimal, optimal but with relaxed (slacked)
     limits, or not solved to optimality at all
@@ -518,9 +518,9 @@ class NtcSolutionState(Enum):
         :return:
         """
         try:
-            return NtcSolutionState[s]
+            return SolutionState[s]
         except KeyError:
-            return NtcSolutionState.NotOptimal
+            return SolutionState.NotOptimal
 
 
 class TimeGrouping(Enum):

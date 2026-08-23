@@ -31,10 +31,10 @@ GSLV_AVAILABLE: bool = False
 # highspy, the highspy solver resolves against pygslv's HiGHS and segfaults mid-solve.
 # Loading highspy first pins the correct symbols. Missing highspy is fine: the except
 # below only shields the import order, nothing else uses this module reference.
-try:
-    import highspy as _highspy_loaded_before_pygslv
-except ImportError:
-    _highspy_loaded_before_pygslv = None
+# try:
+#     import highspy as _highspy_loaded_before_pygslv
+# except ImportError:
+#     _highspy_loaded_before_pygslv = None
 
 try:
     import pygslv as pg

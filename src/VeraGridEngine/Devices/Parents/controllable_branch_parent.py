@@ -724,13 +724,13 @@ class ControllableBranchParent(BranchParent):
     def tap_phase_control_mode(self, val: TapPhaseControl):
         if isinstance(val, TapPhaseControl):
             self._tap_phase_control_mode = val
-        elif isinstance(val, str):
-            # Some GUI editing path commits the string instead of the enum
-            # For instance for transformers going from fixed to Pf. Thus, we coerce it
-            # to not lose the edit, but warn it is not the expected behavior
-            warnings.warn(f"tap_phase_control_mode received the string {val!r}; "
-                          f"coercing to TapPhaseControl. The caller should pass the enum.")
-            self._tap_phase_control_mode = TapPhaseControl(val)
+        # elif isinstance(val, str):
+        #     # Some GUI editing path commits the string instead of the enum
+        #     # For instance for transformers going from fixed to Pf. Thus, we coerce it
+        #     # to not lose the edit, but warn it is not the expected behavior
+        #     warnings.warn(f"tap_phase_control_mode received the string {val!r}; "
+        #                   f"coercing to TapPhaseControl. The caller should pass the enum.")
+        #     self._tap_phase_control_mode = TapPhaseControl(val)
         else:
             # Raise the message
             raise ValueError(f"tap_phase_control_mode expects a TapPhaseControl, "
@@ -748,11 +748,11 @@ class ControllableBranchParent(BranchParent):
     def tap_module_control_mode(self, val: TapModuleControl):
         if isinstance(val, TapModuleControl):
             self._tap_module_control_mode = val
-        elif isinstance(val, str):
-            # see tap_phase_control_mode
-            warnings.warn(f"tap_module_control_mode received the string {val!r}; "
-                          f"coercing to TapModuleControl. The caller should pass the enum.")
-            self._tap_module_control_mode = TapModuleControl(val)
+        # elif isinstance(val, str):
+        #     # see tap_phase_control_mode
+        #     warnings.warn(f"tap_module_control_mode received the string {val!r}; "
+        #                   f"coercing to TapModuleControl. The caller should pass the enum.")
+        #     self._tap_module_control_mode = TapModuleControl(val)
         else:
             # loud, typed refusal instead of a bare assert
             raise ValueError(f"tap_module_control_mode expects a TapModuleControl, "

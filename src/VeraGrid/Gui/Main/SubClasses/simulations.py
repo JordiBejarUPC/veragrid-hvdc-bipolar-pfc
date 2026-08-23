@@ -39,7 +39,7 @@ from VeraGridEngine.basic_structures import CxVec, IntVec, Vec
 from VeraGridEngine.enumerations import (DeviceType, AvailableTransferMode, SolverType, MIPSolvers, TimeGrouping,
                                          ZonalGrouping, ContingencyMethod, InvestmentEvaluationMethod, EngineType,
                                          BranchImpedanceMode, ResultTypes, SimulationTypes, NodalCapacityMethod,
-                                         NtcSolutionState,
+                                         SolutionState,
                                          ContingencyFilteringMethods, InvestmentsEvaluationObjectives,
                                          ReliabilityMode, OpfDispatchMode, DynamicIntegrationMethod,
                                          RmsInitializationMethod, EmtInitializationMethod, EmtSolverTypes,
@@ -3045,12 +3045,12 @@ class SimulationsMain(TimeEventsMain):
             # three possible solutions: optimal, optimal-but-relaxed, or not optimal.
             solution_state = results.get_solution_state(slack_tol_mw=0.1)
             total_slack_mw = results.get_total_slack_mw()
-            if solution_state == NtcSolutionState.Optimal:
+            if solution_state == SolutionState.Optimal:
                 if drv.logger.error_count() == 0:
                     self.show_info_toast("Optimal result")
                 else:
                     self.show_warning_toast("Optimal result, but check the logs")
-            elif solution_state == NtcSolutionState.Relaxed:
+            elif solution_state == SolutionState.Relaxed:
                 self.show_warning_toast(f"Feasible only with relaxed limits: "
                                         f"{total_slack_mw:.1f} MW of slack (see the overloads results)")
             else:
