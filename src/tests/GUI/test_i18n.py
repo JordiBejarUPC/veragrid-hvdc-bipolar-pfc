@@ -20,6 +20,7 @@ from VeraGrid.Gui.i18n import (
     get_requested_language_code,
     language_from_name,
     restore_action_shortcut_states,
+    translate_tree_label,
 )
 from VeraGrid.Gui.Icons.icons_rc import *
 from VeraGridEngine.enumerations import FaultType, MethodShortCircuit, PhasesShortCircuit
@@ -442,6 +443,33 @@ def test_hindi_simulation_runtime_strings_use_simulations_context(
     translator.set_language(ApplicationLanguage.HINDI)
 
     assert QtCore.QCoreApplication.translate("SimulationsMain", source_text) == expected_text
+
+
+@pytest.mark.parametrize(
+    ("language", "source_text"),
+    [
+        (ApplicationLanguage.SPANISH, "Bus"),
+        (ApplicationLanguage.FRENCH, "Power flow"),
+        (ApplicationLanguage.HINDI, "Results"),
+        (ApplicationLanguage.CHINESE, "Bus voltage avg"),
+    ],
+)
+def test_runtime_tree_labels_use_tree_label_context(
+    qt_app: object,
+    language: ApplicationLanguage,
+    source_text: str,
+) -> None:
+    """
+    Database and results tree labels should resolve through the runtime tree-label catalog.
+    """
+    _unused_app: object = qt_app
+    translator: ApplicationTranslator = ApplicationTranslator(qt_app)
+    expected_text: str = get_ts_translation(language, "VeraGridTreeLabels", source_text)
+
+    translator.set_language(language)
+
+    assert expected_text != ""
+    assert translate_tree_label(source_text) == expected_text
 
 
 @pytest.mark.parametrize(

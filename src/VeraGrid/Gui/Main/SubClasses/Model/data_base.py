@@ -22,6 +22,7 @@ from VeraGrid.Gui.object_model import ObjectsModel
 from VeraGrid.Gui.object_column_filter_dialog import ObjectColumnFilterDialog, set_line_edit_clear_action
 from VeraGrid.Gui.object_proxy_model import ObjectModelFilterProxy
 from VeraGrid.Gui.profiles_model import ProfilesModel
+from VeraGrid.Gui.i18n import translate_tree_label
 from VeraGridEngine.enumerations import DeviceType, DynamicSimulationMode, TimeSeriesSearchPoint, PrpCat
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.Devices.Parents.editable_device import EditableDevice
@@ -162,20 +163,20 @@ class DataBaseTableMain(DiagramsMain):
         """
 
         db_tree_model: QtGui.QStandardItemModel = QtGui.QStandardItemModel()
-        db_tree_model.setHorizontalHeaderLabels([self.tr('Objects')])
+        db_tree_model.setHorizontalHeaderLabels([translate_tree_label('Objects')])
 
         root_item: QtGui.QStandardItem = db_tree_model.invisibleRootItem()
         grouped_device_types: Dict[str, List[DeviceType]] = self.circuit.get_template_objects_type_dict()
 
         for group_name, device_types in grouped_device_types.items():
             # Category rows are only display nodes. Runtime selection is stored only on device leaves.
-            group_item: QtGui.QStandardItem = QtGui.QStandardItem(self.tr(str(group_name)))
+            group_item: QtGui.QStandardItem = QtGui.QStandardItem(translate_tree_label(str(group_name)))
             group_item.setEditable(False)
             root_item.appendRow(group_item)
 
             for device_type in device_types:
                 # The displayed label can be translated while the enum payload remains stable.
-                device_item: QtGui.QStandardItem = QtGui.QStandardItem(self.tr(str(device_type.value)))
+                device_item: QtGui.QStandardItem = QtGui.QStandardItem(translate_tree_label(str(device_type.value)))
                 device_item.setEditable(False)
                 device_item.setData(device_type, QtCore.Qt.ItemDataRole.UserRole)
 
@@ -215,6 +216,15 @@ class DataBaseTableMain(DiagramsMain):
             self.expand_object_tree_nodes()
         else:
             pass
+
+    def refresh_runtime_translations(self) -> None:
+        """
+        Refresh runtime-built database tree labels after one language change.
+
+        :return: None.
+        """
+        super().refresh_runtime_translations()
+        self.setup_objects_tree()
 
     def setup_compiled_arrays_tree(self):
         """

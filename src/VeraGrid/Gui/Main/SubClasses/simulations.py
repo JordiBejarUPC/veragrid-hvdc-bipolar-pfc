@@ -12,6 +12,7 @@ from PySide6 import QtGui, QtCore
 from matplotlib.colors import LinearSegmentedColormap
 
 import VeraGrid.Gui.gui_functions as gf
+from VeraGrid.Gui.i18n import translate_tree_label
 from VeraGrid.Gui.general_dialogues import LogsDialogue
 from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import SchematicWidget, make_diagram_from_buses
 from VeraGrid.Gui.Diagrams.MapWidget.grid_map_widget import MapWidget
@@ -901,13 +902,13 @@ class SimulationsMain(TimeEventsMain):
         :return: Tree model for the results view.
         """
         model: QtGui.QStandardItemModel = QtGui.QStandardItemModel()
-        model.setHorizontalHeaderLabels([self.tr('Results')])
+        model.setHorizontalHeaderLabels([translate_tree_label('Results')])
         root_item: QtGui.QStandardItem = model.invisibleRootItem()
         icons: Dict[SimulationTypes, str] = gf.get_simulation_tree_icons()
 
         for driver in available_results:
             # Study rows carry the simulation enum. The label can be translated independently.
-            study_item: QtGui.QStandardItem = QtGui.QStandardItem(self.tr(str(driver.tpe.value)))
+            study_item: QtGui.QStandardItem = QtGui.QStandardItem(translate_tree_label(str(driver.tpe.value)))
             study_item.setEditable(False)
             study_item.setData(driver.tpe, QtCore.Qt.ItemDataRole.UserRole)
 
@@ -939,14 +940,16 @@ class SimulationsMain(TimeEventsMain):
             for key, value in results_tree.items():
                 # Group nodes are navigation labels. Leaf result nodes below them carry ResultTypes.
                 source_text: str = str(key.value) if isinstance(key, ResultTypes) else str(key)
-                group_item: QtGui.QStandardItem = QtGui.QStandardItem(self.tr(source_text))
+                group_item: QtGui.QStandardItem = QtGui.QStandardItem(translate_tree_label(source_text))
                 group_item.setEditable(False)
                 parent_item.appendRow(group_item)
                 self.fill_results_tree_model_item(parent_item=group_item, results_tree=value)
         elif isinstance(results_tree, list):
             for result_type in results_tree:
                 if isinstance(result_type, ResultTypes):
-                    result_item: QtGui.QStandardItem = QtGui.QStandardItem(self.tr(str(result_type.value)))
+                    result_item: QtGui.QStandardItem = QtGui.QStandardItem(
+                        translate_tree_label(str(result_type.value))
+                    )
                     result_item.setEditable(False)
                     result_item.setData(result_type, QtCore.Qt.ItemDataRole.UserRole)
                     parent_item.appendRow(result_item)
@@ -979,11 +982,42 @@ class SimulationsMain(TimeEventsMain):
 
         self.ui.results_treeView.setModel(self.build_results_tree_model(available_results=available_results))
         lst.reverse()  # this is to show the latest simulation first
-        mdl = gf.ComboModel(enum_values=lst, translate=self.tr)
+        mdl = gf.ComboModel(enum_values=lst, translate=translate_tree_label)
         self.ui.available_results_to_color_comboBox.setModel(mdl)
         self.ui.resultsTableView.setModel(None)
         self.ui.resultsLogsTreeView.setModel(None)
         self.changed_study()
+
+    def refresh_runtime_translations(self) -> None:
+        """
+        Refresh runtime-built results labels after one language change.
+
+        :return: None.
+        """
+        super().refresh_runtime_translations()
+
+        available_results: List[DRIVER_OBJECTS] = self.get_available_drivers()
+        selected_simulation_type: SimulationTypes | None = self.ui.available_results_to_color_comboBox.currentData()
+        combo_values: List[SimulationTypes] = [SimulationTypes.DesignView]
+        driver: DRIVER_OBJECTS
+
+        self.ui.results_treeView.setModel(self.build_results_tree_model(available_results=available_results))
+
+        for driver in available_results:
+            combo_values.append(driver.tpe)
+
+        combo_values.reverse()
+        model: gf.ComboModel = gf.ComboModel(enum_values=combo_values, translate=translate_tree_label)
+        self.ui.available_results_to_color_comboBox.setModel(model)
+
+        if selected_simulation_type is not None:
+            index: int = self.ui.available_results_to_color_comboBox.findData(selected_simulation_type)
+            if index >= 0:
+                self.ui.available_results_to_color_comboBox.setCurrentIndex(index)
+            else:
+                pass
+        else:
+            pass
 
     def get_compatible_from_to_buses_and_inter_branches(self) -> dev.InterAggregationInfo:
         """
