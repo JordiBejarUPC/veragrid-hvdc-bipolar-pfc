@@ -19,6 +19,7 @@ import VeraGridEngine.basic_structures as bs
 import VeraGridEngine.Devices as dev
 import VeraGrid.Gui.gui_functions as gf
 from VeraGrid.Gui.object_model import ObjectsModel
+from VeraGrid.Gui.object_column_filter_dialog import ObjectColumnFilterDialog
 from VeraGrid.Gui.object_proxy_model import ObjectModelFilterProxy
 from VeraGrid.Gui.profiles_model import ProfilesModel
 from VeraGridEngine.enumerations import DeviceType, DynamicSimulationMode, TimeSeriesSearchPoint, PrpCat
@@ -68,6 +69,9 @@ class DataBaseTableMain(DiagramsMain):
 
         # Tree proxy used to filter the visible database device tree while preserving source item payloads.
         self.device_tree_proxy_model: QtCore.QSortFilterProxyModel | None = None
+
+        # Current column filter popup, kept alive while it is shown.
+        self.object_column_filter_dialog: ObjectColumnFilterDialog | None = None
 
         # setup the objects tree
         self.setup_objects_tree()
@@ -141,6 +145,12 @@ class DataBaseTableMain(DiagramsMain):
         self.ui.dataStructureTableView.setHorizontalHeader(HeaderViewWithWordWrap(self.ui.dataStructureTableView))
         self.ui.profiles_tableView.setHorizontalHeader(HeaderViewWithWordWrap(self.ui.profiles_tableView))
         self.ui.associationsTableView.setHorizontalHeader(HeaderViewWithWordWrap(self.ui.associationsTableView))
+        self.ui.dataStructureTableView.horizontalHeader().setContextMenuPolicy(
+            QtCore.Qt.ContextMenuPolicy.CustomContextMenu
+        )
+        self.ui.dataStructureTableView.horizontalHeader().customContextMenuRequested.connect(
+            self.show_object_column_filter_dialog
+        )
 
         # combobox change
         self.ui.associationsComboBox.currentTextChanged.connect(self.on_associations_combo_box_change)
@@ -399,6 +409,43 @@ class DataBaseTableMain(DiagramsMain):
             self.ui.device_type_magnitude_comboBox.clear()
             self.ui.device_type_magnitude_comboBox_2.clear()
             self.ui.associationsComboBox.clear()
+
+    def show_object_column_filter_dialog(self, position: QtCore.QPoint) -> None:
+        """
+        Open the Excel-like filter popup for the clicked object table column.
+
+        :param position: Header-local click position.
+        :return: None.
+        """
+        model: ObjectModelFilterProxy | None = self.get_current_objects_model_view()
+        header: QtWidgets.QHeaderView = self.ui.dataStructureTableView.horizontalHeader()
+        source_column: int = header.logicalIndexAt(position)
+
+        if model is not None and source_column > -1:
+            self.object_column_filter_dialog = ObjectColumnFilterDialog(
+                proxy_model=model,
+                source_column=source_column,
+                table_view=self.ui.dataStructureTableView,
+                parent=self,
+            )
+            self.object_column_filter_dialog.filters_changed.connect(self.refresh_object_table_dependants)
+            self.object_column_filter_dialog.show_at(global_position=header.mapToGlobal(position))
+        else:
+            pass
+
+    def refresh_object_table_dependants(self) -> None:
+        """
+        Refresh views that consume the displayed object row order.
+
+        :return: None.
+        """
+        proxy_model: ObjectModelFilterProxy | None = self.get_current_objects_model_view()
+        if proxy_model is not None:
+            self.ui.dataStructureTableView.horizontalHeader().viewport().update()
+            self.display_profiles(proxy_mdl=proxy_model)
+            self.display_associations(proxy_mdl=proxy_model)
+        else:
+            pass
 
     def get_selected_table_buses(self) -> Tuple[Set[dev.Bus], List[ALL_DEV_TYPES]]:
         """

@@ -189,6 +189,8 @@
     <file>icons/copy2up.png</file>
     <file>icons/calculator.png</file>
     <file>icons/magnifying_glass.png</file>
+    <file>icons/table_filter_active.png</file>
+    <file>icons/table_filter_active.svg</file>
     <file>icons/up.png</file>
     <file>icons/undo.png</file>
     <file>icons/redo.png</file>
