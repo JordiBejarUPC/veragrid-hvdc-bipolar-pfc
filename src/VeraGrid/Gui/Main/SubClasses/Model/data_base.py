@@ -66,6 +66,9 @@ class DataBaseTableMain(DiagramsMain):
         # list of all the objects of the selected type under the Objects tab
         self.type_objects_list = list()
 
+        # Tree proxy used to filter the visible database device tree while preserving source item payloads.
+        self.device_tree_proxy_model: QtCore.QSortFilterProxyModel | None = None
+
         # setup the objects tree
         self.setup_objects_tree()
 
@@ -122,6 +125,8 @@ class DataBaseTableMain(DiagramsMain):
 
         # tree click
         self.ui.dataStructuresTreeView.clicked.connect(self.view_objects_data)
+        self.ui.device_tree_search_lineEdit.textChanged.connect(self.on_device_tree_search_text_changed)
+        self.ui.device_tree_search_lineEdit.setClearButtonEnabled(True)
 
         # line edit enter
         self.ui.smart_search_lineEdit.returnPressed.connect(self.objects_smart_search)
@@ -174,9 +179,32 @@ class DataBaseTableMain(DiagramsMain):
 
                 group_item.appendRow(device_item)
 
-        self.ui.dataStructuresTreeView.setModel(db_tree_model)
+        device_tree_proxy_model: QtCore.QSortFilterProxyModel = QtCore.QSortFilterProxyModel(self.ui.dataStructuresTreeView)
+        device_tree_proxy_model.setSourceModel(db_tree_model)
+        device_tree_proxy_model.setRecursiveFilteringEnabled(True)
+        device_tree_proxy_model.setAutoAcceptChildRows(True)
+        device_tree_proxy_model.setFilterCaseSensitivity(QtCore.Qt.CaseSensitivity.CaseInsensitive)
+        device_tree_proxy_model.setFilterKeyColumn(0)
+        device_tree_proxy_model.setFilterFixedString(self.ui.device_tree_search_lineEdit.text())
+        self.device_tree_proxy_model = device_tree_proxy_model
+
+        self.ui.dataStructuresTreeView.setModel(device_tree_proxy_model)
         self.ui.dataStructuresTreeView.setRootIsDecorated(True)
         self.expand_object_tree_nodes()
+
+    def on_device_tree_search_text_changed(self, text: str) -> None:
+        """
+        Filter the database device tree by the typed search text.
+
+        :param text: Search text from ``device_tree_search_lineEdit``.
+        :return: None.
+        """
+        if self.device_tree_proxy_model is not None:
+            # The proxy filters display text only; item UserRole data still carries the DeviceType enum.
+            self.device_tree_proxy_model.setFilterFixedString(text)
+            self.expand_object_tree_nodes()
+        else:
+            pass
 
     def setup_compiled_arrays_tree(self):
         """
