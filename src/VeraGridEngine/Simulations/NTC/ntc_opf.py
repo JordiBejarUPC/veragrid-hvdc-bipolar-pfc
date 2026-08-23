@@ -1681,7 +1681,8 @@ def add_linear_branches_formulation(t_idx: int,
                                     ntc_load_rule: float,
                                     loading: Vec,
                                     logger: Logger,
-                                    inf=1e20, ) -> LpExp:
+                                    inf=1e20,
+                                    slack_all_limits: bool = False) -> LpExp:
     """
     Formulate the branches
     :param t_idx: time index
@@ -1700,6 +1701,8 @@ def add_linear_branches_formulation(t_idx: int,
     :param loading
     :param logger
     :param inf: number considered infinite
+    :param slack_all_limits: give EVERY monitored branch the penalized slack pair instead
+                             of a hard bound. Used as a feasibility retry.
     :return objective function
     """
     f_obj = 0.0
@@ -1831,10 +1834,13 @@ def add_linear_branches_formulation(t_idx: int,
             # add the rate constraint if the branch is monitored
             if branch_vars.monitor_logic[t_idx, m]:
 
-                if abs(loading[m]) > 1.0:
-                    logger.add_error("Base overload on sensitive branch, limit relaxed with a penalized slack",
-                                     device=f"{m}: {branch_data_t.names[m]}",
-                                     value=f"{loading[m] * 100} %")
+                if abs(loading[m]) > 1.0 or slack_all_limits:
+                    if abs(loading[m]) > 1.0:
+                        logger.add_error("Base overload on sensitive branch, limit relaxed with a penalized slack",
+                                         device=f"{m}: {branch_data_t.names[m]}",
+                                         value=f"{loading[m] * 100} %")
+                    else:
+                        pass  # slack_all_limits retry
 
                     # The limit is relaxed with a heavily penalized slack
                     pos_sl: LpVar = prob.add_var(0, 1e20, join("base_flow_pos_sl_", [t_idx, m], "_"))
@@ -3062,6 +3068,7 @@ def run_linear_ntc_opf(grid: MultiCircuit,
                        monitor_only_ntc_load_rule_branches: bool = False,
                        ntc_load_rule: float = 0.7,  # 70%
                        droop_mip: bool = False,
+                       slack_all_limits: bool = False,
                        logger: Logger = Logger(),
                        progress_text: Union[None, Callable[[str], None]] = None,
                        progress_func: Union[None, Callable[[float], None]] = None,
@@ -3088,6 +3095,7 @@ def run_linear_ntc_opf(grid: MultiCircuit,
     :param ntc_load_rule: Amount of exchange branches power that should be dedicated to exchange
     :param droop_mip: formulate the Pmode3 droop with the exact big-M MIP instead of the
                       relaxed region fix-and-verify scheme.
+    :param slack_all_limits: penalized slacks on every monitored branch limit
     :param logger: logger instance
     :param progress_text: function to report text messages
     :param progress_func: function to report progress
@@ -3239,9 +3247,13 @@ def run_linear_ntc_opf(grid: MultiCircuit,
     if zonal_grouping == ZonalGrouping.NoGrouping:
 
         # declare the linear analysis and compute the PTDF and LODF
+        # converters_as_setpoint makes the sensitivities, monitoring and base loadings
+        # the same for every converter control mode of the grid, so
+        # the NTC of the Pmode1 and Pmode3 builds stays comparable (Pmode1 >= Pmode3)
         ls = LinearAnalysis(nc=nc,
                             distributed_slack=False,
                             correct_values=True,
+                            converters_as_setpoint=True,
                             logger=logger)
 
         # compute the power flow
@@ -3292,6 +3304,7 @@ def run_linear_ntc_opf(grid: MultiCircuit,
             loading=branch_loading,
             logger=logger,
             inf=1e20,
+            slack_all_limits=slack_all_limits,
         )
 
         # formulate nodes ---------------------------------------------------------------------------------------
@@ -3624,11 +3637,32 @@ def run_linear_ntc_opf(grid: MultiCircuit,
                 # stable regions and a clean screening pass: final solution
                 solution_final = True
 
+    if (not need_mip_fallback and not droop_mip and len(droop_entries) > 0
+            and status == lp_model.OPTIMAL
+            and any(p in (-1, 1) for p in droop_pins.values())):
+        # A saturation pin is a hard equality (flow == ±sat), so the LP cannot back a
+        # pinned converter off to relieve post contingency violations. Any contingency
+        # slack at a saturated point is verified against the exact MIP, which should
+        # improve it.
+        ctg_slack_check_mw: float = 0.0
+        for slack_item in mip_vars.branch_vars.contingency_flow_data:
+            t_c, m_c, c_c, flow_c, neg_c, pos_c = slack_item
+            ctg_slack_check_mw += (abs(lp_model.get_value(neg_c))
+                                   + abs(lp_model.get_value(pos_c))) * nc.Sbase
+        if ctg_slack_check_mw > 0.1:
+            logger.add_info("Pmode3 saturated fixed point carries contingency slack, "
+                            "re-solving with the exact MIP droop",
+                            value=f"{ctg_slack_check_mw:.1f} MW")
+            need_mip_fallback = True
+        else:
+            pass  # clean fixed point, nothing to verify
+    else:
+        pass  # no droop converters, already the MIP, or no saturation pins
+
     if need_mip_fallback:
         # The region iteration could not reach a consistent fixed point, so rebuild and
         # solve the whole problem with the exact big-M MIP droop formulation instead.
-        logger.add_warning("Pmode3 region iteration did not stabilize, "
-                           "falling back to the MIP droop",
+        logger.add_warning("Pmode3 relaxed scheme discarded, re-solving with the MIP droop",
                            value=f"phase={droop_phase}, status={lp_model.status2string(status)}")
         return run_linear_ntc_opf(grid=grid, t=t, solver_type=solver_type,
                                   zonal_grouping=zonal_grouping,
@@ -3644,6 +3678,7 @@ def run_linear_ntc_opf(grid: MultiCircuit,
                                   monitor_only_ntc_load_rule_branches=monitor_only_ntc_load_rule_branches,
                                   ntc_load_rule=ntc_load_rule,
                                   droop_mip=True,
+                                  slack_all_limits=slack_all_limits,
                                   logger=logger,
                                   progress_text=progress_text,
                                   progress_func=progress_func,
@@ -3658,6 +3693,35 @@ def run_linear_ntc_opf(grid: MultiCircuit,
                               f"of {len(lazy_mctg.multi_contingencies)} groups")
     else:
         pass  # no lazy formulation was used
+
+    if status != lp_model.OPTIMAL and not slack_all_limits:
+        # Feasibility retry. Rebuild once with the penalized slack for every 
+        # monitored limit so the answer is reported as slack instead of a failure. 
+        logger.add_warning("Not optimal with hard branch limits, retrying with all "
+                           "monitored limits slacked",
+                           value=lp_model.status2string(status))
+        return run_linear_ntc_opf(grid=grid, t=t, solver_type=solver_type,
+                                  zonal_grouping=zonal_grouping,
+                                  skip_generation_limits=skip_generation_limits,
+                                  consider_contingencies=consider_contingencies,
+                                  corrective_contingencies=corrective_contingencies,
+                                  contingency_groups_used=contingency_groups_used,
+                                  alpha_threshold=alpha_threshold,
+                                  lodf_threshold=lodf_threshold,
+                                  bus_a1_idx=bus_a1_idx, bus_a2_idx=bus_a2_idx,
+                                  transfer_method=transfer_method,
+                                  monitor_only_sensitive_branches=monitor_only_sensitive_branches,
+                                  monitor_only_ntc_load_rule_branches=monitor_only_ntc_load_rule_branches,
+                                  ntc_load_rule=ntc_load_rule,
+                                  droop_mip=droop_mip,
+                                  slack_all_limits=True,
+                                  logger=logger,
+                                  progress_text=progress_text,
+                                  progress_func=progress_func,
+                                  verbose=verbose, robust=robust,
+                                  mip_framework=mip_framework)
+    else:
+        pass  # solved, or the retry already ran
 
     # gather the results
     logger.add_info(msg="Status", value=lp_model.status2string(status))

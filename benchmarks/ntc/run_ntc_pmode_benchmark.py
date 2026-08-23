@@ -52,7 +52,7 @@ def summarize_logger(logger: gce.Logger) -> Dict[str, int]:
             counts["region_converged_msgs"] += 1
         elif "Lazy contingency formulation" in text:
             counts["lazy_groups_added_msgs"] += 1
-        elif "Pmode3 region iteration did not stabilize" in text:
+        elif "Pmode3 relaxed scheme discarded" in text:
             counts["region_unstable_msgs"] += 1
         elif sev == "Error":
             counts["errors"] += 1
@@ -137,8 +137,9 @@ def main():
     parser.add_argument("--steps", type=int, default=24, help="Number of time steps to simulate")
     parser.add_argument("--no-contingencies", action="store_true",
                         help="Disable N-1 contingencies (much faster)")
-    parser.add_argument("--corrective", action="store_true",
-                        help="Enable corrective contingency formulation")
+    parser.add_argument("--no-corrective", action="store_true",
+                        help="Disable the corrective contingency formulation "
+                             "(the engine and GUI default is corrective ON)")
     parser.add_argument("--only", choices=["pmode1", "pmode3"], default=None,
                         help="Run only one of the two cases")
     parser.add_argument("--json-out", type=str, default=None,
@@ -148,10 +149,10 @@ def main():
     results: List[Dict[str, Any]] = []
     if args.only in (None, "pmode1"):
         results.append(run_case(args.pmode1, args.steps,
-                                not args.no_contingencies, args.corrective, "Pmode1"))
+                                not args.no_contingencies, not args.no_corrective, "Pmode1"))
     if args.only in (None, "pmode3"):
         results.append(run_case(args.pmode3, args.steps,
-                                not args.no_contingencies, args.corrective, "Pmode3"))
+                                not args.no_contingencies, not args.no_corrective, "Pmode3"))
 
     keys = ["label", "grid", "steps", "converged_steps", "open_s", "run_s", "s_per_step",
             "region_converged_msgs", "region_unstable_msgs", "lazy_groups_added_msgs",
