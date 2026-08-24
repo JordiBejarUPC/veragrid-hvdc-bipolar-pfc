@@ -15,6 +15,7 @@ from datetime import datetime, timedelta
 
 import VeraGrid.Gui.gui_functions as gf
 from VeraGrid.Gui.messages import yes_no_question
+from VeraGrid.Gui.general_dialogues import TimeReIndexDialogue
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.IO.file_open import FileOpen
 from VeraGridEngine.basic_structures import Logger
@@ -231,6 +232,87 @@ class GridsModel(QtCore.QAbstractTableModel):
                 # return self.formatter(self._data[index.row(), index.column()])
                 return str(self._values_[index.row()].get_at(index.column()))
         return None
+
+    def setData(self,
+                index: QtCore.QModelIndex,
+                value: object,
+                role: int = QtCore.Qt.ItemDataRole.EditRole) -> bool:
+        """
+        Set the edited table value.
+
+        :param index: Edited model index.
+        :param value: New value supplied by the Qt editor.
+        :param role: Qt edit role.
+        :return: ``True`` when the value was accepted.
+        """
+        edited_time: pd.Timestamp | None
+        row: int
+        column: int
+
+        if not index.isValid():
+            return False
+        else:
+            pass
+
+        if role != QtCore.Qt.ItemDataRole.EditRole:
+            return False
+        else:
+            pass
+
+        row = index.row()
+        column = index.column()
+
+        if row < 0 or row >= len(self._values_):
+            return False
+        else:
+            pass
+
+        if column == 0:
+            edited_time = pd.to_datetime(value, errors='coerce')
+            if pd.isna(edited_time):
+                return False
+            else:
+                pass
+            self._values_[row].time = edited_time
+        elif column == 2:
+            self._values_[row].path = str(value)
+        elif column == 1:
+            self._values_[row].name = str(value)
+        else:
+            return False
+
+        self.dataChanged.emit(index, index, [role])
+        return True
+
+    def re_index_time(self, t0: datetime, step_size: float, step_unit: str) -> None:
+        """
+        Rebuild the item times as an evenly spaced time index.
+
+        :param t0: First timestamp.
+        :param step_size: Step size in the selected unit.
+        :param step_unit: Time unit: ``h``, ``m`` or ``s``.
+        :return: None.
+        """
+        row: int
+        item: GridsModelItem
+        delta: timedelta
+        base_time: datetime
+
+        if step_unit == 'h':
+            delta = timedelta(hours=step_size)
+        elif step_unit == 'm':
+            delta = timedelta(minutes=step_size)
+        elif step_unit == 's':
+            delta = timedelta(seconds=step_size)
+        else:
+            return
+
+        base_time = t0.replace(second=0, microsecond=0)
+
+        for row, item in enumerate(self._values_):
+            item.time = pd.Timestamp(base_time + row * delta)
+
+        self.update()
 
     def headerData(self,
                    section: int,
@@ -535,6 +617,7 @@ class ModelsInputGUI(QtWidgets.QDialog):
         self.ui.addModelsButton.clicked.connect(self.add_models)
         self.ui.acceptModelsButton.clicked.connect(self.start_process)
         self.ui.deleteModelsButton.clicked.connect(self.clear_model)
+        self.ui.reIndexTimeButton.clicked.connect(self.re_index_time)
 
     def accept(self) -> None:
         """
@@ -621,6 +704,7 @@ class ModelsInputGUI(QtWidgets.QDialog):
             self.ui.acceptModelsButton.setEnabled(False)
             self.ui.addModelsButton.setEnabled(False)
             self.ui.deleteModelsButton.setEnabled(False)
+            self.ui.reIndexTimeButton.setEnabled(False)
             self.ui.modelsTableView.setEnabled(False)
             self.ui.matchUsingCodeCheckBox.setEnabled(False)
             # Keep the worker object on the dialogue so Qt signals stay valid
@@ -649,6 +733,7 @@ class ModelsInputGUI(QtWidgets.QDialog):
         self.ui.acceptModelsButton.setEnabled(True)
         self.ui.addModelsButton.setEnabled(True)
         self.ui.deleteModelsButton.setEnabled(True)
+        self.ui.reIndexTimeButton.setEnabled(True)
         self.ui.modelsTableView.setEnabled(True)
         self.ui.matchUsingCodeCheckBox.setEnabled(True)
 
@@ -678,6 +763,7 @@ class ModelsInputGUI(QtWidgets.QDialog):
             self.ui.acceptModelsButton.setEnabled(False)
             self.ui.addModelsButton.setEnabled(False)
             self.ui.deleteModelsButton.setEnabled(False)
+            self.ui.reIndexTimeButton.setEnabled(False)
             self.ui.modelsTableView.setEnabled(False)
             self.ui.matchUsingCodeCheckBox.setEnabled(False)
 
@@ -688,6 +774,24 @@ class ModelsInputGUI(QtWidgets.QDialog):
             return True
         else:
             return False
+
+    def re_index_time(self) -> None:
+        """
+        Re-index the imported model rows with an evenly spaced time profile.
+
+        :return: None.
+        """
+        dlg: TimeReIndexDialogue = TimeReIndexDialogue()
+        dlg.setModal(True)
+        dlg.exec()
+
+        if dlg.is_accepted:
+            self.grids_model.re_index_time(t0=dlg.date_time_editor.dateTime().toPython(),
+                                           step_size=dlg.step_length.value(),
+                                           step_unit=dlg.units.currentData())
+            self.ui.modelsTableView.repaint()
+        else:
+            pass
 
     def generate_time_array(self,
                             main_grid: MultiCircuit,
