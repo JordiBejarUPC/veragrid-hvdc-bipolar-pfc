@@ -23,6 +23,67 @@ from VeraGridEngine.Utils.progress_bar import print_progress_bar
 from VeraGrid.Gui.FileDialogues.ProfilesInput.profiles_from_models_gui import Ui_Dialog
 
 
+class GridsModelTimeDelegate(QtWidgets.QStyledItemDelegate):
+    """
+    Date-time editor delegate for the imported-model time column.
+    """
+
+    def createEditor(self,
+                     parent: QtWidgets.QWidget,
+                     option: QtWidgets.QStyleOptionViewItem,
+                     index: QtCore.QModelIndex) -> QtWidgets.QDateTimeEdit:
+        """
+        Create the date-time editor used when editing a model-row timestamp.
+
+        :param parent: Parent widget supplied by Qt.
+        :param option: Style option supplied by Qt.
+        :param index: Edited model index.
+        :return: Configured date-time editor.
+        """
+        del option
+        del index
+
+        editor: QtWidgets.QDateTimeEdit = QtWidgets.QDateTimeEdit(parent)
+        editor.setCalendarPopup(True)
+        editor.setDisplayFormat("yyyy-MM-dd HH:mm:ss")
+        return editor
+
+    def setEditorData(self, editor: QtWidgets.QDateTimeEdit, index: QtCore.QModelIndex) -> None:
+        """
+        Load the current model timestamp into the editor.
+
+        :param editor: Date-time editor created by this delegate.
+        :param index: Edited model index.
+        :return: None.
+        """
+        value: object = index.model().data(index, QtCore.Qt.ItemDataRole.EditRole)
+        timestamp: pd.Timestamp = pd.to_datetime(value, errors='coerce')
+
+        if pd.isna(timestamp):
+            editor.setDateTime(QtCore.QDateTime.currentDateTime())
+        else:
+            editor.setDateTime(QtCore.QDateTime(timestamp.year,
+                                                timestamp.month,
+                                                timestamp.day,
+                                                timestamp.hour,
+                                                timestamp.minute,
+                                                timestamp.second))
+
+    def setModelData(self,
+                     editor: QtWidgets.QDateTimeEdit,
+                     model: QtCore.QAbstractItemModel,
+                     index: QtCore.QModelIndex) -> None:
+        """
+        Store the edited date-time back into the model.
+
+        :param editor: Date-time editor containing the selected value.
+        :param model: Table model receiving the edited value.
+        :param index: Edited model index.
+        :return: None.
+        """
+        model.setData(index, editor.dateTime().toPython(), QtCore.Qt.ItemDataRole.EditRole)
+
+
 def extract_and_convert_to_datetime(filename, logger: Logger) -> pd.Timestamp | None:
     """
     Try to extract date from file name
@@ -231,6 +292,10 @@ class GridsModel(QtCore.QAbstractTableModel):
             if role == QtCore.Qt.ItemDataRole.DisplayRole:
                 # return self.formatter(self._data[index.row(), index.column()])
                 return str(self._values_[index.row()].get_at(index.column()))
+            elif role == QtCore.Qt.ItemDataRole.EditRole:
+                return self._values_[index.row()].get_at(index.column())
+            else:
+                pass
         return None
 
     def setData(self,
@@ -276,6 +341,7 @@ class GridsModel(QtCore.QAbstractTableModel):
             self._values_[row].time = edited_time
         elif column == 2:
             self._values_[row].path = str(value)
+            self._values_[row].name = os.path.basename(str(value))
         elif column == 1:
             self._values_[row].name = str(value)
         else:
@@ -339,11 +405,14 @@ class GridsModel(QtCore.QAbstractTableModel):
         :return:
         """
         if index.isValid():
-            return (QtCore.Qt.ItemFlag.ItemIsDropEnabled |
-                    QtCore.Qt.ItemFlag.ItemIsEnabled |
-                    QtCore.Qt.ItemFlag.ItemIsEditable |
-                    QtCore.Qt.ItemFlag.ItemIsSelectable |
-                    QtCore.Qt.ItemFlag.ItemIsDragEnabled)
+            flags: QtCore.Qt.ItemFlag = (QtCore.Qt.ItemFlag.ItemIsDropEnabled |
+                                          QtCore.Qt.ItemFlag.ItemIsEnabled |
+                                          QtCore.Qt.ItemFlag.ItemIsSelectable |
+                                          QtCore.Qt.ItemFlag.ItemIsDragEnabled)
+            if index.column() == 2:
+                return flags
+            else:
+                return flags | QtCore.Qt.ItemFlag.ItemIsEditable
         else:
             return QtCore.Qt.ItemFlag.ItemIsDropEnabled
 
@@ -611,6 +680,7 @@ class ModelsInputGUI(QtWidgets.QDialog):
         self.ui.modelsTableView.setDropIndicatorShown(True)
         self.ui.modelsTableView.setDragDropMode(QtWidgets.QAbstractItemView.DragDrop)
         self.ui.modelsTableView.setDefaultDropAction(QtCore.Qt.DropAction.CopyAction)
+        self.ui.modelsTableView.setItemDelegateForColumn(0, GridsModelTimeDelegate(self.ui.modelsTableView))
         self.ui.modelsTableView.repaint()
 
         # click
@@ -618,6 +688,7 @@ class ModelsInputGUI(QtWidgets.QDialog):
         self.ui.acceptModelsButton.clicked.connect(self.start_process)
         self.ui.deleteModelsButton.clicked.connect(self.clear_model)
         self.ui.reIndexTimeButton.clicked.connect(self.re_index_time)
+        self.ui.modelsTableView.doubleClicked.connect(self.models_table_double_clicked)
 
     def accept(self) -> None:
         """
@@ -678,6 +749,42 @@ class ModelsInputGUI(QtWidgets.QDialog):
             self.ui.modelsTableView.setModel(None)
             self.ui.modelsTableView.setModel(self.grids_model)
             self.ui.modelsTableView.repaint()
+
+    def models_table_double_clicked(self, index: QtCore.QModelIndex) -> None:
+        """
+        Handle double-click actions that need a full dialogue.
+
+        :param index: Double-clicked table index.
+        :return: None.
+        """
+        files_types: str
+        current_path: str
+        start_folder: str
+        filename: str
+        type_selected: str
+
+        if index.isValid():
+            if index.column() == 2:
+                files_types = "Formats (*.raw *.RAW *.rawx *.xml *.m *.matpower *.epc *.EPC *.dgs *.p *.uct *.UCT)"
+                current_path = str(self.grids_model.items()[index.row()].path)
+                start_folder = os.path.dirname(current_path)
+                filename, type_selected = QtWidgets.QFileDialog.getOpenFileName(self,
+                                                                                'Select file',
+                                                                                start_folder,
+                                                                                filter=files_types)
+                del type_selected
+
+                if filename != "":
+                    self.grids_model.setData(index=index,
+                                             value=filename,
+                                             role=QtCore.Qt.ItemDataRole.EditRole)
+                    self.ui.modelsTableView.repaint()
+                else:
+                    pass
+            else:
+                pass
+        else:
+            pass
 
     def start_process(self) -> None:
         """
