@@ -17,7 +17,8 @@ from VeraGrid.Gui.results_model import ResultsModel
 from VeraGrid.Gui.general_dialogues import fill_tree_from_logs
 import VeraGridEngine.Utils.Filtering as flt
 from VeraGridEngine.basic_structures import Logger
-from VeraGridEngine.enumerations import ResultTypes, SimulationTypes, PlotSimulationType, DynamicPlotEntryKind, DynamicPlotMode
+from VeraGridEngine.enumerations import (ResultTypes, SimulationTypes, PlotSimulationType, DynamicPlotEntryKind,
+                                         DynamicPlotMode, ResultTablePlotType)
 from VeraGridEngine.Utils.Symbolic.symbolic import Var
 from VeraGridEngine.Simulations.Rms.rms_results import RmsResults
 from VeraGridEngine.Simulations.EMT.emt_results import EmtResults
@@ -43,7 +44,7 @@ class ResultsMain(SimulationsMain):
         self.current_results_logger: Union[None, Logger] = None
 
         self.dynamic_results_handler: DynamicsResultsHandler | None = None
-        self.dynamic_results_handlers: Dict[str, DynamicsResultsHandler] = dict()
+        self.dynamic_results_handlers: Dict[SimulationTypes, DynamicsResultsHandler] = dict()
 
         # --------------------------------------------------------------------------------------------------------------
         self.ui.actionSet_OPF_generation_to_profiles.triggered.connect(self.copy_opf_to_profiles)
@@ -103,11 +104,10 @@ class ResultsMain(SimulationsMain):
         """
         tree_mdl = self.ui.results_treeView.model()
         item = tree_mdl.itemFromIndex(index)
-        path = gf.get_tree_item_path(item)
+        study_type: SimulationTypes | None = self.get_results_tree_study_type(item=item)
 
-        if len(path) > 0:
-            study_name = path[0]
-            driver = self.session.get_driver_by_name(study_name=study_name)
+        if study_type is not None:
+            driver = self.session.get_driver(driver_type=study_type)
 
             if driver is None:
                 # set the logs
@@ -127,7 +127,7 @@ class ResultsMain(SimulationsMain):
             # set the dynamics model handler
             if driver.tpe == SimulationTypes.RmsDynamic_run:
                 self.dynamic_results_handler = self.get_or_create_dynamic_results_handler(
-                    study_name=study_name,
+                    study_type=study_type,
                     results=driver.results
                 )
 
@@ -142,7 +142,7 @@ class ResultsMain(SimulationsMain):
             elif driver.tpe == SimulationTypes.EmtDynamic_run:
 
                 self.dynamic_results_handler = self.get_or_create_dynamic_results_handler(
-                    study_name=study_name,
+                    study_type=study_type,
                     results=driver.results
                 )
 
@@ -157,25 +157,18 @@ class ResultsMain(SimulationsMain):
                 self.ui.resultsTabWidget.setCurrentIndex(0)
                 self.clear_dynamic_results_view()
 
-            if len(path) > 1:
-
-                if len(path) == 2:
-                    result_name = path[1]
-                elif len(path) == 3:
-                    result_name = path[2]
-                else:
-                    raise Exception('Path len ' + str(len(path)) + ' not supported')
-
-                study_results = self.available_results_dict.get(study_name, None)
+            result_type: ResultTypes | None = self.get_results_tree_result_type(item=item)
+            if result_type is not None:
+                study_results = self.available_results_dict.get(study_type, None)
 
                 if study_results is not None:
 
-                    study_type: ResultTypes = study_results.get(result_name, None)
+                    study_result_type: ResultTypes = study_results.get(result_type, None)
 
-                    if study_type is not None:
+                    if study_result_type is not None:
 
-                        self.results_mdl = self.session.get_results_model_by_name(study_name=study_name,
-                                                                                  study_type=study_type)
+                        self.results_mdl = self.session.get_results_model(driver_type=study_type,
+                                                                          result_type=study_result_type)
 
                         if self.results_mdl is not None:
 
@@ -219,6 +212,38 @@ class ResultsMain(SimulationsMain):
             # set the logs
             self.current_results_logger = None
             self.ui.resultsLogsTreeView.setModel(None)
+
+    def get_results_tree_study_type(self, item: QtGui.QStandardItem | None) -> SimulationTypes | None:
+        """
+        Resolve a results tree item to its simulation type.
+
+        :param item: Tree item.
+        :return: Simulation type or None.
+        """
+        current_item: QtGui.QStandardItem | None = item
+        while current_item is not None:
+            item_data: object = current_item.data(QtCore.Qt.ItemDataRole.UserRole)
+            if isinstance(item_data, SimulationTypes):
+                return item_data
+            else:
+                current_item = current_item.parent()
+        return None
+
+    def get_results_tree_result_type(self, item: QtGui.QStandardItem | None) -> ResultTypes | None:
+        """
+        Resolve a results tree item to its result type.
+
+        :param item: Tree item.
+        :return: Result type or None.
+        """
+        if item is not None:
+            item_data: object = item.data(QtCore.Qt.ItemDataRole.UserRole)
+            if isinstance(item_data, ResultTypes):
+                return item_data
+            else:
+                return None
+        else:
+            return None
 
     def dynamic_results_tree_view_click(self, index: QtCore.QModelIndex) -> Var | None:
         """
@@ -639,12 +664,12 @@ class ResultsMain(SimulationsMain):
             pass
 
     def get_or_create_dynamic_results_handler(self,
-                                              study_name: str,
+                                              study_type: SimulationTypes,
                                               results: RmsResults|EmtResults) -> DynamicsResultsHandler:
         """
         Get a cached dynamic-results handler for the given study, or create/update it.
 
-        :param study_name: Study name shown in the results tree.
+        :param study_type: Study simulation type.
         :param results: Dynamic results object associated with the study.
         :return: Cached or newly created dynamics-results handler.
 
@@ -654,12 +679,12 @@ class ResultsMain(SimulationsMain):
         handler is created because RMS and EMT expose different event-group and
         array layouts.
         """
-        handler: DynamicsResultsHandler | None = self.dynamic_results_handlers.get(study_name, None)
+        handler: DynamicsResultsHandler | None = self.dynamic_results_handlers.get(study_type, None)
 
         if handler is None:
             handler = DynamicsResultsHandler(results=results, circuit=self.circuit)
             handler.dialog_parent = self
-            self.dynamic_results_handlers[study_name] = handler
+            self.dynamic_results_handlers[study_type] = handler
             handler.get_plots_model().rowsInserted.connect(self.expand_dynamic_plots_tree)
             return handler
 
@@ -676,7 +701,7 @@ class ResultsMain(SimulationsMain):
             # different event-group fields and value-array layouts.
             handler = DynamicsResultsHandler(results=results, circuit=self.circuit)
             handler.dialog_parent = self
-            self.dynamic_results_handlers[study_name] = handler
+            self.dynamic_results_handlers[study_type] = handler
             handler.get_plots_model().rowsInserted.connect(self.expand_dynamic_plots_tree)
             return handler
 
@@ -716,23 +741,100 @@ class ResultsMain(SimulationsMain):
         """
         self._show_pre_simulation_dynamic_plot_editor(simulation_type=PlotSimulationType.EMT)
 
-    def plot_results(self):
+    def plot_results(self) -> None:
         """
-        Plot the results
+        Plot the visible results according to the table plot contract.
+
+        Complex-vector tables interpret selected cells as mode-column choices.
+        State subsets are selected explicitly through complete rows or through
+        the results filter, preventing a single clicked cell from truncating an
+        entire right eigenvector accidentally. Complex-point tables use cell
+        selection for modes and complete-column selection for coordinate units.
+
+        :return: None.
         """
-        mdl: ResultsModel = self.ui.resultsTableView.model()
+        mdl: ResultsModel | None = self.ui.resultsTableView.model()
 
         if mdl is not None:
 
             plt.rcParams["date.autoformatter.minute"] = "%Y-%m-%d %H:%M:%S"
 
-            # get the selected element
-            obj_idx = self.ui.resultsTableView.selectedIndexes()
-            n_cols = mdl.table.c
+            # Collect the selected cells once so all plot types use the same
+            # visible model after filtering.
+            selected_indexes: list[QtCore.QModelIndex] = self.ui.resultsTableView.selectedIndexes()
+            selected_columns: np.ndarray | None
+            selected_rows: np.ndarray | None
+            if len(selected_indexes) > 0:
+                selected_columns_array: np.ndarray = np.zeros(len(selected_indexes), dtype=np.int64)
+                selected_rows_array: np.ndarray = np.zeros(len(selected_indexes), dtype=np.int64)
 
-            if n_cols > 50:
+                selected_position: int
+                selected_index: QtCore.QModelIndex
+                for selected_position, selected_index in enumerate(selected_indexes):
+                    selected_columns_array[selected_position] = selected_index.column()
+                    selected_rows_array[selected_position] = selected_index.row()
+
+                selection_model: QtCore.QItemSelectionModel = self.ui.resultsTableView.selectionModel()
+                complete_rows: list[QtCore.QModelIndex] = selection_model.selectedRows()
+                complete_columns: list[QtCore.QModelIndex] = selection_model.selectedColumns()
+
+                if mdl.table.plot_type == ResultTablePlotType.COMPLEX_POINTS:
+                    # Cell and row selection chooses modal points. Only an
+                    # explicit complete-column selection changes the complex
+                    # coordinate pair used by the plot.
+                    if len(complete_rows) > 0:
+                        complete_row_indices: np.ndarray = np.zeros(len(complete_rows), dtype=np.int64)
+                        complete_row_position: int
+                        complete_row: QtCore.QModelIndex
+                        for complete_row_position, complete_row in enumerate(complete_rows):
+                            complete_row_indices[complete_row_position] = complete_row.row()
+                        selected_rows = np.unique(complete_row_indices)
+                    else:
+                        selected_rows = np.unique(selected_rows_array)
+
+                    # Selecting every table column normally comes from a row
+                    # selection and therefore means "use the default pair".
+                    if 0 < len(complete_columns) < mdl.table.c:
+                        complete_column_indices: np.ndarray = np.zeros(
+                            len(complete_columns),
+                            dtype=np.int64,
+                        )
+                        complete_column_position: int
+                        complete_column: QtCore.QModelIndex
+                        for complete_column_position, complete_column in enumerate(complete_columns):
+                            complete_column_indices[complete_column_position] = complete_column.column()
+                        selected_columns = np.unique(complete_column_indices)
+                    else:
+                        selected_columns = None
+                elif mdl.table.plot_type == ResultTablePlotType.COMPLEX_VECTORS:
+                    selected_columns = np.unique(selected_columns_array)
+                    if len(complete_rows) > 0:
+                        complete_row_indices: np.ndarray = np.zeros(len(complete_rows), dtype=np.int64)
+                        complete_row_position: int
+                        complete_row: QtCore.QModelIndex
+                        for complete_row_position, complete_row in enumerate(complete_rows):
+                            complete_row_indices[complete_row_position] = complete_row.row()
+                        selected_rows = np.unique(complete_row_indices)
+                    else:
+                        selected_rows = None
+                else:
+                    selected_columns = np.unique(selected_columns_array)
+                    selected_rows = np.unique(selected_rows_array)
+            else:
+                selected_columns = None
+                selected_rows = None
+
+            if mdl.table.plot_type == ResultTablePlotType.COMPLEX_POINTS:
+                number_of_plots: int = 1
+            elif selected_columns is None:
+                number_of_plots: int = mdl.table.c
+            else:
+                number_of_plots = int(selected_columns.size)
+
+            if number_of_plots > 50:
                 ok = yes_no_question(text=self.tr("There are {columns} columns, the plot might take a lot to render.\n"
-                                                  "Are you ok with potentially waiting a lot?").format(columns=n_cols),
+                                                  "Are you ok with potentially waiting a lot?").format(
+                                                      columns=number_of_plots),
                                      title=self.tr("Plot"))
             else:
                 ok = True
@@ -742,35 +844,23 @@ class ResultsMain(SimulationsMain):
                 fig = plt.figure(figsize=(12, 8))
                 ax = fig.add_subplot(111)
 
-                if len(obj_idx):
-
-                    # get the unique columns in the selected cells
-                    cols = np.zeros(len(obj_idx), dtype=int)
-                    rows = np.zeros(len(obj_idx), dtype=int)
-
-                    for i in range(len(obj_idx)):
-                        cols[i] = obj_idx[i].column()
-                        rows[i] = obj_idx[i].row()
-
-                    cols = np.unique(cols)
-                    rows = np.unique(rows)
-
-                else:
-                    # plot all
-                    cols = None
-                    rows = None
-
-                # none selected, plot all
+                # The table dispatches to the series, complex-point, or
+                # complex-vector renderer without simulation-specific GUI code.
                 mdl.plot(
                     ax=ax,
-                    selected_col_idx=cols,
-                    selected_rows=rows,
+                    selected_col_idx=selected_columns,
+                    selected_rows=selected_rows,
                     stacked=self.ui.stacked_plot_checkBox.isChecked()
                 )
 
                 plt.show()
             else:
                 pass
+        else:
+            warning_msg(
+                self.tr("There are no results available to plot."),
+                self.tr("Plot results"),
+            )
 
     def save_results_df(self):
         """
@@ -825,31 +915,34 @@ class ResultsMain(SimulationsMain):
             warning_msg(self.tr("There is no profile displayed, please display one"),
                         self.tr("Copy profile to clipboard"))
 
-    def search_in_results(self):
+    def search_in_results(self) -> None:
         """
         Search in the results model
+
+        :return: None.
         """
 
         if self.results_mdl is not None:
 
-            txt = self.ui.search_results_lineEdit.text().strip()
+            txt: str = self.ui.search_results_lineEdit.text().strip()
 
-            filter_ = flt.FilterResultsTable(self.results_mdl.table)
+            filter_: flt.FilterResultsTable = flt.FilterResultsTable(self.results_mdl.table)
 
             try:
                 filter_.parse(expression=txt)
-                filtered_table = filter_.apply()
+                filtered_model: ResultsModel = ResultsModel(filter_.apply())
             except ValueError as e:
                 error_msg(str(e), self.tr("Filter parse"))
-                return None
+                return
             except Exception as e:
                 error_msg(str(e), self.tr("Filter parse"))
-                return None
+                return
 
-            self.results_mdl = ResultsModel(filtered_table)
-            self.ui.resultsTableView.setModel(self.results_mdl)
+            # Keep the unfiltered model as the stable search source. This makes
+            # each query independent and lets an empty query restore the table.
+            self.ui.resultsTableView.setModel(filtered_model)
         else:
-            return None
+            return
 
     def delete_results_driver(self):
         """
@@ -860,14 +953,12 @@ class ResultsMain(SimulationsMain):
         if len(idx) > 0:
             tree_mdl = self.ui.results_treeView.model()
             item = tree_mdl.itemFromIndex(idx[0])
-            path = gf.get_tree_item_path(item)
+            study_type: SimulationTypes | None = self.get_results_tree_study_type(item=item)
 
-            if len(path) > 0:
-                study_name = path[0]
-                study_type = self.available_results_dict[study_name]
+            if study_type is not None:
 
                 quit_msg = self.tr("Do you want to delete the results driver {study_name}?").format(
-                    study_name=study_name
+                    study_name=study_type.value
                 )
                 reply = QtWidgets.QMessageBox.question(self, self.tr("Message"),
                                                        quit_msg,
@@ -875,13 +966,21 @@ class ResultsMain(SimulationsMain):
                                                        QtWidgets.QMessageBox.StandardButton.No)
 
                 if reply == QtWidgets.QMessageBox.StandardButton.Yes.value:
-                    if study_name == SimulationTypes.RmsDynamic_run.value or study_name == SimulationTypes.EmtDynamic_run.value:
-                        if study_name in self.dynamic_results_handlers:
-                            del self.dynamic_results_handlers[study_name]
+                    if study_type == SimulationTypes.RmsDynamic_run or study_type == SimulationTypes.EmtDynamic_run:
+                        if study_type in self.dynamic_results_handlers:
+                            del self.dynamic_results_handlers[study_type]
+                        else:
+                            pass
                         self.clear_dynamic_results_view()
+                    else:
+                        pass
 
-                    self.session.delete_driver_by_name(study_name)
+                    self.session.delete_driver(study_type)
                     self.update_available_results()
+            else:
+                pass
+        else:
+            pass
 
     def clear_dynamic_results_view(self):
         """

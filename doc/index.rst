@@ -78,6 +78,7 @@ Contents
     md_source/short_circuit.md
     md_source/stochastic_power_flow.md
     md_source/continuation_power_flow.md
+    md_source/sigma_analysis.md
     md_source/solar_wizard.md
 
     md_source/contingency_analysis.md
@@ -91,9 +92,6 @@ Contents
 
 
     md_source/dynamic_simulations.md
-    md_source/rms_simulations.md
-    md_source/small_signal_stability.md
-    md_source/emt_simulations.md
 
     md_source/development.md
     md_source/plugins.md

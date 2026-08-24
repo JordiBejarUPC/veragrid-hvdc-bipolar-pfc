@@ -119,9 +119,16 @@ class GcThread(QThread):
         try:
             self.driver.run()
         except Exception as e:
+            error_message: str = str(e)
             self._failed = True
-            self.logger.add_error(str(e))
-            self.progress_text.emit(f"Error: {str(e)}")
+
+            # A driver's constructor may expose an empty result shell before
+            # the numerical run starts.  Once execution fails that shell is
+            # not a valid study result and must not remain available to the UI.
+            self.driver.results = None
+            self.driver.logger.add_error(error_message)
+            self.logger.add_error(error_message)
+            self.progress_text.emit(f"Error: {error_message}")
 
         self.progress_signal.emit(0.0)
         if self.__cancel__:
@@ -132,6 +139,14 @@ class GcThread(QThread):
             else:
                 self.progress_text.emit('Done!')
         self.done_signal.emit()
+
+    def has_failed(self) -> bool:
+        """
+        Return whether the driver execution raised an exception.
+
+        :return: ``True`` when the worker caught a driver exception.
+        """
+        return self._failed
 
     def cancel(self) -> None:
         """
@@ -317,6 +332,15 @@ class SimulationSession:
         else:
             return None
 
+    def get_driver(self, driver_type: SimulationTypes) -> Union[DRIVER_OBJECTS, None]:
+        """
+        Get the driver by simulation type.
+
+        :param driver_type: Driver simulation type.
+        :return: Driver instance or None.
+        """
+        return self.drivers.get(driver_type, None)
+
     def delete_driver(self, driver_type: SimulationTypes) -> None:
         """
         Get the results of the driver
@@ -351,6 +375,39 @@ class SimulationSession:
                 return self.drivers[driver_type]
         return None
 
+    def get_results_model(self,
+                          driver_type: SimulationTypes,
+                          result_type: ResultTypes) -> Union[ResultsModel, None]:
+        """
+        Get the results model by simulation type and result type.
+
+        :param driver_type: Driver simulation type.
+        :param result_type: Result type.
+        :return: ResultsModel instance or None if not found.
+        """
+        drv: DRIVER_OBJECTS | None = self.drivers.get(driver_type, None)
+        if drv is not None:
+            thread: GcThread | None = self.threads.get(driver_type, None)
+            if thread is not None:
+                result_is_available: bool = not thread.isRunning() and not thread.has_failed()
+            else:
+                result_is_available = True
+
+            if result_is_available:
+                if drv.results is not None:
+                    tbl = drv.results.mdl(result_type=result_type)
+                    if tbl is None:
+                        return None
+                    else:
+                        return ResultsModel(tbl)
+                else:
+                    print('There seem to be no results :(')
+                    return None
+            else:
+                return None
+        else:
+            return None
+
     def get_results_model_by_name(self,
                                   study_name: str,
                                   study_type: ResultTypes) -> Union[ResultsModel, None]:
@@ -362,14 +419,25 @@ class SimulationSession:
         """
         for driver_type, drv in self.drivers.items():
             if study_name == drv.tpe.value or study_name == drv.name:
-                if drv.results is not None:
-                    tbl = drv.results.mdl(result_type=study_type)
-                    if tbl is None:
-                        return None
-                    else:
-                        return ResultsModel(tbl)
+                thread: GcThread | None = self.threads.get(driver_type, None)
+                if thread is not None:
+                    result_is_available: bool = not thread.isRunning() and not thread.has_failed()
                 else:
-                    print('There seem to be no results :(')
+                    result_is_available = True
+
+                # A registered driver owns a placeholder while it is running.
+                # Do not let a stale results-tree entry expose that placeholder.
+                if result_is_available:
+                    if drv.results is not None:
+                        tbl = drv.results.mdl(result_type=study_type)
+                        if tbl is None:
+                            return None
+                        else:
+                            return ResultsModel(tbl)
+                    else:
+                        print('There seem to be no results :(')
+                        return None
+                else:
                     return None
 
         return None

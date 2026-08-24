@@ -66,6 +66,55 @@ def _toc(t0):
     return time.perf_counter() - t0
 
 
+def build_inactive_bus_boundary_equations(
+        bus: Bus,
+        init_guess: Dict[int, float | int | complex | None],
+) -> List[Expr]:
+    """
+    Build algebraic boundary equations for one isolated inactive bus.
+
+    Inactive buses can remain stored in legacy grids without any connected
+    active network element.  Their RMS voltage variables are still present in
+    the bus block, but nodal P/Q balances do not exist.  Fixing those detached
+    algebraic variables at the power-flow initial point removes them from the
+    active DAE without adding electrical behavior to the network.
+
+    :param bus: Isolated inactive bus owning the RMS voltage variables.
+    :param init_guess: Global RMS initial-value lookup keyed by variable uid.
+    :return: One DC or two AC voltage boundary equations.
+    """
+    boundary_equations: List[Expr] = list()
+    vdc: Var | None
+    vm: Var | None
+    va: Var | None
+    vdc, vm, va = get_bus_rms_algebraic_vars(bus_rms_model=bus.rms_model)
+
+    if vdc is not None:
+        vdc_initial_raw: float | int | complex | None = init_guess.get(vdc.uid, 1.0)
+        if vdc_initial_raw is None or not np.isfinite(vdc_initial_raw):
+            vdc_initial: float = 1.0
+        else:
+            vdc_initial = float(np.real(vdc_initial_raw))
+        boundary_equations.append(vdc - Const(vdc_initial))
+    elif vm is not None and va is not None:
+        vm_initial_raw: float | int | complex | None = init_guess.get(vm.uid, 1.0)
+        va_initial_raw: float | int | complex | None = init_guess.get(va.uid, 0.0)
+        if vm_initial_raw is None or not np.isfinite(vm_initial_raw):
+            vm_initial: float = 1.0
+        else:
+            vm_initial = float(np.real(vm_initial_raw))
+        if va_initial_raw is None or not np.isfinite(va_initial_raw):
+            va_initial: float = 0.0
+        else:
+            va_initial = float(np.real(va_initial_raw))
+        boundary_equations.append(vm - Const(vm_initial))
+        boundary_equations.append(va - Const(va_initial))
+    else:
+        pass
+
+    return boundary_equations
+
+
 def _is_time_aligned(t_curr: float, event_time: float) -> bool:
     """
     Return whether ``t_curr`` is aligned with ``event_time`` within numeric tolerance.
@@ -396,6 +445,86 @@ def setQ(Q: ObjVec, Q_used: BoolVec, k: int, val: object):
         Q[k] += val
 
 
+def _block_has_complete_explicit_initialization(mdl: Block,
+                                                init_guess: Dict[int, float | int | complex | None],
+                                                uid2idx_vars: Dict[int, int]) -> bool:
+    """
+    Return whether a block can be safely initialized by explicit equations only.
+
+    :param mdl: RMS symbolic block to inspect.
+    :param init_guess: Initial values already seeded from power flow or previous blocks.
+    :param uid2idx_vars: Global system variable index map.
+    :return: ``True`` when every local state/algebraic variable has an explicit value source.
+    """
+    explicit_eq_uids: Set[int] = set()
+
+    for blk in mdl.get_all_blocks():
+        for init_var in blk.init_eqs.keys():
+            if isinstance(init_var, Var):
+                explicit_eq_uids.add(init_var.uid)
+            else:
+                pass
+        for init_var in blk.diff_init_eqs.keys():
+            if isinstance(init_var, Var):
+                explicit_eq_uids.add(init_var.uid)
+            else:
+                pass
+
+    for blk in mdl.get_all_blocks():
+        local_vars: List[Var] = list()
+        local_vars.extend(blk.state_vars)
+        local_vars.extend(blk.algebraic_vars)
+
+        for event_var, event_value in blk.event_dict.items():
+            if isinstance(event_var, Var) and isinstance(event_value, Const) and event_value.value is None:
+                if event_var.uid in explicit_eq_uids:
+                    pass
+                else:
+                    return False
+            else:
+                pass
+
+        for var in local_vars:
+            if not isinstance(var, Var):
+                pass
+            elif var.uid not in uid2idx_vars:
+                pass
+            elif var.uid in init_guess and init_guess[var.uid] is not None:
+                pass
+            elif var.uid in explicit_eq_uids:
+                pass
+            else:
+                return False
+
+    return True
+
+
+def _select_rms_initialization_method(configured_method: RmsInitializationMethod,
+                                      mdl: Block,
+                                      init_guess: Dict[int, float | int | complex | None],
+                                      uid2idx_vars: Dict[int, int]) -> RmsInitializationMethod:
+    """
+    Select the concrete initialization method for one RMS block.
+
+    :param configured_method: User-selected initialization method.
+    :param mdl: RMS symbolic block to initialize.
+    :param init_guess: Initial values already seeded from power flow or previous blocks.
+    :param uid2idx_vars: Global system variable index map.
+    :return: Concrete initialization method to execute.
+    """
+    if configured_method == RmsInitializationMethod.Auto:
+        if _block_has_complete_explicit_initialization(mdl=mdl,
+                                                       init_guess=init_guess,
+                                                       uid2idx_vars=uid2idx_vars):
+            selected_method: RmsInitializationMethod = RmsInitializationMethod.Explicit
+        else:
+            selected_method = RmsInitializationMethod.PseudoTransient
+    else:
+        selected_method = configured_method
+
+    return selected_method
+
+
 class RmsProblemDae(RmsProblemTemplate):
     """
     DAE (Differential-Algebraic Equation) class to store and manage.
@@ -441,6 +570,8 @@ class RmsProblemDae(RmsProblemTemplate):
         # when vectorizing this will be a list of lists
         self._algebraic_vars: List[Var] = list()
         self._algebraic_eqs: List[Expr] = list()
+        self._small_signal_reference_row: int | None = None
+        self._small_signal_reference_column: int | None = None
         # when vectorizing this will be a list of lists
         self._state_vars: List[Var] = list()
         self._state_eqs: List[Expr] = list()
@@ -627,7 +758,14 @@ class RmsProblemDae(RmsProblemTemplate):
                 # Run explicit initialization for branches to solve algebraic equations
                 if isinstance(elm, Transformer2W):
 
-                    if self.options.initialization_method == RmsInitializationMethod.Explicit:
+                    initialization_method: RmsInitializationMethod = _select_rms_initialization_method(
+                        configured_method=self.options.initialization_method,
+                        mdl=elm.rms_model,
+                        init_guess=self.init_guess,
+                        uid2idx_vars=self._uid2idx_vars,
+                    )
+
+                    if initialization_method == RmsInitializationMethod.Explicit:
                         diff_sys_vars: Dict[int, Var] = {diff_var.uid: diff_var for diff_var in self._diff_vars}
                         rms_compiler_init = RMSCompiler(
                             variables=list(self.sys_vars.values()),
@@ -658,7 +796,7 @@ class RmsProblemDae(RmsProblemTemplate):
                             compile_single_equation=compile_single_equation,
                             verbose=bool(self.options.verbose > 0),
                         )
-                    elif self.options.initialization_method == RmsInitializationMethod.PseudoTransient:
+                    elif initialization_method == RmsInitializationMethod.PseudoTransient:
                         self.init_guess = init_pseudo_transient(
                             mdl=elm.rms_model,
                             sys_vars=self.sys_vars,
@@ -681,6 +819,8 @@ class RmsProblemDae(RmsProblemTemplate):
                             tol=1e-8,
                             verbose=bool(self.options.verbose > 0),
                         )
+                    else:
+                        raise ValueError("Not implemented initialization method")
 
                 # add model to system block
                 self.sys_block.add(elm.rms_model)
@@ -785,7 +925,14 @@ class RmsProblemDae(RmsProblemTemplate):
             else:
 
                 # find init values for the variables of this model
-                if self.options.initialization_method == RmsInitializationMethod.Explicit:
+                initialization_method: RmsInitializationMethod = _select_rms_initialization_method(
+                    configured_method=self.options.initialization_method,
+                    mdl=elm.rms_model,
+                    init_guess=self.init_guess,
+                    uid2idx_vars=self._uid2idx_vars,
+                )
+
+                if initialization_method == RmsInitializationMethod.Explicit:
                     # common initialization to integrate
 
                     # create constant parameters array
@@ -827,7 +974,7 @@ class RmsProblemDae(RmsProblemTemplate):
                         verbose=bool(self.options.verbose > 0),
                     )
 
-                elif self.options.initialization_method == RmsInitializationMethod.PseudoTransient:
+                elif initialization_method == RmsInitializationMethod.PseudoTransient:
                     self.init_guess = init_pseudo_transient(
                         mdl=elm.rms_model,
                         sys_vars=self.sys_vars,
@@ -887,7 +1034,14 @@ class RmsProblemDae(RmsProblemTemplate):
                 if VarPowerFlowReferenceType.Q in elm.rms_model.external_mapping:
                     setQ(Q, Q_used, k, elm.rms_model.E(VarPowerFlowReferenceType.Q))
 
-                if self.options.initialization_method == RmsInitializationMethod.Explicit:
+                initialization_method: RmsInitializationMethod = _select_rms_initialization_method(
+                    configured_method=self.options.initialization_method,
+                    mdl=elm.rms_model,
+                    init_guess=self.init_guess,
+                    uid2idx_vars=self._uid2idx_vars,
+                )
+
+                if initialization_method == RmsInitializationMethod.Explicit:
 
                     if isinstance(elm, InjectionParent):
                         self._seed_rms_input_initialization_from_single_bus_model(mdl=elm.rms_model,
@@ -934,7 +1088,7 @@ class RmsProblemDae(RmsProblemTemplate):
                     # initialize variables with no init equation assigned
                     # run_rms_native_initialization(self, self.options)
 
-                elif self.options.initialization_method == RmsInitializationMethod.PseudoTransient:
+                elif initialization_method == RmsInitializationMethod.PseudoTransient:
                     self.init_guess = init_pseudo_transient(
                         mdl=elm.rms_model,
                         sys_vars=self.sys_vars,
@@ -1016,19 +1170,43 @@ class RmsProblemDae(RmsProblemTemplate):
         for i, eq0 in enumerate(self._event_parameters_eqs0):
             if isinstance(eq0, Const) and eq0.value is not None:
                 self._runtime_all_eqs_source[i] = Const(eq0.value)
+                self.event_params_init_dict[self._variable_parameters[i].uid] = float(eq0.value)
             else:
                 pass
 
         # print("start creating balance equations")
         # add the nodal balance equations
+        # Legacy split VSC models expose terminal reactive power but no AC
+        # angle input because their companion transformer/control model closes
+        # the virtual AC node. A standalone VSC with ``Vat`` is connected to a
+        # physical AC bus and therefore requires the normal P/Q bus balances.
         ac_virtual_buses = [
             elm.bus_to.idtag
             for elm in grid.get_vsc()
-            if VarPowerFlowReferenceType.Qt in elm.rms_model.external_mapping
+            if (
+                VarPowerFlowReferenceType.Qt in elm.rms_model.external_mapping
+                and VarPowerFlowReferenceType.Vat not in elm.rms_model.external_mapping
+            )
         ]
         for i, elm in enumerate(self.grid.buses):
             if not P_used[i] and not Q_used[i]:
-                self.logger.add_error("Isolated bus", value=i)
+                if elm.active:
+                    self.logger.add_error("Isolated active bus", device=elm.name, value=i)
+                else:
+                    # Detached out-of-service buses must not leave free algebraic
+                    # voltage variables in an otherwise square RMS system.
+                    boundary_equations: List[Expr] = build_inactive_bus_boundary_equations(
+                        bus=elm,
+                        init_guess=self.init_guess,
+                    )
+                    if len(boundary_equations) > 0:
+                        self._algebraic_eqs.extend(boundary_equations)
+                        self.logger.add_info("Inactive isolated bus fixed at its initial voltage",
+                                             device=elm.name)
+                    else:
+                        self.logger.add_error("Invalid RMS model for inactive isolated bus",
+                                              device=elm.name,
+                                              value=i)
             else:
                 if elm.is_dc:
                     self._algebraic_eqs.append(P[i])
@@ -1036,6 +1214,21 @@ class RmsProblemDae(RmsProblemTemplate):
                     self._algebraic_eqs.append(P[i])
                 else:
                     self._algebraic_eqs.append(Q[i])
+
+                    # The active-power balance at the AC slack bus is the
+                    # redundant equation associated with the global angle
+                    # gauge.  Keep it in the physical DAE, but remember its
+                    # exact Jacobian position so small-signal factorization can
+                    # replace it with an angle-reference row.
+                    if elm.is_slack and self._small_signal_reference_row is None:
+                        _, _, voltage_angle = get_bus_rms_algebraic_vars(bus_rms_model=elm.rms_model)
+                        if voltage_angle is not None:
+                            algebraic_column: int = self._algebraic_vars.index(voltage_angle)
+                            self._small_signal_reference_row = len(self._state_eqs) + len(self._algebraic_eqs)
+                            self._small_signal_reference_column = len(self._state_vars) + algebraic_column
+                        else:
+                            self.logger.add_error("AC slack bus has no RMS voltage-angle variable",
+                                                  device=elm.name)
                     self._algebraic_eqs.append(P[i])
 
         # print("created balance equations")
@@ -1812,19 +2005,51 @@ class RmsProblemDae(RmsProblemTemplate):
             self._block_boundary_updater.update(float(t), x_snapshot, full_params)
             self._variable_parameters_values[:] = full_params[:self.get_variable_parameter_number()]
 
-    def get_static_state_matrix(self, x:Vec, dx:Vec):
-        nx = self.get_states_number()
-        ny = self.get_algebraic_var_number()
+    def get_static_state_matrix(self, x: Vec, dx: Vec) -> sp.csc_matrix:
+        """
+        Build the sparse static Jacobian used by small-signal analysis.
 
-        if nx == 0:
-            gy = self.get_j22(x, dx, 1e15).toarray()
-            return gy
+        Keeping the component Jacobians sparse avoids allocating the complete
+        augmented matrix as a dense array before the sparse eigensolver starts.
 
-        fx = self.get_j11(x, dx, 1e10).toarray()
-        fy = self.get_j12(x, dx, 1e10).toarray()
-        gx = self.get_j21(x, dx, 1e10).toarray()
-        gy = self.get_j22(x, dx, 1e15).toarray()
-        return np.block([[fx, fy], [gx, gy]])
+        :param x: State and algebraic variable values.
+        :param dx: Differential variable values.
+        :return: Static Jacobian in compressed sparse-column format.
+        """
+        number_of_states: int = self.get_states_number()
+
+        if number_of_states == 0:
+            # A purely algebraic problem only contributes its algebraic block.
+            algebraic_jacobian: sp.csc_matrix = self.get_j22(x, dx, 1.0e15).tocsc()
+            return algebraic_jacobian
+        else:
+            # Preserve sparsity while assembling the differential-algebraic
+            # block matrix.  Power-system Jacobians are sparse by construction.
+            state_jacobian: sp.csc_matrix = self.get_j11(x, dx, 1.0e10).tocsc()
+            state_to_algebraic_jacobian: sp.csc_matrix = self.get_j12(x, dx, 1.0e10).tocsc()
+            algebraic_to_state_jacobian: sp.csc_matrix = self.get_j21(x, dx, 1.0e10).tocsc()
+            algebraic_jacobian: sp.csc_matrix = self.get_j22(x, dx, 1.0e15).tocsc()
+            static_jacobian: sp.csc_matrix = sp.bmat(
+                [[state_jacobian, state_to_algebraic_jacobian],
+                 [algebraic_to_state_jacobian, algebraic_jacobian]],
+                format="csc",
+            )
+            return static_jacobian
+
+    def get_small_signal_reference_indices(self) -> tuple[int, int] | None:
+        """
+        Return the Jacobian row and column that define the AC angle reference.
+
+        The recorded row is the redundant active-power balance of the slack
+        bus, while the column is that bus's RMS voltage-angle variable.
+
+        :return: Augmented-Jacobian reference indices, or ``None`` when absent.
+        """
+        if (self._small_signal_reference_row is not None
+                and self._small_signal_reference_column is not None):
+            return self._small_signal_reference_row, self._small_signal_reference_column
+        else:
+            return None
 
     def update(self, t: float, x: Vec, params: Vec) -> None:
         self._update_dynamic_mode_defaults(t=t, x=x, params=params)

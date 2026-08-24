@@ -132,6 +132,13 @@ def get_generator_thevenin_rl_emt_template_with_ref(
     R_s = vf.add_var(name=f"R_s_{name}")
     X_s = vf.add_var(name=f"X_s_{name}")
 
+    # Static positive-sequence parameters use the conventional three-phase
+    # impedance base.  The instantaneous EMT current signals use phase voltage
+    # together with the three-phase power base, so the phase impedance is 3x.
+    pu_z_to_emt: float = 3.0
+    R_s_emt = pu_z_to_emt * R_s
+    X_s_emt = pu_z_to_emt * X_s
+
     phi_v = vf.add_var(name=f"phi_v_{name}")
     phi = vf.add_var(name=f"phi_{name}")
     Vpk = vf.add_var(name=f"Vpk_{name}")
@@ -170,9 +177,9 @@ def get_generator_thevenin_rl_emt_template_with_ref(
     # Build the EMT block.
     # ------------------------------------------------------------------
     state_eqs: List[Any] = list([
-        omega_base * (e_A - R_s * i_A - v_A) / X_s,
-        omega_base * (e_B - R_s * i_B - v_B) / X_s,
-        omega_base * (e_C - R_s * i_C - v_C) / X_s,
+        omega_base * (e_A - R_s_emt * i_A - v_A) / X_s_emt,
+        omega_base * (e_B - R_s_emt * i_B - v_B) / X_s_emt,
+        omega_base * (e_C - R_s_emt * i_C - v_C) / X_s_emt,
         theta_speed * w_scale,
     ])
 
@@ -200,16 +207,20 @@ def get_generator_thevenin_rl_emt_template_with_ref(
 
     algebraic_vars: List[Any] = list([e_A, e_B, e_C, Pe, Qe])
 
-    templ.block = Block(
+    # Keep the template root as a pure hierarchical container.  The physical
+    # Thevenin equations live in one named child so the Dynamic Editor presents
+    # the generator as one block that can be opened to inspect its internals.
+    thevenin_block: Block = Block(
         state_eqs=state_eqs,
         state_vars=state_vars,
         algebraic_eqs=algebraic_eqs,
         algebraic_vars=algebraic_vars,
         in_vars=inputs,
         out_vars=list([i_A, i_B, i_C]),
+        name=f"{name}_thevenin",
     )
 
-    templ.block.diff_vars = list([
+    thevenin_block.diff_vars = list([
         d_i_A,
         d_i_B,
         d_i_C,
@@ -220,7 +231,7 @@ def get_generator_thevenin_rl_emt_template_with_ref(
     # External mapping:
     # keep the original EMT injection interface intact.
     # ------------------------------------------------------------------
-    templ.block.external_mapping = dict({
+    thevenin_block.external_mapping = dict({
         VarPowerFlowReferenceType.v_A: v_A,
         VarPowerFlowReferenceType.v_B: v_B,
         VarPowerFlowReferenceType.v_C: v_C,
@@ -247,7 +258,7 @@ def get_generator_thevenin_rl_emt_template_with_ref(
     # static generator parameters plus optional sharing references assigned
     # by EmtProblemDae.
     # ------------------------------------------------------------------
-    templ.block.api_obj_mapping = dict({
+    thevenin_block.api_obj_mapping = dict({
         ParamPowerFlowReferenceType.omega_base: omega_base,
         ParamPowerFlowReferenceType.R1: R_s,
         ParamPowerFlowReferenceType.X1: X_s,
@@ -263,7 +274,7 @@ def get_generator_thevenin_rl_emt_template_with_ref(
     # The gains are intentionally conservative compared with the version
     # that acted directly on dtheta/dt.
     # ------------------------------------------------------------------
-    templ.block.event_dict = dict({
+    thevenin_block.event_dict = dict({
         phi_v: vf.add_const(None),
         phi: vf.add_const(None),
         Vpk: vf.add_const(None),
@@ -280,7 +291,7 @@ def get_generator_thevenin_rl_emt_template_with_ref(
     # the sharing controller starts exactly from the PF-consistent open-loop
     # operating point, so it does not create a jump at t = 0.
     # ------------------------------------------------------------------
-    templ.block.init_eqs = dict({
+    thevenin_block.init_eqs = dict({
         # Match the Simulink source-phase convention directly in this local
         # workaround template so the source starts with phase A at zero.
         theta: c0,
@@ -305,12 +316,22 @@ def get_generator_thevenin_rl_emt_template_with_ref(
     # Differential initialization equations:
     # these keep the standard EMT explicit-init semantics.
     # ------------------------------------------------------------------
-    templ.block.diff_init_eqs = dict({
-        d_i_A: omega_base * (e_A - R_s * i_A - v_A) / X_s,
-        d_i_B: omega_base * (e_B - R_s * i_B - v_B) / X_s,
-        d_i_C: omega_base * (e_C - R_s * i_C - v_C) / X_s,
+    thevenin_block.diff_init_eqs = dict({
+        d_i_A: omega_base * (e_A - R_s_emt * i_A - v_A) / X_s_emt,
+        d_i_B: omega_base * (e_B - R_s_emt * i_B - v_B) / X_s_emt,
+        d_i_C: omega_base * (e_C - R_s_emt * i_C - v_C) / X_s_emt,
         d_theta: theta_speed * w_scale,
     })
+
+    # Publish the physical model as the only child and mirror its external
+    # contract on the root.  Runtime compilation still flattens the child, while
+    # model saving keeps this hierarchy available to the GUI.
+    templ.block.children.append(thevenin_block)
+    templ.block.external_mapping = thevenin_block.external_mapping
+    templ.block.api_obj_mapping = thevenin_block.api_obj_mapping
+    templ.block.parameters = thevenin_block.parameters
+    templ.block.in_vars = inputs
+    templ.block.out_vars = thevenin_block.out_vars
 
     return templ
 
