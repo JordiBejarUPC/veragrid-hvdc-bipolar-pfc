@@ -37,11 +37,27 @@ from VeraGridEngine.Devices.multiverse import MultiVerse, ScenarioNode
 from VeraGridEngine.Compilers.circuit_to_pgm import PGM_AVAILABLE
 from VeraGridEngine.IO.file_save import FileSavingOptions
 from VeraGridEngine.IO.file_open import determine_file_type, FileOpen
+from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.enumerations import SimulationTypes, FileType
 from VeraGridEngine.IO.veragrid.contingency_parser import import_contingencies_from_json, export_contingencies_json_file
 from VeraGridEngine.IO.veragrid.catalogue import save_catalogue, load_catalogue
 from VeraGridEngine.Compilers.Gslv.activation import install_gslv_license
 from VeraGrid.Gui.CatalogueElementsDialogue.catalogue_elements_dialogue import CatalogueElementsSelectionDialogue
+
+
+def open_logger_requires_dialog(logger: Logger) -> bool:
+    """Return whether a successful file-open log needs a modal dialogue.
+
+    Informational import diagnostics remain available in the logger but do not
+    interrupt a successful GUI open. Warnings and errors remain visible because
+    they describe states that require review before using the imported circuit.
+
+    :param logger: File-open diagnostic logger to classify.
+    :return: ``True`` when the logger contains at least one warning or error.
+    """
+    warning_count: int = logger.warning_count()
+    error_count: int = logger.error_count()
+    return warning_count > 0 or error_count > 0
 
 
 class IoMain(ScenariosMain):
@@ -880,15 +896,19 @@ class IoMain(ScenariosMain):
                         self.rosetta_gui.show()
                     else:
                         # else, show the logger if it is necessary
-                        if len(self.open_file_thread_object.logger) > 0:
+                        if open_logger_requires_dialog(self.open_file_thread_object.logger):
                             dlg = LogsDialogue(self.tr('Open CGMES file logger'), self.open_file_thread_object.logger)
                             dlg.exec()
+                        else:
+                            pass
 
                 else:
                     # else, show the logger if it is necessary
-                    if len(self.open_file_thread_object.logger) > 0:
+                    if open_logger_requires_dialog(self.open_file_thread_object.logger):
                         dlg = LogsDialogue(self.tr('Open file logger'), self.open_file_thread_object.logger)
                         dlg.exec()
+                    else:
+                        pass
 
                 if self._pending_remote_database_context is not None:
                     self.remote_database_file_idtag = str(self._pending_remote_database_context["file_idtag"])
@@ -1008,10 +1028,12 @@ class IoMain(ScenariosMain):
 
             new_circuit = self.open_file_thread_object.circuit
 
-            if len(self.open_file_thread_object.logger) > 0:
+            if open_logger_requires_dialog(self.open_file_thread_object.logger):
                 dlg = LogsDialogue(self.tr('Open file logger'),
                                    self.open_file_thread_object.logger)
                 dlg.exec()
+            else:
+                pass
 
             if self.open_file_thread_object.valid:
 

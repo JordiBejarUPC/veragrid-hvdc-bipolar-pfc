@@ -3,7 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Callable, List
 
-from VeraGrid.Gui.Main.SubClasses.io import IoMain
+from VeraGrid.Gui.Main.SubClasses.io import IoMain, open_logger_requires_dialog
+from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.enumerations import SimulationTypes
 
 
@@ -168,6 +169,25 @@ class FakeIoHarness:
         self.UNLOCK: Callable[[], None] = lambda: None
         self.post_open_file: Callable[[], None] = lambda: None
         self.tr: Callable[[str], str] = lambda text: text
+
+
+def test_open_logger_dialog_requires_warning_or_error() -> None:
+    """Keep information-only file-open diagnostics non-modal in the GUI.
+
+    :return: None.
+    """
+    information_logger: Logger = Logger()
+    information_logger.add_info(msg="Import completed")
+
+    warning_logger: Logger = Logger()
+    warning_logger.add_warning(msg="Imported value needs review")
+
+    error_logger: Logger = Logger()
+    error_logger.add_error(msg="Imported value is invalid")
+
+    assert not open_logger_requires_dialog(logger=information_logger)
+    assert open_logger_requires_dialog(logger=warning_logger)
+    assert open_logger_requires_dialog(logger=error_logger)
 
 
 def test_open_file_now_accepts_one_string_path_without_iterating_characters(monkeypatch: Any,
