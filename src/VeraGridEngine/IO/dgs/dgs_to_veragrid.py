@@ -6414,14 +6414,31 @@ def _add_elmlne_lines(dgs_grid: DgsCircuit,
         if len(term_ids) != 2:
             bus_ids: List[int] | None = stacubic_dict.get(_ref_id(elmlne.ID), None)
             if bus_ids is None or len(bus_ids) != 2:
-                logger.add_warning(
-                    f"not connected to exactly 2 terminals",
-                    device=f"{elmlne.loc_name}' (ID={elmlne.ID}) ",
-                    device_class="ElmLne",
-                    value=len(term_ids),
-                    expected_value="2"
-                )
+                if len(term_ids) == 1:
+                    # A one-ended line is a disconnected source artefact rather
+                    # than a partially constructible VeraGrid branch. Record the
+                    # intentional omission without presenting it as an import
+                    # warning because no invalid object enters the final circuit.
+                    logger.add_info(
+                        msg="Skipped disconnected one-terminal line",
+                        device=f"{elmlne.loc_name}' (ID={elmlne.ID}) ",
+                        device_class="ElmLne",
+                        value=len(term_ids),
+                        expected_value="2",
+                    )
+                else:
+                    # Zero-ended and over-connected branches remain suspicious
+                    # source states that users need to review explicitly.
+                    logger.add_warning(
+                        msg="not connected to exactly 2 terminals",
+                        device=f"{elmlne.loc_name}' (ID={elmlne.ID}) ",
+                        device_class="ElmLne",
+                        value=len(term_ids),
+                        expected_value="2",
+                    )
                 continue
+            else:
+                pass
 
         parallel_count = _get_parallel_device_count(count=int(elmlne.nlnum))
         for parallel_index in range(parallel_count):

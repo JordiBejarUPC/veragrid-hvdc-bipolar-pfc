@@ -197,7 +197,7 @@ def _get_veragrid_meter_name(
         quantity_name: str = "Phase"
     else:
         quantity_name = meter_kind.value.title()
-    return f"VeraGrid {quantity_name} meter {source_fid}"
+    return f"{quantity_name} meter {source_fid}"
 
 
 def _get_native_source_target_signal_names(

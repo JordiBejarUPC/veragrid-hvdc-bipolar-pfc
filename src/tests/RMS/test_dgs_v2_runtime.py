@@ -59,7 +59,7 @@ def test_dgs_v2_first_rms_step_is_finite_and_converged() -> None:
     # Fail closed on the known V2 import contract before numerical execution.
     assert grid is not None
     assert file_open.logger.error_count() == 0
-    assert file_open.logger.warning_count() == 4
+    assert file_open.logger.warning_count() == 0
     assert len(grid.buses) == 10
     assert len(grid.get_vsc()) == 2
     vsc: VSC

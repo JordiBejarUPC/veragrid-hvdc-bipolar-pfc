@@ -25,6 +25,54 @@ RMS_CURRENT_METER_OUTPUT_NAMES: tuple[str, ...] = (
 
 RMS_PLL_METER_OUTPUT_NAMES: tuple[str, ...] = ("Fmeas", "fmeas", "cosphi", "sinphi")
 
+RMS_BALANCED_BASIC_VOLTAGE_OUTPUT_NAMES: tuple[str, ...] = (
+    "ur", "ui", "u", "fref", "fe",
+)
+RMS_BALANCED_BASIC_CURRENT_OUTPUT_NAMES: tuple[str, ...] = ("ir", "ii", "i")
+RMS_BALANCED_BASIC_POWER_OUTPUT_NAMES: tuple[str, ...] = ("p", "q")
+RMS_BALANCED_BASIC_PLL_OUTPUT_NAMES: tuple[str, ...] = RMS_PLL_METER_OUTPUT_NAMES
+
+
+def select_basic_balanced_rms_meter_outputs(
+        signal_expressions: Dict[str, Expr],
+        meter_kind: RmsPhysicalMeterKind,
+) -> Dict[str, Expr]:
+    """Select only quantities represented by the balanced RMS problem.
+
+    The current RMS bus state owns one positive-sequence magnitude and angle;
+    it has no negative- or zero-sequence state. Native basic meters therefore
+    must not advertise synthetic sequence channels. Import adapters can still
+    request the wider compatibility set explicitly when an imported controller
+    contract requires those aliases.
+
+    :param signal_expressions: Complete compatibility output lookup.
+    :param meter_kind: Physical quantity family produced by the meter.
+    :return: Ordered basic balanced-RMS output lookup.
+    """
+    if meter_kind is RmsPhysicalMeterKind.VOLTAGE:
+        selected_names: tuple[str, ...] = RMS_BALANCED_BASIC_VOLTAGE_OUTPUT_NAMES
+    elif meter_kind is RmsPhysicalMeterKind.CURRENT:
+        selected_names = RMS_BALANCED_BASIC_CURRENT_OUTPUT_NAMES
+    elif meter_kind is RmsPhysicalMeterKind.POWER:
+        selected_names = RMS_BALANCED_BASIC_POWER_OUTPUT_NAMES
+    else:
+        selected_names = RMS_BALANCED_BASIC_PLL_OUTPUT_NAMES
+
+    result: Dict[str, Expr] = dict()
+    selected_name: str
+    for selected_name in selected_names:
+        selected_expression: Expr | None = signal_expressions.get(
+            selected_name,
+            None,
+        )
+        if selected_expression is None:
+            raise KeyError(
+                f"Balanced RMS meter output '{selected_name}' is unavailable."
+            )
+        else:
+            result[selected_name] = selected_expression
+    return result
+
 
 def normalize_rms_meter_symbol_fragment(fragment: str) -> str:
     """Normalize one human-facing meter label for use in a DAE symbol.
@@ -369,7 +417,7 @@ def build_rms_phase_locked_loop_block(
     return block, output_by_signal_name
 
 
-def build_rms_signal_meter_block(
+def build_signal_meter_block(
         vf: VarFactory,
         signal_expressions: Dict[str, Expr],
         name: str,
@@ -377,7 +425,7 @@ def build_rms_signal_meter_block(
         symbol_suffix: str | None = None,
 ) -> tuple[Block, Dict[str, Var]]:
     """
-    Materialize one reusable RMS measurement block from named expressions.
+    Materialize one reusable dynamic measurement block from named expressions.
 
     :param vf: Shared variable factory.
     :param signal_expressions: Signal-name to expression mapping.
@@ -417,7 +465,7 @@ def build_rms_signal_meter_block(
         pass
     else:
         raise ValueError(
-            "RMS meter output names must pair uniquely with signal expressions"
+            "Meter output names must pair uniquely with signal expressions"
         )
 
     # Native construction can separate the presentation name from its DAE
@@ -480,7 +528,7 @@ def build_rms_physical_signal_meter_block(
     """
     meter_block: Block
     output_by_alias_name: Dict[str, Var]
-    meter_block, output_by_alias_name = build_rms_signal_meter_block(
+    meter_block, output_by_alias_name = build_signal_meter_block(
         vf=vf,
         signal_expressions=signal_expressions,
         name=name,
@@ -569,7 +617,7 @@ def build_rms_station_meter_bundle(vf: VarFactory,
     outputs: Dict[str, Var]
 
     # One station owns DC, local AC, point-of-connection and phase measurements.
-    block, outputs = build_rms_signal_meter_block(
+    block, outputs = build_signal_meter_block(
         vf,
         {"udc_p": build_rms_voltage_meter_outputs_from_dc(dc_plus_v, nominal_frequency_hz)["ur"]},
         f"DCPlusMeas_{label}",
@@ -577,7 +625,7 @@ def build_rms_station_meter_bundle(vf: VarFactory,
     blocks.append(block)
     signal_output_by_name.update(outputs)
 
-    block, outputs = build_rms_signal_meter_block(
+    block, outputs = build_signal_meter_block(
         vf,
         {"udc_n": build_rms_voltage_meter_outputs_from_dc(dc_minus_v, nominal_frequency_hz)["ur"]},
         f"DCMinusMeas_{label}",
@@ -585,7 +633,7 @@ def build_rms_station_meter_bundle(vf: VarFactory,
     blocks.append(block)
     signal_output_by_name.update(outputs)
 
-    block, outputs = build_rms_signal_meter_block(
+    block, outputs = build_signal_meter_block(
         vf,
         {
             "idc_in": dc_current,
@@ -598,7 +646,7 @@ def build_rms_station_meter_bundle(vf: VarFactory,
     blocks.append(block)
     signal_output_by_name.update(outputs)
 
-    block, outputs = build_rms_signal_meter_block(
+    block, outputs = build_signal_meter_block(
         vf,
         {
             "u1r_loc": build_rms_voltage_meter_outputs_from_polar(local_vm, local_va, resolved_measured_frequency_hz, nominal_frequency_hz)["ur"],
@@ -609,7 +657,7 @@ def build_rms_station_meter_bundle(vf: VarFactory,
     blocks.append(block)
     signal_output_by_name.update(outputs)
 
-    block, outputs = build_rms_signal_meter_block(
+    block, outputs = build_signal_meter_block(
         vf,
         {
             "i1r_loc": build_rms_current_meter_outputs_from_pq(local_vm, local_va, local_p, local_q)["ir"],
@@ -620,7 +668,7 @@ def build_rms_station_meter_bundle(vf: VarFactory,
     blocks.append(block)
     signal_output_by_name.update(outputs)
 
-    block, outputs = build_rms_signal_meter_block(
+    block, outputs = build_signal_meter_block(
         vf,
         {
             "u1r_poc": build_rms_voltage_meter_outputs_from_polar(poc1_vm, poc1_va, resolved_measured_frequency_hz, nominal_frequency_hz)["ur"],
@@ -633,7 +681,7 @@ def build_rms_station_meter_bundle(vf: VarFactory,
     blocks.append(block)
     signal_output_by_name.update(outputs)
 
-    block, outputs = build_rms_signal_meter_block(
+    block, outputs = build_signal_meter_block(
         vf,
         {
             "i1r_poc": build_rms_current_meter_outputs_from_pq(poc1_vm, poc1_va, poc1_p, poc1_q)["ir"],
@@ -646,7 +694,7 @@ def build_rms_station_meter_bundle(vf: VarFactory,
     blocks.append(block)
     signal_output_by_name.update(outputs)
 
-    block, outputs = build_rms_signal_meter_block(
+    block, outputs = build_signal_meter_block(
         vf,
         build_rms_pll_meter_outputs(local_va, resolved_measured_frequency_hz, nominal_frequency_hz),
         f"PLLMeas_{label}",

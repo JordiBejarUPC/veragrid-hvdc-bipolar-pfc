@@ -10,7 +10,7 @@ from VeraGridEngine.Templates.Rms.rms_meter_templates import RMS_VOLTAGE_METER_O
 from VeraGridEngine.Templates.Rms.rms_meter_templates import build_rms_current_meter_outputs_from_pq
 from VeraGridEngine.Templates.Rms.rms_meter_templates import build_rms_pll_meter_outputs
 from VeraGridEngine.Templates.Rms.rms_meter_templates import build_rms_power_meter_outputs_from_pq
-from VeraGridEngine.Templates.Rms.rms_meter_templates import build_rms_signal_meter_block
+from VeraGridEngine.Templates.Rms.rms_meter_templates import build_signal_meter_block
 from VeraGridEngine.Templates.Rms.rms_meter_templates import build_rms_station_meter_bundle
 from VeraGridEngine.Templates.Rms.rms_meter_templates import build_rms_voltage_meter_outputs_from_dc
 from VeraGridEngine.Templates.Rms.rms_meter_templates import build_rms_voltage_meter_outputs_from_polar
@@ -105,7 +105,7 @@ def build_powerfactory_measurement_signal_block(vf: VarFactory,
     :param name: Block name suffix.
     :return: Pair ``(block, output_var_by_signal_name)``.
     """
-    return build_rms_signal_meter_block(vf, signal_expressions, name)
+    return build_signal_meter_block(vf, signal_expressions, name)
 
 
 def connect_powerfactory_signal_outputs_to_block_inputs(block: Block,

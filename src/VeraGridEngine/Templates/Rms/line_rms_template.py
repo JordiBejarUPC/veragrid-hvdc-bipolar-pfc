@@ -175,6 +175,7 @@ def get_dc_line_rms_template(
         Pt: -u * Vdct * If_dc,
     }
     block.in_vars = inputs
+    block.out_vars = list([If_dc, Pf, Pt])
     block.name = name
 
     # The DC implementation is stored as one child block, matching the AC line

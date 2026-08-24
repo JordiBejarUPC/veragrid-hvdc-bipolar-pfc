@@ -723,9 +723,25 @@ def _build_dgs_default_rms_template(
                     # them in the static network. The exact constraint model
                     # preserves that topology without a numerically arbitrary
                     # large series admittance in the dynamic DAE.
-                    template = get_ideal_transformer2w_rms(
-                        vf=circuit.var_factory,
-                    )
+                    existing_ideal_template: RmsModelTemplate | None = None
+                    registered_template: RmsModelTemplate
+                    for registered_template in circuit.rms_models:
+                        if (
+                                registered_template.tpe
+                                is DeviceType.Transformer2WDevice
+                                and registered_template.name
+                                == "rms_ideal_trafo_template"
+                        ):
+                            existing_ideal_template = registered_template
+                            break
+                        else:
+                            pass
+                    if existing_ideal_template is None:
+                        template = get_ideal_transformer2w_rms(
+                            vf=circuit.var_factory,
+                        )
+                    else:
+                        template = existing_ideal_template
                 else:
                     template = get_transformer2w_rms(
                         vf=circuit.var_factory,
@@ -1124,6 +1140,14 @@ def _prepare_dgs_rms_device(
                 # The regular template setter duplicates and connects the model
                 # through the same path used by VeraGrid's Dynamic Editor.
                 device.rms_template = template
+                # The device keeps a typed reference to its reusable template.
+                # Register that public object in the circuit so VeraGrid
+                # persistence writes the referenced declaration before devices
+                # are reconstructed on reopen.
+                if template in circuit.rms_models:
+                    pass
+                else:
+                    circuit.add_rms_model(template)
             except (TypeError, ValueError, KeyError) as exc:
                 report.record_failed_device()
                 logger.add_warning(
