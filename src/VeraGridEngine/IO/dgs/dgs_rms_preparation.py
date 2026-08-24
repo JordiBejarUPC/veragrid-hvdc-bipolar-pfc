@@ -653,6 +653,54 @@ def _build_dgs_elmgenstat_rms_template(
     return template
 
 
+def _find_registered_thevenin_template(
+        circuit: MultiCircuit,
+        resistance_pu: float,
+        reactance_pu: float,
+) -> RmsModelTemplate | None:
+    """Find one reusable external-grid template with the same impedance.
+
+    DGS projects commonly contain several ``ElmXnet`` devices backed by the
+    same positive-sequence source declaration. The circuit catalogue should
+    expose that declaration once while each device keeps an independent block
+    copied by the normal template setter.
+
+    :param circuit: Circuit whose public RMS catalogue is searched.
+    :param resistance_pu: Required positive-sequence resistance.
+    :param reactance_pu: Required positive-sequence reactance.
+    :return: Matching registered template, or ``None`` when none exists.
+    """
+    registered_template: RmsModelTemplate
+    for registered_template in circuit.rms_models:
+        is_thevenin_template: bool = (
+            registered_template.tpe is DeviceType.GeneratorDevice
+            and registered_template.name
+            == "DGS external grid Thevenin RMS shell"
+        )
+        if is_thevenin_template:
+            registered_resistance: float | None = None
+            registered_reactance: float | None = None
+            parameter: Var
+            parameter_value: Const | Expr
+            for parameter, parameter_value in registered_template.block.parameters.items():
+                if parameter.name == "R1" and isinstance(parameter_value, Const):
+                    registered_resistance = float(parameter_value.value)
+                elif parameter.name == "X1" and isinstance(parameter_value, Const):
+                    registered_reactance = float(parameter_value.value)
+                else:
+                    pass
+            if (
+                    registered_resistance == resistance_pu
+                    and registered_reactance == reactance_pu
+            ):
+                return registered_template
+            else:
+                pass
+        else:
+            pass
+    return None
+
+
 def _build_dgs_default_rms_template(
         circuit: MultiCircuit,
         device: DynamicDevice,
@@ -812,12 +860,24 @@ def _build_dgs_default_rms_template(
                                 # The static importer derives R1/X1 exclusively from
                                 # ElmXnet snss/rntxn. Preserve that finite source
                                 # impedance instead of clamping its terminal.
-                                template = build_thevenin_voltage_source(
-                                    vfactory=circuit.var_factory,
-                                    resistance_pu=float(device.R1),
-                                    reactance_pu=float(device.X1),
-                                    name="DGS external grid Thevenin RMS shell",
+                                source_resistance: float = float(device.R1)
+                                source_reactance: float = float(device.X1)
+                                existing_thevenin_template: RmsModelTemplate | None = (
+                                    _find_registered_thevenin_template(
+                                        circuit=circuit,
+                                        resistance_pu=source_resistance,
+                                        reactance_pu=source_reactance,
+                                    )
                                 )
+                                if existing_thevenin_template is None:
+                                    template = build_thevenin_voltage_source(
+                                        vfactory=circuit.var_factory,
+                                        resistance_pu=source_resistance,
+                                        reactance_pu=source_reactance,
+                                        name="DGS external grid Thevenin RMS shell",
+                                    )
+                                else:
+                                    template = existing_thevenin_template
                             else:
                                 # Native ideal ExternalGrid devices and DGS
                                 # sources without usable impedance retain the

@@ -3673,7 +3673,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         item.setPos(QtCore.QPointF(x_pos, y_pos))
         item.recolour()
         self.scene.addItem(item)
-        self.mark_unapplied_changes()
+        if self._initializing_scene:
+            pass
+        else:
+            self.mark_unapplied_changes()
 
         return item
 

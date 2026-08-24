@@ -24,7 +24,12 @@ from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_library import (
     DynamicEditorLibrary,
     MeasurementBlockDescriptor,
 )
+from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_tab import DynamicEditorTab
+from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_workspace_window import (
+    DynamicEditorWorkspaceWindow,
+)
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_utilities import create_generic_block
+from VeraGrid.Session.dynamic_editor_workspace_session import DynamicEditorWorkspaceSession
 import VeraGrid.Gui.DynamicModelEditor.dynamic_editor_graphics as graph
 import VeraGrid.Gui.DynamicModelEditor.dynamic_editor_validation as validation
 from VeraGridEngine.Devices.Events.rms_event import RmsEvent
@@ -312,7 +317,15 @@ def _build_nine_bus_rms_measurement_grid() -> Tuple[MultiCircuit, Generator]:
         freq=50.0,
     )
     grid.add_generator(bus=buses[0], api_obj=generator)
-    generator.rms_template = get_complete_generator_template_rms(grid.var_factory)
+    generator_template: RmsModelTemplate = get_complete_generator_template_rms(
+        grid.var_factory,
+    )
+    line_template: RmsModelTemplate = get_line_rms_template(grid.var_factory)
+    load_template: RmsModelTemplate = get_load_rms_template(grid.var_factory)
+    grid.add_rms_model(generator_template)
+    grid.add_rms_model(line_template)
+    grid.add_rms_model(load_template)
+    generator.rms_template = generator_template
 
     branch_index: int
     for branch_index in range(8):
@@ -326,7 +339,7 @@ def _build_nine_bus_rms_measurement_grid() -> Tuple[MultiCircuit, Generator]:
             rate=100.0,
         )
         grid.add_line(line)
-        line.rms_template = get_line_rms_template(grid.var_factory)
+        line.rms_template = line_template
 
     load_index: int
     for load_index in range(1, 9):
@@ -336,7 +349,7 @@ def _build_nine_bus_rms_measurement_grid() -> Tuple[MultiCircuit, Generator]:
             Q=0.1,
         )
         grid.add_load(bus=buses[load_index], api_obj=load)
-        load.rms_template = get_load_rms_template(grid.var_factory)
+        load.rms_template = load_template
 
     return grid, generator
 
@@ -2011,7 +2024,9 @@ def test_native_emt_template_assignment_matches_set_emt_model_with_balanced_pf()
     assert np.allclose(script_driver.results.values, template_driver.results.values, rtol=1e-8, atol=1e-8)
 
 
-def test_gui_editor_apply_changes_matches_scripting_for_rms(qt_app: QtWidgets.QApplication) -> None:
+def test_gui_editor_apply_changes_matches_scripting_for_rms(
+        qt_app: QtWidgets.QApplication,
+) -> None:
     """
     Compare the real RMS editor save path against RMS scripting assembly.
 
@@ -2086,70 +2101,6 @@ def test_gui_editor_apply_changes_matches_scripting_for_rms(qt_app: QtWidgets.QA
         atol=1e-10,
     )
     assert np.allclose(script_results.values, gui_results.values, rtol=1e-8, atol=1e-8)
-
-    # Persist the public circuit and reopen it through the production file path.
-    saved_file_path: Path = tmp_path / "nine_bus_balanced_measurements.veragrid"
-    save_logger: Logger = FileSave(
-        circuit=gui_grid,
-        file_name=str(saved_file_path),
-    ).save()
-    assert save_logger.error_count() == 0
-    assert save_logger.warning_count() == 0
-
-    reopened_file: FileOpen = FileOpen(file_name=str(saved_file_path))
-    reopened_grid: MultiCircuit | None = reopened_file.open()
-    assert reopened_grid is not None
-    assert reopened_file.logger.error_count() == 0
-    assert reopened_file.logger.warning_count() == 0
-    reopened_generators: List[Generator] = reopened_grid.get_generators()
-    assert len(reopened_generators) == 1
-    reopened_generator: Generator = reopened_generators[0]
-    assert isinstance(reopened_generator.rms_model, Block)
-    reopened_meters: List[Block] = list(
-        child for child in reopened_generator.rms_model.children
-        if child.dynamic_model_contract.rms_physical_measurement_point is not None
-    )
-    assert len(reopened_meters) == 9
-    assert list(
-        meter.dynamic_model_contract.rms_physical_measurement_point.get_target_fid()
-        for meter in reopened_meters
-        if meter.dynamic_model_contract.rms_physical_measurement_point is not None
-    ) == list(bus.idtag for bus in reopened_grid.buses)
-    assert list(meter.to_dict() for meter in reopened_meters) == list(
-        meter.to_dict() for meter in gui_meters
-    )
-
-    # Reopen the RMS editor and public checker on the reconstructed objects.
-    reopened_editor: DynamicBlockEditorGUI = _build_gui_editor(
-        qt_app=qt_app,
-        grid=reopened_grid,
-        api_object=reopened_generator,
-        mode=DynamicSimulationMode.RMS,
-        root_block=reopened_generator.rms_model,
-    )
-    try:
-        _assert_editor_dynamic_check_is_clean(editor=reopened_editor)
-        reopened_editor.apply_changes()
-        qt_app.processEvents()
-    finally:
-        reopened_editor.prepare_to_delete()
-        reopened_editor.close()
-        reopened_editor.deleteLater()
-        qt_app.processEvents()
-
-    # The round-tripped declaration must compile and solve identically.
-    reopened_results: RmsResults
-    reopened_problem: RmsProblemDae
-    reopened_results, reopened_problem = _run_rms_driver(reopened_grid)
-    assert reopened_problem.get_states_number() == gui_problem.get_states_number()
-    assert reopened_problem.get_algebraic_var_number() == (
-        gui_problem.get_algebraic_var_number()
-    )
-    assert list(reopened_results.variable_array) == list(gui_results.variable_array)
-    assert np.array_equal(reopened_results.well_initialized, gui_results.well_initialized)
-    assert np.array_equal(reopened_results.converged, gui_results.converged)
-    assert np.allclose(reopened_results.values, gui_results.values, rtol=1e-8, atol=1e-8)
-
 
 def test_nuactis_v1_gui_editor_matches_scripting_pf_and_rms(
         qt_app: QtWidgets.QApplication,
@@ -2886,6 +2837,69 @@ def test_nine_bus_balanced_rms_measurements_match_gui_and_scripting(
     assert np.all(script_results.converged)
     assert np.allclose(script_results.values, gui_results.values, rtol=1e-8, atol=1e-8)
 
+    # Persist the public circuit and reopen it through the production file path.
+    saved_file_path: Path = tmp_path / "nine_bus_balanced_measurements.veragrid"
+    save_logger: Logger = FileSave(
+        circuit=gui_grid,
+        file_name=str(saved_file_path),
+    ).save()
+    assert save_logger.error_count() == 0
+    assert save_logger.warning_count() == 0
+
+    reopened_file: FileOpen = FileOpen(file_name=str(saved_file_path))
+    reopened_grid: MultiCircuit | None = reopened_file.open()
+    assert reopened_grid is not None
+    assert reopened_file.logger.error_count() == 0, str(reopened_file.logger)
+    assert reopened_file.logger.warning_count() == 0, str(reopened_file.logger)
+    reopened_generators: List[Generator] = reopened_grid.get_generators()
+    assert len(reopened_generators) == 1
+    reopened_generator: Generator = reopened_generators[0]
+    assert isinstance(reopened_generator.rms_model, Block)
+    reopened_meters: List[Block] = list(
+        child for child in reopened_generator.rms_model.children
+        if child.dynamic_model_contract.rms_physical_measurement_point is not None
+    )
+    assert len(reopened_meters) == 9
+    assert list(
+        meter.dynamic_model_contract.rms_physical_measurement_point.get_target_fid()
+        for meter in reopened_meters
+        if meter.dynamic_model_contract.rms_physical_measurement_point is not None
+    ) == list(bus.idtag for bus in reopened_grid.buses)
+    assert list(meter.to_dict() for meter in reopened_meters) == list(
+        meter.to_dict() for meter in gui_meters
+    )
+
+    # Reopen the RMS editor and public checker on the reconstructed objects.
+    reopened_editor: DynamicBlockEditorGUI = _build_gui_editor(
+        qt_app=qt_app,
+        grid=reopened_grid,
+        api_object=reopened_generator,
+        mode=DynamicSimulationMode.RMS,
+        root_block=reopened_generator.rms_model,
+    )
+    try:
+        _assert_editor_dynamic_check_is_clean(editor=reopened_editor)
+        reopened_editor.apply_changes()
+        qt_app.processEvents()
+    finally:
+        reopened_editor.prepare_to_delete()
+        reopened_editor.close()
+        reopened_editor.deleteLater()
+        qt_app.processEvents()
+
+    # The round-tripped declaration must compile and solve identically.
+    reopened_results: RmsResults
+    reopened_problem: RmsProblemDae
+    reopened_results, reopened_problem = _run_rms_driver(reopened_grid)
+    assert reopened_problem.get_states_number() == gui_problem.get_states_number()
+    assert reopened_problem.get_algebraic_var_number() == (
+        gui_problem.get_algebraic_var_number()
+    )
+    assert list(reopened_results.variable_array) == list(gui_results.variable_array)
+    assert np.array_equal(reopened_results.well_initialized, gui_results.well_initialized)
+    assert np.array_equal(reopened_results.converged, gui_results.converged)
+    assert np.allclose(reopened_results.values, gui_results.values, rtol=1e-8, atol=1e-8)
+
 
 def test_nuactis_all_rms_equipment_editors_are_populated_connected_and_clean(
         qt_app: QtWidgets.QApplication,
@@ -2993,6 +3007,134 @@ def test_nuactis_all_rms_equipment_editors_are_populated_connected_and_clean(
                             nested_editor.close()
                             nested_editor.deleteLater()
                     qt_app.processEvents()
+
+
+def test_nuactis_v1_real_workspace_route_preserves_physical_projections(
+        qt_app: QtWidgets.QApplication,
+        tmp_path: Path,
+) -> None:
+    """Open V1 equipment through the same workspace route used by VeraGrid.
+
+    This regression deliberately does not instantiate the block editor
+    directly. It exercises the document copy, root preparation, workspace tab,
+    and embedded editor that the network context-menu action reaches.
+
+    :param qt_app: Shared Qt application fixture.
+    :param tmp_path: Isolated directory for minimized-workspace captures.
+    :return: None.
+    """
+    grid: MultiCircuit = _load_nuactis_rms_grid(
+        fixture_name="hvdc_vsc_v1_complete_static_dynamic.dgs",
+    )
+    session: DynamicEditorWorkspaceSession = DynamicEditorWorkspaceSession()
+    workspace: DynamicEditorWorkspaceWindow = DynamicEditorWorkspaceWindow(
+        session=session,
+    )
+    workspace.resize(1920, 1080)
+    workspace.showMinimized()
+    qt_app.processEvents()
+    opened_editors: List[DynamicBlockEditorGUI] = list()
+    capture_index: int = 0
+
+    equipment_collections: tuple[Sequence[DynamicDevice], ...] = (
+        grid.get_generators(),
+        grid.get_loads(),
+        grid.get_lines(),
+        grid.get_transformers2w(),
+        grid.get_vsc(),
+    )
+    equipment_collection: Sequence[DynamicDevice]
+    api_object: DynamicDevice
+
+    try:
+        for equipment_collection in equipment_collections:
+            for api_object in equipment_collection:
+                page: DynamicEditorTab | None = workspace.open_dynamic_editor_for(
+                    api_object=api_object,
+                    circuit=grid,
+                    preferred_mode=DynamicSimulationMode.RMS,
+                )
+                assert isinstance(page, DynamicEditorTab)
+                editor: DynamicBlockEditorGUI | None = page.editor
+                assert isinstance(editor, DynamicBlockEditorGUI)
+                opened_editors.append(editor)
+                qt_app.processEvents()
+                assert not editor.has_unapplied_changes, api_object.name
+
+                physical_items: List[graph.GenericBlockItem] = list(
+                    scene_item for scene_item in editor.scene.items()
+                    if isinstance(scene_item, graph.GenericBlockItem)
+                    and scene_item.visual_role
+                    is graph.DynamicBlockVisualRole.DEVICE_TEMPLATE
+                )
+                measurement_items: List[graph.GenericBlockItem] = list(
+                    scene_item for scene_item in editor.scene.items()
+                    if isinstance(scene_item, graph.GenericBlockItem)
+                    and scene_item.visual_role
+                    is graph.DynamicBlockVisualRole.MEASUREMENT
+                )
+                assert len(physical_items) == 1, api_object.name
+                assert len(measurement_items) >= 1, api_object.name
+                physical_ports: List[graph.PortItem] = (
+                    list(physical_items[0].inputs)
+                    + list(physical_items[0].outputs)
+                )
+                assert all(
+                    port.connections is not None
+                    and len(port.connections) > 0
+                    for port in physical_ports
+                ), (
+                    api_object.name,
+                    list(
+                        port.base_var.name for port in physical_ports
+                        if port.connections is None or len(port.connections) == 0
+                    ),
+                )
+                _assert_editor_dynamic_check_is_clean(editor=editor)
+
+                # ``QWidget.grab`` renders the complete child editor even while
+                # its workspace stays minimized. This provides one auditable
+                # image per device without stealing focus from the desktop.
+                editor.setFixedSize(1600, 1000)
+                editor.view.center_items()
+                qt_app.processEvents()
+                capture_index += 1
+                capture_path: Path = tmp_path / (
+                    f"{capture_index:02d}_{type(api_object).__name__}.png"
+                )
+                capture_pixmap: QtGui.QPixmap = editor.grab()
+                assert not capture_pixmap.isNull(), api_object.name
+                assert capture_pixmap.width() == 1600, api_object.name
+                assert capture_pixmap.height() == 1000, api_object.name
+                assert capture_pixmap.save(str(capture_path), "PNG"), capture_path
+                assert capture_path.stat().st_size > 0, capture_path
+                print(str(capture_path), api_object.name)
+                editor.setMinimumSize(0, 0)
+                editor.setMaximumSize(16777215, 16777215)
+
+                if (
+                        isinstance(api_object, Generator)
+                        and api_object.name
+                        in ("External Grid A", "External Grid B")
+                ):
+                    thevenin_template_names: List[str] = list(
+                        rms_template.name
+                        for rms_template in editor.templates_list
+                        if rms_template.name
+                        == "DGS external grid Thevenin RMS shell"
+                    )
+                    assert thevenin_template_names == list((
+                        "DGS external grid Thevenin RMS shell",
+                    ))
+                else:
+                    pass
+        assert capture_index == 11
+    finally:
+        opened_editor: DynamicBlockEditorGUI
+        for opened_editor in opened_editors:
+            opened_editor.has_unapplied_changes = False
+        session.reset_for_tests()
+        qt_app.processEvents()
 
 
 def test_nuactis_v1_captures_every_rms_equipment_editor(
