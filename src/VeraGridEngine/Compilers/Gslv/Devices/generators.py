@@ -9,6 +9,7 @@ from typing import Dict, TYPE_CHECKING
 from VeraGridEngine.Compilers.Gslv.activation import build_status_dict, pg
 from VeraGridEngine.Compilers.Gslv.common import fill_profile, fill_profile_with_array, set_generator_associations
 from VeraGridEngine.Devices.Aggregation.facility import Facility
+from VeraGridEngine.Devices.Aggregation.market_unit import MarketUnit
 from VeraGridEngine.Devices.Associations.emission_gas import EmissionGas
 from VeraGridEngine.Devices.Associations.fuel import Fuel
 from VeraGridEngine.Devices.Associations.technology import Technology
@@ -55,6 +56,7 @@ def convert_generator(k: int,
                       elm: Generator,
                       bus_dict: Dict[str, "pg.Bus"],
                       facility_dict: Dict[Facility, "pg.Facility"],
+                      market_unit_dict: Dict[MarketUnit, "pg.MarketUnit"],
                       technology_dict: Dict[Technology, "pg.Technology"],
                       fuel_dict: Dict[Fuel, "pg.Fuel"],
                       emission_gas_dict: Dict[EmissionGas, "pg.EmissionGas"],
@@ -70,6 +72,7 @@ def convert_generator(k: int,
     :param elm: VeraGrid generator.
     :param bus_dict: Bus lookup by VeraGrid id tag.
     :param facility_dict: VeraGrid-to-GSLV facility lookup.
+    :param market_unit_dict: VeraGrid-to-GSLV market-unit lookup.
     :param technology_dict: VeraGrid-to-GSLV technology lookup.
     :param fuel_dict: VeraGrid-to-GSLV fuel lookup.
     :param emission_gas_dict: VeraGrid-to-GSLV emission gas lookup.
@@ -149,8 +152,15 @@ def convert_generator(k: int,
         rr=elm.Rr,
         xr=elm.Xr,
         freq=elm.freq,
+        market_unit=market_unit_dict.get(elm.market_unit, None),
+        market_unit_share=elm.market_unit_share,
         is_static_generator=elm.is_static_generator,
     )
+    if elm.control_bus is None:
+        pass
+    else:
+        gen.set_control_bus_val(bus_dict[elm.control_bus.idtag])
+
     set_generator_associations(
         gslv_elm=gen,
         elm=elm,
@@ -198,6 +208,12 @@ def convert_generator(k: int,
     fill_profile(gen.cost, elm.Cost_prof, use_time_series, time_indices, n_time, elm.Cost)
     fill_profile(gen.Cost0, elm.Cost0_prof, use_time_series, time_indices, n_time, elm.Cost0)
     fill_profile(gen.Cost2, elm.Cost2_prof, use_time_series, time_indices, n_time, elm.Cost2)
+    fill_profile(gen.market_unit_share,
+                 elm.market_unit_share_prof,
+                 use_time_series,
+                 time_indices,
+                 n_time,
+                 elm.market_unit_share)
 
     return gen
 
@@ -206,6 +222,7 @@ def add_generators(circuit: MultiCircuit,
                    gslv_grid: "pg.MultiCircuit",
                    bus_dict: Dict[str, "pg.Bus"],
                    facility_dict: Dict[Facility, "pg.Facility"],
+                   market_unit_dict: Dict[MarketUnit, "pg.MarketUnit"],
                    technology_dict: Dict[Technology, "pg.Technology"],
                    fuel_dict: Dict[Fuel, "pg.Fuel"],
                    emission_gas_dict: Dict[EmissionGas, "pg.EmissionGas"],
@@ -221,6 +238,7 @@ def add_generators(circuit: MultiCircuit,
     :param gslv_grid: GSLV circuit.
     :param bus_dict: Bus lookup by VeraGrid id tag.
     :param facility_dict: VeraGrid-to-GSLV facility lookup.
+    :param market_unit_dict: VeraGrid-to-GSLV market-unit lookup.
     :param technology_dict: VeraGrid-to-GSLV technology lookup.
     :param fuel_dict: VeraGrid-to-GSLV fuel lookup.
     :param emission_gas_dict: VeraGrid-to-GSLV emission gas lookup.
@@ -239,6 +257,7 @@ def add_generators(circuit: MultiCircuit,
             elm=elm,
             bus_dict=bus_dict,
             facility_dict=facility_dict,
+            market_unit_dict=market_unit_dict,
             technology_dict=technology_dict,
             fuel_dict=fuel_dict,
             emission_gas_dict=emission_gas_dict,

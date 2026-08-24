@@ -9,6 +9,7 @@ from typing import Dict, TYPE_CHECKING
 from VeraGridEngine.Compilers.Gslv.activation import build_status_dict, pg
 from VeraGridEngine.Compilers.Gslv.common import fill_profile, fill_profile_with_array, set_generator_associations
 from VeraGridEngine.Devices.Aggregation.facility import Facility
+from VeraGridEngine.Devices.Aggregation.market_unit import MarketUnit
 from VeraGridEngine.Devices.Associations.emission_gas import EmissionGas
 from VeraGridEngine.Devices.Associations.fuel import Fuel
 from VeraGridEngine.Devices.Associations.technology import Technology
@@ -34,6 +35,7 @@ def convert_battery(k: int,
                     elm: Battery,
                     bus_dict: Dict[str, "pg.Bus"],
                     facility_dict: Dict[Facility, "pg.Facility"],
+                    market_unit_dict: Dict[MarketUnit, "pg.MarketUnit"],
                     technology_dict: Dict[Technology, "pg.Technology"],
                     fuel_dict: Dict[Fuel, "pg.Fuel"],
                     emission_gas_dict: Dict[EmissionGas, "pg.EmissionGas"],
@@ -49,6 +51,7 @@ def convert_battery(k: int,
     :param elm: VeraGrid battery.
     :param bus_dict: Bus lookup by VeraGrid id tag.
     :param facility_dict: VeraGrid-to-GSLV facility lookup.
+    :param market_unit_dict: VeraGrid-to-GSLV market-unit lookup.
     :param technology_dict: VeraGrid-to-GSLV technology lookup.
     :param fuel_dict: VeraGrid-to-GSLV fuel lookup.
     :param emission_gas_dict: VeraGrid-to-GSLV emission gas lookup.
@@ -102,6 +105,11 @@ def convert_battery(k: int,
         charge_efficiency=elm.charge_efficiency,
         discharge_efficiency=elm.discharge_efficiency,
         is_controlled=elm.is_controlled,
+        soc=elm.soc,
+        charge_per_cycle=elm.charge_per_cycle,
+        discharge_per_cycle=elm.discharge_per_cycle,
+        r1=elm.R1,
+        x1=elm.X1,
         r0=battery_r0,
         x0=battery_x0,
         r2=battery_r2,
@@ -112,12 +120,19 @@ def convert_battery(k: int,
         build_status=build_status_dict[elm.build_status],
         control_mode=battery_control_mode(elm=elm),
     )
+    gen.min_soc_charge = elm.min_soc_charge
+    gen.market_unit = market_unit_dict.get(elm.market_unit, None)
     gen.startup_cost = elm.startup_cost
     gen.shutdown_cost = elm.shutdown_cost
     gen.min_time_up = elm.min_time_up
     gen.min_time_down = elm.min_time_down
     gen.ramp_up = elm.ramp_up
     gen.ramp_down = elm.ramp_down
+
+    if elm.control_bus is None:
+        pass
+    else:
+        gen.set_control_bus_val(bus_dict[elm.control_bus.idtag])
 
     set_generator_associations(
         gslv_elm=gen,
@@ -166,6 +181,12 @@ def convert_battery(k: int,
     fill_profile(gen.cost, elm.Cost_prof, use_time_series, time_indices, n_time, elm.Cost)
     fill_profile(gen.Cost0, elm.Cost0_prof, use_time_series, time_indices, n_time, elm.Cost0)
     fill_profile(gen.Cost2, elm.Cost2_prof, use_time_series, time_indices, n_time, elm.Cost2)
+    fill_profile(gen.market_unit_share,
+                 elm.market_unit_share_prof,
+                 use_time_series,
+                 time_indices,
+                 n_time,
+                 elm.market_unit_share)
 
     return gen
 
@@ -174,6 +195,7 @@ def add_battery_data(circuit: MultiCircuit,
                      gslv_grid: "pg.MultiCircuit",
                      bus_dict: Dict[str, "pg.Bus"],
                      facility_dict: Dict[Facility, "pg.Facility"],
+                     market_unit_dict: Dict[MarketUnit, "pg.MarketUnit"],
                      technology_dict: Dict[Technology, "pg.Technology"],
                      fuel_dict: Dict[Fuel, "pg.Fuel"],
                      emission_gas_dict: Dict[EmissionGas, "pg.EmissionGas"],
@@ -189,6 +211,7 @@ def add_battery_data(circuit: MultiCircuit,
     :param gslv_grid: GSLV circuit.
     :param bus_dict: Bus lookup by VeraGrid id tag.
     :param facility_dict: VeraGrid-to-GSLV facility lookup.
+    :param market_unit_dict: VeraGrid-to-GSLV market-unit lookup.
     :param technology_dict: VeraGrid-to-GSLV technology lookup.
     :param fuel_dict: VeraGrid-to-GSLV fuel lookup.
     :param emission_gas_dict: VeraGrid-to-GSLV emission gas lookup.
@@ -207,6 +230,7 @@ def add_battery_data(circuit: MultiCircuit,
             elm=elm,
             bus_dict=bus_dict,
             facility_dict=facility_dict,
+            market_unit_dict=market_unit_dict,
             technology_dict=technology_dict,
             fuel_dict=fuel_dict,
             emission_gas_dict=emission_gas_dict,
