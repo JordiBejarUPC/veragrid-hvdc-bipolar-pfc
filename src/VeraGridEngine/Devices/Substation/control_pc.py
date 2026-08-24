@@ -13,18 +13,19 @@ class ControlPc(DynamicDevice):
     This class serves as a place where to put global controls
     """
 
+    __slots__ = ()
+
     def __init__(self,
-                 name: str,
-                 idtag: Union[str, None],
-                 code: str,
-                 build_status: BuildStatus ):
+                 name: str = "Control PC",
+                 idtag: Union[str, None] = None,
+                 code: str = "",
+                 build_status: BuildStatus = BuildStatus.Commissioned):
         """
 
         :param name: name of the branch
         :param idtag: UUID code
         :param code: secondary id
-        :param build_status: Branch build status. Used in expansion planning.
-        :param device_type: device_type (passed on)
+        :param build_status: Branch build status.
         """
 
         DynamicDevice.__init__(self,
