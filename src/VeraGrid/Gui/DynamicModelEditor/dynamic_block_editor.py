@@ -137,7 +137,7 @@ class BlockClipboardEntry:
         """
         return self._node_snapshot
 
-
+# Todo: this function should be a methos of the class block
 def block_has_internal_equation_content(block: Block) -> bool:
     """Return whether a leaf block owns an operation worth drawing internally.
 
