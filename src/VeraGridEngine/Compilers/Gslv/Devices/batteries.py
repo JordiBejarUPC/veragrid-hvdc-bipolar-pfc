@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from typing import Dict, TYPE_CHECKING
 
-from VeraGridEngine.Compilers.Gslv.activation import pg
+from VeraGridEngine.Compilers.Gslv.activation import build_status_dict, pg
 from VeraGridEngine.Compilers.Gslv.common import fill_profile, fill_profile_with_array, set_generator_associations
 from VeraGridEngine.Devices.Aggregation.facility import Facility
 from VeraGridEngine.Devices.Associations.emission_gas import EmissionGas
@@ -18,6 +18,16 @@ from VeraGridEngine.basic_structures import IntVec
 
 if TYPE_CHECKING:
     from VeraGridEngine.Simulations.OPF.opf_results import OptimalPowerFlowResults
+
+
+def battery_control_mode(elm: Battery) -> "pg.GeneratorControlMode":
+    """
+    Convert one VeraGrid battery control mode to pygslv.
+
+    :param elm: VeraGrid battery.
+    :return: Equivalent pygslv control mode.
+    """
+    return pg.GeneratorControlMode.__members__[elm.control_mode.name]
 
 
 def convert_battery(k: int,
@@ -70,9 +80,12 @@ def convert_battery(k: int,
         bus=None if elm.bus is None else bus_dict[elm.bus.idtag],
         name=elm.name,
         idtag=elm.idtag,
+        code=elm.code,
         P=elm.P,
+        Q=elm.Q,
         power_factor=elm.Pf,
         vset=elm.Vset,
+        active=elm.active,
         max_soc=elm.max_soc,
         min_soc=elm.min_soc,
         Qmin=elm.Qmin,
@@ -81,6 +94,11 @@ def convert_battery(k: int,
         Pmax=elm.Pmax,
         Snom=elm.Snom,
         Enom=elm.Enom,
+        Cost=elm.Cost,
+        Sbase=elm.Sbase,
+        enabled_dispatch=elm.enabled_dispatch,
+        mttf=elm.mttf,
+        mttr=elm.mttr,
         charge_efficiency=elm.charge_efficiency,
         discharge_efficiency=elm.discharge_efficiency,
         is_controlled=elm.is_controlled,
@@ -88,7 +106,19 @@ def convert_battery(k: int,
         x0=battery_x0,
         r2=battery_r2,
         x2=battery_x2,
+        capex=elm.capex,
+        opex=elm.opex,
+        srap_enabled=elm.srap_enabled,
+        build_status=build_status_dict[elm.build_status],
+        control_mode=battery_control_mode(elm=elm),
     )
+    gen.startup_cost = elm.startup_cost
+    gen.shutdown_cost = elm.shutdown_cost
+    gen.min_time_up = elm.min_time_up
+    gen.min_time_down = elm.min_time_down
+    gen.ramp_up = elm.ramp_up
+    gen.ramp_down = elm.ramp_down
+
     set_generator_associations(
         gslv_elm=gen,
         elm=elm,
@@ -99,6 +129,18 @@ def convert_battery(k: int,
     )
 
     fill_profile(gen.active, elm.active_prof, use_time_series, time_indices, n_time, elm.active)
+    fill_profile(gen.srap_enabled, elm.srap_enabled_prof, use_time_series, time_indices, n_time, elm.srap_enabled)
+
+    gen.enabled_dispatch = fill_profile(
+        gen.enabled_dispatch,
+        elm.enabled_dispatch_prof,
+        use_time_series,
+        time_indices,
+        n_time,
+        elm.enabled_dispatch,
+    )
+
+    gen.must_run = fill_profile(gen.must_run, elm.must_run_prof, use_time_series, time_indices, n_time, elm.must_run)
 
     if opf_results is None:
         fill_profile(gen.P, elm.P_prof, use_time_series, time_indices, n_time, elm.P)
@@ -113,6 +155,13 @@ def convert_battery(k: int,
         )
 
     fill_profile(gen.Q, elm.Q_prof, use_time_series, time_indices, n_time, elm.Q)
+    fill_profile(gen.power_factor, elm.Pf_prof, use_time_series, time_indices, n_time, elm.Pf)
+
+    gen.Pmin = fill_profile(gen.Pmin, elm.Pmin_prof, use_time_series, time_indices, n_time, elm.Pmin)
+    gen.Pmax = fill_profile(gen.Pmax, elm.Pmax_prof, use_time_series, time_indices, n_time, elm.Pmax)
+    gen.qmin_set = fill_profile(gen.qmin_set, elm.Qmin_prof, use_time_series, time_indices, n_time, elm.Qmin)
+    gen.qmax_set = fill_profile(gen.qmax_set, elm.Qmax_prof, use_time_series, time_indices, n_time, elm.Qmax)
+
     fill_profile(gen.Vset, elm.Vset_prof, use_time_series, time_indices, n_time, elm.Vset)
     fill_profile(gen.cost, elm.Cost_prof, use_time_series, time_indices, n_time, elm.Cost)
     fill_profile(gen.Cost0, elm.Cost0_prof, use_time_series, time_indices, n_time, elm.Cost0)

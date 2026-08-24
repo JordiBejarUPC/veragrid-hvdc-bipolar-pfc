@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from typing import Dict, TYPE_CHECKING
 
-from VeraGridEngine.Compilers.Gslv.activation import pg
+from VeraGridEngine.Compilers.Gslv.activation import build_status_dict, pg
 from VeraGridEngine.Compilers.Gslv.common import fill_profile, fill_profile_with_array, set_generator_associations
 from VeraGridEngine.Devices.Aggregation.facility import Facility
 from VeraGridEngine.Devices.Associations.emission_gas import EmissionGas
@@ -39,6 +39,16 @@ def generator_tpe(elm: Generator) -> str:
             pass
 
     return best_name
+
+
+def generator_control_mode(elm: Generator) -> "pg.GeneratorControlMode":
+    """
+    Convert one VeraGrid generator control mode to pygslv.
+
+    :param elm: VeraGrid generator.
+    :return: Equivalent pygslv control mode.
+    """
+    return pg.GeneratorControlMode.__members__[elm.control_mode.name]
 
 
 def convert_generator(k: int,
@@ -96,20 +106,50 @@ def convert_generator(k: int,
         active=elm.active,
         P=elm.P,
         Q=elm.Q,
+        power_factor=elm.Pf,
         vset=elm.Vset,
         Pmin=elm.Pmin,
         Pmax=elm.Pmax,
         Qmin=elm.Qmin,
         Qmax=elm.Qmax,
         Snom=elm.Snom,
+        Cost=elm.Cost,
+        Cost2=elm.Cost2,
+        Cost0=elm.Cost0,
+        Sbase=elm.Sbase,
         is_controlled=elm.is_controlled,
         enabled_dispatch=elm.enabled_dispatch,
+        mttf=elm.mttf,
+        mttr=elm.mttr,
         q_points=elm.q_curve.get_data().tolist(),
         use_reactive_power_curve=elm.use_reactive_power_curve,
+        r1=elm.R1,
+        x1=elm.X1,
         r0=generator_r0,
         x0=generator_x0,
         r2=generator_r2,
         x2=generator_x2,
+        capex=elm.capex,
+        opex=elm.opex,
+        srap_enabled=elm.srap_enabled,
+        build_status=build_status_dict[elm.build_status],
+        must_run=elm.must_run,
+        startup_cost=elm.startup_cost,
+        shutdown_cost=elm.shutdown_cost,
+        min_time_up=elm.min_time_up,
+        min_time_down=elm.min_time_down,
+        ramp_up=elm.ramp_up,
+        ramp_down=elm.ramp_down,
+        control_mode=generator_control_mode(elm=elm),
+        k_droop=elm.k_droop,
+        dead_band=elm.dead_band,
+        rs=elm.Rs,
+        xs=elm.Xs,
+        xm=elm.Xm,
+        rr=elm.Rr,
+        xr=elm.Xr,
+        freq=elm.freq,
+        is_static_generator=elm.is_static_generator,
     )
     set_generator_associations(
         gslv_elm=gen,
@@ -121,6 +161,18 @@ def convert_generator(k: int,
     )
 
     fill_profile(gen.active, elm.active_prof, use_time_series, time_indices, n_time, elm.active)
+    fill_profile(gen.srap_enabled, elm.srap_enabled_prof, use_time_series, time_indices, n_time, elm.srap_enabled)
+
+    gen.enabled_dispatch = fill_profile(
+        gen.enabled_dispatch,
+        elm.enabled_dispatch_prof,
+        use_time_series,
+        time_indices,
+        n_time,
+        elm.enabled_dispatch,
+    )
+
+    gen.must_run = fill_profile(gen.must_run, elm.must_run_prof, use_time_series, time_indices, n_time, elm.must_run)
 
     if opf_results is None:
         fill_profile(gen.P, elm.P_prof, use_time_series, time_indices, n_time, elm.P)
@@ -135,6 +187,13 @@ def convert_generator(k: int,
         )
 
     fill_profile(gen.Q, elm.Q_prof, use_time_series, time_indices, n_time, elm.Q)
+    fill_profile(gen.power_factor, elm.Pf_prof, use_time_series, time_indices, n_time, elm.Pf)
+
+    gen.Pmin = fill_profile(gen.Pmin, elm.Pmin_prof, use_time_series, time_indices, n_time, elm.Pmin)
+    gen.Pmax = fill_profile(gen.Pmax, elm.Pmax_prof, use_time_series, time_indices, n_time, elm.Pmax)
+    gen.qmin_set = fill_profile(gen.qmin_set, elm.Qmin_prof, use_time_series, time_indices, n_time, elm.Qmin)
+    gen.qmax_set = fill_profile(gen.qmax_set, elm.Qmax_prof, use_time_series, time_indices, n_time, elm.Qmax)
+
     fill_profile(gen.Vset, elm.Vset_prof, use_time_series, time_indices, n_time, elm.Vset)
     fill_profile(gen.cost, elm.Cost_prof, use_time_series, time_indices, n_time, elm.Cost)
     fill_profile(gen.Cost0, elm.Cost0_prof, use_time_series, time_indices, n_time, elm.Cost0)
