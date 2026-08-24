@@ -2,15 +2,21 @@ from __future__ import annotations
 
 from pathlib import Path
 from time import perf_counter
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Sequence, Tuple
 
 import numpy as np
 from PySide6 import QtCore, QtGui, QtWidgets
 
 from VeraGrid.Gui.DynamicEventsDialog.dynamic_events_editor_support import collect_block_runtime_event_parameters
-from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI
+from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import (
+    DynamicBlockEditorGUI,
+    block_has_internal_equation_content,
+    get_single_interface_var,
+    is_root_interface_wrapper_block,
+)
 from VeraGrid.Gui.DynamicModelEditor.dynamic_block_properties import (
     DynamicBlockPropertiesDialog,
+    MeasurementTargetPickerDialog,
     RmsMeasurementEditOption,
 )
 from VeraGrid.Gui.DynamicModelEditor.dynamic_block_preparation import prepare_block_for_editing
@@ -20,6 +26,7 @@ from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_library import (
 )
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_utilities import create_generic_block
 import VeraGrid.Gui.DynamicModelEditor.dynamic_editor_graphics as graph
+import VeraGrid.Gui.DynamicModelEditor.dynamic_editor_validation as validation
 from VeraGridEngine.Devices.Events.rms_event import RmsEvent
 from VeraGridEngine.Devices.Events.rms_events_group import RmsEventsGroup
 from VeraGridEngine.Devices.Branches.line import Line
@@ -31,7 +38,9 @@ from VeraGridEngine.Devices.Branches.vsc import VSC
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
+from VeraGridEngine.Devices.Parents.dynamic_parent import DynamicDevice
 from VeraGridEngine.IO.file_open import FileOpen, FileOpenOptions
+from VeraGridEngine.IO.file_save import FileSave
 from VeraGridEngine.Simulations.EMT.emt_driver import EmtSimulationDriver
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.Simulations.EMT.emt_results import EmtResults
@@ -55,6 +64,12 @@ from VeraGridEngine.Templates.Rms.genrow_rms_template import get_genrow_rms_temp
 from VeraGridEngine.Templates.Rms.international_standards.bbsex1 import build_bbsex1_template
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.Templates.Rms.load_rms_template import get_load_rms_template
+from VeraGridEngine.Templates.Rms.rms_meter_templates import (
+    build_rms_physical_signal_meter_block,
+    build_rms_voltage_meter_outputs_from_polar,
+    normalize_rms_meter_symbol_fragment,
+    select_basic_balanced_rms_meter_outputs,
+)
 from VeraGridEngine.Utils.Symbolic.block import (
     Block,
     RmsPhysicalMeasurementPoint,
@@ -62,10 +77,12 @@ from VeraGridEngine.Utils.Symbolic.block import (
     RmsTerminalSide,
     validate_dynamic_model_contract,
 )
-from VeraGridEngine.Utils.Symbolic.symbolic import Var, symbolic_to_string
+from VeraGridEngine.Utils.Symbolic.symbolic import Const, Expr, Var, symbolic_to_string
 from VeraGridEngine.Utils.Symbolic.bus_emt_template import get_bus_emt_template
 from VeraGridEngine.Utils.Symbolic.bus_rms_template import initialize_bus_rms
 from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_emt_model, set_rms_model
+from VeraGridEngine.Utils.procedural_logic import ProceduralLogicCodec
+from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.enumerations import BlockType, BranchImpedanceMode, DeviceType, DynamicIntegrationMethod, DynamicSimulationMode, DynEditorGraphicsModes, EmtInitializationMethod, EmtSolverTypes, FileType, RmsInitializationMethod, ShuntConnectionType, SolverType, VarPowerFlowReferenceType
 
 
@@ -254,6 +271,144 @@ def _build_two_bus_rms_grid() -> Tuple[MultiCircuit, Generator, Any, Load]:
     return grid, gen0, line0, load
 
 
+def _build_nine_bus_rms_measurement_grid() -> Tuple[MultiCircuit, Generator]:
+    """Build a deterministic connected nine-bus RMS network with public APIs.
+
+    The chain topology keeps every connection easy to audit: endpoint buses
+    own one branch and internal buses own two. Every physical device receives
+    a canonical RMS model so the network can be compiled after GUI meters are
+    added to the slack-generator model.
+
+    :return: Nine-bus circuit and its slack generator.
+    """
+    grid: MultiCircuit = MultiCircuit(
+        name="Nine-bus measurement audit",
+        Sbase=100.0,
+        fbase=50.0,
+        idtag="nine-bus-measurement-grid",
+    )
+    buses: List[Bus] = list(
+        Bus(
+            name=f"Bus {bus_index + 1}",
+            idtag=f"measurement-bus-{bus_index + 1}",
+            Vnom=110.0,
+            is_slack=bus_index == 0,
+        )
+        for bus_index in range(9)
+    )
+    bus: Bus
+    for bus in buses:
+        grid.add_bus(bus)
+        initialize_bus_rms(bus=bus, vf=grid.var_factory)
+
+    generator: Generator = Generator(
+        name="Nine-bus slack generator",
+        idtag="nine-bus-slack-generator",
+        P=4.0,
+        vset=1.0,
+        Snom=100.0,
+        x1=0.3,
+        r1=0.01,
+        freq=50.0,
+    )
+    grid.add_generator(bus=buses[0], api_obj=generator)
+    generator.rms_template = get_complete_generator_template_rms(grid.var_factory)
+
+    branch_index: int
+    for branch_index in range(8):
+        line: Line = Line(
+            name=f"Line {branch_index + 1}-{branch_index + 2}",
+            bus_from=buses[branch_index],
+            bus_to=buses[branch_index + 1],
+            r=0.005,
+            x=0.04,
+            b=0.01,
+            rate=100.0,
+        )
+        grid.add_line(line)
+        line.rms_template = get_line_rms_template(grid.var_factory)
+
+    load_index: int
+    for load_index in range(1, 9):
+        load: Load = Load(
+            name=f"Load {load_index + 1}",
+            P=0.5,
+            Q=0.1,
+        )
+        grid.add_load(bus=buses[load_index], api_obj=load)
+        load.rms_template = get_load_rms_template(grid.var_factory)
+
+    return grid, generator
+
+
+def _add_scripted_balanced_voltage_meters(
+        grid: MultiCircuit,
+        generator: Generator,
+) -> List[Block]:
+    """Add one public canonical balanced-RMS voltage meter per bus.
+
+    :param grid: Nine-bus circuit that owns the bus variables and factory.
+    :param generator: Device whose root model owns the measurement blocks.
+    :return: Added meter blocks ordered by target bus.
+    """
+    if isinstance(generator.rms_model, Block):
+        generator_model: Block = generator.rms_model
+    else:
+        raise TypeError("The nine-bus generator must own an RMS model.")
+
+    meters: List[Block] = list()
+    meter_index: int
+    for meter_index in range(len(grid.buses)):
+        measured_bus: Bus = grid.buses[meter_index]
+        vm: Var | None = measured_bus.rms_model.external_mapping.get(
+            VarPowerFlowReferenceType.Vm,
+            None,
+        )
+        va: Var | None = measured_bus.rms_model.external_mapping.get(
+            VarPowerFlowReferenceType.Va,
+            None,
+        )
+        if vm is None or va is None:
+            raise ValueError("Every audited AC bus must expose Vm and Va.")
+        else:
+            pass
+        compatibility_outputs: Dict[str, Expr] = (
+            build_rms_voltage_meter_outputs_from_polar(
+                vm=vm,
+                va=va,
+                measured_frequency_hz=Const(grid.fBase),
+                nominal_frequency_hz=Const(grid.fBase),
+            )
+        )
+        basic_outputs: Dict[str, Expr] = select_basic_balanced_rms_meter_outputs(
+            signal_expressions=compatibility_outputs,
+            meter_kind=RmsPhysicalMeterKind.VOLTAGE,
+        )
+        meter_name: str = f"Voltage meter {meter_index + 1}"
+        meter_block: Block
+        output_by_name: Dict[str, Var]
+        meter_block, output_by_name = build_rms_physical_signal_meter_block(
+            vf=grid.var_factory,
+            signal_expressions=basic_outputs,
+            output_signal_names=tuple(basic_outputs.keys()),
+            name=meter_name,
+            source_fid=(
+                "veragrid-meter:"
+                + generator.idtag
+                + ":voltage:bus:"
+                + str(meter_index + 1)
+            ),
+            target_fid=measured_bus.idtag,
+            terminal_side=RmsTerminalSide.BUS,
+            meter_kind=RmsPhysicalMeterKind.VOLTAGE,
+            symbol_suffix=normalize_rms_meter_symbol_fragment(meter_name),
+        )
+        del output_by_name
+        generator_model.add(meter_block)
+        meters.append(meter_block)
+    return meters
+
+
 def _add_rms_load_step_event(grid: MultiCircuit, load: Load) -> None:
     """Add one GUI-selectable active-power step to an RMS test grid.
 
@@ -322,7 +477,124 @@ def _load_nuactis_rms_grid(fixture_name: str) -> MultiCircuit:
     imported_grid: MultiCircuit | None = file_open.open()
     assert imported_grid is not None
     assert file_open.logger.error_count() == 0
+    assert file_open.logger.warning_count() == 0
     return imported_grid
+
+
+def _assert_nuactis_grid_uses_canonical_public_data(grid: MultiCircuit) -> None:
+    """Prove that one imported Nuactis grid contains only canonical model data.
+
+    :param grid: Imported Nuactis circuit to inspect and round-trip.
+    :return: None.
+    """
+    assert not type(grid).__module__.startswith("VeraGridEngine.IO.dgs")
+
+    bus: Bus
+    for bus in grid.buses:
+        assert not type(bus).__module__.startswith("VeraGridEngine.IO.dgs")
+    else:
+        pass
+
+    line: Line
+    for line in grid.lines:
+        assert not type(line).__module__.startswith("VeraGridEngine.IO.dgs")
+    else:
+        pass
+
+    rms_template: RmsModelTemplate
+    for rms_template in grid.rms_models:
+        assert not type(rms_template).__module__.startswith("VeraGridEngine.IO.dgs")
+        assert not type(rms_template.block).__module__.startswith("VeraGridEngine.IO.dgs")
+    else:
+        pass
+
+    vsc: VSC
+    for vsc in grid.get_vsc():
+        assert not type(vsc).__module__.startswith("VeraGridEngine.IO.dgs")
+        assert isinstance(vsc.rms_model, Block)
+
+        current_block: Block
+        for current_block in vsc.rms_model.get_all_blocks():
+            assert not type(current_block).__module__.startswith("VeraGridEngine.IO.dgs")
+            assert not type(current_block.dynamic_model_contract).__module__.startswith(
+                "VeraGridEngine.IO.dgs"
+            )
+
+            contract_data: Dict[str, object] = current_block.dynamic_model_contract.to_data()
+            contract_key: str
+            contract_value: object
+            for contract_key, contract_value in contract_data.items():
+                if contract_key.startswith("dgs_"):
+                    assert (
+                        contract_value is None
+                        or contract_value is False
+                        or contract_value == list()
+                    ), (current_block.name, contract_key, contract_value)
+                else:
+                    pass
+
+            procedural_entry: object
+            for procedural_entry in current_block.procedural_logic:
+                assert not type(procedural_entry).__module__.startswith(
+                    "VeraGridEngine.IO.dgs"
+                )
+            else:
+                pass
+        else:
+            pass
+
+        # Reconstruct the entire visible symbolic hierarchy using only the
+        # declarative Block contract and its public canonical procedural codec.
+        block_data: Dict[str, object] = vsc.rms_model.to_dict()
+        restored_block: Block = Block.parse(
+            data=block_data,
+            procedural_logic_codec=ProceduralLogicCodec(),
+        )
+        assert restored_block.to_dict() == block_data
+        assert _collect_block_semantic_signature(restored_block) == (
+            _collect_block_semantic_signature(vsc.rms_model)
+        )
+    else:
+        pass
+
+
+def _assert_editor_dynamic_check_is_clean(editor: DynamicBlockEditorGUI) -> None:
+    """Require the public GUI model-consistency check to report no issues.
+
+    :param editor: Live dynamic editor whose working model must be clean.
+    :return: None.
+    """
+    sections: List[validation.ValidationSection] = (
+        editor.collect_model_consistency_sections()
+    )
+    issue_details: List[str] = list()
+    section: validation.ValidationSection
+    row: validation.ValidationRow
+    detail: str
+    for section in sections:
+        for row in section.get_rows():
+            for detail in row.get_details():
+                issue_details.append(
+                    section.get_title()
+                    + ": "
+                    + row.get_block_label()
+                    + ": "
+                    + detail
+                )
+            else:
+                pass
+        else:
+            pass
+    else:
+        pass
+
+    assert issue_details == list(), (
+        editor.api_object.name
+        + " / "
+        + editor.main_block.name
+        + "\n"
+        + "\n".join(issue_details)
+    )
 
 
 def _add_nuactis_parameter_event(
@@ -561,6 +833,40 @@ def _build_gui_editor(qt_app: QtWidgets.QApplication,
     )
     editor.show()
     _app.processEvents()
+    return editor
+
+
+def _build_nested_gui_editor(
+        qt_app: QtWidgets.QApplication,
+        grid: MultiCircuit,
+        api_object: DynamicDevice,
+        root_block: Block,
+        current_block: Block,
+) -> DynamicBlockEditorGUI:
+    """Build the editor state used after navigating into one nested block.
+
+    :param qt_app: Shared Qt application.
+    :param grid: Owning circuit.
+    :param api_object: Physical device that owns the complete model.
+    :param root_block: Complete assigned device model.
+    :param current_block: Nested block selected by the user.
+    :return: Live nested editor widget.
+    """
+    editor: DynamicBlockEditorGUI = DynamicBlockEditorGUI(
+        var_factory=grid.var_factory,
+        api_object=api_object,
+        circuit=grid,
+        current_theme=DynEditorGraphicsModes.LIGHT,
+        mode=DynamicSimulationMode.RMS,
+        templates_list=list(),
+        is_root_editor=False,
+        modal=False,
+        workspace_embedded=False,
+        root_block=root_block,
+        current_block=current_block,
+    )
+    editor.show()
+    qt_app.processEvents()
     return editor
 
 
@@ -957,10 +1263,11 @@ def _assert_nuactis_vsc_projection(
             measurement_item.subsys.dynamic_model_contract.rms_physical_measurement_point
         )
         assert measurement_point is not None
-        assert measurement_item.name.startswith("VeraGrid ")
+        assert not measurement_item.name.startswith("VeraGrid ")
         assert "powerfactory" not in measurement_item.name.lower()
         assert all(
             "powerfactory" not in output_port.base_var.name.lower()
+            and "_veragrid" not in output_port.base_var.name.lower()
             for output_port in measurement_item.outputs
         )
         selected_output_uids: set[int] = set(
@@ -973,6 +1280,16 @@ def _assert_nuactis_vsc_projection(
         )
         assert measurement_point.get_output_signal_names() == tuple(
             output_port.base_var.name for output_port in selected_output_ports
+        )
+        assert all(
+            output_port.connections is not None
+            and len(output_port.connections) > 0
+            for output_port in selected_output_ports
+        ), list(
+            output_port.base_var.name
+            for output_port in selected_output_ports
+            if output_port.connections is None
+            or len(output_port.connections) == 0
         )
         output_port: graph.PortItem
         for output_port in selected_output_ports:
@@ -1240,16 +1557,21 @@ def test_generator_template_selector_and_library_use_typed_categories(
     )
     assert isinstance(physical_leaves, list)
     assert isinstance(component_leaves, list)
-    assert isinstance(measurement_leaves, list)
+    assert isinstance(measurement_leaves, dict)
+    rms_measurement_leaves: object | None = measurement_leaves.get(
+        "RMS (balanced)",
+        None,
+    )
+    assert isinstance(rms_measurement_leaves, list)
     assert physical_template in [leaf.payload for leaf in physical_leaves]
     assert governor_template in [leaf.payload for leaf in component_leaves]
     assert bbsex1_template in [leaf.payload for leaf in component_leaves]
     assert measurement_template not in [leaf.payload for leaf in physical_leaves]
     assert measurement_template not in [leaf.payload for leaf in component_leaves]
-    assert len(measurement_leaves) == 4
+    assert len(rms_measurement_leaves) == 4
     measurement_descriptors: List[MeasurementBlockDescriptor] = list()
     measurement_leaf: object
-    for measurement_leaf in measurement_leaves:
+    for measurement_leaf in rms_measurement_leaves:
         assert isinstance(measurement_leaf.payload, MeasurementBlockDescriptor)
         measurement_descriptors.append(measurement_leaf.payload)
     assert set(
@@ -1258,6 +1580,23 @@ def test_generator_template_selector_and_library_use_typed_categories(
     assert all(
         descriptor.get_terminal_side() is RmsTerminalSide.BUS
         for descriptor in measurement_descriptors
+    )
+    emt_library: DynamicEditorLibrary = DynamicEditorLibrary(
+        api_object=generator,
+        mode=DynamicSimulationMode.EMT,
+        templates_list=list(),
+    )
+    emt_measurement_parent: object | None = emt_library.tree_structure.get(
+        "Measurements", None
+    )
+    assert isinstance(emt_measurement_parent, dict)
+    emt_measurement_leaves: object | None = emt_measurement_parent.get("EMT", None)
+    assert isinstance(emt_measurement_leaves, list)
+    assert len(emt_measurement_leaves) == 3
+    assert all(
+        isinstance(leaf.payload, MeasurementBlockDescriptor)
+        and leaf.payload.get_mode() is DynamicSimulationMode.EMT
+        for leaf in emt_measurement_leaves
     )
 
     editor_root: Block = Block(
@@ -1360,8 +1699,8 @@ def test_generator_template_selector_and_library_use_typed_categories(
             power_mode_index
         )
         qt_app.processEvents()
-        assert measurement_dialogue.ui.measurement_target_combo.isEnabled()
-        assert measurement_dialogue.ui.measurement_target_combo.currentText() == (
+        assert measurement_dialogue.ui.measurement_target_button.isEnabled()
+        assert measurement_dialogue.ui.measurement_target_value.text() == (
             generator.name
             + " — BUS terminal → "
             + generator.bus.name
@@ -1384,9 +1723,9 @@ def test_generator_template_selector_and_library_use_typed_categories(
             rebuilt_measurement_point.get_terminal_side()
             is RmsTerminalSide.BUS
         )
-        assert len(editable_meter_block.out_vars) == 6
-        assert len(editable_meter_block.algebraic_eqs) == 6
-        assert len(editable_meter_block.init_eqs) == 6
+        assert len(editable_meter_block.out_vars) == 2
+        assert len(editable_meter_block.algebraic_eqs) == 2
+        assert len(editable_meter_block.init_eqs) == 2
         assert tuple(output_var.name for output_var in editable_meter_block.out_vars) == (
             rebuilt_measurement_point.get_output_signal_names()
         )
@@ -1455,6 +1794,55 @@ def test_generator_basic_assignment_opens_as_connected_physical_device(
         editor.prepare_to_delete()
         editor.close()
         editor.deleteLater()
+
+
+def test_native_emt_library_meter_builds_from_the_shared_measurement_parent(
+        qt_app: QtWidgets.QApplication,
+) -> None:
+    """Create one basic EMT meter through the shared measurement descriptor.
+
+    :param qt_app: Shared Qt application fixture.
+    :return: None.
+    """
+    grid: MultiCircuit
+    generator: Generator
+    line: Line
+    load: Load
+    grid, generator, line, load = _build_two_bus_emt_grid()
+    del line
+    del load
+    generator.emt_template = get_generator_thevenin_rl_emt_template_with_ref(
+        vf=grid.var_factory
+    )
+    editor: DynamicBlockEditorGUI = _build_gui_editor(
+        qt_app=qt_app,
+        grid=grid,
+        api_object=generator,
+        mode=DynamicSimulationMode.EMT,
+        root_block=generator.emt_model,
+    )
+    try:
+        descriptor: MeasurementBlockDescriptor = MeasurementBlockDescriptor(
+            mode=DynamicSimulationMode.EMT,
+            meter_kind=RmsPhysicalMeterKind.VOLTAGE,
+            terminal_side=RmsTerminalSide.BUS,
+        )
+        meter_item: graph.GenericBlockItem | None = (
+            editor.create_measurements_block_item(descriptor, 0.0, 0.0)
+        )
+        assert isinstance(meter_item, graph.GenericBlockItem)
+        assert meter_item.visual_role is graph.DynamicBlockVisualRole.MEASUREMENT
+        assert meter_item.name == "Voltage meter 1"
+        assert len(meter_item.subsys.out_vars) >= 3
+        assert all(
+            "veragrid" not in output_var.name.lower()
+            for output_var in meter_item.subsys.out_vars
+        )
+    finally:
+        editor.prepare_to_delete()
+        editor.close()
+        editor.deleteLater()
+        qt_app.processEvents()
 
 
 def test_gui_editor_apply_changes_matches_scripting_for_emt(qt_app: QtWidgets.QApplication) -> None:
@@ -1699,6 +2087,69 @@ def test_gui_editor_apply_changes_matches_scripting_for_rms(qt_app: QtWidgets.QA
     )
     assert np.allclose(script_results.values, gui_results.values, rtol=1e-8, atol=1e-8)
 
+    # Persist the public circuit and reopen it through the production file path.
+    saved_file_path: Path = tmp_path / "nine_bus_balanced_measurements.veragrid"
+    save_logger: Logger = FileSave(
+        circuit=gui_grid,
+        file_name=str(saved_file_path),
+    ).save()
+    assert save_logger.error_count() == 0
+    assert save_logger.warning_count() == 0
+
+    reopened_file: FileOpen = FileOpen(file_name=str(saved_file_path))
+    reopened_grid: MultiCircuit | None = reopened_file.open()
+    assert reopened_grid is not None
+    assert reopened_file.logger.error_count() == 0
+    assert reopened_file.logger.warning_count() == 0
+    reopened_generators: List[Generator] = reopened_grid.get_generators()
+    assert len(reopened_generators) == 1
+    reopened_generator: Generator = reopened_generators[0]
+    assert isinstance(reopened_generator.rms_model, Block)
+    reopened_meters: List[Block] = list(
+        child for child in reopened_generator.rms_model.children
+        if child.dynamic_model_contract.rms_physical_measurement_point is not None
+    )
+    assert len(reopened_meters) == 9
+    assert list(
+        meter.dynamic_model_contract.rms_physical_measurement_point.get_target_fid()
+        for meter in reopened_meters
+        if meter.dynamic_model_contract.rms_physical_measurement_point is not None
+    ) == list(bus.idtag for bus in reopened_grid.buses)
+    assert list(meter.to_dict() for meter in reopened_meters) == list(
+        meter.to_dict() for meter in gui_meters
+    )
+
+    # Reopen the RMS editor and public checker on the reconstructed objects.
+    reopened_editor: DynamicBlockEditorGUI = _build_gui_editor(
+        qt_app=qt_app,
+        grid=reopened_grid,
+        api_object=reopened_generator,
+        mode=DynamicSimulationMode.RMS,
+        root_block=reopened_generator.rms_model,
+    )
+    try:
+        _assert_editor_dynamic_check_is_clean(editor=reopened_editor)
+        reopened_editor.apply_changes()
+        qt_app.processEvents()
+    finally:
+        reopened_editor.prepare_to_delete()
+        reopened_editor.close()
+        reopened_editor.deleteLater()
+        qt_app.processEvents()
+
+    # The round-tripped declaration must compile and solve identically.
+    reopened_results: RmsResults
+    reopened_problem: RmsProblemDae
+    reopened_results, reopened_problem = _run_rms_driver(reopened_grid)
+    assert reopened_problem.get_states_number() == gui_problem.get_states_number()
+    assert reopened_problem.get_algebraic_var_number() == (
+        gui_problem.get_algebraic_var_number()
+    )
+    assert list(reopened_results.variable_array) == list(gui_results.variable_array)
+    assert np.array_equal(reopened_results.well_initialized, gui_results.well_initialized)
+    assert np.array_equal(reopened_results.converged, gui_results.converged)
+    assert np.allclose(reopened_results.values, gui_results.values, rtol=1e-8, atol=1e-8)
+
 
 def test_nuactis_v1_gui_editor_matches_scripting_pf_and_rms(
         qt_app: QtWidgets.QApplication,
@@ -1718,6 +2169,7 @@ def test_nuactis_v1_gui_editor_matches_scripting_pf_and_rms(
     gui_vsc_devices: List[VSC] = gui_grid.get_vsc()
     assert len(script_vsc_devices) == 2
     assert len(gui_vsc_devices) == len(script_vsc_devices)
+    _assert_nuactis_grid_uses_canonical_public_data(grid=script_grid)
 
     open_editors: List[DynamicBlockEditorGUI] = list()
     converter_index: int
@@ -1748,6 +2200,7 @@ def test_nuactis_v1_gui_editor_matches_scripting_pf_and_rms(
                 editor=editor,
                 expected_protected_count=0,
             )
+            _assert_editor_dynamic_check_is_clean(editor=editor)
             editor.apply_changes()
             qt_app.processEvents()
 
@@ -1764,6 +2217,7 @@ def test_nuactis_v1_gui_editor_matches_scripting_pf_and_rms(
             editor_to_close.close()
             editor_to_close.deleteLater()
         qt_app.processEvents()
+
 
     # Build one reference-step scenario and one independent current-limiter
     # scenario so GUI persistence is exercised across different V1 dynamics.
@@ -1873,8 +2327,8 @@ def test_nuactis_v1_gui_editor_matches_scripting_pf_and_rms(
         (
             "VmSlave_AC",
             "VdcSlave_DC",
-            "P_act_VeraGrid Power meter 221Slave_PWM_nl",
-            "Q_act_VeraGrid Power meter 221Slave_PWM_nl",
+            "P_act_Power meter 221Slave_PWM_nl",
+            "Q_act_Power meter 221Slave_PWM_nl",
             "iq_refSlave_PWM_nl",
             "idSlave_PWM_nl",
             "iqSlave_PWM_nl",
@@ -1987,6 +2441,773 @@ def test_nuactis_v1_gui_editor_matches_scripting_pf_and_rms(
     )
 
 
+def test_native_voltage_meter_can_release_and_select_another_bus(
+        qt_app: QtWidgets.QApplication,
+) -> None:
+    """Rebuild a native meter against a bus selected from the circuit database.
+
+    :param qt_app: Shared Qt application fixture.
+    :return: None.
+    """
+    grid: MultiCircuit
+    generator: Generator
+    line: Line
+    load: Load
+    grid, generator, line, load = _build_two_bus_rms_grid()
+    del line
+    del load
+    physical_template: RmsModelTemplate = get_genrow_rms_template(
+        grid.var_factory,
+        name="Generator basic",
+    )
+    editor_root: Block = Block(
+        name="Generator remote measurement model",
+        external_mapping=dict(physical_template.block.external_mapping),
+    )
+    editor: DynamicBlockEditorGUI = _build_gui_editor(
+        qt_app=qt_app,
+        grid=grid,
+        api_object=generator,
+        mode=DynamicSimulationMode.RMS,
+        root_block=editor_root,
+    )
+    try:
+        descriptor: MeasurementBlockDescriptor = MeasurementBlockDescriptor(
+            mode=DynamicSimulationMode.RMS,
+            meter_kind=RmsPhysicalMeterKind.VOLTAGE,
+            terminal_side=RmsTerminalSide.BUS,
+        )
+        meter_item: graph.GenericBlockItem | None = (
+            editor.create_measurements_block_item(descriptor, 0.0, 0.0)
+        )
+        assert isinstance(meter_item, graph.GenericBlockItem)
+        meter_block: Block = meter_item.subsys
+        editor.request_open_block_properties(meter_block)
+        assert isinstance(
+            editor._block_properties_dialogue,
+            DynamicBlockPropertiesDialog,
+        )
+        dialogue: DynamicBlockPropertiesDialog = editor._block_properties_dialogue
+        voltage_options: List[RmsMeasurementEditOption] = list()
+        option: RmsMeasurementEditOption
+        for option in editor.build_rms_measurement_edit_options(meter_block):
+            if option.get_meter_kind() is RmsPhysicalMeterKind.VOLTAGE:
+                voltage_options.append(option)
+            else:
+                pass
+        assert set(option.get_target_fid() for option in voltage_options) == set(
+            bus.idtag for bus in grid.buses
+        )
+        remote_bus: Bus = grid.buses[1]
+        remote_option: RmsMeasurementEditOption | None = None
+        for option in voltage_options:
+            if option.get_target_fid() == remote_bus.idtag:
+                remote_option = option
+            else:
+                pass
+        assert remote_option is not None
+
+        dialogue.release_measurement_target()
+        assert dialogue.get_selected_measurement_option() is None
+        assert dialogue.select_measurement_target_option(remote_option)
+        assert remote_bus.name in dialogue.ui.measurement_target_value.text()
+        dialogue.apply_changes()
+        qt_app.processEvents()
+
+        rebuilt_point: RmsPhysicalMeasurementPoint | None = (
+            meter_block.dynamic_model_contract.rms_physical_measurement_point
+        )
+        assert rebuilt_point is not None
+        assert rebuilt_point.get_target_fid() == remote_bus.idtag
+        validate_dynamic_model_contract(block=meter_block)
+        remote_voltage_uids: set[int] = set(
+            mapped_var.uid
+            for mapped_var in remote_bus.rms_model.external_mapping.values()
+            if mapped_var is not None
+        )
+        equation_var_uids: set[int] = set()
+        equation: Expr
+        equation_var: Var
+        for equation in meter_block.algebraic_eqs:
+            for equation_var in equation.get_vars():
+                equation_var_uids.add(equation_var.uid)
+        assert len(remote_voltage_uids.intersection(equation_var_uids)) > 0
+    finally:
+        editor.prepare_to_delete()
+        editor.close()
+        editor.deleteLater()
+        qt_app.processEvents()
+
+
+def test_measurement_target_picker_searches_and_pages_five_hundred_devices(
+        qt_app: QtWidgets.QApplication,
+) -> None:
+    """Keep the consolidated target selector bounded for a large network.
+
+    :param qt_app: Shared Qt application fixture.
+    :return: None.
+    """
+    target_count: int = 525
+    options: List[RmsMeasurementEditOption] = list(
+        RmsMeasurementEditOption(
+            meter_kind=RmsPhysicalMeterKind.CURRENT,
+            source_terminal_side=RmsTerminalSide.FROM,
+            target_fid=f"measurement-target-{target_index:04d}",
+            target_label=f"Branch device {target_index:04d} — FROM terminal",
+        )
+        for target_index in range(target_count)
+    )
+    selected_option: RmsMeasurementEditOption = options[520]
+    picker: MeasurementTargetPickerDialog = MeasurementTargetPickerDialog(
+        options=options,
+        selected_option=selected_option,
+    )
+    try:
+        picker.show()
+        qt_app.processEvents()
+        assert picker._current_page == 5
+        assert picker._source_model.rowCount() == 25
+        assert "525 targets" in picker._page_label.text()
+        assert picker._previous_page_button.isEnabled()
+        assert not picker._next_page_button.isEnabled()
+        assert picker.get_selected_option() is selected_option
+
+        picker.show_previous_page()
+        assert picker._current_page == 4
+        assert picker._source_model.rowCount() == 100
+        assert picker._next_page_button.isEnabled()
+
+        picker.filter_targets("measurement-target-0499")
+        assert picker._current_page == 0
+        assert picker._source_model.rowCount() == 1
+        searched_option: RmsMeasurementEditOption | None = (
+            picker.get_selected_option()
+        )
+        assert searched_option is options[499]
+        assert "1 targets" in picker._page_label.text()
+        assert not picker._previous_page_button.isEnabled()
+        assert not picker._next_page_button.isEnabled()
+    finally:
+        picker.close()
+        picker.deleteLater()
+        qt_app.processEvents()
+
+
+def test_native_current_meter_can_select_a_remote_branch_terminal(
+        qt_app: QtWidgets.QApplication,
+) -> None:
+    """Rebuild a meter against a branch outside the owning device model.
+
+    :param qt_app: Shared Qt application fixture.
+    :return: None.
+    """
+    grid: MultiCircuit
+    generator: Generator
+    remote_line: Line
+    load: Load
+    grid, generator, remote_line, load = _build_two_bus_rms_grid()
+    del load
+    generator_template: RmsModelTemplate = get_genrow_rms_template(
+        grid.var_factory,
+        name="Generator basic",
+    )
+    remote_line.rms_template = get_line_rms_template(grid.var_factory)
+    editor_root: Block = Block(
+        name="Generator remote current measurement model",
+        external_mapping=dict(generator_template.block.external_mapping),
+    )
+    editor: DynamicBlockEditorGUI = _build_gui_editor(
+        qt_app=qt_app,
+        grid=grid,
+        api_object=generator,
+        mode=DynamicSimulationMode.RMS,
+        root_block=editor_root,
+    )
+    try:
+        descriptor: MeasurementBlockDescriptor = MeasurementBlockDescriptor(
+            mode=DynamicSimulationMode.RMS,
+            meter_kind=RmsPhysicalMeterKind.CURRENT,
+            terminal_side=RmsTerminalSide.BUS,
+        )
+        meter_item: graph.GenericBlockItem | None = (
+            editor.create_measurements_block_item(descriptor, 0.0, 0.0)
+        )
+        assert isinstance(meter_item, graph.GenericBlockItem)
+        meter_block: Block = meter_item.subsys
+        current_options: List[RmsMeasurementEditOption] = list()
+        option: RmsMeasurementEditOption
+        for option in editor.build_rms_measurement_edit_options(meter_block):
+            if option.get_meter_kind() is RmsPhysicalMeterKind.CURRENT:
+                current_options.append(option)
+            else:
+                pass
+        remote_from_option: RmsMeasurementEditOption | None = None
+        for option in current_options:
+            if (
+                    option.get_target_fid() == remote_line.idtag
+                    and option.get_source_terminal_side()
+                    is RmsTerminalSide.FROM
+            ):
+                remote_from_option = option
+            else:
+                pass
+        assert remote_from_option is not None
+
+        editor.request_open_block_properties(meter_block)
+        assert isinstance(
+            editor._block_properties_dialogue,
+            DynamicBlockPropertiesDialog,
+        )
+        dialogue: DynamicBlockPropertiesDialog = editor._block_properties_dialogue
+        assert dialogue.select_measurement_target_option(remote_from_option)
+        dialogue.apply_changes()
+        qt_app.processEvents()
+
+        rebuilt_point: RmsPhysicalMeasurementPoint | None = (
+            meter_block.dynamic_model_contract.rms_physical_measurement_point
+        )
+        assert rebuilt_point is not None
+        assert rebuilt_point.get_target_fid() == remote_line.idtag
+        assert rebuilt_point.get_terminal_side() is RmsTerminalSide.FROM
+        remote_line_var_uids: set[int] = set(
+            mapped_var.uid
+            for mapped_var in remote_line.rms_model.external_mapping.values()
+            if mapped_var is not None
+        )
+        equation_var_uids: set[int] = set()
+        equation: Expr
+        equation_var: Var
+        for equation in meter_block.algebraic_eqs:
+            for equation_var in equation.get_vars():
+                equation_var_uids.add(equation_var.uid)
+        assert len(remote_line_var_uids.intersection(equation_var_uids)) > 0
+        validate_dynamic_model_contract(block=meter_block)
+    finally:
+        editor.prepare_to_delete()
+        editor.close()
+        editor.deleteLater()
+        qt_app.processEvents()
+
+
+def test_nine_bus_balanced_rms_measurements_match_gui_and_scripting(
+        qt_app: QtWidgets.QApplication,
+        tmp_path: Path,
+) -> None:
+    """Audit nine searchable bus targets through GUI and public scripting APIs.
+
+    The balanced RMS solver owns only positive-sequence magnitude and angle.
+    The test therefore also proves that native basic meters do not expose
+    negative- or zero-sequence channels while retaining exact target-variable
+    connections through GUI persistence and RMS compilation.
+
+    :param qt_app: Shared Qt application fixture.
+    :param tmp_path: Isolated path for the declarative save/reopen cycle.
+    :return: None.
+    """
+    script_grid: MultiCircuit
+    script_generator: Generator
+    gui_grid: MultiCircuit
+    gui_generator: Generator
+    script_grid, script_generator = _build_nine_bus_rms_measurement_grid()
+    gui_grid, gui_generator = _build_nine_bus_rms_measurement_grid()
+    script_meters: List[Block] = _add_scripted_balanced_voltage_meters(
+        grid=script_grid,
+        generator=script_generator,
+    )
+    assert isinstance(gui_generator.rms_model, Block)
+    editor: DynamicBlockEditorGUI = _build_gui_editor(
+        qt_app=qt_app,
+        grid=gui_grid,
+        api_object=gui_generator,
+        mode=DynamicSimulationMode.RMS,
+        root_block=gui_generator.rms_model,
+    )
+    forbidden_sequence_names: set[str] = set((
+        "u2r", "u2i", "u2", "u0r", "u0i", "u0",
+        "i2r", "i2i", "i2", "i0r", "i0i", "i0",
+        "p2", "q2", "p0", "q0",
+    ))
+    gui_meters: List[Block] = list()
+    try:
+        descriptor: MeasurementBlockDescriptor = MeasurementBlockDescriptor(
+            mode=DynamicSimulationMode.RMS,
+            meter_kind=RmsPhysicalMeterKind.VOLTAGE,
+            terminal_side=RmsTerminalSide.BUS,
+        )
+        meter_index: int
+        for meter_index in range(len(gui_grid.buses)):
+            meter_item: graph.GenericBlockItem | None = (
+                editor.create_measurements_block_item(
+                    descriptor=descriptor,
+                    x_pos=float(260 * (meter_index % 3)),
+                    y_pos=float(180 * (meter_index // 3)),
+                )
+            )
+            assert isinstance(meter_item, graph.GenericBlockItem)
+            meter_block: Block = meter_item.subsys
+            editor.request_open_block_properties(meter_block)
+            assert isinstance(
+                editor._block_properties_dialogue,
+                DynamicBlockPropertiesDialog,
+            )
+            dialogue: DynamicBlockPropertiesDialog = editor._block_properties_dialogue
+            voltage_options: List[RmsMeasurementEditOption] = list()
+            option: RmsMeasurementEditOption
+            for option in editor.build_rms_measurement_edit_options(meter_block):
+                if option.get_meter_kind() is RmsPhysicalMeterKind.VOLTAGE:
+                    voltage_options.append(option)
+                else:
+                    pass
+            assert len(voltage_options) == 9
+            assert len(set(
+                option.get_target_fid() for option in voltage_options
+            )) == 9
+            target_bus: Bus = gui_grid.buses[meter_index]
+            target_option: RmsMeasurementEditOption | None = None
+            for option in voltage_options:
+                if option.get_target_fid() == target_bus.idtag:
+                    target_option = option
+                else:
+                    pass
+            assert target_option is not None
+
+            if meter_index == 8:
+                picker: MeasurementTargetPickerDialog = (
+                    MeasurementTargetPickerDialog(
+                        options=voltage_options,
+                        selected_option=None,
+                        parent=dialogue,
+                    )
+                )
+                picker.filter_targets("Bus 9")
+                searched_option: RmsMeasurementEditOption | None = (
+                    picker.get_selected_option()
+                )
+                assert searched_option is not None
+                assert searched_option.get_target_fid() == target_bus.idtag
+                picker.close()
+            else:
+                pass
+
+            dialogue.release_measurement_target()
+            assert dialogue.select_measurement_target_option(target_option)
+            dialogue.apply_changes()
+            qt_app.processEvents()
+            editor.close_block_properties_dock()
+            measurement_point: RmsPhysicalMeasurementPoint | None = (
+                meter_block.dynamic_model_contract.rms_physical_measurement_point
+            )
+            assert measurement_point is not None
+            assert measurement_point.get_target_fid() == target_bus.idtag
+            assert len(meter_block.out_vars) == 5
+            assert all(
+                output_var.name.split("_", 1)[0] not in forbidden_sequence_names
+                for output_var in meter_block.out_vars
+            )
+
+            target_voltage_uids: set[int] = set(
+                target_var.uid
+                for target_var in target_bus.rms_model.external_mapping.values()
+                if target_var is not None
+            )
+            equation_source_uids: set[int] = set()
+            equation: Expr
+            equation_var: Var
+            for equation in meter_block.algebraic_eqs:
+                for equation_var in equation.get_vars():
+                    if equation_var.uid not in measurement_point.get_output_var_uids():
+                        equation_source_uids.add(equation_var.uid)
+                    else:
+                        pass
+            assert len(target_voltage_uids.intersection(equation_source_uids)) > 0
+            restored_meter: Block = Block.parse(
+                data=meter_block.to_dict(),
+                procedural_logic_codec=ProceduralLogicCodec(),
+            )
+            assert restored_meter.to_dict() == meter_block.to_dict()
+            gui_meters.append(meter_block)
+
+        _assert_editor_dynamic_check_is_clean(editor=editor)
+        editor.apply_changes()
+        qt_app.processEvents()
+    finally:
+        editor.prepare_to_delete()
+        editor.close()
+        editor.deleteLater()
+        qt_app.processEvents()
+
+    assert len(script_meters) == len(gui_meters) == 9
+    script_meter: Block
+    gui_meter: Block
+    for script_meter, gui_meter in zip(script_meters, gui_meters):
+        script_point: RmsPhysicalMeasurementPoint | None = (
+            script_meter.dynamic_model_contract.rms_physical_measurement_point
+        )
+        gui_point: RmsPhysicalMeasurementPoint | None = (
+            gui_meter.dynamic_model_contract.rms_physical_measurement_point
+        )
+        assert script_point is not None
+        assert gui_point is not None
+        assert script_meter.name == gui_meter.name
+        assert script_point.get_source_fid() == gui_point.get_source_fid()
+        assert script_point.get_target_fid() == gui_point.get_target_fid()
+        assert script_point.get_meter_kind() is gui_point.get_meter_kind()
+        assert script_point.get_terminal_side() is gui_point.get_terminal_side()
+        assert list(
+            output_var.name for output_var in script_meter.out_vars
+        ) == list(output_var.name for output_var in gui_meter.out_vars)
+        assert list(
+            symbolic_to_string(equation) for equation in script_meter.algebraic_eqs
+        ) == list(
+            symbolic_to_string(equation) for equation in gui_meter.algebraic_eqs
+        )
+
+    script_bus_branches: Dict[Bus, List[Any]] = script_grid.get_bus_branch_dict()
+    gui_bus_branches: Dict[Bus, List[Any]] = gui_grid.get_bus_branch_dict()
+    assert list(
+        len(script_bus_branches[bus]) for bus in script_grid.buses
+    ) == list((1, 2, 2, 2, 2, 2, 2, 2, 1))
+    assert list(
+        len(gui_bus_branches[bus]) for bus in gui_grid.buses
+    ) == list((1, 2, 2, 2, 2, 2, 2, 2, 1))
+
+    script_results: RmsResults
+    script_problem: RmsProblemDae
+    gui_results: RmsResults
+    gui_problem: RmsProblemDae
+    script_results, script_problem = _run_rms_driver(script_grid)
+    gui_results, gui_problem = _run_rms_driver(gui_grid)
+    assert script_problem.get_states_number() == gui_problem.get_states_number()
+    assert script_problem.get_algebraic_var_number() == gui_problem.get_algebraic_var_number()
+    assert list(script_results.variable_array) == list(gui_results.variable_array)
+    assert np.array_equal(script_results.well_initialized, gui_results.well_initialized)
+    assert np.array_equal(script_results.converged, gui_results.converged)
+    assert np.all(script_results.well_initialized)
+    assert np.all(script_results.converged)
+    assert np.allclose(script_results.values, gui_results.values, rtol=1e-8, atol=1e-8)
+
+
+def test_nuactis_all_rms_equipment_editors_are_populated_connected_and_clean(
+        qt_app: QtWidgets.QApplication,
+) -> None:
+    """Open every imported RMS equipment model, not only both converters.
+
+    :param qt_app: Shared Qt application fixture.
+    :return: None.
+    """
+    fixture_names: tuple[str, ...] = (
+        "hvdc_vsc_v1_complete_static_dynamic.dgs",
+        "hvdc_vsc_v2_complete_static_dynamic.dgs",
+    )
+    fixture_name: str
+    for fixture_name in fixture_names:
+        grid: MultiCircuit = _load_nuactis_rms_grid(fixture_name=fixture_name)
+        equipment_collections: tuple[Sequence[DynamicDevice], ...] = (
+            grid.get_generators(),
+            grid.get_loads(),
+            grid.get_lines(),
+            grid.get_transformers2w(),
+            grid.get_vsc(),
+        )
+        equipment_collection: Sequence[DynamicDevice]
+        api_object: DynamicDevice
+        for equipment_collection in equipment_collections:
+            for api_object in equipment_collection:
+                assert isinstance(api_object.rms_model, Block), api_object.name
+                editor: DynamicBlockEditorGUI = _build_gui_editor(
+                    qt_app=qt_app,
+                    grid=grid,
+                    api_object=api_object,
+                    mode=DynamicSimulationMode.RMS,
+                    root_block=api_object.rms_model,
+                )
+                try:
+                    physical_items: List[graph.GenericBlockItem] = list(
+                        scene_item for scene_item in editor.scene.items()
+                        if isinstance(scene_item, graph.GenericBlockItem)
+                        and scene_item.visual_role
+                        is graph.DynamicBlockVisualRole.DEVICE_TEMPLATE
+                    )
+                    assert len(physical_items) == 1, (
+                        fixture_name,
+                        type(api_object).__name__,
+                        api_object.name,
+                    )
+                    physical_item: graph.GenericBlockItem = physical_items[0]
+                    assert all(
+                        port.connections is not None and len(port.connections) > 0
+                        for port in physical_item.inputs
+                    ), (
+                        fixture_name,
+                        api_object.name,
+                        list(
+                            port.base_var.name for port in physical_item.inputs
+                            if port.connections is None or len(port.connections) == 0
+                        ),
+                    )
+                    _assert_editor_dynamic_check_is_clean(editor=editor)
+                finally:
+                    editor.prepare_to_delete()
+                    editor.close()
+                    editor.deleteLater()
+                    qt_app.processEvents()
+
+                nested_block: Block
+                for nested_block in api_object.rms_model.get_all_blocks():
+                    if (
+                            nested_block is api_object.rms_model
+                            or get_single_interface_var(nested_block) is not None
+                            or (
+                                not block_has_internal_equation_content(nested_block)
+                                and len(nested_block.children) == 0
+                                and len(nested_block.in_vars)
+                                + len(nested_block.out_vars) == 1
+                            )
+                            or is_root_interface_wrapper_block(
+                                block_model=nested_block,
+                                diagram=api_object.rms_model.diagram,
+                            )
+                    ):
+                        pass
+                    else:
+                        nested_editor: DynamicBlockEditorGUI = (
+                            _build_nested_gui_editor(
+                                qt_app=qt_app,
+                                grid=grid,
+                                api_object=api_object,
+                                root_block=api_object.rms_model,
+                                current_block=nested_block,
+                            )
+                        )
+                        try:
+                            assert len(nested_editor.scene.items()) > 0, (
+                                fixture_name,
+                                api_object.name,
+                                nested_block.name,
+                            )
+                            _assert_editor_dynamic_check_is_clean(
+                                editor=nested_editor,
+                            )
+                        finally:
+                            nested_editor.prepare_to_delete()
+                            nested_editor.close()
+                            nested_editor.deleteLater()
+                    qt_app.processEvents()
+
+
+def test_nuactis_v1_captures_every_rms_equipment_editor(
+        qt_app: QtWidgets.QApplication,
+        tmp_path: Path,
+) -> None:
+    """Capture one auditable GUI image for every Nuactis V1 RMS device.
+
+    Each image is taken from the real editor window after its complete scene is
+    fitted into view. Structural assertions run before capture so an image can
+    never be accepted merely because a blank window rendered successfully.
+
+    :param qt_app: Shared Qt application fixture.
+    :param tmp_path: Isolated persistent artifact directory selected by pytest.
+    :return: None.
+    """
+    grid: MultiCircuit = _load_nuactis_rms_grid(
+        fixture_name="hvdc_vsc_v1_complete_static_dynamic.dgs",
+    )
+    ideal_transformer_templates: List[RmsModelTemplate] = list(
+        rms_template for rms_template in grid.rms_models
+        if rms_template.tpe is DeviceType.Transformer2WDevice
+        and rms_template.name == "rms_ideal_trafo_template"
+    )
+    assert len(ideal_transformer_templates) == 1
+    transformer_device: DynamicDevice
+    for transformer_device in grid.get_transformers2w():
+        assert transformer_device.rms_template is ideal_transformer_templates[0]
+    else:
+        pass
+    equipment_collections: tuple[Sequence[DynamicDevice], ...] = (
+        grid.get_generators(),
+        grid.get_loads(),
+        grid.get_lines(),
+        grid.get_transformers2w(),
+        grid.get_vsc(),
+    )
+    capture_index: int = 0
+    equipment_collection: Sequence[DynamicDevice]
+    api_object: DynamicDevice
+    for equipment_collection in equipment_collections:
+        for api_object in equipment_collection:
+            assert isinstance(api_object.rms_model, Block), api_object.name
+            editor: DynamicBlockEditorGUI = _build_gui_editor(
+                qt_app=qt_app,
+                grid=grid,
+                api_object=api_object,
+                mode=DynamicSimulationMode.RMS,
+                root_block=api_object.rms_model,
+            )
+            try:
+                _assert_editor_dynamic_check_is_clean(editor=editor)
+                physical_items: List[graph.GenericBlockItem] = list(
+                    scene_item for scene_item in editor.scene.items()
+                    if isinstance(scene_item, graph.GenericBlockItem)
+                    and scene_item.visual_role
+                    is graph.DynamicBlockVisualRole.DEVICE_TEMPLATE
+                )
+                assert len(physical_items) == 1, api_object.name
+                assert all(
+                    input_port.connections is not None
+                    and len(input_port.connections) > 0
+                    for input_port in physical_items[0].inputs
+                ), api_object.name
+                measurement_items: List[graph.GenericBlockItem] = list(
+                    scene_item for scene_item in editor.scene.items()
+                    if isinstance(scene_item, graph.GenericBlockItem)
+                    and scene_item.visual_role
+                    is graph.DynamicBlockVisualRole.MEASUREMENT
+                )
+                if isinstance(api_object, Generator):
+                    assert len(measurement_items) == 1, api_object.name
+                    device_library: DynamicEditorLibrary = DynamicEditorLibrary(
+                        api_object=api_object,
+                        mode=DynamicSimulationMode.RMS,
+                        templates_list=list(),
+                    )
+                    measurement_parent: object | None = (
+                        device_library.tree_structure.get("Measurements", None)
+                    )
+                    assert isinstance(measurement_parent, dict)
+                    consolidated_measurements: object | None = (
+                        measurement_parent.get("RMS (balanced)", None)
+                    )
+                    assert isinstance(consolidated_measurements, list)
+                    assert len(consolidated_measurements) == 4
+                else:
+                    pass
+                assert len(editor.scene.items()) > 0, api_object.name
+
+                # Use a stable large viewport and fit the complete scene so the
+                # artifact shows all blocks and wires of this device at once.
+                editor.resize(1600, 1000)
+                editor.view.center_items()
+                qt_app.processEvents()
+                capture_index += 1
+                capture_path: Path = tmp_path / (
+                    f"{capture_index:02d}_{type(api_object).__name__}.png"
+                )
+                capture_pixmap: QtGui.QPixmap = editor.grab()
+                assert not capture_pixmap.isNull(), api_object.name
+                assert capture_pixmap.save(str(capture_path), "PNG"), capture_path
+                assert capture_path.stat().st_size > 0, capture_path
+                print(str(capture_path), api_object.name)
+            finally:
+                editor.prepare_to_delete()
+                editor.close()
+                editor.deleteLater()
+                qt_app.processEvents()
+    assert capture_index == sum(
+        len(equipment_collection)
+        for equipment_collection in equipment_collections
+    )
+
+
+def test_nuactis_v1_v2_save_reopen_preserves_models_and_visible_connections(
+        qt_app: QtWidgets.QApplication,
+        tmp_path: Path,
+) -> None:
+    """Persist both Nuactis revisions and reopen their complete RMS editors.
+
+    :param qt_app: Shared Qt application fixture.
+    :param tmp_path: Isolated path for both declarative VeraGrid archives.
+    :return: None.
+    """
+    fixture_names: tuple[str, ...] = (
+        "hvdc_vsc_v1_complete_static_dynamic.dgs",
+        "hvdc_vsc_v2_complete_static_dynamic.dgs",
+    )
+    fixture_name: str
+    for fixture_name in fixture_names:
+        original_grid: MultiCircuit = _load_nuactis_rms_grid(
+            fixture_name=fixture_name,
+        )
+        original_vsc_devices: List[VSC] = original_grid.get_vsc()
+        original_signatures: List[Dict[str, Any]] = list(
+            _collect_block_semantic_signature(vsc.rms_model)
+            for vsc in original_vsc_devices
+            if isinstance(vsc.rms_model, Block)
+        )
+        assert len(original_signatures) == len(original_vsc_devices)
+
+        saved_file_path: Path = tmp_path / (Path(fixture_name).stem + ".veragrid")
+        save_logger: Logger = FileSave(
+            circuit=original_grid,
+            file_name=str(saved_file_path),
+        ).save()
+        assert save_logger.error_count() == 0
+        assert save_logger.warning_count() == 0
+
+        reopened_file: FileOpen = FileOpen(file_name=str(saved_file_path))
+        reopened_grid: MultiCircuit | None = reopened_file.open()
+        assert reopened_grid is not None
+        assert reopened_file.logger.error_count() == 0, (
+            reopened_file.logger.to_df().to_string()
+        )
+        assert reopened_file.logger.warning_count() == 0, (
+            reopened_file.logger.to_df().to_string()
+        )
+        _assert_nuactis_grid_uses_canonical_public_data(grid=reopened_grid)
+        reopened_vsc_devices: List[VSC] = reopened_grid.get_vsc()
+        assert len(reopened_vsc_devices) == len(original_vsc_devices)
+
+        converter_index: int
+        for converter_index in range(len(reopened_vsc_devices)):
+            reopened_vsc: VSC = reopened_vsc_devices[converter_index]
+            assert isinstance(reopened_vsc.rms_model, Block)
+            assert _collect_block_semantic_signature(reopened_vsc.rms_model) == (
+                original_signatures[converter_index]
+            )
+            reopened_editor: DynamicBlockEditorGUI = _build_gui_editor(
+                qt_app=qt_app,
+                grid=reopened_grid,
+                api_object=reopened_vsc,
+                mode=DynamicSimulationMode.RMS,
+                root_block=reopened_vsc.rms_model,
+            )
+            try:
+                _assert_nuactis_vsc_projection(
+                    editor=reopened_editor,
+                    expected_protected_count=0,
+                )
+                _assert_editor_dynamic_check_is_clean(editor=reopened_editor)
+            finally:
+                reopened_editor.prepare_to_delete()
+                reopened_editor.close()
+                reopened_editor.deleteLater()
+                qt_app.processEvents()
+
+        original_results: RmsResults
+        original_problem: RmsProblemDae
+        reopened_results: RmsResults
+        reopened_problem: RmsProblemDae
+        original_results, original_problem = _run_rms_driver(original_grid)
+        reopened_results, reopened_problem = _run_rms_driver(reopened_grid)
+        assert original_problem.get_states_number() == reopened_problem.get_states_number()
+        assert original_problem.get_algebraic_var_number() == (
+            reopened_problem.get_algebraic_var_number()
+        )
+        assert list(original_results.variable_array) == list(
+            reopened_results.variable_array
+        )
+        assert np.array_equal(
+            original_results.well_initialized,
+            reopened_results.well_initialized,
+        )
+        assert np.array_equal(original_results.converged, reopened_results.converged)
+        assert np.allclose(
+            original_results.values,
+            reopened_results.values,
+            rtol=1e-8,
+            atol=1e-8,
+        )
+
+
 def test_nuactis_v2_imported_meter_rebuilds_to_native_branch_terminal(
         qt_app: QtWidgets.QApplication,
 ) -> None:
@@ -2051,7 +3272,7 @@ def test_nuactis_v2_imported_meter_rebuilds_to_native_branch_terminal(
         )
         qt_app.processEvents()
         assert vsc.bus_from is not None
-        assert measurement_dialogue.ui.measurement_target_combo.currentText() == (
+        assert measurement_dialogue.ui.measurement_target_value.text() == (
             vsc.name
             + " — FROM terminal → "
             + vsc.bus_from.name
@@ -2066,14 +3287,14 @@ def test_nuactis_v2_imported_meter_rebuilds_to_native_branch_terminal(
         assert rebuilt_point.get_meter_kind() is RmsPhysicalMeterKind.POWER
         assert rebuilt_point.get_target_fid() == vsc.idtag
         assert rebuilt_point.get_terminal_side() is RmsTerminalSide.FROM
-        assert voltage_meter_block.name == "VeraGrid Power meter 258"
-        assert len(voltage_meter_block.out_vars) == 6
+        assert voltage_meter_block.name == "Power meter 258"
+        assert len(voltage_meter_block.out_vars) == 2
         assert all(
             output_var.name.isidentifier()
             for output_var in voltage_meter_block.out_vars
         )
-        assert len(voltage_meter_block.algebraic_eqs) == 6
-        assert len(voltage_meter_block.init_eqs) == 6
+        assert len(voltage_meter_block.algebraic_eqs) == 2
+        assert len(voltage_meter_block.init_eqs) == 2
         validate_dynamic_model_contract(block=voltage_meter_block)
     finally:
         editor.prepare_to_delete()
@@ -2100,6 +3321,7 @@ def test_nuactis_v2_gui_editor_matches_scripting_pf_and_rms(
     gui_vsc_devices: List[VSC] = gui_grid.get_vsc()
     assert len(script_vsc_devices) == 2
     assert len(gui_vsc_devices) == len(script_vsc_devices)
+    _assert_nuactis_grid_uses_canonical_public_data(grid=script_grid)
 
     open_editors: List[DynamicBlockEditorGUI] = list()
     converter_index: int
@@ -2131,6 +3353,7 @@ def test_nuactis_v2_gui_editor_matches_scripting_pf_and_rms(
                 editor=editor,
                 expected_protected_count=expected_protected_count,
             )
+            _assert_editor_dynamic_check_is_clean(editor=editor)
             measurement_block_for_options: Block | None = None
             scene_item: QtWidgets.QGraphicsItem
             for scene_item in editor.scene.items():
@@ -2149,6 +3372,26 @@ def test_nuactis_v2_gui_editor_matches_scripting_pf_and_rms(
                 )
             )
             option_pairs: set[tuple[RmsPhysicalMeterKind, RmsTerminalSide]] = set()
+            valid_bus_fids: set[str] = set(
+                bus.idtag for bus in gui_grid.buses
+            )
+            valid_branch_fids: set[str] = set()
+            valid_physical_fids: set[str] = set()
+            physical_device: DynamicDevice
+            for physical_device in gui_grid.get_branches(
+                    add_vsc=True,
+                    add_hvdc=True,
+                    add_switch=True,
+            ):
+                valid_branch_fids.add(physical_device.idtag)
+                valid_physical_fids.add(physical_device.idtag)
+            else:
+                pass
+            for physical_device in gui_grid.get_injection_devices_iter():
+                valid_physical_fids.add(physical_device.idtag)
+            else:
+                pass
+            remote_branch_option_found: bool = False
             measurement_edit_option: RmsMeasurementEditOption
             for measurement_edit_option in measurement_edit_options:
                 option_kind: RmsPhysicalMeterKind = (
@@ -2167,28 +3410,30 @@ def test_nuactis_v2_gui_editor_matches_scripting_pf_and_rms(
                         RmsPhysicalMeterKind.VOLTAGE,
                         RmsPhysicalMeterKind.PHASE_LOCKED_LOOP,
                 ):
-                    if option_side is RmsTerminalSide.FROM:
-                        measured_bus: Bus | None = gui_vsc.bus_from
-                    else:
-                        measured_bus = gui_vsc.bus_to
-                    assert measured_bus is not None
-                    assert (
-                        measurement_edit_option.get_target_fid()
-                        == measured_bus.idtag
-                    )
+                    assert option_side is RmsTerminalSide.BUS
+                    assert measurement_edit_option.get_target_fid() in valid_bus_fids
                 else:
-                    assert (
+                    physical_target_fid: str = (
                         measurement_edit_option.get_target_fid()
-                        == gui_vsc.idtag
                     )
+                    assert physical_target_fid in valid_physical_fids
+                    if (
+                            physical_target_fid in valid_branch_fids
+                            and physical_target_fid != gui_vsc.idtag
+                    ):
+                        remote_branch_option_found = True
+                    else:
+                        pass
+            assert remote_branch_option_found
             assert option_pairs == set((
-                (RmsPhysicalMeterKind.VOLTAGE, RmsTerminalSide.FROM),
                 (RmsPhysicalMeterKind.CURRENT, RmsTerminalSide.FROM),
                 (RmsPhysicalMeterKind.POWER, RmsTerminalSide.FROM),
-                (RmsPhysicalMeterKind.VOLTAGE, RmsTerminalSide.TO),
                 (RmsPhysicalMeterKind.CURRENT, RmsTerminalSide.TO),
                 (RmsPhysicalMeterKind.POWER, RmsTerminalSide.TO),
-                (RmsPhysicalMeterKind.PHASE_LOCKED_LOOP, RmsTerminalSide.TO),
+                (RmsPhysicalMeterKind.CURRENT, RmsTerminalSide.BUS),
+                (RmsPhysicalMeterKind.POWER, RmsTerminalSide.BUS),
+                (RmsPhysicalMeterKind.VOLTAGE, RmsTerminalSide.BUS),
+                (RmsPhysicalMeterKind.PHASE_LOCKED_LOOP, RmsTerminalSide.BUS),
             ))
             editor.apply_changes()
             qt_app.processEvents()
@@ -2326,8 +3571,8 @@ def test_nuactis_v2_gui_editor_matches_scripting_pf_and_rms(
         (
             "VmSlave_AC",
             "VdcSlave_DC",
-            "P_act_VeraGrid Power meter 229HVDC Slave_PWM",
-            "Q_act_VeraGrid Power meter 229HVDC Slave_PWM",
+            "P_act_Power meter 229HVDC Slave_PWM",
+            "Q_act_Power meter 229HVDC Slave_PWM",
             "id_refHVDC Slave_PWM",
             "idHVDC Slave_PWM",
             "iqHVDC Slave_PWM",
@@ -2524,10 +3769,11 @@ def test_rms_editor_open_materializes_connection_vars(qt_app: QtWidgets.QApplica
     try:
         for editor, expected_refs in expected_refs_by_editor:
             visible_refs: set[VarPowerFlowReferenceType] = set()
-            visible_positions: set[tuple[float, float]] = set()
+            visible_ref_port_count: int = 0
             scene_item: Any
             block_type: BlockType
             semantic_reference: VarPowerFlowReferenceType | None
+            port_item: graph.PortItem
             for scene_item in editor.scene.items():
                 if isinstance(scene_item, graph.ProtectedConnectionBlockItem):
                     if scene_item.subsys is None:
@@ -2543,14 +3789,35 @@ def test_rms_editor_open_materializes_connection_vars(qt_app: QtWidgets.QApplica
                         )
                         if semantic_reference is not None:
                             visible_refs.add(semantic_reference)
-                            visible_positions.add((scene_item.pos().x(), scene_item.pos().y()))
+                            visible_ref_port_count += 1
+                        else:
+                            pass
+                elif isinstance(scene_item, graph.GenericBlockItem):
+                    # A physical projection can absorb the root ovals while
+                    # retaining their typed variables as editable ports.
+                    for port_item in scene_item.inputs:
+                        if isinstance(
+                                port_item.base_var.ref,
+                                VarPowerFlowReferenceType,
+                        ):
+                            visible_refs.add(port_item.base_var.ref)
+                            visible_ref_port_count += 1
+                        else:
+                            pass
+                    for port_item in scene_item.outputs:
+                        if isinstance(
+                                port_item.base_var.ref,
+                                VarPowerFlowReferenceType,
+                        ):
+                            visible_refs.add(port_item.base_var.ref)
+                            visible_ref_port_count += 1
                         else:
                             pass
                 else:
                     pass
 
             assert visible_refs == expected_refs
-            assert len(visible_positions) == len(expected_refs)
+            assert visible_ref_port_count >= len(expected_refs)
     finally:
         for editor, _expected_refs in expected_refs_by_editor:
             editor.prepare_to_delete()
@@ -2585,6 +3852,7 @@ def test_rms_editor_reopen_preserves_persisted_connection_arrows(
     devices: List[Generator | Line | Load] = list([generator, line, load])
     initial_editors: List[DynamicBlockEditorGUI] = list()
     expected_connection_counts: Dict[int, int] = dict()
+    expected_scene_connection_counts: Dict[int, int] = dict()
     device: Generator | Line | Load
     editor: DynamicBlockEditorGUI
 
@@ -2599,6 +3867,10 @@ def test_rms_editor_reopen_preserves_persisted_connection_arrows(
         )
         initial_editors.append(editor)
         expected_connection_counts[device.rms_model.uid] = len(device.rms_model.diagram.con_data)
+        expected_scene_connection_counts[device.rms_model.uid] = len(list(
+            scene_item for scene_item in editor.scene.items()
+            if isinstance(scene_item, graph.ConnectionItem)
+        ))
 
     for editor in initial_editors:
         editor.prepare_to_delete()
@@ -2633,7 +3905,12 @@ def test_rms_editor_reopen_preserves_persisted_connection_arrows(
             assert expected_connection_count is not None
             assert expected_connection_count > 0
             assert len(editor.diagram.con_data) == expected_connection_count
-            assert scene_connection_count == expected_connection_count
+            expected_scene_connection_count: int | None = (
+                expected_scene_connection_counts.get(device.rms_model.uid, None)
+            )
+            assert expected_scene_connection_count is not None
+            assert expected_scene_connection_count > 0
+            assert scene_connection_count == expected_scene_connection_count
     finally:
         for editor in reopened_editors:
             editor.prepare_to_delete()

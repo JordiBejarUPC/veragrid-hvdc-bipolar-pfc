@@ -396,67 +396,65 @@ class DynamicEditorLibrary:
         self.tree_structure["Physical devices/templates"] = physical_entries
         self.tree_structure["Controls/components"] = control_entries
         measurement_entries: List[LibraryLeafSpec] = list()
-        if mode is DynamicSimulationMode.RMS:
-            measurement_terminal_sides: tuple[RmsTerminalSide, ...]
+        if mode in (DynamicSimulationMode.RMS, DynamicSimulationMode.EMT):
             if isinstance(self.api_object, BranchParent):
-                measurement_terminal_sides = (
-                    RmsTerminalSide.FROM,
-                    RmsTerminalSide.TO,
-                )
+                if (
+                        self.api_object.bus_from is not None
+                        and not self.api_object.bus_from.is_dc
+                ):
+                    default_terminal_side: RmsTerminalSide = RmsTerminalSide.FROM
+                elif (
+                        self.api_object.bus_to is not None
+                        and not self.api_object.bus_to.is_dc
+                ):
+                    default_terminal_side = RmsTerminalSide.TO
+                else:
+                    default_terminal_side = RmsTerminalSide.FROM
             else:
-                measurement_terminal_sides = (RmsTerminalSide.BUS,)
+                default_terminal_side = RmsTerminalSide.BUS
             meter_kind: RmsPhysicalMeterKind
-            terminal_side: RmsTerminalSide
-            for terminal_side in measurement_terminal_sides:
-                for meter_kind in RmsPhysicalMeterKind:
-                    terminal_is_dc: bool = False
-                    if isinstance(self.api_object, BranchParent):
-                        if terminal_side is RmsTerminalSide.FROM:
-                            terminal_is_dc = (
-                                self.api_object.bus_from is not None
-                                and self.api_object.bus_from.is_dc
-                            )
-                        elif terminal_side is RmsTerminalSide.TO:
-                            terminal_is_dc = (
-                                self.api_object.bus_to is not None
-                                and self.api_object.bus_to.is_dc
-                            )
-                        else:
-                            pass
+            for meter_kind in RmsPhysicalMeterKind:
+                meter_supported: bool = (
+                    mode is DynamicSimulationMode.RMS
+                    or meter_kind in (
+                        RmsPhysicalMeterKind.VOLTAGE,
+                        RmsPhysicalMeterKind.CURRENT,
+                        RmsPhysicalMeterKind.POWER,
+                    )
+                )
+                if not meter_supported:
+                    pass
+                else:
+                    quantity_label: str
+                    if meter_kind is RmsPhysicalMeterKind.PHASE_LOCKED_LOOP:
+                        quantity_label = "Phase"
                     else:
-                        pass
-                    if (
-                            meter_kind is RmsPhysicalMeterKind.PHASE_LOCKED_LOOP
-                            and terminal_is_dc
-                    ):
-                        pass
-                    else:
-                        quantity_label: str
-                        if meter_kind is RmsPhysicalMeterKind.PHASE_LOCKED_LOOP:
-                            quantity_label = "Phase"
-                        else:
-                            quantity_label = meter_kind.value.title()
-                        if terminal_side is RmsTerminalSide.BUS:
-                            terminal_label: str = ""
-                        else:
-                            terminal_label = f" ({terminal_side.value} bus)"
-                        measurement_entries.append(
-                            LibraryLeafSpec(
-                                label=f"{quantity_label} meter{terminal_label}",
-                                payload=MeasurementBlockDescriptor(
-                                    mode=mode,
-                                    meter_kind=meter_kind,
-                                    terminal_side=terminal_side,
-                                ),
-                                search_text=(
-                                    "measurements meter voltage current power phase pll "
-                                    + terminal_side.value
-                                ),
+                        quantity_label = meter_kind.value.title()
+                    measurement_entries.append(
+                        LibraryLeafSpec(
+                            label=f"{quantity_label} meter",
+                            payload=MeasurementBlockDescriptor(
+                                mode=mode,
+                                meter_kind=meter_kind,
+                                terminal_side=default_terminal_side,
                             ),
-                        )
+                            search_text=(
+                                "measurements meter voltage current power phase pll "
+                                + default_terminal_side.value
+                            ),
+                        ),
+                    )
         else:
             pass
-        self.tree_structure["Measurements"] = measurement_entries
+        if mode is DynamicSimulationMode.RMS:
+            measurement_branch_label: str = "RMS (balanced)"
+        elif mode is DynamicSimulationMode.EMT:
+            measurement_branch_label = "EMT"
+        else:
+            measurement_branch_label = "Other"
+        self.tree_structure["Measurements"] = dict((
+            (measurement_branch_label, measurement_entries),
+        ))
         self.tree_structure["Tools"] = list((LibraryLeafSpec("Signal Pair", BlockType.FROM_GOTO),))
 
         # build and add library model

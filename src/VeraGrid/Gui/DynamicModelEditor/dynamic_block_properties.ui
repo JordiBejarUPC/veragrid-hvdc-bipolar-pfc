@@ -52,7 +52,7 @@
           <item row="0" column="1">
            <widget class="QLabel" name="measurement_family_value">
             <property name="text">
-             <string>VeraGrid native physical RMS measurement</string>
+           <string>Balanced RMS physical measurement</string>
             </property>
            </widget>
           </item>
@@ -74,13 +74,42 @@
            </widget>
           </item>
           <item row="2" column="1">
-           <widget class="QComboBox" name="measurement_target_combo">
-            <property name="sizeAdjustPolicy">
-             <enum>QComboBox::SizeAdjustPolicy::AdjustToMinimumContentsLengthWithIcon</enum>
-            </property>
-            <property name="minimumContentsLength">
-             <number>36</number>
-            </property>
+           <widget class="QWidget" name="measurement_target_widget" native="true">
+            <layout class="QHBoxLayout" name="measurement_target_layout">
+             <property name="leftMargin">
+              <number>0</number>
+             </property>
+             <property name="topMargin">
+              <number>0</number>
+             </property>
+             <property name="rightMargin">
+              <number>0</number>
+             </property>
+             <property name="bottomMargin">
+              <number>0</number>
+             </property>
+             <item>
+              <widget class="QLineEdit" name="measurement_target_value">
+               <property name="readOnly">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QPushButton" name="measurement_target_button">
+               <property name="text">
+                <string>Choose...</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QPushButton" name="measurement_target_release_button">
+               <property name="text">
+                <string>Release</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
            </widget>
           </item>
           <item row="3" column="0">
@@ -92,57 +121,6 @@
           </item>
           <item row="3" column="1">
            <widget class="QLabel" name="measurement_terminal_value">
-            <property name="text">
-             <string/>
-            </property>
-           </widget>
-          </item>
-          <item row="4" column="0">
-           <widget class="QLabel" name="measurement_signals_caption">
-            <property name="text">
-             <string>Output signals</string>
-            </property>
-           </widget>
-          </item>
-          <item row="4" column="1">
-           <widget class="QLabel" name="measurement_signals_value">
-            <property name="text">
-             <string/>
-            </property>
-            <property name="textInteractionFlags">
-             <set>Qt::TextInteractionFlag::TextSelectableByMouse</set>
-            </property>
-            <property name="wordWrap">
-             <bool>true</bool>
-            </property>
-           </widget>
-          </item>
-          <item row="5" column="0">
-           <widget class="QLabel" name="measurement_identity_caption">
-            <property name="text">
-             <string>Measurement identity</string>
-            </property>
-           </widget>
-          </item>
-          <item row="5" column="1">
-           <widget class="QLabel" name="measurement_identity_value">
-            <property name="text">
-             <string/>
-            </property>
-            <property name="textInteractionFlags">
-             <set>Qt::TextInteractionFlag::TextSelectableByMouse</set>
-            </property>
-           </widget>
-          </item>
-          <item row="6" column="0">
-           <widget class="QLabel" name="measurement_equations_caption">
-            <property name="text">
-             <string>Canonical equations</string>
-            </property>
-           </widget>
-          </item>
-          <item row="6" column="1">
-           <widget class="QLabel" name="measurement_equations_value">
             <property name="text">
              <string/>
             </property>

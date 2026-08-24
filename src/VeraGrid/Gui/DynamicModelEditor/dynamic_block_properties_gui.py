@@ -16,7 +16,7 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
     QImage, QKeySequence, QLinearGradient, QPainter,
     QPalette, QPixmap, QRadialGradient, QTransform)
 from PySide6.QtWidgets import (QApplication, QComboBox, QDialog, QFormLayout,
-    QGroupBox, QHBoxLayout, QLabel, QPushButton,
+    QGroupBox, QHBoxLayout, QLabel, QLineEdit, QPushButton,
     QSizePolicy, QSpacerItem, QTabWidget, QVBoxLayout,
     QWidget)
 from VeraGrid.Gui.Icons import icons_rc
@@ -64,12 +64,28 @@ class Ui_DynamicBlockPropertiesDialog(object):
 
         self.measurement_configuration_layout.setWidget(2, QFormLayout.ItemRole.LabelRole, self.measurement_target_caption)
 
-        self.measurement_target_combo = QComboBox(self.measurement_configuration_group)
-        self.measurement_target_combo.setObjectName(u"measurement_target_combo")
-        self.measurement_target_combo.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
-        self.measurement_target_combo.setMinimumContentsLength(36)
+        self.measurement_target_widget = QWidget(self.measurement_configuration_group)
+        self.measurement_target_widget.setObjectName(u"measurement_target_widget")
+        self.measurement_target_layout = QHBoxLayout(self.measurement_target_widget)
+        self.measurement_target_layout.setObjectName(u"measurement_target_layout")
+        self.measurement_target_layout.setContentsMargins(0, 0, 0, 0)
+        self.measurement_target_value = QLineEdit(self.measurement_target_widget)
+        self.measurement_target_value.setObjectName(u"measurement_target_value")
+        self.measurement_target_value.setReadOnly(True)
 
-        self.measurement_configuration_layout.setWidget(2, QFormLayout.ItemRole.FieldRole, self.measurement_target_combo)
+        self.measurement_target_layout.addWidget(self.measurement_target_value)
+
+        self.measurement_target_button = QPushButton(self.measurement_target_widget)
+        self.measurement_target_button.setObjectName(u"measurement_target_button")
+
+        self.measurement_target_layout.addWidget(self.measurement_target_button)
+
+        self.measurement_target_release_button = QPushButton(self.measurement_target_widget)
+        self.measurement_target_release_button.setObjectName(u"measurement_target_release_button")
+
+        self.measurement_target_layout.addWidget(self.measurement_target_release_button)
+
+        self.measurement_configuration_layout.setWidget(2, QFormLayout.ItemRole.FieldRole, self.measurement_target_widget)
 
         self.measurement_terminal_caption = QLabel(self.measurement_configuration_group)
         self.measurement_terminal_caption.setObjectName(u"measurement_terminal_caption")
@@ -80,40 +96,6 @@ class Ui_DynamicBlockPropertiesDialog(object):
         self.measurement_terminal_value.setObjectName(u"measurement_terminal_value")
 
         self.measurement_configuration_layout.setWidget(3, QFormLayout.ItemRole.FieldRole, self.measurement_terminal_value)
-
-        self.measurement_signals_caption = QLabel(self.measurement_configuration_group)
-        self.measurement_signals_caption.setObjectName(u"measurement_signals_caption")
-
-        self.measurement_configuration_layout.setWidget(4, QFormLayout.ItemRole.LabelRole, self.measurement_signals_caption)
-
-        self.measurement_signals_value = QLabel(self.measurement_configuration_group)
-        self.measurement_signals_value.setObjectName(u"measurement_signals_value")
-        self.measurement_signals_value.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
-        self.measurement_signals_value.setWordWrap(True)
-
-        self.measurement_configuration_layout.setWidget(4, QFormLayout.ItemRole.FieldRole, self.measurement_signals_value)
-
-        self.measurement_identity_caption = QLabel(self.measurement_configuration_group)
-        self.measurement_identity_caption.setObjectName(u"measurement_identity_caption")
-
-        self.measurement_configuration_layout.setWidget(5, QFormLayout.ItemRole.LabelRole, self.measurement_identity_caption)
-
-        self.measurement_identity_value = QLabel(self.measurement_configuration_group)
-        self.measurement_identity_value.setObjectName(u"measurement_identity_value")
-        self.measurement_identity_value.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
-
-        self.measurement_configuration_layout.setWidget(5, QFormLayout.ItemRole.FieldRole, self.measurement_identity_value)
-
-        self.measurement_equations_caption = QLabel(self.measurement_configuration_group)
-        self.measurement_equations_caption.setObjectName(u"measurement_equations_caption")
-
-        self.measurement_configuration_layout.setWidget(6, QFormLayout.ItemRole.LabelRole, self.measurement_equations_caption)
-
-        self.measurement_equations_value = QLabel(self.measurement_configuration_group)
-        self.measurement_equations_value.setObjectName(u"measurement_equations_value")
-
-        self.measurement_configuration_layout.setWidget(6, QFormLayout.ItemRole.FieldRole, self.measurement_equations_value)
-
 
         self.general_page_layout.addWidget(self.measurement_configuration_group)
 
@@ -158,17 +140,13 @@ class Ui_DynamicBlockPropertiesDialog(object):
         DynamicBlockPropertiesDialog.setWindowTitle(QCoreApplication.translate("DynamicBlockPropertiesDialog", u"Block properties", None))
         self.measurement_configuration_group.setTitle(QCoreApplication.translate("DynamicBlockPropertiesDialog", u"Measurement configuration", None))
         self.measurement_family_caption.setText(QCoreApplication.translate("DynamicBlockPropertiesDialog", u"Model family", None))
-        self.measurement_family_value.setText(QCoreApplication.translate("DynamicBlockPropertiesDialog", u"VeraGrid native physical RMS measurement", None))
+        self.measurement_family_value.setText(QCoreApplication.translate("DynamicBlockPropertiesDialog", u"Balanced RMS physical measurement", None))
         self.measurement_mode_caption.setText(QCoreApplication.translate("DynamicBlockPropertiesDialog", u"Measurement mode", None))
         self.measurement_target_caption.setText(QCoreApplication.translate("DynamicBlockPropertiesDialog", u"Physical element / bus", None))
+        self.measurement_target_button.setText(QCoreApplication.translate("DynamicBlockPropertiesDialog", u"Choose...", None))
+        self.measurement_target_release_button.setText(QCoreApplication.translate("DynamicBlockPropertiesDialog", u"Release", None))
         self.measurement_terminal_caption.setText(QCoreApplication.translate("DynamicBlockPropertiesDialog", u"Measured terminal", None))
         self.measurement_terminal_value.setText("")
-        self.measurement_signals_caption.setText(QCoreApplication.translate("DynamicBlockPropertiesDialog", u"Output signals", None))
-        self.measurement_signals_value.setText("")
-        self.measurement_identity_caption.setText(QCoreApplication.translate("DynamicBlockPropertiesDialog", u"Measurement identity", None))
-        self.measurement_identity_value.setText("")
-        self.measurement_equations_caption.setText(QCoreApplication.translate("DynamicBlockPropertiesDialog", u"Canonical equations", None))
-        self.measurement_equations_value.setText("")
         self.tab_widget.setTabText(self.tab_widget.indexOf(self.general_page), QCoreApplication.translate("DynamicBlockPropertiesDialog", u"General options", None))
         self.status_label.setText("")
         self.apply_button.setText(QCoreApplication.translate("DynamicBlockPropertiesDialog", u"Apply changes", None))

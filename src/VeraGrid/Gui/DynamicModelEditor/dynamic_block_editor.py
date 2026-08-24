@@ -37,11 +37,17 @@ from VeraGridEngine.Templates.Rms.rms_meter_templates import (
     build_rms_power_meter_outputs_from_pq,
     build_rms_voltage_meter_outputs_from_dc,
     build_rms_voltage_meter_outputs_from_polar,
+    build_signal_meter_block,
     normalize_rms_meter_symbol_fragment,
+    select_basic_balanced_rms_meter_outputs,
 )
 
 import VeraGridEngine.Templates.BasicBlockCatalog as BasicBlockTemplates
-from VeraGridEngine.Devices.types import ALL_DEV_TYPES
+from VeraGridEngine.Devices.types import (
+    ALL_DEV_TYPES,
+    BRANCH_TYPES,
+    INJECTION_DEVICE_TYPES,
+)
 from VeraGridEngine.Utils.Symbolic.block import (Block,
                                                  RmsPhysicalMeasurementPoint,
                                                  find_connections,
@@ -421,6 +427,96 @@ def build_native_rms_measurement_expressions(
     return result
 
 
+def build_native_emt_measurement_expressions(
+        external_mapping: Mapping[VarPowerFlowReferenceType, Var | None],
+        meter_kind: RmsPhysicalMeterKind,
+        terminal_side: RmsTerminalSide,
+) -> Dict[str, Expr] | None:
+    """Build a basic EMT meter from the canonical physical boundary.
+
+    EMT meters expose instantaneous phase quantities. The same typed
+    measurement descriptor hierarchy used by RMS selects voltage, current, or
+    power, while this domain-specific builder chooses the EMT network
+    references for the requested terminal.
+
+    :param external_mapping: Canonical physical variables indexed by typed reference.
+    :param meter_kind: Voltage, current, or power measurement family.
+    :param terminal_side: Bus, from-terminal, or to-terminal selection.
+    :return: Available phase-signal expressions, or ``None`` when unsupported.
+    """
+    if meter_kind is RmsPhysicalMeterKind.VOLTAGE:
+        if terminal_side is RmsTerminalSide.FROM:
+            signal_references: tuple[tuple[str, VarPowerFlowReferenceType], ...] = (
+                ("v_N", VarPowerFlowReferenceType.vf_N),
+                ("v_A", VarPowerFlowReferenceType.vf_A),
+                ("v_B", VarPowerFlowReferenceType.vf_B),
+                ("v_C", VarPowerFlowReferenceType.vf_C),
+            )
+        elif terminal_side is RmsTerminalSide.TO:
+            signal_references = (
+                ("v_N", VarPowerFlowReferenceType.vt_N),
+                ("v_A", VarPowerFlowReferenceType.vt_A),
+                ("v_B", VarPowerFlowReferenceType.vt_B),
+                ("v_C", VarPowerFlowReferenceType.vt_C),
+            )
+        else:
+            signal_references = (
+                ("v_N", VarPowerFlowReferenceType.v_N),
+                ("v_A", VarPowerFlowReferenceType.v_A),
+                ("v_B", VarPowerFlowReferenceType.v_B),
+                ("v_C", VarPowerFlowReferenceType.v_C),
+            )
+    elif meter_kind is RmsPhysicalMeterKind.CURRENT:
+        if terminal_side is RmsTerminalSide.FROM:
+            signal_references = (
+                ("i_N", VarPowerFlowReferenceType.if_N),
+                ("i_A", VarPowerFlowReferenceType.if_A),
+                ("i_B", VarPowerFlowReferenceType.if_B),
+                ("i_C", VarPowerFlowReferenceType.if_C),
+            )
+        elif terminal_side is RmsTerminalSide.TO:
+            signal_references = (
+                ("i_N", VarPowerFlowReferenceType.it_N),
+                ("i_A", VarPowerFlowReferenceType.it_A),
+                ("i_B", VarPowerFlowReferenceType.it_B),
+                ("i_C", VarPowerFlowReferenceType.it_C),
+            )
+        else:
+            signal_references = (
+                ("i_N", VarPowerFlowReferenceType.i_N),
+                ("i_A", VarPowerFlowReferenceType.i_A),
+                ("i_B", VarPowerFlowReferenceType.i_B),
+                ("i_C", VarPowerFlowReferenceType.i_C),
+            )
+    elif meter_kind is RmsPhysicalMeterKind.POWER:
+        signal_references = (
+            ("P_N", VarPowerFlowReferenceType.P_N),
+            ("P_A", VarPowerFlowReferenceType.P_A),
+            ("P_B", VarPowerFlowReferenceType.P_B),
+            ("P_C", VarPowerFlowReferenceType.P_C),
+            ("Q_N", VarPowerFlowReferenceType.Q_N),
+            ("Q_A", VarPowerFlowReferenceType.Q_A),
+            ("Q_B", VarPowerFlowReferenceType.Q_B),
+            ("Q_C", VarPowerFlowReferenceType.Q_C),
+        )
+    else:
+        signal_references = tuple()
+
+    result: Dict[str, Expr] = dict()
+    signal_name: str
+    signal_reference: VarPowerFlowReferenceType
+    for signal_name, signal_reference in signal_references:
+        signal_var: Var | None = external_mapping.get(signal_reference, None)
+        if signal_var is not None:
+            result[signal_name] = signal_var
+        else:
+            pass
+    if len(result) > 0:
+        return result
+    else:
+        return None
+
+
 def resolve_rms_measurement_target_name(
         block: Block,
         circuit: MultiCircuit,
@@ -606,16 +702,16 @@ def find_physical_root_control_container(root_block: Block) -> Block | None:
 def find_direct_physical_template_block(root_block: Block) -> Block | None:
     """Find one equation-owning device block behind a template boundary.
 
-    Native and user-authored templates commonly keep network ports on a
-    boundary root and place the complete physical equations in one child. This
-    source-independent form must open as a physical device with local
-    measurements just like a structured imported physical root.
+    A compact physical model may own its equations directly on the assigned
+    root, while native composite templates commonly keep network ports on a
+    boundary root and place the equations in one child. Both source-independent
+    forms must open as physical devices with local measurements.
 
     :param root_block: Assigned canonical dynamic model root.
     :return: Unique physical equation block, or ``None`` for another shape.
     """
     if block_has_internal_equation_content(block=root_block):
-        return None
+        return root_block
     else:
         pass
 
@@ -2412,9 +2508,16 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             self._restore_missing_decomposed_layout_connections()
         else:
             pass
-        if self.main_block.children:
+        if len(initial_non_interface_children) > 0:
             self._rebuild_missing_non_interface_connections(
                 rebuild_interface_connections=bootstrap_missing_non_interface_graphics,
+            )
+        elif not self.is_root_editor:
+            # A navigated equation leaf is rendered beside transient wrappers
+            # for its own public inputs/outputs. Reconnect those wrappers by
+            # exact variable identity on every fresh leaf projection.
+            self._rebuild_missing_non_interface_connections(
+                rebuild_interface_connections=True,
             )
         else:
             pass
@@ -6570,76 +6673,164 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             pass
 
-        if isinstance(self.api_object, BranchParent):
-            terminal_sides: tuple[RmsTerminalSide, ...] = (
-                RmsTerminalSide.FROM,
-                RmsTerminalSide.TO,
-            )
-        elif isinstance(self.api_object, InjectionParent):
-            terminal_sides = (RmsTerminalSide.BUS,)
-        else:
-            terminal_sides = (RmsTerminalSide.BUS,)
-
-        terminal_side: RmsTerminalSide
-        meter_kind: RmsPhysicalMeterKind
-        for terminal_side in terminal_sides:
-            measured_bus: Bus | None
-            if isinstance(self.api_object, BranchParent):
-                if terminal_side is RmsTerminalSide.FROM:
-                    measured_bus = self.api_object.bus_from
-                else:
-                    measured_bus = self.api_object.bus_to
-            elif isinstance(self.api_object, InjectionParent):
-                measured_bus = self.api_object.bus
-            else:
-                measured_bus = None
-            for meter_kind in RmsPhysicalMeterKind:
-                signal_expressions: Dict[str, Expr] | None = (
+        # Voltage and phase meters can observe any bus in the circuit. The
+        # properties editor receives these rows through a filtered model, so
+        # option count does not translate into a giant drop-down widget.
+        measured_bus: Bus
+        bus_meter_kind: RmsPhysicalMeterKind
+        for measured_bus in self.circuit.buses:
+            for bus_meter_kind in (
+                    RmsPhysicalMeterKind.VOLTAGE,
+                    RmsPhysicalMeterKind.PHASE_LOCKED_LOOP,
+            ):
+                bus_signal_expressions: Dict[str, Expr] | None = (
                     build_native_rms_measurement_expressions(
-                        external_mapping=self.main_block.external_mapping,
-                        meter_kind=meter_kind,
-                        terminal_side=terminal_side,
+                        external_mapping=measured_bus.rms_model.external_mapping,
+                        meter_kind=bus_meter_kind,
+                        terminal_side=RmsTerminalSide.BUS,
                         nominal_frequency_hz=self.circuit.fBase,
                     )
                 )
-                if signal_expressions is None:
-                    pass
-                else:
-                    target_fid: str = self.get_measurement_target_fid(
-                        meter_kind=meter_kind,
-                        source_terminal_side=terminal_side,
+                if bus_signal_expressions is not None:
+                    result.append(
+                        RmsMeasurementEditOption(
+                            meter_kind=bus_meter_kind,
+                            source_terminal_side=RmsTerminalSide.BUS,
+                            target_fid=measured_bus.idtag,
+                            target_label=(
+                                measured_bus.name
+                                + " (Bus) ["
+                                + measured_bus.idtag
+                                + "]"
+                            ),
+                        )
                     )
-                    if measured_bus is None:
-                        measured_bus_name: str = self.tr("Unresolved bus")
+                else:
+                    pass
+
+        # Current and power meters may observe any physical device that exposes
+        # the requested terminal quantities. The editor owner is only the model
+        # containing the meter; it does not constrain the electrical target.
+        preferred_option_count: int = 0
+        measurement_branch: BRANCH_TYPES
+        terminal_side: RmsTerminalSide
+        meter_kind: RmsPhysicalMeterKind
+        for measurement_branch in self.circuit.get_branches(
+                add_vsc=True,
+                add_hvdc=True,
+                add_switch=True,
+        ):
+            if isinstance(measurement_branch, BranchParent):
+                branch_terminal_sides: tuple[RmsTerminalSide, ...] = (
+                    RmsTerminalSide.FROM,
+                    RmsTerminalSide.TO,
+                )
+            else:
+                branch_terminal_sides = tuple()
+            for terminal_side in branch_terminal_sides:
+                if terminal_side is RmsTerminalSide.FROM:
+                    measured_bus: Bus | None = measurement_branch.bus_from
+                else:
+                    measured_bus = measurement_branch.bus_to
+                for meter_kind in (
+                        RmsPhysicalMeterKind.CURRENT,
+                        RmsPhysicalMeterKind.POWER,
+                ):
+                    if measurement_branch is self.api_object:
+                        branch_external_mapping: Mapping[
+                            VarPowerFlowReferenceType,
+                            Var | None,
+                        ] = self.main_block.external_mapping
                     else:
-                        measured_bus_name = measured_bus.name
-                    if meter_kind in (
-                            RmsPhysicalMeterKind.VOLTAGE,
-                            RmsPhysicalMeterKind.PHASE_LOCKED_LOOP,
-                    ):
-                        target_label: str = measured_bus_name + " (Bus)"
-                    elif isinstance(self.api_object, BranchParent):
-                        target_label = (
-                            self.api_object.name
+                        branch_external_mapping = (
+                            measurement_branch.rms_model.external_mapping
+                        )
+                    signal_expressions: Dict[str, Expr] | None = (
+                        build_native_rms_measurement_expressions(
+                            external_mapping=branch_external_mapping,
+                            meter_kind=meter_kind,
+                            terminal_side=terminal_side,
+                            nominal_frequency_hz=self.circuit.fBase,
+                        )
+                    )
+                    if signal_expressions is None:
+                        pass
+                    else:
+                        if measured_bus is None:
+                            measured_bus_name: str = self.tr("Unresolved bus")
+                        else:
+                            measured_bus_name = measured_bus.name
+                        target_label: str = (
+                            measurement_branch.name
                             + " — "
                             + terminal_side.value.upper()
                             + " terminal → "
                             + measured_bus_name
                         )
-                    else:
-                        target_label = (
-                            self.api_object.name
-                            + " — BUS terminal → "
-                            + measured_bus_name
+                        branch_option: RmsMeasurementEditOption = (
+                            RmsMeasurementEditOption(
+                                meter_kind=meter_kind,
+                                source_terminal_side=terminal_side,
+                                target_fid=measurement_branch.idtag,
+                                target_label=target_label,
+                            )
                         )
-                    result.append(
-                        RmsMeasurementEditOption(
+                        if measurement_branch is self.api_object:
+                            result.insert(preferred_option_count, branch_option)
+                            preferred_option_count += 1
+                        else:
+                            result.append(branch_option)
+
+        measurement_injection: INJECTION_DEVICE_TYPES
+        for measurement_injection in self.circuit.get_injection_devices_iter():
+            if isinstance(measurement_injection, InjectionParent):
+                for meter_kind in (
+                        RmsPhysicalMeterKind.CURRENT,
+                        RmsPhysicalMeterKind.POWER,
+                ):
+                    if measurement_injection is self.api_object:
+                        injection_external_mapping: Mapping[
+                            VarPowerFlowReferenceType,
+                            Var | None,
+                        ] = self.main_block.external_mapping
+                    else:
+                        injection_external_mapping = (
+                            measurement_injection.rms_model.external_mapping
+                        )
+                    injection_signal_expressions: Dict[str, Expr] | None = (
+                        build_native_rms_measurement_expressions(
+                            external_mapping=injection_external_mapping,
                             meter_kind=meter_kind,
-                            source_terminal_side=terminal_side,
-                            target_fid=target_fid,
-                            target_label=target_label,
+                            terminal_side=RmsTerminalSide.BUS,
+                            nominal_frequency_hz=self.circuit.fBase,
                         )
                     )
+                    if injection_signal_expressions is None:
+                        pass
+                    else:
+                        if measurement_injection.bus is None:
+                            injection_bus_name: str = self.tr("Unresolved bus")
+                        else:
+                            injection_bus_name = measurement_injection.bus.name
+                        injection_option: RmsMeasurementEditOption = (
+                            RmsMeasurementEditOption(
+                                meter_kind=meter_kind,
+                                source_terminal_side=RmsTerminalSide.BUS,
+                                target_fid=measurement_injection.idtag,
+                                target_label=(
+                                    measurement_injection.name
+                                    + " — BUS terminal → "
+                                    + injection_bus_name
+                                ),
+                            )
+                        )
+                        if measurement_injection is self.api_object:
+                            result.insert(preferred_option_count, injection_option)
+                            preferred_option_count += 1
+                        else:
+                            result.append(injection_option)
+            else:
+                pass
         return result
 
     def create_measurements_block_item(
@@ -6648,7 +6839,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             x_pos: float,
             y_pos: float,
     ) -> graph.GenericBlockItem | None:
-        """Create one selected canonical native RMS measurement block.
+        """Create one selected canonical native RMS or EMT measurement block.
 
         The requested enum selects one established VeraGrid equation builder.
         A complete block is added atomically only when its physical boundary
@@ -6657,30 +6848,42 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param descriptor: Typed library request for the current domain.
         :param x_pos: Scene X coordinate.
         :param y_pos: Scene Y coordinate.
-        :return: Added meter item, or ``None`` outside RMS mode or when unavailable.
+        :return: Added meter item, or ``None`` when the physical signals are unavailable.
         """
-        if (
-                descriptor.get_mode() is not self.mode
-                or self.mode is not DynamicSimulationMode.RMS
-        ):
+        if descriptor.get_mode() is not self.mode:
             return None
         else:
             pass
 
         meter_kind: RmsPhysicalMeterKind = descriptor.get_meter_kind()
         source_terminal_side: RmsTerminalSide = descriptor.get_terminal_side()
-        signal_expressions: Dict[str, Expr] | None = (
-            build_native_rms_measurement_expressions(
+        if self.mode is DynamicSimulationMode.RMS:
+            signal_expressions: Dict[str, Expr] | None = (
+                build_native_rms_measurement_expressions(
+                    external_mapping=self.main_block.external_mapping,
+                    meter_kind=meter_kind,
+                    terminal_side=source_terminal_side,
+                    nominal_frequency_hz=self.circuit.fBase,
+                )
+            )
+        elif self.mode is DynamicSimulationMode.EMT:
+            signal_expressions = build_native_emt_measurement_expressions(
                 external_mapping=self.main_block.external_mapping,
                 meter_kind=meter_kind,
                 terminal_side=source_terminal_side,
-                nominal_frequency_hz=self.circuit.fBase,
             )
-        )
+        else:
+            signal_expressions = None
         if signal_expressions is None:
             return None
         else:
-            pass
+            if self.mode is DynamicSimulationMode.RMS:
+                signal_expressions = select_basic_balanced_rms_meter_outputs(
+                    signal_expressions=signal_expressions,
+                    meter_kind=meter_kind,
+                )
+            else:
+                pass
 
         measurement_item_count: int = 0
         scene_item: QGraphicsItem
@@ -6698,7 +6901,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             quantity_label = meter_kind.value.title()
         measurement_name: str = (
-            f"VeraGrid {quantity_label} meter {measurement_item_count + 1}"
+            f"{quantity_label} meter {measurement_item_count + 1}"
         )
         target_fid: str = self.get_measurement_target_fid(
             meter_kind=meter_kind,
@@ -6713,26 +6916,35 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             contract_terminal_side = source_terminal_side
         measurement_block: Block
         output_by_signal_name: Dict[str, Var]
-        measurement_block, output_by_signal_name = build_rms_physical_signal_meter_block(
-            vf=self.var_factory,
-            signal_expressions=signal_expressions,
-            output_signal_names=tuple(signal_expressions.keys()),
-            name=measurement_name,
-            source_fid=(
-                "veragrid-meter:"
-                + self.api_object.idtag
-                + ":"
-                + meter_kind.value
-                + ":"
-                + source_terminal_side.value
-                + ":"
-                + str(measurement_item_count + 1)
-            ),
-            target_fid=target_fid,
-            terminal_side=contract_terminal_side,
-            meter_kind=meter_kind,
-            symbol_suffix=normalize_rms_meter_symbol_fragment(measurement_name),
-        )
+        if self.mode is DynamicSimulationMode.RMS:
+            measurement_block, output_by_signal_name = build_rms_physical_signal_meter_block(
+                vf=self.var_factory,
+                signal_expressions=signal_expressions,
+                output_signal_names=tuple(signal_expressions.keys()),
+                name=measurement_name,
+                source_fid=(
+                    "veragrid-meter:"
+                    + self.api_object.idtag
+                    + ":"
+                    + meter_kind.value
+                    + ":"
+                    + source_terminal_side.value
+                    + ":"
+                    + str(measurement_item_count + 1)
+                ),
+                target_fid=target_fid,
+                terminal_side=contract_terminal_side,
+                meter_kind=meter_kind,
+                symbol_suffix=normalize_rms_meter_symbol_fragment(measurement_name),
+            )
+        else:
+            measurement_block, output_by_signal_name = build_signal_meter_block(
+                vf=self.var_factory,
+                signal_expressions=signal_expressions,
+                name=measurement_name,
+                output_signal_names=tuple(signal_expressions.keys()),
+                symbol_suffix=normalize_rms_meter_symbol_fragment(measurement_name),
+            )
         del output_by_signal_name
 
         self.main_block.add(measurement_block)
@@ -8654,6 +8866,28 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             y_pos=0.0,
         )
         visible_items.append(physical_item)
+
+        # Root outputs are physical injections consumed by the circuit-wide
+        # nodal problem. Materialize that public network boundary as a transient
+        # sink so every visible physical output has an inspectable connection.
+        if len(self.main_block.out_vars) > 0:
+            network_exchange_block: Block = Block(
+                name=f"Network exchange - {self.api_object.name}",
+                in_vars=list(self.main_block.out_vars),
+                out_vars=list(),
+            )
+            self._local_measurement_view_blocks.append(network_exchange_block)
+            network_exchange_item: graph.GenericBlockItem = (
+                self._create_projection_block_item(
+                    block_model=network_exchange_block,
+                    visual_role=graph.DynamicBlockVisualRole.CONTROL,
+                    x_pos=1120.0,
+                    y_pos=0.0,
+                )
+            )
+            visible_items.append(network_exchange_item)
+        else:
+            pass
         self._route_projection_items(visible_items=visible_items)
 
     def _materialize_physical_root_projection(self) -> None:
@@ -10985,6 +11219,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         """
         interface_inputs_by_ref: Dict[VarPowerFlowReferenceType, graph.ProtectedConnectionBlockItem] = dict()
         interface_outputs_by_ref: Dict[VarPowerFlowReferenceType, graph.ProtectedConnectionBlockItem] = dict()
+        interface_inputs_by_uid: Dict[int, graph.ProtectedConnectionBlockItem] = dict()
+        interface_outputs_by_uid: Dict[int, graph.ProtectedConnectionBlockItem] = dict()
         scene_item: QGraphicsItem
         node_data: BlockDiagramNode | None
         reference_var: Var | None
@@ -11009,8 +11245,12 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                     else:
                         reference_var = None
 
-                    if isinstance(reference_var, Var) and isinstance(reference_var.ref, VarPowerFlowReferenceType):
-                        interface_inputs_by_ref[reference_var.ref] = scene_item
+                    if isinstance(reference_var, Var):
+                        interface_inputs_by_uid[reference_var.uid] = scene_item
+                        if isinstance(reference_var.ref, VarPowerFlowReferenceType):
+                            interface_inputs_by_ref[reference_var.ref] = scene_item
+                        else:
+                            pass
                     else:
                         pass
                 elif node_data.tpe == BlockType.OUTPUT_CONN.name:
@@ -11019,8 +11259,12 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                     else:
                         reference_var = None
 
-                    if isinstance(reference_var, Var) and isinstance(reference_var.ref, VarPowerFlowReferenceType):
-                        interface_outputs_by_ref[reference_var.ref] = scene_item
+                    if isinstance(reference_var, Var):
+                        interface_outputs_by_uid[reference_var.uid] = scene_item
+                        if isinstance(reference_var.ref, VarPowerFlowReferenceType):
+                            interface_outputs_by_ref[reference_var.ref] = scene_item
+                        else:
+                            pass
                     else:
                         pass
                 else:
@@ -11033,7 +11277,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 pass
             else:
                 for input_index, input_var in enumerate(block_item.subsys.in_vars):
-                    if isinstance(input_var.ref, VarPowerFlowReferenceType):
+                    protected_item = interface_inputs_by_uid.get(input_var.uid, None)
+                    if protected_item is not None:
+                        pass
+                    elif isinstance(input_var.ref, VarPowerFlowReferenceType):
                         if isinstance(self.api_object, BranchParent) and input_var.ref in branch_input_refs:
                             protected_item = interface_inputs_by_ref.get(input_var.ref, None)
                         else:
@@ -11041,26 +11288,29 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                                 interface_inputs_by_ref=interface_inputs_by_ref,
                                 model_ref=input_var.ref,
                             )
-                        if protected_item is not None and len(protected_item.outputs) > 0 and input_index < len(
-                                block_item.inputs):
-                            if self._connection_exists_between_ports(protected_item.outputs[0],
-                                                                    block_item.inputs[input_index]):
-                                pass
-                            else:
-                                connection_item: graph.ConnectionItem = graph.ConnectionItem(
-                                    source_port=protected_item.outputs[0],
-                                    target_port=block_item.inputs[input_index],
-                                    diagram=self.diagram,
-                                    editor=self,
-                                )
-                                self.attach_new_connection_item(connection_item)
-                        else:
+                    else:
+                        protected_item = None
+                    if protected_item is not None and len(protected_item.outputs) > 0 and input_index < len(
+                            block_item.inputs):
+                        if self._connection_exists_between_ports(protected_item.outputs[0],
+                                                                block_item.inputs[input_index]):
                             pass
+                        else:
+                            connection_item: graph.ConnectionItem = graph.ConnectionItem(
+                                source_port=protected_item.outputs[0],
+                                target_port=block_item.inputs[input_index],
+                                diagram=self.diagram,
+                                editor=self,
+                            )
+                            self.attach_new_connection_item(connection_item)
                     else:
                         pass
 
                 for output_index, output_var in enumerate(block_item.subsys.out_vars):
-                    if isinstance(output_var.ref, VarPowerFlowReferenceType):
+                    protected_item = interface_outputs_by_uid.get(output_var.uid, None)
+                    if protected_item is not None:
+                        pass
+                    elif isinstance(output_var.ref, VarPowerFlowReferenceType):
                         if isinstance(self.api_object, BranchParent) and output_var.ref in branch_output_refs:
                             protected_item = interface_outputs_by_ref.get(output_var.ref, None)
                         else:
@@ -11068,21 +11318,21 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                                 interface_outputs_by_ref=interface_outputs_by_ref,
                                 model_ref=output_var.ref,
                             )
-                        if protected_item is not None and len(protected_item.inputs) > 0 and output_index < len(
-                                block_item.outputs):
-                            if self._connection_exists_between_ports(block_item.outputs[output_index],
-                                                                    protected_item.inputs[0]):
-                                pass
-                            else:
-                                connection_item = graph.ConnectionItem(
-                                    source_port=block_item.outputs[output_index],
-                                    target_port=protected_item.inputs[0],
-                                    diagram=self.diagram,
-                                    editor=self,
-                                )
-                                self.attach_new_connection_item(connection_item)
-                        else:
+                    else:
+                        protected_item = None
+                    if protected_item is not None and len(protected_item.inputs) > 0 and output_index < len(
+                            block_item.outputs):
+                        if self._connection_exists_between_ports(block_item.outputs[output_index],
+                                                                protected_item.inputs[0]):
                             pass
+                        else:
+                            connection_item = graph.ConnectionItem(
+                                source_port=block_item.outputs[output_index],
+                                target_port=protected_item.inputs[0],
+                                diagram=self.diagram,
+                                editor=self,
+                            )
+                            self.attach_new_connection_item(connection_item)
                     else:
                         pass
 
@@ -12472,10 +12722,71 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         source_terminal_side: RmsTerminalSide = (
             selected_option.get_source_terminal_side()
         )
-        expected_target_fid: str = self.get_measurement_target_fid(
-            meter_kind=meter_kind,
-            source_terminal_side=source_terminal_side,
-        )
+        if meter_kind in (
+                RmsPhysicalMeterKind.VOLTAGE,
+                RmsPhysicalMeterKind.PHASE_LOCKED_LOOP,
+        ):
+            selected_bus: Bus | None = None
+            candidate_bus: Bus
+            for candidate_bus in self.circuit.buses:
+                if candidate_bus.idtag == selected_option.get_target_fid():
+                    selected_bus = candidate_bus
+                    break
+                else:
+                    pass
+            if selected_bus is None:
+                request.set_result(
+                    False,
+                    "The selected bus is no longer available in the circuit.",
+                )
+                return
+            else:
+                expected_target_fid: str = selected_bus.idtag
+                measurement_external_mapping: Mapping[
+                    VarPowerFlowReferenceType,
+                    Var | None,
+                ] = selected_bus.rms_model.external_mapping
+        else:
+            # Current and power meters can target any compatible branch or
+            # injection in the circuit. Resolve the selected public device by
+            # its stable identifier instead of silently falling back to the
+            # model that happens to own this editor.
+            selected_physical_device: BranchParent | InjectionParent | None = None
+            candidate_branch: BRANCH_TYPES
+            for candidate_branch in self.circuit.get_branches(
+                    add_vsc=True,
+                    add_hvdc=True,
+                    add_switch=True,
+            ):
+                if candidate_branch.idtag == selected_option.get_target_fid():
+                    selected_physical_device = candidate_branch
+                    break
+                else:
+                    pass
+            if selected_physical_device is None:
+                candidate_injection: INJECTION_DEVICE_TYPES
+                for candidate_injection in self.circuit.get_injection_devices_iter():
+                    if candidate_injection.idtag == selected_option.get_target_fid():
+                        selected_physical_device = candidate_injection
+                        break
+                    else:
+                        pass
+            else:
+                pass
+            if selected_physical_device is None:
+                request.set_result(
+                    False,
+                    "The selected physical target is no longer available in the circuit.",
+                )
+                return
+            else:
+                expected_target_fid = selected_physical_device.idtag
+                if selected_physical_device is self.api_object:
+                    measurement_external_mapping = self.main_block.external_mapping
+                else:
+                    measurement_external_mapping = (
+                        selected_physical_device.rms_model.external_mapping
+                    )
         if expected_target_fid != selected_option.get_target_fid():
             request.set_result(False, "The selected physical target is no longer available.")
             return
@@ -12483,7 +12794,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             pass
         signal_expressions: Dict[str, Expr] | None = (
             build_native_rms_measurement_expressions(
-                external_mapping=self.main_block.external_mapping,
+                external_mapping=measurement_external_mapping,
                 meter_kind=meter_kind,
                 terminal_side=source_terminal_side,
                 nominal_frequency_hz=self.circuit.fBase,
@@ -12496,7 +12807,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             )
             return
         else:
-            pass
+            signal_expressions = select_basic_balanced_rms_meter_outputs(
+                signal_expressions=signal_expressions,
+                meter_kind=meter_kind,
+            )
         if meter_kind in (
                 RmsPhysicalMeterKind.VOLTAGE,
                 RmsPhysicalMeterKind.PHASE_LOCKED_LOOP,
@@ -12509,17 +12823,13 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             quantity_label = meter_kind.value.title()
         standard_meter_marker: str = " meter "
-        if (
-                target_block.name.startswith("VeraGrid ")
-                and standard_meter_marker in target_block.name
-        ):
+        if standard_meter_marker in target_block.name:
             meter_instance_label: str = target_block.name.split(
                 standard_meter_marker,
                 1,
             )[1]
             rebuilt_meter_name: str = (
-                "VeraGrid "
-                + quantity_label
+                quantity_label
                 + standard_meter_marker
                 + meter_instance_label
             )
@@ -12990,14 +13300,33 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         :return: ``(connected_inputs, connected_outputs)``.
         """
-        # The graph diagram stores connections by node UID and port index. The
-        # validator precomputes these sets once so later checks are O(1) per port.
+        # Validation describes the current editor state, including connections
+        # reconstructed as a live projection before the user saves. Inspect the
+        # visible port objects instead of the stale persisted diagram snapshot.
         connected_inputs: set[tuple[int, int]] = set()
         connected_outputs: set[tuple[int, int]] = set()
-        con: BlockDiagramConnection
-        for con in self.diagram.con_data.values():
-            connected_outputs.add((con.from_uid, con.port_number_from))
-            connected_inputs.add((con.to_uid, con.port_number_to))
+        scene_item: QGraphicsItem
+        block_item: graph.BlockItem | graph.GenericBlockItem
+        port_item: graph.PortItem
+        for scene_item in self.scene.items():
+            if (
+                    isinstance(scene_item, (graph.BlockItem, graph.GenericBlockItem))
+                    and scene_item.subsys is not None
+            ):
+                block_item = scene_item
+                for port_item in block_item.inputs:
+                    if port_item.connections is not None and len(port_item.connections) > 0:
+                        connected_inputs.add((block_item.subsys.uid, port_item.index))
+                    else:
+                        pass
+
+                for port_item in block_item.outputs:
+                    if port_item.connections is not None and len(port_item.connections) > 0:
+                        connected_outputs.add((block_item.subsys.uid, port_item.index))
+                    else:
+                        pass
+            else:
+                pass
         return connected_inputs, connected_outputs
 
     def _validate_equation_counts(self, section: valid.ValidationSection, blocks: List[Block]) -> None:
@@ -13013,7 +13342,15 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             # The first structural consistency rule checks equation balance for
             # each symbolic subsystem independently.
             block_label: str = valid.format_validation_block_label(block)
-            if len(block.state_vars) != len(block.state_eqs):
+            is_structural_container: bool = (
+                len(block.children) > 0
+                and len(block.state_eqs) == 0
+                and len(block.algebraic_eqs) == 0
+                and len(block.differential_eqs) == 0
+            )
+            if is_structural_container:
+                pass
+            elif len(block.state_vars) != len(block.state_eqs):
                 valid.add_validation_detail(
                     section=section,
                     block_label=block_label,
@@ -13022,7 +13359,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             else:
                 pass
 
-            if len(block.algebraic_vars) != len(block.algebraic_eqs):
+            if is_structural_container:
+                pass
+            elif len(block.algebraic_vars) != len(block.algebraic_eqs):
                 valid.add_validation_detail(
                     section=section,
                     block_label=block_label,
@@ -13039,11 +13378,35 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param blocks: Blocks to validate.
         :return: None.
         """
+        # A composite boundary may expose two physical terminals with the same
+        # display name while the canonical enum mappings distinguish their
+        # identities (for example Vmf/Vmt becoming two visible ``Vm`` signals).
+        # Only unmapped duplicate identities are ambiguous to the solver/editor.
+        mapping_blocks: List[Block] = valid.collect_block_tree(
+            root_block=self.root_block,
+        )
+        mapped_variable_uids: set[int] = set()
+        mapping_block: Block
+        mapped_variable: Var | None
+        for mapping_block in mapping_blocks:
+            for mapped_variable in mapping_block.external_mapping.values():
+                if isinstance(mapped_variable, Var):
+                    mapped_variable_uids.add(mapped_variable.uid)
+                else:
+                    pass
+            for mapped_variable in mapping_block.api_obj_mapping.values():
+                if isinstance(mapped_variable, Var):
+                    mapped_variable_uids.add(mapped_variable.uid)
+                else:
+                    pass
+
         block: Block
         for block in blocks:
             # Duplicate-name validation must inspect every collection that can
             # expose symbolic variables inside one block.
             name_to_uids: dict[str, set[int]] = dict()
+            input_name_to_uids: dict[str, set[int]] = dict()
+            output_name_to_uids: dict[str, set[int]] = dict()
             parameter_vars: List[Var] = list(block.parameters.keys())
             event_vars: List[Var] = list(block.event_dict.keys())
             mode_vars: List[Var] = list(block.mode_dict.keys())
@@ -13051,8 +13414,11 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             valid.append_vars_to_name_uid_map(name_to_uids=name_to_uids, vars_list=block.state_vars)
             valid.append_vars_to_name_uid_map(name_to_uids=name_to_uids, vars_list=block.algebraic_vars)
             valid.append_vars_to_name_uid_map(name_to_uids=name_to_uids, vars_list=block.diff_vars)
-            valid.append_vars_to_name_uid_map(name_to_uids=name_to_uids, vars_list=block.in_vars)
-            valid.append_vars_to_name_uid_map(name_to_uids=name_to_uids, vars_list=block.out_vars)
+            # Input and output ports may intentionally reuse one signal name in
+            # opposite directions. They remain unambiguous through typed port
+            # direction and symbolic identity, so validate each side separately.
+            valid.append_vars_to_name_uid_map(name_to_uids=input_name_to_uids, vars_list=block.in_vars)
+            valid.append_vars_to_name_uid_map(name_to_uids=output_name_to_uids, vars_list=block.out_vars)
             valid.append_vars_to_name_uid_map(name_to_uids=name_to_uids, vars_list=parameter_vars)
             valid.append_vars_to_name_uid_map(name_to_uids=name_to_uids, vars_list=event_vars)
             valid.append_vars_to_name_uid_map(name_to_uids=name_to_uids, vars_list=mode_vars)
@@ -13061,7 +13427,18 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             # the exact same Var object that already exists in the block state or
             # algebraic collections. That is valid. We only flag names that map
             # to multiple distinct symbolic variables.
-            duplicates: List[str] = sorted([name for name, uids in name_to_uids.items() if len(uids) > 1])
+            duplicates_set: set[str] = set(
+                name for name, uids in name_to_uids.items() if len(uids) > 1
+            )
+            duplicates_set.update(
+                name for name, uids in input_name_to_uids.items()
+                if len(uids) > 1 and not uids.issubset(mapped_variable_uids)
+            )
+            duplicates_set.update(
+                name for name, uids in output_name_to_uids.items()
+                if len(uids) > 1 and not uids.issubset(mapped_variable_uids)
+            )
+            duplicates: List[str] = sorted(duplicates_set)
             if duplicates:
                 valid.add_validation_detail(
                     section=section,
@@ -13079,6 +13456,29 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param blocks: Blocks to validate.
         :return: None.
         """
+        # Template boundaries own the device/API mapping while their equation
+        # child owns the same parameter Vars. Resolve mappings across the whole
+        # canonical tree so a valid boundary-to-child contract is not reported
+        # as an unmapped local parameter.
+        mapping_blocks: List[Block] = valid.collect_block_tree(
+            root_block=self.root_block,
+        )
+        tree_mapped_vars: set[Var] = set()
+        mapping_block: Block
+        for mapping_block in mapping_blocks:
+            tree_mapped_vars.update(
+                var for var in mapping_block.external_mapping.values()
+                if isinstance(var, Var)
+            )
+            tree_mapped_vars.update(
+                var for var in mapping_block.api_obj_mapping.values()
+                if isinstance(var, Var)
+            )
+            tree_mapped_vars.update(
+                var for var in mapping_block.event_dict.keys()
+                if isinstance(var, Var)
+            )
+
         block: Block
         for block in blocks:
             # Static parameters are only meaningful if the wider model can reach
@@ -13088,6 +13488,14 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             }
             mapped_vars.update(var for var in block.api_obj_mapping.values() if isinstance(var, Var))
             mapped_vars.update(var for var in block.event_dict.keys() if isinstance(var, Var))
+            mapped_vars.update(tree_mapped_vars)
+            if block.dynamic_model_contract.rms_physical_measurement_point is not None:
+                # Native physical meters own their calibration constants. They
+                # are configured through the public measurement contract and do
+                # not require a network-device or event mapping per parameter.
+                mapped_vars.update(block.parameters.keys())
+            else:
+                pass
 
             unmapped_parameters: List[str] = sorted([
                 var.name for var in block.parameters.keys() if isinstance(var, Var) and var not in mapped_vars
@@ -13126,8 +13534,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         traversal_node: valid.ValidationTraversalNode
         for traversal_node in traversal_nodes:
             block: Block = traversal_node.get_block()
-            # Initialization validation checks which variables can be seeded from
-            # the external interface and which ones must be seeded internally.
+            # State variables need one explicit initial state or an inherited
+            # external mapping. Algebraic and derivative variables are solved by
+            # their balanced DAE equations and do not require duplicate seeds.
             external_vars: set[Var] = traversal_node.get_effective_external_vars()
 
             missing_init_vars: List[str] = list()
@@ -13138,33 +13547,13 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 else:
                     pass
 
-            for var in block.algebraic_vars:
-                if var not in external_vars and var not in block.init_eqs:
-                    missing_init_vars.append(var.name)
-                else:
-                    pass
-
             missing_init_vars = sorted(missing_init_vars)
-            missing_diff_init_vars: List[str] = sorted([
-                var.name
-                for var in block.diff_vars
-                if isinstance(var, Var) and var not in external_vars and var not in block.diff_init_eqs
-            ])
 
             if missing_init_vars:
                 valid.add_validation_detail(
                     section=section,
                     block_label=valid.format_validation_block_label(block),
                     detail=f"vars missing init/external mapping: {', '.join(missing_init_vars)}",
-                )
-            else:
-                pass
-
-            if missing_diff_init_vars:
-                valid.add_validation_detail(
-                    section=section,
-                    block_label=valid.format_validation_block_label(block),
-                    detail=f"diff vars missing diff init/external mapping: {', '.join(missing_diff_init_vars)}",
                 )
             else:
                 pass
@@ -13178,6 +13567,16 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :return: None.
         """
         connected_inputs, connected_outputs = self._build_connected_port_sets()
+        visible_block_uids: set[int] = set()
+        scene_item: QGraphicsItem
+        for scene_item in self.scene.items():
+            if (
+                    isinstance(scene_item, (graph.BlockItem, graph.GenericBlockItem))
+                    and scene_item.subsys is not None
+            ):
+                visible_block_uids.add(scene_item.subsys.uid)
+            else:
+                pass
         node_uid: int
         node: BlockDiagramNode
 
@@ -13186,6 +13585,15 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             # so the report reflects exactly what the user wired in the editor.
             block: Block | None = self.get_block_from_main_block(node.device_uid)
             if block is None:
+                pass
+            elif block.dynamic_model_contract.rms_physical_measurement_point is not None:
+                # A native meter acquires its physical quantities through its
+                # typed measurement point. Its outputs are independent signals,
+                # and users may intentionally leave any subset unused.
+                pass
+            elif block.uid not in visible_block_uids:
+                # Derived projections intentionally hide structural containers.
+                # Only visible ports can represent actionable GUI connectivity.
                 pass
             else:
                 missing_port_messages: List[str] = list()
@@ -13374,11 +13782,32 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         # a stable order and users can compare repeated checks easily.
         blocks: List[Block] = valid.collect_block_tree(root_block=self.main_block)
         traversal_root: valid.ValidationTraversalNode = valid.build_validation_traversal_node(
-            block=self.main_block,
+            block=self.root_block,
             inherited_external_vars=set(),
         )
-        traversal_nodes: List[valid.ValidationTraversalNode] = valid.collect_validation_traversal_list(
-            root_node=traversal_root)
+        root_traversal_nodes: List[valid.ValidationTraversalNode] = (
+            valid.collect_validation_traversal_list(root_node=traversal_root)
+        )
+        selected_traversal_node: valid.ValidationTraversalNode | None = None
+        traversal_candidate: valid.ValidationTraversalNode
+        for traversal_candidate in root_traversal_nodes:
+            if traversal_candidate.get_block() is self.main_block:
+                selected_traversal_node = traversal_candidate
+                break
+            else:
+                pass
+        if selected_traversal_node is None:
+            selected_traversal_node = valid.build_validation_traversal_node(
+                block=self.main_block,
+                inherited_external_vars=set(),
+            )
+        else:
+            pass
+        traversal_nodes: List[valid.ValidationTraversalNode] = (
+            valid.collect_validation_traversal_list(
+                root_node=selected_traversal_node,
+            )
+        )
         equation_section: valid.ValidationSection = valid.ValidationSection(title="Equation Counts")
         duplicate_section: valid.ValidationSection = valid.ValidationSection(title="Repeated Variable Names")
         parameter_section: valid.ValidationSection = valid.ValidationSection(title="Parameter Mappings")

@@ -381,6 +381,278 @@ class RmsMeasurementEditOption:
         return self._target_label
 
 
+class MeasurementTargetPickerDialog(QtWidgets.QDialog):
+    """Search and select one physical measurement target without a large combo box."""
+
+    __slots__ = (
+        "_options",
+        "_filtered_options",
+        "_current_page",
+        "_search_edit",
+        "_source_model",
+        "_proxy_model",
+        "_target_view",
+        "_previous_page_button",
+        "_page_label",
+        "_next_page_button",
+        "_button_box",
+    )
+
+    OPTION_ROLE: int = int(Qt.ItemDataRole.UserRole) + 1
+    PAGE_SIZE: int = 100
+
+    def __init__(
+            self,
+            options: Sequence[RmsMeasurementEditOption],
+            selected_option: RmsMeasurementEditOption | None,
+            parent: QtWidgets.QWidget | None = None,
+    ) -> None:
+        """Create a searchable database-style target selector.
+
+        :param options: Valid physical objects for the selected meter kind.
+        :param selected_option: Option currently selected by the properties editor.
+        :param parent: Owning properties dialogue.
+        :return: None.
+        """
+        super().__init__(parent)
+        self._options: List[RmsMeasurementEditOption] = list(options)
+        self._filtered_options: List[RmsMeasurementEditOption] = list()
+        self._current_page: int = 0
+        self.setWindowTitle(self.tr("Choose measurement target"))
+        self.resize(720, 460)
+
+        layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(self)
+        self._search_edit: QtWidgets.QLineEdit = QtWidgets.QLineEdit(self)
+        self._search_edit.setClearButtonEnabled(True)
+        self._search_edit.setPlaceholderText(
+            self.tr("Search buses and physical elements by name or identifier...")
+        )
+        layout.addWidget(self._search_edit)
+
+        self._source_model: QtGui.QStandardItemModel = QtGui.QStandardItemModel(self)
+        self._proxy_model: QtCore.QSortFilterProxyModel = QtCore.QSortFilterProxyModel(self)
+        self._proxy_model.setSourceModel(self._source_model)
+        self._target_view: QtWidgets.QListView = QtWidgets.QListView(self)
+        self._target_view.setModel(self._proxy_model)
+        self._target_view.setSelectionMode(
+            QtWidgets.QAbstractItemView.SelectionMode.SingleSelection
+        )
+        layout.addWidget(self._target_view, 1)
+
+        page_layout: QtWidgets.QHBoxLayout = QtWidgets.QHBoxLayout()
+        self._previous_page_button: QtWidgets.QPushButton = QtWidgets.QPushButton(
+            self.tr("Previous"),
+            self,
+        )
+        self._page_label: QtWidgets.QLabel = QtWidgets.QLabel(self)
+        self._page_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._next_page_button: QtWidgets.QPushButton = QtWidgets.QPushButton(
+            self.tr("Next"),
+            self,
+        )
+        page_layout.addWidget(self._previous_page_button)
+        page_layout.addWidget(self._page_label, 1)
+        page_layout.addWidget(self._next_page_button)
+        layout.addLayout(page_layout)
+
+        self._button_box: QtWidgets.QDialogButtonBox = QtWidgets.QDialogButtonBox(
+            QtWidgets.QDialogButtonBox.StandardButton.Ok
+            | QtWidgets.QDialogButtonBox.StandardButton.Cancel,
+            parent=self,
+        )
+        layout.addWidget(self._button_box)
+
+        self._search_edit.textChanged.connect(self.filter_targets)
+        self._previous_page_button.clicked.connect(self.show_previous_page)
+        self._next_page_button.clicked.connect(self.show_next_page)
+        self._button_box.accepted.connect(self.accept_selected)
+        self._button_box.rejected.connect(self.reject)
+        self._target_view.doubleClicked.connect(self.accept_selected_index)
+        self._filter_and_show_page(
+            search_text="",
+            selected_option=selected_option,
+        )
+
+    def _filter_and_show_page(
+            self,
+            search_text: str,
+            selected_option: RmsMeasurementEditOption | None,
+    ) -> None:
+        """Filter the typed target database and render one bounded page.
+
+        :param search_text: Case-insensitive label or identifier fragment.
+        :param selected_option: Existing selection whose page should be opened.
+        :return: None.
+        """
+        normalized_search_text: str = search_text.strip().casefold()
+        self._filtered_options = list()
+        selected_filtered_index: int | None = None
+        option: RmsMeasurementEditOption
+        for option in self._options:
+            option_matches: bool = (
+                len(normalized_search_text) == 0
+                or normalized_search_text in option.get_target_label().casefold()
+                or normalized_search_text in option.get_target_fid().casefold()
+            )
+            if option_matches:
+                if (
+                        selected_option is not None
+                        and option.get_meter_kind()
+                        is selected_option.get_meter_kind()
+                        and option.get_target_fid()
+                        == selected_option.get_target_fid()
+                        and option.get_source_terminal_side()
+                        is selected_option.get_source_terminal_side()
+                ):
+                    selected_filtered_index = len(self._filtered_options)
+                else:
+                    pass
+                self._filtered_options.append(option)
+            else:
+                pass
+        if selected_filtered_index is None:
+            self._current_page = 0
+        else:
+            self._current_page = selected_filtered_index // self.PAGE_SIZE
+        self._refresh_current_page(selected_option=selected_option)
+
+    def _refresh_current_page(
+            self,
+            selected_option: RmsMeasurementEditOption | None,
+    ) -> None:
+        """Populate the item model with at most one page of typed targets.
+
+        :param selected_option: Target to select when it belongs to this page.
+        :return: None.
+        """
+        target_count: int = len(self._filtered_options)
+        page_count: int = max(
+            1,
+            (target_count + self.PAGE_SIZE - 1) // self.PAGE_SIZE,
+        )
+        self._current_page = max(0, min(self._current_page, page_count - 1))
+        page_start: int = self._current_page * self.PAGE_SIZE
+        page_end: int = min(page_start + self.PAGE_SIZE, target_count)
+        self._source_model.clear()
+        selected_source_index: QtCore.QModelIndex = QtCore.QModelIndex()
+        option_index: int
+        for option_index in range(page_start, page_end):
+            option: RmsMeasurementEditOption = self._filtered_options[option_index]
+            item: QtGui.QStandardItem = QtGui.QStandardItem(option.get_target_label())
+            item.setEditable(False)
+            item.setToolTip(option.get_target_fid())
+            item.setData(option, self.OPTION_ROLE)
+            self._source_model.appendRow(item)
+            if (
+                    selected_option is not None
+                    and option.get_meter_kind()
+                    is selected_option.get_meter_kind()
+                    and option.get_target_fid() == selected_option.get_target_fid()
+                    and option.get_source_terminal_side()
+                    is selected_option.get_source_terminal_side()
+            ):
+                selected_source_index = item.index()
+            else:
+                pass
+        self._page_label.setText(
+            self.tr("Page {page} of {pages} · {targets} targets").format(
+                page=self._current_page + 1,
+                pages=page_count,
+                targets=target_count,
+            )
+        )
+        self._previous_page_button.setEnabled(self._current_page > 0)
+        self._next_page_button.setEnabled(self._current_page + 1 < page_count)
+        if selected_source_index.isValid():
+            selected_proxy_index: QtCore.QModelIndex = self._proxy_model.mapFromSource(
+                selected_source_index
+            )
+            self._target_view.setCurrentIndex(selected_proxy_index)
+        elif self._proxy_model.rowCount() > 0:
+            self._target_view.setCurrentIndex(self._proxy_model.index(0, 0))
+        else:
+            self._target_view.setCurrentIndex(QtCore.QModelIndex())
+
+    @QtCore.Slot(str)
+    def filter_targets(self, search_text: str) -> None:
+        """Filter the target database using user-entered text.
+
+        :param search_text: Case-insensitive name or identifier fragment.
+        :return: None.
+        """
+        self._filter_and_show_page(
+            search_text=search_text,
+            selected_option=None,
+        )
+
+    @QtCore.Slot()
+    def show_previous_page(self) -> None:
+        """Show the previous bounded target page when available.
+
+        :return: None.
+        """
+        if self._current_page > 0:
+            self._current_page -= 1
+            self._refresh_current_page(selected_option=None)
+        else:
+            pass
+
+    @QtCore.Slot()
+    def show_next_page(self) -> None:
+        """Show the next bounded target page when available.
+
+        :return: None.
+        """
+        page_count: int = max(
+            1,
+            (len(self._filtered_options) + self.PAGE_SIZE - 1) // self.PAGE_SIZE,
+        )
+        if self._current_page + 1 < page_count:
+            self._current_page += 1
+            self._refresh_current_page(selected_option=None)
+        else:
+            pass
+
+    @QtCore.Slot(QtCore.QModelIndex)
+    def accept_selected_index(self, selected_index: QtCore.QModelIndex) -> None:
+        """Accept a double-clicked target row.
+
+        :param selected_index: Proxy-model index activated by the user.
+        :return: None.
+        """
+        if selected_index.isValid():
+            self.accept()
+        else:
+            pass
+
+    @QtCore.Slot()
+    def accept_selected(self) -> None:
+        """Accept only when the filtered database has a selected target.
+
+        :return: None.
+        """
+        if self._target_view.currentIndex().isValid():
+            self.accept()
+        else:
+            pass
+
+    def get_selected_option(self) -> RmsMeasurementEditOption | None:
+        """Return the selected typed target.
+
+        :return: Selected option, or ``None`` when no row is active.
+        """
+        selected_proxy_index: QtCore.QModelIndex = self._target_view.currentIndex()
+        if selected_proxy_index.isValid():
+            option_data: object = selected_proxy_index.data(self.OPTION_ROLE)
+            if isinstance(option_data, RmsMeasurementEditOption):
+                result: RmsMeasurementEditOption | None = option_data
+            else:
+                result = None
+        else:
+            result = None
+        return result
+
+
 class RmsMeasurementEditRequest:
     """Request an atomic editor-owned rebuild of one physical RMS meter."""
 
@@ -4249,6 +4521,8 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         "_block_info_button",
         "_measurement_target_name",
         "_measurement_edit_options",
+        "_measurement_selected_option",
+        "_measurement_target_released",
         "_dock_hosted",
         "_prepared_to_delete",
         "_status_label",
@@ -4297,6 +4571,8 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
             self._measurement_edit_options: List[RmsMeasurementEditOption] = list()
         else:
             self._measurement_edit_options = list(measurement_edit_options)
+        self._measurement_selected_option: RmsMeasurementEditOption | None = None
+        self._measurement_target_released: bool = False
         general_structural_properties: List[TemplateProp] = list()
         special_structural_properties: List[TemplateProp] = list()
         if structural_builder is not None:
@@ -4676,9 +4952,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         :return: None.
         """
         mode_combo: QtWidgets.QComboBox = self.ui.measurement_mode_combo
-        target_combo: QtWidgets.QComboBox = self.ui.measurement_target_combo
         mode_combo.clear()
-        target_combo.clear()
         current_kind: RmsPhysicalMeterKind = measurement_point.get_meter_kind()
         available_kinds: set[RmsPhysicalMeterKind] = set((current_kind,))
         edit_option: RmsMeasurementEditOption
@@ -4701,20 +4975,6 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
                 pass
         mode_combo.setCurrentIndex(current_mode_index)
         mode_combo.setEnabled(len(self._measurement_edit_options) > 0)
-        self.ui.measurement_signals_value.setText(
-            ", ".join(measurement_point.get_output_signal_names())
-        )
-        self.ui.measurement_identity_value.setText(
-            measurement_point.get_source_fid()
-        )
-        self.ui.measurement_equations_value.setText(
-            self.tr(
-                "{residuals} algebraic residuals; {initializations} initializations"
-            ).format(
-                residuals=len(self._block.algebraic_eqs),
-                initializations=len(self._block.init_eqs),
-            )
-        )
         self.ui.measurement_configuration_group.show()
         self.refresh_measurement_target_options()
 
@@ -4728,10 +4988,8 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
             self._block.dynamic_model_contract.rms_physical_measurement_point
         )
         selected_kind_data: object = self.ui.measurement_mode_combo.currentData()
-        target_combo: QtWidgets.QComboBox = self.ui.measurement_target_combo
-        target_combo.clear()
-        matching_option_count: int = 0
-        selected_target_index: int = -1
+        matching_options: List[RmsMeasurementEditOption] = list()
+        selected_option: RmsMeasurementEditOption | None = None
         if (
                 measurement_point is not None
                 and isinstance(selected_kind_data, RmsPhysicalMeterKind)
@@ -4739,16 +4997,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
             edit_option: RmsMeasurementEditOption
             for edit_option in self._measurement_edit_options:
                 if edit_option.get_meter_kind() is selected_kind_data:
-                    target_combo.addItem(
-                        edit_option.get_target_label(),
-                        edit_option,
-                    )
-                    option_index: int = target_combo.count() - 1
-                    target_combo.setItemData(
-                        option_index,
-                        edit_option.get_target_fid(),
-                        Qt.ItemDataRole.ToolTipRole,
-                    )
+                    matching_options.append(edit_option)
                     if (
                             selected_kind_data is measurement_point.get_meter_kind()
                             and edit_option.get_target_fid()
@@ -4762,13 +5011,12 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
                                 is measurement_point.get_terminal_side()
                             )
                     ):
-                        selected_target_index = option_index
+                        selected_option = edit_option
                     else:
                         pass
-                    matching_option_count += 1
                 else:
                     pass
-            if matching_option_count == 0:
+            if len(matching_options) == 0:
                 if self._measurement_target_name is None:
                     fallback_target_text: str = measurement_point.get_target_fid()
                 else:
@@ -4778,17 +5026,119 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
                         + measurement_point.get_target_fid()
                         + "]"
                     )
-                target_combo.addItem(fallback_target_text, None)
-                selected_target_index = 0
-            elif selected_target_index < 0:
-                selected_target_index = 0
+                self._measurement_selected_option = None
+                self.ui.measurement_target_value.setText(fallback_target_text)
+            elif selected_option is None:
+                self._measurement_selected_option = matching_options[0]
+                self.ui.measurement_target_value.setText(
+                    matching_options[0].get_target_label()
+                )
+            else:
+                self._measurement_selected_option = selected_option
+                self.ui.measurement_target_value.setText(
+                    selected_option.get_target_label()
+                )
+        else:
+            self._measurement_selected_option = None
+            self.ui.measurement_target_value.clear()
+        self.ui.measurement_target_button.setEnabled(len(matching_options) > 0)
+        self.ui.measurement_target_release_button.setEnabled(
+            self._measurement_selected_option is not None
+        )
+        self._measurement_target_released = False
+        self.update_measurement_terminal_label()
+
+    @QtCore.Slot()
+    def choose_measurement_target(self) -> None:
+        """Open the searchable circuit-object selector for the active meter kind.
+
+        :return: None.
+        """
+        selected_kind_data: object = self.ui.measurement_mode_combo.currentData()
+        matching_options: List[RmsMeasurementEditOption] = list()
+        if isinstance(selected_kind_data, RmsPhysicalMeterKind):
+            edit_option: RmsMeasurementEditOption
+            for edit_option in self._measurement_edit_options:
+                if edit_option.get_meter_kind() is selected_kind_data:
+                    matching_options.append(edit_option)
+                else:
+                    pass
+        else:
+            pass
+        if len(matching_options) > 0:
+            picker: MeasurementTargetPickerDialog = MeasurementTargetPickerDialog(
+                options=matching_options,
+                selected_option=self._measurement_selected_option,
+                parent=self,
+            )
+            if picker.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+                chosen_option: RmsMeasurementEditOption | None = (
+                    picker.get_selected_option()
+                )
+                if chosen_option is not None:
+                    self.select_measurement_target_option(chosen_option)
+                else:
+                    pass
             else:
                 pass
         else:
             pass
-        target_combo.setCurrentIndex(selected_target_index)
-        target_combo.setEnabled(matching_option_count > 0)
-        self.update_measurement_terminal_label()
+
+    def select_measurement_target_option(
+            self,
+            chosen_option: RmsMeasurementEditOption,
+    ) -> bool:
+        """Select one option supplied by the searchable target database.
+
+        :param chosen_option: Typed option owned by this properties dialogue.
+        :return: Whether the option belongs to the active meter-kind result set.
+        """
+        selected_kind_data: object = self.ui.measurement_mode_combo.currentData()
+        option_is_available: bool = False
+        resolved_option: RmsMeasurementEditOption | None = None
+        available_option: RmsMeasurementEditOption
+        for available_option in self._measurement_edit_options:
+            if (
+                    isinstance(selected_kind_data, RmsPhysicalMeterKind)
+                    and available_option.get_meter_kind() is selected_kind_data
+                    and available_option.get_meter_kind()
+                    is chosen_option.get_meter_kind()
+                    and available_option.get_source_terminal_side()
+                    is chosen_option.get_source_terminal_side()
+                    and available_option.get_target_fid()
+                    == chosen_option.get_target_fid()
+            ):
+                option_is_available = True
+                resolved_option = available_option
+            else:
+                pass
+        if option_is_available and resolved_option is not None:
+            self._measurement_selected_option = resolved_option
+            self.ui.measurement_target_value.setText(
+                resolved_option.get_target_label()
+            )
+            self.ui.measurement_target_release_button.setEnabled(True)
+            self._measurement_target_released = False
+            self.update_measurement_terminal_label()
+        else:
+            pass
+        return option_is_available
+
+    @QtCore.Slot()
+    def release_measurement_target(self) -> None:
+        """Release the draft target before choosing another circuit object.
+
+        The persisted block remains unchanged until a complete replacement is
+        selected and applied. This makes the transition explicit without ever
+        committing a meter whose physical target is missing.
+
+        :return: None.
+        """
+        self._measurement_selected_option = None
+        self._measurement_target_released = True
+        self.ui.measurement_target_value.setText(self.tr("No target selected"))
+        self.ui.measurement_target_release_button.setEnabled(False)
+        self.ui.measurement_terminal_value.clear()
 
     @QtCore.Slot()
     def update_measurement_terminal_label(self) -> None:
@@ -4796,8 +5146,10 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
 
         :return: None.
         """
-        selected_option_data: object = self.ui.measurement_target_combo.currentData()
-        if isinstance(selected_option_data, RmsMeasurementEditOption):
+        selected_option_data: RmsMeasurementEditOption | None = (
+            self._measurement_selected_option
+        )
+        if selected_option_data is not None:
             terminal_text: str = (
                 selected_option_data.get_source_terminal_side().value.upper()
             )
@@ -4816,11 +5168,7 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
 
         :return: Selected option or ``None`` when the block is read-only.
         """
-        selected_option_data: object = self.ui.measurement_target_combo.currentData()
-        if isinstance(selected_option_data, RmsMeasurementEditOption):
-            return selected_option_data
-        else:
-            return None
+        return self._measurement_selected_option
 
     def has_measurement_configuration_changes(self) -> bool:
         """Return whether mode, physical target, or terminal changed.
@@ -4833,8 +5181,12 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         selected_option: RmsMeasurementEditOption | None = (
             self.get_selected_measurement_option()
         )
-        if measurement_point is None or selected_option is None:
+        if measurement_point is None:
             result: bool = False
+        elif self._measurement_target_released:
+            result = True
+        elif selected_option is None:
+            result = False
         elif selected_option.get_meter_kind() is not measurement_point.get_meter_kind():
             result = True
         elif selected_option.get_target_fid() != measurement_point.get_target_fid():
@@ -5167,8 +5519,11 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
         self.ui.measurement_mode_combo.currentIndexChanged.connect(
             self.refresh_measurement_target_options
         )
-        self.ui.measurement_target_combo.currentIndexChanged.connect(
-            self.update_measurement_terminal_label
+        self.ui.measurement_target_button.clicked.connect(
+            self.choose_measurement_target
+        )
+        self.ui.measurement_target_release_button.clicked.connect(
+            self.release_measurement_target
         )
         self._variable_symbol_search.textChanged.connect(self.filter_variables)
         self._parameter_symbol_search.textChanged.connect(self.filter_parameters)

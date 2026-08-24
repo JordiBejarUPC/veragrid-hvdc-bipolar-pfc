@@ -130,22 +130,28 @@ def test_physical_meter_general_options_expose_canonical_configuration() -> None
 
     assert dialogue.ui.measurement_configuration_group.isVisibleTo(dialogue)
     assert dialogue.ui.measurement_family_value.text() == (
-        "VeraGrid native physical RMS measurement"
+        "Balanced RMS physical measurement"
     )
     assert dialogue.ui.measurement_mode_combo.isEnabled()
     assert dialogue.ui.measurement_mode_combo.currentText() == "Power"
-    assert dialogue.ui.measurement_target_combo.isEnabled()
-    assert dialogue.ui.measurement_target_combo.currentText() == (
+    assert dialogue.ui.measurement_target_button.isEnabled()
+    assert dialogue.ui.measurement_target_value.text() == (
         "Generator Alpha — BUS terminal → Bus Alpha"
     )
     assert dialogue.ui.measurement_terminal_value.text() == "BUS"
-    assert dialogue.ui.measurement_signals_value.text() == output_var.name
-    assert dialogue.ui.measurement_identity_value.text() == "native-power-meter"
-    assert dialogue.ui.measurement_equations_value.text() == (
-        "1 algebraic residuals; 1 initializations"
-    )
+    assert dialogue.findChild(QtWidgets.QWidget, "measurement_signals_value") is None
+    assert dialogue.findChild(QtWidgets.QWidget, "measurement_identity_value") is None
+    assert dialogue.findChild(QtWidgets.QWidget, "measurement_equations_value") is None
     assert dialogue.get_selected_measurement_option() is not None
     assert not dialogue.has_measurement_configuration_changes()
+    dialogue.release_measurement_target()
+    assert dialogue.ui.measurement_target_value.text() == "No target selected"
+    assert not dialogue.ui.measurement_target_release_button.isEnabled()
+    assert dialogue.ui.measurement_target_button.isEnabled()
+    assert dialogue.get_selected_measurement_option() is None
+    assert dialogue.has_measurement_configuration_changes()
+    dialogue.refresh_measurement_target_options()
+    assert dialogue.get_selected_measurement_option() is not None
     dialogue.close()
 
 
