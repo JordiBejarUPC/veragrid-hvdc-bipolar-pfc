@@ -14,7 +14,7 @@ from VeraGridEngine.Devices.Dynamic.var_factory import (Connection,
                                                         build_persisted_identity_lookup,
                                                         find_var_by_persisted_identity)
 from VeraGridEngine.Utils.Symbolic import SharedVarReferenceType
-from VeraGridEngine.Utils.Symbolic.symbolic import Var, Expr, Const, BinOp, UnOp, Func, Func2, Comparison
+from VeraGridEngine.Utils.Symbolic.symbolic import Var, Expr, Const, BinOp, UnOp, Func, Func2, CmpOp, Comparison
 from VeraGridEngine.Utils.Symbolic.block import (
     Block,
     DynamicModelContract,
@@ -278,7 +278,7 @@ def infer_persisted_main_block_uids(blocks_data: Dict[int, Dict[str, Any]]) -> L
     return root_uids
 
 
-def expr_to_dict(expr: Expr,
+def expr_to_dict(expr: Expr | Comparison,
                  const_dict: Dict[int, Const],
                  var_dict: Dict[int, Var],
                  diff_var_dict: Dict[int, Var],
@@ -422,6 +422,31 @@ def expr_to_dict(expr: Expr,
             "graph_id": graph_id,
         }
 
+    elif isinstance(expr, Comparison):
+        if isinstance(expr.rhs, Expr):
+            comparison_rhs: Expr = expr.rhs
+        else:
+            comparison_rhs = Const(expr.rhs)
+        return {
+            "type": "Comparison",
+            "lhs": expr_to_dict(
+                expr=expr.lhs,
+                const_dict=const_dict,
+                var_dict=var_dict,
+                diff_var_dict=diff_var_dict,
+                composite_expression_ids=active_composite_expression_ids,
+            ),
+            "op": expr.op.value,
+            "rhs": expr_to_dict(
+                expr=comparison_rhs,
+                const_dict=const_dict,
+                var_dict=var_dict,
+                diff_var_dict=diff_var_dict,
+                composite_expression_ids=active_composite_expression_ids,
+            ),
+            "graph_id": graph_id,
+        }
+
     else:
         raise TypeError(f"Unsupported Expr subclass: {type(expr).__name__}")
 
@@ -463,7 +488,7 @@ def parse_expr(data: Dict[str, Any],
                const_dict: Dict[int, Const],
                var_dict: Dict[int, Var],
                diff_var_dict: Dict[int, Var],
-               composite_expressions: Dict[int, Expr] | None = None) -> Expr:
+               composite_expressions: Dict[int, Expr | Comparison] | None = None) -> Expr | Comparison:
     """
     De-Serialize expression from dictionary
     :param data: Some dictionary containing the expression
@@ -473,7 +498,7 @@ def parse_expr(data: Dict[str, Any],
     :param composite_expressions: Composite graph nodes already parsed in the current block
     :return: Reconstructed expression node.
     """
-    active_composite_expressions: Dict[int, Expr]
+    active_composite_expressions: Dict[int, Expr | Comparison]
     if composite_expressions is None:
         active_composite_expressions = dict()
     else:
@@ -483,7 +508,7 @@ def parse_expr(data: Dict[str, Any],
 
     if t == "ExprRef":
         graph_id: int = int(data["graph_id"])
-        referenced_expression: Expr | None = active_composite_expressions.get(graph_id, None)
+        referenced_expression: Expr | Comparison | None = active_composite_expressions.get(graph_id, None)
         if referenced_expression is None:
             raise ValueError(f"Unknown backward expression reference '{graph_id}'")
         else:
@@ -558,6 +583,46 @@ def parse_expr(data: Dict[str, Any],
 
         obj = Func2(name=data["name"], arg1=arg1, arg2=arg2, uid=data["uid"])
 
+    elif t == "Comparison":
+        lhs_value: Expr | Comparison = parse_expr(
+            data=data["lhs"],
+            const_dict=const_dict,
+            var_dict=var_dict,
+            diff_var_dict=diff_var_dict,
+            composite_expressions=active_composite_expressions,
+        )
+        rhs_value: Expr | Comparison = parse_expr(
+            data=data["rhs"],
+            const_dict=const_dict,
+            var_dict=var_dict,
+            diff_var_dict=diff_var_dict,
+            composite_expressions=active_composite_expressions,
+        )
+        if not isinstance(lhs_value, Expr) or not isinstance(rhs_value, Expr):
+            raise TypeError("Comparison operands must be symbolic expressions")
+        else:
+            pass
+        comparison_operator_value: object = data["op"]
+        if comparison_operator_value == CmpOp.LE.value:
+            comparison_operator: CmpOp = CmpOp.LE
+        elif comparison_operator_value == CmpOp.GE.value:
+            comparison_operator = CmpOp.GE
+        elif comparison_operator_value == CmpOp.LT.value:
+            comparison_operator = CmpOp.LT
+        elif comparison_operator_value == CmpOp.GT.value:
+            comparison_operator = CmpOp.GT
+        elif comparison_operator_value == CmpOp.EQ.value:
+            comparison_operator = CmpOp.EQ
+        else:
+            raise ValueError(
+                f"Unknown comparison operator '{comparison_operator_value}'"
+            )
+        obj = Comparison(
+            lhs=lhs_value,
+            op=comparison_operator,
+            rhs=rhs_value,
+        )
+
     else:
         raise ValueError(f"Unknown type '{t}' in symbolic deserialization")
 
@@ -576,7 +641,7 @@ def parse_expr_list(lst: List[Dict[str, Any]],
                     const_dict: Dict[int, Const],
                     var_dict: Dict[int, Var],
                     diff_var_dict: Dict[int, Var],
-                    composite_expressions: Dict[int, Expr] | None = None) -> List[Expr]:
+                    composite_expressions: Dict[int, Expr | Comparison] | None = None) -> List[Expr | Comparison]:
     """
 
     :param lst:
@@ -586,13 +651,13 @@ def parse_expr_list(lst: List[Dict[str, Any]],
     :param composite_expressions: Composite graph nodes already parsed in the current block
     :return:
     """
-    active_composite_expressions: Dict[int, Expr]
+    active_composite_expressions: Dict[int, Expr | Comparison]
     if composite_expressions is None:
         active_composite_expressions = dict()
     else:
         active_composite_expressions = composite_expressions
 
-    lst2: List[Expr] = list()
+    lst2: List[Expr | Comparison] = list()
     data: Dict[str, Any]
     for data in lst:
         lst2.append(
@@ -1337,7 +1402,7 @@ class BlockParser:
         # Graph identifiers are local to one block and may be shared across
         # several equation collections. Recursive child parsing creates an
         # independent registry for each child block.
-        composite_expressions: Dict[int, Expr] = dict()
+        composite_expressions: Dict[int, Expr | Comparison] = dict()
 
         state_vars: List[Var] = list()
         v_uid: int

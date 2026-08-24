@@ -426,7 +426,12 @@ def test_diff_var_deepcopy_does_not_mutate_original_links() -> None:
     :return: Nothing.
     """
     vf: VarFactory = VarFactory()
-    x: sym.Var = vf.add_var("x")
+    x: sym.Var = vf.add_var(
+        name="x",
+        reference=VarPowerFlowReferenceType.Vm,
+        network_conn=True,
+        shared_reference="shared-x",
+    )
     dx: sym.Var = vf.add_diff_var("dx", base_var=x)
 
     copied_dx: sym.Var = copy.deepcopy(dx)
@@ -447,7 +452,12 @@ def test_var_factory_deepcopy_keeps_copied_diff_links_internal() -> None:
     :return: Nothing.
     """
     vf: VarFactory = VarFactory()
-    x: sym.Var = vf.add_var("x")
+    x: sym.Var = vf.add_var(
+        "x",
+        reference=VarPowerFlowReferenceType.Vm,
+        network_conn=True,
+        shared_reference="shared-x",
+    )
     dx: sym.Var = vf.add_diff_var("dx", base_var=x)
 
     copied_vf: VarFactory = copy.deepcopy(vf)
@@ -655,13 +665,19 @@ def test_block_saver_parser_roundtrip_preserves_declarative_procedural_logic() -
     :return: Nothing.
     """
     vf: VarFactory = VarFactory()
-    x: sym.Var = vf.add_var("x")
+    x: sym.Var = vf.add_var(
+        "x",
+        reference=VarPowerFlowReferenceType.Vm,
+        network_conn=True,
+        shared_reference="shared-x",
+    )
     mode: sym.Var = vf.add_var("mode")
     out: sym.Var = vf.add_var("out")
 
     block: Block = Block(
         algebraic_vars=[x, mode, out],
         algebraic_eqs=[x + sym.Const(1.0), mode + sym.Const(0.0), out + sym.Const(0.0)],
+        inequalities=[x > sym.Const(0.0)],
         discrete_eqs={mode: x + sym.Const(2.0)},
         mode_dict={mode: sym.Const(1.0)},
         procedural_logic=[aflipflop(x=x,
@@ -694,6 +710,11 @@ def test_block_saver_parser_roundtrip_preserves_declarative_procedural_logic() -
     )
     assert isinstance(direct_override, sym.BinOp)
     assert direct_override.left.uid == direct_restored_x.uid
+    assert direct_restored_x.ref is VarPowerFlowReferenceType.Vm
+    assert direct_restored_x.network_conn
+    assert direct_restored_x.shared_ref is not None
+    assert direct_restored_x.shared_ref.name == "shared-x"
+    assert direct_restored_x.shared_ref.uid == x.shared_ref.uid
 
     truncated_data: dict[str, object] = block.to_dict()
     truncated_contract: object = truncated_data["dynamic_model_contract"]
@@ -751,6 +772,11 @@ def test_block_saver_parser_roundtrip_preserves_declarative_procedural_logic() -
     )
     assert isinstance(restored_override, sym.BinOp)
     assert restored_override.left is restored_x
+    assert len(restored.inequalities) == 1
+    restored_inequality: sym.Expr | sym.Comparison = restored.inequalities[0]
+    assert isinstance(restored_inequality, sym.Comparison)
+    assert restored_inequality.lhs is restored_x
+    assert restored_inequality.op is sym.CmpOp.GT
 
 
 def test_rms_terminal_power_contract_roundtrips_and_fails_closed() -> None:

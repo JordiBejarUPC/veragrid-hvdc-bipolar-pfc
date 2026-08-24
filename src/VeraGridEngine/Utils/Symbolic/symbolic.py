@@ -1912,6 +1912,13 @@ def _expr_to_dict(expr: Expr | Comparison) -> Dict[str, Any]:
                 "name": expr.name,
                 "uid": expr.uid,
                 "non_mutable_uid": expr.non_mutable_uid,
+                "reference": expr.ref.name if expr.ref is not None else None,
+                "network_conn": expr.network_conn,
+                "shared_reference": (
+                    None
+                    if expr.shared_ref is None
+                    else {"name": expr.shared_ref.name, "uid": expr.shared_ref.uid}
+                ),
                 "base_var": "None"
             }
         else:
@@ -1920,6 +1927,13 @@ def _expr_to_dict(expr: Expr | Comparison) -> Dict[str, Any]:
                 "name": expr.name,
                 "uid": expr.uid,
                 "non_mutable_uid": expr.non_mutable_uid,
+                "reference": expr.ref.name if expr.ref is not None else None,
+                "network_conn": expr.network_conn,
+                "shared_reference": (
+                    None
+                    if expr.shared_ref is None
+                    else {"name": expr.shared_ref.name, "uid": expr.shared_ref.uid}
+                ),
                 "base_var": _expr_to_dict(expr.base_var),
             }
 
@@ -1998,8 +2012,57 @@ def _dict_to_expr(data: Dict[str, Any]) -> Expr | Var | Const | Comparison:
             # time that value was also the physical variable identity.
             non_mutable_uid = data["uid"]
 
+        # Preserve the optional physical-network meaning of every variable.
+        # Missing fields keep legacy dictionaries readable.
+        reference_name_data: object = data.get("reference", None)
+        if reference_name_data is None:
+            reference: VarPowerFlowReferenceType | None = None
+        elif (
+                isinstance(reference_name_data, str)
+                and reference_name_data in VarPowerFlowReferenceType.__members__
+        ):
+            reference = VarPowerFlowReferenceType.__members__[reference_name_data]
+        else:
+            raise ValueError(
+                f"Unknown power-flow variable reference '{reference_name_data}'"
+            )
+
+        network_conn_data: object = data.get("network_conn", False)
+        if isinstance(network_conn_data, bool):
+            network_conn: bool = network_conn_data
+        else:
+            raise TypeError("Variable network_conn must be a boolean")
+
+        shared_reference_data: object = data.get("shared_reference", None)
+        if shared_reference_data is None:
+            shared_reference: SharedVarReferenceType | None = None
+        elif isinstance(shared_reference_data, dict):
+            shared_reference_name: object = shared_reference_data.get("name", None)
+            shared_reference_uid: object = shared_reference_data.get("uid", None)
+            if (
+                    isinstance(shared_reference_name, str)
+                    and isinstance(shared_reference_uid, int)
+                    and not isinstance(shared_reference_uid, bool)
+            ):
+                shared_reference = SharedVarReferenceType(
+                    name=shared_reference_name,
+                    uid=shared_reference_uid,
+                )
+            else:
+                raise TypeError(
+                    "Variable shared_reference must contain a string name and integer uid"
+                )
+        else:
+            raise TypeError("Variable shared_reference must be a dictionary or None")
+
         if data["base_var"] == "None":
-            obj = Var(name=data["name"], non_mutable_uid=non_mutable_uid)
+            obj = Var(
+                name=data["name"],
+                reference=reference,
+                network_conn=network_conn,
+                shared_reference=shared_reference,
+                non_mutable_uid=non_mutable_uid,
+            )
         else:
             # reconstruct base_var
             base_data = data["base_var"]
@@ -2008,6 +2071,9 @@ def _dict_to_expr(data: Dict[str, Any]) -> Expr | Var | Const | Comparison:
                 raise TypeError("base_var must be a Var")
 
             obj = Var(name=data["name"],
+                      reference=reference,
+                      network_conn=network_conn,
+                      shared_reference=shared_reference,
                       non_mutable_uid=non_mutable_uid,
                       base_var=base_var)
 
