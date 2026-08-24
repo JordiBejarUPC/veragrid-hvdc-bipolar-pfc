@@ -1169,15 +1169,15 @@ def test_v3_dynamic_route_keeps_native_meters_as_connected_editor_blocks() -> No
         (
             "hvdc_vsc_v1_complete_static_dynamic.dgs",
             set((
-                "VeraGrid Power meter 220",
-                "VeraGrid Power meter 221",
+                "Power meter 220",
+                "Power meter 221",
             )),
         ),
         (
             "hvdc_vsc_v2_complete_static_dynamic.dgs",
             set((
-                "VeraGrid Power meter 228",
-                "VeraGrid Power meter 229",
+                "Power meter 228",
+                "Power meter 229",
             )),
         ),
     ),
