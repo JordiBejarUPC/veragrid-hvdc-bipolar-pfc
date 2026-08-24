@@ -231,6 +231,7 @@ def get_bergeron_line_emt_template(
     templ.block.children.append(block)
     templ.block.external_mapping = block.external_mapping
     templ.block.api_obj_mapping = block.api_obj_mapping
+    templ.block.parameters = block.parameters
     templ.block.in_vars = block.in_vars
     templ.block.out_vars = block.out_vars
 
@@ -305,8 +306,8 @@ class BergeronHistoryRuntime:
         if self.block.event_dict is None:
             raise ValueError(f"Bergeron line '{line.name}': block.event_dict is None")
 
-        self.Ih_f = self._extract_hist_vars(prefix=f"Ih_f_{line.name}_")
-        self.Ih_t = self._extract_hist_vars(prefix=f"Ih_t_{line.name}_")
+        self.Ih_f = self._extract_hist_vars(prefix=f"Ih_f_")
+        self.Ih_t = self._extract_hist_vars(prefix=f"Ih_t_")
 
         w = 2.0 * np.pi * fbase
         R_full, L_full, C_full = _build_line_parameter_matrices_from_template_or_balanced_data(
@@ -378,7 +379,12 @@ class BergeronHistoryRuntime:
         self.idx_p_ht = None
 
     def _extract_hist_vars(self, prefix: str) -> List[Var]:
-        vars_by_name = {getattr(v, "name", ""): v for v in self.block.event_dict.keys()}
+        vars_by_name = dict()
+        block_item: Block
+        history_var: Var
+        for block_item in self.block.get_all_blocks():
+            for history_var in block_item.event_dict.keys():
+                vars_by_name[str(history_var.name)] = history_var
         out: List[Var] = []
 
         for ph in self.active_ph:

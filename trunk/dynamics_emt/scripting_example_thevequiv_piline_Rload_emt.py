@@ -291,8 +291,8 @@ options = EmtOptions(time_step = 5e-6,
                      simulation_time =  0.01, # s
                      tolerance = 1e-6,
                      solver_type = SOLVER_TYPE_MAP[CHOSEN_SOLVER],
-                     # initialization_method = EmtInitializationMethod.Explicit,
-                     initialization_method = EmtInitializationMethod.PseudoTransient,
+                     initialization_method = EmtInitializationMethod.Explicit,
+                     # initialization_method = EmtInitializationMethod.PseudoTransient,
                      integration_method = DynamicIntegrationMethod.DaeTrapezoidal,
                      verbose = 1)
 
@@ -948,23 +948,23 @@ def main() -> None:
     # PROFILING REPORT
     # ==============================================================================
 
-    i_ser_A = find_name_in_block("i_ser_Pi_A", line0.emt_model)
-    i_ser_B = find_name_in_block("i_ser_Pi_B", line0.emt_model)
-    i_ser_C = find_name_in_block("i_ser_Pi_C", line0.emt_model)
+    i_ser_A = find_name_in_block("i_ser_A", line0.emt_model)
+    i_ser_B = find_name_in_block("i_ser_B", line0.emt_model)
+    i_ser_C = find_name_in_block("i_ser_C", line0.emt_model)
     i_ser_A_plt = y_arr[:, problem.get_var_idx(i_ser_A)]
     i_ser_B_plt = y_arr[:, problem.get_var_idx(i_ser_B)]
     i_ser_C_plt = y_arr[:, problem.get_var_idx(i_ser_C)]
 
-    i_f_cap_A = find_name_in_block("i_cap_f_Pi_A", line0.emt_model)
-    i_f_cap_B = find_name_in_block("i_cap_f_Pi_B", line0.emt_model)
-    i_f_cap_C = find_name_in_block("i_cap_f_Pi_C", line0.emt_model)
+    i_f_cap_A = find_name_in_block("i_cap_f_A", line0.emt_model)
+    i_f_cap_B = find_name_in_block("i_cap_f_B", line0.emt_model)
+    i_f_cap_C = find_name_in_block("i_cap_f_C", line0.emt_model)
     i_f_cap_A_plt = y_arr[:, problem.get_var_idx(i_f_cap_A)]
     i_f_cap_B_plt = y_arr[:, problem.get_var_idx(i_f_cap_B)]
     i_f_cap_C_plt = y_arr[:, problem.get_var_idx(i_f_cap_C)]
 
-    i_t_cap_A = find_name_in_block("i_cap_t_Pi_A", line0.emt_model)
-    i_t_cap_B = find_name_in_block("i_cap_t_Pi_B", line0.emt_model)
-    i_t_cap_C = find_name_in_block("i_cap_t_Pi_C", line0.emt_model)
+    i_t_cap_A = find_name_in_block("i_cap_t_A", line0.emt_model)
+    i_t_cap_B = find_name_in_block("i_cap_t_B", line0.emt_model)
+    i_t_cap_C = find_name_in_block("i_cap_t_C", line0.emt_model)
     i_t_cap_A_plt = y_arr[:, problem.get_var_idx(i_t_cap_A)]
     i_t_cap_B_plt = y_arr[:, problem.get_var_idx(i_t_cap_B)]
     i_t_cap_C_plt = y_arr[:, problem.get_var_idx(i_t_cap_C)]

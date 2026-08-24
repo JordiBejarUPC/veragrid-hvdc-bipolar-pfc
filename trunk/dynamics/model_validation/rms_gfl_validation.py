@@ -236,7 +236,7 @@ def print_vsc_pf_loss_consistency(grid, pf_results):
 
         im_from_it = np.nan
         if hasattr(pf_results, 'It_vsc') and i < len(pf_results.It_vsc):
-            im_from_it = float(np.abs(pf_results.It_vsc[i]) / grid.Sbase)
+            im_from_it = float(np.abs(pf_results.It_vsc[i]))
 
         im_from_branch = np.nan
         im_from_idiq_branch = np.nan
@@ -528,11 +528,9 @@ def run_rms_simulation(grid2, pf_results):
         g_var = find_name_in_block('G', dc_gen.rms_model)
         if g_var is not None:
             g0 = 1000.0
-            g_target = 700.0
-            ramp_times = [0.10, 0.12, 0.14, 0.16]
-            for k, t_evt in enumerate(ramp_times, start=1):
-                alpha = k / len(ramp_times)
-                val = (1.0 - alpha) * g0 + alpha * g_target
+            ramp_times = [0.10, 0.12, 0.14, 0.16, 0.18, 0.20]
+            ramp_values = [990.0, 970.0, 950.0, 970.0, 990.0, g0]
+            for t_evt, val in zip(ramp_times, ramp_values):
                 event = RmsEvent(
                     device=dc_gen,
                     parameter=g_var,
@@ -541,7 +539,7 @@ def run_rms_simulation(grid2, pf_results):
                     group=events_group,
                 )
                 grid2.add_rms_event(event)
-            print(f"  Added event: PV irradiance ramp G {g0:.1f} -> {g_target:.1f} W/m^2 from t=0.10s to t=0.16s")
+            print(f"  Added event: PV irradiance dip G {g0:.1f} -> 950.0 -> {g0:.1f} W/m^2 from t=0.10s to t=0.20s")
 
     rms_options = vge.RmsOptions(
         simulation_time=10,

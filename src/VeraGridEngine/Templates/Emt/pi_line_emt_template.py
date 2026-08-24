@@ -244,11 +244,11 @@ def get_pi_line_emt_template(vf: VarFactory,
     # -----------------------------
     # Create model vars
     # -----------------------------
-    i_ser = [vf.add_var(name=f"i_ser_{name}_{ph_label}") for ph_label in active_ph]
-    q_f = [vf.add_var(name=f"q_f_{name}_{ph_label}") for ph_label in active_ph]
-    q_t = [vf.add_var(name=f"q_t_{name}_{ph_label}") for ph_label in active_ph]
-    d_vf_vars = [vf.add_var(name=f"d_vf_{ph_label}_{name}") for ph_label in active_ph]
-    d_vt_vars = [vf.add_var(name=f"d_vt_{ph_label}_{name}") for ph_label in active_ph]
+    i_ser = [vf.add_var(name=f"i_ser_{ph_label}") for ph_label in active_ph]
+    q_f = [vf.add_var(name=f"q_f_{ph_label}") for ph_label in active_ph]
+    q_t = [vf.add_var(name=f"q_t_{ph_label}") for ph_label in active_ph]
+    d_vf_vars = [vf.add_var(name=f"d_vf_{ph_label}") for ph_label in active_ph]
+    d_vt_vars = [vf.add_var(name=f"d_vt_{ph_label}") for ph_label in active_ph]
 
     di_ser = [vf.add_diff_var(name=f"di_ser_{ph_label}", base_var=i_ser[k]) for k, ph_label  in enumerate(active_ph)]
     dq_f = [vf.add_diff_var(name=f"dq_f_{ph_label}", base_var=q_f[k]) for k, ph_label  in enumerate(active_ph)]
@@ -404,6 +404,7 @@ def get_pi_line_emt_template(vf: VarFactory,
     templ.block.children.append(block)
     templ.block.external_mapping = block.external_mapping
     templ.block.api_obj_mapping = block.api_obj_mapping
+    templ.block.parameters = block.parameters
     templ.block.in_vars = block.in_vars
     templ.block.out_vars = block.out_vars
 

@@ -26,7 +26,13 @@ from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template imp
 from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_emt_model
 from VeraGridEngine.Utils.Symbolic.block import Block, find_name_in_block
 from VeraGridEngine.Utils.Symbolic.symbolic import Var
-from VeraGridEngine.enumerations import DynamicIntegrationMethod, EmtInitializationMethod, EmtSolverTypes, ShuntConnectionType
+from VeraGridEngine.enumerations import (
+    DynamicIntegrationMethod,
+    EmtInitializationMethod,
+    EmtSolverTypes,
+    ShuntConnectionType,
+    VarPowerFlowReferenceType,
+)
 
 
 def build_grid() -> Tuple[gce.MultiCircuit, gce.Bus, gce.Bus, gce.Line, gce.Generator, gce.Load]:
@@ -132,7 +138,10 @@ def attach_emt_models(
     set_emt_model(device=line0, model=line_mdl, var_factory=grid.var_factory)
     set_emt_model(device=load, model=load_mdl, var_factory=grid.var_factory)
 
-    return gen_mdl, line_mdl, load_mdl
+    # After attachment the runtime EMT hierarchy lives on each device. Using
+    # those attached roots keeps symbolic lookups aligned with the actual
+    # simulation structure built by ``EmtProblemDae``.
+    return cast(Block, generator.emt_model), cast(Block, line0.emt_model), cast(Block, load.emt_model)
 
 
 def build_power_flow_options() -> PowerFlowOptions:
@@ -244,6 +253,33 @@ def get_signal(problem: EmtProblemDae, root_block: Block, variable_name: str, y:
         return y[:, problem.get_var_idx(variable)]
 
 
+def get_signal_from_reference(
+    problem: EmtProblemDae,
+    root_block: Block,
+    reference: VarPowerFlowReferenceType,
+    y: np.ndarray,
+) -> np.ndarray:
+    """
+    Extract one EMT variable trajectory using the block external mapping.
+
+    This matters for scripting examples because the runtime EMT attachment can
+    rename or wrap internal variables while preserving the external reference
+    contract used by initialization and network coupling.
+
+    :param problem: EMT problem containing the variable indices.
+    :param root_block: Block tree exposing the external mapping.
+    :param reference: Stable external variable reference.
+    :param y: Simulated EMT variable matrix.
+    :return: One trajectory column.
+    """
+    variable: Var | None = root_block.external_mapping.get(reference, None)
+
+    if variable is None:
+        raise ValueError(f"Reference '{reference.name}' was not found in block '{root_block.name}'.")
+    else:
+        return y[:, problem.get_var_idx(variable)]
+
+
 def validate_initialization(problem: EmtProblemDae) -> None:
     """
     Print a compact initialization validation report.
@@ -304,13 +340,13 @@ def build_plot_data(
     data["v_bus1_b"] = get_signal(problem, bus1.emt_model, "v_B", y)
     data["v_bus1_c"] = get_signal(problem, bus1.emt_model, "v_C", y)
 
-    data["i_gen_a"] = get_signal(problem, gen_mdl, "i_A_emt_thevenin_eq_generator_template", y)
-    data["i_line_f_a"] = get_signal(problem, line_mdl, "if_Pi_A", y)
-    data["i_line_t_a"] = get_signal(problem, line_mdl, "it_Pi_A", y)
-    data["i_load_a"] = -get_signal(problem, load_mdl, "i_A_EXP_Load_EMT_3ph", y)
+    data["i_gen_a"] = get_signal_from_reference(problem, gen_mdl, VarPowerFlowReferenceType.i_A, y)
+    data["i_line_f_a"] = get_signal_from_reference(problem, line_mdl, VarPowerFlowReferenceType.if_A, y)
+    data["i_line_t_a"] = get_signal_from_reference(problem, line_mdl, VarPowerFlowReferenceType.it_A, y)
+    data["i_load_a"] = -get_signal_from_reference(problem, load_mdl, VarPowerFlowReferenceType.i_A, y)
 
-    data["p_load_a"] = get_signal(problem, load_mdl, "P_A_EXP_Load_EMT_3ph", y)
-    data["q_load_a"] = get_signal(problem, load_mdl, "Q_A_EXP_Load_EMT_3ph", y)
+    data["p_load_a"] = get_signal_from_reference(problem, load_mdl, VarPowerFlowReferenceType.P_A, y)
+    data["q_load_a"] = get_signal_from_reference(problem, load_mdl, VarPowerFlowReferenceType.Q_A, y)
 
     return data
 

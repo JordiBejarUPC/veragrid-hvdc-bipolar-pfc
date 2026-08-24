@@ -40,7 +40,7 @@ from VeraGridEngine.IO.file_open import determine_file_type, FileOpen
 from VeraGridEngine.enumerations import SimulationTypes, FileType
 from VeraGridEngine.IO.veragrid.contingency_parser import import_contingencies_from_json, export_contingencies_json_file
 from VeraGridEngine.IO.veragrid.catalogue import save_catalogue, load_catalogue
-from VeraGridEngine.Utils.ThirdParty.gslv.gslv_activation import install_gslv_license
+from VeraGridEngine.Compilers.Gslv.activation import install_gslv_license
 from VeraGrid.Gui.CatalogueElementsDialogue.catalogue_elements_dialogue import CatalogueElementsSelectionDialogue
 
 
@@ -1308,9 +1308,13 @@ class IoMain(ScenariosMain):
 
         :return: None.
         """
-        self.coordinates_window = CoordinatesInputGUI(self, self.circuit.get_buses())
-        self.coordinates_window.exec()
-        self.set_xy_from_lat_lon()
+        self.coordinates_window = CoordinatesInputGUI(grid=self.circuit, parent=self)
+
+        if self.coordinates_window is not None:
+            self.coordinates_window.exec()
+
+            if self.coordinates_window.was_accepted:
+                self.set_xy_from_lat_lon()
 
     def export_object_profiles(self) -> None:
         """

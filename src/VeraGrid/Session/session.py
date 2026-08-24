@@ -99,6 +99,7 @@ class GcThread(QThread):
         self.elapsed = 0
 
         self.logger = Logger()
+        self._failed: bool = False
 
         self.__cancel__ = False
 
@@ -115,14 +116,37 @@ class GcThread(QThread):
         """
         self.progress_signal.emit(0.0)
 
-        self.driver.run()
+        try:
+            self.driver.run()
+        except Exception as e:
+            error_message: str = str(e)
+            self._failed = True
+
+            # A driver's constructor may expose an empty result shell before
+            # the numerical run starts.  Once execution fails that shell is
+            # not a valid study result and must not remain available to the UI.
+            self.driver.results = None
+            self.driver.logger.add_error(error_message)
+            self.logger.add_error(error_message)
+            self.progress_text.emit(f"Error: {error_message}")
 
         self.progress_signal.emit(0.0)
         if self.__cancel__:
             self.progress_text.emit('Cancelled!')
         else:
-            self.progress_text.emit('Done!')
+            if self._failed:
+                self.progress_text.emit('Failed!')
+            else:
+                self.progress_text.emit('Done!')
         self.done_signal.emit()
+
+    def has_failed(self) -> bool:
+        """
+        Return whether the driver execution raised an exception.
+
+        :return: ``True`` when the worker caught a driver exception.
+        """
+        return self._failed
 
     def cancel(self) -> None:
         """
@@ -353,14 +377,25 @@ class SimulationSession:
         """
         for driver_type, drv in self.drivers.items():
             if study_name == drv.tpe.value or study_name == drv.name:
-                if drv.results is not None:
-                    tbl = drv.results.mdl(result_type=study_type)
-                    if tbl is None:
-                        return None
-                    else:
-                        return ResultsModel(tbl)
+                thread: GcThread | None = self.threads.get(driver_type, None)
+                if thread is not None:
+                    result_is_available: bool = not thread.isRunning() and not thread.has_failed()
                 else:
-                    print('There seem to be no results :(')
+                    result_is_available = True
+
+                # A registered driver owns a placeholder while it is running.
+                # Do not let a stale results-tree entry expose that placeholder.
+                if result_is_available:
+                    if drv.results is not None:
+                        tbl = drv.results.mdl(result_type=study_type)
+                        if tbl is None:
+                            return None
+                        else:
+                            return ResultsModel(tbl)
+                    else:
+                        print('There seem to be no results :(')
+                        return None
+                else:
                     return None
 
         return None

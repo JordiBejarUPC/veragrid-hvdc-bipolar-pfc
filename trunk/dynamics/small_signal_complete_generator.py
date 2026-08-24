@@ -188,18 +188,10 @@ set_rms_model(device=load, model=load_mdl, var_factory= grid.var_factory)
 # Create event
 ######################################################################################################
 
-# Pl0 = find_name_in_block('Pl0', load_mdl)
-events_group = RmsEventsGroup(name="simulation1")
-# grid.add_rms_events_group(events_group)
-# event = RmsEvent(device=load, parameter=Pl0, time=0.1, value=-0.098, group=events_group)
-# grid.add_rms_event(event)
+# events_group = RmsEventsGroup(name="simulation1")
+#
+# rms_events_group_names = np.array(0)
 
-# gce.save_file(grid, "my_saved_grid.veragrid")
-
-rms_events_group_names = np.array(0)
-
-# gce.save_file(grid=grid, filename="2bus_genqec_load_test.veragrid")
-# grid1 = gce.open_file("2bus_genqec_load_test.veragrid")
 ######################################################################################################
 # Power flow
 ######################################################################################################

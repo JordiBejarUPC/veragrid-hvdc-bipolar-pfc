@@ -314,8 +314,11 @@ def get_load_ZIP_emt_template(
         # The magnitude is evaluated from the physically non-negative quantity u^2 + q^2.
         algebraic_eqs.append(vm_var - ((u_var ** 2 + q_var ** 2 + eps) ** c05))
 
-        # The ZIP ratio uses the positive magnitude variable.
-        algebraic_eqs.append(ratio_var - (vm_var / v0))
+        # Keep the ZIP voltage ratio strictly away from zero so generated
+        # Jacobians do not introduce hidden ``1 / vm`` factors at zero-voltage
+        # Newton trial states.
+        safe_vm_expr: Expr = vm_var + eps
+        algebraic_eqs.append(ratio_var - (safe_vm_expr / v0))
 
         # The active and reactive ZIP powers keep the original polynomial structure.
         algebraic_eqs.append(p_var + (p0_var * (a1 * ratio_var ** 2 + a2 * ratio_var + a3)))
@@ -333,7 +336,7 @@ def get_load_ZIP_emt_template(
         init_eqs[q_var] = -voltage_derivative_var / omega
         init_eqs[v2_var] = u_var ** 2 + q_var ** 2
         init_eqs[vm_var] = (v2_var + eps) ** c05
-        init_eqs[ratio_var] = vm_var / v0
+        init_eqs[ratio_var] = safe_vm_expr / v0
         init_eqs[p_var] = -(p0_var * (a1 * ratio_var ** 2 + a2 * ratio_var + a3))
         init_eqs[q_load_var] = -(q0_var * (a4 * ratio_var ** 2 + a5 * ratio_var + a6))
         init_eqs[current_var] = -(

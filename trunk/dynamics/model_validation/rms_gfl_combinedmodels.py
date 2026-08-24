@@ -174,6 +174,8 @@ def build_pv_current_injection_model(
     p_int_var = find_name_in_block("P", model)
     q_int_var = find_name_in_block("Q", model)
     theta_var = find_name_in_block("theta_vg", model)
+    if theta_var is None:
+        theta_var = find_name_in_block("theta", model)
     vd_c_var = find_name_in_block("v_d_c", model)
     vq_c_var = find_name_in_block("v_q_c", model)
     idc = find_name_in_block("Idc", model)

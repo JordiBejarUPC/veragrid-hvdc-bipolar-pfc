@@ -114,7 +114,7 @@ print(f"Trafo flows (PF): Qf={res.Sf[trafo_idx].imag:.6f}, Qt={res.St[trafo_idx]
 
 # Build Rms models
 line12_mdl = (get_line_rms_template(grid.var_factory).block)
-initialize_trafo_rms(trafo_1, grid.var_factory, Sbase=grid.Sbase)
+initialize_trafo_rms(trafo_1, grid.var_factory)
 trafo_mdl = trafo_1.rms_model
 
 load_type = 'zip'

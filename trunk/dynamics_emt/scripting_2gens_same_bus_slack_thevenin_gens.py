@@ -616,19 +616,19 @@ def export_plots_two_slack_generators_same_bus(
     ))
 
     line_series_currents: np.ndarray = np.column_stack((
-        get_state_series(problem, line_block, 'i_ser_Line01_Pi_A', y_values),
-        get_state_series(problem, line_block, 'i_ser_Line01_Pi_B', y_values),
-        get_state_series(problem, line_block, 'i_ser_Line01_Pi_C', y_values),
+        get_state_series(problem, line_block, 'i_ser_A', y_values),
+        get_state_series(problem, line_block, 'i_ser_B', y_values),
+        get_state_series(problem, line_block, 'i_ser_C', y_values),
     ))
     line_from_shunt_currents: np.ndarray = np.column_stack((
-        get_state_series(problem, line_block, 'i_cap_f_Line01_Pi_A', y_values),
-        get_state_series(problem, line_block, 'i_cap_f_Line01_Pi_B', y_values),
-        get_state_series(problem, line_block, 'i_cap_f_Line01_Pi_C', y_values),
+        get_state_series(problem, line_block, 'i_cap_f_A', y_values),
+        get_state_series(problem, line_block, 'i_cap_f_B', y_values),
+        get_state_series(problem, line_block, 'i_cap_f_C', y_values),
     ))
     line_to_shunt_currents: np.ndarray = np.column_stack((
-        get_state_series(problem, line_block, 'i_cap_t_Line01_Pi_A', y_values),
-        get_state_series(problem, line_block, 'i_cap_t_Line01_Pi_B', y_values),
-        get_state_series(problem, line_block, 'i_cap_t_Line01_Pi_C', y_values),
+        get_state_series(problem, line_block, 'i_cap_t_A', y_values),
+        get_state_series(problem, line_block, 'i_cap_t_B', y_values),
+        get_state_series(problem, line_block, 'i_cap_t_C', y_values),
     ))
 
     output_directory.mkdir(parents=True, exist_ok=True)
@@ -796,12 +796,12 @@ def main() -> None:
     initialized_current_1_a = get_external_init_value(
         problem,
         generator_1_block,
-        "i_A_SlackGen1_SimpleEmt",
+        "i_A",
     )
     initialized_current_2_a = get_external_init_value(
         problem,
         generator_2_block,
-        "i_A_SlackGen2_SimpleEmt",
+        "i_A",
     )
 
     assert_close(

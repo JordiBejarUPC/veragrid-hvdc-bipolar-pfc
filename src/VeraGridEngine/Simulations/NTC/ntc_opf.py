@@ -1784,7 +1784,7 @@ def add_linear_branches_formulation(t_idx: int,
                     # is a phase shifter device (like phase shifter transformer or VSC with P control)
                     prob.add_cst(
                         cst=branch_vars.flows[t_idx, m] == bk * (bus_vars.Va[t_idx, fr] -
-                                                                 bus_vars.Va[t_idx, to] +
+                                                                 bus_vars.Va[t_idx, to] -
                                                                  branch_vars.tap_angles[t_idx, m]),
                         name=join("ac_flows_ps_", [t_idx, m], "_")
                     )
@@ -1797,7 +1797,7 @@ def add_linear_branches_formulation(t_idx: int,
                         # rest of the branches
                         prob.add_cst(
                             cst=branch_vars.flows[t_idx, m] == bk * (bus_vars.Va[t_idx, fr] -
-                                                                     bus_vars.Va[t_idx, to] +
+                                                                     bus_vars.Va[t_idx, to] -
                                                                      branch_vars.tap_angles[t_idx, m]),
                             name=join("ac_flow_ps_fix", [t_idx, m], "_")
                         )
@@ -1880,22 +1880,24 @@ def add_corrective_converter_deltas(prob: LpModel,
                                     outaged_indices: IntVec,
                                     active_mask: Union[BoolVec, None],
                                     name_tag: str,
+                                    row_filter: BoolVec,
                                     delta_vars: Dict[int, LpVar],
                                     branch_terms: Dict[int, LpExp]) -> None:
     """
     Declare the per-contingency corrective set-point change variables for one converter family (VSC or HVDC)
-    and accumulate their linear effect on every branch flow that they influence.
+    and accumulate their linear effect on the branch flows that they influence.
 
     :param prob: linear problem the variables and constraints are added to
     :param t_idx: time index being formulated
     :param c: contingency (group) index, used only to build unique variable/constraint names.
-    :param Sbase: 
+    :param Sbase:
     :param compensated_df: post-contingency distribution-factor matrix (all_branches, n_converter)
-    :param base_flows: base-case converter flows in per unit 
-    :param rates_mw: converter ratings in MW 
+    :param base_flows: base-case converter flows in per unit
+    :param rates_mw: converter ratings in MW
     :param outaged_indices: indices of the converters that are part of the contingency
     :param active_mask: in-service flag per converter
     :param name_tag: "vsc" / "hvdc" used to name the variables and constraints
+    :param row_filter: per-branch flag, True for monitorable branches plus the inter-area ones
     :param delta_vars: lookup converter-index -> Δ variable
     :param branch_terms: lookup branch-index -> accumulated corrective LP expression
     :return: nothing
@@ -1911,14 +1913,16 @@ def add_corrective_converter_deltas(prob: LpModel,
         # preventive contingency_flows, so they must not also be used as a corrective lever
         outaged: set[int] = set(int(x) for x in outaged_indices)
 
-        # iterate the sparse distribution factors as explicit (branch, converter, value) triplets
-        coo: coo_matrix = compensated_df.tocoo()
-        n_entries: int = int(coo.nnz)
-        entry_idx: int = 0
-        while entry_idx < n_entries:
-            m: int = int(coo.row[entry_idx])
-            d: int = int(coo.col[entry_idx])
-            val: float = float(coo.data[entry_idx])
+        # Walk the factors column by column (one column per converter)
+        n_converters: int = int(compensated_df.shape[1])
+        indptr: IntVec = compensated_df.indptr
+        indices: IntVec = compensated_df.indices
+        data: Vec = compensated_df.data
+
+        for d in range(n_converters):
+
+            start: int = int(indptr[d])
+            end: int = int(indptr[d + 1])
 
             # a converter can act correctively only if it is in service and is not the tripped element
             is_tripped: bool = d in outaged
@@ -1927,31 +1931,38 @@ def add_corrective_converter_deltas(prob: LpModel,
             else:
                 is_out_of_service = not bool(active_mask[d])
 
-            if is_tripped or is_out_of_service:
-                # this converter cannot move, so it adds nothing to branch m under this contingency
+            if is_tripped or is_out_of_service or end == start:
+                # this converter cannot move, or influences nothing, so it contributes nothing
                 pass
             else:
-                # declare the corrective set-point change variable the first time we meet converter d
+                # declare the corrective set-point change variable the first time we meet converter d.
                 if d in delta_vars:
                     delta: LpVar = delta_vars[d]
                 else:
                     rate_pu: float = rates_mw[d] / Sbase
                     delta = prob.add_var(-1e20, 1e20, join("corr_" + name_tag + "_d_", [t_idx, d, c], "_"))
                     delta_vars[d] = delta
-                    # the converter set-point may move, but its post-contingency flow stays within its rating
+                    # the set-point may move, but the contingency flow stays within the rating
                     prob.add_cst(cst=base_flows[d] + delta <= rate_pu,
                                  name=join("corr_" + name_tag + "_up_", [t_idx, d, c], "_"))
                     prob.add_cst(cst=base_flows[d] + delta >= -rate_pu,
                                  name=join("corr_" + name_tag + "_lo_", [t_idx, d, c], "_"))
 
-                # accumulate cDF[m, d] · Δ_d on branch m: the post-contingency flow change caused by this move
-                contribution: LpExp = val * delta
-                if m in branch_terms:
-                    branch_terms[m] = branch_terms[m] + contribution
-                else:
-                    branch_terms[m] = contribution
+                # Drop the branches we can get rid of
+                col_rows: IntVec = indices[start:end]
+                keep: BoolVec = row_filter[col_rows]
+                kept_rows: IntVec = col_rows[keep]
+                kept_vals: Vec = data[start:end][keep]
 
-            entry_idx += 1
+                for kk in range(len(kept_rows)):
+                    m: int = int(kept_rows[kk])
+
+                    # accumulate cDF[m, d] * Δ_d, i.e. the flow change on branch m caused by this move
+                    contribution: LpExp = float(kept_vals[kk]) * delta
+                    if m in branch_terms:
+                        branch_terms[m] += contribution
+                    else:
+                        branch_terms[m] = contribution
     else:
         # this converter family does not participate in this contingency
         pass
@@ -1970,8 +1981,13 @@ def add_corrective_contingency_formulation(t_idx: int,
                                            con_loading: Vec,
                                            prob: LpModel,
                                            logger: Logger,
+                                           corrective_rows: BoolVec,
                                            vsc_active: Union[BoolVec, None] = None,
-                                           hvdc_active: Union[BoolVec, None] = None) -> Union[float, LpExp]:
+                                           hvdc_active: Union[BoolVec, None] = None,
+                                           vsc_delta_vars: Union[Dict[int, LpVar], None] = None,
+                                           hvdc_delta_vars: Union[Dict[int, LpVar], None] = None,
+                                           add_exchange_preservation: bool = True,
+                                           enforce_rows: Union[BoolVec, None] = None) -> Union[float, LpExp]:
     """
     Formulate a single contingency allowing corrective re-dispatch of the VSC and HVDC converters
     Rationale: VSCs and HVDCs can change their powers quickly after the contingency
@@ -1999,29 +2015,42 @@ def add_corrective_contingency_formulation(t_idx: int,
     :param con_loading: branch loading w.r.t. the contingency ratings
     :param prob: linear problem the variables and constraints are added to
     :param logger: logger used for the pre-existing-overload reports
+    :param corrective_rows: per-branch flag, True for the branches whose corrective term is read back
     :param vsc_active: in-service flag per VSC, or None to treat every VSC as in service
     :param hvdc_active: in-service flag per HVDC, or None to treat every HVDC as in service
-    :return: objective contribution (sum of the contingency overload slacks)
+    :param vsc_delta_vars: persistent per-VSC Δ variable store for this contingency, or None
+                           for a fresh one
+    :param hvdc_delta_vars: persistent per-HVDC Δ variable store, same rationale
+    :param add_exchange_preservation: add the exchange-preservation equality
+    :param enforce_rows: per-branch flag restricting which rows get their limit constraint
     """
     f_obj: Union[float, LpExp] = 0.0
 
     branch_terms: Dict[int, LpExp] = dict()
-    vsc_delta_vars: Dict[int, LpVar] = dict()
-    hvdc_delta_vars: Dict[int, LpVar] = dict()
+    if vsc_delta_vars is None:
+        vsc_delta_vars = dict()
+    else:
+        pass  # reuse the caller's persistent store
+    if hvdc_delta_vars is None:
+        hvdc_delta_vars = dict()
+    else:
+        pass  # reuse the caller's persistent store
 
     # VSC converters are dispatchable, so they may re-dispatch their set-point after the outage
     add_corrective_converter_deltas(prob=prob, t_idx=t_idx, c=c, Sbase=Sbase,
                                     compensated_df=contingency.compensated_vsc_df,
                                     base_flows=vsc_vars.flows[t_idx, :], rates_mw=vsc_vars.rates[t_idx, :],
                                     outaged_indices=contingency.vsc_indices, active_mask=vsc_active,
-                                    name_tag="vsc", delta_vars=vsc_delta_vars, branch_terms=branch_terms)
+                                    name_tag="vsc", row_filter=corrective_rows,
+                                    delta_vars=vsc_delta_vars, branch_terms=branch_terms)
 
     # HVDC links are equally dispatchable and are treated exactly the same way
     add_corrective_converter_deltas(prob=prob, t_idx=t_idx, c=c, Sbase=Sbase,
                                     compensated_df=contingency.compensated_hvdc_df,
                                     base_flows=hvdc_vars.flows[t_idx, :], rates_mw=hvdc_vars.rates[t_idx, :],
                                     outaged_indices=contingency.hvdc_indices, active_mask=hvdc_active,
-                                    name_tag="hvdc", delta_vars=hvdc_delta_vars, branch_terms=branch_terms)
+                                    name_tag="hvdc", row_filter=corrective_rows,
+                                    delta_vars=hvdc_delta_vars, branch_terms=branch_terms)
 
     # Exchange preservation: the corrective re-dispatch must reroute the 
     # transfer across the boundary, not change its total
@@ -2051,7 +2080,7 @@ def add_corrective_contingency_formulation(t_idx: int,
             # this boundary HVDC has no corrective variable (out of service or unaffected)
             pass
 
-    if len(boundary_terms) > 0:
+    if len(boundary_terms) > 0 and add_exchange_preservation:
         # fold the terms into one expression starting from the first term so the type stays LpExp throughout
         boundary_expr: LpExp = boundary_terms[0]
         fold_idx: int = 1
@@ -2060,11 +2089,15 @@ def add_corrective_contingency_formulation(t_idx: int,
             fold_idx += 1
         prob.add_cst(cst=boundary_expr == 0.0, name=join("corr_exchange_preserve_", [t_idx, c], "_"))
     else:
-        # no converter crosses the boundary, so there is nothing to keep balanced
         pass
 
     # Enforce the post-contingency limits
-    branches_to_check: list[int] = sorted(set(int(b) for b in changed_idx) | set(branch_terms.keys()))
+    candidate_rows: set = set(int(b) for b in changed_idx) | set(branch_terms.keys())
+    if enforce_rows is None:
+        branches_to_check: list[int] = sorted(candidate_rows)
+    else:
+        # only the admitted rows get their limit built in this call
+        branches_to_check = sorted(m for m in candidate_rows if enforce_rows[m])
 
     for m in branches_to_check:
 
@@ -2092,7 +2125,7 @@ def add_corrective_contingency_formulation(t_idx: int,
                 pass
 
             if isinstance(flow_expr, LpExp):
-                # symmetric rating limits with slacks so an infeasible contingency is reported, not crashed
+                # Slack to relax the rates, not the other way around as before
                 rate_pu: float = branch_data_t.contingency_rates[m] / Sbase
                 pos_slack: LpVar = prob.add_var(0, 1e20, join("br_cst_flow_pos_sl_", [t_idx, m, c], "_"))
                 neg_slack: LpVar = prob.add_var(0, 1e20, join("br_cst_flow_neg_sl_", [t_idx, m, c], "_"))
@@ -2101,12 +2134,13 @@ def add_corrective_contingency_formulation(t_idx: int,
                 branch_vars.add_contingency_flow(t=t_idx, m=m, c=c, flow_var=flow_expr,
                                                  neg_slack=neg_slack, pos_slack=pos_slack)
 
-                prob.add_cst(cst=flow_expr + pos_slack <= rate_pu,
+                prob.add_cst(cst=flow_expr - pos_slack <= rate_pu,
                              name=join("br_cst_flow_upper_lim_", [t_idx, m, c], "_"))
-                prob.add_cst(cst=flow_expr - neg_slack >= -rate_pu,
+                prob.add_cst(cst=flow_expr + neg_slack >= -rate_pu,
                              name=join("br_cst_flow_lower_lim_", [t_idx, m, c], "_"))
 
-                f_obj = f_obj + pos_slack + neg_slack
+                # 1e4 per p.u. of slack penalty, arbitrary
+                f_obj += 1e4 * (pos_slack + neg_slack)
             else:
                 # the flow is a pure constant (no decision variables): there is nothing to constrain
                 pass
@@ -2196,19 +2230,20 @@ def add_preventive_contingency_formulation(t_idx: int,
                                                      neg_slack=neg_slack,
                                                      pos_slack=pos_slack)
 
-                    # upper rate constraint
+                    # Ensure the slacks relax
                     prob.add_cst(
-                        cst=contingency_flows[m] + pos_slack <= branch_data_t.contingency_rates[m] / Sbase,
+                        cst=contingency_flows[m] - pos_slack <= branch_data_t.contingency_rates[m] / Sbase,
                         name=join("br_cst_flow_upper_lim_", [t_idx, m, c, occ])
                     )
 
                     # lower rate constraint
                     prob.add_cst(
-                        cst=contingency_flows[m] - neg_slack >= -branch_data_t.contingency_rates[m] / Sbase,
+                        cst=contingency_flows[m] + neg_slack >= -branch_data_t.contingency_rates[m] / Sbase,
                         name=join("br_cst_flow_lower_lim_", [t_idx, m, c, occ])
                     )
 
-                    f_obj = f_obj + pos_slack + neg_slack
+                    # Penalty for the slacks which is arbitrary
+                    f_obj += 1e4 * (pos_slack + neg_slack)
                 else:
                     # the branch is already overloaded at the base contingency loading: report and skip its limit
                     logger.add_error("Contingency overload on sensitive branch, contingency skipped",
@@ -2222,6 +2257,165 @@ def add_preventive_contingency_formulation(t_idx: int,
             pass
 
     return f_obj
+
+
+def get_contingency_monitorable_branches(branch_data_t: PassiveBranchData,
+                                         branch_vars: BranchNtcVars,
+                                         t_idx: int,
+                                         corrective_contingencies: bool,
+                                         monitor_only_sensitive_branches: bool,
+                                         monitor_only_ntc_load_rule_branches: bool,
+                                         alpha_threshold: float,
+                                         alpha_n1: Mat,
+                                         structural_ntc: float,
+                                         ntc_load_rule: float) -> BoolVec:
+    """
+    Flag the branches that may receive a post-contingency limit under any of the contingencies.
+    This exists so the post contingency flow expressions of the branches where no contingency 
+    could constrain them are never built. 
+
+    :param branch_data_t: passive branch data
+    :param branch_vars: branch LP variable container
+    :param t_idx: time index being formulated
+    :param corrective_contingencies: True when the corrective formulation is used
+    :param monitor_only_sensitive_branches: True to drop the branches with a low exchange sensitivity
+    :param monitor_only_ntc_load_rule_branches: True to apply the CEP load rule
+    :param alpha_threshold: minimum N-1 exchange sensitivity for a branch to be monitored
+    :param alpha_n1: N-1 exchange sensitivities, branches x outaged branches
+    :param structural_ntc: sum of the inter-area ratings
+    :param ntc_load_rule: share of the rating a branch may contribute to the exchange
+    :return: per-branch flag, True for the branches worth formulating
+    """
+    # DC branches are always monitored. Their AC exchange sensitivity is zero, so no
+    # sensitivity rule can select them
+    monitorable: BoolVec = np.array(branch_data_t.dc, dtype=bool)
+
+    if corrective_contingencies:
+        # the corrective loop monitors exactly the branches flagged in the base case
+        monitorable = np.logical_or(monitorable, np.array(branch_vars.monitor_logic[t_idx, :], dtype=bool))
+
+    else:
+        # The preventive loop derives its decision per contingency from alpha_n1
+        if alpha_n1.ndim == 2 and alpha_n1.shape[0] == branch_data_t.nelm and alpha_n1.shape[1] > 0:
+            alpha_max: Vec = np.max(np.abs(alpha_n1), axis=1)
+
+            candidate: BoolVec = np.ones(branch_data_t.nelm, dtype=bool)
+
+            if monitor_only_sensitive_branches:
+                candidate = np.logical_and(candidate, alpha_max > alpha_threshold)
+            else:
+                # the sensitivity filter is disabled so every branch stays a candidate
+                pass
+
+            if monitor_only_ntc_load_rule_branches:
+                candidate = np.logical_and(
+                    candidate,
+                    ntc_load_rule * branch_data_t.rates / (alpha_max + 1e-20) <= structural_ntc
+                )
+            else:
+                # the load rule filter is disabled so every branch stays a candidate
+                pass
+
+            monitorable = np.logical_or(monitorable, candidate)
+
+        else:
+            # no usable sensitivity matrix so keep every branch
+            monitorable = np.ones(branch_data_t.nelm, dtype=bool)
+
+    return monitorable
+
+
+def screen_contingency_violations(multi_contingencies: List[LinearMultiContingency],
+                                  admitted_rows: Dict[int, BoolVec],
+                                  f0: Vec,
+                                  hvdc0: Vec,
+                                  vsc0: Vec,
+                                  inj0: Vec,
+                                  monitorable: BoolVec,
+                                  con_rates_pu: Vec,
+                                  con_loading: Vec,
+                                  tol_pu: float,
+                                  at_risk_fraction: float,
+                                  delta_flow_addons: Union[Dict[int, Vec], None] = None) -> List[Tuple[int, IntVec]]:
+    """
+    Numerically evaluate every contingency group against a solved operating point and
+    return, per violated group, the rows to admit into the LP. This accelerates the
+    calculation quite a lot.
+
+    :param multi_contingencies: list of LinearMultiContingency
+    :param admitted_rows: per group index, boolean mask of the rows already in the LP
+    :param f0: solved branch flows (p.u.)
+    :param hvdc0: solved HVDC flows (p.u.)
+    :param vsc0: solved VSC flows (p.u.)
+    :param inj0: solved bus injections (p.u.)
+    :param monitorable: per-branch flag of branches that may get a post-contingency limit
+    :param con_rates_pu: branch contingency ratings (p.u.)
+    :param con_loading: base loading w.r.t. the contingency ratings (skip rows >= 1)
+    :param tol_pu: feasibility tolerance (p.u.) added to the rating before flagging
+    :param at_risk_fraction: fraction of the rating above which a row of a violated group
+                             is admitted preventively along with the violated rows
+    :param delta_flow_addons: per group index, the numeric flow change caused by that
+                              group's solved corrective Δ set-points (compensated DF · Δ)
+    :return: list of (group index, row indices to admit)
+    """
+    # rows the formulation would actually constrain: monitorable and not pre-overloaded
+    checkable: BoolVec = monitorable & (con_loading < 1.0)
+    limits: Vec = con_rates_pu + tol_pu
+
+    admissions: List[Tuple[int, IntVec]] = list()
+    for c, contingency in enumerate(multi_contingencies):
+
+        # rows of this group that are not yet enforced by the LP
+        already: Union[BoolVec, None] = admitted_rows.get(c, None)
+        if already is None:
+            pending: BoolVec = checkable
+        else:
+            pending = checkable & (~already)
+
+        if np.any(pending):
+            fc: Vec = f0.copy()
+            if len(contingency.branch_indices) > 0:
+                fc += contingency.mlodf_factors @ f0[contingency.branch_indices]
+            else:
+                pass  # no branch outages in this group
+            if len(contingency.hvdc_indices) > 0:
+                fc += contingency.hvdc_odf @ hvdc0[contingency.hvdc_indices]
+            else:
+                pass  # no HVDC outages in this group
+            if len(contingency.vsc_indices) > 0:
+                fc += contingency.vsc_odf @ vsc0[contingency.vsc_indices]
+            else:
+                pass  # no VSC outages in this group
+            if len(contingency.bus_indices) > 0:
+                # same expression as the LP path: factor-scaled injection loss
+                fc += contingency.compensated_ptdf_factors @ (
+                        contingency.injections_factor * inj0[contingency.bus_indices])
+            else:
+                pass  # no injection outages in this group
+
+            # apply the solved corrective set-point changes of this group, if any
+            if delta_flow_addons is not None:
+                addon: Union[Vec, None] = delta_flow_addons.get(c, None)
+                if addon is not None:
+                    fc += addon
+                else:
+                    pass  # this group has no corrective Δ in the LP yet
+            else:
+                pass  # preventive screening only
+
+            fc_abs: Vec = np.abs(fc)
+            if np.any(pending & (fc_abs > limits)):
+                # admit the violated rows plus the near-limit rows of the same group
+                admit_mask: BoolVec = pending & (fc_abs > at_risk_fraction * con_rates_pu)
+                admissions.append((c, np.flatnonzero(admit_mask)))
+            else:
+                # the current solution survives this outage on every pending row
+                pass
+        else:
+            # every checkable row of this group is already enforced by the LP
+            pass
+
+    return admissions
 
 
 def add_linear_branches_contingencies_formulation(t_idx: int,
@@ -2244,7 +2438,12 @@ def add_linear_branches_contingencies_formulation(t_idx: int,
                                                   logger: Logger,
                                                   corrective_contingencies: bool = False,
                                                   vsc_active: BoolVec | None = None,
-                                                  hvdc_active: BoolVec | None = None):
+                                                  hvdc_active: BoolVec | None = None,
+                                                  group_indices: Union[IntVec, None] = None,
+                                                  group_rows: Union[Dict[int, IntVec], None] = None,
+                                                  vsc_delta_store: Union[Dict[int, Dict[int, LpVar]], None] = None,
+                                                  hvdc_delta_store: Union[Dict[int, Dict[int, LpVar]], None] = None,
+                                                  preservation_done: Union[set, None] = None):
     """
     Formulate the branches
     :param t_idx: time index
@@ -2266,29 +2465,90 @@ def add_linear_branches_contingencies_formulation(t_idx: int,
     :param con_loading: Loading w.r.t the contingency rates
     :param logger
     :param corrective_contingencies: if True, allow corrective re-dispatch of the VSC/HVDC
+    :param group_indices: subset of multi-contingency indices to formulate (None = all)
+    :param group_rows: per group index, the row indices to enforce 
+    :param vsc_delta_store: per group index, the persistent VSC Δ variable dictionary
+    :param hvdc_delta_store: per group index, the persistent HVDC Δ variable dictionary
+    :param preservation_done: group indices whose exchange-preservation equality is already
+                              in the LP
     :return objective function
     """
     f_obj = 0.0
-    for c, contingency in enumerate(linear_multi_contingencies.multi_contingencies):
+
+    # Which branches can possibly get a post-contingency limit
+    monitorable = get_contingency_monitorable_branches(
+        branch_data_t=branch_data_t,
+        branch_vars=branch_vars,
+        t_idx=t_idx,
+        corrective_contingencies=corrective_contingencies,
+        monitor_only_sensitive_branches=monitor_only_sensitive_branches,
+        monitor_only_ntc_load_rule_branches=monitor_only_ntc_load_rule_branches,
+        alpha_threshold=alpha_threshold,
+        alpha_n1=alpha_n1,
+        structural_ntc=structural_ntc,
+        ntc_load_rule=ntc_load_rule
+    )
+
+    # The corrective converter terms are read back for the monitorable and inter area branches
+    corrective_rows: BoolVec = monitorable.copy()
+    for branch_m, branch_sense in branch_vars.inter_space_branches:
+        corrective_rows[branch_m] = True
+
+    # which multi-contingency indices to formulate: either all, or the caller's subset
+    if group_indices is None:
+        group_list: IntVec = np.arange(len(linear_multi_contingencies.multi_contingencies))
+    else:
+        group_list = group_indices
+
+    for c in group_list:
+        contingency = linear_multi_contingencies.multi_contingencies[c]
+
+        # restrict the enforced rows when the lazy admission provides them for this group
+        if group_rows is None:
+            row_filter_c: BoolVec = monitorable
+            enforce_rows_c: Union[BoolVec, None] = None
+        else:
+            enforce_rows_c = np.zeros(branch_data_t.nelm, dtype=bool)
+            enforce_rows_c[group_rows[c]] = True
+            row_filter_c = monitorable & enforce_rows_c
 
         contingency_flows, mask, changed_idx = contingency.get_lp_contingency_flows(
             base_flow=branch_vars.flows[t_idx, :],
             injections=bus_vars.Pinj[t_idx, :],
             hvdc_flow=hvdc_vars.flows[t_idx, :],
-            vsc_flow=vsc_vars.flows[t_idx, :]
+            vsc_flow=vsc_vars.flows[t_idx, :],
+            row_filter=row_filter_c
         )
 
         if corrective_contingencies:
-            # corrective N-1: the converters may change their set-points after the outage
-            f_obj = f_obj + add_corrective_contingency_formulation(
+            # the Δ variables of this group persist across admissions when a store is given
+            if vsc_delta_store is None:
+                vsc_deltas_c: Union[Dict[int, LpVar], None] = None
+                hvdc_deltas_c: Union[Dict[int, LpVar], None] = None
+            else:
+                vsc_deltas_c = vsc_delta_store.setdefault(int(c), dict())
+                hvdc_deltas_c = hvdc_delta_store.setdefault(int(c), dict())
+
+            # the exchange-preservation equality goes in at most once per group
+            if preservation_done is None:
+                add_preservation_c: bool = True
+            else:
+                add_preservation_c = int(c) not in preservation_done
+                preservation_done.add(int(c))
+
+            f_obj += add_corrective_contingency_formulation(
                 t_idx=t_idx, c=c, Sbase=Sbase, contingency=contingency,
                 contingency_flows=contingency_flows, changed_idx=changed_idx,
                 branch_data_t=branch_data_t, branch_vars=branch_vars,
                 vsc_vars=vsc_vars, hvdc_vars=hvdc_vars, con_loading=con_loading,
-                prob=prob, logger=logger, vsc_active=vsc_active, hvdc_active=hvdc_active)
+                prob=prob, logger=logger, corrective_rows=corrective_rows,
+                vsc_active=vsc_active, hvdc_active=hvdc_active,
+                vsc_delta_vars=vsc_deltas_c, hvdc_delta_vars=hvdc_deltas_c,
+                add_exchange_preservation=add_preservation_c,
+                enforce_rows=enforce_rows_c)
         else:
             # preventive N-1: the converters stay at their base-case set-point
-            f_obj = f_obj + add_preventive_contingency_formulation(
+            f_obj += add_preventive_contingency_formulation(
                 t_idx=t_idx, c=c, Sbase=Sbase, contingency=contingency,
                 contingency_flows=contingency_flows, changed_idx=changed_idx,
                 branch_data_t=branch_data_t, branch_vars=branch_vars,
@@ -2481,6 +2741,46 @@ def add_linear_hvdc_formulation(t_idx: int,
     return f_obj
 
 
+def compute_vsc_pmode3_saturation_rates(vsc_data_t: VscData,
+                                        branch_data_t: PassiveBranchData,
+                                        bus_data_t: BusData) -> Vec:
+    """
+    Compute the effective P-mode 3 saturation rate of each VSC in MW.
+    A P-mode 3 droop saturates when the converter cannot deliver more power, and that limit
+    is the converter rating or the total rating of the DC branches attached to the
+    converter's DC bus, whichever is lower.
+    
+    :param vsc_data_t: VscData structure
+    :param branch_data_t: PassiveBranchData structure (contains the DC lines)
+    :param bus_data_t: BusData structure (provides the is_dc marker)
+    :return: array of effective saturation rates (MW) per VSC
+    """
+    # total rating of the active DC branches incident to each bus
+    dc_rate_per_bus: Vec = np.zeros(bus_data_t.nbus)
+    for k in range(branch_data_t.nelm):
+        f: int = branch_data_t.F[k]
+        t: int = branch_data_t.T[k]
+        if branch_data_t.active[k] and bus_data_t.is_dc[f] and bus_data_t.is_dc[t]:
+            dc_rate_per_bus[f] += branch_data_t.rates[k]
+            dc_rate_per_bus[t] += branch_data_t.rates[k]
+        else:
+            # AC branch or inactive branch: it does not limit the DC-side transfer
+            pass
+
+    # a meshed DC grid may have remoter bottlenecks, avoid for now
+    sat_rates: Vec = vsc_data_t.rates.copy()
+    for m in range(vsc_data_t.nelm):
+        fr: int = vsc_data_t.F[m]
+        if bus_data_t.is_dc[fr] and dc_rate_per_bus[fr] > 0.0:
+            # the converter cannot push more than what its DC cables can carry
+            sat_rates[m] = min(sat_rates[m], dc_rate_per_bus[fr])
+        else:
+            # back-to-back converter or no DC branch attached, so keep the converter rating
+            pass
+
+    return sat_rates
+
+
 def add_linear_vsc_formulation(t_idx: int,
                                Sbase: float,
                                vsc_data_t: VscData,
@@ -2488,6 +2788,7 @@ def add_linear_vsc_formulation(t_idx: int,
                                bus_vars: BusNtcVars,
                                prob: LpModel,
                                logger: Logger,
+                               sat_rates: Vec,
                                saturate: bool = True):
     """
 
@@ -2499,6 +2800,7 @@ def add_linear_vsc_formulation(t_idx: int,
     :param bus_vars:
     :param prob:
     :param logger:
+    :param sat_rates: per VSC P-mode 3 saturation rates in MW
     :param saturate:
     :return:
     """
@@ -2510,9 +2812,8 @@ def add_linear_vsc_formulation(t_idx: int,
         fr = vsc_data_t.F[m]
         to = vsc_data_t.T[m]
 
+        # remote AC bus the droop measures its angle difference against (-1 when the user did not set it)
         control_bus_idx = vsc_data_t.control1_bus_idx[m]
-        if control_bus_idx == -1:
-            control_bus_idx = fr  # pick the DC angle which is 0
 
         vsc_vars.rates[t_idx, m] = vsc_data_t.rates[m]
 
@@ -2527,7 +2828,15 @@ def add_linear_vsc_formulation(t_idx: int,
                 # convert MW/deg to pu/rad
                 droop = vsc_data_t.control1_val[m] * 57.295779513 / Sbase  # MW/deg -> p.u./rad
 
-                if saturate:
+                if control_bus_idx == -1:
+                    # Without a reference bus there is no angle difference to droop against
+                    logger.add_error(msg="P-mode 3 VSC without an angle-droop reference bus: "
+                                         "set 'control1_dev' to the AC bus at the other end of the DC link. "
+                                         "The converter is held at its P set-point instead.",
+                                     device=str(vsc_data_t.names[m]))
+                    vsc_vars.flows[t_idx, m] = P0
+
+                elif saturate:
 
                     # vsc_vars.flows[t_idx, m] = pmode3_formulation2(
                     #     prob=prob,
@@ -2542,16 +2851,11 @@ def add_linear_vsc_formulation(t_idx: int,
                     # )
 
                     # On the selection of the angles:
-                    # The VSC connects an AC bus (to) to a DC bus (from)
-                    # On the other end of the DC connection, there is a second VSC
-                    # The AC bus of this second VSC is the control_bus_idx
-                    # Hence, if P = P0 + k · (theta_f - theta_t), then:
-                    # theta_f = Va at to, theta_t = Va at control_bus_idx
 
                     vsc_vars.flows[t_idx, m] = pmode3_formulation_impr(prob=prob,
                                                                        t_idx=t_idx,
                                                                        m=m,
-                                                                       rate=vsc_data_t.rates[m] / Sbase,
+                                                                       rate=sat_rates[m] / Sbase,
                                                                        P0=P0,
                                                                        droop=droop,
                                                                        theta_f=bus_vars.Va[t_idx, control_bus_idx],
@@ -2564,8 +2868,8 @@ def add_linear_vsc_formulation(t_idx: int,
 
                     # declare the flow var
                     vsc_vars.flows[t_idx, m] = prob.add_var(
-                        lb=-vsc_data_t.rates[m] / Sbase,
-                        ub=vsc_data_t.rates[m] / Sbase,
+                        lb=-sat_rates[m] / Sbase,
+                        ub=sat_rates[m] / Sbase,
                         name=join("vsc_flow_", [t_idx, m], "_")
                     )
 
@@ -2922,8 +3226,16 @@ def run_linear_ntc_opf(grid: MultiCircuit,
         vsc_vars=mip_vars.vsc_vars,
         bus_vars=mip_vars.bus_vars,
         prob=lp_model,
-        logger=logger
+        logger=logger,
+        sat_rates=compute_vsc_pmode3_saturation_rates(vsc_data_t=nc.vsc_data,
+                                                      branch_data_t=nc.passive_branch_data,
+                                                      bus_data_t=nc.bus_data)
     )
+
+    # lazy formulation state is filled when contingencies are on and there are groups
+    lazy_mctg: Union[LinearMultiContingencies, None] = None
+    lazy_alpha_n1: Union[Mat, None] = None
+    lazy_con_loading: Union[Vec, None] = None
 
     if zonal_grouping == ZonalGrouping.NoGrouping:
 
@@ -2934,7 +3246,8 @@ def run_linear_ntc_opf(grid: MultiCircuit,
                             logger=logger)
 
         # compute the power flow
-        branch_flows = ls.get_flows(Pbus.real)
+        # get_flows works in MW while this formulation works in p.u., so convert in and out
+        branch_flows = ls.get_flows(Pbus.real * nc.Sbase) / nc.Sbase
         branch_loading = branch_flows / (nc.passive_branch_data.rates / nc.Sbase + 1e-20)
 
         # compute the sensitivity to the exchange
@@ -3015,30 +3328,11 @@ def run_linear_ntc_opf(grid: MultiCircuit,
                 branch_loading_con = np.abs(
                     branch_flows / (nc.passive_branch_data.contingency_rates / nc.Sbase + 1e-20))
 
-                # formulate the contingencies
-                f_obj += add_linear_branches_contingencies_formulation(
-                    t_idx=t_idx,
-                    Sbase=nc.Sbase,
-                    branch_data_t=nc.passive_branch_data,
-                    branch_vars=mip_vars.branch_vars,
-                    bus_vars=mip_vars.bus_vars,
-                    hvdc_vars=mip_vars.hvdc_vars,
-                    vsc_vars=mip_vars.vsc_vars,
-                    prob=lp_model,
-                    linear_multi_contingencies=mctg,
-                    monitor_only_sensitive_branches=monitor_only_sensitive_branches,
-                    monitor_only_ntc_load_rule_branches=monitor_only_ntc_load_rule_branches,
-                    structural_ntc=structural_ntc,
-                    ntc_load_rule=ntc_load_rule,
-                    alpha_threshold=alpha_threshold,
-                    alpha_n1=alpha_n1,
-                    base_loading=branch_loading,
-                    con_loading=branch_loading_con,
-                    logger=logger,
-                    corrective_contingencies=corrective_contingencies,
-                    vsc_active=nc.vsc_data.active,
-                    hvdc_active=nc.hvdc_data.active
-                )
+                # Lazy constraint generation, so no contingency rows are built here. Groups
+                # enter the LP only when the screening after each solve finds them violated
+                lazy_mctg = mctg
+                lazy_alpha_n1 = alpha_n1
+                lazy_con_loading = branch_loading_con
 
             else:
                 print("Contingencies enabled, but no contingency groups provided")
@@ -3061,6 +3355,137 @@ def run_linear_ntc_opf(grid: MultiCircuit,
 
     # solve the model
     status = lp_model.solve(robust=robust, show_logs=verbose > 0, progress_text=progress_text)
+
+    if lazy_mctg is not None and status == lp_model.OPTIMAL:
+        # Screen every not-yet-formulated group against the solved operating point, add only 
+        # the violated ones, re-solve, and repeat until a screening pass is clean. 
+        monitorable_lazy: BoolVec = get_contingency_monitorable_branches(
+            branch_data_t=nc.passive_branch_data,
+            branch_vars=mip_vars.branch_vars,
+            t_idx=t_idx,
+            corrective_contingencies=corrective_contingencies,
+            monitor_only_sensitive_branches=monitor_only_sensitive_branches,
+            monitor_only_ntc_load_rule_branches=monitor_only_ntc_load_rule_branches,
+            alpha_threshold=alpha_threshold,
+            alpha_n1=lazy_alpha_n1,
+            structural_ntc=float(mip_vars.structural_ntc[t_idx]),
+            ntc_load_rule=ntc_load_rule
+        )
+
+        for lazy_branch_m, _lazy_branch_sense in mip_vars.branch_vars.inter_space_branches:
+            monitorable_lazy[lazy_branch_m] = True
+        monitorable_lazy = monitorable_lazy | (nc.passive_branch_data.dc.astype(bool)
+                                               & nc.passive_branch_data.monitor_loading.astype(bool))
+        con_rates_pu_lazy: Vec = nc.passive_branch_data.contingency_rates / nc.Sbase
+        admitted_rows: Dict[int, BoolVec] = dict()
+        vsc_delta_store: Dict[int, Dict[int, LpVar]] = dict()
+        hvdc_delta_store: Dict[int, Dict[int, LpVar]] = dict()
+        preservation_done: set = set()
+        n_rows_admitted: int = 0
+        lazy_round: int = 0
+        max_lazy_rounds: int = 20
+
+        while lazy_round < max_lazy_rounds and status == lp_model.OPTIMAL:
+            # numeric snapshot of the solved operating point
+            f0_num: Vec = np.array([lp_model.get_value(x) for x in mip_vars.branch_vars.flows[t_idx, :]])
+            hvdc0_num: Vec = np.array([lp_model.get_value(x) for x in mip_vars.hvdc_vars.flows[t_idx, :]])
+            vsc0_num: Vec = np.array([lp_model.get_value(x) for x in mip_vars.vsc_vars.flows[t_idx, :]])
+            inj0_num: Vec = np.array([lp_model.get_value(x) for x in mip_vars.bus_vars.Pinj[t_idx, :]])
+
+            # numeric flow change of every admitted corrective group's solved Δ set-points
+            delta_addons: Dict[int, Vec] = dict()
+            for c_adm in admitted_rows.keys():
+                addon_c: Vec = np.zeros(nc.passive_branch_data.nelm)
+                ctg_adm = lazy_mctg.multi_contingencies[c_adm]
+                vsc_deltas_adm: Dict[int, LpVar] = vsc_delta_store.get(c_adm, dict())
+                if len(vsc_deltas_adm) > 0 and ctg_adm.compensated_vsc_df is not None:
+                    dv: Vec = np.zeros(nc.vsc_data.nelm)
+                    for d_adm, var_adm in vsc_deltas_adm.items():
+                        dv[d_adm] = lp_model.get_value(var_adm)
+                    addon_c += ctg_adm.compensated_vsc_df @ dv
+                else:
+                    pass  # this group moves no VSC correctively
+                hvdc_deltas_adm: Dict[int, LpVar] = hvdc_delta_store.get(c_adm, dict())
+                if len(hvdc_deltas_adm) > 0 and ctg_adm.compensated_hvdc_df is not None:
+                    dh: Vec = np.zeros(nc.hvdc_data.nelm)
+                    for d_adm, var_adm in hvdc_deltas_adm.items():
+                        dh[d_adm] = lp_model.get_value(var_adm)
+                    addon_c += ctg_adm.compensated_hvdc_df @ dh
+                else:
+                    pass  # this group moves no HVDC correctively
+                delta_addons[c_adm] = addon_c
+
+            admissions: List[Tuple[int, IntVec]] = screen_contingency_violations(
+                multi_contingencies=lazy_mctg.multi_contingencies,
+                admitted_rows=admitted_rows,
+                f0=f0_num, hvdc0=hvdc0_num, vsc0=vsc0_num, inj0=inj0_num,
+                monitorable=monitorable_lazy,
+                con_rates_pu=con_rates_pu_lazy,
+                con_loading=lazy_con_loading,
+                tol_pu=1e-4,
+                at_risk_fraction=0.9,
+                delta_flow_addons=delta_addons
+            )
+
+            if len(admissions) == 0:
+                # clean screening pass as the solution survives every contingency group
+                lazy_round = max_lazy_rounds
+            else:
+                # per-group row lookup for the formulation call
+                group_rows_now: Dict[int, IntVec] = dict()
+                for c_new, rows_new in admissions:
+                    group_rows_now[int(c_new)] = rows_new
+
+                f_obj += add_linear_branches_contingencies_formulation(
+                    t_idx=t_idx,
+                    Sbase=nc.Sbase,
+                    branch_data_t=nc.passive_branch_data,
+                    branch_vars=mip_vars.branch_vars,
+                    bus_vars=mip_vars.bus_vars,
+                    hvdc_vars=mip_vars.hvdc_vars,
+                    vsc_vars=mip_vars.vsc_vars,
+                    prob=lp_model,
+                    linear_multi_contingencies=lazy_mctg,
+                    monitor_only_sensitive_branches=monitor_only_sensitive_branches,
+                    monitor_only_ntc_load_rule_branches=monitor_only_ntc_load_rule_branches,
+                    structural_ntc=float(mip_vars.structural_ntc[t_idx]),
+                    ntc_load_rule=ntc_load_rule,
+                    alpha_threshold=alpha_threshold,
+                    alpha_n1=lazy_alpha_n1,
+                    base_loading=np.abs(f0_num) / (nc.passive_branch_data.rates / nc.Sbase + 1e-20),
+                    con_loading=lazy_con_loading,
+                    logger=logger,
+                    corrective_contingencies=corrective_contingencies,
+                    vsc_active=nc.vsc_data.active,
+                    hvdc_active=nc.hvdc_data.active,
+                    group_indices=np.array([c_new for c_new, _ in admissions], dtype=int),
+                    group_rows=group_rows_now,
+                    vsc_delta_store=vsc_delta_store,
+                    hvdc_delta_store=hvdc_delta_store,
+                    preservation_done=preservation_done
+                )
+
+                # record the admitted rows so the screening skips them from now on
+                for c_new, rows_new in admissions:
+                    mask_prev: Union[BoolVec, None] = admitted_rows.get(int(c_new), None)
+                    if mask_prev is None:
+                        mask_prev = np.zeros(nc.passive_branch_data.nelm, dtype=bool)
+                        admitted_rows[int(c_new)] = mask_prev
+                    else:
+                        pass  # extending this group's existing admission
+                    mask_prev[rows_new] = True
+                    n_rows_admitted += len(rows_new)
+
+                lp_model.minimize(f_obj)
+                status = lp_model.solve(robust=robust, show_logs=verbose > 0, progress_text=progress_text)
+                lazy_round += 1
+
+        logger.add_info("Lazy contingency formulation: groups/rows added",
+                        value=f"{len(admitted_rows)} groups, {n_rows_admitted} rows "
+                              f"of {len(lazy_mctg.multi_contingencies)} groups")
+    else:
+        # full formulation, or the base problem did not solve
+        pass
 
     # gather the results
     logger.add_info(msg="Status", value=lp_model.status2string(status))
@@ -3134,6 +3559,23 @@ def run_linear_ntc_opf(grid: MultiCircuit,
 
         if sl_down > 0.0:
             logger.add_warning("Overload (-)", device=f"({k}) - {nc.passive_branch_data.names[k]}", value=sl_down)
+
+    # report every post-contingency limit that had to be relaxed to keep the LP feasible:
+    # these are structural N-1 overloads the dispatch cannot avoid, and the NTC result is
+    # only meaningful knowing they exist
+    for (t_c, m_c, c_c, flow_c, neg_sl, pos_sl) in vars_v.branch_vars.contingency_flow_data:
+        if isinstance(neg_sl, float) and isinstance(pos_sl, float):
+            slack_mw: float = abs(neg_sl) + abs(pos_sl)
+            if slack_mw > 1e-6:
+                logger.add_warning("Unavoidable post-contingency overload (limit relaxed)",
+                                   device=f"({m_c}) - {nc.passive_branch_data.names[m_c]} @ctg {c_c}",
+                                   value=slack_mw)
+            else:
+                # the limit held without relaxation
+                pass
+        else:
+            # the slack was not evaluated to a number (should not happen after get_values)
+            pass
 
     # The summation of flow increments in the inter-area branches must be ΔP in A1.
     vars_v.inter_area_flows[t_idx] = (

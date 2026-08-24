@@ -121,7 +121,6 @@ def get_bus_mask(grid: MultiCircuit,
             DeviceType.WindingDevice,
         }
         abc_phase_device_types = {
-            DeviceType.VscDevice,
             DeviceType.SeriesReactanceDevice,
             DeviceType.UpfcDevice,
             DeviceType.SwitchDevice,
@@ -144,26 +143,18 @@ def get_bus_mask(grid: MultiCircuit,
                     mask[1] = branch.phA
                     mask[2] = branch.phB
                     mask[3] = branch.phC
-                elif branch.device_type in abc_phase_device_types:
-                    mask[1] = True
-                    mask[2] = True
-                    mask[3] = True
                 else:
-                    mask[1] = True
-                    mask[2] = True
-                    mask[3] = True
-
-        if not any(mask):
-            # The dynamic editor can open EMT templates before the network has any EMT-aware branches.
-            # In that case we expose a default ABC shell so the user can still build and attach EMT models.
-            mask[0] = False
+                    pass
+            else:
+                pass
+        if mask == [False, False, False, False]:
+            # if no mask applied, we assume 3ph for other cases
             mask[1] = True
             mask[2] = True
             mask[3] = True
-        else:
-            pass
 
     return mask
+
 
 def get_bus_emt_template(grid: MultiCircuit,
                          bus: Bus,

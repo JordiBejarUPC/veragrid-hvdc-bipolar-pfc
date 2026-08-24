@@ -13,6 +13,21 @@ from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.enumerations import VarPowerFlowReferenceType, DeviceType, ParamPowerFlowReferenceType
 from VeraGridEngine.Templates.Emt.generator_emt_type_template import get_pf_positive_sequence_init_refs
 
+
+def get_thevenin_internal_shared_references() -> tuple[str, str, str, str]:
+    """
+    Return the stable shared-reference contract of the Thevenin seed variables.
+
+    :return: Shared references for ``theta``, ``e_A``, ``e_B`` and ``e_C``.
+    :rtype: tuple[str, str, str, str]
+    """
+    return (
+        "thevenin_theta_internal",
+        "thevenin_e_a_internal",
+        "thevenin_e_b_internal",
+        "thevenin_e_c_internal",
+    )
+
 def get_generator_thevenin_rl_emt_template_with_ref(
         vf: VarFactory,
         name: str = "emt_thevenin_eq_generator_template",
@@ -79,6 +94,11 @@ def get_generator_thevenin_rl_emt_template_with_ref(
     templ: EmtModelTemplate = EmtModelTemplate()
     templ.tpe = DeviceType.GeneratorDevice
     templ.name = name
+    theta_internal_reference: str
+    e_a_internal_reference: str
+    e_b_internal_reference: str
+    e_c_internal_reference: str
+    theta_internal_reference, e_a_internal_reference, e_b_internal_reference, e_c_internal_reference = get_thevenin_internal_shared_references()
 
     # ------------------------------------------------------------------
     # Constants used in symbolic expressions.
@@ -104,7 +124,7 @@ def get_generator_thevenin_rl_emt_template_with_ref(
     i_B = vf.add_var(name=f"i_B", reference=VarPowerFlowReferenceType.i_B)
     i_C = vf.add_var(name=f"i_C", reference=VarPowerFlowReferenceType.i_C)
 
-    theta = vf.add_var(name=f"theta")
+    theta = vf.add_var(name=f"theta", shared_reference=theta_internal_reference)
     # parameter to create a phase jump
     theta_deviation_param = vf.add_var(name=f"theta_deviation_param")
     # parameter to create RoCoF
@@ -120,9 +140,9 @@ def get_generator_thevenin_rl_emt_template_with_ref(
     # - internal phase emfs
     # - measured active/reactive power
     # ------------------------------------------------------------------
-    e_A = vf.add_var(name=f"e_A")
-    e_B = vf.add_var(name=f"e_B")
-    e_C = vf.add_var(name=f"e_C")
+    e_A = vf.add_var(name=f"e_A", shared_reference=e_a_internal_reference)
+    e_B = vf.add_var(name=f"e_B", shared_reference=e_b_internal_reference)
+    e_C = vf.add_var(name=f"e_C", shared_reference=e_c_internal_reference)
     Pe = vf.add_var(name=f"Pe")
     Qe = vf.add_var(name=f"Qe")
 
@@ -304,6 +324,7 @@ def get_generator_thevenin_rl_emt_template_with_ref(
     templ.block.children.append(block)
     templ.block.external_mapping = block.external_mapping
     templ.block.api_obj_mapping = block.api_obj_mapping
+    templ.block.parameters = block.parameters
     templ.block.in_vars = inputs
     templ.block.out_vars = block.out_vars
 
