@@ -3,9 +3,15 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
+from VeraGridEngine.Devices.Aggregation.facility import Facility
+from VeraGridEngine.Devices.Associations.emission_gas import EmissionGas
+from VeraGridEngine.Devices.Associations.fuel import Fuel
+from VeraGridEngine.Devices.Associations.technology import Technology
 from VeraGridEngine.Devices.Injections.controllable_shunt import ControllableShunt
+from VeraGridEngine.Devices.Injections.generator import Generator
 from VeraGridEngine.Devices.Injections.load import Load
 from VeraGridEngine.Devices.Injections.shunt import Shunt
+from VeraGridEngine.Devices.Injections.static_generator import StaticGenerator
 from VeraGridEngine.Devices.Parents.shunt_parent import ShuntParent
 from typing import List, Dict, Union, TYPE_CHECKING
 
@@ -190,6 +196,75 @@ def fill_profile_with_array(gslv_profile: "pg.Profiledouble",
         # Snapshot exports collapse the profile to a single scalar value.
         gslv_profile.fill(default_val)
 
+
+def set_injection_associations(gslv_elm: "pg.InjectionParent",
+                               elm: Load | Generator | StaticGenerator | Shunt | ControllableShunt,
+                               facility_dict: Dict[Facility, "pg.Facility"],
+                               technology_dict: Dict[Technology, "pg.Technology"]) -> None:
+    """
+    Copy common VeraGrid injection associations into one GSLV injection.
+
+    :param gslv_elm: Target GSLV injection.
+    :param elm: Source VeraGrid injection.
+    :param facility_dict: VeraGrid-to-GSLV facility lookup.
+    :param technology_dict: VeraGrid-to-GSLV technology lookup.
+    :return: None.
+    """
+    if elm.facility is None:
+        pass
+    else:
+        facility: pg.Facility | None = facility_dict.get(elm.facility, None)
+        if facility is None:
+            pass
+        else:
+            gslv_elm.facility = facility
+
+    for association in elm.technologies:
+        technology: pg.Technology | None = technology_dict.get(association.api_object, None)
+        if technology is None:
+            pass
+        else:
+            gslv_elm.technologies.add_object(api_obj=technology, val=float(association.value))
+
+
+def set_generator_associations(gslv_elm: "pg.Generator",
+                               elm: Generator,
+                               facility_dict: Dict[Facility, "pg.Facility"],
+                               technology_dict: Dict[Technology, "pg.Technology"],
+                               fuel_dict: Dict[Fuel, "pg.Fuel"],
+                               emission_gas_dict: Dict[EmissionGas, "pg.EmissionGas"]) -> None:
+    """
+    Copy VeraGrid generator associations into one GSLV generator-like injection.
+
+    :param gslv_elm: Target GSLV generator or battery.
+    :param elm: Source VeraGrid generator or battery.
+    :param facility_dict: VeraGrid-to-GSLV facility lookup.
+    :param technology_dict: VeraGrid-to-GSLV technology lookup.
+    :param fuel_dict: VeraGrid-to-GSLV fuel lookup.
+    :param emission_gas_dict: VeraGrid-to-GSLV emission gas lookup.
+    :return: None.
+    """
+    set_injection_associations(
+        gslv_elm=gslv_elm,
+        elm=elm,
+        facility_dict=facility_dict,
+        technology_dict=technology_dict,
+    )
+
+    for association in elm.fuels:
+        fuel: pg.Fuel | None = fuel_dict.get(association.api_object, None)
+        if fuel is None:
+            pass
+        else:
+            gslv_elm.fuels.add_object(api_obj=fuel, val=float(association.value))
+
+    for association in elm.emissions:
+        emission_gas: pg.EmissionGas | None = emission_gas_dict.get(association.api_object, None)
+        if emission_gas is None:
+            pass
+        else:
+            gslv_elm.emissions.add_object(api_obj=emission_gas, val=float(association.value))
+
 def get_single_three_phase_snapshot_index(
         use_time_series: bool,
         time_indices: Union[IntVec, None],
@@ -345,4 +420,3 @@ def apply_three_phase_shunt_data(
     gslv_shunt.set_Ba_val(ba)
     gslv_shunt.set_Bb_val(bb)
     gslv_shunt.set_Bc_val(bc)
-
