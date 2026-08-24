@@ -8,13 +8,19 @@ from __future__ import annotations
 import copy
 import math
 import uuid
-from enum import Enum
 from typing import List, Dict, Any, Tuple
 from typing import Iterable, Mapping
 
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const, Expr, BinOp, _expr_to_dict, _dict_to_expr, Comparison
 from VeraGridEngine.Devices.Diagrams.block_diagram import BlockDiagram
-from VeraGridEngine.enumerations import VarPowerFlowReferenceType, ParamPowerFlowReferenceType
+from VeraGridEngine.enumerations import (
+    EmtTerminalConductor,
+    EmtTerminalSide,
+    ParamPowerFlowReferenceType,
+    RmsPhysicalMeterKind,
+    RmsTerminalSide,
+    VarPowerFlowReferenceType,
+)
 from VeraGridEngine.Utils.Symbolic.compare_expressions_structure import equivalent_systems
 from VeraGridEngine.Utils.Symbolic.dynamic_connection_intent import (DynamicConnectionIntent,
                                                                      DynamicConnectionIntentDirection,
@@ -27,34 +33,6 @@ from VeraGridEngine.Utils.procedural_logic_contract import (
     ProceduralLogicData,
     ProceduralLogicEntryContract,
 )
-
-
-class RmsTerminalSide(Enum):
-    """Identify one hidden physical network terminal of an RMS device.
-
-    ``BUS`` selects one-terminal topology. ``FROM`` and ``TO`` select the
-    corresponding ends of a branch. The side is resolved by ``MultiCircuit``
-    topology and is independent of visible symbolic signal ports.
-    """
-
-    BUS = "bus"
-    FROM = "from"
-    TO = "to"
-
-
-class RmsPhysicalMeterKind(Enum):
-    """Identify the physical quantity selected by one RMS meter.
-
-    The kind constrains which physical target and terminal are valid while
-    leaving the meter block as the sole owner of its solved expressions.
-    """
-
-    __slots__ = ()
-
-    VOLTAGE = "voltage"
-    CURRENT = "current"
-    POWER = "power"
-    PHASE_LOCKED_LOOP = "phase_locked_loop"
 
 
 class RmsPhysicalMeasurementPoint:
@@ -439,34 +417,6 @@ def rms_terminal_power_contribution_from_data(
         active_power_reference=active_reference,
         reactive_power_reference=reactive_reference,
     )
-
-
-class EmtTerminalSide(Enum):
-    """Identify one hidden physical network terminal of an EMT device.
-
-    ``BUS`` selects one-terminal topology. ``FROM`` and ``TO`` select branch
-    ends. The assigned VeraGrid device, rather than diagram wiring, resolves
-    the side to the bus whose KCL receives the current.
-    """
-
-    BUS = "bus"
-    FROM = "from"
-    TO = "to"
-
-
-class EmtTerminalConductor(Enum):
-    """Identify one instantaneous EMT conductor current.
-
-    ``DC`` addresses the scalar DC shell. The remaining values address the
-    neutral and three phases of an AC NABC shell. Assembly rejects a conductor
-    whose domain does not match the connected bus.
-    """
-
-    DC = "dc"
-    NEUTRAL = "neutral"
-    PHASE_A = "phase_a"
-    PHASE_B = "phase_b"
-    PHASE_C = "phase_c"
 
 
 class EmtTerminalCurrentContribution:

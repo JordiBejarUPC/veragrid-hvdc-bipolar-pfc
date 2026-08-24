@@ -1008,24 +1008,24 @@ def test_v3_dynamic_route_keeps_native_meters_as_connected_editor_blocks() -> No
         logger_=logger,
     )
     expected_meter_names: set[str] = set((
-        "PowerFactory StaImea 423",
-        "PowerFactory StaImea 424",
-        "PowerFactory StaImea 425",
-        "PowerFactory StaImea 426",
-        "PowerFactory StaImea 428",
-        "PowerFactory StaImea 429",
-        "PowerFactory StaVmea 455",
-        "PowerFactory StaVmea 456",
-        "PowerFactory StaVmea 457",
-        "PowerFactory StaVmea 458",
-        "PowerFactory StaVmea 460",
-        "PowerFactory StaVmea 461",
-        "PowerFactory StaVmea 462",
-        "PowerFactory StaVmea 463",
-        "PowerFactory StaVmea 465",
-        "PowerFactory StaVmea 466",
-        "PowerFactory ElmPhi PLL 472",
-        "PowerFactory ElmPhi PLL 473",
+        "VeraGrid Current meter 423",
+        "VeraGrid Current meter 424",
+        "VeraGrid Current meter 425",
+        "VeraGrid Current meter 426",
+        "VeraGrid Current meter 428",
+        "VeraGrid Current meter 429",
+        "VeraGrid Voltage meter 455",
+        "VeraGrid Voltage meter 456",
+        "VeraGrid Voltage meter 457",
+        "VeraGrid Voltage meter 458",
+        "VeraGrid Voltage meter 460",
+        "VeraGrid Voltage meter 461",
+        "VeraGrid Voltage meter 462",
+        "VeraGrid Voltage meter 463",
+        "VeraGrid Voltage meter 465",
+        "VeraGrid Voltage meter 466",
+        "VeraGrid Phase meter 472",
+        "VeraGrid Phase meter 473",
     ))
     meter_block_by_name: dict[str, Block] = dict()
     owner_model_by_meter_name: dict[str, Block] = dict()
@@ -1101,14 +1101,39 @@ def test_v3_dynamic_route_keeps_native_meters_as_connected_editor_blocks() -> No
             )
             assert len(algebraic_owners) == 1, meter_name
             assert algebraic_owners[0][0] is meter_block
+            initialization_owner_uids: set[int] = set(
+                initialization_var.uid
+                for initialization_var in meter_block.init_eqs.keys()
+            )
+            assert output_var_uid in initialization_owner_uids, meter_name
+            assert len(meter_block.algebraic_vars) == len(
+                meter_block.algebraic_eqs
+            )
+            residual_owner_indices: list[int] = list(
+                algebraic_index
+                for algebraic_index in range(len(meter_block.algebraic_vars))
+                if meter_block.algebraic_vars[algebraic_index].uid == output_var_uid
+            )
+            assert len(residual_owner_indices) == 1, meter_name
+            owned_residual: Expr = meter_block.algebraic_eqs[
+                residual_owner_indices[0]
+            ]
+            assert output_var_uid in set(
+                residual_var.uid for residual_var in owned_residual.get_vars()
+            ), meter_name
         global_measurement_by_fid: dict[str, RmsPhysicalMeasurementPoint] = (
             collect_rms_physical_measurement_points(block=owner_model)
         )
         assert global_measurement_by_fid[source_fid] is measurement_point
-        if "StaImea" in meter_name:
+        assert "powerfactory" not in meter_name.lower()
+        assert all(
+            "powerfactory" not in output_var.name.lower()
+            for output_var in meter_block.out_vars
+        )
+        if measurement_point.get_meter_kind() is RmsPhysicalMeterKind.CURRENT:
             assert measurement_point.get_meter_kind() is RmsPhysicalMeterKind.CURRENT
         else:
-            if "StaVmea" in meter_name:
+            if measurement_point.get_meter_kind() is RmsPhysicalMeterKind.VOLTAGE:
                 assert measurement_point.get_meter_kind() is RmsPhysicalMeterKind.VOLTAGE
             else:
                 assert (
@@ -1144,15 +1169,15 @@ def test_v3_dynamic_route_keeps_native_meters_as_connected_editor_blocks() -> No
         (
             "hvdc_vsc_v1_complete_static_dynamic.dgs",
             set((
-                "PowerFactory StaPqmea 220",
-                "PowerFactory StaPqmea 221",
+                "VeraGrid Power meter 220",
+                "VeraGrid Power meter 221",
             )),
         ),
         (
             "hvdc_vsc_v2_complete_static_dynamic.dgs",
             set((
-                "PowerFactory StaPqmea 228",
-                "PowerFactory StaPqmea 229",
+                "VeraGrid Power meter 228",
+                "VeraGrid Power meter 229",
             )),
         ),
     ),
@@ -1164,7 +1189,7 @@ def test_v1_v2_dynamic_routes_keep_power_meters_as_editor_blocks(
     """Keep V1 and V2 active-power meters as connected RMS child blocks.
 
     :param file_name: Exact tracked DGS fixture name.
-    :param expected_meter_names: Expected explicit ``StaPqmea`` block names.
+    :param expected_meter_names: Expected canonical VeraGrid meter names.
     :return: None.
     """
     dgs_path: Path = _get_complete_hvdc_vsc_dgs_path(file_name=file_name)
@@ -1286,6 +1311,14 @@ def test_v1_v2_dynamic_routes_keep_power_meters_as_editor_blocks(
         assert measurement_point.get_target_fid() == expected_physical_location[0]
         assert measurement_point.get_terminal_side() is expected_physical_location[1]
         assert len(measurement_point.get_output_signal_names()) > 0
+        assert "powerfactory" not in meter_name.lower()
+        assert measurement_point.get_output_signal_names() == tuple(
+            output_var.name for output_var in meter_block.out_vars
+        )
+        assert all(
+            "powerfactory" not in output_name.lower()
+            for output_name in measurement_point.get_output_signal_names()
+        )
         assert set(measurement_point.get_output_var_uids()).issubset(
             set(output_var.uid for output_var in meter_block.out_vars)
         )
@@ -1299,6 +1332,26 @@ def test_v1_v2_dynamic_routes_keep_power_meters_as_editor_blocks(
             )
             assert len(algebraic_owners) == 1, meter_name
             assert algebraic_owners[0][0] is meter_block
+            initialization_owner_uids: set[int] = set(
+                initialization_var.uid
+                for initialization_var in meter_block.init_eqs.keys()
+            )
+            assert output_var_uid in initialization_owner_uids, meter_name
+            assert len(meter_block.algebraic_vars) == len(
+                meter_block.algebraic_eqs
+            )
+            residual_owner_indices: list[int] = list(
+                algebraic_index
+                for algebraic_index in range(len(meter_block.algebraic_vars))
+                if meter_block.algebraic_vars[algebraic_index].uid == output_var_uid
+            )
+            assert len(residual_owner_indices) == 1, meter_name
+            owned_residual: Expr = meter_block.algebraic_eqs[
+                residual_owner_indices[0]
+            ]
+            assert output_var_uid in set(
+                residual_var.uid for residual_var in owned_residual.get_vars()
+            ), meter_name
         global_measurement_by_fid: dict[str, RmsPhysicalMeasurementPoint] = (
             collect_rms_physical_measurement_points(block=owner_model)
         )

@@ -44,9 +44,9 @@ from VeraGridEngine.IO.dgs.dgs_to_blocks import (
 )
 from VeraGridEngine.Templates.Rms.rms_meter_templates import (
     build_rms_current_meter_outputs_from_pq,
+    build_rms_physical_signal_meter_block,
     build_rms_phase_locked_loop_block,
     build_rms_power_meter_outputs_from_pq,
-    build_rms_signal_meter_block,
     build_rms_voltage_meter_outputs_from_dc,
     build_rms_voltage_meter_outputs_from_polar,
 )
@@ -148,6 +148,56 @@ def _split_slot_signal_labels(signal_labels: List[str]) -> List[str]:
             else:
                 scalar_names.append(component_name)
     return scalar_names
+
+
+def _get_veragrid_meter_output_names(
+        alias_names: List[str],
+) -> tuple[str, ...]:
+    """Normalize imported aliases into concise VeraGrid-facing port names.
+
+    The external alias remains the lookup key used to connect the controller.
+    Only the visible meter output is normalized, which keeps source data out of
+    the canonical block identity without losing traceability.
+
+    :param alias_names: Ordered imported aliases selected by the controller.
+    :return: Unique VeraGrid-facing output names in the same order.
+    """
+    output_names: List[str] = list()
+    alias_name: str
+    for alias_name in alias_names:
+        source_marker_index: int = alias_name.lower().find("powerf")
+        if source_marker_index >= 0:
+            output_name: str = alias_name[:source_marker_index].rstrip("_ -")
+        else:
+            output_name = alias_name.strip()
+        if output_name == "":
+            output_name = "measurement"
+        else:
+            pass
+        unique_output_name: str = output_name
+        duplicate_index: int = 2
+        while unique_output_name in output_names:
+            unique_output_name = f"{output_name}_{duplicate_index}"
+            duplicate_index += 1
+        output_names.append(unique_output_name)
+    return tuple(output_names)
+
+
+def _get_veragrid_meter_name(
+        meter_kind: RmsPhysicalMeterKind,
+        source_fid: str,
+) -> str:
+    """Return one source-independent visible physical-meter name.
+
+    :param meter_kind: Physical quantity family produced by the meter.
+    :param source_fid: Stable source identity used only as a disambiguator.
+    :return: VeraGrid-facing block name.
+    """
+    if meter_kind is RmsPhysicalMeterKind.PHASE_LOCKED_LOOP:
+        quantity_name: str = "Phase"
+    else:
+        quantity_name = meter_kind.value.title()
+    return f"VeraGrid {quantity_name} meter {source_fid}"
 
 
 def _get_native_source_target_signal_names(
@@ -981,7 +1031,10 @@ def _build_pll_alias_expressions(
             proportional_gain=proportional_gain,
             integral_gain=integral_gain,
             nominal_frequency_hz=float(circuit.fBase),
-            name=f"PowerFactory ElmPhi PLL {meter_id}",
+            name=_get_veragrid_meter_name(
+                meter_kind=RmsPhysicalMeterKind.PHASE_LOCKED_LOOP,
+                source_fid=meter_id,
+            ),
         )
         measurement_block = pll_block
 
@@ -1845,19 +1898,18 @@ def _connect_meter_aliases(
         pass
 
     if prepared_meter_block is None:
-        meter_block, output_by_alias_name = build_rms_signal_meter_block(
+        meter_block, output_by_alias_name = build_rms_physical_signal_meter_block(
             vf=var_factory,
             signal_expressions=connected_expressions,
+            output_signal_names=_get_veragrid_meter_output_names(
+                alias_names=list(connected_expressions.keys()),
+            ),
             name=meter_name,
+            source_fid=meter_source_fid,
+            target_fid=meter_target_fid,
+            terminal_side=meter_terminal_side,
+            meter_kind=meter_kind,
         )
-        for alias_name, source_expression in connected_expressions.items():
-            output_var: Var | None = output_by_alias_name.get(alias_name, None)
-            if output_var is None:
-                pass
-            else:
-                # Meter outputs own their physical startup equations. The
-                # connected controller ports receive the same Var identity.
-                meter_block.init_eqs[output_var] = source_expression
     else:
         meter_block = prepared_meter_block
         prepared_outputs_complete: bool = True
@@ -1871,6 +1923,7 @@ def _connect_meter_aliases(
         else:
             return 0
 
+    selected_output_names: List[str] = list()
     selected_output_uids: List[int] = list()
     selected_alias_name: str
     for selected_alias_name in connected_expressions.keys():
@@ -1881,21 +1934,25 @@ def _connect_meter_aliases(
         if selected_output_var is None:
             return 0
         else:
+            selected_output_names.append(selected_output_var.name)
             selected_output_uids.append(selected_output_var.uid)
 
     # Persist only the outputs that have exact controller endpoints. The block
     # owns their equations; this metadata exposes physical identity and signal
     # selection to local logic and global readout without duplicating variables.
-    meter_block.dynamic_model_contract.rms_physical_measurement_point = (
-        RmsPhysicalMeasurementPoint(
-            source_fid=meter_source_fid,
-            target_fid=meter_target_fid,
-            terminal_side=meter_terminal_side,
-            meter_kind=meter_kind,
-            output_signal_names=tuple(connected_expressions.keys()),
-            output_var_uids=tuple(selected_output_uids),
+    if prepared_meter_block is None:
+        pass
+    else:
+        meter_block.dynamic_model_contract.rms_physical_measurement_point = (
+            RmsPhysicalMeasurementPoint(
+                source_fid=meter_source_fid,
+                target_fid=meter_target_fid,
+                terminal_side=meter_terminal_side,
+                meter_kind=meter_kind,
+                output_signal_names=tuple(selected_output_names),
+                output_var_uids=tuple(selected_output_uids),
+            )
         )
-    )
 
     # The child is part of the one canonical RMS graph. The editor will expose
     # it as a separate node and infer each cable from the propagated Var UID.
@@ -2793,24 +2850,13 @@ def bind_dgs_rms_measurements(
                                         meter_source_id = entry.element_id
                                     else:
                                         meter_source_id = entry.slot_id
-                                meter_display_kind: str
-                                if isinstance(meter_element, StaVmea):
-                                    meter_display_kind = "StaVmea"
-                                else:
-                                    if isinstance(meter_element, StaImea):
-                                        meter_display_kind = "StaImea"
-                                    else:
-                                        if isinstance(meter_element, StaPqmea):
-                                            meter_display_kind = "StaPqmea"
-                                        else:
-                                            meter_display_kind = "ElmPhi"
                                 connected_count = _connect_meter_aliases(
                                     host_model=host_model,
                                     targets_by_name=host_targets_by_name,
                                     alias_expressions=alias_expressions,
-                                    meter_name=(
-                                        f"PowerFactory {meter_display_kind} "
-                                        f"{meter_source_id}"
+                                    meter_name=_get_veragrid_meter_name(
+                                        meter_kind=physical_meter_kind,
+                                        source_fid=meter_source_id,
                                     ),
                                     meter_source_fid=meter_source_id,
                                     meter_target_fid=meter_target_fid,

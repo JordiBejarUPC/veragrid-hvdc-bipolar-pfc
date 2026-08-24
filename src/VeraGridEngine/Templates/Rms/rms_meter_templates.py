@@ -5,8 +5,9 @@ from typing import Dict
 
 import VeraGridEngine.Utils.Symbolic.symbolic as sym
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
-from VeraGridEngine.Utils.Symbolic.block import Block
+from VeraGridEngine.Utils.Symbolic.block import Block, RmsPhysicalMeasurementPoint
 from VeraGridEngine.Utils.Symbolic.symbolic import Const, Expr, Var
+from VeraGridEngine.enumerations import RmsPhysicalMeterKind, RmsTerminalSide
 
 
 RMS_VOLTAGE_METER_OUTPUT_NAMES: tuple[str, ...] = (
@@ -46,7 +47,7 @@ def build_rms_voltage_meter_outputs_from_polar(vm: Expr,
                                                measured_frequency_hz: Expr,
                                                nominal_frequency_hz: Expr) -> Dict[str, Expr]:
     """
-    Build the RMS output set of one PowerFactory-like AC voltage meter.
+    Build the VeraGrid RMS output set of one AC voltage meter.
 
     :param vm: Voltage magnitude.
     :param va: Voltage angle in radians.
@@ -64,7 +65,7 @@ def build_rms_voltage_meter_outputs_from_polar(vm: Expr,
     ur_b, ui_b = _rotate_complex_components(ur, ui, -2.0 * math.pi / 3.0)
     ur_c, ui_c = _rotate_complex_components(ur, ui, 2.0 * math.pi / 3.0)
 
-    # The signal names mirror the PowerFactory RMS meter contract so imported controls can consume them by name.
+    # Stable RMS names let native and imported controls consume the same meter.
     return {
         "ur": ur,
         "ui": ui,
@@ -104,7 +105,7 @@ def build_rms_voltage_meter_outputs_from_polar(vm: Expr,
 def build_rms_voltage_meter_outputs_from_dc(vdc: Expr,
                                             nominal_frequency_hz: Expr) -> Dict[str, Expr]:
     """
-    Build the RMS output set of one PowerFactory-like DC voltage meter.
+    Build the VeraGrid RMS output set of one DC voltage meter.
 
     :param vdc: DC voltage magnitude.
     :param nominal_frequency_hz: Nominal frequency in Hz.
@@ -112,7 +113,7 @@ def build_rms_voltage_meter_outputs_from_dc(vdc: Expr,
     """
     zero: Const = Const(0.0)
 
-    # The DC meter reuses the same PowerFactory signal names with zeroed quadrature and sequence channels.
+    # The DC meter reuses the RMS names with zero quadrature and sequence channels.
     return {
         "ur": vdc,
         "ui": zero,
@@ -154,7 +155,7 @@ def build_rms_current_meter_outputs_from_pq(vm: Expr,
                                             p: Expr,
                                             q: Expr) -> Dict[str, Expr]:
     """
-    Build the RMS output set of one PowerFactory-like current meter from ``P/Q`` and ``V``.
+    Build the VeraGrid RMS current outputs from ``P/Q`` and ``V``.
 
     :param vm: Voltage magnitude.
     :param va: Voltage angle in radians.
@@ -176,7 +177,7 @@ def build_rms_current_meter_outputs_from_pq(vm: Expr,
     ir_b, ii_b = _rotate_complex_components(ir, ii, -2.0 * math.pi / 3.0)
     ir_c, ii_c = _rotate_complex_components(ir, ii, 2.0 * math.pi / 3.0)
 
-    # The RMS current meter exposes the same aggregate and phase channels as the PowerFactory ``StaImea`` block.
+    # Aggregate and phase channels share one physically consistent phasor.
     return {
         "ir": ir,
         "ii": ii,
@@ -198,7 +199,7 @@ def build_rms_current_meter_outputs_from_pq(vm: Expr,
 
 def build_rms_power_meter_outputs_from_pq(p: Expr, q: Expr) -> Dict[str, Expr]:
     """
-    Build the RMS output set of one PowerFactory-like active/reactive power meter.
+    Build the VeraGrid RMS active/reactive power outputs.
 
     :param p: Active power.
     :param q: Reactive power.
@@ -219,7 +220,7 @@ def build_rms_pll_meter_outputs(va: Expr,
                                 measured_frequency_hz: Expr,
                                 nominal_frequency_hz: Expr) -> Dict[str, Expr]:
     """
-    Build the RMS output set of one PowerFactory-like PLL/phase meter.
+    Build the VeraGrid RMS output set of one PLL/phase meter.
 
     :param va: Local phase angle in radians.
     :param measured_frequency_hz: Measured frequency in Hz.
@@ -243,7 +244,7 @@ def build_rms_phase_locked_loop_block(
         name: str,
 ) -> tuple[Block, Dict[str, Var]]:
     """
-    Build one stateful PowerFactory ``ElmPhi__pll`` RMS measurement.
+    Build one stateful VeraGrid synchronous-reference RMS phase measurement.
 
     The native equipment is a second-order synchronous-reference PLL. Its
     exported ``Kp`` and ``Ki`` gains act on the phase-detector error in radians;
@@ -341,15 +342,20 @@ def build_rms_phase_locked_loop_block(
     return block, output_by_signal_name
 
 
-def build_rms_signal_meter_block(vf: VarFactory,
-                                 signal_expressions: Dict[str, Expr],
-                                 name: str) -> tuple[Block, Dict[str, Var]]:
+def build_rms_signal_meter_block(
+        vf: VarFactory,
+        signal_expressions: Dict[str, Expr],
+        name: str,
+        output_signal_names: tuple[str, ...] | None = None,
+) -> tuple[Block, Dict[str, Var]]:
     """
-    Materialize one reusable RMS measurement block from one PowerFactory signal mapping.
+    Materialize one reusable RMS measurement block from named expressions.
 
     :param vf: Shared variable factory.
     :param signal_expressions: Signal-name to expression mapping.
     :param name: Block name suffix.
+    :param output_signal_names: Optional user-facing output names paired by
+        insertion order with ``signal_expressions``.
     :return: Pair ``(block, output_var_by_signal_name)``.
     """
     algebraic_vars: list[Var] = list()
@@ -359,17 +365,44 @@ def build_rms_signal_meter_block(vf: VarFactory,
     signal_name: str
     signal_expr: Expr
     output_var: Var
+    output_signal_name: str
+    output_index: int = 0
 
-    # The explicit measurement block owns every PowerFactory signal as one algebraic output variable.
+    if output_signal_names is None:
+        resolved_output_signal_names: tuple[str, ...] = tuple(
+            signal_expressions.keys()
+        )
+    else:
+        resolved_output_signal_names = output_signal_names
+    if (
+            len(resolved_output_signal_names) == len(signal_expressions)
+            and len(set(resolved_output_signal_names)) == len(
+                resolved_output_signal_names
+            )
+            and all(
+                signal_name.strip() != ""
+                for signal_name in resolved_output_signal_names
+            )
+    ):
+        pass
+    else:
+        raise ValueError(
+            "RMS meter output names must pair uniquely with signal expressions"
+        )
+
+    # Each visible output owns one residual against the physical expression.
+    # Imported aliases remain lookup keys only and cannot leak into the block UI.
     for signal_name, signal_expr in signal_expressions.items():
+        output_signal_name = resolved_output_signal_names[output_index]
         output_var = vf.add_var(
-            f"{signal_name}_{name}",
+            f"{output_signal_name}_{name}",
             shared_reference=f"{name}:{signal_name}",
         )
         algebraic_vars.append(output_var)
         algebraic_eqs.append(output_var - signal_expr)
         out_vars.append(output_var)
         output_var_by_signal_name[signal_name] = output_var
+        output_index += 1
 
     block: Block = Block(
         name=name,
@@ -378,6 +411,69 @@ def build_rms_signal_meter_block(vf: VarFactory,
         out_vars=out_vars,
     )
     return block, output_var_by_signal_name
+
+
+def build_rms_physical_signal_meter_block(
+        vf: VarFactory,
+        signal_expressions: Dict[str, Expr],
+        output_signal_names: tuple[str, ...],
+        name: str,
+        source_fid: str,
+        target_fid: str,
+        terminal_side: RmsTerminalSide,
+        meter_kind: RmsPhysicalMeterKind,
+) -> tuple[Block, Dict[str, Var]]:
+    """Build one canonical physical RMS meter with equations and identity.
+
+    This constructor is source-format independent. Importers normalize their
+    aliases before calling it, while native editors and scripts can call the
+    same function directly.
+
+    :param vf: Circuit variable factory that owns the generated symbols.
+    :param signal_expressions: Lookup aliases paired with physical expressions.
+    :param output_signal_names: VeraGrid-facing output names in lookup order.
+    :param name: VeraGrid-facing meter block name.
+    :param source_fid: Stable identity of the measurement declaration.
+    :param target_fid: Stable identity of the measured bus or device.
+    :param terminal_side: Physical terminal selected by the meter.
+    :param meter_kind: Physical quantity family produced by the meter.
+    :return: Pair ``(meter block, output variable by lookup alias)``.
+    """
+    meter_block: Block
+    output_by_alias_name: Dict[str, Var]
+    meter_block, output_by_alias_name = build_rms_signal_meter_block(
+        vf=vf,
+        signal_expressions=signal_expressions,
+        name=name,
+        output_signal_names=output_signal_names,
+    )
+
+    # Startup values use the same physical expressions as the algebraic
+    # residuals, so opening the block exposes a complete, inspectable model.
+    alias_name: str
+    source_expression: Expr
+    selected_output_names: list[str] = list()
+    selected_output_uids: list[int] = list()
+    for alias_name, source_expression in signal_expressions.items():
+        output_var: Var | None = output_by_alias_name.get(alias_name, None)
+        if output_var is None:
+            raise KeyError("RMS meter output lookup is incomplete")
+        else:
+            meter_block.init_eqs[output_var] = source_expression
+            selected_output_names.append(output_var.name)
+            selected_output_uids.append(output_var.uid)
+
+    meter_block.dynamic_model_contract.rms_physical_measurement_point = (
+        RmsPhysicalMeasurementPoint(
+            source_fid=source_fid,
+            target_fid=target_fid,
+            terminal_side=terminal_side,
+            meter_kind=meter_kind,
+            output_signal_names=tuple(selected_output_names),
+            output_var_uids=tuple(selected_output_uids),
+        )
+    )
+    return meter_block, output_by_alias_name
 
 
 def build_rms_station_meter_bundle(vf: VarFactory,
@@ -401,7 +497,7 @@ def build_rms_station_meter_bundle(vf: VarFactory,
                                    ucap: Expr | None = None,
                                    measured_frequency_hz: Expr | None = None) -> tuple[list[Block], Dict[str, Var]]:
     """
-    Build the complete PowerFactory-style RMS station measurement bundle.
+    Build a complete VeraGrid RMS station measurement bundle.
 
     :param vf: Shared variable factory.
     :param label: Stable suffix appended to generated block names.
@@ -432,7 +528,7 @@ def build_rms_station_meter_bundle(vf: VarFactory,
     block: Block
     outputs: Dict[str, Var]
 
-    # The bundle mirrors one real PowerFactory station: DC+, DC-, DC current, local AC, PoC AC and PLL measurements.
+    # One station owns DC, local AC, point-of-connection and phase measurements.
     block, outputs = build_rms_signal_meter_block(
         vf,
         {"udc_p": build_rms_voltage_meter_outputs_from_dc(dc_plus_v, nominal_frequency_hz)["ur"]},
@@ -525,7 +621,7 @@ def connect_meter_signal_outputs_to_block_inputs(block: Block,
                                                  signal_output_by_name: Dict[str, Var],
                                                  var_factory: VarFactory) -> None:
     """
-    Connect block input variables to one PowerFactory signal dictionary by exact name.
+    Connect block input variables to one signal dictionary by exact name.
 
     :param block: Target block receiving the signals.
     :param signal_output_by_name: Signal-name to source-variable mapping.
@@ -535,7 +631,7 @@ def connect_meter_signal_outputs_to_block_inputs(block: Block,
     input_var: Var
     source_var: Var | None
 
-    # Name-based connection keeps imported PowerFactory interfaces stable without hardcoding per-signal plumbing.
+    # Name-based connection keeps source interfaces stable without per-signal plumbing.
     for input_var in block.in_vars:
         source_var = signal_output_by_name.get(input_var.name, None)
         if source_var is None:

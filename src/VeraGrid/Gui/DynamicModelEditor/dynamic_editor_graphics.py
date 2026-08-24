@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import math
 import uuid
-from enum import Enum
 from typing import Dict, List, Optional, Tuple
 
 from PySide6 import QtCore, QtGui, QtWidgets
@@ -21,10 +20,13 @@ from PySide6.QtWidgets import QAbstractGraphicsShapeItem, QApplication, QColorDi
 from PySide6.QtCore import Signal
 
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
+from VeraGridEngine.Devices.Dynamic.template_classification import (
+    classify_dynamic_template_block,
+)
 from VeraGridEngine.Devices.Diagrams.block_diagram import BlockDiagram
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
-from VeraGridEngine.enumerations import BlockType
-from VeraGridEngine.Utils.Symbolic.block import Block, DynamicModelContract
+from VeraGridEngine.enumerations import BlockType, DynamicBlockVisualRole, DynamicTemplateCategory
+from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Expr, BinOp, UnOp
 from VeraGridEngine.enumerations import DynamicSimulationMode
 
@@ -435,7 +437,7 @@ class EditorGraphicsDefaultsDark:
     WIRE_TERMINAL_STUB_LENGTH: float = 18.0
     PORT_LABEL_MAX_CHARS: int = 12
     BLOCK_HEADER_HEIGHT: float = 30.0
-    BLOCK_PORT_ROW_HEIGHT: float = 20.0
+    BLOCK_PORT_ROW_HEIGHT: float = 32.0
     BLOCK_PORT_SECTION_PADDING: float = 10.0
     BLOCK_MIN_WIDTH: float = 160.0
     BLOCK_MIN_HEIGHT: float = 70.0
@@ -467,7 +469,7 @@ class EditorGraphicsDefaultsLight:
     WIRE_TERMINAL_STUB_LENGTH: float = 18.0
     PORT_LABEL_MAX_CHARS: int = 12
     BLOCK_HEADER_HEIGHT: float = 30.0
-    BLOCK_PORT_ROW_HEIGHT: float = 20.0
+    BLOCK_PORT_ROW_HEIGHT: float = 32.0
     BLOCK_PORT_SECTION_PADDING: float = 10.0
     BLOCK_MIN_WIDTH: float = 160.0
     BLOCK_MIN_HEIGHT: float = 70.0
@@ -492,7 +494,7 @@ class EditorGraphicsCommonFeatures:
     WIRE_BLOCK_MARGIN: float = 8.0
     PORT_LABEL_MAX_CHARS: int = 12
     BLOCK_HEADER_HEIGHT: float = 30.0
-    BLOCK_PORT_ROW_HEIGHT: float = 20.0
+    BLOCK_PORT_ROW_HEIGHT: float = 32.0
     BLOCK_PORT_SECTION_PADDING: float = 10.0
     BLOCK_MIN_WIDTH: float = 160.0
     BLOCK_MIN_HEIGHT: float = 70.0
@@ -513,40 +515,30 @@ class EditorGraphicsCommonFeatures:
     MODAL_TEMPLATE_CONFIG_ATTR: str = "_modal_template_config"
 
 
-class DynamicBlockVisualRole(Enum):
-    """Semantic presentation role of one full-size dynamic-model block."""
-
-    CONTROL = 0
-    MEASUREMENT = 1
-    DEVICE_TEMPLATE = 2
-
-
 def get_dynamic_block_visual_role(
         block_model: Block,
         diagram_node_type: str,
 ) -> DynamicBlockVisualRole:
     """Resolve a block colour role from canonical model and diagram metadata.
 
-    Measurement identity comes from the typed physical measurement contract.
-    Device-template identity comes either from the durable template-node marker
-    or from the equipment-owned signal contract used by imported physical
-    wrappers. Display names never participate in this classification.
+    Measurement and physical-device identity come from canonical block
+    contracts. The persisted diagram node remains a presentation record and
+    cannot turn an internal component into an assignable physical device.
+    Display names and import origins never participate in this classification.
 
     :param block_model: Canonical symbolic block represented by the item.
-    :param diagram_node_type: Persisted diagram node type, if one exists.
+    :param diagram_node_type: Persisted presentation type retained for API compatibility.
     :return: Semantic visual role used by the active palette.
     """
-    contract: DynamicModelContract = block_model.dynamic_model_contract
-    if (
-            diagram_node_type == EditorGraphicsCommonFeatures.TEMPLATE_NODE_TYPE
-            or len(contract.dgs_equipment_owned_signal_names) > 0
-    ):
+    template_category: DynamicTemplateCategory = classify_dynamic_template_block(
+        block=block_model
+    )
+    if template_category is DynamicTemplateCategory.DEVICE:
         result: DynamicBlockVisualRole = DynamicBlockVisualRole.DEVICE_TEMPLATE
+    elif template_category is DynamicTemplateCategory.MEASUREMENT:
+        result = DynamicBlockVisualRole.MEASUREMENT
     else:
-        if contract.rms_physical_measurement_point is not None:
-            result = DynamicBlockVisualRole.MEASUREMENT
-        else:
-            result = DynamicBlockVisualRole.CONTROL
+        result = DynamicBlockVisualRole.CONTROL
     return result
 
 
@@ -1356,8 +1348,6 @@ class ConnectionItem(QGraphicsPathItem):
         for item in list(scene.items()):
             if isinstance(item, ElbowItem) and item.connection_item is self:
                 scene.removeItem(item)
-            elif isinstance(item, BranchingItem) and item.owner_connection is self:
-                scene.removeItem(item)
             else:
                 pass
         if self._uses_routing_graph():
@@ -1400,6 +1390,18 @@ class ConnectionItem(QGraphicsPathItem):
         :return: None.
         """
         super().paint(painter, option, widget)
+
+        # Junction topology is already represented by its branch item. Drawing
+        # an arrow on a trunk ending at that junction produces isolated white
+        # arrowheads when routes are rebuilt and is not a signal-direction aid.
+        endpoints_are_visible: bool = (
+            self.source_port.scene() is self.scene()
+            and self.target_port.scene() is self.scene()
+        )
+        if isinstance(self.target_port, BranchingItem) or not endpoints_are_visible:
+            return
+        else:
+            pass
 
         path = self.path()
         count = path.elementCount()
@@ -1564,7 +1566,10 @@ class ElbowItem(QGraphicsEllipseItem):
 class GenericBlockItem(QGraphicsRectItem):
     """Resizable graphics item exposing every port of one symbolic block."""
 
-    __slots__ = ()
+    __slots__ = (
+        "_visible_input_vars",
+        "_visible_output_vars",
+    )
 
     def __init__(self,
                  editor: DynamicBlockEditorGUI,
@@ -1574,7 +1579,9 @@ class GenericBlockItem(QGraphicsRectItem):
                  mode: DynamicSimulationMode,
                  name: str,
                  position_changed_callback: BlockPositionChangedCallback | None = None,
-                 visual_role: DynamicBlockVisualRole | None = None) -> None:
+                 visual_role: DynamicBlockVisualRole | None = None,
+                 visible_input_vars: List[Var] | None = None,
+                 visible_output_vars: List[Var] | None = None) -> None:
         """
         Create one resizable graphics item for a symbolic block.
 
@@ -1586,6 +1593,8 @@ class GenericBlockItem(QGraphicsRectItem):
         :param name: Display name written below the block.
         :param position_changed_callback: Optional callback used to persist position changes.
         :param visual_role: Optional semantic colour role; inferred when omitted.
+        :param visible_input_vars: Optional transient input-port projection.
+        :param visible_output_vars: Optional transient output-port projection.
         :return: None.
         """
         super().__init__(0, 0, 100, 60)
@@ -1597,6 +1606,14 @@ class GenericBlockItem(QGraphicsRectItem):
         self.name: str = name
         self.api_object = api_object
         self.position_changed_callback = position_changed_callback
+        if visible_input_vars is None:
+            self._visible_input_vars: List[Var] = list(subsys.in_vars)
+        else:
+            self._visible_input_vars = list(visible_input_vars)
+        if visible_output_vars is None:
+            self._visible_output_vars: List[Var] = list(subsys.out_vars)
+        else:
+            self._visible_output_vars = list(visible_output_vars)
         if visual_role is None:
             self.visual_role: DynamicBlockVisualRole = get_dynamic_block_visual_role(
                 block_model=subsys,
@@ -1629,8 +1646,8 @@ class GenericBlockItem(QGraphicsRectItem):
 
         self.update_name_position()
 
-        n_inputs = len(self.subsys.in_vars)
-        n_outputs = len(self.subsys.out_vars)
+        n_inputs = len(self._visible_input_vars)
+        n_outputs = len(self._visible_output_vars)
         self.inputs = [PortItem(self, self.editor, True, i, n_inputs) for i in range(n_inputs)]
         self.outputs = [PortItem(self, self.editor, False, i, n_outputs) for i in range(n_outputs)]
         for port_item in self.inputs:
@@ -1739,6 +1756,8 @@ class GenericBlockItem(QGraphicsRectItem):
         :return: None.
         """
         self.subsys = block
+        self._visible_input_vars = list(block.in_vars)
+        self._visible_output_vars = list(block.out_vars)
 
     def refresh_block_name(self) -> None:
         """
@@ -1763,8 +1782,8 @@ class GenericBlockItem(QGraphicsRectItem):
         """
         if self.subsys is not None:
             self.update_name_position()
-            n_inputs: int = len(self.subsys.in_vars)
-            n_outputs: int = len(self.subsys.out_vars)
+            n_inputs: int = len(self._visible_input_vars)
+            n_outputs: int = len(self._visible_output_vars)
             self.inputs = [PortItem(self, self.editor, True, i, n_inputs) for i in range(n_inputs)]
             for port_item in self.inputs:
                 port_item.recolour()
@@ -1894,11 +1913,13 @@ class GenericBlockItem(QGraphicsRectItem):
         for label in self.output_labels:
             output_label_width = max(output_label_width, label.boundingRect().width())
 
-        padding = 28.0
+        padding: float = 28.0
+        title_width: float = self.name_item.boundingRect().width() + 12.0
 
-        min_width = max(
+        min_width: float = max(
             EditorGraphicsCommonFeatures.BLOCK_MIN_WIDTH,
-            input_label_width + output_label_width + padding
+            input_label_width + output_label_width + padding,
+            title_width,
         )
         return min_width, min_height
 
@@ -1938,16 +1959,16 @@ class GenericBlockItem(QGraphicsRectItem):
             label_item: QGraphicsTextItem
             variable_name: str
             for i, port in enumerate(self.inputs):
-                port.base_var = self.subsys.in_vars[i]
-                variable_name = self.subsys.in_vars[i].name
+                port.base_var = self._visible_input_vars[i]
+                variable_name = self._visible_input_vars[i].name
                 port.setToolTip(_build_port_tooltip("Input", i, variable_name))
                 label_item = self.input_labels[i]
                 label_item.setPlainText(
                     truncate_port_label(variable_name, EditorGraphicsCommonFeatures.PORT_LABEL_MAX_CHARS))
 
             for i, port in enumerate(self.outputs):
-                port.base_var = self.subsys.out_vars[i]
-                variable_name = self.subsys.out_vars[i].name
+                port.base_var = self._visible_output_vars[i]
+                variable_name = self._visible_output_vars[i].name
                 port.setToolTip(_build_port_tooltip("Output", i, variable_name))
                 label_item = self.output_labels[i]
                 label_item.setPlainText(
@@ -2249,6 +2270,16 @@ class PairedItem(QGraphicsPolygonItem):
             self.name = signal_var.name
             self.name_item.setPlainText(signal_var.name)
             self._position_name_and_ports()
+
+    def set_display_name(self, display_name: str) -> None:
+        """Set a visual-only signal label without renaming its canonical variable.
+
+        :param display_name: Compact text rendered inside the signal tag.
+        :return: None.
+        """
+        self.name = display_name
+        self.name_item.setPlainText(display_name)
+        self._position_name_and_ports()
 
     def set_paired_item(self, paired_item: PairedItem) -> None:
         """

@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+from bisect import bisect_left, bisect_right
 import heapq
 
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_elements import RoutingNode
@@ -13,6 +14,74 @@ from VeraGrid.Gui.DynamicModelEditor.Routing.routing_elements import RoutingSegm
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_graph import RoutingGraph
 from VeraGrid.Gui.DynamicModelEditor.Routing.routing_geometry import RoutingGeometry
 from VeraGridEngine.enumerations import RoutingNodeKind, RoutingPortSide
+
+
+def orthogonal_routing_segments_collide(
+        first_start: RoutingPoint,
+        first_end: RoutingPoint,
+        second_start: RoutingPoint,
+        second_end: RoutingPoint,
+        tolerance: float,
+) -> bool:
+    """Return whether two orthogonal segments cross or overlap internally.
+
+    Endpoint-only contact is allowed because it represents a cable reaching
+    its own port. Perpendicular interior crossings and positive-length
+    collinear overlaps are rejected for every routing frontend.
+
+    :param first_start: First segment start.
+    :param first_end: First segment end.
+    :param second_start: Second segment start.
+    :param second_end: Second segment end.
+    :param tolerance: Coordinate comparison tolerance.
+    :return: ``True`` when the two segments collide beyond a shared endpoint.
+    """
+    first_horizontal: bool = abs(first_start.get_y() - first_end.get_y()) <= tolerance
+    second_horizontal: bool = abs(second_start.get_y() - second_end.get_y()) <= tolerance
+    if first_horizontal and second_horizontal:
+        same_axis: bool = abs(first_start.get_y() - second_start.get_y()) <= tolerance
+        overlap_length: float = (
+                min(max(first_start.get_x(), first_end.get_x()),
+                    max(second_start.get_x(), second_end.get_x()))
+                - max(min(first_start.get_x(), first_end.get_x()),
+                      min(second_start.get_x(), second_end.get_x()))
+        )
+        return same_axis and overlap_length > tolerance
+    elif not first_horizontal and not second_horizontal:
+        same_axis = abs(first_start.get_x() - second_start.get_x()) <= tolerance
+        overlap_length = (
+                min(max(first_start.get_y(), first_end.get_y()),
+                    max(second_start.get_y(), second_end.get_y()))
+                - max(min(first_start.get_y(), first_end.get_y()),
+                      min(second_start.get_y(), second_end.get_y()))
+        )
+        return same_axis and overlap_length > tolerance
+    else:
+        pass
+
+    # Normalize the perpendicular case so the interior test is independent of
+    # the order in which the two candidate segments were supplied.
+    if first_horizontal:
+        horizontal_start: RoutingPoint = first_start
+        horizontal_end: RoutingPoint = first_end
+        vertical_start: RoutingPoint = second_start
+        vertical_end: RoutingPoint = second_end
+    else:
+        horizontal_start = second_start
+        horizontal_end = second_end
+        vertical_start = first_start
+        vertical_end = first_end
+    crossing_x: float = vertical_start.get_x()
+    crossing_y: float = horizontal_start.get_y()
+    inside_horizontal: bool = (
+            crossing_x > min(horizontal_start.get_x(), horizontal_end.get_x()) + tolerance
+            and crossing_x < max(horizontal_start.get_x(), horizontal_end.get_x()) - tolerance
+    )
+    inside_vertical: bool = (
+            crossing_y > min(vertical_start.get_y(), vertical_end.get_y()) + tolerance
+            and crossing_y < max(vertical_start.get_y(), vertical_end.get_y()) - tolerance
+    )
+    return inside_horizontal and inside_vertical
 
 
 class RouteBuilder:
@@ -260,6 +329,10 @@ class OrthogonalVisibilityRouteBuilder:
         "_bend_penalty",
         "_max_search_states",
         "_numerical_tolerance",
+        "_reserved_horizontal_intervals_by_y",
+        "_reserved_vertical_intervals_by_x",
+        "_reserved_horizontal_y_values",
+        "_reserved_vertical_x_values",
     )
 
     def __init__(
@@ -313,6 +386,60 @@ class OrthogonalVisibilityRouteBuilder:
         self._bend_penalty: float = float(bend_penalty)
         self._max_search_states: int = int(max_search_states)
         self._numerical_tolerance: float = 1.0e-6
+        self._reserved_horizontal_intervals_by_y: dict[
+            float,
+            list[tuple[float, float]],
+        ] = dict()
+        self._reserved_vertical_intervals_by_x: dict[
+            float,
+            list[tuple[float, float]],
+        ] = dict()
+
+        # Orthogonal collision queries only depend on one fixed coordinate and
+        # one scalar interval. Index those coordinates once so every A* grid
+        # edge examines nearby axes instead of rescanning the complete cable set.
+        for reserved_segment in self._reserved_segments:
+            if self._points_share_y(reserved_segment[0], reserved_segment[1]):
+                horizontal_y: float = reserved_segment[0].get_y()
+                horizontal_intervals: list[tuple[float, float]] | None = (
+                    self._reserved_horizontal_intervals_by_y.get(horizontal_y, None)
+                )
+                if horizontal_intervals is None:
+                    horizontal_intervals = list()
+                    self._reserved_horizontal_intervals_by_y[horizontal_y] = horizontal_intervals
+                else:
+                    pass
+                horizontal_intervals.append((
+                    min(reserved_segment[0].get_x(), reserved_segment[1].get_x()),
+                    max(reserved_segment[0].get_x(), reserved_segment[1].get_x()),
+                ))
+            else:
+                vertical_x: float = reserved_segment[0].get_x()
+                vertical_intervals: list[tuple[float, float]] | None = (
+                    self._reserved_vertical_intervals_by_x.get(vertical_x, None)
+                )
+                if vertical_intervals is None:
+                    vertical_intervals = list()
+                    self._reserved_vertical_intervals_by_x[vertical_x] = vertical_intervals
+                else:
+                    pass
+                vertical_intervals.append((
+                    min(reserved_segment[0].get_y(), reserved_segment[1].get_y()),
+                    max(reserved_segment[0].get_y(), reserved_segment[1].get_y()),
+                ))
+
+        horizontal_interval_collection: list[tuple[float, float]]
+        for horizontal_interval_collection in self._reserved_horizontal_intervals_by_y.values():
+            horizontal_interval_collection.sort()
+        vertical_interval_collection: list[tuple[float, float]]
+        for vertical_interval_collection in self._reserved_vertical_intervals_by_x.values():
+            vertical_interval_collection.sort()
+        self._reserved_horizontal_y_values: list[float] = sorted(
+            self._reserved_horizontal_intervals_by_y.keys()
+        )
+        self._reserved_vertical_x_values: list[float] = sorted(
+            self._reserved_vertical_intervals_by_x.keys()
+        )
 
     def build(self) -> list[RoutingPoint] | None:
         """Return the lowest-cost route in a bounded orthogonal visibility grid.
@@ -366,9 +493,17 @@ class OrthogonalVisibilityRouteBuilder:
 
         # Terminal access is fixed by the port side. Reject it before searching
         # so a grid path can never hide an invalid first or final segment.
-        if not self._segment_is_available(self._source_point, source_stub):
+        if not self._segment_is_available(
+                self._source_point,
+                source_stub,
+                permitted_terminal_point=self._source_point,
+        ):
             return None
-        elif not self._segment_is_available(target_stub, self._target_point):
+        elif not self._segment_is_available(
+                target_stub,
+                self._target_point,
+                permitted_terminal_point=self._target_point,
+        ):
             return None
         else:
             pass
@@ -411,6 +546,11 @@ class OrthogonalVisibilityRouteBuilder:
         accepted_state: tuple[int, int, int] | None = None
         expanded_state_count: int = 0
         queue_sequence: int = 0
+        segment_availability_cache: dict[
+            tuple[int, int, int, int],
+            bool,
+        ] = dict()
+        point_availability_cache: dict[tuple[int, int], bool] = dict()
 
         # Adjacent grid nodes are sufficient: every longer visible segment is a
         # chain of collinear adjacent segments and compression removes the extras.
@@ -449,7 +589,27 @@ class OrthogonalVisibilityRouteBuilder:
                             and neighbour_y_index >= 0
                             and neighbour_y_index < len(y_values)
                         )
-                        if inside_grid:
+                        # Terminal stubs are topology, not optional search
+                        # hints. A feedback path must not reverse immediately
+                        # over the source stub or enter the target stub from the
+                        # block side, because collinear compression would then
+                        # reduce the requested access to one pixel.
+                        reverses_source_stub: bool = (
+                            current_state == initial_state
+                            and self._source_stub_length > 0.0
+                            and neighbour_x_index < current_x_index
+                        )
+                        enters_target_stub_from_inside: bool = (
+                            neighbour_x_index == target_x_index
+                            and neighbour_y_index == target_y_index
+                            and self._target_stub_length > 0.0
+                            and current_x_index > target_x_index
+                        )
+                        if (
+                                inside_grid
+                                and not reverses_source_stub
+                                and not enters_target_stub_from_inside
+                        ):
                             current_point: RoutingPoint = RoutingPoint(
                                 x_values[current_x_index],
                                 y_values[current_y_index],
@@ -458,12 +618,56 @@ class OrthogonalVisibilityRouteBuilder:
                                 x_values[neighbour_x_index],
                                 y_values[neighbour_y_index],
                             )
-                            neighbour_point_available: bool = not (
-                                self._point_is_on_reserved_segment_interior(neighbour_point)
+                            neighbour_point_key: tuple[int, int] = (
+                                neighbour_x_index,
+                                neighbour_y_index,
                             )
+                            neighbour_point_available: bool | None = (
+                                point_availability_cache.get(neighbour_point_key, None)
+                            )
+                            if neighbour_point_available is None:
+                                neighbour_point_available = not (
+                                    self._point_is_on_reserved_segment_interior(neighbour_point)
+                                )
+                                point_availability_cache[neighbour_point_key] = (
+                                    neighbour_point_available
+                                )
+                            else:
+                                pass
+                            if (
+                                    current_x_index < neighbour_x_index
+                                    or (
+                                        current_x_index == neighbour_x_index
+                                        and current_y_index <= neighbour_y_index
+                                    )
+                            ):
+                                segment_key: tuple[int, int, int, int] = (
+                                    current_x_index,
+                                    current_y_index,
+                                    neighbour_x_index,
+                                    neighbour_y_index,
+                                )
+                            else:
+                                segment_key = (
+                                    neighbour_x_index,
+                                    neighbour_y_index,
+                                    current_x_index,
+                                    current_y_index,
+                                )
+                            segment_available: bool | None = (
+                                segment_availability_cache.get(segment_key, None)
+                            )
+                            if segment_available is None:
+                                segment_available = self._segment_is_available(
+                                    current_point,
+                                    neighbour_point,
+                                )
+                                segment_availability_cache[segment_key] = segment_available
+                            else:
+                                pass
                             if (
                                     neighbour_point_available
-                                    and self._segment_is_available(current_point, neighbour_point)
+                                    and segment_available
                             ):
                                 segment_length: float = (
                                     abs(current_point.get_x() - neighbour_point.get_x())
@@ -546,11 +750,13 @@ class OrthogonalVisibilityRouteBuilder:
             self,
             segment_start: RoutingPoint,
             segment_end: RoutingPoint,
+            permitted_terminal_point: RoutingPoint | None = None,
     ) -> bool:
         """Validate one candidate segment against obstacles and accepted wires.
 
         :param segment_start: Candidate segment start.
         :param segment_end: Candidate segment end.
+        :param permitted_terminal_point: Port allowed inside its one-pixel owner clearance.
         :return: Whether the segment is globally available.
         """
         horizontal: bool = self._points_share_y(segment_start, segment_end)
@@ -574,7 +780,21 @@ class OrthogonalVisibilityRouteBuilder:
                         > obstacle_rect[0] + self._numerical_tolerance
                 )
                 if crosses_vertical_span and overlaps_horizontal_span:
-                    return False
+                    terminal_is_inside_obstacle: bool = (
+                            permitted_terminal_point is not None
+                            and permitted_terminal_point.get_x()
+                            >= obstacle_rect[0] - self._numerical_tolerance
+                            and permitted_terminal_point.get_x()
+                            <= obstacle_rect[2] + self._numerical_tolerance
+                            and permitted_terminal_point.get_y()
+                            >= obstacle_rect[1] - self._numerical_tolerance
+                            and permitted_terminal_point.get_y()
+                            <= obstacle_rect[3] + self._numerical_tolerance
+                    )
+                    if terminal_is_inside_obstacle:
+                        pass
+                    else:
+                        return False
                 else:
                     pass
             else:
@@ -589,22 +809,113 @@ class OrthogonalVisibilityRouteBuilder:
                         > obstacle_rect[1] + self._numerical_tolerance
                 )
                 if crosses_horizontal_span and overlaps_vertical_span:
-                    return False
+                    terminal_is_inside_obstacle = (
+                            permitted_terminal_point is not None
+                            and permitted_terminal_point.get_x()
+                            >= obstacle_rect[0] - self._numerical_tolerance
+                            and permitted_terminal_point.get_x()
+                            <= obstacle_rect[2] + self._numerical_tolerance
+                            and permitted_terminal_point.get_y()
+                            >= obstacle_rect[1] - self._numerical_tolerance
+                            and permitted_terminal_point.get_y()
+                            <= obstacle_rect[3] + self._numerical_tolerance
+                    )
+                    if terminal_is_inside_obstacle:
+                        pass
+                    else:
+                        return False
                 else:
                     pass
 
-        reserved_segment: tuple[RoutingPoint, RoutingPoint]
-        for reserved_segment in self._reserved_segments:
-            if self._segments_collide(
-                    segment_start,
-                    segment_end,
-                    reserved_segment[0],
-                    reserved_segment[1],
-            ):
-                return False
-            else:
-                pass
+        if self._segment_collides_with_reserved_index(
+                segment_start=segment_start,
+                segment_end=segment_end,
+        ):
+            return False
+        else:
+            pass
         return True
+
+    def _segment_collides_with_reserved_index(
+            self,
+            segment_start: RoutingPoint,
+            segment_end: RoutingPoint,
+    ) -> bool:
+        """Query indexed reserved segments for one orthogonal collision.
+
+        :param segment_start: Candidate segment start.
+        :param segment_end: Candidate segment end.
+        :return: Whether a crossing, T-junction, or positive overlap exists.
+        """
+        horizontal: bool = self._points_share_y(segment_start, segment_end)
+        if horizontal:
+            fixed_coordinate: float = segment_start.get_y()
+            span_start: float = min(segment_start.get_x(), segment_end.get_x())
+            span_end: float = max(segment_start.get_x(), segment_end.get_x())
+            same_axis_values: list[float] = self._reserved_horizontal_y_values
+            crossing_axis_values: list[float] = self._reserved_vertical_x_values
+            same_axis_intervals: dict[float, list[tuple[float, float]]] = (
+                self._reserved_horizontal_intervals_by_y
+            )
+            crossing_axis_intervals: dict[float, list[tuple[float, float]]] = (
+                self._reserved_vertical_intervals_by_x
+            )
+        else:
+            fixed_coordinate = segment_start.get_x()
+            span_start = min(segment_start.get_y(), segment_end.get_y())
+            span_end = max(segment_start.get_y(), segment_end.get_y())
+            same_axis_values = self._reserved_vertical_x_values
+            crossing_axis_values = self._reserved_horizontal_y_values
+            same_axis_intervals = self._reserved_vertical_intervals_by_x
+            crossing_axis_intervals = self._reserved_horizontal_intervals_by_y
+
+        # Collinear segments collide when they share positive length. Nearby
+        # fixed coordinates are included to preserve the original tolerance.
+        same_axis_start_index: int = bisect_left(
+            same_axis_values,
+            fixed_coordinate - self._numerical_tolerance,
+        )
+        same_axis_end_index: int = bisect_right(
+            same_axis_values,
+            fixed_coordinate + self._numerical_tolerance,
+        )
+        axis_value: float
+        interval: tuple[float, float]
+        for axis_value in same_axis_values[same_axis_start_index:same_axis_end_index]:
+            for interval in same_axis_intervals[axis_value]:
+                overlap_length: float = (
+                    min(span_end, interval[1]) - max(span_start, interval[0])
+                )
+                if overlap_length > self._numerical_tolerance:
+                    return True
+                else:
+                    pass
+
+        # Perpendicular segments collide only when their intersection lies in
+        # both interiors. Endpoint contact remains available exactly as before.
+        crossing_axis_start_index: int = bisect_right(
+            crossing_axis_values,
+            span_start + self._numerical_tolerance,
+        )
+        crossing_axis_end_index: int = bisect_left(
+            crossing_axis_values,
+            span_end - self._numerical_tolerance,
+        )
+        for axis_value in crossing_axis_values[
+            crossing_axis_start_index:crossing_axis_end_index
+        ]:
+            for interval in crossing_axis_intervals[axis_value]:
+                inside_crossing_interval: bool = (
+                    fixed_coordinate
+                    > interval[0] + self._numerical_tolerance
+                    and fixed_coordinate
+                    < interval[1] - self._numerical_tolerance
+                )
+                if inside_crossing_interval:
+                    return True
+                else:
+                    pass
+        return False
 
     def _segments_collide(
             self,
@@ -621,54 +932,13 @@ class OrthogonalVisibilityRouteBuilder:
         :param second_end: Second segment end.
         :return: ``True`` for a crossing, T-junction, or shared positive length.
         """
-        first_horizontal: bool = self._points_share_y(first_start, first_end)
-        second_horizontal: bool = self._points_share_y(second_start, second_end)
-        if first_horizontal and second_horizontal:
-            same_axis: bool = self._points_share_y(first_start, second_start)
-            overlap_length: float = (
-                    min(max(first_start.get_x(), first_end.get_x()),
-                        max(second_start.get_x(), second_end.get_x()))
-                    - max(min(first_start.get_x(), first_end.get_x()),
-                          min(second_start.get_x(), second_end.get_x()))
-            )
-            return same_axis and overlap_length > self._numerical_tolerance
-        elif not first_horizontal and not second_horizontal:
-            same_axis = self._points_share_x(first_start, second_start)
-            overlap_length = (
-                    min(max(first_start.get_y(), first_end.get_y()),
-                        max(second_start.get_y(), second_end.get_y()))
-                    - max(min(first_start.get_y(), first_end.get_y()),
-                          min(second_start.get_y(), second_end.get_y()))
-            )
-            return same_axis and overlap_length > self._numerical_tolerance
-        else:
-            pass
-
-        if first_horizontal:
-            horizontal_start: RoutingPoint = first_start
-            horizontal_end: RoutingPoint = first_end
-            vertical_start: RoutingPoint = second_start
-            vertical_end: RoutingPoint = second_end
-        else:
-            horizontal_start = second_start
-            horizontal_end = second_end
-            vertical_start = first_start
-            vertical_end = first_end
-        crossing_x: float = vertical_start.get_x()
-        crossing_y: float = horizontal_start.get_y()
-        inside_horizontal: bool = (
-                crossing_x > min(horizontal_start.get_x(), horizontal_end.get_x())
-                + self._numerical_tolerance
-                and crossing_x < max(horizontal_start.get_x(), horizontal_end.get_x())
-                - self._numerical_tolerance
+        return orthogonal_routing_segments_collide(
+            first_start=first_start,
+            first_end=first_end,
+            second_start=second_start,
+            second_end=second_end,
+            tolerance=self._numerical_tolerance,
         )
-        inside_vertical: bool = (
-                crossing_y > min(vertical_start.get_y(), vertical_end.get_y())
-                + self._numerical_tolerance
-                and crossing_y < max(vertical_start.get_y(), vertical_end.get_y())
-                - self._numerical_tolerance
-        )
-        return inside_horizontal and inside_vertical
 
     def _point_is_on_reserved_segment_interior(self, point: RoutingPoint) -> bool:
         """Return whether a grid node would create an implicit cable junction.
@@ -676,32 +946,55 @@ class OrthogonalVisibilityRouteBuilder:
         :param point: Candidate visibility-grid node.
         :return: Whether the point lies strictly inside an accepted segment.
         """
-        reserved_segment: tuple[RoutingPoint, RoutingPoint]
-        for reserved_segment in self._reserved_segments:
-            if self._points_share_y(reserved_segment[0], reserved_segment[1]):
-                shares_axis: bool = self._points_share_y(point, reserved_segment[0])
-                inside_span: bool = (
+        horizontal_start_index: int = bisect_left(
+            self._reserved_horizontal_y_values,
+            point.get_y() - self._numerical_tolerance,
+        )
+        horizontal_end_index: int = bisect_right(
+            self._reserved_horizontal_y_values,
+            point.get_y() + self._numerical_tolerance,
+        )
+        horizontal_y: float
+        horizontal_interval: tuple[float, float]
+        for horizontal_y in self._reserved_horizontal_y_values[
+            horizontal_start_index:horizontal_end_index
+        ]:
+            for horizontal_interval in self._reserved_horizontal_intervals_by_y[horizontal_y]:
+                inside_horizontal: bool = (
                     point.get_x()
-                    > min(reserved_segment[0].get_x(), reserved_segment[1].get_x())
-                    + self._numerical_tolerance
+                    > horizontal_interval[0] + self._numerical_tolerance
                     and point.get_x()
-                    < max(reserved_segment[0].get_x(), reserved_segment[1].get_x())
-                    - self._numerical_tolerance
+                    < horizontal_interval[1] - self._numerical_tolerance
                 )
-            else:
-                shares_axis = self._points_share_x(point, reserved_segment[0])
-                inside_span = (
+                if inside_horizontal:
+                    return True
+                else:
+                    pass
+
+        vertical_start_index: int = bisect_left(
+            self._reserved_vertical_x_values,
+            point.get_x() - self._numerical_tolerance,
+        )
+        vertical_end_index: int = bisect_right(
+            self._reserved_vertical_x_values,
+            point.get_x() + self._numerical_tolerance,
+        )
+        vertical_x: float
+        vertical_interval: tuple[float, float]
+        for vertical_x in self._reserved_vertical_x_values[
+            vertical_start_index:vertical_end_index
+        ]:
+            for vertical_interval in self._reserved_vertical_intervals_by_x[vertical_x]:
+                inside_vertical: bool = (
                     point.get_y()
-                    > min(reserved_segment[0].get_y(), reserved_segment[1].get_y())
-                    + self._numerical_tolerance
+                    > vertical_interval[0] + self._numerical_tolerance
                     and point.get_y()
-                    < max(reserved_segment[0].get_y(), reserved_segment[1].get_y())
-                    - self._numerical_tolerance
+                    < vertical_interval[1] - self._numerical_tolerance
                 )
-            if shares_axis and inside_span:
-                return True
-            else:
-                pass
+                if inside_vertical:
+                    return True
+                else:
+                    pass
         return False
 
     def _compress_route(self, route_points: list[RoutingPoint]) -> list[RoutingPoint]:

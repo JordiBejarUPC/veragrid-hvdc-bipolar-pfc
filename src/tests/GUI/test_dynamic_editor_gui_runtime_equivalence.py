@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from time import perf_counter
 from typing import Any, Dict, List, Tuple
 
 import numpy as np
@@ -9,6 +10,10 @@ from PySide6 import QtCore, QtGui, QtWidgets
 from VeraGrid.Gui.DynamicEventsDialog.dynamic_events_editor_support import collect_block_runtime_event_parameters
 from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI
 from VeraGrid.Gui.DynamicModelEditor.dynamic_block_preparation import prepare_block_for_editing
+from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_library import (
+    DynamicEditorLibrary,
+    MeasurementBlockDescriptor,
+)
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_utilities import create_generic_block
 import VeraGrid.Gui.DynamicModelEditor.dynamic_editor_graphics as graph
 from VeraGridEngine.Devices.Events.rms_event import RmsEvent
@@ -21,6 +26,7 @@ from VeraGridEngine.Devices.Injections.load import Load
 from VeraGridEngine.Devices.Branches.vsc import VSC
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
+from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.IO.file_open import FileOpen, FileOpenOptions
 from VeraGridEngine.Simulations.EMT.emt_driver import EmtSimulationDriver
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
@@ -37,16 +43,25 @@ from VeraGridEngine.Simulations.Rms.rms_results import RmsResults
 from VeraGridEngine.Templates.Emt.load_zip_emt_template import get_load_ZIP_emt_template
 from VeraGridEngine.Templates.Emt.pi_line_emt_template import get_pi_line_emt_template
 from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template_with_ref
-from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template_rms
+from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import (
+    get_complete_generator_template_rms,
+    get_governor_rms,
+)
 from VeraGridEngine.Templates.Rms.genrow_rms_template import get_genrow_rms_template
+from VeraGridEngine.Templates.Rms.international_standards.bbsex1 import build_bbsex1_template
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.Templates.Rms.load_rms_template import get_load_rms_template
-from VeraGridEngine.Utils.Symbolic.block import Block
+from VeraGridEngine.Utils.Symbolic.block import (
+    Block,
+    RmsPhysicalMeasurementPoint,
+    RmsPhysicalMeterKind,
+    RmsTerminalSide,
+)
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, symbolic_to_string
 from VeraGridEngine.Utils.Symbolic.bus_emt_template import get_bus_emt_template
 from VeraGridEngine.Utils.Symbolic.bus_rms_template import initialize_bus_rms
 from VeraGridEngine.Utils.Symbolic.templates_common_functions import set_emt_model, set_rms_model
-from VeraGridEngine.enumerations import BlockType, BranchImpedanceMode, DynamicIntegrationMethod, DynamicSimulationMode, DynEditorGraphicsModes, EmtInitializationMethod, EmtSolverTypes, FileType, RmsInitializationMethod, ShuntConnectionType, SolverType, VarPowerFlowReferenceType
+from VeraGridEngine.enumerations import BlockType, BranchImpedanceMode, DeviceType, DynamicIntegrationMethod, DynamicSimulationMode, DynEditorGraphicsModes, EmtInitializationMethod, EmtSolverTypes, FileType, RmsInitializationMethod, ShuntConnectionType, SolverType, VarPowerFlowReferenceType
 
 
 def _collect_block_signature(block: Block) -> Dict[str, Any]:
@@ -572,7 +587,84 @@ def _get_connection_path_segments(
     return segments
 
 
-def _get_block_item_visual_rect(item: graph.BlockItem) -> QtCore.QRectF:
+def _assert_connection_paths_are_orthogonal_and_perpendicular(
+        connections: List[graph.ConnectionItem],
+) -> None:
+    """Assert non-degenerate orthogonal routes with horizontal port access.
+
+    Every visible input and output port is located on a vertical block side.
+    Its adjacent cable segment must therefore be horizontal; a vertical terminal
+    segment creates the detached arrowheads and non-perpendicular entries seen in
+    the interactive editor.
+
+    :param connections: Complete transient connection collection.
+    :return: None.
+    """
+    connection: graph.ConnectionItem
+    for connection in connections:
+        segments: List[tuple[float, float, float, float]] = (
+            _get_connection_path_segments(connection)
+        )
+        assert len(segments) > 0
+        segment: tuple[float, float, float, float]
+        for segment in segments:
+            horizontal: bool = abs(segment[1] - segment[3]) <= 1.0e-6
+            vertical: bool = abs(segment[0] - segment[2]) <= 1.0e-6
+            positive_length: bool = (
+                abs(segment[0] - segment[2]) > 1.0e-6
+                or abs(segment[1] - segment[3]) > 1.0e-6
+            )
+            assert positive_length
+            assert horizontal or vertical
+        first_segment: tuple[float, float, float, float] = segments[0]
+        last_segment: tuple[float, float, float, float] = segments[-1]
+        source_owner: QtWidgets.QGraphicsItem | None = (
+            connection.source_port.parentItem()
+        )
+        target_owner: QtWidgets.QGraphicsItem | None = (
+            connection.target_port.parentItem()
+        )
+        block_to_block: bool = (
+            isinstance(source_owner, (graph.BlockItem, graph.GenericBlockItem))
+            and isinstance(target_owner, (graph.BlockItem, graph.GenericBlockItem))
+        )
+        if isinstance(connection.source_port, graph.BranchingItem):
+            pass
+        else:
+            assert abs(first_segment[1] - first_segment[3]) <= 1.0e-6
+            if block_to_block:
+                assert abs(first_segment[0] - first_segment[2]) >= 32.0 - 1.0e-6, (
+                    connection.source_port.subsystem.name,
+                    connection.source_port.base_var.name,
+                    connection.target_port.subsystem.name,
+                    connection.target_port.base_var.name,
+                    first_segment,
+                )
+            else:
+                pass
+        if isinstance(connection.target_port, graph.BranchingItem):
+            pass
+        else:
+            assert abs(last_segment[1] - last_segment[3]) <= 1.0e-6, (
+                connection.source_port.subsystem.name,
+                connection.source_port.base_var.name,
+                connection.target_port.subsystem.name,
+                connection.target_port.base_var.name,
+                last_segment,
+            )
+            if block_to_block:
+                assert abs(last_segment[0] - last_segment[2]) >= 32.0 - 1.0e-6, (
+                    connection.source_port.subsystem.name,
+                    connection.source_port.base_var.name,
+                    connection.target_port.subsystem.name,
+                    connection.target_port.base_var.name,
+                    last_segment,
+                )
+            else:
+                pass
+
+
+def _get_block_item_visual_rect(item: QtWidgets.QGraphicsItem) -> QtCore.QRectF:
     """Return one block rectangle including every visible child label.
 
     :param item: Block or transient signal tag represented in the scene.
@@ -590,7 +682,32 @@ def _get_block_item_visual_rect(item: graph.BlockItem) -> QtCore.QRectF:
         return mapped_visual_rect.boundingRect()
 
 
-def _assert_block_items_do_not_overlap(items: List[graph.BlockItem]) -> None:
+def _get_block_item_body_rect(item: QtWidgets.QGraphicsItem) -> QtCore.QRectF:
+    """Return one projected item's body without child labels.
+
+    :param item: Block or transient signal tag represented in the scene.
+    :return: Body-only scene rectangle used for endpoint-owner collisions.
+    """
+    if isinstance(item, QtWidgets.QGraphicsRectItem):
+        local_body_rect: QtCore.QRectF = item.rect()
+    elif isinstance(item, QtWidgets.QGraphicsEllipseItem):
+        local_body_rect = item.rect()
+    elif isinstance(item, QtWidgets.QGraphicsPolygonItem):
+        local_body_rect = item.polygon().boundingRect()
+    else:
+        local_body_rect = item.boundingRect()
+    mapped_body_rect: QtCore.QRectF | QtGui.QPolygonF = item.mapRectToScene(
+        local_body_rect
+    )
+    if isinstance(mapped_body_rect, QtCore.QRectF):
+        return mapped_body_rect
+    else:
+        return mapped_body_rect.boundingRect()
+
+
+def _assert_block_items_do_not_overlap(
+        items: List[QtWidgets.QGraphicsItem],
+) -> None:
     """Assert that block bodies and their labels occupy disjoint areas.
 
     :param items: Complete collection of projected blocks and signal tags.
@@ -606,7 +723,81 @@ def _assert_block_items_do_not_overlap(items: List[graph.BlockItem]) -> None:
         for right_index in range(left_index + 1, len(items)):
             right_rect = _get_block_item_visual_rect(items[right_index])
             overlap_rect = left_rect.intersected(right_rect)
-            assert overlap_rect.width() <= 1e-6 or overlap_rect.height() <= 1e-6
+            assert overlap_rect.width() <= 1e-6 or overlap_rect.height() <= 1e-6, (
+                items[left_index].name,
+                items[right_index].name,
+                left_rect,
+                right_rect,
+                overlap_rect,
+            )
+
+
+def _segment_overlaps_rect_or_border(
+        segment: tuple[float, float, float, float],
+        rect: QtCore.QRectF,
+        tolerance: float = 1e-6,
+) -> bool:
+    """Return whether one orthogonal wire overlaps a rectangle or its border.
+
+    :param segment: Segment represented as ``x1, y1, x2, y2``.
+    :param rect: Block, tag, or visible-label scene rectangle.
+    :param tolerance: Numerical geometry tolerance.
+    :return: Whether positive segment length occupies its body or border.
+    """
+    horizontal: bool = abs(segment[1] - segment[3]) <= tolerance
+    if horizontal:
+        crosses_vertical_span: bool = (
+            segment[1] >= rect.top() - tolerance
+            and segment[1] <= rect.bottom() + tolerance
+        )
+        overlap_length: float = (
+            min(max(segment[0], segment[2]), rect.right())
+            - max(min(segment[0], segment[2]), rect.left())
+        )
+    else:
+        crosses_vertical_span = (
+            segment[0] >= rect.left() - tolerance
+            and segment[0] <= rect.right() + tolerance
+        )
+        overlap_length = (
+            min(max(segment[1], segment[3]), rect.bottom())
+            - max(min(segment[1], segment[3]), rect.top())
+        )
+    return crosses_vertical_span and overlap_length > tolerance
+
+
+def _assert_connections_avoid_visual_items(
+        connections: List[graph.ConnectionItem],
+        items: List[QtWidgets.QGraphicsItem],
+) -> None:
+    """Assert that cables avoid every body and all unrelated labels.
+
+    :param connections: Complete transient connection collection.
+    :param items: Blocks and signal tags including visible child text.
+    :return: None.
+    """
+    connection: graph.ConnectionItem
+    visual_item: QtWidgets.QGraphicsItem
+    segment: tuple[float, float, float, float]
+    for connection in connections:
+        source_owner: QtWidgets.QGraphicsItem | None = connection.source_port.parentItem()
+        target_owner: QtWidgets.QGraphicsItem | None = connection.target_port.parentItem()
+        for visual_item in items:
+            if visual_item is source_owner or visual_item is target_owner:
+                visual_rect: QtCore.QRectF = _get_block_item_body_rect(
+                    visual_item
+                )
+            else:
+                visual_rect = _get_block_item_visual_rect(visual_item)
+            for segment in _get_connection_path_segments(connection):
+                assert not _segment_overlaps_rect_or_border(
+                    segment=segment,
+                    rect=visual_rect,
+                ), (
+                    connection.source_port.subsystem.name,
+                    connection.target_port.subsystem.name,
+                    visual_item.name,
+                )
 
 
 def _orthogonal_segments_collide(
@@ -738,9 +929,13 @@ def _assert_nuactis_vsc_projection(
         if not isinstance(connection.source_port.parentItem(), graph.PairedItem)
         and not isinstance(connection.target_port.parentItem(), graph.PairedItem)
     )
-    projected_block_items: List[graph.BlockItem] = list(
+    projected_visual_items: List[QtWidgets.QGraphicsItem] = list(
         scene_item for scene_item in editor.scene.items()
-        if isinstance(scene_item, graph.BlockItem)
+        if isinstance(scene_item, (
+            graph.BlockItem,
+            graph.GenericBlockItem,
+            graph.PairedItem,
+        ))
     )
 
     assert len(physical_items) == 1
@@ -748,9 +943,55 @@ def _assert_nuactis_vsc_projection(
     assert len(control_items) > 0
     assert len(protected_items) == expected_protected_count
     assert all(
-        item.subsys is not editor._dgs_physical_root_control_container
+        item.subsys is not editor._physical_root_control_container
         for item in generic_items
     )
+    measurement_item: graph.GenericBlockItem
+    for measurement_item in measurement_items:
+        measurement_point: RmsPhysicalMeasurementPoint | None = (
+            measurement_item.subsys.dynamic_model_contract.rms_physical_measurement_point
+        )
+        assert measurement_point is not None
+        assert measurement_item.name.startswith("VeraGrid ")
+        assert "powerfactory" not in measurement_item.name.lower()
+        assert all(
+            "powerfactory" not in output_port.base_var.name.lower()
+            for output_port in measurement_item.outputs
+        )
+        selected_output_uids: set[int] = set(
+            measurement_point.get_output_var_uids()
+        )
+        selected_output_ports: List[graph.PortItem] = list(
+            output_port
+            for output_port in measurement_item.outputs
+            if output_port.base_var.uid in selected_output_uids
+        )
+        assert measurement_point.get_output_signal_names() == tuple(
+            output_port.base_var.name for output_port in selected_output_ports
+        )
+        output_port: graph.PortItem
+        for output_port in selected_output_ports:
+            output_uid: int = output_port.base_var.uid
+            assert output_port.base_var in measurement_item.subsys.algebraic_vars
+            assert output_port.base_var in measurement_item.subsys.init_eqs
+            assert len(measurement_item.subsys.algebraic_vars) == len(
+                measurement_item.subsys.algebraic_eqs
+            )
+            residual_owner_indices: List[int] = list(
+                algebraic_index
+                for algebraic_index in range(
+                    len(measurement_item.subsys.algebraic_vars)
+                )
+                if measurement_item.subsys.algebraic_vars[algebraic_index].uid
+                == output_uid
+            )
+            assert len(residual_owner_indices) == 1
+            owned_residual: Expr = measurement_item.subsys.algebraic_eqs[
+                residual_owner_indices[0]
+            ]
+            assert output_uid in set(
+                residual_var.uid for residual_var in owned_residual.get_vars()
+            )
 
     physical_item: graph.GenericBlockItem = physical_items[0]
     assert physical_item.name == "VeraGrid VSC physical template"
@@ -771,11 +1012,19 @@ def _assert_nuactis_vsc_projection(
     assert all(
         port.connections is not None and len(port.connections) > 0
         for port in physical_item.inputs
-    )
+    ), [
+        port.base_var.name
+        for port in physical_item.inputs
+        if port.connections is None or len(port.connections) == 0
+    ]
     assert all(
         port.connections is not None and len(port.connections) > 0
         for port in physical_item.outputs
-    )
+    ), [
+        port.base_var.name
+        for port in physical_item.outputs
+        if port.connections is None or len(port.connections) == 0
+    ]
 
     assert measurement_items[0].brush().color() == (
         editor.colors_palet.MEASUREMENT_BLOCK_FILL
@@ -790,21 +1039,41 @@ def _assert_nuactis_vsc_projection(
         paired_item.paired_items is not None and len(paired_item.paired_items) > 0
         for paired_item in paired_items
     )
+    assert all(
+        paired_item.name == paired_item.subsys.name.split(" ", 1)[1]
+        for paired_item in paired_items
+    )
     paired_item: graph.PairedItem
     paired_port_collection: List[graph.PortItem]
     paired_port: graph.PortItem
     for paired_item in paired_items:
         for paired_port_collection in (paired_item.inputs, paired_item.outputs):
             for paired_port in paired_port_collection:
-                assert paired_port.connections is not None
-                assert len(paired_port.connections) > 0
+                assert paired_port.connections is not None, (
+                    paired_item.name,
+                    paired_port.base_var.name,
+                )
+                assert len(paired_port.connections) > 0, (
+                    paired_item.name,
+                    paired_port.base_var.name,
+                )
     assert len(paired_items) < 2 * len(scene_connections)
-    _assert_block_items_do_not_overlap(projected_block_items)
+    _assert_block_items_do_not_overlap(projected_visual_items)
     _assert_connection_paths_do_not_collide(scene_connections)
+    _assert_connection_paths_are_orthogonal_and_perpendicular(scene_connections)
+    _assert_connections_avoid_visual_items(
+        connections=scene_connections,
+        items=projected_visual_items,
+    )
     assert len(editor.diagram.con_data) > 0
     assert len(scene_connections) > len(editor.diagram.con_data)
     assert all(connection.diagram is None for connection in scene_connections)
     assert all(not connection.path().isEmpty() for connection in scene_connections)
+    assert all(
+        connection.source_port.scene() is editor.scene
+        and connection.target_port.scene() is editor.scene
+        for connection in scene_connections
+    )
     assert all(
         abs(connection.path().elementAt(0).x - connection.source_port.scenePos().x()) <= 1e-6
         and abs(connection.path().elementAt(0).y - connection.source_port.scenePos().y()) <= 1e-6
@@ -840,6 +1109,256 @@ def _run_balanced_pf(grid: MultiCircuit) -> Any:
     power_flow: PowerFlowDriver = PowerFlowDriver(grid, _build_pf_options())
     power_flow.run()
     return power_flow.results
+
+
+def test_generator_template_selector_and_library_use_typed_categories(
+        qt_app: QtWidgets.QApplication,
+) -> None:
+    """Separate assignable devices, controls and measurements by contract.
+
+    :param qt_app: Shared Qt application fixture.
+    :return: None.
+    """
+    grid: MultiCircuit
+    generator: Generator
+    line: Line
+    load: Load
+    grid, generator, line, load = _build_two_bus_rms_grid()
+    del line
+    del load
+
+    physical_template: RmsModelTemplate = get_genrow_rms_template(
+        grid.var_factory,
+        name="Generator basic",
+    )
+    governor_template: RmsModelTemplate = get_governor_rms(
+        grid.var_factory,
+        name="Governor",
+    )
+    bbsex1_template: RmsModelTemplate = build_bbsex1_template(
+        grid.var_factory,
+        name="BBSEX1",
+    )
+
+    measurement_output: Var = grid.var_factory.add_var("Vm_local")
+    measurement_block: Block = Block(
+        name="Local voltage measurement",
+        out_vars=list((measurement_output,)),
+    )
+    measurement_block.dynamic_model_contract.rms_physical_measurement_point = (
+        RmsPhysicalMeasurementPoint(
+            source_fid="local-voltage-meter",
+            target_fid=generator.bus.idtag,
+            terminal_side=RmsTerminalSide.BUS,
+            meter_kind=RmsPhysicalMeterKind.VOLTAGE,
+            output_signal_names=(measurement_output.name,),
+            output_var_uids=(measurement_output.uid,),
+        )
+    )
+    measurement_template: RmsModelTemplate = RmsModelTemplate(
+        name="Local voltage measurement"
+    )
+    measurement_template.tpe = DeviceType.GeneratorDevice
+    measurement_template.block = measurement_block
+
+    grid.add_rms_model(physical_template)
+    grid.add_rms_model(governor_template)
+    grid.add_rms_model(bbsex1_template)
+    grid.add_rms_model(measurement_template)
+
+    template_device: object
+    delegate_lists: Dict[DeviceType, List[object]]
+    template_device, delegate_lists = grid.get_dictionary_of_lists(
+        elm_type=DeviceType.GeneratorDevice
+    )
+    del template_device
+    assignable_templates: List[object] | None = delegate_lists.get(
+        DeviceType.RmsModelTemplateDevice,
+        None,
+    )
+    assert assignable_templates == list((physical_template,))
+
+    editor_templates: List[RmsModelTemplate] = grid.get_rms_templates_for_editor(
+        DeviceType.GeneratorDevice
+    )
+    assert set(editor_templates) == set((
+        physical_template,
+        governor_template,
+        bbsex1_template,
+        measurement_template,
+    ))
+
+    template_block_identities_before: Tuple[Tuple[int, ...], ...] = tuple(
+        tuple(id(nested_block) for nested_block in template.block.get_all_blocks())
+        for template in editor_templates
+    )
+    factory_var_identities_before: Tuple[Tuple[int, int], ...] = tuple(
+        (var_uid, id(var))
+        for var_uid, var in grid.var_factory.get_vars_dict().items()
+    )
+    factory_diff_var_identities_before: Tuple[Tuple[int, int], ...] = tuple(
+        (var_uid, id(var))
+        for var_uid, var in grid.var_factory.get_diff_var_dict().items()
+    )
+    catalog_start_seconds: float = perf_counter()
+    library: DynamicEditorLibrary = DynamicEditorLibrary(
+        api_object=generator,
+        mode=DynamicSimulationMode.RMS,
+        templates_list=editor_templates,
+    )
+    catalog_elapsed_seconds: float = perf_counter() - catalog_start_seconds
+    assert catalog_elapsed_seconds <= 2.0, catalog_elapsed_seconds
+    template_block_identities_after: Tuple[Tuple[int, ...], ...] = tuple(
+        tuple(id(nested_block) for nested_block in template.block.get_all_blocks())
+        for template in editor_templates
+    )
+    factory_var_identities_after: Tuple[Tuple[int, int], ...] = tuple(
+        (var_uid, id(var))
+        for var_uid, var in grid.var_factory.get_vars_dict().items()
+    )
+    factory_diff_var_identities_after: Tuple[Tuple[int, int], ...] = tuple(
+        (var_uid, id(var))
+        for var_uid, var in grid.var_factory.get_diff_var_dict().items()
+    )
+    assert template_block_identities_after == template_block_identities_before
+    assert factory_var_identities_after == factory_var_identities_before
+    assert factory_diff_var_identities_after == factory_diff_var_identities_before
+    assert library.tree_structure.get("Templates", None) is None
+    physical_leaves: object | None = library.tree_structure.get(
+        "Physical devices/templates", None
+    )
+    component_leaves: object | None = library.tree_structure.get(
+        "Controls/components", None
+    )
+    measurement_leaves: object | None = library.tree_structure.get(
+        "Measurements", None
+    )
+    assert isinstance(physical_leaves, list)
+    assert isinstance(component_leaves, list)
+    assert isinstance(measurement_leaves, list)
+    assert physical_template in [leaf.payload for leaf in physical_leaves]
+    assert governor_template in [leaf.payload for leaf in component_leaves]
+    assert bbsex1_template in [leaf.payload for leaf in component_leaves]
+    assert measurement_template not in [leaf.payload for leaf in physical_leaves]
+    assert measurement_template not in [leaf.payload for leaf in component_leaves]
+    assert len(measurement_leaves) == 1
+    assert isinstance(measurement_leaves[0].payload, MeasurementBlockDescriptor)
+
+    editor_root: Block = Block(
+        name="Generator composite model",
+        external_mapping=dict(physical_template.block.external_mapping),
+    )
+    editor: DynamicBlockEditorGUI = _build_gui_editor(
+        qt_app=qt_app,
+        grid=grid,
+        api_object=generator,
+        mode=DynamicSimulationMode.RMS,
+        root_block=editor_root,
+    )
+    try:
+        physical_item: graph.BlockItem | graph.GenericBlockItem | None = (
+            editor.create_template_block_item(physical_template, 0.0, 0.0)
+        )
+        component_item: graph.BlockItem | graph.GenericBlockItem | None = (
+            editor.create_template_block_item(bbsex1_template, 300.0, 0.0)
+        )
+        measurement_item: graph.GenericBlockItem | None = (
+            editor.create_measurements_block_item(
+                descriptor=measurement_leaves[0].payload,
+                x_pos=600.0,
+                y_pos=0.0,
+            )
+        )
+        second_measurement_item: graph.GenericBlockItem | None = (
+            editor.create_measurements_block_item(
+                descriptor=measurement_leaves[0].payload,
+                x_pos=900.0,
+                y_pos=0.0,
+            )
+        )
+        assert isinstance(physical_item, graph.GenericBlockItem)
+        assert isinstance(component_item, graph.GenericBlockItem)
+        assert isinstance(measurement_item, graph.GenericBlockItem)
+        assert isinstance(second_measurement_item, graph.GenericBlockItem)
+        assert physical_item.visual_role is graph.DynamicBlockVisualRole.DEVICE_TEMPLATE
+        assert component_item.visual_role is graph.DynamicBlockVisualRole.CONTROL
+        assert measurement_item.visual_role is graph.DynamicBlockVisualRole.MEASUREMENT
+        assert second_measurement_item.visual_role is graph.DynamicBlockVisualRole.MEASUREMENT
+        assert physical_item.brush().color() == editor.colors_palet.DEVICE_TEMPLATE_BLOCK_FILL
+        assert component_item.brush().color() == editor.colors_palet.BLOCK_FILL
+        assert measurement_item.brush().color() == editor.colors_palet.MEASUREMENT_BLOCK_FILL
+        assert len(measurement_item.subsys.children) >= 2
+        measurement_child: Block
+        for measurement_child in measurement_item.subsys.children:
+            assert (
+                measurement_child.dynamic_model_contract.rms_physical_measurement_point
+                is not None
+            )
+    finally:
+        editor.prepare_to_delete()
+        editor.close()
+        editor.deleteLater()
+        library.library_model.deleteLater()
+
+
+def test_generator_basic_assignment_opens_as_connected_physical_device(
+        qt_app: QtWidgets.QApplication,
+) -> None:
+    """Open the real native Generator basic template as a physical device.
+
+    :param qt_app: Shared Qt application fixture.
+    :return: None.
+    """
+    grid: MultiCircuit
+    generator: Generator
+    line: Line
+    load: Load
+    grid, generator, line, load = _build_two_bus_rms_grid()
+    del line
+    del load
+    generator.rms_template = get_genrow_rms_template(
+        grid.var_factory,
+        name="Generator basic",
+    )
+
+    editor: DynamicBlockEditorGUI = _build_gui_editor(
+        qt_app=qt_app,
+        grid=grid,
+        api_object=generator,
+        mode=DynamicSimulationMode.RMS,
+        root_block=generator.rms_model,
+    )
+    try:
+        generic_items: List[graph.GenericBlockItem] = list(
+            item for item in editor.scene.items()
+            if isinstance(item, graph.GenericBlockItem)
+        )
+        physical_items: List[graph.GenericBlockItem] = list(
+            item for item in generic_items
+            if item.visual_role is graph.DynamicBlockVisualRole.DEVICE_TEMPLATE
+        )
+        measurement_items: List[graph.GenericBlockItem] = list(
+            item for item in generic_items
+            if item.visual_role is graph.DynamicBlockVisualRole.MEASUREMENT
+        )
+        assert len(physical_items) == 1
+        assert len(measurement_items) == 1
+        physical_item: graph.GenericBlockItem = physical_items[0]
+        assert all(
+            port.connections is not None and len(port.connections) > 0
+            for port in physical_item.inputs
+        )
+        assert editor.resolve_block_for_properties(physical_item.subsys) is (
+            physical_item.subsys
+        )
+        editor.request_open_block_properties(physical_item.subsys)
+        assert editor._block_properties_dialogue is not None
+        assert editor._block_properties_dialogue.is_dae_model_page_active()
+        editor.close_block_properties_dock()
+    finally:
+        editor.prepare_to_delete()
+        editor.close()
+        editor.deleteLater()
 
 
 def test_gui_editor_apply_changes_matches_scripting_for_emt(qt_app: QtWidgets.QApplication) -> None:
@@ -1116,6 +1635,7 @@ def test_nuactis_v1_gui_editor_matches_scripting_pf_and_rms(
             assert isinstance(gui_vsc.rms_model, Block)
             assert isinstance(script_vsc.rms_model, Block)
 
+            projection_start_seconds: float = perf_counter()
             editor: DynamicBlockEditorGUI = _build_gui_editor(
                 qt_app=qt_app,
                 grid=gui_grid,
@@ -1123,6 +1643,10 @@ def test_nuactis_v1_gui_editor_matches_scripting_pf_and_rms(
                 mode=DynamicSimulationMode.RMS,
                 root_block=gui_vsc.rms_model,
             )
+            projection_elapsed_seconds: float = (
+                perf_counter() - projection_start_seconds
+            )
+            assert projection_elapsed_seconds <= 4.0, projection_elapsed_seconds
             open_editors.append(editor)
             _assert_nuactis_vsc_projection(
                 editor=editor,
@@ -1253,8 +1777,8 @@ def test_nuactis_v1_gui_editor_matches_scripting_pf_and_rms(
         (
             "VmSlave_AC",
             "VdcSlave_DC",
-            "P_act_PowerFactory StaPqmea 221Slave_PWM_nl",
-            "Q_act_PowerFactory StaPqmea 221Slave_PWM_nl",
+            "P_act_VeraGrid Power meter 221Slave_PWM_nl",
+            "Q_act_VeraGrid Power meter 221Slave_PWM_nl",
             "iq_refSlave_PWM_nl",
             "idSlave_PWM_nl",
             "iqSlave_PWM_nl",
@@ -1398,6 +1922,7 @@ def test_nuactis_v2_gui_editor_matches_scripting_pf_and_rms(
             assert isinstance(gui_vsc.rms_model, Block)
             assert isinstance(script_vsc.rms_model, Block)
 
+            projection_start_seconds: float = perf_counter()
             editor: DynamicBlockEditorGUI = _build_gui_editor(
                 qt_app=qt_app,
                 grid=gui_grid,
@@ -1405,8 +1930,12 @@ def test_nuactis_v2_gui_editor_matches_scripting_pf_and_rms(
                 mode=DynamicSimulationMode.RMS,
                 root_block=gui_vsc.rms_model,
             )
+            projection_elapsed_seconds: float = (
+                perf_counter() - projection_start_seconds
+            )
+            assert projection_elapsed_seconds <= 4.0, projection_elapsed_seconds
             open_editors.append(editor)
-            expected_protected_count: int = 1 if converter_index == 0 else 0
+            expected_protected_count: int = 0
             _assert_nuactis_vsc_projection(
                 editor=editor,
                 expected_protected_count=expected_protected_count,
@@ -1547,8 +2076,8 @@ def test_nuactis_v2_gui_editor_matches_scripting_pf_and_rms(
         (
             "VmSlave_AC",
             "VdcSlave_DC",
-            "P_act_PowerFactory StaPqmea 229HVDC Slave_PWM",
-            "Q_act_PowerFactory StaPqmea 229HVDC Slave_PWM",
+            "P_act_VeraGrid Power meter 229HVDC Slave_PWM",
+            "Q_act_VeraGrid Power meter 229HVDC Slave_PWM",
             "id_refHVDC Slave_PWM",
             "idHVDC Slave_PWM",
             "iqHVDC Slave_PWM",

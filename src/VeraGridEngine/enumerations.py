@@ -4552,6 +4552,72 @@ class BlockScopeMode(Enum):
         return list(enum_item.value for enum_item in cls)
 
 
+class DynamicTemplateCategory(Enum):
+    """Identify how one reusable dynamic template may be used."""
+
+    DEVICE = "device"
+    COMPONENT = "component"
+    MEASUREMENT = "measurement"
+
+
+class DynamicBlockVisualRole(Enum):
+    """Identify the semantic palette of one dynamic-editor block."""
+
+    CONTROL = 0
+    MEASUREMENT = 1
+    DEVICE_TEMPLATE = 2
+
+
+class ProjectionTagConnectionSide(Enum):
+    """Identify the real endpoint represented by a transient signal tag."""
+
+    SOURCE = 0
+    TARGET = 1
+
+
+class RmsVectorizedNodalBalanceKind(Enum):
+    """Identify how one compiled RMS nodal row is evaluated."""
+
+    ACTIVE_POWER = 1
+    REACTIVE_POWER = 2
+    CAPACITIVE_DC_POWER = 3
+
+
+class RmsTerminalSide(Enum):
+    """Identify one physical RMS network terminal of a device."""
+
+    BUS = "bus"
+    FROM = "from"
+    TO = "to"
+
+
+class RmsPhysicalMeterKind(Enum):
+    """Identify the physical quantity selected by one RMS meter."""
+
+    VOLTAGE = "voltage"
+    CURRENT = "current"
+    POWER = "power"
+    PHASE_LOCKED_LOOP = "phase_locked_loop"
+
+
+class EmtTerminalSide(Enum):
+    """Identify one physical EMT network terminal of a device."""
+
+    BUS = "bus"
+    FROM = "from"
+    TO = "to"
+
+
+class EmtTerminalConductor(Enum):
+    """Identify one instantaneous EMT terminal conductor."""
+
+    DC = "dc"
+    NEUTRAL = "neutral"
+    PHASE_A = "phase_a"
+    PHASE_B = "phase_b"
+    PHASE_C = "phase_c"
+
+
 class BlockType(Enum):
     """
     this class contains the existing types of blocks

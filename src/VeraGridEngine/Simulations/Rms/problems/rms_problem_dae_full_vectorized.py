@@ -3,14 +3,18 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 from typing import Dict, List, Callable, Any, Tuple, Set, Optional
-from enum import Enum
 import time
 import numpy as np
 import pandas as pd
 import scipy.sparse as sp
 
 
-from VeraGridEngine.enumerations import ParamPowerFlowReferenceType, DeviceType, DynamicEventTransitionType
+from VeraGridEngine.enumerations import (
+    DeviceType,
+    DynamicEventTransitionType,
+    ParamPowerFlowReferenceType,
+    RmsVectorizedNodalBalanceKind,
+)
 from VeraGridEngine.Devices import MultiCircuit
 from VeraGridEngine.Simulations.driver_template import DummySignal
 from VeraGridEngine.Utils.Symbolic.symbolic import (Var, Const, Expr, piecewise, get_expression_vars, hard_sat)
@@ -415,18 +419,6 @@ class RmsVectorizedLegacyBalanceLayout:
                 )
                 reactive_instance_index += 1
             reactive_index += 1
-
-
-class RmsVectorizedNodalBalanceKind(Enum):
-    """Identify how one compiled nodal row is evaluated at runtime.
-
-    The kind preserves the residual rule selected when a row is appended, so
-    runtime evaluation and Jacobian compilation use identical row ordering.
-    """
-
-    ACTIVE_POWER = 1
-    REACTIVE_POWER = 2
-    CAPACITIVE_DC_POWER = 3
 
 
 class RmsVectorizedNodalBalanceLayout:
