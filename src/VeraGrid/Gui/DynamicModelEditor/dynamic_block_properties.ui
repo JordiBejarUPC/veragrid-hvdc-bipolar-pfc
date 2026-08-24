@@ -29,8 +29,130 @@
    <item>
     <widget class="QTabWidget" name="tab_widget">
      <property name="currentIndex">
-      <number>-1</number>
+      <number>0</number>
      </property>
+     <widget class="QWidget" name="general_page">
+      <attribute name="title">
+       <string>General options</string>
+      </attribute>
+      <layout class="QVBoxLayout" name="general_page_layout">
+       <item>
+        <widget class="QGroupBox" name="measurement_configuration_group">
+         <property name="title">
+          <string>Measurement configuration</string>
+         </property>
+         <layout class="QFormLayout" name="measurement_configuration_layout">
+          <item row="0" column="0">
+           <widget class="QLabel" name="measurement_family_caption">
+            <property name="text">
+             <string>Model family</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="1">
+           <widget class="QLabel" name="measurement_family_value">
+            <property name="text">
+             <string>VeraGrid native physical RMS measurement</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="0">
+           <widget class="QLabel" name="measurement_mode_caption">
+            <property name="text">
+             <string>Measurement mode</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="QComboBox" name="measurement_mode_combo"/>
+          </item>
+          <item row="2" column="0">
+           <widget class="QLabel" name="measurement_target_caption">
+            <property name="text">
+             <string>Physical element / bus</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="1">
+           <widget class="QComboBox" name="measurement_target_combo">
+            <property name="sizeAdjustPolicy">
+             <enum>QComboBox::SizeAdjustPolicy::AdjustToMinimumContentsLengthWithIcon</enum>
+            </property>
+            <property name="minimumContentsLength">
+             <number>36</number>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="0">
+           <widget class="QLabel" name="measurement_terminal_caption">
+            <property name="text">
+             <string>Measured terminal</string>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="1">
+           <widget class="QLabel" name="measurement_terminal_value">
+            <property name="text">
+             <string/>
+            </property>
+           </widget>
+          </item>
+          <item row="4" column="0">
+           <widget class="QLabel" name="measurement_signals_caption">
+            <property name="text">
+             <string>Output signals</string>
+            </property>
+           </widget>
+          </item>
+          <item row="4" column="1">
+           <widget class="QLabel" name="measurement_signals_value">
+            <property name="text">
+             <string/>
+            </property>
+            <property name="textInteractionFlags">
+             <set>Qt::TextInteractionFlag::TextSelectableByMouse</set>
+            </property>
+            <property name="wordWrap">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item row="5" column="0">
+           <widget class="QLabel" name="measurement_identity_caption">
+            <property name="text">
+             <string>Measurement identity</string>
+            </property>
+           </widget>
+          </item>
+          <item row="5" column="1">
+           <widget class="QLabel" name="measurement_identity_value">
+            <property name="text">
+             <string/>
+            </property>
+            <property name="textInteractionFlags">
+             <set>Qt::TextInteractionFlag::TextSelectableByMouse</set>
+            </property>
+           </widget>
+          </item>
+          <item row="6" column="0">
+           <widget class="QLabel" name="measurement_equations_caption">
+            <property name="text">
+             <string>Canonical equations</string>
+            </property>
+           </widget>
+          </item>
+          <item row="6" column="1">
+           <widget class="QLabel" name="measurement_equations_value">
+            <property name="text">
+             <string/>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+      </layout>
+     </widget>
     </widget>
    </item>
    <item>

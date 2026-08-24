@@ -7,7 +7,13 @@ from typing import List, Optional, Dict
 from PySide6 import QtCore, QtGui
 
 from VeraGrid.Gui.Icons.icon_associations import device_type_icons
-from VeraGridEngine.enumerations import DeviceType, DynamicSimulationMode
+from VeraGridEngine.Devices.Parents.branch_parent import BranchParent
+from VeraGridEngine.enumerations import (
+    DeviceType,
+    DynamicSimulationMode,
+    RmsPhysicalMeterKind,
+    RmsTerminalSide,
+)
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Devices.Dynamic.fmu_template import FmuTemplate
@@ -49,17 +55,26 @@ class LibraryLeafSpec:
 
 
 class MeasurementBlockDescriptor:
-    """Describe the single repeatable measurement block library entry."""
+    """Describe one typed native RMS measurement requested by the user."""
 
-    __slots__ = ("_mode",)
+    __slots__ = ("_mode", "_meter_kind", "_terminal_side")
 
-    def __init__(self, mode: DynamicSimulationMode) -> None:
+    def __init__(
+            self,
+            mode: DynamicSimulationMode,
+            meter_kind: RmsPhysicalMeterKind,
+            terminal_side: RmsTerminalSide,
+    ) -> None:
         """Create one typed measurement-block request.
 
         :param mode: Dynamic simulation domain of the receiving editor.
+        :param meter_kind: Physical quantity produced by the new meter.
+        :param terminal_side: Device terminal used to obtain the measurement.
         :return: None.
         """
         self._mode: DynamicSimulationMode = mode
+        self._meter_kind: RmsPhysicalMeterKind = meter_kind
+        self._terminal_side: RmsTerminalSide = terminal_side
 
     def get_mode(self) -> DynamicSimulationMode:
         """Return the dynamic domain requested for the new block.
@@ -67,6 +82,20 @@ class MeasurementBlockDescriptor:
         :return: RMS or EMT simulation mode.
         """
         return self._mode
+
+    def get_meter_kind(self) -> RmsPhysicalMeterKind:
+        """Return the selected physical measurement family.
+
+        :return: Voltage, current, power, or phase measurement family.
+        """
+        return self._meter_kind
+
+    def get_terminal_side(self) -> RmsTerminalSide:
+        """Return the selected physical source terminal.
+
+        :return: Bus, from-terminal, or to-terminal selection.
+        """
+        return self._terminal_side
 
 
 class DynamicsLibraryTreeModel(QtGui.QStandardItemModel):
@@ -366,13 +395,68 @@ class DynamicEditorLibrary:
 
         self.tree_structure["Physical devices/templates"] = physical_entries
         self.tree_structure["Controls/components"] = control_entries
-        self.tree_structure["Measurements"] = list((
-            LibraryLeafSpec(
-                label="Measurements",
-                payload=MeasurementBlockDescriptor(mode=mode),
-                search_text="measurements voltage current power pll bus device",
-            ),
-        ))
+        measurement_entries: List[LibraryLeafSpec] = list()
+        if mode is DynamicSimulationMode.RMS:
+            measurement_terminal_sides: tuple[RmsTerminalSide, ...]
+            if isinstance(self.api_object, BranchParent):
+                measurement_terminal_sides = (
+                    RmsTerminalSide.FROM,
+                    RmsTerminalSide.TO,
+                )
+            else:
+                measurement_terminal_sides = (RmsTerminalSide.BUS,)
+            meter_kind: RmsPhysicalMeterKind
+            terminal_side: RmsTerminalSide
+            for terminal_side in measurement_terminal_sides:
+                for meter_kind in RmsPhysicalMeterKind:
+                    terminal_is_dc: bool = False
+                    if isinstance(self.api_object, BranchParent):
+                        if terminal_side is RmsTerminalSide.FROM:
+                            terminal_is_dc = (
+                                self.api_object.bus_from is not None
+                                and self.api_object.bus_from.is_dc
+                            )
+                        elif terminal_side is RmsTerminalSide.TO:
+                            terminal_is_dc = (
+                                self.api_object.bus_to is not None
+                                and self.api_object.bus_to.is_dc
+                            )
+                        else:
+                            pass
+                    else:
+                        pass
+                    if (
+                            meter_kind is RmsPhysicalMeterKind.PHASE_LOCKED_LOOP
+                            and terminal_is_dc
+                    ):
+                        pass
+                    else:
+                        quantity_label: str
+                        if meter_kind is RmsPhysicalMeterKind.PHASE_LOCKED_LOOP:
+                            quantity_label = "Phase"
+                        else:
+                            quantity_label = meter_kind.value.title()
+                        if terminal_side is RmsTerminalSide.BUS:
+                            terminal_label: str = ""
+                        else:
+                            terminal_label = f" ({terminal_side.value} bus)"
+                        measurement_entries.append(
+                            LibraryLeafSpec(
+                                label=f"{quantity_label} meter{terminal_label}",
+                                payload=MeasurementBlockDescriptor(
+                                    mode=mode,
+                                    meter_kind=meter_kind,
+                                    terminal_side=terminal_side,
+                                ),
+                                search_text=(
+                                    "measurements meter voltage current power phase pll "
+                                    + terminal_side.value
+                                ),
+                            ),
+                        )
+        else:
+            pass
+        self.tree_structure["Measurements"] = measurement_entries
         self.tree_structure["Tools"] = list((LibraryLeafSpec("Signal Pair", BlockType.FROM_GOTO),))
 
         # build and add library model

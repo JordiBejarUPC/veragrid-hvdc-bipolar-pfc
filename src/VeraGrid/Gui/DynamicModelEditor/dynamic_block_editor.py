@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 import copy
-from typing import List, Dict, Optional, Any, Tuple, Union, Set
+from typing import List, Dict, Optional, Any, Tuple, Union, Set, Mapping
 from PySide6 import QtWidgets, QtGui, QtCore
 from PySide6.QtWidgets import (QGraphicsItem, QDialog, QVBoxLayout, QDialogButtonBox, QLineEdit)
 from PySide6.QtGui import (QDropEvent, QDragEnterEvent, QDragMoveEvent)
@@ -14,6 +14,7 @@ from PySide6.QtCore import Qt, QPointF, Signal
 from VeraGridEngine.Devices.Parents.branch_parent import BranchParent
 
 from VeraGridEngine.Devices.Parents.injection_parent import InjectionParent
+from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.enumerations import DeviceType, VarPowerFlowReferenceType, ParamPowerFlowReferenceType, \
     DynamicSimulationMode, DynEditorGraphicsModes
 from VeraGridEngine.Utils.Symbolic.bus_emt_template import get_bus_emt_algebraic_vars
@@ -29,6 +30,15 @@ from VeraGridEngine.Templates.BasicBlockCatalog.predefined_blocks import signal_
 from VeraGridEngine.Templates.BasicBlockCatalog import BasicBlockTemplateDescriptor
 
 from VeraGridEngine.Templates.BasicBlockCatalog import load_basic_block_catalog_template
+from VeraGridEngine.Templates.Rms.rms_meter_templates import (
+    build_rms_current_meter_outputs_from_pq,
+    build_rms_physical_signal_meter_block,
+    build_rms_pll_meter_outputs,
+    build_rms_power_meter_outputs_from_pq,
+    build_rms_voltage_meter_outputs_from_dc,
+    build_rms_voltage_meter_outputs_from_polar,
+    normalize_rms_meter_symbol_fragment,
+)
 
 import VeraGridEngine.Templates.BasicBlockCatalog as BasicBlockTemplates
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
@@ -39,7 +49,8 @@ from VeraGridEngine.Utils.Symbolic.block import (Block,
                                                  normalize_dynamic_connection_intents,
                                                  refresh_block_tree_var_name_mappings,
                                                  rehash_block_tree_var_keyed_dicts,
-                                                 upsert_dynamic_connection_intent)
+                                                 upsert_dynamic_connection_intent,
+                                                 validate_dynamic_model_contract)
 from VeraGridEngine.Utils.Symbolic.dynamic_connection_intent import (DynamicConnectionIntent,
                                                                      DynamicConnectionIntentDirection,
                                                                      DynamicConnectionIntentOrigin)
@@ -57,6 +68,8 @@ from VeraGrid.Gui.DynamicModelEditor.dynamic_block_properties import (
     BlockVariableRenameRequest,
     DynamicBlockPropertiesDialog,
     DynamicBlockPropertiesDockWidget,
+    RmsMeasurementEditOption,
+    RmsMeasurementEditRequest,
 )
 import VeraGrid.Gui.DynamicModelEditor.dynamic_editor_validation as valid
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_utilities import (
@@ -229,6 +242,216 @@ def get_rms_measurement_terminal_side_for_reference(
         return RmsTerminalSide.TO
     else:
         return RmsTerminalSide.BUS
+
+
+def get_rms_reference_for_terminal(
+        bus_reference: VarPowerFlowReferenceType,
+        from_reference: VarPowerFlowReferenceType,
+        to_reference: VarPowerFlowReferenceType,
+        terminal_side: RmsTerminalSide,
+) -> VarPowerFlowReferenceType:
+    """Select one physical reference for a typed device terminal.
+
+    :param bus_reference: Reference used by injection devices.
+    :param from_reference: Reference used by the branch from-terminal.
+    :param to_reference: Reference used by the branch to-terminal.
+    :param terminal_side: Requested physical source terminal.
+    :return: Matching power-flow reference enum member.
+    """
+    if terminal_side is RmsTerminalSide.FROM:
+        result: VarPowerFlowReferenceType = from_reference
+    elif terminal_side is RmsTerminalSide.TO:
+        result = to_reference
+    else:
+        result = bus_reference
+    return result
+
+
+def build_native_rms_measurement_expressions(
+        external_mapping: Mapping[VarPowerFlowReferenceType, Var | None],
+        meter_kind: RmsPhysicalMeterKind,
+        terminal_side: RmsTerminalSide,
+        nominal_frequency_hz: float,
+) -> Dict[str, Expr] | None:
+    """Build canonical meter expressions from one physical model boundary.
+
+    The same source-independent equation builders used by imported meters are
+    reused here. Missing mandatory physical quantities fail without creating a
+    partial block, which keeps a drag operation atomic and inexpensive.
+
+    :param external_mapping: Canonical physical variables indexed by typed reference.
+    :param meter_kind: Requested physical measurement family.
+    :param terminal_side: Requested source terminal of the edited device.
+    :param nominal_frequency_hz: Circuit nominal frequency in hertz.
+    :return: Complete signal-expression lookup or ``None`` when unavailable.
+    """
+    vm_reference: VarPowerFlowReferenceType = get_rms_reference_for_terminal(
+        VarPowerFlowReferenceType.Vm,
+        VarPowerFlowReferenceType.Vmf,
+        VarPowerFlowReferenceType.Vmt,
+        terminal_side,
+    )
+    va_reference: VarPowerFlowReferenceType = get_rms_reference_for_terminal(
+        VarPowerFlowReferenceType.Va,
+        VarPowerFlowReferenceType.Vaf,
+        VarPowerFlowReferenceType.Vat,
+        terminal_side,
+    )
+    p_reference: VarPowerFlowReferenceType = get_rms_reference_for_terminal(
+        VarPowerFlowReferenceType.P,
+        VarPowerFlowReferenceType.Pf,
+        VarPowerFlowReferenceType.Pt,
+        terminal_side,
+    )
+    q_reference: VarPowerFlowReferenceType = get_rms_reference_for_terminal(
+        VarPowerFlowReferenceType.Q,
+        VarPowerFlowReferenceType.Qf,
+        VarPowerFlowReferenceType.Qt,
+        terminal_side,
+    )
+    vdc_reference: VarPowerFlowReferenceType = get_rms_reference_for_terminal(
+        VarPowerFlowReferenceType.Vdc,
+        VarPowerFlowReferenceType.Vf_dc,
+        VarPowerFlowReferenceType.Vt_dc,
+        terminal_side,
+    )
+    vm: Var | None = external_mapping.get(vm_reference, None)
+    va: Var | None = external_mapping.get(va_reference, None)
+    active_power: Var | None = external_mapping.get(p_reference, None)
+    reactive_power: Var | None = external_mapping.get(q_reference, None)
+    dc_voltage: Var | None = external_mapping.get(vdc_reference, None)
+    if terminal_side is RmsTerminalSide.FROM:
+        direct_current: Var | None = external_mapping.get(
+            VarPowerFlowReferenceType.If_dc,
+            None,
+        )
+        if direct_current is None:
+            direct_current = external_mapping.get(
+                VarPowerFlowReferenceType.Idc,
+                None,
+            )
+        else:
+            pass
+    elif terminal_side is RmsTerminalSide.TO:
+        direct_current = external_mapping.get(
+            VarPowerFlowReferenceType.It_dc,
+            None,
+        )
+        if direct_current is None:
+            direct_current = external_mapping.get(
+                VarPowerFlowReferenceType.Im,
+                None,
+            )
+        else:
+            pass
+    else:
+        direct_current = external_mapping.get(
+            VarPowerFlowReferenceType.Im,
+            None,
+        )
+        if direct_current is None:
+            direct_current = external_mapping.get(
+                VarPowerFlowReferenceType.Idc,
+                None,
+            )
+        else:
+            pass
+    nominal_frequency: Const = Const(nominal_frequency_hz)
+
+    # Select exactly one established equation set; no catalogue construction
+    # or symbolic work occurs until the requested physical inputs are complete.
+    if meter_kind is RmsPhysicalMeterKind.VOLTAGE:
+        if vm is not None and va is not None:
+            result: Dict[str, Expr] | None = build_rms_voltage_meter_outputs_from_polar(
+                vm=vm,
+                va=va,
+                measured_frequency_hz=nominal_frequency,
+                nominal_frequency_hz=nominal_frequency,
+            )
+        elif dc_voltage is not None:
+            result = build_rms_voltage_meter_outputs_from_dc(
+                vdc=dc_voltage,
+                nominal_frequency_hz=nominal_frequency,
+            )
+        else:
+            result = None
+    elif meter_kind is RmsPhysicalMeterKind.CURRENT:
+        if (
+                vm is not None
+                and va is not None
+                and active_power is not None
+                and reactive_power is not None
+        ):
+            result = build_rms_current_meter_outputs_from_pq(
+                vm=vm,
+                va=va,
+                p=active_power,
+                q=reactive_power,
+            )
+        elif direct_current is not None:
+            # A directly solved DC or magnitude current remains the physical
+            # expression; the meter builder owns its residual and initialization.
+            result = dict()
+            result["i"] = direct_current
+        else:
+            result = None
+    elif meter_kind is RmsPhysicalMeterKind.POWER:
+        if active_power is not None and reactive_power is not None:
+            result = build_rms_power_meter_outputs_from_pq(
+                p=active_power,
+                q=reactive_power,
+            )
+        elif active_power is not None and dc_voltage is not None:
+            # Reactive power is identically zero at a DC terminal.
+            result = build_rms_power_meter_outputs_from_pq(
+                p=active_power,
+                q=Const(0.0),
+            )
+        else:
+            result = None
+    else:
+        if va is not None:
+            result = build_rms_pll_meter_outputs(
+                va=va,
+                measured_frequency_hz=nominal_frequency,
+                nominal_frequency_hz=nominal_frequency,
+            )
+        else:
+            result = None
+    return result
+
+
+def resolve_rms_measurement_target_name(
+        block: Block,
+        circuit: MultiCircuit,
+) -> str | None:
+    """Resolve a meter target name without allocating a circuit-wide lookup.
+
+    :param block: Candidate canonical meter block.
+    :param circuit: Circuit that owns every valid physical measurement target.
+    :return: Human-readable device name and type, or ``None`` when unresolved.
+    """
+    measurement_point: RmsPhysicalMeasurementPoint | None = (
+        block.dynamic_model_contract.rms_physical_measurement_point
+    )
+    result: str | None = None
+    if measurement_point is not None:
+        target_fid: str = measurement_point.get_target_fid()
+        candidate_device: ALL_DEV_TYPES
+        for candidate_device in circuit.get_all_elements_iter():
+            if candidate_device.idtag == target_fid:
+                result = (
+                    candidate_device.name
+                    + " ("
+                    + candidate_device.device_type.value
+                    + ")"
+                )
+                break
+            else:
+                pass
+    else:
+        pass
+    return result
 
 
 def get_projection_edge_sort_key(
@@ -450,7 +673,7 @@ def get_structural_port_key(variable: Var) -> tuple[str, str]:
     if variable.ref is not None:
         return "reference", str(variable.ref.value)
     elif variable.shared_ref is not None:
-        return "shared", str(variable.shared_ref.value)
+        return "shared", variable.shared_ref.name
     else:
         return "name", variable.name
 
@@ -2435,6 +2658,13 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 parent=self,
                 structural_block_type=structural_block_type,
                 structural_builder=structural_builder,
+                measurement_target_name=resolve_rms_measurement_target_name(
+                    block=properties_block,
+                    circuit=self.circuit,
+                ),
+                measurement_edit_options=self.build_rms_measurement_edit_options(
+                    block=properties_block,
+                ),
             )
             if (
                     block is self._physical_view_block
@@ -2448,6 +2678,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             dialogue.setAttribute(QtCore.Qt.WidgetAttribute.WA_DeleteOnClose, True)
             dialogue.blockApplied.connect(self.on_block_properties_applied)
             dialogue.structuralRebuildRequested.connect(self.on_structural_rebuild_requested)
+            dialogue.measurementRebuildRequested.connect(
+                self.on_measurement_rebuild_requested
+            )
             dialogue.variableRenameRequested.connect(self.on_variable_rename_requested)
             dialogue.outputExportChangesRequested.connect(self.on_output_export_changes_requested)
             properties_dock: DynamicBlockPropertiesDockWidget = DynamicBlockPropertiesDockWidget(
@@ -6287,7 +6520,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :return: Stable target FID owned by the current ``MultiCircuit``.
         """
         target_fid: str = self.api_object.idtag
-        if meter_kind is RmsPhysicalMeterKind.VOLTAGE:
+        if meter_kind in (
+                RmsPhysicalMeterKind.VOLTAGE,
+                RmsPhysicalMeterKind.PHASE_LOCKED_LOOP,
+        ):
             if isinstance(self.api_object, InjectionParent):
                 if self.api_object.bus is not None:
                     target_fid = self.api_object.bus.idtag
@@ -6312,24 +6548,116 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             pass
         return target_fid
 
+    def build_rms_measurement_edit_options(
+            self,
+            block: Block,
+    ) -> List[RmsMeasurementEditOption]:
+        """Build the bounded valid meter configurations for this VeraGrid device.
+
+        Source-format cubicles are deliberately absent. Branch measurements
+        resolve to the physical ``BranchParent`` plus ``FROM`` or ``TO``;
+        injection measurements resolve to the ``InjectionParent`` plus ``BUS``.
+
+        :param block: Block whose properties dialogue is being opened.
+        :return: Valid native configurations supported by the physical boundary.
+        """
+        measurement_point: RmsPhysicalMeasurementPoint | None = (
+            block.dynamic_model_contract.rms_physical_measurement_point
+        )
+        result: List[RmsMeasurementEditOption] = list()
+        if measurement_point is None or self.mode is not DynamicSimulationMode.RMS:
+            return result
+        else:
+            pass
+
+        if isinstance(self.api_object, BranchParent):
+            terminal_sides: tuple[RmsTerminalSide, ...] = (
+                RmsTerminalSide.FROM,
+                RmsTerminalSide.TO,
+            )
+        elif isinstance(self.api_object, InjectionParent):
+            terminal_sides = (RmsTerminalSide.BUS,)
+        else:
+            terminal_sides = (RmsTerminalSide.BUS,)
+
+        terminal_side: RmsTerminalSide
+        meter_kind: RmsPhysicalMeterKind
+        for terminal_side in terminal_sides:
+            measured_bus: Bus | None
+            if isinstance(self.api_object, BranchParent):
+                if terminal_side is RmsTerminalSide.FROM:
+                    measured_bus = self.api_object.bus_from
+                else:
+                    measured_bus = self.api_object.bus_to
+            elif isinstance(self.api_object, InjectionParent):
+                measured_bus = self.api_object.bus
+            else:
+                measured_bus = None
+            for meter_kind in RmsPhysicalMeterKind:
+                signal_expressions: Dict[str, Expr] | None = (
+                    build_native_rms_measurement_expressions(
+                        external_mapping=self.main_block.external_mapping,
+                        meter_kind=meter_kind,
+                        terminal_side=terminal_side,
+                        nominal_frequency_hz=self.circuit.fBase,
+                    )
+                )
+                if signal_expressions is None:
+                    pass
+                else:
+                    target_fid: str = self.get_measurement_target_fid(
+                        meter_kind=meter_kind,
+                        source_terminal_side=terminal_side,
+                    )
+                    if measured_bus is None:
+                        measured_bus_name: str = self.tr("Unresolved bus")
+                    else:
+                        measured_bus_name = measured_bus.name
+                    if meter_kind in (
+                            RmsPhysicalMeterKind.VOLTAGE,
+                            RmsPhysicalMeterKind.PHASE_LOCKED_LOOP,
+                    ):
+                        target_label: str = measured_bus_name + " (Bus)"
+                    elif isinstance(self.api_object, BranchParent):
+                        target_label = (
+                            self.api_object.name
+                            + " — "
+                            + terminal_side.value.upper()
+                            + " terminal → "
+                            + measured_bus_name
+                        )
+                    else:
+                        target_label = (
+                            self.api_object.name
+                            + " — BUS terminal → "
+                            + measured_bus_name
+                        )
+                    result.append(
+                        RmsMeasurementEditOption(
+                            meter_kind=meter_kind,
+                            source_terminal_side=terminal_side,
+                            target_fid=target_fid,
+                            target_label=target_label,
+                        )
+                    )
+        return result
+
     def create_measurements_block_item(
             self,
             descriptor: MeasurementBlockDescriptor,
             x_pos: float,
             y_pos: float,
     ) -> graph.GenericBlockItem | None:
-        """Create one repeatable view of all local physical measurements.
+        """Create one selected canonical native RMS measurement block.
 
-        The block reuses the canonical variables already bound by the assigned
-        physical model. It adds no equations or competing network mapping. One
-        typed child contract is retained per quantity family and terminal, so
-        persistence keeps the bus/device target explicit while the canvas shows
-        one compact purple ``Measurements`` block.
+        The requested enum selects one established VeraGrid equation builder.
+        A complete block is added atomically only when its physical boundary
+        provides every required quantity.
 
         :param descriptor: Typed library request for the current domain.
         :param x_pos: Scene X coordinate.
         :param y_pos: Scene Y coordinate.
-        :return: Added measurement item, or ``None`` outside RMS mode or without mapped quantities.
+        :return: Added meter item, or ``None`` outside RMS mode or when unavailable.
         """
         if (
                 descriptor.get_mode() is not self.mode
@@ -6339,42 +6667,17 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             pass
 
-        grouped_entries: Dict[
-            tuple[RmsPhysicalMeterKind, RmsTerminalSide],
-            List[tuple[VarPowerFlowReferenceType, Var]],
-        ] = dict()
-        mapped_reference: VarPowerFlowReferenceType
-        mapped_var: Var | None
-        for mapped_reference, mapped_var in self.main_block.external_mapping.items():
-            if mapped_var is not None:
-                meter_kind: RmsPhysicalMeterKind | None = (
-                    get_rms_measurement_kind_for_reference(reference=mapped_reference)
-                )
-            else:
-                meter_kind = None
-            if meter_kind is not None and mapped_var is not None:
-                source_terminal_side: RmsTerminalSide = (
-                    get_rms_measurement_terminal_side_for_reference(
-                        reference=mapped_reference
-                    )
-                )
-                group_key: tuple[RmsPhysicalMeterKind, RmsTerminalSide] = (
-                    meter_kind,
-                    source_terminal_side,
-                )
-                group_entries: List[tuple[VarPowerFlowReferenceType, Var]] | None = (
-                    grouped_entries.get(group_key, None)
-                )
-                if group_entries is None:
-                    group_entries = list()
-                    grouped_entries[group_key] = group_entries
-                else:
-                    pass
-                group_entries.append((mapped_reference, mapped_var))
-            else:
-                pass
-
-        if len(grouped_entries) == 0:
+        meter_kind: RmsPhysicalMeterKind = descriptor.get_meter_kind()
+        source_terminal_side: RmsTerminalSide = descriptor.get_terminal_side()
+        signal_expressions: Dict[str, Expr] | None = (
+            build_native_rms_measurement_expressions(
+                external_mapping=self.main_block.external_mapping,
+                meter_kind=meter_kind,
+                terminal_side=source_terminal_side,
+                nominal_frequency_hz=self.circuit.fBase,
+            )
+        )
+        if signal_expressions is None:
             return None
         else:
             pass
@@ -6390,65 +6693,47 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             else:
                 pass
 
-        measurement_block: Block = Block(
-            name=f"Measurements {measurement_item_count + 1}",
+        if meter_kind is RmsPhysicalMeterKind.PHASE_LOCKED_LOOP:
+            quantity_label: str = "Phase"
+        else:
+            quantity_label = meter_kind.value.title()
+        measurement_name: str = (
+            f"VeraGrid {quantity_label} meter {measurement_item_count + 1}"
         )
-        output_var_uids: Set[int] = set()
-        group_key: tuple[RmsPhysicalMeterKind, RmsTerminalSide]
-        group_entries: List[tuple[VarPowerFlowReferenceType, Var]]
-        for group_key, group_entries in grouped_entries.items():
-            meter_kind = group_key[0]
-            source_terminal_side = group_key[1]
-            target_fid: str = self.get_measurement_target_fid(
-                meter_kind=meter_kind,
-                source_terminal_side=source_terminal_side,
-            )
-            contract_terminal_side: RmsTerminalSide = source_terminal_side
-            if meter_kind is RmsPhysicalMeterKind.VOLTAGE:
-                contract_terminal_side = RmsTerminalSide.BUS
-            else:
-                pass
-            group_output_vars: List[Var] = list()
-            group_output_names: List[str] = list()
-            group_output_uids: List[int] = list()
-            group_entry: tuple[VarPowerFlowReferenceType, Var]
-            for group_entry in group_entries:
-                mapped_var = group_entry[1]
-                group_output_vars.append(mapped_var)
-                group_output_names.append(mapped_var.name)
-                group_output_uids.append(mapped_var.uid)
-                if mapped_var.uid in output_var_uids:
-                    pass
-                else:
-                    output_var_uids.add(mapped_var.uid)
-                    measurement_block.out_vars.append(mapped_var)
-
-            group_block: Block = Block(
-                name=(
-                    meter_kind.value.replace("_", " ").title()
-                    + " "
-                    + source_terminal_side.value.upper()
-                ),
-                out_vars=group_output_vars,
-            )
-            group_block.dynamic_model_contract.rms_physical_measurement_point = (
-                RmsPhysicalMeasurementPoint(
-                    source_fid=(
-                        "gui-measurements-"
-                        + str(measurement_block.uid)
-                        + "-"
-                        + meter_kind.value
-                        + "-"
-                        + source_terminal_side.value
-                    ),
-                    target_fid=target_fid,
-                    terminal_side=contract_terminal_side,
-                    meter_kind=meter_kind,
-                    output_signal_names=tuple(group_output_names),
-                    output_var_uids=tuple(group_output_uids),
-                )
-            )
-            measurement_block.add(group_block)
+        target_fid: str = self.get_measurement_target_fid(
+            meter_kind=meter_kind,
+            source_terminal_side=source_terminal_side,
+        )
+        if meter_kind in (
+                RmsPhysicalMeterKind.VOLTAGE,
+                RmsPhysicalMeterKind.PHASE_LOCKED_LOOP,
+        ):
+            contract_terminal_side: RmsTerminalSide = RmsTerminalSide.BUS
+        else:
+            contract_terminal_side = source_terminal_side
+        measurement_block: Block
+        output_by_signal_name: Dict[str, Var]
+        measurement_block, output_by_signal_name = build_rms_physical_signal_meter_block(
+            vf=self.var_factory,
+            signal_expressions=signal_expressions,
+            output_signal_names=tuple(signal_expressions.keys()),
+            name=measurement_name,
+            source_fid=(
+                "veragrid-meter:"
+                + self.api_object.idtag
+                + ":"
+                + meter_kind.value
+                + ":"
+                + source_terminal_side.value
+                + ":"
+                + str(measurement_item_count + 1)
+            ),
+            target_fid=target_fid,
+            terminal_side=contract_terminal_side,
+            meter_kind=meter_kind,
+            symbol_suffix=normalize_rms_meter_symbol_fragment(measurement_name),
+        )
+        del output_by_signal_name
 
         self.main_block.add(measurement_block)
         item: graph.GenericBlockItem = graph.GenericBlockItem(
@@ -12153,6 +12438,215 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             item.setSelected(True)
         else:
             pass
+
+    @QtCore.Slot(object)
+    def on_measurement_rebuild_requested(
+            self,
+            request: RmsMeasurementEditRequest,
+    ) -> None:
+        """Rebuild one native physical meter from a VeraGrid device terminal.
+
+        The request contains no source-format object. Its target is a Bus for
+        voltage/phase or the current physical device plus a typed terminal for
+        power/current. Existing output variables survive only when their
+        semantic port names remain valid.
+
+        :param request: Synchronous typed meter rebuild request.
+        :return: None.
+        """
+        if not isinstance(request, RmsMeasurementEditRequest):
+            return
+        else:
+            target_block: Block = request.get_block()
+            selected_option: RmsMeasurementEditOption = request.get_option()
+        existing_point: RmsPhysicalMeasurementPoint | None = (
+            target_block.dynamic_model_contract.rms_physical_measurement_point
+        )
+        if existing_point is None:
+            request.set_result(False, "The selected block is not a native RMS meter.")
+            return
+        else:
+            pass
+
+        meter_kind: RmsPhysicalMeterKind = selected_option.get_meter_kind()
+        source_terminal_side: RmsTerminalSide = (
+            selected_option.get_source_terminal_side()
+        )
+        expected_target_fid: str = self.get_measurement_target_fid(
+            meter_kind=meter_kind,
+            source_terminal_side=source_terminal_side,
+        )
+        if expected_target_fid != selected_option.get_target_fid():
+            request.set_result(False, "The selected physical target is no longer available.")
+            return
+        else:
+            pass
+        signal_expressions: Dict[str, Expr] | None = (
+            build_native_rms_measurement_expressions(
+                external_mapping=self.main_block.external_mapping,
+                meter_kind=meter_kind,
+                terminal_side=source_terminal_side,
+                nominal_frequency_hz=self.circuit.fBase,
+            )
+        )
+        if signal_expressions is None:
+            request.set_result(
+                False,
+                "The physical model does not expose every quantity required by this meter.",
+            )
+            return
+        else:
+            pass
+        if meter_kind in (
+                RmsPhysicalMeterKind.VOLTAGE,
+                RmsPhysicalMeterKind.PHASE_LOCKED_LOOP,
+        ):
+            contract_terminal_side: RmsTerminalSide = RmsTerminalSide.BUS
+        else:
+            contract_terminal_side = source_terminal_side
+        if meter_kind is RmsPhysicalMeterKind.PHASE_LOCKED_LOOP:
+            quantity_label: str = "Phase"
+        else:
+            quantity_label = meter_kind.value.title()
+        standard_meter_marker: str = " meter "
+        if (
+                target_block.name.startswith("VeraGrid ")
+                and standard_meter_marker in target_block.name
+        ):
+            meter_instance_label: str = target_block.name.split(
+                standard_meter_marker,
+                1,
+            )[1]
+            rebuilt_meter_name: str = (
+                "VeraGrid "
+                + quantity_label
+                + standard_meter_marker
+                + meter_instance_label
+            )
+        else:
+            rebuilt_meter_name = target_block.name
+
+        # Validate the complete symbolic candidate against a detached factory
+        # before allocating its authoritative output variables in the circuit.
+        try:
+            preflight_block: Block
+            preflight_outputs: Dict[str, Var]
+            preflight_block, preflight_outputs = build_rms_physical_signal_meter_block(
+                vf=VarFactory(),
+                signal_expressions=signal_expressions,
+                output_signal_names=tuple(signal_expressions.keys()),
+                name=rebuilt_meter_name,
+                source_fid=existing_point.get_source_fid(),
+                target_fid=expected_target_fid,
+                terminal_side=contract_terminal_side,
+                meter_kind=meter_kind,
+                symbol_suffix=normalize_rms_meter_symbol_fragment(rebuilt_meter_name),
+            )
+            del preflight_outputs
+            validate_dynamic_model_contract(block=preflight_block)
+        except (ArithmeticError, KeyError, TypeError, ValueError) as error:
+            request.set_result(False, str(error))
+            return
+
+        candidate_block: Block
+        candidate_outputs: Dict[str, Var]
+        candidate_block, candidate_outputs = build_rms_physical_signal_meter_block(
+            vf=self.var_factory,
+            signal_expressions=signal_expressions,
+            output_signal_names=tuple(signal_expressions.keys()),
+            name=rebuilt_meter_name,
+            source_fid=existing_point.get_source_fid(),
+            target_fid=expected_target_fid,
+            terminal_side=contract_terminal_side,
+            meter_kind=meter_kind,
+            symbol_suffix=normalize_rms_meter_symbol_fragment(rebuilt_meter_name),
+        )
+        del candidate_outputs
+
+        # Preserve connected output identities when the selected mode retains
+        # the same semantic signal name; every removed signal is disconnected.
+        old_outputs: List[Var] = list(target_block.out_vars)
+        old_output_by_name: Dict[str, Var] = dict(
+            (output_var.name, output_var) for output_var in old_outputs
+        )
+        replacements: Dict[Var, Var] = dict()
+        candidate_output: Var
+        for candidate_output in candidate_block.out_vars:
+            surviving_output: Var | None = old_output_by_name.get(
+                candidate_output.name,
+                None,
+            )
+            if surviving_output is not None:
+                replacements[candidate_output] = surviving_output
+            else:
+                pass
+        if len(replacements) > 0:
+            candidate_block.update_model_bulk(replacements)
+            replace_generated_block_auxiliary_variables(candidate_block, replacements)
+        else:
+            pass
+        candidate_block.dynamic_model_contract.rms_physical_measurement_point = (
+            RmsPhysicalMeasurementPoint(
+                source_fid=existing_point.get_source_fid(),
+                target_fid=expected_target_fid,
+                terminal_side=contract_terminal_side,
+                meter_kind=meter_kind,
+                output_signal_names=tuple(
+                    output_var.name for output_var in candidate_block.out_vars
+                ),
+                output_var_uids=tuple(
+                    output_var.uid for output_var in candidate_block.out_vars
+                ),
+            )
+        )
+        validate_dynamic_model_contract(block=candidate_block)
+
+        new_output_indexes: Dict[tuple[str, str], int] = build_port_index_by_key(
+            candidate_block.out_vars
+        )
+        connection_uids_to_remove: List[int] = list()
+        connection_uid: int
+        connection: BlockDiagramConnection
+        for connection_uid, connection in list(self.diagram.con_data.items()):
+            if connection.from_uid == target_block.uid:
+                if 0 <= connection.port_number_from < len(old_outputs):
+                    old_output_key: tuple[str, str] = get_structural_port_key(
+                        old_outputs[connection.port_number_from]
+                    )
+                    new_output_index: int | None = new_output_indexes.get(
+                        old_output_key,
+                        None,
+                    )
+                    if new_output_index is None:
+                        connection_uids_to_remove.append(connection_uid)
+                    else:
+                        connection.port_number_from = new_output_index
+                else:
+                    connection_uids_to_remove.append(connection_uid)
+            else:
+                pass
+        scene_item: QtWidgets.QGraphicsItem
+        connection_item_by_uid: Dict[int, graph.ConnectionItem] = dict()
+        for scene_item in self.scene.items():
+            if isinstance(scene_item, graph.ConnectionItem):
+                connection_item_by_uid[scene_item.con_uid] = scene_item
+            else:
+                pass
+        for connection_uid in connection_uids_to_remove:
+            connection_item: graph.ConnectionItem | None = connection_item_by_uid.get(
+                connection_uid,
+                None,
+            )
+            if connection_item is not None:
+                self.remove_connection_item(connection_item)
+            elif connection_uid in self.diagram.con_data:
+                del self.diagram.con_data[connection_uid]
+            else:
+                pass
+
+        apply_generated_block_state(candidate_block, target_block)
+        target_block.dynamic_model_contract = candidate_block.dynamic_model_contract
+        request.set_result(True, "")
 
     @QtCore.Slot(object)
     def on_structural_rebuild_requested(self, request: BlockStructuralEditRequest) -> None:

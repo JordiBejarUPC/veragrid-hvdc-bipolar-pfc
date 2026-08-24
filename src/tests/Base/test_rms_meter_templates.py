@@ -43,6 +43,7 @@ def test_veragrid_physical_meter_can_be_created_without_import() -> None:
         target_fid="native-device",
         terminal_side=RmsTerminalSide.FROM,
         meter_kind=RmsPhysicalMeterKind.POWER,
+        symbol_suffix="VeraGrid Power meter native",
     )
     validate_dynamic_model_contract(block=meter_block)
     measurement_point: RmsPhysicalMeasurementPoint | None = (
@@ -57,6 +58,9 @@ def test_veragrid_physical_meter_can_be_created_without_import() -> None:
     assert len(meter_block.algebraic_vars) == 2
     assert len(meter_block.algebraic_eqs) == 2
     assert len(meter_block.init_eqs) == 2
+    assert meter_block.name == "VeraGrid Power meter native"
+    assert all(output_var.name.isidentifier() for output_var in meter_block.out_vars)
+    assert all(" " not in output_var.name for output_var in meter_block.out_vars)
     alias_name: str
     source_expression: Expr
     for alias_name, source_expression in signal_expressions.items():

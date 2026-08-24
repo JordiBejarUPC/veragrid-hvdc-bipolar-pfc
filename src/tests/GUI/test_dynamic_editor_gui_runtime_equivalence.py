@@ -9,6 +9,10 @@ from PySide6 import QtCore, QtGui, QtWidgets
 
 from VeraGrid.Gui.DynamicEventsDialog.dynamic_events_editor_support import collect_block_runtime_event_parameters
 from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI
+from VeraGrid.Gui.DynamicModelEditor.dynamic_block_properties import (
+    DynamicBlockPropertiesDialog,
+    RmsMeasurementEditOption,
+)
 from VeraGrid.Gui.DynamicModelEditor.dynamic_block_preparation import prepare_block_for_editing
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_library import (
     DynamicEditorLibrary,
@@ -56,6 +60,7 @@ from VeraGridEngine.Utils.Symbolic.block import (
     RmsPhysicalMeasurementPoint,
     RmsPhysicalMeterKind,
     RmsTerminalSide,
+    validate_dynamic_model_contract,
 )
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, symbolic_to_string
 from VeraGridEngine.Utils.Symbolic.bus_emt_template import get_bus_emt_template
@@ -1241,8 +1246,19 @@ def test_generator_template_selector_and_library_use_typed_categories(
     assert bbsex1_template in [leaf.payload for leaf in component_leaves]
     assert measurement_template not in [leaf.payload for leaf in physical_leaves]
     assert measurement_template not in [leaf.payload for leaf in component_leaves]
-    assert len(measurement_leaves) == 1
-    assert isinstance(measurement_leaves[0].payload, MeasurementBlockDescriptor)
+    assert len(measurement_leaves) == 4
+    measurement_descriptors: List[MeasurementBlockDescriptor] = list()
+    measurement_leaf: object
+    for measurement_leaf in measurement_leaves:
+        assert isinstance(measurement_leaf.payload, MeasurementBlockDescriptor)
+        measurement_descriptors.append(measurement_leaf.payload)
+    assert set(
+        descriptor.get_meter_kind() for descriptor in measurement_descriptors
+    ) == set(RmsPhysicalMeterKind)
+    assert all(
+        descriptor.get_terminal_side() is RmsTerminalSide.BUS
+        for descriptor in measurement_descriptors
+    )
 
     editor_root: Block = Block(
         name="Generator composite model",
@@ -1262,17 +1278,24 @@ def test_generator_template_selector_and_library_use_typed_categories(
         component_item: graph.BlockItem | graph.GenericBlockItem | None = (
             editor.create_template_block_item(bbsex1_template, 300.0, 0.0)
         )
-        measurement_item: graph.GenericBlockItem | None = (
-            editor.create_measurements_block_item(
-                descriptor=measurement_leaves[0].payload,
-                x_pos=600.0,
-                y_pos=0.0,
+        measurement_items: List[graph.GenericBlockItem] = list()
+        descriptor_index: int
+        descriptor: MeasurementBlockDescriptor
+        for descriptor_index, descriptor in enumerate(measurement_descriptors):
+            created_measurement_item: graph.GenericBlockItem | None = (
+                editor.create_measurements_block_item(
+                    descriptor=descriptor,
+                    x_pos=600.0 + (300.0 * descriptor_index),
+                    y_pos=0.0,
+                )
             )
-        )
+            assert isinstance(created_measurement_item, graph.GenericBlockItem)
+            measurement_items.append(created_measurement_item)
+        measurement_item: graph.GenericBlockItem = measurement_items[0]
         second_measurement_item: graph.GenericBlockItem | None = (
             editor.create_measurements_block_item(
-                descriptor=measurement_leaves[0].payload,
-                x_pos=900.0,
+                descriptor=measurement_descriptors[0],
+                x_pos=1800.0,
                 y_pos=0.0,
             )
         )
@@ -1287,13 +1310,86 @@ def test_generator_template_selector_and_library_use_typed_categories(
         assert physical_item.brush().color() == editor.colors_palet.DEVICE_TEMPLATE_BLOCK_FILL
         assert component_item.brush().color() == editor.colors_palet.BLOCK_FILL
         assert measurement_item.brush().color() == editor.colors_palet.MEASUREMENT_BLOCK_FILL
-        assert len(measurement_item.subsys.children) >= 2
-        measurement_child: Block
-        for measurement_child in measurement_item.subsys.children:
-            assert (
-                measurement_child.dynamic_model_contract.rms_physical_measurement_point
-                is not None
+        assert len(measurement_item.subsys.children) == 0
+        created_meter_kinds: set[RmsPhysicalMeterKind] = set()
+        created_meter_item: graph.GenericBlockItem
+        for created_meter_item in measurement_items:
+            created_meter_block: Block = created_meter_item.subsys
+            measurement_point: RmsPhysicalMeasurementPoint | None = (
+                created_meter_block.dynamic_model_contract.rms_physical_measurement_point
             )
+            assert measurement_point is not None
+            created_meter_kinds.add(measurement_point.get_meter_kind())
+            assert len(created_meter_block.algebraic_eqs) == len(
+                created_meter_block.out_vars
+            )
+            assert len(created_meter_block.init_eqs) == len(
+                created_meter_block.out_vars
+            )
+            assert "PowerFactory" not in created_meter_block.name
+        assert created_meter_kinds == set(RmsPhysicalMeterKind)
+
+        voltage_meter_item: graph.GenericBlockItem | None = None
+        for created_meter_item in measurement_items:
+            created_meter_point: RmsPhysicalMeasurementPoint | None = (
+                created_meter_item.subsys.dynamic_model_contract.rms_physical_measurement_point
+            )
+            if (
+                    created_meter_point is not None
+                    and created_meter_point.get_meter_kind()
+                    is RmsPhysicalMeterKind.VOLTAGE
+            ):
+                voltage_meter_item = created_meter_item
+            else:
+                pass
+        assert voltage_meter_item is not None
+        editable_meter_block: Block = voltage_meter_item.subsys
+        editor.request_open_block_properties(editable_meter_block)
+        assert isinstance(
+            editor._block_properties_dialogue,
+            DynamicBlockPropertiesDialog,
+        )
+        measurement_dialogue: DynamicBlockPropertiesDialog = (
+            editor._block_properties_dialogue
+        )
+        power_mode_index: int = measurement_dialogue.ui.measurement_mode_combo.findData(
+            RmsPhysicalMeterKind.POWER
+        )
+        assert power_mode_index >= 0
+        measurement_dialogue.ui.measurement_mode_combo.setCurrentIndex(
+            power_mode_index
+        )
+        qt_app.processEvents()
+        assert measurement_dialogue.ui.measurement_target_combo.isEnabled()
+        assert measurement_dialogue.ui.measurement_target_combo.currentText() == (
+            generator.name
+            + " — BUS terminal → "
+            + generator.bus.name
+        )
+        assert measurement_dialogue.ui.measurement_terminal_value.text() == "BUS"
+        assert measurement_dialogue.has_measurement_configuration_changes()
+
+        measurement_dialogue.apply_changes()
+        qt_app.processEvents()
+        rebuilt_measurement_point: RmsPhysicalMeasurementPoint | None = (
+            editable_meter_block.dynamic_model_contract.rms_physical_measurement_point
+        )
+        assert rebuilt_measurement_point is not None
+        assert (
+            rebuilt_measurement_point.get_meter_kind()
+            is RmsPhysicalMeterKind.POWER
+        ), measurement_dialogue._status_label.text()
+        assert rebuilt_measurement_point.get_target_fid() == generator.idtag
+        assert (
+            rebuilt_measurement_point.get_terminal_side()
+            is RmsTerminalSide.BUS
+        )
+        assert len(editable_meter_block.out_vars) == 6
+        assert len(editable_meter_block.algebraic_eqs) == 6
+        assert len(editable_meter_block.init_eqs) == 6
+        assert tuple(output_var.name for output_var in editable_meter_block.out_vars) == (
+            rebuilt_measurement_point.get_output_signal_names()
+        )
     finally:
         editor.prepare_to_delete()
         editor.close()
@@ -1891,6 +1987,101 @@ def test_nuactis_v1_gui_editor_matches_scripting_pf_and_rms(
     )
 
 
+def test_nuactis_v2_imported_meter_rebuilds_to_native_branch_terminal(
+        qt_app: QtWidgets.QApplication,
+) -> None:
+    """Replace one historical imported meter through the native `.ui` path.
+
+    :param qt_app: Shared Qt application fixture.
+    :return: None.
+    """
+    grid: MultiCircuit = _load_nuactis_rms_grid(
+        fixture_name="hvdc_vsc_v2_complete_static_dynamic.dgs",
+    )
+    vsc: VSC = grid.get_vsc()[0]
+    editor: DynamicBlockEditorGUI = _build_gui_editor(
+        qt_app=qt_app,
+        grid=grid,
+        api_object=vsc,
+        mode=DynamicSimulationMode.RMS,
+        root_block=vsc.rms_model,
+    )
+    try:
+        voltage_meter_block: Block | None = None
+        scene_item: QtWidgets.QGraphicsItem
+        for scene_item in editor.scene.items():
+            if (
+                    isinstance(scene_item, graph.GenericBlockItem)
+                    and scene_item.visual_role
+                    is graph.DynamicBlockVisualRole.MEASUREMENT
+            ):
+                measurement_point: RmsPhysicalMeasurementPoint | None = (
+                    scene_item.subsys.dynamic_model_contract.rms_physical_measurement_point
+                )
+                if (
+                        measurement_point is not None
+                        and measurement_point.get_meter_kind()
+                        is RmsPhysicalMeterKind.VOLTAGE
+                ):
+                    voltage_meter_block = scene_item.subsys
+                else:
+                    pass
+            else:
+                pass
+        assert voltage_meter_block is not None
+        assert any(
+            not output_var.name.isidentifier()
+            for output_var in voltage_meter_block.out_vars
+        )
+
+        editor.request_open_block_properties(voltage_meter_block)
+        assert isinstance(
+            editor._block_properties_dialogue,
+            DynamicBlockPropertiesDialog,
+        )
+        measurement_dialogue: DynamicBlockPropertiesDialog = (
+            editor._block_properties_dialogue
+        )
+        power_mode_index: int = measurement_dialogue.ui.measurement_mode_combo.findData(
+            RmsPhysicalMeterKind.POWER
+        )
+        assert power_mode_index >= 0
+        measurement_dialogue.ui.measurement_mode_combo.setCurrentIndex(
+            power_mode_index
+        )
+        qt_app.processEvents()
+        assert vsc.bus_from is not None
+        assert measurement_dialogue.ui.measurement_target_combo.currentText() == (
+            vsc.name
+            + " — FROM terminal → "
+            + vsc.bus_from.name
+        )
+        measurement_dialogue.apply_changes()
+        qt_app.processEvents()
+
+        rebuilt_point: RmsPhysicalMeasurementPoint | None = (
+            voltage_meter_block.dynamic_model_contract.rms_physical_measurement_point
+        )
+        assert rebuilt_point is not None
+        assert rebuilt_point.get_meter_kind() is RmsPhysicalMeterKind.POWER
+        assert rebuilt_point.get_target_fid() == vsc.idtag
+        assert rebuilt_point.get_terminal_side() is RmsTerminalSide.FROM
+        assert voltage_meter_block.name == "VeraGrid Power meter 258"
+        assert len(voltage_meter_block.out_vars) == 6
+        assert all(
+            output_var.name.isidentifier()
+            for output_var in voltage_meter_block.out_vars
+        )
+        assert len(voltage_meter_block.algebraic_eqs) == 6
+        assert len(voltage_meter_block.init_eqs) == 6
+        validate_dynamic_model_contract(block=voltage_meter_block)
+    finally:
+        editor.prepare_to_delete()
+        editor.close()
+        editor.deleteLater()
+        qt_app.processEvents()
+
+
 def test_nuactis_v2_gui_editor_matches_scripting_pf_and_rms(
         qt_app: QtWidgets.QApplication,
 ) -> None:
@@ -1940,6 +2131,65 @@ def test_nuactis_v2_gui_editor_matches_scripting_pf_and_rms(
                 editor=editor,
                 expected_protected_count=expected_protected_count,
             )
+            measurement_block_for_options: Block | None = None
+            scene_item: QtWidgets.QGraphicsItem
+            for scene_item in editor.scene.items():
+                if (
+                        isinstance(scene_item, graph.GenericBlockItem)
+                        and scene_item.visual_role
+                        is graph.DynamicBlockVisualRole.MEASUREMENT
+                ):
+                    measurement_block_for_options = scene_item.subsys
+                else:
+                    pass
+            assert measurement_block_for_options is not None
+            measurement_edit_options: List[RmsMeasurementEditOption] = (
+                editor.build_rms_measurement_edit_options(
+                    block=measurement_block_for_options,
+                )
+            )
+            option_pairs: set[tuple[RmsPhysicalMeterKind, RmsTerminalSide]] = set()
+            measurement_edit_option: RmsMeasurementEditOption
+            for measurement_edit_option in measurement_edit_options:
+                option_kind: RmsPhysicalMeterKind = (
+                    measurement_edit_option.get_meter_kind()
+                )
+                option_side: RmsTerminalSide = (
+                    measurement_edit_option.get_source_terminal_side()
+                )
+                option_pairs.add((option_kind, option_side))
+                option_label_lower: str = (
+                    measurement_edit_option.get_target_label().lower()
+                )
+                assert "cubicle" not in option_label_lower
+                assert "powerfactory" not in option_label_lower
+                if option_kind in (
+                        RmsPhysicalMeterKind.VOLTAGE,
+                        RmsPhysicalMeterKind.PHASE_LOCKED_LOOP,
+                ):
+                    if option_side is RmsTerminalSide.FROM:
+                        measured_bus: Bus | None = gui_vsc.bus_from
+                    else:
+                        measured_bus = gui_vsc.bus_to
+                    assert measured_bus is not None
+                    assert (
+                        measurement_edit_option.get_target_fid()
+                        == measured_bus.idtag
+                    )
+                else:
+                    assert (
+                        measurement_edit_option.get_target_fid()
+                        == gui_vsc.idtag
+                    )
+            assert option_pairs == set((
+                (RmsPhysicalMeterKind.VOLTAGE, RmsTerminalSide.FROM),
+                (RmsPhysicalMeterKind.CURRENT, RmsTerminalSide.FROM),
+                (RmsPhysicalMeterKind.POWER, RmsTerminalSide.FROM),
+                (RmsPhysicalMeterKind.VOLTAGE, RmsTerminalSide.TO),
+                (RmsPhysicalMeterKind.CURRENT, RmsTerminalSide.TO),
+                (RmsPhysicalMeterKind.POWER, RmsTerminalSide.TO),
+                (RmsPhysicalMeterKind.PHASE_LOCKED_LOOP, RmsTerminalSide.TO),
+            ))
             editor.apply_changes()
             qt_app.processEvents()
 

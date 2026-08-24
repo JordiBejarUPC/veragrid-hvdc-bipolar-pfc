@@ -16,6 +16,7 @@ from VeraGrid.Gui.DynamicModelEditor.dynamic_block_properties import (
     BlockVariableRenameRequest,
     DaeCodeDiagnostic,
     DynamicBlockPropertiesDialog,
+    RmsMeasurementEditOption,
     build_block_symbol_namespace,
     build_equation_code,
     parse_equation_code,
@@ -56,9 +57,11 @@ from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.enumerations import (
     BlockType,
     ParamPowerFlowReferenceType,
+    RmsPhysicalMeterKind,
+    RmsTerminalSide,
     VarPowerFlowReferenceType,
 )
-from VeraGridEngine.Utils.Symbolic.block import Block
+from VeraGridEngine.Utils.Symbolic.block import Block, RmsPhysicalMeasurementPoint
 from VeraGridEngine.Utils.Symbolic.symbolic import Const, Expr, Var, symbolic_to_string
 from VeraGridEngine.Templates.Emt.generator_emt_type_template import get_governor_emt
 from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template_v2 import get_genqec_rms
@@ -77,6 +80,73 @@ def get_qt_application() -> QtWidgets.QApplication:
         return QtWidgets.QApplication(list())
     else:
         return application
+
+
+def test_physical_meter_general_options_expose_canonical_configuration() -> None:
+    """Show measurement type, resolved bus, terminal, signals, and equations.
+
+    :return: None.
+    """
+    application: QtWidgets.QApplication = get_qt_application()
+    _unused_application: QtWidgets.QApplication = application
+    output_var: Var = Var("active_power_meter")
+    meter_block: Block = Block(
+        name="VeraGrid Power meter native",
+        algebraic_vars=list((output_var,)),
+        algebraic_eqs=list((output_var - Const(1.0),)),
+        init_eqs=dict(((output_var, Const(1.0)),)),
+        out_vars=list((output_var,)),
+    )
+    meter_block.dynamic_model_contract.rms_physical_measurement_point = (
+        RmsPhysicalMeasurementPoint(
+            source_fid="native-power-meter",
+            target_fid="bus-id-001",
+            terminal_side=RmsTerminalSide.BUS,
+            meter_kind=RmsPhysicalMeterKind.POWER,
+            output_signal_names=(output_var.name,),
+            output_var_uids=(output_var.uid,),
+        )
+    )
+    dialogue: DynamicBlockPropertiesDialog = DynamicBlockPropertiesDialog(
+        block=meter_block,
+        block_type_name="Physical measurement",
+        var_factory=VarFactory(),
+        measurement_target_name="Bus Alpha (Bus)",
+        measurement_edit_options=list((
+            RmsMeasurementEditOption(
+                meter_kind=RmsPhysicalMeterKind.POWER,
+                source_terminal_side=RmsTerminalSide.BUS,
+                target_fid="bus-id-001",
+                target_label="Generator Alpha — BUS terminal → Bus Alpha",
+            ),
+            RmsMeasurementEditOption(
+                meter_kind=RmsPhysicalMeterKind.VOLTAGE,
+                source_terminal_side=RmsTerminalSide.BUS,
+                target_fid="bus-id-001",
+                target_label="Bus Alpha (Bus)",
+            ),
+        )),
+    )
+
+    assert dialogue.ui.measurement_configuration_group.isVisibleTo(dialogue)
+    assert dialogue.ui.measurement_family_value.text() == (
+        "VeraGrid native physical RMS measurement"
+    )
+    assert dialogue.ui.measurement_mode_combo.isEnabled()
+    assert dialogue.ui.measurement_mode_combo.currentText() == "Power"
+    assert dialogue.ui.measurement_target_combo.isEnabled()
+    assert dialogue.ui.measurement_target_combo.currentText() == (
+        "Generator Alpha — BUS terminal → Bus Alpha"
+    )
+    assert dialogue.ui.measurement_terminal_value.text() == "BUS"
+    assert dialogue.ui.measurement_signals_value.text() == output_var.name
+    assert dialogue.ui.measurement_identity_value.text() == "native-power-meter"
+    assert dialogue.ui.measurement_equations_value.text() == (
+        "1 algebraic residuals; 1 initializations"
+    )
+    assert dialogue.get_selected_measurement_option() is not None
+    assert not dialogue.has_measurement_configuration_changes()
+    dialogue.close()
 
 
 class AliasRenameReceiver(QtCore.QObject):

@@ -26,6 +26,33 @@ RMS_CURRENT_METER_OUTPUT_NAMES: tuple[str, ...] = (
 RMS_PLL_METER_OUTPUT_NAMES: tuple[str, ...] = ("Fmeas", "fmeas", "cosphi", "sinphi")
 
 
+def normalize_rms_meter_symbol_fragment(fragment: str) -> str:
+    """Normalize one human-facing meter label for use in a DAE symbol.
+
+    Block names remain untouched for presentation. Only the variable fragment
+    is restricted to ASCII letters, digits, and underscores so the generated
+    equations can always be reopened in the Python-based DAE editor.
+
+    :param fragment: Human-facing output or block-name fragment.
+    :return: Non-empty fragment that is safe inside a Python identifier.
+    """
+    normalized_characters: list[str] = list()
+    character: str
+    for character in fragment.strip():
+        if character.isascii() and (character.isalnum() or character == "_"):
+            normalized_characters.append(character)
+        else:
+            normalized_characters.append("_")
+    normalized_fragment: str = "".join(normalized_characters).strip("_")
+    if len(normalized_fragment) == 0:
+        result: str = "meter"
+    elif normalized_fragment[0].isdigit():
+        result = "_" + normalized_fragment
+    else:
+        result = normalized_fragment
+    return result
+
+
 def _rotate_complex_components(real_part: Expr, imag_part: Expr, angle_rad: float) -> tuple[Expr, Expr]:
     """
     Rotate one complex quantity by one fixed phase angle.
@@ -347,6 +374,7 @@ def build_rms_signal_meter_block(
         signal_expressions: Dict[str, Expr],
         name: str,
         output_signal_names: tuple[str, ...] | None = None,
+        symbol_suffix: str | None = None,
 ) -> tuple[Block, Dict[str, Var]]:
     """
     Materialize one reusable RMS measurement block from named expressions.
@@ -356,6 +384,8 @@ def build_rms_signal_meter_block(
     :param name: Block name suffix.
     :param output_signal_names: Optional user-facing output names paired by
         insertion order with ``signal_expressions``.
+    :param symbol_suffix: Optional parser-safe suffix for generated variables.
+        ``None`` preserves established imported symbolic identities.
     :return: Pair ``(block, output_var_by_signal_name)``.
     """
     algebraic_vars: list[Var] = list()
@@ -390,12 +420,19 @@ def build_rms_signal_meter_block(
             "RMS meter output names must pair uniquely with signal expressions"
         )
 
+    # Native construction can separate the presentation name from its DAE
+    # suffix. Existing imported models retain their established identities.
+    if symbol_suffix is None:
+        resolved_symbol_suffix: str = name
+    else:
+        resolved_symbol_suffix = normalize_rms_meter_symbol_fragment(symbol_suffix)
+
     # Each visible output owns one residual against the physical expression.
     # Imported aliases remain lookup keys only and cannot leak into the block UI.
     for signal_name, signal_expr in signal_expressions.items():
         output_signal_name = resolved_output_signal_names[output_index]
         output_var = vf.add_var(
-            f"{output_signal_name}_{name}",
+            f"{output_signal_name}_{resolved_symbol_suffix}",
             shared_reference=f"{name}:{signal_name}",
         )
         algebraic_vars.append(output_var)
@@ -422,6 +459,7 @@ def build_rms_physical_signal_meter_block(
         target_fid: str,
         terminal_side: RmsTerminalSide,
         meter_kind: RmsPhysicalMeterKind,
+        symbol_suffix: str | None = None,
 ) -> tuple[Block, Dict[str, Var]]:
     """Build one canonical physical RMS meter with equations and identity.
 
@@ -437,6 +475,7 @@ def build_rms_physical_signal_meter_block(
     :param target_fid: Stable identity of the measured bus or device.
     :param terminal_side: Physical terminal selected by the meter.
     :param meter_kind: Physical quantity family produced by the meter.
+    :param symbol_suffix: Optional parser-safe variable suffix for native use.
     :return: Pair ``(meter block, output variable by lookup alias)``.
     """
     meter_block: Block
@@ -446,6 +485,7 @@ def build_rms_physical_signal_meter_block(
         signal_expressions=signal_expressions,
         name=name,
         output_signal_names=output_signal_names,
+        symbol_suffix=symbol_suffix,
     )
 
     # Startup values use the same physical expressions as the algebraic
