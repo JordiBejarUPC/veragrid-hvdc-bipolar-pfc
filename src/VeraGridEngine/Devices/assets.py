@@ -143,6 +143,7 @@ class Assets:
         '_rms_models',
         '_emt_models',
         '_fmu_templates',
+        '_control_pcs',
         'template_objects_dict',
         'profile_magnitudes',
         'device_type_name_dict',
@@ -353,6 +354,9 @@ class Assets:
         # list of reusable FMU templates
         self._fmu_templates: List[dev.FmuTemplate] = list()
 
+        # list of control PCs
+        self._control_pcs: List[dev.ControlPc] = list()
+
         # list of declared diagrams
         self._diagrams: List[Union[dev.MapDiagram, dev.SchematicDiagram]] = list()
 
@@ -431,6 +435,7 @@ class Assets:
                 dev.MarketUnit()
             ],
             "Dynamic": [
+                dev.ControlPc(),
                 dev.RmsEventsGroup(),
                 dev.RmsEvent(),
                 dev.EmtEventsGroup(),
@@ -468,11 +473,11 @@ class Assets:
         }
 
         # dictionary of profile magnitudes per object
-        self.profile_magnitudes: Dict[str, Tuple[List[str], List[GCPROP_TYPES]]] = dict()
+        self.profile_magnitudes: Dict[DeviceType, Tuple[List[str], List[GCPROP_TYPES]]] = dict()
 
-        self.device_type_name_dict: Dict[str, DeviceType] = dict()
+        self.device_type_name_dict: Dict[DeviceType, DeviceType] = dict()
 
-        self.device_associations: Dict[str, List[str]] = dict()
+        self.device_associations: Dict[DeviceType, List[str]] = dict()
 
         """
         self.type_name = 'Shunt'
@@ -482,7 +487,7 @@ class Assets:
         for key, elm_list in self.template_objects_dict.items():
             for elm in elm_list:
 
-                key = str(elm.device_type.value)
+                key: DeviceType = elm.device_type
 
                 associated_props, indices = elm.get_association_properties()
                 self.device_type_name_dict[key] = elm.device_type
@@ -6636,6 +6641,69 @@ class Assets:
         return templates
 
     # ------------------------------------------------------------------------------------------------------------------
+    # Control PC
+    # ------------------------------------------------------------------------------------------------------------------
+
+    @property
+    def control_pcs(self) -> List[dev.ControlPc]:
+        """
+        List of control PCs.
+
+        :return: Control PC devices.
+        """
+
+        return self._control_pcs
+
+    @control_pcs.setter
+    def control_pcs(self, value: List[dev.ControlPc]) -> None:
+        """
+        Replace the complete control PC list.
+
+        :param value: Control PC device list.
+        :return: None.
+        """
+
+        self._control_pcs = value
+
+    def get_control_pcs_number(self) -> int:
+        """
+        Return the number of control PCs.
+
+        :return: Number of control PCs.
+        """
+
+        return len(self._control_pcs)
+
+    def add_control_pc(self, obj: dev.ControlPc) -> None:
+        """
+        Add one control PC.
+
+        :param obj: Control PC instance.
+        :return: None.
+        """
+
+        if obj is not None:
+            if isinstance(obj, dev.ControlPc):
+                self._control_pcs.append(obj)
+            else:
+                print('The device is not a ControlPc!')
+        else:
+            pass
+
+    def delete_control_pc(self, obj: dev.ControlPc) -> None:
+        """
+        Delete one control PC.
+
+        :param obj: Control PC instance.
+        :return: None.
+        """
+
+        try:
+            self._control_pcs.remove(obj)
+        except ValueError:
+            pass
+
+    # ------------------------------------------------------------------------------------------------------------------
     #
     #
     # Functions of aggregations of devices
@@ -7465,6 +7533,9 @@ class Assets:
         elif device_type == DeviceType.FmuTemplateDevice:
             return self.fmu_templates
 
+        elif device_type == DeviceType.ControlPc:
+            return self.control_pcs
+
         elif device_type == DeviceType.RmsEventDevice:
             return self.rms_events
 
@@ -7759,6 +7830,9 @@ class Assets:
         elif device_type == DeviceType.FmuTemplateDevice:
             self._fmu_templates = devices
 
+        elif device_type == DeviceType.ControlPc:
+            self._control_pcs = devices
+
         elif device_type == DeviceType.RmsEventDevice:
             self._rms_events = devices
 
@@ -7987,6 +8061,9 @@ class Assets:
 
         elif obj.device_type == DeviceType.FmuTemplateDevice:
             self.add_fmu_template(obj=obj)
+
+        elif obj.device_type == DeviceType.ControlPc:
+            self.add_control_pc(obj=obj)
 
         elif obj.device_type == DeviceType.RmsEventDevice:
             self.add_rms_event(obj=obj)
@@ -8227,6 +8304,9 @@ class Assets:
 
         elif obj.device_type == DeviceType.FmuTemplateDevice:
             self.delete_fmu_template(obj=obj)
+
+        elif obj.device_type == DeviceType.ControlPc:
+            self.delete_control_pc(obj=obj)
 
         elif obj.device_type == DeviceType.RmsEventDevice:
             self.delete_rms_event(obj=obj)
@@ -8854,6 +8934,10 @@ class Assets:
 
         elif elm_type == DeviceType.FmuTemplateDevice:
             elm = dev.FmuTemplate()
+            dictionary_of_lists = dict()
+
+        elif elm_type == DeviceType.ControlPc:
+            elm = dev.ControlPc()
             dictionary_of_lists = dict()
 
         elif elm_type == DeviceType.RmsEventDevice:
