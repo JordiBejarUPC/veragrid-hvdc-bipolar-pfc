@@ -78,6 +78,15 @@ class TransformerSymbol(QGraphicsRectItem):
         QGraphicsRectItem.setPen(self, QPen(TRANSPARENT))
         self.setRect(QRectF(0, 0, w, h))
 
+        background_path: QPainterPath = QPainterPath()
+        background_path.setFillRule(Qt.FillRule.WindingFill)
+        background_path.addEllipse(w * 0.35 - d / 2, h * 0.5 - d / 2, d, d)
+        background_path.addEllipse(w * 0.65 - d / 2, h * 0.5 - d / 2, d, d)
+        background_path.addRect(w * 0.25, h * 0.25, w * 0.50, h * 0.50)
+        self.background: QGraphicsPathItem = QGraphicsPathItem(background_path, parent=self)
+        self.background.setPen(QPen(TRANSPARENT))
+        self.background.setBrush(QBrush(WHITE))
+
         self.c0 = QGraphicsEllipseItem(0, 0, d, d, parent=self)
         self.c1 = QGraphicsEllipseItem(0, 0, d, d, parent=self)
         self.c2 = QGraphicsEllipseItem(0, 0, d, d, parent=self)
@@ -97,7 +106,8 @@ class TransformerSymbol(QGraphicsRectItem):
         self.c1.setPos(w * 0.35 - d / 2, h * 0.5 - d / 2)
         self.c2.setPos(w * 0.65 - d / 2, h * 0.5 - d / 2)
 
-        self.c0.setZValue(0)
+        self.background.setZValue(0)
+        self.c0.setZValue(1)
         self.c1.setZValue(2)
         self.c2.setZValue(1)
 
@@ -113,8 +123,24 @@ class TransformerSymbol(QGraphicsRectItem):
         pen = QPen(color, line_w, style)
         self.c2.setPen(pen)
         self.c1.setPen(pen)
+        self.background.setBrush(QBrush(self._contrast_fill(color=color)))
         self.c0.setBrush(QBrush(Qt.BrushStyle.NoBrush))
         self.c2.setBrush(QBrush(Qt.BrushStyle.NoBrush))
+
+    @staticmethod
+    def _contrast_fill(color: QColor) -> QColor:
+        """
+        Get an opaque local background that hides the branch route under the coils.
+
+        :param color: Transformer stroke color.
+        :return: Opaque contrast fill.
+        """
+        if color.lightness() > 127:
+            fill_color: QColor = QColor(30, 30, 30, 255)
+        else:
+            fill_color = QColor(245, 245, 245, 255)
+
+        return fill_color
 
     def set_pen(self, pen: QPen):
         """
