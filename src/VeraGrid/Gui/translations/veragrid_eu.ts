@@ -1459,7 +1459,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
     <message>
         <location filename="../FileDialogues/CoordinatesInput/coordinates_input_gui.ui" line="288"/>
         <location filename="../FileDialogues/ProfilesInput/profiles_from_data_gui.ui" line="396"/>
-        <location filename="../FileDialogues/ProfilesInput/profiles_from_models_gui.ui" line="169"/>
+        <location filename="../FileDialogues/ProfilesInput/profiles_from_models_gui.ui" line="180"/>
         <location filename="../ProceduralGrid/procedural_grid_ui.ui" line="233"/>
         <source>Accept</source>
         <translation>Onartu</translation>
@@ -1556,12 +1556,17 @@ li.checked::marker { content: &quot;\2612&quot;; }
         <translation>Garbi</translation>
     </message>
     <message>
-        <location filename="../FileDialogues/ProfilesInput/profiles_from_models_gui.ui" line="159"/>
+        <location filename="../FileDialogues/ProfilesInput/profiles_from_models_gui.ui" line="69"/>
+        <source>Re-index time</source>
+        <translation>Re-indexatzeko momentua</translation>
+    </message>
+    <message>
+        <location filename="../FileDialogues/ProfilesInput/profiles_from_models_gui.ui" line="170"/>
         <source>If checked, the objects are match using the code property, otherwise the idtag property is used</source>
         <translation>Hautatzen bada, objektuak bat datoz kodearen propietatea erabiliz, bestela idtag propietatea erabiltzen da</translation>
     </message>
     <message>
-        <location filename="../FileDialogues/ProfilesInput/profiles_from_models_gui.ui" line="162"/>
+        <location filename="../FileDialogues/ProfilesInput/profiles_from_models_gui.ui" line="173"/>
         <source>Match using code</source>
         <translation>Lotu kodea erabiliz</translation>
     </message>
@@ -6794,6 +6799,10 @@ Monte Carloko potentzia-fluxuaren emaitzak:</translation>
         <source>𝜏: Tap angle</source>
         <translation>𝜏: Tap angle</translation>
     </message>
+    <message>
+        <source>Control PC</source>
+        <translation>PC-ra egokitu</translation>
+    </message>
 </context>
 <context>
     <name>VscDeviceEditorWidget</name>
@@ -8601,6 +8610,7 @@ Monte Carloko potentzia-fluxuaren emaitzak:</translation>
         <location filename="../Main/MainWindow.ui" line="8098"/>
         <location filename="../Main/MainWindow.ui" line="8440"/>
         <location filename="../Main/MainWindow.ui" line="8465"/>
+        <location filename="../Main/MainWindow.ui" line="8778"/>
         <location filename="../Main/MainWindow.ui" line="8794"/>
         <source> s</source>
         <translation> s</translation>
@@ -8730,9 +8740,8 @@ Monte Carloko potentzia-fluxuaren emaitzak:</translation>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Periodo orbitako periodikoa. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
-        <location filename="../Main/MainWindow.ui" line="8778"/>
         <source>Hz</source>
-        <translation>Hz</translation>
+        <translation type="vanished">Hz</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="8859"/>

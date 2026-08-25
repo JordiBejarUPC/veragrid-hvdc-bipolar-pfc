@@ -1459,7 +1459,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
     <message>
         <location filename="../FileDialogues/CoordinatesInput/coordinates_input_gui.ui" line="288"/>
         <location filename="../FileDialogues/ProfilesInput/profiles_from_data_gui.ui" line="396"/>
-        <location filename="../FileDialogues/ProfilesInput/profiles_from_models_gui.ui" line="169"/>
+        <location filename="../FileDialogues/ProfilesInput/profiles_from_models_gui.ui" line="180"/>
         <location filename="../ProceduralGrid/procedural_grid_ui.ui" line="233"/>
         <source>Accept</source>
         <translation>Akzeptiere</translation>
@@ -1556,12 +1556,17 @@ li.checked::marker { content: &quot;\2612&quot;; }
         <translation>Klar</translation>
     </message>
     <message>
-        <location filename="../FileDialogues/ProfilesInput/profiles_from_models_gui.ui" line="159"/>
+        <location filename="../FileDialogues/ProfilesInput/profiles_from_models_gui.ui" line="69"/>
+        <source>Re-index time</source>
+        <translation>Zeit neu indizieren</translation>
+    </message>
+    <message>
+        <location filename="../FileDialogues/ProfilesInput/profiles_from_models_gui.ui" line="170"/>
         <source>If checked, the objects are match using the code property, otherwise the idtag property is used</source>
         <translation>Wenn diese Option aktiviert ist, werden die Objekte mithilfe der Eigenschaft „code“ abgeglichen, andernfalls wird die Eigenschaft „idtag“ verwendet</translation>
     </message>
     <message>
-        <location filename="../FileDialogues/ProfilesInput/profiles_from_models_gui.ui" line="162"/>
+        <location filename="../FileDialogues/ProfilesInput/profiles_from_models_gui.ui" line="173"/>
         <source>Match using code</source>
         <translation>Mit Code abgleichen</translation>
     </message>
@@ -6794,6 +6799,10 @@ Monte-Carlo-Leistungsflussergebnisse:</translation>
         <source>𝜏: Tap angle</source>
         <translation>𝜏: Tap angle</translation>
     </message>
+    <message>
+        <source>Control PC</source>
+        <translation>PC steuern</translation>
+    </message>
 </context>
 <context>
     <name>VscDeviceEditorWidget</name>
@@ -8601,6 +8610,7 @@ Monte-Carlo-Leistungsflussergebnisse:</translation>
         <location filename="../Main/MainWindow.ui" line="8098"/>
         <location filename="../Main/MainWindow.ui" line="8440"/>
         <location filename="../Main/MainWindow.ui" line="8465"/>
+        <location filename="../Main/MainWindow.ui" line="8778"/>
         <location filename="../Main/MainWindow.ui" line="8794"/>
         <source> s</source>
         <translation> s</translation>
@@ -8730,9 +8740,8 @@ Monte-Carlo-Leistungsflussergebnisse:</translation>
         <translation>Periode der periodischen Umlaufbahn.</translation>
     </message>
     <message>
-        <location filename="../Main/MainWindow.ui" line="8778"/>
         <source>Hz</source>
-        <translation>Hz</translation>
+        <translation type="vanished">Hz</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="8859"/>

@@ -1457,7 +1457,7 @@ li.checked::マーカー { content: &quot;\2612&quot;; }&lt;/style&gt;&lt;/head&
     <message>
         <location filename="../FileDialogues/CoordinatesInput/coordinates_input_gui.ui" line="288"/>
         <location filename="../FileDialogues/ProfilesInput/profiles_from_data_gui.ui" line="396"/>
-        <location filename="../FileDialogues/ProfilesInput/profiles_from_models_gui.ui" line="169"/>
+        <location filename="../FileDialogues/ProfilesInput/profiles_from_models_gui.ui" line="180"/>
         <location filename="../ProceduralGrid/procedural_grid_ui.ui" line="233"/>
         <source>Accept</source>
         <translation>受け入れる</translation>
@@ -1554,12 +1554,17 @@ li.checked::マーカー { content: &quot;\2612&quot;; }&lt;/style&gt;&lt;/head&
         <translation>クリア</translation>
     </message>
     <message>
-        <location filename="../FileDialogues/ProfilesInput/profiles_from_models_gui.ui" line="159"/>
+        <location filename="../FileDialogues/ProfilesInput/profiles_from_models_gui.ui" line="69"/>
+        <source>Re-index time</source>
+        <translation>時間再インデックス化</translation>
+    </message>
+    <message>
+        <location filename="../FileDialogues/ProfilesInput/profiles_from_models_gui.ui" line="170"/>
         <source>If checked, the objects are match using the code property, otherwise the idtag property is used</source>
         <translation>チェックされている場合、オブジェクトは code プロパティを使用して照合されます。チェックされていない場合は、idtag プロパティが使用されます。</translation>
     </message>
     <message>
-        <location filename="../FileDialogues/ProfilesInput/profiles_from_models_gui.ui" line="162"/>
+        <location filename="../FileDialogues/ProfilesInput/profiles_from_models_gui.ui" line="173"/>
         <source>Match using code</source>
         <translation>コードを使用して照合する</translation>
     </message>
@@ -6773,6 +6778,10 @@ Monte Carlo power flow results:</source>
         <source>𝜏: Tap angle</source>
         <translation>𝜏: Tap angle</translation>
     </message>
+    <message>
+        <source>Control PC</source>
+        <translation>PCを制御</translation>
+    </message>
 </context>
 <context>
     <name>VscDeviceEditorWidget</name>
@@ -8580,6 +8589,7 @@ Monte Carlo power flow results:</source>
         <location filename="../Main/MainWindow.ui" line="8098"/>
         <location filename="../Main/MainWindow.ui" line="8440"/>
         <location filename="../Main/MainWindow.ui" line="8465"/>
+        <location filename="../Main/MainWindow.ui" line="8778"/>
         <location filename="../Main/MainWindow.ui" line="8794"/>
         <source> s</source>
         <translation>s</translation>
@@ -8709,9 +8719,8 @@ Monte Carlo power flow results:</source>
         <translation>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;周期軌道の周期。 &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
-        <location filename="../Main/MainWindow.ui" line="8778"/>
         <source>Hz</source>
-        <translation>Hz</translation>
+        <translation type="vanished">Hz</translation>
     </message>
     <message>
         <location filename="../Main/MainWindow.ui" line="8859"/>
