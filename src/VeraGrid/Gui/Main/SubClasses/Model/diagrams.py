@@ -2764,7 +2764,10 @@ class DiagramsMain(CompiledArraysMain):
             # delete it from the layout list
             self.ui.schematic_layout.removeWidget(widget_to_remove)
 
-            # delete it from the gui
+            # Hide the widget before detaching it so Qt does not expose it as a top-level window.
+            widget_to_remove.hide()
+
+            # detach it from the gui
             widget_to_remove.setParent(None)
 
     def set_diagram_widget(self, widget: ALL_EDITORS):
@@ -2776,6 +2779,7 @@ class DiagramsMain(CompiledArraysMain):
 
         # add the new diagram
         self.ui.schematic_layout.addWidget(widget)
+        widget.show()
 
         # set the alignment
         self.ui.diagram_selection_splitter.setStretchFactor(0, 10)
