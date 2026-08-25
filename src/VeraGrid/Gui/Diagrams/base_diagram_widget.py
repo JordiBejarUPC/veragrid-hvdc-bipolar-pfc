@@ -697,7 +697,7 @@ class BaseDiagramWidget(QSplitter):
             plt.show()
         else:
             info_msg(self.tr("No time series results to plot, run some time series results. Even partial results are fine"),
-                     f"{api_object.name} results plot")
+                     self.tr("{device_name} results plot").format(device_name=api_object.name))
 
     def plot_hvdc_branch(self, i: int, api_object: HvdcLine):
         """
@@ -747,7 +747,7 @@ class BaseDiagramWidget(QSplitter):
             plt.show()
         else:
             info_msg(self.tr("No time series results to plot, run some time series results. Even partial results are fine"),
-                     f"{api_object.name} results plot")
+                     self.tr("{device_name} results plot").format(device_name=api_object.name))
 
     @staticmethod
     def set_rate_to_profile(api_object: ALL_DEV_TYPES):

@@ -191,14 +191,20 @@ def get_pv_lib_weather_df(time_array: Sequence[Union[str, datetime, pd.Timestamp
                 return False, pd.DataFrame(data=dict(P=np.zeros(len(time_array))))
 
         except (requests.RequestException, KeyError, ValueError, TypeError) as err:
-            error_msg("pvlib's http request failed :(\n" + str(err))
+            error_msg(QtCore.QCoreApplication.translate(
+                "MainWindow",
+                "pvlib's http request failed :(\n{error_text}",
+            ).format(error_text=str(err)))
             return False, pd.DataFrame(data=dict(P=np.zeros(len(time_array))))
 
     else:
         if valid_latitude:
             if valid_longitude:
                 if valid_peak_power:
-                    error_msg(f"The time span of your profile is {year_span} year(s), Pvlib's span is 10 years maximum")
+                    error_msg(QtCore.QCoreApplication.translate(
+                        "MainWindow",
+                        "The time span of your profile is {year_span} year(s), Pvlib's span is 10 years maximum",
+                    ).format(year_span=year_span))
                 else:
                     error_msg(QtCore.QCoreApplication.translate(
                         "MainWindow",

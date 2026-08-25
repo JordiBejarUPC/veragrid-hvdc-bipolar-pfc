@@ -509,7 +509,9 @@ class JMartiLineEmtDialog(QtWidgets.QDialog):
             QtWidgets.QMessageBox.warning(
                 self,
                 self.tr("EMT J_Marti line"),
-                f"The {window_name} upper frequency must be greater than the lower frequency.",
+                self.tr("The {window_name} upper frequency must be greater than the lower frequency.").format(
+                    window_name=window_name,
+                ),
             )
             return False
 
@@ -519,7 +521,9 @@ class JMartiLineEmtDialog(QtWidgets.QDialog):
             QtWidgets.QMessageBox.warning(
                 self,
                 self.tr("EMT J_Marti line"),
-                f"The {window_name} window must stay inside the configured sweep band.",
+                self.tr("The {window_name} window must stay inside the configured sweep band.").format(
+                    window_name=window_name,
+                ),
             )
             return False
 
@@ -544,7 +548,9 @@ class JMartiLineEmtDialog(QtWidgets.QDialog):
             QtWidgets.QMessageBox.warning(
                 self,
                 self.tr("EMT J_Marti line"),
-                f"The {window_name} upper frequency must be greater than the lower frequency.",
+                self.tr("The {window_name} upper frequency must be greater than the lower frequency.").format(
+                    window_name=window_name,
+                ),
             )
             return False
 

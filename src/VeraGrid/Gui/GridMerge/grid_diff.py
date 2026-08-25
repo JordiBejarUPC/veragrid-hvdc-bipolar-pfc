@@ -374,7 +374,10 @@ class GridDiffDialogue(QtWidgets.QDialog):
                 self.ui.progressFrame.setVisible(True)
                 self.open_file_thread_object.start()
             else:
-                error_msg(title=self.tr("File not found"), text=f"{filename} not found :(")
+                error_msg(
+                    title=self.tr("File not found"),
+                    text=self.tr("{file_name} not found :(").format(file_name=filename),
+                )
 
         else:
             self.open_file_thread_object = None

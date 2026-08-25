@@ -564,7 +564,10 @@ class ProfileInputGUI(QtWidgets.QDialog):
                     return
 
             else:
-                error_msg(text="Could not open:\n" + filename, title=self.tr("File open"))
+                error_msg(
+                    text=self.tr("Could not open:\n{file_name}").format(file_name=filename),
+                    title=self.tr("File open"),
+                )
                 return
 
     def try_format_the_source_data(self, df: pd.DataFrame = None) -> Tuple[pd.DataFrame, bool, Logger]:

@@ -2473,7 +2473,9 @@ class DiagramsMain(CompiledArraysMain):
         dlg = InputNumberDialogue(min_value=1, max_value=99,
                                   default_value=1, is_int=True,
                                   title=self.tr('Vicinity diagram'),
-                                  text=f'Set the expansion level from {root_bus.name}')
+                                  text=self.tr("Set the expansion level from {bus_name}").format(
+                                      bus_name=root_bus.name,
+                                  ))
 
         if dlg.exec():
             diagram = make_vicinity_diagram(circuit=self.circuit,
@@ -2525,10 +2527,12 @@ class DiagramsMain(CompiledArraysMain):
             self.show_info_toast(f"{diagram.name} added")
         else:
             if len(substations) == 1:
-                info_msg(text=f"No buses were found associated with the substation {substations[0].name}",
+                info_msg(text=self.tr(
+                    "No buses were found associated with the substation {substation_name}"
+                ).format(substation_name=substations[0].name),
                          title=self.tr("New schematic from substation"))
             else:
-                info_msg(text=f"No buses were found associated with the substations",
+                info_msg(text=self.tr("No buses were found associated with the substations"),
                          title=self.tr("New schematic from substation"))
 
     def add_substation_to_current_diagram(self, substations: List[dev.Substation]):
@@ -2555,10 +2559,12 @@ class DiagramsMain(CompiledArraysMain):
             self.show_info_toast(f"Substation added")
         else:
             if len(substations) == 1:
-                info_msg(text=f"No buses were found associated with the substation {substations[0].name}",
+                info_msg(text=self.tr(
+                    "No buses were found associated with the substation {substation_name}"
+                ).format(substation_name=substations[0].name),
                          title=self.tr("New schematic from substation"))
             else:
-                info_msg(text=f"No buses were found associated with the substations",
+                info_msg(text=self.tr("No buses were found associated with the substations"),
                          title=self.tr("New schematic from substation"))
 
     def create_circuit_stored_diagrams(self):
@@ -3428,7 +3434,7 @@ class DiagramsMain(CompiledArraysMain):
                     if bus.zone == self.object_select_window.selected_object:
                         graphic_obj.setSelected(True)
         else:
-            error_msg('Unrecognized option' + str(prop))
+            error_msg(self.tr("Unrecognized option {option_name}").format(option_name=str(prop)))
             return
 
     def select_buses_by(self):
@@ -3487,7 +3493,7 @@ class DiagramsMain(CompiledArraysMain):
                     bus.zone = self.object_select_window.selected_object
                     print('Set {0} into bus {1}'.format(self.object_select_window.selected_object.name, bus.name))
         else:
-            error_msg('Unrecognized option' + str(prop))
+            error_msg(self.tr("Unrecognized option {option_name}").format(option_name=str(prop)))
             return
 
     def color_buses_by(self):
@@ -4042,7 +4048,7 @@ class DiagramsMain(CompiledArraysMain):
             dlg = InputNumberDialogue(min_value=-180, max_value=180,
                                       default_value=-90, is_int=False,
                                       title=self.tr('Rotate diagram'),
-                                      text=f'Rotation angle (degrees)')
+                                      text=self.tr('Rotation angle (degrees)'))
 
             if dlg.exec():
                 diagram_widget.rotate(dlg.value)

@@ -339,7 +339,9 @@ class CoordinatesInputGUI(QtWidgets.QDialog):
                     if file_extension.lower() in self.accepted_extensions:
                         file_names.append(file_name)
                     else:
-                        error_msg('The file type ' + file_extension.lower() + ' is not accepted :(')
+                        error_msg(self.tr("The file type {file_extension} is not accepted :(").format(
+                            file_extension=file_extension.lower(),
+                        ))
 
                 if len(file_names) == 1:
                     # Just open the file

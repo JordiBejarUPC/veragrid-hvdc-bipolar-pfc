@@ -1795,7 +1795,7 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
             url = f"https://www.google.com/maps/?q={self._api_object.latitude},{self._api_object.longitude}"
             webbrowser.open(url)
         else:
-            warning_msg(f"No API object available :(")
+            warning_msg(self.tr("No API object available :("))
 
     def __str__(self):
 

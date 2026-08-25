@@ -1763,7 +1763,7 @@ class SequenceEditorDialog(QtWidgets.QDialog):
                     QtWidgets.QMessageBox.warning(
                         self,
                         self.tr("Invalid values"),
-                        f"Non-numeric value in column 0 at row {row + 1}.",
+                        self.tr("Non-numeric value in column 0 at row {row_number}.").format(row_number=row + 1),
                     )
                     return
                 if prev_x is not None and x <= prev_x:

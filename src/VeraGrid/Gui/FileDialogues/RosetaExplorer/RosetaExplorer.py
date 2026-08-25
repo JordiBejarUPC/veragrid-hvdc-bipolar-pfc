@@ -399,7 +399,7 @@ class RosetaExplorerGUI(QMainWindow):
                     self.logger.to_xlsx(f)
 
                 else:
-                    error_msg(file[0] + ' is not valid :(')
+                    error_msg(self.tr("{file_name} is not valid :(").format(file_name=file[0]))
         else:
             warning_msg(self.tr('There no logs :)'))
 
@@ -488,7 +488,7 @@ class RosetaExplorerGUI(QMainWindow):
         if os.path.exists(index_path):
             webbrowser.open(index_path, new=2)
         else:
-            error_msg("The documentation could not be found under " + index_path)
+            error_msg(self.tr("The documentation could not be found under {index_path}").format(index_path=index_path))
 
     def about(self):
         """

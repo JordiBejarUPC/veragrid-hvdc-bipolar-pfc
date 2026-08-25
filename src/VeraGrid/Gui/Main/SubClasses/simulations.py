@@ -1445,7 +1445,7 @@ class SimulationsMain(TimeEventsMain):
                             if created_group is not None:
                                 self.run_rms()
                             else:
-                                info_msg(f"No RMS Events Group was added. The RMS simulation can't run.")
+                                info_msg(self.tr("No RMS Events Group was added. The RMS simulation can't run."))
 
                 else:
                     self.show_warning_toast('Another rms simulation is running already...')
@@ -1500,7 +1500,7 @@ class SimulationsMain(TimeEventsMain):
                         if created_group is not None:
                             self.run_emt()
                         else:
-                            info_msg(f"No EMT Events Group was added. The EMT simulation can't run.")
+                            info_msg(self.tr("No EMT Events Group was added. The EMT simulation can't run."))
 
 
                 else:
@@ -1877,8 +1877,10 @@ class SimulationsMain(TimeEventsMain):
                 _, pf_results3ph = self.session.power_flow_3ph
 
                 if self.circuit.get_short_circuit_event_number() == 0:
-                    warning_msg('You need to define short circuits in the Database.'
-                                + '\nAdd them by right click on a bus and selecting on the context menu.')
+                    warning_msg(self.tr(
+                        "You need to define short circuits in the Database.\n"
+                        "Add them by right click on a bus and selecting on the context menu."
+                    ))
                 else:
                     methods = {event.method for event in self.circuit.short_circuit_event}
                     needs_pf = any(method in (MethodShortCircuit.sequences, MethodShortCircuit.sequences_vsc)
@@ -1892,7 +1894,9 @@ class SimulationsMain(TimeEventsMain):
                         missing.append('Run a 3-phase power flow simulation first.')
 
                     if missing:
-                        info_msg('\n'.join(missing) + '\nThe results are needed to initialize this simulation.')
+                        info_msg(self.tr(
+                            "{missing_results}\nThe results are needed to initialize this simulation."
+                        ).format(missing_results="\n".join(missing)))
                     else:
                         self.add_simulation(SimulationTypes.ShortCircuit_run)
 

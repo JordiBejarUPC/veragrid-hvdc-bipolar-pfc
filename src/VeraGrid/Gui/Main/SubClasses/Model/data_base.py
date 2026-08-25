@@ -1317,7 +1317,10 @@ class DataBaseTableMain(DiagramsMain):
                     attr = model.attributes[col_indices[0]]
                     gc_prop = elm.registered_properties[attr]
                     if gc_prop is None:
-                        info_msg(f"The proprty {attr} cannot be found :(", self.tr("Highlight based on property"))
+                        info_msg(
+                            self.tr("The proprty {property_name} cannot be found :(").format(property_name=attr),
+                            self.tr("Highlight based on property"),
+                        )
                         return
 
                     if gc_prop.tpe in [float, int]:

@@ -6196,16 +6196,20 @@ class SchematicWidget(BaseDiagramWidget):
             bus_t_graphic_obj = self._query_bus_graphic(original_line.bus_to)
 
             if bus_f_graphics_data is None:
-                error_msg(f"{original_line.bus_from} was not found in the diagram")
+                error_msg(self.tr("{bus_name} was not found in the diagram").format(bus_name=original_line.bus_from))
                 return None
             if bus_t_graphics_data is None:
-                error_msg(f"{original_line.bus_to} was not found in the diagram")
+                error_msg(self.tr("{bus_name} was not found in the diagram").format(bus_name=original_line.bus_to))
                 return None
             if bus_f_graphic_obj is None:
-                error_msg(f"{original_line.bus_from} was not found in the graphics manager")
+                error_msg(self.tr("{bus_name} was not found in the graphics manager").format(
+                    bus_name=original_line.bus_from,
+                ))
                 return None
             if bus_t_graphic_obj is None:
-                error_msg(f"{original_line.bus_to} was not found in the graphics manager")
+                error_msg(self.tr("{bus_name} was not found in the graphics manager").format(
+                    bus_name=original_line.bus_to,
+                ))
                 return None
 
             # C(x, y) = (x1 + t * (x2 - x1), y1 + t * (y2 - y1))
@@ -6315,16 +6319,24 @@ class SchematicWidget(BaseDiagramWidget):
                                 bus_t_graphic_obj = self._query_bus_graphic(original_line.bus_to)
 
                                 if bus_f_graphics_data is None:
-                                    error_msg(f"{original_line.bus_from} was not found in the diagram")
+                                    error_msg(self.tr("{bus_name} was not found in the diagram").format(
+                                        bus_name=original_line.bus_from,
+                                    ))
                                     return None
                                 if bus_t_graphics_data is None:
-                                    error_msg(f"{original_line.bus_to} was not found in the diagram")
+                                    error_msg(self.tr("{bus_name} was not found in the diagram").format(
+                                        bus_name=original_line.bus_to,
+                                    ))
                                     return None
                                 if bus_f_graphic_obj is None:
-                                    error_msg(f"{original_line.bus_from} was not found in the graphics manager")
+                                    error_msg(self.tr("{bus_name} was not found in the graphics manager").format(
+                                        bus_name=original_line.bus_from,
+                                    ))
                                     return None
                                 if bus_t_graphic_obj is None:
-                                    error_msg(f"{original_line.bus_to} was not found in the graphics manager")
+                                    error_msg(self.tr("{bus_name} was not found in the graphics manager").format(
+                                        bus_name=original_line.bus_to,
+                                    ))
                                     return None
 
                                 # C(x, y) = (x1 + t * (x2 - x1), y1 + t * (y2 - y1))
@@ -6423,8 +6435,9 @@ class SchematicWidget(BaseDiagramWidget):
                           title=self.tr('Change bus'))
                 return
 
-            ok = yes_no_question(text=f"Are you sure that you want to relocate the bus "
-                                      f"from {old_bus.name} to {new_bus.name}?",
+            ok = yes_no_question(text=self.tr(
+                "Are you sure that you want to relocate the bus from {old_bus_name} to {new_bus_name}?"
+            ).format(old_bus_name=old_bus.name, new_bus_name=new_bus.name),
                                  title=self.tr('Change bus'))
 
             if ok:
@@ -6498,7 +6511,9 @@ class SchematicWidget(BaseDiagramWidget):
             else:
                 print("control_idx must be either 1 or 2")
         else:
-            error_msg(f"You need to select exactly one bus to be set as the VSC control device {control_idx}",
+            error_msg(self.tr(
+                "You need to select exactly one bus to be set as the VSC control device {control_index}"
+            ).format(control_index=control_idx),
                       self.tr("Set VSC control device 1"))
 
     def get_picture_width(self) -> int:
@@ -6633,7 +6648,9 @@ class SchematicWidget(BaseDiagramWidget):
                 return
 
             ok = yes_no_question(
-                text=f"Are you sure that you want to relocate the bus from {old_bus.name} to {new_bus.name}?",
+                text=self.tr(
+                    "Are you sure that you want to relocate the bus from {old_bus_name} to {new_bus_name}?"
+                ).format(old_bus_name=old_bus.name, new_bus_name=new_bus.name),
                 title=self.tr('Change bus'))
 
             if ok:
@@ -6692,8 +6709,9 @@ class SchematicWidget(BaseDiagramWidget):
         """
 
         ok = yes_no_question(
-            text=f"Are you sure that you want to relocate {injection_graphics.api_object.name} "
-                 f"behind a converter?",
+            text=self.tr("Are you sure that you want to relocate {device_name} behind a converter?").format(
+                device_name=injection_graphics.api_object.name,
+            ),
             title=self.tr('Move behind converter')
         )
 

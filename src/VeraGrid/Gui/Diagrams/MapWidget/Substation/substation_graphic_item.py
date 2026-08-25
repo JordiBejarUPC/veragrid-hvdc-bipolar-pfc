@@ -561,7 +561,9 @@ class SubstationGraphicItem(NodeTemplate, QGraphicsRectItem):
         Removes the substation from the schematic only. The substation will remain in the database.
         """
         ok = yes_no_question(
-            f"Remove substation {self.api_object.name} from the schematic only? It will remain in the database.",
+            self.tr(
+                "Remove substation {substation_name} from the schematic only? It will remain in the database."
+            ).format(substation_name=self.api_object.name),
             self.tr("Remove substation from schematic"))
 
         if ok:
@@ -609,7 +611,10 @@ class SubstationGraphicItem(NodeTemplate, QGraphicsRectItem):
                                                voltage_levels=voltage_levels, dialog_title=title)
 
         ok = yes_no_question(
-            f"Remove substation {self.api_object.name} from both the schematic and the database? This action cannot be undone.",
+            self.tr(
+                "Remove substation {substation_name} from both the schematic and the database? "
+                "This action cannot be undone."
+            ).format(substation_name=self.api_object.name),
             self.tr("Remove substation from schematic and database"))
 
         if ok:
@@ -673,8 +678,12 @@ class SubstationGraphicItem(NodeTemplate, QGraphicsRectItem):
         :return:
         """
         if question:
-            ok = yes_no_question(f"Move substation {self.api_object.name} graphics to it's database coordinates?",
-                                 self.tr("Move substation graphics"))
+            ok = yes_no_question(
+                self.tr("Move substation {substation_name} graphics to it's database coordinates?").format(
+                    substation_name=self.api_object.name,
+                ),
+                self.tr("Move substation graphics"),
+            )
 
             if ok:
                 x, y = self.move_to(lat=self.api_object.latitude,

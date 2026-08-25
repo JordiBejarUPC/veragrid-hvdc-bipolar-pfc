@@ -7,7 +7,7 @@ from __future__ import annotations
 import sys
 
 import numpy as np
-from PySide6 import QtWidgets
+from PySide6 import QtCore, QtWidgets
 
 from VeraGrid.Gui.DeviceEditors.DcLineEditor.dc_line_editor_gui import Ui_DcLineEditorDialog
 from VeraGrid.Gui.gui_functions import get_list_model
@@ -100,7 +100,9 @@ class DcLineEditor(QtWidgets.QDialog):
                         resistance_value = sequence_values[0]
                     else:
                         warning_msg(
-                            text=f"The template {self.current_template.name} contains errors",
+                            text=self.tr("The template {template_name} contains errors").format(
+                                template_name=self.current_template.name,
+                            ),
                             title=self.tr("Load template"),
                         )
                 else:
@@ -166,7 +168,10 @@ class DcLineEditor(QtWidgets.QDialog):
                 self.ui.resistanceSpinBox.setValue(sequence_values[0])
                 self.selected_template = template
             else:
-                warning_msg(text=f"The template {template.name} contains errors", title=self.tr("Load template"))
+                warning_msg(
+                    text=self.tr("The template {template_name} contains errors").format(template_name=template.name),
+                    title=self.tr("Load template"),
+                )
         else:
             pass
 

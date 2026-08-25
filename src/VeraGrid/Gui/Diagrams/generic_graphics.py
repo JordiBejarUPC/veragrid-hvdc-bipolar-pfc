@@ -264,7 +264,7 @@ class GenericDiagramWidget:
         :return: ``True`` when an editor was opened.
         """
         warning_msg(
-            f"Editor launch is not implemented for {self.__class__.__name__}",
+            self.tr("Editor launch is not implemented for {class_name}").format(class_name=self.__class__.__name__),
             self.tr("Device editor"),
         )
         return False

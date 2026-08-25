@@ -371,8 +371,10 @@ class ScenariosMain(ConfigurationMain):
             return
 
         ok: bool = yes_no_question(
-            f"Merge {child_count} child scenario(s) into '{node.circuit.name}'?\n\n"
-            f"This will remove the direct child scenarios after their changes are applied.",
+            self.tr(
+                "Merge {child_count} child scenario(s) into '{scenario_name}'?\n\n"
+                "This will remove the direct child scenarios after their changes are applied."
+            ).format(child_count=child_count, scenario_name=node.circuit.name),
             self.tr("Merge Children")
         )
 

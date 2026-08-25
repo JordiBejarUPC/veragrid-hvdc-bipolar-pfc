@@ -85,7 +85,7 @@ class TransformerSymbol(QGraphicsRectItem):
         background_path.addRect(w * 0.25, h * 0.25, w * 0.50, h * 0.50)
         self.background: QGraphicsPathItem = QGraphicsPathItem(background_path, parent=self)
         self.background.setPen(QPen(TRANSPARENT))
-        self.background.setBrush(QBrush(WHITE))
+        self.background.setBrush(QBrush(QColor(ACTIVE['background'])))
 
         self.c0 = QGraphicsEllipseItem(0, 0, d, d, parent=self)
         self.c1 = QGraphicsEllipseItem(0, 0, d, d, parent=self)
@@ -123,23 +123,19 @@ class TransformerSymbol(QGraphicsRectItem):
         pen = QPen(color, line_w, style)
         self.c2.setPen(pen)
         self.c1.setPen(pen)
-        self.background.setBrush(QBrush(self._contrast_fill(color=color)))
+        self.background.setBrush(QBrush(self._background_fill()))
         self.c0.setBrush(QBrush(Qt.BrushStyle.NoBrush))
         self.c2.setBrush(QBrush(Qt.BrushStyle.NoBrush))
 
     @staticmethod
-    def _contrast_fill(color: QColor) -> QColor:
+    def _background_fill() -> QColor:
         """
-        Get an opaque local background that hides the branch route under the coils.
+        Get the schematic background that hides the branch route under the coils.
 
-        :param color: Transformer stroke color.
-        :return: Opaque contrast fill.
+        :return: Schematic background colour.
         """
-        if color.lightness() > 127:
-            fill_color: QColor = QColor(30, 30, 30, 255)
-        else:
-            fill_color = QColor(245, 245, 245, 255)
-
+        fill_color: QColor = QColor(ACTIVE['background'])
+        fill_color.setAlpha(255)
         return fill_color
 
     def set_pen(self, pen: QPen):
