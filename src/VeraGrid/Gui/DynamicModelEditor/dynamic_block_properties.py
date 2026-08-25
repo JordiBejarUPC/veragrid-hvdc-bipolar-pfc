@@ -5133,7 +5133,33 @@ class DynamicBlockPropertiesDialog(QtWidgets.QDialog):
             structure_table.setAlternatingRowColors(True)
             structure_header: QtWidgets.QHeaderView = structure_table.horizontalHeader()
             configure_interactive_table_header(structure_header, list((300, 620,)))
+
+            # Size the table from its actual settings instead of accepting the
+            # large generic QTableView size hint. Five rows preserve the former
+            # panel height as an upper bound; longer builders scroll inside the
+            # table and leave the remaining dialogue height to Parameters.
+            maximum_visible_structure_rows: int = 5
+            visible_structure_rows: int = min(
+                self._general_structural_model.rowCount(),
+                maximum_visible_structure_rows,
+            )
+            structure_rows_height: int = 0
+            structure_row: int
+            structure_vertical_header: QtWidgets.QHeaderView = structure_table.verticalHeader()
+            for structure_row in range(visible_structure_rows):
+                structure_rows_height += structure_vertical_header.sectionSize(structure_row)
+            structure_table_height: int = (
+                structure_header.sizeHint().height()
+                + structure_rows_height
+                + (structure_table.frameWidth() * 2)
+            )
+            structure_table.setMinimumHeight(structure_table_height)
+            structure_table.setMaximumHeight(structure_table_height)
             structure_layout.addWidget(structure_table)
+            structure_group.setSizePolicy(
+                QtWidgets.QSizePolicy.Policy.Expanding,
+                QtWidgets.QSizePolicy.Policy.Fixed,
+            )
             parameter_panel_layout.addWidget(structure_group)
         else:
             pass

@@ -1392,6 +1392,57 @@ def test_general_options_splitter_resizes_configuration_and_parameters() -> None
     dialogue.close()
 
 
+def test_generated_structure_height_follows_its_visible_settings() -> None:
+    """A short generated-structure table must not consume empty parameter space.
+
+    :return: None.
+    """
+    application: QtWidgets.QApplication = get_qt_application()
+    _unused_application: QtWidgets.QApplication = application
+    var_factory: VarFactory = VarFactory()
+    builder: TemplateDefinition | None = create_default_template_builder(
+        var_factory,
+        BlockType.GFL_VSC_HVDC_RMS,
+        BlockType.GFL_VSC_HVDC_RMS.name,
+    )
+    assert builder is not None
+    template: RmsModelTemplate = builder.eval()
+    dialogue: DynamicBlockPropertiesDialog = DynamicBlockPropertiesDialog(
+        template.block,
+        BlockType.GFL_VSC_HVDC_RMS.name,
+        var_factory,
+        structural_block_type=BlockType.GFL_VSC_HVDC_RMS,
+        structural_builder=builder,
+    )
+    dialogue.show()
+    dialogue._tabs.setCurrentIndex(0)
+    application.processEvents()
+
+    structure_group: QtWidgets.QGroupBox | None = None
+    candidate_group: QtWidgets.QGroupBox
+    for candidate_group in dialogue.findChildren(QtWidgets.QGroupBox):
+        if candidate_group.title() == "Generated structure":
+            structure_group = candidate_group
+        else:
+            pass
+    assert structure_group is not None
+    structure_table: QtWidgets.QTableView | None = structure_group.findChild(QtWidgets.QTableView)
+    assert structure_table is not None
+    structure_model: QtCore.QAbstractItemModel | None = structure_table.model()
+    assert structure_model is not None
+    assert structure_model.rowCount() == 2
+    expected_table_height: int = (
+        structure_table.horizontalHeader().sizeHint().height()
+        + structure_table.verticalHeader().sectionSize(0)
+        + structure_table.verticalHeader().sectionSize(1)
+        + (structure_table.frameWidth() * 2)
+    )
+    assert structure_table.minimumHeight() == expected_table_height
+    assert structure_table.maximumHeight() == expected_table_height
+    assert dialogue._general_parameter_table.height() > structure_table.height()
+    dialogue.close()
+
+
 def test_emt_generator_binary_functions_validate_in_dialogue() -> None:
     """The EMT generator's ``atan2`` expressions must use the safe GUI parser."""
     application: QtWidgets.QApplication = get_qt_application()
