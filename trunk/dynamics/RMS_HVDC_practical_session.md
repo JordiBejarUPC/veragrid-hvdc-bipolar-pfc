@@ -27,7 +27,7 @@
    1. [Create the circuit](#61-create-the-circuit)
    2. [Build the static diagram](#62-build-the-static-diagram)
    3. [Check the static model](#63-check-the-static-model)
-   4. [Add the RMS catalogue](#64-add-the-rms-catalogue)
+   4. [Verify the RMS Library](#64-verify-the-rms-library)
    5. [Assign and edit the RMS models](#65-assign-and-edit-the-rms-models)
 7. [RMS events](#7-rms-events)
 8. [Simulation settings](#8-simulation-settings)
@@ -105,7 +105,7 @@ At the end of the session, participants should be able to:
 - create a detailed point-to-point HVDC system using `VSC` and `DcLine` devices;
 - select compatible converter controls for an AC/DC power flow;
 - understand why one HVDC terminal regulates DC voltage and the other regulates active power;
-- assign RMS templates through the catalogue or the Dynamic Model Editor;
+- assign the complete device RMS models from the Dynamic Editor Library;
 - identify the main control loops of a grid-following VSC;
 - define an event on a dynamic reference rather than on a static device property;
 - run an RMS study and assess its initialization and convergence;
@@ -292,11 +292,11 @@ Only `R` is part of the static `DcLine` device. The series dynamic coefficient `
 
 | Static device | RMS model | Main function |
 |---|---|---|
-| `Generator_Grid_1`, `Generator_Grid_2` | Voltage Source | Stiff external-grid voltage and angle reference |
-| `TrafoGFL_1`, `TrafoGFL_2` | 2W Transformer RMS | Passive AC branch equations |
-| `VSC_1` | HVDC GFL VSC - Vdc/Q | DC-voltage and reactive-power control |
-| `VSC_2` | HVDC GFL VSC - Pdc/Q | DC-power and reactive-power control |
-| `HVDC_Line` | Series R-L DC-line RMS model | DC-current dynamics and terminal powers |
+| `Generator_Grid_1`, `Generator_Grid_2` | Voltage source | Stiff external-grid voltage and angle reference |
+| `TrafoGFL_1`, `TrafoGFL_2` | Transformer 2W | Passive AC branch equations |
+| `VSC_1` | Gfl VSC hvdc | Set `control1 = Vm_dc`, `control2 = Qac` |
+| `VSC_2` | Gfl VSC hvdc | Set `control1 = Pdc`, `control2 = Qac` |
+| `HVDC_Line` | DC line explicit state | DC-current dynamics and terminal powers |
 
 Bus RMS connection shells are managed by VeraGrid when the device models are attached. They provide `Vm` and `Va` on AC buses and `Vdc` on DC buses.
 
@@ -315,11 +315,11 @@ The two source generators use an RMS voltage-source equivalent. Its purpose is t
 
 Within these wide limits, the block imposes `Vm = Vg0` and `Va = Ag0`. If a limit is reached, the corresponding voltage constraint is replaced by the saturated power constraint.
 
-For an exact reproduction, use the `Voltage Source` RMS model contained in the reference case or construct the equivalent block in the RMS editor. A complete synchronous-generator template is a different physical model and will not reproduce the same stiff-grid behaviour without additional parameterization.
+For an exact reproduction, drag `Voltage source` from the generator RMS Library. A complete synchronous-generator template is a different physical model and will not reproduce the same stiff-grid behaviour without additional parameterization.
 
 ### 5.3. Passive transformer model
 
-Assign the ordinary `2W Transformer` RMS template to both `TrafoGFL` devices. This model:
+Drag `Transformer 2W` from the transformer RMS Library for both `TrafoGFL` devices. This model:
 
 - reads the transformer conductance, susceptance, tap magnitude and tap angle from the static object;
 - calculates `Pf`, `Qf`, `Pt` and `Qt` from the terminal voltage magnitudes and angles;
@@ -329,7 +329,7 @@ Do not assign a combined transformer-plus-GFL model. In the standalone architect
 
 ### 5.4. Standalone HVDC GFL VSC model
 
-Use the catalogue templates `HVDC GFL VSC - Vdc/Q` and `HVDC GFL VSC - Pdc/Q`, or drag `Gfl VSC hvdc` into the VSC RMS editor and set its structural properties.
+Drag the single `Gfl VSC hvdc` block into each VSC RMS editor. Open **Block Properties** and select the required `control1` and `control2` values. The control combinations are properties of one model; they are not separate Library blocks.
 
 #### 5.4.1. Structural properties
 
@@ -394,14 +394,13 @@ Pf_dc + Pt_ac - Ploss - Cdc * Vdc * dVdc/dt = 0
 
 ### 5.5. Dynamic DC-line model
 
-The static `DcLine` resistance is supplemented by a series R-L RMS model. Use the following variables when constructing or checking the device model in the Dynamic Model Editor.
+The static `DcLine` resistance is supplemented by the `DC line explicit state` model available in the device RMS Library. Use the following variables when checking the model in the Dynamic Editor.
 
 | Symbol | Role | Mapping or value | Description |
 |---|---|---|---|
 | `Vdcf` | Input | From-side DC voltage | DC voltage at `Bus_DC_1` |
 | `Vdct` | Input | To-side DC voltage | DC voltage at `Bus_DC_2` |
-| `If_dc` | Algebraic variable and output | DC-line current | Positive from bus 1 to bus 2 |
-| `dIf_dcdt` | Differential variable | Derivative of `If_dc` | DC-current derivative |
+| `If_dc` | State variable and output | DC-line current | Positive from bus 1 to bus 2 |
 | `Pf` | Algebraic variable and output | From-side active power | `Vdcf * If_dc` |
 | `Pt` | Algebraic variable and output | To-side active power | `-Vdct * If_dc` |
 | `r_dc` | Fixed parameter | 0.005469679 p.u. | Copied from the static line resistance |
@@ -419,24 +418,15 @@ Use these exact external mappings to reproduce the reference block:
 
 `Vmf` and `Vmt` are used here as the branch-side semantic slots for the two DC-voltage inputs. The connected DC bus models supply their `Vdc` variables through the branch connection logic.
 
-Enter the following DAE relations in the line block:
+The line block implements the following standard state-space relations:
 
 ```text
-l_dc * dIf_dcdt + r_dc * If_dc = Vdcf - Vdct
+dIf_dc/dt = (Vdcf - Vdct - r_dc * If_dc) / l_dc
 Pf = Vdcf * If_dc
 Pt = -Vdct * If_dc
 ```
 
-Use the following initialization relations:
-
-```text
-If_dc = (Vdcf - Vdct) / r_dc
-Pf = Vdcf * If_dc
-Pt = -Vdct * If_dc
-dIf_dcdt = 0
-```
-
-The RMS problem also uses the solved power-flow power and DC voltage to initialize the line current consistently. At the nominal operating point, the current magnitude is approximately `0.20 p.u.`.
+`If_dc`, `Pf` and `Pt` are initialized directly from the solved power flow. They must not appear in `init_eqs`, because an explicit initialization equation would overwrite values that are already authoritative. At the nominal operating point, the current magnitude is approximately `0.20 p.u.`.
 
 When creating the model manually, semantic mappings are as important as variable names. Map both terminal voltages, `If_dc`, `Pf` and `Pt` with the corresponding from/to RMS references offered by the editor. A variable called `Vdcf` without a terminal mapping is not connected to the bus.
 
@@ -503,19 +493,16 @@ Before building the dynamic models, verify that:
 
 The non-zero `20 MW` initial transfer is intentional. Starting the algebraic DC system at exactly zero current exposes a singular operating point for this formulation.
 
-### 6.4. Add the RMS catalogue
+### 6.4. Verify the RMS Library
 
-1. Go to **Actions -> Add default catalogue**.
-2. Select the required RMS templates:
-   - `2W Transformer`;
-   - `HVDC GFL VSC - Vdc/Q`;
-   - `HVDC GFL VSC - Pdc/Q`.
-3. Confirm the selection.
-4. Check the imported models under **Database -> Templates -> RMS Template**.
+No catalogue import is required for this exercise. Open the RMS editor of each device and verify that its contextual **Library -> Devices** branch contains:
 
-Catalogue templates may be assigned from a device's `rms_template` property. The RMS editor is preferable during the session because it allows the model structure, variables, parameters and equations to be inspected.
+- `Voltage source` for each grid generator;
+- `Transformer 2W` for each coupling transformer;
+- one `Gfl VSC hvdc` block for each VSC;
+- `DC line explicit state` for `HVDC_Line`.
 
-In the software version used by the reference script, the default catalogue exposes the two standalone HVDC VSC templates and the passive transformer template. The exact `Voltage Source` and series R-L `DcLine` blocks are not default catalogue actions. If they are not present in the current GUI build, author their equations in the device RMS editor as described in Sections 5.2 and 5.5, or use presenter-prepared RMS catalogue entries derived from the reference case. Do not silently replace them with a complete synchronous generator or an AC line model, because that changes the study.
+For the two converters, use the same `Gfl VSC hvdc` block and choose the control combination in **Block Properties**. Do not create separate Vdc/Q and Pdc/Q model variants.
 
 ### 6.5. Assign and edit the RMS models
 
@@ -523,7 +510,7 @@ For each device:
 
 1. Right-click the device and open the **RMS editor**.
 2. Keep the automatically provided grid-connection blocks.
-3. Drag the required device block or catalogue template onto the canvas.
+3. Drag the required device block from **Library -> Devices** onto the canvas.
 4. Connect its ports to the corresponding grid-connection ports.
 5. Double-click the model and inspect **Block properties**.
 6. Confirm the structural options and parameter values from Section 5.
@@ -667,7 +654,7 @@ The voltage-source models keep the external-grid buses stiff. Only small changes
 | DC current has no dynamics | `HVDC_Line` has only its static resistance | Add the R-L RMS model with `l_dc = 0.05` |
 | DC voltage behaves algebraically or becomes singular | `Cdc` is missing or the wrong VSC model was assigned | Use the standalone HVDC GFL VSC template with `Cdc = 0.40` |
 | Losses are much larger than expected | Resistance or converter-loss coefficients were counted twice | Keep VSC `R = 0` and `alpha1 = alpha2 = alpha3 = 0`; retain transformer and DC-line resistance |
-| Transformer model shows converter controls | A combined GFL transformer model was assigned | Replace it with the passive `2W Transformer` RMS model |
+| Transformer model shows converter controls | A combined GFL transformer model was assigned | Replace it with the passive `Transformer 2W` RMS model |
 | Model changes disappear after closing the editor | Changes were applied only inside Block Properties | Apply the block changes and then save the complete device model to the grid |
 | A correctly named variable remains disconnected | Semantic mapping was not assigned | Set the appropriate `VarPowerFlowReferenceType` mapping in Block Properties |
 
