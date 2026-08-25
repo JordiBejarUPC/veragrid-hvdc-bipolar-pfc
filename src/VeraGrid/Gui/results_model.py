@@ -3,6 +3,7 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 import io
+from enum import Enum
 from typing import Any
 
 import numpy as np
@@ -139,6 +140,8 @@ class ResultsModel(WrappableTableModel):
 
                 if isinstance(val, str):
                     return val
+                elif isinstance(val, Enum):
+                    return str(val)
                 elif isinstance(val, complex):
                     if val.real != 0 or val.imag != 0:
                         return val.__format__(self.table.format_string)
