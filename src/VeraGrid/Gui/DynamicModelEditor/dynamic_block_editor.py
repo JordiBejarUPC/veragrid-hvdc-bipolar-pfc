@@ -2101,6 +2101,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             dialogue.structuralRebuildRequested.connect(self.on_structural_rebuild_requested)
             dialogue.variableRenameRequested.connect(self.on_variable_rename_requested)
             dialogue.outputExportChangesRequested.connect(self.on_output_export_changes_requested)
+            if self.current_theme == DynEditorGraphicsModes.DARK:
+                dialogue.set_dark_mode()
+            else:
+                dialogue.set_light_mode()
             properties_dock: DynamicBlockPropertiesDockWidget = DynamicBlockPropertiesDockWidget(
                 properties_widget=dialogue,
                 parent=self,
@@ -11123,6 +11127,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 item.recolour()
             else:
                 pass
+        if self._block_properties_dialogue is not None:
+            self._block_properties_dialogue.set_dark_mode()
+        else:
+            pass
 
     def set_light_mode(self) -> None:
         """
@@ -11138,3 +11146,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 item.recolour()
             else:
                 pass
+        if self._block_properties_dialogue is not None:
+            self._block_properties_dialogue.set_light_mode()
+        else:
+            pass
