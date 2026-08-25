@@ -2345,6 +2345,7 @@ def test_nuactis_v1_gui_editor_matches_scripting_pf_and_rms(
     assert np.all(script_rms_results.well_initialized)
     assert np.all(script_rms_results.converged)
     assert script_rms_results.time_array.equals(gui_rms_results.time_array)
+    assert np.max(np.abs(script_rms_results.values - gui_rms_results.values)) < 1e-6
     assert not np.allclose(
         script_rms_results.values[0, :, 0],
         script_rms_results.values[-1, :, 0],
@@ -2380,7 +2381,7 @@ def test_nuactis_v1_gui_editor_matches_scripting_pf_and_rms(
         results=gui_rms_results,
         variable_names=selected_variable_names,
     )
-    assert np.max(np.abs(script_selected_values - gui_selected_values)) <= 1e-6
+    assert np.max(np.abs(script_selected_values - gui_selected_values)) < 1e-6
 
     # PowerFactory uses Backward Euler with a fixed, synchronized 1 ms grid.
     # Compare both V1 events through 5 ms and the active current-limit response
@@ -2436,7 +2437,7 @@ def test_nuactis_v1_gui_editor_matches_scripting_pf_and_rms(
     powerfactory_difference: np.ndarray = np.abs(
         script_selected_values[:6, :, :] - pf_reference_values
     )
-    assert np.max(powerfactory_difference) <= 1e-6, (
+    assert np.max(powerfactory_difference) < 1e-6, (
         np.unravel_index(np.argmax(powerfactory_difference), powerfactory_difference.shape),
         float(np.max(powerfactory_difference)),
     )
@@ -2466,7 +2467,7 @@ def test_nuactis_v1_gui_editor_matches_scripting_pf_and_rms(
     limit_powerfactory_difference: np.ndarray = np.abs(
         script_selected_values[:, :, 1] - pf_limit_reference_values
     )
-    assert np.max(limit_powerfactory_difference) <= 1e-6, (
+    assert np.max(limit_powerfactory_difference) < 1e-6, (
         np.unravel_index(
             np.argmax(limit_powerfactory_difference),
             limit_powerfactory_difference.shape,
@@ -3801,7 +3802,7 @@ def test_nuactis_v2_gui_editor_matches_scripting_pf_and_rms(
     assert np.all(script_rms_results.converged)
     assert script_rms_results.time_array.equals(gui_rms_results.time_array)
     assert script_rms_results.values.shape[2] == 2
-    assert np.max(np.abs(script_rms_results.values - gui_rms_results.values)) <= 1e-6
+    assert np.max(np.abs(script_rms_results.values - gui_rms_results.values)) < 1e-6
     selected_variable_names: List[str] = list(
         (
             "VmSlave_AC",
@@ -3825,7 +3826,7 @@ def test_nuactis_v2_gui_editor_matches_scripting_pf_and_rms(
         results=gui_rms_results,
         variable_names=selected_variable_names,
     )
-    assert np.max(np.abs(script_selected_values - gui_selected_values)) <= 1e-6
+    assert np.max(np.abs(script_selected_values - gui_selected_values)) < 1e-6
 
     # Compare synchronized traces for a latent Q-amplitude routing event and a
     # physically active P-controller step. The active response covers all 11
@@ -3893,7 +3894,7 @@ def test_nuactis_v2_gui_editor_matches_scripting_pf_and_rms(
     powerfactory_difference: np.ndarray = np.abs(
         script_selected_values[:8, :, :] - pf_reference_values
     )
-    assert np.max(powerfactory_difference) <= 1e-6, (
+    assert np.max(powerfactory_difference) < 1e-6, (
         np.unravel_index(np.argmax(powerfactory_difference), powerfactory_difference.shape),
         float(np.max(powerfactory_difference)),
     )
@@ -3920,7 +3921,7 @@ def test_nuactis_v2_gui_editor_matches_scripting_pf_and_rms(
     active_powerfactory_difference: np.ndarray = np.abs(
         script_selected_values[:, :, 1] - pf_active_reference_values
     )
-    assert np.max(active_powerfactory_difference) <= 1e-6, (
+    assert np.max(active_powerfactory_difference) < 1e-6, (
         np.unravel_index(
             np.argmax(active_powerfactory_difference),
             active_powerfactory_difference.shape,
