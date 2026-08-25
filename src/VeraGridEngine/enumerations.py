@@ -1379,7 +1379,9 @@ class WindingType(str, Enum):
     FloatingStar = ("Y", 1)
     GroundedStar = ("Yg", 2)
     Delta = ("D", 3)
-    ZigZag = ("Z", 4)
+    NeutralZigZag = ("Zn", 4)
+    FloatingZigZag = ("Z", 4)
+    GroundedZigZag = ("Zg", 4)
 
     def __new__(cls, value: str, code: int):
         obj = str.__new__(cls, value)
