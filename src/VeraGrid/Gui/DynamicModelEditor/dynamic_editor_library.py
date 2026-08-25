@@ -242,6 +242,7 @@ class DynamicEditorLibrary:
 
         # devices rms
         self.device_rms_related_blocks: Dict[DeviceType, List[LibraryLeafSpec]] = dict(((DeviceType.GeneratorDevice, list((LibraryLeafSpec("Generic", BlockType.GENERIC),
+                                                                                                                           LibraryLeafSpec("Voltage source", BlockType.VOLTAGE_SOURCE_RMS),
                                                                                                                            LibraryLeafSpec("Generator basic", BlockType.GENRAW),
                                                                                                                            LibraryLeafSpec("Generator QEC", BlockType.GENQEC),
                                                                                                                            LibraryLeafSpec("Governor", BlockType.GOV_RMS),
@@ -251,6 +252,8 @@ class DynamicEditorLibrary:
                                                                                                                      LibraryLeafSpec("Gfl VSC hvdc", BlockType.GFL_VSC_HVDC_RMS),))),
                                                                                         (DeviceType.LineDevice, list((LibraryLeafSpec("Generic", BlockType.GENERIC),
                                                                                                                       LibraryLeafSpec("Line", BlockType.LINE_RMS),))),
+                                                                                        (DeviceType.DCLineDevice, list((LibraryLeafSpec("DC line", BlockType.DC_LINE_RMS),))),
+                                                                                        (DeviceType.Transformer2WDevice, list((LibraryLeafSpec("Transformer 2W", BlockType.TRANSFORMER_2W_RMS),))),
                                                                                         (DeviceType.LoadDevice, list((LibraryLeafSpec("Generic", BlockType.GENERIC),
                                                                                                                       LibraryLeafSpec("Load", BlockType.LOAD_RMS),))),))
         # devices emt

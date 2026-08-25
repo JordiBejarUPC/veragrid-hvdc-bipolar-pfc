@@ -24,6 +24,7 @@ from VeraGridEngine.Utils.Symbolic.symbolic import Var
 from VeraGridEngine.enumerations import (
     BlockType,
     ConverterControlType,
+    DeviceType,
     DynamicSimulationMode,
     ParamPowerFlowReferenceType,
     VarPowerFlowReferenceType,
@@ -63,6 +64,26 @@ def test_hvdc_vsc_library_entry_uses_only_the_v2_builder() -> None:
     builders: dict[BlockType, type[TemplateDefinition]] = get_blocktype2template_builder_dict()
     assert builders[BlockType.GFL_VSC_HVDC_RMS] is HvdcVscGflRmsTemplate
     assert builders[BlockType.DC_LINE_RMS] is DcLineRmsTemplateV2
+
+
+def test_dc_line_library_uses_the_device_name_only() -> None:
+    """Display the explicit-state implementation under the concise device name.
+
+    :return: None.
+    """
+    library: DynamicEditorLibrary = DynamicEditorLibrary(
+        api_object=DcLine(),
+        mode=DynamicSimulationMode.RMS,
+    )
+    leaves: list[LibraryLeafSpec] = library.device_rms_related_blocks.get(
+        DeviceType.DCLineDevice,
+        list(),
+    )
+    dc_line_labels: list[str] = [
+        leaf.label for leaf in leaves
+        if leaf.payload == BlockType.DC_LINE_RMS
+    ]
+    assert dc_line_labels == ["DC line"]
 
 
 def test_hvdc_vsc_control_options_survive_block_properties_reopen() -> None:
@@ -267,6 +288,37 @@ def test_dc_line_power_flow_variables_have_no_explicit_init_equations() -> None:
     assert VarPowerFlowReferenceType.Pt in dc_line_block.external_mapping
     assert [variable.name for variable in equation_block.out_vars] == ["Pf", "Pt"]
     assert [variable.name for variable in dc_line_block.out_vars] == ["Pf", "Pt"]
+
+
+def test_dc_line_equation_decomposition_connects_both_terminal_powers() -> None:
+    """Expose both Pf and Pt through the decomposed internal block diagram.
+
+    :return: None.
+    """
+    var_factory: VarFactory = VarFactory()
+    dc_line_block: Block = DcLineRmsTemplateV2(var_factory).eval().block
+    equation_block: Block = dc_line_block.children[0]
+
+    prepared_block: Block
+    block_types: dict[int, BlockType]
+    prepared_block, block_types = prepare_block_for_editing(
+        block=equation_block,
+        var_factory=var_factory,
+    )
+
+    decomposed_output_refs: set[VarPowerFlowReferenceType] = set()
+    child_block: Block
+    output_var: Var
+    for child_block in prepared_block.children:
+        for output_var in child_block.out_vars:
+            if isinstance(output_var.ref, VarPowerFlowReferenceType):
+                decomposed_output_refs.add(output_var.ref)
+            else:
+                pass
+
+    assert len(block_types) > 0
+    assert VarPowerFlowReferenceType.Pf in decomposed_output_refs
+    assert VarPowerFlowReferenceType.Pt in decomposed_output_refs
 
 
 def test_rms_save_synchronizes_child_mappings_to_the_root() -> None:
