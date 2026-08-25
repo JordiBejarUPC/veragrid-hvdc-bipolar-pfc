@@ -1380,6 +1380,10 @@ class DiagramsMain(CompiledArraysMain):
                                              hvdc_Pt=-results.hvdc_Pf[t_idx, :],
                                              hvdc_loading=results.hvdc_loading[t_idx, :],
                                              hvdc_active=hvdc_active,
+                                             vsc_Pf=results.vsc_Pf[t_idx, :],
+                                             vsc_Pt=-results.vsc_Pf[t_idx, :],
+                                             vsc_loading=results.vsc_loading[t_idx, :],
+                                             vsc_active=vsc_active,
                                              use_flow_based_width=use_flow_based_width,
                                              min_branch_width=min_branch_width,
                                              max_branch_width=max_branch_width,
@@ -2760,7 +2764,10 @@ class DiagramsMain(CompiledArraysMain):
             # delete it from the layout list
             self.ui.schematic_layout.removeWidget(widget_to_remove)
 
-            # delete it from the gui
+            # Hide the widget before detaching it so Qt does not expose it as a top-level window.
+            widget_to_remove.hide()
+
+            # detach it from the gui
             widget_to_remove.setParent(None)
 
     def set_diagram_widget(self, widget: ALL_EDITORS):
@@ -2772,6 +2779,7 @@ class DiagramsMain(CompiledArraysMain):
 
         # add the new diagram
         self.ui.schematic_layout.addWidget(widget)
+        widget.show()
 
         # set the alignment
         self.ui.diagram_selection_splitter.setStretchFactor(0, 10)

@@ -198,10 +198,24 @@ def test_open_file_now_accepts_one_string_path_without_iterating_characters(monk
     IoMain.open_file_now(harness, filenames=str(file_path))
 
     assert captured_errors == list()
-    assert harness.file_name == str(file_path)
+    # The visible project identity changes only after the loaded circuit has
+    # passed the project-replacement guards in ``post_open_file``.
+    assert harness.file_name == ""
     assert harness.project_directory == str(file_path.parent)
     assert isinstance(harness.open_file_thread_object, FakeThreadObject)
     assert harness.open_file_thread_object.file_name == str(file_path)
     assert harness.open_file_thread_object.started is True
     assert harness.last_file_driver is harness.open_file_thread_object
     assert harness.stuff_running_now == [SimulationTypes.FileOpen]
+
+
+def test_save_file_overwrites_only_native_veragrid_files() -> None:
+    """
+    Check that imported non-VeraGrid files are not treated as direct save targets.
+
+    :return: None.
+    """
+    assert IoMain.is_direct_veragrid_save_path(file_name="/tmp/grid.veragrid")
+    assert IoMain.is_direct_veragrid_save_path(file_name="/tmp/grid.gridcal")
+    assert not IoMain.is_direct_veragrid_save_path(file_name="/tmp/grid.raw")
+    assert not IoMain.is_direct_veragrid_save_path(file_name="/tmp/grid.xml")
