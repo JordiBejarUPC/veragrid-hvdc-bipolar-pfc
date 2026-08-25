@@ -190,7 +190,9 @@ class VscSymbol(QGraphicsRectItem):
         self.setRect(QRectF(0, 0, w, h))
 
         if self.icon_route is None:
-            self.body = QGraphicsRectItem(QRectF(0, 0, w, h), parent=self)
+            body_path: QPainterPath = QPainterPath()
+            body_path.addRoundedRect(QRectF(0, 0, w, h), 10.0, 10.0)
+            self.body = QGraphicsPathItem(body_path, parent=self)
             self.divider = QGraphicsLineItem(QLineF(w, 0, 0, h), parent=self)
 
             self.text_ac = QGraphicsTextItem("~", parent=self)
@@ -229,7 +231,7 @@ class VscSymbol(QGraphicsRectItem):
         if self.body is None:
             return
 
-        line_w = max(2.0, float(w) * 0.45)
+        line_w = max(5.0, float(w) * 1.0)
         pen = QPen(color, line_w, style)
         self.body.setPen(pen)
         self.body.setBrush(QBrush(self._contrast_fill(color)))
@@ -266,7 +268,7 @@ class VscSymbol(QGraphicsRectItem):
             return
         w = self.rect().width()
         h = self.rect().height()
-        inset = max(1.0, line_w * 0.6)
+        inset: float = max(10.0, line_w * 1.4)
         self.divider.setLine(QLineF(w - inset, inset, inset, h - inset))
 
     def set_colour(self, color: QColor, w, style: Qt.PenStyle):
