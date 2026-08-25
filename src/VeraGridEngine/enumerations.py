@@ -4457,7 +4457,8 @@ class BlockType(Enum):
     PLL_TRANSFORM_RMS = "Pll_transform_rms"
     PI_CURRENT_CONTROLLER = "Pi_current_controller"
     PI_POWER_CONTROLLER = "Pi_power_controller"
-    GFL_CONVERTER_RMS = "Gfl_converter_rms"
+    GFL_CONVERTER_RMS = "GFL_converter_rms"
+    GFL_VSC_HVDC_RMS = "GFL_vsc_hvdc"
 
     # EMT
     EMT_GENERATOR = "EMT_GENERATOR"

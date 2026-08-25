@@ -23,6 +23,7 @@ from VeraGridEngine.Utils.Symbolic.symbolic import Const, Var
 import VeraGridEngine.Templates.BasicBlockCatalog as basic_block_templates
 import VeraGridEngine.Templates as tem
 import VeraGridEngine.Templates.Emt as emt_templates
+import VeraGridEngine.Templates.Rms as rms_templates
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Templates.template_definition import TemplateDefinition, TemplateProp
@@ -175,7 +176,40 @@ def get_blocktype2template_builder_dict() -> Dict[BlockType, type[TemplateDefini
 
     :return: Builder class lookup used by drop and properties workflows.
     """
-    return dict(((BlockType.FAULT_EMT, emt_templates.FaultEmtTemplate), (BlockType.SWITCH_EMT, emt_templates.SwitchEmtTemplate), (BlockType.GROUNDING_LINK_EMT, emt_templates.GroundingLinkEmtTemplate), (BlockType.INDUCTION_MOTOR_EMT, emt_templates.InductionMotorEmtTemplate), (BlockType.R_LOAD_EMT, emt_templates.ShuntRComboEmtTemplate), (BlockType.L_LOAD_EMT, emt_templates.ShuntLComboEmtTemplate), (BlockType.C_LOAD_EMT, emt_templates.ShuntCComboEmtTemplate), (BlockType.VOLTAGE_SOURCE_EMT, emt_templates.VoltageSourceEmtTemplate), (BlockType.CURRENT_SOURCE_EMT, emt_templates.CurrentSourceEmtTemplate), (BlockType.CONTROLLED_VOLTAGE_SOURCE_EMT, emt_templates.ControlledVoltageSourceEmtTemplate), (BlockType.CONTROLLED_CURRENT_SOURCE_EMT, emt_templates.ControlledCurrentSourceEmtTemplate), (BlockType.ARBITRARY_WAVEFORM_VOLTAGE_SOURCE_EMT, emt_templates.ArbitraryWaveformVoltageSourceEmtTemplate), (BlockType.ARBITRARY_WAVEFORM_CURRENT_SOURCE_EMT, emt_templates.ArbitraryWaveformCurrentSourceEmtTemplate), (BlockType.NONLINEAR_RESISTOR_EMT, emt_templates.NonLinearResistorEmtTemplate), (BlockType.STEP_VOLTAGE_SOURCE_EMT, emt_templates.StepVoltageSourceEmtTemplate), (BlockType.STEP_CURRENT_SOURCE_EMT, emt_templates.StepCurrentSourceEmtTemplate), (BlockType.RAMP_VOLTAGE_SOURCE_EMT, emt_templates.RampVoltageSourceEmtTemplate), (BlockType.RAMP_CURRENT_SOURCE_EMT, emt_templates.RampCurrentSourceEmtTemplate), (BlockType.DOUBLE_EXPONENTIAL_CURRENT_SOURCE_EMT, emt_templates.DoubleExponentialCurrentSourceEmtTemplate), (BlockType.HEIDLER_CURRENT_SOURCE_EMT, emt_templates.HeidlerCurrentSourceEmtTemplate), (BlockType.CIGRE_SURGE_CURRENT_SOURCE_EMT, emt_templates.CigreSurgeCurrentSourceEmtTemplate), (BlockType.EXP_LOAD_EMT, emt_templates.ExponentialLoadEmtTemplate), (BlockType.ZIP_LOAD_EMT, emt_templates.LoadZIPEmtTemplate), (BlockType.TRAFO_EMT, emt_templates.TransformerEmtTemplate), (BlockType.XFMR_TRANSFORMER, emt_templates.XfmrEmtTemplate), (BlockType.EMT_PI_LINE, emt_templates.PiLineEmtTemplate), (BlockType.EMT_BERGERON_LINE, emt_templates.BergeronLineEmtTemplate), (BlockType.EMT_JMARTI_LINE, JMartiBlockTemplateDefinition), (BlockType.INVERSE_LOOKUP_ARRAY, emt_templates.InverseLookupArrayLinearRuntimeTemplate), (BlockType.LOOKUP_ARRAY_LINEAR, emt_templates.LookupArrayLinearRuntimeTemplate), (BlockType.LOOKUP_ARRAY_SPLINE, emt_templates.LookupArraySplineRuntimeTemplate), (BlockType.LOOKUP_MATRIX_LINEAR, emt_templates.LookupMatrixLinearRuntimeTemplate), (BlockType.LOOKUP_MATRIX_SPLINE, emt_templates.LookupMatrixSplineRuntimeTemplate),))
+    return dict(((BlockType.FAULT_EMT, emt_templates.FaultEmtTemplate),
+                 (BlockType.SWITCH_EMT, emt_templates.SwitchEmtTemplate),
+                 (BlockType.GROUNDING_LINK_EMT, emt_templates.GroundingLinkEmtTemplate),
+                 (BlockType.INDUCTION_MOTOR_EMT, emt_templates.InductionMotorEmtTemplate),
+                 (BlockType.R_LOAD_EMT, emt_templates.ShuntRComboEmtTemplate),
+                 (BlockType.L_LOAD_EMT, emt_templates.ShuntLComboEmtTemplate),
+                 (BlockType.C_LOAD_EMT, emt_templates.ShuntCComboEmtTemplate),
+                 (BlockType.VOLTAGE_SOURCE_EMT, emt_templates.VoltageSourceEmtTemplate),
+                 (BlockType.CURRENT_SOURCE_EMT, emt_templates.CurrentSourceEmtTemplate),
+                 (BlockType.CONTROLLED_VOLTAGE_SOURCE_EMT, emt_templates.ControlledVoltageSourceEmtTemplate),
+                 (BlockType.CONTROLLED_CURRENT_SOURCE_EMT, emt_templates.ControlledCurrentSourceEmtTemplate),
+                 (BlockType.ARBITRARY_WAVEFORM_VOLTAGE_SOURCE_EMT, emt_templates.ArbitraryWaveformVoltageSourceEmtTemplate),
+                 (BlockType.ARBITRARY_WAVEFORM_CURRENT_SOURCE_EMT, emt_templates.ArbitraryWaveformCurrentSourceEmtTemplate),
+                 (BlockType.NONLINEAR_RESISTOR_EMT, emt_templates.NonLinearResistorEmtTemplate),
+                 (BlockType.STEP_VOLTAGE_SOURCE_EMT, emt_templates.StepVoltageSourceEmtTemplate),
+                 (BlockType.STEP_CURRENT_SOURCE_EMT, emt_templates.StepCurrentSourceEmtTemplate),
+                 (BlockType.RAMP_VOLTAGE_SOURCE_EMT, emt_templates.RampVoltageSourceEmtTemplate),
+                 (BlockType.RAMP_CURRENT_SOURCE_EMT, emt_templates.RampCurrentSourceEmtTemplate),
+                 (BlockType.DOUBLE_EXPONENTIAL_CURRENT_SOURCE_EMT, emt_templates.DoubleExponentialCurrentSourceEmtTemplate),
+                 (BlockType.HEIDLER_CURRENT_SOURCE_EMT, emt_templates.HeidlerCurrentSourceEmtTemplate),
+                 (BlockType.CIGRE_SURGE_CURRENT_SOURCE_EMT, emt_templates.CigreSurgeCurrentSourceEmtTemplate),
+                 (BlockType.EXP_LOAD_EMT, emt_templates.ExponentialLoadEmtTemplate),
+                 (BlockType.ZIP_LOAD_EMT, emt_templates.LoadZIPEmtTemplate),
+                 (BlockType.TRAFO_EMT, emt_templates.TransformerEmtTemplate),
+                 (BlockType.XFMR_TRANSFORMER, emt_templates.XfmrEmtTemplate),
+                 (BlockType.EMT_PI_LINE, emt_templates.PiLineEmtTemplate),
+                 (BlockType.EMT_BERGERON_LINE, emt_templates.BergeronLineEmtTemplate),
+                 (BlockType.EMT_JMARTI_LINE, JMartiBlockTemplateDefinition),
+                 (BlockType.INVERSE_LOOKUP_ARRAY, emt_templates.InverseLookupArrayLinearRuntimeTemplate),
+                 (BlockType.LOOKUP_ARRAY_LINEAR, emt_templates.LookupArrayLinearRuntimeTemplate),
+                 (BlockType.LOOKUP_ARRAY_SPLINE, emt_templates.LookupArraySplineRuntimeTemplate),
+                 (BlockType.LOOKUP_MATRIX_LINEAR, emt_templates.LookupMatrixLinearRuntimeTemplate),
+                 (BlockType.LOOKUP_MATRIX_SPLINE, emt_templates.LookupMatrixSplineRuntimeTemplate),
+                 (BlockType.GFL_VSC_HVDC_RMS, rms_templates.HvdcVscGflRmsTemplate),))
 
 
 def create_default_template_builder(var_factory: VarFactory,
@@ -636,7 +670,6 @@ def create_block_of_type(var_factory: VarFactory,
         blk = tem.get_gfl_converter_rms(var_factory).block
         blk.name = item_name
         return blk
-
 
 
     # DC PV source averaged

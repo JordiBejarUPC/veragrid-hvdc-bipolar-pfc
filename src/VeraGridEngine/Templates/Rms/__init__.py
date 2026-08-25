@@ -21,6 +21,7 @@ from VeraGridEngine.Templates.Rms.esd1_rms_template import get_esd1_rms_template
 from VeraGridEngine.Templates.Rms.voltage_source_template import VoltageSourceBuild
 from VeraGridEngine.Templates.Rms.vsc_gfl_dclinked import build_vsc_rms
 from VeraGridEngine.Templates.Rms.hvdc_vsc_gfl_rms_template import (
+    HvdcVscGflRmsTemplate,
     build_hvdc_vsc_gfl_rms,
     get_hvdc_vdc_q_vsc_rms,
     get_hvdc_pdc_q_vsc_rms,
