@@ -176,7 +176,7 @@ class ProceduralGridWindow(QtWidgets.QDialog):
         if distances.shape[0] > 0:
 
             distances2 = np.min(distances, axis=1)
-            sorted_indices = np.argsort(distances2, axis=0)
+            sorted_indices = np.argsort(distances2, axis=0, kind="stable")
 
             self.candidate_list.clear()
             for i in sorted_indices:

@@ -69,7 +69,7 @@ def draw_styled_qcurve_plot(plotter: MatplotlibWidget, q_curve: GeneratorQCurve,
     curve_data: Mat = q_curve.get_data()
     max_abs_value: float = abs(radius)
     if curve_data.shape[0] > 0:
-        sorted_indices: Vec = np.argsort(curve_data[:, 0])
+        sorted_indices: Vec = np.argsort(curve_data[:, 0], kind="stable")
         sorted_curve_data: Mat = curve_data[sorted_indices, :]
         p_values: np.ndarray = np.asarray(sorted_curve_data[:, 0], dtype=float)
         qmin_values: np.ndarray = np.asarray(sorted_curve_data[:, 1], dtype=float)
@@ -290,7 +290,7 @@ class GeneratorQCurveEditorTableModel(QtCore.QAbstractTableModel):
         Sort rows by active power column.
         """
         if self._data.shape[0] > 0:
-            sorted_indices: Vec = np.argsort(self._data[:, 0])
+            sorted_indices: Vec = np.argsort(self._data[:, 0], kind="stable")
             self._data = self._data[sorted_indices]
             self.layoutChanged.emit()
         else:
