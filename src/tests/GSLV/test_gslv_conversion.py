@@ -302,6 +302,42 @@ def test_bus_voltage_guess_profiles_are_exported_to_gslv():
     assert converted.Va0.to_list() == [0.02, 0.03, 0.04]
 
 
+def test_gslv_conversion_exports_bus_voltage_level() -> None:
+    """
+    Check that bus voltage-level references are exported to GSLV.
+
+    :return: None.
+    """
+    if not GSLV_AVAILABLE:
+        return
+    else:
+        pass
+
+    grid: vg.MultiCircuit = vg.MultiCircuit(name="gslv-voltage-level-export")
+    substation: vg.Substation = vg.Substation(name="Substation")
+    voltage_level: vg.VoltageLevel = vg.VoltageLevel(name="VL", substation=substation, Vnom=110.0)
+    bus: vg.Bus = vg.Bus(name="Bus", Vnom=110.0)
+
+    bus.substation = substation
+    bus.voltage_level = voltage_level
+
+    grid.add_substation(obj=substation)
+    grid.add_voltage_level(obj=voltage_level)
+    grid.add_bus(obj=bus)
+
+    grid_gslv, gslv_dict = to_gslv(
+        circuit=grid,
+        use_time_series=False,
+        time_indices=None,
+        override_branch_controls=False,
+        opf_results=None,
+    )
+
+    converted_bus = grid_gslv.buses[0]
+    assert converted_bus.voltage_level.get_idtag() == voltage_level.idtag
+    assert gslv_dict.voltage_level_dict[voltage_level] in grid_gslv.voltage_levels
+
+
 def test_gslv_conversion_exports_injection_association_assets_and_facility() -> None:
     """
     Check that injection associations are exported as GSLV assets and device references.
@@ -356,6 +392,98 @@ def test_gslv_conversion_exports_injection_association_assets_and_facility() -> 
     assert gslv_dict.technology_dict[strong_technology] in grid_gslv.technologies
     assert gslv_dict.fuel_dict[fuel] in grid_gslv.fuels
     assert gslv_dict.emission_gas_dict[emission_gas] in grid_gslv.emission_gases
+
+
+def test_gslv_conversion_exports_generator_market_unit_and_control_bus() -> None:
+    """
+    Check that generator market-unit and remote-control bus references are exported.
+
+    :return: None.
+    """
+    if not GSLV_AVAILABLE:
+        return
+    else:
+        pass
+
+    grid: vg.MultiCircuit = vg.MultiCircuit(name="gslv-generator-market-unit-export")
+    bus: vg.Bus = vg.Bus(name="Bus")
+    control_bus: vg.Bus = vg.Bus(name="Control bus")
+    market_unit: vg.MarketUnit = vg.MarketUnit(name="Market unit", code="MU", color="#123456")
+    generator: vg.Generator = vg.Generator(name="Generator", P=10.0, market_unit=market_unit, market_unit_share=0.7)
+
+    generator.control_bus = control_bus
+
+    grid.add_bus(obj=bus)
+    grid.add_bus(obj=control_bus)
+    grid.add_market_unit(obj=market_unit)
+    grid.add_generator(bus=bus, api_obj=generator)
+
+    grid_gslv, gslv_dict = to_gslv(
+        circuit=grid,
+        use_time_series=False,
+        time_indices=None,
+        override_branch_controls=False,
+        opf_results=None,
+    )
+
+    converted_generator = grid_gslv.generators[0]
+    assert converted_generator.market_unit.get_idtag() == market_unit.idtag
+    assert converted_generator.market_unit_share.to_list() == [0.7]
+    assert converted_generator.control_bus.to_list()[0].get_idtag() == control_bus.idtag
+    assert gslv_dict.market_unit_dict[market_unit].get_idtag() == market_unit.idtag
+
+
+def test_gslv_conversion_exports_battery_storage_and_market_unit_fields() -> None:
+    """
+    Check that battery-specific storage fields and generator-like market data are exported.
+
+    :return: None.
+    """
+    if not GSLV_AVAILABLE:
+        return
+    else:
+        pass
+
+    grid: vg.MultiCircuit = vg.MultiCircuit(name="gslv-battery-export")
+    bus: vg.Bus = vg.Bus(name="Bus")
+    control_bus: vg.Bus = vg.Bus(name="Control bus")
+    market_unit: vg.MarketUnit = vg.MarketUnit(name="Battery unit")
+    battery: vg.Battery = vg.Battery(name="Battery",
+                                     soc=0.42,
+                                     charge_per_cycle=0.23,
+                                     discharge_per_cycle=0.34,
+                                     r1=0.01,
+                                     x1=0.02)
+
+    battery.control_bus = control_bus
+    battery.market_unit = market_unit
+    battery.market_unit_share = 0.4
+    battery.min_soc_charge = 0.55
+
+    grid.add_bus(obj=bus)
+    grid.add_bus(obj=control_bus)
+    grid.add_market_unit(obj=market_unit)
+    grid.add_battery(bus=bus, api_obj=battery)
+
+    grid_gslv, _ = to_gslv(
+        circuit=grid,
+        use_time_series=False,
+        time_indices=None,
+        override_branch_controls=False,
+        opf_results=None,
+        add_three_phase_data=True,
+    )
+
+    converted_battery = grid_gslv.batteries[0]
+    assert converted_battery.soc == 0.42
+    assert converted_battery.charge_per_cycle == 0.23
+    assert converted_battery.discharge_per_cycle == 0.34
+    assert converted_battery.min_soc_charge == 0.55
+    assert converted_battery.R1 == 0.01
+    assert converted_battery.X1 == 0.02
+    assert converted_battery.market_unit.get_idtag() == market_unit.idtag
+    assert converted_battery.market_unit_share.to_list() == [0.4]
+    assert converted_battery.control_bus.to_list()[0].get_idtag() == control_bus.idtag
 
 
 def test_gslv_association_helpers_copy_exact_values() -> None:

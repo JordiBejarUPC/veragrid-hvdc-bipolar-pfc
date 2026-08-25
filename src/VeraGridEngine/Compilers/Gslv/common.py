@@ -74,7 +74,8 @@ def fill_profile(gslv_profile: "pg.Profiledouble|pg.Profilebool|pg.Profileint|pg
                  use_time_series: bool,
                  time_indices: Union[IntVec, None],
                  n_time: int = 1,
-                 default_val: int | float | bool | TapPhaseControl | TapModuleControl = 0) -> None:
+                 default_val: int | float | bool | TapPhaseControl | TapModuleControl = 0
+                 ) -> "pg.Profiledouble|pg.Profilebool|pg.Profileint|pg.Profileuint":
     """
     Generates a default time series
     :param gslv_profile: Profile from gslv to fill in
@@ -83,6 +84,7 @@ def fill_profile(gslv_profile: "pg.Profiledouble|pg.Profilebool|pg.Profileint|pg
     :param time_indices: time series indices if any (optional)
     :param n_time: number of time steps
     :param default_val: Default value
+    :return: Filled GSLV profile.
     """
 
     if use_time_series:
@@ -166,12 +168,14 @@ def fill_profile(gslv_profile: "pg.Profiledouble|pg.Profilebool|pg.Profileint|pg
         else:
             gslv_profile.fill(default_val)
 
+    return gslv_profile
+
 def fill_profile_with_array(gslv_profile: "pg.Profiledouble",
                             arr: Vec,
                             use_time_series: bool,
                             time_indices: Union[IntVec, None],
                             n_time: int = 1,
-                            default_val: float = 0.0) -> None:
+                            default_val: float = 0.0) -> "pg.Profiledouble":
     """
     Generate one profile from a dense array.
 
@@ -181,7 +185,7 @@ def fill_profile_with_array(gslv_profile: "pg.Profiledouble",
     :param time_indices: Optional time-series selection.
     :param n_time: Number of exported time steps.
     :param default_val: Scalar fallback value for snapshot exports.
-    :return: None.
+    :return: Filled GSLV profile.
     """
 
     if use_time_series:
@@ -195,6 +199,8 @@ def fill_profile_with_array(gslv_profile: "pg.Profiledouble",
     else:
         # Snapshot exports collapse the profile to a single scalar value.
         gslv_profile.fill(default_val)
+
+    return gslv_profile
 
 
 def set_injection_associations(gslv_elm: "pg.InjectionParent",

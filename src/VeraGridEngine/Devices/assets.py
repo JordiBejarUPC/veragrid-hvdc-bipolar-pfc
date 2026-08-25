@@ -650,8 +650,8 @@ class Assets:
         self.re_index_time2(t0=t0, step_size=hours_per_step, step_unit='h')
 
     def re_index_time2(self,
-                       t0: dateslib.datetime = dateslib.datetime.now(),
-                       step_size: int = 1,
+                       t0: dateslib.datetime | None = None,
+                       step_size: float = 1.0,
                        step_unit: str = "h"):
         """
         Generate sequential time steps to correct the time_profile
@@ -660,6 +660,12 @@ class Assets:
         :param step_unit: 'h', 'm', 's'
         """
         nt = self.get_time_number()
+
+        if t0 is None:
+            t0 = dateslib.datetime.now()
+        else:
+            pass
+        t0 = t0.replace(second=0, microsecond=0)
 
         if step_unit == 'h':
             tm = [t0 + dateslib.timedelta(hours=t * step_size) for t in range(nt)]
