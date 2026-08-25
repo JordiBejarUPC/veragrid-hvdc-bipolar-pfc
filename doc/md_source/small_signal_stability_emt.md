@@ -1,8 +1,8 @@
-# EMT small-signal stability: Floquet analysis
+# 🧬 EMT Small-Signal stability: Floquet analysis
 
-EMT small-signal stability analysis studies whether small perturbations grow or decay around a **periodic steady-state trajectory**. VeraGrid performs this assessment with Floquet theory.
+EMT Small-Signal stability analysis studies whether small perturbations grow or decay around a **periodic steady-state trajectory**. VeraGrid performs this assessment with Floquet theory.
 
-This distinction is fundamental. In RMS small-signal analysis, the operating point is normally a constant equilibrium in phasor or rotating-frame variables. In phase-domain EMT simulation, a healthy AC steady state is not constant: the instantaneous voltages, currents, fluxes, and many controller signals repeat in time. The object being linearized is therefore a closed periodic orbit, also called a limit cycle, rather than one fixed point.
+This distinction is fundamental. In RMS Small-Signal analysis, the operating point is normally a constant equilibrium in phasor or rotating-frame variables. In phase-domain EMT simulation, a healthy AC steady state is not constant: the instantaneous voltages, currents, fluxes, and many controller signals repeat in time. The object being linearized is therefore a closed periodic orbit, also called a limit cycle, rather than one fixed point.
 
 An intuitive way to view the method is:
 
@@ -17,11 +17,11 @@ The one-period linear map is the **monodromy operator**. Its eigenvalues are the
 VeraGrid captures one complete period from the end of the EMT settling simulation. That entire captured period must already be in periodic steady state. If amplitude, phase, controller states, DC voltage, speed, or any other slow quantity is still drifting, the segment is not a valid periodic orbit and its multipliers must not be interpreted as Floquet stability results.
 ```
 
-Use [RMS small-signal stability](small_signal_stability_rms.md) for modal analysis around an RMS equilibrium. Use [EMT simulations](emt_simulations.md) for the underlying waveform-domain workflow.
+Use [RMS Small-Signal stability](small_signal_stability_rms.md) for modal analysis around an RMS equilibrium. Use [EMT simulations](emt_simulations.md) for the underlying waveform-domain workflow.
 
 ## Why ordinary eigenvalue analysis is not enough
 
-For an autonomous or time-invariant model at an equilibrium $x^*$, small-signal analysis linearizes once:
+For an autonomous or time-invariant model at an equilibrium $x^*$, Small-Signal analysis linearizes once:
 
 $$
 \dot{\delta x}=A\delta x.
@@ -71,7 +71,7 @@ The complete workflow is:
 7. Run `SmallSignalStabilityEmtDriver`.
 8. Inspect multiplier magnitudes, Floquet exponents, damping, frequencies, participation factors, and numerical sensitivity.
 
-In the GUI, the EMT small-signal command requires an available three-phase power-flow result. The scripting driver accepts either `PowerFlowResults` or `PowerFlowResults3Ph`.
+In the GUI, the EMT Small-Signal command requires an available three-phase power-flow result. The scripting driver accepts either `PowerFlowResults` or `PowerFlowResults3Ph`.
 
 ## The captured period is the operating point
 
@@ -294,9 +294,9 @@ Therefore:
 
 | Multiplier | Interpretation |
 | --- | --- |
-| $|\mu_i|<1$ | The perturbation decays from period to period. |
-| $|\mu_i|=1$ | Marginal behavior; physical symmetries and numerical error must be considered. |
-| $|\mu_i|>1$ | The perturbation grows and the periodic orbit is locally unstable. |
+| $\lvert\mu_i\rvert<1$ | The perturbation decays from period to period. |
+| $\lvert\mu_i\rvert=1$ | Marginal behavior; physical symmetries and numerical error must be considered. |
+| $\lvert\mu_i\rvert>1$ | The perturbation grows and the periodic orbit is locally unstable. |
 
 The spectral radius is
 
@@ -386,7 +386,7 @@ The hybrid path targets dominant multiplier magnitudes. `target_frequency_hz` is
 | --- | --- |
 | `Mu Re` | Real part of $\mu_i$. |
 | `Mu Im` | Imaginary part of $\mu_i$. |
-| `|Mu|` | Multiplier magnitude and direct unit-circle stability indicator. |
+| <code>&#124;Mu&#124;</code> | Multiplier magnitude $\lvert\mu_i\rvert$ and direct unit-circle stability indicator. |
 | `Damp Ratio` | Damping ratio computed from the selected Floquet exponent branch. |
 | `Freq [Hz]` | Frequency obtained from the imaginary part of that exponent. |
 
@@ -445,7 +445,7 @@ Only after these checks should a near-unit multiplier be classified as a physica
 1. Create or open a grid with EMT models assigned to the relevant devices.
 2. Run the three-phase power flow. The GUI uses this result to construct the EMT Floquet driver.
 3. Run a normal EMT simulation and confirm that the final periods are settled and repeatable.
-4. Open the EMT small-signal settings.
+4. Open the EMT Small-Signal settings.
 5. Set the EMT **Time step** and **Integration** method.
 6. Set **Assessment time** long enough for settling.
 7. Set **Target period** in seconds, for example `0.02` for 50 Hz.
@@ -543,9 +543,9 @@ floquet_options: SmallSignalStabilityEmtOptions = SmallSignalStabilityEmtOptions
 
 Because frequency is aliased by the multiplier map, use physical knowledge of the system and compare nearby frequency branches.
 
-## EMT Floquet versus RMS small signal
+## EMT Floquet versus RMS Small-Signal
 
-| Aspect | RMS small signal | EMT Floquet small signal |
+| Aspect | RMS Small-Signal | EMT Floquet Small-Signal |
 | --- | --- | --- |
 | Reference solution | Constant equilibrium | Complete periodic trajectory |
 | Linear model | Constant matrix or pencil | Linear time-periodic system |

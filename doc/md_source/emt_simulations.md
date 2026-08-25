@@ -4,7 +4,7 @@ Electromagnetic transient (EMT) simulation is VeraGrid's waveform-domain dynamic
 
 Compared with RMS, EMT provides much higher electromagnetic fidelity at a significantly higher computational cost.
 
-The settled periodic trajectories produced by the EMT model can also be assessed with VeraGrid's Floquet small-signal analysis.
+The settled periodic trajectories produced by the EMT model can also be assessed with VeraGrid's Floquet Small-Signal analysis.
 
 ```{toctree}
 :maxdepth: 1
@@ -317,4 +317,4 @@ print(results.diff_values.shape)
 - Use the simplest solver/backend setup that resolves the phenomenon of interest.
 - Prefer EMT only when waveform-level or phase-domain fidelity is required.
 - For the broad mathematical and architectural background of the dynamic engine, see [Dynamic simulations](dynamic_simulations.md).
-- For local stability around a settled periodic EMT trajectory, see [EMT small-signal stability: Floquet analysis](small_signal_stability_emt.md).
+- For local stability around a settled periodic EMT trajectory, see [EMT Small-Signal stability: Floquet analysis](small_signal_stability_emt.md).

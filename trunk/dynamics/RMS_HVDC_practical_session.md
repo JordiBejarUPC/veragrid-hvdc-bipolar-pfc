@@ -596,6 +596,8 @@ Use the following RMS options:
 | Maximum iterations | 80 |
 | Events group | `HVDC RMS Vdc control` |
 
+> **Required tolerance:** set the RMS tolerance to `1e-6`. Do not retain the GUI initial value of `1e-4` for this case. With a time step of `0.002 s`, the `1e-4` tolerance can accept the small Backward Euler residuals of the explicit PI integrator states without updating those states. The controllers then appear numerically frozen and the DC-voltage response is reduced to round-off-level variations. A `1e-6` tolerance reproduces the reference scripted response.
+
 Backward Euler is an implicit, robust integration method suitable for the differential-algebraic converter and network equations used in the exercise.
 
 After the simulation, always check both status indicators:
