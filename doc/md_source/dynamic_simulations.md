@@ -16,7 +16,7 @@ The classical theoretical foundations for power-system dynamic simulation can be
 This page provides the common theory, architecture, initialization, solver, event, and scripting concepts shared by VeraGrid's dynamic studies. Continue with the domain-specific guides or the model reference according to the task:
 
 - **RMS simulations** cover phasor-domain time simulation and contain the RMS small-signal analysis guide.
-- **EMT simulations** cover waveform- and phase-domain time simulation.
+- **EMT simulations** cover waveform- and phase-domain time simulation and contain the EMT Floquet small-signal analysis guide.
 - **Dynamic model library** contains model authoring guidance, device templates, reusable DAE blocks, and procedural runtime logic.
 
 ```{toctree}

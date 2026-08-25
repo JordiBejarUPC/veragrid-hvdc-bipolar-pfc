@@ -8775,7 +8775,7 @@
                      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Period of the periodic orbit. &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                     </property>
                     <property name="suffix">
-                     <string>Hz</string>
+                     <string> s</string>
                     </property>
                     <property name="decimals">
                      <number>4</number>

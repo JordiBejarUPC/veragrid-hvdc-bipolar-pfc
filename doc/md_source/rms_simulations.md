@@ -9,7 +9,7 @@ The RMS model also provides the operating point and linearization used by VeraGr
 ```{toctree}
 :maxdepth: 1
 
-small_signal_stability
+small_signal_stability_rms
 ```
 
 ## When to use RMS simulation
@@ -273,5 +273,5 @@ print(results.values.shape)
 - Always validate the static power-flow solution before running RMS.
 - Use RMS first when the main interest is electromechanical or controller-level behaviour.
 - Keep the dynamic model only as detailed as the study requires.
-- For linearized modal analysis around one RMS operating point or one RMS trajectory point, see [Small signal stability](small_signal_stability.md).
+- For linearized modal analysis around one RMS operating point or one RMS trajectory point, see [Small signal stability](small_signal_stability_rms.md).
 - For the broad mathematical and architectural background of the dynamic engine, see [Dynamic simulations](dynamic_simulations.md).

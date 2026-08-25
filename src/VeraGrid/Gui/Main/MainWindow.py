@@ -6953,7 +6953,7 @@ class Ui_mainWindow(object):
 #if QT_CONFIG(tooltip)
         self.emt_sss_target_period_spinBox.setToolTip(QCoreApplication.translate("mainWindow", u"<html><head/><body><p>Period of the periodic orbit. </p></body></html>", None))
 #endif // QT_CONFIG(tooltip)
-        self.emt_sss_target_period_spinBox.setSuffix(QCoreApplication.translate("mainWindow", u"Hz", None))
+        self.emt_sss_target_period_spinBox.setSuffix(QCoreApplication.translate("mainWindow", u" s", None))
 #if QT_CONFIG(tooltip)
         self.emt_h_spinBox.setToolTip(QCoreApplication.translate("mainWindow", u"<html><head/><body><p>Initial time for the simulation. </p><p>In practice this is used to slow down troublesome solutions.</p></body></html>", None))
 #endif // QT_CONFIG(tooltip)
