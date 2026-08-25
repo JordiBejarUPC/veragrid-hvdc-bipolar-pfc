@@ -7,7 +7,11 @@ from __future__ import annotations
 from typing import Dict, TYPE_CHECKING
 
 from VeraGridEngine.Compilers.Gslv.activation import pg
-from VeraGridEngine.Compilers.Gslv.common import fill_profile, fill_profile_with_array
+from VeraGridEngine.Compilers.Gslv.common import fill_profile, fill_profile_with_array, set_generator_associations
+from VeraGridEngine.Devices.Aggregation.facility import Facility
+from VeraGridEngine.Devices.Associations.emission_gas import EmissionGas
+from VeraGridEngine.Devices.Associations.fuel import Fuel
+from VeraGridEngine.Devices.Associations.technology import Technology
 from VeraGridEngine.Devices.Injections.generator import Generator
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.basic_structures import IntVec
@@ -16,9 +20,34 @@ if TYPE_CHECKING:
     from VeraGridEngine.Simulations.OPF.opf_results import OptimalPowerFlowResults
 
 
+def generator_tpe(elm: Generator) -> str:
+    """
+    Get the selected technology label for a VeraGrid generator.
+
+    :param elm: VeraGrid generator.
+    :return: Name of the strongest technology association, or ``Other``.
+    """
+    best_name: str = "Other"
+    best_value: float = -1.0
+
+    for association in elm.technologies:
+        value: float = float(association.value)
+        if value > best_value:
+            best_value = value
+            best_name = str(association.api_object.name)
+        else:
+            pass
+
+    return best_name
+
+
 def convert_generator(k: int,
                       elm: Generator,
                       bus_dict: Dict[str, "pg.Bus"],
+                      facility_dict: Dict[Facility, "pg.Facility"],
+                      technology_dict: Dict[Technology, "pg.Technology"],
+                      fuel_dict: Dict[Fuel, "pg.Fuel"],
+                      emission_gas_dict: Dict[EmissionGas, "pg.EmissionGas"],
                       n_time: int,
                       use_time_series: bool,
                       time_indices: IntVec | None = None,
@@ -30,6 +59,10 @@ def convert_generator(k: int,
     :param k: Generator index.
     :param elm: VeraGrid generator.
     :param bus_dict: Bus lookup by VeraGrid id tag.
+    :param facility_dict: VeraGrid-to-GSLV facility lookup.
+    :param technology_dict: VeraGrid-to-GSLV technology lookup.
+    :param fuel_dict: VeraGrid-to-GSLV fuel lookup.
+    :param emission_gas_dict: VeraGrid-to-GSLV emission gas lookup.
     :param n_time: Number of exported time steps.
     :param use_time_series: Whether the export is time-series based.
     :param time_indices: Optional time-series selection.
@@ -58,6 +91,8 @@ def convert_generator(k: int,
         bus=None if elm.bus is None else bus_dict[elm.bus.idtag],
         name=elm.name,
         idtag=elm.idtag,
+        code=elm.code,
+        tpe=generator_tpe(elm=elm),
         active=elm.active,
         P=elm.P,
         Q=elm.Q,
@@ -75,6 +110,14 @@ def convert_generator(k: int,
         x0=generator_x0,
         r2=generator_r2,
         x2=generator_x2,
+    )
+    set_generator_associations(
+        gslv_elm=gen,
+        elm=elm,
+        facility_dict=facility_dict,
+        technology_dict=technology_dict,
+        fuel_dict=fuel_dict,
+        emission_gas_dict=emission_gas_dict,
     )
 
     fill_profile(gen.active, elm.active_prof, use_time_series, time_indices, n_time, elm.active)
@@ -103,6 +146,10 @@ def convert_generator(k: int,
 def add_generators(circuit: MultiCircuit,
                    gslv_grid: "pg.MultiCircuit",
                    bus_dict: Dict[str, "pg.Bus"],
+                   facility_dict: Dict[Facility, "pg.Facility"],
+                   technology_dict: Dict[Technology, "pg.Technology"],
+                   fuel_dict: Dict[Fuel, "pg.Fuel"],
+                   emission_gas_dict: Dict[EmissionGas, "pg.EmissionGas"],
                    time_series: bool,
                    n_time: int = 1,
                    time_indices: IntVec | None = None,
@@ -114,6 +161,10 @@ def add_generators(circuit: MultiCircuit,
     :param circuit: VeraGrid circuit.
     :param gslv_grid: GSLV circuit.
     :param bus_dict: Bus lookup by VeraGrid id tag.
+    :param facility_dict: VeraGrid-to-GSLV facility lookup.
+    :param technology_dict: VeraGrid-to-GSLV technology lookup.
+    :param fuel_dict: VeraGrid-to-GSLV fuel lookup.
+    :param emission_gas_dict: VeraGrid-to-GSLV emission gas lookup.
     :param time_series: Whether the export is time-series based.
     :param n_time: Number of exported time steps.
     :param time_indices: Optional time-series selection.
@@ -128,6 +179,10 @@ def add_generators(circuit: MultiCircuit,
             k=k,
             elm=elm,
             bus_dict=bus_dict,
+            facility_dict=facility_dict,
+            technology_dict=technology_dict,
+            fuel_dict=fuel_dict,
+            emission_gas_dict=emission_gas_dict,
             n_time=n_time,
             use_time_series=time_series,
             time_indices=time_indices,
