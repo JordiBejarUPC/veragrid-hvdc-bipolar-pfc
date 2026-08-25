@@ -2089,6 +2089,20 @@ class DiagramsMain(CompiledArraysMain):
                                    min_bus_width=min_bus_width,
                                    max_bus_width=max_bus_width)
 
+        elif current_study == SimulationTypes.RmsDynamic_run.value:
+
+            # RMS trajectories expose a typed variable catalogue rather than
+            # one network-flow snapshot. Keep the design colouring until a
+            # user selects a result-specific RMS projection.
+            self.default_colouring(t_idx=t_idx,
+                                   diagram_widget=diagram_widget,
+                                   cmap=cmap,
+                                   use_flow_based_width=use_flow_based_width,
+                                   min_branch_width=min_branch_width,
+                                   max_branch_width=max_branch_width,
+                                   min_bus_width=min_bus_width,
+                                   max_bus_width=max_bus_width)
+
         elif current_study == SimulationTypes.NodeGrouping_run.value:
             if t_idx is None:
                 results: sim.OptimalNetTransferCapacityResults = self.session.get_results(
